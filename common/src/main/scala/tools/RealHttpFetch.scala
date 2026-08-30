@@ -468,6 +468,51 @@ object RealHttpFetch {
       minRequestInterval = Some(Duration.ofMillis(200)),
       paceKnob           = Some("KINOWO_FLICKS_PACE_MS"),
     ),
+    // Flicks' US market (`flicks.us`) — the SAME platform on a different ccTLD,
+    // and it needs its own row precisely BECAUSE it is a different host.
+    //
+    // The two markets are INDEPENDENT — at all three layers, and the third was
+    // MEASURED rather than assumed (2026-08-30, before the US rollout):
+    //   1. our pace gate (RateLimitedHttpFetch) buckets by full lowercased
+    //      hostname, so the two hosts hold separate slot queues;
+    //   2. our 429 back-off (ThrottledHttpFetch) keys the same way, so a
+    //      `Retry-After: 300-600s` earned on one host cannot stall the other;
+    //   3. THE ORIGIN throttles per zone, not per client IP. Driving flicks.us
+    //      at 3-4.3 req/s across 30 concurrent workers (~1300 requests) left
+    //      flicks.co.uk polled alongside it completely flat — p50 1.3s, p90
+    //      1.8s, max 2.0s, zero non-200s in 56 control polls, indistinguishable
+    //      from its ~1.0s idle baseline — while the US host being hammered
+    //      degraded to p50 3.7s / p90 13.2s / p99 39.6s in the same window.
+    // So a US sweep cannot take the UK pipeline down, and vice versa.
+    //
+    // Note HOW this origin throttles: it STALLS connections rather than
+    // answering 429. Its effective throughput plateaus at ~3-5 req/s no matter
+    // the concurrency (10 workers → 2.88 req/s, 30 workers → 3.14 req/s), so
+    // there is no faster pace to buy here — extra egress IPs would not raise it,
+    // because the ceiling is per zone, not per IP.
+    //
+    // The flip side of host-keying is that policy rows match by host SUFFIX —
+    // `flicks.co.uk` does not match `flicks.us` — so without this row the US
+    // host would be entirely UNPACED, which is the exact condition that produced
+    // the UK's self-inflicted 429 storm above, at six times the venue count.
+    //
+    // Same 200ms as the UK, and the measurement above says that IS the ceiling:
+    // the origin plateaus at ~3-5 req/s and absorbs anything more by stalling,
+    // so a shorter interval would buy latency, not throughput. It sets the sweep
+    // length — ~5000 venues x ~36 requests x 200ms is a ~10h sweep, which is why
+    // the US cadence is 840min rather than the UK's 420. See the US worker
+    // overlay, and WorkerScrapeCadenceConfigSpec, which locks pace to cadence.
+    //
+    // What the two markets DO still share is the residential egress: both leave
+    // over the Decodo pool, so the same IPs would carry both sweeps unless the US
+    // worker is given its own. That coupling is addressed at the egress
+    // (`WorkerWiring.flicksFetch` / `residential-proxy.properties`), not here —
+    // this pacer cannot see which IP a request leaves on.
+    HostPolicy(
+      Set("flicks.us"),
+      minRequestInterval = Some(Duration.ofMillis(200)),
+      paceKnob           = Some("KINOWO_FLICKS_US_PACE_MS"),
+    ),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted

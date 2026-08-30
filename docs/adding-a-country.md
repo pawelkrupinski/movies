@@ -1,7 +1,7 @@
 # Adding a new country
 
-A repeatable runbook for bringing a new country online — model → data → worker →
-web → localization → mobile → store. Distilled from the UK (`uk`, Flicks) and
+A repeatable runbook for bringing a new country online — size the source → model
+→ data → worker → web → localization → mobile → store. Distilled from the UK (`uk`, Flicks) and
 Germany (`de`, Filmstarts) rollouts. Each country is a **fully isolated pipeline**:
 its own Mongo db, worker machine, web app, and locale — nothing is shared but the
 Mongo cluster and the Docker image.
@@ -9,6 +9,72 @@ Mongo cluster and the Docker image.
 Use `<cc>` for the country code (`de`), `<lang>` for the BCP-47 language (`de`),
 `<Db>` for the database (`kinowo_de`). Work in a git worktree per the repo's
 standing rule; commit each phase.
+
+## 0. Size the source, and check whose budget it spends
+
+Do this BEFORE writing any model code. It decides the roster shape, the cadence,
+and occasionally whether the country is worth doing at all — and every one of
+those is expensive to change once a `Country` is switchable.
+
+1. **Count the venues.** Nearly every source publishes a sitemap:
+   `sitemap-cinemas.xml/` on Flicks (trailing slash), the city-list page on
+   Webedia. `grep -c '<loc>'` is the whole measurement. This number, not the
+   country's population, is the cost driver.
+2. **Work out the sweep length** and check it against a cadence you would
+   actually run: `venues x requests-per-venue x pace = sweep`. Requests-per-venue
+   is a property of the client (Flicks: 1 programme page + 1 AJAX call per
+   advertised day, ~36; Webedia: 1 per theater per date). The UK's numbers are
+   the reference point — ~500 flicks-primary venues x 36 x 200ms = ~60min sweep
+   on a 420min cadence, i.e. the pacer idle ~86% of the time. **Aim for that
+   duty cycle, not for a sweep that merely fits**: a pacer at ~100% duty is a
+   sustained flat load against one third-party origin, which is a different
+   (and less forgiving) profile than the bursts these paces are tuned against.
+   An hourly UK cadence was tried on 2026-07-28 and reverted the same day for
+   exactly this. If the full roster does not fit, either lengthen the cadence or
+   ship a scoped `active<CC>Cities` roster with a one-line lever to widen it —
+   both are legitimate; guessing a faster pace is not.
+3. **Ask whether the new source SHARES a limiter with one we already depend on.**
+   This is the step the US rollout added, and it has a specific failure it is
+   guarding against: a new country quietly spending an existing country's request
+   budget and taking a *working* pipeline down. Reuse of a client (Flicks for
+   UK+US, Webedia for DE+FR/ES/TR/BR/MX, Cinema City for PL+CZ/HU/SK/BG/RO) is
+   exactly when this bites. Check all three layers — the first two by reading,
+   the third by measuring:
+   - **The pace gate.** `RateLimitedHttpFetch` buckets by FULL LOWERCASED
+     HOSTNAME, so two markets on different hostnames never share a slot queue.
+     But `RealHttpFetch.HostPolicies` rows match by host SUFFIX, so a new
+     market's host does NOT inherit its sibling's row (`flicks.co.uk` does not
+     match `flicks.us`) — **a host with no row of its own is not paced at all**,
+     which is the condition that produced the UK's self-inflicted 429 storm.
+     Give the new host its own row and its own `paceKnob`, so either market can
+     be retuned live without touching the other.
+   - **The 429 back-off.** `ThrottledHttpFetch` keys its pause by the same full
+     hostname, so a `Retry-After` earned on one host cannot stall the other.
+   - **The origin.** Different hostnames may still be one quota behind the same
+     CDN. MEASURE it rather than assuming, and measure it in the direction that
+     matters: drive the NEW host under load while polling the EXISTING host as a
+     control, and compare the control's latency and status codes against its
+     idle baseline. Keep it bounded (a few hundred requests, a hard time cap,
+     stop on the first control failure) — the goal is a signal, not a limit-find,
+     and the site being probed is one production depends on. For Flicks this was
+     run on 2026-08-30: flicks.us driven at 3-4.3 req/s across 30 workers left
+     flicks.co.uk at p50 1.3s / max 2.0s / zero non-200s in 56 control polls,
+     against a ~1.0s idle baseline, while the US host itself degraded to p50
+     3.7s / p99 39.6s. Independent, per zone rather than per client IP.
+   - **Note the throttle SHAPE while you are there.** Flicks does not answer 429
+     under this load — it STALLS connections, and its throughput plateaus at
+     ~3-5 req/s no matter the concurrency (10 workers -> 2.88 req/s, 30 workers
+     -> 3.14 req/s). A source that behaves this way cannot be sped up with extra
+     egress IPs, because the ceiling is per zone; believing otherwise is how a
+     roster gets sized against a pace the origin will never serve.
+4. **Check the egress the new country will share.** Residential-proxy hosts all
+   egress over the ONE Decodo pool (`residential-proxy.properties`, 7 ports),
+   spread by a `hostAndPath` hash with **no concurrency cap**. A new country's
+   sweep lands on the same IPs as every existing one, so a ban or a Decodo
+   concurrent-auth rejection earned by the newcomer is felt by the incumbents.
+   Either give the new country its own ports or ship on the shared pool with the
+   `Residential proxy` bar on `/uptime` (and the throttle panel) watched for the
+   first few sweeps. Say which you chose and why.
 
 ## 1. Model (`common/`)
 

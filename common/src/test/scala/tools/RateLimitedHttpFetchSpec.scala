@@ -13,6 +13,8 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   private val Paced    = "https://www.filmstarts.de/_/showtimes/theater-A0416/d-2026-07-18/p-1/"
   private val Paced2   = "https://www.filmstarts.de/kinoprogramm/kino/A0006/"
   private val Unpaced  = "https://api.themoviedb.org/3/movie/42"
+  private val FlicksUk = "https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/"
+  private val FlicksUs = "https://www.flicks.us/cinema/sessions/x/2026-07-31/"
 
   private class CountingFetch extends GetOnlyHttpFetch {
     var calls = 0
@@ -37,6 +39,21 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
       now         = () => clock.now(),
       // Sleeping IS the passage of time here: record it and advance the clock,
       // so a second call sees the state a real sleep would have left behind.
+      sleep       = ms => { slept += ms; clock.advance(ms.millis) }
+    )
+    (delegate, paced, slept, clock)
+  }
+
+  /** Like [[fixture]] but paced by the REAL HostPolicies table, so the Flicks
+   *  rows decide the intervals rather than a stub — the wiring under test. */
+  private def flicksFixture() = {
+    val delegate = new CountingFetch
+    val slept    = mutable.ListBuffer.empty[Long]
+    val clock    = new TestClock
+    val paced    = new RateLimitedHttpFetch(
+      delegate,
+      intervalFor = RateLimitedHttpFetch.configuredInterval,
+      now         = () => clock.now(),
       sleep       = ms => { slept += ms; clock.advance(ms.millis) }
     )
     (delegate, paced, slept, clock)
@@ -135,6 +152,44 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
       RateLimitedHttpFetch.configuredInterval(flicks) shouldBe Some(350.millis)
     }
     RateLimitedHttpFetch.configuredInterval(flicks) shouldBe Some(200.millis)
+  }
+
+  // Policy rows match by host SUFFIX, and `flicks.co.uk` does not match
+  // `flicks.us` — so the US market is unpaced unless it carries its own row. An
+  // unpaced Flicks host is the precise condition that produced the UK's 429 storm
+  // (Retry-After 300-600s, whole venue-days lost), and the US corpus is ~6x the
+  // UK's, so this is the one row the US sweep cannot ship without.
+  it should "pace Flicks US on its own row rather than falling through unpaced" in {
+    RateLimitedHttpFetch.configuredInterval(FlicksUs) shouldBe Some(200.millis)
+  }
+
+  // The markets are INDEPENDENT, and this is what says so: retuning one leaves
+  // the other untouched, because they are separate hosts on separate policy rows
+  // with separate knobs. A US sweep can therefore be slowed (or sped up) without
+  // touching the UK's tuned 200ms, and vice versa.
+  it should "keep the US and UK Flicks paces independent of each other" in {
+    withProperty("KINOWO_FLICKS_US_PACE_MS", "120") {
+      RateLimitedHttpFetch.configuredInterval(FlicksUs) shouldBe Some(120.millis)
+      RateLimitedHttpFetch.configuredInterval(FlicksUk) shouldBe Some(200.millis)
+    }
+    withProperty("KINOWO_FLICKS_PACE_MS", "350") {
+      RateLimitedHttpFetch.configuredInterval(FlicksUk) shouldBe Some(350.millis)
+      RateLimitedHttpFetch.configuredInterval(FlicksUs) shouldBe Some(200.millis)
+    }
+  }
+
+  // The pace gate buckets by full hostname, so the two markets never share a slot
+  // queue: a call to one must not make a call to the other wait. Asserted on the
+  // decorator itself rather than on the policy table, because THIS is the
+  // property the sweep depends on — the table only decides the interval.
+  it should "not make a US Flicks call wait behind a UK one" in {
+    val (_, paced, slept, _) = flicksFixture()
+    paced.get(FlicksUk)
+    paced.get(FlicksUs)      // different host => its own queue => no wait
+    slept shouldBe empty
+
+    paced.get(FlicksUs)      // second call to the SAME host does wait
+    slept shouldBe List(200L)
   }
 
   it should "let KINOWO_FILMSTARTS_PACE_MS retune the pace without a restart" in {

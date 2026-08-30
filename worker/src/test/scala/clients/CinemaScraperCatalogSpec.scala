@@ -7,7 +7,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.CinemaScraperCatalog
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.cinemas.uk.{CineworldClient, FlicksClient}
+import services.cinemas.common.{FlicksClient, FlicksMarket}
+import services.cinemas.uk.CineworldClient
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 
 import java.time.LocalDate
@@ -115,7 +116,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // one recorded day so the chunked scrape lands on the captured sessions fragment.
   it should "route UK Flicks venues through the injected residential-proxy seam, not the shared http" in {
     val sessions  = new FakeHttpFetch("flicks")
-    val programme = s"${FlicksClient.BaseUrl}/cinema/arc-cinema-at-the-royalty-great-yarmouth/"
+    val programme = s"${FlicksMarket.UnitedKingdom.baseUrl}/cinema/arc-cinema-at-the-royalty-great-yarmouth/"
     val flicks = new GetOnlyHttpFetch {
       def get(url: String): String =
         if (url == programme) """<div class="timetable__day" data-date="2026-07-11"></div>"""

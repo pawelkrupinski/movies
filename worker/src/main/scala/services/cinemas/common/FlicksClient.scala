@@ -1,27 +1,29 @@
-package services.cinemas.uk
+package services.cinemas.common
 
 import tools.HttpFetch
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Flicks (flicks.co.uk) — the UK's nationwide cinema-listings aggregator (chains
- * + independents), and the chosen UK source after Webedia retired its British
- * sibling Screenrush (`screenrush.co.uk` is gone from DNS, so
- * [[WebediaShowtimesClient]] can't reach the UK).
+ * Flicks — a nationwide cinema-listings aggregator (chains + independents) that
+ * runs the SAME site on several ccTLDs. One instance serves one venue of one
+ * [[FlicksMarket]]: `flicks.co.uk` for the UK — the chosen source there after
+ * Webedia retired its British sibling Screenrush (`screenrush.co.uk` is gone
+ * from DNS, so [[services.cinemas.de.WebediaShowtimesClient]] can't reach the
+ * UK) — and `flicks.us` for the United States, which is why this client lives in
+ * `services.cinemas.common` rather than a per-country package.
  *
  * Flicks renders a cinema's programme server-side but loads each day's sessions
  * on demand: the cinema page carries empty `<div data-date=…>` day tabs, and the
  * real showtimes come from an AJAX fragment (the request needs an
  * `is-ajax-call: yes` header):
  *
- *   GET https://www.flicks.co.uk/cinema/sessions/<slug>/<YYYY-MM-DD>/
+ *   GET <market base>/cinema/sessions/<slug>/<YYYY-MM-DD>/
  *     → an HTML fragment of `<article class="cinema-times__article">` per film:
  *        `h3.cinema-times__movie-title`, a `/movie/<slug>/` link, the runtime
  *        (`.cinema__movie-duration` "90 mins"), the director
@@ -45,14 +47,22 @@ class FlicksClient(
   http:       HttpFetch,
   cinemaSlug: String,
   override val cinema: Cinema,
-  today:      LocalDate = LocalDate.now(ZoneId.of("Europe/London"))
+  market:     FlicksMarket,
+  today:      Option[LocalDate] = None
 ) extends ChunkedCinemaScraper {
 
   import FlicksClient._
 
-  private val programmeUrl = s"$BaseUrl/cinema/$cinemaSlug/"
+  private val baseUrl = market.baseUrl
+  // An absent `today` means the MARKET's current calendar day, not the JVM's: a
+  // worker in Europe planning US venues must not start from a date those venues
+  // have not reached. Resolved in the body rather than as a default argument
+  // because a Scala default cannot read an earlier parameter of the same list.
+  private val referenceDay: LocalDate = today.getOrElse(LocalDate.now(market.zoneId))
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  private val programmeUrl = s"$baseUrl/cinema/$cinemaSlug/"
+
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(baseUrl)
   override def sourceUrl: Option[String] = Some(programmeUrl)
 
   // Each populated day is one chunk, run as its own `ScrapeChunk` task (see
@@ -92,7 +102,7 @@ class FlicksClient(
   def planChunks(): Seq[String] = {
     val html  = http.get(programmeUrl)
     val dates = parseProgrammeDates(html)
-      .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
+      .filter(d => !d.isBefore(referenceDay) && !d.isAfter(referenceDay.plusDays(MaxHorizonDays.toLong)))
     if (dates.isEmpty && !hasTimetable(html))
       throw new IllegalStateException(
         s"Flicks programme page for '$cinemaSlug' carried no timetable block")
@@ -105,7 +115,7 @@ class FlicksClient(
    *  fragment (no programme) is a valid empty result, not a failure. */
   def fetchChunk(dateKey: String): Seq[CinemaMovie] = {
     val date = LocalDate.parse(dateKey)
-    moviesFor(parseDay(http.get(sessionsUrl(cinemaSlug, date), AjaxHeaders), date))
+    moviesFor(parseDay(http.get(sessionsUrl(market, cinemaSlug, date), AjaxHeaders), date, market))
   }
 
   /** Merge every day's films into the venue's listing: one row per film (grouped
@@ -141,7 +151,7 @@ class FlicksClient(
           movie       = Movie(title = head.title, runtimeMinutes = head.runtimeMinutes, genres = head.genres),
           cinema      = cinema,
           posterUrl   = head.posterUrl,
-          filmUrl     = Some(s"$BaseUrl/movie/${head.slug}/"),
+          filmUrl     = Some(s"$baseUrl/movie/${head.slug}/"),
           synopsis    = None,
           cast        = head.cast,
           director    = head.director.toSeq,
@@ -155,8 +165,6 @@ class FlicksClient(
 }
 
 object FlicksClient {
-
-  val BaseUrl = "https://www.flicks.co.uk"
 
   /** The shared scrape horizon — see [[services.cinemas.common.ScrapeHorizon]]. Flicks
    *  advertises a venue's whole booking horizon as day tabs and we fetch every advertised
@@ -193,8 +201,8 @@ object FlicksClient {
   // browser User-Agent, so this is the one extra header the endpoint needs.
   private val AjaxHeaders = Map("is-ajax-call" -> "yes")
 
-  def sessionsUrl(cinemaSlug: String, date: LocalDate): String =
-    s"$BaseUrl/cinema/sessions/$cinemaSlug/$date/"
+  def sessionsUrl(market: FlicksMarket, cinemaSlug: String, date: LocalDate): String =
+    s"${market.baseUrl}/cinema/sessions/$cinemaSlug/$date/"
 
   private val SlugPat    = """/movie/([^/?#]+)""".r
   private val DigitsPat  = """(\d+)""".r
@@ -235,8 +243,8 @@ object FlicksClient {
 
   /** Parse one day's sessions fragment for the given calendar date. Pure +
    *  public so the spec feeds it the recorded HTML directly. */
-  def parseDay(html: String, date: LocalDate): Seq[RawFlicksSlot] = {
-    val doc = Jsoup.parse(html, BaseUrl)
+  def parseDay(html: String, date: LocalDate, market: FlicksMarket): Seq[RawFlicksSlot] = {
+    val doc = Jsoup.parse(html, market.baseUrl)
     doc.select("article.cinema-times__article").asScala.toSeq.flatMap { article =>
       val slug  = firstMovieSlug(article)
       val title = Option(article.selectFirst("h3.cinema-times__movie-title")).map(_.text.trim).filter(_.nonEmpty)
@@ -255,7 +263,7 @@ object FlicksClient {
           val genres    = ContentGenre.findFirstMatchIn(eventJson).map(_.group(1)).map(commaList).getOrElse(Nil)
           val trailer   = Option(article.selectFirst(""".cinema__trailer-wrap a[href^="/trailer/"]"""))
             .map(_.attr("href")).filter(_.nonEmpty)
-            .map(h => if (h.startsWith("http")) h else s"$BaseUrl$h")
+            .map(h => if (h.startsWith("http")) h else s"${market.baseUrl}$h")
           // The BBFC label ("U"/"PG"/"12A") the card renders in its own element.
           val ageRating = Option(article.selectFirst(".cinema__movie-classification"))
             .map(_.text).flatMap(AgeRating.normalize)

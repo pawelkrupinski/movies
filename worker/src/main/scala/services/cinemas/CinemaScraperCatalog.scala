@@ -5,7 +5,8 @@ import tools.{CachingDetailFetch, HttpFetch}
 import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, VueCinemasPlatformClient, ZyteFallback}
 import services.cinemas.de.WebediaShowtimesClient
 import services.cinemas.pl._
-import services.cinemas.uk.{CineworldClient, FlicksClient, OdeonClient, TheOldCourtClient}
+import services.cinemas.common.{FlicksClient, FlicksMarket}
+import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
 import services.movies.TitleNormalizer
 
 import java.time.{LocalDate, ZoneId}
@@ -430,7 +431,17 @@ class CinemaScraperCatalog(
   // flicks.co.uk, and Flicks is the only UK source, so a direct fetch takes out
   // every UK venue at once (it did, 2026-07-26).
   private def flicks(slug: String, cinema: Cinema): FlicksClient =
-    new FlicksClient(flicksFetch, slug, cinema, today = today)
+    flicksIn(FlicksMarket.UnitedKingdom, slug, cinema)
+
+  // The US runs on the same Flicks platform as the UK, so it reuses the same
+  // client and the same residential egress — only the market (and so the host)
+  // differs. It is a SEPARATE hostname, which is what keeps the two markets'
+  // pace gates and 429 back-offs independent; see `FlicksMarket`.
+  private def flicksUs(slug: String, cinema: Cinema): FlicksClient =
+    flicksIn(FlicksMarket.UnitedStates, slug, cinema)
+
+  private def flicksIn(market: FlicksMarket, slug: String, cinema: Cinema): FlicksClient =
+    new FlicksClient(flicksFetch, slug, cinema, market, today = Some(today))
 
   // UK chain own-site clients — the catalogue PRIMARY for their venues, with
   // flicks.co.uk kept as the aggregator fallback (see [[ChainFlicksFallback]] +

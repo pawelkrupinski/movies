@@ -21,7 +21,8 @@ import services.cinemas._
 import services.enrichment._
 import services.cinemas.common._
 import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient, MultikinoClient}
-import services.cinemas.uk.{FlicksClient, OdeonAuthHarvester}
+import services.cinemas.common.{FlicksClient, FlicksMarket}
+import services.cinemas.uk.OdeonAuthHarvester
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
@@ -456,7 +457,7 @@ class WorkerWiring(
     flicksFallbackSlugs.get(inner.cinema) match {
       case Some(slug) =>
         new SourceFallbackScraper(inner,
-          fallback     = () => Some(new FlicksClient(flicksFetch, slug, inner.cinema)),
+          fallback     = () => Some(new FlicksClient(flicksFetch, slug, inner.cinema, FlicksMarket.UnitedKingdom)),
           fallbackName = "Flicks",
           fallbackRef  = () => Some(slug),
           uptimeMonitor, filmwebFallbackStore, onEvent = filmwebFallbackOnEvent)
