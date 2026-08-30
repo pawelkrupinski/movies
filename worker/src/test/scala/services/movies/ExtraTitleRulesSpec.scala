@@ -728,6 +728,68 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The anniversary re-release suffix. Both existing rules for it are
+  // GlobalStructural — they shape the TMDB query but leave the decoration in the
+  // DISPLAY title and the merge key, so kinowo.net served
+  // /poznan/film/terminator-2-dzien-sadu-35-rocznica as its own card beside the
+  // base film. A round-anniversary re-release IS the film, so the canonical rule
+  // folds it. Every case below is a real prod spelling
+  // (common/.../prod-movies/titles.txt) except the Terminator one, which is the
+  // live row that prompted the rule.
+  it should "strip the 'N. Rocznica' suffix from the display title and fold onto the base film" in {
+    val cases = Seq(
+      "Terminator 2: dzień sądu - 35. Rocznica"                    -> "Terminator 2: dzień sądu",
+      "Terminator 2: dzień sądu – 35. rocznica"                    -> "Terminator 2: dzień sądu",
+      "Terminator 2: dzień sądu | 35 Rocznica"                     -> "Terminator 2: dzień sądu",
+      // No separator at all — the number follows the title on a bare space.
+      "Kosmiczny Mecz 30. Rocznica"                                -> "Kosmiczny Mecz",
+      // '.' separator, and no dot after the number.
+      "Kosmiczny mecz. 30 rocznica"                                -> "Kosmiczny mecz",
+      // Qualifier words after 'rocznica' — the tail the seed rule's `$` anchor
+      // right after 'rocznica' could never reach.
+      "Faraon – jerzy kawalerowicz – 60. Rocznica premiery"        -> "Faraon – jerzy kawalerowicz",
+      "Ostatni dzień lata – tadeusz konwicki / 100. Rocznica urodzin" -> "Ostatni dzień lata – tadeusz konwicki",
+      "Salto | 100. rocznica urodzin Tadeusza Konwickiego"         -> "Salto",
+      "Matka Joanna od Aniołów | 100. rocznica urodzin Konwickiego" -> "Matka Joanna od Aniołów"
+    )
+    cases.foreach { case (variant, base) =>
+      withClue(s"canonical('$variant') → '$base': ")(
+        withExtras.canonical(variant) shouldBe base)
+      withClue(s"foldKey('$variant') vs '$base': ")(
+        foldKey(withExtras, variant) shouldBe foldKey(withExtras, base))
+    }
+  }
+
+  it should "be load-bearing — the seed rules leave the 'N. Rocznica' suffix on the display title" in {
+    Seq(
+      "Terminator 2: dzień sądu - 35. Rocznica",
+      "Kosmiczny mecz. 30 rocznica",
+      "Salto | 100. rocznica urodzin Tadeusza Konwickiego"
+    ).foreach { v =>
+      withClue(s"seedOnly.canonical('$v') should still carry the suffix: ")(
+        seedOnly.canonical(v) shouldBe v)
+    }
+  }
+
+  it should "not mistake a retrospective banner or a film named 'Rocznica' for an anniversary suffix" in {
+    val unharmed = Seq(
+      // The 2025 Polish film literally titled "Rocznica" — no number, no strip.
+      "Rocznica",
+      // Accusative 'rocznicę': a DIRECTOR retrospective, not this film's own
+      // anniversary. A greedy tail here would leave a dangling "… Wajdy w".
+      "BRZEZINA | WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin",
+      "Tadeusz Konwicki w 100. rocznicę urodzin – Jak daleko stąd, jak blisko",
+      "Monterey Pop - seans przedpremierowy w rocznicę koncertu",
+      // The banner IS the listing — nothing precedes the marker, so stripping it
+      // would key the row on an empty title.
+      "100. rocznica urodzin Tadeusza Konwickiego: \"Przechodzień\", \"Jak daleko stąd, jak blisko\"",
+      "90. rocznica urodzin Pavarottiego- Koncert gwiazd z Arena di Verona Napisy PL"
+    )
+    unharmed.foreach { t =>
+      withClue(s"canonical('$t') unchanged: ")(withExtras.canonical(t) shouldBe t)
+    }
+  }
+
   // A screen-format tag glued BETWEEN the film and a premiere marker — the real
   // "ODYSEJA - 2D napisy - Premiera Krajowa" (Kino Hel, Konin), which split off as
   // its own `odyseja2dnapisypremierakrajowa` record because `FormatTags` peels

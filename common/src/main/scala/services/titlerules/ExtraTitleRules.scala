@@ -702,6 +702,24 @@ object ExtraTitleRules {
         """(?:\s+(?:2D|3D|4DX|IMAX|dolby|atmos|dubbing|dubb|dub|napisy|nap|lektor|lek))*)?""" +
         """{{SEP}}(?:\p{L}+\s+){0,2}\bpremiera(?:\s+\p{L}+)?\s*$""", "",
       "'<film> [– 2D napisy] – [Wielka/Polska] Premiera [Krajowa/filmu]' release-announcement suffix — CANONICAL fold of the premiere screening onto the base film (display + merge key), not just the query. Also absorbs a format tag glued between the film and the premiere marker, which FormatTags (END-only peel) can't reach. Excludes 'przedpremiera' (kept a separate row by the query-only suffix strip)."),
+    // The seed's 'structural-anniversary-suffix' and the extras'
+    // 'xtra-rocznica-premiery-suffix' are both GlobalStructural — they shape the
+    // TMDB query but leave the decorated title as the row's display AND its merge
+    // key, so "Terminator 2: dzień sądu - 35. Rocznica" kept its own card and its
+    // own /poznan/film/terminator-2-dzien-sadu-35-rocznica slug alongside the base
+    // film. A re-release for a round anniversary IS the film, so fold it
+    // canonically. Nominative 'rocznica' ONLY: the accusative 'w 100. rocznicę
+    // urodzin' shapes are retrospective-series banners naming a DIRECTOR, not the
+    // film ("BRZEZINA | WAJDA: re- wizje. … w 100. rocznicę urodzin"), and the
+    // greedy tail would eat the trailing "w". The leading `(?<=\S)` requires a film
+    // before the marker, so a listing that IS the banner ("100. rocznica urodzin
+    // Tadeusza Konwickiego: …") isn't reduced to an empty key, and the required
+    // digits keep the 2025 Polish film literally titled "Rocznica" whole. `\b`
+    // before the digits is what makes that lookbehind honest: without it the match
+    // simply restarts one character in, so the banner above stripped to "1".
+    canon("xtra-canonical-rocznica-suffix",
+      """(?iu)(?<=\S)\s*(?:{{SEPD}})?\b\d{1,3}\s*\.?\s*rocznica\b.*$""", "",
+      "'<film> [-|.] N. Rocznica [premiery/urodzin …]' anniversary-rerelease suffix — CANONICAL fold onto the base film (display + merge key), not just the query: 'Terminator 2: dzień sądu - 35. Rocznica', 'Kosmiczny Mecz 30. Rocznica', 'Kosmiczny mecz. 30 rocznica', 'Salto | 100. rocznica urodzin Tadeusza Konwickiego'. Nominative only, and requires both a preceding film and a number — see the note above."),
     // The trailing screen-format/language rules — 2D/3D/dub/napisy/lektor in the
     // space·dash·slash·bracket shapes, plus the "(Dolby Atmos)"/"[2D]"/"(IMAX)"
     // sound-tag — moved to the shared `services.movies.FormatTags` and are applied

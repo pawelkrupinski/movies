@@ -4870,7 +4870,7 @@ showings:
 
 === Milczenie owiec ===
 displayTitle:      Milczenie owiec
-cinemaTitles:      Klasyk w kinie: Milczenie owiec | Klasyka w kinie Atlantic: Milczenie owiec | MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec - pokazy specjalne
+cinemaTitles:      Klasyk w kinie: Milczenie owiec | Klasyka w kinie Atlantic: Milczenie owiec | MILCZENIE OWIEC | Milczenie owiec | Milczenie owiec - pokazy specjalne | Milczenie owiec. 35 rocznica
 runtimeMinutes:    118
 releaseYear:       1991
 countries:         USA
@@ -4971,6 +4971,7 @@ cinemaScrapes:
   Kino Wisła / Milczenie owiec - pokazy specjalne / 1991
   Kino Zamek / Milczenie owiec / —
   KinoPort / Milczenie owiec / 1991
+  Na Starówce / Milczenie owiec. 35 rocznica / —
   OKF Iluzja / Milczenie owiec / —
   Planet Cinema / Milczenie owiec / —
 showings:

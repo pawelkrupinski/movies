@@ -56,20 +56,27 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   // ── Decoration is NOT part of identity ────────────────────────────────────
 
-  // The structural decoration strip (anniversary / "- wersja X" / restored /
-  // Cykl / slash) feeds the external-lookup tiers (searchTitle / apiQuery) but
-  // NOT `canonical`. So a decoration edition keys by its OWN form and stays a
-  // SEPARATE row from the base film — the same rule the cache enforces via
-  // keyOf → sanitize. (`searchTitle` itself still strips these — see below.)
+  // The structural decoration strip ("- wersja X" / restored / Cykl / slash)
+  // feeds the external-lookup tiers (searchTitle / apiQuery) but NOT `canonical`.
+  // So a decoration edition keys by its OWN form and stays a SEPARATE row from
+  // the base film — the same rule the cache enforces via keyOf → sanitize.
+  // (`searchTitle` itself still strips these — see below.)
+  //
+  // The Polish "N. rocznica" anniversary suffix is the ONE decoration that has
+  // since been promoted to `canonical` (`xtra-canonical-rocznica-suffix`): a
+  // round-anniversary re-release is the same film, and keeping it apart gave
+  // kinowo.net a second card and a second slug for it. Its English sibling
+  // ("40th Anniversary") stays query-only — the rule is deliberately scoped to
+  // the Polish nominative, so the UK corpus is untouched.
 
   it should "NOT merge 'Top Gun 40th Anniversary' with 'Top Gun' (decoration keys on its own)" in {
     val titles = Seq("Top Gun 40th Anniversary", "Top Gun")
     mergeKey("Top Gun 40th Anniversary", titles) should not be mergeKey("Top Gun", titles)
   }
 
-  it should "NOT merge a Polish 'Rocznica' variant with the base film" in {
+  it should "merge a Polish 'N. rocznica' variant onto the base film" in {
     val titles = Seq("Top gun | 40 rocznica", "Top Gun")
-    mergeKey("Top gun | 40 rocznica", titles) should not be mergeKey("Top Gun", titles)
+    mergeKey("Top gun | 40 rocznica", titles) shouldBe mergeKey("Top Gun", titles)
   }
 
   it should "NOT merge 'Wersja zremasterowana' with the base film" in {
