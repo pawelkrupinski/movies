@@ -4,6 +4,7 @@ import models.{KinoBulgarska, Showtime}
 import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
+import services.cinemas.common.{DetailFetchOutcome, FilmDetail}
 import services.cinemas.pl.KinoBulgarskaClient
 
 import java.time.LocalDateTime
@@ -234,8 +235,19 @@ class KinoBulgarskaClientSpec extends AnyFlatSpec with Matchers {
       .getOrElse(fail("no detail for Miłość w czasach apokalipsy")).trailerUrl shouldBe Some("https://www.youtube.com/watch?v=QCxhy4UO5pc")
   }
 
-  it should "leave trailerUrl None when the detail page is unavailable" in {
-    // Maryja. matka papieża has no detail-page fixture → fetchFilmDetail returns None.
-    client.fetchFilmDetail(byTitle("Maryja. Matka papieża").filmUrl.getOrElse(fail("no filmUrl for Maryja. matka papieża"))) shouldBe None
+  it should "report a trailer-less detail page as fetched, not failed" in {
+    // Absolwent (1967) is a repertory classic: its page loads fine and simply
+    // carries no trailer embed. Calling that a failure left the film unstamped,
+    // so DetailReaper re-enqueued it on every tick — 1438 enrichment failures
+    // against 56 successes in the 24h before this fix, all of them this one
+    // title, holding Bulgarska's /uptime row red and pushing every other
+    // failure out of the bucket's 10-error cap.
+    client.fetchDetail("http://kinobulgarska19.pl/filmy/absolwent") shouldBe DetailFetchOutcome.Fetched(FilmDetail())
+  }
+
+  it should "keep an unreachable detail page a retryable failure" in {
+    // Maryja. matka papieża has no detail-page fixture → the fetch throws, which
+    // stays Failed: unstamped and retried, because it may well work next tick.
+    client.fetchDetail(byTitle("Maryja. Matka papieża").filmUrl.getOrElse(fail("no filmUrl for Maryja. matka papieża"))) shouldBe DetailFetchOutcome.Failed
   }
 }

@@ -76,10 +76,16 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
    *  movie's filmUrl. None on a fetch failure so the task stays stale and is
    *  retried by the next scrape rather than recording an empty result as fresh.
    *
+   *  A page that LOADED but embeds no trailer is a detail, not a failure: plenty
+   *  of repertory titles simply have no trailer block, and folding that into None
+   *  left the film unstamped, so `DetailReaper` re-enqueued it every tick forever
+   *  (Absolwent alone: 1438 enrichment failures in 24h, /uptime row permanently
+   *  red). An empty [[FilmDetail]] merges as a no-op and stamps the film fresh.
+   *
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(http.get(ref)).flatMap(parseTrailer).map(url => FilmDetail(trailerUrl = Some(url)))
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => FilmDetail(trailerUrl = parseTrailer(html)))
 
   /** Trailer URL parsed from a Bulgarska film page. Returns the canonical
    *  `youtube.com/watch?v=ID` form when the iframe holds a YouTube video;
