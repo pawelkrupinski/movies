@@ -80,7 +80,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     val body = contentAsString(us.sitemap(req("/sitemap.xml")))
     body should include("<loc>https://kinowo.net/california/</loc>")
     body should include("<loc>https://kinowo.net/california/los-angeles/</loc>")
-    body should include("<loc>https://kinowo.net/california/other-areas/</loc>")
+    body should include("<loc>https://kinowo.net/california/san-francisco/</loc>")
     // A split city BELOW the chooser threshold has no area URLs to advertise…
     body should not include "/alaska/anchorage/"
     // …and neither does a flat one.

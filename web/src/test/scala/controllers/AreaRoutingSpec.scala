@@ -74,8 +74,8 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     html should include("Choose an area")
     html should include("Los Angeles")
     html should include("San Francisco")
-    html should include("Other areas")
-    html should include("""href="/california/los-angeles/"""")
+    // Every area, not just the headline ones.
+    california.areas.foreach(g => html should include(s"""href="/california/${g.area.slug}/""""))
     // The whole point: no film cards on the chooser.
     html should not include LaFilm
     html should not include SfFilm

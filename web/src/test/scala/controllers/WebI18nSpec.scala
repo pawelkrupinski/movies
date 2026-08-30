@@ -47,12 +47,12 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     en("areas.chooseArea")           shouldBe "Choose an area"
     en("areas.htmlTitle", "California") shouldBe "California — choose an area"
     en("areas.cinemaCount", 1)       shouldBe "1 cinema"
-    en("areas.cinemaCount", 97)      shouldBe "97 cinemas"
+    en("areas.cinemaCount", 133)     shouldBe "133 cinemas"
 
     pl("areas.chooseArea")           shouldBe "Wybierz obszar"
     pl("areas.cinemaCount", 1)       shouldBe "1 kino"
     pl("areas.cinemaCount", 3)       shouldBe "3 kina"
-    pl("areas.cinemaCount", 97)      shouldBe "97 kin"
+    pl("areas.cinemaCount", 133)     shouldBe "133 kin"
 
     val de = TestMessages.forLang("de")
     de("areas.chooseArea")           shouldBe "Wähle eine Region"

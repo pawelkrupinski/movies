@@ -72,19 +72,19 @@ test.describe('metro chooser (/{city}/ for a huge split city)', { tag: '@agnosti
     await page.waitForURL((u) => new URL(u).pathname === '/california/');
 
     // The chooser, not the repertoire: area rows, no film grid.
+    // California's 486 venues cluster into 21 metros (`UsRoster.metroAreas`).
     const areas = page.locator('.area-list a');
-    await expect(areas).toHaveCount(33);
+    await expect(areas).toHaveCount(21);
     await expect(page.locator('.area-list')).toContainText('Los Angeles');
     await expect(page.locator('.area-list')).toContainText('San Francisco');
-    await expect(page.locator('.area-list')).toContainText('Other areas');
     await expect(page.locator('#film-grid')).toHaveCount(0);
-    // Biggest metro first, the catch-all last — City.areas' own order.
+    // Biggest metro first — City.areas' own order.
     await expect(areas.first()).toContainText('Los Angeles');
-    await expect(areas.last()).toContainText('Other areas');
+    await expect(areas.nth(1)).toContainText('San Francisco');
     // Each row carries its venue count. Matched without the noun: the fixture
-    // server is a Polish deployment, so it renders "97 kin" where the real US
-    // host renders "97 cinemas" (asserted per-language in WebI18nSpec).
-    await expect(areas.first()).toContainText(/Los Angeles\s*97\b/);
+    // server is a Polish deployment, so it renders "133 kin" where the real US
+    // host renders "133 cinemas" (asserted per-language in WebI18nSpec).
+    await expect(areas.first()).toContainText(/Los Angeles\s*133\b/);
     // And a way back to the city list.
     await expect(page.locator('a.back')).toHaveAttribute('href', '/');
   });

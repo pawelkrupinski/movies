@@ -75,7 +75,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     val xml = SitemapBuilder.build(Origin, Seq(california -> Nil))
     xml should include(s"<loc>$Origin/california/</loc>")
     xml should include(s"<loc>$Origin/california/los-angeles/</loc>")
-    xml should include(s"<loc>$Origin/california/other-areas/</loc>")
+    xml should include(s"<loc>$Origin/california/san-francisco/</loc>")
     count(xml, s"$Origin/california/") shouldBe (california.areas.size + 2)  // city + areas + plan
     val positions = california.areas.map(g => xml.indexOf(s"$Origin/california/${g.area.slug}/"))
     positions shouldBe positions.sorted
