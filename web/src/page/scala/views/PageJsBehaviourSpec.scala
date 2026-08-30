@@ -1026,12 +1026,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── /film cinema fold ────────────────────────────────────────────────────
   //
-  // A big-city film plays 60+ venues a day, and /film used to list every one
-  // of them TWICE — once as a link pill under the title, once per date in the
-  // showings tree. Both lists now render their first ten and fold the rest
-  // behind a button; clicking it unfolds that list and takes the button out of
-  // the flow. `/film-many` serves a 12-cinema render so the folds actually bite
-  // (the Poznań fixture corpus never does).
+  // ── /film cinema fold + showings filter ──────────────────────────────────
+  //
+  // A big-city film plays 60+ venues a day, and /film listed every one of them
+  // TWICE — once as a link pill under the title, once per date in the showings
+  // tree. The PILL ROW folds at ten behind an unfold button. The SHOWINGS TREE
+  // does not fold: it renders every cinema, and what narrows it is the
+  // visitor's own Filtry selection, applied by `applyFilters` in
+  // `film.scala.html` off shared.js's `disabledCinemas`.
+  //
+  // `/film-many` serves a 12-cinema render so both behaviours have something
+  // to bite on (the Poznań fixture corpus never reaches ten).
 
   private def visibleCinemaGroups(page: CdpPage): Int =
     page.evalInt("[...document.querySelectorAll('.cinema-group')].filter(g => g.offsetParent !== null).length")
@@ -1039,48 +1044,107 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def visibleCinemaLinks(page: CdpPage): Int =
     page.evalInt("[...document.querySelectorAll('.cinema-link')].filter(a => a.offsetParent !== null).length")
 
-  "the /film cinema fold" should "show the first ten cinemas of a date and hide the rest" in {
-    onPath("/film-many") { page =>
-      page.evalInt("document.querySelectorAll('.cinema-group').length")        shouldBe 12
-      page.evalInt("document.querySelectorAll('.cinema-group.folded').length") shouldBe 2
-      visibleCinemaGroups(page)                                                shouldBe 10
-      page.evalBool("document.querySelector('.cinemas-more').offsetParent !== null") shouldBe true
-      page.evalString("document.querySelector('.cinemas-more').textContent")   should include ("2")
+  /** `/film-many` with a clean filter selection. localStorage is per-ORIGIN,
+   *  not per-tab, so without this a test that switches cinemas off hands its
+   *  selection to whichever test opens the page next — and the failure lands
+   *  over there, on an assertion that looks unrelated. */
+  private def onFilmMany(body: CdpPage => Any): Unit =
+    onPath("/film-many") { page => clearLocalStorage(page); body(page) }
+
+  /** Switch off `count` of the film's cinemas the way the Filtry sheet does —
+   *  by display name into `disabledCinemas` — and re-run the page's filter.
+   *  Returns the names switched off. */
+  private def disableCinemas(page: CdpPage, count: Int): Seq[String] = {
+    val names = page.eval(
+      s"""[...document.querySelectorAll('.cinema-group[data-cinema]')]
+         |  .map(g => g.dataset.cinema).slice(0, $count)""".stripMargin).as[Seq[String]]
+    page.eval(
+      s"""localStorage.setItem('disabledCinemas', JSON.stringify(${Json.toJson(names)}));
+         |applyFilters()""".stripMargin)
+    names
+  }
+
+  "the /film showings tree" should "render every cinema of a date, unfolded and with no button" in {
+    onFilmMany { page =>
+      page.evalInt("document.querySelectorAll('.cinema-group').length") shouldBe 12
+      visibleCinemaGroups(page)                                         shouldBe 12
+      // The only button on the page belongs to the pill row above.
+      page.evalInt("document.querySelectorAll('.date-group .cinemas-more').length") shouldBe 0
     }
   }
 
-  it should "show the first ten cinema-link pills under the title and hide the rest" in {
-    onPath("/film-many") { page =>
+  it should "hide exactly the cinemas switched off in Filtry" in {
+    onFilmMany { page =>
+      val off = disableCinemas(page, 4)
+
+      visibleCinemaGroups(page) shouldBe 8
+      // Hidden are the ones named, not merely four of them.
+      page.eval(
+        """[...document.querySelectorAll('.cinema-group[data-cinema]')]
+          |  .filter(g => g.offsetParent === null).map(g => g.dataset.cinema)""".stripMargin
+      ).as[Seq[String]] should contain theSameElementsAs off
+    }
+  }
+
+  it should "come back when the cinema is switched on again" in {
+    onFilmMany { page =>
+      disableCinemas(page, 4)
+      visibleCinemaGroups(page) shouldBe 8
+
+      page.eval("localStorage.setItem('disabledCinemas', '[]'); applyFilters()")
+      visibleCinemaGroups(page) shouldBe 12
+    }
+  }
+
+  it should "take the date header down with the last of its cinemas" in {
+    onFilmMany { page =>
+      // `/film-many` seats all 12 on ONE date, so switching every one off
+      // must leave no bare date label behind.
+      disableCinemas(page, 12)
+
+      visibleCinemaGroups(page) shouldBe 0
+      page.evalInt("[...document.querySelectorAll('.date-group')].filter(g => g.offsetParent !== null).length") shouldBe 0
+      // …and the visitor is told why the section is empty.
+      page.evalBool("document.getElementById('showings-empty').offsetParent !== null") shouldBe true
+    }
+  }
+
+  it should "keep the empty state hidden while any cinema survives the filter" in {
+    onFilmMany { page =>
+      page.evalBool("document.getElementById('showings-empty').offsetParent === null") shouldBe true
+      disableCinemas(page, 11)
+      page.evalBool("document.getElementById('showings-empty').offsetParent === null") shouldBe true
+    }
+  }
+
+  "the /film cinema fold" should "show the first ten cinema-link pills under the title and hide the rest" in {
+    onFilmMany { page =>
       page.evalInt("document.querySelectorAll('.cinema-link').length")        shouldBe 12
       page.evalInt("document.querySelectorAll('.cinema-link.folded').length") shouldBe 2
       visibleCinemaLinks(page)                                                shouldBe 10
     }
   }
 
-  it should "unfold the cinema-link pills without touching the showings tree" in {
-    onPath("/film-many") { page =>
-      // The pill row's button is the FIRST on the page; the date's is below it.
-      page.eval("document.querySelectorAll('.cinemas-more')[0].click()")
+  it should "unfold the cinema-link pills without disturbing the showings tree" in {
+    onFilmMany { page =>
+      page.eval("document.querySelector('.cinemas-more').click()")
       page.waitFor("document.querySelectorAll('.cinema-link.folded').length === 0")
 
       visibleCinemaLinks(page)  shouldBe 12
-      // Each fold unfolds only its own siblings — the tree stays folded.
-      visibleCinemaGroups(page) shouldBe 10
-      page.evalInt("document.querySelectorAll('.cinemas-more').length") shouldBe 1
+      visibleCinemaGroups(page) shouldBe 12
+      page.evalInt("document.querySelectorAll('.cinemas-more').length") shouldBe 0
     }
   }
 
-  it should "unfold the remaining cinemas when the button is clicked" in {
-    onPath("/film-many") { page =>
-      page.eval("document.querySelector('.date-group .cinemas-more').click()")
-      page.waitFor("document.querySelectorAll('.cinema-group.folded').length === 0")
+  it should "not let a pill unfold reveal a cinema the filter switched off" in {
+    onFilmMany { page =>
+      // The fold writes `.folded`; the filter writes inline display. Separate
+      // channels, so unfolding the pills cannot undo the filter's verdict.
+      disableCinemas(page, 4)
+      page.eval("document.querySelector('.cinemas-more').click()")
+      page.waitFor("document.querySelectorAll('.cinema-link.folded').length === 0")
 
-      visibleCinemaGroups(page) shouldBe 12
-      // The button has done its job and removes itself rather than lingering
-      // as a re-fold nobody asked for.
-      page.evalBool("document.querySelector('.date-group .cinemas-more') === null") shouldBe true
-      // Every showtime under the unfolded cinemas is reachable now.
-      page.evalBool("[...document.querySelectorAll('.badge-time')].every(b => b.offsetParent !== null)") shouldBe true
+      visibleCinemaGroups(page) shouldBe 8
     }
   }
 

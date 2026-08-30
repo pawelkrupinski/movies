@@ -1,5 +1,5 @@
 @import controllers.{FilmSchedule, CardFormat, FilmHref}
-@(film: FilmSchedule, collapseCinemasBeyond: Int = 0)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(film: FilmSchedule)(implicit city: models.City)
 @*
    One film's showings, grouped by date → cinema → time slots. Used by
    `_filmCards` (the listing) and `_filmDetailContent` (the per-film page).
@@ -14,17 +14,12 @@
    thousands of them (one per showtime); they're plumbing, not endorsements, and
    `noopener` was missing from links that already opened in a new tab.
 
-   `collapseCinemasBeyond` folds a date's cinema list down to its first N
-   entries, each extra one rendered `.folded` (hidden) behind a button that
-   unfolds the rest. A big-city film runs at 60+ venues a day — five days of
-   that is a page you scroll past rather than read — so `_filmDetailContent`
-   turns it on. The listing leaves it at 0: `_filmCards` caps a card by LINE
-   budget in JS (`truncateShowings`), which owns the separate `.truncated`
-   class, and the two folds must not read each other's channel.
-
-   The `unfoldCinemas` handler the button calls lives in `_filmDetailContent`,
-   which folds its cinema-link row the same way and so hosts the one copy.
-   Turning this on from any other host means bringing the handler along.
+   EVERY cinema is rendered, on both hosts. What narrows the list is the
+   visitor's own Filtry selection, applied client-side: the listing does it in
+   `_repertoireView`'s `applyFilters`, the film page in the one `film.scala.html`
+   defines. Both hide with inline `style.display` keyed on `data-cinema`, so
+   this partial stays a plain render of the whole tree and neither host has to
+   agree with the other about what a cap should be.
 *@
 @defining(
   film.showings.flatMap(_._2)
@@ -37,9 +32,9 @@
 @for((date, cinemaShowtimesList) <- film.showings) {
   <div class="date-group" data-date="@date">
     <div class="date-label">@CardFormat.date(date)</div>
-    @for((cinemaShowtimes, cinemaIndex) <- cinemaShowtimesList.zipWithIndex) {
+    @for(cinemaShowtimes <- cinemaShowtimesList) {
       @defining(commonToksByCinema.getOrElse(cinemaShowtimes.cinema, Set.empty[String])) { commonToks =>
-      <div class="cinema-group@if(collapseCinemasBeyond > 0 && cinemaIndex >= collapseCinemasBeyond){ folded}" data-cinema="@cinemaShowtimes.cinema.displayName">
+      <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
         <div class="cinema-label">
           @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
             case Some((_, url)) => { <a href="@url" target="_blank" rel="nofollow noopener" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
@@ -72,12 +67,6 @@
         </div>
       </div>
       }
-    }@* The unfold button and the script below hang directly off the block that
-        precedes them — no newline in between — so that with the fold OFF this
-        partial emits BYTE-IDENTICAL markup to before it existed. A listing
-        renders `_filmShowings` once per card; stray whitespace there is real
-        page weight, and it shifts `expected-index.html` for no reason. *@@if(collapseCinemasBeyond > 0 && cinemaShowtimesList.size > collapseCinemasBeyond) {
-      <button type="button" class="cinemas-more" onclick="unfoldCinemas(this)">@messages("detail.moreCinemas", cinemaShowtimesList.size - collapseCinemasBeyond)</button>
     }
   </div>
 }

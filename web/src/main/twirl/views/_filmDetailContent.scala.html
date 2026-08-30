@@ -161,9 +161,13 @@
 
   <div class="showtimes-section">
     <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">@messages("detail.showings")</h2>
-    @* A London or Berlin film plays 60+ venues a day; showing every one of
-       them under all five dates buries the page. Each day opens with its
-       first ten cinemas and a button that unfolds the rest. *@
-    @_filmShowings(film, collapseCinemasBeyond = 10)
+    @* Every cinema the film plays at, every date. What narrows it is the
+       visitor's own Filtry selection, applied by `applyFilters` in
+       `film.scala.html` once shared.js boots — so the server render stays
+       complete (and cacheable, and correct for a crawler) while the page a
+       person sees carries only the cinemas they kept switched on.
+       `#showings-empty` is what they get when the selection leaves nothing. *@
+    @_filmShowings(film)
+    <div id="showings-empty" class="showings-empty" style="display:none">@messages("empty.repertoire")</div>
   </div>
 </div>

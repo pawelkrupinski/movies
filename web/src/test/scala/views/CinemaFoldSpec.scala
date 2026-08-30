@@ -11,19 +11,18 @@ import org.scalatest.matchers.should.Matchers
 import java.time.{LocalDate, LocalDateTime}
 
 /**
- * A film in a big city plays 60+ venues a day (London's `one-night-only` ran
- * 62 on every one of its first five dates), and the /film page listed every
- * one of them under every date — a page you scroll past rather than read.
- * Each date now opens with its first ten cinemas; the rest render `.folded`
- * behind a button that unfolds them.
+ * The row of cinema-link pills under the title folds at ten: a film in a big
+ * city plays 60+ venues (London's `one-night-only` runs 63), and that many
+ * pills between the title and the synopsis push the rest of the page off the
+ * screen. The rest render `.folded` behind a button that unfolds them.
  *
- * The row of cinema-link pills under the title folds on the same rule and the
- * same button, for the same reason: 63 pills between the title and the synopsis
- * push the rest of the page off the screen.
- *
- * The fold is a DETAIL-page decision: the listing's cards do their own,
- * line-budget fold in JS (`truncateShowings`, class `.truncated`), so
- * `_filmShowings` leaves `collapseCinemasBeyond` at 0 for `_filmCards`.
+ * The SHOWINGS tree below is deliberately NOT folded — it renders every
+ * cinema, and what narrows it is the visitor's own Filtry selection, applied
+ * client-side by `applyFilters` in `film.scala.html`. Asserted over a real
+ * browser in `PageJsBehaviourSpec`, since it is a runtime decision the server
+ * render knows nothing about; what this spec pins server-side is that the
+ * markup that decision needs is present — one `data-cinema` per cinema, and
+ * the `#showings-empty` block for a selection that leaves nothing.
  */
 class CinemaFoldSpec extends AnyFlatSpec with Matchers {
 
@@ -52,51 +51,33 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
     )
   }
 
-  private def unfolded(html: String): Int = """class="cinema-group"""".r.findAllIn(html).size
-  private def folded(html: String): Int   = """class="cinema-group folded"""".r.findAllIn(html).size
-  private def buttons(html: String): Int  = """class="cinemas-more"""".r.findAllIn(html).size
+  private def cinemaGroups(html: String): Int = """class="cinema-group"""".r.findAllIn(html).size
+  private def buttons(html: String): Int      = """class="cinemas-more"""".r.findAllIn(html).size
 
-  "the film page" should "fold every cinema past the tenth on a date behind one button" in {
+  "the showings tree" should "render every cinema on a date, with no fold and no button" in {
     val html = views.html._filmDetailContent(schedule(12)()).body
 
-    unfolded(html) shouldBe 10
-    folded(html)   shouldBe 2
-    buttons(html)  shouldBe 1
-    html should include ("Pokaż pozostałe kina (2)")
-    // The button unfolds only its OWN date's cinemas.
-    html should include ("""onclick="unfoldCinemas(this)"""")
-    html should include ("function unfoldCinemas(btn)")
+    cinemaGroups(html) shouldBe 12
+    buttons(html)      shouldBe 0
+    html should not include "cinema-group folded"
   }
 
-  it should "keep the fold at the tail — the first ten cinemas stay in source order" in {
+  it should "tag every cinema with the display name the filter matches on" in {
     val expected = Cinema.all.distinct.take(12).map(_.displayName)
     val html     = views.html._filmDetailContent(schedule(12)()).body
 
-    val rendered = """data-cinema="([^"]+)"""".r.findAllMatchIn(html).map(_.group(1)).toList
-    rendered shouldBe expected
-
-    val foldedNames = """class="cinema-group folded" data-cinema="([^"]+)"""".r
+    // `applyFilters` keys on `data-cinema`, and `disabledCinemas` stores
+    // DISPLAY names — a pill name here would silently match nothing.
+    val rendered = """<div class="cinema-group" data-cinema="([^"]+)"""".r
       .findAllMatchIn(html).map(_.group(1)).toList
-    foldedNames shouldBe expected.drop(10)
+    rendered shouldBe expected
   }
 
-  it should "leave a date at exactly ten cinemas whole, with no button" in {
-    val html = views.html._filmDetailContent(schedule(10)()).body
+  it should "carry the empty-state block the filter reveals when nothing is left" in {
+    val html = views.html._filmDetailContent(schedule(3)()).body
 
-    unfolded(html) shouldBe 10
-    folded(html)   shouldBe 0
-    buttons(html)  shouldBe 0
-  }
-
-  it should "fold each date on its own count" in {
-    // Day one runs 13 venues, day two runs 4 — only day one folds, and only
-    // its own three extras.
-    val html = views.html._filmDetailContent(schedule(13, 4)()).body
-
-    unfolded(html) shouldBe 14
-    folded(html)   shouldBe 3
-    buttons(html)  shouldBe 1
-    html should include ("Pokaż pozostałe kina (3)")
+    html should include ("""<div id="showings-empty" class="showings-empty" style="display:none">""")
+    html should include ("Brak repertuaru.")
   }
 
   private def linkPills(html: String): Int   = """class="cinema-link"""".r.findAllIn(html).size
@@ -121,25 +102,26 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
     buttons(html)     shouldBe 0
   }
 
-  it should "fold on its own count, not the showings tree's" in {
-    // 12 cinemas on the date but 63 link pills. The two folds are separate
-    // decisions off separate counts: the tree hides 2, the pill row hides 53,
-    // and each gets its own button.
+  it should "fold without touching the showings tree" in {
+    // 12 cinemas on the date and 63 link pills. Only the pill row folds — the
+    // tree renders whole, and there is exactly ONE button on the page.
     val html = views.html._filmDetailContent(schedule(12)(63)).body
 
-    unfolded(html)    shouldBe 10
-    folded(html)      shouldBe 2
-    linkPills(html)   shouldBe 10
-    foldedPills(html) shouldBe 53
-    buttons(html)     shouldBe 2
+    linkPills(html)    shouldBe 10
+    foldedPills(html)  shouldBe 53
+    cinemaGroups(html) shouldBe 12
+    buttons(html)      shouldBe 1
+    html should not include "cinema-group folded"
   }
 
-  "the listing" should "fold nothing — its cards cap themselves by line budget in JS" in {
+  "the listing" should "share the same unfolded showings markup" in {
+    // `_filmShowings` renders the whole tree for both hosts; a card is capped
+    // by line budget in JS (`truncateShowings`, class `.truncated`), which is
+    // a channel of its own.
     val html = views.html._filmCards(Seq(schedule(12)())).body
 
-    unfolded(html) shouldBe 12
-    folded(html)   shouldBe 0
-    buttons(html)  shouldBe 0
-    html should not include "unfoldCinemas"
+    cinemaGroups(html) shouldBe 12
+    buttons(html)      shouldBe 0
+    html should not include "folded"
   }
 }

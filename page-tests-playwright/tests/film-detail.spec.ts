@@ -177,23 +177,45 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
 
     expect(await page.locator('.cinema-link:visible').count()).toBe(12);
     await expect(more).toHaveCount(0);
-    // Each fold unfolds only its own siblings — the showings tree is untouched.
-    expect(await page.locator('.cinema-group:visible').count()).toBe(10);
+    // The pill fold owns `.folded`; the filter owns inline display. Unfolding
+    // the pills leaves the showings tree exactly as the filter left it.
+    expect(await page.locator('.cinema-group:visible').count()).toBe(12);
   });
 
-  test('cinemas past the tenth fold away until the button is clicked', async ({ page }) => {
+  // The showings tree does NOT fold — it renders every cinema, and what
+  // narrows it is the visitor's own Filtry selection, applied by the page's
+  // `applyFilters` off shared.js's `disabledCinemas` (a list of DISPLAY names).
+  test('the showings tree shows every cinema, minus the ones switched off in Filtry', async ({ page }) => {
     await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('.cinema-group')).toHaveCount(12);
-    expect(await page.locator('.cinema-group:visible').count()).toBe(10);
-
-    const more = page.locator('.date-group .cinemas-more');
-    await expect(more).toBeVisible();
-    await more.click();
-
     expect(await page.locator('.cinema-group:visible').count()).toBe(12);
-    // The button has done its job and takes itself out of the flow.
-    await expect(more).toHaveCount(0);
+    await expect(page.locator('.date-group .cinemas-more')).toHaveCount(0);
+
+    const off = (await page.locator('.cinema-group[data-cinema]')
+      .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema))).slice(0, 4);
+    await page.evaluate((names) => {
+      localStorage.setItem('disabledCinemas', JSON.stringify(names));
+      (window as unknown as { applyFilters: () => void }).applyFilters();
+    }, off);
+
+    expect(await page.locator('.cinema-group:visible').count()).toBe(8);
+    await expect(page.locator('#showings-empty')).toBeHidden();
+  });
+
+  test('switching every cinema off empties the showings section, date headers and all', async ({ page }) => {
+    await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
+
+    const all = await page.locator('.cinema-group[data-cinema]')
+      .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema));
+    await page.evaluate((names) => {
+      localStorage.setItem('disabledCinemas', JSON.stringify(names));
+      (window as unknown as { applyFilters: () => void }).applyFilters();
+    }, all);
+
+    expect(await page.locator('.cinema-group:visible').count()).toBe(0);
+    expect(await page.locator('.date-group:visible').count()).toBe(0);
+    await expect(page.locator('#showings-empty')).toBeVisible();
   });
 
   test('detail page renders without a JS error', async ({ page }) => {

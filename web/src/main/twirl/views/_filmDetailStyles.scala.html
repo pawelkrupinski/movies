@@ -122,16 +122,19 @@
       margin-top: 1.2rem;
     }
     .cinema-group { margin-bottom: .6rem; }
-    /* Rows past the tenth — cinema-link pills under the title, and a day's
-       cinemas in the showings tree — hidden until the `.cinemas-more` button
-       beside them is clicked (`unfoldCinemas` in `_filmDetailContent`).
-       Its own class, NOT the listing's `.truncated`: that one belongs to the
-       card line-budget fold and is cleared wholesale by `undoTruncation`,
-       which would silently unfold these. Each selector needs the two-class
-       specificity to beat its own display rule (`.cinema-link` is
-       inline-block); a bare `.folded` would tie and let source order decide. */
-    .cinema-group.folded,
+    /* Cinema-link pills past the tenth, hidden until the `.cinemas-more`
+       button beside them is clicked (`unfoldCinemas` in
+       `_filmDetailContent`). Its own class, NOT the listing's `.truncated`:
+       that one belongs to the card line-budget fold and is cleared wholesale
+       by `undoTruncation`, which would silently unfold these. And not the
+       inline `style.display` the cinema filter writes either — a pill unfold
+       must never reveal a cinema the visitor filtered out. Two-class
+       specificity to beat `.cinema-link`'s own inline-block rule; a bare
+       `.folded` would tie and let source order decide. */
     .cinema-link.folded { display: none; }
+    /* Shown only when the visitor's Filtry selection leaves this film with no
+       cinema at all — otherwise the Seanse heading sits above a blank gap. */
+    .showings-empty { color: #888; font-size: .9rem; margin-top: .8rem; }
     .cinemas-more {
       display: inline-block;
       margin-top: .2rem;

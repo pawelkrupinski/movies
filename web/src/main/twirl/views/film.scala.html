@@ -99,7 +99,50 @@
 @_minified(devMode) {
 <script>
   function buildIndex() {}
-  function applyFilters() {}
+
+  // ── Showings: only the cinemas the visitor kept switched on ───────────────
+  //
+  // The server renders every cinema this film plays at. Which of them a
+  // person actually sees is their own Filtry selection, which lives in
+  // `disabledCinemas` — a global list of cinema DISPLAY names owned by
+  // shared.js (it holds the storage key and its one-time cookie migration),
+  // matched here against each group's `data-cinema`.
+  //
+  // THIS IS shared.js's OWN HOOK, not a function of ours that we then have to
+  // remember to call: `bootView()` calls `applyFilters()` on DOMContentLoaded,
+  // and `bootMergeFromServer()` calls it AGAIN once a logged-in visitor's
+  // server-side selection has landed. Implementing the stub is therefore all
+  // it takes for a filter set on another device to apply here too — there is
+  // no second wiring path to keep in step.
+  //
+  // Hiding is inline `style.display`, the same channel the listing's
+  // `applyFilters` uses, and deliberately NOT the `.folded` class: that one
+  // belongs to the cinema-link fold above the synopsis, and mixing the two
+  // would let a pill unfold reveal a cinema the visitor had filtered out.
+  //
+  // `disabledCinemasInCity()` is the wrong helper here — it scopes against
+  // `ALL_CINEMAS`, which this page deliberately renders EMPTY (there is no
+  // cinema panel to populate), so it would filter every cinema away.
+  function applyFilters() {
+    const disabled = new Set(getDisabledCinemas());
+    let anyVisible = false;
+
+    document.querySelectorAll('.date-group[data-date]').forEach(group => {
+      let dayVisible = false;
+      group.querySelectorAll('.cinema-group[data-cinema]').forEach(cinemaGroup => {
+        const show = !disabled.has(cinemaGroup.dataset.cinema);
+        cinemaGroup.style.display = show ? '' : 'none';
+        if (show) dayVisible = true;
+      });
+      // A date whose every cinema is filtered out takes its header with it,
+      // rather than leaving a bare date above a gap.
+      group.style.display = dayVisible ? '' : 'none';
+      if (dayVisible) anyVisible = true;
+    });
+
+    const empty = document.getElementById('showings-empty');
+    if (empty) empty.style.display = anyVisible ? 'none' : '';
+  }
 
   // ── Back link: rewrite to the page the user came from ──────────────────────
   //
