@@ -48,4 +48,9 @@ object CinemaArea {
  *  the unit of `City.areas`, rendered as one collapsible, (de)selectable group. */
 final case class CinemaAreaGroup(area: CinemaArea, cinemas: Seq[Cinema]) {
   def cinemaDisplayNames: Seq[String] = cinemas.map(_.displayName)
+  /** Display-name → pill-name for this group's cinemas — the area-scoped
+   *  counterpart of `City.cinemaPillMap`, for the `/{city}/{area}/` page's
+   *  `_sharedJsConfig`. */
+  def cinemaPillMap: Map[String, String] = cinemas.map(c => c.displayName -> c.pillName).toMap
+  lazy val cinemaSet: Set[Cinema]        = cinemas.toSet
 }

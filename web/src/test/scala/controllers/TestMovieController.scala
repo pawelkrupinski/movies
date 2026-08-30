@@ -2,7 +2,6 @@ package controllers
 
 import play.api.Mode
 import play.api.test.Helpers
-import testsupport.TestMessages.given
 import services.movies.InMemoryMovieRepository
 import services.readmodel.{TestReadModel, WebReadModel}
 import services.tasks.{InMemoryTaskQueue, TaskQueue}
@@ -34,7 +33,13 @@ object TestMovieController {
     // matching an unset KINOWO_COUNTRY; a spec exercising another country's
     // deployment passes it here rather than mutating the shared process env.
     servingCountry: models.Country = models.Country.default,
+    // The UI language the views render in. Defaults to the deployment's Polish,
+    // matching `servingCountry`'s default; a spec exercising another country's
+    // host passes that country's `Lang` so the copy it asserts on is the copy
+    // that host actually serves.
+    messages: play.api.i18n.Messages = testsupport.TestMessages.deployment,
   ): (MovieController, WebReadModel) = {
+    given play.api.i18n.Messages = messages
     val readModel = TestReadModel.fromRecords(records)
     val ctrl  = new MovieController(
       cc                     = Helpers.stubControllerComponents(),

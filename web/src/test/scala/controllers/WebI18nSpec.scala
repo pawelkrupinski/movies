@@ -40,6 +40,26 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     en("film.titleSuffix", "London", "Showtimes") shouldBe "– showtimes London | Showtimes"
   }
 
+  /** The metro pick screen counts venues per area, and California has metros
+   *  holding exactly one — so the count is pluralised through ChoiceFormat
+   *  rather than concatenated, in every bundle. */
+  "the area-chooser copy" should "resolve in each bundle, pluralising the cinema count" in {
+    en("areas.chooseArea")           shouldBe "Choose an area"
+    en("areas.htmlTitle", "California") shouldBe "California — choose an area"
+    en("areas.cinemaCount", 1)       shouldBe "1 cinema"
+    en("areas.cinemaCount", 97)      shouldBe "97 cinemas"
+
+    pl("areas.chooseArea")           shouldBe "Wybierz obszar"
+    pl("areas.cinemaCount", 1)       shouldBe "1 kino"
+    pl("areas.cinemaCount", 3)       shouldBe "3 kina"
+    pl("areas.cinemaCount", 97)      shouldBe "97 kin"
+
+    val de = TestMessages.forLang("de")
+    de("areas.chooseArea")           shouldBe "Wähle eine Region"
+    de("areas.cinemaCount", 1)       shouldBe "1 Kino"
+    de("areas.cinemaCount", 12)      shouldBe "12 Kinos"
+  }
+
   "JsLocale" should "carry the Polish 3-form showtime plural rule" in {
     val json = JsLocale.json(pl)
     json should include("\"plural\":\"pl\"")

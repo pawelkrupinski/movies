@@ -71,6 +71,18 @@ sealed abstract class City(
   def areas: Seq[CinemaAreaGroup] = Nil
   /** Whether this city is split into [[areas]] (vs. a flat cinema list). */
   def isSplit: Boolean = areas.nonEmpty
+  /** Whether `/{slug}/` serves a metro CHOOSER rather than the city's own
+   *  listing — split, and past [[City.MinCinemasForAreaChooser]] venues. The
+   *  films then live one level down, at `/{slug}/{areaSlug}/`.
+   *
+   *  Deliberately narrower than [[isSplit]]: London is split too, and stays one
+   *  page. See the threshold's own doc for why. */
+  def hasAreaChooser: Boolean = isSplit && cinemas.sizeIs >= City.MinCinemasForAreaChooser
+  /** Resolve one of this city's [[areas]] by its stable slug — the `/{city}/{area}/`
+   *  path segment. `None` for an unknown slug (and for every flat city), which is
+   *  what turns a mistyped area URL into a 404 rather than a silent fall-through
+   *  to the unfiltered city listing. */
+  def areaBySlug(slug: String): Option[CinemaAreaGroup] = areas.find(_.area.slug == slug)
   /** "Repertuar kin …" locative phrase, in this city's country language.
    *  Polish declines ("w Poznaniu", "we Wrocławiu"); English (and any other
    *  non-declining language) reads "in London". Delegated to [[CityGrammar]] so
@@ -859,6 +871,23 @@ final class UsRegion(slug: String, labels: CityLabels, lat: Double, lon: Double,
 }
 
 object City {
+
+  /** How many venues a SPLIT city needs before `/{slug}/` stops rendering its
+   *  own listing and becomes a metro chooser instead (see [[City.hasAreaChooser]]).
+   *
+   *  The cost being dodged is PAGE WEIGHT, not group count. California lists 486
+   *  venues and renders one 18.9 MB page (1.06 MB gzipped) — against Poznań's
+   *  173 KB and Alaska's 27 KB — which is not a page a phone loads.
+   *
+   *  150 sits just above LONDON (133 venues). London is split into five compass
+   *  areas and reads fine as a single page; it is the screen this feature is
+   *  modelled on, not a target, so the threshold is set to leave it exactly as
+   *  it was. Everything caught is a US state whose listing is already unusable.
+   *
+   *  One number, one edit: raise it to narrow the set of chooser cities, lower
+   *  it to widen it. Nothing else keys off "big". */
+  val MinCinemasForAreaChooser: Int = 150
+
   /** Poland's cities — the authoritative list for [[Country.Poland]]. [[all]] is
    *  the union across every [[Country]], so a new country contributes its own
    *  list (e.g. `ukCities`) here and [[all]] picks it up automatically. */

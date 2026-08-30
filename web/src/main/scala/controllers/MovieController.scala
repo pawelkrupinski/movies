@@ -177,13 +177,24 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
    * yet (the movie-before-screenings write order can still be observed in the
    * reverse order over two independent change streams) simply contributes
    * nothing until the movie document arrives — no half-rendered card. */
-  def toSchedules(city: City, now: LocalDateTime): Seq[FilmSchedule] = {
+  def toSchedules(city: City, now: LocalDateTime): Seq[FilmSchedule] =
+    schedules(city, now, _ => true)
+
+  /** The city's schedules narrowed to ONE of its [[CinemaAreaGroup]]s — what
+   *  `/{city}/{area}/` renders. The narrowing happens at the SOURCE (a screening
+   *  whose cinema is outside the area never contributes a showtime), so a film
+   *  playing only elsewhere in the state drops out entirely rather than
+   *  surviving as a card with no showings. */
+  def areaSchedules(area: models.CinemaAreaGroup, city: City, now: LocalDateTime): Seq[FilmSchedule] =
+    schedules(city, now, area.cinemaSet)
+
+  private def schedules(city: City, now: LocalDateTime, keep: Cinema => Boolean): Seq[FilmSchedule] = {
     readModel.screeningsForCity(city.slug).groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
       readModel.movie(filmId).flatMap { resolved =>
         // Flatten this city's future showtimes. A film with no future showing in
         // this city drops out of its list view (its documents stay in the store).
         val allShowtimes: Seq[(Cinema, Showtime)] = screenings.flatMap { sc =>
-          MovieControllerService.cinemaByName(sc.cinema).toSeq.flatMap { cinema =>
+          MovieControllerService.cinemaByName(sc.cinema).filter(keep).toSeq.flatMap { cinema =>
             sc.showtimes.iterator.filter(_.isUpcoming(now)).map(st => (cinema, st))
           }
         }
@@ -206,7 +217,7 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
               }
           val cinemaFilmUrls: Seq[(Cinema, String)] =
             screenings
-              .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).flatMap(c => sc.filmUrl.map(c -> _)))
+              .flatMap(sc => MovieControllerService.cinemaByName(sc.cinema).filter(keep).flatMap(c => sc.filmUrl.map(c -> _)))
               .sortBy(_._1.displayName)
           Some((earliest, filmSchedule(resolved, cinemaFilmUrls, byDate, city)))
         }
@@ -452,28 +463,37 @@ class MovieController( cc: ControllerComponents,
   // `/filmy` (no parameters) so both URLs are interchangeable; `/filmy`
   // with one of the browse-axis parameters still routes through `browse`
   // below to the per-director / per-cast / per-country page.
-  private def renderIndex(city: City, request: RequestHeader): Result = {
+  private def renderIndex(city: City, request: RequestHeader, area: Option[models.CinemaAreaGroup] = None): Result = {
     implicit val c: City = city
     val user = currentUser(request)
     if (cacheablePlainPage(request, user)) {
       // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
-      // (and its data-prep) never runs either.
-      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderIndexHtml(city, request, user).body)
+      // (and its data-prep) never runs either. The gzip cache is keyed on the
+      // request PATH, so `/{city}/` and `/{city}/{area}/` never share a blob.
+      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderIndexHtml(city, request, user, area).body)
         .withCookies(cityCookie(city))
     } else {
-      Ok(renderIndexHtml(city, request, user)).withCookies(cityCookie(city))
+      Ok(renderIndexHtml(city, request, user, area)).withCookies(cityCookie(city))
     }
   }
 
-  private def renderIndexHtml(city: City, request: RequestHeader, user: Option[models.User])(implicit c: City): play.twirl.api.Html = {
+  private def renderIndexHtml(city: City, request: RequestHeader, user: Option[models.User],
+                              area: Option[models.CinemaAreaGroup])(implicit c: City): play.twirl.api.Html = {
     // One clock for both the filtering and the page's own expiry countdown —
     // `_repertoireView` counts forward from `renderedAt`, so it has to be the
     // instant the schedules were actually pruned at.
     val now       = LocalDateTime.now(city.zoneId)
-    val schedules = movieControllerService.toSchedules(city, now)
-    val meta = FilterDescription.forIndex(city, request.queryString, schedules)
+    val schedules = area.fold(movieControllerService.toSchedules(city, now))(
+                      movieControllerService.areaSchedules(_, city, now))
+    val meta = area.fold(FilterDescription.forIndex(city, request.queryString, schedules))(
+                 g => FilterDescription.forArea(city, g.area, request.queryString, schedules))
     views.html.repertoire(
-      schedules, city.cinemaDisplayNames, city.cinemaPillMap,
+      schedules,
+      // The cinema universe the filter panel offers is the page's own — the whole
+      // city, or just the area's venues. Handing an area page all 486 California
+      // venues would list hundreds that can't have a showing on it.
+      area.fold(city.cinemaDisplayNames)(_.cinemaDisplayNames),
+      area.fold(city.cinemaPillMap)(_.cinemaPillMap),
       devMode, user, oauthProviders, renderedAt = now,
       pageTitle       = meta.title,
       pageDescription = meta.description,
@@ -481,12 +501,62 @@ class MovieController( cc: ControllerComponents,
       fbAppId         = PageMeta.fbAppId,
       // og:url keeps the filtered request URL (so a shared filtered link
       // previews the filter), but the canonical folds `/{city}/filmy` and every
-      // `?filter` variation back to the bare city listing.
-      canonicalUrl    = PageMeta.origin(request) + s"/${city.slug}/",
+      // `?filter` variation back to the bare listing — the area's own URL on an
+      // area page, the city's otherwise.
+      canonicalUrl    = PageMeta.origin(request) + areaPath(city, area),
+      // An area page IS one area, so re-grouping its cinema list by area would be
+      // a single collapsible section wrapping everything: chrome with no choice
+      // in it. `None` leaves the city's own grouping in place.
+      cinemaAreas     = area.map(_ => Seq.empty[models.CinemaAreaGroup]),
     )
   }
 
-  def index(city: String): Action[AnyContent] = Action { request => withCity(city)(c => renderIndex(c, request)) }
+  private def areaPath(city: City, area: Option[models.CinemaAreaGroup]): String =
+    area.fold(s"/${city.slug}/")(g => s"/${city.slug}/${g.area.slug}/")
+
+  /** `/{city}/` — the city's listing, EXCEPT for a city big enough to need a
+   *  metro chooser first (see [[City.hasAreaChooser]]), where the listing lives
+   *  one level down at `/{city}/{area}/` and this serves the picker. */
+  private def indexOrChooser(city: City, request: RequestHeader): Result =
+    if (city.hasAreaChooser) renderAreaChooser(city, request) else renderIndex(city, request)
+
+  /** The metro pick screen. Modelled on the city-selection landing (same dark
+   *  card list, same type-to-filter box) so choosing a metro feels like the step
+   *  after choosing a city, which is exactly what it is.
+   *
+   *  Sets the `city` cookie like any other city page: the visitor HAS chosen
+   *  California, so the bare `/` should bounce them back here rather than to the
+   *  country-wide city list. The metro itself is not remembered — it is one tap
+   *  away and guessing it wrong would strand them on the wrong coast. */
+  private def renderAreaChooser(city: City, request: RequestHeader): Result = {
+    val user = currentUser(request)
+    val html = views.html.areas(city, PageMeta.origin(request)).body
+    if (cacheablePlainPage(request, user))
+      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(html)
+        .withCookies(cityCookie(city))
+    else
+      Ok(html).as(HtmlContentType).withCookies(cityCookie(city))
+  }
+
+  def index(city: String): Action[AnyContent] = Action { request => withCity(city)(c => indexOrChooser(c, request)) }
+
+  /** `/{city}/{area}/` — the city listing scoped to one metro.
+   *
+   *  Only a chooser city has area URLs: London is split too, but reads fine as
+   *  one page and keeps exactly the behaviour it had, so `/london/central/`
+   *  is not a page. An area slug this city doesn't have — a typo, a stale link,
+   *  a metro that got re-slugged — is a 404. It must NOT fall through to the
+   *  unfiltered city listing: that would answer 200 with the wrong content,
+   *  which is the failure mode nobody reports (see [[browse]]'s note on the
+   *  legacy Polish parameter names, the same bug one level up). */
+  def area(city: String, area: String): Action[AnyContent] = Action { request =>
+    withCity(city) { c =>
+      c.areaBySlug(area).filter(_ => c.hasAreaChooser) match {
+        case Some(group) => renderIndex(c, request, Some(group))
+        case None        => NotFound(s"Nieznany obszar: $area")
+      }
+    }
+  }
 
   private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     implicit val c: City = city
@@ -516,9 +586,11 @@ class MovieController( cc: ControllerComponents,
         case (_, _, Some(name), _) => renderBrowse(c, name, all.filter(_.cast.contains(name)),            request)
         case (_, _, _, Some(name)) => renderBrowse(c, name, all.filter(_.movie.genres.contains(name)),    request)
         // `/{city}/filmy` with no filter axis is the main listing — same view
-        // as `/{city}/`. The browse view only kicks in for the per-axis pages
-        // reached from the meta-link rows on /film.
-        case _                     => renderIndex(c, request)
+        // as `/{city}/`, chooser included, so it isn't a back door to the
+        // enormous unscoped page a chooser city exists to avoid. The browse
+        // view only kicks in for the per-axis pages reached from the meta-link
+        // rows on /film; those are thin slices and stay city-wide.
+        case _                     => indexOrChooser(c, request)
       }
     }
   }

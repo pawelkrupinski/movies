@@ -81,6 +81,16 @@ landing.noCity=Brak miasta o tej nazwie.
 landing.locating=Ustalanie lokalizacji…
 landing.noNearby=Brak obsługiwanego miasta w pobliżu — wybierz z listy.
 
+# ── Area chooser (metro pick screen: /{city}/ for a split, huge city) ───────
+# {0} = city nominative. Polish cities are never split, so this copy is here for
+# symmetry with the other bundles rather than because a PL host renders it.
+areas.htmlTitle={0} — wybierz obszar
+areas.ogDescription=Repertuar kin — {0}. Wybierz obszar i sprawdź dzisiejsze seanse, z ocenami IMDb, RT i Filmweb.
+areas.chooseArea=Wybierz obszar
+areas.allCities=Wszystkie miasta
+# {0} = number of cinemas in the area.
+areas.cinemaCount={0,choice,1#1 kino|2#{0} kina|5#{0} kin}
+
 # ── Poster / detail labels ──────────────────────────────────────────────────
 poster.missing=Brak plakatu
 detail.synopsis=Opis

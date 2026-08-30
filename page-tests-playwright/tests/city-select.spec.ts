@@ -61,6 +61,52 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   });
 });
 
+// A city too big to render in one page (`City.hasAreaChooser` — California
+// lists 486 venues) puts a metro PICK SCREEN at `/{city}/` and moves its films
+// down to `/{city}/{area}/`. Flat cities and split-but-small ones (London) are
+// untouched and still land straight on their repertoire.
+test.describe('metro chooser (/{city}/ for a huge split city)', { tag: '@agnostic' }, () => {
+  test('picking California lands on the area chooser, not a listing', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('.city-list a', { hasText: 'California' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/california/');
+
+    // The chooser, not the repertoire: area rows, no film grid.
+    const areas = page.locator('.area-list a');
+    await expect(areas).toHaveCount(33);
+    await expect(page.locator('.area-list')).toContainText('Los Angeles');
+    await expect(page.locator('.area-list')).toContainText('San Francisco');
+    await expect(page.locator('.area-list')).toContainText('Other areas');
+    await expect(page.locator('#film-grid')).toHaveCount(0);
+    // Biggest metro first, the catch-all last — City.areas' own order.
+    await expect(areas.first()).toContainText('Los Angeles');
+    await expect(areas.last()).toContainText('Other areas');
+    // Each row carries its venue count. Matched without the noun: the fixture
+    // server is a Polish deployment, so it renders "97 kin" where the real US
+    // host renders "97 cinemas" (asserted per-language in WebI18nSpec).
+    await expect(areas.first()).toContainText(/Los Angeles\s*97\b/);
+    // And a way back to the city list.
+    await expect(page.locator('a.back')).toHaveAttribute('href', '/');
+  });
+
+  test('picking a metro lands on that metro’s repertoire', async ({ page }) => {
+    await page.goto('/california/');
+    await page.locator('.area-list a', { hasText: 'Los Angeles' }).click();
+    await page.waitForURL((u) => new URL(u).pathname === '/california/los-angeles/');
+    // The ordinary repertoire view — same shell, scoped cinema universe. (The
+    // fixture corpus is Poznań's, so the grid itself is empty here; the Scala
+    // AreaRoutingSpec is where the scoping of actual films is asserted.)
+    await expect(page.locator('#view-root')).toHaveCount(1);
+    await expect(page.locator('.area-list')).toHaveCount(0);
+  });
+
+  test('London is split too, but keeps its single listing', async ({ page }) => {
+    await page.goto('/london/');
+    await expect(page.locator('.area-list')).toHaveCount(0);
+    await expect(page.locator('#view-root')).toHaveCount(1);
+  });
+});
+
 test.describe('geolocation auto-redirect', { tag: '@agnostic' }, () => {
   // A fix inside 100 km of a supported city redirects straight there.
   test.use({ permissions: ['geolocation'], geolocation: { latitude: 52.4064, longitude: 16.9252 } });

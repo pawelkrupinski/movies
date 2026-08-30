@@ -72,6 +72,21 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("<loc>https://kinowo.net/poznan/film/testowy-film</loc>")
   }
 
+  /** A chooser city's `/{slug}/` is the metro pick screen — the crawlable
+   *  listings are the per-area URLs, so the sitemap has to name them or the long
+   *  tail of a 486-venue state is reachable only by clicking through. */
+  it should "advertise the per-area listings of a city whose index is a chooser" in {
+    val us   = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedStates)._1
+    val body = contentAsString(us.sitemap(req("/sitemap.xml")))
+    body should include("<loc>https://kinowo.net/california/</loc>")
+    body should include("<loc>https://kinowo.net/california/los-angeles/</loc>")
+    body should include("<loc>https://kinowo.net/california/other-areas/</loc>")
+    // A split city BELOW the chooser threshold has no area URLs to advertise…
+    body should not include "/alaska/anchorage/"
+    // …and neither does a flat one.
+    body should include("<loc>https://kinowo.net/alaska/</loc>")
+  }
+
   it should "scope to this deployment's country, not the global City.all" in {
     // KINOWO_COUNTRY is unset in tests → Poland. A Poland host must NOT advertise
     // the UK/Germany cities that also live in City.all (they render empty here).

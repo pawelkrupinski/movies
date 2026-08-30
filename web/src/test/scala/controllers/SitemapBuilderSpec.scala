@@ -67,6 +67,28 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     xml should include(s"<loc>$Origin/wroclaw/plan</loc>")
   }
 
+  /** For a city whose `/{slug}/` is a metro chooser rather than a listing, the
+   *  crawlable listings are the per-area URLs — omit them and a 486-venue
+   *  state's long tail is reachable only by clicking through the picker. */
+  it should "emit one area URL per metro for a chooser city, in City.areas order" in {
+    val california = City.all.find(_.slug == "california").get
+    val xml = SitemapBuilder.build(Origin, Seq(california -> Nil))
+    xml should include(s"<loc>$Origin/california/</loc>")
+    xml should include(s"<loc>$Origin/california/los-angeles/</loc>")
+    xml should include(s"<loc>$Origin/california/other-areas/</loc>")
+    count(xml, s"$Origin/california/") shouldBe (california.areas.size + 2)  // city + areas + plan
+    val positions = california.areas.map(g => xml.indexOf(s"$Origin/california/${g.area.slug}/"))
+    positions shouldBe positions.sorted
+  }
+
+  /** London is split but stays one page, so it has no area URLs to advertise —
+   *  emitting `/london/central/` would sitemap a 404. */
+  it should "emit no area URLs for a split city below the chooser threshold" in {
+    val xml = SitemapBuilder.build(Origin, Seq(London -> Nil))
+    xml should include(s"<loc>$Origin/london/</loc>")
+    xml should not include s"$Origin/london/central/"
+  }
+
   it should "emit a slug film deep-link per distinct title in the city" in {
     val xml = SitemapBuilder.build(Origin, entries)
     xml should include(s"<loc>$Origin/poznan/film/belle</loc>")

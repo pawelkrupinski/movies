@@ -31,6 +31,22 @@ GET     /:city/api/details          controllers.MovieController.apiDetails(city:
 # The city's cinema universe + area grouping (static). Mobile reads this to
 # render the collapsible, per-area cinema filter (empty `areas` for a flat city).
 GET     /:city/api/cinemas          controllers.MovieController.apiCinemas(city: String)
+
+# ── Metro pick screen (/:city/:area/) ─────────────────────────────────────────
+# DECLARED BELOW EVERY LITERAL /:city/… ROUTE ON PURPOSE — the same hazard the
+# og-image note above calls out, one path segment up. `/:city/:area/` is a
+# two-segment wildcard, so with Play matching top-down it would swallow
+# `/:city/film`, `/:city/filmy`, `/:city/plan` and every `/:city/api/…` if it
+# sat any higher. Keep it last; anything new under `/:city/` goes ABOVE it.
+#
+# A split city past `City.MinCinemasForAreaChooser` venues (California: 486)
+# serves a metro CHOOSER at `/:city/` instead of one enormous listing, and this
+# is where a picked metro lands: the ordinary repertoire view, scoped to that
+# area's cinemas. An unknown area 404s — never a silent fall-through to the
+# unfiltered city listing. Cities without a chooser (every flat city, and split
+# London) have no area URLs at all, so this 404s for them too.
+GET     /:city/:area/               controllers.MovieController.area(city: String, area: String)
+
 # Global country + city catalog (unprefixed, country-agnostic). Mobile apps fetch
 # this on each open with If-None-Match; an unchanged catalog answers 304.
 GET     /api/catalog                controllers.CatalogController.catalog()

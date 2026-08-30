@@ -3,9 +3,10 @@ package controllers
 import models.City
 
 /** Builds the `sitemap.xml` body — a flat `<urlset>` of every crawlable page:
- *  the landing, each city listing, each city plan, and every film deep-link the
- *  city is currently showing. Pure (no I/O) so it unit-tests against a fixed
- *  corpus; [[MovieController.sitemap]] feeds it the warm read-model schedules.
+ *  the landing, each city listing (plus each metro listing, for a city whose
+ *  `/{slug}/` is a chooser), each city plan, and every film deep-link the city
+ *  is currently showing. Pure (no I/O) so it unit-tests against a fixed corpus;
+ *  [[MovieController.sitemap]] feeds it the warm read-model schedules.
  *
  *  Deliberately omits the `/{city}/filmy?...` browse-facet pages: they're thin
  *  filtered slices of the same corpus and would multiply the URL count without
@@ -42,6 +43,11 @@ object SitemapBuilder {
     url("/", stamped = false)
     entries.foreach { case (city, films) =>
       url(s"/${city.slug}/")
+      // A chooser city's `/{slug}/` is the metro PICK SCREEN, not a listing —
+      // the crawlable content lives one level down, one URL per area. Emitted in
+      // `City.areas` order (biggest metro first, "Other areas" last) so the file
+      // stays deterministic. Cities without a chooser have no area URLs at all.
+      if (city.hasAreaChooser) city.areas.foreach(g => url(s"/${city.slug}/${g.area.slug}/"))
       url(s"/${city.slug}/plan")
       // Distinct + sorted so the file is deterministic (stable across requests
       // and testable) regardless of the read model's iteration order.

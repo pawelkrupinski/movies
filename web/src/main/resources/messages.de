@@ -75,6 +75,15 @@ landing.noCity=Keine Stadt mit diesem Namen.
 landing.locating=Standort wird ermittelt…
 landing.noNearby=Keine unterstützte Stadt in der Nähe — wähle eine aus der Liste.
 
+# ── Area chooser (metro pick screen: /{city}/ for a split, huge city) ───────
+# {0} = city nominative.
+areas.htmlTitle={0} — Region wählen
+areas.ogDescription=Kinoprogramm in {0} — wähle deine Region für die heutigen Spielzeiten, mit IMDb-, Rotten-Tomatoes- und Metacritic-Bewertungen.
+areas.chooseArea=Wähle eine Region
+areas.allCities=Alle Städte
+# {0} = number of cinemas in the area.
+areas.cinemaCount={0,choice,1#1 Kino|1<{0} Kinos}
+
 # ── Poster / detail labels ──────────────────────────────────────────────────
 poster.missing=Kein Poster
 detail.synopsis=Handlung

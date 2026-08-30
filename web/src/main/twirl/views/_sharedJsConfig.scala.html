@@ -1,4 +1,4 @@
-@(allCinemas: Seq[String], cinemaPills: Map[String, String], currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
+@(allCinemas: Seq[String], cinemaPills: Map[String, String], currentUser: Option[models.User], oauthProviders: Set[String], cinemaAreas: Option[Seq[models.CinemaAreaGroup]] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Inline-`<script>` block that emits the page-bound JS constants
    the externalized `shared.js` reads at top level: IS_LOGGED_IN,
@@ -20,8 +20,11 @@
   const CINEMA_PILLS        = @Html(play.api.libs.json.Json.toJson(cinemaPills).toString);
   @* Cinema areas for a split city (e.g. London → Central/North/…); empty for a
      flat city, in which case the picker renders one plain list. `window.`-scoped
-     (not a lexical const) so buildCinemaPanel reads it and tests can override. *@
-  window.CINEMA_AREAS       = @Html(play.api.libs.json.Json.toJson(city.areas.map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))).toString);
+     (not a lexical const) so buildCinemaPanel reads it and tests can override.
+     Defaults to the whole city's grouping; a page already scoped to ONE area
+     (`/{city}/{area}/`) passes `Some(Nil)` — its cinema list IS that area, so
+     grouping it again would be a single section wrapping everything. *@
+  window.CINEMA_AREAS       = @Html(play.api.libs.json.Json.toJson(cinemaAreas.getOrElse(city.areas).map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))).toString);
   const CURRENT_CITY        = "@city.slug";
   @* The clock every day boundary this page draws is measured on — the city's,
      never the visitor's device. It matches what the server already resolves in

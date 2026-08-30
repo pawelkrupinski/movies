@@ -132,6 +132,34 @@ class CinemaAreaSpec extends AnyFlatSpec with Matchers {
     London.isSplit shouldBe true
   }
 
+  // ── The metro chooser gate (City.MinCinemasForAreaChooser) ──────────────────
+
+  "A split city past the venue threshold" should "offer a metro chooser" in {
+    val california = state("california")
+    california.cinemas.size should be >= City.MinCinemasForAreaChooser
+    california.hasAreaChooser shouldBe true
+  }
+
+  "London" should "stay a single listing — split, but nowhere near the threshold" in {
+    // The screen the chooser is modelled on, deliberately NOT a target: 133
+    // venues render as one page perfectly well.
+    London.isSplit shouldBe true
+    London.cinemas.size should be < City.MinCinemasForAreaChooser
+    London.hasAreaChooser shouldBe false
+  }
+
+  "A flat city" should "never offer a chooser however many venues it holds" in {
+    City.all.filterNot(_.isSplit).foreach(c => withClue(s"${c.slug}: ")(c.hasAreaChooser shouldBe false))
+  }
+
+  "areaBySlug" should "resolve a real area and refuse an unknown one" in {
+    val california = state("california")
+    california.areaBySlug("los-angeles").map(_.area.label) shouldBe Some("Los Angeles")
+    california.areaBySlug("atlantis") shouldBe None
+    // A flat city has nothing to resolve.
+    Poznan.areaBySlug("central") shouldBe None
+  }
+
   "CinemaArea.slug" should "be the kebab-cased label" in {
     CinemaArea.Central.slug shouldBe "central"
     CinemaArea("Des Moines").slug shouldBe "des-moines"
