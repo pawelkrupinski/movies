@@ -319,7 +319,17 @@ jobs:
                   fetch-depth: 0
                   filter: blob:none
 
+            # Only a leg that can actually deploy needs flyctl. The guard below
+            # reads `matrix.enabled` FIRST and short-circuits before either of its
+            # flyctl probes, so a disabled leg never runs a flyctl command — and
+            # every leg is disabled today. Installing it anyway made this the only
+            # step in six otherwise-no-op legs that could fail, and on 2026-08-30 it
+            # did: the `kinowo` leg's install died in under a second with no output
+            # and no annotation (a runner glitch — the five sibling legs installed
+            # fine), reddening the whole workflow over a tool nothing was going to
+            # use. (DeployParallelismConfigSpec)
             - uses: superfly/flyctl-actions/setup-flyctl@master
+              if: matrix.enabled
 
             # Decide whether this app actually needs a deploy. Two skip reasons,
             # both fail-open (any probe error → deploy):
