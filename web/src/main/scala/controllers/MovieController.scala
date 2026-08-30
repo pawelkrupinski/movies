@@ -526,10 +526,16 @@ class MovieController( cc: ControllerComponents,
       // `?filter` variation back to the bare listing — the area's own URL on an
       // area page, the city's otherwise.
       canonicalUrl    = PageMeta.origin(request) + areaPath(city, area),
-      // An area page IS one area, so re-grouping its cinema list by area would be
-      // a single collapsible section wrapping everything: chrome with no choice
-      // in it. `None` leaves the city's own grouping in place.
-      cinemaAreas     = area.map(_ => Seq.empty[models.CinemaAreaGroup]),
+      // An area page groups its cinema list by DISTRICT where the metro is big
+      // enough to have them — Manhattan / Brooklyn / Staten Island inside New
+      // York, Santa Monica / Pasadena / Burbank inside Los Angeles — which is
+      // the same affordance London gets from its compass areas, one level down.
+      // `UsMetroSubAreas` returns Nil for a metro under its threshold, and that
+      // empty list is the right answer rather than a missing one: re-grouping a
+      // small metro would be a single collapsible section wrapping everything,
+      // chrome with no choice in it. `None` (a city page) leaves the city's own
+      // grouping in place.
+      cinemaAreas     = area.map(g => models.UsMetroSubAreas.forMetro(city.slug, g.area.slug)),
       // Names the metro in the navbar, as a link back to the chooser — the way
       // out of a pick the `area_{city}` cookie otherwise makes permanent.
       area            = area,

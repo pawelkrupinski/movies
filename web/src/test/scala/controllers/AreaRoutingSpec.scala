@@ -131,8 +131,12 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     val html = contentAsString(usController().area("california", "los-angeles")(req("/california/los-angeles/")))
     html should include(laCinema.displayName)
     html should not include sfCinema.displayName
-    // One area IS the whole page, so there is no grouping left to render.
-    html should include("window.CINEMA_AREAS       = []")
+    // Los Angeles is past UsMetroSubAreas' threshold, so the panel it offers is
+    // grouped by DISTRICT rather than flat. (This used to assert an empty
+    // CINEMA_AREAS on the reasoning that "one area IS the whole page" — true
+    // while nothing sub-divided a metro, and wrong once something did.)
+    html should include("CINEMA_AREAS")
+    html should not include "CINEMA_AREAS       = []"
   }
 
   it should "canonicalise to the area URL, not the city's" in {
@@ -264,6 +268,34 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
 
   /** London is split (five compass areas) but reads fine as one page, and it is
    *  the screen the chooser was modelled on rather than a target for it. */
+  // A big metro's page groups its cinema filter by DISTRICT — the level below the
+  // metro chooser. Worth pinning at the controller rather than trusting the model
+  // spec: `UsMetroSubAreas` being correct proves nothing if nothing passes it to
+  // the view, which is exactly what the page did before this was wired (it handed
+  // the template an empty list).
+  "A big metro's page" should "group its cinema filter by district" in {
+    val res = usController().area("new-york", "new-york")(req("/new-york/new-york/"))
+    status(res) shouldBe OK
+    val body = contentAsString(res)
+    // Assert against the GROUP JSON, not the bare word: "Manhattan" and "Brooklyn"
+    // also occur in cinema display names on this page, so a plain `include`
+    // passes even when nothing is wired — which it did, until this was tightened.
+    body should include ("\"name\":\"Manhattan\"")
+    body should include ("\"name\":\"Brooklyn\"")
+    // Never the compass labels the first attempt at this used — those were
+    // replaced precisely because they split Manhattan across two of them.
+    body should not include "\"name\":\"Central\""
+  }
+
+  it should "leave a SMALL metro's cinema list flat rather than wrapping it in one group" in {
+    // Below UsMetroSubAreas' threshold there are no districts, and a single
+    // collapsible section around the whole list would be chrome with no choice in
+    // it. San Diego (36 venues) is well under.
+    val res = usController().area("california", "san-diego")(req("/california/san-diego/"))
+    status(res) shouldBe OK
+    contentAsString(res) should include ("CINEMA_AREAS       = []")
+  }
+
   "London" should "keep serving its own listing, with no area URLs" in {
     val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom,
                                        messages = testsupport.TestMessages.forLang("en"))._1
