@@ -47,20 +47,37 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
     httpConfigFor(Country.Poland).context shouldBe "/"
   }
 
-  // On a shared domain a cookie left at "/" is a cookie the NEIGHBOURING
-  // countries send and overwrite — one signed-in session, or one remembered
-  // city, leaking across /uk and /de. Play defaults both paths to
-  // `${play.http.context}` in reference.conf, but that substitution resolves
-  // when the file is parsed, so the loader has to set them alongside the
-  // context rather than trusting the default to follow.
-  it should "scope the session and flash cookies to the mount point" in {
-    val uk = httpConfigFor(Country.UnitedKingdom)
-    uk.session.path shouldBe "/uk/"
-    uk.flash.path   shouldBe "/uk/"
+  // THE SIGN-IN IS SHARED ACROSS THE COUNTRIES ON ONE DOMAIN, and this is the
+  // line that makes it so. /uk, /de and /us are one origin, so a session cookie
+  // left at the host root is sent to all three: sign in on one and you are the
+  // same person on the next. Scoped to the mount point instead — which is what
+  // Play's `${play.http.context}` default would do, and what this deployment
+  // used to do — crossing a path segment silently signs the visitor out.
+  //
+  // It is safe to share because the `userId` inside resolves against the SHARED
+  // users database (`Country.usersDbName`), so it names the same account
+  // whichever mount decodes it.
+  it should "leave the session cookie at the host root, so one sign-in covers every country on the domain" in {
+    httpConfigFor(Country.UnitedKingdom).session.path shouldBe "/"
+    httpConfigFor(Country.Germany).session.path       shouldBe "/"
+    httpConfigFor(Country.UnitedStates).session.path  shouldBe "/"
 
-    val pl = httpConfigFor(Country.Poland)
-    pl.session.path shouldBe "/"
-    pl.flash.path   shouldBe "/"
+    // Poland is alone on kinowo.net and already mounted at the root; nothing
+    // about it moves.
+    httpConfigFor(Country.Poland).session.path shouldBe "/"
+  }
+
+  // Flash does NOT come along. It is a one-shot message attached to a single
+  // redirect inside one deployment, so there is nothing it could mean a country
+  // over — sharing it would just let /uk's message pop on /de. Play defaults it
+  // to `${play.http.context}`, but that substitution resolves when
+  // reference.conf is parsed, so the loader still has to set it alongside the
+  // context rather than trust the default to follow.
+  it should "keep the flash cookie scoped to the mount point" in {
+    httpConfigFor(Country.UnitedKingdom).flash.path shouldBe "/uk/"
+    httpConfigFor(Country.Germany).flash.path       shouldBe "/de/"
+    httpConfigFor(Country.UnitedStates).flash.path  shouldBe "/us/"
+    httpConfigFor(Country.Poland).flash.path        shouldBe "/"
   }
 
   // Every `@routes.…` in a template and every `controllers.routes.…` in a

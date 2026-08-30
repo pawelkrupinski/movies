@@ -65,12 +65,27 @@ object AppLoader {
    *  thing that follows from it. A literal per overlay is a fourth place to get
    *  the same fact wrong.
    *
-   *  The session and flash cookie PATHS come along, because on a shared domain
-   *  a cookie left at `/` is a cookie the neighbouring countries send and
-   *  overwrite — one login or one remembered city would leak across `/uk` and
-   *  `/de`. Play defaults both to `${play.http.context}` in `reference.conf`,
-   *  but that substitution resolves when the file is parsed, so overriding the
-   *  context alone would leave them behind at `/`. */
+   *  The cookie PATHS have to be set alongside it either way: Play defaults both
+   *  to `${play.http.context}` in `reference.conf`, but that substitution
+   *  resolves when the file is parsed, so overriding the context alone would
+   *  leave them behind at `/`. They then go to DIFFERENT places, and the split is
+   *  the point.
+   *
+   *  The SESSION cookie stays at the host root, deliberately, so that the
+   *  countries sharing a domain share a sign-in: `/uk`, `/de` and `/us` are one
+   *  origin, and a visitor who signs in on one of them is the same person on the
+   *  next. What that cookie carries is a `userId`, and it resolves against the
+   *  SHARED users database (`models.Country.usersDbName`), so it means the same
+   *  account whichever mount reads it — scoping it per country would not protect
+   *  anything, it would just sign the visitor out for crossing a path segment.
+   *  (The remembered CITY, which this comment used to worry about in the same
+   *  breath, was never riding on this: `MovieController` sets the `city` cookie
+   *  with `path = country.mountPath` of its own accord, and still does.)
+   *
+   *  The FLASH cookie stays scoped to the mount point. It is a one-shot message
+   *  attached to a single redirect within one deployment; there is no such thing
+   *  as a flash that means anything one country over, so letting `/uk`'s pop on
+   *  `/de` would be a bug with nothing on the other side of the trade. */
   /** The two endpoints that must answer at the HOST ROOT no matter where the
    *  application is mounted, layered IN FRONT of the mounted router.
    *
@@ -97,7 +112,8 @@ object AppLoader {
     val mountPath = country.mountPath
     context.copy(initialConfiguration = Configuration(
       "play.http.context"      -> mountPath,
-      "play.http.session.path" -> mountPath,
+      // Shared across the countries on this domain — see above.
+      "play.http.session.path" -> "/",
       "play.http.flash.path"   -> mountPath,
     ).withFallback(context.initialConfiguration))
   }
