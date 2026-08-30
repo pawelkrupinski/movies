@@ -33,7 +33,14 @@ case object Filmweb extends Source { val displayName: String = "Filmweb" }
  *  A bare `Cinema` key remains valid (a venue with a single title, and most test
  *  fixtures) — accessors treat the two uniformly via [[Source.cinemaOf]]. */
 case class CinemaShowing(cinema: Cinema, titleKey: String) extends Source {
-  val displayName: String = s"${cinema.displayName}${CinemaShowing.Separator}$titleKey"
+  /** Derived on demand, NOT stored. This is the Mongo wire spelling, needed only
+   *  at the storage boundary (`MovieCodecs` encode, `MovieRepository`'s slot
+   *  updates) — but as an eager `val` every one of the ~32k resident slot keys
+   *  held its own concatenated copy of it for the life of the cache. Unlike the
+   *  fields interned through `StringPool`, it is ~unique per slot (32,273 distinct
+   *  across 35,620 keys in the UK corpus), so pooling it would only burn the pool's
+   *  low-cardinality budget; the fix is to not retain it at all. */
+  def displayName: String = s"${cinema.displayName}${CinemaShowing.Separator}$titleKey"
 }
 object CinemaShowing {
   // ␟ SYMBOL FOR UNIT SEPARATOR — a printable char that never appears in a real
@@ -42,7 +49,12 @@ object CinemaShowing {
 
   /** The slot key for a cinema's report of a film under `title`. The ONE rule for
    *  deriving a cinema slot key, shared by the scrape ingest, the staging write,
-   *  and detail enrichment, so the same (cinema, title) always lands on one slot. */
+   *  and detail enrichment, so the same (cinema, title) always lands on one slot.
+   *
+   *  The `titleKey` is NOT interned here, unlike the decode path in
+   *  [[Source.byWireKey]]: `sanitize` memoises (`computeIfAbsent`), so it already
+   *  hands back ONE shared instance per distinct title and a pool lookup would
+   *  buy nothing. */
   def keyFor(cinema: Cinema, title: String, normalizer: services.movies.TitleNormalizer): CinemaShowing =
     CinemaShowing(cinema, normalizer.sanitize(title))
 }
@@ -108,12 +120,19 @@ object Source {
 
   /** Resolve a Mongo wire key back to a Source: a known `displayName`, else a
    *  `"<cinema>␟<titleKey>"` per-title cinema slot. None for legacy/dropped
-   *  cinemas (the cinema part no longer maps to a known venue). */
+   *  cinemas (the cinema part no longer maps to a known venue).
+   *
+   *  The decode path is where the resident slot keys come FROM — `rehydrate` rebuilds
+   *  every key in the corpus through here — and `substring` yields a FRESH instance
+   *  each time, so the `titleKey` is interned: a film showing at N cinemas otherwise
+   *  holds N byte-identical keys (32,552 for 1,594 distinct values in the UK corpus,
+   *  20.4x). The scrape path ([[CinemaShowing.keyFor]]) needs no such call — `sanitize`
+   *  memoises — so this is the only place the saving exists. */
   def byWireKey(key: String): Option[Source] = byDisplayName.get(key).orElse {
     val sep = key.indexOf(CinemaShowing.Separator)
     if (sep < 0) None
     else byDisplayName.get(key.substring(0, sep)).collect {
-      case cinema: Cinema => CinemaShowing(cinema, key.substring(sep + 1))
+      case cinema: Cinema => CinemaShowing(cinema, services.movies.StringPool.canonical(key.substring(sep + 1)))
     }
   }
 }
