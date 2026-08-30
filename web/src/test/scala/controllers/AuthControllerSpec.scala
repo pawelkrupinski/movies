@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
-import services.auth.{OauthProfile, OauthProvider}
+import services.auth.{AuthExchangeCodes, InMemoryAuthExchangeCodeStore, OauthProfile, OauthProvider}
 import services.users.InMemoryUserRepository
 
 import java.time.{Clock, Instant, ZoneOffset}
@@ -40,21 +40,27 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   private val NowMs    = Now.toEpochMilli
   private val fixedClk = Clock.fixed(Now, ZoneOffset.UTC)
 
-  private def fixture(providers: OauthProvider*): (AuthController, InMemoryUserRepository) = {
+  // The store is process-local here; the RULES it is driven by — single use, the
+  // two-minute window — live in `AuthExchangeCodes` above the seam, so what this
+  // spec exercises is the same policy production runs and only the persistence
+  // differs. Returned alongside so a test can watch a code being spent.
+  private def fixture(providers: OauthProvider*): (AuthController, InMemoryUserRepository, AuthExchangeCodes) = {
     val repository = new InMemoryUserRepository
+    val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
     val ctl  = new AuthController(
       Helpers.stubControllerComponents(),
       providers.map(p => p.name -> p).toMap,
       repository,
+      codes,
       clock = fixedClk
     )
-    (ctl, repository)
+    (ctl, repository, codes)
   }
 
   // ── /auth/:provider/start ─────────────────────────────────────────────────
 
   "AuthController.start" should "302 to the provider's authUrl and stash state + provider in session" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
 
     status(result) shouldBe SEE_OTHER
@@ -68,12 +74,12 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "404 when the provider isn't wired (env var missing → not in the map)" in {
-    val (ctl, _) = fixture()
+    val (ctl, _, _) = fixture()
     status(ctl.start("google")(FakeRequest("GET", "/auth/google/start"))) shouldBe NOT_FOUND
   }
 
   it should "flag the session as a mobile client for platform=ios and platform=android" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     for (platform <- Seq("ios", "android")) {
       val result = ctl.start("google")(FakeRequest("GET", s"/auth/google/start?platform=$platform"))
       session(result).get("mobileClient").value shouldBe "1"
@@ -81,7 +87,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not flag a mobile client for a plain web start (no platform parameter)" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
     session(result).get("mobileClient") shouldBe empty
   }
@@ -90,7 +96,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   "AuthController.callback" should "exchange code, create a new user, set userId in session, redirect to /" in {
     val provider = new FakeProvider("google", Profile)
-    val (ctl, repository) = fixture(provider)
+    val (ctl, repository, _) = fixture(provider)
 
     val request = FakeRequest("GET", "/auth/google/callback?code=AUTH_CODE&state=THE_STATE")
       .withSession("oauthState" -> "THE_STATE", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
@@ -114,7 +120,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "update the existing user (not duplicate) when (provider, sub) is already known" in {
     val provider = new FakeProvider("google", Profile)
-    val (ctl, repository) = fixture(provider)
+    val (ctl, repository, _) = fixture(provider)
 
     // First login — creates the user.
     val firstSession = session(ctl.callback("google")(
@@ -128,7 +134,8 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val updatedProfile = Profile.copy(displayName = Some("Alice (married)"))
     val provider2     = new FakeProvider("google", updatedProfile)
     val (ctl2, repository2) = (
-      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repository, clock = fixedClk),
+      new AuthController(Helpers.stubControllerComponents(), Map("google" -> provider2), repository,
+        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), clock = fixedClk),
       repository
     )
     val secondSession = session(ctl2.callback("google")(
@@ -141,7 +148,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "bounce a mobile client back to the kinowo:// deep link with a one-shot code" in {
     val provider = new FakeProvider("google", Profile)
-    val (ctl, repository) = fixture(provider)
+    val (ctl, repository, codes) = fixture(provider)
 
     val request = FakeRequest("GET", "/auth/google/callback?code=AUTH_CODE&state=THE_STATE")
       .withSession(
@@ -157,7 +164,10 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     // The code is single-use and redeems to the just-created user.
     val code = location.stripPrefix("kinowo://auth-done?code=")
     val userId = session(result).get("userId").value
-    AuthController.pendingExchangeCodes.getIfPresent(code) shouldBe userId
+    codes.redeem(code).value shouldBe userId
+    // Single use: the app gets one shot at it, so a code lifted off the deep
+    // link afterwards is worth nothing.
+    codes.redeem(code) shouldBe empty
     repository.findById(userId).value.email shouldBe Some("alice@example.com")
 
     // The mobile flag is consumed so it can't leak into a later web session.
@@ -167,7 +177,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // ── /auth/:provider/callback — sad paths ─────────────────────────────────
 
   it should "reject the callback when state doesn't match the session" in {
-    val (ctl, repository) = fixture(new FakeProvider("google", Profile))
+    val (ctl, repository, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=ATTACKER_GUESS")
       .withSession("oauthState" -> "THE_REAL_ONE", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
     val result  = ctl.callback("google")(request)
@@ -178,7 +188,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reject the callback when session has no state at all (no prior /start)" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val result   = ctl.callback("google")(FakeRequest("GET", "/auth/google/callback?code=C&state=S"))
     status(result) shouldBe BAD_REQUEST
     contentAsString(result) should include ("Missing session state")
@@ -188,7 +198,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     // Attacker shows /auth/google/start (gets google session state), then
     // tries to feed it into /auth/facebook/callback. The provider mismatch
     // check blocks it.
-    val (ctl, _) = fixture(
+    val (ctl, _, _) = fixture(
       new FakeProvider("google",   Profile),
       new FakeProvider("facebook", Profile.copy(sub = "FB-1"))
     )
@@ -206,7 +216,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
       def authUrl(s: String, r: String) = "https://x"
       def exchangeCode(c: String, r: String) = throw new RuntimeException("upstream blew up")
     }
-    val (ctl, repository) = fixture(brokenProvider)
+    val (ctl, repository, _) = fixture(brokenProvider)
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
     val result  = ctl.callback("google")(request)
@@ -218,7 +228,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // ── /auth/logout ─────────────────────────────────────────────────────────
 
   "AuthController.logout" should "drop userId from the session and redirect to /" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("POST", "/auth/logout")
       .withSession("userId" -> "alice", "oauthState" -> "leftover", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
     val result = ctl.logout()(request)
@@ -235,7 +245,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // ── /auth/:provider/start — TTL plumbing ────────────────────────────────
 
   "AuthController.start" should "stamp oauthStateTimestamp in the session" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val result   = ctl.start("google")(FakeRequest("GET", "/auth/google/start"))
     session(result).get("oauthStateTimestamp").value.toLong shouldBe NowMs
   }
@@ -243,7 +253,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // ── State TTL on callback ───────────────────────────────────────────────
 
   "AuthController.callback" should "reject when oauthStateTimestamp is missing (legacy session, pre-TTL deploy)" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google")   // no oauthStateTimestamp
     status(ctl.callback("google")(request))      shouldBe BAD_REQUEST
@@ -251,7 +261,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reject when oauthStateTimestamp is older than 10 minutes" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val tenMinAndChange = NowMs - (11 * 60 * 1000).toLong
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> tenMinAndChange.toString)
@@ -261,7 +271,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "accept when oauthStateTimestamp is just under 10 minutes old" in {
-    val (ctl, _) = fixture(new FakeProvider("google", Profile))
+    val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val fresh = NowMs - (9 * 60 * 1000).toLong
     val request = FakeRequest("GET", "/auth/google/callback?code=C&state=S")
       .withSession("oauthState" -> "S", "oauthProvider" -> "google", "oauthStateTimestamp" -> fresh.toString)
@@ -274,7 +284,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val googleProvider = new FakeProvider("google",   Profile)
     val fbProfile      = OauthProfile(sub = "FB-99", email = Some("alice@example.com"), displayName = Some("Alice on FB"), avatarUrl = None)
     val fbProvider     = new FakeProvider("facebook", fbProfile)
-    val (ctl, repository)    = fixture(googleProvider, fbProvider)
+    val (ctl, repository, _)    = fixture(googleProvider, fbProvider)
 
     val googleSession = session(ctl.callback("google")(
       FakeRequest("GET", "/auth/google/callback?code=C1&state=S1")
@@ -296,7 +306,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "reject a provider that returns no email" in {
-    val (ctl, _) = fixture(
+    val (ctl, _, _) = fixture(
       new FakeProvider("facebook", OauthProfile(sub = "FB-99", email = None, None, None))
     )
 
@@ -305,6 +315,162 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
         .withSession("oauthState" -> "S1", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> NowMs.toString)
     )
     status(result) shouldBe INTERNAL_SERVER_ERROR
+  }
+
+
+  // ── /auth/sso/start + /auth/sso/finish ───────────────────────────────────
+  //
+  // The country switch across a DOMAIN boundary. `/uk`, `/de` and `/us` share
+  // one origin and so share the session cookie outright; kinowo.net does not,
+  // and no cookie setting can make it. These two endpoints are how a live
+  // session crosses that gap: mint a one-shot code on the side that has it,
+  // spend it on the side that does not.
+
+  private val UkBase = models.Country.UnitedKingdom.webUrl.value
+  private val PlBase = models.Country.Poland.webUrl.value
+
+  private def signedIn(repository: InMemoryUserRepository, email: String): String = {
+    repository.upsert(models.User(
+      id          = email,
+      provider    = "google",
+      providerSub = s"sub-$email",
+      email       = Some(email),
+      displayName = Some("Alice"),
+      avatarUrl   = None,
+      createdAt   = Now,
+      lastSeenAt  = Now))
+    email
+  }
+
+  "AuthController.switchTarget" should "accept every deployed country's own base URL" in {
+    models.Country.switchable.flatMap(_.webUrl).foreach { base =>
+      AuthController.switchTarget(Some(base)).value shouldBe base
+    }
+  }
+
+  it should "tolerate a trailing slash, since the switcher's values are base URLs" in {
+    AuthController.switchTarget(Some(s"$UkBase/")).value shouldBe UkBase
+  }
+
+  // This redirect carries a live sign-in code, so the target is an allowlist of
+  // the addresses we actually deploy — not a shape test that some look-alike
+  // host could satisfy.
+  it should "refuse anything that is not one of them" in {
+    AuthController.switchTarget(Some("https://evil.example.com"))     shouldBe empty
+    AuthController.switchTarget(Some("https://showtimes.cc.evil.com")) shouldBe empty
+    AuthController.switchTarget(Some("https://showtimes.cc/../uk"))    shouldBe empty
+    AuthController.switchTarget(Some("//evil.example.com"))            shouldBe empty
+    AuthController.switchTarget(Some(""))                              shouldBe empty
+    AuthController.switchTarget(None)                                  shouldBe empty
+  }
+
+  "AuthController.ssoStart" should "hand a signed-in visitor over with a one-shot code" in {
+    val (ctl, repository, codes) = fixture()
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase").withSession("userId" -> userId))
+
+    status(result) shouldBe SEE_OTHER
+    val location = redirectLocation(result).value
+    location should startWith (s"$UkBase/auth/sso/finish?code=")
+    codes.redeem(location.stripPrefix(s"$UkBase/auth/sso/finish?code=")).value shouldBe userId
+  }
+
+  // Nothing to hand over is not a failure — it is the plain link the switcher
+  // would have followed anyway, and the visitor still lands where they asked.
+  it should "send a signed-out visitor straight to the other country" in {
+    val (ctl, _, _) = fixture()
+
+    val result = ctl.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$UkBase"))
+
+    status(result) shouldBe SEE_OTHER
+    redirectLocation(result).value shouldBe s"$UkBase/"
+  }
+
+  it should "mint nothing for a visitor whose session names a user that no longer exists" in {
+    val (ctl, _, _) = fixture()
+
+    val result = ctl.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase").withSession("userId" -> "deleted@example.com"))
+
+    redirectLocation(result).value shouldBe s"$UkBase/"
+  }
+
+  it should "refuse a target that is not a deployed country" in {
+    val (ctl, repository, _) = fixture()
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoStart()(
+      FakeRequest("GET", "/auth/sso/start?to=https://evil.example.com").withSession("userId" -> userId))
+
+    status(result) shouldBe BAD_REQUEST
+  }
+
+  "AuthController.ssoFinish" should "sign the visitor in and land them on this country's home" in {
+    val (ctl, repository, codes) = fixture()
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(userId)}"))
+
+    status(result) shouldBe SEE_OTHER
+    session(result).get("userId").value shouldBe userId
+  }
+
+  // By the time they are here they have already left the page they came from,
+  // so an error page would offer them nothing they can act on. The home page
+  // has a sign-in button.
+  it should "land a stale or missing code on the home page, signed out" in {
+    val (ctl, _, _) = fixture()
+
+    val noCode = ctl.ssoFinish()(FakeRequest("GET", "/auth/sso/finish"))
+    status(noCode) shouldBe SEE_OTHER
+    session(noCode).get("userId") shouldBe empty
+
+    val badCode = ctl.ssoFinish()(FakeRequest("GET", "/auth/sso/finish?code=never-minted"))
+    status(badCode) shouldBe SEE_OTHER
+    session(badCode).get("userId") shouldBe empty
+  }
+
+  // THE WHOLE POINT, end to end: two controllers standing in for the two pods
+  // either side of the domain boundary. They share a user repository and a code
+  // store — which is what `MONGODB_USERS_DB` buys — and nothing else, no cookie
+  // among them. An in-process code cache would fail exactly here, and used to.
+  "A visitor switching country across the domain boundary" should "arrive signed in" in {
+    val repository = new InMemoryUserRepository
+    val store      = new InMemoryAuthExchangeCodeStore
+    def pod(): AuthController = new AuthController(
+      Helpers.stubControllerComponents(), Map.empty, repository,
+      new AuthExchangeCodes(store, fixedClk), clock = fixedClk)
+
+    val poland = pod()
+    val uk     = pod()
+    val userId = signedIn(repository, "alice@example.com")
+
+    val handoff  = poland.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase").withSession("userId" -> userId))
+    val code     = redirectLocation(handoff).value.stripPrefix(s"$UkBase/auth/sso/finish?code=")
+    val arrival  = uk.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code"))
+
+    session(arrival).get("userId").value shouldBe userId
+  }
+
+  it should "not be able to do it twice with the same code" in {
+    val repository = new InMemoryUserRepository
+    val store      = new InMemoryAuthExchangeCodeStore
+    def pod(): AuthController = new AuthController(
+      Helpers.stubControllerComponents(), Map.empty, repository,
+      new AuthExchangeCodes(store, fixedClk), clock = fixedClk)
+
+    val userId  = signedIn(repository, "alice@example.com")
+    val handoff = pod().ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$PlBase").withSession("userId" -> userId))
+    val code    = redirectLocation(handoff).value.stripPrefix(s"$PlBase/auth/sso/finish?code=")
+
+    session(pod().ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code"))).get("userId").value shouldBe userId
+    // A replayed link — shoulder-surfed, or sitting in someone's history — is
+    // worth nothing.
+    session(pod().ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code"))).get("userId") shouldBe empty
   }
 
 }

@@ -4,7 +4,7 @@ import controllers.{AdminAction, AuthController, CatalogController, ClientSuppor
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
-import services.auth.{AppleTokenValidator, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, OauthProvider}
+import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
 import services.fallback.{FallbackStore, MongoFallbackStore}
 import services.metrics.{WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
 import services.movies.{MongoMovieRepository, MovieRepository}
@@ -190,6 +190,18 @@ trait Wiring {
     Env.get("APPLE_BUNDLE_ID").orElse(Some("dev.kinowo.Kinowo"))
       .map(bundleId => new AppleTokenValidator(httoFetch, bundleId))
 
+  // One-shot sign-in codes for the two handoffs a session cookie cannot make:
+  // the native apps' `kinowo://` deep link, and the country switch across the
+  // kinowo.net / showtimes.cc domain boundary. They live in the SHARED users
+  // database because the cross-domain hop mints on one pod and redeems on
+  // ANOTHER — an in-process cache is exactly as unreachable there as the cookie
+  // it stands in for. With no Mongo at all (local dev) the in-process store
+  // keeps the native-app handoff working, since that one does start and finish
+  // on the same pod.
+  lazy val authExchangeCodes: AuthExchangeCodes = new AuthExchangeCodes(
+    usersConnection.database.fold[AuthExchangeCodeStore](new InMemoryAuthExchangeCodeStore)(
+      database => new MongoAuthExchangeCodeStore(Some(database))))
+
   // ── Controllers ───────────────────────────────────────────────────────────
   // View-rendering controllers take the deployment's fixed `Messages`
   // (`deploymentMessages`, implicit above) so their Twirl views resolve
@@ -330,7 +342,7 @@ trait Wiring {
   // renders from. The live row's details cell ships empty (lazily fetched on
   // expand), so no cinema-URL snapshot is needed.
   lazy val debugStreamController = new DebugStreamController(controllerComponents, debugCountries, environmentMode)(using materializer)
-  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
+  lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion)
   lazy val legalController   = new LegalController(controllerComponents)

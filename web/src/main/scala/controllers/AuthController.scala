@@ -4,9 +4,11 @@ import models.User
 import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
-import services.auth.{AppleTokenValidator, FacebookTokenValidator, GoogleTokenValidator, OauthProfile, OauthProvider}
+import services.auth.{AppleTokenValidator, AuthExchangeCodes, FacebookTokenValidator, GoogleTokenValidator, OauthProfile, OauthProvider}
 import services.users.UserRepository
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets.UTF_8
 import java.time.Clock
 import java.util.UUID
 import scala.util.{Failure, Success, Try}
@@ -21,7 +23,19 @@ import scala.util.{Failure, Success, Try}
  *     for a profile via `OauthProvider.exchangeCode`, upsert the
  *     `User`, set `userId` in the session, redirect home.
  *
- * Plus a single logout endpoint that drops the session.
+ * Plus a single logout endpoint that drops the session, and the pair that hands
+ * a live session to a deployment the cookie cannot reach:
+ *
+ *   - GET `/auth/sso/start?to=<base url>` — on the deployment the visitor is
+ *     signed in to: mint a one-shot code and redirect to `to`'s `finish`.
+ *   - GET `/auth/sso/finish?code=…` — on the deployment being handed the
+ *     session: spend the code, set `userId`, land on that country's home.
+ *
+ * That pair exists for ONE boundary. `/uk`, `/de` and `/us` share an origin and
+ * so share the session cookie outright (`AppLoader.mountedAt` leaves its path at
+ * the host root); Poland is on `kinowo.net`, a different registrable domain,
+ * where no cookie can follow. `to` is matched against the deployed countries'
+ * own base URLs and nothing else, so it cannot be pointed anywhere off-brand.
  *
  * `providers` is keyed by `OauthProvider.name` so the `:provider`
  * route segment indexes directly into it. An unknown provider name
@@ -41,6 +55,9 @@ class AuthController(
   cc:                     ControllerComponents,
   providers:              Map[String, OauthProvider],
   userRepository:               UserRepository,
+  // One-shot codes for the two handoffs a session cookie cannot make: the
+  // native apps' `kinowo://` deep link, and the cross-domain country switch.
+  exchangeCodes:          AuthExchangeCodes,
   googleTokenValidator:   Option[GoogleTokenValidator] = None,
   facebookTokenValidator: Option[FacebookTokenValidator] = None,
   appleTokenValidator:    Option[AppleTokenValidator] = None,
@@ -110,9 +127,7 @@ class AuthController(
               - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient"
               + ("userId" -> user.id)
             if (request.session.get("mobileClient").contains("1")) {
-              val code = UUID.randomUUID().toString
-              AuthController.pendingExchangeCodes.put(code, user.id)
-              Redirect(s"kinowo://auth-done?code=$code").withSession(nextSession)
+              Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id)}").withSession(nextSession)
             } else {
               Redirect(routes.LandingController.index()).withSession(nextSession)
             }
@@ -219,12 +234,7 @@ class AuthController(
   }
 
   def exchange(): Action[JsValue] = Action(parse.json) { request =>
-    (request.body \ "code").asOpt[String].flatMap { code =>
-      Option(AuthController.pendingExchangeCodes.getIfPresent(code)).map { userId =>
-        AuthController.pendingExchangeCodes.invalidate(code)
-        userId
-      }
-    } match {
+    (request.body \ "code").asOpt[String].flatMap(exchangeCodes.redeem) match {
       case None =>
         Unauthorized(Json.obj("error" -> "invalid or expired code"))
       case Some(userId) =>
@@ -242,6 +252,56 @@ class AuthController(
     }
   }
 
+  /** Hand this visitor's signed-in session to another country's deployment.
+   *
+   *  Only needed across an ORIGIN boundary — the Showtimes countries share one
+   *  and so share the cookie — but it is harmless where it is not needed, so the
+   *  switcher does not have to know which pairs those are.
+   *
+   *  Signed OUT is not an error: there is nothing to hand over, so this is just
+   *  the link the switcher would have followed anyway, and the visitor lands
+   *  where they asked to go. An unknown `to` IS an error, and a loud one: it can
+   *  only be a hand-crafted URL, since the only thing that builds these is a
+   *  `<select>` of the deployed countries.
+   *
+   *  The code rides in the query string, which is the one thing worth being
+   *  uncomfortable about — mitigated by making it single-use, two minutes long,
+   *  and redeemed by a URL that only ever answers with a redirect, so no page
+   *  ever renders (and no subresource sends a `Referer`) while it is still in
+   *  the address bar. */
+  def ssoStart(): Action[AnyContent] = Action { request =>
+    AuthController.switchTarget(request.getQueryString("to")) match {
+      case None =>
+        logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
+        BadRequest("Unknown country")
+      case Some(target) =>
+        request.session.get("userId").flatMap(userRepository.findById) match {
+          case None       => Redirect(s"$target/")
+          case Some(user) =>
+            val code = URLEncoder.encode(exchangeCodes.mint(user.id), UTF_8)
+            Redirect(s"$target/auth/sso/finish?code=$code")
+        }
+    }
+  }
+
+  /** Receive a session handed over by [[ssoStart]] on another domain.
+   *
+   *  A code that does not redeem lands the visitor on this country's home page
+   *  signed out rather than on an error: by the time they are here they have
+   *  already left the page they came from, and the only thing they can do about
+   *  a stale code is sign in again — which is exactly what the home page offers.
+   *  The warning is for us, not them. */
+  def ssoFinish(): Action[AnyContent] = Action { request =>
+    val home = Redirect(routes.LandingController.index())
+    request.getQueryString("code").flatMap(exchangeCodes.redeem).flatMap(userRepository.findById) match {
+      case None =>
+        logger.warn("SSO handoff arrived without a redeemable code — landing signed out.")
+        home
+      case Some(user) =>
+        home.withSession(request.session + ("userId" -> user.id))
+    }
+  }
+
   // Absolute callback URL the provider redirects back to. See `ForwardedUrl`
   // for why we read the forwarded headers directly. The PATH comes from the
   // reverse route rather than a literal so it carries this deployment's mount
@@ -253,8 +313,20 @@ class AuthController(
 }
 
 object AuthController {
-  import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
-  import java.util.concurrent.TimeUnit
-  val pendingExchangeCodes: Cache[String, String] =
-    Caffeine.newBuilder().expireAfterWrite(2, TimeUnit.MINUTES).maximumSize(100).build()
+
+  /** Where [[AuthController.ssoStart]] is willing to send a session: an EXACT
+   *  match against a deployed country's own base URL (`Country.webUrl`), and
+   *  nothing else.
+   *
+   *  An allowlist rather than a validated URL because this redirect carries a
+   *  credential. Any rule of the shape "same host" or "https and one of our
+   *  domains" is one open-redirect away from handing a live sign-in code to
+   *  somebody else's server; a list of the four addresses we actually deploy is
+   *  not. A trailing slash is tolerated because the switcher's `<option>` values
+   *  are base URLs and callers append to them.
+   *
+   *  Pure, so the refusal can be asserted without a request. */
+  private[controllers] def switchTarget(to: Option[String]): Option[String] =
+    to.map(_.trim.stripSuffix("/")).filter(_.nonEmpty)
+      .flatMap(candidate => models.Country.switchable.flatMap(_.webUrl).find(_ == candidate))
 }

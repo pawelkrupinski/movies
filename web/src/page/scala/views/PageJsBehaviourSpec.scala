@@ -4363,4 +4363,55 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     s"""document.dispatchEvent(new PointerEvent('$kind', {
        |  pointerType: 'touch', isPrimary: true, clientX: $x, clientY: $y, bubbles: true, cancelable: true
        |}))""".stripMargin
+
+  // ── Country switch: carrying the sign-in across a domain boundary ────────
+  //
+  // `/uk`, `/de` and `/us` are one origin and share the session cookie outright
+  // (its path is the host root), so switching between them is a plain
+  // navigation and stays signed in by itself. kinowo.net is a different
+  // registrable domain, where no cookie setting can reach — go there directly
+  // and the visitor arrives signed out, hidden films and /plan picks apparently
+  // gone. `countrySwitchTarget` is the decision between the two, asserted here
+  // in a real browser because it reads BOTH facts off the rendered page: whether
+  // an avatar menu is present, and what this deployment's own base URL is.
+  //
+  // The fixture renders as Poland, so "this deployment" is https://kinowo.net.
+
+  "The country switcher" should "hand a signed-in visitor over through /auth/sso/start when the target is another origin" in {
+    onLoggedInIndex { page =>
+      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") shouldBe
+        "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fuk"
+    }
+  }
+
+  it should "navigate straight there when the target is on this origin — the cookie already follows" in {
+    onLoggedInIndex { page =>
+      val origin = page.evalString("window.location.origin")
+      page.evalString("window.countrySwitchTarget(window.location.origin + '/de')") shouldBe s"$origin/de/"
+    }
+  }
+
+  it should "navigate straight there for a signed-out visitor — there is no session to hand over" in {
+    onPath("/") { page =>
+      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") shouldBe "https://showtimes.cc/uk/"
+    }
+  }
+
+  // THE SUBTLE ONE. By the time `onchange` fires, the <select>'s live value is
+  // the country being switched TO — so reading `.value` to answer "where am I"
+  // gives the destination, and the handoff would be minted on the wrong
+  // deployment (or, for a same-origin target, skipped entirely). The current
+  // country is found through the server-rendered `selected` ATTRIBUTE, which
+  // does not move when the property does. Simulated here by moving the value
+  // first, exactly as the browser does before calling the handler.
+  it should "read this deployment's own base off the selected attribute, not the live value" in {
+    onLoggedInIndex { page =>
+      page.evalBool("(document.getElementById('country-select').value = 'https://showtimes.cc/de', true)") shouldBe true
+      page.evalString("document.getElementById('country-select').value") shouldBe "https://showtimes.cc/de"
+
+      page.evalString("window.countrySwitchTarget('https://showtimes.cc/de')") shouldBe
+        "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fde"
+    }
+  }
+
 }

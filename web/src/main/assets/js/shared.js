@@ -93,15 +93,60 @@
   }
   window.onCityChange = onCityChange;
 
+  // THIS deployment's own base URL, read off the country switcher.
+  //
+  // The server marks the current country's <option> with a `selected`
+  // ATTRIBUTE, and an attribute selector keeps matching it after the visitor
+  // picks something else — only the live `value`/property moves. So this answers
+  // "where am I" even from inside the change handler, and without parsing the
+  // path (which `mountPrefix` can only do on a page whose URL names a city).
+  // '' when the page renders no switcher, i.e. only one country is deployed.
+  function currentCountryBase() {
+    var select = document.getElementById('country-select');
+    var option = select && select.querySelector('option[selected]');
+    return option ? option.value : '';
+  }
+
+  // Is `url` served by the origin this page came from? Parsed rather than
+  // string-matched, so a trailing slash or a country path segment cannot make
+  // two addresses on one host look like two origins.
+  function sameOriginAs(url) {
+    try { return new URL(url, window.location.href).origin === window.location.origin; }
+    catch (e) { return false; }
+  }
+
   // Country switcher (Filtry → Kraj) changed — each country is its own web
   // deployment behind its own base URL, so switch by NAVIGATING there (its
   // city-chooser lands the visitor, since cities differ per country). Full
   // navigation, not a view-swap. `url` is the chosen deployment's base URL
   // (`Country.webUrl`): scheme + host for a country that owns its domain, plus a
   // country segment for one that shares the brand domain.
+  //
+  // SIGNED IN AND CROSSING AN ORIGIN, go the long way round. The countries that
+  // share showtimes.cc share the session cookie outright (its path is the host
+  // root), so those hops are a plain navigation and stay signed in by
+  // themselves. kinowo.net is a different registrable domain, where no cookie
+  // setting can reach: navigate there directly and the visitor arrives signed
+  // out with their hidden films and /plan picks apparently gone. `/auth/sso/start`
+  // mints a one-shot code here and hands it over, and the far side sets its own
+  // session before landing them. `#auth-menu` is the avatar dropdown the navbar
+  // renders only when signed in — the same fact, read off the page instead of
+  // re-fetched.
+  //
+  // The decision is split from the navigation so the page tests can assert WHERE
+  // a switch would go without a real navigation tearing the page down
+  // mid-assertion.
+  function countrySwitchTarget(url) {
+    var base = currentCountryBase();
+    return (base && document.getElementById('auth-menu') && !sameOriginAs(url))
+      ? base + '/auth/sso/start?to=' + encodeURIComponent(url)
+      : url + '/';
+  }
+  window.countrySwitchTarget = countrySwitchTarget;
+
   function onCountryChange(url) {
     if (!url) return;
-    window.location.href = url + '/';
+    window.location.href = countrySwitchTarget(url);
   }
   window.onCountryChange = onCountryChange;
 
