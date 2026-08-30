@@ -82,10 +82,10 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
 
   it should "emit a slug film deep-link per distinct title in the city" in {
     val xml = SitemapBuilder.build(Origin, entries)
-    xml should include(s"<loc>$Origin/poznan/film/belle</loc>")
+    xml should include(s"<loc>$Origin/poznan/movie/belle</loc>")
     // The slug carries no percent-escapes at all — diacritics and punctuation
     // fold rather than encode, so a `<loc>` needs no XML escaping either.
-    xml should include(s"<loc>$Origin/poznan/film/diuna-czesc-druga</loc>")
+    xml should include(s"<loc>$Origin/poznan/movie/diuna-czesc-druga</loc>")
     xml should not include "title="
     xml should not include "%"
   }
@@ -94,9 +94,9 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     val dupes = Seq(Poznan -> Seq(film("Zorro", Multikino), film("Amelia", Helios), film("Zorro", Helios)))
     val xml   = SitemapBuilder.build(Origin, dupes)
     // "Zorro" appears once despite two screenings…
-    count(xml, s"<loc>$Origin/poznan/film/zorro</loc>") shouldBe 1
+    count(xml, s"<loc>$Origin/poznan/movie/zorro</loc>") shouldBe 1
     // …and Amelia sorts before Zorro (stable output across read-model orderings).
-    xml.indexOf("/film/amelia") should be < xml.indexOf("/film/zorro")
+    xml.indexOf("/movie/amelia") should be < xml.indexOf("/movie/zorro")
   }
 
   it should "stamp the read-model-derived URLs with lastmod when supplied" in {

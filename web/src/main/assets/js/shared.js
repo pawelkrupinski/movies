@@ -192,7 +192,7 @@
   // bottom of the viewport, so when its keyboard is up the rest of the screen —
   // film cards, poster/title links — sits right behind it. A tap "away" to
   // dismiss the keyboard would otherwise also land on whatever is under the
-  // finger and navigate to /film. Make that first tap a pure dismiss: blur the
+  // finger and navigate to /movie. Make that first tap a pure dismiss: blur the
   // field (which drops the keyboard) and swallow the click so nothing else acts
   // on it. A second, deliberate tap then behaves normally.
   //
@@ -679,8 +679,8 @@
       // rule a second place to drift. Falls back to the query form for a title
       // that folds to nothing (the server renders that one in place).
       if (col) window.location.href = col.dataset.slug
-        ? CITY_BASE + '/film/' + col.dataset.slug
-        : CITY_BASE + '/film?title=' + encodeURIComponent(col.dataset.title);
+        ? CITY_BASE + '/movie/' + col.dataset.slug
+        : CITY_BASE + '/movie?title=' + encodeURIComponent(col.dataset.title);
     }
   });
 
@@ -689,11 +689,11 @@
   //
   // After each filter pass, caps visible showings per card at ~10 visual
   // rows. Hides overflow at cinema-group boundaries and shows a
-  // "… +N seansów" link to the /film page. Mirrors the iOS app's collapse.
+  // "… +N seansów" link to the /movie page. Mirrors the iOS app's collapse.
   //
   // Called from applyFilters() in the repertoire view after visibility has
   // been set on badges / groups. Walks the already-computed visibility —
-  // no extra DOM measurement. The /film page has no applyFilters and
+  // no extra DOM measurement. The /movie page has no applyFilters and
   // doesn't call this, so it renders everything.
 
   const _MAX_SHOWINGS_ROWS = 10;
@@ -1296,7 +1296,7 @@
   // When a `.dropdown-panel` (Filtry) or the auth menu is open, a click
   // anywhere outside it must do exactly ONE thing: close it. Without this the
   // same click also bubbled on to the card-tap handler (which navigates to
-  // `/film`) or followed whatever link sat under the cursor — so dismissing
+  // `/movie`) or followed whatever link sat under the cursor — so dismissing
   // the filter accidentally opened a page.
   //
   // We run in the CAPTURE phase (the `true` below) so this fires before any
@@ -1396,7 +1396,7 @@
   //    carried forward by elapsed browser time, which is what the expiry prune
   //    counts on; a device clock set days out can't drag the day filter away
   //    from the listings the page actually shipped with. Only the repertoire
-  //    view defines it — elsewhere (/plan, /film, /browse) there is no expiry to
+  //    view defines it — elsewhere (/plan, /movie, /browse) there is no expiry to
   //    stay in step with, so the browser clock is answer enough.
   //
   // `window.KINOWO_PINNED_TODAY` is set ONLY in page-test renders (fixture data

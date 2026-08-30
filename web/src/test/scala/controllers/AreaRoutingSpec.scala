@@ -145,8 +145,8 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     status(us.index("poznan")(req("/poznan/")))     shouldBe NOT_FOUND
   }
 
-  "/los-angeles/filmy with no filter axis" should "serve the metro's listing, not a browse page" in {
-    val res = usController().browse("los-angeles", None, None, None, None)(req("/los-angeles/filmy"))
+  "/los-angeles/movies with no filter axis" should "serve the metro's listing, not a browse page" in {
+    val res = usController().browse("los-angeles", None, None, None, None)(req("/los-angeles/movies"))
     status(res) shouldBe OK
     contentAsString(res) should include(LaFilm)
     contentAsString(res) should not include SfFilm

@@ -1,7 +1,7 @@
 @import models.Movie
 @(movie: Movie, posterUrl: Option[String], fallbackPosterUrls: Seq[String])(implicit messages: play.api.i18n.Messages)
 @* Poster `<img>` + onerror fallback chain, factored out so both
-   `_movieCard` (wraps it in an `<a>` → /film) and `_planCard` (no
+   `_movieCard` (wraps it in an `<a>` → /movie) and `_planCard` (no
    wrapper — clicks toggle selection) can share the same markup and
    keep the retry chain in one place. *@
 @posterUrl match {

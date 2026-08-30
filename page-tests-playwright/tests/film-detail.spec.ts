@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { firstVisibleSlug, firstVisibleTitle, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
 
-// `/poznan/film/{slug}` detail page. Walks from a card on `/` to its
+// `/poznan/movie/{slug}` detail page. Walks from a card on `/` to its
 // detail screen and asserts the page's content blocks render +
 // trailer interaction works.
 
-test.describe('/film detail page', { tag: '@agnostic' }, () => {
+test.describe('/movie detail page', { tag: '@agnostic' }, () => {
 
-  // Helper: navigate to /film for the first visible card on /
+  // Helper: navigate to /movie for the first visible card on /
   async function gotoFirstFilm(page: import('@playwright/test').Page): Promise<string> {
     await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
@@ -20,7 +20,7 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
     // present at DCL, but the default `'load'` wait blocks `goto` on the poster
     // proxy images (and any trailer iframe). On a contended CI runner that
     // image-load stall eats the whole 30s budget and times the navigation out.
-    await page.goto(`/poznan/film/${slug}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/poznan/movie/${slug}`, { waitUntil: 'domcontentloaded' });
     return title!;
   }
 
@@ -93,16 +93,16 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
 
   // Parameterised across the navbar destinations so the label + href
   // pair stays in lockstep — adding a new section that links into
-  // /film means adding a row here AND the path → label entry in
+  // /movie means adding a row here AND the path → label entry in
   // film.scala.html's `LABELS` map.
   for (const { from, label } of [
     { from: '/poznan/',      label: 'Filmy' },
-    { from: '/poznan/filmy', label: 'Filmy' },
+    { from: '/poznan/movies', label: 'Filmy' },
     { from: '/poznan/plan',  label: 'Plan'  },
   ]) {
     test(`the ← back link reads "${label}" and returns to ${from} when that was the referrer`, async ({ page }) => {
       // Land on the source page first so document.referrer is set when
-      // /film loads. Pull a title off the embedded grid (homepage cards
+      // /movie loads. Pull a title off the embedded grid (homepage cards
       // OR /plan picker cards both carry `data-title`) and navigate via
       // `window.location.href = …` so the browser writes a real
       // Referer header — `page.goto(referer: …)` would also work but
@@ -112,16 +112,16 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
         const col = document.querySelector('[data-title]');
         if (!col) return null;
         const slug = (col as HTMLElement).dataset.slug;
-        return slug ? `/poznan/film/${slug}` : null;
+        return slug ? `/poznan/movie/${slug}` : null;
       });
       expect(filmHref).not.toBeNull();
       await Promise.all([
         // `waitUntil: 'domcontentloaded'` — same reasoning as `gotoFirstFilm`:
-        // the `/film` page's `load` event is gated on poster-proxy images and
+        // the `/movie` page's `load` event is gated on poster-proxy images and
         // the trailer iframe, which can stall the full 30s on a contended
         // runner. The back-link markup we assert on is server-rendered, so DCL
         // is all we need.
-        page.waitForURL((u) => new URL(u).pathname.startsWith('/poznan/film/'), { waitUntil: 'domcontentloaded' }),
+        page.waitForURL((u) => new URL(u).pathname.startsWith('/poznan/movie/'), { waitUntil: 'domcontentloaded' }),
         page.evaluate((href) => { window.location.href = href; }, filmHref!),
       ]);
 
@@ -163,10 +163,10 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
 
   // A big-city film plays 60+ venues a day, so both of the page's cinema lists
   // — the link pills under the title and each date's cinemas in the showings
-  // tree — open at ten and fold the rest behind a button. `/film-many` is the
+  // tree — open at ten and fold the rest behind a button. `/movie-many` is the
   // fixture server's 12-cinema render; no corpus film reaches the threshold.
   test('cinema-link pills past the tenth fold away until the button is clicked', async ({ page }) => {
-    await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
+    await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('.cinema-link')).toHaveCount(12);
     expect(await page.locator('.cinema-link:visible').count()).toBe(10);
@@ -208,7 +208,7 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
   });
 
   test('the showings tree shows every cinema, minus the ones switched off in Filtry', async ({ page }) => {
-    await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
+    await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('.cinema-group')).toHaveCount(12);
     expect(await page.locator('.cinema-group:visible').count()).toBe(12);
@@ -226,7 +226,7 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
   });
 
   test('switching every cinema off empties the showings section, date headers and all', async ({ page }) => {
-    await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
+    await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
 
     const all = await page.locator('.cinema-group[data-cinema]')
       .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema));

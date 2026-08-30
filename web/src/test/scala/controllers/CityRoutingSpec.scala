@@ -39,7 +39,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
   "An unknown city slug" should "404 on every city-scoped route" in {
     val ctrl = buildController()
     status(ctrl.index("nieznane")(FakeRequest(GET, "/nieznane/")))               shouldBe NOT_FOUND
-    status(ctrl.film("nieznane", "x")(FakeRequest(GET, "/nieznane/film?title=x"))) shouldBe NOT_FOUND
+    status(ctrl.film("nieznane", "x")(FakeRequest(GET, "/nieznane/movie?title=x"))) shouldBe NOT_FOUND
     status(ctrl.apiRepertoire("nieznane")(FakeRequest(GET, "/nieznane/api/repertoire"))) shouldBe NOT_FOUND
     status(ctrl.apiDetails("nieznane")(FakeRequest(GET, "/nieznane/api/details"))) shouldBe NOT_FOUND
   }
@@ -80,9 +80,9 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     val html = contentAsString(res)
     html should include("Repertuar kinowy Poznań")
     // Film-card links carry the city prefix (the navbar no longer holds a
-    // city-scoped home tab — the film grid's `/{city}/film` links are the
+    // city-scoped home tab — the film grid's `/{city}/movie` links are the
     // city-prefixed links the page now renders).
-    html should include("""href="/poznan/film""")
+    html should include("""href="/poznan/movie""")
     // The lone fixture film is in a Poznań cinema → present.
     html should include("Testowy Film")
   }
@@ -100,7 +100,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include("Repertuar kinowy Wrocław")
-    html should include("""href="/wroclaw/film""")
+    html should include("""href="/wroclaw/movie""")
     html should include("Wrocławski Film")
     html should not include "Testowy Film"   // Poznań
     html should not include "Warszawski Film" // Warszawa
@@ -112,7 +112,7 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include("Repertuar kinowy Warszawa")
-    html should include("""href="/warszawa/film""")
+    html should include("""href="/warszawa/movie""")
     html should include("Warszawski Film")
     html should not include "Testowy Film"    // Poznań
     html should not include "Wrocławski Film"  // Wrocław

@@ -155,7 +155,7 @@ export async function firstVisibleTitle(page: Page): Promise<string | null> {
 
 /**
  * The same card's `data-slug` — the server's own `Slugify` output, and the path
- * segment of its canonical `/{city}/film/{slug}` address. Read from the DOM
+ * segment of its canonical `/{city}/movie/{slug}` address. Read from the DOM
  * rather than re-implementing the fold in TypeScript: the fold handles Polish
  * and German diacritics, ß, and Cyrillic, and a second copy of those rules
  * would drift from the Scala one.

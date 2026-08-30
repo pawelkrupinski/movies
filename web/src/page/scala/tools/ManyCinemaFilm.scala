@@ -6,7 +6,7 @@ import models.Cinema
 /**
  * A corpus schedule re-seated at many cinemas on a single date.
  *
- * The /film page folds BOTH its cinema lists past the tenth — the link pills
+ * The /movie page folds BOTH its cinema lists past the tenth — the link pills
  * under the title and each date's cinemas in the showings tree (a London film
  * runs 60+ venues a day) — but the Poznań fixture corpus tops out at a handful,
  * so neither page-test harness can reach either fold off a real corpus film.

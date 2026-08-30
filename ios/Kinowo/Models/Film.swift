@@ -3,7 +3,7 @@ import Foundation
 struct Film: Identifiable, Hashable, Codable {
     var id: String { title }
     let title: String
-    /// The film's canonical path segment on the web (`/{city}/film/{slug}`),
+    /// The film's canonical path segment on the web (`/{city}/movie/{slug}`),
     /// served by `/api/repertoire`. Optional so a build talking to a server
     /// that predates the field still decodes — `FilmShareLink` falls back to
     /// the legacy `?title=` form, which the server still answers (with a 301).
@@ -33,11 +33,11 @@ struct Film: Identifiable, Hashable, Codable {
     let fallbackPosterURLs: [URL]
     let runtimeMinutes: Int?
     /// Release year — shown as a `.pill.year` next to runtime, mirroring
-    /// the web `_movieCard` / `/film` title block. Optional because not
+    /// the web `_movieCard` / `/movie` title block. Optional because not
     /// every cinema/enrichment source resolves a year.
     let releaseYear: Int?
     /// Genre labels (already in source-priority order from the server).
-    /// The web card shows the first three; the `/film` page shows all.
+    /// The web card shows the first three; the `/movie` page shows all.
     let genres: [String]
     /// Age-rating certificate exactly as printed on it (e.g. BBFC "15",
     /// "PG", "12A", "U", "18"). Optional because most films — everything
@@ -162,7 +162,7 @@ struct Showtime: Hashable, Identifiable, Codable {
     }
 }
 
-/// Canonical public URL for a film's `/{city}/film/{slug}` page — the iOS
+/// Canonical public URL for a film's `/{city}/movie/{slug}` page — the iOS
 /// counterpart of the server's `controllers.FilmHref`. Backs the Share
 /// button on `FilmDetailView` and the long-press "Skopiuj link" on
 /// `FilmCardView`, so a link shared from the app is byte-identical to one
@@ -194,7 +194,7 @@ enum FilmShareLink {
     /// for it. Both segments are already URL-safe (lowercase ASCII + hyphens),
     /// so nothing needs encoding.
     static func url(forSlug slug: String, citySlug: String) -> URL {
-        URL(string: "https://kinowo.net/\(citySlug)/film/\(slug)")!
+        URL(string: "https://kinowo.net/\(citySlug)/movie/\(slug)")!
     }
 
     /// The film's link, preferring its canonical slug address and falling back
@@ -208,12 +208,12 @@ enum FilmShareLink {
 
     /// The pre-slug form. The film page is city-scoped, so the link must carry
     /// the slug of the city the sharer is browsing — a city-less
-    /// `/film?title=…` has no server route and 404s. `citySlug` is already
+    /// `/movie?title=…` has no server route and 404s. `citySlug` is already
     /// URL-safe, so only the title needs encoding.
     static func url(forTitle title: String, citySlug: String) -> URL {
         let encoded = title.addingPercentEncoding(withAllowedCharacters: titleAllowed) ?? title
         // Safe to force-unwrap: `encoded` and `citySlug` contain only URL-safe
         // characters and the surrounding string is a fixed, valid absolute URL.
-        return URL(string: "https://kinowo.net/\(citySlug)/film?title=\(encoded)")!
+        return URL(string: "https://kinowo.net/\(citySlug)/movie?title=\(encoded)")!
     }
 }

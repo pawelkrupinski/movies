@@ -7,10 +7,10 @@ import services.movies.StoredMovieRecord
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
- * The debug page lists the *global* corpus, but the /film page it links to is
+ * The debug page lists the *global* corpus, but the /movie page it links to is
  * city-scoped (`film(city, title)` only resolves a film with future showtimes
  * in that city). A row whose film plays only in Wrocław must therefore link
- * into `/wroclaw/film…` — NOT into whatever city the debug page itself happens
+ * into `/wroclaw/movie…` — NOT into whatever city the debug page itself happens
  * to be served under (here, Poznań), which would 404 "Film not found".
  */
 class DebugViewFilmLinkSpec extends AnyFlatSpec with Matchers {
@@ -24,10 +24,10 @@ class DebugViewFilmLinkSpec extends AnyFlatSpec with Matchers {
     record = MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Belle"))))
   )
 
-  "debug view" should "link a Wrocław-only film into /wroclaw/film, not the page's own city" in {
+  "debug view" should "link a Wrocław-only film into /wroclaw/movie, not the page's own city" in {
     val html = views.html.debug(Seq(wroclawOnly), titleNormalizer).body
-    html should include ("""href="/wroclaw/film/belle"""")
-    html should not include """href="/poznan/film/belle""""
+    html should include ("""href="/wroclaw/movie/belle"""")
+    html should not include """href="/poznan/movie/belle""""
   }
 
   it should "render a per-row re-enrich button posting the row's ResolveTmdb enqueue" in {

@@ -12,22 +12,22 @@ import Foundation
 ///
 ///   https://kinowo.net/poznan/                     → city
 ///   https://kinowo.net/poznan/?dim=2D&genre=Komedia → city + filters
-///   https://kinowo.net/poznan/film/oppenheimer      → city + film detail
-///   https://kinowo.net/poznan/film?title=Oppenheimer → the same, legacy form
+///   https://kinowo.net/poznan/movie/oppenheimer      → city + film detail
+///   https://kinowo.net/poznan/movie?title=Oppenheimer → the same, legacy form
 ///   https://showtimes.cc/uk/london/                 → city (UK deployment)
 ///   https://showtimes.cc/us/california/film/dune    → film (US deployment)
 ///   kinowo://poznan/                                    → city (custom scheme)
-///   kinowo://poznan/film/oppenheimer                    → film (custom scheme)
+///   kinowo://poznan/movie/oppenheimer                    → film (custom scheme)
 ///
 /// Pure Foundation so it lives in `KinowoCore` and is unit-tested on Linux CI.
 struct DeepLink: Equatable {
     let citySlug: String
-    /// Set for the legacy `/:city/film?title=…` form; the title is the film's
+    /// Set for the legacy `/:city/movie?title=…` form; the title is the film's
     /// identity (its `id`), matched against the loaded repertoire once it
     /// arrives. Links minted before the slug switch — and by app builds still
     /// in the wild — carry this, so it stays supported.
     let filmTitle: String?
-    /// Set for the canonical `/:city/film/{slug}` form, matched against the
+    /// Set for the canonical `/:city/movie/{slug}` form, matched against the
     /// `slug` each film carries from `/api/repertoire`.
     let filmSlug: String?
     let filters: DeepLinkFilters
@@ -65,7 +65,7 @@ struct DeepLink: Equatable {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let scheme = components.scheme?.lowercased() else { return nil }
 
-        // Path segments that follow the city slug (e.g. ["film"]).
+        // Path segments that follow the city slug (e.g. ["movie"]).
         let city: String
         let trailing: [String]
         switch scheme {
@@ -89,8 +89,12 @@ struct DeepLink: Equatable {
 
         guard knownCitySlugs.contains(city) else { return nil }
 
-        let isFilm = trailing.first == "film"
-        // `/film/{slug}` is the canonical form; `/film?title=…` the legacy one.
+        // `movie` is the current spelling; `film` was its address before the
+        // rename and is still minted by installed app builds and every link
+        // shared before it, so both open the detail screen. The server 301s the
+        // old one, but a Universal Link never reaches the server.
+        let isFilm = trailing.first == "movie" || trailing.first == "film"
+        // `/movie/{slug}` is the canonical form; `/movie?title=…` the legacy one.
         // Both are parsed: a link shared from an older app build, or one saved
         // from the web before the switch, must still open the right film.
         let filmSlug: String? = isFilm ? trailing.dropFirst().first : nil

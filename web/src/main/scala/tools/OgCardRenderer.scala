@@ -8,7 +8,7 @@ import javax.imageio.ImageIO
 
 /**
  * Renders the 1200×630 Open Graph "share card" for a film page — the image
- * WhatsApp / Messenger / Slack / Telegram / X embed when a `/film` link is
+ * WhatsApp / Messenger / Slack / Telegram / X embed when a `/movie` link is
  * shared.
  *
  * Why a server-rendered composite instead of just handing the raw poster to

@@ -45,13 +45,13 @@ test.describe('kinowo.net smoke', { tag: '@agnostic' }, () => {
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
 
-    // `domcontentloaded`: the `/film` page's `load` event waits on
+    // `domcontentloaded`: the `/movie` page's `load` event waits on
     // poster-proxy images + the trailer iframe, which can stall the full
     // timeout on a contended runner. The status + server-rendered title we
     // assert on are present at DCL.
     const slug = await firstVisibleSlug(page);
     expect(slug).toBeTruthy();
-    const resp = await page.goto(`/poznan/film/${slug}`, { waitUntil: 'domcontentloaded' });
+    const resp = await page.goto(`/poznan/movie/${slug}`, { waitUntil: 'domcontentloaded' });
     expect(resp?.status()).toBe(200);
     // Don't pin to a specific element — view templates evolve. The
     // contract is just "the film's title shows up on its detail page".

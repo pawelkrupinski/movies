@@ -27,7 +27,7 @@ final class DeepLinkUITests: XCTestCase {
     func testFilmLinkOpensDetailScreen() throws {
         // The link carries the city, so it satisfies the first-launch gate on
         // its own — no CityGate confirm tap needed.
-        app.launchEnvironment["KINOWO_UITEST_DEEPLINK"] = "kinowo://warszawa/film?title=Film%203"
+        app.launchEnvironment["KINOWO_UITEST_DEEPLINK"] = "kinowo://warszawa/movie?title=Film%203"
         app.launch()
 
         let poster = app.descendants(matching: .any).matching(identifier: "filmdetail.poster").firstMatch
@@ -40,7 +40,7 @@ final class DeepLinkUITests: XCTestCase {
         // The fixture has "Film 2"; a link carrying the Roman form "Film II" must
         // still open it — the app matches by the web's normalized title (Arabic↔
         // Roman), not byte-for-byte. Guards the sequel-title deep-link fix.
-        app.launchEnvironment["KINOWO_UITEST_DEEPLINK"] = "kinowo://warszawa/film?title=Film%20II"
+        app.launchEnvironment["KINOWO_UITEST_DEEPLINK"] = "kinowo://warszawa/movie?title=Film%20II"
         app.launch()
 
         let poster = app.descendants(matching: .any).matching(identifier: "filmdetail.poster").firstMatch

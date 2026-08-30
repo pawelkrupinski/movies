@@ -23,14 +23,29 @@ final class DeepLinkTests: XCTestCase {
 
     func testFilmDetailSlugLink() {
         // The canonical form the site and the app both mint now.
-        let dl = parse("https://kinowo.net/warszawa/film/oppenheimer")
+        let dl = parse("https://kinowo.net/warszawa/movie/oppenheimer")
         XCTAssertEqual(dl?.citySlug, "warszawa")
         XCTAssertEqual(dl?.filmSlug, "oppenheimer")
         XCTAssertNil(dl?.filmTitle)
     }
 
+    func testPreRenameFilmSegmentStillOpensTheDetailScreen() {
+        // `/film` was the address before the rename to `/movie`, and it is what
+        // every link shared before it — and every installed app build's share
+        // button — still mints. The server 301s it, but a Universal Link is
+        // handed to the app without ever reaching the server, so the parser is
+        // the only thing standing between an old link and a no-op open.
+        let slug = parse("https://kinowo.net/warszawa/film/oppenheimer")
+        XCTAssertEqual(slug?.citySlug, "warszawa")
+        XCTAssertEqual(slug?.filmSlug, "oppenheimer")
+
+        let title = parse("kinowo://poznan/film?title=Oppenheimer")
+        XCTAssertEqual(title?.citySlug, "poznan")
+        XCTAssertEqual(title?.filmTitle, "Oppenheimer")
+    }
+
     func testFilmDetailSlugLinkOnTheCustomScheme() {
-        let dl = parse("kinowo://poznan/film/diuna-czesc-druga")
+        let dl = parse("kinowo://poznan/movie/diuna-czesc-druga")
         XCTAssertEqual(dl?.citySlug, "poznan")
         XCTAssertEqual(dl?.filmSlug, "diuna-czesc-druga")
     }
@@ -38,21 +53,21 @@ final class DeepLinkTests: XCTestCase {
     func testFilmDetailLink() {
         // The legacy form: still parsed, because links shared before the switch
         // — and by app builds still in the wild — carry it.
-        let dl = parse("https://kinowo.net/warszawa/film?title=Oppenheimer")
+        let dl = parse("https://kinowo.net/warszawa/movie?title=Oppenheimer")
         XCTAssertEqual(dl?.citySlug, "warszawa")
         XCTAssertEqual(dl?.filmTitle, "Oppenheimer")
         XCTAssertNil(dl?.filmSlug)
     }
 
     func testBareFilmPathIsNeitherSlugNorTitle() {
-        let dl = parse("https://kinowo.net/warszawa/film")
+        let dl = parse("https://kinowo.net/warszawa/movie")
         XCTAssertEqual(dl?.citySlug, "warszawa")
         XCTAssertNil(dl?.filmSlug)
         XCTAssertNil(dl?.filmTitle)
     }
 
     func testFilmDetailDecodesEncodedTitle() {
-        let dl = parse("https://kinowo.net/wroclaw/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga")
+        let dl = parse("https://kinowo.net/wroclaw/movie?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga")
         XCTAssertEqual(dl?.filmTitle, "Diuna: Część druga")
     }
 
@@ -63,7 +78,7 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func testCustomSchemeFilm() {
-        let dl = parse("kinowo://krakow/film?title=Wicked")
+        let dl = parse("kinowo://krakow/movie?title=Wicked")
         XCTAssertEqual(dl?.citySlug, "krakow")
         XCTAssertEqual(dl?.filmTitle, "Wicked")
     }
@@ -88,7 +103,7 @@ final class DeepLinkTests: XCTestCase {
     // MARK: the shared brand host, where the country is a PATH segment
 
     func testUKCountrySegmentOpensInApp() {
-        let dl = parse("https://showtimes.cc/uk/london/film?title=Wicked")
+        let dl = parse("https://showtimes.cc/uk/london/movie?title=Wicked")
         XCTAssertEqual(dl?.citySlug, "london")
         XCTAssertEqual(dl?.filmTitle, "Wicked")
     }
@@ -104,7 +119,7 @@ final class DeepLinkTests: XCTestCase {
     func testUSCountrySegmentOpensInApp() {
         // Like Germany's, the US regions arrive via the live catalog rather than
         // the compile-time `City.all`, so pass the runtime slug set.
-        let dl = DeepLink.parse(URL(string: "https://showtimes.cc/us/california/film/wicked")!,
+        let dl = DeepLink.parse(URL(string: "https://showtimes.cc/us/california/movie/wicked")!,
                                 knownCitySlugs: ["california"])
         XCTAssertEqual(dl?.citySlug, "california")
         XCTAssertEqual(dl?.filmSlug, "wicked")
@@ -124,7 +139,7 @@ final class DeepLinkTests: XCTestCase {
     /// and Poland's own one-segment links can't lose their city to a
     /// coincidence.
     func testCountrySegmentStrippingLeavesAOneSegmentLinkAlone() {
-        let dl = parse("https://kinowo.net/poznan/film/oppenheimer")
+        let dl = parse("https://kinowo.net/poznan/movie/oppenheimer")
         XCTAssertEqual(dl?.citySlug, "poznan")
         XCTAssertEqual(dl?.filmSlug, "oppenheimer")
 
@@ -138,7 +153,7 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func testEmptyTitleParamIsNoFilm() {
-        XCTAssertNil(parse("https://kinowo.net/poznan/film?title=")?.filmTitle)
+        XCTAssertNil(parse("https://kinowo.net/poznan/movie?title=")?.filmTitle)
     }
 
     // MARK: scalar filters

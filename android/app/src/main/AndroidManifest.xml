@@ -38,7 +38,7 @@
                  countries share showtimes.cc, told apart by a leading country
                  segment (showtimes.cc/uk/kent/) rather than a subdomain — hence
                  the second pair of patterns, one path segment deeper. Scoped to
-                 /<city>/ and /<city>/film so OAuth (/auth/…) and API paths stay
+                 /<city>/ and /<city>/movie so OAuth (/auth/…) and API paths stay
                  in the browser. autoVerify checks each host's
                  /.well-known/assetlinks.json (they all serve the same file).
                  Hosts mirror Country.all / DeepLink.WEB_HOSTS. -->
@@ -49,6 +49,10 @@
                 <data android:scheme="https" android:host="kinowo.net" />
                 <data android:scheme="https" android:host="showtimes.cc" />
                 <data android:pathPattern="/..*/" />
+                <data android:pathPattern="/..*/movie" />
+                <!-- The pre-rename address, still minted by installed builds and
+                     by every link shared before the rename. The server 301s it,
+                     but an App Link never reaches the server. -->
                 <data android:pathPattern="/..*/film" />
                 <data android:pathPattern="/..*/..*/" />
                 <data android:pathPattern="/..*/..*/film" />

@@ -102,7 +102,7 @@ class DeepLinkInstrumentedTest {
         compose.waitUntil(timeoutMillis = 10_000) { vm.films.value.any { it.title == "Inny film" } }
 
         // Fire the cross-city film deep link (warszawa film absent from poznań).
-        compose.runOnUiThread { vm.handleDeepLink("kinowo://warszawa/film?title=$target") }
+        compose.runOnUiThread { vm.handleDeepLink("kinowo://warszawa/movie?title=$target") }
 
         // The detail screen must open — its poster carries DetailPosterTag, which
         // only the detail route renders. Before the fix this never appeared.

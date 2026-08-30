@@ -8,7 +8,7 @@ import models.City
  *  is currently showing. Pure (no I/O) so it unit-tests against a fixed corpus;
  *  [[MovieController.sitemap]] feeds it the warm read-model schedules.
  *
- *  Deliberately omits the `/{city}/filmy?...` browse-facet pages: they're thin
+ *  Deliberately omits the `/{city}/movies?...` browse-facet pages: they're thin
  *  filtered slices of the same corpus and would multiply the URL count without
  *  adding indexable content. The film deep-links carry the actual long-tail.
  *  (`robots.txt` disallows the facets outright, so a crawler that finds them

@@ -16,7 +16,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Film(
     val title: String,
-    /** The film's canonical path segment on the web (`/{city}/film/{slug}`),
+    /** The film's canonical path segment on the web (`/{city}/movie/{slug}`),
      *  served by `/api/repertoire`. Null when talking to a server that predates
      *  the field — `filmShareUrl` then falls back to the legacy `?title=` form,
      *  which the server still answers (with a 301). */
@@ -52,7 +52,7 @@ data class Film(
     /** Per-cinema external film-page links for the detail screen, derived
      *  from the showings tree (each cinema-group already carries its
      *  `cinemaURL`). Deduped by cinema, ordered alphabetically by display
-     *  name — matches what the web `/film` page emitted as `cinema-link`
+     *  name — matches what the web `/movie` page emitted as `cinema-link`
      *  buttons, so no scraping is needed. */
     val cinemaLinks: List<CinemaLink>
         get() = showings

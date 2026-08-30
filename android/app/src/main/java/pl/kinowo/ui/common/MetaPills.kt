@@ -21,7 +21,7 @@ import pl.kinowo.ui.theme.MetaYearText
 
 /**
  * Runtime / year / genre row for a film's title block — the Android
- * counterpart of the web `_movieCard` / `/film` `.pill.runtime`,
+ * counterpart of the web `_movieCard` / `/movie` `.pill.runtime`,
  * `.pill.year`, `.pill.genre` row. The year renders as plain text
  * (matching the web's `.year { background: transparent; border: none }`),
  * runtime and genres as rounded pills. Genres default to none — the

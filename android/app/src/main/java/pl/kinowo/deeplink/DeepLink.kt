@@ -19,23 +19,23 @@ import java.net.URLDecoder
  *
  *   https://kinowo.net/poznan/                       → city
  *   https://kinowo.net/poznan/?dim=2D&genre=Komedia   → city + filters
- *   https://kinowo.net/poznan/film?title=Oppenheimer  → city + film detail
+ *   https://kinowo.net/poznan/movie?title=Oppenheimer  → city + film detail
  *   https://showtimes.cc/uk/london/                   → city (UK deployment)
  *   https://showtimes.cc/us/california/film/dune      → film (US deployment)
  *   kinowo://poznan/                                      → city (custom scheme)
- *   kinowo://poznan/film?title=Oppenheimer                → film (custom scheme)
+ *   kinowo://poznan/movie?title=Oppenheimer                → film (custom scheme)
  *
  * Parsed with [java.net.URI] (not `android.net.Uri`) so it's a pure function,
  * unit-tested on the JVM in `testDebugUnitTest` without Robolectric.
  */
 data class DeepLink(
     val citySlug: String,
-    /** Set for the legacy `/:city/film?title=…` form; the title is the film's
+    /** Set for the legacy `/:city/movie?title=…` form; the title is the film's
      *  identity, matched against the loaded repertoire once it arrives. Links
      *  minted before the slug switch — and by app builds still in the wild —
      *  carry this, so it stays supported. */
     val filmTitle: String?,
-    /** Set for the canonical `/:city/film/{slug}` form, matched against the
+    /** Set for the canonical `/:city/movie/{slug}` form, matched against the
      *  `slug` each film carries from `/api/repertoire`. */
     val filmSlug: String? = null,
     val filters: DeepLinkFilters,
@@ -81,7 +81,7 @@ data class DeepLink(
             // never opened. We parse the query ourselves below; parseQuery
             // decodes %XX and leaves already-literal chars intact, so it handles
             // both the encoded and the decoded delivery. The base (scheme / host
-            // / path: a city slug + optional "film") is always ASCII here, so
+            // / path: a city slug + optional "movie") is always ASCII here, so
             // URI parses it fine.
             val withoutFragment = url.substringBefore("#")
             val base = withoutFragment.substringBefore("?")
@@ -118,8 +118,12 @@ data class DeepLink(
             if (city !in knownCitySlugs) return null
 
             val query = parseQuery(rawQuery)
-            val isFilm = trailing.firstOrNull() == "film"
-            // `/film/{slug}` is the canonical form, `/film?title=…` the legacy
+            // `movie` is the current spelling; `film` was its address before
+            // the rename and is still minted by installed app builds and every
+            // link shared before it, so both open the detail screen. The server
+            // 301s the old one, but an App Link never reaches the server.
+            val isFilm = trailing.firstOrNull().let { it == "movie" || it == "film" }
+            // `/movie/{slug}` is the canonical form, `/movie?title=…` the legacy
             // one. Both are parsed: a link shared from an older app build, or
             // saved from the web before the switch, must still open the film.
             val filmSlug = if (isFilm) trailing.getOrNull(1)?.takeIf { it.isNotEmpty() } else null

@@ -40,7 +40,7 @@ class CspFilterSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "allow YouTube as the only frame-src" in {
-    // YouTube is the trailer iframe target on /film. If the policy ever
+    // YouTube is the trailer iframe target on /movie. If the policy ever
     // drops it, trailer playback breaks silently — the iframe just
     // fails to load with a console warning. This assertion is the
     // tripwire for that regression.

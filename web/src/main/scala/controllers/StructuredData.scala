@@ -65,7 +65,7 @@ object StructuredData {
     ))
   }
 
-  /** A city listing (`/{slug}/` or `/{slug}/filmy`): breadcrumb back to the
+  /** A city listing (`/{slug}/` or `/{slug}/movies`): breadcrumb back to the
    *  landing plus an ItemList of the films currently on show, each linking to
    *  its detail page — a crawlable index of the city's long-tail URLs. */
   def cityPage(pageUrl: String, city: City, films: Seq[FilmSchedule]): String = {

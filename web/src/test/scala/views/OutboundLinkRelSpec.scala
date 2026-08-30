@@ -80,7 +80,7 @@ class OutboundLinkRelSpec extends AnyFlatSpec with Matchers {
     val html = views.html._filmShowings(schedule()).body
     html should include ("""class="showings-more"""")
     // The internal deep-link carries no rel at all — crawl equity stays in-site.
-    "<a href=\"/poznan/film[^\"]*\"[^>]*>".r.findFirstIn(html).getOrElse("") should not include "nofollow"
+    "<a href=\"/poznan/movie[^\"]*\"[^>]*>".r.findFirstIn(html).getOrElse("") should not include "nofollow"
   }
 
   "_filmDetailContent" should "nofollow the cinema links on the film page" in {

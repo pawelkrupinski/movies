@@ -8,7 +8,7 @@ import play.api.test.Helpers._
 
 import java.time.LocalDateTime
 
-/** rel=canonical contract: the city index consolidates its `/filmy` alias and
+/** rel=canonical contract: the city index consolidates its `/movies` alias and
  *  every filter variation to the bare `/{city}/`, while og:url still reflects
  *  the actual (possibly filtered) URL; the film page self-canonicalises. */
 class CanonicalLinkSpec extends AnyFlatSpec with Matchers {
@@ -39,8 +39,8 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers {
     canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/")
   }
 
-  "the /filmy alias" should "canonicalise to the bare city URL, not /filmy" in {
-    val html = contentAsString(controller().browse("poznan", None, None, None, None)(req("/poznan/filmy")))
+  "the /movies alias" should "canonicalise to the bare city URL, not /movies" in {
+    val html = contentAsString(controller().browse("poznan", None, None, None, None)(req("/poznan/movies")))
     canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/")
   }
 
@@ -51,7 +51,7 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers {
   }
 
   "the film page" should "self-canonicalise to its own deep-link" in {
-    val html = contentAsString(controller().filmBySlug("poznan", "testowy-film")(req("/poznan/film/testowy-film")))
-    canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/film/testowy-film")
+    val html = contentAsString(controller().filmBySlug("poznan", "testowy-film")(req("/poznan/movie/testowy-film")))
+    canonicalOf(html) shouldBe Some("https://kinowo.net/poznan/movie/testowy-film")
   }
 }

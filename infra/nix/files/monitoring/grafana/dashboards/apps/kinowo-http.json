@@ -186,7 +186,7 @@
     {
       "type": "timeseries",
       "title": "Requests per second by route",
-      "description": "Route is the matched PLAY ROUTE PATTERN, never the raw path -- /:city/film/:slug is one series, not one per film. That is the cardinality guarantee; if you ever see a slug here, the filter's route extraction has regressed.",
+      "description": "Route is the matched PLAY ROUTE PATTERN, never the raw path -- /:city/movie/:slug is one series, not one per film. That is the cardinality guarantee; if you ever see a slug here, the filter's route extraction has regressed.",
       "id": 4,
       "datasource": {
         "type": "prometheus",

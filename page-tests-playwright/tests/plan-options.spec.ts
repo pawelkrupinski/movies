@@ -339,7 +339,7 @@ test.describe('plan posters fold', { tag: '@agnostic' }, () => {
     await expect(page.locator('#filmy-section')).not.toHaveClass(/folded/);
   });
 
-  test('movie title in the proposed plan is a link to /film', async ({ page }) => {
+  test('movie title in the proposed plan is a link to /movie', async ({ page }) => {
     await page.goto('/poznan/plan');
     await waitForPlanCards(page);
     const showings = await readShowings(page);
@@ -356,7 +356,7 @@ test.describe('plan posters fold', { tag: '@agnostic' }, () => {
     const slug = await page.locator(`.plan-card-col[data-title="${first}"]`).getAttribute('data-slug');
     expect(slug).toBeTruthy();
     const link = page.locator('a.plan-movie-title', { hasText: first });
-    await expect(link).toHaveAttribute('href', `/poznan/film/${slug}`);
+    await expect(link).toHaveAttribute('href', `/poznan/movie/${slug}`);
   });
 
 });

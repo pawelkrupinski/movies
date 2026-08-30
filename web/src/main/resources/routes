@@ -13,13 +13,25 @@ GET     /.well-known/assetlinks.json             controllers.WellKnownController
 
 # ── Repertoire (city-scoped: /:city/…) ─────────────────────────────────────────
 GET     /:city/                     controllers.MovieController.index(city: String)
-GET     /:city/film                 controllers.MovieController.film(city: String, title: String)
+GET     /:city/movie                controllers.MovieController.film(city: String, title: String)
 # og-image MUST stay above the :slug route — Play matches top-down, so the
 # wildcard would otherwise swallow "og-image" as a film slug.
-GET     /:city/film/og-image        controllers.MovieController.ogImage(city: String, title: String)
-GET     /:city/film/:slug           controllers.MovieController.filmBySlug(city: String, slug: String)
+GET     /:city/movie/og-image       controllers.MovieController.ogImage(city: String, title: String)
+GET     /:city/movie/:slug          controllers.MovieController.filmBySlug(city: String, slug: String)
 GET     /:city/og-image             controllers.MovieController.cityOgImage(city: String)
-GET     /:city/filmy                controllers.MovieController.browse(city: String, country: Option[String] ?= None, director: Option[String] ?= None, cast: Option[String] ?= None, genre: Option[String] ?= None, kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
+GET     /:city/movies               controllers.MovieController.browse(city: String, country: Option[String] ?= None, director: Option[String] ?= None, cast: Option[String] ?= None, genre: Option[String] ?= None, kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
+
+# ── Pre-rename addresses (`/film`, `/filmy`) ──────────────────────────────────
+# The detail page and the browse facets used to be `/{city}/film…` and
+# `/{city}/filmy` — Polish spellings on a route table shared with the English-
+# and German-speaking deployments. They are 301'd rather than dropped: every
+# link minted before the rename carries them, including the film URLs already in
+# search indexes, anything shared, and the share / copy-link buttons of every
+# app build already installed. The wildcard covers `/film/{slug}` and
+# `/film/og-image` in one, so it needs no og-image ordering rule of its own.
+GET     /:city/film                 controllers.MovieController.filmLegacy(city: String)
+GET     /:city/film/*rest           controllers.MovieController.filmSubPathLegacy(city: String, rest: String)
+GET     /:city/filmy                controllers.MovieController.browseLegacy(city: String)
 GET     /:city/plan                 controllers.PlanController.plan(city: String)
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────
@@ -43,7 +55,7 @@ GET     /api/client-support         controllers.ClientSupportController.clientSu
 # ── Debug ─────────────────────────────────────────────────────────────────────
 # Top-level, not city-scoped: the debug table is the *global* corpus (every
 # enriched row across all cities), so there's nothing per-city about it. Each
-# /film deep-link picks a city the film actually plays in.
+# /movie deep-link picks a city the film actually plays in.
 GET     /debug                      controllers.MovieController.debug()
 # Dev-only: one corpus row's per-source breakdown, fetched lazily when the /debug
 # table row is expanded. Rendering every row's breakdown inline OOM'd the view on
@@ -77,8 +89,9 @@ GET     /debug/queue                controllers.MovieController.debugQueue()
 GET     /:city/debug/tune           controllers.MovieController.tune(city: String)
 # Sibling tuning page for the film-detail view, linked by a sub-nav inside the
 # /:city/debug/tune* pages. Same live-CSS-variable approach as
-# /:city/debug/tune; dev-only.
-GET     /:city/debug/tune/film      controllers.MovieController.tuneFilm(city: String)
+# /:city/debug/tune; dev-only, so it gets no redirect from its pre-rename
+# `/debug/tune/film` address — nothing outside a dev box ever linked it.
+GET     /:city/debug/tune/movie     controllers.MovieController.tuneFilm(city: String)
 # Drop the in-memory positive cache and reload it from Mongo. Not gated by
 # devOnly — usable on a deployed instance to reconcile after out-of-band
 # Mongo edits.

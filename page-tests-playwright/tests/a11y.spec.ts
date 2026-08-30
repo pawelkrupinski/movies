@@ -61,7 +61,7 @@ test.describe('axe-core WCAG audit', () => {
     // `domcontentloaded`: the axe scan runs against the server-rendered
     // DOM, which is complete at DCL — no need to block on the poster-proxy
     // images / trailer iframe whose `load` can stall a contended runner.
-    await page.goto(`/poznan/film/${slug}`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`/poznan/movie/${slug}`, { waitUntil: 'domcontentloaded' });
     const result = await new AxeBuilder({ page })
       .withTags([...WCAG_TAGS])
       // Known-failing rule on the current site CSS: `.badge-fmt` (ATMOS

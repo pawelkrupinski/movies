@@ -201,13 +201,13 @@
   // ── Back link: rewrite to the page the user came from ──────────────────────
   //
   // Default href ("/") + label ("Repertuar") in the SSR markup is what
-  // ships to bots, to people opening /film in a fresh tab from an
+  // ships to bots, to people opening /movie in a fresh tab from an
   // external link, and to anyone on a browser that strips the referrer.
   // When the referrer IS a same-origin page we keep the user's path
   // verbatim — including query string — so going back lands them in the
   // same `?date=…`/`?cinema=…` filter state they were browsing.
   //
-  // /film → /film bounces don't qualify (they'd just send the user to
+  // /movie → /movie bounces don't qualify (they'd just send the user to
   // another film page they didn't ask for); we keep the homepage
   // fallback in that case.
   (function () {
@@ -222,19 +222,19 @@
     var p = url.pathname;
     if (p === cityPrefix || p === cityPrefix + '/') p = '/';
     else if (p.indexOf(cityPrefix + '/') === 0)     p = p.slice(cityPrefix.length);
-    // Skip /film → /film bounces but NOT /filmy — `/filmy` is the main
+    // Skip /movie → /movie bounces but NOT /movies — `/movies` is the main
     // listing (aliases `/{city}/`), not the per-film detail page.
-    if (p === '/film') return;
+    if (p === '/movie') return;
 
     // Map known internal paths to their navbar labels. When adding a new
-    // section that links into /film, add it here so the back arrow reads
+    // section that links into /movie, add it here so the back arrow reads
     // correctly — anything not in the map falls through to "Wstecz".
-    // `/` and `/filmy` are aliases for the main listing, so both label
+    // `/` and `/movies` are aliases for the main listing, so both label
     // as "Filmy" (matches the navbar tab).
-    var LABELS = { '/': '@messages("back.films")', '/filmy': '@messages("back.films")', '/plan': '@messages("back.plan")' };
+    var LABELS = { '/': '@messages("back.films")', '/movies': '@messages("back.films")', '/plan': '@messages("back.plan")' };
     var label = LABELS[p];
     if (!label) {
-      if (p.indexOf('/filmy/') === 0) label = '@messages("back.films")';
+      if (p.indexOf('/movies/') === 0) label = '@messages("back.films")';
       else label = '@messages("back.back")';
     }
 

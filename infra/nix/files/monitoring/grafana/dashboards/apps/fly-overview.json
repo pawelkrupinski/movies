@@ -2646,7 +2646,7 @@
     {
       "type": "timeseries",
       "title": "Request rate by route",
-      "description": "From the app's own filter, so it survives leaving Fly. Route is the matched PATTERN (/:city/film/:slug), never the raw path -- a raw path would make one series per film.",
+      "description": "From the app's own filter, so it survives leaving Fly. Route is the matched PATTERN (/:city/movie/:slug), never the raw path -- a raw path would make one series per film.",
       "id": 9003,
       "datasource": {
         "type": "prometheus",

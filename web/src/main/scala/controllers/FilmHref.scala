@@ -6,7 +6,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import scala.annotation.targetName
 
-/** Build the `/{city}/film/{slug}` URL used to deep-link a single film page
+/** Build the `/{city}/movie/{slug}` URL used to deep-link a single film page
  *  from anywhere in the app — the main repertoire list, per-cinema page, debug
  *  view, og:url meta tag in the film page itself, sitemap. Centralised here so
  *  the addressing rule lives in one place; previously inlined in three
@@ -25,14 +25,14 @@ import scala.annotation.targetName
  *  The city comes in implicitly so call sites in city-scoped templates (which
  *  carry an implicit `City`) read `FilmHref(title)` unchanged. The explicit
  *  overload exists for the debug page, which lists the global corpus and must
- *  deep-link each row into a city the film actually plays in (the /film page is
+ *  deep-link each row into a city the film actually plays in (the /movie page is
  *  city-scoped) rather than the city the debug page is served under. */
 object FilmHref {
   def apply(title: String)(implicit city: City): String = apply(title, city)
 
   @targetName("applyForCity")
   def apply(title: String, city: City): String =
-    slugOf(title).fold(legacy(title, city))(slug => s"${prefix(city)}/${city.slug}/film/$slug")
+    slugOf(title).fold(legacy(title, city))(slug => s"${prefix(city)}/${city.slug}/movie/$slug")
 
   /** Where the deployment serving `city` is MOUNTED — empty for a country that
    *  owns its domain (`kinowo.net/poznan/…`), a country segment for one that
@@ -55,7 +55,7 @@ object FilmHref {
    *  minted before the switch keep resolving, and still the only address for a
    *  title with no usable slug. */
   def legacy(title: String, city: City): String =
-    s"${prefix(city)}/${city.slug}/film?title=${encodeTitle(title)}"
+    s"${prefix(city)}/${city.slug}/movie?title=${encodeTitle(title)}"
 
   /** The server-rendered Open Graph card image (1200×630 PNG) for a film,
    *  emitted as `og:image` / `twitter:image`. Stays on the `%20`-encoded query
@@ -64,7 +64,7 @@ object FilmHref {
    *  keeping the URL stable means the previews Facebook and friends have
    *  already cached don't all miss at once. */
   def ogImage(title: String)(implicit city: City): String =
-    s"${prefix(city)}/${city.slug}/film/og-image?title=${encodeTitle(title)}"
+    s"${prefix(city)}/${city.slug}/movie/og-image?title=${encodeTitle(title)}"
 
   // `URLEncoder.encode` is form-urlencoded (spaces → `+`). Browsers accept
   // both in query strings, but some link-preview scrapers (Facebook's among

@@ -29,7 +29,7 @@ import scala.concurrent.{ExecutionContext, Future}
  *    `GA_MEASUREMENT_ID` is set. Both endpoints stay listed even
  *    when the env vars aren't set; an absent script tag means
  *    nothing connects, so the policy is harmless.
- *  - `*.youtube.com` for the trailer `<iframe>`s the /film page
+ *  - `*.youtube.com` for the trailer `<iframe>`s the /movie page
  *    renders.
  *
  * Image sources are wide (`https:` + `data:`) because cinema CDNs

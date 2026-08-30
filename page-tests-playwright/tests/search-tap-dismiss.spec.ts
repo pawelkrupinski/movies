@@ -5,7 +5,7 @@ import { pinDateFilterAnytime, firstVisibleSlug, firstVisibleTitle } from './hel
 // screen, so when its keyboard is up the cards sit right behind it. The first
 // tap "away" from the focused field must ONLY dismiss the keyboard (blur the
 // field) — it must NOT be captured by the card under the finger and navigate to
-// /film. A second, deliberate tap then behaves normally.
+// /movie. A second, deliberate tap then behaves normally.
 //
 // Only the portrait phone projects float the pill (the `(max-width: 575px) and
 // (orientation: portrait)` block in `_sharedStyles`); desktop and landscape
@@ -46,7 +46,7 @@ test.describe('search-pill tap-away on mobile portrait', () => {
     expect(await page.evaluate(() => document.activeElement?.id)).not.toBe('search-input');
   });
 
-  test('a tap on a card with search NOT focused still navigates to /film', async ({ page }) => {
+  test('a tap on a card with search NOT focused still navigates to /movie', async ({ page }) => {
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
     // Captured before the tap — the film page has no cards to read it from.
@@ -57,8 +57,8 @@ test.describe('search-pill tap-away on mobile portrait', () => {
     await expect(image).toBeVisible();
     await image.tap();
 
-    await page.waitForURL(/\/film\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/movie\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
     // The film's identity is the path's last segment now, not a query param.
-    expect(new URL(page.url()).pathname).toBe(`/poznan/film/${slug}`);
+    expect(new URL(page.url()).pathname).toBe(`/poznan/movie/${slug}`);
   });
 });

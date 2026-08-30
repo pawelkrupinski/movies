@@ -257,7 +257,7 @@ search for `PYEOF`). Key logic:
   link; director HTML with matched names in `<b class=hit>`; clue chips; amber
   "why unresolved" strip derived from `yearMatch` / `rowDirectors` /
   `matchedDirectors`; collapsible `<details>` with both synopses.
-- Kinowo URL: `/{city}/film?title={quote(title)}` using `enrich.json`.
+- Kinowo URL: `/{city}/movie?title={quote(title)}` using `enrich.json`.
 
 ---
 

@@ -40,7 +40,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     html should include("Incepcja")
     // Deep-links into a city the film actually plays in (Wrocław), never a
     // city slug from the URL (there isn't one anymore).
-    html should include("""href="/wroclaw/film/belle"""")
+    html should include("""href="/wroclaw/movie/belle"""")
     // The old top-of-page "Unenriched"/"TMDB-unresolved" pill sections are gone —
     // the staging table is now the only pending-work view. `data-flag` was their
     // distinctive marker.

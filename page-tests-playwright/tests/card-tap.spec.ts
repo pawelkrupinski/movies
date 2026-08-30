@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { firstVisibleSlug, firstVisibleTitle, pinDateFilterAnytime } from './helpers';
 
 // Single-tap card navigation — tapping a poster or title link goes
-// straight to the /film detail page on every browser. Icons (★, ✕)
+// straight to the /movie detail page on every browser. Icons (★, ✕)
 // are always visible; no two-tap preview system.
 
 test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic' }, () => {
@@ -33,7 +33,7 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
   // inside is positioned absolutely (`inset: 0`) so it has the actual
   // poster dimensions; tapping it dispatches a click event that
   // bubbles up to the `<a>` exactly as a real-finger tap would.
-  test('tap on a card poster image navigates to /film', async ({ page }) => {
+  test('tap on a card poster image navigates to /movie', async ({ page }) => {
     const title = await firstVisibleTitle(page);
     expect(title).toBeTruthy();
     // Read the card's own `data-slug` (the server's `Slugify` output) while
@@ -46,12 +46,12 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
     await expect(image).toBeVisible();
     await image.tap();
 
-    // `domcontentloaded`: the `/film` page's `load` event is gated on
+    // `domcontentloaded`: the `/movie` page's `load` event is gated on
     // poster-proxy images + the trailer iframe and can stall a contended
     // runner; the URL we assert on flips at navigation commit.
-    await page.waitForURL(/\/film\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/movie\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
     // The film's identity is the path's last segment now, not a query param.
-    expect(new URL(page.url()).pathname).toBe(`/poznan/film/${slug}`);
+    expect(new URL(page.url()).pathname).toBe(`/poznan/movie/${slug}`);
     expect(new URL(page.url()).search).toBe('');
   });
 
@@ -66,7 +66,7 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
     await image.tap();
     // `domcontentloaded`: the inline boot scripts run at DCL, so the JS-error
     // assertion doesn't need the poster/iframe `load` that can stall a runner.
-    await page.waitForURL(/\/film\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
+    await page.waitForURL(/\/movie\/[a-z0-9-]+$/, { waitUntil: 'domcontentloaded' });
 
     // film.scala.html's inline `toggleFavMovie` + `playTrailer` blocks
     // run on DOMContentLoaded — a syntax error or undefined reference

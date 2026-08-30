@@ -37,7 +37,7 @@
     data-rating="@{f"${e.weightedRating}%.3f"}"
     data-urls="@{Seq(e.metacriticUrl, e.rottenTomatoesUrl, e.filmwebUrl).flatten.mkString(" ")}"
     data-cinemas="@e.cinemaData.size">
-  @* The debug table is the global corpus, but /film is city-scoped — link
+  @* The debug table is the global corpus, but /movie is city-scoped — link
      into a city the film actually plays in, not this page's own city
      (which would 404 for any out-of-city row). Falls back to the page
      city for a stored row with no live showtimes anywhere. *@

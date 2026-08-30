@@ -29,20 +29,35 @@ class DeepLinkTest {
 
     @Test fun filmDetailSlugLink() {
         // The canonical form the site and the app both mint now.
-        val dl = DeepLink.parse("https://kinowo.net/warszawa/film/oppenheimer")!!
+        val dl = DeepLink.parse("https://kinowo.net/warszawa/movie/oppenheimer")!!
         assertEquals("warszawa", dl.citySlug)
         assertEquals("oppenheimer", dl.filmSlug)
         assertNull(dl.filmTitle)
     }
 
+    @Test fun preRenameFilmSegmentStillOpensTheDetailScreen() {
+        // `/film` was the address before the rename to `/movie`, and it is what
+        // every link shared before it — and every installed app build's share
+        // button — still mints. The server 301s it, but an App Link is handed to
+        // the app without ever reaching the server, so the parser is the only
+        // thing standing between an old link and a no-op open.
+        val slug = DeepLink.parse("https://kinowo.net/warszawa/film/oppenheimer")!!
+        assertEquals("warszawa", slug.citySlug)
+        assertEquals("oppenheimer", slug.filmSlug)
+
+        val title = DeepLink.parse("kinowo://poznan/film?title=Oppenheimer")!!
+        assertEquals("poznan", title.citySlug)
+        assertEquals("Oppenheimer", title.filmTitle)
+    }
+
     @Test fun filmDetailSlugLinkOnTheCustomScheme() {
-        val dl = DeepLink.parse("kinowo://poznan/film/diuna-czesc-druga")!!
+        val dl = DeepLink.parse("kinowo://poznan/movie/diuna-czesc-druga")!!
         assertEquals("poznan", dl.citySlug)
         assertEquals("diuna-czesc-druga", dl.filmSlug)
     }
 
     @Test fun bareFilmPathIsNeitherSlugNorTitle() {
-        val dl = DeepLink.parse("https://kinowo.net/warszawa/film")!!
+        val dl = DeepLink.parse("https://kinowo.net/warszawa/movie")!!
         assertNull(dl.filmSlug)
         assertNull(dl.filmTitle)
     }
@@ -50,19 +65,19 @@ class DeepLinkTest {
     @Test fun filmDetailLink() {
         // The legacy form: still parsed, because links shared before the switch
         // — and by app builds still in the wild — carry it.
-        val dl = DeepLink.parse("https://kinowo.net/warszawa/film?title=Oppenheimer")!!
+        val dl = DeepLink.parse("https://kinowo.net/warszawa/movie?title=Oppenheimer")!!
         assertEquals("warszawa", dl.citySlug)
         assertEquals("Oppenheimer", dl.filmTitle)
         assertNull(dl.filmSlug)
     }
 
     @Test fun filmDetailDecodesEncodedTitle() {
-        val dl = DeepLink.parse("https://kinowo.net/wroclaw/film?title=Lilo%20%26%20Stitch")!!
+        val dl = DeepLink.parse("https://kinowo.net/wroclaw/movie?title=Lilo%20%26%20Stitch")!!
         assertEquals("Lilo & Stitch", dl.filmTitle)
     }
 
     @Test fun filmDetailParsesEncodedPolishTitle() {
-        val dl = DeepLink.parse("https://kinowo.net/poznan/film?title=Minionki%20i%20straszyd%C5%82a")!!
+        val dl = DeepLink.parse("https://kinowo.net/poznan/movie?title=Minionki%20i%20straszyd%C5%82a")!!
         assertEquals("poznan", dl.citySlug)
         assertEquals("Minionki i straszydła", dl.filmTitle)
     }
@@ -73,20 +88,20 @@ class DeepLinkTest {
     // those → parse returned null → the film page never opened (the app stayed
     // on the current/main screen). parse() must tolerate the decoded delivery.
     @Test fun filmDetailParsesTitleDeliveredDecoded() {
-        val dl = DeepLink.parse("https://kinowo.net/poznan/film?title=Minionki i straszydła")!!
+        val dl = DeepLink.parse("https://kinowo.net/poznan/movie?title=Minionki i straszydła")!!
         assertEquals("poznan", dl.citySlug)
         assertEquals("Minionki i straszydła", dl.filmTitle)
     }
 
     @Test fun filmDetailParsesTitleDeliveredDecodedCustomScheme() {
-        val dl = DeepLink.parse("kinowo://poznan/film?title=Minionki i straszydła")!!
+        val dl = DeepLink.parse("kinowo://poznan/movie?title=Minionki i straszydła")!!
         assertEquals("poznan", dl.citySlug)
         assertEquals("Minionki i straszydła", dl.filmTitle)
     }
 
     @Test fun customSchemeCityAndFilm() {
         assertEquals("poznan", DeepLink.parse("kinowo://poznan/")!!.citySlug)
-        assertEquals("Wicked", DeepLink.parse("kinowo://krakow/film?title=Wicked")!!.filmTitle)
+        assertEquals("Wicked", DeepLink.parse("kinowo://krakow/movie?title=Wicked")!!.filmTitle)
     }
 
     // MARK: rejection
@@ -104,11 +119,11 @@ class DeepLinkTest {
     }
 
     @Test fun emptyTitleParamIsNoFilm() {
-        assertNull(DeepLink.parse("https://kinowo.net/poznan/film?title=")!!.filmTitle)
+        assertNull(DeepLink.parse("https://kinowo.net/poznan/movie?title=")!!.filmTitle)
     }
 
     @Test fun ukCountrySegmentOpensInApp() {
-        val dl = DeepLink.parse("https://showtimes.cc/uk/london/film?title=Wicked")!!
+        val dl = DeepLink.parse("https://showtimes.cc/uk/london/movie?title=Wicked")!!
         assertEquals("london", dl.citySlug)
         assertEquals("Wicked", dl.filmTitle)
     }
@@ -124,7 +139,7 @@ class DeepLinkTest {
     @Test fun usCountrySegmentOpensInApp() {
         // Like Germany's, the US regions arrive via the live catalog rather than
         // the compile-time `Cities.all`, so pass the runtime slug set.
-        val dl = DeepLink.parse("https://showtimes.cc/us/california/film/wicked", setOf("california"))!!
+        val dl = DeepLink.parse("https://showtimes.cc/us/california/movie/wicked", setOf("california"))!!
         assertEquals("california", dl.citySlug)
         assertEquals("wicked", dl.filmSlug)
     }
@@ -140,7 +155,7 @@ class DeepLinkTest {
     /** The country segment is dropped only when it ISN'T also a known city, so
      *  a one-segment link keeps its city. */
     @Test fun countrySegmentStrippingLeavesAOneSegmentLinkAlone() {
-        val dl = DeepLink.parse("https://kinowo.net/poznan/film/oppenheimer")!!
+        val dl = DeepLink.parse("https://kinowo.net/poznan/movie/oppenheimer")!!
         assertEquals("poznan", dl.citySlug)
         assertEquals("oppenheimer", dl.filmSlug)
         assertEquals("us", DeepLink.parse("https://showtimes.cc/us/", setOf("us"))!!.citySlug)

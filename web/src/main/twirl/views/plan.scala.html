@@ -58,7 +58,7 @@
        `_planCard` so each entry looks like a / homepage card (poster +
        title + runtime/year + ratings) minus showings. Clicks anywhere
        on the card toggle selection except on the title `<a>`, which
-       opens /film as everywhere else in the app. */
+       opens /movie as everywhere else in the app. */
     #plan-movies-row { row-gap: .75rem; }
     .plan-card {
       background: #1e1e2e;
@@ -331,7 +331,7 @@
   // ── Movies picker ─────────────────────────────────────────────────────────
   // Each `.plan-card` toggles its `selected` class as the user clicks
   // through the grid. The card itself is the click target; the title
-  // `<a>` inside it falls through to the browser default (→ /film) so
+  // `<a>` inside it falls through to the browser default (→ /movie) so
   // tapping the name still gives the user the deeper film page.
   function syncPlanMovieChecksFromStorage() {
     const sel = new Set(getSelectedMovies());
@@ -644,7 +644,7 @@
   // shorter-run movies the user picked alongside them.
   const PLAN_OPTIONS_LIMIT = 8;
 
-  // Canonical /{city}/film/{slug} link for a movie the scheduler knows only by
+  // Canonical /{city}/movie/{slug} link for a movie the scheduler knows only by
   // title. The slug comes off the rendered plan card's `data-slug`, which is the
   // server's own `Slugify` output — porting that fold to JS would give the rule
   // a second place to drift. Built lazily so it can't race the card markup, and
@@ -656,8 +656,8 @@
     );
     const slug = SLUG_BY_TITLE.get(movie);
     return slug
-      ? '@{city.country.pathPrefix}/' + CURRENT_CITY + '/film/' + slug
-      : '@{city.country.pathPrefix}/' + CURRENT_CITY + '/film?title=' + encodeURIComponent(movie);
+      ? '@{city.country.pathPrefix}/' + CURRENT_CITY + '/movie/' + slug
+      : '@{city.country.pathPrefix}/' + CURRENT_CITY + '/movie?title=' + encodeURIComponent(movie);
   }
 
   function renderPlanMovieBlock(movie, candidates) {

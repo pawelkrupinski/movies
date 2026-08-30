@@ -8,7 +8,7 @@ import models.Country
  *  scraper (`facebookexternalhit`) report "403 due to robots.txt block" against
  *  the film page. So the file allowlists every crawler explicitly, and spends
  *  its `Disallow` lines on the operational paths (`/debug`, `/admin`, `/tasks`,
- *  `/uptime`, `/auth/`, the JSON APIs) plus the `/{city}/filmy` browse facets —
+ *  `/uptime`, `/auth/`, the JSON APIs) plus the `/{city}/movies` browse facets —
  *  those last for CRAWL BUDGET rather than secrecy: a city listing links ~480 of
  *  them off its genre pills, each a thin filtered slice of a corpus the film
  *  deep-links already cover. `SitemapBuilder` omits them for the same reason.
@@ -27,7 +27,7 @@ object RobotsTxt {
   // path matches any run of characters, slashes included, so one wildcard rule
   // covers every city under that prefix.
   private val disallowed =
-    Seq("/debug", "/admin", "/tasks", "/uptime", "/auth/", "/*/api/", "/*/debug/", "/*/filmy")
+    Seq("/debug", "/admin", "/tasks", "/uptime", "/auth/", "/*/api/", "/*/debug/", "/*/movies", "/*/filmy")
 
   private def body(prefixes: Seq[String], sitemaps: Seq[String]): String = {
     val rules = for { prefix <- prefixes; path <- disallowed } yield s"Disallow: $prefix$path"

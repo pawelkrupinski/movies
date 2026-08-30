@@ -15,7 +15,8 @@
           { "/": "/health", "exclude": true },
           { "/": "/.well-known/*", "exclude": true },
           { "/": "/*/og-image", "exclude": true },
-          { "/": "/*/film/og-image", "exclude": true },
+          { "/": "/*/movie/og-image", "exclude": true },
+          { "/": "/*/film/og-image", "exclude": true, "comment": "pre-rename address, still 301'd by the server" },
 
           { "/": "/*/auth/*", "exclude": true, "comment": "The same operational paths one segment down, for a country served under a country prefix (showtimes.cc/uk/…). One file is served at every host root, so it has to speak for both shapes." },
           { "/": "/*/*/api/*", "exclude": true },
@@ -27,11 +28,14 @@
           { "/": "/*/health", "exclude": true },
           { "/": "/*/.well-known/*", "exclude": true },
           { "/": "/*/*/og-image", "exclude": true },
+          { "/": "/*/*/movie/og-image", "exclude": true },
           { "/": "/*/*/film/og-image", "exclude": true },
 
-          { "/": "/*/film", "comment": "film detail" },
+          { "/": "/*/movie", "comment": "film detail" },
+          { "/": "/*/film", "comment": "its pre-rename address — still opens the app rather than bouncing through the server's 301 in Safari" },
           { "/": "/*/", "comment": "city repertoire listing (with optional filter query)" },
-          { "/": "/*/*/film", "comment": "film detail under a country prefix" },
+          { "/": "/*/*/movie", "comment": "film detail under a country prefix" },
+          { "/": "/*/*/film", "comment": "its pre-rename address, under a country prefix" },
           { "/": "/*/*/", "comment": "city repertoire listing under a country prefix" }
         ]
       }

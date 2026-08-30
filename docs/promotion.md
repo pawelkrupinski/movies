@@ -29,7 +29,7 @@ them into repeat app users.
    city+film URLs the sitemap now exposes actually get crawled.
 2. **Bing Webmaster Tools** — same drill (Bing also feeds DuckDuckGo + ChatGPT
    search). One-time sitemap submit.
-3. **Rich Results Test** — paste a live `/{city}/film/{slug}` URL into
+3. **Rich Results Test** — paste a live `/{city}/movie/{slug}` URL into
    <https://search.google.com/test/rich-results> and confirm the Movie,
    ScreeningEvent and Breadcrumb JSON-LD parse with no errors. Fix any warnings.
 4. **Validate the sitemap + robots** — `curl https://kinowo.net/robots.txt`
@@ -55,7 +55,7 @@ descriptions shipped in this change. Next levers, in order:
   reflects the read-model mtime, which tells crawlers to re-index often. Keep it
   honest (it's wired to the actual data freshness).
 - **Avoid thin/duplicate pages** — the canonical tags already fold the
-  `/filmy` alias and `?filter` variations into one URL; don't add indexable
+  `/movies` alias and `?filter` variations into one URL; don't add indexable
   filtered permutations.
 
 ## 2. App Store Optimization (ASO)

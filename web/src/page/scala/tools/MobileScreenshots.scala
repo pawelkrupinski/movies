@@ -10,7 +10,7 @@ import java.util.Base64
 
 /**
  * Screenshot generator for the mobile-scale refactor. Loads each
- * navbar-bearing fixture page (`/`, `/film/{slug}`) in a
+ * navbar-bearing fixture page (`/`, `/movie/{slug}`) in a
  * real headless Chrome, resizes the viewport through every entry in
  * `Viewports`, and writes one PNG per (page, width) pair to
  * `page/screenshots/<slug>-<width>px.png`.
@@ -76,9 +76,9 @@ object MobileScreenshots {
         sys.exit(3)
       }
       val filmHtml: String = views.html.film(
-        filmSchedule, "http://test.local/film", "", devMode = false
+        filmSchedule, "http://test.local/movie", "", devMode = false
       ).body
-      val filmQuery = "/film/" + tools.Slugify(filmTitle)
+      val filmQuery = "/movie/" + tools.Slugify(filmTitle)
 
       val server = new TestHttpServer({
         case "/"     => indexHtml
@@ -96,7 +96,7 @@ object MobileScreenshots {
             // Inject the Zaloguj-się pill so the screenshot matches the
             // production anonymous-user navbar (the fixture renders with
             // no OAuth providers configured, leaving `.navbar-auth`
-            // empty). /film doesn't have `.navbar-auth` — the IIFE is a
+            // empty). /movie doesn't have `.navbar-auth` — the IIFE is a
             // no-op there because the querySelector returns null.
             page.eval(
               "(() => { const a = document.querySelector('.navbar-auth');" +

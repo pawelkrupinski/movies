@@ -57,7 +57,7 @@ class CitySynopsisSpec extends AnyFlatSpec with Matchers {
   // The shape prod actually stores: per-title `CinemaShowing` slots, one venue
   // listing the film under its own cycle title. Before the scoping read the
   // cinema through `Source.cinemaOf`, this leaked Kino Kosmos's Katowice event
-  // blurb onto /poznan/film/frances-ha.
+  // blurb onto /poznan/movie/frances-ha.
   it should "scope per-title slots too, not just legacy bare-cinema ones" in {
     val record = MovieRecord(data = Map[Source, SourceData](
       CinemaShowing(Helios, "dwamiasta")                -> slot("Poznański opis z kina, akapit.\n\nAkapit drugi."),

@@ -40,7 +40,7 @@
   button, [type="button"], [type="reset"], [type="submit"] { -webkit-appearance: button; }
   button, [role="button"] { cursor: pointer; }
   textarea { resize: vertical; }
-  /* Grid — the film listing (.row + .row-cols-* + gutters) and the /film
+  /* Grid — the film listing (.row + .row-cols-* + gutters) and the /movie
      two-column layout (.col-auto poster + .col details). */
   .container, .container-fluid { width: 100%; padding-right: calc(var(--bs-gutter-x, 1.5rem) * .5); padding-left: calc(var(--bs-gutter-x, 1.5rem) * .5); margin-right: auto; margin-left: auto; }
   @@media (min-width: 576px)  { .container { max-width: 540px; } }
@@ -161,7 +161,7 @@
   .year { font-size: .75rem; color: #888; background: transparent; border: none; }
   /* Genre pill — identical to the runtime pill so the metadata row
      reads as a single cluster. Rendered as an <a> linking to the genre's
-     /filmy browse page; strip the default link chrome so it still reads as
+     /movies browse page; strip the default link chrome so it still reads as
      a pill, and brighten on hover to signal it's tappable. */
   .pill.genre { font-size: .75rem; color: #888; text-decoration: none; }
   a.pill.genre:hover { color: #aad4ff; border-color: #4a4a8e; }
@@ -868,7 +868,7 @@
     /* Showtime pills (`.badge-time` / `.badge-fmt`) + rating pills
        (`.rating-imdb` / `.rating-meta` / `.rating-fw` / `.rating-rt`)
        are scaled inside their own partials (`_pillStyles`,
-       `_ratingStyles`) so the `/film` page — which loads those
+       `_ratingStyles`) so the `/movie` page — which loads those
        partials directly without `_sharedStyles` — gets the same
        shrinking as the listing pages. */
 

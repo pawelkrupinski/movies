@@ -32,7 +32,7 @@ import play.api.routing.Router
  * window, so one unbounded label is a slow leak that only shows up as an OOM
  * weeks later.
  *
- *  - `route` is Play's matched ROUTE PATTERN (`/:city/film/:slug`), never
+ *  - `route` is Play's matched ROUTE PATTERN (`/:city/movie/:slug`), never
  *    `request.path`. The raw path is unbounded twice over: one series per film
  *    slug (thousands, growing weekly) times one per city. The pattern set is
  *    exactly the number of lines in `web/src/main/resources/routes` — bounded
@@ -128,7 +128,7 @@ object WebHttpMetrics {
     Set("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT")
 
   /** Rewrites Play's generated path syntax into the spelling used in the routes
-   *  file: `/$city<[^/]+>/film/$slug<[^/]+>` → `/:city/film/:slug`. The label is
+   *  file: `/$city<[^/]+>/movie/$slug<[^/]+>` → `/:city/movie/:slug`. The label is
    *  read by a human in Grafana, and the raw form is unreadable; the regex body
    *  also carries no information the pattern name doesn't. */
   private val DynamicPart = """\$([^<]+)<[^>]*>""".r

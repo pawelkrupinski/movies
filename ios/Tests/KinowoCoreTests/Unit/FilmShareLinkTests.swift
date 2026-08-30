@@ -3,7 +3,7 @@ import XCTest
 
 /// `FilmShareLink.url` must mirror the server's `controllers.FilmHref`, so a
 /// link shared from the app is byte-identical to one copied off the website.
-/// That is now the slug path `/<city>/film/<slug>`; the legacy `?title=` builder
+/// That is now the slug path `/<city>/movie/<slug>`; the legacy `?title=` builder
 /// stays for films the server sent no slug for, and must keep its exact
 /// encoding (spaces as `%20`, never the form `+`).
 final class FilmShareLinkTests: XCTestCase {
@@ -20,7 +20,7 @@ final class FilmShareLinkTests: XCTestCase {
         XCTAssertEqual(
             FilmShareLink.url(for: film(title: "Diuna: Część druga", slug: "diuna-czesc-druga"),
                               citySlug: "wroclaw").absoluteString,
-            "https://kinowo.net/wroclaw/film/diuna-czesc-druga"
+            "https://kinowo.net/wroclaw/movie/diuna-czesc-druga"
         )
     }
 
@@ -36,11 +36,11 @@ final class FilmShareLinkTests: XCTestCase {
         // The query form still resolves server-side (301 → the slug address).
         XCTAssertEqual(
             FilmShareLink.url(for: film(title: "Oppenheimer", slug: nil), citySlug: "poznan").absoluteString,
-            "https://kinowo.net/poznan/film?title=Oppenheimer"
+            "https://kinowo.net/poznan/movie?title=Oppenheimer"
         )
         XCTAssertEqual(
             FilmShareLink.url(for: film(title: "Oppenheimer", slug: ""), citySlug: "poznan").absoluteString,
-            "https://kinowo.net/poznan/film?title=Oppenheimer"
+            "https://kinowo.net/poznan/movie?title=Oppenheimer"
         )
     }
 
@@ -49,16 +49,16 @@ final class FilmShareLinkTests: XCTestCase {
     func testPlainAsciiTitleIsLeftIntact() {
         XCTAssertEqual(
             FilmShareLink.url(forTitle: "Oppenheimer", citySlug: "poznan").absoluteString,
-            "https://kinowo.net/poznan/film?title=Oppenheimer"
+            "https://kinowo.net/poznan/movie?title=Oppenheimer"
         )
     }
 
     func testCarriesTheCitySlugInThePath() {
         // The city the sharer is browsing scopes the link — a city-less
-        // `/film?title=…` has no server route and 404s.
+        // `/movie?title=…` has no server route and 404s.
         XCTAssertEqual(
             FilmShareLink.url(forTitle: "Oppenheimer", citySlug: "bielsko-biala").absoluteString,
-            "https://kinowo.net/bielsko-biala/film?title=Oppenheimer"
+            "https://kinowo.net/bielsko-biala/movie?title=Oppenheimer"
         )
     }
 
@@ -66,14 +66,14 @@ final class FilmShareLinkTests: XCTestCase {
         // Space → %20 (not `+`), `&` → %26.
         XCTAssertEqual(
             FilmShareLink.url(forTitle: "Lilo & Stitch", citySlug: "warszawa").absoluteString,
-            "https://kinowo.net/warszawa/film?title=Lilo%20%26%20Stitch"
+            "https://kinowo.net/warszawa/movie?title=Lilo%20%26%20Stitch"
         )
     }
 
     func testColonAndPolishDiacriticsEncode() {
         XCTAssertEqual(
             FilmShareLink.url(forTitle: "Diuna: Część druga", citySlug: "wroclaw").absoluteString,
-            "https://kinowo.net/wroclaw/film?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga"
+            "https://kinowo.net/wroclaw/movie?title=Diuna%3A%20Cz%C4%99%C5%9B%C4%87%20druga"
         )
     }
 

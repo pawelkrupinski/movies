@@ -95,7 +95,7 @@ object ApiFilm {
     val cinemaUrlMap = fs.cinemaFilmUrls.map { case (c, url) => c.displayName -> url }.toMap
     ApiFilm(
       title            = fs.movie.title,
-      // The film's canonical path segment on the web (`/{city}/film/{slug}`).
+      // The film's canonical path segment on the web (`/{city}/movie/{slug}`).
       // Served rather than derived client-side: the fold handles Polish and
       // German diacritics, ß, and Cyrillic, and a Swift copy plus a Kotlin copy
       // would be two more places for it to drift from `tools.Slugify`.
@@ -250,7 +250,7 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
       .orElse(knownMovieFallback(city, title, decoded))
   }
 
-  /** Resolve the canonical `/{city}/film/{slug}` address. Slugs are lossy and
+  /** Resolve the canonical `/{city}/movie/{slug}` address. Slugs are lossy and
    *  irreversible, so the only way back to a film is to re-slug what the city is
    *  showing and compare — cheap, since `toSchedules` is a warm in-memory join.
    *
@@ -365,7 +365,7 @@ class MovieController( cc: ControllerComponents,
   private def acceptsGzip(request: RequestHeader): Boolean =
     request.headers.get("Accept-Encoding").exists(_.toLowerCase.contains("gzip"))
 
-  // The plain HTML pages (`/{city}/`, `/{city}/filmy`) are byte-identical for
+  // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for
   // every anonymous visitor at a given cache version, so we serve a
   // pre-rendered, pre-gzipped blob keyed on the request path (which fully
   // determines the output: city and page type). Logged-in users (personalised
@@ -453,7 +453,7 @@ class MovieController( cc: ControllerComponents,
 
   // Render the main "Filmy" listing — repertoire view, full corpus,
   // OG meta derived from `?…` filter parameters. Shared between `/` and
-  // `/filmy` (no parameters) so both URLs are interchangeable; `/filmy`
+  // `/movies` (no parameters) so both URLs are interchangeable; `/movies`
   // with one of the browse-axis parameters still routes through `browse`
   // below to the per-director / per-cast / per-country page.
   private def renderIndex(city: City, request: RequestHeader): Result = {
@@ -487,7 +487,7 @@ class MovieController( cc: ControllerComponents,
       pageUrl         = PageMeta.canonicalUrl(request),
       fbAppId         = PageMeta.fbAppId,
       // og:url keeps the filtered request URL (so a shared filtered link
-      // previews the filter), but the canonical folds `/{city}/filmy` and every
+      // previews the filter), but the canonical folds `/{city}/movies` and every
       // `?filter` variation back to the bare listing.
       canonicalUrl    = PageMeta.origin(request) + s"/${city.slug}/",
     )
@@ -522,9 +522,9 @@ class MovieController( cc: ControllerComponents,
         case (_, Some(name), _, _) => renderBrowse(c, name, all.filter(_.director.contains(name)),        request)
         case (_, _, Some(name), _) => renderBrowse(c, name, all.filter(_.cast.contains(name)),            request)
         case (_, _, _, Some(name)) => renderBrowse(c, name, all.filter(_.movie.genres.contains(name)),    request)
-        // `/{city}/filmy` with no filter axis is the main listing — the same
+        // `/{city}/movies` with no filter axis is the main listing — the same
         // view as `/{city}/`. The browse view only kicks in for the per-axis
-        // pages reached from the meta-link rows on /film.
+        // pages reached from the meta-link rows on /movie.
         case _                     => renderIndex(c, request)
       }
     }
@@ -533,7 +533,7 @@ class MovieController( cc: ControllerComponents,
   // robots.txt — see `RobotsTxt` for what goes in it and why. The one decision
   // that lives here is WHICH of its two shapes this request wants: the brand
   // front door speaks for every country mounted under the apex, a country's own
-  // site only for itself. The `/*/og-image` + `/*/film/og-image` PNG endpoints
+  // site only for itself. The `/*/og-image` + `/*/movie/og-image` PNG endpoints
   // are deliberately NOT disallowed — Facebook honours robots.txt when fetching
   // `og:image`, so blocking them would break every share preview.
   def robotsTxt: Action[AnyContent] = Action { request =>
@@ -618,7 +618,7 @@ class MovieController( cc: ControllerComponents,
   def debug(): Action[AnyContent] = Action { request =>
     devOnly {
       // The debug table is the global corpus; the only thing the view needs a
-      // city for is the /film fallback link on a row with no live showtimes
+      // city for is the /movie fallback link on a row with no live showtimes
       // anywhere — give it the default city for that edge case.
       implicit val c: City = City.all.head
       // Which country's corpus to show (the boot country unless a Dev-only
@@ -800,6 +800,45 @@ class MovieController( cc: ControllerComponents,
       }
     }
   }
+
+  /** `/{city}/film…` and `/{city}/filmy` — the pre-rename Polish spellings of
+   *  the detail page and the browse facets, 301'd onto `/{city}/movie…` and
+   *  `/{city}/movies`. Kept routable indefinitely for the same reason the
+   *  `?title=` form is: search indexes, shared links and installed app builds
+   *  all still carry the old address.
+   *
+   *  The sub-path form takes the whole remainder rather than a `:slug` because
+   *  the rename moved `/film/og-image` too, and one wildcard covers both. */
+  def filmLegacy(city: String): Action[AnyContent] = Action { request =>
+    movedToRenamedPath(city, "movie", request)
+  }
+
+  def filmSubPathLegacy(city: String, rest: String): Action[AnyContent] = Action { request =>
+    movedToRenamedPath(city, s"movie/$rest", request)
+  }
+
+  def browseLegacy(city: String): Action[AnyContent] = Action { request =>
+    movedToRenamedPath(city, "movies", request)
+  }
+
+  /** 301 onto `/{prefix}/{city}/{tail}`, query string intact.
+   *
+   *  Resolved through `withCity` so the mount prefix comes off the CITY, the
+   *  same way every other URL builder here gets it — Play strips
+   *  `play.http.context` before matching, so a redirect assembled from the
+   *  route's own `:city` alone would drop the `/uk` and land off-site. It also
+   *  means an unknown city 404s here rather than being bounced onto a URL that
+   *  404s one hop later.
+   *
+   *  The query string rides along verbatim: `?title=`, the browse facets
+   *  (including the legacy Polish `kraj`/`rezyser`/… spellings) and the shared
+   *  filter links all live there, and dropping them would answer 200 with the
+   *  wrong content — the failure mode nobody reports. */
+  private def movedToRenamedPath(city: String, tail: String, request: RequestHeader): Result =
+    withCity(city) { c =>
+      val path = s"${c.country.pathPrefix}/${c.slug}/$tail"
+      MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}")
+    }
 
   /** The canonical film page, addressed by slug. */
   def filmBySlug(city: String, slug: String): Action[AnyContent] = Action { request =>
@@ -1110,7 +1149,7 @@ object MovieController {
   }
 
   /** One fully-populated film (synopsis + cast + director, which the listing
-   *  samples leave empty) for the `/debug/tune/film` page, so every meta block
+   *  samples leave empty) for the `/debug/tune/movie` page, so every meta block
    *  renders and its fonts are tunable. Built off the rich sample's ratings +
    *  multi-cinema showings tree. */
   private[controllers] def tuneSampleFilm: FilmSchedule =

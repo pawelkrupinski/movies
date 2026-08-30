@@ -50,13 +50,17 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "fence off the browse facets, which the sitemap deliberately omits" in {
     val body = contentAsString(controller().robotsTxt(req("/robots.txt")))
+    body should include("Disallow: /*/movies")
+    // The pre-rename address 301s onto that one rather than 404ing, so a
+    // crawler that already has it in its frontier would spend the same budget
+    // walking the redirects. Both spellings stay fenced.
     body should include("Disallow: /*/filmy")
   }
 
   it should "keep the film deep-links crawlable — they carry the long tail" in {
     val body = contentAsString(controller().robotsTxt(req("/robots.txt")))
-    body should not include "Disallow: /*/film\n"
-    body should not include "Disallow: /*/film?"
+    body should not include "Disallow: /*/movie\n"
+    body should not include "Disallow: /*/movie?"
   }
 
   "sitemap.xml" should "enumerate the landing, the city, its plan, and live films" in {
@@ -69,7 +73,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("<loc>https://kinowo.net/</loc>")
     body should include("<loc>https://kinowo.net/poznan/</loc>")
     body should include("<loc>https://kinowo.net/poznan/plan</loc>")
-    body should include("<loc>https://kinowo.net/poznan/film/testowy-film</loc>")
+    body should include("<loc>https://kinowo.net/poznan/movie/testowy-film</loc>")
   }
 
   /** The US crawl map is its metros — the state is not an address, so naming
@@ -127,7 +131,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("Sitemap: https://showtimes.cc/uk/sitemap.xml")
     body should include("Sitemap: https://showtimes.cc/de/sitemap.xml")
     body should include("Disallow: /uk/debug")
-    body should include("Disallow: /us/*/filmy")
+    body should include("Disallow: /us/*/movies")
     // The apex is not Poland's front page, so it must not advertise Poland's.
     body should not include "kinowo.net"
   }

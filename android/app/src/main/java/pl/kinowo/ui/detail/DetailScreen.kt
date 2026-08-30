@@ -91,7 +91,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    // Shares the canonical `/<city>/film?title=…` link — same URL
+                    // Shares the canonical `/<city>/movie?title=…` link — same URL
                     // a user would copy from the website's address bar.
                     if (film != null) {
                         val context = LocalContext.current
@@ -144,7 +144,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                             color = OriginalTitleText,
                         )
                     }
-                    // Age rating / runtime / year / genre pills — the `/film`
+                    // Age rating / runtime / year / genre pills — the `/movie`
                     // title block shows every genre (no cap, unlike the card).
                     MetaPills(
                         runtimeMinutes = film.runtimeMinutes,

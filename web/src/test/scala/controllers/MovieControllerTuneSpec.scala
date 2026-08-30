@@ -72,9 +72,9 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
-  "GET /debug/tune/film" should "render the film tuning page in dev mode" in {
+  "GET /debug/tune/movie" should "render the film tuning page in dev mode" in {
     val ctrl   = buildController(Mode.Dev)
-    val result = ctrl.tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/film"))
+    val result = ctrl.tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/movie"))
 
     status(result) shouldBe OK
     val html = contentAsString(result)
@@ -88,7 +88,7 @@ class MovieControllerTuneSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "404 in production" in {
-    val result = buildController(Mode.Prod).tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/film"))
+    val result = buildController(Mode.Prod).tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/movie"))
     status(result) shouldBe NOT_FOUND
   }
 

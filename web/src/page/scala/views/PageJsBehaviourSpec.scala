@@ -84,24 +84,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         currentUser = anon, oauthProviders = noOauth, renderedAt = now
       ).body
 
-      // `/film/{slug}` mirrors the `MovieController.filmBySlug` action: re-slug
+      // `/movie/{slug}` mirrors the `MovieController.filmBySlug` action: re-slug
       // the fixture corpus's titles, match, and render the per-film page. Used
-      // by the layout-sweep tests to drive /film through every phone viewport,
+      // by the layout-sweep tests to drive /movie through every phone viewport,
       // and by the card-tap tests, which navigate to whatever `data-slug` the
       // card carries.
       def renderFilm(slug: String): String =
         schedules.find(s => tools.Slugify(s.movie.title) == slug) match {
           case Some(s) =>
-            views.html.film(s, s"http://test.local/film/$slug",
+            views.html.film(s, s"http://test.local/movie/$slug",
               ogDescription = "", devMode = false).body
           case None    => "<html><body>Film not found</body></html>"
         }
-      // A purpose-built /film render for the cinema-fold test: the Poznań
+      // A purpose-built /movie render for the cinema-fold test: the Poznań
       // fixture corpus tops out at a handful of venues a day, but the fold
       // only bites past ten — London's `one-night-only` runs 62. Take the
       // first schedule and re-seat its single day at 12 distinct cinemas.
       val manyCinemasHtml: String = views.html.film(
-        tools.ManyCinemaFilm(schedules.head), "http://test.local/film-many",
+        tools.ManyCinemaFilm(schedules.head), "http://test.local/movie-many",
         ogDescription = "", devMode = false).body
       // `/plan` is static for the fixture corpus — the poster picker +
       // "Twoje filmy" plan. Drives the Filmy-section fold behaviour
@@ -200,17 +200,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // — the real Play routes do too, and the day-selector ↔ URL tests
           // need to boot the page with the parameter already in `location.search`.
           case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
-          case p if sub(p).startsWith("/film/") =>
-            renderFilm(sub(p).stripPrefix("/film/"))
+          case p if sub(p).startsWith("/movie/") =>
+            renderFilm(sub(p).stripPrefix("/movie/"))
           case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
           case p if sub(p) == "/li"           => loggedInHtml
           case p if p == "/api/me/state"      => userStateJson
           // The dev-only visual-tuning page — rendered with real fixture films
           // so its slider panel (and the ± step buttons) can be driven over CDP.
           case p if sub(p) == "/debug/tune" => views.html.tune(schedules.take(3)).body
-          // Isolated /film render carrying 12 cinemas on one date — drives the
+          // Isolated /movie render carrying 12 cinemas on one date — drives the
           // cinema-fold unfold button.
-          case p if sub(p) == "/film-many" => manyCinemasHtml
+          case p if sub(p) == "/movie-many" => manyCinemasHtml
           // The city-selection landing (no city prefix — there's no city yet).
           case "/landing" => landingHtml
           // The global-corpus /debug page (no city prefix).
@@ -242,7 +242,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  the test cleanly when Chrome wasn't located in beforeAll. */
   private def onPath(path: String)(body: CdpPage => Any): Unit =
     chrome match {
-      // `path` is an in-city sub-path ("/", "/film/{slug}"); pages
+      // `path` is an in-city sub-path ("/", "/movie/{slug}"); pages
       // live under `/{city}/…`, so prepend the city prefix.
       case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
@@ -1024,18 +1024,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── /film cinema fold ────────────────────────────────────────────────────
+  // ── /movie cinema fold ────────────────────────────────────────────────────
   //
-  // ── /film cinema fold + showings filter ──────────────────────────────────
+  // ── /movie cinema fold + showings filter ──────────────────────────────────
   //
-  // A big-city film plays 60+ venues a day, and /film listed every one of them
+  // A big-city film plays 60+ venues a day, and /movie listed every one of them
   // TWICE — once as a link pill under the title, once per date in the showings
   // tree. The PILL ROW folds at ten behind an unfold button. The SHOWINGS TREE
   // does not fold: it renders every cinema, and what narrows it is the
   // visitor's own Filtry selection, applied by `applyFilters` in
   // `film.scala.html` off shared.js's `disabledCinemas`.
   //
-  // `/film-many` serves a 12-cinema render so both behaviours have something
+  // `/movie-many` serves a 12-cinema render so both behaviours have something
   // to bite on (the Poznań fixture corpus never reaches ten).
 
   private def visibleCinemaGroups(page: CdpPage): Int =
@@ -1044,12 +1044,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def visibleCinemaLinks(page: CdpPage): Int =
     page.evalInt("[...document.querySelectorAll('.cinema-link')].filter(a => a.offsetParent !== null).length")
 
-  /** `/film-many` with a clean filter selection. localStorage is per-ORIGIN,
+  /** `/movie-many` with a clean filter selection. localStorage is per-ORIGIN,
    *  not per-tab, so without this a test that switches cinemas off hands its
    *  selection to whichever test opens the page next — and the failure lands
    *  over there, on an assertion that looks unrelated. */
   private def onFilmMany(body: CdpPage => Any): Unit =
-    onPath("/film-many") { page => clearLocalStorage(page); body(page) }
+    onPath("/movie-many") { page => clearLocalStorage(page); body(page) }
 
   /** Switch off `count` of the film's cinemas the way the Filtry sheet does —
    *  by display name into `disabledCinemas` — and re-run the page's filter.
@@ -1064,7 +1064,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     names
   }
 
-  "the /film showings tree" should "render every cinema of a date, unfolded and with no button" in {
+  "the /movie showings tree" should "render every cinema of a date, unfolded and with no button" in {
     onFilmMany { page =>
       page.evalInt("document.querySelectorAll('.cinema-group').length") shouldBe 12
       visibleCinemaGroups(page)                                         shouldBe 12
@@ -1098,7 +1098,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "take the date header down with the last of its cinemas" in {
     onFilmMany { page =>
-      // `/film-many` seats all 12 on ONE date, so switching every one off
+      // `/movie-many` seats all 12 on ONE date, so switching every one off
       // must leave no bare date label behind.
       disableCinemas(page, 12)
 
@@ -1117,7 +1117,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "the /film cinema fold" should "show the first ten cinema-link pills under the title and hide the rest" in {
+  "the /movie cinema fold" should "show the first ten cinema-link pills under the title and hide the rest" in {
     onFilmMany { page =>
       page.evalInt("document.querySelectorAll('.cinema-link').length")        shouldBe 12
       page.evalInt("document.querySelectorAll('.cinema-link.folded').length") shouldBe 2
@@ -1195,16 +1195,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── /film page element visibility ────────────────────────────────────────
+  // ── /movie page element visibility ────────────────────────────────────────
   //
-  // Every key element on the /film detail page — poster, title, ratings,
+  // Every key element on the /movie detail page — poster, title, ratings,
   // metadata, showtimes — must be visible (non-zero bounding rect) at
   // both desktop and mobile widths. Catches CSS leaks like _sharedStyles'
   // aspect-ratio box rules collapsing the poster to zero height.
 
-  private val filmTarget = "/film/" + tools.Slugify("Diabeł ubiera się u Prady 2")
+  private val filmTarget = "/movie/" + tools.Slugify("Diabeł ubiera się u Prady 2")
 
-  // Elements that must be visible on the /film page. Each pair is
+  // Elements that must be visible on the /movie page. Each pair is
   // (label for diagnostics, CSS selector). The selector must match at
   // least one element and that element must have a non-zero bounding
   // rect (width > 0 AND height > 0).
@@ -1214,7 +1214,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     "showtimes" -> ".badge-time",
   )
 
-  "the /film page elements" should "all be visible at desktop width" in {
+  "the /movie page elements" should "all be visible at desktop width" in {
     onPath(filmTarget) { page =>
       page.setDesktopViewport(1280, 900)
       val failures = filmVisibleElements.flatMap { case (label, sel) =>
@@ -1250,11 +1250,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── /film page mobile sweep ──────────────────────────────────────────────
+  // ── /movie page mobile sweep ──────────────────────────────────────────────
   //
-  // /film has its own stylesheet block (no `_sharedStyles`) — the
+  // /movie has its own stylesheet block (no `_sharedStyles`) — the
   // `--mobile-scale` variable is declared in `_pillStyles` so it
-  // reaches /film, and the per-mobile @@media block in film.scala.html
+  // reaches /movie, and the per-mobile @@media block in film.scala.html
   // scales the title / meta / cinema-link chrome.
   //
   // The page doesn't have the 2-row navbar (just a back-link), so the
@@ -1265,11 +1265,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // link row would push the layout horizontally past the viewport
   // edge, producing a horizontal scrollbar on mobile.
 
-  "the /film page" should "fit horizontally within every common phone width" in {
+  "the /movie page" should "fit horizontally within every common phone width" in {
     // Pick a film known to exist in the fixture corpus and to have a
     // long-ish title (so the assertion exercises real text rendering,
     // not the empty-fixture trivial case).
-    val target = "/film/" + tools.Slugify("Diabeł ubiera się u Prady 2")
+    val target = "/movie/" + tools.Slugify("Diabeł ubiera się u Prady 2")
     onPath(target) { page =>
       pinDeterministicFont(page)
       val overflows: Seq[(Int, Int)] = MobileViewports.map { w =>
@@ -1291,14 +1291,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val table = overflows.map { case (w, ov) =>
         f"  $w%3d px → overflow=$ov%3d px"
       }.mkString("\n")
-      info(s"/film layout sweep:\n$table")
-      withClue(s"/film layout sweep:\n$table\n") {
+      info(s"/movie layout sweep:\n$table")
+      withClue(s"/movie layout sweep:\n$table\n") {
         all (overflows.map(_._2)) shouldBe 0
       }
     }
   }
 
-  // ── /film poster/details stacking ────────────────────────────────────────
+  // ── /movie poster/details stacking ────────────────────────────────────────
   //
   // The detail layout is a Bootstrap flex row: poster (`.col-auto`,
   // capped at 300 px) beside the details column (`.col`). On a phone
@@ -1310,7 +1310,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // either way; only the rendered layout flips.
 
   /** (posterTop, posterRight, posterBottom, posterLeft, titleTop, titleLeft)
-   *  for the /film hero — the poster box and the title that heads the
+   *  for the /movie hero — the poster box and the title that heads the
    *  details column. */
   private def filmHeroGeometry(page: CdpPage): (Double, Double, Double, Double, Double, Double) =
     page.evalString(
@@ -1331,7 +1331,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // widths can't tell the fix from the default.
   private val FilmCrampedWidths = Seq(402, 430, 540, 575)
 
-  "the /film poster and details" should "stack vertically across the cramped phone band" in {
+  "the /movie poster and details" should "stack vertically across the cramped phone band" in {
     onPath(filmTarget) { page =>
       val rows = FilmCrampedWidths.map { w =>
         page.setViewport(w, 1100)
@@ -1343,8 +1343,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val table = rows.map { case (w, pb, tt) =>
         f"  $w%3d px → posterBottom=$pb%.0f titleTop=$tt%.0f"
       }.mkString("\n")
-      info(s"/film stacking sweep:\n$table")
-      withClue(s"/film stacking sweep (title must start below the poster):\n$table\n") {
+      info(s"/movie stacking sweep:\n$table")
+      withClue(s"/movie stacking sweep (title must start below the poster):\n$table\n") {
         // titleTop ≥ posterBottom means the details column starts below
         // the poster — stacked, not crammed beside it.
         all (rows.map { case (_, pb, tt) => tt - pb }) should be >= -4.0
@@ -1444,7 +1444,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── Single-tap card navigation ───────────────────────────────────────────
   //
-  // Every tap on a poster or title link navigates directly to /film.
+  // Every tap on a poster or title link navigates directly to /movie.
   // Icons (★, ✕) are always visible — no two-tap preview system.
 
   private val firstCardPosterLink =
@@ -1461,7 +1461,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
       slug should not be empty
       page.eval(s"$firstCardPosterLink.click()")
-      page.waitFor(s"location.pathname === '$cityPrefix/film/$slug'", timeoutMs = 5000)
+      page.waitFor(s"location.pathname === '$cityPrefix/movie/$slug'", timeoutMs = 5000)
       // The whole point of the slug: the address carries no query string at all.
       page.evalString("location.search") shouldBe ""
     }
@@ -1920,7 +1920,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // Clicking outside the open panel must do exactly ONE thing — dismiss it.
   // Regression: the same outside-click also bubbled to the card-tap handler
-  // (or followed the link under the cursor) and navigated to /film, so closing
+  // (or followed the link under the cursor) and navigated to /movie, so closing
   // the filter accidentally opened a page.
   it should "only dismiss on an outside click — never trigger a link or navigation" in {
     onPath("/") { page =>
@@ -3056,13 +3056,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  "a genre pill on a film card" should "link to the /{city}/filmy?genre= browse page for that genre" in {
+  "a genre pill on a film card" should "link to the /{city}/movies?genre= browse page for that genre" in {
     onPath("/") { page =>
       val href = page.evalString(
         "(() => { const a = document.querySelector('.col[data-genres] a.pill.genre');" +
           "  return a ? a.getAttribute('href') : ''; })()"
       )
-      href should startWith(cityPrefix + "/filmy?genre=")
+      href should startWith(cityPrefix + "/movies?genre=")
     }
   }
 

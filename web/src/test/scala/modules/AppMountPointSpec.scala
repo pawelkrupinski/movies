@@ -72,7 +72,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
     new controllers.ReverseLandingController("/uk/").index().url shouldBe "/uk/"
     new controllers.ReverseMovieController("/uk/").index("kent").url shouldBe "/uk/kent/"
     new controllers.ReverseMovieController("/uk/").filmBySlug("kent", "dune").url shouldBe
-      "/uk/kent/film/dune"
+      "/uk/kent/movie/dune"
     new controllers.ReverseMovieController("/uk/").sitemap.url shouldBe "/uk/sitemap.xml"
     new controllers.ReverseAssets("/uk/").versioned(controllers.Assets.Asset("js/shared.js")).url shouldBe
       "/uk/assets/js/shared.js"
@@ -100,7 +100,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
     new controllers.ReverseLandingController("/").index().url shouldBe "/"
     new controllers.ReverseMovieController("/").index("poznan").url shouldBe "/poznan/"
     new controllers.ReverseMovieController("/").filmBySlug("poznan", "diuna").url shouldBe
-      "/poznan/film/diuna"
+      "/poznan/movie/diuna"
     new controllers.ReverseAssets("/").versioned(controllers.Assets.Asset("js/shared.js")).url shouldBe
       "/assets/js/shared.js"
   }

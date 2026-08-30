@@ -13,7 +13,7 @@ import java.time.{LocalDate, LocalDateTime}
 
 // The film page's Open Graph / Twitter-card metadata drives the link
 // preview WhatsApp / Messenger / Slack / Telegram / X render when the
-// /film URL is shared. og:image points at a server-rendered 1200×630
+// /movie URL is shared. og:image points at a server-rendered 1200×630
 // composite (full poster + title + ratings) so the preview UIs can't crop
 // the poster out and the ratings are always visible. This spec pins those
 // tags.
@@ -21,7 +21,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   private implicit val city: models.City = Poznan
 
-  private val ogImageUrl = "https://kinowo.net/poznan/film/og-image?title=Incepcja"
+  private val ogImageUrl = "https://kinowo.net/poznan/movie/og-image?title=Incepcja"
 
   private val sample: FilmSchedule =
     FilmSchedule(
@@ -38,7 +38,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
     )
 
   private def render(film: FilmSchedule, imageUrl: String = ogImageUrl): String =
-    views.html.film(film, "https://kinowo.net/poznan/film?title=Incepcja",
+    views.html.film(film, "https://kinowo.net/poznan/movie?title=Incepcja",
       ogDescription = "IMDb 8.8 · RT 87% — synopsis", ogImageUrl = imageUrl, devMode = false).body
 
   "the film preview" should "point og:image + twitter:image at the server-rendered composite card" in {
@@ -76,7 +76,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   it should "render in English for an English (UK) deployment" in {
     val html = views.html.film(
-      sample, "https://kinowo.net/london/film?title=Incepcja",
+      sample, "https://kinowo.net/london/movie?title=Incepcja",
       ogDescription = "IMDb 8.8 · RT 87% — synopsis", ogImageUrl = ogImageUrl,
     )(London, TestMessages.forLang("en")).body
     html should include ("<title>Incepcja (2010) – showtimes London | Showtimes</title>")

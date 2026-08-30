@@ -94,7 +94,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     val list  = byType(parseArray(StructuredData.cityPage("https://kinowo.net/poznan/", Poznan, films)), "ItemList").head
     val items = (list \ "itemListElement").as[JsArray].value
     items.map(i => (i \ "name").as[String]) shouldBe Seq("Amelia", "Zorro") // sorted
-    (items.head \ "url").as[String]         shouldBe "https://kinowo.net/poznan/film/amelia"
+    (items.head \ "url").as[String]         shouldBe "https://kinowo.net/poznan/movie/amelia"
     (list \ "numberOfItems").as[Int]        shouldBe 2
     (list \ "name").as[String]              shouldBe "Repertuar kin w Poznaniu"
   }
@@ -107,7 +107,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
 
   // ── film page ────────────────────────────────────────────────────────────────
 
-  private val canonical = "https://kinowo.net/poznan/film/diuna"
+  private val canonical = "https://kinowo.net/poznan/movie/diuna"
 
   "film JSON-LD" should "emit a Movie with the core fields" in {
     val arr   = parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)))))

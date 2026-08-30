@@ -22,7 +22,7 @@ val LocalCitySlug = compositionLocalOf { "" }
 /**
  * Canonical public URL for a film's page — the Android counterpart of the
  * server's `controllers.FilmHref`. The film page is city-scoped
- * (`/<city>/film/<slug>`); a city-less path has no server route and 404s, so the
+ * (`/<city>/movie/<slug>`); a city-less path has no server route and 404s, so the
  * slug of the city the sharer is browsing is required.
  *
  * `filmSlug` is whatever `/api/repertoire` served for the film, deliberately NOT
@@ -33,8 +33,8 @@ val LocalCitySlug = compositionLocalOf { "" }
  * onto the slug. Pure JVM (no Android APIs) so it's unit-testable directly.
  */
 fun filmShareUrl(citySlug: String, title: String, filmSlug: String? = null): String =
-    if (!filmSlug.isNullOrEmpty()) "https://kinowo.net/$citySlug/film/$filmSlug"
-    else "https://kinowo.net/$citySlug/film?title=" +
+    if (!filmSlug.isNullOrEmpty()) "https://kinowo.net/$citySlug/movie/$filmSlug"
+    else "https://kinowo.net/$citySlug/movie?title=" +
         URLEncoder.encode(title, "UTF-8").replace("+", "%20")
 
 /** Open the system share sheet for a film's public link. Backs the Share

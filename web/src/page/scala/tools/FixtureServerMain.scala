@@ -92,7 +92,7 @@ object FixtureServerMain {
     // production's hard-cut routing. The fixture corpus is Poznań's; the other
     // cities resolve to empty schedules (no scrapers wired in tests), exactly
     // as production serves a not-yet-populated city. The listing page (`/`,
-    // `/filmy`) steps the selected day on a horizontal swipe — there's no
+    // `/movies`) steps the selected day on a horizontal swipe — there's no
     // longer a separate Kina page or in-place view swap.
     def schedulesFor(c: City) = service.toSchedules(c, now)
 
@@ -101,7 +101,7 @@ object FixtureServerMain {
       views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
         currentUser = anon, oauthProviders = noOauth, renderedAt = now).body
     }
-    def filmyPageFor(c: City): String = {
+    def browsePageFor(c: City): String = {
       implicit val ci: City = c
       views.html.browse(schedulesFor(c), "Filmy", devMode = false, currentUser = anon, oauthProviders = noOauth).body
     }
@@ -116,14 +116,14 @@ object FixtureServerMain {
       implicit val ci: City = c
       schedulesFor(c).find(s => tools.Slugify(s.movie.title) == slug) match {
         case Some(s) =>
-          views.html.film(s, s"http://test.local/${c.slug}/film/$slug",
+          views.html.film(s, s"http://test.local/${c.slug}/movie/$slug",
             ogDescription = "", devMode = false).body
         case None    => "<html><body>Film not found</body></html>"
       }
     }
 
-    // `/{city}/film-many` — the same film page, re-seated at 12 cinemas on one
-    // date so the Playwright suite can drive /film's cinema fold. No corpus
+    // `/{city}/movie-many` — the same film page, re-seated at 12 cinemas on one
+    // date so the Playwright suite can drive /movie's cinema fold. No corpus
     // film reaches the ten-cinema threshold on its own.
     def manyCinemaFilmPageFor(c: City): String = {
       implicit val ci: City = c
@@ -131,7 +131,7 @@ object FixtureServerMain {
       // the same empty-handed page a real unpopulated city would.
       schedulesFor(c).headOption match {
         case Some(base) => views.html.film(ManyCinemaFilm(base),
-          s"http://test.local/${c.slug}/film-many", ogDescription = "", devMode = false).body
+          s"http://test.local/${c.slug}/movie-many", ogDescription = "", devMode = false).body
         case None       => "<html><body>Film not found</body></html>"
       }
     }
@@ -146,7 +146,7 @@ object FixtureServerMain {
 
     // The same screen for a country whose place list is GROUPED — the US, whose
     // metros are found under their state's heading. A fixture-only path, like
-    // `/{city}/film-many`: production serves one country per deployment, so its
+    // `/{city}/movie-many`: production serves one country per deployment, so its
     // `/` can only ever be one of the two shapes, and the grouped one is not the
     // shape this harness's default country has.
     val usLandingHtml: String = views.html.landing(models.Country.UnitedStates).body
@@ -170,14 +170,14 @@ object FixtureServerMain {
         val (c, sub) = resolve(p).get
         sub match {
           case s if s == "/"     || s.startsWith("/?")     => indexPageFor(c)
-          case "/filmy"                                    => indexPageFor(c)
-          case s if s.startsWith("/filmy?") &&
-                     (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => filmyPageFor(c)
-          case s if s.startsWith("/filmy?")                => indexPageFor(c)
+          case "/movies"                                    => indexPageFor(c)
+          case s if s.startsWith("/movies?") &&
+                     (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => browsePageFor(c)
+          case s if s.startsWith("/movies?")                => indexPageFor(c)
           case s if s == "/plan" || s.startsWith("/plan?") => planPageFor(c)
-          case "/film-many"                                => manyCinemaFilmPageFor(c)
-          case s if s.startsWith("/film/") =>
-            filmPageFor(c, s.stripPrefix("/film/"))
+          case "/movie-many"                                => manyCinemaFilmPageFor(c)
+          case s if s.startsWith("/movie/") =>
+            filmPageFor(c, s.stripPrefix("/movie/"))
         }
     }
 

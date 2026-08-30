@@ -92,7 +92,7 @@ class DeepLinkApplyTest {
         // The film lookup runs against the list it's GIVEN — which the fix
         // guarantees is the target city's repertoire, not stale films.
         vm.applyRepertoireDependent(
-            DeepLink.parse("https://kinowo.net/warszawa/film?title=Wicked")!!,
+            DeepLink.parse("https://kinowo.net/warszawa/movie?title=Wicked")!!,
             listOf(Film(title = "Other film"), Film(title = "Wicked")),
         )
 
@@ -107,7 +107,7 @@ class DeepLinkApplyTest {
         // "…Prady II" — exact match would miss. Normalized match finds it, and we
         // navigate with the FOUND film's real title so the detail route resolves.
         vm.applyRepertoireDependent(
-            DeepLink.parse("https://kinowo.net/warszawa/film?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202")!!,
+            DeepLink.parse("https://kinowo.net/warszawa/movie?title=Diabe%C5%82%20ubiera%20si%C4%99%20u%20Prady%202")!!,
             listOf(Film(title = "Diabeł ubiera się u Prady II")),
         )
 
@@ -121,7 +121,7 @@ class DeepLinkApplyTest {
         // Title not in the supplied list (e.g. matched against the wrong/stale
         // city, or the film left the listing) → no navigation, lands on the grid.
         vm.applyRepertoireDependent(
-            DeepLink.parse("https://kinowo.net/warszawa/film?title=Wicked")!!,
+            DeepLink.parse("https://kinowo.net/warszawa/movie?title=Wicked")!!,
             listOf(Film(title = "Other film")),
         )
 

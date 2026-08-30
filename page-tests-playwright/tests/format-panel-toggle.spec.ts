@@ -54,7 +54,7 @@ test.describe('Filtry dropdown panel', { tag: '@agnostic' }, () => {
     const startUrl = page.url();
 
     // Click a real card poster link (outside the panel). Before the fix this
-    // both closed the panel AND followed the link to /film. The capture-phase
+    // both closed the panel AND followed the link to /movie. The capture-phase
     // guard in shared.js must now swallow the click: panel closes, URL unchanged.
     //
     // Dispatched through the DOM (like the sibling test's `document.body.click()`)
@@ -68,7 +68,7 @@ test.describe('Filtry dropdown panel', { tag: '@agnostic' }, () => {
         .find((c) => (c as HTMLElement).style.display !== 'none');
       const a = col?.querySelector('.card .poster-wrap > a') as HTMLElement | undefined;
       if (!a) return false;
-      a.click();   // follows href to /film unless the guard preventDefaults it
+      a.click();   // follows href to /movie unless the guard preventDefaults it
       return true;
     });
     expect(clicked, 'no visible card poster to click').toBe(true);

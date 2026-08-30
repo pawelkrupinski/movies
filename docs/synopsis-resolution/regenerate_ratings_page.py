@@ -42,7 +42,7 @@ def klink(fid, enrich, fallback_title):
     info = enrich.get(fid)
     if not info or not info.get("city"):
         return None
-    return f"https://kinowo.net/{info['city']}/film?title={quote(info.get('title') or fallback_title)}"
+    return f"https://kinowo.net/{info['city']}/movie?title={quote(info.get('title') or fallback_title)}"
 
 
 def directors_html(directors, matched):

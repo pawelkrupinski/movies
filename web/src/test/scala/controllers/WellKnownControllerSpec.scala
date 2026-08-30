@@ -31,6 +31,11 @@ class WellKnownControllerSpec extends AnyFlatSpec with Matchers {
     val components = (json \ "applinks" \ "details" \ 0 \ "components").as[Seq[JsObject]]
     val patterns = components.map(c => (c \ "/").as[String])
 
+    patterns should contain ("/*/movie")
+    // `/film` was the detail page's address before the rename. A Universal Link
+    // is matched against this file and handed straight to the app, never
+    // reaching the server's 301, so an old link only opens the app if the file
+    // still claims the old shape too.
     patterns should contain ("/*/film")
     patterns should contain ("/*/")
     // OAuth must keep opening in the browser, so its exclude must come first.

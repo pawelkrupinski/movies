@@ -8,7 +8,7 @@ import play.api.test.Helpers._
 
 import java.time.LocalDateTime
 
-/** The `/{city}/filmy` browse facets are reached by query param, and the param
+/** The `/{city}/movies` browse facets are reached by query param, and the param
  *  names are English in every country — the site serves Poland, Germany and the
  *  UK off one route table, and the index page's own filters (`genre`, `country`,
  *  `director`, `cast`, `date`, …) were already English, so the browse axes match
@@ -31,10 +31,10 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
   private implicit val poznan: City = City.bySlug("poznan").get
 
   "the browse hrefs" should "use English query-param names" in {
-    BrowseHref.country("Polska")        shouldBe "/poznan/filmy?country=Polska"
-    BrowseHref.director("Jane Doe")     shouldBe "/poznan/filmy?director=Jane+Doe"
-    BrowseHref.actor("John Roe")        shouldBe "/poznan/filmy?cast=John+Roe"
-    BrowseHref.genre("Science Fiction") shouldBe "/poznan/filmy?genre=Science+Fiction"
+    BrowseHref.country("Polska")        shouldBe "/poznan/movies?country=Polska"
+    BrowseHref.director("Jane Doe")     shouldBe "/poznan/movies?director=Jane+Doe"
+    BrowseHref.actor("John Roe")        shouldBe "/poznan/movies?cast=John+Roe"
+    BrowseHref.genre("Science Fiction") shouldBe "/poznan/movies?genre=Science+Fiction"
   }
 
   it should "only emit params the routes file actually binds" in {
@@ -43,7 +43,7 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
     val stream = getClass.getResourceAsStream("/routes")
     stream should not be null
     val source = scala.io.Source.fromInputStream(stream)
-    val line = try source.getLines().find(_.contains("/:city/filmy")) finally source.close()
+    val line = try source.getLines().find(_.contains("/:city/movies")) finally source.close()
     line.isDefined shouldBe true
 
     // `browse(city: String, country: Option[String] ?= None, …)` — take every
@@ -91,7 +91,7 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
    *  positionally, so a mixed-up arm still compiles and still renders a page —
    *  only the contents are wrong. */
   "each browse axis" should "filter on the field it names" in {
-    val request = FakeRequest(GET, "/poznan/filmy")
+    val request = FakeRequest(GET, "/poznan/movies")
     val cases = Seq(
       ("country",  controller().browse("poznan", Some("Polska"),   None, None, None), "Country Match"),
       ("director", controller().browse("poznan", None, Some("Jane Doe"), None, None), "Director Match"),
@@ -112,7 +112,7 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
    *  link returns 200 with the whole city listing instead of the facet it asked for. Wrong
    *  content under a success status is the failure nobody reports. */
   "a legacy Polish param" should "still filter on the axis it named" in {
-    val request = FakeRequest(GET, "/poznan/filmy")
+    val request = FakeRequest(GET, "/poznan/movies")
     val cases = Seq(
       ("kraj",    controller().browse("poznan", None, None, None, None, kraj    = Some("Polska")),   "Country Match"),
       ("rezyser", controller().browse("poznan", None, None, None, None, rezyser = Some("Jane Doe")), "Director Match"),
@@ -131,7 +131,7 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
   it should "lose to the English one when a link somehow carries both" in {
     val html = contentAsString(
       controller().browse("poznan", country = Some("Polska"), None, None, None, kraj = Some("Nonsense"))
-        .apply(FakeRequest(GET, "/poznan/filmy")))
+        .apply(FakeRequest(GET, "/poznan/movies")))
     html should include("Country Match")
   }
 }

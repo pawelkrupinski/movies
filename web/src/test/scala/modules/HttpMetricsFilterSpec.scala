@@ -20,7 +20,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * — the replacement for the dead `fly_app_http_*` proxy series.
  *
  * The load-bearing assertion is the CARDINALITY one: a per-film request must
- * label with the route PATTERN (`/:city/film/:slug`), never the raw URI. Getting
+ * label with the route PATTERN (`/:city/movie/:slug`), never the raw URI. Getting
  * that wrong doesn't fail anything visible — the panels still draw — it just
  * mints one permanent series per film slug per city until the 4 GB monitoring
  * box falls over weeks later. So it is asserted two ways: the slug must not
@@ -28,7 +28,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  * one series rather than two.
  *
  * Route-path strings below are copied verbatim from the generated
- * `router.Routes` (`this.prefix + "$" + "city<[^/]+>/film/" + ...`), so the
+ * `router.Routes` (`this.prefix + "$" + "city<[^/]+>/movie/" + ...`), so the
  * normalisation is exercised against Play's real spelling rather than a
  * convenient one.
  */
@@ -41,8 +41,8 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
   private val Counter   = "kinowo_web_http_requests_total"
   private val Histogram = "kinowo_web_http_request_duration_seconds"
 
-  // Exactly what the router generates for `GET /:city/film/:slug`.
-  private val FilmBySlugPath = "/$city<[^/]+>/film/$slug<[^/]+>"
+  // Exactly what the router generates for `GET /:city/movie/:slug`.
+  private val FilmBySlugPath = "/$city<[^/]+>/movie/$slug<[^/]+>"
   private val CityIndexPath  = "/$city<[^/]+>/"
   private val MetricsPath    = "/metrics"
 
@@ -117,10 +117,10 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
 
   it should "label a parameterised route with its pattern, not the requested URI" in {
     val harness = new Harness()
-    harness.run(routed("GET", "/poznan/film/interstellar-2014", FilmBySlugPath, action = "filmBySlug"))
+    harness.run(routed("GET", "/poznan/movie/interstellar-2014", FilmBySlugPath, action = "filmBySlug"))
 
     harness.valueOf(
-      s"""$Counter{country="pl",method="GET",route="/:city/film/:slug",status="2xx"}""") shouldBe Some(1.0)
+      s"""$Counter{country="pl",method="GET",route="/:city/movie/:slug",status="2xx"}""") shouldBe Some(1.0)
     // The whole point: no user- or corpus-derived token reaches a label value.
     harness.exposition should not include "interstellar-2014"
     harness.exposition should not include "poznan"
@@ -128,15 +128,15 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
 
   it should "collapse different films and cities onto ONE series" in {
     val harness = new Harness()
-    harness.run(routed("GET", "/poznan/film/interstellar-2014", FilmBySlugPath, action = "filmBySlug"))
-    harness.run(routed("GET", "/wroclaw/film/diuna-2021", FilmBySlugPath, action = "filmBySlug"))
-    harness.run(routed("GET", "/warszawa/film/pulp-fiction-1994", FilmBySlugPath, action = "filmBySlug"))
+    harness.run(routed("GET", "/poznan/movie/interstellar-2014", FilmBySlugPath, action = "filmBySlug"))
+    harness.run(routed("GET", "/wroclaw/movie/diuna-2021", FilmBySlugPath, action = "filmBySlug"))
+    harness.run(routed("GET", "/warszawa/movie/pulp-fiction-1994", FilmBySlugPath, action = "filmBySlug"))
 
     withClue(s"expected one series, got:\n${harness.counterLines.mkString("\n")}\n") {
       harness.counterLines should have size 1
     }
     harness.valueOf(
-      s"""$Counter{country="pl",method="GET",route="/:city/film/:slug",status="2xx"}""") shouldBe Some(3.0)
+      s"""$Counter{country="pl",method="GET",route="/:city/movie/:slug",status="2xx"}""") shouldBe Some(3.0)
   }
 
   it should "bucket an unrouted request as `other` rather than minting a series per probed path" in {

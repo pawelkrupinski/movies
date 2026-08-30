@@ -2,7 +2,7 @@
 @(film: FilmSchedule)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
   Dev-only visual-tuning page for the FILM-detail view. Renders the REAL
-  `_filmDetailContent` (the same partial `/film` uses) with the REAL
+  `_filmDetailContent` (the same partial `/movie` uses) with the REAL
   `_filmDetailStyles`, inside `.tune-scope`. The tunable title / meta / Seanse
   fonts + gaps are re-declared scoped to the preview reading the sliders'
   vars (defaulting to the production values), so the detail CSS partial and the
@@ -40,7 +40,7 @@
   <h1>Tune · ekran filmu</h1>
   @_tuneNav("film")
   <p class="intro">Live-tune the film-detail title, meta blocks and the Seanse header on the
-     real <code>/film</code> markup. Sliders drive CSS variables scoped to the preview;
+     real <code>/movie</code> markup. Sliders drive CSS variables scoped to the preview;
      production CSS keeps today's values. Hit <em>Kopiuj</em> for the values.</p>
 
   <div class="tune-layout">
