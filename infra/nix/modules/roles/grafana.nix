@@ -31,6 +31,11 @@
 #      from a page that is broken.
 #   4. A NEW DASHBOARD, dashboards/fleet/kinowo-fleet.json, which has no counterpart on the Fly
 #      side at all -- it is about the three Hetzner machines, which did not exist there.
+#   5. TWO NEW ROWS AT THE FOOT OF dashboards/apps/fly-overview.json, about mongo-1 and
+#      monitoring-1. They are the second place the copy diverges by ADDITION rather than deletion,
+#      and they could not have existed on Fly: the database was a Fly app whose internals nothing
+#      scraped, and there was no monitoring box to describe. They read the `node` and `mongodb`
+#      jobs, which exist only on this fleet. The `diff -r` this header recommends will show them.
 #
 # COPIED RATHER THAN REFERENCED BECAUSE OF THE FLAKE ROOT, which is infra/ and not the repository
 # root (infra/flake.nix's header sets out why: rooting it at the top drags ~18k tracked files of a

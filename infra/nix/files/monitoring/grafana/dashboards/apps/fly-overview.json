@@ -9,7 +9,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 15,
+  "version": 16,
   "refresh": "1m",
   "time": {
     "from": "now-3h",
@@ -165,7 +165,8 @@
             "uid": "local-prometheus"
           }
         }
-      ]
+      ],
+      "description": "The reaper backoff switch, per country. 1 means the worker has stopped enqueueing new scrape and enrichment work because something upstream is failing or the queue is not draining; 0 is normal operation. It is a LEVEL, not a rate \u2014 a country sitting at 1 for hours is a stalled pipeline, and every throughput panel below will be flat for the same reason. Backoff is unrecallable once parked, so this going to 1 and staying there is the signal to look at task outcomes rather than to wait."
     },
     {
       "id": 60,
@@ -2889,9 +2890,755 @@
           }
         }
       ]
+    },
+    {
+      "id": 9009,
+      "type": "row",
+      "title": "The database underneath both tiers \u2014 mongo-1",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 283
+      }
+    },
+    {
+      "id": 9010,
+      "title": "mongo-1 \u2014 CPU busy, iowait and run queue",
+      "description": "mongo-1 is a 2-vCPU cx23 serving EVERY country at once: the four workers and the four web deployments above all talk to this one machine, so unlike every panel higher up this one does not narrow with the Country variable. Read it against the task-duration and projection panels above \u2014 when p95 task duration climbs with no change in what the workers are doing, this is the first place to look. IOWAIT IS THE INTERESTING LINE, not busy: mongod blocking on the data volume shows up here long before it shows up as a slow query, and it is the shape that precedes a WiredTiger cache too small for the working set (see the memory panel beside this). Run queue is node_load15 divided by core count and scaled to a percentage, so 100% means the box has exactly as much runnable work as it has cores \u2014 sustained above that and processes are waiting for CPU rather than for the disk.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 284
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - avg by (host) (rate(node_cpu_seconds_total{host=\"mongo-1\",mode=\"idle\"}[$__rate_interval])))",
+          "legendFormat": "CPU busy",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "100 * avg by (host) (rate(node_cpu_seconds_total{host=\"mongo-1\",mode=\"iowait\"}[$__rate_interval]))",
+          "legendFormat": "iowait",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "100 * node_load15{host=\"mongo-1\"} / on (host) group_left () count by (host) (node_cpu_seconds_total{host=\"mongo-1\",mode=\"idle\"})",
+          "legendFormat": "run queue per core",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9011,
+      "title": "mongo-1 \u2014 WiredTiger cache against its cap, mongod's RSS, and RAM left on the box",
+      "description": "THE PANEL THIS FLEET HAS ALREADY BEEN BURNED BY. mongod was OOM-killed on 2026-07-29 and took the PL and UK read models with it; the fix was pinning the WiredTiger cache rather than letting it size itself to the machine. These five lines are the whole picture that made that diagnosable: the cache in use, the cap it is pinned to, mongod's resident set (which is the cache plus connections plus everything else), the RAM the kernel says is still available, and the machine's total. THE CACHE SITTING FLAT AT ITS CAP IS NORMAL \u2014 WiredTiger fills what it is given and evicts. What is not normal is RSS climbing while the cache stays put (that is connections or sort buffers, not data), or available RAM trending toward zero, which on a box with no swap ends in a kill rather than in a slowdown. mongodb_ss_mem_resident is reported in MiB by serverStatus and is multiplied out here so every line shares one axis.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 284
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "WiredTiger cache cap"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Machine total"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mongodb_ss_wt_cache_bytes_currently_in_the_cache{host=\"mongo-1\"}",
+          "legendFormat": "WiredTiger cache in use",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "mongodb_ss_wt_cache_maximum_bytes_configured{host=\"mongo-1\"}",
+          "legendFormat": "WiredTiger cache cap",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "mongodb_ss_mem_resident{host=\"mongo-1\"} * 1024 * 1024",
+          "legendFormat": "mongod RSS",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "D",
+          "expr": "node_memory_MemAvailable_bytes{host=\"mongo-1\"}",
+          "legendFormat": "RAM left on the box",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "E",
+          "expr": "node_memory_MemTotal_bytes{host=\"mongo-1\"}",
+          "legendFormat": "Machine total",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9012,
+      "title": "mongo-1 \u2014 free space on the data volume",
+      "description": "/var/lib/mongodb is its OWN volume (/dev/sdb), separate from the root filesystem, and it is the one that matters: mongod does not degrade when it runs out of disk, it aborts, and it has done so on this project before. The root filesystem is deliberately not drawn here \u2014 it is on the fleet dashboard, and mixing the two on one axis hides the small volume behind the big one. Flat or slowly rising is the healthy shape. A step down that never recovers is usually the oplog resizing or a mongodump written to the wrong place; a staircase is the corpus growing, and the slope is how long there is to do something about it.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 292
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Volume size"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_filesystem_avail_bytes{host=\"mongo-1\",mountpoint=\"/var/lib/mongodb\"}",
+          "legendFormat": "Free",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "node_filesystem_size_bytes{host=\"mongo-1\",mountpoint=\"/var/lib/mongodb\"}",
+          "legendFormat": "Volume size",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9013,
+      "title": "Mongo \u2014 server operations per second, by type",
+      "description": "What the database is actually being asked to do, from mongod's own opcounters \u2014 the server-side counterpart to the task-flow and projection panels higher up. `query` and `getmore` are the read tiers and the change streams; `update` is overwhelmingly the enrichment pipeline writing back ratings and synopses; `insert` is new films landing. THE USE OF THIS PANEL IS CORRELATION, not a threshold: worker task throughput falling while operations here stay flat means the workers are blocked on something that is not the database, and operations climbing while throughput is flat means work is being retried. Counts EVERY country together \u2014 there is one mongod, with a database per country on it.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 292
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ops",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (legacy_op_type) (rate(mongodb_ss_opcounters{host=\"mongo-1\"}[$__rate_interval]))",
+          "legendFormat": "{{legacy_op_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9014,
+      "title": "Mongo \u2014 average operation latency by class",
+      "description": "How long the average read, write or command spends inside mongod, computed the way mongod itself reports it: total latency divided by operation count, both as rates, so it is an average over the window rather than a percentile. THAT IS THE LIMITATION TO KNOW \u2014 an average hides the tail, and the tail is what a change stream or a projection actually waits on. Use it as the corroborating line for the task-duration percentiles above: if p95 task duration doubled and this is flat, the time is being spent in the worker, not in the database. Reads climbing while writes stay flat is the classic signature of a working set that no longer fits the WiredTiger cache \u2014 check the memory panel above before assuming a slow query. THE `transactions` CLASS IS EXCLUDED ON PURPOSE: multi-document transactions are measured end to end, so they average hundreds of milliseconds against sub-millisecond reads and would flatten the two lines this panel exists to show. Nothing in this application opens one; if something starts to, it belongs on a panel of its own rather than on this axis.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 300
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (op_type) (rate(mongodb_ss_opLatencies_latency{host=\"mongo-1\",op_type=~\"reads|writes|commands\"}[$__rate_interval])) / clamp_min(sum by (op_type) (rate(mongodb_ss_opLatencies_ops{host=\"mongo-1\",op_type=~\"reads|writes|commands\"}[$__rate_interval])), 0.001) / 1000",
+          "legendFormat": "{{op_type}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9015,
+      "title": "Mongo \u2014 WiredTiger tickets in use against the cap, and requests queued behind them",
+      "description": "MONGO'S REAL SATURATION SIGNAL, and the one that says 'the database is the bottleneck' rather than merely 'the database is busy'. WiredTiger admits a fixed number of concurrent read and write transactions; everything beyond that waits. Tickets in use sitting well under the cap means mongod has spare capacity however high the operation rate is. Tickets PINNED at the cap, with the queued line lifting off zero, means requests are now waiting for admission \u2014 and that wait is invisible in the operation-latency panel beside this one, because it happens before the operation starts being timed. That combination, not CPU, is what makes worker tasks time out.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 300
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* ticket cap"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "mongodb_ss_wt_concurrentTransactions_out{host=\"mongo-1\"}",
+          "legendFormat": "{{txn_rw}} tickets in use",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "mongodb_ss_wt_concurrentTransactions_totalTickets{host=\"mongo-1\"}",
+          "legendFormat": "{{txn_rw}} ticket cap",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "mongodb_ss_globalLock_currentQueue{host=\"mongo-1\",count_type=\"total\"}",
+          "legendFormat": "queued for a lock",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9020,
+      "type": "row",
+      "title": "The box this page is produced on \u2014 monitoring-1 (Prometheus, Grafana, Alertmanager)",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 308
+      }
+    },
+    {
+      "id": 9016,
+      "title": "monitoring-1 \u2014 CPU busy, run queue and memory used",
+      "description": "monitoring-1 IS NOT IN THE APPLICATION'S SERVING PATH \u2014 no request to kinowo touches it \u2014 so these lines are here for one reason only: everything above is drawn from series this machine collected, and a Prometheus that is starved does not report that it is starved, it reports gaps. A gap and an outage look identical on a timeseries. This box is a 2-vCPU cx23 also running the k3s control plane, Grafana, Alertmanager, VictoriaLogs and Caddy, so it has less headroom than its job suggests. Memory used is derived from MemAvailable rather than MemFree deliberately: MemFree collapses toward zero on any healthy Linux box as the page cache fills, which reads as an emergency and never is.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 309
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * (1 - avg by (host) (rate(node_cpu_seconds_total{host=\"monitoring-1\",mode=\"idle\"}[$__rate_interval])))",
+          "legendFormat": "CPU busy",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "100 * node_load15{host=\"monitoring-1\"} / on (host) group_left () count by (host) (node_cpu_seconds_total{host=\"monitoring-1\",mode=\"idle\"})",
+          "legendFormat": "run queue per core",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "100 * (1 - node_memory_MemAvailable_bytes{host=\"monitoring-1\"} / node_memory_MemTotal_bytes{host=\"monitoring-1\"})",
+          "legendFormat": "memory used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9017,
+      "title": "monitoring-1 \u2014 free space on the metrics volume, and what Prometheus has written there",
+      "description": "/var/lib/monitoring is a single 40GB volume shared by three things \u2014 Prometheus's TSDB, Grafana's sqlite and VictoriaLogs \u2014 and Prometheus is the one that grows without being asked. The TSDB line is the compacted on-disk block total, so it is what retention is actually spending, and it is drawn beside the free-space line because the interesting question is not how big it is but how much of the volume it will eventually want. THE FAILURE THIS WATCHES FOR IS A CARDINALITY MISTAKE, not steady growth: a label added to a hot metric multiplies series silently, and the first visible symptom is this line bending upward days before the volume fills. Prometheus stops ingesting when the disk is full, which makes every panel on this dashboard go flat at once and reads exactly like the application dying.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 309
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Volume size"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "node_filesystem_avail_bytes{host=\"monitoring-1\",mountpoint=\"/var/lib/monitoring\"}",
+          "legendFormat": "Free",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "node_filesystem_size_bytes{host=\"monitoring-1\",mountpoint=\"/var/lib/monitoring\"}",
+          "legendFormat": "Volume size",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "prometheus_tsdb_storage_blocks_bytes",
+          "legendFormat": "Prometheus TSDB on disk",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9018,
+      "title": "monitoring-1 \u2014 memory held by Grafana, Prometheus and Alertmanager",
+      "description": "The three processes' own resident memory, against the machine total. Prometheus is the one to watch: its head block holds every active series in RAM, so this line tracks cardinality in real time and moves BEFORE the on-disk line beside it does. Grafana's is flat by nature \u2014 a rendering process \u2014 and a Grafana that starts climbing is usually a dashboard querying a far wider range than it needs. These are the only three processes on this box that anyone tunes; k3s, Caddy and VictoriaLogs are on the fleet dashboard, which is where a whole-machine memory question belongs.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 317
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Machine total"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "process_resident_memory_bytes{job=~\"prometheus|grafana|alertmanager\"}",
+          "legendFormat": "{{job}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "node_memory_MemTotal_bytes{host=\"monitoring-1\"}",
+          "legendFormat": "Machine total",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9019,
+      "title": "Is this page telling the truth? \u2014 targets answering against targets configured, by job",
+      "description": "THE PANEL TO READ FIRST WHEN SOMETHING ABOVE LOOKS DEAD. Every other panel on this dashboard draws nothing when the application is down AND when the scrape is down, and the two are indistinguishable from the line alone. Here the two counts separate them: `answering` below `configured` for a job means Prometheus could not reach those targets, so the gap above is a monitoring failure, not an outage. The counts are per job, so a single worker pod restarting shows as 3 of 4 on kinowo-worker rather than as a whole tier going quiet. The `node` job should always be 3 and `mongodb` always 1; if THOSE drop, the panels in the two rows above this one are the ones that have stopped being true.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 317
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "spanNulls": 300000,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".* configured"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    8,
+                    6
+                  ]
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-gray"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (job) (up{job=~\"kinowo-worker|kinowo-web|node|mongodb|kube-state-metrics\"})",
+          "legendFormat": "{{job}} answering",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "count by (job) (up{job=~\"kinowo-worker|kinowo-web|node|mongodb|kube-state-metrics\"})",
+          "legendFormat": "{{job}} configured",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ],
-  "description": "One screen for the whole application, all of it on k3s: three scraping workers (pl, de, uk) and three web deployments (pl, de, uk), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare the three. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
+  "description": "One screen for the whole application, all of it on k3s: three scraping workers (pl, de, uk) and three web deployments (pl, de, uk), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare the three. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy, and -- in the last two rows -- is the one machine both tiers depend on (mongo-1, the database) healthy, and is the machine that drew this page (monitoring-1) still collecting. Those two rows do NOT narrow with the Country variable: there is one mongod and one Prometheus behind every country on this page. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
   "links": [
     {
       "type": "dashboards",

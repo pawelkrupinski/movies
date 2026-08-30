@@ -8,6 +8,8 @@
 #
 #   terraform fmt      formatting, so a diff is about intent
 #   terraform validate provider schemas and references
+#   dashboard tests    the provisioned Grafana JSON -- structure, and the host/job/mountpoint
+#                      literals its queries pin, against the fleet that has to produce them
 #   nix eval           EVERY host's toplevel derivation. This is the expensive one and the one that
 #                      matters: it type-checks the whole module tree, runs every `assertions` entry,
 #                      and proves each host would build. A module that references a missing option
@@ -80,6 +82,25 @@ step "version-dashboard render tests"
 # that a machine nobody can reach is not rendered as one that is merely behind.
 if [ -f version-dashboard/test_app.py ]; then
   if out="$(python3 version-dashboard/test_app.py 2>&1)"; then
+    echo "  ok  $(echo "$out" | grep -c '\.\.\. ok') test(s)"
+  else
+    echo "$out" | tail -25 | sed 's/^/  /'
+    failed=1
+  fi
+fi
+
+step "grafana dashboard tests"
+# THE PROVISIONED DASHBOARDS ARE OTHERWISE UNCHECKED BY EVERYTHING ABOVE. `nix eval` type-checks
+# the module that COPIES nix/files/monitoring/grafana into the store; it never opens the JSON
+# inside. Grafana's own reaction to a malformed dashboard is a log line at startup and a page that
+# is quietly missing -- so the whole class fails silently, and is found by somebody opening the page
+# during an incident. These tests are structural (duplicate panel ids, overlapping tiles, an empty
+# query, a datasource uid nothing provisions) plus the three literals a panel filters on that are
+# DEFINED SOMEWHERE ELSE IN THIS TREE -- host, job and mountpoint. A typo in any of those is not an
+# error: Prometheus returns nothing and the panel draws "No data", which is indistinguishable from
+# a subject that is genuinely quiet.
+if [ -f test/test_dashboards.py ]; then
+  if out="$(python3 test/test_dashboards.py 2>&1)"; then
     echo "  ok  $(echo "$out" | grep -c '\.\.\. ok') test(s)"
   else
     echo "$out" | tail -25 | sed 's/^/  /'
