@@ -37,6 +37,21 @@ check() {
   else echo "  FAIL $what"; failures=$((failures + 1)); fi
 }
 
+# `supervise_db` loops forever by design, so every case caps the wait rather
+# than trusting its stubs to end it. Bounded by the CLOCK, not by a count of
+# polls: `sleep 0.1` 200 times is not 20 seconds once process overhead is in it,
+# and a bound that quietly stretches lets a case observe the state it was meant
+# to prove unreachable — which is how the drift case below first passed against
+# a supervisor that had no audit at all. Polled here rather than by a background
+# watchdog, whose kill the shell announces as "Terminated" over the spec's own
+# output.
+await_child() {
+  local child="$1" deadline=$((SECONDS + ${2:-20}))
+  while kill -0 "$child" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.1; done
+  kill "$child" 2>/dev/null
+  wait "$child" 2>/dev/null
+}
+
 echo "[spec] mirror supervision"
 
 # ── A seed that fails must not end the supervisor ────────────────────────────
@@ -72,15 +87,7 @@ survives_a_failing_seed() {
   ) >/dev/null 2>&1 &
   local child=$!
 
-  # `supervise_db` loops forever by design, so cap the wait rather than trusting
-  # the stubs to end it. Polled here rather than by a background watchdog, whose
-  # kill the shell announces as "Terminated" over the spec's own output.
-  local waited=0
-  while kill -0 "$child" 2>/dev/null && [ "$waited" -lt 200 ]; do
-    command sleep 0.1; waited=$((waited + 1))
-  done
-  kill "$child" 2>/dev/null
-  wait "$child" 2>/dev/null
+  await_child "$child"
 
   local ok=1
   [ -f "$reached" ] || ok=0
@@ -90,6 +97,131 @@ survives_a_failing_seed() {
 
 check "a failed seed retries on the next cycle instead of killing the supervisor" \
   survives_a_failing_seed
+
+# ── Drift appearing mid-stream must not wait for the tailer to end ───────────
+# `needs_reseed` used to run once per cycle, and a healthy tailer never ends —
+# so on a long-lived mirror the gate's last word could be days old. The drift it
+# exists to catch does not appear at startup: a delete the stream never
+# delivered lands while the tailer is streaming (2026-08-29, DE's
+# `pending_movies`). The audit re-asks mid-stream and stops the tailer so the
+# next cycle re-seeds; this case fails if a drifting mirror is left tailing.
+#
+# Bounded the same three ways as the case above, so a regression can only FAIL,
+# never hang.
+reseeds_when_it_drifts_while_tailing() {
+  local work; work="$(mktemp -d -t kinowo-mirror-spec)"
+  local asked="$work/gate-answers" reached="$work/reseeded"
+
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"                       # functions only — the startup body is guarded
+
+    ensure_local_mongo()      { return 0; }
+    ensure_tunnel()           { return 0; }
+    published_fingerprint()   { echo unchanged; }   # no retarget: the audit is the only exit
+    # A SHORT wait, not none: the poll loop forks a subshell per iteration, and
+    # a no-op `sleep` turns it into a hot spin that pins a core.
+    sleep()                   { command sleep 0.05; }
+    AUDIT_POLLS=1                                  # audit on the first poll
+    # Set because `load_endpoints` never runs when the file is sourced, and
+    # mirror.sh runs under `set -u`: leaving them unbound aborts the tailer's
+    # command line before the stub below is reached, so the tailer dies instantly
+    # and the case passes against a supervisor that has no audit at all.
+    SRCZ=stub-source-uri
+    DST=stub-mirror-uri
+
+    # Fresh the first time, so the loop gets past the gate and reaches the
+    # tailer. Every answer after that is the drift appearing mid-stream.
+    needs_reseed() { echo x >> "$asked"; [ "$(wc -l < "$asked")" -gt 1 ]; }
+
+    # Stands in for tail.js — a stream that runs a while and then ends. It ends
+    # ON ITS OWN so this case never has to kill anything: the assertion is about
+    # WHEN the re-seed happens, and a supervisor with no audit reaches one too,
+    # just not until the stream is over.
+    mongosh() { command sleep "$TAIL_SECONDS"; }
+
+    reseed() { touch "$reached"; exit 0; }
+
+    supervise_db kinowo 0
+  ) >/dev/null 2>&1 &
+  local child=$!
+
+  # The whole assertion: a re-seed while the stream is still running. Without
+  # the mid-stream audit the earliest one possible is TAIL_SECONDS away, so a
+  # window far shorter than that separates the two behaviours with no timing
+  # luck involved.
+  local deadline=$((SECONDS + 2)) early=no
+  while [ "$SECONDS" -lt "$deadline" ]; do
+    [ -f "$reached" ] && { early=yes; break; }
+    command sleep 0.05
+  done
+
+  await_child "$child" $((TAIL_SECONDS + 5))
+  rm -rf "$work"
+  [ "$early" = "yes" ]
+}
+
+# Long enough that "re-seeded within 2s" cannot happen by the stream simply
+# ending, short enough that the failing case still finishes in seconds.
+TAIL_SECONDS=8
+export TAIL_SECONDS
+
+check "a mirror that drifts while tailing is re-seeded without waiting for the stream to end" \
+  reseeds_when_it_drifts_while_tailing
+
+# ── The supervisor must notice its OWN code changing ─────────────────────────
+# Tailers re-read the .js files whenever one starts, but the supervisor holds
+# the command lines it was written with for the life of the process. A commit
+# that adds a `--file` to the tailer's invocation therefore lands half-applied
+# on a running daemon — new script, old command line — and the tailer dies on an
+# undefined function every time (2026-08-30). The digest is what lets the
+# supervisor see that and hand over to a fresh one.
+#
+# Driven against a COPY of the script directory, so the case can edit files
+# without touching the repo: every function here reads through `$HERE`.
+notices_its_own_code_changing() {
+  local work; work="$(mktemp -d -t kinowo-mirror-spec)"
+  cp "$HERE"/* "$work"/ 2>/dev/null
+
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    HERE="$work"                                   # …now read the copy, not the repo
+
+    local first second after_runtime after_spec
+    first="$(code_fingerprint)"
+    [ -n "$first" ] || exit 1                      # a digest that cannot be computed is useless
+
+    second="$(code_fingerprint)"
+    [ "$first" = "$second" ] || exit 1             # …and it has to be stable, or every poll restarts
+
+    # An unset baseline is "don't know", never a change — one unreadable digest
+    # at startup must not bounce the daemon on its first poll.
+    code_changed "" && exit 1
+
+    code_changed "$first" && exit 1                # nothing has changed yet
+
+    echo "// an edit" >> "$work/tail.js"
+    after_runtime="$(code_fingerprint)"
+    [ "$after_runtime" != "$first" ] || exit 1     # THE case: a file the daemon runs
+    code_changed "$first" || exit 1
+
+    # A spec is not something the daemon runs, and editing one must not restart
+    # a healthy mirror. This is also what keeps the derived file set honest: it
+    # comes from mirror.sh's own `$HERE/...` references, which name no spec.
+    echo "// an edit" >> "$work/staleness-rule-spec.js"
+    after_spec="$(code_fingerprint)"
+    [ "$after_spec" = "$after_runtime" ] || exit 1
+
+    exit 0
+  )
+  local code=$?
+  rm -rf "$work"
+  return $code
+}
+
+check "the supervisor sees an edit to code it runs, and ignores one to a spec" \
+  notices_its_own_code_changing
 
 # ── Sourcing must be side-effect free ────────────────────────────────────────
 # The spec above depends on it, and so does anything else that wants these

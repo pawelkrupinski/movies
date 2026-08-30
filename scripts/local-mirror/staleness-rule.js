@@ -22,11 +22,14 @@
 const STALENESS_LIMITS = { maxLagMs: 30 * 60 * 1000, maxCountDrift: 0.02 };
 
 // observed: { prodCount, mirrorCount, prodMaxUpdatedAtMs, mirrorMaxUpdatedAtMs,
-//             missingCollections, seedIncomplete } — counts from `movies`, the
-// newest `updatedAt` across the collections that carry one, the mirrored
-// collections prod has documents for while the mirror has none, and whether the
-// last seed left its unfinished mark behind. Timestamps are epoch millis or null
-// (a collection with no docs, or none carrying `updatedAt`).
+//             missingCollections, mirrorAhead, seedIncomplete } — counts from
+// `movies`, the newest `updatedAt` across the collections that carry one, the
+// mirrored collections prod has documents for while the mirror has none, the
+// mirrored collections holding MORE documents than prod (as
+// `{ name, prod, mirror, forMs }`, already confirmed to have stood for minutes),
+// and whether the last seed left its unfinished mark behind. Timestamps are
+// epoch millis or null (a collection with no docs, or none carrying
+// `updatedAt`).
 // Returns { stale, reason } — `reason` is what mirror.sh logs, so it has to
 // read as an explanation on its own.
 function stalenessVerdict(observed, limits) {
@@ -51,6 +54,24 @@ function stalenessVerdict(observed, limits) {
   // looked healthy). Re-seed is the only thing that fills it.
   if (missing.length > 0)
     return { stale: true, reason: `mirror is missing ${missing.join(", ")}` };
+
+  // Documents the mirror holds that prod does not — the only shape that says
+  // "this mirror missed DELETES" outright, and the one every other signal here
+  // is blind to: a delete moves no `updatedAt`, so lag stays 0, and the drift
+  // ratio below reads `movies` alone at a 2% threshold that three stray rows in
+  // a 1700-film corpus never reach. Found 2026-08-29 in `pending_movies`, where
+  // three folded films sat as ghosts and /debug showed them stuck in staging for
+  // an hour. The observer only reports a collection here once the excess has
+  // stood for MINUTES, so neither a mirror still catching up nor two counts
+  // taken a round-trip apart mid-rewrite ever reaches this rule.
+  const ahead = observed.mirrorAhead || [];
+  if (ahead.length > 0)
+    return {
+      stale: true,
+      reason: "mirror holds documents prod deleted: " +
+        ahead.map(c => `${c.name} ${c.mirror} vs ${c.prod}` +
+          (c.forMs ? ` for ${formatDuration(c.forMs)}` : "")).join(", "),
+    };
   // Nothing upstream to be behind of (a country not yet scraped) — tailing is
   // the right move, and a re-seed would copy the same nothing.
   if (prodCount === 0) return { stale: false, reason: "source is empty — nothing to mirror" };

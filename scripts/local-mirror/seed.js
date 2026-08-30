@@ -58,4 +58,9 @@ state.deleteOne({ _id: SRC_DB + ":seed" });
 // reports no operationTime (a standalone, which cannot serve change streams
 // anyway) leaves the field unset and the tailer falls back to starting now.
 state.replaceOne({ _id: SRC_DB }, { _id: SRC_DB, startAtOperationTime }, { upsert: true });
+// A fresh snapshot cannot hold documents prod deleted, so the staleness gate's
+// running note of which collections have been sitting ahead is void. Left
+// behind, its `since` is already old enough to re-seed on the very next audit —
+// a copy that triggers the next copy.
+state.deleteOne({ _id: SRC_DB + ":ahead" });
 print(`[seed] ${SRC_DB} done`);

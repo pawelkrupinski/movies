@@ -165,6 +165,10 @@ reseed_or_wait() {
 # The digest covers the SET of names only, so editing a comment or reordering
 # the literal doesn't churn every tailer (targets-fingerprint.js).
 TARGETS_POLL="${KINOWO_MIRROR_TARGETS_POLL:-60}"
+# How many of those polls between two staleness audits of a RUNNING tailer.
+# Ten minutes by default: the gate costs a couple of dozen queries against prod
+# (staleness.js), which is nothing hourly and would be silly every minute.
+AUDIT_POLLS="${KINOWO_MIRROR_AUDIT_POLLS:-10}"
 # Created at startup, not on `source` — sourcing this file must leave no temp
 # file behind. `published_fingerprint` reads "unset" as "don't know", like every
 # other unreadable digest.
@@ -179,6 +183,45 @@ targets_fingerprint() {
 # What the children compare against. Falls back to the last good value rather
 # than to empty, so one failed read can't look like an edit.
 published_fingerprint() { cat "${TARGETS_FP_FILE:-}" 2>/dev/null; }
+
+# ── Noticing that the daemon's own CODE changed under it ─────────────────────
+# The tailers re-read the .js files each time one STARTS, but the supervisor is
+# a long-lived bash process holding the command lines it was written with — so a
+# `git pull` lands half-applied: new scripts, old invocations. On 2026-08-30 a
+# commit added a `--file` to the tailer's line and the RUNNING daemon kept
+# launching tail.js without it, which then died on an undefined function every
+# time and back off into a loop that only a human noticed. Under launchd
+# (KeepAlive) exiting is the cleanest repair available: the supervisor comes
+# straight back on the new code.
+#
+# The file set is DERIVED from mirror.sh's own `$HERE/...` references rather
+# than listed here: a hand-written literal of "what the daemon runs" is the
+# shape that drifted three times in mirror-targets.js's history, and a `--file`
+# added later has to be covered without anyone remembering this function exists.
+# Specs and the README are not referenced, so editing them churns nothing.
+runtime_files() {
+  # `\.[A-Za-z]` is what keeps `"$HERE/../.."` and any bare `$HERE/` out: only a
+  # reference that names a FILE with an extension is something we execute.
+  { echo "$HERE/mirror.sh"
+    grep -oE '\$HERE/[A-Za-z0-9_-]+\.[A-Za-z]+' "$HERE/mirror.sh"
+  } | sed "s|\$HERE|$HERE|" | sort -u
+}
+
+# Digest of everything the daemon executes. Prints nothing when it cannot be
+# computed (a file mid-write, a missing tool), which every reader treats as
+# "don't know" rather than as a change — the same contract as the targets digest.
+code_fingerprint() {
+  local files; files="$(runtime_files)"
+  [ -n "$files" ] || return 0
+  printf '%s\n' "$files" | while IFS= read -r f; do cat "$f" 2>/dev/null; done \
+    | shasum 2>/dev/null | cut -d' ' -f1
+}
+
+# True only when a digest was captured AND a new one differs from it.
+code_changed() {
+  local was="$1" now; now="$(code_fingerprint)"
+  [ -n "$was" ] && [ -n "$now" ] && [ "$was" != "$now" ]
+}
 
 # Does this database's mirror need a full re-seed before it is worth tailing?
 # staleness.js exits 3 when the mirror has drifted beyond what resuming a change
@@ -197,7 +240,10 @@ needs_reseed() {
 
 # ── Resilient per-database sync loop ─────────────────────────────────────────
 # Every cycle re-ensures the mirror Mongo + the tunnel, re-seeds when this
-# database's mirror is empty or has drifted too far (needs_reseed), then tails.
+# database's mirror is empty or has drifted too far (needs_reseed), then tails —
+# re-running that same gate every AUDIT_POLLS polls while the tailer streams, so
+# drift appearing mid-stream is caught in minutes rather than at the next
+# restart, which on a healthy tailer can be days away.
 # tail.js exits 2 when its resume token has aged out of prod's oplog → full
 # re-seed; any other exit is a transient blip → resume from the saved token.
 # Nothing here is fatal: a down tunnel, a stopped Mongo, or a wiped mirror all
@@ -217,7 +263,7 @@ supervise_db() {
     # The list this tailer is about to pin. Captured BEFORE launching it, so an
     # edit landing mid-launch is caught on the next poll rather than missed.
     local launched_with; launched_with="$(published_fingerprint)"
-    local retargeted=0
+    local retargeted=0 drifted=0 polls=0
 
     set +e
     mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
@@ -234,14 +280,29 @@ supervise_db() {
         kill "$tailpid" 2>/dev/null || true
         break
       fi
+
+      # Re-judge the mirror WHILE it tails, not only between cycles. A healthy
+      # tailer never ends, so `needs_reseed` at the top of this loop can be the
+      # last word for days — and the drift it exists to catch (a delete the
+      # stream never delivered, a collection quietly going short) appears
+      # mid-stream, not at startup. Killing the tailer is the whole action: the
+      # next cycle re-runs the gate and seeds if it still says so.
+      polls=$((polls + 1))
+      if [ $((polls % AUDIT_POLLS)) -eq 0 ] && needs_reseed "$srcdb"; then
+        echo "[mirror] $srcdb: drifted while tailing — restarting to re-seed"
+        drifted=1
+        kill "$tailpid" 2>/dev/null || true
+        break
+      fi
     done
     wait "$tailpid"; code=$?
     set -e
 
     # A tailer WE stopped is not a failure: go straight round again, where
-    # needs_reseed seeds whatever the new list added and tail.js re-reads it.
-    # Resetting `fails` keeps a retarget from counting toward the backoff.
-    if [ "$retargeted" = "1" ]; then fails=0; continue; fi
+    # needs_reseed seeds whatever the new list added (or whatever the audit saw)
+    # and tail.js re-reads it. Resetting `fails` keeps either from counting
+    # toward the backoff.
+    if [ "$retargeted" = "1" ] || [ "$drifted" = "1" ]; then fails=0; continue; fi
 
     if [ "$code" -eq 2 ]; then
       echo "[mirror] $srcdb: resume token expired — re-seeding…"
@@ -287,7 +348,11 @@ trap 'cleanup_children; rm -f "$TARGETS_FP_FILE"; cleanup' EXIT INT TERM
 # Publish the current collection-list digest BEFORE the tailers start, so each
 # one has something to compare against from its first poll.
 targets_fingerprint > "$TARGETS_FP_FILE"
-echo "[mirror] watching mirror-targets.js for collection changes (every ${TARGETS_POLL}s)"
+# …and the digest of the code this supervisor is about to run with, for the same
+# reason: captured before anything starts, so a pull landing mid-startup is seen
+# on the next poll rather than baked in as the baseline.
+CODE_FP="$(code_fingerprint)"
+echo "[mirror] watching mirror-targets.js for collection changes, and the sync scripts for edits (every ${TARGETS_POLL}s)"
 
 for srcdb in $DBS; do
   supervise_db "$srcdb" "$FORCE_RESEED" &
@@ -312,6 +377,17 @@ CHILDREN+=($!)
     sleep "$TARGETS_POLL"
     fp="$(targets_fingerprint)"
     [ -n "$fp" ] && printf '%s\n' "$fp" > "$TARGETS_FP_FILE"
+
+    # A tailer can be restarted in place for a new collection list, but new CODE
+    # needs the supervisor itself replaced — it is still holding the command
+    # lines it was written with. `$$` is the parent, not this subshell, and its
+    # EXIT trap takes the tailers down on the way out, so launchd restarts a
+    # clean process rather than a second one alongside orphans.
+    if code_changed "$CODE_FP"; then
+      echo "[mirror] sync scripts changed on disk — exiting so the supervisor restarts on them"
+      kill -TERM $$
+      exit 0
+    fi
   done ) &
 CHILDREN+=($!)
 wait

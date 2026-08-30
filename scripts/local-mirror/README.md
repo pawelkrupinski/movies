@@ -172,10 +172,11 @@ mongosh --nodb --quiet --file scripts/local-mirror/stream-start.js \
 ```
 
 and the handover itself is asserted end-to-end against the local replica set —
-seed, delete a row, start the tailer, and the mirror must still lose the row:
+seed, delete a row, start the tailer, and the mirror must still lose the row
+(`mirror-sync-spec.sh`, which also covers the ghost signal below):
 
 ```
-scripts/local-mirror/seed-tail-race-spec.sh
+scripts/local-mirror/mirror-sync-spec.sh
 ```
 
 ### The staleness gate — why a mirror can't quietly rot
@@ -187,8 +188,10 @@ tailer that crash-loops on a token it can never advance leaves a mirror that is
 with nothing to notice (found 2026-07-27: ~1000 restarts logged while `kinowo_uk`
 sat at 406 of prod's 1555 movies).
 
-So every supervision cycle now asks `staleness.js` first, and re-seeds when
-either signal trips:
+So every supervision cycle asks `staleness.js` first, and re-seeds when any of
+these trips — and asks again every ten minutes WHILE the tailer streams
+(`AUDIT_POLLS`), because a healthy tailer never ends and the drift these catch
+appears mid-stream, not at startup:
 
 - **lag** — prod's newest `updatedAt` (across `movies` + `screenings`) minus the
   mirror's, over 30 minutes. Measured mirror-vs-prod, never against the wall
@@ -196,6 +199,17 @@ either signal trips:
   a pointless re-seed every night.
 - **count drift** — `movies` off by more than 2%. Deletes carry no `updatedAt`,
   so a mirror that missed only deletions keeps pace on lag while over-reporting.
+- **documents prod deleted** — any mirrored collection where the MIRROR holds
+  more rows than prod. The two signals above read `movies` alone, at a ratio
+  three stray rows never reach, so a missed delete anywhere else was invisible:
+  three folded DE films sat in the mirror's `pending_movies` while `/debug`
+  showed them stuck in staging (2026-08-29). An excess only counts once it has
+  STOOD for 15 minutes — a single sample cannot tell a missed delete from a
+  mirror still catching up, and measured on prod, UK showed an excess with lag
+  reading 0ms that was gone on the next run (the read-model projector rewrites a
+  collection by deleting and re-inserting, and the two counts are a round-trip
+  apart). The gate keeps its own note of when each collection was first seen
+  ahead, drops the ones that come back into line, and a seed clears it.
 - **a torn snapshot** — the previous seed left its unfinished mark behind.
   `seed.js` copies collection by collection, dropping each before refilling it,
   so a seed killed partway leaves `movies` (copied first) complete and current
@@ -213,6 +227,22 @@ cycle — a broken gate must never block the sync. The thresholds live in
 mongosh --nodb --quiet --file scripts/local-mirror/staleness-rule.js \
                        --file scripts/local-mirror/staleness-rule-spec.js
 ```
+
+### Picking up its own code
+
+The tailers re-read the `.js` files each time one starts, but the supervisor is
+a long-lived bash process holding the command lines it was written with — so a
+`git pull` lands half-applied: new scripts, old invocations. That is not
+hypothetical: the commit that added `stream-start.js` to the tailer's `--file`
+list left the running daemon launching `tail.js` without it, which then died on
+an undefined function every time, and only a human noticed.
+
+So the supervisor digests the files it actually executes — derived from its own
+`$HERE/...` references, so a `--file` added later is covered without anyone
+remembering, and editing a spec or this README churns nothing — and exits when
+that digest changes. launchd (`KeepAlive`) brings it straight back on the new
+code; its EXIT trap takes the tailers down on the way out, so nothing is
+orphaned alongside the replacement.
 
 ### How the tunnel reaches prod — and why a TCP probe isn't enough
 

@@ -52,6 +52,28 @@ check("45 of 900 missed deletes (5%) re-seeds",
 check("prod ahead by more documents than tolerance re-seeds",
   { ...caughtUp, mirrorCount: 800 }, true);
 
+// The drift ratio above reads `movies` ALONE, at a threshold three stray rows
+// never reach — so a mirror holding documents prod deleted is invisible to it
+// in every other collection. That is how three folded DE films sat in the
+// mirror's `pending_movies` while /debug showed them stuck in staging
+// (2026-08-29). Anything reaching this rule is structural: the observer only
+// reports an excess that has STOOD for minutes, so a mirror still catching up
+// never gets here.
+check("three ghost rows in a small collection re-seed — the /debug staging case",
+  { ...caughtUp, mirrorAhead: [{ name: "pending_movies", prod: 0, mirror: 3, forMs: 20 * MINUTE }] }, true);
+check("a single ghost row re-seeds — no ratio to hide behind",
+  { ...caughtUp, mirrorAhead: [{ name: "pending_movies", prod: 4, mirror: 5 }] }, true);
+check("ghosts in more than one collection re-seed",
+  { ...caughtUp, mirrorAhead: [
+    { name: "pending_movies", prod: 0, mirror: 3 },
+    { name: "screenings", prod: 17_800, mirror: 17_812 }] }, true);
+check("no collection ahead does not re-seed",
+  { ...caughtUp, mirrorAhead: [] }, false);
+// The mirror trailing prod is ordinary catch-up, not a ghost: the observer only
+// ever reports the ahead direction, and the rule must not invent the other one.
+check("a mirror merely behind on a collection does not re-seed",
+  { ...caughtUp, mirrorAhead: [] }, false);
+
 check("a mirror with no timestamps while prod has them re-seeds",
   { ...caughtUp, mirrorMaxUpdatedAtMs: null }, true);
 
