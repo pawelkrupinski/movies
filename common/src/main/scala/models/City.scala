@@ -879,10 +879,23 @@ object City {
    *  venues and renders one 18.9 MB page (1.06 MB gzipped) — against Poznań's
    *  173 KB and Alaska's 27 KB — which is not a page a phone loads.
    *
-   *  150 sits just above LONDON (133 venues). London is split into five compass
-   *  areas and reads fine as a single page; it is the screen this feature is
-   *  modelled on, not a target, so the threshold is set to leave it exactly as
-   *  it was. Everything caught is a US state whose listing is already unusable.
+   *  150 sits just above LONDON (133 venues), and that exclusion is a PRODUCT
+   *  DECISION rather than a consequence of the number — which matters, because
+   *  the obvious reading of it is wrong. London is NOT light: measured live on
+   *  2026-08-30 it serves 1.13 MB gzipped / 15.0 MB raw in 1.9s, making it the
+   *  HEAVIEST page in the fleet, heavier than the California listing this whole
+   *  feature exists to break up. By page weight alone London would be the first
+   *  city to catch, not the one left out.
+   *
+   *  It stays one page anyway, deliberately: the UK is a live country whose
+   *  visitors open `/london/` and get films, and an extra tap was not wanted
+   *  there. (They are already offered the compass areas once, through the
+   *  first-visit picker in `shared.js`, which remembers the choice.)
+   *
+   *  So do not "fix" this by lowering the threshold to catch London — that
+   *  reverses a decision, and `AreaRoutingSpec` fails on purpose if you do.
+   *  Everything the threshold does catch is a US state whose listing is
+   *  genuinely unusable.
    *
    *  One number, one edit: raise it to narrow the set of chooser cities, lower
    *  it to widen it. Nothing else keys off "big". */
