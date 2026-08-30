@@ -25,6 +25,16 @@
      (`/{city}/{area}/`) passes `Some(Nil)` — its cinema list IS that area, so
      grouping it again would be a single section wrapping everything. *@
   window.CINEMA_AREAS       = @Html(play.api.libs.json.Json.toJson(cinemaAreas.getOrElse(city.areas).map(g => play.api.libs.json.Json.obj("name" -> g.area.label, "slug" -> g.area.slug, "cinemas" -> g.cinemaDisplayNames))).toString);
+  @* Whether the FIRST-VISIT area-picker overlay may open (see `maybeShowAreaPicker`).
+     It offers a split city's areas as a one-time pre-filter, which is right for
+     London — its five compass areas have no other front door. It is WRONG for a
+     city whose areas already have a screen of their own: a US state picks its
+     metro at `/{city}/`, so re-asking on a film or plan page (Texas would offer
+     29 metros) is a modal over a choice already made. Those pages pass no
+     `cinemaAreas`, so they fall back to the whole city's grouping and used to
+     trigger it. The grouping itself stays — it is still the filter panel's
+     structure; only the unsolicited overlay is suppressed. *@
+  window.AREA_PICKER_ENABLED = @{!city.hasAreaChooser};
   const CURRENT_CITY        = "@city.slug";
   @* The clock every day boundary this page draws is measured on — the city's,
      never the visitor's device. It matches what the server already resolves in

@@ -296,6 +296,31 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     contentAsString(res) should include ("CINEMA_AREAS       = []")
   }
 
+  // Reported live: /texas/film/<slug> popped the first-visit area-picker overlay,
+  // offering all 29 Texas metros on a FILM page. The film/browse/plan views pass no
+  // `cinemaAreas`, so `_sharedJsConfig` falls back to the whole city's grouping —
+  // correct for the filter panel, but it also armed London's one-time overlay for a
+  // city that now picks its metro on a screen instead.
+  "A film page in a state with a metro chooser" should "not arm the first-visit area picker" in {
+    // California stands in for Texas: same shape (a split US state with a chooser),
+    // and the fixture's films live here. The reported URL was /texas/film/<slug>.
+    val slug = tools.Slugify.stable(LaFilm)
+    val res  = usController().filmBySlug("california", slug)(req(s"/california/film/$slug"))
+    status(res) shouldBe OK
+    val body = contentAsString(res)
+    body should include ("AREA_PICKER_ENABLED = false")
+    // The GROUPING is still there — it is the filter panel's structure, and only
+    // the unsolicited overlay was the bug.
+    body should include ("CINEMA_AREAS")
+  }
+
+  "London" should "still arm the first-visit area picker, its only way to pick an area" in {
+    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom,
+                                       messages = testsupport.TestMessages.forLang("en"))._1
+    val body = contentAsString(uk.index("london")(req("/london/")))
+    body should include ("AREA_PICKER_ENABLED = true")
+  }
+
   "London" should "keep serving its own listing, with no area URLs" in {
     val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom,
                                        messages = testsupport.TestMessages.forLang("en"))._1

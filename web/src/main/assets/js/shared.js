@@ -1152,6 +1152,11 @@
   function areaPickerKey() { return 'areasChosen:' + CURRENT_CITY; }
 
   function maybeShowAreaPicker() {
+    // A city whose areas have their own chooser screen never opens this overlay —
+    // the choice was already made there, and re-asking on a film or plan page is
+    // a modal over a decision the visitor has taken. Defaults to enabled so a
+    // page rendered without the flag behaves as it always did.
+    if (window.AREA_PICKER_ENABLED === false) return;
     if (!(window.CINEMA_AREAS || []).length) return;          // flat city
     try { if (localStorage.getItem(areaPickerKey())) return; } catch (e) {}
     showAreaPicker();
