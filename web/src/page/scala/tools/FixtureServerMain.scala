@@ -38,6 +38,31 @@ object FixtureServerMain {
   // test sees them — independent of the wall-clock when CI runs.
   private val now = LocalDateTime.of(2026, 6, 8, 0, 0)
 
+  /** The bare `/` landing (place-selection screen). Production serves TWO screens
+   *  here — a country picker when the request Host is the bare showtimes.cc apex,
+   *  the place picker otherwise (see `LandingController`) — and this harness only
+   *  ever renders the second, because its routes are keyed on the path alone and
+   *  have no request to read a Host off. The apex branch is covered where the
+   *  decision actually lives, in `controllers.LandingApexSpec`.
+   *
+   *  IT LISTS `City.all`, THE UNION ACROSS EVERY COUNTRY, which no real deployment
+   *  ever renders — a Polish visitor is offered Polish cities and nothing else.
+   *  This harness serves ONE `/` to browser specs written for four countries at
+   *  once (`city-select.spec.ts` clicks Poznań, München AND California on this one
+   *  page), so a country-scoped list leaves three of them with nothing to click.
+   *  The COPY still comes from the default country, which is why those specs read
+   *  Polish nouns off the pages they land on.
+   *
+   *  HOISTED OUT OF `main` SO A SPEC CAN SEE IT. It was a local `val`, and the
+   *  only thing asserting the union was a Playwright spec several CI shards away
+   *  — so narrowing this to one country compiled, passed every Scala layer, and
+   *  turned up as a 30s browser timeout with no obvious cause. `FixtureServerLandingSpec`
+   *  now says it in seconds. Nothing here reads request state, so it is a plain
+   *  value rather than a step of `main`.
+   */
+  private[tools] lazy val landingHtml: String =
+    views.html.landing(models.Country.default, Some(City.all)).body
+
   def main(args: Array[String]): Unit = {
     val portFile = args.headOption.map(Paths.get(_)).getOrElse {
       System.err.println("usage: FixtureServerMain <port-file>")
@@ -123,14 +148,6 @@ object FixtureServerMain {
         case None       => "<html><body>Film not found</body></html>"
       }
     }
-
-    // The bare `/` landing (city-selection screen). Production serves TWO screens
-    // here — a country picker when the request Host is the bare showtimes.cc apex,
-    // the city picker otherwise (see LandingController) — and this harness only
-    // ever renders the second, because its routes are keyed on the path alone and
-    // have no request to read a Host off. The apex branch is covered where the
-    // decision actually lives, in controllers.LandingApexSpec.
-    val landingHtml: String = views.html.landing(models.Country.default).body
 
     // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
     // is matched against the known cities; an unknown first segment → None.

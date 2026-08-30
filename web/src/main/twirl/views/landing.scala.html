@@ -1,4 +1,4 @@
-@(country: models.Country)(implicit messages: play.api.i18n.Messages)
+@(country: models.Country, places: Option[Seq[models.City]] = None)(implicit messages: play.api.i18n.Messages)
 @*
    Place-selection landing shown at `/` when no `city` cookie is present.
    Lists every place the serving country supports, and on load tries browser
@@ -7,12 +7,22 @@
    from the list. Self-contained (no city-scoped partials) since there's no
    city yet.
 
-   Takes the COUNTRY rather than a bare city list: the list, the geolocation
-   payload and the copy all have to come from the same country, and the copy
-   also depends on what that country's places are called (`PlaceKind` — the US
-   picks a STATE here, so "Choose your city" would be wrong). Passing it in also
-   keeps the "nothing reads a global current country" rule this template used to
-   break four times over with `Country.fromEnv`.
+   Takes the COUNTRY rather than reading one: the copy depends on what that
+   country's places are called (`PlaceKind` — the US picks a STATE here, so
+   "Choose your city" would be wrong), and passing it in keeps the "nothing
+   reads a global current country" rule this template used to break four times
+   over with `Country.fromEnv`.
+
+   `places` IS NONE IN EVERY DEPLOYMENT, meaning "the country's own list" — a
+   visitor to the Polish site is offered Polish cities and nothing else, and no
+   caller in `main` passes it. It exists for the fixture server
+   (`tools.FixtureServerMain`), which serves ONE `/` to browser specs written
+   for four different countries at once and therefore has to list `City.all`,
+   the union. That is the seam the harness overrides, and it overrides nothing
+   else: the copy, the brand and the geolocation payload still come from the
+   country, so the page behaves like a real one in every respect a spec asserts.
+   (An `Option` rather than a defaulted `Seq`, because a default argument may
+   not reference `country`, a parameter of its own list.)
 *@
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
@@ -70,13 +80,18 @@
            placeholder="@messages(country.placeKind.messageKey("landing.searchCity"))" aria-label="@messages(country.placeKind.messageKey("landing.searchCityAria"))" aria-controls="city-list">
     <p class="city-empty" id="city-empty">@messages(country.placeKind.messageKey("landing.noCity"))</p>
     <ul class="city-list" id="city-list">
-      @for(c <- country.allSorted) {
+      @for(c <- places.getOrElse(country.allSorted)) {
         <li><a href="/@c.slug/">@c.labels.nominative</a></li>
       }
     </ul>
     <p class="locating" id="locating"></p>
   </main>
   <script>
+    @* THE COUNTRY'S OWN LIST, even when `places` widened the rows above. In
+       every deployment the two are the same set. On the fixture server they are
+       not, deliberately: a nearest-place redirect is a claim about where the
+       visitor IS, and a harness that offered it all 333 places would answer a
+       Poznań fix with whichever of four countries happened to be closest. *@
     var CITIES = @Html(country.allJson);
 
     // Fold a Polish string to its diacritic-free, lower-case form so the city
