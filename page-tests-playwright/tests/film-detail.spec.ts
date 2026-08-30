@@ -161,16 +161,33 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
     expect(details!.x).toBeGreaterThan(poster!.x + poster!.width - 1);
   });
 
-  // A big-city film plays 60+ venues a day, so each date's cinema list opens
-  // at ten and folds the rest behind a button. `/film-many` is the fixture
-  // server's 12-cinema render — no corpus film reaches the threshold itself.
+  // A big-city film plays 60+ venues a day, so both of the page's cinema lists
+  // — the link pills under the title and each date's cinemas in the showings
+  // tree — open at ten and fold the rest behind a button. `/film-many` is the
+  // fixture server's 12-cinema render; no corpus film reaches the threshold.
+  test('cinema-link pills past the tenth fold away until the button is clicked', async ({ page }) => {
+    await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('.cinema-link')).toHaveCount(12);
+    expect(await page.locator('.cinema-link:visible').count()).toBe(10);
+
+    const more = page.locator('.cinema-links .cinemas-more');
+    await expect(more).toBeVisible();
+    await more.click();
+
+    expect(await page.locator('.cinema-link:visible').count()).toBe(12);
+    await expect(more).toHaveCount(0);
+    // Each fold unfolds only its own siblings — the showings tree is untouched.
+    expect(await page.locator('.cinema-group:visible').count()).toBe(10);
+  });
+
   test('cinemas past the tenth fold away until the button is clicked', async ({ page }) => {
     await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('.cinema-group')).toHaveCount(12);
     expect(await page.locator('.cinema-group:visible').count()).toBe(10);
 
-    const more = page.locator('.cinemas-more');
+    const more = page.locator('.date-group .cinemas-more');
     await expect(more).toBeVisible();
     await more.click();
 

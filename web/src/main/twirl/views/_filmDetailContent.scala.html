@@ -46,10 +46,18 @@
 
       @_ratingBadges(Some(film.resolved.ratings))
 
+      @* One pill per cinema showing the film, linking to that cinema's own page
+         for it. A London film plays 60+ venues, and 60 pills between the title
+         and the synopsis push the whole page down. Show ten, fold the rest.
+         The cap is this row's alone — the showings tree further down folds on
+         its own per-date count, and the two are separate decisions. *@
       @if(film.cinemaFilmUrls.nonEmpty) {
-        <div style="margin-top: .5rem;">
-          @for((cinema, url) <- film.cinemaFilmUrls) {
-            <a href="@url" target="_blank" rel="nofollow noopener" class="cinema-link">@cinema.displayName ↗</a>
+        <div class="cinema-links" style="margin-top: .5rem;">
+          @for(((cinema, url), cinemaIndex) <- film.cinemaFilmUrls.zipWithIndex) {
+            <a href="@url" target="_blank" rel="nofollow noopener" class="cinema-link@if(cinemaIndex >= 10){ folded}">@cinema.displayName ↗</a>
+          }
+          @if(film.cinemaFilmUrls.size > 10) {
+            <button type="button" class="cinemas-more" onclick="unfoldCinemas(this)">@messages("detail.moreCinemas", film.cinemaFilmUrls.size - 10)</button>
           }
         </div>
       }
@@ -116,6 +124,18 @@
   </div>
 
   <script>
+    // Unfold the folded siblings of an unfold button — the cinema-link pills
+    // above, or one date's remaining cinemas in the showings tree below. Both
+    // folds put the button in the same parent as the rows it hides, so this
+    // needs no per-fold selector. One-way: the button has served its purpose
+    // once the list is open, so it takes itself out of the flow rather than
+    // sitting there as a re-fold nobody asked for.
+    function unfoldCinemas(btn) {
+      btn.parentElement.querySelectorAll('.folded')
+         .forEach(function (row) { row.classList.remove('folded'); });
+      btn.remove();
+    }
+
     function playTrailer(btn, url) {
       const frame  = document.getElementById('trailer-frame');
       const iframe = document.getElementById('trailer-iframe');

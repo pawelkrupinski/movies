@@ -21,6 +21,10 @@
    turns it on. The listing leaves it at 0: `_filmCards` caps a card by LINE
    budget in JS (`truncateShowings`), which owns the separate `.truncated`
    class, and the two folds must not read each other's channel.
+
+   The `unfoldCinemas` handler the button calls lives in `_filmDetailContent`,
+   which folds its cinema-link row the same way and so hosts the one copy.
+   Turning this on from any other host means bringing the handler along.
 *@
 @defining(
   film.showings.flatMap(_._2)
@@ -76,17 +80,6 @@
       <button type="button" class="cinemas-more" onclick="unfoldCinemas(this)">@messages("detail.moreCinemas", cinemaShowtimesList.size - collapseCinemasBeyond)</button>
     }
   </div>
-}@if(collapseCinemasBeyond > 0) {
-  <script>
-    // Unfold one date's remaining cinemas. One-way: the button has served its
-    // purpose once the day is open, so it takes itself out of the flow rather
-    // than sitting there as a re-fold nobody asked for.
-    function unfoldCinemas(btn) {
-      btn.closest('.date-group').querySelectorAll('.cinema-group.folded')
-         .forEach(function (group) { group.classList.remove('folded'); });
-      btn.remove();
-    }
-  </script>
 }
 <a href="@FilmHref(film.movie.title)" class="showings-more" style="display:none"></a>
 }

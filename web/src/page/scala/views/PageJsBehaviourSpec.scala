@@ -1027,13 +1027,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // ── /film cinema fold ────────────────────────────────────────────────────
   //
   // A big-city film plays 60+ venues a day, and /film used to list every one
-  // of them under every date. Each date now renders its first ten cinemas and
-  // folds the rest behind a button; clicking it unfolds that date's remainder
-  // and takes the button out of the flow. `/film-many` serves a 12-cinema
-  // render so the fold actually bites (the Poznań fixture corpus never does).
+  // of them TWICE — once as a link pill under the title, once per date in the
+  // showings tree. Both lists now render their first ten and fold the rest
+  // behind a button; clicking it unfolds that list and takes the button out of
+  // the flow. `/film-many` serves a 12-cinema render so the folds actually bite
+  // (the Poznań fixture corpus never does).
 
   private def visibleCinemaGroups(page: CdpPage): Int =
     page.evalInt("[...document.querySelectorAll('.cinema-group')].filter(g => g.offsetParent !== null).length")
+
+  private def visibleCinemaLinks(page: CdpPage): Int =
+    page.evalInt("[...document.querySelectorAll('.cinema-link')].filter(a => a.offsetParent !== null).length")
 
   "the /film cinema fold" should "show the first ten cinemas of a date and hide the rest" in {
     onPath("/film-many") { page =>
@@ -1045,15 +1049,36 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "show the first ten cinema-link pills under the title and hide the rest" in {
+    onPath("/film-many") { page =>
+      page.evalInt("document.querySelectorAll('.cinema-link').length")        shouldBe 12
+      page.evalInt("document.querySelectorAll('.cinema-link.folded').length") shouldBe 2
+      visibleCinemaLinks(page)                                                shouldBe 10
+    }
+  }
+
+  it should "unfold the cinema-link pills without touching the showings tree" in {
+    onPath("/film-many") { page =>
+      // The pill row's button is the FIRST on the page; the date's is below it.
+      page.eval("document.querySelectorAll('.cinemas-more')[0].click()")
+      page.waitFor("document.querySelectorAll('.cinema-link.folded').length === 0")
+
+      visibleCinemaLinks(page)  shouldBe 12
+      // Each fold unfolds only its own siblings — the tree stays folded.
+      visibleCinemaGroups(page) shouldBe 10
+      page.evalInt("document.querySelectorAll('.cinemas-more').length") shouldBe 1
+    }
+  }
+
   it should "unfold the remaining cinemas when the button is clicked" in {
     onPath("/film-many") { page =>
-      page.eval("document.querySelector('.cinemas-more').click()")
+      page.eval("document.querySelector('.date-group .cinemas-more').click()")
       page.waitFor("document.querySelectorAll('.cinema-group.folded').length === 0")
 
       visibleCinemaGroups(page) shouldBe 12
       // The button has done its job and removes itself rather than lingering
       // as a re-fold nobody asked for.
-      page.evalBool("document.querySelector('.cinemas-more') === null") shouldBe true
+      page.evalBool("document.querySelector('.date-group .cinemas-more') === null") shouldBe true
       // Every showtime under the unfolded cinemas is reachable now.
       page.evalBool("[...document.querySelectorAll('.badge-time')].every(b => b.offsetParent !== null)") shouldBe true
     }
