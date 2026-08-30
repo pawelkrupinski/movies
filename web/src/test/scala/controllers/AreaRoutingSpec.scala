@@ -82,10 +82,10 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     html should include(laCinema.displayName)
     html should not include sfCinema.displayName
     // Los Angeles is past UsMetroSubAreas' threshold, so the panel it offers is
-    // grouped by DISTRICT rather than flat.
+    // grouped by REGION rather than flat.
     html should include("CINEMA_AREAS")
     html should not include "CINEMA_AREAS       = []"
-    html should include("\"name\":\"Santa Monica\"")
+    html should include("\"name\":\"Westside\"")
   }
 
   it should "title, describe and canonicalise itself by the metro" in {
@@ -167,8 +167,8 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     val cinemas = contentAsString(us.apiCinemas("los-angeles")(req("/los-angeles/api/cinemas")))
     cinemas should include(laCinema.displayName)
     cinemas should not include sfCinema.displayName
-    // The area grouping the mobile filter renders is the metro's districts.
-    cinemas should include("Santa Monica")
+    // The area grouping the mobile filter renders is the metro's regions.
+    cinemas should include("Westside")
   }
 
   // ── What must NOT change ────────────────────────────────────────────────────

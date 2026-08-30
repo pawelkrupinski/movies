@@ -135,9 +135,12 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
     City.usCities.count(_.cinemas.sizeIs <= 2) should be <= 25
   }
 
-  "A big metro" should "be split into the districts a local names" in {
-    city("los-angeles").areas.map(_.area.label).take(3) shouldBe Seq("Los Angeles", "Downey", "Burbank")
+  "A big metro" should "be split into the areas a local names" in {
+    city("los-angeles").areas.map(_.area.label).take(3) shouldBe
+      Seq("Los Angeles", "San Fernando Valley", "San Gabriel Valley")
     city("new-york").areas.map(_.area.label) should contain allOf ("Manhattan", "Brooklyn")
+    // Chicago is not region-folded, so its areas stay the towns they cluster on.
+    city("chicago").areas.map(_.area.label).head shouldBe "Chicago"
   }
 
   "Every other metro" should "stay one flat list" in {

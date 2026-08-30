@@ -110,23 +110,38 @@ SUB_AREA_NAMES = {
 #: rather than to the towns, so the clustering is unchanged and the fold is a
 #: pure relabelling of its output.
 #:
-#: Only the Bay Area needs it, and it needs it badly. Every other sub-divided
-#: metro is named after the place it centres on and its districts are places
-#: INSIDE that place: Manhattan and Brooklyn are New York, Santa Monica and
-#: Pasadena are Los Angeles. The San Francisco metro is not that shape — it is
-#: the whole Bay, and its districts are separate cities of their own. Listed by
-#: their dominant town, "San Francisco 16 / San Jose 10 / Oakland 9" reads as if
-#: San Jose were a neighbourhood of San Francisco, which no resident would say,
-#: and 18 town names is more list than the picker can be browsed as anyway. The
-#: Bay's own five regions are what a local actually names, so the districts fold
-#: onto them: San Francisco, the East Bay, the South Bay, the Peninsula, the
-#: North Bay.
+#: A metro belongs here when its districts are separate PLACES its own name does
+#: not cover. Naming a district after its dominant town is right whenever the
+#: metro is one city and the district is inside it — Chicago's suburbs are all
+#: Chicagoland, and Dallas Fort Worth is already named for both its anchors, so
+#: neither is listed. It is wrong for the three that sprawl across places with
+#: names and identities of their own, where the raw list asserts a containment
+#: no resident would say:
+#:
+#: - San Francisco is the whole Bay, not a city. "San Francisco 16 / San Jose 10
+#:   / Oakland 9" reads as if San Jose were a neighbourhood of San Francisco.
+#: - New York files 35 of its 102 venues under towns in Long Island (21),
+#:   Westchester (11) and Rockland (3) — none of which anyone calls New York.
+#:   Its boroughs also arrive at inconsistent depth: Brooklyn is one district
+#:   while Queens is split into Forest Hills and Bayside.
+#: - Los Angeles reaches 11 venues into Orange County and 8 into Ventura, and
+#:   scatters the San Fernando Valley across four separate town names.
+#:
+#: The regions below are what a local says instead. Eighteen, eighteen and
+#: twenty-eight town names are also more list than a picker can be browsed as,
+#: so the fold buys legibility on top of accuracy.
 #:
 #: The fold is by district and not by radius because these regions are not
 #: radial — the East Bay is a 70 km strip along the water and the Bay itself
 #: sits in the middle of the metro, which is the same reason a compass split
 #: fails here (see `models.UsMetroSubAreas`). Grouping the districts the
 #: clustering already found keeps the geography and only renames the buckets.
+#:
+#: It also means a region is only ever as precise as the district under it. The
+#: 6 km sub-pass pulls one Astoria and one Long Island City venue into the
+#: Manhattan cluster (they sit across the river from Midtown), so both land in
+#: Manhattan rather than Queens. Two venues, and splitting a district would mean
+#: a second per-venue table; the district fold is the honest granularity.
 #:
 #: A metro listed here must be mapped EXHAUSTIVELY — `sub_areas_for_metro` dies
 #: on a district with no region — so a re-harvest that clusters a new district
@@ -150,6 +165,58 @@ SUB_AREA_REGIONS = {
     ('San Francisco', 'Larkspur'):      'North Bay',
     ('San Francisco', 'Novato'):        'North Bay',
     ('San Francisco', 'Vallejo'):       'North Bay',
+
+    ('New York', 'Manhattan'):     'Manhattan',
+    ('New York', 'Brooklyn'):      'Brooklyn',
+    ('New York', 'The Bronx'):     'The Bronx',
+    ('New York', 'Staten Island'): 'Staten Island',
+    ('New York', 'Bayside'):       'Queens',
+    ('New York', 'Forest Hills'):  'Queens',
+    ('New York', 'Bellmore'):      'Long Island',
+    ('New York', 'Farmingdale'):   'Long Island',
+    ('New York', 'Huntington'):    'Long Island',
+    ('New York', 'Lynbrook'):      'Long Island',
+    ('New York', 'Manhasset'):     'Long Island',
+    ('New York', 'Northport'):     'Long Island',
+    ('New York', 'Stony Brook'):   'Long Island',
+    ('New York', 'Westbury'):      'Long Island',
+    ('New York', 'New Rochelle'):  'Westchester',
+    ('New York', 'White Plains'):  'Westchester',
+    ('New York', 'Yonkers'):       'Westchester',
+    # Rockland, not "Hudson Valley": that is a metro of its own in this state.
+    ('New York', 'Nanuet'):        'Rockland',
+
+    ('Los Angeles', 'Los Angeles'):     'Los Angeles',
+    ('Los Angeles', 'Marina del Rey'):  'Westside',
+    ('Los Angeles', 'Santa Monica'):    'Westside',
+    ('Los Angeles', 'Burbank'):         'San Fernando Valley',
+    ('Los Angeles', 'Calabasas'):       'San Fernando Valley',
+    ('Los Angeles', 'Encino'):          'San Fernando Valley',
+    ('Los Angeles', 'North Hollywood'): 'San Fernando Valley',
+    ('Los Angeles', 'Northridge'):      'San Fernando Valley',
+    ('Los Angeles', 'Arcadia'):         'San Gabriel Valley',
+    ('Los Angeles', 'Covina'):          'San Gabriel Valley',
+    ('Los Angeles', 'Glendale'):        'San Gabriel Valley',
+    ('Los Angeles', 'Pasadena'):        'San Gabriel Valley',
+    ('Los Angeles', 'El Segundo'):      'South Bay',
+    ('Los Angeles', 'Inglewood'):       'South Bay',
+    ('Los Angeles', 'Torrance'):        'South Bay',
+    ('Los Angeles', 'Cerritos'):        'Gateway Cities',
+    ('Los Angeles', 'Downey'):          'Gateway Cities',
+    ('Los Angeles', 'Montebello'):      'Gateway Cities',
+    # Long Beach is the metro's second-biggest city, not a Gateway suburb.
+    ('Los Angeles', 'Long Beach'):      'Long Beach',
+    ('Los Angeles', 'Buena Park'):      'Orange County',
+    ('Los Angeles', 'Garden Grove'):    'Orange County',
+    ('Los Angeles', 'La Habra'):        'Orange County',
+    ('Los Angeles', 'Camarillo'):       'Ventura County',
+    ('Los Angeles', 'Simi Valley'):     'Ventura County',
+    ('Los Angeles', 'Thousand Oaks'):   'Ventura County',
+    ('Los Angeles', 'Lancaster'):       'Antelope Valley',
+    ('Los Angeles', 'Santa Clarita'):   'Santa Clarita',
+    # 35 km of sea from anywhere else; it kept its own district and keeps its
+    # own region for the same reason.
+    ('Los Angeles', 'Avalon'):          'Catalina Island',
 }
 
 

@@ -59,7 +59,7 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
     grouped.distinct should have size grouped.size.toLong.toInt
   }
 
-  "apiCinemas for a big US metro (split by district)" should "return the districts partitioning the cinema list" in {
+  "apiCinemas for a big US metro (split by region)" should "return the regions partitioning the cinema list" in {
     val result = controller(models.Country.UnitedStates).apiCinemas("los-angeles")(FakeRequest())
     status(result) shouldBe OK
     val json    = Json.parse(contentAsString(result))
@@ -67,9 +67,12 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
 
     val areas = (json \ "areas").as[Seq[play.api.libs.json.JsValue]]
     // Data-driven names, not the five compass cases: greater LA's 133 venues are
-    // grouped into the districts their coordinates cluster into, biggest first.
-    areas.map(a => (a \ "name").as[String]).take(3) shouldBe Seq("Los Angeles", "Downey", "Burbank")
-    areas.map(a => (a \ "slug").as[String]).take(3) shouldBe Seq("los-angeles", "downey", "burbank")
+    // clustered by coordinates and then folded onto the regions a local browses
+    // by, biggest first.
+    areas.map(a => (a \ "name").as[String]).take(3) shouldBe
+      Seq("Los Angeles", "San Fernando Valley", "San Gabriel Valley")
+    areas.map(a => (a \ "slug").as[String]).take(3) shouldBe
+      Seq("los-angeles", "san-fernando-valley", "san-gabriel-valley")
     areas.map(a => (a \ "name").as[String]) should not contain "Other areas"
 
     val grouped = areas.flatMap(a => (a \ "cinemas").as[Seq[String]])

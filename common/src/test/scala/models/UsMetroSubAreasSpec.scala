@@ -93,13 +93,14 @@ class UsMetroSubAreasSpec extends AnyFlatSpec with Matchers {
   // ── The names. Pinned outright: a shifted radius, fold or rename shows up
   //    here as the list a reader can judge, not as a count. ──────────────────
 
-  "New York" should "fall out as the boroughs, then the Long Island and Westchester towns" in {
+  // The five boroughs, then the three suburban counties. Left as towns, 35 of
+  // the metro's 102 venues sat under names nobody calls New York — Bellmore,
+  // Farmingdale, Nanuet — and Queens arrived at a different depth from every
+  // other borough (Forest Hills and Bayside, beside a whole Brooklyn).
+  "New York" should "fall out as the boroughs, then Long Island, Westchester and Rockland" in {
     districts("new-york") shouldBe Seq(
-      "Manhattan" -> 40, "Brooklyn" -> 12, "Forest Hills" -> 7, "Yonkers" -> 5,
-      "Bellmore" -> 4, "Staten Island" -> 4, "Farmingdale" -> 3, "Nanuet" -> 3,
-      "New Rochelle" -> 3, "Stony Brook" -> 3, "Westbury" -> 3, "White Plains" -> 3,
-      "Bayside" -> 2, "Huntington" -> 2, "Lynbrook" -> 2, "Manhasset" -> 2,
-      "Northport" -> 2, "The Bronx" -> 2,
+      "Manhattan" -> 40, "Long Island" -> 21, "Brooklyn" -> 12, "Westchester" -> 11,
+      "Queens" -> 9, "Staten Island" -> 4, "Rockland" -> 3, "The Bronx" -> 2,
     )
     district("new-york", "Manhattan").cinemaDisplayNames should
       contain allOf ("Film Forum New York", "AMC Empire 25", "AMC Lincoln Square 13")
@@ -109,32 +110,43 @@ class UsMetroSubAreasSpec extends AnyFlatSpec with Matchers {
       Seq("AMC Bay Plaza 13 Bronx", "Regal Concourse")
     district("new-york", "Staten Island").cinemaDisplayNames should
       contain("Alamo Drafthouse Staten Island")
-    // Queens arrives as its neighbourhoods, which is how its venues are filed.
-    district("new-york", "Forest Hills").cinemaDisplayNames should
+    // Queens is one borough now, not the two neighbourhoods its venues are
+    // filed under.
+    district("new-york", "Queens").cinemaDisplayNames should
       contain allOf ("Cinemart Cinemas Forest Hills", "Kew Gardens Cinemas")
+    // Long Island is Nassau AND Suffolk, and is never New York.
+    district("new-york", "Long Island").cinemaDisplayNames should
+      contain allOf ("Bellmore Movies", "Cinema Arts Centre Huntington 3")
+    district("new-york", "Manhattan").cinemaDisplayNames should
+      not contain "Bellmore Movies"
   }
 
-  "Los Angeles" should "read as the towns of greater LA" in {
+  // Greater LA's own regions. Left as towns it reached 11 venues into Orange
+  // County and 8 into Ventura under the label "Los Angeles", and scattered the
+  // San Fernando Valley across Burbank, Calabasas, North Hollywood, Northridge
+  // and Encino.
+  "Los Angeles" should "read as the regions of greater LA" in {
     districts("los-angeles") shouldBe Seq(
-      "Los Angeles" -> 32, "Downey" -> 8, "Burbank" -> 6, "Glendale" -> 6, "Pasadena" -> 6,
-      "Long Beach" -> 5, "Montebello" -> 5, "Torrance" -> 5, "Buena Park" -> 4,
-      "Calabasas" -> 4, "Garden Grove" -> 4, "North Hollywood" -> 4, "Santa Monica" -> 4,
-      "Thousand Oaks" -> 4, "Cerritos" -> 3, "Covina" -> 3, "El Segundo" -> 3,
-      "Inglewood" -> 3, "La Habra" -> 3, "Lancaster" -> 3, "Marina del Rey" -> 3,
-      "Northridge" -> 3, "Santa Clarita" -> 3, "Arcadia" -> 2, "Camarillo" -> 2,
-      "Encino" -> 2, "Simi Valley" -> 2, "Avalon" -> 1,
+      "Los Angeles" -> 32, "San Fernando Valley" -> 19, "San Gabriel Valley" -> 17,
+      "Gateway Cities" -> 16, "Orange County" -> 11, "South Bay" -> 11,
+      "Ventura County" -> 8, "Westside" -> 7, "Long Beach" -> 5,
+      "Antelope Valley" -> 3, "Santa Clarita" -> 3, "Catalina Island" -> 1,
     )
-    district("los-angeles", "Santa Monica").cinemaDisplayNames should
+    district("los-angeles", "Westside").cinemaDisplayNames should
       contain allOf ("AMC Santa Monica 7", "Aero Theatre Santa Monica")
-    district("los-angeles", "Pasadena").cinemaDisplayNames should contain("IPIC Pasadena")
-    district("los-angeles", "Burbank").cinemaDisplayNames should contain("AMC Burbank 16")
+    district("los-angeles", "San Gabriel Valley").cinemaDisplayNames should contain("IPIC Pasadena")
+    district("los-angeles", "San Fernando Valley").cinemaDisplayNames should contain("AMC Burbank 16")
     district("los-angeles", "Long Beach").cinemaDisplayNames should
       contain("Art Theatre of Long Beach")
-    // Hollywood, Downtown and the Westside are all filed under the city itself.
+    // Orange and Ventura County venues stop reading as Los Angeles.
+    district("los-angeles", "Los Angeles").cinemaDisplayNames should
+      contain noneOf ("AMC Fullerton 20", "AMC DINE-IN Thousand Oaks 14 with Dolby")
+    // Hollywood and Downtown are filed under the city itself; Santa Monica and
+    // Culver City are the Westside above.
     district("los-angeles", "Los Angeles").cinemaDisplayNames should
       contain allOf ("Chinese Theatre Hollywood", "Alamo Drafthouse Downtown LA")
-    // Catalina Island keeps its own: 35 km of sea from the nearest district.
-    district("los-angeles", "Avalon").cinemaDisplayNames shouldBe
+    // Catalina keeps its own: 35 km of sea from the nearest district.
+    district("los-angeles", "Catalina Island").cinemaDisplayNames shouldBe
       Seq("Avalon Theatre (Catalina Casino)")
   }
 

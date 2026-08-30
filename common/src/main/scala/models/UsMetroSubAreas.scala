@@ -23,15 +23,24 @@ package models
  *  straight out of the data; for Los Angeles it is Santa Monica, Pasadena,
  *  Burbank, Long Beach. See `data/us/scripts/cluster_metros.py`.
  *
- *  San Francisco is the one metro that then folds those districts onto REGIONS
- *  (`cluster_metros.SUB_AREA_REGIONS`), because it is the one metro that is not
- *  a city. Manhattan is inside New York and Pasadena is inside Los Angeles, but
- *  San Jose is not inside San Francisco — listed by their dominant towns the
- *  Bay's eighteen districts read as if it were. They fold onto the five regions
- *  a local browses the Bay by instead: San Francisco, East Bay, South Bay,
- *  North Bay, Peninsula. Still not a compass split — the fold is over the
- *  districts the clustering already found, so the geography is unchanged and
- *  only the buckets are renamed.
+ *  Three of the five then fold those districts onto REGIONS
+ *  (`cluster_metros.SUB_AREA_REGIONS`), because a town name is only right while
+ *  the district really is inside the metro's namesake city. It is for Chicago,
+ *  whose suburbs are all Chicagoland, and for Dallas Fort Worth, already named
+ *  after both its anchors — neither folds. It is not for the three that sprawl
+ *  across places with identities of their own, where the raw list asserts a
+ *  containment no resident would say: San Jose is not inside San Francisco,
+ *  Long Island is not inside New York, and Orange County is not inside Los
+ *  Angeles. Those fold onto the regions a local browses by — East Bay, South
+ *  Bay, Peninsula, North Bay; Queens, Long Island, Westchester, Rockland; the
+ *  San Fernando and San Gabriel Valleys, the Westside, the South Bay, the
+ *  Gateway Cities.
+ *
+ *  Still not a compass split — the fold is over the districts the clustering
+ *  already found, so the geography is unchanged and only the buckets are
+ *  renamed. Which also caps its precision at the district: the 6 km sub-pass
+ *  puts two Queens venues across the river in the Manhattan cluster, so both
+ *  land in Manhattan.
  *
  *  This side is only the grouping. The clustering is the generator's, the label
  *  is carried per venue in `UsRosterData`, and the slug is re-derived from the

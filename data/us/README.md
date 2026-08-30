@@ -150,16 +150,32 @@ Those five are too big to browse as one list, and their districts are the places
 a local names: Manhattan, Brooklyn, The Bronx and Staten Island fall out of the
 venues' own `city` values, as do Santa Monica, Pasadena and Long Beach.
 
-San Francisco alone then folds its districts onto REGIONS (`SUB_AREA_REGIONS`),
-because it is the only one of the five that is not a city. Manhattan is inside
-New York; San Jose is not inside San Francisco, and listed by their dominant
-towns the Bay's eighteen districts read as if it were. They fold onto the five
-regions a local browses the Bay by — San Francisco, East Bay, South Bay, North
-Bay, Peninsula — over the districts the clustering already found, so the
-geography is unchanged and only the buckets are renamed. The table must cover a
-listed metro exhaustively: a re-harvest that clusters a district it has no
-region for kills the generator rather than showing a stray town beside "East
-Bay".
+Three of the five then fold those districts onto REGIONS (`SUB_AREA_REGIONS`).
+A town name is right only while the district really is inside the metro's
+namesake city — true of Chicago, whose suburbs are all Chicagoland, and of
+Dallas Fort Worth, already named for both its anchors, so neither folds. It is
+false for the three that sprawl across places with identities of their own,
+where the raw list asserts a containment no resident would say: San Jose is not
+inside San Francisco, Long Island is not inside New York, Orange County is not
+inside Los Angeles. Those fold onto the regions a local browses by:
+
+    San Francisco  18 districts ->  5   San Francisco, East Bay, South Bay,
+                                        North Bay, Peninsula
+    New York       18 districts ->  8   Manhattan, Long Island, Brooklyn,
+                                        Westchester, Queens, Staten Island,
+                                        Rockland, The Bronx
+    Los Angeles    28 districts -> 12   Los Angeles, San Fernando Valley, San
+                                        Gabriel Valley, Gateway Cities, Orange
+                                        County, South Bay, Ventura County,
+                                        Westside, Long Beach, Antelope Valley,
+                                        Santa Clarita, Catalina Island
+
+The fold runs over the districts the clustering already found, so the geography
+is unchanged and only the buckets are renamed — which also caps its precision at
+the district: the 6 km sub-pass pulls two Queens venues across the river into
+the Manhattan cluster, so both land in Manhattan. The table must cover a listed
+metro exhaustively: a re-harvest that clusters a district it has no region for
+kills the generator rather than showing a stray town beside "East Bay".
 
 Everything it does is a pure
 function of `venues.json` — same input, byte-identical output — so re-running it
