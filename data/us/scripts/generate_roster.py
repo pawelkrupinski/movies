@@ -17,7 +17,7 @@ from collections import defaultdict
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from states import STATES
 from metros import labels_by_slug
-from cluster_metros import metros_for_state
+from cluster_metros import metros_for_state, sub_areas_for_metro
 
 
 def scala_str(s: str) -> str:
@@ -90,6 +90,18 @@ def main(src, out):
     metro_of = {state: metros_for_state(state, vs, metro_labels[state])
                 for state, vs in by_state.items()}
 
+    # A metro too big to browse as one list is clustered AGAIN, at a twelfth of
+    # the radius, into the districts a local names — `UsMetroSubAreas` groups by
+    # this second label. Empty for every venue in a metro under
+    # `MIN_VENUES_TO_SUBDIVIDE`, which is all but five of the 470.
+    by_metro = defaultdict(list)
+    for state, vs in by_state.items():
+        for v in vs:
+            by_metro[(state, metro_of[state][v['slug']])].append(v)
+    sub_of = {}
+    for (state, metro), members in by_metro.items():
+        sub_of.update(sub_areas_for_metro(metro, members))
+
     regions = []
     for state in sorted(by_state, key=lambda s: STATES[s][0]):
         vs = sorted(by_state[state], key=lambda v: v['title'].lower())
@@ -109,8 +121,8 @@ def main(src, out):
         "package models",
         "",
         "private[models] object UsRosterData {",
-        "  // (displayName, pillName, flicks cinema slug, metro label, lat, lon)",
-        "  type C = (String, String, String, String, Double, Double)",
+        "  // (displayName, pillName, flicks cinema slug, metro label, sub-area label)",
+        "  type C = (String, String, String, String, String)",
         "  // (slug, name, lat, lon, zoneId, cinemas)",
         "  type R = (String, String, Double, Double, String, Seq[C])",
         "",
@@ -121,14 +133,9 @@ def main(src, out):
                      f'{lat}, {lon}, "{zone}", Seq(')
         for v in vs:
             t = scala_str(v['title'])
-            # Coordinates ride along per venue: `UsMetroSubAreas` splits a metro
-            # too big to browse into compass sub-areas from them, exactly as the
-            # metros themselves are clustered from them. 5 decimals is ~1 m,
-            # far past what a compass bearing can notice, and keeps the literal
-            # short.
             lines.append(f'    ("{t}", "{t}", "{scala_str(v["slug"])}", '
                          f'"{scala_str(metro_of[state][v["slug"]])}", '
-                         f'{round(v["lat"], 5)}, {round(v["lon"], 5)}),')
+                         f'"{scala_str(sub_of.get(v["slug"], ""))}"),')
         lines.append('  ))')
         lines.append('')
     lines.append('  val regions: Seq[R] = Seq(')
@@ -149,6 +156,9 @@ def main(src, out):
     clustered = {(state, label) for state, m in metro_of.items() for label in m.values()}
     print(f"metros: {len(raw)} raw Flicks -> {len(clustered)} clustered "
           f"(python3 data/us/scripts/cluster_metros.py reports the distribution)")
+    sub_metros = {m for (_, m), vs in by_metro.items() if any(v['slug'] in sub_of for v in vs)}
+    print(f"sub-divided metros: {sorted(sub_metros)} -> "
+          f"{len(set(sub_of.values()))} sub-areas over {len(sub_of)} venues")
 
 
 if __name__ == '__main__':

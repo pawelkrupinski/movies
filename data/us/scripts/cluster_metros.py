@@ -29,7 +29,12 @@ nearest hub within a radius. Two differences, both because the US sprawls:
 
 Clusters never cross a state line, because a state is the `City` the areas
 partition — so the New York and Kansas City metros are each split at their
-border. See `data/us/README.md`.
+border.
+
+The same pass runs a SECOND time inside each metro too big to browse as one
+list (`sub_areas_for_metro`), at 6 km instead of 75, splitting it into the
+districts a local names — Manhattan, Brooklyn, Santa Monica, Fort Worth. See
+`data/us/README.md`.
 """
 import math
 import unicodedata
@@ -45,6 +50,59 @@ MIN_CLUSTER_VENUES = 3
 #: genuinely isolated and keeps its own area rather than being filed under a
 #: metro nobody would drive from it to.
 FOLD_RADIUS_KM = 2 * RADIUS_KM
+
+#: The metros big enough to be sub-divided into districts — see
+#: `sub_areas_for_metro` and `models.UsMetroSubAreas`. Five clear it: Los
+#: Angeles (133 venues), New York (102), San Francisco (79), Chicago and Dallas
+#: Fort Worth (78 each); the next two down, Seattle (70) and Boston (62), do
+#: not. 75 rather than a round 80 because San Francisco is 79 and is one of the
+#: three the split was asked for — and nothing distinguishes Chicago and Dallas
+#: Fort Worth at 78 from it.
+MIN_VENUES_TO_SUBDIVIDE = 75
+#: The same hub-and-radius pass, re-entered INSIDE one metro at a twelfth of the
+#: metro radius. Tuned against the outcome exactly as the 75 km was: at 8 km the
+#: five boroughs collapse into one 52-venue "New York" (Manhattan, Brooklyn, the
+#: Bronx and half of Queens are all within 8 km of each other), which is the
+#: whole thing this split exists to avoid; at 5 km greater Los Angeles shatters
+#: into 32 districts, eleven of them holding two venues — Century City apart
+#: from Los Angeles, Marina del Rey apart from Santa Monica. 6 km keeps the
+#: boroughs apart AND keeps the LA districts the size of places people name.
+SUB_RADIUS_KM = 6.0
+#: A two-cinema district is a real place — the Bronx has exactly two — where a
+#: two-cinema METRO is a row of chrome. So the sub-pass folds only the true
+#: singletons, not everything under three.
+MIN_SUB_CLUSTER_VENUES = 2
+#: Three times the sub-radius, not the metro pass's two. A lone suburban cinema
+#: in these metros typically sits 12-18 km from the next district's hub; at 2x
+#: (12 km) a dozen of them across the five metros stay stranded as one-venue
+#: areas, at 3x each is filed under the district a resident drives from. Beyond
+#: 18 km it is genuinely on its own and keeps its own area — Avalon, on Catalina
+#: Island, is the honest example.
+SUB_FOLD_RADIUS_KM = 3 * SUB_RADIUS_KM
+
+#: Towns whose Flicks `city` is not the name a local uses for the place, renamed
+#: before the sub-pass clusters on them. Keyed by (metro label, city) so a
+#: rename can never reach a same-named town in another metro, and applied to the
+#: TOWN rather than to the finished label so that two spellings of one town
+#: merge into one district instead of facing each other as two.
+#:
+#: Deliberately tiny — the dominant town's own name is right for all but four of
+#: the 105 districts, and every entry here is a `city` that is wrong or
+#: ambiguous for the venues filed under it, never a matter of taste:
+#:
+#: - Manhattan's venues are filed under "New York", which inside the metro ALSO
+#:   called New York names nothing.
+#: - Arlington, TX arrives as both "Arlington" and "Arlington Heights" (a Fort
+#:   Worth neighbourhood 20 km away), splitting one town's four cinemas in two.
+#: - "Kellerville" is not a place in Texas; the venue is Cinepolis Keller.
+#: - The Aquarius and the Stanford are both in Palo Alto, not in the separate
+#:   city of East Palo Alto they are filed under.
+SUB_AREA_NAMES = {
+    ('New York', 'New York'): 'Manhattan',
+    ('Dallas Fort Worth', 'Arlington Heights'): 'Arlington',
+    ('Dallas Fort Worth', 'Kellerville'): 'Keller',
+    ('San Francisco', 'East Palo Alto'): 'Palo Alto',
+}
 
 
 def haversine_km(a, b):
@@ -94,8 +152,12 @@ def _towns(venues):
     }
 
 
-def _cluster(towns):
-    """{town: hub town} — greedy hub assignment at [[RADIUS_KM]], then the fold.
+def _cluster(towns, radius_km=None, min_venues=MIN_CLUSTER_VENUES, fold_radius_km=None):
+    """{town: hub town} — greedy hub assignment at `radius_km`, then the fold.
+
+    Defaults to the metro pass's own constants; `sub_areas_for_metro` re-enters
+    it at a smaller radius to split ONE metro into its districts. Same algorithm
+    either way — a metro and a neighbourhood differ in scale, not in kind.
 
     Towns are ranked by their own cinema count, then by how many cinemas sit
     within a radius of them, then by name. The count picks out the real cities;
@@ -104,17 +166,19 @@ def _cluster(towns):
     of its region. Both are pure functions of the input, so the ranking — and
     everything downstream of it — is deterministic.
     """
+    radius_km = RADIUS_KM if radius_km is None else radius_km
+    fold_radius_km = 2 * radius_km if fold_radius_km is None else fold_radius_km
     names = list(towns)
     distance = {(a, b): haversine_km(towns[a]['pt'], towns[b]['pt'])
                 for a in names for b in names}
     size = {c: len(towns[c]['venues']) for c in names}
-    density = {c: sum(size[o] for o in names if distance[(c, o)] <= RADIUS_KM) for c in names}
+    density = {c: sum(size[o] for o in names if distance[(c, o)] <= radius_km) for c in names}
     ranked = sorted(names, key=lambda c: (-size[c], -density[c], c))
 
     hubs, assigned = [], {}
     for town in ranked:
         nearest = min(hubs, key=lambda h: (distance[(town, h)], h), default=None)
-        if nearest is not None and distance[(town, nearest)] <= RADIUS_KM:
+        if nearest is not None and distance[(town, nearest)] <= radius_km:
             assigned[town] = nearest
         else:
             hubs.append(town)
@@ -127,7 +191,7 @@ def _cluster(towns):
         held = Counter()
         for town, hub in assigned.items():
             held[hub] += size[town]
-        starved = sorted((h for h in hubs if held[h] < MIN_CLUSTER_VENUES),
+        starved = sorted((h for h in hubs if held[h] < min_venues),
                          key=lambda h: (held[h], h))
         merged = False
         for hub in starved:
@@ -135,7 +199,7 @@ def _cluster(towns):
             if not others:
                 continue
             nearest = min(others, key=lambda o: (distance[(hub, o)], o))
-            if distance[(hub, nearest)] > FOLD_RADIUS_KM:
+            if distance[(hub, nearest)] > fold_radius_km:
                 continue
             for town, h in assigned.items():
                 if h == hub:
@@ -211,6 +275,36 @@ def metros_for_state(state, venues, metro_labels):
             for hub, m in members.items() for t in m.values() for v in t['venues']}
 
 
+def sub_areas_for_metro(metro, venues):
+    """{venue slug: sub-area label} for ONE metro's venues, or `{}` if it is
+    under [[MIN_VENUES_TO_SUBDIVIDE]].
+
+    The metro pass again, one level down: the same towns, the same greedy hubs,
+    the same fold — at [[SUB_RADIUS_KM]] instead of 75 km. What changes is the
+    NAME. A metro is named after the Flicks region most of it is filed under,
+    because that reads the travel-shed better than any one town; a district
+    inside a metro has no such label, and does not need one — it is named after
+    the town it centres on, which for New York is literally the borough
+    (Brooklyn, The Bronx, Staten Island) and for Los Angeles is Santa Monica,
+    Pasadena, Burbank, Long Beach. [[SUB_AREA_NAMES]] fixes the four towns whose
+    `city` is not what a local says, before the clustering so that two spellings
+    of one town cluster as one.
+
+    Hub towns are distinct by construction, so labels are unique within the
+    metro; this still checks their SLUGS, which is what a client persists.
+    """
+    if len(venues) < MIN_VENUES_TO_SUBDIVIDE:
+        return {}
+    towns = _towns([dict(v, city=SUB_AREA_NAMES.get((metro, v['city']), v['city']))
+                    for v in venues])
+    assigned = _cluster(towns, SUB_RADIUS_KM, MIN_SUB_CLUSTER_VENUES, SUB_FOLD_RADIUS_KM)
+    for slug, group in _by_slug(set(assigned.values())).items():
+        if len(group) > 1:
+            raise SystemExit(f"{metro}: sub-areas {sorted(group)} all slug to {slug!r}")
+    return {v['slug']: assigned[town]
+            for town, t in towns.items() for v in t['venues']}
+
+
 def _by_slug(labels):
     grouped = defaultdict(set)
     for label in labels:
@@ -241,13 +335,17 @@ def _report():
     labels = labels_by_slug({s: {v['metro'] for v in vs if v['metro']}
                              for s, vs in by_state.items()})
     print(f"radius={RADIUS_KM}km min={MIN_CLUSTER_VENUES} fold={FOLD_RADIUS_KM}km")
-    sizes, per_state = [], {}
+    sizes, per_state, big = [], {}, []
     for state in sorted(by_state):
         metros = metros_for_state(state, by_state[state], labels[state])
         counts = Counter(metros.values())
         per_state[state] = counts
         if len(by_state[state]) >= 30:   # UsRoster.MinCinemasToSplit
             sizes.extend(counts.values())
+        for metro, held in counts.items():
+            if held >= MIN_VENUES_TO_SUBDIVIDE:
+                big.append((held, metro, [v for v in by_state[state]
+                                          if metros[v['slug']] == metro]))
     print(f"areas in split states: {len(sizes)}  biggest {max(sizes)}  "
           f"one-venue {sum(1 for s in sizes if s == 1)}  "
           f"two-or-fewer {sum(1 for s in sizes if s <= 2)}  "
@@ -255,6 +353,14 @@ def _report():
     for state, counts in sorted(per_state.items(), key=lambda kv: -sum(kv[1].values()))[:8]:
         top = ', '.join(f"{n} {c}" for n, c in counts.most_common(4))
         print(f"  {state:14s} {sum(counts.values()):4d} venues -> {len(counts):3d} metros ({top})")
+
+    print(f"\nsub-areas: radius={SUB_RADIUS_KM}km min={MIN_SUB_CLUSTER_VENUES} "
+          f"fold={SUB_FOLD_RADIUS_KM}km, in metros of {MIN_VENUES_TO_SUBDIVIDE}+ venues")
+    for held, metro, vs in sorted(big, reverse=True, key=lambda b: (b[0], b[1])):
+        areas = Counter(sub_areas_for_metro(metro, vs).values())
+        print(f"  {metro} ({held} venues -> {len(areas)} sub-areas)")
+        print('    ' + ', '.join(f"{name} {n}" for name, n in
+                                 sorted(areas.items(), key=lambda kv: (-kv[1], kv[0]))))
 
 
 if __name__ == '__main__':

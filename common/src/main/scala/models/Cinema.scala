@@ -1591,11 +1591,6 @@ object UsRoster {
    *  `region_slug` it was harvested under (several adjacent slugs cover one
    *  travel-shed, and 788 venues carry no slug at all).
    *
-   *  The slug is re-derived from the label here rather than carried in the
-   *  generated data, so the area a client persists is always keyed by
-   *  `Slugify.stable` — the frozen fold — and can never drift from what the
-   *  generator happened to emit.
-   *
    *  Biggest metro first: it is the one most of the state's visitors want, and
    *  it sinks the long tail of small metros to the bottom where a collapsed
    *  group costs nothing.
@@ -1603,18 +1598,32 @@ object UsRoster {
    *  Returns `Nil` (a flat city) when the state has fewer than
    *  [[MinCinemasToSplit]] cinemas, or when a single group would cover them all:
    *  one collapsible group holding everything is pure overhead. */
-  private def metroAreas(venues: Seq[(UsCinema, String)]): Seq[CinemaAreaGroup] = {
-    val groups = venues.groupBy { case (_, metro) => CinemaArea(metro) }.toSeq
+  private def metroAreas(venues: Seq[(UsCinema, String)]): Seq[CinemaAreaGroup] =
+    if (venues.sizeIs < MinCinemasToSplit) Nil
+    else areasByLabel(venues) match {
+      case single if single.sizeIs < 2 => Nil
+      case groups                      => groups
+    }
+
+  /** Venues grouped by the label the generator filed each under, biggest group
+   *  first — the shape both levels of the US grouping take. [[metroAreas]] calls
+   *  it with the metro label, [[UsMetroSubAreas]] with the sub-area label of a
+   *  metro too big to browse as one list.
+   *
+   *  The slug is re-derived from the label here rather than carried in the
+   *  generated data, so the area a client persists is always keyed by
+   *  `Slugify.stable` — the frozen fold — and can never drift from what the
+   *  generator happened to emit. */
+  private[models] def areasByLabel(venues: Seq[(Cinema, String)]): Seq[CinemaAreaGroup] =
+    venues.groupBy { case (_, label) => CinemaArea(label) }.toSeq
       .map { case (area, members) => CinemaAreaGroup(area, members.map(_._1)) }
       .sortBy(g => (-g.cinemas.size, g.area.label))
-    if (venues.sizeIs < MinCinemasToSplit || groups.sizeIs < 2) Nil else groups
-  }
 
-  private val built: Seq[(UsRegion, Seq[(UsCinema, String, GeoPoint)])] =
+  private val built: Seq[(UsRegion, Seq[(UsCinema, String, String)])] =
     UsRosterData.regions.map { case (slug, name, lat, lon, zone, cinemas) =>
-      val venues = cinemas.map { case (disp, pill, flicksSlug, metro, venueLat, venueLon) =>
+      val venues = cinemas.map { case (disp, pill, flicksSlug, metro, subArea) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp ($name)" else disp
-        (new UsCinema(unique, pill), flicksSlug, metro, GeoPoint(venueLat, venueLon))
+        (new UsCinema(unique, pill), flicksSlug, metro, subArea)
       }
       val region = new UsRegion(slug, CityLabels(name, name, name), lat, lon, ZoneId.of(zone),
         venues.map(_._1), metroAreas(venues.map(v => (v._1, v._3))))
@@ -1628,12 +1637,12 @@ object UsRoster {
   val flicksSlugByCinema: Map[Cinema, String] =
     built.flatMap(_._2).map { case (cinema, flicksSlug, _) => cinema -> flicksSlug }.toMap
 
-  /** Every US venue's harvested coordinates — the same `lat`/`lon` its metro was
-   *  distance-clustered from. Kept on the model so [[UsMetroSubAreas]] can split
-   *  the handful of metros too big to browse into compass sub-areas from the
-   *  venues themselves, rather than from a second hand-written map. */
-  private[models] val locationByCinema: Map[Cinema, GeoPoint] =
-    built.flatMap(_._2).map { case (cinema, _, location) => cinema -> location }.toMap
+  /** The district each venue of a sub-divided metro was clustered into — the
+   *  second `cluster_metros.py` pass, carried as a label exactly as the metro
+   *  itself is. Holds only the five metros big enough to be sub-divided (see
+   *  [[UsMetroSubAreas]]); every other venue is absent. */
+  private[models] val subAreaByCinema: Map[Cinema, String] =
+    built.flatMap(_._2).collect { case (cinema, _, subArea) if subArea.nonEmpty => cinema -> subArea }.toMap
 
   /** US venues by display name. The display name is the wire key every stored slot
    *  uses and the only stable handle these venues have — they are built at runtime
