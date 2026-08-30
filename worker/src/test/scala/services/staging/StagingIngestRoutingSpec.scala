@@ -1,6 +1,7 @@
 package services.staging
 
 import models.{CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, StagingNewcomerDiverted}
@@ -13,7 +14,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  `pending_movies` (one row per cinema|title|year) instead of `movies`; a film
  *  already known to `movies` keeps the direct path; and a newcomer a cinema
  *  stops listing is pruned from staging. */
-class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
+class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val When = LocalDateTime.of(2026, 6, 14, 18, 0)
 
@@ -49,6 +50,51 @@ class StagingIngestRoutingSpec extends AnyFlatSpec with Matchers {
 
     cache.recordCinemaScrape(Helios, Seq(scrape("Brand New Film", Some(2026))))
     kicked.toSeq shouldBe Seq("Brand New Film")                 // still incubating → no republish
+  }
+
+  /** Two DIFFERENT films legitimately share a title, one row per year — and a cinema
+   *  screens the newer one, which already has its own row.
+   *
+   *  The different-film check asks `rowFor(sanitizedTitle)`, which returns ONE row out of
+   *  the year group (the lowest `canonicalRank`). Ask it about the 1953 row and the answer
+   *  is right but useless: yes, the 2023 listing is a different film FROM THAT ROW — so
+   *  the cinema is diverted to staging, the fold resolves it and puts it straight back on
+   *  the 2023 row where it already belonged, and the next identical scrape does the whole
+   *  thing again. Forever.
+   *
+   *  Germany, 2026-08-30: "Die einfachen Dinge" exists as both a 1953 film (tmdbId 67600)
+   *  and a 2023 one (1000572); Filmhauskino im Künstlerhaus screens the 2023 print, and
+   *  the convergence leg caught it as `1 known film RE-DIVERTED to staging` plus 8
+   *  redundant writes on EVERY tick.
+   *
+   *  A divert is only justified when the listing matches NO row under that title. */
+  "a cinema screening one of two same-titled films" should "not be diverted when its own row already exists" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = cacheWithStaging(new InMemoryMovieRepository, staging)
+    // Same sanitized title, two years, each a genuinely different film. Both carry the
+    // published identity the different-film check reads: original title, runtime, year —
+    // and the runtimes are far enough apart to CORROBORATE the title difference, which is
+    // what makes the check fire at all (`MixedFilmDetector.RuntimeAgreementMinutes` = 2).
+    def slot(original: String, runtime: Int, year: Int) =
+      MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(
+        title = Some("Die einfachen Dinge"), originalTitle = Some(original),
+        runtimeMinutes = Some(runtime), releaseYear = Some(year))))
+    cache.put(cache.keyOf("Die einfachen Dinge", Some(1953)), slot("The Simple Things", 108, 1953))
+    cache.put(cache.keyOf("Die einfachen Dinge", Some(2023)), slot("Les choses simples", 95, 2023))
+
+    // Multikino screens the 2023 print — the row for it already exists.
+    cache.recordCinemaScrape(Multikino, Seq(CinemaMovie(
+      movie     = Movie(title = "Die einfachen Dinge", releaseYear = Some(2023),
+                        originalTitle = Some("Les choses simples"), runtimeMinutes = Some(95)),
+      cinema    = Multikino,
+      posterUrl = None, filmUrl = None, synopsis = None,
+      cast = Nil, director = Nil, showtimes = Seq(Showtime(When, bookingUrl = None)))))
+
+    withClue(s"staged: ${staging.findAll().map(r => (r.cinema, r.title, r.year))}\n") {
+      staging.findAll() shouldBe empty
+    }
+    cache.get(cache.keyOf("Die einfachen Dinge", Some(2023))).value
+      .cinemaData.keySet should contain (Multikino)
   }
 
   "a film already known to movies" should "stay on the direct path, not divert nor kick a newcomer event" in {

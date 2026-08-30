@@ -1352,15 +1352,30 @@ class CaffeineMovieCache(
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
         _.findAll().iterator.collect { case r if r.cinema == cinema => normalizer.sanitize(r.title) -> r }.toMap
       }
-    // The row a sanitized title currently lives on, for the different-film check
-    // below. Canonical pick (lowest `canonicalRank`) so the answer doesn't depend on
-    // which year-variant the map happened to iterate first.
-    val rowFor: String => Option[MovieRecord] =
+    // EVERY row a sanitized title currently lives on, for the different-film check
+    // below — not just the canonical one.
+    //
+    // Picking one (the lowest `canonicalRank`, i.e. the earliest year) was deterministic
+    // but asked the wrong question whenever two genuinely different films share a title,
+    // one row per year. A cinema screening the LATER film was checked against the EARLIER
+    // row; the answer came back "yes, a different film", perfectly correctly, and the
+    // cinema was diverted to staging — where the fold resolved it and put it straight
+    // back on the row it already belonged to, for the next identical scrape to divert
+    // again. Forever. Germany, 2026-08-30: "Die einfachen Dinge" is both a 1953 film
+    // (tmdbId 67600) and a 2023 one (1000572), and the convergence leg caught
+    // Filmhauskino im Künstlerhaus being re-diverted on EVERY tick.
+    //
+    // A divert is only justified when the listing is a different film from ALL of them —
+    // when none of the existing rows is already its home. With a single row (the
+    // overwhelmingly common case) `forall` is exactly the old `exists`, so the shape this
+    // check was built for — "Joanna d'Arc" absorbing a second film onto its only row —
+    // is unchanged.
+    val rowsFor: String => Seq[MovieRecord] =
       positive.asMap().asScala.toSeq
         .groupBy { case (k, _) => k.normalized }
-        .view.mapValues(_.minBy { case (k, _) => canonicalRank(k) }._2)
+        .view.mapValues(_.map { case (_, record) => record })
         .toMap
-        .get
+        .withDefaultValue(Seq.empty)
     val divertedSanitized = scala.collection.mutable.Set.empty[String]
     // Titles diverted into staging for the FIRST time this cinema (no prior row) —
     // the newcomers whose initial step StagingReaper should kick off an event,
@@ -1385,7 +1400,8 @@ class CaffeineMovieCache(
       // row. Needs a differing original title CORROBORATED by runtime or year, so a
       // cinema that merely prints the Polish title in `originalTitle` — common on
       // the smaller sites — is waved through (see `MixedFilmDetector`).
-      val aDifferentFilm = staging.isDefined && rowFor(norm).exists(record =>
+      val sameTitledRows = rowsFor(norm)
+      val aDifferentFilm = staging.isDefined && sameTitledRows.nonEmpty && sameTitledRows.forall(record =>
         MixedFilmDetector.wouldAddASecondFilm(
           record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
       val divert       = staging.isDefined && ((!knownSanitized(norm) && !knownAliases(norm) &&
