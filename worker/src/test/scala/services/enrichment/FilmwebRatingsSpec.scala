@@ -350,8 +350,14 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     )))
     val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
 
-    ratings.refreshAll()
+    val result = ratings.refreshAll()
 
+    // The walk fans its rows over a pool and swallows every per-row failure to a
+    // debug log, so a read that THREW (rather than answering "no such film")
+    // used to surface only as a missing URL three assertions later. Name it here.
+    withClue("a per-row failure means the stubbed fetch threw, not that Filmweb had no match: ") {
+      result.failed shouldBe Some(0)
+    }
     cache.get(cache.keyOf("A", None)).flatMap(_.filmwebRating) shouldBe Some(7.4)
     cache.get(cache.keyOf("B", None)).flatMap(_.filmwebRating) shouldBe Some(6.0)
     val c = cache.get(cache.keyOf("C", None)).get

@@ -1,6 +1,7 @@
 package tools
 
-import scala.collection.mutable
+import java.util.concurrent.ConcurrentLinkedQueue
+import scala.jdk.CollectionConverters._
 
 /**
  * Shared stub `HttpFetch` for unit-test specs that need a controlled
@@ -18,6 +19,15 @@ import scala.collection.mutable
  * tests can assert request order or count. POST `body` + `contentType`
  * additionally land in `postBodies` for specs that need to inspect them
  * (e.g. the Google OAuth token exchange).
+ *
+ * Both logs are CONCURRENT queues, not `mutable.ListBuffer`s, because this
+ * fetch is routinely driven from several threads at once — every `refreshAll`
+ * walk fans its rows across a `BoundedParallel` pool and they all share the one
+ * stub. A `ListBuffer` append is not atomic (`last0.next = …` then `len += 1`),
+ * so concurrent callers not only lost entries but could read `last0` as null
+ * with a non-zero `len` and throw an NPE *out of `get`* — which the enrichment
+ * clients correctly treat as a failed read (`EnrichmentRead`), so the row under
+ * test silently kept no URL. That was the `FilmwebRatingsSpec.refreshAll` flake.
  *
  * For dependencies the test should never reach, use
  * `RoutingHttpFetch.dead(label)` — it throws on the first call with the
@@ -41,8 +51,15 @@ class RoutingHttpFetch(
   getOnly: Boolean = false,
   unroutedIsNotFound: Boolean = false
 ) extends HttpFetch {
-  val calls:      mutable.ListBuffer[(String, String)]         = mutable.ListBuffer.empty
-  val postBodies: mutable.ListBuffer[(String, String, String)] = mutable.ListBuffer.empty
+  private val callLog     = new ConcurrentLinkedQueue[(String, String)]()
+  private val postBodyLog = new ConcurrentLinkedQueue[(String, String, String)]()
+
+  /** Every `(method, url)` this fetch has served, in call order. A snapshot —
+   *  read it after the work under test has finished. */
+  def calls: Seq[(String, String)] = callLog.asScala.toSeq
+
+  /** Every POST's `(url, body, contentType)`, in call order. */
+  def postBodies: Seq[(String, String, String)] = postBodyLog.asScala.toSeq
 
   private def lookup(url: String): String =
     routes.collectFirst { case (frag, body) if url.contains(frag) => body }
@@ -52,13 +69,13 @@ class RoutingHttpFetch(
       }
 
   override def get(url: String): String = {
-    calls += (("GET", url))
+    callLog.add(("GET", url))
     lookup(url)
   }
 
   override def post(url: String, body: String, contentType: String): String = {
-    calls      += (("POST", url))
-    postBodies += ((url, body, contentType))
+    callLog.add(("POST", url))
+    postBodyLog.add((url, body, contentType))
     if (getOnly) throw new RuntimeException(s"unexpected POST on getOnly fetch: $url")
     lookup(url)
   }
