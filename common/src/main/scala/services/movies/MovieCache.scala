@@ -1610,17 +1610,12 @@ class CaffeineMovieCache(
     effectiveYear: Option[Int]
   ): SourceData =
     SourceData(
-      // Interned like the URL / cast / synopsis fields below: a film's title is the
-      // SAME string at every cinema showing it, so N slots would otherwise hold N
-      // byte-identical copies. Measured over the UK corpus 2026-08-30 — title 32,552
-      // carriers -> 1,683 distinct (19.3x), rawTitle 19.3x, originalTitle 28.2x — all
-      // low-cardinality enough for the pool (whose whole vocabulary is ~21k of 131k).
-      title          = Some(StringPool.canonical(displayTitle)),
+      title          = Some(displayTitle),
       // Verbatim upstream title, kept so the merge key is re-derivable when the
       // per-cinema rules change. A rule-driven client carries the pre-strip
       // string in `movie.rawTitle`; others leave it None and `title` is raw.
-      rawTitle       = cm.movie.rawTitle.orElse(Some(cm.movie.title)).map(StringPool.canonical),
-      originalTitle  = cm.movie.originalTitle.map(StringPool.canonical).orElse(priorSlot.flatMap(_.originalTitle)),
+      rawTitle       = cm.movie.rawTitle.orElse(Some(cm.movie.title)),
+      originalTitle  = cm.movie.originalTitle.orElse(priorSlot.flatMap(_.originalTitle)),
       // Collapse a blurb the cinema CMS pasted N× into one description field
       // (Bilety24's Kino Piast shipped the "Ojczyzna" synopsis 9× glued together)
       // at the ingestion boundary, so we never store the duplicate — not just hide

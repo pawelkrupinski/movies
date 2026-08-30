@@ -2,18 +2,14 @@ package services.movies
 
 import com.github.benmanes.caffeine.cache.Caffeine
 
-/** Interns short, heavily-repeated `SourceData` strings — titles (display, raw and
- *  original), synopses, cast/director names, countries, genres, the poster /
- *  film-page / trailer URLs, and a cinema slot key's `titleKey` — so a film shown at N
+/** Interns short, heavily-repeated `SourceData` strings — synopses, cast/director names,
+ *  countries, genres, and the poster / film-page / trailer URLs — so a film shown at N
  *  cinemas doesn't hold N byte-identical copies
  *  of the same value across its per-cinema slots. Low-cardinality tokens especially win:
  *  a country or genre recurs in thousands of slots corpus-wide yet collapses to ONE
- *  instance. Interning happens at the slot write boundary (`MovieCache.buildCinemaSlot`)
- *  and, for the slot KEY's `titleKey`, in `Source.byWireKey` — the Mongo decode path
- *  `rehydrate` rebuilds the whole corpus through. It is deliberately NOT called on the
- *  scrape path (`CinemaShowing.keyFor`), where `TitleNormalizer.sanitize` already
- *  memoises to one instance per title; the prior-slot carry-forward likewise already
- *  holds interned instances, so only fresh values need it.
+ *  instance. Interning happens at the single write boundary (`MovieCache.buildCinemaSlot`);
+ *  the prior-slot carry-forward already holds interned instances, so only fresh values
+ *  need it.
  *
  *  Bounded (a plain `ConcurrentHashMap` would retain every string a film ever had,
  *  forever — the unbounded-growth trap that caused the original heap creep) so strings
