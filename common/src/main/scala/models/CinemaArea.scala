@@ -12,9 +12,9 @@ import tools.Slugify
  *  Clients render one collapsible, individually-(de)selectable group per area.
  *
  *  The label is DATA, not a closed set of cases: London's five compass names are
- *  the named singletons below, but the US ships one area per Flicks metro (567
- *  of them across 55 states), so an area has to be able to carry a name nobody
- *  wrote down in advance. The compass singletons keep their exact labels and
+ *  the named singletons below, but the US ships 470 metros across 55 states,
+ *  clustered from its venues' coordinates, so an area has to be able to carry a
+ *  name nobody wrote down in advance. The compass singletons keep their exact labels and
  *  slugs — clients persist the slug as a group key (`'areasChosen:' + city`), so
  *  re-slugging an existing area silently forgets a user's choice. */
 final case class CinemaArea(label: String, slug: String)
@@ -35,11 +35,12 @@ object CinemaArea {
   /** The five compass areas, in display order. */
   val compass: Seq[CinemaArea] = Seq(Central, North, East, South, West)
 
-  /** The catch-all for venues their source files under no sub-region at all —
-   *  the ~790 US venues recovered from their own pages rather than from a metro
-   *  sweep, which carry no Flicks `region_slug`. They are real, currently-open
-   *  cinemas, so they cannot be dropped without breaking the partition; they go
-   *  here, labelled honestly and listed last. */
+  /** The catch-all for venues whose source files them under no sub-region at
+   *  all. Nothing uses it today: it held the ~790 US venues that carry no Flicks
+   *  `region_slug` until distance clustering gave them the metro nearest their
+   *  coordinates instead, which is a real answer where "Other areas" was a
+   *  residue. Kept as the honest last resort for a future partitioned city whose
+   *  source genuinely cannot place a venue. */
   val Other: CinemaArea = CinemaArea("Other areas")
 }
 

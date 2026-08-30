@@ -5,9 +5,10 @@ flicks.us venue dataset.
 Grouping: ONE region per US state/territory (55), not one per Flicks metro (577).
 The metros are far too many for a city picker — the roster caps the dropdown at
 ~200 (Germany ships 158) — and a state is the unit a US visitor actually
-recognises. Metro granularity is not lost: each venue carries its Flicks metro
-(slug + derived label, see metros.py), which `UsRoster` turns into the
-CinemaAreaGroups a big state's picker is grouped by, the way London's are.
+recognises. Metro granularity is not lost: each venue carries the metro its
+coordinates put it in (cluster_metros.py, labelled by metros.py), which
+`UsRoster` turns into the CinemaAreaGroups a big state's picker is grouped by,
+the way London's are.
 
 Usage:  python3 data/us/scripts/generate_roster.py <venues.json> <out.scala>
 """
@@ -16,6 +17,7 @@ from collections import defaultdict
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from states import STATES
 from metros import labels_by_slug
+from cluster_metros import metros_for_state
 
 
 def scala_str(s: str) -> str:
@@ -78,11 +80,15 @@ def main(src, out):
     if dupes:
         raise SystemExit(f"UNRESOLVED display-name collisions (wire keys): {dupes}")
 
-    # A venue recovered from its own page rather than from a metro sweep has no
-    # `region_slug`; it is emitted with an empty metro and `UsRoster` files it
-    # under CinemaArea.Other rather than dropping it from the partition.
+    # The metro each venue is filed under is DISTANCE-CLUSTERED, not its raw
+    # Flicks `region_slug`: adjacent metros inside one travel-shed merge, and the
+    # 788 venues recovered from their own pages (no `region_slug` at all) join
+    # the metro nearest them instead of a per-state catch-all. Flicks' metros
+    # survive as the LABELS the clusters are named after.
     metro_labels = labels_by_slug({state: {v['metro'] for v in vs if v['metro']}
                                    for state, vs in by_state.items()})
+    metro_of = {state: metros_for_state(state, vs, metro_labels[state])
+                for state, vs in by_state.items()}
 
     regions = []
     for state in sorted(by_state, key=lambda s: STATES[s][0]):
@@ -103,8 +109,8 @@ def main(src, out):
         "package models",
         "",
         "private[models] object UsRosterData {",
-        "  // (displayName, pillName, flicks cinema slug, metro label, metro slug)",
-        "  type C = (String, String, String, String, String)",
+        "  // (displayName, pillName, flicks cinema slug, metro label)",
+        "  type C = (String, String, String, String)",
         "  // (slug, name, lat, lon, zoneId, cinemas)",
         "  type R = (String, String, Double, Double, String, Seq[C])",
         "",
@@ -115,10 +121,8 @@ def main(src, out):
                      f'{lat}, {lon}, "{zone}", Seq(')
         for v in vs:
             t = scala_str(v['title'])
-            metro = v['metro']
-            label = metro_labels[state][metro] if metro else ''
             lines.append(f'    ("{t}", "{t}", "{scala_str(v["slug"])}", '
-                         f'"{scala_str(label)}", "{metro}"),')
+                         f'"{scala_str(metro_of[state][v["slug"]])}"),')
         lines.append('  ))')
         lines.append('')
     lines.append('  val regions: Seq[R] = Seq(')
@@ -135,9 +139,10 @@ def main(src, out):
         print("  unknown states:", sorted({s for _, s in skipped_unknown_state}))
     qualified = sum(1 for _, vs in by_state.items() for v in vs if v['title'].endswith(')'))
     print(f"display names qualified to break collisions: ~{qualified}")
-    metros = {v['metro'] for vs in by_state.values() for v in vs if v['metro']}
-    no_metro = sum(1 for vs in by_state.values() for v in vs if not v['metro'])
-    print(f"metros={len(metros)} venues with no metro (-> CinemaArea.Other)={no_metro}")
+    raw = {v['metro'] for vs in by_state.values() for v in vs if v['metro']}
+    clustered = {(state, label) for state, m in metro_of.items() for label in m.values()}
+    print(f"metros: {len(raw)} raw Flicks -> {len(clustered)} clustered "
+          f"(python3 data/us/scripts/cluster_metros.py reports the distribution)")
 
 
 if __name__ == '__main__':

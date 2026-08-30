@@ -900,9 +900,10 @@ object City {
    *  [[Country.UnitedStates]]. One region per state/territory rather than one per
    *  Flicks metro: Flicks lists 577 US metros, which is far past the ~200 a city
    *  picker stays usable at (Germany ships 158), and a state is the unit a US
-   *  visitor recognises. Metro detail is not lost — each venue keeps its Flicks
-   *  metro, and every state big enough to need it is split into `areas` by
-   *  metro the way London is split by compass (see `UsRoster.metroAreas`). */
+   *  visitor recognises. Metro detail is not lost — every state big enough to
+   *  need it is split into `areas` by metro the way London is split by compass,
+   *  those metros being distance-clustered from the venues' own coordinates
+   *  (see `UsRoster.metroAreas` and `data/us/scripts/cluster_metros.py`). */
   private[models] val usCities: Seq[City] = UsRoster.regions
 
   /** Every modelled city, across all countries — the global view used by the

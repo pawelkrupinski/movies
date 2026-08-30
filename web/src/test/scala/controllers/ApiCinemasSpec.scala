@@ -67,10 +67,10 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
 
     val areas = (json \ "areas").as[Seq[play.api.libs.json.JsValue]]
     // Data-driven names, not the five compass cases: California's 486 venues are
-    // grouped by their Flicks metro, biggest first, catch-all last.
+    // grouped into the metros their coordinates cluster into, biggest first.
     areas.map(a => (a \ "name").as[String]).take(3) shouldBe Seq("Los Angeles", "San Francisco", "Inland Empire")
     areas.map(a => (a \ "slug").as[String]).take(3) shouldBe Seq("los-angeles", "san-francisco", "inland-empire")
-    (areas.last \ "name").as[String] shouldBe "Other areas"
+    areas.map(a => (a \ "name").as[String]) should not contain "Other areas"
 
     val grouped = areas.flatMap(a => (a \ "cinemas").as[Seq[String]])
     grouped.toSet shouldBe cinemas.toSet
