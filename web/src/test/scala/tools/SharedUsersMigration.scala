@@ -3,7 +3,7 @@ package tools
 import models.{Country, User, UserState}
 import org.mongodb.scala.{MongoDatabase, ObservableFuture}
 import services.MongoConnection
-import services.users.{MongoUserRepository, MongoUserStateRepository, UserCodecs}
+import services.users.{MongoUserRepository, MongoUserStateRepository, UserCodecs, UserRepository, UserStateRepository}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -29,8 +29,8 @@ import scala.concurrent.duration._
  *
  * ```
  * set -a; . ./.env.local; set +a
- * MONGODB_USERS_DB=kinowo_users sbt 'web/Test/runMain tools.SharedUsersMigration'
- * MONGODB_USERS_DB=kinowo_users sbt 'web/Test/runMain tools.SharedUsersMigration --write'
+ * MONGODB_USERS_DB=kinowo sbt 'web/Test/runMain tools.SharedUsersMigration'
+ * MONGODB_USERS_DB=kinowo sbt 'web/Test/runMain tools.SharedUsersMigration --write'
  * ```
  *
  * Sources are the per-country databases by NAME (`Country.mongoDb`), not through
@@ -82,6 +82,22 @@ object SharedUsersMigration {
       selectedMovies  = a.selectedMovies  ++ b.selectedMovies,
       favouriteRooms  = a.favouriteRooms  ++ b.favouriteRooms))
 
+  /** The users `store` cannot be read back to hold, of the ones just handed to
+   *  it — empty when the write landed.
+   *
+   *  Exists because [[services.users.UserRepository.upsert]] is deliberately
+   *  best-effort: it logs a failed write and returns, so a visitor's page still
+   *  renders when Mongo is unhappy. That is right for a request and useless for a
+   *  migration, which has no other way to tell a completed fold from sixteen
+   *  swallowed `Unauthorized` warnings. Reading back is the only honest check,
+   *  and it costs one query per row on a collection this size. */
+  def unwrittenUsers(written: Seq[User], store: UserRepository): Seq[String] =
+    written.map(_.id).filterNot(id => store.findById(id).isDefined)
+
+  /** As [[unwrittenUsers]], for the per-user state rows. */
+  def unwrittenStates(written: Seq[UserState], store: UserStateRepository): Seq[String] =
+    written.map(_.userId).filterNot(id => store.find(id).isDefined)
+
   // ── The one-shot itself ──────────────────────────────────────────────────
 
   private val ReadTimeout = 60.seconds
@@ -128,10 +144,35 @@ object SharedUsersMigration {
         val stateStore  = new MongoUserStateRepository(Some(targetDb), fallbackToOwnInit = false)
         users.foreach(userStore.upsert)
         states.foreach(stateStore.upsert)
+
+        // READ IT BACK BEFORE CLAIMING ANYTHING. Both repositories are
+        // best-effort by design — a write that fails is logged and swallowed, so
+        // the caller's page still renders — which is right for a request and
+        // wrong for a migration: the first run of this printed "Wrote 8 users"
+        // having written nothing at all, because the Mongo user had no rights on
+        // the target database and all sixteen upserts failed as warnings.
+        //
+        // So the claim is made from what the target can actually be read to
+        // hold, not from what we handed it, and a shortfall exits non-zero
+        // instead of leaving a cutover to be done against an empty database.
+        val missingUsers  = unwrittenUsers(users, userStore)
+        val missingStates = unwrittenStates(states, stateStore)
         userStore.close()
         stateStore.close()
-        println(s"\nWrote ${users.size} users and ${states.size} states into $target. " +
-          "Source collections untouched — unset MONGODB_USERS_DB to roll back.")
+
+        if (missingUsers.isEmpty && missingStates.isEmpty)
+          println(s"\nWrote and verified ${users.size} users and ${states.size} states into $target. " +
+            "Source collections untouched — unset MONGODB_USERS_DB to roll back.")
+        else {
+          println(s"\nFAILED. $target is missing ${missingUsers.size} of ${users.size} users " +
+            s"and ${missingStates.size} of ${states.size} states after the write.")
+          missingUsers.foreach(id => println(s"  user  $id"))
+          missingStates.foreach(id => println(s"  state $id"))
+          println("\nNothing was removed from any source collection, so this is safe to re-run " +
+            "once the cause is fixed. A wholesale failure is usually the Mongo user having no " +
+            "rights on the target database — check the warnings above for `Unauthorized`.")
+          sys.exit(1)
+        }
       }
     } finally client.close()
   }

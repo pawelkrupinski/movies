@@ -2,6 +2,7 @@ package tools
 
 import models.{User, UserState}
 import org.scalatest.flatspec.AnyFlatSpec
+import services.users.{InMemoryUserRepository, InMemoryUserStateRepository, UserRepository, UserStateRepository}
 import org.scalatest.matchers.should.Matchers
 
 import java.time.Instant
@@ -133,4 +134,76 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
     val once = SharedUsersMigration.mergeStates(rows)
     SharedUsersMigration.mergeStates(once) shouldBe once
   }
+
+  // ── Did the write actually land? ─────────────────────────────────────────
+  //
+  // The first real run of this migration printed "Wrote 8 users and 8 states"
+  // having written NOTHING: the Mongo user had no rights on the target database
+  // and all sixteen upserts failed. Nothing surfaced, because both repositories
+  // are best-effort by design — a failed write is logged and swallowed so a
+  // visitor's page still renders. Right for a request, useless here, and the
+  // reason the claim is now made from a read-back.
+
+  /** Accepts every write and keeps none — a stand-in for the repositories'
+   *  production behaviour when Mongo refuses the write: logged, swallowed,
+   *  indistinguishable from success to the caller. */
+  private class DroppingUserRepository extends UserRepository {
+    def enabled                                             = true
+    def findById(id: String): Option[User]                  = None
+    def findByProviderSub(p: String, sub: String): Option[User] = None
+    def findByEmail(email: String): Option[User]            = None
+    def delete(id: String): Unit                            = ()
+    def upsert(user: User): Unit                            = ()
+    def close(): Unit                                       = ()
+  }
+
+  private class DroppingUserStateRepository extends UserStateRepository {
+    def enabled                                       = true
+    def find(userId: String): Option[UserState]       = None
+    def upsert(state: UserState): Unit                = ()
+    def delete(userId: String): Unit                  = ()
+    def close(): Unit                                 = ()
+  }
+
+  "unwrittenUsers" should "report nothing when every row reads back" in {
+    val rows  = Seq(user("alice@example.com", Early, Mid), user("bob@example.com", Early, Mid))
+    val store = new InMemoryUserRepository
+    rows.foreach(store.upsert)
+
+    SharedUsersMigration.unwrittenUsers(rows, store) shouldBe empty
+  }
+
+  it should "name every row when the store silently kept none" in {
+    val rows  = Seq(user("alice@example.com", Early, Mid), user("bob@example.com", Early, Mid))
+    val store = new DroppingUserRepository
+    rows.foreach(store.upsert)
+
+    SharedUsersMigration.unwrittenUsers(rows, store) shouldBe Seq("alice@example.com", "bob@example.com")
+  }
+
+  it should "name only the rows that went missing" in {
+    val alice = user("alice@example.com", Early, Mid)
+    val bob   = user("bob@example.com",   Early, Mid)
+    val store = new InMemoryUserRepository
+    store.upsert(alice)
+
+    SharedUsersMigration.unwrittenUsers(Seq(alice, bob), store) shouldBe Seq("bob@example.com")
+  }
+
+  "unwrittenStates" should "report nothing when every row reads back" in {
+    val rows  = Seq(state("alice@example.com", Mid), state("bob@example.com", Mid))
+    val store = new InMemoryUserStateRepository
+    rows.foreach(store.upsert)
+
+    SharedUsersMigration.unwrittenStates(rows, store) shouldBe empty
+  }
+
+  it should "name every row when the store silently kept none" in {
+    val rows  = Seq(state("alice@example.com", Mid), state("bob@example.com", Mid))
+    val store = new DroppingUserStateRepository
+    rows.foreach(store.upsert)
+
+    SharedUsersMigration.unwrittenStates(rows, store) shouldBe Seq("alice@example.com", "bob@example.com")
+  }
+
 }
