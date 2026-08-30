@@ -221,7 +221,7 @@ supervise_db() {
 
     set +e
     mongosh "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
-      --file "$HERE/mirror-targets.js" --file "$HERE/tail.js" &
+      --file "$HERE/mirror-targets.js" --file "$HERE/stream-start.js" --file "$HERE/tail.js" &
     local tailpid=$!
     # Watch for a retarget while the tailer streams. An empty reading means the
     # digest could not be computed — treated as "unchanged", never as an edit.

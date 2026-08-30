@@ -142,6 +142,42 @@ and `mirror.sh` does a full re-seed.
 - The initial seed is a zlib-compressed cursor copy over the tunnel (~50s for
   ~1300 docs); the continuous tailer is incremental and cheap.
 
+### The seed → tail handover — why "start from now" loses writes
+
+A seed copies the mirrored collections **one at a time** and only then hands
+over to the tailer, so there is a window — the rest of the copy — in which a
+write to an already-copied collection belongs to neither. `seed.js` used to
+clear the resume token on its way out and `tail.js` started *from now*, i.e.
+from the moment the LAST collection finished, which made that window a permanent
+hole. Nothing repaired it: the staleness gate above measures lag from
+`updatedAt` (a delete carries none) and drift from `movies` only, so a stale row
+in any other collection reads green forever.
+
+Found 2026-08-29: a re-seed copied DE's `pending_movies` while three films were
+still incubating, the staging fold deleted those rows during the copy's
+remaining collections, and `/debug` showed three films **stuck in staging** that
+prod had folded an hour earlier — three ghosts in UK too.
+
+So `seed.js` now captures prod's `operationTime` **before** it reads the first
+collection and persists it as the mirror's start point, and `tail.js` opens
+there rather than at now (`stream-start.js` owns the choice: resume token first,
+then the seed's time, then now). The cost is replaying the copy's own window,
+which is free — every apply is idempotent (`replaceOne` upsert / `deleteOne`).
+
+The decision is a pure function, asserted with no Mongo:
+
+```
+mongosh --nodb --quiet --file scripts/local-mirror/stream-start.js \
+                       --file scripts/local-mirror/stream-start-spec.js
+```
+
+and the handover itself is asserted end-to-end against the local replica set —
+seed, delete a row, start the tailer, and the mirror must still lose the row:
+
+```
+scripts/local-mirror/seed-tail-race-spec.sh
+```
+
 ### The staleness gate — why a mirror can't quietly rot
 
 Resuming is only the right recovery while the saved token still tracks prod. A

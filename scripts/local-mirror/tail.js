@@ -4,7 +4,7 @@
 // Invoked by mirror.sh, one process per database (do not run directly):
 //   mongosh "<PROD_URI>" \
 //     --eval "var DST='<LOCAL_URI>'; var SRC_DB='kinowo_uk'" \
-//     --file mirror-targets.js --file tail.js
+//     --file mirror-targets.js --file stream-start.js --file tail.js
 //
 // One stream per DATABASE, not per collection: a stream per mirrored
 // collection would be N blocking cursors that a single-threaded mongosh cannot
@@ -27,13 +27,12 @@ const saved = state.findOne({ _id: SRC_DB });
 // database, and we mirror only some of them. Filtering here rather than in the
 // loop keeps the untracked collections' churn off the tunnel entirely.
 const pipeline = [{ $match: { "ns.coll": { $in: MIRRORED_COLLECTIONS } } }];
-const opts = { fullDocument: "updateLookup" };
-if (saved && saved.resumeToken) {
-  opts.resumeAfter = saved.resumeToken;
-  print(`[tail] ${SRC_DB}: resuming after saved token`);
-} else {
-  print(`[tail] ${SRC_DB}: starting from now (no saved token)`);
-}
+// Where to open the stream is stream-start.js's decision — a resume token when
+// there is one, otherwise the operation time the seed captured before it began
+// copying, otherwise now. Keeping it there keeps it assertable without a Mongo.
+const start = streamStartFor(saved);
+const opts = Object.assign({ fullDocument: "updateLookup" }, start.opts);
+print(`[tail] ${SRC_DB}: ${start.how}`);
 
 print(`[tail] ${SRC_DB}: watching ${MIRRORED_COLLECTIONS.join(", ")}…`);
 // A stale `resumeAfter` token can fail EITHER when the stream opens OR — more
@@ -74,10 +73,11 @@ try {
     if (n > 0 && n % 200 === 0) print(`[tail] ${SRC_DB}: applied ${n} changes`);
   }
 } catch (e) {
-  // The saved token has aged out of prod's oplog (ChangeStreamHistoryLost,
-  // code 286 / 280) — resuming is impossible, so drop it and exit 2 to ask
-  // mirror.sh for a full re-seed. Any other error (a tunnel blip) exits 1 so
-  // mirror.sh just re-runs us and we resume from the same token.
+  // The saved start point has aged out of prod's oplog (ChangeStreamHistoryLost,
+  // code 286 / 280) — a token and a seed's operation time both can, and neither
+  // is resumable, so drop the state and exit 2 to ask mirror.sh for a full
+  // re-seed (which records a fresh, current start point). Any other error (a
+  // tunnel blip) exits 1 so mirror.sh just re-runs us from the same point.
   const lost = e.code === 286 || e.code === 280 ||
     /resume|history lost|no longer.*oplog|oplog/i.test(e.message || "");
   if (lost) { state.deleteOne({ _id: SRC_DB }); print(`[tail] ${SRC_DB}: resume token expired — re-seed needed`); quit(2); }

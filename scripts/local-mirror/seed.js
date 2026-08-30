@@ -26,6 +26,15 @@ print(`[seed] ${SRC_DB} → ${mirrorDbFor(SRC_DB)}…`);
 const state = dstDb.getCollection("__mirror_state");
 state.updateOne({ _id: SRC_DB + ":seed" }, { $set: { incomplete: true } }, { upsert: true });
 
+// The instant this snapshot begins, captured BEFORE the first collection is
+// read. The tailer starts here rather than "from now" (see stream-start.js):
+// the copy below walks the collections one at a time and only then hands over,
+// so a write landing on an already-copied collection would otherwise fall into
+// a gap nothing repairs. Replaying the copy's own window costs one pass of
+// idempotent applies; not replaying it cost three DE films that showed as stuck
+// in staging on /debug for an hour after prod had folded them.
+const startAtOperationTime = srcDb.getMongo().getDB("admin").runCommand({ ping: 1 }).operationTime;
+
 MIRRORED_COLLECTIONS.forEach(name => {
   const src = srcDb.getCollection(name);
   const dst = dstDb.getCollection(name);
@@ -41,7 +50,12 @@ MIRRORED_COLLECTIONS.forEach(name => {
 
 // Every collection copied → the snapshot is whole again.
 state.deleteOne({ _id: SRC_DB + ":seed" });
-// Fresh snapshot → drop this database's stale resume token so its tailer starts
-// from now. Keyed by source database, since each database gets its own stream.
-state.deleteOne({ _id: SRC_DB });
+// Fresh snapshot → replace this database's stream-start state: the old resume
+// token belongs to a corpus that no longer exists, and the tailer must pick up
+// from where this snapshot BEGAN, not from where it ended. `replaceOne` rather
+// than `$set`, so the stale token cannot survive alongside the new time. Keyed
+// by source database, since each database gets its own stream. A source that
+// reports no operationTime (a standalone, which cannot serve change streams
+// anyway) leaves the field unset and the tailer falls back to starting now.
+state.replaceOne({ _id: SRC_DB }, { _id: SRC_DB, startAtOperationTime }, { upsert: true });
 print(`[seed] ${SRC_DB} done`);
