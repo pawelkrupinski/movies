@@ -51,11 +51,32 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val countries: Map[String, (String, String)] =
     rows.map(fields => fields("country") -> (fields("cmd"), fields("sample"))).toMap
 
-  /** One job's `timeout-minutes:` in file order — the job's own ceiling first, then the
-   *  suite step it wraps. Read per JOB rather than across the whole file, because a
-   *  flat scan silently re-pairs the numbers the moment a job gains or loses one. */
-  private def budgetsOf(job: String): Seq[Int] =
-    """timeout-minutes:\s*(\d+)""".r.findAllMatchIn(RepoFile.block(leg, job)).map(_.group(1).toInt).toSeq
+  /** Every (job ceiling, suite step) budget pair the legs actually run on, labelled.
+   *
+   *  The numbers used to be literals inside the leg's two job blocks. They are per-COUNTRY
+   *  now — the United States has no enrichment tree yet, so its first legs fetch every
+   *  lookup live and need hours where a warm country needs a couple — which means the
+   *  pairs live in the caller's matrix, with the leg's `default:`s standing in for a
+   *  caller that says nothing. Both sources are checked, because a gap that closes in
+   *  either place cancels a leg just as dead. */
+  private def budgetPairs: Seq[(String, Int, Int)] = {
+    val defaults = Seq(
+      ("leg default (full)",   "job-timeout-minutes",        "suite-timeout-minutes"),
+      ("leg default (sample)", "sample-job-timeout-minutes", "sample-suite-timeout-minutes"))
+      .map { case (label, jobKey, suiteKey) => (label, defaultOf(jobKey), defaultOf(suiteKey)) }
+    val perCountry = rows.flatMap { fields =>
+      val country = fields("country")
+      Seq((s"$country full",   fields("job").toInt,       fields("suite").toInt),
+          (s"$country sample", fields("sampleJob").toInt, fields("sampleSuite").toInt))
+    }
+    defaults ++ perCountry
+  }
+
+  /** The `default:` under one of the leg's `workflow_call` inputs. */
+  private def defaultOf(input: String): Int =
+    s"$input:[\\s\\S]*?default:\\s*(\\d+)".r.findFirstMatchIn(leg)
+      .getOrElse(fail(s"no default declared for input `$input` in the leg workflow"))
+      .group(1).toInt
 
   /** Both jobs publish through the same composite action, so neither can drift from the
    *  other on what "publish the tree" means. */
@@ -146,16 +167,20 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // The rule was written for the full leg and applied only there, and the sample —
     // which had no step ceiling at all, so it could only ever be cancelled — is the
     // job that then spent ten consecutive runs discarding its own progress.
-    Jobs.foreach { job =>
-      val found = budgetsOf(job)
-      withClue(s"$job declares ${found.size} timeout-minutes, wanted the job's and its suite step's: ") {
-        found.size should be >= 2
-      }
-      val Seq(ceiling, suiteStep) = found.take(2)
-      withClue(s"$job: job $ceiling, suite step $suiteStep: ") {
+    budgetPairs.foreach { case (label, ceiling, suiteStep) =>
+      withClue(s"$label: job $ceiling, suite step $suiteStep: ") {
         ceiling should be > suiteStep
         ceiling - suiteStep should be >= 10
       }
+    }
+  }
+
+  /** GitHub cancels a hosted job at 360 minutes whatever `timeout-minutes` says, so a
+   *  budget above that is not a longer leg — it is the same cancellation with the guard
+   *  that was supposed to prevent it silently disarmed. */
+  it should "keep every budget under the platform's own 360-minute ceiling" in {
+    budgetPairs.foreach { case (label, ceiling, _) =>
+      withClue(s"$label: ")(ceiling should be <= 360)
     }
   }
 

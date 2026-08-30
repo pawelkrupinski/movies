@@ -46,6 +46,39 @@ on:
                 description: The sbt alias running this country's full convergence leg.
                 required: true
                 type: string
+            # THE BUDGETS ARE PER-COUNTRY because the legs are not the same size. They
+            # default to what the three original countries have always run on, so a
+            # caller that says nothing keeps today's behaviour exactly; the United
+            # States passes its own, several times larger.
+            #
+            # What makes the US different is not its film count — at 1,419 it sits
+            # between Poland and Germany — but that it has no warm enrichment tree. A
+            # country's FIRST legs fetch every rating and lookup live and publish what
+            # they learn, and only once that release asset exists does the leg run at
+            # the pace the 135/120 pair was measured against. Give a cold country the
+            # warm country's budget and it is cancelled before it can record the very
+            # tree that would have made it fast — the self-defeating shape the comment
+            # on the step below spells out.
+            job-timeout-minutes:
+                description: Ceiling for the whole convergence job, including setup and publishes.
+                required: false
+                type: number
+                default: 135
+            suite-timeout-minutes:
+                description: Ceiling for the convergence suite step alone. MUST stay clear of the job's.
+                required: false
+                type: number
+                default: 120
+            sample-job-timeout-minutes:
+                description: Ceiling for the whole sample job.
+                required: false
+                type: number
+                default: 32
+            sample-suite-timeout-minutes:
+                description: Ceiling for the sample suite step alone. MUST stay clear of the job's.
+                required: false
+                type: number
+                default: 20
 
 env:
     # The rolling release the per-country fixture trees live in. One tag, three assets,
@@ -94,7 +127,7 @@ jobs:
         # `convergence-publish`), and the run that meets it is the run that has to
         # rebuild the tree. Warm, which is the normal case, it still finishes in five to
         # eight minutes and gates the 73-minute leg behind it exactly as before.
-        timeout-minutes: 32
+        timeout-minutes: ${{ inputs.sample-job-timeout-minutes }}
         permissions:
             # `contents: write` since the gate publishes the tree it records — see the
             # publish step below for why it has to.
@@ -117,7 +150,7 @@ jobs:
             # capture that would have made the eleventh fast enough to pass.
             - name: Run the ${{ inputs.country }} sample
               shell: bash
-              timeout-minutes: 20
+              timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
               run: |
                   set -o pipefail
                   sbt ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
@@ -153,7 +186,7 @@ jobs:
         # so the ceiling now sits well clear of the expected run rather than just
         # above it. A leg that approaches this is a signal to re-measure the shape,
         # not to raise the number again.
-        timeout-minutes: 135
+        timeout-minutes: ${{ inputs.job-timeout-minutes }}
         permissions:
             # `contents: write` for the rolling release the fixture trees live in —
             # see "Publish" below for why that, rather than an artifact.
@@ -169,7 +202,7 @@ jobs:
                   code:  ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
 
-            # Bounded BELOW the job's 135, on purpose — the single most important line
+            # Bounded BELOW the job's ceiling, on purpose — the single most important line
             # in this file for a leg that runs long. Both numbers moved up together (from
             # 62/75) when every collection went onto a real database: the UK replays alone
             # went from ~10 minutes to over 30, and the gap between the two is what pays
@@ -195,7 +228,7 @@ jobs:
             - name: Run the convergence suite
               id: suite
               shell: bash
-              timeout-minutes: 120
+              timeout-minutes: ${{ inputs.suite-timeout-minutes }}
               run: |
                   set -o pipefail
                   sbt ${{ inputs.command }} 2>&1 | tee convergence.log

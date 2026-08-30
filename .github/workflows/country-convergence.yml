@@ -87,10 +87,15 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample }
-                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample }
+                    # `job`/`suite` and `sampleJob`/`sampleSuite` are this country's
+                    # timeout budgets, in minutes. The three warm countries carry the
+                    # numbers the leg has always defaulted to; the United States carries
+                    # several hours because it has no enrichment tree yet and its first
+                    # legs fetch everything live. See the leg's input docs.
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 330, suite: 315, sampleJob: 75, sampleSuite: 60 }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -101,6 +106,10 @@ jobs:
             code:           ${{ matrix.code }}
             sample-command: ${{ matrix.sample }}
             command:        ${{ matrix.cmd }}
+            job-timeout-minutes:           ${{ matrix.job }}
+            suite-timeout-minutes:         ${{ matrix.suite }}
+            sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
+            sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
 
