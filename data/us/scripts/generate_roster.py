@@ -2,13 +2,15 @@
 """Generate common/src/main/scala/models/UsRosterData.scala from the harvested
 flicks.us venue dataset.
 
-Grouping: ONE region per US state/territory (55), not one per Flicks metro (577).
-The metros are far too many for a city picker — the roster caps the dropdown at
-~200 (Germany ships 158) — and a state is the unit a US visitor actually
-recognises. Metro granularity is not lost: each venue carries the metro its
-coordinates put it in (cluster_metros.py, labelled by metros.py), which
-`UsRoster` turns into the CinemaAreaGroups a big state's picker is grouped by,
-the way London's are.
+The addressable place is the METRO, not the state: a visitor wants "films in Los
+Angeles", never "films in California". So each venue carries the metro its
+coordinates put it in (cluster_metros.py, labelled by metros.py) plus that
+metro's own centroid, and `UsRoster` turns each metro into a `City` of its own.
+
+The STATE survives as the grouping the picker reads — "California → Los
+Angeles" is how a visitor finds a metro — and as the `City` itself for the nine
+states and territories too small to have metros (Alaska, Hawaii, DC, …), whose
+listing IS their page.
 
 Usage:  python3 data/us/scripts/generate_roster.py <venues.json> <out.scala>
 """
@@ -102,15 +104,26 @@ def main(src, out):
     for (state, metro), members in by_metro.items():
         sub_of.update(sub_areas_for_metro(metro, members))
 
+    def centroid(vs):
+        """Centroid of a group's actual venues — centres the map where the
+        cinemas are rather than on a geographic midpoint nobody goes to."""
+        return (round(sum(v['lat'] for v in vs) / len(vs), 5),
+                round(sum(v['lon'] for v in vs) / len(vs), 5))
+
     regions = []
     for state in sorted(by_state, key=lambda s: STATES[s][0]):
         vs = sorted(by_state[state], key=lambda v: v['title'].lower())
         slug, zone = STATES[state]
-        # Centroid of the state's actual venues — centres the map where the
-        # cinemas are rather than on a geographic midpoint nobody goes to.
-        lat = round(sum(v['lat'] for v in vs) / len(vs), 5)
-        lon = round(sum(v['lon'] for v in vs) / len(vs), 5)
-        regions.append((slug, state, lat, lon, zone, vs))
+        lat, lon = centroid(vs)
+        # A metro is a PLACE of its own — `/los-angeles/`, a `City` — so it needs
+        # its own coordinates for the landing's nearest-place geolocation. The
+        # state's centroid is no answer for one: every metro in California would
+        # sit on the same point, 300 km from most of them.
+        grouped = defaultdict(list)
+        for v in vs:
+            grouped[metro_of[state][v['slug']]].append(v)
+        metros = sorted((label, *centroid(members)) for label, members in grouped.items())
+        regions.append((slug, state, lat, lon, zone, vs, metros))
 
     total = sum(len(r[5]) for r in regions)
     lines = [
@@ -121,13 +134,15 @@ def main(src, out):
         "package models",
         "",
         "private[models] object UsRosterData {",
-        "  // (displayName, pillName, flicks cinema slug, metro label, sub-area label)",
+        "  // (displayName, pillName, flicks cinema slug, metro label, district label)",
         "  type C = (String, String, String, String, String)",
-        "  // (slug, name, lat, lon, zoneId, cinemas)",
-        "  type R = (String, String, Double, Double, String, Seq[C])",
+        "  // (metro label, lat, lon) — the centroid of that metro's own venues",
+        "  type M = (String, Double, Double)",
+        "  // (slug, name, lat, lon, zoneId, cinemas, metros)",
+        "  type R = (String, String, Double, Double, String, Seq[C], Seq[M])",
         "",
     ]
-    for slug, state, lat, lon, zone, vs in regions:
+    for slug, state, lat, lon, zone, vs, metros in regions:
         ident = 'r_' + slug.replace('-', '_')
         lines.append(f'  private def {ident}: R = ("{slug}", "{scala_str(state)}", '
                      f'{lat}, {lon}, "{zone}", Seq(')
@@ -136,6 +151,9 @@ def main(src, out):
             lines.append(f'    ("{t}", "{t}", "{scala_str(v["slug"])}", '
                          f'"{scala_str(metro_of[state][v["slug"]])}", '
                          f'"{scala_str(sub_of.get(v["slug"], ""))}"),')
+        lines.append('  ), Seq(')
+        for label, mlat, mlon in metros:
+            lines.append(f'    ("{scala_str(label)}", {mlat}, {mlon}),')
         lines.append('  ))')
         lines.append('')
     lines.append('  val regions: Seq[R] = Seq(')

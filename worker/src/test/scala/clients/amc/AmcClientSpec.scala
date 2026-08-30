@@ -26,7 +26,7 @@ import scala.io.Source
 class AmcClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val cinema: Cinema =
-    UsRoster.regions.flatMap(_.cinemas).find(_.displayName == "AMC Town Center 20")
+    UsRoster.byDisplayName.get("AMC Town Center 20")
       .getOrElse(fail("AMC Town Center 20 is missing from the US roster"))
 
   private def fixture(path: String): String = {

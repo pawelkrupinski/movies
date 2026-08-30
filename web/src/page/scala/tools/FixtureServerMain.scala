@@ -101,18 +101,6 @@ object FixtureServerMain {
       views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
         currentUser = anon, oauthProviders = noOauth, renderedAt = now).body
     }
-    // A split US state serves a metro CHOOSER at `/{city}/`, with its films one
-    // level down at `/{city}/{area}/` — mirroring
-    // `MovieController.indexOrChooser` / `area`. The fixture corpus is Poznań's,
-    // so a US state's area pages render empty; what the browser suites exercise
-    // here is the routing + the picker itself.
-    def areasPageFor(c: City): String = views.html.areas(c, "http://test.local").body
-    def areaPageFor(c: City, g: models.CinemaAreaGroup): String = {
-      implicit val ci: City = c
-      views.html.repertoire(service.areaSchedules(g, c, now), g.cinemaDisplayNames, g.cinemaPillMap,
-        devMode = false, currentUser = anon, oauthProviders = noOauth, renderedAt = now,
-        cinemaAreas = Some(Seq.empty), area = Some(g)).body
-    }
     def filmyPageFor(c: City): String = {
       implicit val ci: City = c
       views.html.browse(schedulesFor(c), "Filmy", devMode = false, currentUser = anon, oauthProviders = noOauth).body
@@ -148,6 +136,21 @@ object FixtureServerMain {
       }
     }
 
+    // The bare `/` landing (city-selection screen). Production serves TWO screens
+    // here — a country picker when the request Host is the bare showtimes.cc apex,
+    // the city picker otherwise (see LandingController) — and this harness only
+    // ever renders the second, because its routes are keyed on the path alone and
+    // have no request to read a Host off. The apex branch is covered where the
+    // decision actually lives, in controllers.LandingApexSpec.
+    val landingHtml: String = views.html.landing(models.Country.default).body
+
+    // The same screen for a country whose place list is GROUPED — the US, whose
+    // metros are found under their state's heading. A fixture-only path, like
+    // `/{city}/film-many`: production serves one country per deployment, so its
+    // `/` can only ever be one of the two shapes, and the grouped one is not the
+    // shape this harness's default country has.
+    val usLandingHtml: String = views.html.landing(models.Country.UnitedStates).body
+
     // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
     // is matched against the known cities; an unknown first segment → None.
     def resolve(p: String): Option[(City, String)] = {
@@ -158,26 +161,15 @@ object FixtureServerMain {
       }
     }
 
-    // `/{area}/` under a chooser city, tolerating a `?…` suffix. `None` for any
-    // other sub-path, and for every city with no chooser — which is what makes
-    // an unknown area fall off the `routes` partial function into a 404 rather
-    // than back onto the city listing.
-    def areaOf(c: City, sub: String): Option[models.CinemaAreaGroup] =
-      Option.when(c.hasAreaChooser)(sub.takeWhile(_ != '?')).collect {
-        case s if s.startsWith("/") && s.endsWith("/") => s.stripPrefix("/").stripSuffix("/")
-      }.filterNot(_.contains('/')).flatMap(c.areaBySlug)
-
-    val landingHtml: String = renderLanding()
-
     val routes: PartialFunction[String, String] = {
       // Bare `/` → the city-selection landing (hard-cut: not a repertoire page).
       case p if p == "/" || p.startsWith("/?") => landingHtml
+      case p if p == "/landing-us" || p.startsWith("/landing-us?") => usLandingHtml
       // Everything else under `/{city}/…`. Each route tolerates a `?…` suffix.
       case p if resolve(p).isDefined =>
         val (c, sub) = resolve(p).get
         sub match {
-          case s if s == "/"     || s.startsWith("/?")     =>
-            if (c.hasAreaChooser) areasPageFor(c) else indexPageFor(c)
+          case s if s == "/"     || s.startsWith("/?")     => indexPageFor(c)
           case "/filmy"                                    => indexPageFor(c)
           case s if s.startsWith("/filmy?") &&
                      (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => filmyPageFor(c)
@@ -186,9 +178,6 @@ object FixtureServerMain {
           case "/film-many"                                => manyCinemaFilmPageFor(c)
           case s if s.startsWith("/film/") =>
             filmPageFor(c, s.stripPrefix("/film/"))
-          // LAST, exactly as in the route table: `/{city}/{area}/` is a wildcard
-          // that would otherwise swallow every literal sub-path above it.
-          case s if areaOf(c, s).isDefined                 => areaPageFor(c, areaOf(c, s).get)
         }
     }
 

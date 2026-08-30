@@ -23,15 +23,26 @@ survives only as the source of each clustered metro's display LABEL. It is
 metro sweep (pass 2 below), which is one of the reasons the sub-grouping is
 distance-clustered instead.
 
-## Grouping: states, not metros
+## Grouping: the metro is the place, the state is how you find it
 
-Flicks lists **577 US metros**. That is far past the ~200 a city picker stays
-usable at (Germany ships 158, the UK 79), so the roster groups by **state or
-territory instead — 55 regions**, which is also the unit a US visitor
-recognises. Metro detail is not lost: each state with 30+ venues is split into
-metro `CinemaAreaGroup`s the way London is split by compass — 46 of the 55
-states, 448 metros in all, California's 486 venues into 21. The split rule lives
-in `UsRoster.metroAreas`, which reads the metro each venue was clustered into.
+The addressable place is the **metro** — `/los-angeles/`, a `City` of its own —
+because "films in Los Angeles" is a screen somebody wants and "films in
+California" is not. 448 of them, over the 46 states with 30+ venues; a state
+under that is one place in its own right and keeps the slug `states.py` gave it
+(Alaska, Hawaii, DC, Delaware, Rhode Island, Vermont, Guam, American Samoa and
+the Virgin Islands — nine of the 55), so the US serves **457 cities**.
+
+The **state** survives as a `CityGroup`: the landing lists metros under their
+state's heading, which is how a visitor gets from "California" to "Los Angeles".
+It is not a URL — `/california/` 404s. The cut lives in `UsRoster.places`, which
+reads the metro each venue was clustered into and the metro centroids this
+generator emits beside them.
+
+Metro names are not unique across state lines (see the clustering note below),
+so `City.usCities` qualifies a slug with its state where the bare one is taken —
+by another US metro (`/new-york/` is the New York side, `/new-york-new-jersey/`
+the Jersey one) or by another country (`/birmingham/` is the UK's, so Alabama's
+is `/birmingham-alabama/`).
 
 ## Sub-grouping: distance-clustered metros
 
@@ -66,13 +77,13 @@ swallows the Inland Empire into a 175-cinema area); at 60 km the Dallas
 metroplex splits in two. The resulting spread over the split states is a median
 of 6 venues per metro, biggest Los Angeles at 133, only 18 holding two or fewer.
 
-**A cluster never crosses a state line**, because a state is the `City` whose
-cinemas the areas partition. So a metro that really does span one is split at
-the border: New York's areas hold only the New York side of the NY metro and New
-Jersey's only the Jersey side, and the same goes for Kansas City and St. Louis.
-Where the Flicks label for the out-of-state metro is the honest name for what is
-left, it is kept — New Jersey's biggest area is "New York" (52 venues) and
-Delaware's is "Philadelphia".
+**A cluster never crosses a state line**, because the clustering runs per state
+and a state is what the harvest is keyed by. So a metro that really does span one
+arrives as one city per state: the New York travel-shed is `/new-york/` (102
+venues, the NY side) and `/new-york-new-jersey/` (52, the Jersey side), and the
+same goes for Philadelphia, Kansas City and St. Louis. Where the Flicks label for
+the out-of-state metro is the honest name for what is left, it is kept — New
+Jersey's biggest cluster really is called "New York".
 
 `python3 data/us/scripts/cluster_metros.py` prints the venue-count distribution
 the current constants produce; it is the tool the radius was tuned with.

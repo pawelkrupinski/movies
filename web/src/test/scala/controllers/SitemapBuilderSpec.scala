@@ -67,24 +67,15 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     xml should include(s"<loc>$Origin/wroclaw/plan</loc>")
   }
 
-  /** For a city whose `/{slug}/` is a metro chooser rather than a listing, the
-   *  crawlable listings are the per-area URLs — omit them and a 486-venue
-   *  state's long tail is reachable only by clicking through the picker. */
-  it should "emit one area URL per metro for a chooser city, in City.areas order" in {
-    val california = City.all.find(_.slug == "california").get
-    val xml = SitemapBuilder.build(Origin, Seq(california -> Nil))
-    xml should include(s"<loc>$Origin/california/</loc>")
-    xml should include(s"<loc>$Origin/california/los-angeles/</loc>")
-    xml should include(s"<loc>$Origin/california/san-francisco/</loc>")
-    count(xml, s"$Origin/california/") shouldBe (california.areas.size + 2)  // city + areas + plan
-    val positions = california.areas.map(g => xml.indexOf(s"$Origin/california/${g.area.slug}/"))
-    positions shouldBe positions.sorted
-  }
-
-  /** London is split but stays one page, so it has no area URLs to advertise —
-   *  emitting `/london/central/` would sitemap a 404. */
-  it should "emit no area URLs for a split city below the chooser threshold" in {
-    val xml = SitemapBuilder.build(Origin, Seq(London -> Nil))
+  /** A US metro is a city like any other — one listing URL, no level below it.
+   *  An area is a client-side filter, never an address, so emitting
+   *  `/los-angeles/santa-monica/` or `/london/central/` would sitemap a 404. */
+  it should "emit no URLs below a city, however that city is split" in {
+    val losAngeles = City.all.find(_.slug == "los-angeles").get
+    val xml = SitemapBuilder.build(Origin, Seq(losAngeles -> Nil, London -> Nil))
+    xml should include(s"<loc>$Origin/los-angeles/</loc>")
+    count(xml, s"$Origin/los-angeles/") shouldBe 2                 // the listing + plan
+    xml should not include s"$Origin/los-angeles/santa-monica/"
     xml should include(s"<loc>$Origin/london/</loc>")
     xml should not include s"$Origin/london/central/"
   }

@@ -45,7 +45,14 @@ class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
     // One per country the Playwright suite navigates from this page. Slugs, not
     // labels, because the label is the half that the copy change legitimately
     // moves around.
-    rows should contain allOf ("poznan", "london", "berlin", "california")
+    //
+    // The US one is a METRO, not a state: a US place is now the metro cut out of
+    // a state ("los-angeles"), and the state is only the heading it is listed
+    // under. `california` is not a city any more and is deliberately asserted
+    // absent, since a row by that name would mean the state leaked back in as a
+    // clickable place.
+    rows should contain allOf ("poznan", "london", "berlin", "los-angeles")
+    rows should not contain "california"
   }
 
   it should "still read as the default country, which is where its copy comes from" in {

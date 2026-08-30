@@ -1,10 +1,9 @@
 package models
 
-/** The districts of a US metro too big to browse as one list — a second level of
- *  grouping under a state's metros (`UsRoster.metroAreas`), for the five metros
- *  that clear `cluster_metros.MIN_VENUES_TO_SUBDIVIDE`: Los Angeles (133
- *  venues), New York (102), San Francisco (79), Chicago and Dallas Fort Worth
- *  (78 each).
+/** The districts of a US metro too big to browse as one list — the `areas` of
+ *  the five metro [[City]]s that clear `cluster_metros.MIN_VENUES_TO_SUBDIVIDE`:
+ *  Los Angeles (133 venues), New York (102), San Francisco (79), Chicago and
+ *  Dallas Fort Worth (78 each).
  *
  *  London splits the same way conceptually but by COMPASS — Central / North /
  *  East / South / West, hand-written across its 133 venues. That is the wrong
@@ -29,29 +28,18 @@ package models
  *  label by `Slugify.stable` — the frozen fold clients persist an area under. */
 object UsMetroSubAreas {
 
-  /** This metro's venues grouped into its districts, biggest first — or `Nil`
-   *  when it is not one of the sub-divided metros. Keyed by the state's
-   *  `City.slug` and the metro's `CinemaArea.slug`, the two segments a
-   *  `/{state}/{metro}/` page already has.
-   *
-   *  A pure function of the roster: same roster, byte-identical answer. */
-  def forMetro(stateSlug: String, metroSlug: String): Seq[CinemaAreaGroup] =
-    byMetro.getOrElse((stateSlug, metroSlug), Nil)
-
-  /** Computed once for every sub-divided metro — five of the 470, so the whole
-   *  table costs one pass over 470 venues at class-load.
+  /** One metro's venues grouped into its districts, biggest first — or `Nil`
+   *  when it is not one of the sub-divided metros. `venues` pairs each of the
+   *  metro's cinemas with the district label the generator gave it, empty for
+   *  a metro it left whole.
    *
    *  A metro takes part only when EVERY one of its venues carries a district;
    *  the groups have to partition it, and half a metro grouped is worse than
    *  none. Nothing in the generated roster can hit that — the generator labels a
-   *  metro's venues all together or not at all — but the lookup has to answer
-   *  something, and "not sub-divided" is the answer that keeps the invariant. */
-  private val byMetro: Map[(String, String), Seq[CinemaAreaGroup]] =
-    UsRoster.regions.flatMap { region =>
-      region.areas.flatMap { metro =>
-        val districts = metro.cinemas.flatMap(c => UsRoster.subAreaByCinema.get(c).map(c -> _))
-        Option.when(districts.sizeIs == metro.cinemas.size)(
-          (region.slug, metro.area.slug) -> UsRoster.areasByLabel(districts))
-      }
-    }.toMap
+   *  metro's venues all together or not at all — but the rule has to answer
+   *  something, and "not sub-divided" is the answer that keeps the invariant.
+   *
+   *  A pure function of the roster: same roster, byte-identical answer. */
+  private[models] def districts(venues: Seq[(Cinema, String)]): Seq[CinemaAreaGroup] =
+    if (venues.exists(_._2.isEmpty)) Nil else CinemaAreaGroup.byLabel(venues)
 }

@@ -72,18 +72,19 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("<loc>https://kinowo.net/poznan/film/testowy-film</loc>")
   }
 
-  /** A chooser city's `/{slug}/` is the metro pick screen — the crawlable
-   *  listings are the per-area URLs, so the sitemap has to name them or the long
-   *  tail of a 486-venue state is reachable only by clicking through. */
-  it should "advertise the per-area listings of a city whose index is a chooser" in {
+  /** The US crawl map is its metros — the state is not an address, so naming
+   *  `/california/` would sitemap a 404 while the metros people search for went
+   *  unadvertised. */
+  it should "advertise every US metro, and no state" in {
     val us   = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedStates)._1
     val body = contentAsString(us.sitemap(req("/sitemap.xml")))
-    body should include("<loc>https://kinowo.net/us/california/</loc>")
-    body should include("<loc>https://kinowo.net/us/california/los-angeles/</loc>")
-    body should include("<loc>https://kinowo.net/us/california/san-francisco/</loc>")
-    // A split city BELOW the chooser threshold has no area URLs to advertise…
-    body should not include "/alaska/anchorage/"
-    // …and neither does a flat one.
+    body should include("<loc>https://kinowo.net/us/los-angeles/</loc>")
+    body should include("<loc>https://kinowo.net/us/san-francisco/</loc>")
+    // The state is how a metro is FOUND, never a page of its own.
+    body should not include "/us/california/"
+    // A district is a filter inside a metro, never a URL of its own.
+    body should not include "/us/los-angeles/santa-monica/"
+    // A state small enough to be one city is advertised as that city.
     body should include("<loc>https://kinowo.net/us/alaska/</loc>")
   }
 

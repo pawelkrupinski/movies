@@ -6,123 +6,78 @@ import { waitForCards } from './helpers';
 // manual list; the Filtry → Miasto picker switches cities from any page.
 
 test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
-  test('lists every supported city and a pick navigates into that city', async ({ page }) => {
+  test('lists every city of the country it serves and a pick navigates into it', async ({ page }) => {
     await page.goto('/');
-    // 41 Polish + 79 UK + 158 German + 55 US cities — the fixture `/` renders
-    // `City.all`, the LIVE union across every country (see FixtureServerMain),
-    // not one country. Every Flicks region is now live
-    // (`activeUkCities = allUkCities`), so the full 79-region UK roster appears;
-    // Germany is the full 158-region Filmstarts roster (data/germany); and the US
-    // is one region per state/territory (data/us) rather than one per Flicks
-    // metro, which is why it adds 55 and not 577.
+    // The fixture `/` renders ONE country's list, exactly as a deployment does
+    // (`views.html.landing(Country.default)` — see FixtureServerMain), so this is
+    // Poland's 41 cities. The grouped shape lives at /landing-us below.
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(333);
-    await expect(page.locator('.city-list')).toContainText('California');
-    await expect(page.locator('.city-list')).toContainText('New York');
+    await expect(links).toHaveCount(41);
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');
     await expect(page.locator('.city-list')).toContainText('Kraków');
     await expect(page.locator('.city-list')).toContainText('Łódź');
-    await expect(page.locator('.city-list')).toContainText('Katowice');
-    await expect(page.locator('.city-list')).toContainText('Szczecin');
     await expect(page.locator('.city-list')).toContainText('Trójmiasto');
-    await expect(page.locator('.city-list')).toContainText('Białystok');
-    await expect(page.locator('.city-list')).toContainText('Bydgoszcz');
-    await expect(page.locator('.city-list')).toContainText('Lublin');
     await expect(page.locator('.city-list')).toContainText('Częstochowa');
-    await expect(page.locator('.city-list')).toContainText('Radom');
-    await expect(page.locator('.city-list')).toContainText('Sosnowiec');
-    await expect(page.locator('.city-list')).toContainText('Toruń');
-    await expect(page.locator('.city-list')).toContainText('Kielce');
-    await expect(page.locator('.city-list')).toContainText('Rzeszów');
-    await expect(page.locator('.city-list')).toContainText('Gliwice');
-    await expect(page.locator('.city-list')).toContainText('Zabrze');
-    // The full UK roster (English labels) is live — the big metros plus every
-    // other Flicks region (Cornwall, Kent, Yorkshire, …) now all appear.
-    await expect(page.locator('.city-list')).toContainText('London');
-    await expect(page.locator('.city-list')).toContainText('Manchester');
-    await expect(page.locator('.city-list')).toContainText('Birmingham');
-    await expect(page.locator('.city-list')).toContainText('Glasgow');
-    await expect(page.locator('.city-list')).toContainText('Liverpool');
-    await expect(page.locator('.city-list')).toContainText('West Yorkshire');
-    await expect(page.locator('.city-list')).toContainText('Edinburgh');
-    await expect(page.locator('.city-list')).toContainText('Cornwall');
-    await expect(page.locator('.city-list')).toContainText('Kent');
-    await expect(page.locator('.city-list')).toContainText('Yorkshire');
-    // The full German roster (native labels) is live too.
-    await expect(page.locator('.city-list')).toContainText('Berlin');
-    await expect(page.locator('.city-list')).toContainText('München');
-    await expect(page.locator('.city-list')).toContainText('Köln');
-    await expect(page.locator('.city-list')).toContainText('Hamburg');
+    // One flat A-to-Z: only a grouped country carries state headings.
+    await expect(page.locator('.city-group')).toHaveCount(0);
 
     await page.locator('.city-list a', { hasText: 'Poznań' }).click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
   });
 });
 
-// A US state (`City.hasAreaChooser`) puts a metro PICK SCREEN at `/{city}/` and
-// moves its films down to `/{city}/{area}/` — its "city" is a whole state, so
-// `/california/` is not a place anyone has chosen yet. Flat states and every
-// city outside the US (London included, split though it is) are untouched and
-// still land straight on their repertoire.
-test.describe('metro chooser (/{city}/ for a split US state)', { tag: '@agnostic' }, () => {
-  test('picking California lands on the area chooser, not a listing', async ({ page }) => {
-    await page.goto('/');
-    await page.locator('.city-list a', { hasText: 'California' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/california/');
+// The US lists 457 places — 448 distance-clustered METROS plus the nine states
+// and territories too small to split — grouped under their state, because
+// "Los Angeles" is found under "California" and a 457-row A-to-Z is not a list
+// anybody reads. The state is a heading, never a link: `/california/` is gone.
+test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
+  test('lists metros under their state, and a pick lands on that metro', async ({ page }) => {
+    await page.goto('/landing-us');
+    await expect(page.locator('.city-list a')).toHaveCount(457);
+    const groups = page.locator('.city-group');
+    await expect(groups).toHaveCount(55);
+    await expect(groups.first()).toContainText('Alabama');
 
-    // The chooser, not the repertoire: area rows, no film grid.
-    // California's 486 venues cluster into 21 metros (`UsRoster.metroAreas`).
-    const areas = page.locator('.area-list a');
-    await expect(areas).toHaveCount(21);
-    await expect(page.locator('.area-list')).toContainText('Los Angeles');
-    await expect(page.locator('.area-list')).toContainText('San Francisco');
-    await expect(page.locator('#film-grid')).toHaveCount(0);
-    // Biggest metro first — City.areas' own order.
-    await expect(areas.first()).toContainText('Los Angeles');
-    await expect(areas.nth(1)).toContainText('San Francisco');
-    // Each row carries its venue count. Matched without the noun: the fixture
-    // server is a Polish deployment, so it renders "133 kin" where the real US
-    // host renders "133 cinemas" (asserted per-language in WebI18nSpec).
-    await expect(areas.first()).toContainText(/Los Angeles\s*133\b/);
-    // And a way back to the city list.
-    await expect(page.locator('a.back')).toHaveAttribute('href', '/');
+    const california = page.locator('.city-group', { hasText: 'California' }).first();
+    await expect(california.locator('.city-group-label')).toHaveText('California');
+    await expect(california.locator('a')).toHaveCount(21);
+    // Biggest metro first — City.usStates' own order.
+    await expect(california.locator('a').first()).toHaveText('Los Angeles');
+    // No state is addressable.
+    await expect(page.locator('.city-list a[href="/california/"]')).toHaveCount(0);
+
+    await page.locator('.city-list a', { hasText: 'Los Angeles' }).first().click();
+    await page.waitForURL((u) => new URL(u).pathname === '/los-angeles/');
+    await expect(page.locator('#view-root')).toHaveCount(1);
   });
 
-  test('picking a metro lands on that metro’s repertoire', async ({ page }) => {
-    await page.goto('/california/');
-    await page.locator('.area-list a', { hasText: 'Los Angeles' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/california/los-angeles/');
-    // The ordinary repertoire view — same shell, scoped cinema universe. (The
-    // fixture corpus is Poznań's, so the grid itself is empty here; the Scala
-    // AreaRoutingSpec is where the scoping of actual films is asserted.)
+  test('the search box narrows to matching metros and drops the empty states', async ({ page }) => {
+    await page.goto('/landing-us');
+    await page.locator('#city-search').fill('los angeles');
+    await expect(page.locator('.city-list a:visible')).toHaveCount(1);
+    // The heading of a state with nothing left goes with its rows.
+    await expect(page.locator('.city-group:visible')).toHaveCount(1);
+    await expect(page.locator('.city-group:visible')).toContainText('California');
+
+    await page.locator('#city-search').fill('');
+    await expect(page.locator('.city-group:visible')).toHaveCount(55);
+  });
+});
+
+// A metro is an ordinary city: its `/{slug}/` is its listing, scoped to its own
+// venues, with no level below it. (The fixture corpus is Poznań's, so the grid
+// itself is empty here; the Scala AreaRoutingSpec asserts the film scoping.)
+test.describe('a metro is a city', { tag: '@agnostic' }, () => {
+  test('a metro serves its listing straight away, with no chooser in between', async ({ page }) => {
+    await page.goto('/los-angeles/');
     await expect(page.locator('#view-root')).toHaveCount(1);
     await expect(page.locator('.area-list')).toHaveCount(0);
-  });
-
-  // The pick is remembered (`area_{city}` cookie), so `/california/` stops
-  // asking — which makes this link the ONLY way back to the chooser. It carries
-  // `?areas` for exactly that reason: a bare `/california/` would bounce a
-  // returning visitor straight back to the metro they are trying to leave.
-  test('the metro page links back to the chooser, and the link reaches it', async ({ page }) => {
-    await page.goto('/california/los-angeles/');
-    const change = page.locator('#change-area');
-    await expect(change).toBeVisible();
-    await expect(change).toContainText('Los Angeles');
-    await expect(change).toHaveAttribute('href', '/california/?areas');
-
-    await change.click();
-    await page.waitForURL((u) => new URL(u).pathname === '/california/');
-    await expect(page.locator('.area-list a')).toHaveCount(21);
-  });
-
-  test('a listing that is not area-scoped shows no change-area link', async ({ page }) => {
-    await page.goto('/poznan/');
     await expect(page.locator('#change-area')).toHaveCount(0);
   });
 
-  test('London is split too, but keeps its single listing', async ({ page }) => {
+  test('London is split too, and keeps its single listing', async ({ page }) => {
     await page.goto('/london/');
     await expect(page.locator('.area-list')).toHaveCount(0);
     await expect(page.locator('#view-root')).toHaveCount(1);

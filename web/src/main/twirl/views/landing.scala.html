@@ -7,22 +7,25 @@
    from the list. Self-contained (no city-scoped partials) since there's no
    city yet.
 
-   Takes the COUNTRY rather than reading one: the copy depends on what that
-   country's places are called (`PlaceKind` — the US picks a STATE here, so
-   "Choose your city" would be wrong), and passing it in keeps the "nothing
-   reads a global current country" rule this template used to break four times
-   over with `Country.fromEnv`.
+   Takes the COUNTRY rather than a bare city list: the list, its GROUPING and the
+   geolocation payload all have to come from the same country. Passing it in also
+   keeps the "nothing reads a global current country" rule this template used to
+   break four times over with `Country.fromEnv`.
+
+   Most countries are one flat A-to-Z. The US is grouped, one section per state
+   over the metros cut out of it (`Country.cityGroups`), because "Los Angeles" is
+   found under "California" and 457 metros in one alphabetical run is not a list
+   anybody reads.
 
    `places` IS NONE IN EVERY DEPLOYMENT, meaning "the country's own list" — a
    visitor to the Polish site is offered Polish cities and nothing else, and no
    caller in `main` passes it. It exists for the fixture server
-   (`tools.FixtureServerMain`), which serves ONE `/` to browser specs written
-   for four different countries at once and therefore has to list `City.all`,
-   the union. That is the seam the harness overrides, and it overrides nothing
-   else: the copy, the brand and the geolocation payload still come from the
-   country, so the page behaves like a real one in every respect a spec asserts.
-   (An `Option` rather than a defaulted `Seq`, because a default argument may
-   not reference `country`, a parameter of its own list.)
+   (`tools.FixtureServerMain`), which serves one `/` to browser specs written for
+   several countries at once. That is the only seam the harness overrides: the
+   copy, the brand and the geolocation payload still come from the country.
+   (An `Option` rather than a defaulted `Seq`, because a default argument may not
+   reference `country`, a parameter of its own list.)
+
 *@
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
@@ -30,12 +33,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
-  <title>@messages(country.placeKind.messageKey("landing.title"), country.brandName)</title>
+  <title>@messages("landing.title", country.brandName)</title>
   @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
      card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
      product (posters + ratings), which the city-selection screen itself can't. *@
   @_ogTagsApp(
-    pageTitle       = messages(country.placeKind.messageKey("landing.title"), country.brandName),
+    pageTitle       = messages("landing.title", country.brandName),
     pageDescription = messages("landing.ogDescription"),
     pageUrl         = country.ogOrigin + "/",
     imageUrl        = country.ogOrigin + "/assets/img/" + country.homeOgImage,
@@ -68,20 +71,39 @@
       transition: background .15s, border-color .15s;
     }
     .city-list a:hover { background: #25254e; border-color: #3a3a7e; }
+    .city-group { display: flex; flex-direction: column; gap: .6rem; }
+    .city-group-label {
+      color: #9a9ac0; font-size: .8rem; font-weight: 600; letter-spacing: .06em;
+      text-transform: uppercase; text-align: left; margin-top: .4rem;
+    }
+    .city-group-cities { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
     .locating { color: #9a9ac0; font-size: .9rem; margin-top: 1.25rem; min-height: 1.2em; }
   </style>
 </head>
 <body>
   <main>
     <h1>🎬 @country.brandName</h1>
-    <p class="sub">@messages(country.placeKind.messageKey("landing.chooseCity"))</p>
+    <p class="sub">@messages("landing.chooseCity")</p>
     <input class="city-search" id="city-search" type="search" inputmode="search"
            autocomplete="off" autocapitalize="off" spellcheck="false"
-           placeholder="@messages(country.placeKind.messageKey("landing.searchCity"))" aria-label="@messages(country.placeKind.messageKey("landing.searchCityAria"))" aria-controls="city-list">
-    <p class="city-empty" id="city-empty">@messages(country.placeKind.messageKey("landing.noCity"))</p>
+           placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" aria-controls="city-list">
+    <p class="city-empty" id="city-empty">@messages("landing.noCity")</p>
     <ul class="city-list" id="city-list">
+      @if(country.cityGroups.isEmpty) {
       @for(c <- places.getOrElse(country.allSorted)) {
         <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+      }
+      } else {
+      @for(g <- country.cityGroups) {
+        <li class="city-group">
+          <p class="city-group-label">@g.label</p>
+          <ul class="city-group-cities">
+          @for(c <- g.cities) {
+            <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+          }
+          </ul>
+        </li>
+      }
       }
     </ul>
     <p class="locating" id="locating"></p>
@@ -104,21 +126,29 @@
         .replace(/ź/g, 'z').replace(/ż/g, 'z');
     }
 
-    // Client-side filter of the place list (41 Polish cities, 55 US states and
-    // territories, …): typing narrows the visible rows by folded substring
-    // match; an empty box shows everything.
+    // Client-side filter of the place list (41 Polish cities, 457 US metros, …):
+    // typing narrows the visible rows by folded substring match; an empty box
+    // shows everything. A group whose every row is hidden goes with them, so the
+    // US list never leaves a state heading standing over nothing.
     (function () {
       var input = document.getElementById('city-search');
       if (!input) return;
-      var items = Array.prototype.slice.call(document.querySelectorAll('#city-list > li'));
-      var empty = document.getElementById('city-empty');
+      var rows   = Array.prototype.slice.call(document.querySelectorAll('#city-list li a'))
+                     .map(function (a) { return a.parentNode; });
+      var groups = Array.prototype.slice.call(document.querySelectorAll('#city-list > li.city-group'));
+      var empty  = document.getElementById('city-empty');
       var apply = function () {
         var q = foldPl(input.value.trim());
         var shown = 0;
-        items.forEach(function (li) {
+        rows.forEach(function (li) {
           var match = q === '' || foldPl(li.textContent).indexOf(q) !== -1;
           li.style.display = match ? '' : 'none';
           if (match) shown++;
+        });
+        groups.forEach(function (g) {
+          var any = Array.prototype.slice.call(g.querySelectorAll('li'))
+                      .some(function (li) { return li.style.display !== 'none'; });
+          g.style.display = any ? '' : 'none';
         });
         if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
       };
@@ -165,7 +195,7 @@
             document.cookie = 'city=' + c.slug + ';path=@country.mountPath;max-age=' + (60 * 60 * 24 * 365);
             window.location.replace('@{country.pathPrefix}/' + c.slug + '/');
           } else {
-            finish('@messages(country.placeKind.messageKey("landing.noNearby"))');
+            finish('@messages("landing.noNearby")');
           }
         },
         function () { finish(''); },

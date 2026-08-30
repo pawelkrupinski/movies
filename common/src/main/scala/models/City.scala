@@ -3,6 +3,8 @@ package models
 import java.time.ZoneId
 import java.util.Locale
 
+import tools.Slugify
+
 /** The Polish name of a city in the grammatical forms the templates need:
  *  nominative ("Poznań"), genitive plural for "…skich kin" ("poznańskich"),
  *  and locative for "w …" ("Poznaniu"). Kept as data so no template hardcodes
@@ -71,39 +73,9 @@ sealed abstract class City(
   def areas: Seq[CinemaAreaGroup] = Nil
   /** Whether this city is split into [[areas]] (vs. a flat cinema list). */
   def isSplit: Boolean = areas.nonEmpty
-  /** Whether `/{slug}/` serves a metro CHOOSER rather than the city's own
-   *  listing. The films then live one level down, at `/{slug}/{areaSlug}/`.
-   *
-   *  The rule is US + [[isSplit]], and both halves are load-bearing.
-   *
-   *  US, because in the United States a "city" here is a whole STATE — the only
-   *  country whose [[City]] is a region rather than a place, so its `/{slug}/`
-   *  is the only one where a visitor has not actually chosen anywhere yet.
-   *  "Films in California" is not a screen anybody wants; "films in Los Angeles"
-   *  is. That is a difference in what the URL MEANS, which is why it beats the
-   *  venue count this used to test (`MinCinemasForAreaChooser = 150`).
-   *
-   *  Not that count, because it read as a page-weight rule and was not one.
-   *  LONDON is split too (five compass areas) and stays ONE page deliberately —
-   *  and it is emphatically not exempt on size: measured live on 2026-08-30 it
-   *  serves 1.13 MB gzipped / 15.0 MB raw in 1.9s, the HEAVIEST page in the
-   *  fleet, heavier than the California listing this whole feature exists to
-   *  break up. By weight alone London would be the FIRST city to catch. It stays
-   *  one page anyway, because the UK is a live country whose visitors open
-   *  `/london/` and get films, and an extra tap was not wanted there. (They are
-   *  offered the compass areas once already, through the first-visit picker in
-   *  `shared.js`, which remembers the choice.)
-   *
-   *  So do NOT re-gate this on venue count to "catch London too" — that reverses
-   *  a product decision, and `AreaRoutingSpec` fails on purpose if you do.
-   *
-   *  [[isSplit]], because the nine flat states (Alaska, Hawaii, DC, …) have no
-   *  areas to choose between: their listing IS the page. */
-  def hasAreaChooser: Boolean = isSplit && country == Country.UnitedStates
-  /** Resolve one of this city's [[areas]] by its stable slug — the `/{city}/{area}/`
-   *  path segment. `None` for an unknown slug (and for every flat city), which is
-   *  what turns a mistyped area URL into a 404 rather than a silent fall-through
-   *  to the unfiltered city listing. */
+  /** Resolve one of this city's [[areas]] by its stable slug — the key clients
+   *  persist a chosen area under (`'areasChosen:' + city`). `None` for an
+   *  unknown slug and for every flat city. */
   def areaBySlug(slug: String): Option[CinemaAreaGroup] = areas.find(_.area.slug == slug)
   /** "Repertuar kin …" locative phrase, in this city's country language.
    *  Polish declines ("w Poznaniu", "we Wrocławiu"); English (and any other
@@ -873,24 +845,41 @@ final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Dou
   val cinemas: Seq[Cinema] = cinemas0
 }
 
-/** A US state or territory — the data-driven `City` subtype. The full roster
- *  (55 regions / 5,031 cinemas) is generated into `UsRosterData` and
- *  materialised by [[UsRoster]]. Instances are built ONCE there, so identity
- *  equality holds just like the hand-authored `case object` cities.
+/** A US METRO — the data-driven `City` subtype, and the place a US visitor
+ *  actually names. "Films in Los Angeles" is a screen somebody wants; "films in
+ *  California" is not, which is why the state is a [[CityGroup]] here and not a
+ *  city. The nine states and territories too small to have metros (Alaska,
+ *  Hawaii, DC, …) have nothing to split into, so each is one of these in its own
+ *  right, keeping the slug it already had.
+ *
+ *  The roster (5,031 cinemas over 448 metros + those nine) is generated into
+ *  `UsRosterData` and materialised by [[UsRoster]]; instances are built ONCE (in
+ *  `City.usCities`), so identity equality holds just like the hand-authored
+ *  `case object` cities.
  *
  *  Unlike [[GermanRegion]] the zone is a CONSTRUCTOR parameter rather than a
  *  constant: the US spans six of them, so `Europe/Berlin`'s one-size answer has
- *  no US equivalent. Each region carries its state's predominant zone (see
+ *  no US equivalent. Each place carries its state's predominant zone (see
  *  `data/us/scripts/states.py` for the handful of states that straddle two). */
-final class UsRegion(slug: String, labels: CityLabels, lat: Double, lon: Double,
-                      zoneId: ZoneId, cinemas0: Seq[Cinema], areas0: Seq[CinemaAreaGroup])
+final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
+                   zoneId: ZoneId, cinemas0: Seq[Cinema], areas0: Seq[CinemaAreaGroup])
   extends City(slug, labels, lat, lon, zoneId) {
   val cinemas: Seq[Cinema] = cinemas0
-  /** Metro-area groups for the states big enough to need them, `Nil` for the
-   *  small ones — see `UsRoster.metroAreas`. California alone lists 486 venues,
-   *  which is a flat picker nobody can use. */
+  /** The DISTRICTS of a metro too big to browse as one list — Manhattan,
+   *  Brooklyn, Santa Monica — and `Nil` for every other place. The level below
+   *  the metro, exactly as London's compass areas sit below London; see
+   *  [[UsMetroSubAreas]]. */
   override val areas: Seq[CinemaAreaGroup] = areas0
 }
+
+/** A named group of [[City]]s in a picker — a US STATE over its metros
+ *  ("California → Los Angeles", the way a visitor finds one). The state is not
+ *  a place you can open: `/california/` is nothing, and its films live at
+ *  `/los-angeles/`. It is how the list of them is arranged, and nothing else.
+ *
+ *  Every other country's picker is one flat list, so `Country.cityGroups` is
+ *  empty there rather than one group per city. */
+final case class CityGroup(label: String, slug: String, cities: Seq[City])
 
 object City {
 
@@ -932,14 +921,63 @@ object City {
   private[models] val germanCities: Seq[City] = GermanRoster.regions
 
   /** The United States' cities — the authoritative list for
-   *  [[Country.UnitedStates]]. One region per state/territory rather than one per
-   *  Flicks metro: Flicks lists 577 US metros, which is far past the ~200 a city
-   *  picker stays usable at (Germany ships 158), and a state is the unit a US
-   *  visitor recognises. Metro detail is not lost — every state big enough to
-   *  need it is split into `areas` by metro the way London is split by compass,
-   *  those metros being distance-clustered from the venues' own coordinates
-   *  (see `UsRoster.metroAreas` and `data/us/scripts/cluster_metros.py`). */
-  private[models] val usCities: Seq[City] = UsRoster.regions
+   *  [[Country.UnitedStates]]. One city per METRO (448 of them, distance-clustered
+   *  from the venues' own coordinates — see `data/us/scripts/cluster_metros.py`),
+   *  plus the nine states and territories with too few venues to be worth
+   *  splitting, which are cities in their own right. The state itself is a
+   *  [[CityGroup]], not a city: nobody wants a screen of every cinema in Texas.
+   *
+   *  The slug is assigned HERE rather than in [[UsRoster]] because it is the one
+   *  thing about a place that depends on every OTHER country: `City.bySlug` is a
+   *  single global namespace, and a metro's own name is not unique in it —
+   *  "Birmingham" is a UK city, and clusters never cross a state line so
+   *  "Philadelphia" is a metro in two states at once. See [[usSlugs]]. */
+  private[models] val usCities: Seq[City] = {
+    val slugs = usSlugs(UsRoster.places)
+    UsRoster.places.zip(slugs).map { case (p, slug) =>
+      new UsCity(slug, CityLabels(p.label, p.label, p.label), p.lat, p.lon, p.zoneId, p.cinemas, p.districts)
+    }
+  }
+
+  /** The URL slug of each [[UsRoster.places]] entry, in that order.
+   *
+   *  A place keeps its own folded label wherever that is free, and is qualified
+   *  with its state where it is not (`birmingham-alabama`,
+   *  `philadelphia-new-jersey`). Two different things can take the bare slug
+   *  away, and they answer differently:
+   *
+   *  - ANOTHER COUNTRY already serves it. `/birmingham/` is a live UK page and
+   *    `/glasgow/` a live Scottish one; a US metro may not move either. The US
+   *    place qualifies, always.
+   *  - ANOTHER US PLACE wants it, because clusters never cross a state line, so
+   *    one travel-shed arrives as one metro per state it reaches: New York in
+   *    both NY and NJ, Philadelphia in both PA and NJ, Kansas City in both KS
+   *    and MO — 31 names claimed twice or more. Here the BIGGEST keeps the bare slug (ties on the state's name):
+   *    `/new-york/` is the 102-venue New York side, which is what a visitor
+   *    typing it means, and the New Jersey commuter belt is
+   *    `/new-york-new-jersey/`.
+   *
+   *  Qualifying only the SLUG: the label stays "Philadelphia", because the
+   *  picker shows it under its state's heading, where it is not ambiguous. */
+  private def usSlugs(places: Seq[UsPlace]): Seq[String] = {
+    val foreign = (polishCities ++ allUkCities ++ germanCities).map(_.slug).toSet
+    val biggest = places.groupBy(_.preferredSlug)
+      .map { case (slug, claimants) => slug -> claimants.maxBy(p => (p.cinemas.size, p.stateName)) }
+    def keepsBareSlug(p: UsPlace): Boolean =
+      !foreign.contains(p.preferredSlug) && biggest(p.preferredSlug).eq(p)
+    places.map(p => if (keepsBareSlug(p)) p.preferredSlug else Slugify.stable(s"${p.label} ${p.stateName}"))
+  }
+
+  /** The US picker's grouping: one entry per state or territory, in roster
+   *  order, holding the metros cut out of it (or the state itself, where it is
+   *  small enough to be one place). */
+  private[models] val usStates: Seq[CityGroup] =
+    UsRoster.places.zip(usCities).foldLeft(Vector.empty[CityGroup]) {
+      case (groups :+ last, (place, city)) if last.slug == place.stateSlug =>
+        groups :+ last.copy(cities = last.cities :+ city)
+      case (groups, (place, city)) =>
+        groups :+ CityGroup(place.stateName, place.stateSlug, Seq(city))
+    }
 
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse

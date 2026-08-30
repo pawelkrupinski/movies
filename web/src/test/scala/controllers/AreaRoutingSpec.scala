@@ -1,36 +1,32 @@
 package controllers
 
-import models.{City, Cinema, CinemaAreaGroup, Country, MovieRecord, Source, SourceData}
+import models.{City, Cinema, Country, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.mvc.Cookie
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 
 import java.time.LocalDateTime
 
 /**
- * The metro level: `/{city}/` is a PICK SCREEN for a split US state — the one
- * country whose "city" is a whole state, so `/california/` names nowhere anybody
- * chose — and the films move one level down to `/{city}/{area}/`. The pick is
- * then REMEMBERED (`area_{city}`), so the screen is asked once rather than every
- * visit; the navbar's change-area link (`?areas`) is the way back to it.
+ * The metro level, after the state stopped being a place. A US metro IS the
+ * city — `/los-angeles/` is its listing, scoped to its own venues — and the
+ * state it sits in has no page at all: `/california/` is as unknown as
+ * `/atlantis/`. What survives at the level BELOW is `City.areas`: London's five
+ * compass areas, and a big metro's districts, which the cinema filter groups by
+ * and the first-visit picker offers.
  *
- * Everything here is about the ways this can go wrong: a city that should NOT
- * get a chooser quietly getting one (London), an area page leaking films from
- * the rest of the state, an unknown area answering 200 with the unfiltered city
- * listing instead of 404, and a remembered metro either sticking where it
- * shouldn't (another state) or 404ing once the roster re-slugs it away.
+ * The ways this can go wrong are what is asserted: a metro page leaking films
+ * from the rest of the state, a state answering 200 with an 18 MB listing
+ * instead of 404, and London — split too, and deliberately untouched by any of
+ * this — losing its areas or its one-page listing.
  */
 class AreaRoutingSpec extends AnyFlatSpec with Matchers {
 
-  private def state(slug: String): City = City.all.find(_.slug == slug).getOrElse(fail(s"no city '$slug'"))
-  private def group(city: City, areaSlug: String): CinemaAreaGroup =
-    city.areaBySlug(areaSlug).getOrElse(fail(s"no area '$areaSlug' in ${city.slug}"))
+  private def place(slug: String): City = City.all.find(_.slug == slug).getOrElse(fail(s"no city '$slug'"))
 
-  private val california = state("california")
-  private val losAngeles = group(california, "los-angeles")
-  private val sanFrancisco = group(california, "san-francisco")
+  private val losAngeles   = place("los-angeles")
+  private val sanFrancisco = place("san-francisco")
 
   private val laCinema: Cinema = losAngeles.cinemas.head
   private val sfCinema: Cinema = sanFrancisco.cinemas.head
@@ -55,7 +51,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   /** A US-serving deployment holding one film in an LA venue and one in an SF
-   *  venue — the two are in the same city (California) but different areas. */
+   *  venue — two different California metros, and so two different cities. */
   private def usController(): MovieController = TestMovieController.build(
     Seq(
       (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
@@ -69,279 +65,133 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   private def req(path: String) =
     FakeRequest(GET, path).withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "us.showtimes.cc")
 
-  /** The same request, carrying the metro a previous visit remembered. */
-  private def reqRemembering(path: String, citySlug: String, areaSlug: String) =
-    req(path).withCookies(Cookie(s"area_$citySlug", areaSlug))
+  // ── The metro's own listing ─────────────────────────────────────────────────
 
-  // ── The chooser screen ──────────────────────────────────────────────────────
-
-  "/california/" should "serve the metro chooser, not the state-wide listing" in {
-    val res = usController().index("california")(req("/california/"))
-    status(res) shouldBe OK
-    val html = contentAsString(res)
-    html should include("Choose an area")
-    html should include("Los Angeles")
-    html should include("San Francisco")
-    // Every area, not just the headline ones.
-    california.areas.foreach(g => html should include(s"""href="/california/${g.area.slug}/""""))
-    // The whole point: no film cards on the chooser.
-    html should not include LaFilm
-    html should not include SfFilm
-    html should not include "film-grid"
-  }
-
-  it should "show each metro's cinema count and keep City.areas' order" in {
-    val html = contentAsString(usController().index("california")(req("/california/")))
-    html should include(s"${losAngeles.cinemas.size} cinemas")
-    // Biggest metro first, the catch-all last — the order the model already
-    // publishes, so the page never re-sorts it into something else.
-    val order = california.areas.map(g => html.indexOf(s"/california/${g.area.slug}/"))
-    order.foreach(_ should be >= 0)
-    order shouldBe order.sorted
-  }
-
-  it should "offer a way back to the country's city list" in {
-    contentAsString(usController().index("california")(req("/california/"))) should include("""href="/"""")
-  }
-
-  /** …and CALL that list what it is. The link read "← All cities" while pointing
-   *  at a list of states — the copy assumed every country's `City` is a city,
-   *  which is true everywhere except the one country this screen renders in. */
-  it should "call that list states, not cities" in {
-    val html = contentAsString(usController().index("california")(req("/california/")))
-    html should include("← All states")
-    html should not include "All cities"
-  }
-
-  it should "remember the city, so the bare / bounces back here" in {
-    val res = usController().index("california")(req("/california/"))
-    cookies(res).get("city").map(_.value) shouldBe Some("california")
-  }
-
-  it should "be a fraction of the state-wide listing it replaces" in {
-    val chooser = contentAsString(usController().index("california")(req("/california/")))
-    val listing = contentAsString(usController().area("california", "los-angeles")(req("/california/los-angeles/")))
-    chooser.length should be < listing.length
-  }
-
-  // ── The scoped listing ──────────────────────────────────────────────────────
-
-  "/california/los-angeles/" should "render the repertoire scoped to that metro only" in {
-    val res = usController().area("california", "los-angeles")(req("/california/los-angeles/"))
+  "/los-angeles/" should "render the repertoire scoped to that metro only" in {
+    val res = usController().index("los-angeles")(req("/los-angeles/"))
     status(res) shouldBe OK
     val html = contentAsString(res)
     html should include(LaFilm)
-    // The San Francisco film plays in the same CITY — scoping is by area, and
-    // this is the assertion that fails if the filter is dropped.
+    // The San Francisco film is in the same STATE — the scoping is by metro, and
+    // this is the assertion that fails if a metro ever swallows its state again.
     html should not include SfFilm
   }
 
   it should "offer only that metro's cinemas to the filter panel" in {
-    val html = contentAsString(usController().area("california", "los-angeles")(req("/california/los-angeles/")))
+    val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include(laCinema.displayName)
     html should not include sfCinema.displayName
     // Los Angeles is past UsMetroSubAreas' threshold, so the panel it offers is
-    // grouped by DISTRICT rather than flat. (This used to assert an empty
-    // CINEMA_AREAS on the reasoning that "one area IS the whole page" — true
-    // while nothing sub-divided a metro, and wrong once something did.)
+    // grouped by DISTRICT rather than flat.
     html should include("CINEMA_AREAS")
     html should not include "CINEMA_AREAS       = []"
+    html should include("\"name\":\"Santa Monica\"")
   }
 
-  it should "canonicalise to the area URL, not the city's" in {
-    val html = contentAsString(usController().area("california", "los-angeles")(req("/california/los-angeles/")))
-    html should include("""<link rel="canonical" href="https://us.showtimes.cc/california/los-angeles/"""")
-    html should include("""content="https://us.showtimes.cc/california/los-angeles/"""")
-  }
-
-  it should "title and describe itself by the metro, not the state" in {
-    val html = contentAsString(usController().area("california", "los-angeles")(req("/california/los-angeles/")))
+  it should "title, describe and canonicalise itself by the metro" in {
+    val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include("<title>Cinema listings in Los Angeles")
+    html should include("""<link rel="canonical" href="https://us.showtimes.cc/los-angeles/"""")
   }
 
-  it should "keep the city cookie at the city, so / still resolves" in {
-    val res = usController().area("california", "los-angeles")(req("/california/los-angeles/"))
-    cookies(res).get("city").map(_.value) shouldBe Some("california")
+  it should "remember the metro as the city, so the bare / bounces back to it" in {
+    val res = usController().index("los-angeles")(req("/los-angeles/"))
+    cookies(res).get("city").map(_.value) shouldBe Some("los-angeles")
   }
 
-  // ── The failure mode that must stay a 404 ───────────────────────────────────
-
-  "An unknown area" should "404, never fall through to the unfiltered city listing" in {
-    val res = usController().area("california", "atlantis")(req("/california/atlantis/"))
-    status(res) shouldBe NOT_FOUND
-    // The tell of the bug: a 200 carrying every film in the state.
-    contentAsString(res) should not include SfFilm
+  it should "offer the other metros grouped by their state in the city switcher" in {
+    val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
+    html should include ("""<optgroup label="California">""")
+    html should include ("""<option value="san-francisco">San Francisco</option>""")
+    // Two of the 457 are both called "Philadelphia" — a flat list offers them as
+    // two identical options, which is why the US switcher is grouped at all.
+    html should include ("""<optgroup label="Pennsylvania">""")
+    html should include ("""<optgroup label="New Jersey">""")
   }
 
-  "An area URL under a city with no chooser" should "404" in {
-    // Flat city, and a split-but-small one. Neither has area URLs at all.
-    val us = usController()
-    status(us.area("alaska", "anchorage")(req("/alaska/anchorage/"))) shouldBe NOT_FOUND
-  }
-
-  "An area URL under an unknown or foreign city" should "404 like every other city-scoped route" in {
-    val us = usController()
-    status(us.area("nieznane", "los-angeles")(req("/nieznane/los-angeles/"))) shouldBe NOT_FOUND
-    // Poznań is real, but not on a US host.
-    status(us.area("poznan", "los-angeles")(req("/poznan/los-angeles/")))     shouldBe NOT_FOUND
-  }
-
-  // ── Every split state, not just the enormous ones ───────────────────────────
-
-  "Every split US state" should "serve the chooser, whatever its venue count" in {
-    val us = usController()
-    // Texas is split and enormous; the smallest split state is neither — both
-    // are lists of metros, which is the thing the chooser exists for.
-    val split = Country.UnitedStates.cities.filter(_.isSplit)
-    Seq(state("texas"), split.minBy(_.cinemas.size)).foreach { s =>
-      withClue(s"${s.slug}: ") {
-        val html = contentAsString(us.index(s.slug)(req(s"/${s.slug}/")))
-        html should include("Choose an area")
-        html should include(s"""href="/${s.slug}/${s.areas.head.area.slug}/"""")
-      }
-    }
-  }
-
-  "A flat state" should "still serve its own listing, with no chooser" in {
-    val html = contentAsString(usController().index("alaska")(req("/alaska/")))
-    html should not include "Choose an area"
-  }
-
-  // ── Remembering the chosen metro ────────────────────────────────────────────
-
-  /** The chooser is a question, and a question asked twice is a bug. Picking a
-   *  metro remembers it in `area_{citySlug}`, the per-city sibling of the `city`
-   *  cookie the city pick already sets. */
-  "Picking a metro" should "remember it, keyed on the state" in {
-    val res = usController().area("california", "los-angeles")(req("/california/los-angeles/"))
-    cookies(res).get("area_california").map(_.value) shouldBe Some("los-angeles")
-  }
-
-  "A returning visitor" should "land straight on the remembered metro's films" in {
-    val res = usController().index("california")(reqRemembering("/california/", "california", "los-angeles"))
-    status(res) shouldBe SEE_OTHER
-    redirectLocation(res) shouldBe Some("/california/los-angeles/")
-  }
-
-  it should "be sent on from /{city}/filmy too, so it isn't a back door to the chooser" in {
-    val res = usController().browse("california", None, None, None, None)(
-      reqRemembering("/california/filmy", "california", "los-angeles"))
-    redirectLocation(res) shouldBe Some("/california/los-angeles/")
-  }
-
-  it should "still get the chooser when the change-area link asks for it" in {
-    val res = usController().index("california")(reqRemembering("/california/?areas", "california", "los-angeles"))
-    status(res) shouldBe OK
-    contentAsString(res) should include("Choose an area")
-  }
-
-  "The scoped listing" should "offer a visible way back to the chooser" in {
-    val html = contentAsString(usController().area("california", "los-angeles")(req("/california/los-angeles/")))
-    html should include("""href="/california/?areas"""")
-    html should include("Change area")
-  }
-
-  /** End to end from the bare `/`: the `city` cookie bounces to the state
-   *  (`LandingController`, unchanged), the `area_{city}` cookie bounces on to
-   *  the metro. Two hops, one decision each, so the metro rule lives in exactly
-   *  one place. */
-  "The bare /" should "reach the remembered metro's films, chooser included nowhere" in {
-    val landing = new LandingController(play.api.test.Helpers.stubControllerComponents())(
-      using testsupport.TestMessages.forLang("en"))
-    val hop1 = landing.index()(req("/")
-      .withCookies(Cookie("city", "california"), Cookie("area_california", "los-angeles")))
-    redirectLocation(hop1) shouldBe Some("/california/")
-
-    val hop2 = usController().index("california")(req("/california/")
-      .withCookies(Cookie("city", "california"), Cookie("area_california", "los-angeles")))
-    redirectLocation(hop2) shouldBe Some("/california/los-angeles/")
-  }
-
-  /** The memory is per STATE: California's metro says nothing about Texas. */
-  "A remembered California metro" should "not skip Texas's chooser" in {
-    val res = usController().index("texas")(reqRemembering("/texas/", "california", "los-angeles"))
-    status(res) shouldBe OK
-    contentAsString(res) should include("Choose an area")
-  }
-
-  /** The roster is regenerated periodically and metro slugs move with it, so a
-   *  year-old cookie can name an area that no longer exists. That degrades to
-   *  the chooser — never a 404, and never an error. */
-  "A remembered metro that no longer exists" should "fall back to the chooser" in {
-    val res = usController().index("california")(reqRemembering("/california/", "california", "atlantis"))
-    status(res) shouldBe OK
-    contentAsString(res) should include("Choose an area")
-  }
-
-  // ── What must NOT change ────────────────────────────────────────────────────
-
-  /** London is split (five compass areas) but reads fine as one page, and it is
-   *  the screen the chooser was modelled on rather than a target for it. */
-  // A big metro's page groups its cinema filter by DISTRICT — the level below the
-  // metro chooser. Worth pinning at the controller rather than trusting the model
-  // spec: `UsMetroSubAreas` being correct proves nothing if nothing passes it to
-  // the view, which is exactly what the page did before this was wired (it handed
-  // the template an empty list).
-  "A big metro's page" should "group its cinema filter by district" in {
-    val res = usController().area("new-york", "new-york")(req("/new-york/new-york/"))
-    status(res) shouldBe OK
-    val body = contentAsString(res)
-    // Assert against the GROUP JSON, not the bare word: "Manhattan" and "Brooklyn"
-    // also occur in cinema display names on this page, so a plain `include`
-    // passes even when nothing is wired — which it did, until this was tightened.
-    body should include ("\"name\":\"Manhattan\"")
-    body should include ("\"name\":\"Brooklyn\"")
-    // Never the compass labels the first attempt at this used — those were
-    // replaced precisely because they split Manhattan across two of them.
-    body should not include "\"name\":\"Central\""
-  }
-
-  it should "leave a SMALL metro's cinema list flat rather than wrapping it in one group" in {
+  "A small metro" should "leave its cinema list flat rather than wrapping it in one group" in {
     // Below UsMetroSubAreas' threshold there are no districts, and a single
     // collapsible section around the whole list would be chrome with no choice in
     // it. San Diego (36 venues) is well under.
-    val res = usController().area("california", "san-diego")(req("/california/san-diego/"))
+    val res = usController().index("san-diego")(req("/san-diego/"))
     status(res) shouldBe OK
     contentAsString(res) should include ("CINEMA_AREAS       = []")
   }
 
-  // Reported live: /texas/film/<slug> popped the first-visit area-picker overlay,
-  // offering all 29 Texas metros on a FILM page. The film/browse/plan views pass no
-  // `cinemaAreas`, so `_sharedJsConfig` falls back to the whole city's grouping —
-  // correct for the filter panel, but it also armed London's one-time overlay for a
-  // city that now picks its metro on a screen instead.
-  "A film page in a state with a metro chooser" should "not arm the first-visit area picker" in {
-    // California stands in for Texas: same shape (a split US state with a chooser),
-    // and the fixture's films live here. The reported URL was /texas/film/<slug>.
-    val slug = tools.Slugify.stable(LaFilm)
-    val res  = usController().filmBySlug("california", slug)(req(s"/california/film/$slug"))
+  "A flat state" should "still serve its own listing — its venue list IS the page" in {
+    val res = usController().index("alaska")(req("/alaska/"))
     status(res) shouldBe OK
-    val body = contentAsString(res)
-    body should include ("AREA_PICKER_ENABLED = false")
-    // The GROUPING is still there — it is the filter panel's structure, and only
-    // the unsolicited overlay was the bug.
-    body should include ("CINEMA_AREAS")
+    contentAsString(res) should include ("CINEMA_AREAS       = []")
   }
 
-  "London" should "still arm the first-visit area picker, its only way to pick an area" in {
-    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom,
-                                       messages = testsupport.TestMessages.forLang("en"))._1
-    val body = contentAsString(uk.index("london")(req("/london/")))
-    body should include ("AREA_PICKER_ENABLED = true")
+  // ── The state is not a place ────────────────────────────────────────────────
+
+  "A US state" should "404, never answer with the whole state's listing" in {
+    val us = usController()
+    Seq("california", "texas", "new-jersey").foreach { slug =>
+      withClue(s"$slug: ") {
+        val res = us.index(slug)(req(s"/$slug/"))
+        status(res) shouldBe NOT_FOUND
+        // The tell of the bug this replaced: a 200 carrying every film in the state.
+        contentAsString(res) should not include SfFilm
+      }
+    }
   }
 
-  "London" should "keep serving its own listing, with no area URLs" in {
+  "An unknown or foreign city" should "404 like every other city-scoped route" in {
+    val us = usController()
+    status(us.index("atlantis")(req("/atlantis/"))) shouldBe NOT_FOUND
+    // Poznań is real, but not on a US host.
+    status(us.index("poznan")(req("/poznan/")))     shouldBe NOT_FOUND
+  }
+
+  "/los-angeles/filmy with no filter axis" should "serve the metro's listing, not a browse page" in {
+    val res = usController().browse("los-angeles", None, None, None, None)(req("/los-angeles/filmy"))
+    status(res) shouldBe OK
+    contentAsString(res) should include(LaFilm)
+    contentAsString(res) should not include SfFilm
+  }
+
+  // ── The mobile API ─────────────────────────────────────────────────────────
+
+  /** Load-bearing: the iOS and Android apps read the `/:city/api/…` endpoints and
+   *  have no level below the city. They get the metro, whole. */
+  "The mobile API" should "serve the metro's own universe" in {
+    val us = usController()
+    val repertoire = contentAsString(us.apiRepertoire("los-angeles")(req("/los-angeles/api/repertoire")))
+    repertoire should include(LaFilm)
+    repertoire should not include SfFilm
+
+    status(us.apiDetails("los-angeles")(req("/los-angeles/api/details"))) shouldBe OK
+
+    val cinemas = contentAsString(us.apiCinemas("los-angeles")(req("/los-angeles/api/cinemas")))
+    cinemas should include(laCinema.displayName)
+    cinemas should not include sfCinema.displayName
+    // The area grouping the mobile filter renders is the metro's districts.
+    cinemas should include("Santa Monica")
+  }
+
+  // ── What must NOT change ────────────────────────────────────────────────────
+
+  "London" should "keep serving its own listing, split into its five compass areas" in {
     val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom,
                                        messages = testsupport.TestMessages.forLang("en"))._1
     val res = uk.index("london")(req("/london/"))
     status(res) shouldBe OK
-    contentAsString(res) should not include "Choose an area"
-    status(uk.area("london", "central")(req("/london/central/"))) shouldBe NOT_FOUND
-    // And a stray area cookie can't bounce it anywhere either: London has no
-    // area URLs to be bounced TO.
-    val remembered = uk.index("london")(reqRemembering("/london/", "london", "central"))
-    status(remembered) shouldBe OK
-    contentAsString(remembered) should not include "Choose an area"
+    val body = contentAsString(res)
+    body should include ("\"name\":\"Central\"")
+    body should include ("\"name\":\"South\"")
+    models.London.areas.map(_.area.slug) shouldBe Seq("central", "north", "east", "south", "west")
+  }
+
+  it should "still arm the first-visit area picker, its only way to pick an area" in {
+    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom,
+                                       messages = testsupport.TestMessages.forLang("en"))._1
+    val body = contentAsString(uk.index("london")(req("/london/")))
+    // The overlay opens for any city with areas; the flag that used to suppress
+    // it existed only for the states that had a chooser screen instead.
+    body should include ("CINEMA_AREAS")
+    body should not include "AREA_PICKER_ENABLED"
   }
 
   "A flat city" should "be untouched — its index is still its listing" in {
@@ -350,35 +200,6 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     )._1
     val html = contentAsString(pl.index("poznan")(req("/poznan/")))
     html should include("Testowy Film")
-    html should not include "Wybierz obszar"
-  }
-
-  /** Load-bearing: the iOS and Android apps read the `/:city/api/…` endpoints
-   *  and have no metro level. They must keep receiving the WHOLE city. */
-  "The mobile API" should "stay city-wide on a chooser city" in {
-    val us = usController()
-    val repertoire = contentAsString(us.apiRepertoire("california")(req("/california/api/repertoire")))
-    repertoire should include(LaFilm)
-    repertoire should include(SfFilm)
-
-    val details = contentAsString(us.apiDetails("california")(req("/california/api/details")))
-    status(us.apiDetails("california")(req("/california/api/details"))) shouldBe OK
-    details should not be empty
-
-    val cinemas = contentAsString(us.apiCinemas("california")(req("/california/api/cinemas")))
-    cinemas should include(laCinema.displayName)
-    cinemas should include(sfCinema.displayName)
-    // The area grouping the mobile filter renders is still every area.
-    cinemas should include("Los Angeles")
-    cinemas should include("San Francisco")
-  }
-
-  /** `/{city}/filmy` with no filter axis is the main listing — it must follow
-   *  the chooser rather than staying a back door to the state-wide page (18.9 MB
-   *  of it, in California's case). */
-  "/california/filmy with no filter axis" should "serve the chooser too" in {
-    val res = usController().browse("california", None, None, None, None)(req("/california/filmy"))
-    status(res) shouldBe OK
-    contentAsString(res) should include("Choose an area")
+    html should include("CINEMA_AREAS       = []")
   }
 }

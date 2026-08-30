@@ -131,14 +131,20 @@ grows — sanity-check `byDisplayName` uniqueness.
 Three things the US roster (5,031 venues) added to this phase, all of which cost
 a re-harvest if missed:
 
-- **Pick the grouping unit deliberately, and do it BEFORE generating.** The
-  source's own region list is not automatically the right one: Flicks lists 577
-  US metros, past the ~200 a picker stays usable at, so the US groups by state
-  (55) instead. Group by whatever unit the country's own visitors name a place
-  by, keep the source's region on each venue for provenance, and remember a large
-  region can be split into `CinemaAreaGroup`s later the way London is.
-- **A country wider than one time zone needs the zone per REGION.** `GermanRegion`
-  hardcodes `Europe/Berlin` because Germany has one; `UsRegion` takes it as a
+- **Pick the `City` unit deliberately, and do it BEFORE generating.** The source's
+  own region list is not automatically the right one, and neither is the biggest
+  administrative unit: the US first grouped by state (55) because Flicks' 577
+  metros are past the ~200 a picker stays usable at, and that was wrong — nobody
+  asks what is on in California. It is one `City` per METRO (448, plus the nine
+  states too small to have any), with the state kept as a `CityGroup` so the
+  picker can still be browsed. Group by the unit a visitor NAMES, and reach for a
+  grouping — not a bigger city — when the resulting list is long.
+- **A metro-sized `City` unit needs a slug rule.** 457 US slugs join one global
+  `City.bySlug` namespace that already held a UK Birmingham, and a metro name is
+  not unique across state lines either. `City.usSlugs` qualifies with the state
+  where the bare slug is taken; `CitySpec` fails on any collision that survives.
+- **A country wider than one time zone needs the zone per PLACE.** `GermanRegion`
+  hardcodes `Europe/Berlin` because Germany has one; `UsCity` takes it as a
   constructor parameter because the US has six, and a national default would move
   a whole coast's "today" boundary. Check this before copying `GermanRegion`.
 - **Expect the source's region index to be incomplete.** The US region sweep

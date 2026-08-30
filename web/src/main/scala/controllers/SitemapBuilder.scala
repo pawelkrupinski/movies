@@ -48,11 +48,6 @@ object SitemapBuilder {
     url("/", stamped = false)
     entries.foreach { case (city, films) =>
       url(s"/${city.slug}/")
-      // A chooser city's `/{slug}/` is the metro PICK SCREEN, not a listing —
-      // the crawlable content lives one level down, one URL per area. Emitted in
-      // `City.areas` order (biggest metro first, "Other areas" last) so the file
-      // stays deterministic. Cities without a chooser have no area URLs at all.
-      if (city.hasAreaChooser) city.areas.foreach(g => url(s"/${city.slug}/${g.area.slug}/"))
       url(s"/${city.slug}/plan")
       // Distinct + sorted so the file is deterministic (stable across requests
       // and testable) regardless of the read model's iteration order.

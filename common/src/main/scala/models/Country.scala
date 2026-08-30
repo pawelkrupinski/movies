@@ -14,8 +14,8 @@ import tools.Env
  *   - each country owns its own set of [[City]] objects ([[cities]]),
  *   - each maps to its OWN Mongo database ([[mongoDb]]) on the shared cluster,
  *   - each carries its UI [[language]] (for collation + i18n),
- *   - each says what its places are CALLED on screen ([[PlaceKind]] — the US's
- *     [[City]] objects are states, so its copy must not say "city"), and
+ *   - each says how its city list is GROUPED in a picker ([[cityGroups]] — the
+ *     US's metros are found through their state), and
  *   - each decides whether the Filmweb rating/fallback path applies
  *     ([[filmwebEnabled]] — a new country won't use Filmweb at all).
  *
@@ -24,33 +24,6 @@ import tools.Env
  * once per country and iterate [[all]]. Nothing reads a global "current
  * country" — the resolved `Country` is passed down from the composition root.
  */
-/** What a country's [[City]] objects are CALLED to somebody who lives there.
- *
- *  [[City]] is the MODEL's name for "the place a repertoire is scoped to", and
- *  in Poland that really is a city. In the United States it is a whole state or
- *  territory, so copy written for cities reads as a mistake there: California's
- *  metro chooser offered "← All cities" back to a list of STATES, and the
- *  landing asked a Texan to "Choose your city". This is the dimension that copy
- *  varies over — a template asks the country what its places are called instead
- *  of assuming.
- *
- *  Only two kinds exist because only two are needed. The UK's counties/regions
- *  and Germany's regions are arguably neither, but they carry city wording
- *  today and re-wording live copy in two countries is a separate decision, not
- *  a side effect of fixing the US. */
-enum PlaceKind(val code: String) {
-  case City  extends PlaceKind("city")
-  case State extends PlaceKind("state")
-
-  /** The message key holding `base`'s copy for THIS kind: the plain key for
-   *  [[PlaceKind.City]] — so every existing bundle entry keeps working
-   *  untouched, in all three languages — and a `.state`-suffixed sibling for
-   *  [[PlaceKind.State]]. A kind-specific entry must exist in every bundle for
-   *  any base a template passes here; `WebI18nSpec` pins them. */
-  def messageKey(base: String): String =
-    if (this == PlaceKind.City) base else s"$base.$code"
-}
-
 sealed abstract class Country(
   val code:           String,          // ISO-ish short code, also the URL-free identifier: "pl", "uk"
   val displayName:    String,          // human label for the country switcher (native/English name)
@@ -60,7 +33,6 @@ sealed abstract class Country(
   val webOrigin:      Option[String],  // public ORIGIN of this country's deployment (scheme+host, no path, no trailing slash); None = not deployed yet
   val pathPrefix:     String,          // where the deployment is MOUNTED on that origin: "" on its own domain, "/uk" when it shares one
   val brandName:      String,          // customer-facing app name: "Kinowo" in PL, "Showtimes" elsewhere (the Polish coinage means nothing abroad)
-  val placeKind:      PlaceKind,       // what this country's [[City]] objects are called on screen: cities in PL/UK/DE, states in the US
 ) {
   /** The cities this country serves. Authoritative per-country list; [[City.all]]
    *  is the union across every country. */
@@ -98,6 +70,13 @@ sealed abstract class Country(
    *  site's homepage with a country picker. The country mounted at `/` is the
    *  only one whose `/` is not already a country's landing. */
   def servesApex(host: String): Boolean = pathPrefix.isEmpty && Country.isApexHost(host)
+
+  /** How the picker at `/` ARRANGES [[cities]]: empty for a flat list (Poland's
+   *  41, the UK's 79, Germany's 158 — a name is all a visitor needs), one group
+   *  per US state, because "Los Angeles" is found under "California" and a bare
+   *  A-to-Z of 457 metros is not a list anybody reads. Where it is non-empty the
+   *  groups PARTITION [[cities]] — `CountrySpec` holds that. */
+  def cityGroups: Seq[CityGroup] = Nil
 
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
 
@@ -147,7 +126,6 @@ object Country {
     webOrigin      = Some("https://kinowo.net"),
     pathPrefix     = "",
     brandName      = "Kinowo",
-    placeKind      = PlaceKind.City,
   ) {
     val cities: Seq[City] = City.polishCities
   }
@@ -164,9 +142,6 @@ object Country {
     webOrigin      = Some("https://showtimes.cc"),
     pathPrefix     = "/uk",
     brandName      = "Showtimes",
-    // Counties and regions, not cities — but they read as "city" today and
-    // re-wording live UK copy is a decision of its own.
-    placeKind      = PlaceKind.City,
   ) {
     val cities: Seq[City] = City.ukCities
   }
@@ -184,8 +159,6 @@ object Country {
     webOrigin      = Some("https://showtimes.cc"),
     pathPrefix     = "/de",
     brandName      = "Showtimes",
-    // Regions rather than cities, same caveat as the UK's.
-    placeKind      = PlaceKind.City,
   ) {
     val cities: Seq[City] = City.germanCities
   }
@@ -212,11 +185,11 @@ object Country {
     webOrigin      = Some("https://showtimes.cc"),
     pathPrefix     = "/us",
     brandName      = "Showtimes",
-    // The one country whose "city" is a whole state or territory — the reason
-    // [[PlaceKind]] exists at all.
-    placeKind      = PlaceKind.State,
   ) {
     val cities: Seq[City] = City.usCities
+    /** The states and territories, each over the metros cut out of it — the one
+     *  country whose picker is grouped. */
+    override val cityGroups: Seq[CityGroup] = City.usStates
   }
 
   /** Every country the codebase knows about. A worker iterates this; a web

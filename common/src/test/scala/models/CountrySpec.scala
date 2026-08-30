@@ -13,26 +13,6 @@ import org.scalatest.matchers.should.Matchers
  */
 class CountrySpec extends AnyFlatSpec with Matchers {
 
-  /** The US's `City` objects are STATES, so copy written for cities is wrong
-   *  there — "← All cities" sat above a list of states. `placeKind` is the
-   *  dimension that copy varies over; the UK and Germany deliberately stay on
-   *  the city wording they ship today. */
-  "Country.placeKind" should "call the US's places states and everyone else's cities" in {
-    Country.UnitedStates.placeKind  shouldBe PlaceKind.State
-    Country.Poland.placeKind        shouldBe PlaceKind.City
-    Country.UnitedKingdom.placeKind shouldBe PlaceKind.City
-    Country.Germany.placeKind       shouldBe PlaceKind.City
-  }
-
-  "PlaceKind.messageKey" should "leave a city country's keys alone and suffix a state country's" in {
-    // The whole point of the suffix scheme: PL/UK/DE resolve the SAME keys they
-    // always did, so their copy cannot move.
-    PlaceKind.City.messageKey("areas.allCities")   shouldBe "areas.allCities"
-    PlaceKind.City.messageKey("landing.chooseCity") shouldBe "landing.chooseCity"
-    PlaceKind.State.messageKey("areas.allCities")   shouldBe "areas.allCities.state"
-    PlaceKind.State.messageKey("landing.chooseCity") shouldBe "landing.chooseCity.state"
-  }
-
   "Country.byCode" should "resolve pl/uk/de/us case-insensitively and reject unknown codes" in {
     Country.byCode("pl") shouldBe Some(Country.Poland)
     Country.byCode("PL") shouldBe Some(Country.Poland)
@@ -99,32 +79,47 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedStates.cities shouldBe City.usCities
   }
 
-  "Country.UnitedStates.cities" should "be one region per state or territory, not one per Flicks metro" in {
-    // Flicks lists 577 US metros — far past the ~200 a city picker stays usable at
-    // (Germany ships 158, the UK 79) — so the roster groups by state/territory
-    // instead, which is also the unit a US visitor recognises. If this number ever
-    // jumps to the hundreds, someone has regenerated the roster grouped by metro.
-    Country.UnitedStates.cities should have size 55
+  "Country.UnitedStates.cities" should "be one city per metro, the state being only how you find one" in {
+    // The addressable place is the metro: 448 of them, plus the nine states and
+    // territories with too few venues to be worth splitting. A state is a
+    // `CityGroup`, so `/california/` resolves to nothing at all.
+    Country.UnitedStates.cities should have size 457
     Country.UnitedStates.cities.map(_.slug) should contain allOf (
-      "california", "texas", "new-york", "district-of-columbia", "puerto-rico")
-    // Every region carries venues, and the roster totals 5,031 — ~6x the UK's
-    // corpus, the fact that drives the US worker's 840-minute cadence rather than
-    // the UK's 420 (a ~10h sweep has to fit inside its own cadence).
+      "los-angeles", "new-york", "houston", "district-of-columbia", "san-juan")
+    Country.UnitedStates.bySlug.get("california") shouldBe None
+    // Every place carries venues, and the roster still totals 5,031 — this was a
+    // re-key, not a re-harvest. That corpus is ~6x the UK's, the fact that drives
+    // the US worker's 840-minute cadence rather than the UK's 420 (a ~10h sweep
+    // has to fit inside its own cadence).
     all(Country.UnitedStates.cities.map(_.cinemas.size)) should be > 0
     Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5031
   }
 
-  "US regions" should "carry their own time zone rather than one national default" in {
+  "Country.cityGroups" should "group the US by state and leave every other country flat" in {
+    Country.Poland.cityGroups shouldBe empty
+    Country.UnitedKingdom.cityGroups shouldBe empty
+    Country.Germany.cityGroups shouldBe empty
+    Country.UnitedStates.cityGroups should have size 55
+    // The groups partition the country's cities — a metro reachable from no
+    // state heading is a metro nobody can find.
+    Country.UnitedStates.cityGroups.flatMap(_.cities) should contain theSameElementsAs
+      Country.UnitedStates.cities
+    Country.UnitedStates.cityGroups.map(_.label) should contain allOf ("California", "Texas", "Alaska")
+    Country.UnitedStates.cityGroups.find(_.label == "California").get
+      .cities.map(_.labels.nominative) should contain ("Los Angeles")
+  }
+
+  "US places" should "carry their own time zone rather than one national default" in {
     // Unlike Germany (one Europe/Berlin for every region), the US spans six zones,
-    // so UsRegion takes the zone per region. A single national default would put
-    // California's day boundary three hours early.
+    // so `UsCity` takes the zone per place. A single national default would put
+    // California's day boundary three hours early. A metro inherits its state's.
     def zoneOf(slug: String) =
       Country.UnitedStates.cities.find(_.slug == slug).get.zoneId.getId
-    zoneOf("california") shouldBe "America/Los_Angeles"
-    zoneOf("new-york")   shouldBe "America/New_York"
-    zoneOf("texas")      shouldBe "America/Chicago"
-    zoneOf("hawaii")     shouldBe "Pacific/Honolulu"
-    zoneOf("arizona")    shouldBe "America/Phoenix"   // no DST, deliberately its own
+    zoneOf("los-angeles") shouldBe "America/Los_Angeles"
+    zoneOf("new-york")    shouldBe "America/New_York"
+    zoneOf("houston")     shouldBe "America/Chicago"
+    zoneOf("hawaii")      shouldBe "Pacific/Honolulu"
+    zoneOf("phoenix")     shouldBe "America/Phoenix"   // no DST, deliberately its own
   }
 
   "Every modelled cinema display name" should "be globally unique across all four countries" in {
@@ -186,7 +181,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Warszawa.country shouldBe Country.Poland
     London.country shouldBe Country.UnitedKingdom
     City.bySlug("berlin").get.country shouldBe Country.Germany
-    City.bySlug("california").get.country shouldBe Country.UnitedStates
+    City.bySlug("los-angeles").get.country shouldBe Country.UnitedStates
     // Every city belongs to exactly the country whose list contains it.
     City.all.foreach(c => Country.of(c).cities should contain(c))
   }

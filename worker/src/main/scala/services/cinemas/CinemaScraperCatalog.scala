@@ -1486,7 +1486,7 @@ class CinemaScraperCatalog(
     }.toMap
 
   // ── United States (chain-primary, Flicks for the rest) ───────────────────
-  // Data-driven from the full UsRoster (55 states/territories / ~4,200 cinemas):
+  // Data-driven from the full UsRoster (457 metros and small states / ~4,200 cinemas):
   // one scraper per cinema, keyed by the state slug that City.slug uses.
   //
   // A venue named in `UsChainVenues` gets its CHAIN'S OWN site as the primary and
@@ -1533,8 +1533,8 @@ class CinemaScraperCatalog(
   }
 
   private val usBaseByCity: Map[String, Seq[CinemaScraper]] =
-    models.UsRoster.regions.map { region =>
-      region.slug -> region.cinemas.map { c =>
+    models.Country.UnitedStates.cities.map { city =>
+      city.slug -> city.cinemas.map { c =>
         usChainScraper(c).getOrElse(flicksUs(models.UsRoster.flicksSlugByCinema(c), c))
       }
     }.toMap
@@ -1546,7 +1546,7 @@ class CinemaScraperCatalog(
    *  object with no case-object name to write down, and deriving means the primary
    *  and the fallback cannot drift apart about which venue they mean. */
   private val usFlicksFallback: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
-    models.UsRoster.regions.flatMap(_.cinemas)
+    models.Country.UnitedStates.cities.flatMap(_.cinemas)
       .filter(c => usChainScraper(c).isDefined)
       .flatMap(c => models.UsRoster.flicksSlugByCinema.get(c)
         .map(slug => c -> ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedStates, slug)))
@@ -1675,7 +1675,7 @@ class CinemaScraperCatalog(
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
   ) ++ germanBaseByCity  // Germany: the full 158-region roster (data-driven)
-    ++ usBaseByCity     // USA: 55 states/territories (data-driven)
+    ++ usBaseByCity     // USA: 457 metros + small states (data-driven)
 
   /** Per-city scrapers plus any Filmweb-catchment venues for that city. */
   val byCity: Map[String, Seq[CinemaScraper]] =

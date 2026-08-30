@@ -69,35 +69,9 @@ object FilterDescription {
    *  label ("…wszystkich poznańskich kin…" / "…all London cinema listings…") and
    *  naming the query-shaped phrases (godziny seansów, na dziś / today's
    *  showtimes) plus the four rating sources. */
-  def defaultDescription(city: City): String =
-    listingDescription(city, city.genitivePluralLabel, city.locativePhrase)
-
-  /** "Cinema listings in Los Angeles" — the area-scoped counterpart of
-   *  [[cityHeading]], for `/{city}/{area}/`. The metro's own name replaces the
-   *  city's: someone searching "Los Angeles showtimes" should not land on a
-   *  title that only says California.
-   *
-   *  Metro names are DATA (one per Flicks region), so there is no declined form
-   *  to read — the Polish branch names the area rather than inflecting it. In
-   *  practice it is unreachable: only the UK and US rosters carry areas, and
-   *  only US states have area pages ([[models.City.hasAreaChooser]]).
-   *  It exists so the two languages stay side by side like everywhere else here. */
-  def areaHeading(area: models.CinemaArea, city: City): String =
-    if (isPolish(city)) s"Repertuar kin — ${area.label}"
-    else                s"Cinema listings in ${area.label}"
-
-  def areaTitle(area: models.CinemaArea, city: City): String = {
-    val tail = if (isPolish(city)) "godziny seansów na dziś" else "today's showtimes"
-    truncate(s"${areaHeading(area, city)} – $tail | ${brand(city)}", MaxTitle)
-  }
-
-  def areaDescription(area: models.CinemaArea, city: City): String =
-    listingDescription(city, area.label, if (isPolish(city)) s"— ${area.label}" else s"in ${area.label}")
-
-  /** The shared body of [[defaultDescription]] and [[areaDescription]]: the same
-   *  sentence, with the "…'s cinemas" label and the "…in X" phrase swapped for
-   *  the city's or the area's. Kept in one place so the two never drift. */
-  private def listingDescription(city: City, genitiveLabel: String, locative: String): String = {
+  def defaultDescription(city: City): String = {
+    val genitiveLabel = city.genitivePluralLabel
+    val locative      = city.locativePhrase
     val s =
       if (isPolish(city))
         s"Repertuar wszystkich $genitiveLabel kin – godziny seansów na dziś, " +
@@ -117,12 +91,6 @@ object FilterDescription {
    *  cinema universe, the default description, and the language. */
   def forIndex(city: City, query: Map[String, Seq[String]], schedules: Seq[FilmSchedule]): Meta =
     filtered(city, query, schedules).getOrElse(Meta(defaultTitle(city), defaultDescription(city)))
-
-  /** The same, for `/{city}/{area}/` — identical once a filter is on (the
-   *  phrases describe the filter, not the scope); the unfiltered default names
-   *  the METRO rather than the whole state. */
-  def forArea(city: City, area: models.CinemaArea, query: Map[String, Seq[String]], schedules: Seq[FilmSchedule]): Meta =
-    filtered(city, query, schedules).getOrElse(Meta(areaTitle(area, city), areaDescription(area, city)))
 
   /** The filtered phrasing, or `None` when the URL carries no filter at all and
    *  the caller should fall back to its own default. */

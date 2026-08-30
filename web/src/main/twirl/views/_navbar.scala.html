@@ -1,4 +1,4 @@
-@(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], area: Option[models.CinemaAreaGroup] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(activePage: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Navbar layout:
      - Logo + tab links (Debug, dev-only)                       — left
@@ -11,19 +11,6 @@
    The cinema picker lives inside the Filtry panel — one source of truth for
    "what's filtering this page".
 
-   `area` is set ONLY on an area-scoped listing (`/{city}/{area}/`, a US state's
-   metro). It renders the metro's name as a link back to the chooser, which is
-   the only way to change a pick the `area_{city}` cookie now remembers — the
-   bare `/{city}/` would bounce straight back here, so the link carries the
-   `?areas` flag (`controllers.AreaChooserHref`). Styled inline rather than from
-   `_sharedStyles` because it renders on US area pages alone: shared CSS would
-   ship — and re-snapshot — on every page in every country to no effect.
-
-   Its block is GLUED to the `}` of the Debug link's `@@if` with no gap between
-   them, and carries no comment of its own, for the same reason: Twirl emits the
-   template text BETWEEN two blocks whatever those blocks evaluate to, so a
-   newline there would shift `expected-*.html` for every city in every country
-   over a link none of them render.
 *@
 <nav class="navbar px-4 py-3 d-flex align-items-center">
   <div class="d-flex align-items-center gap-3 navbar-logo">
@@ -31,12 +18,6 @@
     <div class="d-flex gap-1 align-items-center">
       @if(devMode) {
         <a href="@routes.MovieController.debug()" class="nav-tab nav-tab-debug">Debug</a>
-      }@area.map { g =>
-        <a id="change-area" href="@controllers.AreaChooserHref(city)" title="@messages("areas.change")"
-           style="display:inline-flex; align-items:baseline; gap:.4rem; white-space:nowrap; text-decoration:none; color:#c9c9ec; background:#1a1a3a; border:1px solid #3a3a6e; border-radius:999px; padding:.15rem .65rem; font-size:.85rem">
-          <span style="font-weight:600">@g.area.label</span>
-          <span style="color:#9a9ac0">@messages("areas.change")</span>
-        </a>
       }
     </div>
   </div>
@@ -191,13 +172,30 @@
          below the country switcher. Available signed-out; `onCityChange`
          remembers the pick (cookie) and navigates to the chosen city's root.
          Only rendered when more than one city is supported, so a single-city
-         deployment shows no dead control. *@
+         deployment shows no dead control.
+
+         Grouped into `<optgroup>`s where the country says its places are found
+         through something (`Country.cityGroups` — the US, whose 457 metros are
+         listed under their state). Flat otherwise, byte-for-byte as before: two
+         of those metros really are both called "Philadelphia", and a flat list
+         offers them as two identical options.
+
+         The branches are GLUED to their braces (`{@@for(…) {`), so the flat one
+         emits byte-for-byte what the bare loop emitted: Twirl keeps the template
+         text between two blocks whatever they evaluate to, and a newline there
+         would re-snapshot every page in every ungrouped country over a control
+         none of them render differently. *@
       @if(city.country.cities.sizeIs > 1) {
         <div class="panel-section-label">@messages("nav.city")</div>
         <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
-          @for(c <- city.country.allSorted) {
+          @if(city.country.cityGroups.isEmpty) {@for(c <- city.country.allSorted) {
             <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
-          }
+          }} else {@for(g <- city.country.cityGroups) {
+            <optgroup label="@g.label">@for(c <- g.cities) {
+              <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
+            }
+            </optgroup>
+          }}
         </select>
         <div class="panel-divider"></div>
       }

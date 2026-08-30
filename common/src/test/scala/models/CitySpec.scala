@@ -37,6 +37,18 @@ class CitySpec extends AnyFlatSpec with Matchers {
     liveCinemas.toSet.subsetOf(Cinema.all.toSet) shouldBe true
   }
 
+  /** `/{slug}/` is ONE global namespace — `City.bySlug` searches every country's
+   *  list — and the US now puts 457 places into it beside 41 Polish, 79 UK and
+   *  158 German ones. Two cities sharing a slug means one of them is
+   *  unreachable, silently, at whichever position `find` reaches second. */
+  "Every city slug" should "be unique across every country, and URL-shaped" in {
+    val slugs = City.allModelled.map(_.slug)
+    val dupes = slugs.groupBy(identity).collect { case (s, xs) if xs.sizeIs > 1 => s }
+    dupes shouldBe empty
+    slugs.foreach(_ should fullyMatch regex "[a-z0-9]+(-[a-z0-9]+)*")
+    City.allModelled.foreach(c => withClue(s"${c.slug}: ")(City.bySlug(c.slug) should contain(c)))
+  }
+
   it should "carry the Polish label inflections the templates render" in {
     Poznan.labels.nominative shouldBe "Poznań"
     Poznan.labels.genitivePlural shouldBe "poznańskich"
