@@ -429,6 +429,8 @@ addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.Corpus
 addCommandAlias("convergencePolandSample",  "e2e/Test/testOnly services.movies.PolandSampleConvergenceSpec")
 addCommandAlias("convergenceGermanySample", "e2e/Test/testOnly services.movies.GermanySampleConvergenceSpec")
 addCommandAlias("convergenceUkSample",      "e2e/Test/testOnly services.movies.UnitedKingdomSampleConvergenceSpec")
+addCommandAlias("convergenceUsSample",      "e2e/Test/testOnly services.movies.UnitedStatesSampleConvergenceSpec")
 addCommandAlias("convergencePoland",  "e2e/Test/testOnly services.movies.PolandConvergenceSpec")
 addCommandAlias("convergenceGermany", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec")
 addCommandAlias("convergenceUk",      "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec")
+addCommandAlias("convergenceUs",      "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec")

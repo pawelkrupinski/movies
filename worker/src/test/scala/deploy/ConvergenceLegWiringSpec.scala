@@ -1,5 +1,6 @@
 package deploy
 
+import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -39,14 +40,16 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    * harmless reshuffle and says "no countries found", which reads as a structural
    * break when nothing structural changed.
    */
-  private lazy val countries: Map[String, (String, String)] =
+  private def matrixRows(yaml: String): Seq[Map[String, String]] =
     """-\s*\{([^}]*)}""".r
-      .findAllMatchIn(RepoFile.block(caller, "matrix"))
-      .map { row =>
-        val fields = """(\w+):\s*([\w-]+)""".r.findAllMatchIn(row.group(1)).map(f => f.group(1) -> f.group(2)).toMap
-        fields("country") -> (fields("cmd"), fields("sample"))
-      }
-      .toMap
+      .findAllMatchIn(RepoFile.block(yaml, "matrix"))
+      .map(row => """(\w+):\s*([\w-]+)""".r.findAllMatchIn(row.group(1)).map(f => f.group(1) -> f.group(2)).toMap)
+      .toSeq
+
+  private lazy val rows: Seq[Map[String, String]] = matrixRows(caller)
+
+  private lazy val countries: Map[String, (String, String)] =
+    rows.map(fields => fields("country") -> (fields("cmd"), fields("sample"))).toMap
 
   /** One job's `timeout-minutes:` in file order — the job's own ceiling first, then the
    *  suite step it wraps. Read per JOB rather than across the whole file, because a
@@ -60,9 +63,27 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
 
   private val Jobs = Seq("sample", "convergence")
 
+  /** Derived from the MODEL, not from a hard-coded list.
+   *
+   *  A hard-coded triple is green the day a fourth country is added and silently leaves
+   *  it with no convergence cover at all — which is exactly what happened: the United
+   *  States shipped a full `Country.all` entry, a `kinowo_us` database, 5,031 venues and
+   *  a running worker, and no leg here ever asked whether its pipeline converged. */
   "the convergence caller" should "run every country through the single-country leg workflow" in {
-    countries.keySet shouldBe Set("poland", "germany", "united-kingdom")
+    rows.map(_("code")).toSet shouldBe Country.all.map(_.code).toSet
     caller should include("uses: ./.github/workflows/country-convergence-leg.yml")
+  }
+
+  /** The leg's INPUT, pinned in the same breath as the leg.
+   *
+   *  A convergence leg with no recorded corpus is not a failing leg — it is a leg that
+   *  falls back to a generated corpus and reports nonsense (the UK's `tmdbId 0` run,
+   *  which cost eleven runs and a wrong diagnosis). The recorder's matrix and the
+   *  convergence caller's matrix have to name the same countries, so neither can gain a
+   *  country the other doesn't. */
+  it should "record a corpus for every country it then replays" in {
+    val recorder = RepoFile.read(".github/workflows/record-scrape-fixtures.yml")
+    matrixRows(recorder).map(_("code")).toSet shouldBe Country.all.map(_.code).toSet
   }
 
   it should "hold no sample job of its own, which every country would then wait on" in {

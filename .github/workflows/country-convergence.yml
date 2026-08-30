@@ -90,6 +90,7 @@ jobs:
                     - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample }
                     - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample }
                     - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
