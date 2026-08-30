@@ -1,9 +1,17 @@
 app = 'kinowo'
-# Stockholm — colocated with the self-hosted Mongo on Fly (also `arn`,
-# see `fly/mongo/fly.toml`), so cache rehydrate runs on Fly's private
-# network with ~1 ms RTT instead of the cross-region hop we'd see if
-# kinowo and kinowo-mongo were in different regions. Fly's nearest region
-# to Polish users; no `waw` exists.
+# RETIRED. The Polish site moved to kinowo.net on the k3s cluster
+# (docs/domain-cutover.md); this app stays up only so the links, bookmarks and
+# installed apps still pointing at `kinowo.fly.dev` keep working. It runs the
+# same image as the live site with `KINOWO_RETIRED` set, which boots
+# `modules.RetiredComponents` instead of the serving one: `/` and `/{city}/`
+# render a "the address changed" notice carrying the LIVE page's own Open Graph
+# metadata (so a link shared years ago still previews), and everything else —
+# every `/api/…` the mobile apps call, every film deep link — redirects
+# permanently to the same path on kinowo.net.
+#
+# Nothing here reads a database any more. Region is now irrelevant (the Fly
+# Mongo it was colocated with is gone); left at `arn` because moving a machine
+# that only emits redirects buys nothing.
 primary_region = 'arn'
 
 [build]
@@ -11,19 +19,17 @@ primary_region = 'arn'
 
 [env]
   PORT = '9000'
-  # Per-app JVM sizing (the Dockerfile no longer hardcodes it). web is
-  # serving-only — its live heap is dominated by the in-memory MovieCache,
-  # which now holds 5 cities' worth of repertoire. A brief pass ran this at a
-  # 192m heap inside a 512 MB VM; it OOM-crash-looped there once the corpus
-  # grew — anon-RSS ~408 MB tipped the 512 MB cgroup roughly every ~34 min, and
-  # the repeated JVM cold-starts pegged the single shared vCPU (that was the
-  # "high load"). Heap is back to the known-good 384m (measured RSS ~615 MB,
-  # ~231 MB of it non-heap: Play metaspace ~110 MB + code cache ~75 MB + direct
-  # + threads/native) inside the 1 GB VM below. Metaspace lifted 128m→160m to
-  # match the worker and leave margin as code grows. Xms==Xmx keeps the
-  # no-resize-pause layout; G1 50ms + string-dedup carried over (the / page is a
-  # ~2 MB HTML string).
-  JAVA_OPTS = '-Xms384m -Xmx384m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:+UseStringDeduplication -XX:ReservedCodeCacheSize=96m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=64m'
+  # Boots the retirement composition root — see the header. Deliberately an
+  # `[env]` entry rather than a secret: it is not one, and a knob you can read
+  # off `fly.toml` is a knob the next person can find.
+  KINOWO_RETIRED = 'true'
+  # Sized for a process that renders one static page and otherwise emits
+  # redirects. The serving app needed 384m of heap for the in-memory MovieCache;
+  # a retired host has no cache, no read model and no Mongo driver, so the live
+  # set is Play itself. Metaspace (~110 MB of loaded classes) and the code cache
+  # dominate the footprint here, not the heap, so those are the caps that stay
+  # generous relative to it.
+  JAVA_OPTS = '-Xms128m -Xmx128m -XX:+UseG1GC -XX:MaxGCPauseMillis=50 -XX:ReservedCodeCacheSize=64m -XX:MaxMetaspaceSize=160m -XX:MaxDirectMemorySize=32m'
 
 [http_service]
   internal_port = 9000
@@ -49,16 +55,13 @@ primary_region = 'arn'
     soft_limit = 25
 
 [[vm]]
-  # 1 GB / 1 shared vCPU (shared-cpu-1x). Briefly ran at 512 MB after
-  # scraping/enrichment moved to kinowo-worker, but the serving JVM OOM-crash-
-  # looped there once the MovieCache grew to 5 cities (anon-RSS ~408 MB vs the
-  # 512 MB cgroup, ~every 34 min) — the repeated cold-starts pegged the single
-  # vCPU and spiked load. Back to 1 GB; the 384m-heap JVM commits ~615 MB RSS
-  # with real headroom. NOTE: a previous pass ran this at 2 vCPUs because web's
-  # MovieCache consumes the Mongo change stream and the worker's continuous
-  # scrape write stream could peg a single shared vCPU; if that unresponsiveness
-  # returns, the 2nd vCPU is the lever. cpu_kind stays shared.
-  memory = '1024mb'
+  # 512 MB, down from the 1 GB the serving app needed. The old sizing note
+  # warned that 512 MB OOM-crash-looped — that was with the MovieCache holding
+  # five cities' repertoire (anon-RSS ~408 MB against the cgroup). A retired
+  # host holds none of it: 128 (heap) + 160 (meta) + 64 (code) + 32 (direct)
+  # = 384 MB of committed ceiling, plus thread stacks and native overhead, fits
+  # 512 MB with real headroom.
+  memory = '512mb'
   cpu_kind = 'shared'
   cpus = 1
 
@@ -72,12 +75,8 @@ primary_region = 'arn'
     timeout = '10s'
     type = 'http'
 
-# Fly's managed Prometheus scrapes this over the private network and ships the
-# series to api.fly.io/prometheus/personal — the same datasource the self-hosted
-# Grafana (fly/grafana) already reads. MetricsController serves it on the app's
-# own internal port (9000), exposing the in-app /uptime health (Mongo, invisible
-# to Fly's host-only metrics) so Grafana can alert on a service failing silently
-# behind a fallback — the residential-proxy → Zyte case.
-[[metrics]]
-  port = 9000
-  path = '/metrics'
+# No `[[metrics]]` block any more. A retired host serves no repertoire, so its
+# only real series would be redirect counts, and `/metrics` deliberately 404s
+# here (see `RetiredSiteController.metrics`) rather than redirecting — a stale
+# scrape job following a 30x would file the LIVE site's series under this app's
+# labels, which is worse than no data.

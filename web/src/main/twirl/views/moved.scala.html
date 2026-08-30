@@ -1,0 +1,65 @@
+@(pageTitle: String, pageDescription: String, pageUrl: String, imageUrl: String, destinationLabel: String)(implicit messages: play.api.i18n.Messages)
+@*
+   The notice a RETIRED deployment serves in place of `/` and `/{city}/` — the
+   address changed, here is the new one (see `RetiredSiteController`).
+
+   THE HEAD IS THE REAL PAGE'S HEAD. `pageTitle`, `pageDescription` and
+   `imageUrl` are the values the live page passes to `_ogTagsApp`, so a link to
+   the retired host previews in Messenger, Slack or WhatsApp exactly as it did
+   before the move — the notice is visible to a person opening the page, and
+   invisible to the crawler that only reads the head. `pageUrl` is the LIVE
+   address, which makes the canonical point at the page that still exists and
+   hands it the indexing rather than competing with it.
+
+   Self-contained styling, deliberately: this is the one page a process with no
+   database and no repertoire behind it can render, and pulling in the shared
+   stylesheet would tie a farewell page to the app's whole view chrome. The
+   palette is the landing's, so the page still looks like the product it is
+   saying goodbye on behalf of.
+*@
+<!DOCTYPE html>
+<html lang="@messages.lang.code">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>@pageTitle</title>
+  @* Kept, and DELIBERATELY a second copy of the literal in `landing.scala.html`
+     rather than a shared partial. This is the tag the retired host's own Search
+     Console property rests on, and a property that un-verifies cannot be handed
+     a Change of Address — which is the whole point of keeping a permanent-move
+     host verified. Extracting it would mean editing the live landing (and
+     re-cutting its page snapshots) purely for a farewell page's benefit; the two
+     copies are named in each other's comments instead. *@
+  <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
+  @_ogTagsApp(
+    pageTitle       = pageTitle,
+    pageDescription = pageDescription,
+    pageUrl         = pageUrl,
+    imageUrl        = imageUrl,
+  )
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #e7e7f5; background: #0d0d22; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center; padding: 24px;
+    }
+    main { width: 100%; max-width: 420px; text-align: center; }
+    h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: .5rem; }
+    p { color: #9a9ac0; margin-bottom: 1.75rem; }
+    a.go {
+      display: block; padding: .9rem 1rem; border-radius: 10px;
+      background: #f5c518; color: #14142b; font-weight: 700; text-decoration: none;
+      overflow-wrap: anywhere;
+    }
+    a.go:hover { background: #ffd643; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>@messages("moved.heading")</h1>
+    <p>@messages("moved.lead")</p>
+    <a class="go" href="@pageUrl">@messages("moved.cta", destinationLabel)</a>
+  </main>
+</body>
+</html>

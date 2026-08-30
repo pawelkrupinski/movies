@@ -101,7 +101,7 @@ sealed abstract class Country(
    *  drawn into every Open Graph card. Derived from [[ogOrigin]] so a domain move
    *  updates the rendered cards with everything else, which the literal it
    *  replaced did not — every UK share card said `kinowo.fly.dev`. */
-  def shareHost: String = ogOrigin.stripPrefix("https://").stripPrefix("http://")
+  def shareHost: String = Country.withoutScheme(ogOrigin)
 
   /** Filename (under `assets/img/`) of the `/` landing's share-preview montage
    *  for this country. The default country keeps the original, unsuffixed
@@ -112,6 +112,12 @@ sealed abstract class Country(
 }
 
 object Country {
+
+  /** `url` with its scheme stripped — `kinowo.net`, `showtimes.cc/uk`. For the
+   *  places that DISPLAY an address rather than link to it: the footer drawn
+   *  into every Open Graph card ([[Country.shareHost]]), the button on a retired
+   *  deployment's notice page. */
+  def withoutScheme(url: String): String = url.stripPrefix("https://").stripPrefix("http://")
 
   case object Poland extends Country(
     code           = "pl",

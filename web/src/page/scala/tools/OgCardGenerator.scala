@@ -84,7 +84,7 @@ object OgCardGenerator {
         if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")) ok += 1
       } else {
         cities.foreach { city =>
-          if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(s"og-${city.slug}.jpg"), city.slug)) ok += 1
+          if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(city.shareImage), city.slug)) ok += 1
         }
       }
     } finally chrome.close()

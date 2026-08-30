@@ -83,6 +83,13 @@ sealed abstract class City(
    *  the grammar lives in one place and PL output stays byte-identical. Used by
    *  the per-city share-card generator (`tools.OgCardGenerator`) + `StructuredData`. */
   def locativePhrase: String = CityGrammar.of(country.language).locativePhrase(labels)
+  /** Filename (under `assets/img/`) of this city's share-preview card — the
+   *  repertoire montage `tools.OgCardGenerator` writes and every `/{slug}/` page
+   *  names as its `og:image`. The city half of [[Country.homeOgImage]], and here
+   *  rather than spelled out at each use for the same reason: the extension and
+   *  the naming scheme have both changed under it, and a second spelling is a
+   *  second thing to miss. */
+  def shareImage: String = s"og-$slug.jpg"
   /** The city label used in the "…skich kin" ("<city>'s cinemas") genitive-plural
    *  slot: the declined Polish adjective ("poznańskich"), or — for a language
    *  that doesn't decline — the plain nominative ("London"). */

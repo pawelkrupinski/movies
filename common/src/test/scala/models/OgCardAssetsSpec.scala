@@ -37,7 +37,7 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
   }
 
   "every city, in every country" should "have the card its index page names" in {
-    val absent = missing(Country.all.flatMap(_.cities).map(c => s"og-${c.slug}.jpg"))
+    val absent = missing(Country.all.flatMap(_.cities).map(_.shareImage))
     // Only the first few names, or a country that was never swept prints its
     // whole roster — 546 filenames on one assertion line, in the run that
     // introduced this spec.

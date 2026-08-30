@@ -76,6 +76,11 @@ landing.noCity=No city by that name.
 landing.locating=Finding your location…
 landing.noNearby=No supported city nearby — pick one from the list.
 
+# The notice a retired deployment serves in place of `/` and `/{city}/`.
+moved.heading=We''ve moved
+moved.lead=This page has a new address. Update your bookmark — nothing but the address has changed.
+moved.cta=Go to {0}
+
 # ── Poster / detail labels ──────────────────────────────────────────────────
 poster.missing=No poster
 detail.synopsis=Synopsis

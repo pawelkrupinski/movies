@@ -75,6 +75,15 @@ object Env {
     resolve(key)
   }
 
+  /** A boolean switch: true for `true` or `1`, false for anything else,
+   *  including unset. Both spellings because both are what the deployment
+   *  surfaces produce — a Fly secret and a Kubernetes env value are strings, and
+   *  whoever sets one writes whichever of the two they think in. */
+  def flag(key: String): Boolean = {
+    register(Knob(key, Kind.Str, Some("false")))
+    resolve(key).exists(v => v == "true" || v == "1")
+  }
+
   /** A strictly-positive Int from `key`, or `default` when unset, unparseable,
    *  or ≤ 0. For numeric tuning knobs (concurrency budgets, …) where a bad value
    *  should fall back to the sane default rather than crash or disable the work. */

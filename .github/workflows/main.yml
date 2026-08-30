@@ -254,13 +254,21 @@ jobs:
                     # uk.showtimes.cc and de.showtimes.cc. The `build-web` / `deploy-web` jobs at the
                     # bottom of this file build and roll them. Leaving any of these `true` would make the next push to
                     # main deploy a SECOND copy of the site on Fly, serving the same databases from a
-                    # host that no longer has the traffic — and, for `kinowo`, restart a machine that
-                    # is supposed to be scaled to zero.
+                    # host that no longer has the traffic.
                     #
-                    # Kept as entries so the rollback is flipping one word: set back to `true`,
-                    # `flyctl scale count 1`, and scale the k8s deployment to 0. Their `fly.*.toml`
-                    # files are untouched (the Grafana specs still assert against them). Delete these
-                    # entries only once the Fly apps themselves are retired.
+                    # `kinowo` is the one still RUNNING, as a redirect host: `fly.toml` sets
+                    # `KINOWO_RETIRED=true`, which boots `modules.RetiredComponents` instead of the
+                    # serving app (docs/domain-cutover.md). That flag lives in the fly config, not
+                    # here, so flipping this leg back on could not accidentally un-retire it — it
+                    # would redeploy the redirect host. It stays `false` anyway: a retired host is
+                    # standing still on purpose and has no reason to track `main`, and every deploy
+                    # is a 5xx window on the links it exists to keep working.
+                    #
+                    # Kept as entries so the rollback is flipping one word: set back to `true`, drop
+                    # `KINOWO_RETIRED` from `fly.toml`, `flyctl scale count 1`, and scale the k8s
+                    # deployment to 0. Their `fly.*.toml` files are otherwise untouched (the Grafana
+                    # specs still assert against them). Delete these entries only once the Fly apps
+                    # themselves are gone.
                     - app: kinowo
                       toml: fly.toml
                       bin: web

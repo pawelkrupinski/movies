@@ -28,6 +28,24 @@ class EnvSpec extends AnyFlatSpec with Matchers {
     withProp("KINOWO_TEST_INT", "abc") { Env.positiveInt("KINOWO_TEST_INT", 8) shouldBe 8 }
   }
 
+  "Env.flag" should "be off when unset, so a switch nobody set stays off" in {
+    Env.flag("KINOWO_TEST_UNSET_FLAG") shouldBe false
+  }
+
+  // Both spellings, because both are what a deployment surface produces: whoever
+  // sets a Fly secret or a Kubernetes env value writes whichever of the two they
+  // think in, and neither should be a silent no-op.
+  it should "accept either spelling of on" in {
+    withProp("KINOWO_TEST_FLAG", "true") { Env.flag("KINOWO_TEST_FLAG") shouldBe true }
+    withProp("KINOWO_TEST_FLAG", "1")    { Env.flag("KINOWO_TEST_FLAG") shouldBe true }
+  }
+
+  it should "treat anything else as off rather than as set" in {
+    withProp("KINOWO_TEST_FLAG", "false") { Env.flag("KINOWO_TEST_FLAG") shouldBe false }
+    withProp("KINOWO_TEST_FLAG", "yes")   { Env.flag("KINOWO_TEST_FLAG") shouldBe false }
+    withProp("KINOWO_TEST_FLAG", "0")     { Env.flag("KINOWO_TEST_FLAG") shouldBe false }
+  }
+
   "Env.positiveLong" should "use the default when unset" in {
     Env.positiveLong("KINOWO_TEST_UNSET_LONG", 300L) shouldBe 300L
   }

@@ -37,7 +37,7 @@ trait Wiring {
   // (opt back into silent-degrade with MONGODB_OPTIONAL=true) — see
   // `MongoConnection`.
   private lazy val mongoRequired: Boolean = {
-    val optedOut = Env.get("MONGODB_OPTIONAL").exists(v => v == "true" || v == "1")
+    val optedOut = Env.flag("MONGODB_OPTIONAL")
     MongoConnection.isRequired(environmentMode == Mode.Test, optedOut)
   }
 

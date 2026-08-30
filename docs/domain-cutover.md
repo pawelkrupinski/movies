@@ -74,11 +74,21 @@ ordering — several of the steps below are only safe in one sequence.
    ```
 
 7. **Retire the Fly web apps.** Every leg in `.github/workflows/main.yml` is
-   already `enabled: false`, which stops future deploys but does not stop the
-   running machines. `flyctl scale count 0 -a kinowo` (and `showtimes-uk` /
-   `showtimes-de`, already at zero). Scale to zero rather than `machines stop`:
-   `auto_start_machines = true` means any inbound request boots a stopped web
-   machine and it never stops again.
+   `enabled: false`, which stops future deploys but does not stop the running
+   machines. `showtimes-uk` and `showtimes-de` are scaled to zero — scale to zero
+   rather than `machines stop`, because `auto_start_machines = true` means any
+   inbound request boots a stopped web machine and it never stops again.
+
+   `kinowo` is the exception and stays up as a REDIRECT HOST, because it is the
+   only one of the three with published links behind it (see the last section).
+   Its deploys stay out of CI: it is not tracking `main`, it is standing still on
+   purpose, so it is rolled by hand on the rare occasion the retirement code
+   itself changes.
+
+   ```
+   sbt web/stage && rm -rf stage && cp -R web/target/universal/stage stage
+   flyctl deploy -c fly.toml -a kinowo --remote-only
+   ```
 
 ## What DNS and a deploy do not cover
 
@@ -101,7 +111,21 @@ ordering — several of the steps below are only safe in one sequence.
   tag on `/` is kept (removing a verification a property rests on un-verifies
   it), but the new domain now also supports DNS TXT verification, which
   `fly.dev` never could because Fly owned the zone.
-- **`kinowo.fly.dev` does not redirect anywhere.** Fly's edge only routes to a
-  running machine, so once the app is scaled to zero the old host simply stops
-  answering. Keeping one machine alive purely to serve 301s is the only way to
-  preserve those links; it was judged not worth the cost.
+- **`kinowo.fly.dev` is RETIRED, not switched off** (reversing the original call
+  here, which was to scale it to zero and let the old links die). Fly's edge only
+  routes to a running machine, so a scaled-to-zero app cannot redirect — the one
+  machine stays up, running the same image with `KINOWO_RETIRED=true` in
+  `fly.toml`. That boots `modules.RetiredComponents` rather than the serving
+  composition root, which is what makes it cheap: no Mongo client, no change
+  stream, no read model, a 512 MB machine instead of 1 GB. `/` and `/{city}/`
+  render a notice — the address changed, here is the new one — and everything
+  else 301/308s to the same path on `kinowo.net`.
+
+  The notice pages carry the LIVE page's own `<title>`, Open Graph tags and
+  canonical, all derived from the city and country rather than the repertoire, so
+  a link shared before the move still previews exactly as it did and the indexing
+  goes to `kinowo.net`. Deep links redirect rather than showing the notice
+  precisely because every social scraper follows a 30x when it scrapes.
+
+  `showtimes-uk.fly.dev` / `showtimes-de.fly.dev` were already at zero machines
+  and stay there; they were never public long enough to accumulate links.

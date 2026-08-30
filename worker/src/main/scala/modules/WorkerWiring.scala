@@ -512,7 +512,7 @@ class WorkerWiring(
   // with MONGODB_OPTIONAL=true). Bound to THIS country's database, on the shared
   // `MongoClient` when WorkerMain injected one.
   lazy val mongoConnection: MongoConnection = {
-    val optedOut = Env.get("MONGODB_OPTIONAL").exists(v => v == "true" || v == "1")
+    val optedOut = Env.flag("MONGODB_OPTIONAL")
     MongoConnection.fromEnvForDb(
       mongoDbName,
       required = MongoConnection.isRequired(testMode = false, optedOut = optedOut),
