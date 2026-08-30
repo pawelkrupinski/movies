@@ -68,6 +68,27 @@ in
     ];
   };
 
+  # GRAFANA MAY BE BOUNCED BY AN UNATTENDED SWITCH ON THIS HOST, AND NOTHING ELSE MAY.
+  #
+  # Every dashboard edit rewrites grafana.service -- the provisioning directory's store path is in
+  # config.ini, which is in ExecStart -- so without this line the applier refuses the closure and,
+  # with it, every unrelated change staged for this machine. It refuses SILENTLY: the timer keeps
+  # firing, the unit keeps completing, and only its journal says why. That happened on 2026-08-30
+  # and took a manual switch-to-configuration to clear. roles/grafana.nix asserts on the omission
+  # now, and this is the line that assertion asks for.
+  #
+  # THE SENTENCE modules/fleet/default.nix ASKS TO BE WRITTEN OUT FOR EACH ENTRY: a Grafana restart
+  # at an arbitrary moment costs a few seconds of the monitoring UI and a gap in no graph at all.
+  # Prometheus keeps scraping and Alertmanager keeps notifying throughout, because neither of them
+  # is Grafana; the worst case is somebody reloading a page mid-incident. That is a far smaller cost
+  # than a fleet whose deploys have quietly stopped, which is what the alternative buys.
+  #
+  # ONE NAMED UNIT, NOT `[ "*" ]`, for the reason that file gives about `reloadableUnits`:
+  # prometheus.service and alertmanager.service would be equally cheap to bounce, but nothing has
+  # yet needed them to be, and a wildcard also forgives every unit nobody has thought about. The
+  # fleet's neverDisturbUnits floor (sshd, mongodb, k3s) is checked first and still applies.
+  fleet.autoApply.restartableUnits = [ "grafana.service" ];
+
   fleet.grafana = {
     enable = true;
 

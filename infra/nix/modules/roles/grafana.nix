@@ -115,6 +115,18 @@ let
   # `nixos-rebuild switch` changes nothing either. During the migration both files exist and each
   # is deployed by a different tool -- which is the trap this comment exists to name.
   grafanaProvisioning = ../../files/monitoring/grafana;
+
+  # `restartableUnits` and `neverDisturbUnits` are fnmatch GLOBS -- the applier matches them with
+  # Python's fnmatch, so `*` and `?` are the two wildcards and a host may well write `grafana.*` or
+  # `*`. A plain `elem` would read those as literals and report a host that HAS forgiven Grafana as
+  # one that has not, which is the worst direction for the assertion below to be wrong in. This is
+  # the same translation, kept to the two wildcards fnmatch and Nix's regexes agree on.
+  matchesUnit = unit: pattern:
+    let
+      escaped = lib.escapeRegex pattern;
+      wildcarded = lib.replaceStrings [ "\\*" "\\?" ] [ ".*" "." ] escaped;
+    in
+    builtins.match wildcarded unit != null;
 in
 {
   options.fleet.grafana = {
@@ -182,6 +194,46 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    # ---------------------------------------------------------------------------------------------
+    # A HOST THAT PROVISIONS DASHBOARDS AND DOES NOT FORGIVE A GRAFANA RESTART WEDGES ITS APPLIER.
+    # ---------------------------------------------------------------------------------------------
+    #
+    # The provisioning directory is copied into the store (see `grafanaProvisioning` above) and its
+    # store path is baked into config.ini, which is baked into ExecStart. So EDITING ONE LINE OF ONE
+    # DASHBOARD CHANGES grafana.service -- and fleet/auto-apply.nix refuses, by design, any switch
+    # that would disturb a running unit it has not been told to forgive.
+    #
+    # THE COST OF GETTING THIS WRONG IS NOT THE STALE DASHBOARD. The applier refuses the WHOLE
+    # closure, so every unrelated change staged for this host -- a scrape target, an alert rule, a
+    # security patch -- stops landing too, and stops landing SILENTLY: the timer keeps firing, the
+    # unit keeps completing, and the only evidence is a line in its journal. Hit on 2026-08-30,
+    # where a dashboard edit blocked monitoring-1 and clearing it took a manual
+    # switch-to-configuration on the box.
+    #
+    # TWO WAYS TO SATISFY THIS, and they are different decisions rather than two spellings of one.
+    # `restartableUnits` says an unattended bounce of Grafana is a cost this host accepts -- seconds
+    # of the monitoring UI, and a gap in no graph at all, since neither Prometheus nor Alertmanager
+    # is Grafana. `neverDisturbUnits` says the opposite: this Grafana is deployed by a person, on
+    # purpose, and the applier should keep refusing. Either is a position. Neither is the accident
+    # this assertion exists to catch.
+    assertions = [
+      {
+        assertion = !config.fleet.autoApply.enable
+          || lib.any (matchesUnit "grafana.service") config.fleet.autoApply.restartableUnits
+          || lib.any (matchesUnit "grafana.service") config.fleet.autoApply.neverDisturbUnits;
+        message = ''
+          ${config.networking.hostName} provisions Grafana dashboards and runs nixos-auto-apply, but
+          neither fleet.autoApply.restartableUnits nor fleet.autoApply.neverDisturbUnits matches
+          grafana.service. A dashboard edit rewrites grafana.service, so the applier will refuse the
+          closure -- and with it every unrelated change staged for this host -- and will say so only
+          in its own journal.
+
+          Add "grafana.service" to restartableUnits to let dashboard changes land unattended, or to
+          neverDisturbUnits to record that this Grafana is deployed by hand on purpose.
+        '';
+      }
+    ];
+
     # `$__file{}` READS THESE AT RUNTIME, so both must be readable by grafana and neither is ever
     # interpolated into a settings value -- `settings` is rendered into the world-readable store.
     sops.secrets."grafana/secret-key" = { owner = "grafana"; mode = "0400"; };
