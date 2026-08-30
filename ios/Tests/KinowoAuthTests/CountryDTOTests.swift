@@ -19,6 +19,19 @@ final class CountryDTOTests: XCTestCase {
         XCTAssertEqual(country?.timeZone, TimeZone(identifier: "Europe/London"))
     }
 
+    /// The US row: the catalog's zone (its first region's, which the server
+    /// derives) is what the app runs on — not the nominal Eastern zone the
+    /// compile-time fallback registry carries.
+    func testUsRowTakesItsZoneFromTheCatalogNotTheFallbackRegistry() throws {
+        let json = #"[{"code":"us","name":"United States","baseUrl":"https://us.showtimes.cc","language":"en","brand":"Showtimes","timezone":"America/Chicago"}]"#
+        let dtos = try JSONDecoder().decode([CountryDTO].self, from: Data(json.utf8))
+        let country = dtos[0].toCountry()
+        XCTAssertEqual(country?.code, "us")
+        XCTAssertEqual(country?.baseURL.absoluteString, "https://us.showtimes.cc")
+        XCTAssertEqual(country?.languageCode, "en")
+        XCTAssertEqual(country?.timeZone, TimeZone(identifier: "America/Chicago"))
+    }
+
     func testMissingTimezoneFallsBackToWarsaw() throws {
         // An older bundled seed / a server that predates the field: no timezone
         // key. Decode must still succeed and default to the historical zone.

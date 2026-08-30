@@ -28,9 +28,9 @@ scrape_configs:
     scrape_interval: 30s
     scrape_timeout: 10s
     # ONE TARGET PER COUNTRY. Each is its own Kubernetes Deployment with its own NodePort, because
-    # `KINOWO_COUNTRIES` also selects the DATABASE -- so these are three separate corpora, not three
-    # replicas of one, and any panel that aggregates them without keeping the `country` label is
-    # adding three different fleets together.
+    # `KINOWO_COUNTRIES` also selects the DATABASE -- so these are separate corpora, not replicas of
+    # one, and any panel that aggregates them without keeping the `country` label is adding several
+    # different fleets together.
     #
     static_configs:
       - targets: ["10.20.0.12:30900"]
@@ -39,6 +39,8 @@ scrape_configs:
         labels: { app: kinowo-worker, country: de, tier: worker, platform: k3s }
       - targets: ["10.20.0.12:30902"]
         labels: { app: kinowo-worker, country: uk, tier: worker, platform: k3s }
+      - targets: ["10.20.0.12:30903"]
+        labels: { app: kinowo-worker, country: us, tier: worker, platform: k3s }
 
     # DROP `exported_country`, WHICH IS 3961 SERIES OF PURE NOISE. Both apps export a `country`
     # label of their own, and this job also SETS one from the target definition -- so Prometheus
@@ -78,6 +80,8 @@ scrape_configs:
         labels: { app: kinowo, country: de, tier: web, platform: k3s, instance: kinowo-web-de }
       - targets: ["10.20.0.12:30912"]
         labels: { app: kinowo, country: uk, tier: web, platform: k3s, instance: kinowo-web-uk }
+      - targets: ["10.20.0.12:30913"]
+        labels: { app: kinowo, country: us, tier: web, platform: k3s, instance: kinowo-web-us }
 
     # DROP `exported_country`, WHICH IS 3961 SERIES OF PURE NOISE. Both apps export a `country`
     # label of their own, and this job also SETS one from the target definition -- so Prometheus

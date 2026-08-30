@@ -1,5 +1,7 @@
 package pl.kinowo.ui
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +29,13 @@ import pl.kinowo.ui.theme.TextSecondary
  * activity recreates so the app re-points at that country's deployment and
  * forces its UI language. Kept compact so it can sit above the city list on the
  * first-launch gate without disturbing the two-per-row card layout further down.
+ *
+ * The pill row SCROLLS horizontally and each label stays on ONE line: a plain
+ * [Row] squeezes its children once the labels stop fitting ("Polska",
+ * "United Kingdom", "Deutschland", "United States" already overflow a phone
+ * width), and a squeezed label wraps, which grows the row's height and pushes
+ * the city list below the fold. Scrolling keeps the header exactly one pill tall
+ * however many countries the catalog carries.
  */
 @Composable
 fun CountryPicker(
@@ -44,21 +53,24 @@ fun CountryPicker(
             modifier = Modifier.padding(bottom = 6.dp),
         )
         Row(
-            Modifier.fillMaxWidth().selectableGroup(),
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .selectableGroup(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             countries.forEach { country ->
                 val selected = country.code == current.code
                 if (selected) {
                     Button(onClick = { onSelect(country.code) }) {
-                        Text(country.displayName, fontWeight = FontWeight.SemiBold)
+                        Text(country.displayName, fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                 } else {
                     OutlinedButton(
                         onClick = { onSelect(country.code) },
                         colors = ButtonDefaults.outlinedButtonColors(),
                     ) {
-                        Text(country.displayName)
+                        Text(country.displayName, maxLines = 1)
                     }
                 }
             }

@@ -100,6 +100,42 @@ class CitiesTest {
         assertEquals(79, Cities.citiesIn("uk").size)
     }
 
+    /**
+     * The data-driven rosters are deliberately absent from the compile-time
+     * fallback: Germany's 158 regions and the US's 55 states/territories reach
+     * the app through the catalog (bundled seed, then `/api/catalog`), so
+     * nothing here can drift from the server's list.
+     */
+    @Test
+    fun dataDrivenCountriesAreNotMirroredInTheFallbackRoster() {
+        assertTrue(Cities.citiesIn("de").isEmpty())
+        assertTrue(Cities.citiesIn("us").isEmpty())
+        assertNull(Cities.all.defaultCity("us"))
+        assertNull(Cities.nearestWithin100km(40.7128, -74.0060, "us"))
+    }
+
+    /**
+     * The catalog's list drives every per-country query, so a US region behaves
+     * exactly like a Polish or UK one once it arrives — this is the list the app
+     * actually calls these helpers with.
+     */
+    @Test
+    fun usRegionsFromTheCatalogDriveTheSameQueries() {
+        val catalog = Cities.all + listOf(
+            City("california", "California", 36.7783, -119.4179, "us"),
+            City("new-york", "New York", 40.7128, -74.0060, "us"),
+        )
+        assertEquals(2, catalog.inCountry("us").size)
+        assertEquals("us", catalog.countryOf("new-york"))
+        assertEquals("california", catalog.defaultCity("us")?.slug)
+        assertEquals(listOf("california", "new-york"), catalog.sortedForPicker("us").map { it.slug })
+        assertEquals(listOf("new-york"), catalog.matching("new", "us").map { it.slug })
+        assertEquals("new-york", catalog.nearestWithin100km(40.7128, -74.0060, "us")?.slug)
+        // A US fix stays inside the US, and a UK fix never reaches it.
+        assertNull(catalog.nearestWithin100km(40.7128, -74.0060, "uk"))
+        assertNull(catalog.nearestWithin100km(51.5074, -0.1278, "us"))
+    }
+
     @Test
     fun defaultCityIsThatCountrysFirstCity() {
         assertEquals("poznan", Cities.defaultCityIn("pl").slug)
@@ -117,7 +153,8 @@ class CitiesTest {
 
     @Test
     fun countryOfIsNullForUnknownCity() {
-        assertNull(Cities.all.countryOf("berlin"))   // DE arrives via the live catalog, not the fallback
+        assertNull(Cities.all.countryOf("berlin"))       // DE arrives via the live catalog, not the fallback
+        assertNull(Cities.all.countryOf("california"))   // …and so does the US roster
         assertNull(Cities.all.countryOf("nope"))
     }
 

@@ -21,7 +21,10 @@ struct City: Codable, Hashable {
 
     /// Every city the app knows about across ALL countries, in the same order
     /// the web `City.all` lists them (Polish cities first, then the UK regions)
-    /// so the pickers read identically across platforms. This is the GLOBAL
+    /// so the pickers read identically across platforms. The data-driven rosters
+    /// — Germany's 158 regions and the US's 55 states/territories — are NOT
+    /// mirrored here: they arrive with the catalog (bundled seed, then the live
+    /// `/api/catalog`), so there is one copy of them rather than two that drift. This is the GLOBAL
     /// union; the pickers and the nearest-city gate scope it to the selected
     /// country via `cities(in:)` / `matching(_:in:)` / `nearestWithin100km(...in:)`.
     /// Adding a row here (with its `country`) is the only model-side change a new

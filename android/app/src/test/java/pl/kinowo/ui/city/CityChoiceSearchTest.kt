@@ -1,5 +1,6 @@
 package pl.kinowo.ui.city
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -64,6 +65,22 @@ class CityChoiceSearchTest {
         compose.onNodeWithText("Brak miasta", substring = true).assertExists()
         // No city rows survive (Białystok led the unfiltered list).
         compose.onNodeWithText("Białystok").assertDoesNotExist()
+    }
+
+    /**
+     * The country pills stay on ONE row however many countries the catalog
+     * carries, so the city list below them stays on screen. With four countries
+     * a non-scrolling row squeezes the labels until they wrap, which grows the
+     * header and pushes the first city row below the fold.
+     */
+    @Test
+    fun everyCatalogCountryFitsWithoutPushingTheCityListOffScreen() {
+        compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = {}) }
+
+        listOf("Polska", "United Kingdom", "Deutschland", "United States").forEach {
+            compose.onNodeWithText(it).assertExists()
+        }
+        compose.onNodeWithText("Białystok").assertIsDisplayed()
     }
 
     @Test

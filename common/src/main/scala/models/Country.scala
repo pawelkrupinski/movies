@@ -121,10 +121,13 @@ object Country {
    *  `UnitedStates` market. No Filmweb (Polish-only).
    *
    *  Its roster is the reason the worker is split per country rather than folded
-   *  into a sibling's: ~4,200 venues across 55 states and territories, six times
-   *  the UK's corpus, which is a scrape-VOLUME problem before it is anything else.
-   *  Its cadence is derived from that (see the US worker overlay) rather than
-   *  copied from the UK's. */
+   *  into a sibling's: 5,031 venues across 55 states and territories, and ~10x the
+   *  UK's PACED set once the UK's chain venues (which scrape their own sites) are
+   *  discounted. That is a scrape-VOLUME problem before it is anything else: the
+   *  sweep runs ~10h against an origin whose 200ms pace is a measured ceiling
+   *  rather than a choice, so cadence is the only lever left. Its worker overlay
+   *  runs at 840min for that reason rather than copying the UK's 420, which the
+   *  sweep would overrun by 44%. See `WorkerScrapeCadenceConfigSpec`. */
   case object UnitedStates extends Country(
     code           = "us",
     displayName    = "United States",

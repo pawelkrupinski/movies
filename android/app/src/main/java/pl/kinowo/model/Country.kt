@@ -39,7 +39,7 @@ data class Country(
         /** Compile-time FALLBACK registry, used only until the bundled/fetched
          *  catalog loads (and if it ever fails to decode). The live registry is
          *  the `/api/catalog` payload the catalog repository publishes. Poland is
-         *  the default. Codes match the server (`pl`/`uk`/`de`). */
+         *  the default. Codes match the server (`pl`/`uk`/`de`/`us`). */
         val all: List<Country> = listOf(
             Country(
                 code = "pl",
@@ -62,6 +62,17 @@ data class Country(
                 languageTag = "de",
                 zoneId = ZoneId.of("Europe/Berlin"),
             ),
+            Country(
+                code = "us",
+                displayName = "United States",
+                baseUrl = "https://us.showtimes.cc",
+                languageTag = "en",
+                // The US spans six zones, so no single one is "the country's".
+                // This nominal Eastern value only matters in the window before
+                // the catalog loads; the live payload's per-country `timezone`
+                // (derived server-side from the first US region) replaces it.
+                zoneId = ZoneId.of("America/New_York"),
+            ),
         )
 
         val default: Country = all.first()
@@ -71,12 +82,13 @@ data class Country(
         fun byCode(code: String?): Country = all.firstOrNull { it.code == normalizeCode(code) } ?: default
 
         /** Map a legacy persisted selection code to the current server code space.
-         *  Earlier builds stored ISO codes (`PL`/`GB`); the catalog keys on
-         *  `pl`/`uk`. Applied wherever a persisted code is read so an upgrade keeps
-         *  the user's country without a migration write. */
+         *  Earlier builds stored ISO codes (`PL`/`GB`/`US`); the catalog keys on
+         *  `pl`/`uk`/`us`. Applied wherever a persisted code is read so an upgrade
+         *  keeps the user's country without a migration write. */
         fun normalizeCode(code: String?): String? = when (code) {
             "PL" -> "pl"
             "GB" -> "uk"
+            "US" -> "us"
             else -> code
         }
     }

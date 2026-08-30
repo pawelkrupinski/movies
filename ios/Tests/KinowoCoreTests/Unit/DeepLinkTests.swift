@@ -101,6 +101,15 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertEqual(dl?.citySlug, "berlin")
     }
 
+    func testUSDeploymentHostOpensInApp() {
+        // Like Germany's, the US regions arrive via the live catalog rather than
+        // the compile-time `City.all`, so pass the runtime slug set.
+        let dl = DeepLink.parse(URL(string: "https://us.showtimes.cc/california/film/wicked")!,
+                                knownCitySlugs: ["california"])
+        XCTAssertEqual(dl?.citySlug, "california")
+        XCTAssertEqual(dl?.filmSlug, "wicked")
+    }
+
     func testEmptyTitleParamIsNoFilm() {
         XCTAssertNil(parse("https://kinowo.net/poznan/film?title=")?.filmTitle)
     }

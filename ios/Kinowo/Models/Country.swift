@@ -48,7 +48,7 @@ struct Country: Codable, Hashable {
     /// Compile-time FALLBACK registry, used only until the bundled/fetched
     /// catalog loads (and if that ever fails to decode). The live registry is the
     /// `/api/catalog` payload the `CatalogStore` publishes. Poland is first (the
-    /// default). Codes match the server (`pl`/`uk`/`de`).
+    /// default). Codes match the server (`pl`/`uk`/`de`/`us`).
     static let all: [Country] = [
         Country(
             code: "pl",
@@ -71,6 +71,17 @@ struct Country: Codable, Hashable {
             languageCode: "de",
             timeZone: TimeZone(identifier: "Europe/Berlin") ?? warsawZone
         ),
+        Country(
+            code: "us",
+            displayName: "United States",
+            baseURL: URL(string: "https://us.showtimes.cc")!,
+            languageCode: "en",
+            // The US spans six zones, so no single one is "the country's". This
+            // nominal Eastern value only matters in the window before the
+            // catalog loads; the live payload's per-country `timezone` (derived
+            // server-side from the first US region) replaces it immediately.
+            timeZone: TimeZone(identifier: "America/New_York") ?? warsawZone
+        ),
     ]
 
     /// Fallback when the user hasn't picked a country: Poland.
@@ -84,13 +95,15 @@ struct Country: Codable, Hashable {
     }
 
     /// Map a legacy persisted selection code to the current server code space.
-    /// Earlier builds stored ISO codes (`PL`/`GB`); the catalog keys on `pl`/`uk`.
+    /// Earlier builds stored ISO codes (`PL`/`GB`/`US`); the catalog keys on
+    /// `pl`/`uk`/`us`.
     /// Applied wherever a persisted code is read so an upgrade keeps the user's
     /// country without a migration write (the next selection persists the new code).
     static func normalizeCode(_ code: String?) -> String? {
         switch code {
         case "PL": return "pl"
         case "GB": return "uk"
+        case "US": return "us"
         default:   return code
         }
     }

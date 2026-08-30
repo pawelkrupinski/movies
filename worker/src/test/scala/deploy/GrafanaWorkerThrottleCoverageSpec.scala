@@ -28,8 +28,12 @@ import org.scalatest.matchers.should.Matchers
  * whole backstop was `app="kinowo-worker"` — UK and DE had no second layer at
  * all under a poller outage.
  *
- * The worker set is derived from `fly.worker*.toml` (see [[RepoFile]]), so
- * onboarding a country automatically tightens what this demands.
+ * The worker set is derived from BOTH deploy layers — the `fly.worker*.toml`
+ * files and the k3s overlays under `infra/kubernetes/worker/overlays/` — so
+ * onboarding a country automatically tightens what this demands. Reading only the
+ * tomls stopped being enough the moment a country arrived without one: the US was
+ * onboarded straight onto k3s, and a toml-only derivation would have let it ship
+ * with no backstop at all while reporting full coverage.
  */
 class GrafanaWorkerThrottleCoverageSpec extends AnyFlatSpec with Matchers {
 
@@ -40,11 +44,27 @@ class GrafanaWorkerThrottleCoverageSpec extends AnyFlatSpec with Matchers {
   private val AppNameLine = """(?m)^app\s*=\s*['"]([^'"]+)['"]""".r
 
   /** Deployed worker apps, from fly.worker.toml / fly.worker.<cc>.toml. */
-  private lazy val workerApps: Seq[String] =
+  private lazy val flyWorkerApps: Seq[String] =
     RepoFile
       .flyTomls()
       .filter(_.getName.startsWith("fly.worker"))
       .flatMap(f => AppNameLine.findFirstMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
+
+  /** The same set from the OTHER deploy layer, the k3s overlays — which is the one
+   *  that actually runs (every Fly leg in deploy.yml is `enabled: false`). The app
+   *  name a route has to match is the Fly-era convention the alert labels still
+   *  carry: `kinowo-worker` for the original Polish worker, `kinowo-worker-<cc>`
+   *  for every country split off it. */
+  private lazy val k3sWorkerApps: Seq[String] =
+    Option(new java.io.File("infra/kubernetes/worker/overlays").listFiles())
+      .getOrElse(Array.empty[java.io.File])
+      .filter(_.isDirectory)
+      .map(_.getName)
+      .sorted
+      .map(cc => if (cc == "pl") "kinowo-worker" else s"kinowo-worker-$cc")
+      .toSeq
+
+  private lazy val workerApps: Seq[String] = (flyWorkerApps ++ k3sWorkerApps).distinct
 
   private lazy val contactPoints = RepoFile.read(ContactPoints)
   private lazy val policies      = RepoFile.read(Policies)
@@ -109,6 +129,9 @@ class GrafanaWorkerThrottleCoverageSpec extends AnyFlatSpec with Matchers {
   }
 
   "the derived worker set" should "cover every country the repo deploys" in {
-    workerApps should contain allOf ("kinowo-worker", "kinowo-worker-uk", "kinowo-worker-de")
+    // Both layers, named explicitly: `kinowo-worker-us` exists ONLY in the k3s
+    // overlays, so if this ever drops back to the toml derivation the assertion says
+    // so instead of quietly narrowing what the three checks above demand.
+    workerApps should contain allOf ("kinowo-worker", "kinowo-worker-uk", "kinowo-worker-de", "kinowo-worker-us")
   }
 }

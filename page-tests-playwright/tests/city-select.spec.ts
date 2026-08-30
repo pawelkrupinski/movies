@@ -8,13 +8,17 @@ import { waitForCards } from './helpers';
 test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   test('lists every supported city and a pick navigates into that city', async ({ page }) => {
     await page.goto('/');
-    // 41 Polish + 79 UK + 158 German cities — the fixture `/` renders `City.all`,
-    // the LIVE union across every country (see FixtureServerMain), not one
-    // country. Every Flicks region is now live (`activeUkCities = allUkCities`),
-    // so the full 79-region UK roster appears, and Germany is the full
-    // 158-region Filmstarts roster (data/germany).
+    // 41 Polish + 79 UK + 158 German + 55 US cities — the fixture `/` renders
+    // `City.all`, the LIVE union across every country (see FixtureServerMain),
+    // not one country. Every Flicks region is now live
+    // (`activeUkCities = allUkCities`), so the full 79-region UK roster appears;
+    // Germany is the full 158-region Filmstarts roster (data/germany); and the US
+    // is one region per state/territory (data/us) rather than one per Flicks
+    // metro, which is why it adds 55 and not 577.
     const links = page.locator('.city-list a');
-    await expect(links).toHaveCount(278);
+    await expect(links).toHaveCount(333);
+    await expect(page.locator('.city-list')).toContainText('California');
+    await expect(page.locator('.city-list')).toContainText('New York');
     await expect(page.locator('.city-list')).toContainText('Poznań');
     await expect(page.locator('.city-list')).toContainText('Wrocław');
     await expect(page.locator('.city-list')).toContainText('Warszawa');

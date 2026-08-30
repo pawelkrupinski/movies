@@ -44,6 +44,30 @@ object RepoFile {
     (lines(start) +: body).mkString("\n")
   }
 
+  /** `KINOWO_SCRAPE_FRESHNESS_MINUTES` out of a deploy config, whichever syntax it
+   *  is written in: `= '420'` in a fly toml, `: "840"` in a k3s overlay's ConfigMap.
+   *  Only the digits are kept, so the quoting style is not part of the contract —
+   *  which matters because the newest country has no fly toml at all. */
+  def freshnessMinutesIn(text: String): Option[Int] =
+    text.linesIterator
+      .map(_.trim)
+      .filterNot(_.startsWith("#"))
+      .collectFirst { case s"KINOWO_SCRAPE_FRESHNESS_MINUTES$rest" => rest.filter(_.isDigit) }
+      .filter(_.nonEmpty)
+      .map(_.toInt)
+
+  /** The cadence a country's worker ACTUALLY deploys with, in minutes.
+   *
+   *  Read from its k3s overlay, which is the live deploy path — every `deploy.yml`
+   *  Fly leg is `enabled: false`, and the newest country never had a fly toml. This
+   *  is the only place a country's sweep rate exists: `Freshness.defaultScrapeTtl`
+   *  reads the env var at runtime and `WorkerWiring` captures it once, so no
+   *  `Country` field and no running-JVM test can reach it. */
+  def deployedFreshnessMinutes(cc: String): Option[Int] =
+    scala.util.Try(read(s"infra/kubernetes/worker/overlays/$cc/patch.yaml"))
+      .toOption
+      .flatMap(freshnessMinutesIn)
+
   /** Every `fly*.toml` at the repo root, newest country last — the authoritative deploy set. */
   def flyTomls(): Seq[java.io.File] =
     Option(new java.io.File(".").listFiles())

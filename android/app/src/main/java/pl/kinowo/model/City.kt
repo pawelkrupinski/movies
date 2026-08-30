@@ -36,7 +36,11 @@ data class CitySwitchSuggestion(val target: City, val key: String)
  * The catalogue of supported cities across ALL countries, plus the location →
  * city resolution used by the first-launch gate. [all] mirrors the web
  * `City.all` ordering (Polish cities first, then the UK regions) so the pickers
- * read identically across platforms. This is the GLOBAL union; the pickers and
+ * read identically across platforms. The data-driven rosters — Germany's 158
+ * regions and the US's 55 states/territories — are NOT mirrored here: they
+ * arrive with the catalog (bundled seed, then the live `/api/catalog`), so there
+ * is one copy of them rather than two that drift.
+ * This is the GLOBAL union; the pickers and
  * the nearest-city gate scope it to the selected country via [citiesIn] /
  * [matching] / [nearestWithin100km]. A new city is added by extending [all]
  * (with its [City.country]).

@@ -57,6 +57,18 @@ scrape_configs:
         labels:
           app: kinowo-worker-de
 
+  # US worker — the American (kinowo_us) scrape/enrich pipeline. Its kinowo_worker_*
+  # series carry country="us". Unlike the three above it never ran on Fly at all: it
+  # was onboarded straight onto k3s, and its target lives here only so this retired
+  # tree stays internally consistent with the deploy set the Grafana*Specs derive.
+  - job_name: kinowo-worker-us
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['kinowo-worker-us.internal:9000']
+        labels:
+          app: kinowo-worker-us
+
   # filmowo (the recommend app) is a separate Fly app in the SAME org, so its
   # 6PN hostname resolves from here too. Its Node server binds 9002 (not 9000
   # like the kinowo apps) and serves /metrics there. Unlike the kinowo targets,
@@ -97,3 +109,15 @@ scrape_configs:
       - targets: ['showtimes-de.internal:9000']
         labels:
           app: showtimes-de
+
+  # US web app (KINOWO_COUNTRY=us) — self-labels country="us", so its kinowo_web_* /
+  # kinowo_uptime_* series land under the shared $country var. Same note as the US
+  # worker above: it is a k3s deployment, and this target exists for the retired
+  # stack's own consistency.
+  - job_name: showtimes-us-web
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['showtimes-us.internal:9000']
+        labels:
+          app: showtimes-us

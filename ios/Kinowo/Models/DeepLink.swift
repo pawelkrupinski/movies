@@ -4,7 +4,7 @@ import Foundation
 ///
 /// The grammar mirrors the web URLs one-for-one so the SAME links — on any
 /// country deployment (`kinowo.net`, `uk.showtimes.cc`,
-/// `de.showtimes.cc`) — open the app via Universal Links, including the
+/// `de.showtimes.cc`, `us.showtimes.cc`) — open the app via Universal Links, including the
 /// copy-to-clipboard filter links, whose query string we decode back into
 /// `DeepLinkFilters`. The `kinowo://` custom scheme is accepted too (host =
 /// city slug), so an internal or fallback link works without the
@@ -32,13 +32,14 @@ struct DeepLink: Equatable {
     let filters: DeepLinkFilters
 
     /// Every country deployment's host — a link on any of them opens the app.
-    /// Mirrors the `baseURL` hosts of `Country.all` (PL/UK/DE); keep in sync
+    /// Mirrors the `baseURL` hosts of `Country.all` (PL/UK/DE/US); keep in sync
     /// when a country is added. (`Country` lives in a different SPM target, so
     /// this can't derive from `Country.all` directly.)
     static let webHosts: Set<String> = [
         "kinowo.net", "www.kinowo.net",
         "uk.showtimes.cc",
         "de.showtimes.cc",
+        "us.showtimes.cc",
     ]
     /// Reserved custom-scheme host already used for the OAuth callback — never a
     /// city, so never a navigation deep link.

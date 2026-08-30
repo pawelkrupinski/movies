@@ -51,11 +51,11 @@ on:
     workflow_dispatch:
         inputs:
             country:
-                description: 'Country to record (pl | de | uk)'
+                description: 'Country to record (pl | de | uk | us)'
                 required: false
                 default: 'pl'
                 type: choice
-                options: [pl, de, uk]
+                options: [pl, de, uk, us]
 
 jobs:
     record-country-fixture:

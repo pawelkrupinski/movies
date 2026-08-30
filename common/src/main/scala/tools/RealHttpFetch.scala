@@ -477,13 +477,21 @@ object RealHttpFetch {
     //      hostname, so the two hosts hold separate slot queues;
     //   2. our 429 back-off (ThrottledHttpFetch) keys the same way, so a
     //      `Retry-After: 300-600s` earned on one host cannot stall the other;
-    //   3. THE ORIGIN throttles per zone, not per client IP. Driving flicks.us
-    //      at 3-4.3 req/s across 30 concurrent workers (~1300 requests) left
-    //      flicks.co.uk polled alongside it completely flat — p50 1.3s, p90
-    //      1.8s, max 2.0s, zero non-200s in 56 control polls, indistinguishable
-    //      from its ~1.0s idle baseline — while the US host being hammered
-    //      degraded to p50 3.7s / p90 13.2s / p99 39.6s in the same window.
-    // So a US sweep cannot take the UK pipeline down, and vice versa.
+    //   3. THE ORIGIN appears to throttle per zone rather than per client IP.
+    //      Driving flicks.us at 3-4.3 req/s across 30 concurrent workers (~1300
+    //      requests) left flicks.co.uk polled alongside it completely flat — p50
+    //      1.3s, p90 1.8s, max 2.0s, zero non-200s in 56 control polls,
+    //      indistinguishable from its ~1.0s idle baseline — while the US host
+    //      being hammered degraded to p50 3.7s / p90 13.2s / p99 39.6s in the
+    //      same window. Note the LIMIT of that evidence: the US host only ever
+    //      STALLED, it never returned a hard 429/403, so what is measured is
+    //      "US load at production-like rates does not touch the UK", not "a
+    //      fully blocked US leaves the UK clean". The asymmetry is strong
+    //      evidence for per-zone limiting; it is not proof.
+    // Layers 1 and 2 are decisive on their own, though, and they are the ones we
+    // control: even if the origin turned out to share a quota, our own gates keep
+    // the two sweeps from spending each other's budget or inheriting each other's
+    // back-off.
     //
     // Note HOW this origin throttles: it STALLS connections rather than
     // answering 429. Its effective throughput plateaus at ~3-5 req/s no matter

@@ -78,3 +78,13 @@ contactPoints:
           url: 'http://kinowo-worker-de.internal:9000/throttle'
           httpMethod: POST
         disableResolveMessage: false
+
+  - orgId: 1
+    name: WorkerThrottleUs
+    receivers:
+      - uid: worker-throttle-webhook-us
+        type: webhook
+        settings:
+          url: 'http://kinowo-worker-us.internal:9000/throttle'
+          httpMethod: POST
+        disableResolveMessage: false

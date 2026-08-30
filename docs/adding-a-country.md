@@ -60,7 +60,13 @@ those is expensive to change once a `Country` is switchable.
      run on 2026-08-30: flicks.us driven at 3-4.3 req/s across 30 workers left
      flicks.co.uk at p50 1.3s / max 2.0s / zero non-200s in 56 control polls,
      against a ~1.0s idle baseline, while the US host itself degraded to p50
-     3.7s / p99 39.6s. Independent, per zone rather than per client IP.
+     3.7s / p99 39.6s. Read that for exactly what it is — the new host degraded
+     while the incumbent beside it did not, which is strong evidence of per-zone
+     limiting. It is not proof: the new host only ever STALLED, never returned a
+     hard 429/403, so the hard-block case stays untested. Do not go hunting for
+     it either — forcing a hard block on a third party's production site is not
+     a test worth running, and layers 1 and 2 are decisive on their own and are
+     the ones we control.
    - **Note the throttle SHAPE while you are there.** Flicks does not answer 429
      under this load — it STALLS connections, and its throughput plateaus at
      ~3-5 req/s no matter the concurrency (10 workers -> 2.88 req/s, 30 workers
@@ -122,6 +128,36 @@ grows — sanity-check `byDisplayName` uniqueness.
 
 ## 2. Data harvest (only if the roster isn't hand-authored)
 
+Three things the US roster (5,031 venues) added to this phase, all of which cost
+a re-harvest if missed:
+
+- **Pick the grouping unit deliberately, and do it BEFORE generating.** The
+  source's own region list is not automatically the right one: Flicks lists 577
+  US metros, past the ~200 a picker stays usable at, so the US groups by state
+  (55) instead. Group by whatever unit the country's own visitors name a place
+  by, keep the source's region on each venue for provenance, and remember a large
+  region can be split into `CinemaAreaGroup`s later the way London is.
+- **A country wider than one time zone needs the zone per REGION.** `GermanRegion`
+  hardcodes `Europe/Berlin` because Germany has one; `UsRegion` takes it as a
+  constructor parameter because the US has six, and a national default would move
+  a whole coast's "today" boundary. Check this before copying `GermanRegion`.
+- **Expect the source's region index to be incomplete.** The US region sweep
+  missed 789 of the 5,017 venues in `sitemap-cinemas.xml`; they were recovered by
+  fetching each `/cinema/<slug>/` page for its own `data-lat`/`data-lon` and
+  address (788/789 succeeded, one genuine 404). Always diff the harvest against
+  the sitemap and fill the gap — a venue missing here is a venue that silently
+  never gets scraped.
+
+**Guard the display names in the GENERATOR, not afterwards.** `displayName` is
+the wire key every per-cinema slot is stored under and `Source.byDisplayName` is
+a plain `toMap`, so two venues sharing a name collapse to whichever is built last
+and the loser's stored showtimes read back as the winner's. The generator must
+refuse to emit an unresolved duplicate within the new country (qualify by town,
+then region — 30 US venues needed it), and the roster object must separately
+check against every EXISTING country's names, which the generator cannot see
+(`UsRoster.claimedElsewhere`). `CountrySpec` asserts global uniqueness across all
+four countries as the backstop.
+
 For a full-country sweep (DE), see `data/germany/README.md` + `scripts/`: crawl the
 source directory for every venue + its scraper id, geocode the cities
 (GeoNames bulk `DE.txt`, 100% match — no live Nominatim needed), cluster into
@@ -141,11 +177,27 @@ into a sibling's pod will OOM or throttle it.
    scrape-rate levers, the JVM heap, and a fixed `nodePort` (30900/30901/30902 are
    taken; take the next free one). Everything else comes from `../../base`. Drop
    `<cc>` from any sibling's `KINOWO_COUNTRIES`.
-2. **Nothing to provision** — the country reuses the existing `kinowo/worker-secrets`
-   and `kinowo/ghcr-pull`. `MONGODB_URI` is the shared one pointing at
-   `10.20.0.10` over the Hetzner private network, and **`MONGODB_DB` is never set**:
-   `Country.mongoDb` derives the database from the country, so setting it would pin
-   every country to one corpus.
+2. **Almost nothing to provision** — the country reuses the existing
+   `kinowo/worker-secrets` and `kinowo/ghcr-pull`. `MONGODB_URI` is the shared one
+   pointing at `10.20.0.10` over the Hetzner private network, and **`MONGODB_DB` is
+   never set**: `Country.mongoDb` derives the database from the country, so setting
+   it would pin every country to one corpus.
+
+   **The ONE thing that does need provisioning: the Mongo user's grant on the new
+   database.** The application user's `readWrite` is granted PER DATABASE, so a
+   country whose `kinowo_<cc>` has never been granted fails every read and write
+   with `not authorized on kinowo_<cc>` — and because it is an auth error rather
+   than a connection error, both web and worker come up, pass their health check,
+   and then do nothing. Grant it with the root credentials before the first
+   deploy:
+
+   ```
+   mongosh "$MONGO_ROOT_URI"   # authSource=admin
+   db.getSiblingDB("admin").grantRolesToUser(
+     "kinowo_app", [{ role: "readWrite", db: "kinowo_<cc>" }])
+   ```
+
+   This bit the UK and German rollouts in exactly the same way, twice.
 3. **Add its scrape target** to `infra/nix/files/monitoring/scrape-kinowo-apps.yaml`
    (`10.20.0.12:<nodePort>`, labelled `country: <cc>`), and its Deployment name to
    `fleet.k8sDeploy.targets` in `infra/nix/modules/roles/k8s-deploy.nix` so CI can
@@ -231,7 +283,10 @@ record, and the `webUrl` flip.
 - **Web** (`web/src/main/resources/`): `messages.<lang>` mirroring `messages.en`'s
   keys; add `<lang>` to `play.i18n.langs` in `application.conf` (else the deployment
   silently falls back to Polish). Fix any hardcoded literals to `messages(...)`.
-  Generate `og-home-<cc>.png` (the share card).
+  Generate `og-home-<cc>.png` (the share card) via the `regenerate-og-cards`
+  workflow. Not a launch blocker — `Country.homeOgImage` names the file but
+  nothing fails when it is absent, and Germany has shipped without one; a missing
+  card just means that country's `/` link previews with no image.
 - **iOS** (`ios/`): add a `<lang>` localization to every key in
   `Localizable.xcstrings` + `InfoPlist.xcstrings`; add `<lang>` to `knownRegions`
   in `project.pbxproj`; add a `Country(code:"<cc>", languageCode:"<lang>")`

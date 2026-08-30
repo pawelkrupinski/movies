@@ -121,6 +121,14 @@ class DeepLinkTest {
         assertEquals("berlin", dl.citySlug)
     }
 
+    @Test fun usDeploymentHostOpensInApp() {
+        // Like Germany's, the US regions arrive via the live catalog rather than
+        // the compile-time `Cities.all`, so pass the runtime slug set.
+        val dl = DeepLink.parse("https://us.showtimes.cc/california/film/wicked", setOf("california"))!!
+        assertEquals("california", dl.citySlug)
+        assertEquals("wicked", dl.filmSlug)
+    }
+
     // MARK: scalar filters
 
     @Test fun scalarFilters() {

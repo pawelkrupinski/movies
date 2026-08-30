@@ -48,13 +48,23 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(de.languageCode, "de")
     }
 
-    /// Legacy persisted ISO codes (`PL`/`GB` from earlier builds) normalize to
+    func testUsEntryForcesEnglishOnItsOwnDeployment() {
+        let us = Country.byCode("us")
+        XCTAssertEqual(us.code, "us")
+        XCTAssertEqual(us.displayName, "United States")
+        XCTAssertEqual(us.baseURL.absoluteString, "https://us.showtimes.cc")
+        XCTAssertEqual(us.languageCode, "en")
+    }
+
+    /// Legacy persisted ISO codes (`PL`/`GB`/`US` from earlier builds) normalize to
     /// the current server code space so an upgrade keeps the user's country.
     func testLegacyIsoCodesNormalizeToServerCodes() {
         XCTAssertEqual(Country.byCode("PL").code, "pl")
         XCTAssertEqual(Country.byCode("GB").code, "uk")
+        XCTAssertEqual(Country.byCode("US").code, "us")
         XCTAssertEqual(Country.normalizeCode("PL"), "pl")
         XCTAssertEqual(Country.normalizeCode("GB"), "uk")
+        XCTAssertEqual(Country.normalizeCode("US"), "us")
         XCTAssertEqual(Country.normalizeCode("uk"), "uk")
     }
 
@@ -72,6 +82,9 @@ final class CountryTests: XCTestCase {
     func testCountryDeterminesLanguageNotDeviceLocale() {
         XCTAssertEqual(Country.byCode("pl").languageCode, "pl")
         XCTAssertEqual(Country.byCode("uk").languageCode, "en")
+        XCTAssertEqual(Country.byCode("de").languageCode, "de")
+        // The US ships no bundle of its own — it reuses the English one.
+        XCTAssertEqual(Country.byCode("us").languageCode, "en")
     }
 
     /// The in-app "Kraj" section renders only when there's more than one

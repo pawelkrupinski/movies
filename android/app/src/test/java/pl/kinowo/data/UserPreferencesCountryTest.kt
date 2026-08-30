@@ -34,5 +34,15 @@ class UserPreferencesCountryTest {
         assertEquals("GB", prefs.selectedCountryCode.first())
         assertEquals("GB", prefs.blockingCountryCode())
         assertEquals("en", Country.byCode(prefs.blockingCountryCode()).languageTag)
+
+        // A fourth country round-trips the same way — same store, same registry
+        // lookup, its own deployment. (One test, not two: the DataStore file is
+        // shared across this class, so a second writer would break the
+        // "null until set" assertion above.)
+        prefs.setCountryCode("us")
+        assertEquals("us", prefs.blockingCountryCode())
+        val us = Country.byCode(prefs.blockingCountryCode())
+        assertEquals("https://us.showtimes.cc", us.baseUrl)
+        assertEquals("en", us.languageTag)
     }
 }

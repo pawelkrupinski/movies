@@ -36,7 +36,7 @@
                  copy-to-clipboard filter links) open the app directly. Scoped to
                  /<city>/ and /<city>/film so OAuth (/auth/…) and API paths stay
                  in the browser. autoVerify checks each host's
-                 /.well-known/assetlinks.json (all three serve the same file).
+                 /.well-known/assetlinks.json (they all serve the same file).
                  Hosts mirror Country.all / DeepLink.WEB_HOSTS. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
@@ -45,6 +45,7 @@
                 <data android:scheme="https" android:host="kinowo.net" />
                 <data android:scheme="https" android:host="uk.showtimes.cc" />
                 <data android:scheme="https" android:host="de.showtimes.cc" />
+                <data android:scheme="https" android:host="us.showtimes.cc" />
                 <data android:pathPattern="/..*/" />
                 <data android:pathPattern="/..*/film" />
             </intent-filter>

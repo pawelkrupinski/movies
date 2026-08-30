@@ -116,12 +116,12 @@ in
         {
           imageRepository = "ghcr.io/pawelkrupinski/movies-worker";
           container       = "worker";
-          deployments     = [ "worker-pl" "worker-de" "worker-uk" ];
+          deployments     = [ "worker-pl" "worker-de" "worker-uk" "worker-us" ];
         }
         {
           imageRepository = "ghcr.io/pawelkrupinski/movies-web";
           container       = "web";
-          deployments     = [ "web-pl" "web-de" "web-uk" ];
+          deployments     = [ "web-pl" "web-de" "web-uk" "web-us" ];
         }
       ];
     };

@@ -89,8 +89,9 @@
       # The Showtimes countries, one subdomain each.
       "uk.showtimes.cc".upstream = "127.0.0.1:30912";
       "de.showtimes.cc".upstream = "127.0.0.1:30911";
+      "us.showtimes.cc".upstream = "127.0.0.1:30913";
 
-      # THE BARE APEX IS THE BRAND FRONT DOOR, not a fourth deployment: the app renders a country
+      # THE BARE APEX IS THE BRAND FRONT DOOR, not a deployment of its own: the app renders a country
       # picker (Poland included) whenever the request Host is the apex, so any country's pods answer
       # it identically — see models.Country.servesApex. It is pointed at the UK deployment only
       # because the picker is English-language chrome; nothing about the page is UK-specific.

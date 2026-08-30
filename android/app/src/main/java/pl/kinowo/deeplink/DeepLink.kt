@@ -12,7 +12,7 @@ import java.net.URLDecoder
  *
  * The grammar mirrors the web URLs one-for-one so the SAME links — on any
  * country deployment (`kinowo.net`, `uk.showtimes.cc`,
- * `de.showtimes.cc`) — open the app via App Links, including the
+ * `de.showtimes.cc`, `us.showtimes.cc`) — open the app via App Links, including the
  * copy-to-clipboard filter links, whose query string decodes back into
  * [DeepLinkFilters]. The `kinowo://` custom scheme is accepted too (host = city
  * slug).
@@ -41,12 +41,13 @@ data class DeepLink(
 ) {
     companion object {
         // Every country deployment's host — a link on any of them opens the app.
-        // Mirrors the base-URL hosts of `Country.all` (PL/UK/DE); keep in sync
+        // Mirrors the base-URL hosts of `Country.all` (PL/UK/DE/US); keep in sync
         // when a country is added, alongside the AndroidManifest App Link filter.
         private val WEB_HOSTS = setOf(
             "kinowo.net", "www.kinowo.net",
             "uk.showtimes.cc",
             "de.showtimes.cc",
+            "us.showtimes.cc",
         )
         /** Reserved custom-scheme host (the OAuth callback) — never a city. */
         private val RESERVED_SCHEME_HOSTS = setOf("auth-done")

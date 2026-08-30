@@ -29,12 +29,25 @@ class CountryTest {
     }
 
     @Test
+    fun usEntryForcesEnglishOnItsOwnDeployment() {
+        val us = Country.byCode("us")
+        assertEquals("us", us.code)
+        assertEquals("United States", us.displayName)
+        assertEquals("https://us.showtimes.cc", us.baseUrl)
+        // The US ships no bundle of its own — it reuses the English one.
+        assertEquals("en", us.languageTag)
+    }
+
+    @Test
     fun legacyIsoCodesNormalizeToServerCodes() {
-        // Earlier builds persisted ISO codes (PL/GB); the catalog keys on pl/uk.
+        // Earlier builds persisted ISO codes (PL/GB/US); the catalog keys on
+        // pl/uk/us.
         assertEquals("pl", Country.byCode("PL").code)
         assertEquals("uk", Country.byCode("GB").code)
+        assertEquals("us", Country.byCode("US").code)
         assertEquals("pl", Country.normalizeCode("PL"))
         assertEquals("uk", Country.normalizeCode("GB"))
+        assertEquals("us", Country.normalizeCode("US"))
         assertEquals("uk", Country.normalizeCode("uk"))
     }
 
@@ -57,6 +70,9 @@ class CountryTest {
         assertEquals(ZoneId.of("Europe/Warsaw"), Country.byCode("pl").zoneId)
         assertEquals(ZoneId.of("Europe/London"), Country.byCode("uk").zoneId)
         assertEquals(ZoneId.of("Europe/Berlin"), Country.byCode("de").zoneId)
+        // The US spans six zones; the fallback carries a nominal Eastern one
+        // that the catalog's per-country value replaces as soon as it loads.
+        assertEquals(ZoneId.of("America/New_York"), Country.byCode("us").zoneId)
     }
 
     @Test
@@ -69,6 +85,12 @@ class CountryTest {
         assertEquals(
             ZoneId.of("Europe/Warsaw"),
             CountryDto("pl", "Polska", "https://kinowo.net", "pl", null).toCountry().zoneId,
+        )
+        // The catalog's US zone (its first region's) wins over the registry's.
+        assertEquals(
+            ZoneId.of("America/Chicago"),
+            CountryDto("us", "United States", "https://us.showtimes.cc", "en", "America/Chicago")
+                .toCountry().zoneId,
         )
     }
 }
