@@ -1538,7 +1538,7 @@ object GermanRoster {
 
 // ── United States (Flicks) — data-driven from the full roster ────────────────
 // `UsRosterData` (generated from data/us/venues.json) carries 55 states and
-// territories / ~4,200 cinemas. Same shape as `GermanCinema`: each venue is
+// territories / 5,031 cinemas, each venue tagged with its Flicks metro. Same shape as `GermanCinema`: each venue is
 // built ONCE in `UsRoster` and reused everywhere, so one `Source` instance
 // serves the region, `Cinema.byCity` and the scrape catalog, and identity
 // equality holds like the hand-authored `case object` cinemas.
@@ -1567,14 +1567,48 @@ object UsRoster {
     (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
       Seq(CinemaCityChain, CineworldChain)).map(_.displayName).toSet
 
+  /** Below this many cinemas a state stays FLAT even though its venues carry
+   *  metros. Grouping buys nothing on a list short enough to read at a glance —
+   *  it just adds a row of chrome per group — and the small states are exactly
+   *  where the metros fragment worst (Rhode Island: 10 venues, 5 metros). The
+   *  states this keeps flat are Rhode Island, Delaware, DC, Alaska, Hawaii and
+   *  Vermont, plus the territories; every state a US visitor is likely to hit a
+   *  wall of venues in is well past it. */
+  private val MinCinemasToSplit = 30
+
+  /** A state's venues grouped by their Flicks metro — the US answer to
+   *  `Cinema.londonAreas`, which hand-places 134 venues into five compass areas.
+   *  There are 567 US metros, so the placement is data (each venue's
+   *  `region_slug`, carried through `UsRosterData`) rather than a map anyone
+   *  could write down.
+   *
+   *  Biggest metro first: it is the one most of the state's visitors want, and
+   *  it sinks the long tail of one-venue metros to the bottom where a collapsed
+   *  group costs nothing. `CinemaArea.Other` — the venues Flicks files under no
+   *  metro at all — always sorts last, being a residue rather than a place.
+   *
+   *  Returns `Nil` (a flat city) when the state has fewer than
+   *  [[MinCinemasToSplit]] cinemas, or when a single group would cover them all:
+   *  one collapsible group holding everything is pure overhead. */
+  private def metroAreas(venues: Seq[(UsCinema, String, String)]): Seq[CinemaAreaGroup] = {
+    val placed = venues.map { case (cinema, metroLabel, metroSlug) =>
+      cinema -> (if (metroLabel.isEmpty) CinemaArea.Other else CinemaArea(metroLabel, metroSlug))
+    }
+    val groups = placed.groupBy(_._2).toSeq
+      .map { case (area, members) => CinemaAreaGroup(area, members.map(_._1)) }
+      .sortBy(g => (g.area == CinemaArea.Other, -g.cinemas.size, g.area.label))
+    if (venues.sizeIs < MinCinemasToSplit || groups.sizeIs < 2) Nil else groups
+  }
+
   private val built: Seq[(UsRegion, Seq[(UsCinema, String)])] =
     UsRosterData.regions.map { case (slug, name, lat, lon, zone, cinemas) =>
-      val venues = cinemas.map { case (disp, pill, flicksSlug) =>
+      val venues = cinemas.map { case (disp, pill, flicksSlug, metroLabel, metroSlug) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp ($name)" else disp
-        (new UsCinema(unique, pill), flicksSlug)
+        (new UsCinema(unique, pill), flicksSlug, metroLabel, metroSlug)
       }
-      (new UsRegion(slug, CityLabels(name, name, name), lat, lon, ZoneId.of(zone), venues.map(_._1)),
-        venues)
+      val region = new UsRegion(slug, CityLabels(name, name, name), lat, lon, ZoneId.of(zone),
+        venues.map(_._1), metroAreas(venues.map(v => (v._1, v._3, v._4))))
+      (region, venues.map(v => (v._1, v._2)))
     }
   val regions: Seq[UsRegion]                = built.map(_._1)
   val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, v) => r.labels.nominative -> v.map(_._1) }
@@ -1723,7 +1757,7 @@ object Cinema {
     )
   }
   val londonAreas: Seq[CinemaAreaGroup] =
-    CinemaArea.values.toSeq
+    CinemaArea.compass
       .map(area => CinemaAreaGroup(area, london.filter(londonAreaOf.get(_).contains(area))))
       .filter(_.cinemas.nonEmpty)
   val manchester: Seq[Cinema] = Seq(CineworldAshtonUnderLyne, CineworldManchester, CultplexManchester, EverymanManchesterStJohns, FlixTreehouseManchester, HomeManchester, LeighFilmFactory, NorthernLightSale, OdeonCinemaManchesterGreatNorthern, OdeonCinemaManchesterTraffordCentre, OdeonCinemaOldham, EmpireCinemaWigan, PlazaStockport, ReelCinemaRochdale, RegentMarple, SavoyHeatonMoor, TheLightCinemasStockport, VueCinemasManchesterPrintworks, VueCinemasManchesterQuayside)

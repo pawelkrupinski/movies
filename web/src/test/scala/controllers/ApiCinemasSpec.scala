@@ -12,7 +12,8 @@ import java.time.LocalDateTime
 /**
  * `GET /:city/api/cinemas` serves the static cinema universe + area grouping the
  * mobile filter renders. A flat city returns empty `areas`; a split city returns
- * one entry per compass area, together partitioning the full cinema list.
+ * one entry per area — London's five compass names, a US state's metros —
+ * together partitioning the full cinema list.
  */
 class ApiCinemasSpec extends AnyFlatSpec with Matchers {
 
@@ -53,6 +54,24 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
     areas.map(a => (a \ "slug").as[String]) shouldBe Seq("central", "north", "east", "south", "west")
 
     // The areas partition the cinema universe: union == full list, no dupes.
+    val grouped = areas.flatMap(a => (a \ "cinemas").as[Seq[String]])
+    grouped.toSet shouldBe cinemas.toSet
+    grouped.distinct should have size grouped.size.toLong.toInt
+  }
+
+  "apiCinemas for a US state (split by metro)" should "return the metro areas partitioning the cinema list" in {
+    val result = controller(models.Country.UnitedStates).apiCinemas("california")(FakeRequest())
+    status(result) shouldBe OK
+    val json    = Json.parse(contentAsString(result))
+    val cinemas = (json \ "cinemas").as[Seq[String]]
+
+    val areas = (json \ "areas").as[Seq[play.api.libs.json.JsValue]]
+    // Data-driven names, not the five compass cases: California's 486 venues are
+    // grouped by their Flicks metro, biggest first, catch-all last.
+    areas.map(a => (a \ "name").as[String]).take(3) shouldBe Seq("Los Angeles", "San Francisco", "Inland Empire")
+    areas.map(a => (a \ "slug").as[String]).take(3) shouldBe Seq("los-angeles", "san-francisco", "inland-empire")
+    (areas.last \ "name").as[String] shouldBe "Other areas"
+
     val grouped = areas.flatMap(a => (a \ "cinemas").as[Seq[String]])
     grouped.toSet shouldBe cinemas.toSet
     grouped.distinct should have size grouped.size.toLong.toInt

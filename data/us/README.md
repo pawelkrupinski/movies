@@ -17,17 +17,21 @@ One object per venue:
 
 `slug` is the Flicks `/cinema/<slug>/` id the scraper fetches — the one field
 that must stay exact. `region_slug` is the Flicks METRO the venue was found
-under; it is kept for provenance and for a future area split, but it is not what
-the roster groups by (see below).
+under; it is not what the roster GROUPS by (see below), but it is what each
+state's picker is SUB-grouped by. It is `null` for the 788 venues recovered from
+their own pages rather than from a metro sweep (pass 2 below); those land in the
+`CinemaArea.Other` catch-all rather than being dropped.
 
 ## Grouping: states, not metros
 
 Flicks lists **577 US metros**. That is far past the ~200 a city picker stays
 usable at (Germany ships 158, the UK 79), so the roster groups by **state or
 territory instead — 55 regions**, which is also the unit a US visitor
-recognises. Metro detail is not lost: every venue keeps its `region_slug`, and a
-large state (California is ~430 venues) can later be split into
-`CinemaAreaGroup`s the way London is, without touching this dataset.
+recognises. Metro detail is not lost: every venue keeps its `region_slug`, and
+each state with 30+ venues is split by metro into `CinemaAreaGroup`s the way
+London is split by compass — 45 of the 55 states, California's 486 venues into
+33 groups. The grouping rule lives in `UsRoster.metroAreas`; the metro's display
+label is derived from its slug by `scripts/metros.py`.
 
 Per-state time zones live in `scripts/states.py`, not here — they are code, not
 harvested data. A handful of states straddle two zones; the predominant one is

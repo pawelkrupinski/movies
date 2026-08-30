@@ -1,31 +1,50 @@
 package models
 
-import java.util.Locale
+import tools.Slugify
 
-/** A named sub-region of a [[City]] — e.g. London split by compass into
- *  Central / North / East / South / West. This enum is the *identity* of an
- *  area (its label + stable slug); [[CinemaAreaGroup]] pairs it with the
- *  cinemas it holds in a given city.
+/** A named sub-region of a [[City]] — London split by compass into Central /
+ *  North / East / South / West, a US state split by metro area. This is the
+ *  *identity* of an area (its label + stable slug); [[CinemaAreaGroup]] pairs it
+ *  with the cinemas it holds in a given city.
  *
  *  A city is either **flat** (no areas — the default, `City.areas` empty) or
- *  fully **partitioned** into areas whose union is exactly its `cinemas`. The
- *  enum is the general, cross-city set of area names: a new split city adds its
- *  own cases here. Clients render one collapsible, individually-(de)selectable
- *  group per area. */
-enum CinemaArea(val label: String):
-  // London compass areas — declaration order is the client display order.
-  case Central extends CinemaArea("Central")
-  case North   extends CinemaArea("North")
-  case East    extends CinemaArea("East")
-  case South   extends CinemaArea("South")
-  case West    extends CinemaArea("West")
+ *  fully **partitioned** into areas whose union is exactly its `cinemas`.
+ *  Clients render one collapsible, individually-(de)selectable group per area.
+ *
+ *  The label is DATA, not a closed set of cases: London's five compass names are
+ *  the named singletons below, but the US ships one area per Flicks metro (567
+ *  of them across 55 states), so an area has to be able to carry a name nobody
+ *  wrote down in advance. The compass singletons keep their exact labels and
+ *  slugs — clients persist the slug as a group key (`'areasChosen:' + city`), so
+ *  re-slugging an existing area silently forgets a user's choice. */
+final case class CinemaArea(label: String, slug: String)
 
-  /** Stable kebab-case id — the group key the clients persist and address by
-   *  (`Central` → `"central"`). */
-  lazy val slug: String =
-    label.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-").replaceAll("(^-|-$)", "")
+object CinemaArea {
+  /** An area whose slug is derived from its label — the usual case. The fold is
+   *  `Slugify.stable`, the same frozen one that keys title rules: area slugs are
+   *  persisted client-side, so they need a fold that never drifts. */
+  def apply(label: String): CinemaArea = CinemaArea(label, Slugify.stable(label))
+
+  // London compass areas — `compass`'s order is the client display order.
+  val Central: CinemaArea = CinemaArea("Central")
+  val North:   CinemaArea = CinemaArea("North")
+  val East:    CinemaArea = CinemaArea("East")
+  val South:   CinemaArea = CinemaArea("South")
+  val West:    CinemaArea = CinemaArea("West")
+
+  /** The five compass areas, in display order. */
+  val compass: Seq[CinemaArea] = Seq(Central, North, East, South, West)
+
+  /** The catch-all for venues their source files under no sub-region at all —
+   *  the ~790 US venues recovered from their own pages rather than from a metro
+   *  sweep, which carry no Flicks `region_slug`. They are real, currently-open
+   *  cinemas, so they cannot be dropped without breaking the partition; they go
+   *  here, labelled honestly and listed last. */
+  val Other: CinemaArea = CinemaArea("Other areas")
+}
 
 /** A [[CinemaArea]] paired with the cinemas it contains in a particular city —
  *  the unit of `City.areas`, rendered as one collapsible, (de)selectable group. */
-final case class CinemaAreaGroup(area: CinemaArea, cinemas: Seq[Cinema]):
+final case class CinemaAreaGroup(area: CinemaArea, cinemas: Seq[Cinema]) {
   def cinemaDisplayNames: Seq[String] = cinemas.map(_.displayName)
+}

@@ -840,7 +840,7 @@ final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Dou
 }
 
 /** A US state or territory — the data-driven `City` subtype. The full roster
- *  (55 regions / ~4,200 cinemas) is generated into `UsRosterData` and
+ *  (55 regions / 5,031 cinemas) is generated into `UsRosterData` and
  *  materialised by [[UsRoster]]. Instances are built ONCE there, so identity
  *  equality holds just like the hand-authored `case object` cities.
  *
@@ -849,9 +849,13 @@ final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Dou
  *  no US equivalent. Each region carries its state's predominant zone (see
  *  `data/us/scripts/states.py` for the handful of states that straddle two). */
 final class UsRegion(slug: String, labels: CityLabels, lat: Double, lon: Double,
-                      zoneId: ZoneId, cinemas0: Seq[Cinema])
+                      zoneId: ZoneId, cinemas0: Seq[Cinema], areas0: Seq[CinemaAreaGroup])
   extends City(slug, labels, lat, lon, zoneId) {
   val cinemas: Seq[Cinema] = cinemas0
+  /** Metro-area groups for the states big enough to need them, `Nil` for the
+   *  small ones — see `UsRoster.metroAreas`. California alone lists 486 venues,
+   *  which is a flat picker nobody can use. */
+  override val areas: Seq[CinemaAreaGroup] = areas0
 }
 
 object City {
@@ -897,7 +901,8 @@ object City {
    *  Flicks metro: Flicks lists 577 US metros, which is far past the ~200 a city
    *  picker stays usable at (Germany ships 158), and a state is the unit a US
    *  visitor recognises. Metro detail is not lost — each venue keeps its Flicks
-   *  region, and a large state can be split into `areas` the way London is. */
+   *  metro, and every state big enough to need it is split into `areas` by
+   *  metro the way London is split by compass (see `UsRoster.metroAreas`). */
   private[models] val usCities: Seq[City] = UsRoster.regions
 
   /** Every modelled city, across all countries — the global view used by the

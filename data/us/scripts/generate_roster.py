@@ -5,9 +5,9 @@ flicks.us venue dataset.
 Grouping: ONE region per US state/territory (55), not one per Flicks metro (577).
 The metros are far too many for a city picker — the roster caps the dropdown at
 ~200 (Germany ships 158) — and a state is the unit a US visitor actually
-recognises. Metro granularity is not lost: each venue keeps its Flicks
-`region_slug`, and large states can be split into CinemaAreaGroups later the way
-London is.
+recognises. Metro granularity is not lost: each venue carries its Flicks metro
+(slug + derived label, see metros.py), which `UsRoster` turns into the
+CinemaAreaGroups a big state's picker is grouped by, the way London's are.
 
 Usage:  python3 data/us/scripts/generate_roster.py <venues.json> <out.scala>
 """
@@ -15,6 +15,7 @@ import json, re, sys, unicodedata
 from collections import defaultdict
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from states import STATES
+from metros import labels_by_slug
 
 
 def scala_str(s: str) -> str:
@@ -45,7 +46,7 @@ def main(src, out):
             continue
         by_state[state].append({
             'slug': slug, 'title': title, 'city': clean(v.get('city')),
-            'lat': lat, 'lon': lon,
+            'lat': lat, 'lon': lon, 'metro': v.get('region_slug') or '',
         })
 
     # Display names are the WIRE KEY every per-cinema slot is stored under
@@ -77,6 +78,12 @@ def main(src, out):
     if dupes:
         raise SystemExit(f"UNRESOLVED display-name collisions (wire keys): {dupes}")
 
+    # A venue recovered from its own page rather than from a metro sweep has no
+    # `region_slug`; it is emitted with an empty metro and `UsRoster` files it
+    # under CinemaArea.Other rather than dropping it from the partition.
+    metro_labels = labels_by_slug({state: {v['metro'] for v in vs if v['metro']}
+                                   for state, vs in by_state.items()})
+
     regions = []
     for state in sorted(by_state, key=lambda s: STATES[s][0]):
         vs = sorted(by_state[state], key=lambda v: v['title'].lower())
@@ -96,8 +103,8 @@ def main(src, out):
         "package models",
         "",
         "private[models] object UsRosterData {",
-        "  // (displayName, pillName, flicks cinema slug)",
-        "  type C = (String, String, String)",
+        "  // (displayName, pillName, flicks cinema slug, metro label, metro slug)",
+        "  type C = (String, String, String, String, String)",
         "  // (slug, name, lat, lon, zoneId, cinemas)",
         "  type R = (String, String, Double, Double, String, Seq[C])",
         "",
@@ -108,7 +115,10 @@ def main(src, out):
                      f'{lat}, {lon}, "{zone}", Seq(')
         for v in vs:
             t = scala_str(v['title'])
-            lines.append(f'    ("{t}", "{t}", "{scala_str(v["slug"])}"),')
+            metro = v['metro']
+            label = metro_labels[state][metro] if metro else ''
+            lines.append(f'    ("{t}", "{t}", "{scala_str(v["slug"])}", '
+                         f'"{scala_str(label)}", "{metro}"),')
         lines.append('  ))')
         lines.append('')
     lines.append('  val regions: Seq[R] = Seq(')
@@ -125,6 +135,9 @@ def main(src, out):
         print("  unknown states:", sorted({s for _, s in skipped_unknown_state}))
     qualified = sum(1 for _, vs in by_state.items() for v in vs if v['title'].endswith(')'))
     print(f"display names qualified to break collisions: ~{qualified}")
+    metros = {v['metro'] for vs in by_state.values() for v in vs if v['metro']}
+    no_metro = sum(1 for vs in by_state.values() for v in vs if not v['metro'])
+    print(f"metros={len(metros)} venues with no metro (-> CinemaArea.Other)={no_metro}")
 
 
 if __name__ == '__main__':
