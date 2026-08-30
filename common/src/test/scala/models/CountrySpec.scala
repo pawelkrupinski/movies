@@ -221,14 +221,14 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   "A country's share-preview (Open Graph) identity" should "carry its own host origin and home-montage filename" in {
     // The `/` landing card and the default og:image are built from these, so a
     // UK deployment previews off uk.showtimes.cc with an English montage
-    // (og-home-uk.png) instead of Poland's kinowo.net / og-home.png.
+    // (og-home-uk.jpg) instead of Poland's kinowo.net / og-home.jpg.
     Country.Poland.ogOrigin shouldBe "https://kinowo.net"
-    Country.Poland.homeOgImage shouldBe "og-home.png"                    // the default keeps the unsuffixed asset
+    Country.Poland.homeOgImage shouldBe "og-home.jpg"                    // the default keeps the unsuffixed asset
     Country.UnitedKingdom.ogOrigin shouldBe "https://showtimes.cc/uk"
-    Country.UnitedKingdom.homeOgImage shouldBe "og-home-uk.png"
+    Country.UnitedKingdom.homeOgImage shouldBe "og-home-uk.jpg"
     // Germany previews off its own base, with a per-code montage name.
     Country.Germany.ogOrigin shouldBe "https://showtimes.cc/de"
-    Country.Germany.homeOgImage shouldBe "og-home-de.png"
+    Country.Germany.homeOgImage shouldBe "og-home-de.jpg"
   }
 
   "Country.shareHost" should "be the bare domain each country's share cards are stamped with" in {

@@ -344,10 +344,13 @@ record, and the `webUrl` flip.
 - **Web** (`web/src/main/resources/`): `messages.<lang>` mirroring `messages.en`'s
   keys; add `<lang>` to `play.i18n.langs` in `application.conf` (else the deployment
   silently falls back to Polish). Fix any hardcoded literals to `messages(...)`.
-  Generate `og-home-<cc>.png` (the share card) via the `regenerate-og-cards`
-  workflow. Not a launch blocker — `Country.homeOgImage` names the file but
-  nothing fails when it is absent, and Germany has shipped without one; a missing
-  card just means that country's `/` link previews with no image.
+  Generate `og-home-<cc>.jpg` (the landing share card) AND the country's
+  per-city cards via the `regenerate-og-cards` workflow — add the country to its
+  matrix. This IS a launch blocker now: `OgCardAssetsSpec` fails on a country
+  whose landing or city cards are missing, because a named-but-absent card is
+  not a graceful degrade — it points every share at a 404 and the link previews
+  with no image at all. Germany and the US both shipped that way before the
+  spec existed.
 - **iOS** (`ios/`): add a `<lang>` localization to every key in
   `Localizable.xcstrings` + `InfoPlist.xcstrings`; add `<lang>` to `knownRegions`
   in `project.pbxproj`; add a `Country(code:"<cc>", languageCode:"<lang>")`

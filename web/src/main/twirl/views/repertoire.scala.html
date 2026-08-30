@@ -14,7 +14,7 @@
      shared.js never loads / bootView throws, so a broken boot can't leave a
      permanently blank page. *@
   <script>(function(e){e.classList.add('grid-cloak');setTimeout(function(){e.classList.remove('grid-cloak')},2000)})(document.documentElement)</script>
-  @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId, imageUrl = s"${models.Country.of(city).ogOrigin}/assets/img/og-${city.slug}.png", canonicalUrl = canonicalUrl)
+  @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId, imageUrl = s"${models.Country.of(city).ogOrigin}/assets/img/og-${city.slug}.jpg", canonicalUrl = canonicalUrl)
   @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
   @_resourceHints()
   @_errorTracking()

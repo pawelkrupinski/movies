@@ -71,7 +71,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     (site \ "description").as[String] shouldBe TestMessages.forLang("pl")("landing.ogDescription")
     (site \ "description").as[String] should not include "polskich miastach"
     val org = byType(arr, "Organization").head
-    (org \ "logo").as[String] should include("og-home.png")
+    (org \ "logo").as[String] should include("og-home.jpg")
   }
 
   // ── city page ────────────────────────────────────────────────────────────────

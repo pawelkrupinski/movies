@@ -9,11 +9,12 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.nio.file.{Files, Paths}
 import java.util.Base64
-import javax.imageio.ImageIO
+import javax.imageio.stream.MemoryCacheImageOutputStream
+import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
 
 /**
  * Regenerates the per-city Open Graph share cards under
- * `web/src/main/assets/img/og-{slug}.png` — the 1200×630 previews
+ * `web/src/main/assets/img/og-{slug}.jpg` — the 1200×630 previews
  * Facebook / Messenger / X / Slack render when a `/{slug}/` link is shared.
  *
  * Each card is the REAL repertoire page (a live desktop screenshot, with all
@@ -36,8 +37,8 @@ import javax.imageio.ImageIO
  *   sbt 'web/PageTest/runMain tools.OgCardGenerator poznan wroclaw'   # a subset of cities
  *   sbt 'web/PageTest/runMain tools.OgCardGenerator home'             # the `/` landing card
  *
- * The `home` target renders this country's landing montage — `og-home.png` for
- * Poland, `og-home-{code}.png` elsewhere (e.g. an English `og-home-uk.png`
+ * The `home` target renders this country's landing montage — `og-home.jpg` for
+ * Poland, `og-home-{code}.jpg` elsewhere (e.g. an English `og-home-uk.jpg`
  * screenshot off showtimes.cc/uk). It screenshots the country's primary
  * city (its first [[Country.cities]], or `KINOWO_OG_HOME_CITY`).
  *
@@ -54,6 +55,7 @@ object OgCardGenerator {
   private val Width  = 1200
   private val Height = 630
   private val Scale  = 3 // render the card at 3× then supersample down for smooth text
+  private val JpegQuality = 0.85f
 
   def main(args: Array[String]): Unit = {
     val country = Country.fromEnv
@@ -82,7 +84,7 @@ object OgCardGenerator {
         if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")) ok += 1
       } else {
         cities.foreach { city =>
-          if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(s"og-${city.slug}.png"), city.slug)) ok += 1
+          if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(s"og-${city.slug}.jpg"), city.slug)) ok += 1
         }
       }
     } finally chrome.close()
@@ -128,7 +130,7 @@ object OgCardGenerator {
   private[tools] def cityTagline(city: models.City): String = FilterDescription.cityHeading(city)
 
   /** The `/` home-card tagline for a deployment's language — the line under the
-   *  wordmark on `og-home{-code}.png`. Mirrors each `messages` bundle's
+   *  wordmark on `og-home{-code}.jpg`. Mirrors each `messages` bundle's
    *  `landing.title` suffix; kept here because this dev tool has no Play i18n
    *  wired. */
   private[tools] def homeTagline(country: Country): String = country.language.getLanguage match {
@@ -218,7 +220,8 @@ object OgCardGenerator {
   }
 
   /** Bicubic supersample the `Scale`× render down to the canonical 1200×630
-   *  OG size — text stays smooth (the earlier 1× direct render pixelated). */
+   *  OG size — text stays smooth (the earlier 1× direct render pixelated) —
+   *  and encode it as JPEG at [[JpegQuality]]. */
   private def downscale(pngBase64: String): Array[Byte] = {
     val src = ImageIO.read(new ByteArrayInputStream(Base64.getDecoder.decode(pngBase64)))
     val dst = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
@@ -228,9 +231,36 @@ object OgCardGenerator {
     g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,  RenderingHints.VALUE_ANTIALIAS_ON)
     g.drawImage(src, 0, 0, Width, Height, null)
     g.dispose()
-    val out = new java.io.ByteArrayOutputStream()
-    ImageIO.write(dst, "png", out)
-    out.toByteArray
+    encodeJpeg(dst)
+  }
+
+  /** Encode the composed card as JPEG at [[JpegQuality]] rather than PNG.
+   *
+   *  The card is poster photography under a gradient — the case PNG is worst
+   *  at. The same pixels cost ~810 KB as PNG and ~208 KB at q85, and every one
+   *  of these is a file committed to the repository AND rewritten by every
+   *  weekly refresh, so the 4× is paid per card per run. q85 is where the
+   *  wordmark and the rating pills — thin light-on-dark text, the part JPEG
+   *  ringing would show on first — still come back clean; below ~q75 the pill
+   *  edges start to fringe.
+   *
+   *  `ImageIO.write(_, "jpg", _)` is not enough: it encodes at the writer's
+   *  default quality with no way to state one, so the quality has to be set on
+   *  an explicit write param. */
+  private def encodeJpeg(image: BufferedImage): Array[Byte] = {
+    val writer = ImageIO.getImageWritersByFormatName("jpeg").next()
+    val params = writer.getDefaultWriteParam
+    params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
+    params.setCompressionQuality(JpegQuality)
+    val bytes  = new java.io.ByteArrayOutputStream()
+    val stream = new MemoryCacheImageOutputStream(bytes)
+    writer.setOutput(stream)
+    try writer.write(null, new IIOImage(image, null, null), params)
+    finally {
+      stream.close()
+      writer.dispose()
+    }
+    bytes.toByteArray
   }
 
   private def setMetrics(page: CdpPage, w: Int, h: Int, dpr: Int): Unit =

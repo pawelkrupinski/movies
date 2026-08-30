@@ -1,18 +1,24 @@
 name: Regenerate OG share cards
 
 # Weekly refresh of the per-city Open Graph share cards
-# (web/src/main/assets/img/og-{slug}.png) from the LIVE prod repertoire, so the
+# (web/src/main/assets/img/og-{slug}.jpg) from the LIVE prod repertoire, so the
 # link previews Facebook/Messenger/X/Slack render don't freeze on one week's
 # posters. The cards are a screenshot of each `/{slug}/` page (all dates shown)
 # under the deployment's wordmark + city line overlay — "Kinowo / Repertuar kin
 # w {locative}" for Poland — see `web/src/page/scala/tools/OgCardGenerator.scala`.
 #
-# Runs once PER deployed country, selected by KINOWO_COUNTRY. That is POLAND
-# ALONE since 2026-08-02: the UK leg screenshotted uk.showtimes.cc, and that
-# machine is stopped. Its removal is not optional housekeeping — `Country.ogOrigin`
-# now falls back to the deployed host for an undeployed country, so a UK leg would
-# have pointed the generator at kinowo.net and screenshotted UK region slugs
-# that only exist on the UK deployment, committing a PR full of 404 cards.
+# Runs once PER deployed country — all four of them. Every country gets its `/`
+# landing card (`og-home{-code}.jpg`) and then its cities. The sweep is a card
+# per city and the US alone is ~525 of them, so the countries are a MATRIX
+# rather than sequential steps in one job: four ~45min-worst-case legs in
+# parallel, instead of one job that would run past any sane timeout.
+#
+# `Country.ogOrigin` points each leg at that country's own base URL (path prefix
+# included), and falls back to the DEPLOYED host for an undeployed country — so
+# a leg for a country whose `webUrl` has gone dark does not fail loudly, it
+# screenshots ITS OWN slugs on some other country's site and commits a PR full
+# of 404 cards. That is why a leg is deleted rather than left running when a
+# deployment is retired (as the UK's was between 2026-08-02 and 2026-08-29).
 #
 # This only authors a branch + PR for a human to review — it does NOT push to
 # main and does NOT deploy. The repertoire moves week to week, so a run almost
@@ -33,27 +39,31 @@ on:
     schedule:
         - cron: '0 0 * * 5'
 
-# Author/commit the regenerated cards into the PR branch.
 permissions:
-    contents: write
-    pull-requests: write
+    contents: read
 
 jobs:
-    regenerate-og-cards:
+    # One leg per country: screenshot its landing card + every city card, and
+    # hand the JPEGs to the `open-pr` job as an artifact. The legs do NOT commit
+    # — four jobs pushing to one branch would race each other, and the last one
+    # to finish would be the only country in the PR.
+    generate:
+        name: cards (${{ matrix.country }})
+        strategy:
+            # One country's flaky screenshot must not cost the other three their
+            # refresh.
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland,         code: pl }
+                    - { country: united-kingdom, code: uk }
+                    - { country: germany,        code: de }
+                    - { country: united-states,  code: us }
         runs-on: ubuntu-latest
-        timeout-minutes: 30
+        # ~5s a card, and the US is ~525 cards (55 states + their metros) — the
+        # sweep alone is ~45 minutes there before a cold compile.
+        timeout-minutes: 90
         steps:
-            # Short-lived installation token for the "Kinowo Sync Bot" GitHub App.
-            # The PR below is opened with THIS token (not GITHUB_TOKEN) so it fires
-            # `pull_request` and Branch CI runs on the refresh PR without a human
-            # nudge. Needs repo secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY
-            # (set up for sync-title-rules.yml — see that file's header).
-            - uses: actions/create-github-app-token@v3
-              id: app-token
-              with:
-                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
-                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
-
             - uses: actions/checkout@v5
 
             # Same Scala toolchain as the other sbt jobs (Temurin JDK 25 + sbt
@@ -93,38 +103,64 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # Screenshot every live city page and compose its card into
-            # web/src/main/assets/img/og-{slug}.png. Hits the public prod site —
-            # no Mongo/Fly secrets needed. ~5s/city. KINOWO_COUNTRY picks the
-            # brand/language and the base URL screenshotted (its own webUrl, path prefix included).
-            - name: Regenerate per-city Poland cards from live prod
+            # The `/` landing montage — `og-home.jpg` for Poland, `og-home-{code}.jpg`
+            # elsewhere. Screenshots the country's primary city under the same
+            # overlay with the national tagline. One card, well under a minute.
+            - name: Regenerate the ${{ matrix.country }} landing card
               env:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-                  KINOWO_COUNTRY: pl
+                  KINOWO_COUNTRY: ${{ matrix.code }}
+              run: sbt "web/PageTest/runMain tools.OgCardGenerator home"
+
+            # Every live city page → web/src/main/assets/img/og-{slug}.jpg. Hits
+            # the public prod site — no Mongo/Fly secrets needed. ~5s/city.
+            # KINOWO_COUNTRY picks the brand/language and the base URL
+            # screenshotted (its own webUrl, path prefix included).
+            - name: Regenerate the ${{ matrix.country }} city cards
+              env:
+                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+                  KINOWO_COUNTRY: ${{ matrix.code }}
               run: sbt "web/PageTest/runMain tools.OgCardGenerator"
 
-            # The UK cards off showtimes.cc/uk — English overlay ("Showtimes
-            # / Cinema listings in {city}"), 79 regions. Same generator, same
-            # asset dir; UK slugs don't collide with PL slugs.
-            #
-            # RE-ENABLED 2026-08-29, when the UK deployment came back (then on uk.showtimes.cc;
-            # it now answers under the showtimes.cc/uk path prefix, which `Country.ogOrigin`
-            # already carries, so the generator needed no change).
-            # It was disabled on 2026-08-02 with the shutdown, and could not simply be left
-            # running: `Country.ogOrigin` falls back to the DEPLOYED host for an undeployed
-            # country, so this leg would not have failed loudly against a dead host — it would
-            # have screenshotted UK region slugs on the Polish site, which 404, and opened a PR
-            # full of blank cards. That fallback is exactly why re-enabling it is safe again
-            # only now that `Country.UnitedKingdom.webUrl` names a host that answers.
-            #
-            # There is still NO German leg, and that predates the shutdown rather than being
-            # left over from it: Germany's 158 regions have never had per-city cards. Adding
-            # them is a separate decision about ~13 minutes of screenshotting, not a restore.
-            - name: Regenerate per-city UK cards from live prod
-              env:
-                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-                  KINOWO_COUNTRY: uk
-              run: sbt "web/PageTest/runMain tools.OgCardGenerator"
+            - uses: actions/upload-artifact@v6
+              with:
+                  name: og-cards-${{ matrix.code }}
+                  path: web/src/main/assets/img/og-*.jpg
+                  retention-days: 3
+                  overwrite: true
+                  if-no-files-found: error
+
+    # Collect every leg's cards into ONE commit. Runs even when a leg failed
+    # (`always()` + a non-cancelled guard), so three good countries still land
+    # their refresh while the fourth is retried — a leg that produced nothing
+    # simply contributes no files.
+    open-pr:
+        needs: generate
+        if: always() && !cancelled()
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        permissions:
+            contents: write
+            pull-requests: write
+        steps:
+            # Short-lived installation token for the "Kinowo Sync Bot" GitHub App.
+            # The PR below is opened with THIS token (not GITHUB_TOKEN) so it fires
+            # `pull_request` and Branch CI runs on the refresh PR without a human
+            # nudge. Needs repo secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY
+            # (set up for sync-title-rules.yml — see that file's header).
+            - uses: actions/create-github-app-token@v3
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
+            - uses: actions/checkout@v5
+
+            - uses: actions/download-artifact@v6
+              with:
+                  pattern: og-cards-*
+                  merge-multiple: true
+                  path: web/src/main/assets/img
 
             # Open (or update) a PR with the refreshed cards. A fixed branch means
             # a later run amends the open PR instead of stacking duplicates; if a
@@ -137,21 +173,22 @@ jobs:
                   token: ${{ steps.app-token.outputs.token }}
                   branch: chore/regenerate-og-cards
                   delete-branch: true
-                  add-paths: web/src/main/assets/img/og-*.png
+                  add-paths: web/src/main/assets/img/og-*.jpg
                   commit-message: 'chore: regenerate per-city OG share cards'
                   title: 'chore: regenerate per-city OG share cards'
                   body: |
                       Automated weekly refresh of the per-city Open Graph share
-                      cards (`web/src/main/assets/img/og-{slug}.png`) from the live
+                      cards (`web/src/main/assets/img/og-{slug}.jpg`) from the live
                       prod repertoire, so the link previews don't freeze on one
-                      week's posters. Covers the one deployed country — Poland
-                      (kinowo.net).
+                      week's posters. Covers all four deployed countries — Poland,
+                      the UK, Germany and the US — landing card included.
 
                       Each card is a screenshot of that city's `/{slug}/` page (all
                       dates shown) under the deployment's overlay — "Kinowo /
-                      Repertuar kin w {locative}". **Skim the cards** before
-                      merging — a city that's genuinely film-dormant this week will
-                      show a sparse grid.
+                      Repertuar kin w {locative}", "Showtimes / Cinema listings in
+                      {city}". **Skim the cards** before merging — a city that's
+                      genuinely film-dormant this week will show a sparse grid, and
+                      a leg pointed at a dark deployment shows someone else's site.
 
                       Generated by `.github/workflows/regenerate-og-cards.yml`
                       (`tools.OgCardGenerator`).

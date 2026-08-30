@@ -4,7 +4,6 @@ import models.Catalog
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.io.File
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 
@@ -35,17 +34,9 @@ class CatalogSeedSpec extends AnyFlatSpec with Matchers {
     "android/app/src/main/assets/catalog-seed.json",
   )
 
-  // The tests run from an unspecified working directory; walk up to the repo
-  // root (the dir holding build.sbt) so the seed paths resolve regardless.
-  private lazy val repoRoot: File = {
-    var dir = new File(".").getCanonicalFile
-    while (dir != null && !new File(dir, "build.sbt").exists()) dir = dir.getParentFile
-    Option(dir).getOrElse(sys.error(s"repo root (build.sbt) not found from ${new File(".").getCanonicalPath}"))
-  }
-
   seeds.foreach { rel =>
     s"The bundled catalog seed $rel" should "match the live Catalog render" in {
-      val file    = new File(repoRoot, rel)
+      val file    = testsupport.RepoRoot.file(rel)
       val current = if (file.exists()) new String(Files.readAllBytes(file.toPath), StandardCharsets.UTF_8) else null
       if (current != expected) {
         file.getParentFile.mkdirs()
