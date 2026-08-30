@@ -547,6 +547,45 @@ object RealHttpFetch {
       minRequestInterval = Some(Duration.ofMillis(500)),
       paceKnob           = Some("KINOWO_REGAL_PACE_MS"),
     ),
+
+    // ── US mid-tier chain origins ────────────────────────────────────────────
+    // Each of the three rows below exists because rows match by host SUFFIX and
+    // NOTHING here matches these hosts otherwise — `showcasecinemas.co.uk` does
+    // not cover `showcasecinemas.com`, and no row at all means NO PACE. That is
+    // the precise condition that produced the UK's self-inflicted 429 storm on
+    // flicks.co.uk (see the long note above), so a new chain origin gets a row in
+    // the same commit that starts fetching it, not after the first incident.
+    //
+    // These are all far LIGHTER than the aggregator they take work away from,
+    // which is the whole point of moving the venues: 40 Alamo venues cost 40
+    // requests a sweep (one per venue — the venue's entire programme comes back
+    // in a single response) and the 39 Webedia venues cost 78 (catalogue +
+    // schedule), against the ~36 per venue those same 79 venues were costing on
+    // flicks.us. So the pace is a courtesy bound on a small load, not a throttle
+    // fitted to an observed limit — none of the three has shown one. Each still
+    // names its own knob so it can be tightened from /admin/config without a
+    // redeploy if that ever changes.
+    //
+    // 500ms (2 req/s) is the rate the reconnaissance ran at, which every one of
+    // these origins served without a single 403, 429 or stall. A 40-request
+    // sweep at that pace is 20 seconds, so there is no cadence coupling to worry
+    // about here the way there is for Flicks and Filmstarts — the sweep is
+    // negligible against any cadence the US worker could plausibly run.
+    HostPolicy(
+      Set("drafthouse.com"),
+      minRequestInterval = Some(Duration.ofMillis(500)),
+      paceKnob           = Some("KINOWO_ALAMO_PACE_MS"),
+    ),
+    HostPolicy(
+      Set("showcasecinemas.com"),
+      minRequestInterval = Some(Duration.ofMillis(500)),
+      paceKnob           = Some("KINOWO_SHOWCASE_US_PACE_MS"),
+    ),
+    HostPolicy(
+      Set("landmarktheatres.com"),
+      minRequestInterval = Some(Duration.ofMillis(500)),
+      paceKnob           = Some("KINOWO_LANDMARK_PACE_MS"),
+    ),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted

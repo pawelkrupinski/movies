@@ -7,7 +7,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.cinemas.common.{FlicksClient, FlicksMarket}
+import services.cinemas.common.{FlicksClient, FlicksMarket, GatsbyBoxOfficeClient}
+import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.cinemas.uk.CineworldClient
 import services.cinemas.us.RegalClient
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
@@ -146,9 +147,9 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     // A UK venue's fallback must name the UK market — looking it up on flicks.us 404s.
     c.flicksFallbackSlugs.get(CineworldSheffield).value.market shouldBe FlicksMarket.UnitedKingdom
     // Cineworld 87 + Vue 88 + Showcase 16 + Everyman 50 + Odeon 102 = 343 UK,
-    // plus Regal's 401 US venues.
+    // plus the US chain venues: Regal 401 + Alamo 40 + Landmark 26 + Showcase US 13.
     ChainFlicksFallback.ukSlugs should have size 343
-    c.flicksFallbackSlugs should have size 343 + 401
+    c.flicksFallbackSlugs should have size 343 + 401 + 79
 
     // Regal's US venues are the same arrangement on the other market: own-site
     // chain client as PRIMARY, flicks.US kept as the fallback. Named explicitly
@@ -171,6 +172,84 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       primary should not be a [FlicksClient]      // moved off the aggregator…
       primary.chain shouldBe true                 // …onto an own-site chain source
     }
+  }
+
+  // The US mid-tier chains, same arrangement — own-site PRIMARY with flicks.us
+  // kept as the fallback. Two things can silently break here that the UK wiring
+  // cannot: the fallback MARKET (a US venue handed to a UK FlicksClient would ask
+  // flicks.co.uk for an American slug and 404 forever — a fallback that looks
+  // wired and never fires), and the venue mapping itself, since US cinemas are
+  // built at runtime from data/us/venues.json and are matched by DISPLAY NAME.
+  it should "wire US chain venues to their own-site client with flicks.us kept as the fallback" in {
+    val c = catalog()
+
+    def primaryFor(name: String) =
+      c.all.find(_.cinema.displayName == name).value
+
+    primaryFor("Alamo Drafthouse Lakeline") shouldBe a [AlamoDrafthouseClient]
+    primaryFor("Landmark Nuart Theatre") shouldBe a [GatsbyBoxOfficeClient]
+    primaryFor("Showcase Legacy Place Dedham") shouldBe a [GatsbyBoxOfficeClient]
+
+    val usFallbacks = c.flicksFallbackSlugs.filter { case (cin, _) =>
+      UsChainVenues.all.contains(cin.displayName)
+    }
+    usFallbacks should have size 79
+    // Every US chain venue falls back to the US market, never the UK one.
+    all(usFallbacks.values.map(_.market).toSeq) shouldBe FlicksMarket.UnitedStates
+    // …and to the very slug it used to be catalogued under, derived rather than
+    // restated, so primary and fallback cannot drift about which venue they mean.
+    usFallbacks.foreach { case (cin, fallback) =>
+      fallback.slug shouldBe UsRoster.flicksSlugByCinema(cin)
+      c.all.find(_.cinema == cin).value should not be a [FlicksClient]
+    }
+  }
+
+  // US chain venues are matched by DISPLAY NAME, which makes a typo silent: the
+  // name simply never matches, the venue quietly stays on flicks.us, and nothing
+  // fails. Worse, `UsRoster` QUALIFIES a display name that collides with a Polish,
+  // UK or German venue (appending its state), so a future roster collision could
+  // rename one out from under these maps. Pin that every mapped name is real.
+  it should "name only venues that actually exist in the US roster" in {
+    val unknown = UsChainVenues.all.filterNot(UsRoster.byDisplayName.contains)
+    withClue("these UsChainVenues names match no US roster venue, so they silently stay on flicks.us: ") {
+      unknown shouldBe empty
+    }
+    UsChainVenues.all should have size 79
+  }
+
+  // A NEW CHAIN ORIGIN MUST ARRIVE PACED. HostPolicy rows match by host SUFFIX, so
+  // a host with no row of its own is not paced at all — the exact condition that
+  // produced this repo's self-inflicted 429 storm on flicks.co.uk. Asserting the
+  // three literal hosts would not catch the case that actually bites (someone adds
+  // a fourth US chain and forgets the row), so this reads the hosts off the
+  // scrapers themselves and demands a pace for each.
+  it should "pace every host the US chain primaries fetch from" in {
+    val c = catalog()
+    val chainHosts = c.all
+      .filter(s => UsChainVenues.all.contains(s.cinema.displayName))
+      .flatMap(_.scrapeHosts)
+      .distinct
+    chainHosts should contain theSameElementsAs
+      Seq("drafthouse.com", "www.showcasecinemas.com", "www.landmarktheatres.com")
+    chainHosts.foreach { host =>
+      withClue(s"$host has no HostPolicy pace row, so it is UNPACED: ") {
+        _root_.tools.RateLimitedHttpFetch.configuredInterval(s"https://$host/") should not be empty
+      }
+    }
+  }
+
+  // The venues we could NOT verify against a chain's own roster must stay on the
+  // aggregator. Wiring one to a chain client on a guessed id would 404 it into a
+  // permanently red venue; leaving it on flicks.us keeps it working. All three are
+  // in our roster but absent from their chain's own venue list.
+  it should "leave the unmapped chain venues on flicks.us" in {
+    val c = catalog()
+    Seq("Showcase Randolph", "Landmark Esquire Theatre", "Landmark Plaza Frontenac Cinema")
+      .foreach { name =>
+        withClue(s"$name should still be a FlicksClient: ") {
+          c.all.find(_.cinema.displayName == name).value shouldBe a [FlicksClient]
+        }
+      }
   }
 
   // Cineworld + Vue are Cloudflare-403'd from our Fly datacenter IP (verified in

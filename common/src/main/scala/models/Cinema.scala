@@ -1620,8 +1620,17 @@ object UsRoster {
   val regions: Seq[UsRegion]                = built.map(_._1)
   val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, v) => r.labels.nominative -> v.map(_._1) }
   /** Each US venue's Flicks `/cinema/<slug>/` id — what the scrape catalog binds
-   *  to a `FlicksClient` on the `FlicksMarket.UnitedStates` market. */
+   *  to a `FlicksClient` on the `FlicksMarket.UnitedStates` market, and what a
+   *  chain-primary venue keeps as its FALLBACK slug. */
   val flicksSlugByCinema: Map[Cinema, String] = built.flatMap(_._2).toMap
+
+  /** US venues by display name. The display name is the wire key every stored slot
+   *  uses and the only stable handle these venues have — they are built at runtime
+   *  from `data/us/venues.json`, so unlike the Polish and UK rosters there is no
+   *  case object to refer to one by. `services.cinemas.us.UsChainVenues` keys its
+   *  chain maps this way for exactly that reason; this is the lookup back. */
+  val byDisplayName: Map[String, Cinema] =
+    built.flatMap(_._2).map { case (cinema, _) => cinema.displayName -> cinema }.toMap
 }
 
 object Cinema {

@@ -4,6 +4,7 @@ import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.ChainFlicksFallback
+import services.cinemas.us.UsChainVenues
 import tools.RateLimitedHttpFetch
 
 import scala.concurrent.duration.*
@@ -64,6 +65,16 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
    *  a class needing live deps, so read the source.) */
   private def FlicksPrimaryVenues =
     Country.UnitedKingdom.cities.flatMap(_.cinemas).distinct.size - ChainFlicksFallback.ukSlugs.size
+
+  /** US venues whose scrape actually reaches the PACED flicks.us origin on the happy
+   *  path — the US counterpart of the UK figure above. 79 of them (Alamo 40,
+   *  Landmark 26, Showcase US 13) went own-site-primary and now cost flicks.us
+   *  nothing in steady state, reaching it only after the 6h fallback grace.
+   *  Derived from `UsChainVenues`, so wiring a venue to a chain (or back to Flicks)
+   *  moves this number automatically. */
+  private def UsFlicksPrimaryVenues =
+    Country.UnitedStates.cities.flatMap(_.cinemas).distinct
+      .count(c => !UsChainVenues.all.contains(c.displayName))
 
   /** flicks.co.uk requests one UK venue costs per sweep: the programme page
    *  `planChunks` reads its `data-date` list off, plus one day-page per advertised
@@ -182,7 +193,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
       pace should not be empty
     }
 
-    val requests = Country.UnitedStates.cities.flatMap(_.cinemas).distinct.size * RequestsPerFlicksVenue
+    val requests = UsFlicksPrimaryVenues * RequestsPerFlicksVenue
     val sweep    = (requests * pace.get.toMillis).millis
     withClue(s"$requests requests at ${pace.get.toMillis}ms = ${sweep.toMinutes}min sweep vs ${cadence.get.toMinutes}min cadence: ") {
       sweep should be <= cadence.get

@@ -8,6 +8,7 @@ import services.cinemas.pl._
 import services.cinemas.common.{FlicksClient, FlicksMarket}
 import services.cinemas.us.{RegalClient, RegalVenues}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
+import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.movies.TitleNormalizer
 
 import java.time.{LocalDate, ZoneId}
@@ -1485,13 +1486,38 @@ class CinemaScraperCatalog(
       region.slug -> region.cinemas.map(c => filmstarts(models.GermanRoster.theaterIdByCinema(c), c))
     }.toMap
 
-  // ── United States (Flicks) ───────────────────────────────────────────────
+  // ── United States (chain-primary, Flicks for the rest) ───────────────────
   // Data-driven from the full UsRoster (55 states/territories / ~4,200 cinemas):
-  // one Flicks scraper per cinema on the US market, keyed by the state slug that
-  // City.slug uses. Each cinema's flicks.us slug comes from
-  // UsRoster.flicksSlugByCinema. Same client and same residential egress as the
-  // UK — only the market differs, which is what keeps the two markets' pace gates
-  // and 429 back-offs independent (see FlicksMarket).
+  // one scraper per cinema, keyed by the state slug that City.slug uses.
+  //
+  // A venue named in `UsChainVenues` gets its CHAIN'S OWN site as the primary and
+  // keeps flicks.us as the fallback (below); every other venue is flicks.us
+  // primary as before, its slug from UsRoster.flicksSlugByCinema. Same client and
+  // same residential egress as the UK for the Flicks leg — only the market
+  // differs, which is what keeps the two markets' pace gates and 429 back-offs
+  // independent (see FlicksMarket).
+  //
+  // WHY THESE CHAINS AND NOT THE OTHERS. Moving a venue off the aggregator is only
+  // safe if the chain's own feed advertises AT LEAST as much of the programme:
+  // `MovieCache`'s scrape-prune reads a film's absence from a complete listing as
+  // "it stopped screening", so a shorter-horizon primary DELETES the advance-sale
+  // tail on every successful scrape (see ScrapeHorizon — it cost the UK its whole
+  // event programme once already). All three chains here were measured against
+  // flicks.us on the same venues on 2026-08-30 and each reached the same furthest
+  // date or better, with equal or more populated days — as was Regal, wired
+  // alongside them below. The other four US mid-tier chains are NOT here, and
+  // neither is Cinemark (38-193 days SHORTER than flicks on all 20 venues
+  // measured) — `UsChainVenues` names each one and why.
+  //
+  // Alamo reaches our datacenter egress directly (no Cloudflare challenge from it
+  // on 2026-08-30), as do both Webedia hosts — so all three use `http`, not the
+  // residential `flicksFetch` the Flicks leg needs.
+  private def alamo(venue: UsChainVenues.AlamoVenue, cinema: Cinema): AlamoDrafthouseClient =
+    new AlamoDrafthouseClient(http, venue.slug, cinema, ZoneId.of(venue.zoneId), today = Some(today))
+  private def webedia(baseUrl: String, venue: UsChainVenues.WebediaVenue, cinema: Cinema): GatsbyBoxOfficeClient =
+    new GatsbyBoxOfficeClient(http, baseUrl, venue.theaterId, cinema,
+      timeZone = venue.zoneId, venuePath = Some(venue.venuePath), today = today)
+
   // Regal's ~400 US venues scrape their OWN origin (regmovies.com) instead of the
   // paced flicks.us aggregator, which frees that much of the US sweep's shared
   // budget for the other ~4,600 venues.
@@ -1520,20 +1546,44 @@ class CinemaScraperCatalog(
   private def regal(theatreCode: String, cinema: Cinema): RegalClient =
     new RegalClient(regalHttp, theatreCode, cinema, today)
 
+  /** The chain-primary scraper for a US venue, or `None` when it stays on Flicks.
+   *
+   *  The mid-tier chains key off the venue's DISPLAY NAME (their own rosters name
+   *  venues, not slugs); Regal keys off the flicks.us SLUG, because its map was
+   *  built by joining Regal's roster to ours through that slug. Both are exact
+   *  lookups — a venue absent from every map falls through to Flicks, which is the
+   *  correct answer for the ~20 chain locations whose operator no longer lists
+   *  them. */
+  private def usChainScraper(cinema: Cinema): Option[CinemaScraper] = {
+    val name = cinema.displayName
+    UsChainVenues.alamoDrafthouse.get(name).map(alamo(_, cinema))
+      .orElse(UsChainVenues.showcaseUs.get(name).map(webedia(GatsbyBoxOfficeClient.ShowcaseUsBaseUrl, _, cinema)))
+      .orElse(UsChainVenues.landmark.get(name).map(webedia(GatsbyBoxOfficeClient.LandmarkBaseUrl, _, cinema)))
+      .orElse(
+        models.UsRoster.flicksSlugByCinema.get(cinema)
+          .flatMap(RegalVenues.theatreCodeBySlug.get)
+          .map(regal(_, cinema)))
+  }
+
   private val usBaseByCity: Map[String, Seq[CinemaScraper]] =
     models.UsRoster.regions.map { region =>
       region.slug -> region.cinemas.map { c =>
-        val slug = models.UsRoster.flicksSlugByCinema(c)
-        // Regal venues go to the chain client as PRIMARY (keeping flicks.us as
-        // their fallback via ChainFlicksFallback); everything else — including
-        // the seven Regal locations Regal's own roster no longer lists — stays
-        // on flicks.us as its only source.
-        RegalVenues.theatreCodeBySlug.get(slug) match {
-          case Some(theatreCode) => regal(theatreCode, c)
-          case None              => flicksUs(slug, c)
-        }
+        usChainScraper(c).getOrElse(flicksUs(models.UsRoster.flicksSlugByCinema(c), c))
       }
     }.toMap
+
+  /** US chain venues → the flicks.us slug they keep as their FALLBACK.
+   *
+   *  Derived from the same `UsRoster.flicksSlugByCinema` their Flicks primary used
+   *  to be built from, rather than restated in a table: a US venue is a runtime
+   *  object with no case-object name to write down, and deriving means the primary
+   *  and the fallback cannot drift apart about which venue they mean. */
+  private val usFlicksFallback: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
+    models.UsRoster.regions.flatMap(_.cinemas)
+      .filter(c => UsChainVenues.all.contains(c.displayName))
+      .flatMap(c => models.UsRoster.flicksSlugByCinema.get(c)
+        .map(slug => c -> ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedStates, slug)))
+      .toMap
 
   private val baseByCity: Map[String, Seq[CinemaScraper]] = Map(
     "poznan"     -> poznanScrapers,
@@ -1674,7 +1724,8 @@ class CinemaScraperCatalog(
    *  cinema to the flicks slug it used to be catalogued under, so `WorkerWiring` can
    *  build the fallback `FlicksClient` on demand. Populated by the chain-wiring step;
    *  empty until then (behaviour identical to the pre-chain flicks-primary catalogue). */
-  val flicksFallbackSlugs: Map[Cinema, ChainFlicksFallback.FlicksFallback] = ChainFlicksFallback.slugs
+  val flicksFallbackSlugs: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
+    ChainFlicksFallback.slugs ++ usFlicksFallback
 
   /** Union of every cinema scraper's HTTP hosts. `MonitoringHttpFetch`
    *  suppresses per-host uptime rows for these — each cinema's health is

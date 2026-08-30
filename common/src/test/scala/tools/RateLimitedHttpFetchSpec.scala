@@ -192,6 +192,57 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     slept shouldBe List(200L)
   }
 
+  // ── US mid-tier chain origins ───────────────────────────────────────────
+  // Same lesson as flicks.us above, three more times over: a host with no row of
+  // its own is entirely UNPACED, and these are brand-new origins we started
+  // fetching 79 venues from. Each row is asserted individually because a single
+  // dropped row is invisible — the scrape just gets faster and the origin decides
+  // what to do about it.
+
+  it should "pace every US chain origin we scrape rather than letting one fall through unpaced" in {
+    RateLimitedHttpFetch.configuredInterval(
+      "https://drafthouse.com/s/mother/v2/schedule/venue/lakeline") shouldBe Some(500.millis)
+    RateLimitedHttpFetch.configuredInterval(
+      "https://www.showcasecinemas.com/page-data/sq/d/3836549025.json") shouldBe Some(500.millis)
+    RateLimitedHttpFetch.configuredInterval(
+      "https://www.landmarktheatres.com/api/gatsby-source-boxofficeapi/schedule?theaters=x") shouldBe
+      Some(500.millis)
+  }
+
+  // THE SUFFIX TRAP, in its sharpest form yet: National Amusements runs the
+  // Showcase brand on BOTH `showcasecinemas.co.uk` and `showcasecinemas.com`.
+  // Neither host is a dotted sub-domain of the other, so the US row must not be
+  // read as covering the UK one (nor the reverse) — they are separate origins
+  // with separate quotas, and conflating them would have one brand's sweep
+  // spending the other's budget.
+  it should "keep the US and UK Showcase brands on separate rows" in {
+    val uk = "https://www.showcasecinemas.co.uk/page-data/sq/d/3836549025.json"
+    val us = "https://www.showcasecinemas.com/page-data/sq/d/3836549025.json"
+    // The UK brand has no row at all — it absorbs our natural concurrency, and
+    // the US row must not silently start pacing it.
+    RateLimitedHttpFetch.configuredInterval(uk) shouldBe None
+    RateLimitedHttpFetch.configuredInterval(us) shouldBe Some(500.millis)
+    withProperty("KINOWO_SHOWCASE_US_PACE_MS", "900") {
+      RateLimitedHttpFetch.configuredInterval(us) shouldBe Some(900.millis)
+      RateLimitedHttpFetch.configuredInterval(uk) shouldBe None
+    }
+  }
+
+  it should "let each US chain pace be retuned from /admin/config without a restart" in {
+    val alamo    = "https://drafthouse.com/s/mother/v2/schedule/venue/lakeline"
+    val landmark = "https://www.landmarktheatres.com/api/gatsby-source-boxofficeapi/schedule?theaters=x"
+    withProperty("KINOWO_ALAMO_PACE_MS", "250") {
+      RateLimitedHttpFetch.configuredInterval(alamo) shouldBe Some(250.millis)
+      // …and only that one host: the knobs are per row, not global.
+      RateLimitedHttpFetch.configuredInterval(landmark) shouldBe Some(500.millis)
+    }
+    withProperty("KINOWO_LANDMARK_PACE_MS", "750") {
+      RateLimitedHttpFetch.configuredInterval(landmark) shouldBe Some(750.millis)
+      RateLimitedHttpFetch.configuredInterval(alamo) shouldBe Some(500.millis)
+    }
+    RateLimitedHttpFetch.configuredInterval(alamo) shouldBe Some(500.millis)
+  }
+
   it should "let KINOWO_FILMSTARTS_PACE_MS retune the pace without a restart" in {
     // The point of the knob: Webedia publishes no rate limit, so the pace is
     // found empirically. Resolving per request means an /admin/config flip

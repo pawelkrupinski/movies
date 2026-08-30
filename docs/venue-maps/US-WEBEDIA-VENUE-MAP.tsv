@@ -1,0 +1,47 @@
+# Showcase US + Landmark (Webedia Gatsby "boxofficeapi", the same platform Showcase UK and
+# Everyman run): platform theater id -> our roster display name.
+# Roster: https://www.showcasecinemas.com/page-data/sq/d/2506275789.json -> data.allTheater.nodes[]
+#         https://www.landmarktheatres.com/page-data/sq/d/2506275789.json -> data.allTheater.nodes[]
+# Captured 2026-08-30. Showcase 13/13 of the chain roster; Landmark 26/26.
+# NOT mapped, and so left on flicks.us: Showcase Randolph, Landmark Esquire Theatre,
+# Landmark Plaza Frontenac Cinema — none of the three appears in its own chain roster.
+# Columns: brand, theaterId, timeZone, apiName, venuePath, ourDisplayName
+showcase-us	X06PR	America/New_York	Blackstone Valley 14: Cinema de Lux	/theaters/x06pr-blackstone-valley-14-cinema-de-lux	Blackstone Valley 14 Millbury
+showcase-us	X06DU	America/New_York	Island 16: Cinema de Lux	/theaters/x06du-island-16-cinema-de-lux	Island 16 Holtsville
+showcase-us	X0PTT	America/New_York	Showcase SuperLux Chestnut Hill	/theaters/x0ptt-showcase-superlux-chestnut-hill	Showcase Chestnut Hill
+showcase-us	X000P	America/New_York	Showcase Cinema de Lux Cross County	/theaters/x000p-showcase-cinema-de-lux-cross-county	Showcase Cross County
+showcase-us	X00UF	America/New_York	Showcase Cinema de Lux Farmingdale	/theaters/x00uf-showcase-cinema-de-lux-farmingdale	Showcase Farmingdale
+showcase-us	G019K	America/New_York	Showcase Cinema de Lux Hanover Crossing	/theaters/g019k-showcase-cinema-de-lux-hanover-crossing	Showcase Hanover Crossing
+showcase-us	X0C11	America/New_York	Showcase Cinema de Lux Legacy Place	/theaters/x0c11-showcase-cinema-de-lux-legacy-place	Showcase Legacy Place Dedham
+showcase-us	X02XX	America/New_York	Showcase Cinema de Lux Lowell	/theaters/x02xx-showcase-cinema-de-lux-lowell	Showcase Lowell
+showcase-us	X02RA	America/New_York	Showcase Cinema de Lux North Attleboro	/theaters/x02ra-showcase-cinema-de-lux-north-attleboro	Showcase North Attleboro
+showcase-us	X0L42	America/New_York	Showcase Cinema de Lux Ridge Hill	/theaters/x0l42-showcase-cinema-de-lux-ridge-hill	Showcase Ridge Hill Yonkers
+showcase-us	X0343	America/New_York	Showcase Cinema de Lux Springdale	/theaters/x0343-showcase-cinema-de-lux-springdale	Showcase Springdale
+showcase-us	X02NZ	America/New_York	Showcase Cinemas Warwick - Quaker Lane	/theaters/x02nz-showcase-cinemas-warwick-quaker-lane	Showcase Warwick
+showcase-us	X01AF	America/New_York	Showcase Cinema de Lux Woburn	/theaters/x01af-showcase-cinema-de-lux-woburn	Showcase Woburn
+landmark	X00TM	America/Los_Angeles	Landmark Aquarius Theatre, Palo Alto	/theaters/x00tm-landmark-aquarius-theatre-palo-alto	Landmark Aquarius
+landmark	X0WLT	America/New_York	Landmark Atlantic Plumbing Cinema	/theaters/x0wlt-landmark-atlantic-plumbing-cinema	Landmark Atlantic Plumbing Cinema
+landmark	X06C1	America/New_York	Landmark Bethesda Row Cinema	/theaters/x06c1-landmark-bethesda-row-cinema	Landmark Bethesda Row Cinema
+landmark	X05IO	America/Chicago	Landmark Century Centre Cinema, Chicago	/theaters/x05io-landmark-century-centre-cinema-chicago	Landmark Century Centre Chicago
+landmark	G01AA	America/New_York	Landmark Closter Plaza	/theaters/g01aa-landmark-closter-plaza	Landmark Closter Plaza
+landmark	X00MT	America/Los_Angeles	Landmark Crest Cinema Center, Shoreline	/theaters/x00mt-landmark-crest-cinema-center-shoreline	Landmark Crest Cinema Center
+landmark	X00QV	America/Los_Angeles	Landmark Del Mar Theatre, Santa Cruz	/theaters/x00qv-landmark-del-mar-theatre-santa-cruz	Landmark Del Mar Theatre
+landmark	X0KAO	America/Indiana/Indianapolis	Landmark Glendale 12, Indianapolis	/theaters/x0kao-landmark-glendale-12-indianapolis	Landmark Glendale 12
+landmark	X0873	America/Denver	The Landmark Greenwood Village	/theaters/x0873-the-landmark-greenwood-village	Landmark Greenwood Village
+landmark	X02KC	America/Chicago	Landmark Inwood Theatre, Dallas	/theaters/x02kc-landmark-inwood-theatre-dallas	Landmark Inwood Theatre
+landmark	X019B	America/New_York	Landmark Kendall Square Cinema, Cambridge	/theaters/x019b-landmark-kendall-square-cinema-cambridge	Landmark Kendall Square
+landmark	X07M6	America/Indiana/Indianapolis	Landmark Keystone Art Cinema, Indianapolis	/theaters/x07m6-landmark-keystone-art-cinema-indianapolis	Landmark Keystone Art Cinema
+landmark	X01QW	America/Chicago	Landmark Lagoon Cinema, Minneapolis	/theaters/x01qw-landmark-lagoon-cinema-minneapolis	Landmark Lagoon Cinema
+landmark	X02AK	America/Denver	Landmark Mayan Theatre, Denver	/theaters/x02ak-landmark-mayan-theatre-denver	Landmark Mayan Theatre Denver
+landmark	X00QM	America/New_York	Landmark Midtown Art Cinema, Atlanta	/theaters/x00qm-landmark-midtown-art-cinema-atlanta	Landmark Midtown Art Atlanta
+landmark	X00CW	America/Los_Angeles	Landmark Nuart Theatre, West Los Angeles	/theaters/x00cw-landmark-nuart-theatre-west-los-angeles	Landmark Nuart Theatre
+landmark	X00U8	America/Los_Angeles	Landmark Opera Plaza Cinema, San Francisco	/theaters/x00u8-landmark-opera-plaza-cinema-san-francisco	Landmark Opera Plaza Cinema
+landmark	G01CH	America/Los_Angeles	Landmark Theatres Pasadena	/theaters/g01ch-landmark-theatres-pasadena	Landmark Pasadena (formerly Laemmle)
+landmark	X00Y7	America/Los_Angeles	Landmark Piedmont Theatre, Oakland	/theaters/x00y7-landmark-piedmont-theatre-oakland	Landmark Piedmont
+landmark	X081D	America/New_York	Landmark Ritz Five, Philadelphia	/theaters/x081d-landmark-ritz-five-philadelphia	Landmark Ritz Five
+landmark	X03C1	America/Phoenix	Landmark Scottsdale Quarter Theatre	/theaters/x03c1-landmark-scottsdale-quarter-theatre	Landmark Scottsdale Quarter Theatre
+landmark	G01SI	America/Los_Angeles	Landmark Sunset Hollywood	/theaters/g01si-landmark-theatres-sunset	Landmark Theaters Sunset
+landmark	G019L	America/New_York	Landmark at Annapolis Harbour Center	/theaters/g019l-landmark-at-annapolis-harbour-center	Landmark at Annapolis Harbour
+landmark	X0JYT	America/Chicago	Landmark at The Glen, Glenview	/theaters/x0jyt-landmark-at-the-glen-glenview	Landmark at The Glen
+landmark	X00D9	America/Los_Angeles	Landmark Westwood, Los Angeles	/theaters/x00d9-landmark-westwood-los-angeles	The Landmark Westwood
+landmark	X0XDF	America/New_York	The Landmark at Merrick Park, Coral Gables	/theaters/x0xdf-the-landmark-at-merrick-park-coral-gables	The Landmark at Merrick Park

@@ -9,17 +9,27 @@ import java.time.{LocalDate, ZoneId}
 
 /**
  * Scraper for Webedia's Gatsby-hosted "box office" cinema platform — one
- * implementation serving TWO UK chains that run the identical backend on their
- * own hosts:
+ * implementation serving FOUR chains, on two continents, that run the identical
+ * backend on their own hosts:
  *
- *   - Showcase Cinemas  `https://www.showcasecinemas.co.uk`  (16 venues)
- *   - Everyman          `https://www.everymancinema.com`     (50 venues)
+ *   - Showcase Cinemas UK  `https://www.showcasecinemas.co.uk`  (16 venues)
+ *   - Everyman             `https://www.everymancinema.com`     (50 venues)
+ *   - Showcase Cinemas US  `https://www.showcasecinemas.com`    (13 venues)
+ *   - Landmark Theatres    `https://www.landmarktheatres.com`   (26 venues)
  *
- * Verified 2026-07-27: both hosts answer unauthenticated, with no Cloudflare
- * challenge, and — because Gatsby derives the filename from the query text —
- * the SAME static-query hashes on both. One class parameterised by `baseUrl` is
- * therefore the whole story; there is no per-brand behaviour to model, which is
- * why this lives in `services.cinemas.common` rather than under `uk`.
+ * Verified 2026-07-27 (UK) and 2026-08-30 (US): every host answers
+ * unauthenticated, with no Cloudflare challenge, and — because Gatsby derives
+ * the filename from the query text — the SAME static-query hashes on all four.
+ * One class parameterised by `baseUrl` is therefore the whole story; there is no
+ * per-brand behaviour to model, which is why this lives in
+ * `services.cinemas.common` rather than under `uk`.
+ *
+ * The US brands cost NOTHING but their base URL and their venue ids: looking for
+ * a shared platform before writing a client turned two of the seven US mid-tier
+ * chains into a wiring change. `timeZone` was already a parameter (the platform
+ * is multi-country and the query needs it verbatim), which is what let Landmark
+ * — five zones, `America/Phoenix` and `America/Indiana/Indianapolis` among them —
+ * arrive without touching this class at all.
  *
  * Two requests per venue per scrape:
  *
@@ -90,6 +100,18 @@ object GatsbyBoxOfficeClient {
 
   val ShowcaseBaseUrl = "https://www.showcasecinemas.co.uk"
   val EverymanBaseUrl = "https://www.everymancinema.com"
+
+  /** Showcase's US sibling — the same National Amusements brand on the same
+   *  platform, a SEPARATE host (`.com`, not `.co.uk`) and therefore a separate
+   *  pace bucket and `HostPolicy` row. Its 13 venues are the chain's whole US
+   *  roster; see `docs/venue-maps/US-WEBEDIA-VENUE-MAP.tsv`. */
+  val ShowcaseUsBaseUrl = "https://www.showcasecinemas.com"
+
+  /** Landmark Theatres — 26 US arthouse venues on the same platform. The chain
+   *  most exposed to a short horizon (repertory and one-off event stock), and
+   *  measured against flicks.us before being wired primary: see the horizon note
+   *  in `AlamoDrafthouseClient` for why that check gates every US chain here. */
+  val LandmarkBaseUrl = "https://www.landmarktheatres.com"
 
   val UkTimeZone = "Europe/London"
 

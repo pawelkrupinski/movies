@@ -1,0 +1,45 @@
+# Alamo Drafthouse (US): API venue slug -> our roster display name
+# Roster: https://drafthouse.com/s/mother/v2/schedule/market/<marketSlug>  (marketSlugs from
+#         https://drafthouse.com/s/mother/v1/page/cclamp?useUnifiedSchedule=true -> data.marketSummaries[])
+# Captured 2026-08-30 (40 venues; the chain roster and our roster are a bijection, no venue unmapped
+# on either side). Columns: apiVenueSlug, apiCinemaId, apiName, timeZone, ourDisplayName
+downtown-brooklyn	2101	Downtown Brooklyn	America/New_York	Alamo Drafthouse Brooklyn
+cedars	0702	Cedars	America/Chicago	Alamo Drafthouse Cedars Dallas
+charlottesville	2401	Charlottesville	America/New_York	Alamo Drafthouse Charlottesville
+city-foundry	2601	Alamo Drafthouse City Foundry	America/Chicago	Alamo Drafthouse City Foundry
+corpus-christi	2001	Corpus Christi	America/Chicago	Alamo Drafthouse Corpus Christi
+crystal-city	1102	Crystal City	America/New_York	Alamo Drafthouse Crystal City
+dc-bryant-street	1101	DC Bryant Street	America/New_York	Alamo Drafthouse DC Bryant Street
+denton	0707	Denton	America/Chicago	Alamo Drafthouse Denton
+downtown	1701	DTLA	America/Los_Angeles	Alamo Drafthouse Downtown LA
+indianapolis	3101	Indianapolis	America/New_York	Alamo Drafthouse Indianapolis
+la-vista	1601	La Vista	America/Chicago	Alamo Drafthouse La Vista
+lake-highlands	0706	Lake Highlands	America/Chicago	Alamo Drafthouse Lake Highlands
+lakeline	0007	Lakeline	America/Chicago	Alamo Drafthouse Lakeline
+laredo	1501	Laredo	America/Chicago	Alamo Drafthouse Laredo
+las-colinas	0703	Las Colinas	America/Chicago	Alamo Drafthouse Las Colinas
+littleton	0401	Littleton	America/Denver	Alamo Drafthouse Littleton
+lower-manhattan	2103	Lower Manhattan	America/New_York	Alamo Drafthouse Lower Manhattan
+mountain-view	0803	Mountain View	America/Los_Angeles	Alamo Drafthouse Mountain View
+mueller	0008	Mueller	America/Chicago	Alamo Drafthouse Mueller
+naples	3201	Naples	America/New_York	Alamo Drafthouse Naples
+new-mission	0801	San Francisco	America/Los_Angeles	Alamo Drafthouse New Mission
+one-loudoun	0501	Loudoun	America/New_York	Alamo Drafthouse One Loudoun
+park-north	0202	Park North	America/Chicago	Alamo Drafthouse Park North
+raleigh	2201	Raleigh	America/New_York	Alamo Drafthouse Raleigh
+richardson	0701	Richardson	America/Chicago	Alamo Drafthouse Richardson
+seaport	2901	Seaport	America/New_York	Alamo Drafthouse Seaport Boston
+slaughter-lane	0006	Slaughter Lane	America/Chicago	Alamo Drafthouse Slaughter Lane
+sloans-lake	0402	Sloans Lake	America/Denver	Alamo Drafthouse Sloans Lake
+south-lamar	0004	South Lamar	America/Chicago	Alamo Drafthouse South Lamar
+springfield	2301	Springfield	America/Chicago	Alamo Drafthouse Springfield
+staten-island	2102	Staten Island	America/New_York	Alamo Drafthouse Staten Island
+stone-oak	0203	Stone Oak	America/Chicago	Alamo Drafthouse Stone Oak
+valley-fair	0802	Valley Fair	America/Los_Angeles	Alamo Drafthouse Valley Fair
+village	0003	Village	America/Chicago	Alamo Drafthouse Village Austin
+westminster	0403	Westminster	America/Denver	Alamo Drafthouse Westminster
+winchester	0301	Winchester	America/New_York	Alamo Drafthouse Winchester
+woodbridge	0502	Woodbridge	America/New_York	Alamo Drafthouse Woodbridge
+woodbury	2501	Woodbury	America/Chicago	Alamo Drafthouse Woodbury
+wrigleyville	1801	Wrigleyville	America/Chicago	Alamo Drafthouse Wrigleyville
+yonkers	0901	Yonkers	America/New_York	Alamo Drafthouse Yonkers
