@@ -48,16 +48,23 @@
 
       @* One pill per cinema showing the film, linking to that cinema's own page
          for it. A London film plays 60+ venues, and 60 pills between the title
-         and the synopsis push the whole page down. Show ten, fold the rest.
-         The cap is this row's alone — the showings tree further down folds on
-         its own per-date count, and the two are separate decisions. *@
+         and the synopsis push the whole page down, so the row shows ten and
+         folds the rest behind a button.
+         WHICH ten is a runtime question, not a render-time one: the row shows
+         the first ten cinemas the visitor kept switched on in Filtry, so
+         `applyFilters` in `film.scala.html` re-decides the fold every time the
+         selection changes. What is rendered here is the no-JS answer — the
+         first ten of ALL of them — and `data-cinema` is what the filter
+         matches on (display names, the same key `disabledCinemas` stores).
+         `data-label` carries the button's copy with a `{0}` hole, because
+         the count it names is only known once the filter has run. *@
       @if(film.cinemaFilmUrls.nonEmpty) {
         <div class="cinema-links" style="margin-top: .5rem;">
           @for(((cinema, url), cinemaIndex) <- film.cinemaFilmUrls.zipWithIndex) {
-            <a href="@url" target="_blank" rel="nofollow noopener" class="cinema-link@if(cinemaIndex >= 10){ folded}">@cinema.displayName ↗</a>
+            <a href="@url" target="_blank" rel="nofollow noopener" data-cinema="@cinema.displayName" class="cinema-link@if(cinemaIndex >= 10){ folded}">@cinema.displayName ↗</a>
           }
           @if(film.cinemaFilmUrls.size > 10) {
-            <button type="button" class="cinemas-more" onclick="unfoldCinemas(this)">@messages("detail.moreCinemas", film.cinemaFilmUrls.size - 10)</button>
+            <button type="button" class="cinemas-more" data-label="@messages("detail.moreCinemas", "{0}")" onclick="unfoldCinemas(this)">@messages("detail.moreCinemas", film.cinemaFilmUrls.size - 10)</button>
           }
         </div>
       }
@@ -130,10 +137,18 @@
     // needs no per-fold selector. One-way: the button has served its purpose
     // once the list is open, so it takes itself out of the flow rather than
     // sitting there as a re-fold nobody asked for.
+    // Open the cinema-link row for good. The `unfolded` marker on the row is
+    // what makes it stick: `applyFilters` re-decides the fold on every run
+    // (including the one after a logged-in visitor's server-side selection
+    // lands), and without the marker it would quietly re-fold a row the
+    // visitor had just opened. The button is hidden rather than removed so
+    // that same pass can bring it back if the selection changes.
     function unfoldCinemas(btn) {
-      btn.parentElement.querySelectorAll('.folded')
-         .forEach(function (row) { row.classList.remove('folded'); });
-      btn.remove();
+      const row = btn.parentElement;
+      row.classList.add('unfolded');
+      row.querySelectorAll('.cinema-link.folded')
+         .forEach(function (pill) { pill.classList.remove('folded'); });
+      btn.style.display = 'none';
     }
 
     function playTrailer(btn, url) {

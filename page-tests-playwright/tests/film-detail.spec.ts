@@ -176,7 +176,7 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
     await more.click();
 
     expect(await page.locator('.cinema-link:visible').count()).toBe(12);
-    await expect(more).toHaveCount(0);
+    await expect(more).toBeHidden();
     // The pill fold owns `.folded`; the filter owns inline display. Unfolding
     // the pills leaves the showings tree exactly as the filter left it.
     expect(await page.locator('.cinema-group:visible').count()).toBe(12);
@@ -185,6 +185,28 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
   // The showings tree does NOT fold — it renders every cinema, and what
   // narrows it is the visitor's own Filtry selection, applied by the page's
   // `applyFilters` off shared.js's `disabledCinemas` (a list of DISPLAY names).
+  // The pills answer to Filtry too, and the fold counts only what survives it:
+  // "the first ten" must mean ten a visitor can actually use, not slots 1-10 of
+  // a list they have mostly switched off.
+  test('the cinema-link row shows only cinemas that are filtered in', async ({ page }) => {
+    await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
+
+    const off = (await page.locator('.cinema-link[data-cinema]')
+      .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema))).slice(0, 4);
+    await page.evaluate((names) => {
+      localStorage.setItem('disabledCinemas', JSON.stringify(names));
+      (window as unknown as { applyFilters: () => void }).applyFilters();
+    }, off);
+
+    // Eight left, all under the ten-pill cap, so nothing folds and the button
+    // retires rather than offering rows that are no longer there.
+    expect(await page.locator('.cinema-link:visible').count()).toBe(8);
+    await expect(page.locator('.cinema-links .cinemas-more')).toBeHidden();
+    const shown = await page.locator('.cinema-link:visible')
+      .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema));
+    for (const name of off) expect(shown).not.toContain(name);
+  });
+
   test('the showings tree shows every cinema, minus the ones switched off in Filtry', async ({ page }) => {
     await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
 

@@ -142,6 +142,60 @@
 
     const empty = document.getElementById('showings-empty');
     if (empty) empty.style.display = anyVisible ? 'none' : '';
+
+    applyCinemaLinkFold(disabled);
+  }
+
+  // ── The cinema-link row under the title ───────────────────────────────────
+  //
+  // Same selection, second list: the pills name the cinemas showing the film,
+  // so they answer to Filtry exactly as the showings tree does. The fold on
+  // top of that counts only the cinemas that SURVIVE the filter — "the first
+  // ten" has to mean the first ten a visitor can actually use, not slots 1-10
+  // of a list they have mostly switched off. That is why this runs here and
+  // not at render time: the server cannot know the selection.
+  //
+  // TWO CHANNELS, deliberately. The filter writes inline `style.display`,
+  // which beats any class; the fold writes `.folded`, whose CSS rule applies
+  // only once the inline value is cleared back to ''. So a filtered-out
+  // cinema stays hidden no matter what the fold decides, and unfolding can
+  // never reveal one.
+  const MAX_CINEMA_PILLS = 10;
+
+  function applyCinemaLinkFold(disabled) {
+    const row = document.querySelector('.cinema-links');
+    if (!row) return;
+
+    const openForGood = row.classList.contains('unfolded');
+    let shown  = 0;
+    let folded = 0;
+
+    row.querySelectorAll('.cinema-link[data-cinema]').forEach(pill => {
+      if (disabled.has(pill.dataset.cinema)) {
+        pill.style.display = 'none';
+        return;
+      }
+      // '' rather than 'block': clearing the inline value hands the pill back
+      // to the stylesheet, which is both `.cinema-link`'s inline-block and
+      // `.folded`'s display:none — so the fold below still decides.
+      pill.style.display = '';
+      if (openForGood || shown < MAX_CINEMA_PILLS) {
+        pill.classList.remove('folded');
+        shown++;
+      } else {
+        pill.classList.add('folded');
+        folded++;
+      }
+    });
+
+    const button = row.querySelector('.cinemas-more');
+    if (button) {
+      // The count is whatever this pass folded away, so narrowing the filter
+      // to eight cinemas retires the button rather than offering to unfold
+      // rows that are no longer there.
+      button.textContent   = button.dataset.label.replace('{0}', folded);
+      button.style.display = folded > 0 ? '' : 'none';
+    }
   }
 
   // ── Back link: rewrite to the page the user came from ──────────────────────

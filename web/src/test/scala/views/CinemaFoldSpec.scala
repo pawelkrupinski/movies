@@ -89,9 +89,27 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
     linkPills(html)   shouldBe 10
     foldedPills(html) shouldBe 53
     html should include ("Pokaż pozostałe kina (53)")
-    // Its button and the showings tree's share one handler, hosted here.
     html should include ("function unfoldCinemas(btn)")
-    html should include ("btn.parentElement.querySelectorAll('.folded')")
+  }
+
+  it should "tag every pill with the display name the filter matches on" in {
+    val expected = Cinema.all.distinct.take(12).map(_.displayName)
+    val html     = views.html._filmDetailContent(schedule(3)(12)).body
+
+    // `applyCinemaLinkFold` keys on `data-cinema`, and `disabledCinemas`
+    // stores DISPLAY names — the pill's link text carries a trailing ↗, so
+    // reading the label instead would match nothing.
+    val rendered = """<a [^>]*data-cinema="([^"]+)"[^>]*class="cinema-link""".r
+      .findAllMatchIn(html).map(_.group(1)).toList
+    rendered shouldBe expected
+  }
+
+  it should "carry the button's copy as a template the filtered count fills in" in {
+    val html = views.html._filmDetailContent(schedule(3)(63)).body
+
+    // The rendered count is the no-JS answer; `data-label` is what
+    // `applyCinemaLinkFold` rewrites once it knows how many survived.
+    html should include ("""data-label="Pokaż pozostałe kina ({0})"""")
   }
 
   it should "leave a row of exactly ten pills whole, with no button" in {

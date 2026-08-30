@@ -1132,19 +1132,66 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       visibleCinemaLinks(page)  shouldBe 12
       visibleCinemaGroups(page) shouldBe 12
-      page.evalInt("document.querySelectorAll('.cinemas-more').length") shouldBe 0
+      page.evalBool("document.querySelector('.cinemas-more').offsetParent === null") shouldBe true
+    }
+  }
+
+  it should "hide the pills of cinemas switched off in Filtry" in {
+    onFilmMany { page =>
+      val off = disableCinemas(page, 4)
+
+      page.eval(
+        """[...document.querySelectorAll('.cinema-link[data-cinema]')]
+          |  .filter(a => a.style.display === 'none').map(a => a.dataset.cinema)""".stripMargin
+      ).as[Seq[String]] should contain theSameElementsAs off
+    }
+  }
+
+  it should "count the fold off the cinemas that SURVIVE the filter, not the raw first ten" in {
+    onFilmMany { page =>
+      // 12 cinemas, one switched off — the eleven left still overflow the row
+      // of ten, so exactly one folds and the button offers exactly that one.
+      disableCinemas(page, 1)
+      visibleCinemaLinks(page)                                                shouldBe 10
+      page.evalInt("document.querySelectorAll('.cinema-link.folded').length") shouldBe 1
+      page.evalString("document.querySelector('.cinemas-more').textContent")  should include ("1")
+
+      // Switch off four and only eight are left — under the cap, so the row
+      // shows all eight and retires the button rather than offering to
+      // unfold rows that are no longer there.
+      disableCinemas(page, 4)
+      visibleCinemaLinks(page)                                                shouldBe 8
+      page.evalInt("document.querySelectorAll('.cinema-link.folded').length") shouldBe 0
+      page.evalBool("document.querySelector('.cinemas-more').offsetParent === null") shouldBe true
+    }
+  }
+
+  it should "keep the row open once unfolded, even when the filter runs again" in {
+    onFilmMany { page =>
+      page.eval("document.querySelector('.cinemas-more').click()")
+      visibleCinemaLinks(page) shouldBe 12
+
+      // `bootMergeFromServer` re-runs `applyFilters` once a logged-in
+      // visitor's server-side selection lands. Without the `unfolded` marker
+      // that pass would silently re-fold a row the visitor had just opened.
+      page.eval("applyFilters()")
+      visibleCinemaLinks(page) shouldBe 12
     }
   }
 
   it should "not let a pill unfold reveal a cinema the filter switched off" in {
     onFilmMany { page =>
-      // The fold writes `.folded`; the filter writes inline display. Separate
-      // channels, so unfolding the pills cannot undo the filter's verdict.
-      disableCinemas(page, 4)
+      // The fold writes `.folded`; the filter writes inline display, which
+      // beats it. Separate channels, so unfolding cannot undo the filter.
+      val off = disableCinemas(page, 4)
       page.eval("document.querySelector('.cinemas-more').click()")
-      page.waitFor("document.querySelectorAll('.cinema-link.folded').length === 0")
 
+      visibleCinemaLinks(page)  shouldBe 8
       visibleCinemaGroups(page) shouldBe 8
+      page.eval(
+        """[...document.querySelectorAll('.cinema-link[data-cinema]')]
+          |  .filter(a => a.offsetParent !== null).map(a => a.dataset.cinema)""".stripMargin
+      ).as[Seq[String]] should contain noElementsOf off
     }
   }
 
