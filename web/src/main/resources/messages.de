@@ -74,6 +74,16 @@ landing.searchCityAria=Nach einer Stadt suchen
 landing.noCity=Keine Stadt mit diesem Namen.
 landing.locating=Standort wird ermittelt…
 landing.noNearby=Keine unterstützte Stadt in der Nähe — wähle eine aus der Liste.
+# `.state`-Geschwister: dieselbe Kopie für ein Land, dessen Orte Bundesstaaten
+# statt Städte sind (`PlaceKind.State` — die USA). Nur die USA rendern sie, und
+# sie liefern `en` aus; hier stehen sie, damit kein Bundle einen Schlüssel
+# vermissen lässt.
+landing.title.state={0} — Kinoprogramm in deinem Bundesstaat
+landing.chooseCity.state=Wähle deinen Bundesstaat oder dein Territorium
+landing.searchCity.state=Nach einem Bundesstaat suchen…
+landing.searchCityAria.state=Nach einem Bundesstaat oder Territorium suchen
+landing.noCity.state=Kein Bundesstaat und kein Territorium mit diesem Namen.
+landing.noNearby.state=Kein unterstützter Bundesstaat in der Nähe — wähle einen aus der Liste.
 
 # ── Area chooser (metro pick screen: /{city}/ for a split, huge city) ───────
 # {0} = city nominative.
@@ -81,6 +91,7 @@ areas.htmlTitle={0} — Region wählen
 areas.ogDescription=Kinoprogramm in {0} — wähle deine Region für die heutigen Spielzeiten, mit IMDb-, Rotten-Tomatoes- und Metacritic-Bewertungen.
 areas.chooseArea=Wähle eine Region
 areas.allCities=Alle Städte
+areas.allCities.state=Alle Bundesstaaten
 # Navbar link on an area page, back to the chooser.
 areas.change=Region ändern
 # {0} = number of cinemas in the area.

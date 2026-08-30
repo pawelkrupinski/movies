@@ -13,6 +13,26 @@ import org.scalatest.matchers.should.Matchers
  */
 class CountrySpec extends AnyFlatSpec with Matchers {
 
+  /** The US's `City` objects are STATES, so copy written for cities is wrong
+   *  there — "← All cities" sat above a list of states. `placeKind` is the
+   *  dimension that copy varies over; the UK and Germany deliberately stay on
+   *  the city wording they ship today. */
+  "Country.placeKind" should "call the US's places states and everyone else's cities" in {
+    Country.UnitedStates.placeKind  shouldBe PlaceKind.State
+    Country.Poland.placeKind        shouldBe PlaceKind.City
+    Country.UnitedKingdom.placeKind shouldBe PlaceKind.City
+    Country.Germany.placeKind       shouldBe PlaceKind.City
+  }
+
+  "PlaceKind.messageKey" should "leave a city country's keys alone and suffix a state country's" in {
+    // The whole point of the suffix scheme: PL/UK/DE resolve the SAME keys they
+    // always did, so their copy cannot move.
+    PlaceKind.City.messageKey("areas.allCities")   shouldBe "areas.allCities"
+    PlaceKind.City.messageKey("landing.chooseCity") shouldBe "landing.chooseCity"
+    PlaceKind.State.messageKey("areas.allCities")   shouldBe "areas.allCities.state"
+    PlaceKind.State.messageKey("landing.chooseCity") shouldBe "landing.chooseCity.state"
+  }
+
   "Country.byCode" should "resolve pl/uk/de/us case-insensitively and reject unknown codes" in {
     Country.byCode("pl") shouldBe Some(Country.Poland)
     Country.byCode("PL") shouldBe Some(Country.Poland)

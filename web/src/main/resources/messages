@@ -80,6 +80,16 @@ landing.searchCityAria=Szukaj miasta
 landing.noCity=Brak miasta o tej nazwie.
 landing.locating=Ustalanie lokalizacji…
 landing.noNearby=Brak obsługiwanego miasta w pobliżu — wybierz z listy.
+# `.state` siblings: the same copy for a country whose places are states rather
+# than cities (`PlaceKind.State` — the US). Only the US renders them and it
+# serves `en`, so these exist for bundle parity: an absent key here would make a
+# US-language fallback silently print the key.
+landing.title.state={0} — repertuar kin w Twoim stanie
+landing.chooseCity.state=Wybierz stan lub terytorium
+landing.searchCity.state=Szukaj stanu…
+landing.searchCityAria.state=Szukaj stanu lub terytorium
+landing.noCity.state=Brak stanu ani terytorium o tej nazwie.
+landing.noNearby.state=Brak obsługiwanego stanu w pobliżu — wybierz z listy.
 
 # ── Area chooser (metro pick screen: /{city}/ for a split, huge city) ───────
 # {0} = city nominative. Polish cities are never split, so this copy is here for
@@ -88,6 +98,7 @@ areas.htmlTitle={0} — wybierz obszar
 areas.ogDescription=Repertuar kin — {0}. Wybierz obszar i sprawdź dzisiejsze seanse, z ocenami IMDb, RT i Filmweb.
 areas.chooseArea=Wybierz obszar
 areas.allCities=Wszystkie miasta
+areas.allCities.state=Wszystkie stany
 # Navbar link on an area page, back to the chooser.
 areas.change=Zmień obszar
 # {0} = number of cinemas in the area.

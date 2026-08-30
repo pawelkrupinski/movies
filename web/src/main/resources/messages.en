@@ -74,6 +74,18 @@ landing.searchCityAria=Search for a city
 landing.noCity=No city by that name.
 landing.locating=Finding your location…
 landing.noNearby=No supported city nearby — pick one from the list.
+# `.state` siblings: the copy a country whose places are states rather than
+# cities renders instead (`PlaceKind.State` — the US, whose `City` objects are
+# California, Texas, …). The list also holds DC, Puerto Rico, Guam, American
+# Samoa and the Virgin Islands, so the two lines that TELL a visitor what is
+# listed name territories too; the nav label and the search placeholder stay
+# short.
+landing.title.state={0} — cinema listings in your state
+landing.chooseCity.state=Choose your state or territory
+landing.searchCity.state=Search for a state…
+landing.searchCityAria.state=Search for a state or territory
+landing.noCity.state=No state or territory by that name.
+landing.noNearby.state=No supported state nearby — pick one from the list.
 
 # ── Area chooser (metro pick screen: /{city}/ for a split, huge city) ───────
 # {0} = city nominative.
@@ -81,6 +93,7 @@ areas.htmlTitle={0} — choose an area
 areas.ogDescription=Cinema listings across {0} — pick your area for today''s showtimes, with IMDb, Rotten Tomatoes and Metacritic ratings.
 areas.chooseArea=Choose an area
 areas.allCities=All cities
+areas.allCities.state=All states
 # Navbar link on an area page, back to the chooser.
 areas.change=Change area
 # {0} = number of cinemas in the area.

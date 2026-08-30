@@ -130,7 +130,7 @@ object FixtureServerMain {
     // ever renders the second, because its routes are keyed on the path alone and
     // have no request to read a Host off. The apex branch is covered where the
     // decision actually lives, in controllers.LandingApexSpec.
-    val landingHtml: String = views.html.landing(City.all).body
+    val landingHtml: String = views.html.landing(models.Country.default).body
 
     // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
     // is matched against the known cities; an unknown first segment → None.

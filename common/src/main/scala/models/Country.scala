@@ -13,7 +13,9 @@ import tools.Env
  *
  *   - each country owns its own set of [[City]] objects ([[cities]]),
  *   - each maps to its OWN Mongo database ([[mongoDb]]) on the shared cluster,
- *   - each carries its UI [[language]] (for collation + i18n), and
+ *   - each carries its UI [[language]] (for collation + i18n),
+ *   - each says what its places are CALLED on screen ([[PlaceKind]] — the US's
+ *     [[City]] objects are states, so its copy must not say "city"), and
  *   - each decides whether the Filmweb rating/fallback path applies
  *     ([[filmwebEnabled]] — a new country won't use Filmweb at all).
  *
@@ -22,6 +24,33 @@ import tools.Env
  * once per country and iterate [[all]]. Nothing reads a global "current
  * country" — the resolved `Country` is passed down from the composition root.
  */
+/** What a country's [[City]] objects are CALLED to somebody who lives there.
+ *
+ *  [[City]] is the MODEL's name for "the place a repertoire is scoped to", and
+ *  in Poland that really is a city. In the United States it is a whole state or
+ *  territory, so copy written for cities reads as a mistake there: California's
+ *  metro chooser offered "← All cities" back to a list of STATES, and the
+ *  landing asked a Texan to "Choose your city". This is the dimension that copy
+ *  varies over — a template asks the country what its places are called instead
+ *  of assuming.
+ *
+ *  Only two kinds exist because only two are needed. The UK's counties/regions
+ *  and Germany's regions are arguably neither, but they carry city wording
+ *  today and re-wording live copy in two countries is a separate decision, not
+ *  a side effect of fixing the US. */
+enum PlaceKind(val code: String) {
+  case City  extends PlaceKind("city")
+  case State extends PlaceKind("state")
+
+  /** The message key holding `base`'s copy for THIS kind: the plain key for
+   *  [[PlaceKind.City]] — so every existing bundle entry keeps working
+   *  untouched, in all three languages — and a `.state`-suffixed sibling for
+   *  [[PlaceKind.State]]. A kind-specific entry must exist in every bundle for
+   *  any base a template passes here; `WebI18nSpec` pins them. */
+  def messageKey(base: String): String =
+    if (this == PlaceKind.City) base else s"$base.$code"
+}
+
 sealed abstract class Country(
   val code:           String,          // ISO-ish short code, also the URL-free identifier: "pl", "uk"
   val displayName:    String,          // human label for the country switcher (native/English name)
@@ -30,6 +59,7 @@ sealed abstract class Country(
   val filmwebEnabled: Boolean,         // is the Filmweb rating/fallback path wired for this country?
   val webUrl:         Option[String],  // public web host of this country's deployment (scheme+host, no trailing slash); None = not deployed yet
   val brandName:      String,          // customer-facing app name: "Kinowo" in PL, "Showtimes" elsewhere (the Polish coinage means nothing abroad)
+  val placeKind:      PlaceKind,       // what this country's [[City]] objects are called on screen: cities in PL/UK/DE, states in the US
 ) {
   /** The cities this country serves. Authoritative per-country list; [[City.all]]
    *  is the union across every country. */
@@ -80,6 +110,7 @@ object Country {
     filmwebEnabled = true,
     webUrl         = Some("https://kinowo.net"),
     brandName      = "Kinowo",
+    placeKind      = PlaceKind.City,
   ) {
     val cities: Seq[City] = City.polishCities
   }
@@ -95,6 +126,9 @@ object Country {
     filmwebEnabled = false,
     webUrl         = Some("https://uk.showtimes.cc"),
     brandName      = "Showtimes",
+    // Counties and regions, not cities — but they read as "city" today and
+    // re-wording live UK copy is a decision of its own.
+    placeKind      = PlaceKind.City,
   ) {
     val cities: Seq[City] = City.ukCities
   }
@@ -111,6 +145,8 @@ object Country {
     filmwebEnabled = false,
     webUrl         = Some("https://de.showtimes.cc"),
     brandName      = "Showtimes",
+    // Regions rather than cities, same caveat as the UK's.
+    placeKind      = PlaceKind.City,
   ) {
     val cities: Seq[City] = City.germanCities
   }
@@ -136,6 +172,9 @@ object Country {
     filmwebEnabled = false,
     webUrl         = Some("https://us.showtimes.cc"),
     brandName      = "Showtimes",
+    // The one country whose "city" is a whole state or territory — the reason
+    // [[PlaceKind]] exists at all.
+    placeKind      = PlaceKind.State,
   ) {
     val cities: Seq[City] = City.usCities
   }

@@ -60,6 +60,45 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     de("areas.cinemaCount", 12)      shouldBe "12 Kinos"
   }
 
+  /** The US serves `en` and its "cities" are states, so every place-flavoured
+   *  string has a `.state` sibling (`PlaceKind.State.messageKey`). English is
+   *  the one that ships; Polish and German carry the same keys so no bundle can
+   *  fall through to printing the raw key. */
+  "the state-flavoured place copy" should "read for states in English, where the US actually serves it" in {
+    en("areas.allCities.state")             shouldBe "All states"
+    en("landing.chooseCity.state")          shouldBe "Choose your state or territory"
+    en("landing.searchCity.state")          shouldBe "Search for a state…"
+    en("landing.searchCityAria.state")      shouldBe "Search for a state or territory"
+    en("landing.noCity.state")              shouldBe "No state or territory by that name."
+    en("landing.noNearby.state")            shouldBe "No supported state nearby — pick one from the list."
+    en("landing.title.state", "Showtimes")  shouldBe "Showtimes — cinema listings in your state"
+  }
+
+  it should "exist in every bundle, so none of them ever renders the bare key" in {
+    val de = TestMessages.forLang("de")
+    val bases = Seq("areas.allCities", "landing.chooseCity", "landing.searchCity",
+                    "landing.searchCityAria", "landing.noCity", "landing.noNearby", "landing.title")
+    for (messages <- Seq(pl, en, de); base <- bases) {
+      val key = models.PlaceKind.State.messageKey(base)
+      withClue(s"${messages.lang.code} / $key: ") {
+        messages(key, "Showtimes") should not be key
+      }
+    }
+  }
+
+  /** The other half of the same guarantee: PL/UK/DE resolve the UNSUFFIXED keys,
+   *  and this change must not have moved a byte of their copy. */
+  it should "leave the city wording exactly as it was" in {
+    pl("landing.chooseCity")   shouldBe "Wybierz miasto"
+    pl("landing.searchCity")   shouldBe "Szukaj miasta…"
+    pl("landing.noCity")       shouldBe "Brak miasta o tej nazwie."
+    pl("landing.noNearby")     shouldBe "Brak obsługiwanego miasta w pobliżu — wybierz z listy."
+    pl("areas.allCities")      shouldBe "Wszystkie miasta"
+    en("areas.allCities")      shouldBe "All cities"
+    en("landing.chooseCity")   shouldBe "Choose your city"
+    TestMessages.forLang("de")("landing.chooseCity") shouldBe "Wähle deine Stadt"
+  }
+
   "JsLocale" should "carry the Polish 3-form showtime plural rule" in {
     val json = JsLocale.json(pl)
     json should include("\"plural\":\"pl\"")

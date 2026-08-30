@@ -1,10 +1,18 @@
-@(cities: Seq[models.City])(implicit messages: play.api.i18n.Messages)
+@(country: models.Country)(implicit messages: play.api.i18n.Messages)
 @*
-   City-selection landing shown at `/` when no `city` cookie is present.
-   Lists every supported city, and on load tries browser geolocation: a fix
-   within 100 km of a supported city redirects straight there (and remembers
-   it via the `city` cookie); otherwise the visitor picks from the list.
-   Self-contained (no city-scoped partials) since there's no city yet.
+   Place-selection landing shown at `/` when no `city` cookie is present.
+   Lists every place the serving country supports, and on load tries browser
+   geolocation: a fix within 100 km of a supported place redirects straight
+   there (and remembers it via the `city` cookie); otherwise the visitor picks
+   from the list. Self-contained (no city-scoped partials) since there's no
+   city yet.
+
+   Takes the COUNTRY rather than a bare city list: the list, the geolocation
+   payload and the copy all have to come from the same country, and the copy
+   also depends on what that country's places are called (`PlaceKind` — the US
+   picks a STATE here, so "Choose your city" would be wrong). Passing it in also
+   keeps the "nothing reads a global current country" rule this template used to
+   break four times over with `Country.fromEnv`.
 *@
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
@@ -12,18 +20,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
-  <title>@messages("landing.title", models.Country.fromEnv.brandName)</title>
+  <title>@messages(country.placeKind.messageKey("landing.title"), country.brandName)</title>
   @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
      card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
      product (posters + ratings), which the city-selection screen itself can't. *@
-  @defining(models.Country.fromEnv) { country =>
   @_ogTagsApp(
-    pageTitle       = messages("landing.title", country.brandName),
+    pageTitle       = messages(country.placeKind.messageKey("landing.title"), country.brandName),
     pageDescription = messages("landing.ogDescription"),
     pageUrl         = country.ogOrigin + "/",
     imageUrl        = country.ogOrigin + "/assets/img/" + country.homeOgImage,
   )
-  }
   @_jsonLd(controllers.StructuredData.landing())
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -57,21 +63,21 @@
 </head>
 <body>
   <main>
-    <h1>🎬 @models.Country.fromEnv.brandName</h1>
-    <p class="sub">@messages("landing.chooseCity")</p>
+    <h1>🎬 @country.brandName</h1>
+    <p class="sub">@messages(country.placeKind.messageKey("landing.chooseCity"))</p>
     <input class="city-search" id="city-search" type="search" inputmode="search"
            autocomplete="off" autocapitalize="off" spellcheck="false"
-           placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" aria-controls="city-list">
-    <p class="city-empty" id="city-empty">@messages("landing.noCity")</p>
+           placeholder="@messages(country.placeKind.messageKey("landing.searchCity"))" aria-label="@messages(country.placeKind.messageKey("landing.searchCityAria"))" aria-controls="city-list">
+    <p class="city-empty" id="city-empty">@messages(country.placeKind.messageKey("landing.noCity"))</p>
     <ul class="city-list" id="city-list">
-      @for(c <- cities) {
+      @for(c <- country.allSorted) {
         <li><a href="/@c.slug/">@c.labels.nominative</a></li>
       }
     </ul>
     <p class="locating" id="locating"></p>
   </main>
   <script>
-    var CITIES = @Html(models.Country.fromEnv.allJson);
+    var CITIES = @Html(country.allJson);
 
     // Fold a Polish string to its diacritic-free, lower-case form so the city
     // search matches what people actually type ("lodz" → "Łódź", "krakow" →
@@ -83,8 +89,9 @@
         .replace(/ź/g, 'z').replace(/ż/g, 'z');
     }
 
-    // Client-side filter of the 41-city list: typing narrows the visible rows
-    // by folded substring match; an empty box shows everything.
+    // Client-side filter of the place list (41 Polish cities, 55 US states and
+    // territories, …): typing narrows the visible rows by folded substring
+    // match; an empty box shows everything.
     (function () {
       var input = document.getElementById('city-search');
       if (!input) return;
@@ -140,7 +147,7 @@
             document.cookie = 'city=' + c.slug + ';path=/;max-age=' + (60 * 60 * 24 * 365);
             window.location.replace('/' + c.slug + '/');
           } else {
-            finish('@messages("landing.noNearby")');
+            finish('@messages(country.placeKind.messageKey("landing.noNearby"))');
           }
         },
         function () { finish(''); },

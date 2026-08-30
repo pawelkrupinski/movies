@@ -104,6 +104,15 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     contentAsString(usController().index("california")(req("/california/"))) should include("""href="/"""")
   }
 
+  /** …and CALL that list what it is. The link read "← All cities" while pointing
+   *  at a list of states — the copy assumed every country's `City` is a city,
+   *  which is true everywhere except the one country this screen renders in. */
+  it should "call that list states, not cities" in {
+    val html = contentAsString(usController().index("california")(req("/california/")))
+    html should include("← All states")
+    html should not include "All cities"
+  }
+
   it should "remember the city, so the bare / bounces back here" in {
     val res = usController().index("california")(req("/california/"))
     cookies(res).get("city").map(_.value) shouldBe Some("california")

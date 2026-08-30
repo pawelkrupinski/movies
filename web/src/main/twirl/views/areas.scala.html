@@ -61,8 +61,11 @@
         <li><a href="/@city.slug/@g.area.slug/"><span class="area-name">@g.area.label</span><span class="area-count">@messages("areas.cinemaCount", g.cinemas.size)</span></a></li>
       }
     </ul>
-    @* Back to the country's city list — the step this screen sits below. *@
-    <a class="back" href="/">← @messages("areas.allCities")</a>
+    @* Back to the country's place list — the step this screen sits below. Named
+       by what that country's places ARE (`PlaceKind`): this screen only ever
+       renders for a split US state, so it said "← All cities" above a list of
+       states until the country got asked. *@
+    <a class="back" href="/">← @messages(models.Country.of(city).placeKind.messageKey("areas.allCities"))</a>
   </main>
 </body>
 </html>

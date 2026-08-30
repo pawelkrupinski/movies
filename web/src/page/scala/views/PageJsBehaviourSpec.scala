@@ -76,7 +76,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // The city-selection landing (`/` with no city cookie) — drives the
       // inline city-search filter. City-independent, so served off-prefix.
-      val landingHtml: String = views.html.landing(models.City.all).body
+      val landingHtml: String = views.html.landing(models.Country.default).body
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(

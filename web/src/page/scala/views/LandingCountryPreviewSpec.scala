@@ -20,6 +20,10 @@ import play.api.i18n.Messages
  * would race parallel unit suites — but `PageTest` runs unforked and
  * `parallelExecution := false`, so the set/clear window can't leak into a
  * concurrent reader.
+ *
+ * The landing template itself no longer reads that global (it takes the country
+ * as a parameter), but `_ogTagsApp` still does for `og:site_name` / `og:locale`
+ * — which is exactly what half of this spec asserts, so the forcing stays.
  */
 class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
 
@@ -31,7 +35,7 @@ class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
     try {
       System.setProperty("KINOWO_COUNTRY", "uk")
       Country.fromEnv shouldBe Country.UnitedKingdom   // guard: a stray env var didn't win
-      views.html.landing(Country.UnitedKingdom.allSorted).body
+      views.html.landing(Country.UnitedKingdom).body
     } finally {
       if (prev == null) System.clearProperty("KINOWO_COUNTRY") else System.setProperty("KINOWO_COUNTRY", prev)
     }
@@ -61,5 +65,16 @@ class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
     val html = renderUk()
     html should include ("IMDb, Rotten Tomatoes and Metacritic")
     html should not include "Filmweb"
+  }
+
+  /** The UK's places are counties and regions, not cities — but they are WORDED
+   *  as cities today (`PlaceKind.City`) and giving the US its own wording must
+   *  not have moved a byte of theirs. */
+  it should "keep exactly the city wording the UK ships today" in {
+    if (envCountryForced) cancel("KINOWO_COUNTRY is set in the environment; property override can't take effect")
+    val html = renderUk()
+    html should include ("Choose your city")
+    html should include ("Search for a city…")
+    html should not include "Choose your state"
   }
 }

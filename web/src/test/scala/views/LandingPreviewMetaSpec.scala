@@ -2,7 +2,7 @@ package views
 
 import testsupport.TestMessages.given
 
-import models.City
+import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -14,7 +14,7 @@ import org.scalatest.matchers.should.Matchers
 // card ("…w Twoim mieście"), as opposed to a city index's own `og-{slug}.png`.
 class LandingPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
-  private def render(): String = views.html.landing(City.allSorted).body
+  private def render(): String = views.html.landing(Country.Poland).body
 
   "the landing preview" should "point og:image + twitter:image at the dedicated home card" in {
     val html = render()

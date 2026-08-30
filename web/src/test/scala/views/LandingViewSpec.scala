@@ -7,12 +7,12 @@ import org.scalatest.matchers.should.Matchers
 
 class LandingViewSpec extends AnyFlatSpec with Matchers {
 
-  private val html = views.html.landing(models.City.all).body
+  private val html = views.html.landing(models.Country.Poland).body
 
   "the city-selection landing page" should "render as a Polish HTML document listing the cities" in {
     html should include ("""<html lang="pl">""")
     html should include ("Wybierz miasto")
-    models.City.all.foreach { c =>
+    models.Country.Poland.cities.foreach { c =>
       html should include (s"/${c.slug}/")
     }
   }
@@ -45,5 +45,30 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   it should "declare a favicon so the browser doesn't 404 on /favicon.ico" in {
     html should include ("""rel="icon"""")
     html should include ("img/favicon.svg")
+  }
+
+  /** The US picks a STATE on this screen — its `City` objects are California,
+   *  Texas, … — so every "city" in the copy was a small lie told to every US
+   *  visitor. The page renders under the English bundle that host serves. */
+  private val usHtml =
+    views.html.landing(models.Country.UnitedStates)(using testsupport.TestMessages.forLang("en")).body
+
+  "the US landing page" should "ask for a state, never a city" in {
+    usHtml should include ("Choose your state or territory")
+    usHtml should include ("Search for a state…")
+    usHtml should include ("Search for a state or territory")   // the input's aria-label
+    usHtml should include ("No state or territory by that name.")
+    usHtml should include ("No supported state nearby")
+    usHtml should include ("<title>Showtimes — cinema listings in your state</title>")
+    // The exact strings this page used to show a Texan.
+    usHtml should not include "Choose your city"
+    usHtml should not include "Search for a city"
+    usHtml should not include "No city by that name."
+    usHtml should not include "No supported city nearby"
+  }
+
+  it should "list the states themselves, not another country's cities" in {
+    models.Country.UnitedStates.cities.foreach(c => usHtml should include (s"/${c.slug}/"))
+    usHtml should not include "/poznan/"
   }
 }

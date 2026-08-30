@@ -33,7 +33,7 @@ class LandingController(cc: ControllerComponents)(implicit messages: play.api.i1
     else
       request.cookies.get("city").map(_.value).flatMap(City.bySlug) match {
         case Some(c) => Redirect(s"/${c.slug}/")
-        case None    => Ok(views.html.landing(Country.fromEnv.allSorted))
+        case None    => Ok(views.html.landing(Country.fromEnv))
       }
   }
 }
