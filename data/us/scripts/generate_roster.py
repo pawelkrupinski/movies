@@ -109,8 +109,8 @@ def main(src, out):
         "package models",
         "",
         "private[models] object UsRosterData {",
-        "  // (displayName, pillName, flicks cinema slug, metro label)",
-        "  type C = (String, String, String, String)",
+        "  // (displayName, pillName, flicks cinema slug, metro label, lat, lon)",
+        "  type C = (String, String, String, String, Double, Double)",
         "  // (slug, name, lat, lon, zoneId, cinemas)",
         "  type R = (String, String, Double, Double, String, Seq[C])",
         "",
@@ -121,8 +121,14 @@ def main(src, out):
                      f'{lat}, {lon}, "{zone}", Seq(')
         for v in vs:
             t = scala_str(v['title'])
+            # Coordinates ride along per venue: `UsMetroSubAreas` splits a metro
+            # too big to browse into compass sub-areas from them, exactly as the
+            # metros themselves are clustered from them. 5 decimals is ~1 m,
+            # far past what a compass bearing can notice, and keeps the literal
+            # short.
             lines.append(f'    ("{t}", "{t}", "{scala_str(v["slug"])}", '
-                         f'"{scala_str(metro_of[state][v["slug"]])}"),')
+                         f'"{scala_str(metro_of[state][v["slug"]])}", '
+                         f'{round(v["lat"], 5)}, {round(v["lon"], 5)}),')
         lines.append('  ))')
         lines.append('')
     lines.append('  val regions: Seq[R] = Seq(')

@@ -1610,22 +1610,30 @@ object UsRoster {
     if (venues.sizeIs < MinCinemasToSplit || groups.sizeIs < 2) Nil else groups
   }
 
-  private val built: Seq[(UsRegion, Seq[(UsCinema, String)])] =
+  private val built: Seq[(UsRegion, Seq[(UsCinema, String, GeoPoint)])] =
     UsRosterData.regions.map { case (slug, name, lat, lon, zone, cinemas) =>
-      val venues = cinemas.map { case (disp, pill, flicksSlug, metro) =>
+      val venues = cinemas.map { case (disp, pill, flicksSlug, metro, venueLat, venueLon) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp ($name)" else disp
-        (new UsCinema(unique, pill), flicksSlug, metro)
+        (new UsCinema(unique, pill), flicksSlug, metro, GeoPoint(venueLat, venueLon))
       }
       val region = new UsRegion(slug, CityLabels(name, name, name), lat, lon, ZoneId.of(zone),
         venues.map(_._1), metroAreas(venues.map(v => (v._1, v._3))))
-      (region, venues.map(v => (v._1, v._2)))
+      (region, venues.map(v => (v._1, v._2, v._4)))
     }
   val regions: Seq[UsRegion]                = built.map(_._1)
   val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, v) => r.labels.nominative -> v.map(_._1) }
   /** Each US venue's Flicks `/cinema/<slug>/` id — what the scrape catalog binds
    *  to a `FlicksClient` on the `FlicksMarket.UnitedStates` market, and what a
    *  chain-primary venue keeps as its FALLBACK slug. */
-  val flicksSlugByCinema: Map[Cinema, String] = built.flatMap(_._2).toMap
+  val flicksSlugByCinema: Map[Cinema, String] =
+    built.flatMap(_._2).map { case (cinema, flicksSlug, _) => cinema -> flicksSlug }.toMap
+
+  /** Every US venue's harvested coordinates — the same `lat`/`lon` its metro was
+   *  distance-clustered from. Kept on the model so [[UsMetroSubAreas]] can split
+   *  the handful of metros too big to browse into compass sub-areas from the
+   *  venues themselves, rather than from a second hand-written map. */
+  private[models] val locationByCinema: Map[Cinema, GeoPoint] =
+    built.flatMap(_._2).map { case (cinema, _, location) => cinema -> location }.toMap
 
   /** US venues by display name. The display name is the wire key every stored slot
    *  uses and the only stable handle these venues have — they are built at runtime
@@ -1633,7 +1641,7 @@ object UsRoster {
    *  case object to refer to one by. `services.cinemas.us.UsChainVenues` keys its
    *  chain maps this way for exactly that reason; this is the lookup back. */
   val byDisplayName: Map[String, Cinema] =
-    built.flatMap(_._2).map { case (cinema, _) => cinema.displayName -> cinema }.toMap
+    built.flatMap(_._2).map { case (cinema, _, _) => cinema.displayName -> cinema }.toMap
 }
 
 object Cinema {

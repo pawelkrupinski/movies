@@ -25,7 +25,9 @@ object CinemaArea {
    *  persisted client-side, so they need a fold that never drifts. */
   def apply(label: String): CinemaArea = CinemaArea(label, Slugify.stable(label))
 
-  // London compass areas — `compass`'s order is the client display order.
+  // Compass areas — `compass`'s order is the client display order. Shared by
+  // London's hand-written map and the biggest US metros' derived one
+  // ([[UsMetroSubAreas]]), so both spell the same area the same way.
   val Central: CinemaArea = CinemaArea("Central")
   val North:   CinemaArea = CinemaArea("North")
   val East:    CinemaArea = CinemaArea("East")

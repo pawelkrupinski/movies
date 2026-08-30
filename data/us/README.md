@@ -131,7 +131,12 @@ German one) are caught separately by `UsRoster.claimedElsewhere`, which the
 generator cannot see.
 
 It runs the clustering above as part of the same pass, and dies the same way on
-a metro it cannot name uniquely within its state. Everything it does is a pure
+a metro it cannot name uniquely within its state. Each venue's `lat`/`lon` rides
+along into the roster (rounded to 5 decimals, ~1 m) as well as being clustered
+on: `UsMetroSubAreas` splits the five metros too big to browse — Los Angeles,
+New York, San Francisco, Chicago, Dallas Fort Worth — into London's five compass
+areas from those coordinates, so the sub-division is regenerated with the roster
+rather than hand-maintained. Everything it does is a pure
 function of `venues.json` — same input, byte-identical output — so re-running it
 on an unchanged file is a no-op and the diff after a re-harvest is only what the
 harvest moved.
