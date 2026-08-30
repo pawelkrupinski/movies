@@ -8,10 +8,10 @@ name: Regenerate OG share cards
 # w {locative}" for Poland — see `web/src/page/scala/tools/OgCardGenerator.scala`.
 #
 # Runs once PER deployed country — all four of them. Every country gets its `/`
-# landing card (`og-home{-code}.jpg`) and then its cities. The sweep is a card
-# per city and the US alone is ~525 of them, so the countries are a MATRIX
-# rather than sequential steps in one job: four ~45min-worst-case legs in
-# parallel, instead of one job that would run past any sane timeout.
+# landing card (`og-home{-code}.jpg`) and then its cities: 41 Polish, 79 UK, 158
+# German, 457 US. The sweep is a card per city, so the countries are a MATRIX
+# rather than sequential steps in one job: four legs in parallel, the US's ~40
+# minutes among them, instead of one job that would run past any sane timeout.
 #
 # `Country.ogOrigin` points each leg at that country's own base URL (path prefix
 # included), and falls back to the DEPLOYED host for an undeployed country — so
@@ -60,8 +60,8 @@ jobs:
                     - { country: germany,        code: de }
                     - { country: united-states,  code: us }
         runs-on: ubuntu-latest
-        # ~5s a card, and the US is ~525 cards (55 states + their metros) — the
-        # sweep alone is ~45 minutes there before a cold compile.
+        # ~5s a card, and the US is 457 of them (its states and their metros) —
+        # the sweep alone is ~40 minutes there before a cold compile.
         timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5

@@ -23,7 +23,7 @@ import java.io.File
  * Runs off the filenames rather than the rendered HTML on purpose: the page
  * specs (`RepertoirePreviewMetaSpec`, `LandingPreviewMetaSpec`) already pin the
  * URL a page emits, so what is left to prove is that the other end of that URL
- * is on disk — cheap to check for all ~800 cards, where rendering 800 pages
+ * is on disk — cheap to check for all 739 cards, where rendering 739 pages
  * would not be.
  */
 class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
@@ -47,9 +47,9 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
   }
 
   "the cards" should "be the JPEGs the pages name, with no PNG left behind" in {
-    // The cards were PNG until the sweep grew from 122 to ~800 of them: at
-    // ~810 KB each, and rewritten by every weekly refresh, PNG cost ~585 MB a
-    // run against JPEG's ~70 MB for the same pixels. A leftover `og-*.png` is
+    // The cards were PNG until the sweep grew from 122 to 739 of them: at
+    // ~810 KB each, and rewritten by every weekly refresh, PNG cost ~600 MB a
+    // run against JPEG's 77 MB for the same pixels. A leftover `og-*.png` is
     // dead weight nothing serves.
     val strays = Option(cards.listFiles((_, n) => n.startsWith("og-") && n.endsWith(".png"))).toSeq.flatten.map(_.getName)
     withClue(s"${strays.size} stale PNG cards; first: ") { strays.take(8) shouldBe empty }
