@@ -8,7 +8,7 @@ import services.cinemas.pl._
 import services.cinemas.common.{FlicksClient, FlicksMarket}
 import services.cinemas.us.{RegalClient, RegalVenues}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
-import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, AmcClient, AmcVenueMap, UsChainVenues}
 import services.movies.TitleNormalizer
 
 import java.time.{LocalDate, ZoneId}
@@ -444,6 +444,22 @@ class CinemaScraperCatalog(
 
   private def flicksIn(market: FlicksMarket, slug: String, cinema: Cinema): FlicksClient =
     new FlicksClient(flicksFetch, slug, cinema, market, today = Some(today))
+
+  // AMC Theatres — the catalogue PRIMARY for the 519 US venues AMC serves from
+  // its own origin, with flicks.us kept as the aggregator fallback (see
+  // `amcFlicksFallback` + `WorkerWiring.recordingScraper`).
+  //
+  // Through `flicksFetch`, NOT `http`, for the same reason Cineworld is: AMC sits
+  // behind Cloudflare and hard-blocks non-residential clients — every AMC host
+  // (www, graph and the legacy api) answered a probe from a plain datacenter/ISP
+  // egress with a Cloudflare "Sorry, you have been blocked" WAF page on
+  // 2026-08-30, while the same requests over a residential path returned 200. It
+  // is GET+POST but carries no cookie, so per-venue (default host+path)
+  // stickiness is right — nothing has to share an IP, and the per-date POSTs
+  // spread the sweep across the pool. A proxy that can't get through rolls to the
+  // flicks fallback, which is no worse than today.
+  private def amc(marketSlug: String, theatreSlug: String, cinema: Cinema): AmcClient =
+    new AmcClient(flicksFetch, marketSlug, theatreSlug, cinema, today = Some(today))
 
   // UK chain own-site clients — the catalogue PRIMARY for their venues, with
   // flicks.co.uk kept as the aggregator fallback (see [[ChainFlicksFallback]] +
@@ -1563,6 +1579,10 @@ class CinemaScraperCatalog(
         models.UsRoster.flicksSlugByCinema.get(cinema)
           .flatMap(RegalVenues.theatreCodeBySlug.get)
           .map(regal(_, cinema)))
+      .orElse(
+        models.UsRoster.flicksSlugByCinema.get(cinema)
+          .flatMap(AmcVenueMap.byFlicksSlug.get)
+          .map { case (marketSlug, theatreSlug) => amc(marketSlug, theatreSlug, cinema) })
   }
 
   private val usBaseByCity: Map[String, Seq[CinemaScraper]] =
@@ -1580,7 +1600,7 @@ class CinemaScraperCatalog(
    *  and the fallback cannot drift apart about which venue they mean. */
   private val usFlicksFallback: Map[Cinema, ChainFlicksFallback.FlicksFallback] =
     models.UsRoster.regions.flatMap(_.cinemas)
-      .filter(c => UsChainVenues.all.contains(c.displayName))
+      .filter(c => usChainScraper(c).isDefined)
       .flatMap(c => models.UsRoster.flicksSlugByCinema.get(c)
         .map(slug => c -> ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedStates, slug)))
       .toMap

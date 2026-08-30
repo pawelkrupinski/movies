@@ -10,7 +10,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{FlicksClient, FlicksMarket, GatsbyBoxOfficeClient}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.cinemas.uk.CineworldClient
-import services.cinemas.us.RegalClient
+import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 
 import java.time.LocalDate
@@ -147,9 +147,12 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     // A UK venue's fallback must name the UK market — looking it up on flicks.us 404s.
     c.flicksFallbackSlugs.get(CineworldSheffield).value.market shouldBe FlicksMarket.UnitedKingdom
     // Cineworld 87 + Vue 88 + Showcase 16 + Everyman 50 + Odeon 102 = 343 UK,
-    // plus the US chain venues: Regal 401 + Alamo 40 + Landmark 26 + Showcase US 13.
+    // plus the US chain venues:
+    //   Regal 401 + AMC 519 + Alamo 40 + Landmark 26 + Showcase US 13 = 999.
+    // Every one of them is own-site PRIMARY with flicks.us kept as the fallback, so
+    // this total moves whenever a chain is added, dropped, or a venue map changes.
     ChainFlicksFallback.ukSlugs should have size 343
-    c.flicksFallbackSlugs should have size 343 + 401 + 79
+    c.flicksFallbackSlugs should have size 343 + 999
 
     // Regal's US venues are the same arrangement on the other market: own-site
     // chain client as PRIMARY, flicks.US kept as the fallback. Named explicitly
@@ -189,6 +192,15 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     primaryFor("Alamo Drafthouse Lakeline") shouldBe a [AlamoDrafthouseClient]
     primaryFor("Landmark Nuart Theatre") shouldBe a [GatsbyBoxOfficeClient]
     primaryFor("Showcase Legacy Place Dedham") shouldBe a [GatsbyBoxOfficeClient]
+
+    // AMC is the same arrangement at the largest scale — 519 of its 532 venues are
+    // own-site primary. The 13 AMC locations absent from AMC's own roster (closed
+    // or sold) must STAY on flicks.us: a chain map is not a licence to assume every
+    // venue bearing the brand is still served by it.
+    primaryFor("AMC Town Center 20") shouldBe a [AmcClient]
+    val amcPrimaries = c.all.count(_.isInstanceOf[AmcClient])
+    amcPrimaries shouldBe 519
+    primaryFor("AMC CLASSIC Farmington 4") shouldBe a [FlicksClient]
 
     val usFallbacks = c.flicksFallbackSlugs.filter { case (cin, _) =>
       UsChainVenues.all.contains(cin.displayName)

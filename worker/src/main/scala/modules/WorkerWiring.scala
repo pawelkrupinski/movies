@@ -447,7 +447,8 @@ class WorkerWiring(
     cinemaScraperCatalog.flicksFallbackSlugs
 
   /** Wrap a scrape source with the outcome recorder + its fallback source:
-   *   - a UK chain venue → flicks.co.uk as the aggregator fallback;
+   *   - a chain venue → Flicks as the aggregator fallback, on the market its
+   *     catalogue entry names (flicks.co.uk for the UK chains, flicks.us for AMC);
    *   - else an eligible single venue → Filmweb;
    *   - else the plain uptime recorder.
    *  One source-neutral [[SourceFallbackScraper]] serves both feeds; `fallbackName`

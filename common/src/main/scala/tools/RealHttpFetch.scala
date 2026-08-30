@@ -586,6 +586,36 @@ object RealHttpFetch {
       minRequestInterval = Some(Duration.ofMillis(500)),
       paceKnob           = Some("KINOWO_LANDMARK_PACE_MS"),
     ),
+    // AMC Theatres — 519 US venues moved off flicks.us onto the chain's own
+    // origins (see `services.cinemas.us.AmcClient`). The suffix covers BOTH hosts the
+    // scrape touches, `www.amctheatres.com` (one venue page per scrape, for the
+    // day list) and `graph.amctheatres.com` (one GraphQL POST per advertised
+    // day), because `hostMatches` accepts a dotted sub-domain. They still pace
+    // INDEPENDENTLY — `RateLimitedHttpFetch` buckets by full hostname, not by
+    // policy row — which is what we want: the ~519 index GETs must not queue
+    // behind the ~47k day POSTs that carry the sweep.
+    //
+    // A row is not optional here. Policy rows match by host SUFFIX, so a host
+    // with none of its own is entirely UNPACED — the exact condition behind the
+    // UK's self-inflicted 429 storm, and this chain is 519 venues.
+    //
+    // 250ms is a DEFENSIVE default, not a measured ceiling — unlike the flicks
+    // rows above, nothing here is fitted to observed throttling. What is known
+    // (2026-08-30): ~30 probe requests across both hosts returned 200 with no
+    // 429/403 and no stalling, which establishes that the origin tolerates our
+    // access at all and nothing more. So this sits just under the flicks pace we
+    // DO have evidence for, on the reasoning that a national chain's own CDN has
+    // at least an aggregator's capacity. It is deliberately cheap to be wrong
+    // about: at 250ms the whole 519-venue sweep is ~3.3h, comfortably inside the
+    // US worker's 840-min cadence, so there is room to slow down without the
+    // sweep overrunning. Tune it against panel-14 of kinowo-worker-diag (throttle
+    // %) rather than assuming it holds; `KINOWO_AMC_PACE_MS` makes that a flip on
+    // `/admin/config` instead of a redeploy.
+    HostPolicy(
+      Set("amctheatres.com"),
+      minRequestInterval = Some(Duration.ofMillis(250)),
+      paceKnob           = Some("KINOWO_AMC_PACE_MS"),
+    ),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted
