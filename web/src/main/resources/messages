@@ -101,6 +101,7 @@ detail.trailers=Zwiastuny
 detail.trailer=Zwiastun {0}
 detail.trailerTitle=Zwiastun: {0}
 detail.showings=Seanse
+detail.moreCinemas=Pokaż pozostałe kina ({0})
 card.hide=Ukryj film
 
 # ── Film page (meta) ────────────────────────────────────────────────────────

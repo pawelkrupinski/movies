@@ -94,6 +94,7 @@ detail.trailers=Trailers
 detail.trailer=Trailer {0}
 detail.trailerTitle=Trailer: {0}
 detail.showings=Showings
+detail.moreCinemas=Show {0} more cinemas
 card.hide=Hide film
 
 # ── Film page (meta) ────────────────────────────────────────────────────────

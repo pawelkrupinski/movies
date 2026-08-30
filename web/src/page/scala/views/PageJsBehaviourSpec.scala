@@ -96,6 +96,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
               ogDescription = "", devMode = false).body
           case None    => "<html><body>Film not found</body></html>"
         }
+      // A purpose-built /film render for the cinema-fold test: the Poznań
+      // fixture corpus tops out at a handful of venues a day, but the fold
+      // only bites past ten — London's `one-night-only` runs 62. Take the
+      // first schedule and re-seat its single day at 12 distinct cinemas.
+      val manyCinemasHtml: String = views.html.film(
+        tools.ManyCinemaFilm(schedules.head), "http://test.local/film-many",
+        ogDescription = "", devMode = false).body
       // `/plan` is static for the fixture corpus — the poster picker +
       // "Twoje filmy" plan. Drives the Filmy-section fold behaviour
       // (collapse on header click, expand on a click anywhere while
@@ -201,6 +208,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // The dev-only visual-tuning page — rendered with real fixture films
           // so its slider panel (and the ± step buttons) can be driven over CDP.
           case p if sub(p) == "/debug/tune" => views.html.tune(schedules.take(3)).body
+          // Isolated /film render carrying 12 cinemas on one date — drives the
+          // cinema-fold unfold button.
+          case p if sub(p) == "/film-many" => manyCinemasHtml
           // The city-selection landing (no city prefix — there's no city yet).
           case "/landing" => landingHtml
           // The global-corpus /debug page (no city prefix).
@@ -1011,6 +1021,41 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           }
         }
       }
+    }
+  }
+
+  // ── /film cinema fold ────────────────────────────────────────────────────
+  //
+  // A big-city film plays 60+ venues a day, and /film used to list every one
+  // of them under every date. Each date now renders its first ten cinemas and
+  // folds the rest behind a button; clicking it unfolds that date's remainder
+  // and takes the button out of the flow. `/film-many` serves a 12-cinema
+  // render so the fold actually bites (the Poznań fixture corpus never does).
+
+  private def visibleCinemaGroups(page: CdpPage): Int =
+    page.evalInt("[...document.querySelectorAll('.cinema-group')].filter(g => g.offsetParent !== null).length")
+
+  "the /film cinema fold" should "show the first ten cinemas of a date and hide the rest" in {
+    onPath("/film-many") { page =>
+      page.evalInt("document.querySelectorAll('.cinema-group').length")        shouldBe 12
+      page.evalInt("document.querySelectorAll('.cinema-group.folded').length") shouldBe 2
+      visibleCinemaGroups(page)                                                shouldBe 10
+      page.evalBool("document.querySelector('.cinemas-more').offsetParent !== null") shouldBe true
+      page.evalString("document.querySelector('.cinemas-more').textContent")   should include ("2")
+    }
+  }
+
+  it should "unfold the remaining cinemas when the button is clicked" in {
+    onPath("/film-many") { page =>
+      page.eval("document.querySelector('.cinemas-more').click()")
+      page.waitFor("document.querySelectorAll('.cinema-group.folded').length === 0")
+
+      visibleCinemaGroups(page) shouldBe 12
+      // The button has done its job and removes itself rather than lingering
+      // as a re-fold nobody asked for.
+      page.evalBool("document.querySelector('.cinemas-more') === null") shouldBe true
+      // Every showtime under the unfolded cinemas is reachable now.
+      page.evalBool("[...document.querySelectorAll('.badge-time')].every(b => b.offsetParent !== null)") shouldBe true
     }
   }
 

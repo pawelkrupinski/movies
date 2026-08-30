@@ -122,6 +122,24 @@
       margin-top: 1.2rem;
     }
     .cinema-group { margin-bottom: .6rem; }
+    /* Cinemas past the tenth on a given day, folded away until the
+       `.cinemas-more` button below them is clicked (`unfoldCinemas` in
+       `_filmShowings`). Its own class, NOT the listing's `.truncated` —
+       that one belongs to the card line-budget fold and is cleared
+       wholesale by `undoTruncation`, which would silently unfold these. */
+    .cinema-group.folded { display: none; }
+    .cinemas-more {
+      display: inline-block;
+      margin-top: .2rem;
+      font-size: .75rem;
+      color: #66aadd;
+      background: rgba(255,255,255,.06);
+      border: 0;
+      padding: .35em .8em;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+    .cinemas-more:hover { color: #aad4ff; background: rgba(255,255,255,.12); }
     .cinema-label { font-size: .8rem; color: #66aadd; margin-bottom: .25rem; }
     .cinema-label-link { color: #66aadd; text-decoration: none; }
     .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }

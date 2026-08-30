@@ -161,6 +161,24 @@ test.describe('/film detail page', { tag: '@agnostic' }, () => {
     expect(details!.x).toBeGreaterThan(poster!.x + poster!.width - 1);
   });
 
+  // A big-city film plays 60+ venues a day, so each date's cinema list opens
+  // at ten and folds the rest behind a button. `/film-many` is the fixture
+  // server's 12-cinema render — no corpus film reaches the threshold itself.
+  test('cinemas past the tenth fold away until the button is clicked', async ({ page }) => {
+    await page.goto('/poznan/film-many', { waitUntil: 'domcontentloaded' });
+
+    await expect(page.locator('.cinema-group')).toHaveCount(12);
+    expect(await page.locator('.cinema-group:visible').count()).toBe(10);
+
+    const more = page.locator('.cinemas-more');
+    await expect(more).toBeVisible();
+    await more.click();
+
+    expect(await page.locator('.cinema-group:visible').count()).toBe(12);
+    // The button has done its job and takes itself out of the flow.
+    await expect(more).toHaveCount(0);
+  });
+
   test('detail page renders without a JS error', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));

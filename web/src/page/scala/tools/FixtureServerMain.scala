@@ -110,6 +110,20 @@ object FixtureServerMain {
       }
     }
 
+    // `/{city}/film-many` — the same film page, re-seated at 12 cinemas on one
+    // date so the Playwright suite can drive /film's cinema fold. No corpus
+    // film reaches the ten-cinema threshold on its own.
+    def manyCinemaFilmPageFor(c: City): String = {
+      implicit val ci: City = c
+      // Only Poznań carries a corpus in this harness; the other cities render
+      // the same empty-handed page a real unpopulated city would.
+      schedulesFor(c).headOption match {
+        case Some(base) => views.html.film(ManyCinemaFilm(base),
+          s"http://test.local/${c.slug}/film-many", ogDescription = "", devMode = false).body
+        case None       => "<html><body>Film not found</body></html>"
+      }
+    }
+
     // The bare `/` landing (city-selection screen). Production serves TWO screens
     // here — a country picker when the request Host is the bare showtimes.cc apex,
     // the city picker otherwise (see LandingController) — and this harness only
@@ -151,6 +165,7 @@ object FixtureServerMain {
                      (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => filmyPageFor(c)
           case s if s.startsWith("/filmy?")                => indexPageFor(c)
           case s if s == "/plan" || s.startsWith("/plan?") => planPageFor(c)
+          case "/film-many"                                => manyCinemaFilmPageFor(c)
           case s if s.startsWith("/film/") =>
             filmPageFor(c, s.stripPrefix("/film/"))
           // LAST, exactly as in the route table: `/{city}/{area}/` is a wildcard

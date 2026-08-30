@@ -141,6 +141,9 @@
 
   <div class="showtimes-section">
     <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">@messages("detail.showings")</h2>
-    @_filmShowings(film)
+    @* A London or Berlin film plays 60+ venues a day; showing every one of
+       them under all five dates buries the page. Each day opens with its
+       first ten cinemas and a button that unfolds the rest. *@
+    @_filmShowings(film, collapseCinemasBeyond = 10)
   </div>
 </div>
