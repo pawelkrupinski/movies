@@ -44,7 +44,6 @@ concurrency:
 #                                                             ┌─► deploy (6 Fly apps, all disabled)
 #   ci (reusable workflow — lint, test, integration,          ├─► kick-convergence
 #       ios/android local-server, page-tests) ─────────────── ─┼─► build-web ──► deploy-web
-#   build-image (stage + push both Fly images) ───────────────┘   (k3s)         (k3s)
 #                                                             └─► build-worker ──► deploy-worker
 #
 # ONE WORKFLOW, because there used to be three: this file plus
@@ -59,17 +58,6 @@ concurrency:
 # once green, deploy. `secrets: inherit` hands the called workflow the
 # ZYTE / TMDB / MONGODB secrets its test jobs need.
 #
-# `build-image` runs ALONGSIDE ci, not after it, and that is the point: the
-# container build is a pure function of the sources, so it does not need the
-# tests to have passed — only the RELEASE does. Building it concurrently takes
-# ~85s of image build off the post-CI tail, leaving the deploy legs to do the
-# one thing that genuinely has to wait for a green build: point the machines at
-# an image that already exists. Nothing ships if ci fails, because the legs
-# still `needs: ci`; a pushed-but-never-released image is inert.
-#
-# It costs a runner slot, and the account has 20. ci.yml is deliberately built
-# to 19 so this job is the 20th — see the RUNNER BUDGET note there before adding
-# a job to either file.
 jobs:
     ci:
         uses: ./.github/workflows/ci.yml
@@ -102,13 +90,23 @@ jobs:
     # image it pushes is what the `kinowo` leg releases; and a pushed worker image is what makes
     # the documented rollback ("flip one word to true") a flip rather than a rebuild. The unused
     # half costs Fly builder time and nothing else.
-    build-image:
+    # THE HALF OF `build-image` THAT WAS NOT REDUNDANT.
+    #
+    # That job built a second copy of an image GHCR already had, on a Fly builder
+    # this project does not run — but it also took the runners back off the
+    # convergence suite, and it did that from a job with NO `needs:`, which is the
+    # only place it works: the runners come free while ci's jobs are still
+    # queueing. Moved into anything that waits for ci it would free nothing, which
+    # `DeployImageReuseSpec` measured.
+    #
+    # So the build went and this stayed, as ~10s of runner rather than ~85s. It
+    # still holds the account's 20th concurrent slot, which is why removing the
+    # image build freed no runner for ci to spend.
+    free-runners:
         runs-on: ubuntu-latest
         permissions:
             contents: read
             actions: write
-        outputs:
-            worker_hash: ${{ steps.stage.outputs.worker_hash }}
         steps:
             # FIRST, before this job does any work of its own: take the runners
             # back off the convergence suite.
@@ -154,83 +152,8 @@ jobs:
                       gh run cancel "$id" || true
                   done
 
-            - uses: actions/checkout@v5
-
-            - uses: actions/setup-java@v5
-              with:
-                  distribution: temurin
-                  java-version: 25
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
-
-            - uses: actions/cache@v5
-              with:
-                  path: |
-                      project/target
-                      project/project/target
-                      */target/scala-*
-                  # Read-only rider on the `test` job's key — same scope, same
-                  # sources. Whichever of the two finishes first writes it.
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
-                  restore-keys: |
-                      sbt-target-${{ runner.os }}-
-
-            - name: Stage both apps
-              id: stage
-              run: |
-                  set -euo pipefail
-                  sbt "web/stage" "worker/stage"
-                  # The worker no-op guard's hash, computed HERE because it has to
-                  # be baked into the image at build time. Same inputs, same order
-                  # as the guard in the deploy leg below — the two must agree or
-                  # the guard never matches. `fly.worker.toml` is hardcoded rather
-                  # than looped over every worker toml because one image carries
-                  # one hash; see the caveat on the guard below.
-                  hash=""
-                  for p in worker common build.sbt project Dockerfile fly.worker.toml; do
-                      hash="$hash$(git rev-parse "HEAD:$p")"
-                  done
-                  echo "worker_hash=$(printf '%s' "$hash" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
-
-            - uses: superfly/flyctl-actions/setup-flyctl@v1
-
-            # `--build-only --push --remote-only` builds on Fly's builder and
-            # pushes to `registry.fly.io/<app>:<sha>` without touching a single
-            # machine. `--image-label` is what makes the tag the SHA, so the
-            # deploy legs can name the image without plumbing an output through.
-            - name: Build and push the web image
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-              run: |
-                  set -euo pipefail
-                  rm -rf stage && cp -r web/target/universal/stage stage
-                  flyctl deploy --build-only --push --remote-only -c fly.toml -a kinowo \
-                      --image-label ${{ github.sha }} \
-                      --build-arg BIN=web \
-                      --build-arg COMMIT_SHA=${{ github.sha }}
-
-            - name: Build and push the worker image
-              env:
-                  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-              run: |
-                  set -euo pipefail
-                  rm -rf stage && cp -r worker/target/universal/stage stage
-                  flyctl deploy --build-only --push --remote-only -c fly.worker.toml -a kinowo-worker \
-                      --image-label ${{ github.sha }} \
-                      --build-arg BIN=worker \
-                      --build-arg COMMIT_SHA=${{ github.sha }} \
-                      --build-arg WORKER_INPUT_HASH=${{ steps.stage.outputs.worker_hash }}
-
-    # Two apps from one Dockerfile, deployed as PARALLEL matrix legs — web
-    # (kinowo) and worker (kinowo-worker) ship on their own runners at the same
-    # time. `fail-fast: false` so a worker-deploy failure doesn't cancel web's
-    # (and vice versa). Each leg RELEASES the image `build-image` already pushed
-    # for its `bin`; `matrix.builder` names the app whose registry holds it.
-    # There is no build here any more — this is the part that had to wait for a
-    # green ci, and it is now the only part that does.
     deploy:
-        needs: [ci, build-image]
+        needs: [ci, build-web, build-worker]
         runs-on: ubuntu-latest
         strategy:
             fail-fast: false
@@ -284,6 +207,7 @@ jobs:
                       toml: fly.toml
                       bin: web
                       builder: kinowo
+                      ghcr: movies-web
                       enabled: true
                     # UK frontend — same `web` binary + build artifact as kinowo,
                     # its own fly config (KINOWO_COUNTRY=uk → the kinowo_uk db).
@@ -291,12 +215,14 @@ jobs:
                       toml: fly.uk.toml
                       bin: web
                       builder: kinowo
+                      ghcr: movies-web
                       enabled: false
                     # DE frontend — KINOWO_COUNTRY=de → the kinowo_de db, in fra.
                     - app: showtimes-de
                       toml: fly.de.toml
                       bin: web
                       builder: kinowo
+                      ghcr: movies-web
                       enabled: false
                     # MOVED TO KUBERNETES 2026-08-29, and this leg is disabled rather than deleted.
                     #
@@ -315,6 +241,7 @@ jobs:
                       toml: fly.worker.toml
                       bin: worker
                       builder: kinowo-worker
+                      ghcr: movies-worker
                       enabled: false
                     # UK worker — same `worker` binary + artifact, split off
                     # kinowo-worker so the full-UK scrape load gets its own 2x
@@ -323,6 +250,7 @@ jobs:
                       toml: fly.worker.uk.toml
                       bin: worker
                       builder: kinowo-worker
+                      ghcr: movies-worker
                       enabled: false
                     # DE worker — split off kinowo-worker (KINOWO_COUNTRIES=de →
                     # the kinowo_de db); the German roster gets its own 2x machine.
@@ -330,6 +258,7 @@ jobs:
                       toml: fly.worker.de.toml
                       bin: worker
                       builder: kinowo-worker
+                      ghcr: movies-worker
                       enabled: false
         # Every leg deploys in PARALLEL — no per-tier concurrency group. A group
         # keyed on the tier (fly-deploy-web / fly-deploy-worker) looks like it
@@ -409,6 +338,24 @@ jobs:
                       echo "skip=true" >> "$GITHUB_OUTPUT"
                       exit 0
                   fi
+                  # NOTHING WAS BUILT FOR THIS TIER, so there is no tag to release.
+                  # The image comes from `build-web` / `build-worker` now, and both
+                  # are path-gated: a push that does not touch a tier pushes no tag
+                  # for it. That is the right answer — an unchanged tier needs no
+                  # deploy — but it has to be said HERE, or the release names a tag
+                  # that was never pushed and reddens a green build. The old
+                  # `build-image` built both tiers unconditionally, so the case
+                  # could not arise.
+                  if [ "${{ matrix.bin }}" = "web" ] && [ "${{ needs.build-web.outputs.changed }}" != "true" ]; then
+                      echo "::notice::Skipping ${{ matrix.app }} — the web tier did not change, so no image was built for this commit."
+                      echo "skip=true" >> "$GITHUB_OUTPUT"
+                      exit 0
+                  fi
+                  if [ "${{ matrix.bin }}" = "worker" ] && [ "${{ needs.build-worker.outputs.changed }}" != "true" ]; then
+                      echo "::notice::Skipping ${{ matrix.app }} — the worker tier did not change, so no image was built for this commit."
+                      echo "skip=true" >> "$GITHUB_OUTPUT"
+                      exit 0
+                  fi
                   deployed=$(flyctl ssh console -a ${{ matrix.app }} -C 'printenv COMMIT_SHA' 2>/dev/null || echo "")
                   if [ -n "$deployed" ] && [ "$deployed" != "${{ github.sha }}" ]; then
                       if git merge-base --is-ancestor "${{ github.sha }}" "$deployed" 2>/dev/null; then
@@ -424,7 +371,7 @@ jobs:
                   # its own config independently (a fly.worker.uk.toml edit redeploys only
                   # the UK worker; a shared worker/ or Dockerfile edit redeploys both).
                   #
-                  # CAVEAT since the image moved to `build-image`: one worker image is
+                  # CAVEAT since the image moved to `build-worker`: one worker image is
                   # built, and it bakes the hash of `fly.worker.toml`. So the skip only
                   # ever MATCHES for kinowo-worker. Re-enabling kinowo-worker-uk/-de
                   # would give them a hash they can never match, i.e. they would deploy
@@ -449,13 +396,23 @@ jobs:
                       fi
                   fi
 
-            # Release only — no `--build-arg`, because COMMIT_SHA and
-            # WORKER_INPUT_HASH were baked in when `build-image` built this tag.
-            - name: Release the pre-built image
+            # Release only — no `--build-arg`: COMMIT_SHA and WORKER_INPUT_HASH
+            # were baked in when the image was built.
+            #
+            # THE IMAGE COMES FROM GHCR, which `build-web` / `build-worker` push
+            # from the same Dockerfile with the same build-args for the cluster.
+            # It used to be built a SECOND time, by a `build-image` job on Fly's
+            # remote builder, purely so this line could say `registry.fly.io`.
+            # That builder is not something this project runs — the org has no
+            # builder app, so every build cold-provisioned one, and roughly two
+            # runs in five died on `timed out connecting to machine:
+            # authentication handshake failed` while producing bytes GHCR already
+            # had. The package is public, so Fly pulls it with no credential.
+            - name: Release the image GHCR already built
               if: steps.guard.outputs.skip != 'true'
               env:
                   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-              run: flyctl deploy -c ${{ matrix.toml }} -a ${{ matrix.app }} -i registry.fly.io/${{ matrix.builder }}:${{ github.sha }}
+              run: flyctl deploy -c ${{ matrix.toml }} -a ${{ matrix.app }} -i ghcr.io/${{ github.repository_owner }}/${{ matrix.ghcr }}:${{ github.sha }}
 
             # Drop a vertical marker on the self-hosted Grafana carrying this
             # commit's SHA + subject, so a metric regression on the dashboard
@@ -574,7 +531,7 @@ jobs:
     # BOTH TIERS `needs: ci`, which the standalone workflows did not. They deployed to the cluster
     # the moment their image built, tests or no tests — a push that failed ci still rolled a broken
     # web image onto kinowo.net. It also keeps the runner budget intact: the account's 20 concurrent
-    # jobs are spoken for at t=0 by ci's 19 plus `build-image` (CiRunnerBudgetSpec), and a job that
+    # jobs are spoken for at t=0 by ci's 19 plus `free-runners` (CiRunnerBudgetSpec), and a job that
     # waits for ci takes a slot ci has already given back.
     build-web:
         needs: ci
@@ -791,6 +748,25 @@ jobs:
             - uses: docker/setup-buildx-action@v3
               if: steps.changed.outputs.changed == 'true'
 
+            # THE HASH THE WORKER'S NO-OP GUARD READS BACK off the live machine,
+            # to skip a restart that would change nothing — every worker restart
+            # pays a cold freshness re-hydrate plus a scrape boot storm.
+            #
+            # It moved here with the image build. Left in the job that used to do
+            # that build, it would simply stop being baked, and the failure is
+            # silent in the worst direction: the guard never matches, so every
+            # push restarts the worker — the exact thing it exists to prevent.
+            - name: Hash the worker's deployable inputs
+              id: worker_hash
+              if: steps.changed.outputs.changed == 'true'
+              run: |
+                  set -euo pipefail
+                  hash=""
+                  for p in worker common build.sbt project Dockerfile fly.worker.toml; do
+                      hash="$hash$(git rev-parse "HEAD:$p")"
+                  done
+                  echo "worker_hash=$(printf '%s' "$hash" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
             - name: Build and push
               if: steps.changed.outputs.changed == 'true'
               uses: docker/build-push-action@v6
@@ -803,6 +779,7 @@ jobs:
                   build-args: |
                       BIN=worker
                       COMMIT_SHA=${{ github.sha }}
+                      WORKER_INPUT_HASH=${{ steps.worker_hash.outputs.worker_hash }}
                   # BOTH TAGS, ALWAYS. The SHA tag is what a deploy pins, so a restarted pod comes
                   # back on the exact build that was deployed; `latest` exists only so a
                   # hand-applied manifest resolves to something. Never deploy `latest` — a pod that

@@ -44,8 +44,11 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
 
   "the sbt caches" should "have been found at all (guards this spec's own reader)" in {
     sbtCachePaths should not be empty
-    // test, integration-test, e2e, mobile-local-server, build-image, the page-test action
-    sbtCachePaths should have size 6
+    // test, integration-test, e2e, mobile-local-server, the page-test action.
+    // `build-image` was a sixth until its container build moved to GHCR, where
+    // `build-web` / `build-worker` were already producing the same bytes — those
+    // two stage with sbt but cache through `sbt/setup-sbt`, not this key.
+    sbtCachePaths should have size 5
   }
 
   it should "carry the module classes and zinc state, which is the only part worth caching" in {

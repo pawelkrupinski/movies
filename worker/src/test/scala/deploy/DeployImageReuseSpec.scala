@@ -8,9 +8,14 @@ import org.scalatest.matchers.should.Matchers
  *
  * The deploy leg used to do both — `flyctl deploy --remote-only` downloaded the
  * staged dist, built the image on Fly's builder and rolled the machines, ~86s of
- * which only the roll actually needed a green test run. Building is a pure
- * function of the sources, so `build-image` now does it concurrently with ci and
- * the leg only points machines at a tag that already exists.
+ * which only the roll actually needed a green test run.
+ *
+ * The build moved out, first to a `build-image` job running alongside ci, and
+ * then out of Fly entirely: `build-web` / `build-worker` were already building
+ * the same Dockerfile with the same build-args and pushing to GHCR for the
+ * cluster, so the Fly copy was a second build of identical bytes — on a builder
+ * this project does not run, which failed roughly two runs in five with
+ * `timed out connecting to machine`. The leg now releases the GHCR image.
  *
  * Two things must stay true for that to be both fast and safe:
  *
@@ -25,20 +30,47 @@ import org.scalatest.matchers.should.Matchers
 class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val mainYml    = RepoFile.read(".github/workflows/main.yml")
   private lazy val deployJob  = RepoFile.block(mainYml, "deploy")
-  private lazy val buildImage = RepoFile.block(mainYml, "build-image")
+  private lazy val freeRunners = RepoFile.block(mainYml, "free-runners")
+  private lazy val buildWeb    = RepoFile.block(mainYml, "build-web")
+  private lazy val buildWorker = RepoFile.block(mainYml, "build-worker")
 
   "the deploy leg" should "release a pre-built image rather than build one" in {
-    deployJob should include("-i registry.fly.io/${{ matrix.builder }}:${{ github.sha }}")
+    deployJob should include("-i ghcr.io/${{ github.repository_owner }}/${{ matrix.ghcr }}:${{ github.sha }}")
     deployJob should not include "--remote-only"
     deployJob should not include "download-artifact"
   }
 
-  it should "still wait for a green build before releasing anything" in {
-    deployJob should include("needs: [ci, build-image]")
+  // ONE IMAGE, NOT TWO. Fly is released with the bytes the cluster already runs,
+  // which is the whole point: a second build of the same Dockerfile could differ
+  // from the first only by failing, and on Fly's builder it usually did.
+  it should "not build an image on Fly at all" in {
+    // On the COMMANDS, not the file: the comment above the release step names
+    // both of these while explaining why they are gone, and a spec that forbids
+    // saying so would delete the explanation along with the behaviour.
+    val commands = mainYml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
+    commands should not include "--build-only"
+    commands should not include "registry.fly.io"
   }
 
-  it should "tag the image with the commit, so the leg can name it without an output" in {
-    buildImage should include("--image-label ${{ github.sha }}")
+  it should "still wait for a green build before releasing anything" in {
+    deployJob should include("needs: [ci, build-web, build-worker]")
+  }
+
+  it should "release a tag those builds actually push" in {
+    buildWeb    should include("ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}")
+    buildWorker should include("ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}")
+  }
+
+  /**
+   * ...and NOT release when they pushed nothing. Both builds are path-gated, so
+   * a push that misses a tier pushes no tag for it — where the old `build-image`
+   * built both unconditionally and the case could not arise. Without this the leg
+   * names a tag that was never pushed, and an unchanged tier turns a green build
+   * red.
+   */
+  it should "skip a tier whose build pushed no tag for this commit" in {
+    deployJob should include("needs.build-web.outputs.changed")
+    deployJob should include("needs.build-worker.outputs.changed")
   }
 
   /**
@@ -51,8 +83,9 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    */
   it should "hash the same worker inputs in the image build as in the skip guard" in {
     val inputs = "for p in worker common build.sbt project Dockerfile"
-    buildImage should include(s"$inputs fly.worker.toml")
-    deployJob should include(s"$inputs $${{ matrix.toml }}")
+    buildWorker should include(s"$inputs fly.worker.toml")
+    buildWorker should include("WORKER_INPUT_HASH=")
+    deployJob   should include(s"$inputs $${{ matrix.toml }}")
   }
 
   /**
@@ -78,15 +111,19 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * with `cancel-in-progress`, so the next push was going to discard the run
    * anyway (6 of 10 consecutive runs ended `cancelled`), and `kick-convergence`
    * re-dispatches it later in this same run against the newer commit. What
-   * matters is WHERE it happens: in `build-image`, which has no `needs` and so
-   * starts with ci's jobs, the runners come free while they are still queueing.
-   * Moved into a job that waits for ci, it would free nothing.
+   * matters is WHERE it happens: in a job with no `needs`, which starts with
+   * ci's, the runners come free while they are still queueing. Moved into a job
+   * that waits for ci, it would free nothing.
+   *
+   * This outlived the image build it used to share a job with. When that build
+   * left for GHCR the cancelling stayed, in a job of its own, for exactly the
+   * reason above — which is also why deleting the build freed no runner for ci.
    */
   it should "take the runners back from an in-flight convergence run, before ci needs them" in {
-    buildImage should include("""gh run list --workflow "Country convergence"""")
-    buildImage should include("gh run cancel")
-    buildImage should include("actions: write")
-    buildImage should not include "needs:"
+    freeRunners should include("""gh run list --workflow "Country convergence"""")
+    freeRunners should include("gh run cancel")
+    freeRunners should include("actions: write")
+    freeRunners should not include "needs:"
   }
 
   /**
@@ -96,8 +133,8 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * `in_progress` alone left the hole half-plugged.
    */
   it should "cancel a convergence run that is merely queued, not only one already running" in {
-    buildImage should include("""select(.status != "completed")""")
-    buildImage should not include "--status in_progress"
+    freeRunners should include("""select(.status != "completed")""")
+    freeRunners should not include "--status in_progress"
   }
 
   /**

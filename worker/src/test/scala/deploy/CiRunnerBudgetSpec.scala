@@ -101,17 +101,20 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * `build-image` is the one main.yml job that runs alongside ci rather than
-   * after it, and it is deliberate: the container build needs the sources, not a
-   * green test run, so building it concurrently takes the image build off the
-   * post-CI tail. If it ever grew a `needs:`, it would slide back onto the
-   * critical path and quietly undo that — while also freeing a slot ci.yml is
-   * not expecting.
+   * `free-runners` is the one main.yml job that runs alongside ci rather than
+   * after it, and it is deliberate: it cancels an in-flight convergence run, and
+   * the runners that frees are only useful while ci's jobs are still queueing. A
+   * `needs:` here would make it free nothing — and would hand back a slot ci.yml
+   * is not sized to spend.
+   *
+   * It used to be `build-image`, which cancelled AND built a container on Fly's
+   * builder. The build moved to GHCR, where it was already happening; the
+   * cancelling stayed, because this is the only place it works.
    */
-  it should "build the deploy image alongside the tests, not after them" in {
-    val buildImage = RepoFile.block(mainYml, "build-image")
-    buildImage should not include "needs:"
-    buildImage should include("--build-only")
+  it should "take the runners back alongside the tests, not after them" in {
+    val freeRunners = RepoFile.block(mainYml, "free-runners")
+    freeRunners should not include "needs:"
+    freeRunners should include("gh run cancel")
   }
 
   /**
@@ -127,6 +130,6 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
       .filterKeys(_ != "ci")
       .collect { case (name, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => name }
       .toSet
-    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("build-image"))
+    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("free-runners"))
   }
 }
