@@ -4533,9 +4533,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // `timeOrigin` is minted per document, so a change is proof the browser
       // really went back for the page rather than re-running boot in place.
+      //
+      // WAIT FOR THE NEW DOCUMENT TO BE READY, not merely to exist: `timeOrigin`
+      // changes the instant it is created, which is before its scripts have run,
+      // so anything reaching for `window.…` in that gap finds nothing there. The
+      // reload is driven from page JS rather than through `CdpPage.reload`, so it
+      // gets none of that helper's waiting for free — this is the same
+      // `readyState` gate `openPage` and `reload` both use. A fast machine wins
+      // the race and CI loses it, which is how this passed here and failed there.
       val before = page.evalString("String(performance.timeOrigin)")
       page.eval("setTimeout(window.settleSignOut, 0)")
-      page.waitFor(s"String(performance.timeOrigin) !== '$before'")
+      page.waitFor(
+        s"String(performance.timeOrigin) !== '$before' && document.readyState === 'complete'",
+        timeoutMs = 5000)
 
       // Cleared BEFORE the reload, so the fixture — which always renders signed
       // in — settles after one fetch instead of looping forever.
