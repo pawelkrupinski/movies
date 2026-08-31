@@ -75,6 +75,13 @@ struct CityResolverView: View {
                 return
             }
             #endif
+            // The user reached this gate by naming a country, so the answer
+            // they are owed is that country's cities — not a location fix, and
+            // not the permission dialog that taking one would raise.
+            if prefs.awaitingExplicitCityPick {
+                showChoice = true
+                return
+            }
             switch await resolver.resolve(in: prefs.selectedCountry.code, cities: catalog.cities) {
             case .city(let city):
                 detected = city

@@ -30,7 +30,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     val html = bodyOn("showtimes.cc")
     html should include ("""<ul class="country-list"""")
     models.Country.switchable.foreach { c =>
-      html should include (s"""href="${c.webUrl.get}/"""")
+      html should include (s"""href="${c.webUrl.get}/${controllers.LandingController.PickCityQuery}"""")
       html should include (c.displayName)
     }
   }
@@ -42,7 +42,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   it should "include Poland, despite its separate domain and brand" in {
     val html = bodyOn("showtimes.cc")
     html should include ("Polska")
-    html should include ("""href="https://kinowo.net/"""")
+    html should include ("""href="https://kinowo.net/?pick=city"""")
     html should include ("kinowo.net")
   }
 
@@ -106,5 +106,41 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
       .withHeaders("X-Forwarded-Host" -> "kinowo.net")
       .withCookies(play.api.mvc.Cookie("city", "poznan")))
     redirectLocation(res) shouldBe Some("/poznan/")
+  }
+
+  // ── Arriving by choosing this country ──────────────────────────────
+  // The front door and the navbar switch both mark their links. A visitor who
+  // named this country is asking for its cities, so neither the cookie bounce
+  // nor the geolocation redirect may answer for them.
+
+  private def resultOn(host: String, target: String) =
+    controller.index().apply(
+      FakeRequest("GET", target)
+        .withHeaders("X-Forwarded-Host" -> host)
+        .withCookies(play.api.mvc.Cookie("city", "poznan")))
+
+  "a landing reached by picking this country" should "show the city list, not bounce to the cookie'd city" in {
+    status(resultOn("kinowo.net", "/" + controllers.LandingController.PickCityQuery)) shouldBe OK
+    contentAsString(resultOn("kinowo.net", "/" + controllers.LandingController.PickCityQuery)) should
+      include ("""<ul class="city-list"""")
+  }
+
+  it should "still bounce a returning visitor who did not pick a country" in {
+    val plain = resultOn("kinowo.net", "/")
+    status(plain) shouldBe SEE_OTHER
+    redirectLocation(plain) shouldBe Some("/poznan/")
+  }
+
+  it should "leave geolocation out of the page it renders" in {
+    val html = contentAsString(resultOn("kinowo.net", "/" + controllers.LandingController.PickCityQuery))
+    // The script still ships (it is the same template), but it is told to stand
+    // down by the same marker the server read.
+    html should include ("pick=city")
+  }
+
+  it should "ignore a marker that is not the one we write" in {
+    val bogus = resultOn("kinowo.net", "/?pick=whatever")
+    status(bogus) shouldBe SEE_OTHER
+    redirectLocation(bogus) shouldBe Some("/poznan/")
   }
 }

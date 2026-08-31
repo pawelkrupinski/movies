@@ -4445,20 +4445,20 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "The country switcher" should "hand a signed-in visitor over through /auth/sso/start when the target is another origin" in {
     onLoggedInIndex { page =>
       page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") shouldBe
-        "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fuk"
+        "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fuk&pick=city"
     }
   }
 
   it should "navigate straight there when the target is on this origin — the cookie already follows" in {
     onLoggedInIndex { page =>
       val origin = page.evalString("window.location.origin")
-      page.evalString("window.countrySwitchTarget(window.location.origin + '/de')") shouldBe s"$origin/de/"
+      page.evalString("window.countrySwitchTarget(window.location.origin + '/de')") shouldBe s"$origin/de/?pick=city"
     }
   }
 
   it should "navigate straight there for a signed-out visitor — there is no session to hand over" in {
     onPath("/") { page =>
-      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") shouldBe "https://showtimes.cc/uk/"
+      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") shouldBe "https://showtimes.cc/uk/?pick=city"
     }
   }
 
@@ -4475,7 +4475,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString("document.getElementById('country-select').value") shouldBe "https://showtimes.cc/de"
 
       page.evalString("window.countrySwitchTarget('https://showtimes.cc/de')") shouldBe
-        "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fde"
+        "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fde&pick=city"
+    }
+  }
+
+
+  // Switching country is a deliberate choice OF A COUNTRY, so the landing it
+  // opens must ask which city rather than bounce to a cookie'd one or to
+  // wherever the device is standing. `pick=city` is what says so, and it has to
+  // survive both routes — including the handover, where it rides BESIDE `to`
+  // (the far side matches `to` against the deployed base URLs verbatim, so a
+  // query string inside it would be refused as "not a deployed country").
+  it should "ask the destination for a city list, on both routes" in {
+    onLoggedInIndex { page =>
+      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") should endWith ("&pick=city")
+      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") should include ("to=https%3A%2F%2Fshowtimes.cc%2Fuk&")
+    }
+    onPath("/") { page =>
+      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") should endWith ("/?pick=city")
     }
   }
 

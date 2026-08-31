@@ -33,6 +33,12 @@ final class UserPreferences: ObservableObject {
     /// Slugs of split cities whose first-visit area picker the user has already
     /// completed, so it shows once per city (never on a flat city). Device-local.
     @Published private(set) var areaPickerSeenCities: Set<String> = []
+    /// True while the city gate must present the country's list instead of
+    /// offering a located city. Set when the user picks a country themselves:
+    /// they have just said which country they want, and answering that with
+    /// "you're near Poznań" offers the very thing they navigated away from.
+    /// Cleared by `setCity(_:)`, however the city was reached.
+    @Published private(set) var awaitingExplicitCityPick: Bool = false
     /// The selected country (see `Country`) — which deployment the app talks to
     /// and which language it forces. Defaults to Poland until the user picks
     /// otherwise. Persisted via `CountrySelection` (same `store`) so it's
@@ -48,6 +54,7 @@ final class UserPreferences: ObservableObject {
     private let kSwitchPrompt  = "citySwitchPromptKey"
     private let kServerSynced  = "serverStateSynced"
     private let kAreaSeen       = "areaPickerSeenCities"
+    private let kExplicitPick   = "awaitingExplicitCityPick"
 
     init(store: UserDefaults = .standard) {
         self.store = store
@@ -58,6 +65,7 @@ final class UserPreferences: ObservableObject {
         selectedCity        = store.string(forKey: kCity)
         citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
         serverStateSynced   = store.bool(forKey: kServerSynced)
+        awaitingExplicitCityPick = store.bool(forKey: kExplicitPick)
         areaPickerSeenCities = Set(store.stringArray(forKey: kAreaSeen) ?? [])
         selectedCountry     = CountrySelection.current(store)
 
@@ -128,6 +136,10 @@ final class UserPreferences: ObservableObject {
     }
 
     func setCity(_ slug: String) {
+        // The gate is satisfied however the city was reached, so an
+        // explicit-pick request never outlives the gate that asked for it.
+        // Cleared before the guard: a re-pick of the same slug still ends it.
+        clearExplicitCityPick()
         guard selectedCity != slug else { return }
         selectedCity = slug
         store.set(slug, forKey: kCity)
@@ -161,5 +173,22 @@ final class UserPreferences: ObservableObject {
         guard selectedCountry != country else { return }
         selectedCountry = country
         CountrySelection.select(country, in: store)
+        // The user just said which country they want, so let them say which
+        // city too: the re-gated app offers that country's list rather than
+        // whatever city the device happens to sit near.
+        awaitExplicitCityPick()
+    }
+
+    /// Ask the city gate for an explicit pick rather than a located offer.
+    func awaitExplicitCityPick() {
+        guard !awaitingExplicitCityPick else { return }
+        awaitingExplicitCityPick = true
+        store.set(true, forKey: kExplicitPick)
+    }
+
+    private func clearExplicitCityPick() {
+        guard awaitingExplicitCityPick else { return }
+        awaitingExplicitCityPick = false
+        store.removeObject(forKey: kExplicitPick)
     }
 }

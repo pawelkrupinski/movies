@@ -177,6 +177,10 @@
     }
 
     (function () {
+      // The visitor named this country to get here (`?pick=city`), so the city
+      // is theirs to name too: no fix, and no permission prompt to take one.
+      // The server skips its own cookie bounce on the same marker.
+      if (/(^|[?&])@{controllers.LandingController.PickCityParam}=@{controllers.LandingController.PickCityValue}(&|$)/.test(location.search)) return;
       if (!navigator.geolocation) return;
       var note = document.getElementById('locating');
       note.textContent = '@messages("landing.locating")';

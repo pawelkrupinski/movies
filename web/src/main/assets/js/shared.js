@@ -138,9 +138,14 @@
   // mid-assertion.
   function countrySwitchTarget(url) {
     var base = currentCountryBase();
+    // Switching country is a deliberate choice of country, so the landing it
+    // opens is asked for a CITY rather than allowed to bounce to a cookie'd one
+    // or to wherever the device is standing (mirrors the front door's links and
+    // the mobile gate). `pick` rides beside `to`, never inside it: `to` is
+    // matched against the deployed base URLs verbatim.
     return (base && document.getElementById('auth-menu') && !sameOriginAs(url))
-      ? base + '/auth/sso/start?to=' + encodeURIComponent(url)
-      : url + '/';
+      ? base + '/auth/sso/start?to=' + encodeURIComponent(url) + '&pick=city'
+      : url + '/?pick=city';
   }
   window.countrySwitchTarget = countrySwitchTarget;
 

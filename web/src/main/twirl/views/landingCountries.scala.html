@@ -12,6 +12,10 @@
    No geolocation here, unlike the city landing: the nearest-city fix is only
    meaningful once a country is chosen, and guessing a COUNTRY from coordinates
    would send a visitor somewhere they cannot opt out of without noticing.
+
+   Each link carries `?pick=city` so the country's own landing knows the visitor
+   chose to be there and asks which city, instead of bouncing them to a cookie'd
+   one or to wherever they are standing.
 *@
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
@@ -53,7 +57,7 @@
     <p class="sub">@messages("landing.chooseCountry")</p>
     <ul class="country-list" id="country-list">
       @for(c <- countries) {
-        <li><a href="@{c.webUrl.get}/" data-country="@c.code">@c.displayName<span class="country-host">@c.shareHost</span></a></li>
+        <li><a href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code">@c.displayName<span class="country-host">@c.shareHost</span></a></li>
       }
     </ul>
   </main>

@@ -434,6 +434,12 @@ class AuthController(
    *  ever renders (and no subresource sends a `Referer`) while it is still in
    *  the address bar. */
   def ssoStart(): Action[AnyContent] = Action { request =>
+    // Rides ALONGSIDE `to` rather than inside it: `to` is matched against the
+    // deployed base URLs verbatim, so a query string on it is not a deployed
+    // country. Carried across the hop so a signed-in visitor switching country
+    // reaches the far landing knowing they chose it — same as the signed-out
+    // switch, which navigates there directly.
+    val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
     AuthController.switchTarget(request.getQueryString("to")) match {
       case None =>
         logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
@@ -448,10 +454,11 @@ class AuthController(
           // probe's own cookie guard is the durable half; this is what holds when
           // a browser is refusing cookies, which is also a browser that can never
           // hold a session and must not be put in a loop chasing one.
-          case None       => Redirect(s"$target/")
+          case None       => Redirect(s"$target/$pick")
           case Some(user) =>
             val code = URLEncoder.encode(exchangeCodes.mint(user.id), UTF_8)
-            Redirect(s"$target/auth/sso/finish?code=$code")
+            val onward = if (pick.isEmpty) "" else s"&${LandingController.PickCityParam}=${LandingController.PickCityValue}"
+            Redirect(s"$target/auth/sso/finish?code=$code$onward")
         }
     }
   }
@@ -469,9 +476,13 @@ class AuthController(
     // back where they started rather than on this country's home page. Matched
     // against the deployed countries and nothing else: it is a redirect target
     // named in a URL, which is an open redirect the moment it is trusted.
+    // A country switch that came through the handover still owes its landing the
+    // marker: the visitor chose this country and should be asked which city,
+    // not bounced to a cookie'd one.
+    val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
     val home = Redirect(
       AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
-        .getOrElse(routes.LandingController.index().url))
+        .getOrElse(routes.LandingController.index().url) + pick)
     request.getQueryString("code").flatMap(exchangeCodes.redeem).flatMap(userRepository.findById) match {
       case None =>
         logger.warn("SSO handoff arrived without a redeemable code — landing signed out.")
