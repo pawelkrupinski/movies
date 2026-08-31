@@ -10,6 +10,11 @@
     <string name="search_city_hint">Szukaj miasta</string>
     <string name="clear">Wyczyść</string>
     <string name="no_city_matching">Brak miasta o nazwie „%1$s”.</string>
+    <string name="choose_region_title">Wybierz stan</string>
+    <string name="choose_region_subtitle">Najpierw stan, potem miasto.</string>
+    <string name="search_region_hint">Szukaj stanu</string>
+    <string name="no_region_matching">Brak stanu o nazwie „%1$s”.</string>
+    <string name="back_to_regions">Wszystkie stany</string>
     <string name="near_city_label">Jesteś w pobliżu miasta</string>
     <string name="show_repertoire">Pokaż repertuar — %1$s</string>
     <string name="choose_other_city">Wybierz inne miasto</string>

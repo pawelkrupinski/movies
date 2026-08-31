@@ -26,7 +26,8 @@ object Catalog {
    * builds. Hand-built (no play-json in `common`); the field values carry no
    * characters needing JSON escaping. Mirrors the `{slug,name,lat,lon}` city
    * shape the web `ALL_CITIES` clients already parse, plus the owning country
-   * `code` — the single country-code space (`pl`/`uk`) the apps key on.
+   * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
+   * where the country's picker groups its cities, the group's label as `region`.
    */
   val json: String = {
     val countries = Country.switchable
@@ -41,8 +42,18 @@ object Catalog {
       }
       .mkString("[", ",", "]")
     val cities = Country.switchable
-      .flatMap(c => c.cities.map(city =>
-        s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"}"""))
+      .flatMap { c =>
+        // A country whose picker GROUPS its cities (only the US, by state) names
+        // each city's group, so the apps can offer the same two-step pick the web
+        // does: 457 metros in one A-to-Z is not a list anybody reads, "California"
+        // then "Los Angeles" is. Absent everywhere else, where a name is all a
+        // visitor needs — so the field costs bytes only where it earns them.
+        val regionOf = c.cityGroups.flatMap(g => g.cities.map(_.slug -> g.label)).toMap
+        c.cities.map { city =>
+          val region = regionOf.get(city.slug).fold("")(label => s""","region":"$label"""")
+          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region}"""
+        }
+      }
       .mkString("[", ",", "]")
     s"""{"countries":$countries,"cities":$cities}"""
   }

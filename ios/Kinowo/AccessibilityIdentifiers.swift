@@ -98,6 +98,9 @@ enum A11y {
         /// The "choose a different city" button on the confirm screen — a UITest
         /// taps it to reach the manual `CityChoiceView` deterministically.
         static let chooseOtherButton = "citygate.chooseOther.button"
+        /// The "back to the state list" control on the second step of a grouped
+        /// country's pick (the US). Only present once a state has been chosen.
+        static let backToRegionsButton = "citygate.backToRegions.button"
     }
 
     enum EmptyState {

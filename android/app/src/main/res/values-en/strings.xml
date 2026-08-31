@@ -10,6 +10,11 @@
     <string name="search_city_hint">Search for a city</string>
     <string name="clear">Clear</string>
     <string name="no_city_matching">No city named “%1$s”.</string>
+    <string name="choose_region_title">Choose a state</string>
+    <string name="choose_region_subtitle">The state first, then the city.</string>
+    <string name="search_region_hint">Search for a state</string>
+    <string name="no_region_matching">No state named “%1$s”.</string>
+    <string name="back_to_regions">All states</string>
     <string name="near_city_label">You’re near</string>
     <string name="show_repertoire">Show showtimes — %1$s</string>
     <string name="choose_other_city">Choose another city</string>

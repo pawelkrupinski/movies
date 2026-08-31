@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -19,7 +20,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +39,9 @@ import pl.kinowo.model.Catalog
 import pl.kinowo.model.City
 import pl.kinowo.model.Country
 import pl.kinowo.model.matching
+import pl.kinowo.model.matchingInRegion
+import pl.kinowo.model.regionsIn
+import pl.kinowo.model.regionsMatching
 import pl.kinowo.ui.CountryPicker
 import pl.kinowo.ui.theme.TextSecondary
 
@@ -59,10 +65,23 @@ fun CityChoiceScreen(
     selectedCountryCode: String? = null,
     onCountry: (String) -> Unit = {},
 ) {
+    val country = Country.normalizeCode(selectedCountryCode) ?: Country.default.code
     var query by remember { mutableStateOf("") }
-    // Scope the list to the selected country so the chooser shows UK regions for
-    // a UK user, Polish cities for a PL user — from the live catalog.
-    val cities = catalog.cities.matching(query, Country.normalizeCode(selectedCountryCode) ?: Country.default.code)
+    // The region being browsed, on a country whose cities are grouped. Null is
+    // the first step (pick a state); non-null the second (pick a city in it).
+    var region by remember { mutableStateOf<String?>(null) }
+    // Switching country changes what both steps mean, so neither a half-typed
+    // query nor a state from the country just left may survive it.
+    LaunchedEffect(country) {
+        query = ""
+        region = null
+    }
+
+    // A country that groups its cities (the US, by state) is picked in two steps:
+    // 457 metros in one A-to-Z is not a list anybody reads. Everywhere else the
+    // regions are empty and this collapses to the single flat list it always was.
+    val regions = catalog.cities.regionsIn(country)
+    val pickingRegion = regions.isNotEmpty() && region == null
 
     Column(
         Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -75,22 +94,41 @@ fun CityChoiceScreen(
             modifier = Modifier.padding(top = 24.dp),
         )
         Text(
-            stringResource(R.string.choose_city_title),
+            stringResource(if (pickingRegion) R.string.choose_region_title else R.string.choose_city_title),
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 24.dp),
         )
         Text(
-            stringResource(R.string.choose_city_subtitle),
+            // Inside a region, the subtitle is the region itself: it is the only
+            // thing on this screen that says which state's cities these are.
+            region ?: stringResource(
+                if (pickingRegion) R.string.choose_region_subtitle else R.string.choose_city_subtitle
+            ),
             fontSize = 14.sp,
             color = TextSecondary,
             modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
         )
+        if (region != null) {
+            TextButton(
+                onClick = { region = null; query = "" },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                Text(
+                    stringResource(R.string.back_to_regions),
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        }
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.search_city_hint)) },
+            placeholder = {
+                Text(stringResource(if (pickingRegion) R.string.search_region_hint else R.string.search_city_hint))
+            },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {
@@ -104,21 +142,41 @@ fun CityChoiceScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             modifier = Modifier.fillMaxWidth(),
         )
-        if (cities.isEmpty()) {
-            Text(
-                stringResource(R.string.no_city_matching, query),
-                fontSize = 14.sp,
-                color = TextSecondary,
-                modifier = Modifier.padding(top = 20.dp),
-            )
+        if (pickingRegion) {
+            val shown = catalog.cities.regionsMatching(query, country)
+            if (shown.isEmpty()) {
+                NoMatches(query, R.string.no_region_matching)
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    items(shown, key = { it }) { name ->
+                        TallFilledButton(name) { region = name; query = "" }
+                    }
+                }
+            }
         } else {
-            LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                items(cities, key = { it.slug }) { city ->
-                    TallFilledButton(city.name) { onPick(city) }
+            val cities = catalog.cities.matchingInRegion(query, country, region)
+            if (cities.isEmpty()) {
+                NoMatches(query, R.string.no_city_matching)
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    items(cities, key = { it.slug }) { city ->
+                        TallFilledButton(city.name) { onPick(city) }
+                    }
                 }
             }
         }
     }
+}
+
+/** The "nothing matched <query>" line, shared by both steps of the picker. */
+@Composable
+private fun NoMatches(query: String, message: Int) {
+    Text(
+        stringResource(message, query),
+        fontSize = 14.sp,
+        color = TextSecondary,
+        modifier = Modifier.padding(top = 20.dp),
+    )
 }
 
 /**

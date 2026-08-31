@@ -18,6 +18,15 @@ struct City: Codable, Hashable {
     /// city are scoped to the SELECTED country's cities, so a UK user browses UK
     /// regions and a Polish user browses Polish cities — never a mix.
     let country: String
+    /// The group this city is picked under, where its country groups them at all
+    /// — a US state ("California"), and `nil` everywhere else. 457 US metros in
+    /// one A-to-Z is not a list anybody reads, so the picker asks for the state
+    /// first; a country without regions keeps the single flat list.
+    ///
+    /// Carried by `/api/catalog` (and the bundled seed). A `var` with a default
+    /// so the memberwise init stays usable by the hand-written `all` rows below,
+    /// and so a catalog from an older server still decodes.
+    var region: String? = nil
 
     /// Every city the app knows about across ALL countries, in the same order
     /// the web `City.all` lists them (Polish cities first, then the UK regions)
@@ -269,6 +278,34 @@ extension Array where Element == City {
     /// diacritic-insensitive substring). A blank query yields the whole country list.
     func matching(_ query: String, inCountry countryCode: String) -> [City] {
         sortedForPicker(inCountry: countryCode).filter { $0.matches(query) }
+    }
+
+    /// The regions this country's cities are grouped under (US states), in the
+    /// catalog's own order — which is the order the web picker lists them in, so
+    /// the two read alike. Empty for a country that does not group its cities,
+    /// and that emptiness is what the picker reads as "show one flat list".
+    func regions(inCountry countryCode: String) -> [String] {
+        var seen = Set<String>()
+        return inCountry(countryCode).compactMap(\.region).filter { seen.insert($0).inserted }
+    }
+
+    /// `regions(inCountry:)` narrowed to those matching `query`, folded the same
+    /// way city names are, so "calif" finds "California".
+    func regionsMatching(_ query: String, inCountry countryCode: String) -> [String] {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        let regions = regions(inCountry: countryCode)
+        guard !trimmed.isEmpty else { return regions }
+        return regions.filter { City.searchFold($0).contains(City.searchFold(trimmed)) }
+    }
+
+    /// `matching(_:inCountry:)` confined to one `region` — the second step of a
+    /// grouped country's pick. A `nil` region leaves the country-wide list alone,
+    /// so the same call serves both a grouped country's second screen and an
+    /// ungrouped country's only one.
+    func matching(_ query: String, inCountry countryCode: String, region: String?) -> [City] {
+        let cities = matching(query, inCountry: countryCode)
+        guard let region else { return cities }
+        return cities.filter { $0.region == region }
     }
 
     /// The default city for `countryCode` — its first entry in this list, or `nil`.

@@ -86,6 +86,13 @@ final class CatalogStore: ObservableObject {
 
     func sorted(inCountry code: String) -> [City] { cities.sortedForPicker(inCountry: code) }
     func matching(_ query: String, inCountry code: String) -> [City] { cities.matching(query, inCountry: code) }
+    func regions(inCountry code: String) -> [String] { cities.regions(inCountry: code) }
+    func regionsMatching(_ query: String, inCountry code: String) -> [String] {
+        cities.regionsMatching(query, inCountry: code)
+    }
+    func matching(_ query: String, inCountry code: String, region: String?) -> [City] {
+        cities.matching(query, inCountry: code, region: region)
+    }
     func defaultCity(inCountry code: String) -> City? { cities.defaultCity(inCountry: code) }
     func nearestWithin100km(lat: Double, lon: Double, inCountry code: String) -> City? {
         cities.nearestWithin100km(lat: lat, lon: lon, inCountry: code)

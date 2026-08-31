@@ -134,8 +134,12 @@ struct CityConfirmView: View {
 }
 
 /// Manual city picker — the fallback when location is unavailable or the user
-/// is outside every served city. A native grouped `List`, one row per
-/// `City.all`, so it grows automatically as cities are added.
+/// is outside every served city, and the whole of the pick when the user chose
+/// this country themselves. A native grouped `List` driven by the live catalog,
+/// so it grows automatically as cities are added.
+///
+/// Two steps where the country groups its cities (the US, by state), one
+/// everywhere else — see `pickingRegion`.
 struct CityChoiceView: View {
     @EnvironmentObject var prefs: UserPreferences
     @EnvironmentObject var catalog: CatalogStore
@@ -147,10 +151,23 @@ struct CityChoiceView: View {
     var nearest: City?
 
     /// Live search text; narrows the list to the cities whose folded name
-    /// contains it (diacritic-insensitive, so "lodz" finds "Łódź").
+    /// contains it (diacritic-insensitive, so "lodz" finds "Łódź"), or — on the
+    /// first step of a grouped country — to the matching regions.
     @State private var query = ""
+    /// The region being browsed, on a country whose cities are grouped. `nil` is
+    /// the first step (pick a state); non-nil the second (pick a city in it).
+    @State private var region: String?
 
-    private var visibleCities: [City] { catalog.matching(query, inCountry: prefs.selectedCountry.code) }
+    private var countryCode: String { prefs.selectedCountry.code }
+
+    /// A country that groups its cities (the US, by state) is picked in two
+    /// steps: 457 metros in one A-to-Z is not a list anybody reads. Everywhere
+    /// else this is empty and the view collapses to the single flat list.
+    private var regions: [String] { catalog.regions(inCountry: countryCode) }
+    private var pickingRegion: Bool { !regions.isEmpty && region == nil }
+
+    private var visibleRegions: [String] { catalog.regionsMatching(query, inCountry: countryCode) }
+    private var visibleCities: [City] { catalog.matching(query, inCountry: countryCode, region: region) }
 
     var body: some View {
         NavigationStack {
@@ -164,39 +181,74 @@ struct CityChoiceView: View {
                     Text("country.label")
                 }
 
-                Section {
-                    ForEach(visibleCities, id: \.slug) { city in
-                        Button {
-                            choose(city)
-                        } label: {
-                            HStack {
-                                Text(city.name)
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .font(.footnote)
-                                    .foregroundStyle(.tertiary)
+                if pickingRegion {
+                    Section {
+                        ForEach(visibleRegions, id: \.self) { name in
+                            Button { region = name; query = "" } label: {
+                                row(name)
                             }
+                            .foregroundStyle(.primary)
                         }
-                        .foregroundStyle(.primary)
+                    } header: {
+                        Text("citygate.choose_region_title")
                     }
-                } header: {
-                    Text("citygate.choose_title")
-                }
 
-                if visibleCities.isEmpty {
-                    // Keeps the search field anchored (an empty List would let it
-                    // collapse) and tells the user nothing matched.
-                    Text(String(format: String(localized: "citygate.no_match"), query))
-                        .foregroundStyle(.secondary)
+                    if visibleRegions.isEmpty {
+                        Text(String(format: String(localized: "citygate.no_region_match"), query))
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Section {
+                        ForEach(visibleCities, id: \.slug) { city in
+                            Button {
+                                choose(city)
+                            } label: {
+                                row(city.name)
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                    } header: {
+                        // Inside a region, the header is the region itself: it is
+                        // the only thing on this screen that says which state's
+                        // cities these are.
+                        if let region {
+                            Text(region)
+                        } else {
+                            Text("citygate.choose_title")
+                        }
+                    } footer: {
+                        if region != nil {
+                            Button {
+                                region = nil
+                                query = ""
+                            } label: {
+                                Label("citygate.back_to_regions", systemImage: "chevron.left")
+                            }
+                            .accessibilityIdentifier(A11y.CityGate.backToRegionsButton)
+                        }
+                    }
+
+                    if visibleCities.isEmpty {
+                        // Keeps the search field anchored (an empty List would let
+                        // it collapse) and tells the user nothing matched.
+                        Text(String(format: String(localized: "citygate.no_match"), query))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .navigationTitle("citygate.nav_title")
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query,
                         placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: Text("citygate.search_hint"))
+                        prompt: Text(pickingRegion ? "citygate.search_region_hint" : "citygate.search_hint"))
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
+            // Switching country changes what both steps mean, so neither a
+            // half-typed query nor a state from the country just left survives it.
+            .onChange(of: countryCode) { _ in
+                query = ""
+                region = nil
+            }
         }
     }
 
@@ -217,6 +269,17 @@ struct CityChoiceView: View {
             }
         }
         .pickerStyle(.segmented)
+    }
+
+    /// One tappable row: a label and the disclosure chevron both steps use.
+    private func row(_ label: String) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+        }
     }
 
     /// Adopt the picked city. When it differs from the location-detected

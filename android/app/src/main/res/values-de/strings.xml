@@ -10,6 +10,11 @@
     <string name="search_city_hint">Nach einer Stadt suchen</string>
     <string name="clear">Zurücksetzen</string>
     <string name="no_city_matching">Keine Stadt namens „%1$s“.</string>
+    <string name="choose_region_title">Bundesstaat wählen</string>
+    <string name="choose_region_subtitle">Erst der Bundesstaat, dann die Stadt.</string>
+    <string name="search_region_hint">Nach einem Bundesstaat suchen</string>
+    <string name="no_region_matching">Kein Bundesstaat namens „%1$s“.</string>
+    <string name="back_to_regions">Alle Bundesstaaten</string>
     <string name="near_city_label">Du bist in der Nähe von</string>
     <string name="show_repertoire">Spielzeiten anzeigen — %1$s</string>
     <string name="choose_other_city">Andere Stadt wählen</string>

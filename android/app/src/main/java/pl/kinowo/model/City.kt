@@ -23,6 +23,17 @@ data class City(
      * regions and a Polish user browses Polish cities — never a mix.
      */
     val country: String,
+    /**
+     * The group this city is picked under, where its country groups them at all
+     * — a US state ("California"), and null everywhere else. 457 US metros in
+     * one A-to-Z is not a list anybody reads, so the picker asks for the state
+     * first; a country without regions keeps the single flat list.
+     *
+     * Carried by `/api/catalog` (and the bundled seed). Defaulted so a catalog
+     * from an older server, or one of the hand-written [Cities.all] rows, still
+     * decodes.
+     */
+    val region: String? = null,
 )
 
 /**
@@ -279,6 +290,30 @@ fun List<City>.sortedForPicker(countryCode: String): List<City> {
     val collator = java.text.Collator.getInstance(collationLocale(countryCode))
     return inCountry(countryCode).sortedWith(compareBy(collator) { it.name })
 }
+
+/** The regions [countryCode]'s cities are grouped under (US states), in the
+ *  catalog's own order — which is the order the web picker lists them in, so the
+ *  two read alike. Empty for a country that does not group its cities, and that
+ *  emptiness is what the picker reads as "show one flat list". */
+fun List<City>.regionsIn(countryCode: String): List<String> =
+    inCountry(countryCode).mapNotNull { it.region }.distinct()
+
+/** [regionsIn] narrowed to those matching [query], folded the same way city
+ *  names are, so "calif" finds "California". A blank query yields them all. */
+fun List<City>.regionsMatching(query: String, countryCode: String): List<String> {
+    val q = Cities.searchFold(query.trim())
+    val regions = regionsIn(countryCode)
+    return if (q.isEmpty()) regions else regions.filter { Cities.searchFold(it).contains(q) }
+}
+
+/** [matching] confined to one [region] — the second step of a grouped country's
+ *  pick. A null [region] leaves the country-wide list alone, so the same call
+ *  serves both a grouped country's second screen and an ungrouped country's only
+ *  one. */
+fun List<City>.matchingInRegion(query: String, countryCode: String, region: String?): List<City> =
+    matching(query, countryCode).let { cities ->
+        if (region == null) cities else cities.filter { it.region == region }
+    }
 
 /** [sortedForPicker] narrowed to the cities matching [query] (case- and
  *  diacritic-insensitive substring). A blank query yields the whole country list. */

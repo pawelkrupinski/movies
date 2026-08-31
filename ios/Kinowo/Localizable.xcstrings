@@ -1,1660 +1,1748 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "%@ tuning" : {},
-    "%@ ↗" : {},
-    "%lld" : {},
-    "%lld/%lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld/%2$lld"
+  "sourceLanguage": "en",
+  "strings": {
+    "%@ tuning": {},
+    "%@ ↗": {},
+    "%lld": {},
+    "%lld/%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld/%2$lld"
           }
         }
       }
     },
-    "(%lld)" : {},
-    "Kopiuj" : {},
-    "Reset" : {},
-    "Skopiowano" : {},
-    "areapicker.all" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle Regionen"
+    "(%lld)": {},
+    "Kopiuj": {},
+    "Reset": {},
+    "Skopiowano": {},
+    "areapicker.all": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Regionen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All areas"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All areas"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wszystkie okolice"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie okolice"
           }
         }
       }
     },
-    "areapicker.confirm" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Programm anzeigen"
+    "areapicker.confirm": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Programm anzeigen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Show listings"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show listings"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pokaż repertuar"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż repertuar"
           }
         }
       }
     },
-    "areapicker.subtitle" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit ändern."
+    "areapicker.subtitle": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zeige nur Kinos in den von dir gewählten Regionen. Du kannst das jederzeit ändern."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Show cinemas only in the areas you pick. You can change this anytime."
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show cinemas only in the areas you pick. You can change this anytime."
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pokaż kina tylko w wybranych okolicach. Zawsze możesz to zmienić."
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż kina tylko w wybranych okolicach. Zawsze możesz to zmienić."
           }
         }
       }
     },
-    "areapicker.title" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wähle deine Regionen"
+    "areapicker.title": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wähle deine Regionen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose your areas"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your areas"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wybierz okolice"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz okolice"
           }
         }
       }
     },
-    "cinemafilter.all_cinemas" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle Kinos"
+    "cinemafilter.all_cinemas": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Kinos"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All cinemas"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All cinemas"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wszystkie kina"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie kina"
           }
         }
       }
     },
-    "cinemafilter.count" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$d von %2$d Kinos"
+    "cinemafilter.count": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d von %2$d Kinos"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$d of %2$d cinemas"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d of %2$d cinemas"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$d z %2$d kin"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d z %2$d kin"
           }
         }
       }
     },
-    "citygate.choose_other" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Andere Stadt wählen"
+    "citygate.back_to_regions": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle Bundesstaaten"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose another city"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All states"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wybierz inne miasto"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie stany"
           }
         }
       }
     },
-    "citygate.choose_title" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stadt wählen"
+    "citygate.choose_other": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Andere Stadt wählen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose a city"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose another city"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wybierz miasto"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz inne miasto"
           }
         }
       }
     },
-    "citygate.nav_title" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stadt"
+    "citygate.choose_region_title": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundesstaat wählen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "City"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a state"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Miasto"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz stan"
           }
         }
       }
     },
-    "citygate.near_label" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sieht aus, als wärst du in der Nähe von"
+    "citygate.choose_title": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stadt wählen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Looks like you’re near"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a city"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wygląda na to, że jesteś w pobliżu miasta"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz miasto"
           }
         }
       }
     },
-    "citygate.no_match" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Stadt namens „%@“."
+    "citygate.nav_title": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stadt"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No city named “%@”."
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "City"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Brak miasta o nazwie „%@”."
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miasto"
           }
         }
       }
     },
-    "citygate.resolving" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deine nächste Stadt wird ermittelt…"
+    "citygate.near_label": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sieht aus, als wärst du in der Nähe von"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finding your nearest city…"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Looks like you’re near"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ustalamy najbliższe miasto…"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wygląda na to, że jesteś w pobliżu miasta"
           }
         }
       }
     },
-    "citygate.search_hint" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nach einer Stadt suchen"
+    "citygate.no_match": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Stadt namens „%@“."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search for a city"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No city named “%@”."
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Szukaj miasta"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak miasta o nazwie „%@”."
           }
         }
       }
     },
-    "citygate.show_repertoire" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spielzeiten anzeigen — %@"
+    "citygate.no_region_match": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Bundesstaat namens „%@“."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Show showtimes — %@"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No state named “%@”."
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pokaż repertuar — %@"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak stanu o nazwie „%@”."
           }
         }
       }
     },
-    "content.error" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spielzeiten konnten nicht geladen werden."
+    "citygate.resolving": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deine nächste Stadt wird ermittelt…"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couldn’t load showtimes."
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finding your nearest city…"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nie udało się pobrać repertuaru."
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ustalamy najbliższe miasto…"
           }
         }
       }
     },
-    "content.loading" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spielzeiten werden geladen…"
+    "citygate.search_hint": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach einer Stadt suchen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loading showtimes…"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search for a city"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ładowanie repertuaru…"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj miasta"
           }
         }
       }
     },
-    "content.retry" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erneut versuchen"
+    "citygate.search_region_hint": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nach einem Bundesstaat suchen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Try again"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search for a state"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spróbuj ponownie"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj stanu"
           }
         }
       }
     },
-    "country.label" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Land"
+    "citygate.show_repertoire": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielzeiten anzeigen — %@"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Country"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show showtimes — %@"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kraj"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż repertuar — %@"
           }
         }
       }
     },
-    "datefilter.anytime" : {
-      "comment" : "Date pill: no date limit. The widest of the four, so it sets the uniform pill width.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle"
+    "content.error": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielzeiten konnten nicht geladen werden."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn’t load showtimes."
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wszystkie"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się pobrać repertuaru."
           }
         }
       }
     },
-    "datefilter.today" : {
-      "comment" : "Date pill: today's showtimes.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Heute"
+    "content.loading": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielzeiten werden geladen…"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Today"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading showtimes…"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dziś"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ładowanie repertuaru…"
           }
         }
       }
     },
-    "datefilter.tomorrow" : {
-      "comment" : "Date pill: tomorrow's showtimes.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Morgen"
+    "content.retry": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erneut versuchen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tomorrow"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jutro"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spróbuj ponownie"
           }
         }
       }
     },
-    "datefilter.week" : {
-      "comment" : "Date pill: the next seven days. Kept short — four pills share one row.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "7 Tage"
+    "country.label": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Land"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "7 days"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Country"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "7 dni"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kraj"
           }
         }
       }
     },
-    "filmcard.copy_link" : {
-      "comment" : "Long-press menu item copying a link to the film.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Link kopieren"
+    "datefilter.anytime": {
+      "comment": "Date pill: no date limit. The widest of the four, so it sets the uniform pill width.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Copy link"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skopiuj link"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie"
           }
         }
       }
     },
-    "filmcard.share" : {
-      "comment" : "Long-press menu item sharing a link to the film.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Teilen"
+    "datefilter.today": {
+      "comment": "Date pill: today's showtimes.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heute"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Share"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Udostępnij"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dziś"
           }
         }
       }
     },
-    "filmdetail.meta_cast" : {
-      "comment" : "Detail-screen meta block header for the cast. Rendered uppercased. Mirrors Android's meta_cast.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Besetzung"
+    "datefilter.tomorrow": {
+      "comment": "Date pill: tomorrow's showtimes.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Morgen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cast"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tomorrow"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obsada"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jutro"
           }
         }
       }
     },
-    "filmdetail.meta_countries" : {
-      "comment" : "Detail-screen meta block header for the country/countries of production. Rendered uppercased. Mirrors Android's meta_countries.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Länder"
+    "datefilter.week": {
+      "comment": "Date pill: the next seven days. Kept short — four pills share one row.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 Tage"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Countries"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 days"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kraj(e) produkcji"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 dni"
           }
         }
       }
     },
-    "filmdetail.meta_director" : {
-      "comment" : "Detail-screen meta block header for the director(s). Rendered uppercased. Mirrors Android's meta_director.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Regie"
+    "filmcard.copy_link": {
+      "comment": "Long-press menu item copying a link to the film.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Link kopieren"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Director"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copy link"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reżyseria"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skopiuj link"
           }
         }
       }
     },
-    "filmdetail.meta_synopsis" : {
-      "comment" : "Detail-screen meta block header for the plot summary. Rendered uppercased. Mirrors Android's meta_synopsis.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beschreibung"
+    "filmcard.share": {
+      "comment": "Long-press menu item sharing a link to the film.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Teilen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Synopsis"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Share"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Opis"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Udostępnij"
           }
         }
       }
     },
-    "filmdetail.open_trailer" : {
-      "comment" : "Fallback link opening a trailer externally, used where WebKit isn't available to embed it.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trailer öffnen"
+    "filmdetail.meta_cast": {
+      "comment": "Detail-screen meta block header for the cast. Rendered uppercased. Mirrors Android's meta_cast.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Besetzung"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Open trailer"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cast"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Otwórz zwiastun"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obsada"
           }
         }
       }
     },
-    "filmdetail.showings" : {
-      "comment" : "Section header above the per-day, per-cinema screening list.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vorstellungen"
+    "filmdetail.meta_countries": {
+      "comment": "Detail-screen meta block header for the country/countries of production. Rendered uppercased. Mirrors Android's meta_countries.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Länder"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Showtimes"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Countries"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Seanse"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kraj(e) produkcji"
           }
         }
       }
     },
-    "filmdetail.trailer_number" : {
-      "comment" : "Nth trailer button; %lld is the 1-based index. Substituted via String(format:).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trailer %lld"
+    "filmdetail.meta_director": {
+      "comment": "Detail-screen meta block header for the director(s). Rendered uppercased. Mirrors Android's meta_director.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regie"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trailer %lld"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Director"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zwiastun %lld"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reżyseria"
           }
         }
       }
     },
-    "filmdetail.trailers" : {
-      "comment" : "Uppercase section header above the trailer buttons.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "TRAILER"
+    "filmdetail.meta_synopsis": {
+      "comment": "Detail-screen meta block header for the plot summary. Rendered uppercased. Mirrors Android's meta_synopsis.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beschreibung"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "TRAILERS"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synopsis"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ZWIASTUNY"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opis"
           }
         }
       }
     },
-    "filtersheet.account" : {
-      "comment" : "Section header shown when signed in.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konto"
+    "filmdetail.open_trailer": {
+      "comment": "Fallback link opening a trailer externally, used where WebKit isn't available to embed it.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trailer öffnen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Account"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open trailer"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konto"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otwórz zwiastun"
           }
         }
       }
     },
-    "filtersheet.all" : {
-      "comment" : "Segmented-control option meaning 'no constraint on this axis'. Also the select-all toggle on a name-filter list.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle"
+    "filmdetail.showings": {
+      "comment": "Section header above the per-day, per-cinema screening list.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vorstellungen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Showtimes"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wszystkie"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seanse"
           }
         }
       }
     },
-    "filtersheet.any_hour" : {
-      "comment" : "From-hour option meaning no lower bound on the start time.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Beliebig"
+    "filmdetail.trailer_number": {
+      "comment": "Nth trailer button; %lld is the 1-based index. Substituted via String(format:).",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trailer %lld"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Any"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trailer %lld"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dowolna"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zwiastun %lld"
           }
         }
       }
     },
-    "filtersheet.cancel" : {
-      "comment" : "Cancel button in the sign-out confirmation dialog.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abbrechen"
+    "filmdetail.trailers": {
+      "comment": "Uppercase section header above the trailer buttons.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAILER"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cancel"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRAILERS"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anuluj"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ZWIASTUNY"
           }
         }
       }
     },
-    "filtersheet.cast" : {
-      "comment" : "Filter axis: the film's cast.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Besetzung"
+    "filtersheet.account": {
+      "comment": "Section header shown when signed in.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cast"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obsada"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto"
           }
         }
       }
     },
-    "filtersheet.cinemas" : {
-      "comment" : "Section header above the per-cinema checkboxes.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kinos"
+    "filtersheet.all": {
+      "comment": "Segmented-control option meaning 'no constraint on this axis'. Also the select-all toggle on a name-filter list.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cinemas"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kina"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wszystkie"
           }
         }
       }
     },
-    "filtersheet.city" : {
-      "comment" : "Section header and picker label for the city whose showtimes are displayed.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stadt"
+    "filtersheet.any_hour": {
+      "comment": "From-hour option meaning no lower bound on the start time.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beliebig"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "City"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Any"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Miasto"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dowolna"
           }
         }
       }
     },
-    "filtersheet.clear" : {
-      "comment" : "Destructive button resetting every filter axis.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zurücksetzen"
+    "filtersheet.cancel": {
+      "comment": "Cancel button in the sign-out confirmation dialog.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abbrechen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Clear"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wyczyść"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anuluj"
           }
         }
       }
     },
-    "filtersheet.country_of_production" : {
-      "comment" : "Filter axis: the film's country of production.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Produktionsland"
+    "filtersheet.cast": {
+      "comment": "Filter axis: the film's cast.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Besetzung"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Country"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cast"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kraj produkcji"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obsada"
           }
         }
       }
     },
-    "filtersheet.delete_account" : {
-      "comment" : "Destructive button deleting the signed-in account.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Konto löschen"
+    "filtersheet.cinemas": {
+      "comment": "Section header above the per-cinema checkboxes.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kinos"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete account"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cinemas"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Usuń konto"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kina"
           }
         }
       }
     },
-    "filtersheet.dimension" : {
-      "comment" : "Filter axis: 2D vs 3D. Section header and picker label.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dimension"
+    "filtersheet.city": {
+      "comment": "Section header and picker label for the city whose showtimes are displayed.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stadt"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dimension"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "City"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wymiar"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Miasto"
           }
         }
       }
     },
-    "filtersheet.director" : {
-      "comment" : "Filter axis: the film's director.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Regie"
+    "filtersheet.clear": {
+      "comment": "Destructive button resetting every filter axis.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurücksetzen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Director"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reżyseria"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść"
           }
         }
       }
     },
-    "filtersheet.done" : {
-      "comment" : "Toolbar button dismissing the filter sheet.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fertig"
+    "filtersheet.country_of_production": {
+      "comment": "Filter axis: the film's country of production.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Produktionsland"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Country"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gotowe"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kraj produkcji"
           }
         }
       }
     },
-    "filtersheet.dubbing" : {
-      "comment" : "Version filter: dubbed audio.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Synchronisiert"
+    "filtersheet.delete_account": {
+      "comment": "Destructive button deleting the signed-in account.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konto löschen"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dubbed"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete account"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dubbing"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usuń konto"
           }
         }
       }
     },
-    "filtersheet.from_hour" : {
-      "comment" : "Section header above the earliest-start-time pickers.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ab Uhrzeit"
+    "filtersheet.dimension": {
+      "comment": "Filter axis: 2D vs 3D. Section header and picker label.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimension"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "From"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dimension"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Od godziny"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wymiar"
           }
         }
       }
     },
-    "filtersheet.genre" : {
-      "comment" : "Filter axis: the film's genre.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Genre"
+    "filtersheet.director": {
+      "comment": "Filter axis: the film's director.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Regie"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Genre"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Director"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gatunek"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reżyseria"
           }
         }
       }
     },
-    "filtersheet.hidden_films" : {
-      "comment" : "Row that opens the hidden-films list, and that list's own title.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ausgeblendete Filme"
+    "filtersheet.done": {
+      "comment": "Toolbar button dismissing the filter sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fertig"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hidden films"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ukryte filmy"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gotowe"
           }
         }
       }
     },
-    "filtersheet.hour" : {
-      "comment" : "Hour picker under the 'from' section.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stunde"
+    "filtersheet.dubbing": {
+      "comment": "Version filter: dubbed audio.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchronisiert"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hour"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dubbed"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Godzina"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dubbing"
           }
         }
       }
     },
-    "filtersheet.imax_only" : {
-      "comment" : "Toggle limiting results to IMAX screenings.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nur IMAX"
+    "filtersheet.from_hour": {
+      "comment": "Section header above the earliest-start-time pickers.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ab Uhrzeit"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "IMAX only"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "From"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tylko IMAX"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Od godziny"
           }
         }
       }
     },
-    "filtersheet.minute" : {
-      "comment" : "Minute picker under the 'from' section.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Minute"
+    "filtersheet.genre": {
+      "comment": "Filter axis: the film's genre.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genre"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Minute"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Genre"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Minuta"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gatunek"
           }
         }
       }
     },
-    "filtersheet.sign_in" : {
-      "comment" : "Section header shown when signed out.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Anmelden"
+    "filtersheet.hidden_films": {
+      "comment": "Row that opens the hidden-films list, and that list's own title.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ausgeblendete Filme"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hidden films"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zaloguj się"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ukryte filmy"
           }
         }
       }
     },
-    "filtersheet.sign_in_facebook" : {
-      "comment" : "Sign-in button for the Facebook provider.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Facebook anmelden"
+    "filtersheet.hour": {
+      "comment": "Hour picker under the 'from' section.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stunde"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in with Facebook"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hour"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zaloguj przez Facebook"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Godzina"
           }
         }
       }
     },
-    "filtersheet.sign_in_google" : {
-      "comment" : "Sign-in button for the Google provider.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mit Google anmelden"
+    "filtersheet.imax_only": {
+      "comment": "Toggle limiting results to IMAX screenings.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nur IMAX"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign in with Google"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IMAX only"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Zaloguj przez Google"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tylko IMAX"
           }
         }
       }
     },
-    "filtersheet.sign_out" : {
-      "comment" : "Sign-out button, and the confirming button in its dialog.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abmelden"
+    "filtersheet.minute": {
+      "comment": "Minute picker under the 'from' section.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minute"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign out"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minute"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wyloguj"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minuta"
           }
         }
       }
     },
-    "filtersheet.sign_out_confirm" : {
-      "comment" : "Title of the sign-out confirmation dialog.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Abmelden?"
+    "filtersheet.sign_in": {
+      "comment": "Section header shown when signed out.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Anmelden"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sign out?"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wylogować się?"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaloguj się"
           }
         }
       }
     },
-    "filtersheet.sort_picker" : {
-      "comment" : "Label of the sort picker itself.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sortieren nach"
+    "filtersheet.sign_in_facebook": {
+      "comment": "Sign-in button for the Facebook provider.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Facebook anmelden"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sort by"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in with Facebook"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sortuj"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaloguj przez Facebook"
           }
         }
       }
     },
-    "filtersheet.sort_section" : {
-      "comment" : "Section header above the sort control.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sortierung"
+    "filtersheet.sign_in_google": {
+      "comment": "Sign-in button for the Google provider.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mit Google anmelden"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sorting"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in with Google"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sortowanie"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zaloguj przez Google"
           }
         }
       }
     },
-    "filtersheet.subtitles" : {
-      "comment" : "Version filter: original audio with subtitles.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Untertitel"
+    "filtersheet.sign_out": {
+      "comment": "Sign-out button, and the confirming button in its dialog.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abmelden"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Subtitles"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign out"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Napisy"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyloguj"
           }
         }
       }
     },
-    "filtersheet.title" : {
-      "comment" : "Title of the filter sheet, and the accessibility label of the button that opens it.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filter"
+    "filtersheet.sign_out_confirm": {
+      "comment": "Title of the sign-out confirmation dialog.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abmelden?"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filters"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign out?"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Filtry"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wylogować się?"
           }
         }
       }
     },
-    "filtersheet.version" : {
-      "comment" : "Filter axis: subtitled vs dubbed. Section header and picker label.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fassung"
+    "filtersheet.sort_picker": {
+      "comment": "Label of the sort picker itself.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sortieren nach"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Version"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sort by"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wersja"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sortuj"
           }
         }
       }
     },
-    "grid.empty" : {
-      "comment" : "Shown in place of the film grid when nothing is playing under the current filters.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Vorstellungen."
+    "filtersheet.sort_section": {
+      "comment": "Section header above the sort control.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sortierung"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No showtimes."
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sorting"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Brak repertuaru."
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sortowanie"
           }
         }
       }
     },
-    "hiddenfilms.show" : {
-      "comment" : "Per-row button un-hiding one film.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Einblenden"
+    "filtersheet.subtitles": {
+      "comment": "Version filter: original audio with subtitles.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Untertitel"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Show"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subtitles"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pokaż"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Napisy"
           }
         }
       }
     },
-    "hiddenfilms.show_all" : {
-      "comment" : "Destructive button un-hiding every hidden film at once.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alle einblenden"
+    "filtersheet.title": {
+      "comment": "Title of the filter sheet, and the accessibility label of the button that opens it.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filter"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Show all"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filters"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pokaż wszystkie"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtry"
           }
         }
       }
     },
-    "poster.missing" : {
-      "comment" : "Placeholder over a film's poster slot when no artwork resolved.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kein Poster"
+    "filtersheet.version": {
+      "comment": "Filter axis: subtitled vs dubbed. Section header and picker label.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fassung"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No poster"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Brak plakatu"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wersja"
           }
         }
       }
     },
-    "search.placeholder" : {
-      "comment" : "Placeholder of the film-title search field, on the top bar and over the hidden-films list.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Film suchen"
+    "grid.empty": {
+      "comment": "Shown in place of the film grid when nothing is playing under the current filters.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keine Vorstellungen."
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search for a film"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No showtimes."
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Szukaj filmu"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak repertuaru."
           }
         }
       }
     },
-    "showings.more_showtimes" : {
-      "comment" : "Badge under a truncated card: how many further screenings it hides. Pluralised by the catalog — Polish needs one/few/many, English and German only one/other.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "+%lld Vorstellung"
+    "hiddenfilms.show": {
+      "comment": "Per-row button un-hiding one film.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Einblenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż"
+          }
+        }
+      }
+    },
+    "hiddenfilms.show_all": {
+      "comment": "Destructive button un-hiding every hidden film at once.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alle einblenden"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show all"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pokaż wszystkie"
+          }
+        }
+      }
+    },
+    "poster.missing": {
+      "comment": "Placeholder over a film's poster slot when no artwork resolved.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Kein Poster"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No poster"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brak plakatu"
+          }
+        }
+      }
+    },
+    "search.placeholder": {
+      "comment": "Placeholder of the film-title search field, on the top bar and over the hidden-films list.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Film suchen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search for a film"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj filmu"
+          }
+        }
+      }
+    },
+    "showings.more_showtimes": {
+      "comment": "Badge under a truncated card: how many further screenings it hides. Pluralised by the catalog — Polish needs one/few/many, English and German only one/other.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld Vorstellung"
                 }
               },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "+%lld Vorstellungen"
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld Vorstellungen"
                 }
               }
             }
           }
         },
-        "en" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "+%lld showtime"
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld showtime"
                 }
               },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "+%lld showtimes"
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld showtimes"
                 }
               }
             }
           }
         },
-        "pl" : {
-          "variations" : {
-            "plural" : {
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "+%lld seanse"
+        "pl": {
+          "variations": {
+            "plural": {
+              "few": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld seanse"
                 }
               },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "+%lld seansów"
+              "many": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld seansów"
                 }
               },
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "+%lld seans"
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld seans"
                 }
               },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "+%lld seansu"
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld seansu"
                 }
               }
             }
@@ -1662,190 +1750,190 @@
         }
       }
     },
-    "showings.room_hint" : {
-      "comment" : "VoiceOver hint on a showtime that knows its screen/room; %@ is the room name. Substituted via String(format:).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gedrückt halten, um den Saal zu sehen: %@"
+    "showings.room_hint": {
+      "comment": "VoiceOver hint on a showtime that knows its screen/room; %@ is the room name. Substituted via String(format:).",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gedrückt halten, um den Saal zu sehen: %@"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press and hold to see the screen: %@"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Press and hold to see the screen: %@"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przytrzymaj, aby zobaczyć salę: %@"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przytrzymaj, aby zobaczyć salę: %@"
           }
         }
       }
     },
-    "sort.earliest" : {
-      "comment" : "Sort order: by the soonest upcoming screening (the default).",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nächste Vorstellung"
+    "sort.earliest": {
+      "comment": "Sort order: by the soonest upcoming screening (the default).",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nächste Vorstellung"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Next showing"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next showing"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Najbliższy seans"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Najbliższy seans"
           }
         }
       }
     },
-    "sort.rating" : {
-      "comment" : "Sort order: by weighted rating, descending.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bewertung"
+    "sort.rating": {
+      "comment": "Sort order: by weighted rating, descending.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bewertung"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rating"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rating"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ocena"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocena"
           }
         }
       }
     },
-    "swipehint.label" : {
-      "comment" : "One-off onboarding hint: horizontal swipes page between days.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wischen, um den Tag zu wechseln"
+    "swipehint.label": {
+      "comment": "One-off onboarding hint: horizontal swipes page between days.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wischen, um den Tag zu wechseln"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Swipe to change the day"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipe to change the day"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przesuń, aby zmienić dzień"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przesuń, aby zmienić dzień"
           }
         }
       }
     },
-    "switch.confirm" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wechseln"
+    "switch.confirm": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wechseln"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Switch"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przełącz"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przełącz"
           }
         }
       }
     },
-    "switch.nearer_title" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Du bist näher an %@"
+    "switch.nearer_title": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Du bist näher an %@"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You’re closer to %@"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You’re closer to %@"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jesteś bliżej miasta %@"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jesteś bliżej miasta %@"
           }
         }
       }
     },
-    "switch.not_now" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Jetzt nicht"
+    "switch.not_now": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jetzt nicht"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Not now"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not now"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nie teraz"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie teraz"
           }
         }
       }
     },
-    "switch.question" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spielzeiten zu %@ wechseln?"
+    "switch.question": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spielzeiten zu %@ wechseln?"
           }
         },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Switch showtimes to %@?"
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch showtimes to %@?"
           }
         },
-        "pl" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Przełączyć repertuar na %@?"
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Przełączyć repertuar na %@?"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }
