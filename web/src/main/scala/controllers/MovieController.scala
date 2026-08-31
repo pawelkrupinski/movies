@@ -354,13 +354,11 @@ class MovieController( cc: ControllerComponents,
   // so /debug orders staging rows by the same anchor the worker wrote.
   private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
 
-  // Read the session's `userId` (set by `AuthController.callback`) and
-  // resolve it to a User if the row is still there. Returns None for
-  // anonymous browsers AND for the rare case where a previously
-  // authenticated session's user row was deleted out of band — the
-  // session is stale, treat it as logged out.
+  // Who this page is being rendered for. `SignedInUser` owns the rule —
+  // including why an anonymous browser and a session whose row has since been
+  // deleted are the same answer, and why the session says WHEN it was issued.
   private def currentUser(request: RequestHeader): Option[models.User] =
-    request.session.get("userId").flatMap(userRepository.findById)
+    SignedInUser(request, userRepository)
 
   private def acceptsGzip(request: RequestHeader): Boolean =
     request.headers.get("Accept-Encoding").exists(_.toLowerCase.contains("gzip"))

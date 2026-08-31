@@ -52,6 +52,42 @@ class CachingUserRepositorySpec extends AnyFlatSpec with Matchers {
     inner.findByIdHits.get() shouldBe 1
   }
 
+  it should "re-read the inner repository when the cached row predates the caller's stamp" in {
+    // THE SIBLING-POD SHAPE. This process cached Alice's row while she was
+    // signed in through Google; the sign-in that switched her to Facebook was
+    // completed by the apex deployment, which wrote Mongo and its OWN cache and
+    // could not touch this one. Her session names the row it was issued
+    // against, and that is the only thing that tells this cache it is stale.
+    val inner  = new CountingUserRepository(Seq(Alice))
+    val cached = new CachingUserRepository(inner)
+
+    cached.findById("uuid-alice") shouldBe Some(Alice)
+
+    val switched = Alice.copy(
+      provider    = "facebook",
+      providerSub = "fb-99",
+      avatarUrl   = Some("https://platform-lookaside.fbsbx.com/alice"),
+      lastSeenAt  = Alice.lastSeenAt.plusSeconds(3600)
+    )
+    inner.upsert(switched)   // straight past this cache, as another process would
+
+    cached.findById("uuid-alice", switched.lastSeenAt) shouldBe Some(switched)
+    inner.findByIdHits.get() shouldBe 2
+  }
+
+  it should "still serve from cache when the cached row is as new as the caller's stamp" in {
+    val inner  = new CountingUserRepository(Seq(Alice))
+    val cached = new CachingUserRepository(inner)
+
+    cached.findById("uuid-alice", Alice.lastSeenAt) shouldBe Some(Alice)
+    cached.findById("uuid-alice", Alice.lastSeenAt) shouldBe Some(Alice)
+    // A session issued before the stamp existed reads as EPOCH and must not
+    // turn every authenticated page render back into a Mongo round-trip.
+    cached.findById("uuid-alice", Instant.EPOCH)    shouldBe Some(Alice)
+
+    inner.findByIdHits.get() shouldBe 1
+  }
+
   it should "not cache a miss — a later findById must still consult the inner repository" in {
     val inner  = new CountingUserRepository()
     val cached = new CachingUserRepository(inner)

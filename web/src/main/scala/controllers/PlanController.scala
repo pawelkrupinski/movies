@@ -60,7 +60,7 @@ class PlanController(
 )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) with Logging {
 
   private def currentUser(request: RequestHeader): Option[models.User] =
-    request.session.get("userId").flatMap(userRepository.findById)
+    SignedInUser(request, userRepository)
 
   /** Resolved the same way every other city-scoped page is: against THIS
    *  deployment's country, not the global `City.all`. Berlin is a real city, so

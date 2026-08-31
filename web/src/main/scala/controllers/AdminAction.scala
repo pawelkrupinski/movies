@@ -23,12 +23,11 @@ class AdminAction(
     extends ActionBuilder[Request, AnyContent] {
 
   override def invokeBlock[A](request: Request[A], block: Request[A] => Future[Result]): Future[Result] =
-    request.session.get("userId") match {
-      case None      => Future.successful(Results.Unauthorized("Not logged in."))
-      case Some(uid) =>
-        userRepository.findById(uid).filter(_.email.exists(adminAllowlist.contains)) match {
-          case Some(_) => block(request)
-          case None    => Future.successful(Results.Forbidden("Not an admin."))
-        }
-    }
+    if (request.session.get(SignedInUser.UserIdKey).isEmpty)
+      Future.successful(Results.Unauthorized("Not logged in."))
+    else
+      SignedInUser(request, userRepository).filter(_.email.exists(adminAllowlist.contains)) match {
+        case Some(_) => block(request)
+        case None    => Future.successful(Results.Forbidden("Not an admin."))
+      }
 }

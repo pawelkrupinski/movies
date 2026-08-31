@@ -3,6 +3,7 @@ package services.users
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.User
 
+import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 /**
@@ -21,6 +22,14 @@ import java.util.concurrent.TimeUnit
  *     `findById` sees it immediately, without an extra round-trip.
  *   - **invalidated on delete.** `delete(id)` evicts the entry so a
  *     subsequent `findById` either repopulates (race) or stays None.
+ *   - **overridden by a caller that knows better.** The write this cache cannot
+ *     see is the one another PROCESS made: `/auth/…` is answered by the apex
+ *     deployment, every page under `/us`, `/uk`, `/de` by that country's own pod,
+ *     and they share nothing but Mongo and the cookie. So `findById(id,
+ *     notBefore)` lets a caller name the row version its session was issued
+ *     against, and an entry written before that is treated as a miss — which is
+ *     what stops a Facebook sign-in rendering as the Google name and avatar it
+ *     replaced for the rest of the hour. See `controllers.SignedInUser`.
  *   - **bounded + TTL.** 10 000 entries, 1-hour TTL — defensive against
  *     out-of-band Mongo edits (admin scripts, manual updates) so they
  *     surface within an hour without a redeploy.
@@ -39,9 +48,11 @@ class CachingUserRepository(inner: UserRepository) extends UserRepository {
 
   def enabled: Boolean = inner.enabled
 
-  def findById(id: String): Option[User] = {
+  def findById(id: String): Option[User] = findById(id, Instant.EPOCH)
+
+  override def findById(id: String, notBefore: Instant): Option[User] = {
     val cached = byIdCache.getIfPresent(id)
-    if (cached != null) Some(cached)
+    if (cached != null && !cached.lastSeenAt.isBefore(notBefore)) Some(cached)
     else {
       val fresh = inner.findById(id)
       fresh.foreach(u => byIdCache.put(id, u))

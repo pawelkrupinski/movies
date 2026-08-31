@@ -177,9 +177,9 @@ class AuthController(
             logger.error(s"OAuth sign-in failed for $provider: ${exception.getMessage}", exception)
             InternalServerError("Couldn't complete sign-in. Please try again.")
           case Success(user) =>
-            val nextSession = request.session
-              - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient"
-              + ("userId" -> user.id)
+            val nextSession = SignedInUser.establish(
+              request.session - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient",
+              user)
             if (request.session.get("mobileClient").contains("1")) {
               // The native apps keep their own cookie jar per host and finish
               // through the deep link, so there is no sibling to pair.
@@ -314,14 +314,14 @@ class AuthController(
                   "email"       -> user.email,
                   "avatarUrl"   -> user.avatarUrl,
                   "provider"    -> user.provider
-                )).withSession("userId" -> user.id)
+                )).withSession(SignedInUser.establish(Session.emptyCookie, user))
             }
         }
     }
   }
 
   def me(): Action[AnyContent] = Action { request =>
-    request.session.get("userId").flatMap(userRepository.findById) match {
+    SignedInUser(request, userRepository) match {
       case None => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(user) => Ok(Json.obj(
         "displayName" -> user.displayName,
@@ -411,7 +411,7 @@ class AuthController(
               "email"       -> user.email,
               "avatarUrl"   -> user.avatarUrl,
               "provider"    -> user.provider
-            )).withSession("userId" -> user.id)
+            )).withSession(SignedInUser.establish(Session.emptyCookie, user))
         }
     }
   }
@@ -439,7 +439,7 @@ class AuthController(
         logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
         BadRequest("Unknown country")
       case Some(target) =>
-        request.session.get("userId").flatMap(userRepository.findById) match {
+        SignedInUser(request, userRepository) match {
           // NOTHING TO HAND OVER, and the marker matters. This endpoint is now
           // also reached unprompted, by a signed-out arrival probing whether the
           // visitor has a session on the other domain; sending it back to a bare
@@ -479,7 +479,7 @@ class AuthController(
       case Some(user) =>
         // Deliberately does NOT pair onwards: this IS the pairing leg, and a
         // second hop from here is the loop.
-        uncacheable(home.withSession(request.session + ("userId" -> user.id)))
+        uncacheable(home.withSession(SignedInUser.establish(request.session, user)))
     }
   }
 

@@ -7,6 +7,8 @@ import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, SingleObs
 import play.api.Logging
 import tools.Env
 
+import java.time.Instant
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -26,6 +28,17 @@ trait UserRepository {
   /** Look up by id (= lowercased email). Used on every authenticated
    *  request after session decode, and during OAuth callback. */
   def findById(id: String): Option[User]
+
+  /** [[findById]], refusing any copy of the row written before `notBefore`.
+   *
+   *  Only a cache can hold such a copy, and only a decorator can hold a cache —
+   *  so the store implementations inherit this unchanged, and
+   *  `CachingUserRepository` is the one place the bound means anything. See
+   *  `controllers.SignedInUser` for where the bound comes from: a sign-in
+   *  completed on one deployment has to be visible to the sibling deployment
+   *  that renders the next page, and that sibling's cache is the only thing
+   *  standing between it and a row it never saw change. */
+  def findById(id: String, notBefore: Instant): Option[User] = findById(id)
 
   def findByProviderSub(provider: String, providerSub: String): Option[User]
 

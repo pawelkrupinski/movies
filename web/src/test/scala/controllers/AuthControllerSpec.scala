@@ -484,4 +484,53 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     session(pod().ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code"))).get("userId") shouldBe empty
   }
 
+  // ── one sign-in, two deployments ─────────────────────────────────────────
+
+  "A sibling deployment" should "render the identity the sign-in just established, not the one it had cached" in {
+    // THE BUG THIS PINS. showtimes.cc/us is its own pod; `/auth/*` is answered
+    // by the process mounted at the apex. Signing in with Facebook to an account
+    // last seen through Google updated Mongo and the apex pod's cache — and left
+    // the pod that renders /us serving the Google name and avatar for the rest
+    // of that cache's hour.
+    val store   = new InMemoryUserRepository                 // Mongo, shared by both pods
+    val apex    = new services.users.CachingUserRepository(store)
+    val sibling = new services.users.CachingUserRepository(store)
+
+    def pod(users: services.users.UserRepository, provider: OauthProvider*): AuthController =
+      new AuthController(
+        Helpers.stubControllerComponents(), provider.map(p => p.name -> p).toMap, users,
+        new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk), models.Country.Poland,
+        clock = fixedClk)
+
+    store.upsert(models.User(
+      id          = "alice@example.com",
+      provider    = "google",
+      providerSub = "G-1",
+      email       = Some("alice@example.com"),
+      displayName = Some("Alice"),
+      avatarUrl   = Some("https://lh3/avatar"),
+      createdAt   = Now.minusSeconds(86400),
+      lastSeenAt  = Now.minusSeconds(3600)
+    ))
+    // Alice browsing /us while signed in through Google — this is what warms the
+    // sibling pod's cache with the row the sign-in is about to replace.
+    sibling.findById("alice@example.com").value.provider shouldBe "google"
+
+    val facebook = new FakeProvider("facebook", OauthProfile(
+      sub = "FB-1", email = Some("alice@example.com"),
+      displayName = Some("Alice K"), avatarUrl = Some("https://platform-lookaside.fbsbx.com/alice")))
+    val signIn = pod(apex, facebook).callback("facebook")(
+      FakeRequest("GET", "/auth/facebook/callback?code=C&state=S")
+        .withSession("oauthState" -> "S", "oauthProvider" -> "facebook", "oauthStateTimestamp" -> NowMs.toString))
+    status(signIn) shouldBe SEE_OTHER
+
+    // The next page is rendered by the OTHER pod, off the session the apex just
+    // issued — the cookie is all they share.
+    val onSibling = pod(sibling).me()(FakeRequest("GET", "/auth/me").withSession(session(signIn).data.toSeq*))
+
+    status(onSibling) shouldBe OK
+    (contentAsJson(onSibling) \ "provider").as[String]  shouldBe "facebook"
+    (contentAsJson(onSibling) \ "avatarUrl").as[String] shouldBe "https://platform-lookaside.fbsbx.com/alice"
+  }
+
 }
