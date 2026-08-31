@@ -231,6 +231,16 @@ trait Wiring {
   // the same data, locally.
   lazy val ratingCadenceReader: services.cadence.RatingCadenceReader =
     new services.cadence.MongoRatingCadenceReader(movieMirrorConnection.database)
+  // Whether the /debug stacks below are reading a COPY. Gates the navbar's
+  // mirror-age badge: with no mirror configured every page reads the source, so
+  // there is nothing that could be behind and nothing to render.
+  private lazy val readingThroughMirror: Boolean = Env.get("MONGODB_MOVIES_MIRROR_URI").isDefined
+  // How far behind that copy is. A sync that stops serves a page which renders,
+  // times itself `now`, and is silently hours old — so the pages say their own
+  // age (services.MirrorFreshness).
+  private def mirrorFreshnessOf(connection: MongoConnection): services.MirrorFreshness =
+    if (readingThroughMirror) new services.MongoMirrorFreshness(connection.database)
+    else services.MirrorFreshness.notMirrored
   // Read-only view of the worker-written `enrichment_attempts` collection — the
   // last fetch per (source, film) behind the /debug row's expand section.
   lazy val enrichmentAttemptReader: services.attempts.EnrichmentAttemptReader =
@@ -257,7 +267,8 @@ trait Wiring {
     models.Country.fromEnv, movieRepository, stagingRepository, taskQueue, ratingCadenceReader, enrichmentAttemptReader,
     readModelMovies       = () => webReadModel.allMovies(),
     readModelScreenings   = () => webReadModel.allScreenings(),
-    readModelLastModified = () => webReadModel.lastModified)
+    readModelLastModified = () => webReadModel.lastModified,
+    mirrorFreshness       = mirrorFreshnessOf(movieMirrorConnection))
   // One shared client for the extra countries: None in prod, when only one country
   // is deployed, or when MONGODB_URI is unset — then there are no extras and the
   // debug switch stays off.
@@ -290,7 +301,8 @@ trait Wiring {
           new services.attempts.MongoEnrichmentAttemptReader(conn.database),
           readModelMovies       = () => reader.findAllMovies(),
           readModelScreenings   = () => reader.findAllScreenings(),
-          readModelLastModified = () => java.time.Instant.now())
+          readModelLastModified = () => java.time.Instant.now(),
+          mirrorFreshness       = mirrorFreshnessOf(conn))
         (country, conn, stack)
       }
     }

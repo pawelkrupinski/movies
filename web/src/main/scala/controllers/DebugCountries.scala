@@ -2,6 +2,7 @@ package controllers
 
 import models.{CityScreening, Country, ResolvedMovie}
 import play.api.mvc.{Cookie, RequestHeader}
+import services.MirrorFreshness
 import services.attempts.EnrichmentAttemptReader
 import services.cadence.RatingCadenceReader
 import services.movies.MovieRepository
@@ -14,6 +15,11 @@ import java.time.Instant
  * Everything a `/debug` page reads, bound to ONE country's Mongo database — the
  * corpus (`movies`), the staging table (`pending_movies`), the task queue, the
  * rating-cadence collection, and the read-model dump.
+ *
+ * Every one of those reads can be a SNAPSHOT: with `MONGODB_MOVIES_MIRROR_URI`
+ * set they all resolve against the local mirror, which serves a page that looks
+ * live whatever state the sync is in — hence [[MirrorFreshness]], which the
+ * navbar renders so the page states its own age.
  *
  * For the read-model dump the boot country reads the WARM in-memory
  * [[services.readmodel.WebReadModel]] the app actually serves from (so
@@ -32,6 +38,10 @@ final class DebugStack(
   val readModelMovies:       () => Seq[ResolvedMovie],
   val readModelScreenings:   () => Seq[CityScreening],
   val readModelLastModified: () => Instant,
+  // How far behind the local read-mirror this stack reads through is. Defaults
+  // to "not mirrored" — prod, and every test that wires a stack by hand, read
+  // their data straight from the source and so have no copy that could be stale.
+  val mirrorFreshness:       MirrorFreshness = MirrorFreshness.notMirrored,
 )
 
 /**

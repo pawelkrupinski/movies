@@ -228,6 +228,23 @@ mongosh --nodb --quiet --file scripts/local-mirror/staleness-rule.js \
                        --file scripts/local-mirror/staleness-rule-spec.js
 ```
 
+### The page states its own age
+
+Every gate above is the sync judging itself, and a sync that has stopped judges
+nothing. Whatever the cause, the visible result is the same: `/debug` renders a
+SNAPSHOT — right-looking numbers, a live-looking page, silently hours or days
+behind. It has been mistaken for a data bug three times, most recently on
+2026-08-30, when a frozen mirror made `/debug/cadence?country=us` show nothing
+but the 2h base interval (the copy had stopped during that country's FIRST HOUR
+of rating checks, before any film had backed off) and read as a cadence bug.
+
+So the debug navbar carries the age of what it is showing — the newest
+`updatedAt` across that country's mirrored `movies` + `screenings`
+(`services.MirrorFreshness`, read per page load; ~12–26ms against the loopback
+Mongo). Past the same 30 minutes the re-seed gate uses, it turns amber and says
+`⚠ mirror 26h behind` instead of `mirror 12s behind`. Nothing is rendered in
+prod, where the pages read the source and there is no copy to be behind.
+
 ### Picking up its own code
 
 The tailers re-read the `.js` files each time one starts, but the supervisor is

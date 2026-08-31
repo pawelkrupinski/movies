@@ -659,10 +659,18 @@ class MovieController( cc: ControllerComponents,
         // countries, and a row's display title must read as its own corpus keyed it.
         stack.movieRepository.normalizer,
         MovieController.orderStagingByQueue(staged, queue.active, normalizer),
-        current = country, sameOrigin = debugCountries.switchable))
+        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(stack)))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }
+
+  /** How far behind the local read-mirror this stack reads through is, for the
+   *  debug navbar's badge. Read per render rather than cached: it is two bounded
+   *  queries against a loopback Mongo (~12–26ms), and a number that can itself go
+   *  stale is exactly the thing this exists to stop. `None` in prod, where the
+   *  pages read the source and there is no copy to be behind. */
+  private def mirrorAge(stack: DebugStack): Option[services.MirrorFreshness.Age] =
+    services.MirrorFreshness.describe(stack.mirrorFreshness.newestUpdate(), java.time.Instant.now())
 
   /** Dev-only: the per-(rating source, film) adaptive refresh cadence. Films are
    *  grouped by their current refresh interval, slowest (most backed-off / stable)
@@ -679,7 +687,7 @@ class MovieController( cc: ControllerComponents,
       val titleByTmdb = rows.flatMap(r => r.record.tmdbId.map(_ -> r.title)).toMap
       implicit val c: City = City.all.head   // only for the shared debug navbar's city link
       Ok(views.html.cadence(services.cadence.CadenceReport.build(records, titleByTmdb.get), java.time.Instant.now(),
-        current = country, sameOrigin = debugCountries.switchable))
+        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(stack)))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }
@@ -746,7 +754,7 @@ class MovieController( cc: ControllerComponents,
       val movies     = stack.readModelMovies().sortBy(_.title.toLowerCase)
       val screenings = stack.readModelScreenings().groupBy(_.filmId)
       Ok(views.html.debugReadModel(movies, screenings, stack.readModelLastModified(),
-        current = country, sameOrigin = debugCountries.switchable))
+        current = country, sameOrigin = debugCountries.switchable, mirror = mirrorAge(stack)))
         .withCookies(debugCountries.selectionCookie(request).toSeq*)
     }
   }

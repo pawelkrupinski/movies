@@ -1,4 +1,4 @@
-@(active: String = "", current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false)(implicit city: models.City)
+@(active: String = "", current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
 @* The debug page this navbar sits on, as a path — used to keep the country
    switcher on the SAME page when hopping deployments. *@
 @debugPath = @{
@@ -13,6 +13,20 @@
   <a href="@routes.MovieController.debugReadModel()" class="@if(active == "readmodel"){is-active}">Read cache</a>
   <a href="@routes.MovieController.cadence()"   class="@if(active == "cadence"){is-active}">Cadence</a>
   <a href="@routes.MovieController.index(city.slug)"     class="debug-nav-out">Filmy ↗</a>
+
+  @* How old the data on this page is. Every debug view reads the local
+     read-mirror when one is configured, and a mirror whose sync has stopped
+     serves a SNAPSHOT: the page renders, the numbers look plausible, and it is
+     hours or days behind — three incidents were chased as data bugs before
+     anyone checked the sync. So the page states its own age, and says so loudly
+     once it passes the lag the sync would have re-seeded itself at. Nothing is
+     rendered in prod, where the pages read the source directly. *@
+  @for(age <- mirror) {
+    <span class="debug-nav-mirror @if(age.stale){is-stale}"
+          title="Newest updatedAt in the local read-mirror. Past @services.MirrorFreshness.label(services.MirrorFreshness.StaleAfter) the sync has stopped keeping up — check scripts/local-mirror/.">
+      @if(age.stale){⚠ mirror @age.label behind} else {mirror @age.label behind}
+    </span>
+  }
 
   @* Country dimension. Every debug view is scoped to ONE country's Mongo db, so
      the corpus / read-cache / cadence numbers are that country's (`current`).
@@ -46,6 +60,18 @@
   .debug-nav a.is-active { color: #aad4ff; background: #252540; border-color: #3a3a6e; }
   .debug-nav a.debug-nav-out { color: #66aadd; }
   .debug-nav a.debug-nav-out:hover { color: #aad4ff; }
+  .debug-nav-mirror {
+    margin-left: auto;
+    color: #7a8a7a; background: #1a1a2e; border: 1px solid #2a2a3e;
+    padding: .25rem .7rem; border-radius: 3px;
+  }
+  @* Loud on purpose: this badge only earns its place if a stale mirror is
+     impossible to read past. *@
+  .debug-nav-mirror.is-stale { color: #1a1a2e; background: #ffb454; border-color: #ffb454; font-weight: bold; }
+  @* The country picker keeps the right-hand end; with a mirror badge present it
+     is the badge that takes the auto margin, so this one must not also claim it. *@
+  .debug-nav-mirror ~ .debug-nav-country,
+  .debug-nav-mirror ~ .debug-nav-country-label { margin-left: .3rem; }
   .debug-nav-country, .debug-nav-country-label {
     margin-left: auto;
     color: #ffd479; background: #1a1a2e; border: 1px solid #2a2a3e;

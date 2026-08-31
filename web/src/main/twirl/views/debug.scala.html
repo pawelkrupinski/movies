@@ -2,7 +2,7 @@
 @import services.movies.TitleNormalizer
 @import services.staging.StagingRecord
 @import controllers.MovieController
-@(rows: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer, staging: Seq[StagingRecord] = Seq.empty, current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false)(implicit city: models.City)
+@(rows: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer, staging: Seq[StagingRecord] = Seq.empty, current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -145,7 +145,7 @@
 </head>
 <body>
 
-@_debugNavbar("corpus", current, sameOrigin)
+@_debugNavbar("corpus", current, sameOrigin, mirror)
 @* The staging table's header always renders — so an empty `pending_movies`
    shows as an empty table (header + columns), not a vanished section. Rows are
    FOLDED by film: the hidden `#staging-src` tbody carries one (per-cinema) source
