@@ -2036,32 +2036,6 @@
   // picker, the lazy submenu panels, then a single filtered render. Reads the
   // view-provided `window.buildIndex`/`applyFilters` (assigned by the view's
   // inline IIFE), so it must run AFTER that inline script.
-  // The last showing of a day starts well before that day is over, so between
-  // its expiry and local midnight the server ships a grid whose earliest date
-  // is already tomorrow's. "Today" is the default day, and on that stretch it
-  // matches nothing — a city carrying months of listings renders as the bare
-  // "No listings." line. Land on the first day the grid actually has instead.
-  //
-  // Boot only, and only when the visitor didn't name a day: a `?date=` link and
-  // a day the user picked by hand both mean today's emptiness is the answer
-  // they asked for, and moving the day under a reader mid-session would be
-  // worse than the empty grid. (Past midnight the page reloads into a day that
-  // has listings anyway — see `scheduleDayRollover`.)
-  function skipEmptyToday() {
-    const sel = document.getElementById('date-filter');
-    if (!sel || sel.value !== 'today') return;
-    if (new URLSearchParams(window.location.search).has('date')) return;
-    if (typeof window.listedDays !== 'function') return;
-    const days = window.listedDays();
-    if (days.length === 0) return;
-    const { today, tomorrow } = dateBounds();
-    if (days.includes(today)) return;
-    // "Tomorrow" keeps a day pill lit; a grid that doesn't start until later
-    // than that has no pill of its own, so fall all the way back to "anytime".
-    sel.value = days.includes(tomorrow) ? 'tomorrow' : 'anytime';
-  }
-  window.skipEmptyToday = skipEmptyToday;
-
   function bootView() {
     buildIndex();
     // Cinema picker lives in the Filtry dropdown — populate the list so the
@@ -2075,7 +2049,6 @@
     // DOM nodes; then one `applyFilters()` pass renders the grid already
     // filtered.
     applyFiltersFromURL();
-    skipEmptyToday();
     updateFormatBtn();
     // Record the boot day so the carousel can derive slide direction from the
     // displayed day (see `_appliedDay`), and sync the pills to the URL-applied

@@ -70,17 +70,6 @@
     });
   }
 
-  // Every calendar day the grid still holds a showing for, ascending. Read once
-  // at boot (`bootView`) to keep the visitor off a day the page has nothing on;
-  // built from the INDEX rather than the DOM so it walks facts already parsed,
-  // and so it sees the post-prune grid — `removeExpired` takes an emptied
-  // `.date-group` out with its last slot, and `buildIndex` runs after it.
-  function listedDays() {
-    const days = new Set();
-    for (const card of INDEX) for (const group of card.groups) days.add(group.date);
-    return [...days].sort();
-  }
-
   // ── What a filter pass decides from ───────────────────────────────────────
   //
   // Two passes run over this grid: `applyFilters` on the live DOM (reading the
@@ -522,7 +511,6 @@
   window.applyFilters       = applyFilters;
   window.hideOneFilm        = hideOneFilm;
   window.applyFiltersForDay = applyFiltersForDay;
-  window.listedDays         = listedDays;
   // Expiry and the midnight rollover drive themselves; these are exposed so the
   // page tests can move the clock under them (`showtimeNow`) and re-arm after.
   window.showtimeNow           = showtimeNow;
