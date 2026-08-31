@@ -62,6 +62,24 @@ class UserPreferences(private val context: Context) : SyncPrefs {
 
     suspend fun setCity(slug: String) = context.dataStore.edit { prefs ->
         prefs[KEY_CITY] = slug
+        // The gate is satisfied however the city was reached, so an explicit-pick
+        // request never outlives the gate that asked for it.
+        prefs.remove(KEY_EXPLICIT_PICK)
+    }
+
+    /** True while the city gate must present the country's list instead of
+     *  offering a located city. Armed when the user picks a country themselves:
+     *  they have just said which country they want, and answering that with
+     *  "you're near Poznan" offers the very thing they navigated away from.
+     *
+     *  Persisted rather than held in memory because switching country recreates
+     *  the activity (and with it the ViewModel), so an in-memory flag would be
+     *  gone by the time the gate reads it. Cleared by [setCity]. */
+    val awaitingExplicitCityPick: Flow<Boolean> =
+        context.dataStore.data.map { it[KEY_EXPLICIT_PICK] ?: false }
+
+    suspend fun awaitExplicitCityPick() = context.dataStore.edit { prefs ->
+        prefs[KEY_EXPLICIT_PICK] = true
     }
 
     /** Forget the selected city, re-arming the first-launch city gate. Used when
@@ -171,5 +189,6 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_POSTER_URLS = stringSetPreferencesKey("seenPosterUrls")
         val KEY_POSTER_PURGE_DATE = stringPreferencesKey("posterPurgeDate")
         val KEY_AREA_SEEN = stringSetPreferencesKey("areaPickerSeenCities")
+        val KEY_EXPLICIT_PICK = booleanPreferencesKey("awaitingExplicitCityPick")
     }
 }

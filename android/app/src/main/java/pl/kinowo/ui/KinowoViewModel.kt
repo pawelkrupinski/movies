@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -46,6 +47,7 @@ import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.countryOf
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
+import pl.kinowo.ui.city.CityGateStart
 import pl.kinowo.model.withCode
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.filter.CinemaFilterSection
@@ -126,21 +128,23 @@ class KinowoViewModel(
     val selectedCountryCode: StateFlow<String?> =
         prefs.selectedCountryCode.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    /** The country the first-launch gate resolves a location against: the
-     *  persisted code once the store has answered, or [Country.default] when the
-     *  user has never picked one.
+    /** What the first-launch gate should do — which country, and whether it may
+     *  offer a located city (see [CityGateStart]).
      *
-     *  Null means "not read yet" and NOTHING else — unlike [selectedCountryCode],
-     *  whose null conflates that with "never chosen". The gate must wait for a
-     *  non-null value instead of falling back to the default itself: the
-     *  DataStore read is asynchronous, so on the first composition after a
-     *  country switch the code is still null, and defaulting there scopes the
-     *  nearest-city search to Poland and greets a Berlin user with "You're near
-     *  Poznań". */
-    val gateCountryCode: StateFlow<String?> =
-        prefs.selectedCountryCode
-            .map { Country.normalizeCode(it) ?: Country.default.code }
-            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+     *  Null means "the stored choices have not been read yet" and NOTHING else —
+     *  unlike [selectedCountryCode], whose null conflates that with "never
+     *  chosen". The gate must wait for a non-null value instead of filling the
+     *  gap itself: the DataStore reads are asynchronous, so on the first
+     *  composition after a country switch nothing has landed, and defaulting
+     *  there scopes the nearest-city search to Poland and greets a Berlin user
+     *  with "You're near Poznan". */
+    val gateStart: StateFlow<CityGateStart?> =
+        combine(prefs.selectedCountryCode, prefs.awaitingExplicitCityPick) { code, explicit ->
+            CityGateStart(
+                countryCode = Country.normalizeCode(code) ?: Country.default.code,
+                locate = !explicit,
+            )
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Persist the chosen country. The activity observes [selectedCountryCode] and
      *  recreates itself so the new base URL + locale take effect.
@@ -154,6 +158,10 @@ class KinowoViewModel(
      *  city is null anyway. */
     fun setCountry(code: String) = viewModelScope.launch {
         prefs.clearCity()
+        // The user just said which country they want, so let them say which city
+        // too: the re-armed gate offers that country's list rather than whatever
+        // city the device happens to sit near.
+        prefs.awaitExplicitCityPick()
         prefs.setCountryCode(code)
     }
 

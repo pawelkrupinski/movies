@@ -51,8 +51,16 @@ class CityGateCountryScopeTest {
         cities = listOf(poznan, berlin, muenchen),
     )
 
+    /** A gate opened the first-launch way: free to offer a located city. */
+    private fun locating(code: String) = CityGateStart(countryCode = code, locate = true)
+
+    /** How many times the gate reached for a location fix — 0 proves it never
+     *  tried, and so never raised the permission dialog. */
+    private var locationAttempts = 0
+
     /** The device is in Poznań; the resolver is the real country-scoped one. */
     private val fixInPoznan: suspend (String, List<City>) -> City? = { country, cities ->
+        locationAttempts++
         cities.nearestWithin100km(poznan.lat, poznan.lon, country)
     }
 
@@ -64,10 +72,10 @@ class CityGateCountryScopeTest {
 
     @Composable
     private fun gate(
-        country: MutableStateFlow<String?>,
+        start: MutableStateFlow<CityGateStart?>,
         onConfirm: (City) -> Unit = {},
     ) = CityGate(
-        countryCode = country.collectAsState().value,
+        start = start.collectAsState().value,
         catalog = catalog,
         onPick = { _, _ -> },
         onConfirm = onConfirm,
@@ -82,7 +90,7 @@ class CityGateCountryScopeTest {
      */
     @Test
     fun waitsForTheStoredCountryInsteadOfResolvingAsTheDefault() {
-        val country = MutableStateFlow<String?>(null)
+        val country = MutableStateFlow<CityGateStart?>(null)
         var confirmed: City? = null
         compose.setContent { gate(country, onConfirm = { confirmed = it }) }
 
@@ -93,7 +101,7 @@ class CityGateCountryScopeTest {
 
         // Germany arrives. Poznań is >100 km from every German city, so the gate
         // falls through to the German list rather than confirming anything.
-        country.value = "de"
+        country.value = locating("de")
         compose.waitForIdle()
         compose.onNodeWithText("Berlin").assertIsDisplayed()
         compose.onNodeWithText("Poznań").assertDoesNotExist()
@@ -102,7 +110,7 @@ class CityGateCountryScopeTest {
     /** The chooser it falls through to lists the chosen country's cities only. */
     @Test
     fun theFallbackListIsScopedToTheChosenCountry() {
-        val country = MutableStateFlow<String?>("de")
+        val country = MutableStateFlow<CityGateStart?>(locating("de"))
         compose.setContent { gate(country) }
         compose.waitForIdle()
 
@@ -114,7 +122,7 @@ class CityGateCountryScopeTest {
     /** The near-you screen still appears when the fix IS in the chosen country. */
     @Test
     fun confirmsWhenTheFixIsInsideTheChosenCountry() {
-        val country = MutableStateFlow<String?>("pl")
+        val country = MutableStateFlow<CityGateStart?>(locating("pl"))
         compose.setContent { gate(country) }
         compose.waitForIdle()
 
@@ -129,15 +137,44 @@ class CityGateCountryScopeTest {
      */
     @Test
     fun switchingCountryDropsThePreviousCountrysDetection() {
-        val country = MutableStateFlow<String?>("pl")
+        val country = MutableStateFlow<CityGateStart?>(locating("pl"))
         compose.setContent { gate(country) }
         compose.waitForIdle()
         compose.onNodeWithText("Poznań").assertIsDisplayed()
 
-        country.value = "de"
+        country.value = locating("de")
         compose.waitForIdle()
         compose.onNodeWithText("Poznań").assertDoesNotExist()
         compose.onNodeWithText("Berlin").assertIsDisplayed()
+    }
+
+    /**
+     * Picking a country from the dropdown is itself a choice, and the gate owes
+     * it that country's list. Even standing in Poznań with Poland selected —
+     * the one case where a located city IS available — the gate must not offer
+     * it, and must not go looking for one.
+     */
+    @Test
+    fun aDeliberateCountryPickGoesStraightToThatCountrysList() {
+        val start = MutableStateFlow<CityGateStart?>(CityGateStart("pl", locate = false))
+        compose.setContent { gate(start) }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Pokaż repertuar", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Poznań").assertIsDisplayed() // as a row of the list
+        assertEquals("a deliberate country pick must not take a location fix", 0, locationAttempts)
+    }
+
+    /** The first launch is the other half: nothing has been chosen, so the
+     *  nearest city is still the most useful thing to put in front of someone. */
+    @Test
+    fun theFirstLaunchStillOffersTheNearestCity() {
+        val start = MutableStateFlow<CityGateStart?>(CityGateStart("pl", locate = true))
+        compose.setContent { gate(start) }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Pokaż repertuar", substring = true).assertIsDisplayed()
+        assertEquals(1, locationAttempts)
     }
 
     /** Sanity: the scoping helper the gate leans on really is country-scoped. */

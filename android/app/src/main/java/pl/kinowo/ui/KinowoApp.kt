@@ -34,6 +34,7 @@ import pl.kinowo.model.Catalog
 import pl.kinowo.model.City
 import pl.kinowo.ui.city.CityChoiceScreen
 import pl.kinowo.ui.city.CityConfirmScreen
+import pl.kinowo.ui.city.CityGateStart
 import pl.kinowo.ui.common.LocalCitySlug
 import pl.kinowo.ui.detail.DetailScreen
 import pl.kinowo.ui.list.ListScreen
@@ -102,10 +103,10 @@ private fun CityGate(viewModel: KinowoViewModel) {
     val context = LocalContext.current
     val resolver = remember { LocationCityResolver(context) }
     CityGate(
-        // `gateCountryCode`, not `selectedCountryCode`: the gate must be able to
-        // tell "still reading the stored choice" from "nothing stored", and only
-        // the former is a reason to wait. See its doc on the ViewModel.
-        countryCode = viewModel.gateCountryCode.collectAsState().value,
+        // `gateStart`, not `selectedCountryCode`: the gate must be able to tell
+        // "still reading the stored choices" from "nothing stored", and only the
+        // former is a reason to wait. See its doc on the ViewModel.
+        start = viewModel.gateStart.collectAsState().value,
         catalog = viewModel.countryCatalog.collectAsState().value,
         onPick = { city, nearest -> viewModel.chooseCityAtGate(city.slug, nearest?.slug) },
         onConfirm = { viewModel.setCity(it.slug) },
@@ -116,13 +117,14 @@ private fun CityGate(viewModel: KinowoViewModel) {
 
 /**
  * The gate's own state machine, with the ViewModel and CoreLocation lifted out
- * so a test can drive it: [countryCode] is the country to scope the search to
- * (null while the stored choice is still being read), and [resolveNearest] maps
- * a country + the catalog's cities to the nearest one within 100 km, or null.
+ * so a test can drive it: [start] says which country to scope to and whether a
+ * located city may be offered at all (null while the stored choices are still
+ * being read), and [resolveNearest] maps a country + the catalog's cities to
+ * the nearest one within 100 km, or null.
  */
 @Composable
 internal fun CityGate(
-    countryCode: String?,
+    start: CityGateStart?,
     catalog: Catalog,
     onPick: (City, City?) -> Unit,
     onConfirm: (City) -> Unit,
@@ -150,25 +152,33 @@ internal fun CityGate(
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        val country = countryCode
+        val country = start?.countryCode
         if (granted && country != null) resolveIn(country) else showChooser = true
     }
 
-    // Keyed on the country rather than fired once: it arrives asynchronously and
+    // Keyed on the start rather than fired once: it arrives asynchronously and
     // changes when the user switches countries, and each value gets its own
     // resolution scoped to it. Waiting out the null is what keeps a freshly
     // chosen Germany from being searched as Poland; clearing the previous
     // answers is what stops the outgoing country's city from being offered
     // while the new one resolves.
-    LaunchedEffect(countryCode) {
-        val country = countryCode ?: return@LaunchedEffect
+    LaunchedEffect(start) {
+        val opening = start ?: return@LaunchedEffect
         detected = null
         nearest = null
         showChooser = false
+        // The user reached this gate by naming a country, so the answer they are
+        // owed is that country's cities — not a location fix, and not the
+        // permission dialog that taking one would raise.
+        if (!opening.locate) {
+            showChooser = true
+            return@LaunchedEffect
+        }
         val alreadyGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_COARSE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
-        if (alreadyGranted) resolveIn(country) else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        if (alreadyGranted) resolveIn(opening.countryCode)
+        else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
     val city = detected
@@ -176,7 +186,7 @@ internal fun CityGate(
         showChooser     -> CityChoiceScreen(
             catalog = catalog,
             onPick = { onPick(it, nearest) },
-            selectedCountryCode = countryCode,
+            selectedCountryCode = start?.countryCode,
             onCountry = onCountry,
         )
         city != null    -> CityConfirmScreen(
