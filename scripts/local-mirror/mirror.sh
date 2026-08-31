@@ -169,6 +169,10 @@ TARGETS_POLL="${KINOWO_MIRROR_TARGETS_POLL:-60}"
 # Ten minutes by default: the gate costs a couple of dozen queries against prod
 # (staleness.js), which is nothing hourly and would be silly every minute.
 AUDIT_POLLS="${KINOWO_MIRROR_AUDIT_POLLS:-10}"
+# How often the parent checks that its per-database supervisors are still alive
+# (await_supervisor_exit). Cheap — a `kill -0` per database — so it runs far more
+# often than the digest polls: a wedge is dead time for every country at once.
+LIVENESS_POLL="${KINOWO_MIRROR_LIVENESS_POLL:-5}"
 # Created at startup, not on `source` — sourcing this file must leave no temp
 # file behind. `published_fingerprint` reads "unset" as "don't know", like every
 # other unreadable digest.
@@ -322,6 +326,34 @@ supervise_db() {
   done
 }
 
+# ── Parent-side liveness watch ───────────────────────────────────────────────
+# The recovery loops above are per-database, so a supervisor that dies OUTRIGHT
+# is invisible to them — and the parent only ever sits in `wait`, which the log
+# rotator and the targets poller keep from ever returning. That is the wedge:
+# on 2026-08-02 and again on 2026-08-30 the tunnel dropped, every `supervise_db`
+# subshell died on a bare non-zero under `set -e`, and the parent lived on with
+# nothing tailing. `launchctl list` showed a live pid, KeepAlive never fired,
+# and /debug served a frozen snapshot for a day (the tell that time: US, whose
+# cadence records were hours old, showed a single 2h interval group because the
+# mirror froze during the country's first hour).
+#
+# So the parent watches its database supervisors too, and returns the moment one
+# is gone; the caller takes the whole process down so launchd starts a clean one.
+# Loops forever while they all live — this is the parent's `wait`, made to
+# notice.
+await_supervisor_exit() {
+  local pid
+  while true; do
+    for pid in "$@"; do
+      if ! kill -0 "$pid" 2>/dev/null; then
+        echo "[mirror] database supervisor $pid is gone — exiting so launchd restarts the sync"
+        return 0
+      fi
+    done
+    sleep "$LIVENESS_POLL"
+  done
+}
+
 # ── Fan out: one supervised tailer per database ──────────────────────────────
 # Everything below runs only when this file is EXECUTED. Sourced (by
 # mirror-resilience-spec.sh, which drives `supervise_db` against stubs) it must
@@ -354,12 +386,21 @@ targets_fingerprint > "$TARGETS_FP_FILE"
 CODE_FP="$(code_fingerprint)"
 echo "[mirror] watching mirror-targets.js for collection changes, and the sync scripts for edits (every ${TARGETS_POLL}s)"
 
+DB_CHILDREN=()
 for srcdb in $DBS; do
   supervise_db "$srcdb" "$FORCE_RESEED" &
   CHILDREN+=($!)
+  DB_CHILDREN+=($!)
 done
 
 echo "[mirror] ${#CHILDREN[@]} tailer(s) running (Ctrl-C to stop)…"
+
+# `$$` is the parent, not this subshell, so its EXIT trap takes the surviving
+# children down on the way out — the same handover the code-change branch below
+# uses, and the reason a wedged agent no longer needs a manual `launchctl
+# kickstart`.
+( await_supervisor_exit "${DB_CHILDREN[@]}"; kill -TERM $$ ) &
+CHILDREN+=($!)
 
 # Trim from the PARENT only — N children truncating one file in place would race
 # each other. Startup pass first, then every 5 minutes for a run that never ends.

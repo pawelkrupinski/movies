@@ -309,6 +309,16 @@ It covers the tunnel too: that a dead backend does not read as healthy, that a
 tunnel held by another process is never adopted or killed, and that the ssh
 target defaults to `mongo-1` and is overridable.
 
+Wrapping every fallible step is not enough on its own: it makes a supervisor
+*likely* to survive, and the parent's `wait` still cannot tell a dead one from a
+busy one (the log rotator and the targets poller never end, so `wait` never
+returns). The tunnel dropping wedged the daemon again on 2026-08-30 — a live
+pid, KeepAlive never firing, /debug a day behind. So the parent watches its
+supervisors' pids (`await_supervisor_exit`, every `KINOWO_MIRROR_LIVENESS_POLL`
+seconds) and takes the whole process down as soon as one is gone; launchd starts
+a clean one. `launchctl kickstart -k gui/$(id -u)/pl.kinowo.local-mirror` stays
+the manual lever, but a wedge no longer needs it.
+
 `mirror.sh` is sourceable for that spec: everything below the
 `[ "${BASH_SOURCE[0]}" = "${0}" ] || return 0` guard runs only when it is
 executed, so sourcing defines the functions and reads no `.env.local`.

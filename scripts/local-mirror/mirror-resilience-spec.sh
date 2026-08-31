@@ -223,6 +223,48 @@ notices_its_own_code_changing() {
 check "the supervisor sees an edit to code it runs, and ignores one to a spec" \
   notices_its_own_code_changing
 
+# ── A dead supervisor must take the whole agent down with it ─────────────────
+# The two cases above are about a supervisor RECOVERING. This one is about the
+# supervisor that doesn't: every `supervise_db` runs in a background subshell,
+# so one bare non-zero under `set -e` still ends it for good, and the parent's
+# `wait` never returns because the log rotator and the targets poller outlive
+# them all. That is the wedge — a live pid, KeepAlive never firing, /debug
+# serving a frozen snapshot (two days in 2026-08-02, a day in 2026-08-30). The
+# parent has to notice its supervisors are gone and exit, so launchd restarts a
+# clean process.
+exits_when_a_supervisor_dies() {
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    LIVENESS_POLL=0.05
+
+    command sleep 30 & local alive=$!
+    command sleep 30 & local doomed=$!
+
+    # While they all live the watch must not return — it is the parent's `wait`.
+    ( await_supervisor_exit "$alive" "$doomed" ) >/dev/null 2>&1 &
+    local watch=$!
+    command sleep 0.5
+    kill -0 "$watch" 2>/dev/null || { kill "$alive" "$doomed" 2>/dev/null || true; exit 1; }
+
+    # …and the moment one is gone it has to return, without waiting for the rest.
+    kill "$doomed" 2>/dev/null || true; wait "$doomed" 2>/dev/null || true
+    local deadline=$((SECONDS + 5))
+    while kill -0 "$watch" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
+    local returned=no; kill -0 "$watch" 2>/dev/null || returned=yes
+
+    # `|| true` because the watch is expected to be gone already, and mirror.sh
+    # is sourced with `set -e` — a kill against a pid that has exited would end
+    # this case before it can report what it measured.
+    kill "$alive" "$watch" 2>/dev/null || true
+    wait "$alive" "$watch" 2>/dev/null || true
+    [ "$returned" = "yes" ]
+  )
+}
+
+check "the parent stops watching the moment a database supervisor dies" \
+  exits_when_a_supervisor_dies
+
 # ── Sourcing must be side-effect free ────────────────────────────────────────
 # The spec above depends on it, and so does anything else that wants these
 # functions: reading .env.local or opening a tunnel at load time would make the
