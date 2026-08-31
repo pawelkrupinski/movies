@@ -19236,6 +19236,11 @@ visible: null
 };
 });
 }
+function listedDays() {
+const days = new Set();
+for (const card of INDEX) for (const group of card.groups) days.add(group.date);
+return [...days].sort();
+}
 function cardFacts(col) {
 return {
 title: col.dataset.title.toLowerCase(),
@@ -19501,6 +19506,7 @@ window.buildIndex = buildIndex;
 window.applyFilters = applyFilters;
 window.hideOneFilm = hideOneFilm;
 window.applyFiltersForDay = applyFiltersForDay;
+window.listedDays = listedDays;
 window.showtimeNow = showtimeNow;
 window.pruneExpiredShowtimes = pruneExpiredShowtimes;
 window.scheduleExpiryPrune = scheduleExpiryPrune;

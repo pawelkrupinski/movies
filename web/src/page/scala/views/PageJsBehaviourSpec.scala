@@ -2086,6 +2086,71 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  /**
+   * A city's last showing starts well before the day ends, so for the stretch
+   * between its expiry and local midnight the server ships a grid whose
+   * earliest date is already tomorrow's. "Today" being the default day, the
+   * page then rendered the bare "No listings." line over months of listings —
+   * Austin read as an empty city at 23:34 CDT while carrying 162 films.
+   *
+   * `KINOWO_PINNED_TODAY` moves the day filter's today to the fixture day's
+   * EVE, which no `.date-group` carries — the same shape as a real city past
+   * its last showing.
+   */
+  "a boot whose today has no listings" should "land on the first day that has some" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      page.eval("window.KINOWO_PINNED_TODAY = '2026-06-07'; bootView()")
+
+      page.evalBool("listedDays().includes('2026-06-07')") shouldBe false
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+      withClue("the grid a fallback landed on must not be the empty one it fled: ") {
+        visibleCardCount(page) should be > 0
+      }
+      page.evalBool("document.getElementById('no-films').style.display === 'none'") shouldBe true
+    }
+  }
+
+  it should "leave today alone when today does have listings" in {
+    onPath("/") { page =>
+      clearLocalStorage(page)
+      page.eval("window.KINOWO_PINNED_TODAY = '2026-06-08'; bootView()")
+
+      page.evalBool("listedDays().includes('2026-06-08')") shouldBe true
+      page.evalString("document.getElementById('date-filter').value") shouldBe "today"
+    }
+  }
+
+  /** A `?date=` link names the day on purpose — an empty answer is the answer
+   *  the visitor asked for, and rewriting it would break a shared link. An ISO
+   *  date is the shape such a link actually carries: `syncDateToURL` writes
+   *  every day EXCEPT `today`, which it deletes as the default. */
+  it should "respect an explicitly linked day that has no listings" in {
+    onPath("/?date=2026-06-07") { page =>
+      clearLocalStorage(page)
+      page.eval("window.KINOWO_PINNED_TODAY = '2026-06-07'; bootView()")
+
+      page.evalString("document.getElementById('date-filter').value") shouldBe "2026-06-07"
+      visibleCardCount(page) shouldBe 0
+    }
+  }
+
+  /** The one day the URL can name but never round-trips: `syncDateToURL`
+   *  deletes `date=today` as the default, so a hand-built `?date=today` link
+   *  survives only until the first filter pass. That makes the query the sole
+   *  evidence the visitor asked for today — restored here because the boot
+   *  under test is this tab's SECOND, and its first already stripped it. */
+  it should "respect a hand-built ?date=today over the fallback" in {
+    onPath("/?date=today") { page =>
+      clearLocalStorage(page)
+      page.eval(
+        "history.replaceState(null, '', location.pathname + '?date=today'); " +
+        "window.KINOWO_PINNED_TODAY = '2026-06-07'; bootView()")
+
+      page.evalString("document.getElementById('date-filter').value") shouldBe "today"
+    }
+  }
+
   // ── Truncation and filtering are separate channels ──────────────────────────
   //
   // A card caps its showings at ~10 lines and puts the rest behind "… +N
