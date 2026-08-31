@@ -4564,4 +4564,69 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+
+  // ── A sign-out that happened in another tab, or on the other domain ──────
+  //
+  // The sign-out mark is per tab and per origin, so it heals only the tab the
+  // button was pressed in. Everything else — a second tab, and the whole of the
+  // other domain — keeps showing an avatar for a session that is already gone,
+  // and no cookie or cache header reaches a page that never asks again. So the
+  // page asks when it returns to the foreground.
+
+  "A signed-in page" should "know where to verify its own session" in {
+    onLoggedInIndex { page =>
+      // Off the sign-out form, which the server rendered with this deployment's
+      // mount point already in it — so nothing new in the markup.
+      page.evalString("String(window.sessionVerifyUrl())") should endWith ("/api/me")
+      page.evalBool("window.sessionVerifyUrl().startsWith(window.location.origin)") shouldBe true
+    }
+  }
+
+  "A signed-out page" should "have nothing to verify" in {
+    onPath("/") { page =>
+      page.evalString("String(window.sessionVerifyUrl())") shouldBe "null"
+    }
+  }
+
+  it should "reload when the check comes back 401 — the session went while the tab sat there" in {
+    onLoggedInIndex { page =>
+      page.evalBool("(window.fetch = function () { return Promise.resolve({ status: 401 }); }, true)") shouldBe true
+      val before = page.evalString("String(performance.timeOrigin)")
+
+      page.eval("window.verifySessionOnReturn()")
+
+      // Ready, not merely created: `timeOrigin` changes when the new document is
+      // made, before its scripts have run.
+      page.waitFor(
+        s"String(performance.timeOrigin) !== '$before' && document.readyState === 'complete'",
+        timeoutMs = 5000)
+    }
+  }
+
+  // A network blip is not evidence that anybody signed out, and throwing the
+  // visitor's page away over one would be worse than the stale avatar.
+  it should "leave the page alone when the check cannot be made" in {
+    onLoggedInIndex { page =>
+      page.evalBool("(window.fetch = function () { return Promise.reject(new Error('offline')); }, true)") shouldBe true
+      val before = page.evalString("String(performance.timeOrigin)")
+
+      page.eval("window.verifySessionOnReturn()")
+      Thread.sleep(300)
+
+      page.evalString("String(performance.timeOrigin)") shouldBe before
+    }
+  }
+
+  it should "not reload while the session is still good" in {
+    onLoggedInIndex { page =>
+      page.evalBool("(window.fetch = function () { return Promise.resolve({ status: 200 }); }, true)") shouldBe true
+      val before = page.evalString("String(performance.timeOrigin)")
+
+      page.eval("window.verifySessionOnReturn()")
+      Thread.sleep(300)
+
+      page.evalString("String(performance.timeOrigin)") shouldBe before
+    }
+  }
+
 }

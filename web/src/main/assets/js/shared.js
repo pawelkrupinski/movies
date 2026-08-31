@@ -1028,6 +1028,42 @@
     if (stale) window.location.reload();
   }
 
+  // ── A sign-out that happened somewhere else ──────────────────────────────
+  //
+  // The mark above is `sessionStorage`, which is per TAB and per ORIGIN, so it
+  // only ever heals the tab the sign-out was pressed in. Sign out in one tab and
+  // switch to another — or to the other domain, which cannot share that storage
+  // at all — and the page sitting there still shows an avatar for a session that
+  // no longer exists. Nothing the server sends can reach it: a tab that never
+  // asks again hears nothing, whatever the cookie or cache headers say.
+  //
+  // So the page asks. Coming back to the foreground still believing it is signed
+  // in, it checks whether it still is, and reloads if it was wrong. Cheap, and
+  // only for signed-in pages: an anonymous one has nothing to be wrong about.
+  //
+  // The URL comes off the sign-out form, which the server rendered with this
+  // deployment's mount point already in it (`/uk/auth/logout`) — so no path
+  // parsing, and nothing new in the markup for a page snapshot to notice.
+  function sessionVerifyUrl() {
+    var form = document.querySelector('.auth-logout-form');
+    if (!form) return null;                       // signed out: nothing to verify
+    return form.action.replace(/auth\/logout\/?$/, '') + 'api/me';
+  }
+  window.sessionVerifyUrl = sessionVerifyUrl;
+
+  function verifySessionOnReturn() {
+    if (document.hidden) return;
+    var url = sessionVerifyUrl();
+    if (!url) return;
+    fetch(url, { credentials: 'same-origin' })
+      .then(function (response) { if (response.status === 401) window.location.reload(); })
+      // Offline, or the request failed: leave the page exactly as it is. A
+      // network blip is not evidence that the visitor signed out.
+      .catch(function () {});
+  }
+  window.verifySessionOnReturn = verifySessionOnReturn;
+  document.addEventListener('visibilitychange', verifySessionOnReturn);
+
   // Delegated, because shared.js loads after the navbar on some pages and before
   // it on others, and a `submit` listener on the document catches both.
   document.addEventListener('submit', event => {
