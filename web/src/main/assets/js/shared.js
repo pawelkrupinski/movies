@@ -996,12 +996,21 @@
     } catch (e) { /* no storage → no self-heal, but the sign-out itself still runs */ }
   }
 
+  // Swap the avatar for the login pill, which the page renders hidden alongside
+  // it precisely so this needs no markup and no label of its own.
+  //
   // Hidden rather than removed: the form being submitted is INSIDE the menu, and
   // a form detached from the document has its submission aborted outright.
+  // The pill comes back with `display = ''` rather than a literal value, so the
+  // slot is handed to the stylesheet and the mobile rule that keeps "Zaloguj"
+  // out of the navbar still applies — what's on screen matches what an
+  // anonymous render of this page would have put there.
   function beginSignOut() {
     setSignOutMark(true);
-    const menu = document.getElementById('auth-menu');
-    if (menu) menu.style.display = 'none';
+    const menu  = document.getElementById('auth-menu');
+    const login = document.getElementById('auth-login');
+    if (menu)  menu.style.display = 'none';
+    if (login) login.style.display = '';
   }
 
   // Did this page load come back signed in at the far end of a sign-out — i.e.

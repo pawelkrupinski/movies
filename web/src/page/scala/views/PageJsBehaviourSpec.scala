@@ -126,6 +126,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         schedules, cinemas, pills, devMode = false,
         currentUser = Some(testUser), oauthProviders = noOauth, renderedAt = now
       ).body
+      // The same render with a provider configured, so the navbar carries the
+      // hidden login pill the sign-out swap puts back. Kept apart from `/li` so
+      // the server-sync specs above keep booting with HAS_OAUTH_PROVIDERS false.
+      val loggedInOauthHtml: String = views.html.repertoire(
+        schedules, cinemas, pills, devMode = false,
+        currentUser = Some(testUser), oauthProviders = Set("google"), renderedAt = now
+      ).body
       // Static server-side state: one hidden film. response.json() parses the body
       // regardless of content-type, so serving it via the HTML route map is fine.
       val userStateJson =
@@ -204,6 +211,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
             renderFilm(sub(p).stripPrefix("/movie/"))
           case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
           case p if sub(p) == "/li"           => loggedInHtml
+          case p if sub(p) == "/li-oauth"     => loggedInOauthHtml
           case p if p == "/api/me/state"      => userStateJson
           // The dev-only visual-tuning page — rendered with real fixture films
           // so its slider panel (and the ± step buttons) can be driven over CDP.
@@ -276,6 +284,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onLoggedInIndex(body: CdpPage => Any): Unit =
     chrome match {
       case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/li")(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  /** Open the logged-in index that also has an OAuth provider, so both halves of
+   *  the auth slot — the avatar menu and the hidden login pill — are on the page. */
+  private def onLoggedInWithLoginPill(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/li-oauth")(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -4473,7 +4489,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // the visitor was already signed out. Two halves, both asserted here: empty
   // the section on submit, and re-fetch a page that comes back signed in.
 
-  "Submitting the sign-out form" should "empty the auth section and mark the browser" in {
+  "Submitting the sign-out form" should "take the avatar down and mark the browser" in {
     onLoggedInIndex { page =>
       page.evalBool("!!document.getElementById('auth-menu')") shouldBe true
       // A synthetic `submit` event runs the listeners without navigating, so the
@@ -4485,6 +4501,27 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString("String(sessionStorage.getItem('signedOut'))")        shouldBe "1"
       // Tabs on one origin can share a session store; leave it as we found it so
       // the next spec's boot doesn't inherit a sign-out that never happened.
+      page.eval("sessionStorage.removeItem('signedOut')")
+    }
+  }
+
+  // Taking the avatar down is only half of it: the slot has to hold the way back
+  // IN for the second or two the two-domain redirect chain takes, or signing out
+  // reads as the login button disappearing too.
+  it should "put the login pill back in the avatar's place" in {
+    onLoggedInWithLoginPill { page =>
+      page.setDesktopViewport(1280, 900)   // the pill is a desktop-only navbar control
+      page.evalString("getComputedStyle(document.getElementById('auth-login')).display") shouldBe "none"
+
+      page.eval("document.querySelector('.auth-logout-form')" +
+        ".dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))")
+
+      page.evalString("getComputedStyle(document.getElementById('auth-menu')).display")  shouldBe "none"
+      page.evalString("getComputedStyle(document.getElementById('auth-login')).display") should not be "none"
+      // And it is the real control, not a lookalike: clicking it opens the modal.
+      page.eval("document.getElementById('auth-login').click()")
+      page.evalBool("document.getElementById('login-modal-backdrop').classList.contains('open')") shouldBe true
+
       page.eval("sessionStorage.removeItem('signedOut')")
     }
   }

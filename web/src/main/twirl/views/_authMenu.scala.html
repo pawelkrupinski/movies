@@ -6,34 +6,39 @@
 
    `loginLabel` is the only thing that differs: the repertoire navbar competes
    for width with the day pills and the search box, so it says the short form.
-*@
-@currentUser match {
-  case Some(user) => {
-    <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
-      @user.avatarUrl match {
-        case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
-        case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
-      }
-      <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse(messages("auth.account"))).split("[ @@]").head</span>
-      <div class="auth-dropdown" id="auth-dropdown">
-        @* Logout route is `+ nocsrf` (form post from a third-party page can
-           only log a user OUT, not in — same-origin policy protects against
-           state changes any further than that).
 
-           A plain form post, so the sign-out redirect chain runs in the
-           browser and clears the sibling domain's cookie on the way. shared.js
-           hangs `onsubmit` off the class to take the menu down at once and to
-           re-fetch the page if a cached signed-in copy comes back. *@
-        <form method="post" action="@routes.AuthController.logout()" class="auth-logout-form">
-          <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
-        </form>
-      </div>
+   The login pill is rendered EVEN WHEN SIGNED IN, hidden. Signing out is a
+   redirect chain across two domains, and for as long as it runs the visitor is
+   still looking at this page — so shared.js swaps the two on submit rather than
+   taking the avatar down and leaving a hole where the way back in should be.
+   Hidden inline rather than with `hidden`, because `.nav-tab-login` sets a
+   `display` of its own and would win over the attribute; hiding it inline means
+   showing it again is `display = ''`, which hands the slot back to the
+   stylesheet — including the mobile rule that keeps the pill out of the navbar
+   entirely.
+*@
+@if(oauthProviders.nonEmpty) {
+  <button type="button" id="auth-login" class="nav-tab nav-tab-login" onclick="openLoginModal()"@if(currentUser.isDefined){ style="display:none"}>@messages(loginLabel)</button>
+}
+@currentUser.map { user =>
+  <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
+    @user.avatarUrl match {
+      case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
+      case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
+    }
+    <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse(messages("auth.account"))).split("[ @@]").head</span>
+    <div class="auth-dropdown" id="auth-dropdown">
+      @* Logout route is `+ nocsrf` (form post from a third-party page can only
+         log a user OUT, not in — same-origin policy protects against state
+         changes any further than that).
+
+         A plain form post, so the sign-out redirect chain runs in the browser
+         and clears the sibling domain's cookie on the way. shared.js hangs
+         `onsubmit` off the class to swap the slot at once, and to re-fetch the
+         page if a cached signed-in copy comes back. *@
+      <form method="post" action="@routes.AuthController.logout()" class="auth-logout-form">
+        <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
+      </form>
     </div>
-  }
-  case None if oauthProviders.nonEmpty => {
-    <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">@messages(loginLabel)</button>
-  }
-  case None => {
-    @* No OAuth providers configured (local dev with no secrets). *@
-  }
+  </div>
 }
