@@ -257,6 +257,19 @@ object Country {
    *  so a new deployment cannot be forgotten here. */
   lazy val deployedOrigins: Set[String] = switchable.flatMap(_.webOrigin).toSet
 
+  /** The OTHER domain this project is served from, seen from `country` — the one
+   *  a session has to be established on separately, because no cookie can reach
+   *  it from here.
+   *
+   *  `None` when there is not exactly one: a single-domain deployment has no
+   *  sibling to pair with, and a third domain would make "the other one"
+   *  meaningless rather than merely unknown. Derived from the countries so a new
+   *  deployment cannot be forgotten here. */
+  def siblingOriginOf(country: Country): Option[String] = {
+    val others = (deployedOrigins -- country.webOrigin.toSet).toSeq
+    if (others.sizeIs == 1) others.headOption else None
+  }
+
   /** Is this request host the brand domain? Accepts the `www.` spelling and an
    *  explicit port so a direct hit still works where the proxy's redirect is not
    *  in front of it (local dev, a stale cache).

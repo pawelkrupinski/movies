@@ -109,7 +109,9 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val result  = ctl.callback("google")(request)
 
     status(result)            shouldBe SEE_OTHER
-    redirectLocation(result)  shouldBe Some("/")
+    // Home by way of the other domain, which is where the session for it gets
+    // established; `landingAfter` unwraps that hop.
+    landingAfter(result)      shouldBe s"$PlBase/"
     provider.lastExchange.value._1 shouldBe "AUTH_CODE"
 
     val sess = session(result)
@@ -233,14 +235,16 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── /auth/logout ─────────────────────────────────────────────────────────
 
-  "AuthController.logout" should "drop userId from the session and redirect to /" in {
+  "AuthController.logout" should "drop userId from the session and land back home" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("POST", "/auth/logout")
       .withSession("userId" -> "alice", "oauthState" -> "leftover", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
     val result = ctl.logout()(request)
 
     status(result)              shouldBe SEE_OTHER
-    redirectLocation(result)    shouldBe Some("/")
+    // Home by way of the other domain, which is where the session it also has to
+    // clear lives; `landingAfter` unwraps that hop.
+    landingAfter(result)        shouldBe s"$PlBase/"
     val sess = session(result)
     sess.get("userId")          shouldBe empty
     sess.get("oauthState")      shouldBe empty   // any leftover cleared too
@@ -335,6 +339,20 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   private val UkBase = models.Country.UnitedKingdom.webUrl.value
   private val PlBase = models.Country.Poland.webUrl.value
 
+  /** Where a finished sign-in or sign-out actually drops the visitor.
+   *
+   *  Both now go via the OTHER domain — a sign-in to establish the session there,
+   *  a sign-out to clear it — so the immediate redirect is the pairing leg and
+   *  the destination is the `next` it carries. Unwrapping it here keeps these
+   *  tests about where somebody ends up, which is what they were always about,
+   *  rather than about the shape of the hop that gets them there. */
+  private def landingAfter(result: scala.concurrent.Future[play.api.mvc.Result]): String = {
+    val location = redirectLocation(result).value
+    if (location.contains("/auth/sso/finish?") || location.contains("/auth/sso/logout?"))
+      java.net.URLDecoder.decode(location.split("next=")(1).takeWhile(_ != '&'), "UTF-8")
+    else location
+  }
+
   private def signedIn(repository: InMemoryUserRepository, email: String): String = {
     repository.upsert(models.User(
       id          = email,
@@ -385,18 +403,13 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   // Nothing to hand over is not a failure — it is the plain link the switcher
   // would have followed anyway, and the visitor still lands where they asked.
-  //
-  // The marker on the way back is what stops the ARRIVAL probe looping: a
-  // signed-out page asks this endpoint once per browser, and a browser refusing
-  // the probe's cookie guard would otherwise ask again on the page it lands on,
-  // and again after that.
-  it should "send a signed-out visitor straight to the other country, marked as answered" in {
+  it should "send a signed-out visitor straight to the other country" in {
     val (ctl, _, _) = fixture()
 
     val result = ctl.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$UkBase"))
 
     status(result) shouldBe SEE_OTHER
-    redirectLocation(result).value shouldBe s"$UkBase/?sso=1"
+    redirectLocation(result).value shouldBe s"$UkBase/"
   }
 
   it should "mint nothing for a visitor whose session names a user that no longer exists" in {
@@ -405,7 +418,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val result = ctl.ssoStart()(
       FakeRequest("GET", s"/auth/sso/start?to=$UkBase").withSession("userId" -> "deleted@example.com"))
 
-    redirectLocation(result).value shouldBe s"$UkBase/?sso=1"
+    redirectLocation(result).value shouldBe s"$UkBase/"
   }
 
   it should "refuse a target that is not a deployed country" in {

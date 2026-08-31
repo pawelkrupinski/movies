@@ -116,6 +116,10 @@ POST    /:city/debug/rehydrate      controllers.MovieController.rehydrate(city: 
 # else, so the redirect cannot be aimed off-brand.
 GET     /auth/sso/start             controllers.AuthController.ssoStart()
 GET     /auth/sso/finish            controllers.AuthController.ssoFinish()
+# The far half of a logout. The sign-in pairing establishes a session on BOTH
+# domains, so clearing one would leave the visitor signed out where they pressed
+# the button and signed in a domain away.
+GET     /auth/sso/logout            controllers.AuthController.ssoLogout()
 
 GET     /auth/:provider/start       controllers.AuthController.start(provider: String)
 GET     /auth/:provider/callback    controllers.AuthController.callback(provider: String)

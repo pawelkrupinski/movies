@@ -115,87 +115,6 @@
     catch (e) { return false; }
   }
 
-  // ── Picking up a sign-in from the other domain ───────────────────────────
-  //
-  // kinowo.net and showtimes.cc are different registrable domains, so a session
-  // on one is invisible to the other however the visitor arrives. The country
-  // switcher hands it over explicitly (see `countrySwitchTarget` below), but
-  // somebody who types the address, follows a link or opens a bookmark gets no
-  // such hop and lands signed out, with their hidden films and /plan picks
-  // apparently gone. This asks ONCE per browser whether they are signed in next
-  // door.
-  //
-  // IN JAVASCRIPT ON PURPOSE. The same check server-side would redirect every
-  // crawler that ever reached the site, and this is a site whose sitemap and
-  // share cards say search traffic matters. No crawler runs this, and nothing
-  // about the served HTML changes.
-  //
-  // IT IS STILL NOT FREE: a signed-out visitor's first page view in a browser
-  // costs a hop out and back, so a visible flash, once, to spare the people who
-  // do have accounts a silent sign-out. If that trade stops being worth it, this
-  // function is the whole feature.
-  var PROBE_COOKIE = 'ssoProbed';
-
-  // The origin of `url`, or null if it will not parse.
-  function originOf(url) {
-    try { return new URL(url, window.location.href).origin; } catch (e) { return null; }
-  }
-
-  // The other domain this project is served from, or null when there is not
-  // exactly one. Read off the country switcher's own <option> values, which
-  // already carry every deployed base URL — so no domain is named here, and a
-  // country added under an existing domain needs no change. A third domain would
-  // make "the other one" meaningless, so ambiguity disables the probe rather
-  // than guessing which to ask.
-  //
-  // Excludes the origin of the country being SERVED, not of the current page:
-  // those differ on a developer's machine and on the page-test server, and it is
-  // the deployed shape we are reasoning about either way.
-  function siblingOrigin(ownOrigin) {
-    var select = document.getElementById('country-select');
-    if (!select) return null;
-    var origins = [];
-    Array.prototype.forEach.call(select.options, function (option) {
-      var origin = originOf(option.value);
-      if (origin && origin !== ownOrigin && origins.indexOf(origin) < 0) origins.push(origin);
-    });
-    return origins.length === 1 ? origins[0] : null;
-  }
-
-  // The probe to make on arrival, or null when there is nothing worth asking.
-  // Split from the navigation so the page tests can assert the DECISION without
-  // a real navigation tearing the page down mid-assertion; `currentOrigin` is
-  // for those tests, which cannot serve the fixture from a deployed domain.
-  function sessionProbeTarget(currentOrigin) {
-    var origin = currentOrigin || window.location.origin;
-    if (IS_LOGGED_IN) return null;                                    // already signed in here
-    if (!HAS_OAUTH_PROVIDERS) return null;                            // nothing to be signed in to
-    if (/[?&]sso=1(&|$)/.test(window.location.search)) return null;   // this IS the answer, coming back
-    if (_cookieRead(PROBE_COOKIE)) return null;                       // asked once already
-    var here = currentCountryBase();
-    var mine = here && originOf(here);
-    // ONLY WHEN SERVED ON THIS COUNTRY'S OWN DOMAIN. Off it — a developer on
-    // localhost with real OAuth secrets, a preview host — the far side is
-    // production, and bouncing a local page there to ask about a session is
-    // both useless and startling.
-    if (!mine || mine !== origin) return null;
-    var other = siblingOrigin(mine);
-    if (!other) return null;
-    return other + '/auth/sso/start?to=' + encodeURIComponent(here);
-  }
-  window.sessionProbeTarget = sessionProbeTarget;
-
-  function probeSiblingSession() {
-    var target = sessionProbeTarget();
-    if (!target) return;
-    // Written BEFORE leaving, so a probe that never comes back still counts as
-    // having been asked. `replace`, not `href`: this must not become a
-    // back-button stop the visitor can get stuck bouncing through.
-    document.cookie = PROBE_COOKIE + '=1;path=/;max-age=' + (60 * 60 * 24 * 365) + ';SameSite=Lax';
-    window.location.replace(target);
-  }
-
-
   // Country switcher (Filtry → Kraj) changed — each country is its own web
   // deployment behind its own base URL, so switch by NAVIGATING there (its
   // city-chooser lands the visitor, since cities differ per country). Full
@@ -2628,7 +2547,6 @@
     bootView();
     bootMergeFromServer();
     maybeShowSwipeHint();   // once-a-day phone nudge, retired on first swipe
-    probeSiblingSession();  // once per browser: is this visitor signed in next door?
   });
 
   // ── Image-fetch uptime tracker ────────────────────────────────────────────

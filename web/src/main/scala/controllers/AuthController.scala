@@ -181,9 +181,11 @@ class AuthController(
               - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient"
               + ("userId" -> user.id)
             if (request.session.get("mobileClient").contains("1")) {
+              // The native apps keep their own cookie jar per host and finish
+              // through the deep link, so there is no sibling to pair.
               Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id)}").withSession(nextSession)
             } else {
-              Redirect(landingFor(request)).withSession(nextSession)
+              Redirect(pairSiblingThen(landingFor(request), user.id)).withSession(nextSession)
             }
         }
     }
@@ -197,6 +199,41 @@ class AuthController(
    *  sign-in is completed by the process mounted at `/` — and sending those
    *  visitors to the country picker, or worse to Poland, would be a sign-in that
    *  silently moved them to another country's repertoire. */
+  /** Route the finished sign-in through the OTHER domain on its way home, so the
+   *  visitor ends up signed in on both.
+   *
+   *  WHY HERE AND NOT ON ARRIVAL. kinowo.net and showtimes.cc share no cookie, so
+   *  something has to establish a session on each. Asking on arrival — the shape
+   *  this replaces — spends a redirect on every signed-out visitor of a site that
+   *  is overwhelmingly anonymous, and can only be afforded once per browser,
+   *  which makes it useless the second time somebody signs in. Doing it HERE
+   *  costs nothing to anyone who never signs in, happens while the visitor is
+   *  already watching a redirect chain, and works on every sign-in rather than
+   *  the first.
+   *
+   *  It is a TOP-LEVEL navigation, which is the other reason this shape and not a
+   *  hidden iframe: the cookie the far side sets is first-party, so it survives
+   *  the third-party cookie rules that make the iframe version fail silently in
+   *  Safari and increasingly in Chrome.
+   *
+   *  No pairing without a sibling, and none FROM the pairing leg itself —
+   *  [[ssoFinish]] never calls this, so the chain is one hop by construction. */
+  private def pairSiblingThen(landing: String, userId: String): String =
+    models.Country.siblingOriginOf(country) match {
+      case None => landing
+      case Some(sibling) =>
+        val code = URLEncoder.encode(exchangeCodes.mint(userId), UTF_8)
+        val next = URLEncoder.encode(absolute(landing), UTF_8)
+        s"$sibling${AuthController.SsoFinishPath}?code=$code&next=$next"
+    }
+
+  /** `landing` as an absolute URL, so the far side can send the visitor back to
+   *  it across the domain boundary. Relative landings are this deployment's own,
+   *  so they resolve against this country's base. */
+  private def absolute(landing: String): String =
+    if (landing.startsWith("http")) landing
+    else country.webUrl.map(_ + landing).getOrElse(landing)
+
   private def landingFor(request: RequestHeader): String =
     request.getQueryString("state").flatMap(AuthController.stateCountry) match {
       case Some(home) if home != country => home.webUrl.map(_ + "/").getOrElse(routes.LandingController.index().url)
@@ -267,8 +304,37 @@ class AuthController(
     }
   }
 
+  /** Sign out — HERE, and on the other domain too.
+   *
+   *  The pairing at sign-in establishes a session on both domains, so clearing
+   *  only this one leaves the visitor signed out where they clicked and still
+   *  signed in a domain away. That is worse than never pairing at all: "log out"
+   *  has to mean logged out, and the half that survives is the half nobody
+   *  expects to find. Same one hop, in the other direction. */
   def logout(): Action[AnyContent] = Action { request =>
-    Redirect(routes.LandingController.index()).withSession(request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp")
+    val cleared = request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp"
+    val landing = routes.LandingController.index().url
+    val target  = models.Country.siblingOriginOf(country) match {
+      case None          => landing
+      case Some(sibling) =>
+        s"$sibling${AuthController.SsoLogoutPath}?next=${URLEncoder.encode(absolute(landing), UTF_8)}"
+    }
+    Redirect(target).withSession(cleared)
+  }
+
+  /** The far half of [[logout]]: drop the session on this domain and send the
+   *  visitor back where they pressed the button.
+   *
+   *  Never propagates onwards — this IS the propagation — so the pair cannot
+   *  ping-pong. Reachable by GET because it is the second leg of a redirect,
+   *  which does mean a third-party page can log somebody out by embedding it;
+   *  the same is already true of the POST logout by design (see the form's note
+   *  in `_navbar`), and logging a visitor OUT is the whole of what it can do. */
+  def ssoLogout(): Action[AnyContent] = Action { request =>
+    val back = AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
+      .getOrElse(routes.LandingController.index().url)
+    Redirect(back).withSession(
+      request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp")
   }
 
   private def upsertUser(provider: String, profile: OauthProfile): User = {
@@ -352,7 +418,7 @@ class AuthController(
           // probe's own cookie guard is the durable half; this is what holds when
           // a browser is refusing cookies, which is also a browser that can never
           // hold a session and must not be put in a loop chasing one.
-          case None       => Redirect(s"$target/?${AuthController.ProbedMarker}")
+          case None       => Redirect(s"$target/")
           case Some(user) =>
             val code = URLEncoder.encode(exchangeCodes.mint(user.id), UTF_8)
             Redirect(s"$target/auth/sso/finish?code=$code")
@@ -368,12 +434,21 @@ class AuthController(
    *  a stale code is sign in again — which is exactly what the home page offers.
    *  The warning is for us, not them. */
   def ssoFinish(): Action[AnyContent] = Action { request =>
-    val home = Redirect(routes.LandingController.index())
+    // `next` is where the visitor was actually going — set when this is the
+    // pairing leg of a sign-in that happened on the other domain, so they land
+    // back where they started rather than on this country's home page. Matched
+    // against the deployed countries and nothing else: it is a redirect target
+    // named in a URL, which is an open redirect the moment it is trusted.
+    val home = Redirect(
+      AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
+        .getOrElse(routes.LandingController.index().url))
     request.getQueryString("code").flatMap(exchangeCodes.redeem).flatMap(userRepository.findById) match {
       case None =>
         logger.warn("SSO handoff arrived without a redeemable code — landing signed out.")
         home
       case Some(user) =>
+        // Deliberately does NOT pair onwards: this IS the pairing leg, and a
+        // second hop from here is the loop.
         home.withSession(request.session + ("userId" -> user.id))
     }
   }
@@ -445,11 +520,14 @@ object AuthController {
       case params => params.mkString("?", "&", "")
     }
 
-  /** Query marker on the bounce back from a session probe that found nothing —
-   *  see [[AuthController.ssoStart]]. Read by the page's own probe, which skips
-   *  when it is present, so a browser with no usable cookie jar gets one hop
-   *  rather than a loop. */
-  val ProbedMarker = "sso=1"
+  /** The two SSO legs' paths, as the OTHER domain has to spell them.
+   *
+   *  Literals rather than reverse routes for the same reason as
+   *  [[callbackPath]]: these address a DIFFERENT deployment, whose mount point is
+   *  not ours, and the reverse route would helpfully prepend ours.
+   *  `AuthCallbackRelaySpec` pins both against a root-mounted reverse route. */
+  val SsoFinishPath = "/auth/sso/finish"
+  val SsoLogoutPath = "/auth/sso/logout"
 
   /** Where [[AuthController.ssoStart]] is willing to send a session: an EXACT
    *  match against a deployed country's own base URL (`Country.webUrl`), and
