@@ -136,6 +136,62 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
+   * THE INTERVAL THE GATE MEASURES OVER, which is the half that was wrong.
+   *
+   * Diffing a tier against the push's own `before` assumes the previous push
+   * deployed. It often did not: the workflow-level `concurrency` cancels a
+   * superseding push's predecessor mid-flight BY DESIGN, so a commit that changes
+   * a tier followed within minutes by one that does not has its deploy cancelled
+   * and then skipped — merged, stale, and nothing red. That shipped a
+   * `/api/catalog` field on 2026-08-31 that production never served, and the apps
+   * silently fell back to the old behaviour for it.
+   *
+   * Measuring from the last DEPLOYED commit is what makes an undeployed change
+   * stay pending instead of being lost. Both halves are load-bearing: the base
+   * has to come from the marker, and the marker has to be moved by the deploy.
+   */
+  "each tier's gate" should "diff from the commit that tier last deployed, not from the push's parent" in {
+    Seq("web", "worker").foreach { tier =>
+      val build = job(s"build-$tier")
+      withClue(s"build-$tier does not resolve a deployed base: ")(
+        build should include("uses: ./.github/actions/deployed-base"))
+      withClue(s"build-$tier resolves a base it then does not use: ")(
+        build should include("base: ${{ steps.base.outputs.base }}"))
+      withClue(s"build-$tier asks for the wrong tier's marker: ")(
+        build should include(s"tier: $tier"))
+    }
+  }
+
+  it should "be recorded only by a deploy that actually rolled" in {
+    Seq("web", "worker").foreach { tier =>
+      val deploy = job(s"deploy-$tier")
+      withClue(s"deploy-$tier never moves its marker, so the base can never advance: ")(
+        deploy should include(s"refs/tags/deployed-$tier"))
+      // The endpoint waits on `rollout status`, so a marker written in a LATER step
+      // than the roll is a record of what is live. One written before it — or in a
+      // step with `if: always()` — would record an attempt.
+      val rollAt   = deploy.indexOf("Roll the new image onto k3s")
+      val recordAt = deploy.indexOf(s"Record what the $tier tier is now running")
+      withClue(s"deploy-$tier records its marker before it rolls: ")(recordAt should be > rollAt)
+      withClue(s"deploy-$tier records its marker even when the roll failed: ")(
+        deploy.substring(recordAt) should not include "if: always()")
+    }
+  }
+
+  /**
+   * And the fallback stays a fallback. An unknown marker must mean "diff from the
+   * push's parent", never "everything changed" — the latter reads as a worker
+   * input change on any run where the tag is briefly unreachable, and buys a
+   * needless restart into a scrape storm.
+   */
+  it should "fall back to the push's parent, never to a full rebuild, when the marker is unusable" in {
+    val action = RepoFile.read(".github/actions/deployed-base/action.yml")
+    action should include("base=$BEFORE")
+    action should include("merge-base --is-ancestor")
+    action should not include "changed=true"
+  }
+
+  /**
    * Building and DEPLOYING stay separate jobs: a failed build must not be able to
    * roll an image out, and a failed deploy has to be distinguishable from a failed
    * build in the run list — the two have completely different fixes. Both were

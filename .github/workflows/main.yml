@@ -547,7 +547,7 @@ jobs:
             changed: ${{ steps.changed.outputs.changed }}
 
         steps:
-            # Full history, BLOBLESS — the changed-paths gate below diffs against the push's `before`
+            # Full history, BLOBLESS — the changed-paths gate below diffs against the last DEPLOYED
             # commit, which a shallow checkout would not have. Same shape as the Fly deploy job's
             # roll-back guard: commit topology and tree ids only, so no blob of history is fetched.
             - uses: actions/checkout@v5
@@ -555,10 +555,18 @@ jobs:
                   fetch-depth: 0
                   filter: blob:none
 
-            - name: Did this push touch the web tier?
+            - name: What is the web tier actually running?
+              id: base
+              uses: ./.github/actions/deployed-base
+              with:
+                  tier: web
+
+            - name: Has the web tier changed since then?
               id: changed
               uses: ./.github/actions/changed-paths
               with:
+                  # SINCE THE LAST DEPLOY, not since this push's parent — see the action's own note.
+                  base: ${{ steps.base.outputs.base }}
                   # THE WEB TIER'S FILTER SET. Deliberately NOT the worker's — see the note above.
                   patterns: |
                       web/**
@@ -633,8 +641,14 @@ jobs:
         needs: build-web
         runs-on: ubuntu-latest
 
-        # The web tier's path gate, at job level: `build-web` published the answer as an output, so
-        # a push that changed nothing web-shaped produces a skipped deploy rather than a rollout.
+        # Moving the `deployed-web` marker below is a ref write, and the only one this job makes.
+        permissions:
+            contents: write
+
+        # The web tier's gate, at job level: `build-web` published the answer as an output, so a
+        # push that has changed nothing web-shaped SINCE THE LAST DEPLOY produces a skipped deploy
+        # rather than a rollout. Measured from the deploy marker, so a cancelled or skipped deploy
+        # leaves the change inside the interval and the next push ships it.
         #
         # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image
         # without putting it on production.
@@ -680,6 +694,22 @@ jobs:
                       k8sdeploy@2.28.52.210 \
                       "ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}"
 
+            - name: Record what the web tier is now running
+              # AFTER the roll, and only on success — the endpoint waits on `rollout status`, so
+              # reaching here means the pods are actually serving this image. A marker moved before
+              # or regardless of that would be a record of what was attempted, and the next push
+              # would diff from a commit production never ran.
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  gh api --method PATCH \
+                      "/repos/${{ github.repository }}/git/refs/tags/deployed-web" \
+                      -f sha='${{ github.sha }}' -F force=true \
+                    || gh api --method POST \
+                      "/repos/${{ github.repository }}/git/refs" \
+                      -f ref=refs/tags/deployed-web -f sha='${{ github.sha }}'
+
     build-worker:
         needs: ci
         runs-on: ubuntu-latest
@@ -698,10 +728,18 @@ jobs:
                   fetch-depth: 0
                   filter: blob:none
 
-            - name: Did this push touch the worker tier?
+            - name: What is the worker tier actually running?
+              id: base
+              uses: ./.github/actions/deployed-base
+              with:
+                  tier: worker
+
+            - name: Has the worker tier changed since then?
               id: changed
               uses: ./.github/actions/changed-paths
               with:
+                  # SINCE THE LAST DEPLOY, not since this push's parent — see the action's own note.
+                  base: ${{ steps.base.outputs.base }}
                   # THE WORKER TIER'S FILTER SET. `worker/**` where the web's says `web/**`, and that
                   # is the whole point: a web-only push must not reach this job's build, let alone
                   # `deploy-worker`, because deploying a worker restarts it into a scrape storm.
@@ -798,8 +836,15 @@ jobs:
         needs: build-worker
         runs-on: ubuntu-latest
 
+        # Moving the `deployed-worker` marker below is a ref write, and the only one this job makes.
+        permissions:
+            contents: write
+
         # THE GATE THAT MATTERS. A restarted worker cold-boots into a scrape storm, so this job runs
-        # only when the push actually touched the worker's inputs — never because the web tier moved.
+        # only when the worker's own inputs moved SINCE THE LAST WORKER DEPLOY — never because the
+        # web tier moved. Measuring from the deploy marker rather than the push's parent adds the
+        # other half: a worker change whose deploy was cancelled is still pending at the next push
+        # instead of being lost, and it takes exactly one restart when it finally lands.
         #
         # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image
         # without putting it on production; separating that is the difference between "let me see if
@@ -841,3 +886,19 @@ jobs:
                       -o ConnectTimeout=15 \
                       k8sdeploy@2.28.52.210 \
                       "ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}"
+
+            - name: Record what the worker tier is now running
+              # AFTER the roll, and only on success — the endpoint waits on `rollout status`, so
+              # reaching here means the pods are actually serving this image. A marker moved before
+              # or regardless of that would be a record of what was attempted, and the next push
+              # would diff from a commit production never ran.
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+                  gh api --method PATCH \
+                      "/repos/${{ github.repository }}/git/refs/tags/deployed-worker" \
+                      -f sha='${{ github.sha }}' -F force=true \
+                    || gh api --method POST \
+                      "/repos/${{ github.repository }}/git/refs" \
+                      -f ref=refs/tags/deployed-worker -f sha='${{ github.sha }}'

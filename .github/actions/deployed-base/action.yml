@@ -1,0 +1,66 @@
+name: Deployed base
+description: >
+  The commit a tier is CURRENTLY DEPLOYED from, as the base for its changed-paths gate.
+
+  The gate used to diff against the push's own `before`, which quietly assumes the previous push
+  deployed. It often does not. The workflow-level `concurrency` cancels a superseding push's
+  predecessor mid-flight BY DESIGN (see the note at the top of main.yml), so a commit that changes a
+  tier and is followed within minutes by one that does not has its deploy cancelled and then
+  skipped — the change is merged, the tier is stale, and nothing is red. That is exactly how the
+  mobile `/api/catalog` shipped a `region` field on 2026-08-31 that production never served.
+
+  Diffing against the last DEPLOYED commit closes it: whatever went undeployed stays inside the
+  interval until a deploy actually succeeds, so the next push to main picks it up. The tier still
+  redeploys only when its own inputs moved, which is what keeps a web-only push from restarting the
+  worker into a scrape storm.
+
+  `deploy-<tier>` moves the `deployed-<tier>` tag on success, and ONLY on success — that is what
+  makes this a record of what is live rather than of what was attempted.
+
+inputs:
+  tier:
+    description: Which tier's deploy marker to read (`web` or `worker`).
+    required: true
+
+outputs:
+  base:
+    description: The commit to diff from — the deployed one, or the push's `before` when unknown.
+    value: ${{ steps.resolve.outputs.base }}
+
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      shell: bash
+      env:
+        TIER: ${{ inputs.tier }}
+        BEFORE: ${{ github.event.before }}
+      run: |
+        set -euo pipefail
+
+        tag="deployed-$TIER"
+
+        # FALL BACK TO THE PUSH'S `before`, which is the behaviour this replaces — correct whenever
+        # the previous push did deploy, and the only answer available before the first deploy has
+        # written a marker. Never fall back to "everything changed": that would restart the worker
+        # on any run where the tag is briefly unreachable.
+        fallback() {
+          echo "::notice::$tag $1 — diffing from the push's parent instead"
+          echo "base=$BEFORE" >> "$GITHUB_OUTPUT"
+          exit 0
+        }
+
+        git fetch --no-tags --depth=1 origin "+refs/tags/$tag:refs/tags/$tag" 2>/dev/null || true
+
+        git rev-parse -q --verify "refs/tags/$tag^{commit}" >/dev/null || fallback "does not exist yet"
+
+        deployed=$(git rev-parse "refs/tags/$tag^{commit}")
+
+        # AN ANCESTOR, OR IT IS NOT A BASE. A force-push or a rewritten history can leave the marker
+        # off this branch, and `git diff` against an unrelated commit reports the whole tree as
+        # changed — which on the worker's gate means a needless restart.
+        git merge-base --is-ancestor "$deployed" "$GITHUB_SHA" 2>/dev/null \
+          || fallback "($deployed) is not an ancestor of $GITHUB_SHA"
+
+        echo "::notice::$tag is at $deployed — diffing $TIER from there"
+        echo "base=$deployed" >> "$GITHUB_OUTPUT"
