@@ -385,13 +385,18 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   // Nothing to hand over is not a failure — it is the plain link the switcher
   // would have followed anyway, and the visitor still lands where they asked.
-  it should "send a signed-out visitor straight to the other country" in {
+  //
+  // The marker on the way back is what stops the ARRIVAL probe looping: a
+  // signed-out page asks this endpoint once per browser, and a browser refusing
+  // the probe's cookie guard would otherwise ask again on the page it lands on,
+  // and again after that.
+  it should "send a signed-out visitor straight to the other country, marked as answered" in {
     val (ctl, _, _) = fixture()
 
     val result = ctl.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$UkBase"))
 
     status(result) shouldBe SEE_OTHER
-    redirectLocation(result).value shouldBe s"$UkBase/"
+    redirectLocation(result).value shouldBe s"$UkBase/?sso=1"
   }
 
   it should "mint nothing for a visitor whose session names a user that no longer exists" in {
@@ -400,7 +405,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val result = ctl.ssoStart()(
       FakeRequest("GET", s"/auth/sso/start?to=$UkBase").withSession("userId" -> "deleted@example.com"))
 
-    redirectLocation(result).value shouldBe s"$UkBase/"
+    redirectLocation(result).value shouldBe s"$UkBase/?sso=1"
   }
 
   it should "refuse a target that is not a deployed country" in {

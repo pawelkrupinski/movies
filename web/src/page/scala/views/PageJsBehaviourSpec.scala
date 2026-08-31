@@ -122,6 +122,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         email = Some("tester@example.com"), displayName = Some("Tester"),
         avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH
       )
+      // SIGNED OUT, but with a provider configured — the shape every real
+      // anonymous visitor arrives in, and the only one where the arrival probe
+      // does anything. The plain `indexHtml` above renders with NO providers
+      // (local dev with no secrets), which switches the probe off, so it cannot
+      // exercise this. Served at `/anon`.
+      val anonWithOauthHtml: String = views.html.repertoire(
+        schedules, cinemas, pills, devMode = false,
+        currentUser = anon, oauthProviders = Set("google"), renderedAt = now
+      ).body
       val loggedInHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
         currentUser = Some(testUser), oauthProviders = noOauth, renderedAt = now
@@ -204,6 +213,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
             renderFilm(sub(p).stripPrefix("/movie/"))
           case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
           case p if sub(p) == "/li"           => loggedInHtml
+          // Signed out WITH a provider configured, plus the `?sso=1` variant the
+          // far side bounces back when it has no session to hand over.
+          case p if { val q = sub(p); q == "/anon" || q.startsWith("/anon?") } => anonWithOauthHtml
           case p if p == "/api/me/state"      => userStateJson
           // The dev-only visual-tuning page — rendered with real fixture films
           // so its slider panel (and the ± step buttons) can be driven over CDP.
@@ -268,6 +280,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onDebugSlots(body: CdpPage => Any): Unit =
     chrome match {
       case Some(c) => c.openPage(server.baseUrl + "/debug-slots")(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  /** Open the signed-out index that HAS an OAuth provider — the shape a real
+   *  anonymous visitor arrives in, and the only one where the cross-domain
+   *  session probe is live. `query` appends to the path so the `?sso=1`
+   *  bounce-back can be driven too. */
+  private def onAnonWithOauth(query: String = "")(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/anon" + query)(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -4525,6 +4547,95 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       page.evalString("window.countrySwitchTarget('https://showtimes.cc/de')") shouldBe
         "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fde"
+    }
+  }
+
+
+  // ── Picking up a sign-in from the other domain, on arrival ───────────────
+  //
+  // kinowo.net and showtimes.cc share no cookie, so a visitor who TYPES the
+  // second address — rather than using the country switcher, which hands the
+  // session over explicitly — lands signed out however recently they signed in
+  // next door. The page asks, once per browser, whether there is a session to
+  // pick up. The fixture renders as Poland, so "next door" is showtimes.cc.
+
+  // The fixture is served from localhost, which is neither deployed domain, so
+  // the served country's own origin is passed in — the argument exists for
+  // exactly this and production reads `location.origin`.
+  private val AsPoland = "'https://kinowo.net'"
+
+  /** Drop the probe's once-per-browser guard.
+   *
+   *  `openPage` gives a fresh TAB, not a fresh origin, and a cookie outlives the
+   *  tab exactly as the localStorage note further down says it does — so the test
+   *  that sets this guard would otherwise switch the probe off for every test
+   *  that ran after it, in whatever order ScalaTest picked. */
+  private def clearProbeGuard(page: CdpPage): Unit =
+    page.evalBool("(document.cookie = 'ssoProbed=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/', true)") shouldBe true
+
+  "A signed-out arrival" should "offer to pick up a session from the other domain" in {
+    onAnonWithOauth() { page =>
+      clearProbeGuard(page)
+      page.evalString(s"window.sessionProbeTarget($AsPoland) || ''") shouldBe
+        "https://showtimes.cc/auth/sso/start?to=https%3A%2F%2Fkinowo.net"
+    }
+  }
+
+  // A developer with real OAuth secrets in .env.local must not have their local
+  // page bounce to production to ask about a session. Served off a deployed
+  // domain, the probe is simply off — which is also why every other test here
+  // has to name the origin it is pretending to be.
+  it should "stay inert when the page is not served on the country's own domain" in {
+    onAnonWithOauth() { page =>
+      clearProbeGuard(page)
+      page.evalString("window.sessionProbeTarget() || ''") shouldBe ""
+    }
+  }
+
+  // The cost of this feature falls entirely on signed-out visitors, so it has to
+  // be paid once and never again.
+  it should "ask only once per browser" in {
+    onAnonWithOauth() { page =>
+      clearProbeGuard(page)
+      page.evalString(s"window.sessionProbeTarget($AsPoland) || ''") should not be empty
+      page.evalBool("(document.cookie = 'ssoProbed=1;path=/', true)") shouldBe true
+      page.evalString(s"window.sessionProbeTarget($AsPoland) || ''") shouldBe ""
+      clearProbeGuard(page)
+    }
+  }
+
+  // THE LOOP GUARD that holds when the cookie one cannot. A browser refusing
+  // cookies is a browser that can never hold a session, and must not be sent
+  // round and round chasing one — so the far side marks its empty-handed bounce
+  // and the page reads that marker off its own URL.
+  it should "not ask again on the answer coming back" in {
+    onAnonWithOauth("?sso=1") { page =>
+      clearProbeGuard(page)
+      page.evalString(s"window.sessionProbeTarget($AsPoland) || ''") shouldBe ""
+    }
+  }
+
+  it should "not ask at all once signed in" in {
+    onLoggedInIndex { page =>
+      page.evalString(s"window.sessionProbeTarget($AsPoland) || ''") shouldBe ""
+    }
+  }
+
+  // A deployment with no OAuth secrets has nothing to be signed in to, so the
+  // probe would be a redirect in exchange for nothing.
+  it should "not ask when the deployment has no provider configured" in {
+    onPath("/") { page =>
+      page.evalString(s"window.sessionProbeTarget($AsPoland) || ''") shouldBe ""
+    }
+  }
+
+  // The other domain is read off the switcher's own options rather than named in
+  // the script, so adding a country under an existing domain changes nothing
+  // here — and a country on THIS origin is never mistaken for the other one.
+  "The sibling origin" should "be the deployed origin that is not this one" in {
+    onAnonWithOauth() { page =>
+      clearProbeGuard(page)
+      page.evalString(s"new URL(window.sessionProbeTarget($AsPoland)).origin") shouldBe "https://showtimes.cc"
     }
   }
 

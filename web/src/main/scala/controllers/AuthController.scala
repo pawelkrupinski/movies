@@ -344,7 +344,15 @@ class AuthController(
         BadRequest("Unknown country")
       case Some(target) =>
         request.session.get("userId").flatMap(userRepository.findById) match {
-          case None       => Redirect(s"$target/")
+          // NOTHING TO HAND OVER, and the marker matters. This endpoint is now
+          // also reached unprompted, by a signed-out arrival probing whether the
+          // visitor has a session on the other domain; sending it back to a bare
+          // landing would leave the page it lands on unable to tell a first visit
+          // from one that has just been answered, and it would probe again. The
+          // probe's own cookie guard is the durable half; this is what holds when
+          // a browser is refusing cookies, which is also a browser that can never
+          // hold a session and must not be put in a loop chasing one.
+          case None       => Redirect(s"$target/?${AuthController.ProbedMarker}")
           case Some(user) =>
             val code = URLEncoder.encode(exchangeCodes.mint(user.id), UTF_8)
             Redirect(s"$target/auth/sso/finish?code=$code")
@@ -436,6 +444,12 @@ object AuthController {
       case Nil    => ""
       case params => params.mkString("?", "&", "")
     }
+
+  /** Query marker on the bounce back from a session probe that found nothing —
+   *  see [[AuthController.ssoStart]]. Read by the page's own probe, which skips
+   *  when it is present, so a browser with no usable cookie jar gets one hop
+   *  rather than a loop. */
+  val ProbedMarker = "sso=1"
 
   /** Where [[AuthController.ssoStart]] is willing to send a session: an EXACT
    *  match against a deployed country's own base URL (`Country.webUrl`), and
