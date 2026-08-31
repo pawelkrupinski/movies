@@ -46,7 +46,7 @@ class UptimeLiveBarsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAl
   ))
 
   private val uptimeHtml: String =
-    views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq(row, detailRow)).body
+    views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq(row, detailRow)).body
 
   private var chrome: Option[Chrome] = None
   private var server: TestHttpServer = _

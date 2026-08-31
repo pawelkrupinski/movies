@@ -75,7 +75,7 @@ class UptimeBarPayloadSpec extends AnyFlatSpec with Matchers {
 
   "the rendered uptime page" should "not inline a JSON blob into every bar" in {
     val row = ServiceRow("Kino Muza", Seq(active("Kino Muza", ts)))
-    val html = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq("Poznań" -> Seq(row)), Seq.empty, Seq.empty).body
+    val html = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq("Poznań" -> Seq(row)), Seq.empty, Seq.empty).body
 
     html should not include ("data-info=")
     html should include ("""id="uptime-bars"""")
@@ -92,7 +92,7 @@ class UptimeBarPayloadSpec extends AnyFlatSpec with Matchers {
     val rows = services.map { s =>
       ServiceRow(s, (0 until 96).map(slot => empty(s, ts + slot)))
     }
-    val html = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq("Poznań" -> rows), Seq.empty, Seq.empty).body
+    val html = views.html.uptime(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq("Poznań" -> rows), Seq.empty, Seq.empty).body
 
     info(s"rendered ${html.length / 1024} KB for 200 services × 96 empty slots (was ~8100 KB)")
     html.length should be < 2 * 1024 * 1024

@@ -4,6 +4,7 @@ import play.api.Logging
 import services.freshness.{Freshness, FreshnessStore}
 import models.Cinema
 import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper, ScrapeErrors}
+import services.scrapes.{GoneUpstream, ScrapeArchiveRepository}
 
 import java.time.Clock
 
@@ -35,7 +36,11 @@ class ScrapeCinemaHandler(
   // Production passes the SHARED policy, so a venue's failure streak is counted once
   // however it happens to be scraped. None → a private one over this handler's own
   // store/clock, which is the same rule, just not shared with the chunked path.
-  scrapeFreshness: Option[ScrapeFreshnessPolicy] = None
+  scrapeFreshness: Option[ScrapeFreshnessPolicy] = None,
+  // Read to tell a venue that is BROKEN from one that is GONE — a page 404ing for
+  // over a day. Defaults to the no-op archive, under which nothing is ever gone
+  // and this handler behaves exactly as it did before.
+  scrapeArchive: ScrapeArchiveRepository = ScrapeArchiveRepository.empty
 ) extends TaskHandler with Logging {
   import ScrapeCinemaHandler._
   import HandlerOutcome._
@@ -71,6 +76,19 @@ class ScrapeCinemaHandler(
         Done
       case Some(scraper) =>
         val cinema = scraper.cinema
+        // A venue whose page has 404'd for over a day is re-probed once a day, not
+        // once a window: nothing about the roster can bring it back (both
+        // aggregators keep dead venues in the sitemaps we harvest from), so every
+        // attempt in between is a request that cannot succeed. Stamped as it skips
+        // — an unstamped cinema is what makes the reaper re-enqueue it every tick
+        // and jump the queue ahead of healthy ones.
+        val now = clock.instant()
+        if (scrapeArchive.find(cinema).exists(row => GoneUpstream.skipScrape(row, now))) {
+          logger.info(s"Skipping ${cinema.displayName}: its page has been 404ing for over " +
+            s"${GoneUpstream.MinimumAge.toHours}h; next probe in ${GoneUpstream.RecheckInterval.toHours}h.")
+          outcome.skipped(key)
+          return Done
+        }
         val t0     = System.currentTimeMillis()
         try {
           runner.run(scraper)

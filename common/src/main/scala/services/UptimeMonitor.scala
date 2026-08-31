@@ -249,6 +249,30 @@ class UptimeMonitor(
     }
   }
 
+  /** The error strings recorded by the most recent `limit` buckets that saw any
+   *  activity — the same window [[recentStatuses]] classifies, so the two describe
+   *  the same buckets. Cheap for the same reason: it walks the bucket map from the
+   *  newest end and never materialises a row's 96 slots.
+   *
+   *  What it is FOR: telling a venue that is broken apart from one that no longer
+   *  exists. Both are red, and only the error text separates them (see
+   *  [[services.scrapes.GoneUpstream]]). */
+  def recentErrors(service: String, limit: Int): Seq[String] = {
+    val buckets = data.get(service)
+    if (buckets == null) Seq.empty
+    else {
+      val out = List.newBuilder[String]
+      var taken = 0
+      val it = buckets.descendingMap().values().iterator()
+      while (taken < limit && it.hasNext) {
+        val b = it.next()
+        val status = BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), Seq.empty).status
+        if (status != "empty") { out ++= b.errors.asScala; taken += 1 }
+      }
+      out.result()
+    }
+  }
+
   def services: Set[String] = data.keySet().asScala.toSet
 
   // ── Per-service tags (generic per-row labels) ────────────────────────────────

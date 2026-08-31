@@ -9,6 +9,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.common.{CinemaScrapeRunner, CinemaScraper}
+import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeAttempt}
 import services.cinemas.pl.FilmwebShowtimesClient
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
@@ -58,6 +59,67 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     h.handle(task(Multikino)) shouldBe HandlerOutcome.Done
     scraper.fetchCount shouldBe 1
     fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe true
+  }
+
+  // ── A venue whose page is gone ────────────────────────────────────────────
+  // Both aggregators keep advertising venues whose pages 404 forever — 2 in the
+  // US roster, 21 in the German one — and because the roster is harvested FROM
+  // those sitemaps, re-harvesting brings them straight back. Every scrape of one
+  // is a request that cannot succeed, so after a day of 404s it is probed once a
+  // day instead of once a window.
+  private def goneArchive(cinema: Cinema, since: Instant, lastAttempt: Instant) = {
+    val archive = new InMemoryScrapeArchiveRepository
+    archive.record(ScrapeAttempt(cinema, None, since, listingComplete = true, films = Seq.empty,
+      error = Some("HttpStatusException: HTTP 404 for GET https://www.flicks.us/cinema/acme/")))
+    archive.record(ScrapeAttempt(cinema, None, lastAttempt, listingComplete = true, films = Seq.empty,
+      error = Some("HttpStatusException: HTTP 404 for GET https://www.flicks.us/cinema/acme/")))
+    archive
+  }
+
+  it should "skip a venue whose page has 404'd for over a day, and stamp it so the reaper stops re-enqueuing" in {
+    val now     = Instant.parse("2026-08-31T12:00:00Z")
+    val scraper = new FakeScraper(Multikino, movieAt(Multikino))
+    val fresh   = new InMemoryFreshnessStore
+    val key     = ScrapeCinemaHandler.dedupKey(Multikino)
+    val archive = goneArchive(Multikino, since = now.minusSeconds(5 * 86400), lastAttempt = now.minusSeconds(3600))
+    val handler = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper),
+      freshRunner(), fresh, new DueWindow(60.minutes), Clock.fixed(now, ZoneOffset.UTC),
+      scrapeArchive = archive)
+
+    handler.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+    scraper.fetchCount shouldBe 0
+    // Unstamped is what makes the reaper re-enqueue it every single tick, ahead of
+    // healthy cinemas — the starvation this same spec guards against below.
+    fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe true
+  }
+
+  // The only way out of quarantine is a scrape that works, so one has to happen.
+  it should "probe a gone venue again once a day has passed since the last attempt" in {
+    val now     = Instant.parse("2026-08-31T12:00:00Z")
+    val scraper = new FakeScraper(Multikino, movieAt(Multikino))
+    val archive = goneArchive(Multikino, since = now.minusSeconds(5 * 86400), lastAttempt = now.minusSeconds(30 * 3600))
+    val handler = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper),
+      freshRunner(), new InMemoryFreshnessStore, new DueWindow(60.minutes), Clock.fixed(now, ZoneOffset.UTC),
+      scrapeArchive = archive)
+
+    handler.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+    scraper.fetchCount shouldBe 1
+  }
+
+  // A venue that is merely BROKEN keeps its normal cadence: a 503 or a timeout is
+  // a page that exists, and the fast retry is what recovers it.
+  it should "keep scraping a venue that is failing for any other reason" in {
+    val now     = Instant.parse("2026-08-31T12:00:00Z")
+    val scraper = new FakeScraper(Multikino, movieAt(Multikino))
+    val archive = new InMemoryScrapeArchiveRepository
+    archive.record(ScrapeAttempt(Multikino, None, now.minusSeconds(5 * 86400), listingComplete = true,
+      films = Seq.empty, error = Some("HttpStatusException: HTTP 503 for GET https://x/")))
+    val handler = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper),
+      freshRunner(), new InMemoryFreshnessStore, new DueWindow(60.minutes), Clock.fixed(now, ZoneOffset.UTC),
+      scrapeArchive = archive)
+
+    handler.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+    scraper.fetchCount shouldBe 1
   }
 
   it should "drop a task whose cinema is no longer in the catalogue" in {

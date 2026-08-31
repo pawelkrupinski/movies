@@ -949,7 +949,10 @@ class WorkerWiring(
   lazy val scrapeCinemaHandler = new ScrapeCinemaHandler(
     cinemaScrapers.map(s => ScrapeCinemaHandler.scraperKey(s.cinema) -> s).toMap,
     cinemaScrapeRunner, freshnessStore, scrapeDueWindow,
-    chunkPlanner = Some(chunkScrapePlanner), scrapeFreshness = Some(scrapeFreshnessPolicy)
+    chunkPlanner = Some(chunkScrapePlanner), scrapeFreshness = Some(scrapeFreshnessPolicy),
+    // The same archive the runner writes: it is what says whether a venue is
+    // merely failing or has 404'd for over a day.
+    scrapeArchive = scrapeArchive
   )
   // Shared detail refresh schedule. Its period is the DetailEnrich TTL (6h,
   // `Freshness.ttlFor`); the SAME instance backs the reaper (enqueue gate) and the

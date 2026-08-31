@@ -93,6 +93,30 @@ class ScrapeArchiveRepositorySpec extends AnyFlatSpec with Matchers {
     stored.films.map(_.movie.title) shouldBe Seq("Dune")
   }
 
+  // How long a cinema has been failing is what separates a blip from a venue that
+  // has been deleted upstream (`GoneUpstream`), and the newest attempt cannot say:
+  // a page 404ing for a week, scraped a minute ago, has `at` a minute old. So the
+  // run's START rides along, carried from the marker each attempt replaces.
+  it should "carry the start of a barren run forward across attempts" in {
+    val repository = new InMemoryScrapeArchiveRepository
+    repository.record(threw(Multikino, Morning, "HTTP 404 for GET https://x/"))
+    repository.record(threw(Multikino, Noon,    "HTTP 404 for GET https://x/"))
+    repository.record(threw(Multikino, Evening, "HTTP 404 for GET https://x/"))
+
+    val stored = repository.find(Multikino).value
+    stored.lastBarren.value.at           shouldBe Evening   // the newest attempt is what is stored
+    stored.lastBarren.value.runStartedAt shouldBe Morning   // …and it has been failing since morning
+  }
+
+  it should "start a new run after a success, not resume the old one" in {
+    val repository = new InMemoryScrapeArchiveRepository
+    repository.record(threw(Multikino, Morning, "HTTP 404 for GET https://x/"))
+    repository.record(scraped(Multikino, Noon, Seq(film("Dune"))))
+    repository.record(threw(Multikino, Evening, "HTTP 404 for GET https://x/"))
+
+    repository.find(Multikino).value.lastBarren.value.runStartedAt shouldBe Evening
+  }
+
   it should "clear the barren marker once the cinema scrapes successfully again" in {
     val repository = new InMemoryScrapeArchiveRepository
     repository.record(scraped(Multikino, Morning, Seq(film("Dune"))))

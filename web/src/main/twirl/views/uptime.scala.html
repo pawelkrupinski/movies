@@ -1,6 +1,6 @@
 @import controllers.{FallbackRow, FlaggedRow, ServiceRow}
 @import services.UptimeMonitor
-@(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, current: models.Country = models.Country.fromEnv)
+@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, current: models.Country = models.Country.fromEnv)
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -98,6 +98,15 @@
     .tag-fallback { background: #2b2410; color: #e0b341; border-color: #4d3f18; }
     .leading-fail h2 { color: #e74c3c; }
     .leading-zero h2 { color: #c9c9c9; }
+    /* Gone-upstream block: same collapsed <details> treatment as the fallback one
+       below, in a muted grey — these rows are red but inert, and must not read as
+       louder than the Failing section above them. */
+    .leading-gone > summary {
+      font-size: 11px; font-weight: 600; color: #7d7d7d; text-transform: uppercase;
+      letter-spacing: 1px; margin: 28px 0 10px; padding-bottom: 6px;
+      border-bottom: 1px solid #1a1a1a; cursor: pointer; list-style-position: inside;
+    }
+    .leading-gone > summary:hover { color: #a5a5a5; }
     /* Filmweb-fallback block, folded onto the page below the triage sections.
        Collapsed by default (a <details>); the <summary> is styled to match the
        page's other <h2> section headers, with a click-to-expand cursor. */
@@ -166,7 +175,7 @@
     @_countrySwitch("/uptime", current)
   </div>
 
-  @if(failing.isEmpty && zero.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty && hiddenHealthyCinemas == 0) {
+  @if(failing.isEmpty && gone.isEmpty && zero.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty && hiddenHealthyCinemas == 0) {
     <p class="empty-msg">No data yet — bars will appear after the first scrape cycle.</p>
   }
 
@@ -182,6 +191,20 @@
       <h2>No screenings — last 3 scrapes</h2>
       @for(f <- zero) { @flaggedRow(f) }
     </div>
+  }
+
+  @*  Red rows whose every recorded error is a 404 — the venue's page is gone, not
+      broken. Collapsed, and BELOW the two triage sections: nothing here can be
+      fixed by us, and both aggregators keep re-advertising dead venues in the
+      sitemaps our roster is harvested from, so this list only shrinks when they
+      clean up. Left in Failing it was most of that section (2 of 2 in the US, 21
+      of 21 in Germany), which is what made a section meant for today's breakage
+      unreadable.  *@
+  @if(gone.nonEmpty) {
+    <details class="leading-gone" id="gone">
+      <summary>Gone upstream — page 404s (@gone.size)</summary>
+      @for(f <- gone) { @flaggedRow(f) }
+    </details>
   }
 
   @if(onFallback.nonEmpty) {
@@ -246,7 +269,7 @@
       Slot labels are shared across services; `data` holds only buckets that
       recorded something, so a bar with no entry is the "no data" case.  *@
   <script type="application/json" id="uptime-bars">@Html(controllers.UptimeBarPayload(
-    failing.map(_.row) ++ zero.map(_.row) ++ cinemasByCity.flatMap(_._2) ++ services ++ other))</script>
+    failing.map(_.row) ++ gone.map(_.row) ++ zero.map(_.row) ++ cinemasByCity.flatMap(_._2) ++ services ++ other))</script>
 
   <script>
     var overlay = document.getElementById('overlay');

@@ -61,6 +61,13 @@ class ScrapeFreshnessPolicy(
     freshness.markFresh(key, FreshnessKind.CinemaScrape, clock.instant())
   }
 
+  /** The scrape was deliberately SKIPPED rather than run — the venue's page is
+   *  gone (see [[services.scrapes.GoneUpstream]]). Stamps exactly like a success,
+   *  because the scheduling consequence is identical: this cinema is not due again
+   *  until its next window. Named apart so a call site that ran no scrape at all
+   *  does not have to claim one succeeded. */
+  def skipped(key: String): Unit = succeeded(key)
+
   /** The scrape threw. Leave the cinema stale so the reaper retries next tick,
    *  until the streak passes `immediateRetries` — then stamp anyway so it stops
    *  jumping the queue ahead of healthy cinemas. */

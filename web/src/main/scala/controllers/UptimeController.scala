@@ -69,6 +69,12 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   private val MaxHealthyCinemaRows = 500
   private sealed trait Health
   private case object Failing extends Health
+  // Red, but for a reason no one can act on: the venue's page is a 404. Split out
+  // of Failing so the section that means "something broke today" stays readable.
+  // Named `Missing`, not `Gone`, for the same reason `Healthy` is not `Ok`: Play's
+  // `Results` already has both `Gone` and `NotFound` and a controller inherits
+  // them. The section it feeds is still called "gone upstream".
+  private case object Missing extends Health
   private case object Zero    extends Health
   private case object Healthy extends Health
 
@@ -106,8 +112,9 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     val tags = monitor.serviceTagsSnapshot()
     def row(n: String) =
       ServiceRow(n, barsFor(n), monitor.averageMs1h(n), monitor.averageMsTotal(n), tags = tags.getOrElse(n, Set.empty))
-    val sections = groupRows(active, monitor.recentStatuses(_, RecentScrapes), row)
-    Ok(views.html.uptime(sections.failing, sections.zero, activeFallbacks(), sections.cinemasByCity,
+    val sections = groupRows(active, monitor.recentStatuses(_, RecentScrapes),
+      monitor.recentErrors(_, RecentScrapes), row)
+    Ok(views.html.uptime(sections.failing, sections.gone, sections.zero, activeFallbacks(), sections.cinemasByCity,
       sections.services, sections.other, sections.hiddenHealthyCinemas))
   }
 
@@ -135,6 +142,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
    *  back into one is what made the page cost one bar series per registered
    *  service — see MaxHealthyCinemaRows. */
   private[controllers] def groupRows(active: Set[String], statusesOf: String => Seq[String],
+                                     errorsOf: String => Seq[String],
                                      row: String => ServiceRow): UptimeSections = {
     def cinemaRow(displayName: String): ServiceRow = {
       val enrichService = UptimeMonitor.enrichmentService(displayName)
@@ -147,8 +155,16 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     def cinemaHealthOf(displayName: String): Health = {
       val enrichService = UptimeMonitor.enrichmentService(displayName)
       val enrichHealth =
-        if (active.contains(enrichService)) classify(statusesOf(enrichService)) else Healthy
-      worse(classify(statusesOf(displayName)), enrichHealth)
+        if (active.contains(enrichService)) verdict(enrichService) else Healthy
+      worse(verdict(displayName), enrichHealth)
+    }
+
+    // Errors are read ONLY for a row that already classified as Failing — the
+    // question "is this a 404" is meaningless otherwise, and asking it for all
+    // 5,031 US services would undo the point of classifying over names alone.
+    def verdict(service: String): Health = classify(statusesOf(service)) match {
+      case Failing if goneUpstream(errorsOf(service)) => Missing
+      case other                                      => other
     }
 
     // Names in city order, each with its verdict. Reused by both the triage split
@@ -156,10 +172,10 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     val cinemaVerdicts: Seq[(String, String, Health)] = byCity.flatMap { case (city, venues) =>
       venues.map(_.displayName).filter(active.contains).map(dn => (city, dn, cinemaHealthOf(dn)))
     }
-    val serviceVerdicts = enrichmentNames.filter(active.contains).map(n => n -> classify(statusesOf(n)))
+    val serviceVerdicts = enrichmentNames.filter(active.contains).map(n => n -> verdict(n))
     // Exclude the "<cinema>|enrichment" services — they render as cinema sub-rows.
     val otherVerdicts = (active -- cinemaNames.toSet -- enrichmentNames.toSet)
-      .filterNot(UptimeMonitor.isEnrichmentService).toSeq.sorted.map(n => n -> classify(statusesOf(n)))
+      .filterNot(UptimeMonitor.isEnrichmentService).toSeq.sorted.map(n => n -> verdict(n))
 
     // Flat triage sections, in the order cinemas → enrichment services → other,
     // each carrying the city it belongs to (None for non-cinema rows).
@@ -182,6 +198,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
 
     UptimeSections(
       failing = flaggedAs(Failing),
+      gone = flaggedAs(Missing),
       zero = flaggedAs(Zero),
       cinemasByCity = cinemasByCity,
       services = serviceVerdicts.collect { case (n, Healthy) => row(n) },
@@ -204,8 +221,25 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     else Healthy
   }
 
+  /** Every recorded error in the window says the page is a 404 — nothing else
+   *  broke, the venue simply isn't there. One non-404 among them (a 500, a
+   *  timeout, a parse error) makes it an ordinary failure again: that is a venue
+   *  whose page EXISTS and is misbehaving, which is worth acting on.
+   *
+   *  Recency, not duration, is the test here — the buckets only reach back a day.
+   *  The worker asks the longer question against the scrape archive
+   *  ([[services.scrapes.GoneUpstream]], "404ing for over a day") before it backs
+   *  a venue's scrape cadence off; both sides share the one predicate that
+   *  matters, `isNotFound`. */
+  private def goneUpstream(errors: Seq[String]): Boolean =
+    errors.nonEmpty && errors.forall(error => services.scrapes.GoneUpstream.isNotFound(error))
+
+  /** Worst-first, and `Missing` ranks BELOW Failing: a cinema whose page is gone
+   *  but whose enrichment is also failing has something live to fix, so it belongs
+   *  in Failing. */
   private def worse(a: Health, b: Health): Health =
     if (a == Failing || b == Failing) Failing
+    else if (a == Missing || b == Missing) Missing
     else if (a == Zero || b == Zero) Zero
     else Healthy
 
@@ -419,6 +453,10 @@ case class FlaggedRow(row: ServiceRow, city: Option[String])
  *  hidden-cinema count only makes sense beside the section it explains. */
 case class UptimeSections(
   failing: Seq[FlaggedRow],
+  // Red, but only ever with a 404: the venue's page no longer exists. Its own
+  // section so it stops crowding `failing`, which is the list that means
+  // "something broke and someone should look".
+  gone: Seq[FlaggedRow],
   zero: Seq[FlaggedRow],
   cinemasByCity: Seq[(String, Seq[ServiceRow])],
   services: Seq[ServiceRow],

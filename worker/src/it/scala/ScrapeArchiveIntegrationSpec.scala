@@ -221,6 +221,22 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers {
     } finally purge()
   }
 
+  // The field that decides whether a venue is BROKEN or GONE — and it only works
+  // if it survives BSON: a `since` that failed to persist would read as "started
+  // just now" on every attempt, and no venue would ever be quarantined.
+  it should "persist how long a cinema has been failing, across attempts" in {
+    val repository = new MongoScrapeArchiveRepository(Some(db))
+    try {
+      repository.record(threw(Morning, "HttpStatusException: HTTP 404 for GET https://x/"))
+      repository.record(threw(Evening, "HttpStatusException: HTTP 404 for GET https://x/"))
+
+      val stored = repository.find(Multikino).getOrElse(fail("nothing archived")).lastBarren
+        .getOrElse(fail("no barren marker"))
+      stored.at           shouldBe Evening
+      stored.runStartedAt shouldBe Morning
+    } finally purge()
+  }
+
   it should "no-op without a database rather than fail the scrape that fed it" in {
     val repository = new MongoScrapeArchiveRepository(None)
     repository.enabled shouldBe false

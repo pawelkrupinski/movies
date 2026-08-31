@@ -40,7 +40,10 @@ case class ArchivedFilmDto(
 case class BarrenAttemptDto(
   at:      Instant,
   outcome: String,
-  error:   Option[String]
+  error:   Option[String],
+  // When the current unbroken barren run began; absent on rows written before the
+  // field existed, which decode as "since `at`".
+  since:   Option[Instant] = None
 )
 
 /** Storage DTO for one cinema's archive row — the macro codec target for the
@@ -99,7 +102,7 @@ object StoredScrapeDto {
             f.showtimes, f.externalIds, f.trailerUrl, f.ageRating))
         )),
         lastBarren  = dto.lastBarren.flatMap(b =>
-          ScrapeOutcome.byLabel(b.outcome).map(o => BarrenAttempt(b.at, o, b.error)))
+          ScrapeOutcome.byLabel(b.outcome).map(o => BarrenAttempt(b.at, o, b.error, b.since)))
       )
     }
 }
@@ -170,7 +173,14 @@ class MongoScrapeArchiveRepository(sharedDb: Option[MongoDatabase]) extends Scra
         val existing = Await.result(c.find(Filters.eq("_id", cinema.displayName)).headOption(), 30.seconds)
         val stale    = existing.flatMap(_.scrapedAt).exists(_.isAfter(attempt.at))
         if (!stale) {
-          val marker = Updates.set("lastBarren", BarrenAttemptDto(attempt.at, attempt.outcome.label, attempt.error))
+          // The read above is already here for the ordering guard, so continuing
+          // the run costs nothing extra — and the decision itself is the shared
+          // pure one, never this store's own idea of when a run began.
+          val run = BarrenAttempt.continuing(
+            existing.flatMap(_.lastBarren).flatMap(b =>
+              ScrapeOutcome.byLabel(b.outcome).map(o => BarrenAttempt(b.at, o, b.error, b.since))),
+            attempt)
+          val marker = Updates.set("lastBarren", BarrenAttemptDto(run.at, run.outcome.label, run.error, run.since))
           val update = city.fold(marker)(name => Updates.combine(marker, Updates.setOnInsert("city", name)))
           Await.result(
             c.updateOne(Filters.eq("_id", cinema.displayName), update, new UpdateOptions().upsert(true)).toFuture(),

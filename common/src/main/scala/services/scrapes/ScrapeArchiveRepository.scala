@@ -43,8 +43,32 @@ case class BarrenAttempt(
   at:      Instant,
   outcome: ScrapeOutcome,
   // The exception's message for a [[ScrapeOutcome.Failed]]; `None` for an empty.
-  error:   Option[String]
-)
+  error:   Option[String],
+  // When the CURRENT unbroken run of barren attempts began — carried forward from
+  // the marker this one replaces, and reset by any success (which clears the
+  // marker outright). `None` on a row written before this field existed, which
+  // reads as "as far as we know, since `at`".
+  //
+  // The last attempt alone cannot tell a blip from a cinema that is GONE, and
+  // that difference decides whether a red row is worth acting on: an aggregator
+  // venue page that 404s forever (flicks.us and filmstarts.de both list venues
+  // whose pages are dead) looks exactly like one that 404'd once. See
+  // [[GoneUpstream]].
+  since:   Option[Instant] = None
+) {
+  /** When this barren run started — `since` once one has been carried, else this
+   *  attempt itself. */
+  def runStartedAt: Instant = since.getOrElse(at)
+}
+
+object BarrenAttempt {
+  /** `attempt`, stamped with the run it CONTINUES: the existing marker's start
+   *  when there is one, otherwise its own. Pure, and called by every
+   *  implementation at the point where it already holds the row it is replacing —
+   *  a real store and a fake must not disagree about when a run began. */
+  def continuing(existing: Option[BarrenAttempt], attempt: BarrenAttempt): BarrenAttempt =
+    attempt.copy(since = Some(existing.map(_.runStartedAt).getOrElse(attempt.at)))
+}
 
 /**
  * One cinema's archive row: its last scrape that had content, plus — when the
@@ -201,7 +225,8 @@ class InMemoryScrapeArchiveRepository extends ScrapeArchiveRepository {
     byCinema.synchronized {
       val row = byCinema.getOrElse(cinema.displayName, ArchivedScrape(cinema, city, None, None))
       if (!row.contentAt.exists(_.isAfter(attempt.at)))
-        byCinema.update(cinema.displayName, row.copy(lastBarren = Some(attempt)))
+        byCinema.update(cinema.displayName,
+          row.copy(lastBarren = Some(BarrenAttempt.continuing(row.lastBarren, attempt))))
     }
 
   def find(cinema: Cinema): Option[ArchivedScrape] =
