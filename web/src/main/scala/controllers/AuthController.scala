@@ -185,7 +185,7 @@ class AuthController(
               // through the deep link, so there is no sibling to pair.
               Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id)}").withSession(nextSession)
             } else {
-              Redirect(pairSiblingThen(landingFor(request), user.id)).withSession(nextSession)
+              Redirect(pairSiblingThen(landingFor(request), user.id, request)).withSession(nextSession)
             }
         }
     }
@@ -218,21 +218,25 @@ class AuthController(
    *
    *  No pairing without a sibling, and none FROM the pairing leg itself —
    *  [[ssoFinish]] never calls this, so the chain is one hop by construction. */
-  private def pairSiblingThen(landing: String, userId: String): String =
-    models.Country.siblingOriginOf(country) match {
+  private def pairSiblingThen(landing: String, userId: String, request: RequestHeader): String =
+    models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
       case None => landing
       case Some(sibling) =>
         val code = URLEncoder.encode(exchangeCodes.mint(userId), UTF_8)
-        val next = URLEncoder.encode(absolute(landing), UTF_8)
+        val next = URLEncoder.encode(absolute(landing, request), UTF_8)
         s"$sibling${AuthController.SsoFinishPath}?code=$code&next=$next"
     }
 
   /** `landing` as an absolute URL, so the far side can send the visitor back to
-   *  it across the domain boundary. Relative landings are this deployment's own,
-   *  so they resolve against this country's base. */
-  private def absolute(landing: String): String =
-    if (landing.startsWith("http")) landing
-    else country.webUrl.map(_ + landing).getOrElse(landing)
+   *  it across the domain boundary.
+   *
+   *  Against the request's ORIGIN, because a relative landing came from a reverse
+   *  route and already carries this deployment's mount point: resolving `/uk/`
+   *  against the country's base URL — which ends in `/uk` — produces
+   *  `showtimes.cc/uk/uk/`, which then fails the `next` allowlist and strands the
+   *  visitor on the wrong country entirely. */
+  private def absolute(landing: String, request: RequestHeader): String =
+    AuthController.absoluteLanding(ForwardedUrl.base(request), landing)
 
   private def landingFor(request: RequestHeader): String =
     request.getQueryString("state").flatMap(AuthController.stateCountry) match {
@@ -314,10 +318,10 @@ class AuthController(
   def logout(): Action[AnyContent] = Action { request =>
     val cleared = request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp"
     val landing = routes.LandingController.index().url
-    val target  = models.Country.siblingOriginOf(country) match {
+    val target  = models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
       case None          => landing
       case Some(sibling) =>
-        s"$sibling${AuthController.SsoLogoutPath}?next=${URLEncoder.encode(absolute(landing), UTF_8)}"
+        s"$sibling${AuthController.SsoLogoutPath}?next=${URLEncoder.encode(absolute(landing, request), UTF_8)}"
     }
     Redirect(target).withSession(cleared)
   }
@@ -528,6 +532,20 @@ object AuthController {
    *  `AuthCallbackRelaySpec` pins both against a root-mounted reverse route. */
   val SsoFinishPath = "/auth/sso/finish"
   val SsoLogoutPath = "/auth/sso/logout"
+
+  /** A landing as an absolute URL on `origin`.
+   *
+   *  Against the ORIGIN, because a relative landing came from a reverse route
+   *  and already carries this deployment's mount point. Resolving `/uk/` against
+   *  the COUNTRY's base URL — which itself ends in `/uk` — yields
+   *  `showtimes.cc/uk/uk/`, which is not a deployed country, so the far side's
+   *  allowlist refuses it and the visitor is handed to the wrong site entirely.
+   *  That shipped, as a logout on any Showtimes country landing on kinowo.net.
+   *
+   *  Pure, because the reverse routes a spec sees are mounted at `/` however the
+   *  deployment is configured, so the doubling is unreachable through a request. */
+  private[controllers] def absoluteLanding(origin: String, landing: String): String =
+    if (landing.startsWith("http")) landing else origin + landing
 
   /** Where [[AuthController.ssoStart]] is willing to send a session: an EXACT
    *  match against a deployed country's own base URL (`Country.webUrl`), and

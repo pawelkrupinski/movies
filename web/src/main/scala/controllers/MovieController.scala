@@ -465,7 +465,7 @@ class MovieController( cc: ControllerComponents,
       conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderIndexHtml(city, request, user).body)
         .withCookies(cityCookie(city))
     } else {
-      Ok(renderIndexHtml(city, request, user)).withCookies(cityCookie(city))
+      PersonalisedPage(user)(Ok(renderIndexHtml(city, request, user)).withCookies(cityCookie(city)))
     }
   }
 
@@ -498,11 +498,11 @@ class MovieController( cc: ControllerComponents,
   private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     implicit val c: City = city
     val user = currentUser(request)
-    Ok(views.html.browse(
+    PersonalisedPage(user)(Ok(views.html.browse(
       films, heading, devMode, user, oauthProviders,
       pageUrl = PageMeta.canonicalUrl(request),
       fbAppId = PageMeta.fbAppId,
-    )).withCookies(cityCookie(city))
+    )).withCookies(cityCookie(city)))
   }
 
   /** The four legacy Polish param names (`kraj`/`rezyser`/`aktor`/`gatunek`) are still
@@ -878,8 +878,9 @@ class MovieController( cc: ControllerComponents,
     val canonicalUrl = PageMeta.origin(request) + FilmHref(schedule.movie.title)
     val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
     val user = currentUser(request)
-    Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, user, oauthProviders))
-      .withCookies(cityCookie(c))
+    PersonalisedPage(user)(
+      Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, user, oauthProviders))
+        .withCookies(cityCookie(c)))
   }
 
   /** The 1200×630 Open Graph share card (PNG) for a film — what `og:image` /

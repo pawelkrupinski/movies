@@ -257,17 +257,26 @@ object Country {
    *  so a new deployment cannot be forgotten here. */
   lazy val deployedOrigins: Set[String] = switchable.flatMap(_.webOrigin).toSet
 
-  /** The OTHER domain this project is served from, seen from `country` — the one
-   *  a session has to be established on separately, because no cookie can reach
-   *  it from here.
+  /** The OTHER domain this project is served from, seen from the origin a request
+   *  actually ARRIVED on — the one a session has to be established on separately,
+   *  because no cookie can reach it from here.
    *
-   *  `None` when there is not exactly one: a single-domain deployment has no
-   *  sibling to pair with, and a third domain would make "the other one"
-   *  meaningless rather than merely unknown. Derived from the countries so a new
-   *  deployment cannot be forgotten here. */
-  def siblingOriginOf(country: Country): Option[String] = {
-    val others = (deployedOrigins -- country.webOrigin.toSet).toSeq
-    if (others.sizeIs == 1) others.headOption else None
+   *  THE ORIGIN, NOT THE DEPLOYMENT'S COUNTRY, and the difference is the whole
+   *  point: the process mounted at the apex serves `showtimes.cc` while ITS
+   *  country is Poland, so asking what Poland's sibling is answers
+   *  `showtimes.cc` — the domain the request is already on. A sign-in finishing
+   *  there would pair that domain with itself and leave kinowo.net untouched.
+   *
+   *  `None` when there is not exactly one other: a request off a deployed origin
+   *  (a developer on localhost) has no sibling to speak of and must not be sent
+   *  to production to look for one, and a third domain would make "the other one"
+   *  meaningless rather than merely unknown. */
+  def siblingOfOrigin(origin: String): Option[String] = {
+    if (!deployedOrigins.contains(origin)) None
+    else {
+      val others = (deployedOrigins - origin).toSeq
+      if (others.sizeIs == 1) others.headOption else None
+    }
   }
 
   /** Is this request host the brand domain? Accepts the `www.` spelling and an

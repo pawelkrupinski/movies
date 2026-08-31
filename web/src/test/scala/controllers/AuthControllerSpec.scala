@@ -109,9 +109,10 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val result  = ctl.callback("google")(request)
 
     status(result)            shouldBe SEE_OTHER
-    // Home by way of the other domain, which is where the session for it gets
-    // established; `landingAfter` unwraps that hop.
-    landingAfter(result)      shouldBe s"$PlBase/"
+    // Straight home: this request did not arrive on a deployed origin, so there
+    // is no sibling domain to establish a session on. The pairing hop, and the
+    // origin that decides it, are `AuthCallbackRelaySpec`'s.
+    redirectLocation(result)  shouldBe Some("/")
     provider.lastExchange.value._1 shouldBe "AUTH_CODE"
 
     val sess = session(result)
@@ -235,16 +236,15 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── /auth/logout ─────────────────────────────────────────────────────────
 
-  "AuthController.logout" should "drop userId from the session and land back home" in {
+  "AuthController.logout" should "drop userId from the session and redirect to /" in {
     val (ctl, _, _) = fixture(new FakeProvider("google", Profile))
     val request = FakeRequest("POST", "/auth/logout")
       .withSession("userId" -> "alice", "oauthState" -> "leftover", "oauthProvider" -> "google", "oauthStateTimestamp" -> NowMs.toString)
     val result = ctl.logout()(request)
 
     status(result)              shouldBe SEE_OTHER
-    // Home by way of the other domain, which is where the session it also has to
-    // clear lives; `landingAfter` unwraps that hop.
-    landingAfter(result)        shouldBe s"$PlBase/"
+    // Straight home, for the same reason as the callback above.
+    redirectLocation(result)    shouldBe Some("/")
     val sess = session(result)
     sess.get("userId")          shouldBe empty
     sess.get("oauthState")      shouldBe empty   // any leftover cleared too
@@ -339,19 +339,6 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   private val UkBase = models.Country.UnitedKingdom.webUrl.value
   private val PlBase = models.Country.Poland.webUrl.value
 
-  /** Where a finished sign-in or sign-out actually drops the visitor.
-   *
-   *  Both now go via the OTHER domain — a sign-in to establish the session there,
-   *  a sign-out to clear it — so the immediate redirect is the pairing leg and
-   *  the destination is the `next` it carries. Unwrapping it here keeps these
-   *  tests about where somebody ends up, which is what they were always about,
-   *  rather than about the shape of the hop that gets them there. */
-  private def landingAfter(result: scala.concurrent.Future[play.api.mvc.Result]): String = {
-    val location = redirectLocation(result).value
-    if (location.contains("/auth/sso/finish?") || location.contains("/auth/sso/logout?"))
-      java.net.URLDecoder.decode(location.split("next=")(1).takeWhile(_ != '&'), "UTF-8")
-    else location
-  }
 
   private def signedIn(repository: InMemoryUserRepository, email: String): String = {
     repository.upsert(models.User(

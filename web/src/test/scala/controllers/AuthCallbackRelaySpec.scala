@@ -239,7 +239,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // overwhelmingly anonymous site, and could only be afforded once per browser,
   // so it stopped working the second time anyone signed in.
 
-  private val SiblingOfPoland = Country.siblingOriginOf(Country.Poland).value
+  private val SiblingOfPoland = Country.siblingOfOrigin(PlOrigin).value
   private val UkBase          = Country.UnitedKingdom.webUrl.value
 
   /** Where a finished sign-in or sign-out actually drops the visitor.
@@ -391,6 +391,64 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   "The SSO leg paths" should "match the routes the application serves at the root" in {
     AuthController.SsoFinishPath shouldBe new controllers.ReverseAuthController("/").ssoFinish().url
     AuthController.SsoLogoutPath shouldBe new controllers.ReverseAuthController("/").ssoLogout().url
+  }
+
+
+  // ── Which domain gets paired, and where the visitor comes back to ────────
+  //
+  // Both of these shipped broken, and both for the same reason: the sibling and
+  // the return address were derived from the DEPLOYMENT rather than from the
+  // origin the request arrived on. The apex process is Poland's, so a /uk
+  // sign-in finishing there asked what Poland's sibling was, got showtimes.cc —
+  // the domain it was already on — and paired it with itself while kinowo.net
+  // stayed signed out. Reported as "logging in only carries from .net to .cc".
+
+  "A sign-in finishing at the apex" should "pair the OTHER domain, not the one it is already on" in {
+    val state  = AuthController.newState(Country.UnitedKingdom)
+    // The apex deployment IS Poland's process, serving showtimes.cc.
+    val result = podFor(Country.Poland).callback("google")(
+      arrivingAt(Apex, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
+
+    redirectLocation(result).value should startWith (s"$PlOrigin/auth/sso/finish?code=")
+  }
+
+  it should "hand the visitor back to the country they signed in on" in {
+    val state  = AuthController.newState(Country.UnitedKingdom)
+    val result = podFor(Country.Poland).callback("google")(
+      arrivingAt(Apex, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
+
+    landingAfter(result) shouldBe s"$UkBase/"
+  }
+
+  // The mount point is already in the reverse route, so resolving it against a
+  // base URL that also ends in it produced `showtimes.cc/uk/uk/` — which is not
+  // a deployed country, so the far side's allowlist refused it and the visitor
+  // was handed to the wrong site. Asserted on the pure helper because the
+  // reverse routes a spec sees are mounted at `/` whatever the deployment says,
+  // which is exactly why this got through.
+  "The return address" should "not repeat the country's mount point" in {
+    AuthController.absoluteLanding(Apex, "/uk/") shouldBe s"$UkBase/"
+    AuthController.absoluteLanding(PlOrigin, "/") shouldBe s"$PlOrigin/"
+  }
+
+  // ...and being a real deployed base URL is what lets the far side accept it.
+  it should "survive the allowlist the far side checks it against" in {
+    AuthController.switchTarget(Some(AuthController.absoluteLanding(Apex, "/uk/"))).value shouldBe UkBase
+    AuthController.switchTarget(Some(AuthController.absoluteLanding(PlOrigin, "/"))).value shouldBe PlOrigin
+  }
+
+  it should "leave an already-absolute landing alone" in {
+    AuthController.absoluteLanding(Apex, s"$UkBase/") shouldBe s"$UkBase/"
+  }
+
+  // A developer on localhost has no sibling to pair with, and must not be sent
+  // to production looking for one.
+  "A sign-in off a deployed origin" should "not pair anything" in {
+    val state  = AuthController.newState(Country.Poland)
+    val result = podFor(Country.Poland).callback("google")(
+      FakeRequest("GET", s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
+
+    redirectLocation(result).value should not include "/auth/sso/finish"
   }
 
 }
