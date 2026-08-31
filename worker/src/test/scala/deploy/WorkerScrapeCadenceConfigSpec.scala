@@ -92,8 +92,8 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     RepoFile.freshnessMinutesIn(RepoFile.read(config)).map(_.toString)
 
   /** The k3s overlay that actually deploys a country's worker. THE FLY TOMLS ARE
-   *  RETIRED for the three countries that have one (every leg in main.yml is
-   *  `enabled: false`; the pods on k3s-worker-1 are what run) and the US never had
+   *  RETIRED for the three countries that have one (every WORKER leg in main.yml
+   *  is `enabled: false`; the pods on k3s-worker-1 are what run) and the US never had
    *  one — so for it this file is the only place its cadence exists. */
   private def workerOverlay(cc: String) = s"infra/kubernetes/worker/overlays/$cc/patch.yaml"
 

@@ -49,15 +49,16 @@ class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * Every leg in the deploy matrix is `enabled: false` since the web tier and the
-   * workers moved to k3s, so the guard's disabled-branch short-circuits before
-   * either flyctl probe — a disabled leg never runs a flyctl command at all.
-   * Installing flyctl regardless put a tool download on six legs per push whose
-   * only work is to skip, and it made that install the ONLY step in those legs
-   * that can fail: on 2026-08-30 the `kinowo` leg's install died in under a
-   * second with no output and no annotation (a runner glitch — the five sibling
-   * legs installed the same action fine), failing the whole workflow over a tool
-   * no leg was going to use. Gate the install on the same flag the guard reads.
+   * Five of the six legs are `enabled: false` since the web tier and the workers
+   * moved to k3s (`FlyDeployScopeSpec` holds the roster), so the guard's
+   * disabled-branch short-circuits before either flyctl probe — a disabled leg
+   * never runs a flyctl command at all. Installing flyctl regardless put a tool
+   * download on those five legs per push whose only work is to skip, and it made
+   * that install the ONLY step in them that can fail: on 2026-08-30 the `kinowo`
+   * leg's install died in under a second with no output and no annotation (a
+   * runner glitch — the five sibling legs installed the same action fine),
+   * failing the whole workflow over a tool no leg was going to use. Gate the
+   * install on the same flag the guard reads.
    */
   it should "install flyctl only on a leg that actually deploys" in {
     val lines = job("deploy").linesIterator.toVector

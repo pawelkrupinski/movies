@@ -59,10 +59,17 @@ convergence band. There is no second place to remember for any of them.
    Re-check machine state a few minutes after any future stop.
 
 2. **Re-enable its deploy legs.** ⚠️ **Superseded.** Every row in
-   `.github/workflows/main.yml` is now `enabled: false`, deliberately and permanently:
-   both tiers ship to k3s from that same file's `build-web` / `build-worker` jobs, and
-   flipping a row back to `true` deploys a second copy on Fly (the workflow says so in
-   place). Nothing needs re-enabling here for a country to come back.
+   `.github/workflows/main.yml` except `kinowo` is `enabled: false`, deliberately and
+   permanently: both tiers ship to k3s from that same file's `build-web` /
+   `build-worker` jobs, and flipping a row back to `true` deploys a second copy on Fly
+   (the workflow says so in place). Nothing needs re-enabling here for a country to
+   come back.
+
+   The one enabled row is not an exception to that: `kinowo` is the RETIRED
+   `kinowo.fly.dev` redirect host, not Poland's site, and it deploys so the redirects
+   track `main`. Fly runs exactly one thing from this repository, and
+   `FlyDeployScopeSpec` fails the build if a second row is flipped on without that
+   spec being updated to say why.
 
 3. **Give the country its `webUrl` back** (the table above):
    `webUrl = Some("https://<cc>.showtimes.cc")`.

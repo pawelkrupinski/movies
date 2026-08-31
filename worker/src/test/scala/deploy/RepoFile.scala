@@ -59,7 +59,7 @@ object RepoFile {
   /** The cadence a country's worker ACTUALLY deploys with, in minutes.
    *
    *  Read from its k3s overlay, which is the live deploy path — every `main.yml`
-   *  Fly leg is `enabled: false`, and the newest country never had a fly toml. This
+   *  WORKER leg is `enabled: false`, and the newest country never had a fly toml. This
    *  is the only place a country's sweep rate exists: `Freshness.defaultScrapeTtl`
    *  reads the env var at runtime and `WorkerWiring` captures it once, so no
    *  `Country` field and no running-JVM test can reach it. */
@@ -69,6 +69,17 @@ object RepoFile {
       .flatMap(freshnessMinutesIn)
 
   /** Every `fly*.toml` at the repo root, newest country last — the authoritative deploy set. */
+  /** Every workflow file under `.github/workflows/`, sorted by name — the set a
+   *  repo-wide rule about what CI is allowed to do has to be checked against.
+   *  Enumerated rather than listed in each spec, so a workflow added tomorrow is
+   *  covered by the rule the day it lands. */
+  def workflows(): Seq[java.io.File] =
+    Option(new java.io.File(".github/workflows").listFiles())
+      .getOrElse(Array.empty[java.io.File])
+      .filter(f => f.getName.endsWith(".yml") || f.getName.endsWith(".yaml"))
+      .sortBy(_.getName)
+      .toSeq
+
   def flyTomls(): Seq[java.io.File] =
     Option(new java.io.File(".").listFiles())
       .getOrElse(Array.empty[java.io.File])

@@ -73,22 +73,24 @@ ordering — several of the steps below are only safe in one sequence.
    ssh -i <k8sdeploy key> k8sdeploy@2.28.52.210 ghcr.io/pawelkrupinski/movies-web:<sha>
    ```
 
-7. **Retire the Fly web apps.** Every leg in `.github/workflows/main.yml` is
-   `enabled: false`, which stops future deploys but does not stop the running
-   machines. `showtimes-uk` and `showtimes-de` are scaled to zero — scale to zero
-   rather than `machines stop`, because `auto_start_machines = true` means any
-   inbound request boots a stopped web machine and it never stops again.
+7. **Retire the Fly web apps.** `showtimes-uk` and `showtimes-de` have their
+   `.github/workflows/main.yml` legs `enabled: false` and are scaled to zero —
+   scale to zero rather than `machines stop`, because `auto_start_machines = true`
+   means any inbound request boots a stopped web machine and it never stops again.
 
    `kinowo` is the exception and stays up as a REDIRECT HOST, because it is the
    only one of the three with published links behind it (see the last section).
-   Its deploys stay out of CI: it is not tracking `main`, it is standing still on
-   purpose, so it is rolled by hand on the rare occasion the retirement code
-   itself changes.
+   Its leg is the ONE Fly deploy this repository still does, so the redirects
+   track `main` rather than drifting behind a hand-rolled deploy nobody remembers
+   to run. `KINOWO_RETIRED` lives in `fly.toml`, not the workflow, so that leg
+   cannot un-retire the host — it can only ship a newer build of the same
+   redirects. The price is a rolling restart of the redirect host on every push.
 
-   ```
-   sbt web/stage && rm -rf stage && cp -R web/target/universal/stage stage
-   flyctl deploy -c fly.toml -a kinowo --remote-only
-   ```
+   **Fly now hosts exactly one thing from this repository, and CI deploys only
+   that.** `FlyDeployScopeSpec` enforces it across every workflow: the five other
+   matrix legs stay off, and `deploy-grafana.yml` — which would start the stopped
+   `kinowo-grafana` rollback machine — is `workflow_dispatch` only, no push
+   trigger.
 
 ## What DNS and a deploy do not cover
 

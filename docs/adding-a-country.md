@@ -217,8 +217,9 @@ into a sibling's pod will OOM or throttle it.
    `fleet.k8sDeploy.targets` in `infra/nix/modules/roles/k8s-deploy.nix` so CI can
    roll it.
 4. **Create and roll it**: `infra/kubernetes/apply.sh worker <cc>`, then let the next
-   push to main pin the image. There is no `main.yml` matrix leg — every Fly leg is
-   `enabled: false` and adding one would deploy a second copy.
+   push to main pin the image. There is no `main.yml` matrix leg — every worker leg
+   there is `enabled: false` and adding one would deploy a second copy. Fly deploys
+   exactly one thing now, the Polish web app; `FlyDeployScopeSpec` holds that rule.
 
 ## 4. Web frontend (`<cc>.showtimes.cc`)
 

@@ -92,14 +92,16 @@ jobs:
     # that will skip the worker deploy. Building is not restarting: the skip
     # guard exists to protect the worker from a cold-boot scrape storm, and an
     # unreleased image in the registry costs nothing but builder time.
-    # NOTHING RELEASES THESE IMAGES ANY MORE, and that is worth stating rather than leaving to be
-    # rediscovered: every leg of the `deploy` matrix below is now `enabled: false`, because both
-    # tiers run on k3s and are shipped by the GHCR jobs at the bottom of this file. This job is kept
-    # for two
-    # reasons — it holds the "take the runners back from an in-flight convergence run" step that the
-    # rest of the push depends on for its runner budget, and a pushed Fly image is what makes the
-    # documented rollback ("flip one word to true") a flip rather than a rebuild. It costs Fly
-    # builder time and nothing else. Retire it with the Fly apps.
+    # ONLY THE WEB IMAGE IS EVER RELEASED, and only to `kinowo` — the one leg of the `deploy`
+    # matrix below that is `enabled: true` (see the rule stated there). The worker image and the
+    # other five legs' images are built and then sit in the registry unreleased, because both tiers
+    # otherwise run on k3s and are shipped by the GHCR jobs at the bottom of this file.
+    #
+    # The job is kept for three reasons — it holds the "take the runners back from an in-flight
+    # convergence run" step that the rest of the push depends on for its runner budget; the web
+    # image it pushes is what the `kinowo` leg releases; and a pushed worker image is what makes
+    # the documented rollback ("flip one word to true") a flip rather than a rebuild. The unused
+    # half costs Fly builder time and nothing else.
     build-image:
         runs-on: ubuntu-latest
         permissions:
@@ -245,35 +247,44 @@ jobs:
                     # would deploy and restart it on the next push to main. This is
                     # the switch that makes a stop stick.
                     #
-                    # THE WHOLE WEB TIER MOVED TO KUBERNETES 2026-08-29, so all three legs are
-                    # disabled rather than deleted — the same treatment the workers got below, for
-                    # the same reason.
+                    # EXACTLY ONE LEG OF THIS MATRIX MAY BE `true`, AND IT IS THIS ONE.
+                    # Fly.io now hosts a single thing from this repository — the Polish web app
+                    # `kinowo`, which is what `kinowo.fly.dev` resolves to — and that is a standing
+                    # rule about the platform, not a description of where the migration happens to
+                    # have got to. `FlyDeployScopeSpec` enforces it, so a leg flipped back on
+                    # without a matching decision fails the build rather than quietly shipping.
                     #
-                    # The three sites now run as pods on k3s (infra/kubernetes/web/) behind Caddy on
-                    # k3s-worker-1, on domains this project actually owns: kinowo.net,
-                    # uk.showtimes.cc and de.showtimes.cc. The `build-web` / `deploy-web` jobs at the
-                    # bottom of this file build and roll them. Leaving any of these `true` would make the next push to
-                    # main deploy a SECOND copy of the site on Fly, serving the same databases from a
-                    # host that no longer has the traffic.
+                    # THE WHOLE WEB TIER MOVED TO KUBERNETES 2026-08-29: the three sites run as pods
+                    # on k3s (infra/kubernetes/web/) behind Caddy on k3s-worker-1, on domains this
+                    # project owns — kinowo.net, uk.showtimes.cc, de.showtimes.cc — built and rolled
+                    # by the `build-web` / `deploy-web` jobs at the bottom of this file. Flipping
+                    # `showtimes-uk` or `showtimes-de` back on would put a SECOND copy of those
+                    # sites on Fly, serving the same databases from a host with none of the traffic.
                     #
-                    # `kinowo` is the one still RUNNING, as a redirect host: `fly.toml` sets
+                    # `kinowo` is different, and is the one leg that deploys: it is still running,
+                    # as the RETIRED redirect host for links that predate the move. `fly.toml` sets
                     # `KINOWO_RETIRED=true`, which boots `modules.RetiredComponents` instead of the
-                    # serving app (docs/domain-cutover.md). That flag lives in the fly config, not
-                    # here, so flipping this leg back on could not accidentally un-retire it — it
-                    # would redeploy the redirect host. It stays `false` anyway: a retired host is
-                    # standing still on purpose and has no reason to track `main`, and every deploy
-                    # is a 5xx window on the links it exists to keep working.
+                    # serving app (docs/domain-cutover.md) — a composition root with no `Wiring`
+                    # mixed in, so it cannot open a Mongo client whatever this leg deploys. The flag
+                    # lives in the fly config rather than here, which is what makes tracking `main`
+                    # safe: this leg cannot un-retire the host, only ship it a newer build of the
+                    # same redirects.
                     #
-                    # Kept as entries so the rollback is flipping one word: set back to `true`, drop
-                    # `KINOWO_RETIRED` from `fly.toml`, `flyctl scale count 1`, and scale the k8s
-                    # deployment to 0. Their `fly.*.toml` files are otherwise untouched (the Grafana
-                    # specs still assert against them). Delete these entries only once the Fly apps
-                    # themselves are gone.
+                    # Each push therefore costs the retired host a rolling restart. That is the
+                    # accepted price of it not drifting away from `main` — the alternative was a
+                    # hand-rolled deploy nobody would remember to run.
+                    #
+                    # The disabled rows are kept, not deleted, so restoring one is a word plus a
+                    # decision: set it `true`, update `FlyDeployScopeSpec` to say so, drop
+                    # `KINOWO_RETIRED` from `fly.toml` if it is the Polish one, `flyctl scale count
+                    # 1`, and scale the k8s deployment to 0. Their `fly.*.toml` files are otherwise
+                    # untouched (the Grafana specs still assert against them). Delete a row only
+                    # once its Fly app is gone.
                     - app: kinowo
                       toml: fly.toml
                       bin: web
                       builder: kinowo
-                      enabled: false
+                      enabled: true
                     # UK frontend — same `web` binary + build artifact as kinowo,
                     # its own fly config (KINOWO_COUNTRY=uk → the kinowo_uk db).
                     - app: showtimes-uk
@@ -350,12 +361,12 @@ jobs:
             # Only a leg that can actually deploy needs flyctl. The guard below
             # reads `matrix.enabled` FIRST and short-circuits before either of its
             # flyctl probes, so a disabled leg never runs a flyctl command — and
-            # every leg is disabled today. Installing it anyway made this the only
-            # step in six otherwise-no-op legs that could fail, and on 2026-08-30 it
-            # did: the `kinowo` leg's install died in under a second with no output
-            # and no annotation (a runner glitch — the five sibling legs installed
-            # fine), reddening the whole workflow over a tool nothing was going to
-            # use. (DeployParallelismConfigSpec)
+            # five of the six are disabled. Installing it anyway made this the only
+            # step in those five otherwise-no-op legs that could fail, and on
+            # 2026-08-30 it did: the `kinowo` leg's install died in under a second
+            # with no output and no annotation (a runner glitch — the five sibling
+            # legs installed fine), reddening the whole workflow over a tool nothing
+            # was going to use. (DeployParallelismConfigSpec)
             - uses: superfly/flyctl-actions/setup-flyctl@v1
               if: matrix.enabled
 

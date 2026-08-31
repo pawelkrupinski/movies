@@ -1,14 +1,18 @@
 name: Deploy Grafana
 
-# The self-hosted alerting Grafana redeploys ONLY when its own config changes —
-# not on every app commit. All alert rules / datasource / dashboard live under
-# fly/grafana/provisioning, so a rule tweak here ships them.
+# MANUAL ONLY. Grafana runs on monitoring-1 now (infra/nix/modules/roles/grafana.nix);
+# `kinowo-grafana` on Fly is KEPT as the migration's rollback and its machine is
+# STOPPED. This used to fire on any `fly/grafana/**` push, which meant every alert-rule
+# tweak silently redeployed — and therefore STARTED — a second Grafana holding a second
+# copy of the same alerts, on a host nobody looks at. Fly hosts one thing from this
+# repository (the `kinowo` web app), and CI deploys only that; see `FlyDeployScopeSpec`.
+#
+# Kept rather than deleted because a rollback you have to reconstruct is not one. Rolling
+# back is now a deliberate act: dispatch this workflow, then point grafana.kinowo.net's
+# DNS back. While it sits unrun the Fly instance's provisioning goes stale against
+# fly/grafana/provisioning — that is the accepted cost, and the reason to prefer the
+# vendored copy under infra/nix/files/monitoring/grafana/ as the live truth.
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'fly/grafana/**'
-      - '.github/workflows/deploy-grafana.yml'
   workflow_dispatch:
 
 concurrency:

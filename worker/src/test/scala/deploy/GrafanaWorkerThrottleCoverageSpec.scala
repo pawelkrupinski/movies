@@ -51,7 +51,8 @@ class GrafanaWorkerThrottleCoverageSpec extends AnyFlatSpec with Matchers {
       .flatMap(f => AppNameLine.findFirstMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
 
   /** The same set from the OTHER deploy layer, the k3s overlays — which is the one
-   *  that actually runs (every Fly leg in main.yml is `enabled: false`). The app
+   *  that actually runs (every WORKER leg in main.yml is `enabled: false`; the one
+   *  Fly leg that deploys is the Polish web app). The app
    *  name a route has to match is the Fly-era convention the alert labels still
    *  carry: `kinowo-worker` for the original Polish worker, `kinowo-worker-<cc>`
    *  for every country split off it. */
