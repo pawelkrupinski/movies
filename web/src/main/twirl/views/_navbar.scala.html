@@ -249,30 +249,6 @@
      to the row-1 right on mobile (replacing the spot the old Kina
      dropdown used to occupy). *@
   <div class="navbar-auth">
-    @currentUser match {
-      case Some(user) => {
-        <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
-          @user.avatarUrl match {
-            case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
-            case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
-          }
-          <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse(messages("auth.account"))).split("[ @@]").head</span>
-          <div class="auth-dropdown" id="auth-dropdown">
-            @* Logout route is `+ nocsrf` (form post from a third-party
-               page can only log a user OUT, not in — same-origin policy
-               protects against state changes any further than that).   *@
-            <form method="post" action="@routes.AuthController.logout()" class="auth-logout-form">
-              <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
-            </form>
-          </div>
-        </div>
-      }
-      case None if oauthProviders.nonEmpty => {
-        <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">@messages("auth.login")</button>
-      }
-      case None => {
-        @* No OAuth providers configured (local dev with no secrets). *@
-      }
-    }
+    @_authMenu(currentUser, oauthProviders, "auth.login")
   </div>
 </nav>

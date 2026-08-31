@@ -36,26 +36,7 @@
     <a href="@routes.MovieController.index(city.slug)" class="back-link" style="font-size:.9rem; color:#aad4ff; text-decoration:none; display:inline-flex; align-items:center; gap:.3em;"><svg style="width:.7em; height:.7em; flex-shrink:0;" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg>@messages("back.repertoire")</a>
   </div>
   <div class="navbar-auth">
-    @currentUser match {
-      case Some(user) => {
-        <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
-          @user.avatarUrl match {
-            case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
-            case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
-          }
-          <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse(messages("auth.account"))).split("[ @@]").head</span>
-          <div class="auth-dropdown" id="auth-dropdown">
-            <form method="post" action="@routes.AuthController.logout()" class="auth-logout-form">
-              <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
-            </form>
-          </div>
-        </div>
-      }
-      case None if oauthProviders.nonEmpty => {
-        <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">@messages("auth.loginLong")</button>
-      }
-      case None => {}
-    }
+    @_authMenu(currentUser, oauthProviders, "auth.loginLong")
   </div>
 </nav>
 

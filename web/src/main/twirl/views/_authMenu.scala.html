@@ -1,0 +1,39 @@
+@(currentUser: Option[models.User], oauthProviders: Set[String], loginLabel: String)(implicit messages: play.api.i18n.Messages)
+@*
+   The avatar dropdown, or the pill that opens the login modal — the same slot
+   on the repertoire navbar, the film page and the browse page, which is why it
+   lives here rather than three times over.
+
+   `loginLabel` is the only thing that differs: the repertoire navbar competes
+   for width with the day pills and the search box, so it says the short form.
+*@
+@currentUser match {
+  case Some(user) => {
+    <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
+      @user.avatarUrl match {
+        case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
+        case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
+      }
+      <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse(messages("auth.account"))).split("[ @@]").head</span>
+      <div class="auth-dropdown" id="auth-dropdown">
+        @* Logout route is `+ nocsrf` (form post from a third-party page can
+           only log a user OUT, not in — same-origin policy protects against
+           state changes any further than that).
+
+           A plain form post, so the sign-out redirect chain runs in the
+           browser and clears the sibling domain's cookie on the way. shared.js
+           hangs `onsubmit` off the class to take the menu down at once and to
+           re-fetch the page if a cached signed-in copy comes back. *@
+        <form method="post" action="@routes.AuthController.logout()" class="auth-logout-form">
+          <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
+        </form>
+      </div>
+    </div>
+  }
+  case None if oauthProviders.nonEmpty => {
+    <button type="button" class="nav-tab nav-tab-login" onclick="openLoginModal()">@messages(loginLabel)</button>
+  }
+  case None => {
+    @* No OAuth providers configured (local dev with no secrets). *@
+  }
+}

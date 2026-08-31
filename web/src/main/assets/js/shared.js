@@ -962,6 +962,73 @@
   window.closeAuthMenu  = closeAuthMenu;
   window.openLoginModal = openLoginModal;
   window.closeLoginModal = closeLoginModal;
+
+  // ── Signing out ───────────────────────────────────────────────────────────
+  //
+  // The sign-out is a plain form POST that walks a redirect chain — this
+  // domain, then the sibling one, so both cookies go — and lands the visitor on
+  // a freshly rendered anonymous page. Two things still leave the avatar on
+  // screen:
+  //
+  //   • The chain is a round trip across two domains. Until it lands, the page
+  //     the visitor pressed the button on is the signed-in one they were
+  //     already looking at, avatar and all.
+  //   • The browser may answer that landing out of its OWN cache. Personalised
+  //     renders say `no-store` now, but an entry stored before that shipped is
+  //     still on disk and still served without asking — a response header stops
+  //     the next poisoning, it cannot heal the one already there.
+  //
+  // So the section empties the moment the form is submitted, and on arrival, a
+  // page that still renders signed in is fetched again for real. The mark is
+  // cleared BEFORE the reload, so a visitor who genuinely is still signed in
+  // (the far half of the chain failed) reloads once rather than forever.
+  const SIGNED_OUT_KEY = 'signedOut';
+
+  // Private-mode Safari throws on sessionStorage rather than returning null, and
+  // a sign-out that throws is worse than one that doesn't self-heal.
+  function signOutMark() {
+    try { return sessionStorage.getItem(SIGNED_OUT_KEY) === '1'; } catch (e) { return false; }
+  }
+  function setSignOutMark(on) {
+    try {
+      if (on) sessionStorage.setItem(SIGNED_OUT_KEY, '1');
+      else    sessionStorage.removeItem(SIGNED_OUT_KEY);
+    } catch (e) { /* no storage → no self-heal, but the sign-out itself still runs */ }
+  }
+
+  // Hidden rather than removed: the form being submitted is INSIDE the menu, and
+  // a form detached from the document has its submission aborted outright.
+  function beginSignOut() {
+    setSignOutMark(true);
+    const menu = document.getElementById('auth-menu');
+    if (menu) menu.style.display = 'none';
+  }
+
+  // Did this page load come back signed in at the far end of a sign-out — i.e.
+  // did the browser answer it from cache? Split from the reload so a page test
+  // can assert the decision without a navigation tearing the page down
+  // mid-assertion.
+  function signedOutPageIsStale() {
+    return signOutMark() && !!document.getElementById('auth-menu');
+  }
+
+  function settleSignOut() {
+    if (!signOutMark()) return;
+    const stale = signedOutPageIsStale();
+    setSignOutMark(false);
+    if (stale) window.location.reload();
+  }
+
+  // Delegated, because shared.js loads after the navbar on some pages and before
+  // it on others, and a `submit` listener on the document catches both.
+  document.addEventListener('submit', event => {
+    const form = event.target;
+    if (form && form.classList && form.classList.contains('auth-logout-form')) beginSignOut();
+  });
+
+  window.beginSignOut         = beginSignOut;
+  window.signedOutPageIsStale = signedOutPageIsStale;
+  window.settleSignOut        = settleSignOut;
   // ESC closes any open dropdown / modal / menu — same UX every other
   // modal in the world has. `closeOtherPanels(null)` collapses every
   // `.dropdown-panel` (Filtry today; any future dropdown automatically)
@@ -2513,6 +2580,7 @@
   document.addEventListener('pointercancel', endDrag, { passive: true });
 
   document.addEventListener('DOMContentLoaded', () => {
+    settleSignOut();        // re-fetch if a cached signed-in page came back
     // One-time shell init — navbar chrome (day pills, hidden-films badge) — then
     // the grid-dependent boot.
     syncDayPills();

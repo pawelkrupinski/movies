@@ -4463,4 +4463,58 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+
+  // ── Signing out ──────────────────────────────────────────────────────────
+  //
+  // The sign-out POST walks a redirect chain across two domains and lands on a
+  // freshly rendered anonymous page — but the browser is free to answer that
+  // landing from its own cache, and an entry stored before personalised renders
+  // started saying `no-store` is still on disk. So the avatar stayed put while
+  // the visitor was already signed out. Two halves, both asserted here: empty
+  // the section on submit, and re-fetch a page that comes back signed in.
+
+  "Submitting the sign-out form" should "empty the auth section and mark the browser" in {
+    onLoggedInIndex { page =>
+      page.evalBool("!!document.getElementById('auth-menu')") shouldBe true
+      // A synthetic `submit` event runs the listeners without navigating, so the
+      // fixture page survives to be asserted on.
+      page.eval("document.querySelector('.auth-logout-form')" +
+        ".dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))")
+
+      page.evalString("document.getElementById('auth-menu').style.display") shouldBe "none"
+      page.evalString("String(sessionStorage.getItem('signedOut'))")        shouldBe "1"
+      // Tabs on one origin can share a session store; leave it as we found it so
+      // the next spec's boot doesn't inherit a sign-out that never happened.
+      page.eval("sessionStorage.removeItem('signedOut')")
+    }
+  }
+
+  "A page that comes back signed in after a sign-out" should "be fetched again" in {
+    onLoggedInIndex { page =>
+      page.eval("sessionStorage.setItem('signedOut', '1')")
+      page.evalBool("window.signedOutPageIsStale()") shouldBe true
+
+      // `timeOrigin` is minted per document, so a change is proof the browser
+      // really went back for the page rather than re-running boot in place.
+      val before = page.evalString("String(performance.timeOrigin)")
+      page.eval("setTimeout(window.settleSignOut, 0)")
+      page.waitFor(s"String(performance.timeOrigin) !== '$before'")
+
+      // Cleared BEFORE the reload, so the fixture — which always renders signed
+      // in — settles after one fetch instead of looping forever.
+      page.evalString("String(sessionStorage.getItem('signedOut'))") shouldBe "null"
+      page.evalBool("window.signedOutPageIsStale()")                 shouldBe false
+    }
+  }
+
+  it should "be left alone when no sign-out is in flight" in {
+    onLoggedInIndex { page =>
+      page.eval("sessionStorage.removeItem('signedOut')")
+      page.evalBool("window.signedOutPageIsStale()") shouldBe false
+      val before = page.evalString("String(performance.timeOrigin)")
+      page.eval("window.settleSignOut()")
+      page.evalString("String(performance.timeOrigin)") shouldBe before
+    }
+  }
+
 }
