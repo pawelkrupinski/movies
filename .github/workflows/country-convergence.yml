@@ -8,7 +8,8 @@
 #
 # One leg per country, in parallel and independent of each other. The sample gate
 # and the full run for a country both live in `country-convergence-leg.yml`, called
-# once per country from the matrix below — that file explains why the pair has to be
+# once per country from the matrix below (the United States calls the same file from
+# `us-convergence.yml`, for the lane, not for the leg) — that file explains why the pair has to be
 # its own workflow rather than two matrix jobs here (`needs:` joins JOBS, not matrix
 # legs, so one shared `needs: sample` made every country wait for every other
 # country's sample).
@@ -61,6 +62,13 @@ concurrency:
     # The cost is deliberate: a hand-dispatched branch run is cancelled by the next
     # push to main. One authoritative answer is worth more than several competing
     # ones. (ConvergenceConcurrencyConfigSpec)
+    #
+    # It is deliberate because these three legs are CHEAP to throw away — 12 to 73
+    # warm minutes, against a fixture tree that stays warm either way. That is what
+    # stopped being true for the United States, which is why it left: its leg spends
+    # hours recording the tree it is replaying, so a supersede costs the work AND
+    # leaves its replacement exactly as cold. Don't add a country here without asking
+    # which of the two it is.
     group: country-convergence
     # Unconditional again, and safe now: every run of this workflow is either a
     # deploy-triggered dispatch or a deliberate one, so there are no runs that exist
@@ -88,14 +96,19 @@ jobs:
             matrix:
                 include:
                     # `job`/`suite` and `sampleJob`/`sampleSuite` are this country's
-                    # timeout budgets, in minutes. The three warm countries carry the
-                    # numbers the leg has always defaulted to; the United States carries
-                    # several hours because it has no enrichment tree yet and its first
-                    # legs fetch everything live. See the leg's input docs.
+                    # timeout budgets, in minutes. These three carry the numbers the leg
+                    # has always defaulted to; they are the warm countries, and what makes
+                    # them warm is an enrichment tree their own legs keep refreshed.
+                    #
+                    # The United States is NOT here. It runs the same leg from
+                    # `us-convergence.yml`, on a budget several times this one and a lane
+                    # that does not cancel in progress — a cold country's leg records the
+                    # tree that makes the next one fast, so superseding it at hour four
+                    # leaves the next run just as cold. That whole argument, and why it
+                    # does NOT apply to a 12-minute Poland leg, is in that file's header.
                     - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
                     - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
                     - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 330, suite: 315, sampleJob: 75, sampleSuite: 60 }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write

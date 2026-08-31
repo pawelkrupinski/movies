@@ -136,6 +136,15 @@ jobs:
             #
             # It cancels a HAND-STARTED convergence run too. If you dispatched one
             # deliberately and want its answer, don't push while it runs.
+            #
+            # NOT the `US convergence` build, and the workflow is named explicitly here
+            # so it can't be. That one is a separate workflow precisely so nothing
+            # preempts it: its leg runs for hours recording the enrichment tree that
+            # makes the NEXT one fast, so a run cancelled here has published nothing and
+            # its replacement starts just as cold — the supersede loop the split exists
+            # to break, reintroduced from the runner-budget side and indistinguishable
+            # from an ordinary supersede in the run list. It holds two of the twenty
+            # concurrent jobs while it runs; that is the price. (DeployImageReuseSpec)
             - name: Take the runners back from any in-flight convergence run
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -484,10 +493,14 @@ jobs:
     #    dispatch supersedes it. Starting with the legs is the earliest this commit's
     #    answer can exist. (DeployParallelismConfigSpec)
     #
-    # That superseding is still real: the convergence workflow keeps one lane with
+    # That superseding is still real for the SHARED suite: it keeps one lane with
     # `cancel-in-progress`, so a push landing mid-run throws that run away. Running in
     # parallel buys the run a deploy's worth of head start against it; it does not
     # remove it. The nightly 04:20 schedule stays the guaranteed-to-finish signal.
+    #
+    # The US build is the exception, and the reason there are two dispatches below: its
+    # lane is `cancel-in-progress: false`, so a run in flight always finishes and this
+    # dispatch queues behind it, cancelling only whatever else was queued.
     kick-convergence:
         needs: ci
         runs-on: ubuntu-latest
@@ -502,6 +515,14 @@ jobs:
                   set -euo pipefail
                   echo "ci green for ${GITHUB_SHA:0:9} — dispatching Country convergence"
                   gh workflow run "Country convergence" --ref "${GITHUB_REF_NAME}"
+                  # Two lanes, two dispatches. The US runs the same leg from its own
+                  # workflow, on a lane that does NOT cancel in progress — so this
+                  # dispatch usually finds a run already in flight and simply queues
+                  # behind it, replacing whatever was queued before. That is the
+                  # intended shape: finish the run that is going, then pick up the
+                  # newest commit and drop the rest.
+                  echo "ci green for ${GITHUB_SHA:0:9} — dispatching US convergence"
+                  gh workflow run "US convergence" --ref "${GITHUB_REF_NAME}"
 
     # ── The k3s tiers ────────────────────────────────────────────────────────────────────────────
     #

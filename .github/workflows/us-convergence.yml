@@ -1,0 +1,99 @@
+#
+# The United States' pipeline convergence — the same leg the other countries run,
+# in a build of its own.
+#
+# It asks the same question `country-convergence.yml` does (does the scrape → fold
+# → settle loop reach a fixpoint on THIS country's catalogue and title rules?) and
+# it calls the same reusable leg with the same inputs. Nothing about the pipeline
+# differs. What differs is the LANE, and that is the whole reason this file exists.
+#
+# WHY THE US CANNOT SHARE THE SHARED SUITE'S LANE
+#
+# That lane is `cancel-in-progress: true` on a constant group: the newest run
+# supersedes whatever is in flight, from wherever it was dispatched, and the
+# nightly schedule is the run guaranteed to finish. For Poland, Germany and the UK
+# that is a good trade — their legs are 12 to 73 minutes on a WARM enrichment tree,
+# and a superseded run costs a dozen minutes of a tree that stays warm regardless.
+#
+# The US has no warm tree. Its budget is 330 minutes against their 135, not because
+# its corpus is bigger (1,419 films sits between Poland and Germany) but because
+# every rating and lookup is fetched live and RECORDED for the next run. A US leg
+# that is superseded at hour four has published nothing, so the run that cancelled
+# it starts from the same cold tree and is itself superseded at hour four. The
+# suite that is meant to converge cannot: on a repo that pushes several times a day
+# the five-hour leg never reaches an assertion, and the tree it exists to build
+# never gets warm enough for the leg to get short enough to survive. The three warm
+# countries yield cheaply; the US yields forever.
+#
+# WHAT `cancel-in-progress: false` ACTUALLY BUYS — and it is not "no lane"
+#
+# The group is still a constant, so this is one lane, not one lane per commit.
+# GitHub's rule for a group that does not cancel in progress is: the run in flight
+# is left alone, at most ONE run may be pending behind it, and a newly queued run
+# CANCELS whatever was pending before it. So a day of pushes into a running leg
+# produces exactly two runs — the one finishing, and the newest commit's, with
+# every older queued run discarded. Finish what is running, then pick up the latest
+# and drop the rest.
+#
+# `main.yml`'s `free-runners` step is the other half of that promise: it cancels
+# in-flight *Country convergence* runs to take their runners back for the deploy,
+# and it names that workflow explicitly so this one is never touched. A cancel
+# there would undo the lane here, and would read as an ordinary supersede.
+# (ConvergenceConcurrencyConfigSpec, DeployImageReuseSpec)
+#
+# The price is two of the account's twenty concurrent jobs held for as long as the
+# leg runs. That is deliberate, and it is what an answer costs for this country.
+#
+name: US convergence
+
+on:
+    # Dispatched by `Main` alongside the shared suite, off the same `needs: ci` — see
+    # `kick-convergence` there. Two lanes need two dispatches.
+    schedule:
+        # 04:20 UTC, with the shared suite — after the nightly country-fixture recorder.
+        # The two no longer contend the way three legs in one workflow did, and a nightly
+        # run that meets a leg still in flight from the day's last push queues behind it
+        # rather than killing it.
+        - cron: '20 4 * * *'
+    workflow_dispatch:
+
+concurrency:
+    group: us-convergence
+    # NOT the shared suite's `true`. See the header — this is the setting the file
+    # exists for.
+    cancel-in-progress: false
+
+jobs:
+    # A one-row matrix rather than a bare `with:` block, so this caller and the shared
+    # one stay the same SHAPE: `ConvergenceLegWiringSpec` reads both callers' matrix
+    # rows and checks the sample/full pairing, the alias names, and the timeout budgets
+    # across all four countries at once. A US row written in a different shape would be
+    # a country the leg rules silently stopped covering.
+    leg:
+        name: ${{ matrix.country }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    # Several hours, against the warm countries' 135/120 — the US has no
+                    # enrichment tree yet and its first legs fetch everything live. See
+                    # the leg's input docs for why a cold country given a warm country's
+                    # budget is cancelled before it can record the tree that would have
+                    # made it fast.
+                    - { country: united-states, code: us, cmd: convergenceUs, sample: convergenceUsSample, job: 330, suite: 315, sampleJob: 75, sampleSuite: 60 }
+        uses: ./.github/workflows/country-convergence-leg.yml
+        permissions:
+            contents: write
+            checks: write
+            actions: read
+        with:
+            country:        ${{ matrix.country }}
+            code:           ${{ matrix.code }}
+            sample-command: ${{ matrix.sample }}
+            command:        ${{ matrix.cmd }}
+            job-timeout-minutes:           ${{ matrix.job }}
+            suite-timeout-minutes:         ${{ matrix.suite }}
+            sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
+            sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
+        # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
+        secrets: inherit

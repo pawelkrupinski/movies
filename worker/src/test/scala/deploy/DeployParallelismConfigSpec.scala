@@ -36,6 +36,19 @@ class DeployParallelismConfigSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
+   * And the United States, which is a workflow of its own — one dispatch is not two.
+   *
+   * It was split out because its leg must not be superseded mid-run (five hours of live
+   * enrichment, thrown away and re-fetched cold by whatever cancelled it); the shared
+   * suite still yields to the next push. Two lanes need two `gh workflow run`s, and the
+   * failure mode of forgetting the second one is silent — the US simply stops being
+   * asked whether it converges, exactly as it was before it had a leg at all.
+   */
+  it should "dispatch the US convergence build alongside it" in {
+    job("kick-convergence") should include("""gh workflow run "US convergence"""")
+  }
+
+  /**
    * Convergence hangs off `ci`, the same dependency the deploy matrix has — so the
    * suite starts the moment the build is green rather than queueing behind six
    * flyctl legs. Nothing gates the deploy on convergence and nothing gates

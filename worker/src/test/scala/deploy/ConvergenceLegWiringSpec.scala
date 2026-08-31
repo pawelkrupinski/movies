@@ -28,9 +28,17 @@ import org.scalatest.matchers.should.Matchers
  *     [[ConvergenceConcurrencyConfigSpec]].)
  */
 class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
-  private lazy val caller = RepoFile.read(".github/workflows/country-convergence.yml")
-  private lazy val leg    = RepoFile.read(".github/workflows/country-convergence-leg.yml")
-  private lazy val build  = RepoFile.read("build.sbt")
+  private lazy val caller   = RepoFile.read(".github/workflows/country-convergence.yml")
+  /** The United States runs the same leg from a BUILD OF ITS OWN, because it is the one
+   *  country whose leg must not be superseded — see [[ConvergenceConcurrencyConfigSpec]].
+   *  Everything below is about the leg wiring, which is identical either side of that
+   *  split, so every rule here reads both callers rather than the shared one. A rule
+   *  that looked only at `country-convergence.yml` would go quiet about the country it
+   *  matters most for. */
+  private lazy val usCaller = RepoFile.read(".github/workflows/us-convergence.yml")
+  private lazy val callers  = Seq(caller, usCaller)
+  private lazy val leg      = RepoFile.read(".github/workflows/country-convergence-leg.yml")
+  private lazy val build    = RepoFile.read("build.sbt")
 
   /**
    * The caller's matrix rows: country → (full alias, sample alias).
@@ -46,7 +54,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       .map(row => """(\w+):\s*([\w-]+)""".r.findAllMatchIn(row.group(1)).map(f => f.group(1) -> f.group(2)).toMap)
       .toSeq
 
-  private lazy val rows: Seq[Map[String, String]] = matrixRows(caller)
+  private lazy val rows: Seq[Map[String, String]] = callers.flatMap(matrixRows)
 
   private lazy val countries: Map[String, (String, String)] =
     rows.map(fields => fields("country") -> (fields("cmd"), fields("sample"))).toMap
@@ -92,7 +100,14 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  a running worker, and no leg here ever asked whether its pipeline converged. */
   "the convergence caller" should "run every country through the single-country leg workflow" in {
     rows.map(_("code")).toSet shouldBe Country.all.map(_.code).toSet
-    caller should include("uses: ./.github/workflows/country-convergence-leg.yml")
+    callers.foreach(_ should include("uses: ./.github/workflows/country-convergence-leg.yml"))
+  }
+
+  /** The split itself, from both ends — a US row left behind in the shared caller would
+   *  run the country TWICE per push, once in a lane that cancels it four hours in. */
+  it should "run the United States from its own build, and only from there" in {
+    matrixRows(caller).map(_("code")) should not contain "us"
+    matrixRows(usCaller).map(_("code")) shouldBe Seq("us")
   }
 
   /** The recorder's CREDENTIAL, pinned for the same reason as its matrix.
@@ -130,11 +145,11 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // The regression this whole split exists to prevent: a `sample` job here is by
     // construction shared, so the only safe place for one is inside the per-country
     // workflow.
-    caller.linesIterator.map(_.trim).toList should not contain "sample:"
+    callers.foreach(_.linesIterator.map(_.trim).toList should not contain "sample:")
   }
 
   it should "let one country's failure stop only that country" in {
-    RepoFile.block(caller, "strategy") should include("fail-fast: false")
+    callers.foreach(RepoFile.block(_, "strategy") should include("fail-fast: false"))
   }
 
   it should "gate each country's full leg on that same country's sample" in {

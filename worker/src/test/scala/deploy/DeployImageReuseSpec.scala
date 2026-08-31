@@ -132,6 +132,25 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
    * which are precisely the ones this deploy is queueing for. Selecting on
    * `in_progress` alone left the hole half-plugged.
    */
+  /**
+   * But NOT the United States' build, which is the one run that has to finish.
+   *
+   * It is a separate workflow precisely so that nothing preempts it: its lane is
+   * `cancel-in-progress: false`, and cancelling it here would reintroduce the
+   * supersede this whole split removed — from the other side, and invisibly, since a
+   * run cancelled by this step reads as an ordinary superseded run. The three warm
+   * countries stay fair game; they re-run green in a dozen minutes.
+   *
+   * The cost is that the US leg holds two of the account's twenty concurrent jobs for
+   * as long as it runs. That is the price of an answer that arrives at all.
+   */
+  it should "leave the US convergence build alone — it is the run that must finish" in {
+    // The step's COMMENTS name it, which is the point of them; only the commands are
+    // being asserted on here.
+    val commands = freeRunners.linesIterator.map(_.trim).filterNot(_.startsWith("#")).mkString("\n")
+    commands should not include "US convergence"
+  }
+
   it should "cancel a convergence run that is merely queued, not only one already running" in {
     freeRunners should include("""select(.status != "completed")""")
     freeRunners should not include "--status in_progress"
