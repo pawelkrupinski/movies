@@ -90,7 +90,10 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     scraper.fetchCount shouldBe 0
     // Unstamped is what makes the reaper re-enqueue it every single tick, ahead of
     // healthy cinemas — the starvation this same spec guards against below.
-    fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe true
+    // Read at the handler's OWN `now`: the stamp is written at the fixed clock,
+    // so asking `isFresh` at the wall clock made this pass only until the real
+    // day caught up with the literal above and the TTL expired underneath it.
+    fresh.isFresh(key, FreshnessKind.CinemaScrape, now) shouldBe true
   }
 
   // The only way out of quarantine is a scrape that works, so one has to happen.
