@@ -91,12 +91,7 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
         val fieldDiffs = (a intersect b).toSeq.flatMap { k =>
           val (r0, rI) = (by0(k).head.record, byI(k).head.record)
           if (r0 == rI) None
-          else {
-            val c0 = r0.cinemaData.keySet.map(_.displayName); val cI = rI.cinemaData.keySet.map(_.displayName)
-            Some(s"    $k resolvedYear ${r0.resolvedYear}/${rI.resolvedYear} " +
-              s"readyToProject ${r0.readyToProject}/${rI.readyToProject} " +
-              s"cinemas only-in-0=${c0 -- cI} only-in-$i=${cI -- c0}")
-          }
+          else Some(s"    $k ${MovieRecordDiff.describe(r0, rI, i)}")
         }
         divergences += s"RECORD iter $i: only-in-0=${(a -- b).take(8)} only-in-$i=${(b -- a).take(8)}" +
           (if (fieldDiffs.nonEmpty) s"\n  same-key field diffs (${fieldDiffs.size}):\n${fieldDiffs.take(12).mkString("\n")}" else "")
@@ -107,9 +102,22 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
         val rkey = (f: FilmSchedule) =>
           (f.movie.title, f.movie.releaseYear, f.cinemaFilmUrls.map(_._1.displayName).sorted.mkString(","))
         val s0 = rows0.map(rkey).toSet; val sI = rowsI.map(rkey).toSet
-        divergences += s"ROW iter $i differs (${rows0.size} vs ${rowsI.size}):\n" +
-          s"  only-in-0 (${(s0 -- sI).size}): ${(s0 -- sI).take(10).mkString("; ")}\n" +
-          s"  only-in-$i (${(sI -- s0).size}): ${(sI -- s0).take(10).mkString("; ")}"
+        // Equal key sets mean the rows differ in ORDER or in a field the key does
+        // not carry — say which, rather than printing two empty set-differences
+        // and leaving the reader to guess.
+        val sameMembers = (s0 -- sI).isEmpty && (sI -- s0).isEmpty
+        val detail =
+          if (!sameMembers)
+            s"  only-in-0 (${(s0 -- sI).size}): ${(s0 -- sI).take(10).mkString("; ")}\n" +
+              s"  only-in-$i (${(sI -- s0).size}): ${(sI -- s0).take(10).mkString("; ")}"
+          else if (rows0.map(rkey) != rowsI.map(rkey))
+            "  same rows, DIFFERENT ORDER at index " +
+              rows0.map(rkey).zip(rowsI.map(rkey)).indexWhere { case (x, y) => x != y }
+          else
+            "  same rows in the same order — a field outside the row key moved:\n" +
+              rows0.zip(rowsI).filter { case (x, y) => x != y }.take(5)
+                .map { case (x, y) => s"    ${x.movie.title}: $x\n      vs $y" }.mkString("\n")
+        divergences += s"ROW iter $i differs (${rows0.size} vs ${rowsI.size}):\n" + detail
       }
     }
     val elapsedMs = (System.nanoTime() - started) / 1000000
