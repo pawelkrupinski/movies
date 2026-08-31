@@ -451,4 +451,45 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     redirectLocation(result).value should not include "/auth/sso/finish"
   }
 
+
+  // ── An auth transition must not be re-usable ─────────────────────────────
+  //
+  // These responses hand out or tear down a session. A cached one is either a
+  // stale sign-in or a logout that appears not to have happened — which is the
+  // shape of "it says I logged out but the other domain still knows me".
+
+  "Signing out" should "discard the session cookie outright, not re-sign an empty one" in {
+    val (ctl, _, _) = podWith(Country.Poland)
+    val result = ctl.logout()(arrivingAt(PlOrigin, "/auth/logout").withSession("userId" -> "alice@example.com"))
+
+    session(result) shouldBe empty
+    header("Cache-Control", result).value should include ("no-store")
+  }
+
+  it should "do the same on the far side of the hop" in {
+    val (ctl, _, _) = podWith(Country.Poland)
+    val result = ctl.ssoLogout()(
+      arrivingAt(PlOrigin, s"/auth/sso/logout?next=$UkBase").withSession("userId" -> "alice@example.com"))
+
+    session(result) shouldBe empty
+    header("Cache-Control", result).value should include ("no-store")
+  }
+
+  "A finished sign-in" should "not be a response anything may keep" in {
+    val state  = AuthController.newState(Country.Poland)
+    val result = podFor(Country.Poland).callback("google")(
+      arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
+
+    header("Cache-Control", result).value should include ("no-store")
+  }
+
+  "The pairing leg" should "not be a response anything may keep either" in {
+    val (ctl, repository, codes) = podWith(Country.Poland)
+    val userId = signedIn(repository, "alice@example.com")
+    val result = ctl.ssoFinish()(
+      arrivingAt(PlOrigin, s"/auth/sso/finish?code=${codes.mint(userId)}"))
+
+    header("Cache-Control", result).value should include ("no-store")
+  }
+
 }

@@ -183,9 +183,9 @@ class AuthController(
             if (request.session.get("mobileClient").contains("1")) {
               // The native apps keep their own cookie jar per host and finish
               // through the deep link, so there is no sibling to pair.
-              Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id)}").withSession(nextSession)
+              uncacheable(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id)}").withSession(nextSession))
             } else {
-              Redirect(pairSiblingThen(landingFor(request), user.id, request)).withSession(nextSession)
+              uncacheable(Redirect(pairSiblingThen(landingFor(request), user.id, request)).withSession(nextSession))
             }
         }
     }
@@ -235,6 +235,14 @@ class AuthController(
    *  against the country's base URL — which ends in `/uk` — produces
    *  `showtimes.cc/uk/uk/`, which then fails the `next` allowlist and strands the
    *  visitor on the wrong country entirely. */
+  /** An auth transition nothing may keep a copy of.
+   *
+   *  These responses hand out or tear down a session, so a cached one is either
+   *  a stale sign-in or a logout that appears not to have happened. Cheap
+   *  insurance: they are redirects nobody benefits from re-using. */
+  private def uncacheable(result: Result): Result =
+    result.withHeaders("Cache-Control" -> PersonalisedPage.CacheControl)
+
   private def absolute(landing: String, request: RequestHeader): String =
     AuthController.absoluteLanding(ForwardedUrl.base(request), landing)
 
@@ -316,14 +324,17 @@ class AuthController(
    *  has to mean logged out, and the half that survives is the half nobody
    *  expects to find. Same one hop, in the other direction. */
   def logout(): Action[AnyContent] = Action { request =>
-    val cleared = request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp"
     val landing = routes.LandingController.index().url
     val target  = models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
       case None          => landing
       case Some(sibling) =>
         s"$sibling${AuthController.SsoLogoutPath}?next=${URLEncoder.encode(absolute(landing, request), UTF_8)}"
     }
-    Redirect(target).withSession(cleared)
+    // `withNewSession` DISCARDS the cookie rather than re-signing a smaller one.
+    // Removing the keys would leave a valid session cookie behind holding
+    // nothing, which is the same thing to this application and not the same
+    // thing at all to a browser, a proxy, or anyone reading the response.
+    uncacheable(Redirect(target).withNewSession)
   }
 
   /** The far half of [[logout]]: drop the session on this domain and send the
@@ -337,8 +348,7 @@ class AuthController(
   def ssoLogout(): Action[AnyContent] = Action { request =>
     val back = AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
       .getOrElse(routes.LandingController.index().url)
-    Redirect(back).withSession(
-      request.session - "userId" - "oauthState" - "oauthProvider" - "oauthStateTimestamp")
+    uncacheable(Redirect(back).withNewSession)
   }
 
   private def upsertUser(provider: String, profile: OauthProfile): User = {
@@ -453,7 +463,7 @@ class AuthController(
       case Some(user) =>
         // Deliberately does NOT pair onwards: this IS the pairing leg, and a
         // second hop from here is the loop.
-        home.withSession(request.session + ("userId" -> user.id))
+        uncacheable(home.withSession(request.session + ("userId" -> user.id)))
     }
   }
 
