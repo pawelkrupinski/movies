@@ -1,6 +1,6 @@
 @import controllers.{FallbackRow, FlaggedRow, ServiceRow}
 @import services.UptimeMonitor
-@(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], current: models.Country = models.Country.fromEnv)
+@(failing: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, current: models.Country = models.Country.fromEnv)
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -84,6 +84,7 @@
     .legend-item { display: flex; align-items: center; gap: 5px; }
     .legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
     .empty-msg { color: #444; font-size: 12px; margin: 12px 0; }
+    .collapsed-msg { color: #777; margin: 16px 0; font-style: italic; }
     /* Client marker chip, sitting right next to the cinema name (the fixed-width
        name column keeps the bars aligned regardless). Shared platform client names
        which one; bespoke clients just read "Custom". */
@@ -165,7 +166,7 @@
     @_countrySwitch("/uptime", current)
   </div>
 
-  @if(failing.isEmpty && zero.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty) {
+  @if(failing.isEmpty && zero.isEmpty && cinemasByCity.isEmpty && services.isEmpty && other.isEmpty && hiddenHealthyCinemas == 0) {
     <p class="empty-msg">No data yet — bars will appear after the first scrape cycle.</p>
   }
 
@@ -202,6 +203,10 @@
         }
       </table>
     </details>
+  }
+
+  @if(hiddenHealthyCinemas > 0) {
+    <p class="collapsed-msg">@hiddenHealthyCinemas healthy cinemas not listed — this roster is too large to render every venue's history. Anything failing or returning no screenings is in the sections above.</p>
   }
 
   @if(cinemasByCity.nonEmpty) {

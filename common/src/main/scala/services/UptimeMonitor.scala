@@ -227,6 +227,28 @@ class UptimeMonitor(
     )
   }
 
+  /** The status keywords of the most recent `limit` buckets that recorded any
+   *  activity, oldest→newest. This is everything a row's TRIAGE classification
+   *  needs, and it deliberately does not build the row's bar series: the US
+   *  registers one service per venue (5,031), so materialising all 96 slots for
+   *  every service just to decide which few are red is ~484k objects — enough to
+   *  OOM-kill the web pod, which is what it did on 2026-08-31. */
+  def recentStatuses(service: String, limit: Int): Seq[String] = {
+    val buckets = data.get(service)
+    if (buckets == null) Seq.empty
+    else {
+      val out = List.newBuilder[String]
+      var taken = 0
+      val it = buckets.descendingMap().values().iterator()
+      while (taken < limit && it.hasNext) {
+        val b = it.next()
+        val status = BucketSnapshot(b.timestamp, b.successes.get(), b.failures.get(), b.zeroes.get(), Seq.empty).status
+        if (status != "empty") { out += status; taken += 1 }
+      }
+      out.result().reverse   // walked newest-first; callers want oldest→newest
+    }
+  }
+
   def services: Set[String] = data.keySet().asScala.toSet
 
   // ── Per-service tags (generic per-row labels) ────────────────────────────────

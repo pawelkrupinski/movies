@@ -31,6 +31,37 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     history.head.failures shouldBe 1
   }
 
+  // `recentStatuses` is the cheap classification input the /uptime page reads
+  // instead of building every service's 96-slot bar series — see the method's own
+  // note for the OOM that motivated it.
+  "recentStatuses" should "return the newest buckets' verdicts, oldest→newest, capped at the limit" in {
+    val monitor = new UptimeMonitor()
+    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val step = UptimeMonitor.BucketDurationMs
+    // Oldest → newest: green, zero, red, red.
+    monitor.applyExternalUpdate("Kino", base - 3 * step, successes = 1, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.applyExternalUpdate("Kino", base - 2 * step, successes = 0, failures = 0, zeroes = 1, 0L, 0, Seq.empty)
+    monitor.applyExternalUpdate("Kino", base - 1 * step, successes = 0, failures = 1, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.applyExternalUpdate("Kino", base,            successes = 0, failures = 1, zeroes = 0, 0L, 0, Seq.empty)
+
+    monitor.recentStatuses("Kino", 3) shouldBe Seq("zero", "red", "red")
+    monitor.recentStatuses("Kino", 10) shouldBe Seq("green", "zero", "red", "red")
+  }
+
+  it should "skip a bucket that recorded nothing, so an idle slot never counts as a verdict" in {
+    val monitor = new UptimeMonitor()
+    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val step = UptimeMonitor.BucketDurationMs
+    monitor.applyExternalUpdate("Kino", base - step, successes = 1, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.applyExternalUpdate("Kino", base,        successes = 0, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
+
+    monitor.recentStatuses("Kino", 3) shouldBe Seq("green")
+  }
+
+  it should "be empty for a service that has never been recorded" in {
+    new UptimeMonitor().recentStatuses("Nope", 3) shouldBe empty
+  }
+
   it should "return empty history for unknown service" in {
     val monitor = new UptimeMonitor()
     monitor.history("nonexistent") shouldBe empty
