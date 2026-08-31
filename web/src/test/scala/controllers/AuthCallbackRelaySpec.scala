@@ -492,4 +492,35 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     header("Cache-Control", result).value should include ("no-store")
   }
 
+
+  // Clearing the cookie is not the whole of signing out. The far domain's
+  // session goes, but the browser may still hold a page it rendered while that
+  // session was alive — and the next visit then shows an avatar for an account
+  // it no longer has, which is what "logging out doesn't carry" looks like from
+  // the outside. `no-store` stops NEW signed-in pages being kept; only this
+  // reaches the ones already in the cache.
+  "Signing out" should "tell the browser to forget what this origin looked like signed in" in {
+    val (ctl, _, _) = podWith(Country.Poland)
+    val result = ctl.logout()(arrivingAt(PlOrigin, "/auth/logout").withSession("userId" -> "alice@example.com"))
+
+    header("Clear-Site-Data", result).value shouldBe "\"cache\""
+  }
+
+  it should "do the same on the far side, which is the side that holds the stale page" in {
+    val (ctl, _, _) = podWith(Country.Poland)
+    val result = ctl.ssoLogout()(
+      arrivingAt(PlOrigin, s"/auth/sso/logout?next=$UkBase").withSession("userId" -> "alice@example.com"))
+
+    header("Clear-Site-Data", result).value shouldBe "\"cache\""
+  }
+
+  // NOT `"cookies"`, which would take the remembered city with it — the session
+  // cookie is already discarded precisely, by name.
+  it should "not clear the visitor's cookies wholesale" in {
+    val (ctl, _, _) = podWith(Country.Poland)
+    val result = ctl.logout()(arrivingAt(PlOrigin, "/auth/logout").withSession("userId" -> "alice@example.com"))
+
+    header("Clear-Site-Data", result).value should not include "cookies"
+  }
+
 }

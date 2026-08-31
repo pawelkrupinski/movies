@@ -243,6 +243,22 @@ class AuthController(
   private def uncacheable(result: Result): Result =
     result.withHeaders("Cache-Control" -> PersonalisedPage.CacheControl)
 
+  /** A sign-out, plus an instruction to forget what this origin looked like
+   *  while signed in.
+   *
+   *  Clearing the cookie is not enough on its own, and the gap is exactly what a
+   *  logout that "doesn't carry" looks like: the far domain's session is gone,
+   *  but the browser still holds a page it rendered while that session was
+   *  alive, so the next visit shows an avatar for an account it no longer has.
+   *  `no-store` stops NEW signed-in pages being kept; it cannot reach the ones
+   *  already in the cache, and this is the only thing that can.
+   *
+   *  `"cache"` alone, deliberately — `"cookies"` would take the remembered city
+   *  with it, and the session cookie is already discarded precisely. Ignored by
+   *  browsers that do not implement it, which lose nothing they had before. */
+  private def signedOut(result: Result): Result =
+    uncacheable(result).withHeaders("Clear-Site-Data" -> "\"cache\"")
+
   private def absolute(landing: String, request: RequestHeader): String =
     AuthController.absoluteLanding(ForwardedUrl.base(request), landing)
 
@@ -334,7 +350,7 @@ class AuthController(
     // Removing the keys would leave a valid session cookie behind holding
     // nothing, which is the same thing to this application and not the same
     // thing at all to a browser, a proxy, or anyone reading the response.
-    uncacheable(Redirect(target).withNewSession)
+    signedOut(Redirect(target).withNewSession)
   }
 
   /** The far half of [[logout]]: drop the session on this domain and send the
@@ -348,7 +364,7 @@ class AuthController(
   def ssoLogout(): Action[AnyContent] = Action { request =>
     val back = AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
       .getOrElse(routes.LandingController.index().url)
-    uncacheable(Redirect(back).withNewSession)
+    signedOut(Redirect(back).withNewSession)
   }
 
   private def upsertUser(provider: String, profile: OauthProfile): User = {
