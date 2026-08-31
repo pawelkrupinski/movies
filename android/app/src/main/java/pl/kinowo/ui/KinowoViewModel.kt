@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -124,6 +125,22 @@ class KinowoViewModel(
      *  URL and forces the country's UI language (MainActivity recreates on change). */
     val selectedCountryCode: StateFlow<String?> =
         prefs.selectedCountryCode.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** The country the first-launch gate resolves a location against: the
+     *  persisted code once the store has answered, or [Country.default] when the
+     *  user has never picked one.
+     *
+     *  Null means "not read yet" and NOTHING else — unlike [selectedCountryCode],
+     *  whose null conflates that with "never chosen". The gate must wait for a
+     *  non-null value instead of falling back to the default itself: the
+     *  DataStore read is asynchronous, so on the first composition after a
+     *  country switch the code is still null, and defaulting there scopes the
+     *  nearest-city search to Poland and greets a Berlin user with "You're near
+     *  Poznań". */
+    val gateCountryCode: StateFlow<String?> =
+        prefs.selectedCountryCode
+            .map { Country.normalizeCode(it) ?: Country.default.code }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /** Persist the chosen country. The activity observes [selectedCountryCode] and
      *  recreates itself so the new base URL + locale take effect.
