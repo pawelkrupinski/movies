@@ -106,11 +106,27 @@ ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o Connect
 # `hostname` is the check because Hetzner's rescue system is literally called `rescue`, and unlike
 # /etc/motd it cannot be matched by accident on an Ubuntu image. Waiting for the machine to BE the
 # rescue system is the thing this loop was always meant to do.
+#
+# THREE CONSECUTIVE ANSWERS, NOT ONE, because the rescue system answers before it has finished
+# coming up. Hetzner starts sshd early in the rescue boot and then carries on initialising, so a
+# single successful probe is routinely followed by the connection being dropped underneath the next
+# command -- which is what happened converting mongo-2 on 2026-09-02: the wait loop saw `rescue`,
+# and the very next ssh died with "server not responding" against a machine that was up and would
+# answer again fifteen seconds later. Requiring the answer to REPEAT is what distinguishes "sshd is
+# listening" from "this machine is ready to be installed onto".
 rescue_ready=0
+stable=0
 for _ in $(seq 1 60); do
   if [[ "$(ssh "${ssh_opts[@]}" -o BatchMode=yes "root@$ip" hostname 2>/dev/null)" == "rescue" ]]; then
-    rescue_ready=1
-    break
+    stable=$((stable + 1))
+    if ((stable >= 3)); then
+      rescue_ready=1
+      break
+    fi
+  else
+    # A miss RESETS the count rather than decrementing it. Two answers either side of a reboot are
+    # not evidence of stability, and treating them as such is the bug this is here to avoid.
+    stable=0
   fi
   sleep 5
 done
