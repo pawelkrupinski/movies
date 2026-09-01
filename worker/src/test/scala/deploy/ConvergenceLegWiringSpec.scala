@@ -242,6 +242,29 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** The check-run that told us 4,381 tests had passed on a leg that ran none of them.
+   *
+   *  `target/` is restored from the actions cache WHOLE, every module writes its JUnit
+   *  XML into the one root-level `target/test-reports/unit/` (build.sbt's
+   *  `unitReportSettings`), and the restore-keys fall through to the key `ci.yml`'s unit
+   *  job saves. So a leg begins with a report directory full of specs from another
+   *  workflow, and the publish step globs that directory. A leg that FINISHES overwrites
+   *  them and nobody notices; the United States' leg died on an OOM before ScalaTest
+   *  reported a result, and its check-run went green naming `CinemaScraperCatalogSpec`.
+   *
+   *  Both halves are load-bearing and neither works alone: clearing the directory
+   *  without `require_tests` turns the lie into a shrug, and `require_tests` over a
+   *  directory nobody cleared still reports somebody else's passes. */
+  it should "report only the tests THIS leg ran, and admit it when there are none" in {
+    val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
+    withClue("the cache restores another job's test reports; the leg must discard them: ") {
+      setup should include("rm -rf target/test-reports")
+    }
+    withClue("a leg that produced no report must fail the check rather than skip it: ") {
+      RepoFile.block(leg, "convergence") should include("require_tests: true")
+    }
+  }
+
   it should "publish the tree it recorded from BOTH jobs, not just the full one" in {
     // The gate REPLAYS a fixture tree it is not allowed to extend, and every recorded
     // response in that tree expires after `EnrichmentFreshness.Ttl` (5 days). Only the

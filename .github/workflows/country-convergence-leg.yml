@@ -321,6 +321,15 @@ jobs:
                   check_name: convergence (${{ inputs.country }})
                   detailed_summary: true
                   include_passed: true
+                  # A leg that wrote no XML has to say so. The directory is emptied by
+                  # `convergence-setup` before the suite runs, so "no report" now means
+                  # exactly one thing — this leg never reached an assertion — and that is
+                  # a fact about the run, not an absence of one. Left at the default
+                  # `false` the action shrugged and the check-run went green on a leg
+                  # that had OOM'd. `fail_on_failure` stays off: the suite step's exit
+                  # code already grades the tests that DID run, and failing here as well
+                  # would only report the same failure twice.
+                  require_tests: true
 
             # The findings, on the run's summary page, per country.
             #

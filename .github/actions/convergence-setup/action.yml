@@ -204,3 +204,27 @@ runs:
               sbt-target-convergence-${{ runner.os }}-
               sbt-target-e2e-${{ runner.os }}-
               sbt-target-${{ runner.os }}-
+
+    # THE CACHE ABOVE CARRIES SOMEBODY ELSE'S TEST RESULTS, and the leg then reports
+    # them as its own.
+    #
+    # `target/` is restored whole, and every module writes its JUnit XML into the one
+    # root-level `target/test-reports/unit/` (see `unitReportSettings` in build.sbt).
+    # The restore-keys fall through to `sbt-target-` — the key `ci.yml`'s unit job
+    # saves — so a leg starts with a `target/test-reports/unit/` full of unit specs it
+    # never ran, and the publish step below globs exactly that directory.
+    #
+    # While the suite finishes, its own XML overwrites them and nobody notices. When it
+    # does NOT finish, the stale XML is all there is: the United States' leg died on an
+    # OOM before ScalaTest reported a single result on 2026-09-01, and the check-run for
+    # that job read `4382 tests run, 4381 passed, 0 failed` — in green, naming
+    # `CinemaScraperCatalogSpec` and friends from a completely different workflow. The
+    # run was red overall (the suite step's exit code is what grades it), so the lie was
+    # survivable; but the one check that claims to say what this leg proved said the
+    # opposite of the truth, which is worse than saying nothing.
+    #
+    # Cleared here rather than in either job, so the sample and the full leg cannot
+    # drift on it. (ConvergenceLegWiringSpec)
+    - name: Discard test reports restored from the cache
+      shell: bash
+      run: rm -rf target/test-reports
