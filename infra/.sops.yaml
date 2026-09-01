@@ -51,6 +51,11 @@ keys:
   # `convert-host`. This is the file on the fleet whose recipient list matters most: it holds the
   # Grafana and Alertmanager Telegram bot tokens, the Fly Prometheus token, and the k3s cluster
   # token that k3s-worker-1 also carries.
+  # Derived on 2026-09-02 from the host key mongo-2 minted on its first boot after `convert-host`.
+  # The install itself could not decrypt anything -- `setupSecrets` failed with "0 successful groups
+  # required, got 0" -- which is not a fault but the ordering this file's header describes: the key
+  # does not exist until the machine has booted the system that mints it.
+  - &mongo_2 age1cdw35s3ezp0ekt3wf5766flefmelngsr36kx57crwj3xan6xkdnsrwml9w
   - &monitoring_1 age1gzk07n7anpg2nxdlfm5waledsu6xvhmg0s93tcr3474mlcx5jufsuxjpg8
 
   # Derived on 2026-08-29 with ssh-to-age from the ssh_host_ed25519_key k3s-worker-1 minted on its
@@ -71,11 +76,10 @@ creation_rules:
           - *operator
           - *mongo_1
 
-  # mongo-2 NAMES THE OPERATOR ALONE UNTIL IT HAS BEEN CONVERTED, which is the state every host in
-  # this file started in (see the note on the anchors above). Its host key does not exist yet: the
-  # machine mints one on its first boot as NixOS. The operator can therefore CREATE and edit
-  # nix/secrets/mongo-2.yaml now, but the host cannot decrypt it -- so the first deploy after
-  # conversion fails at activation until the anchor is added here and `sops updatekeys` is run.
+  # mongo-2 was converted on 2026-09-02 and its anchor added the same day. It named the operator
+  # alone until then -- the state every host in this file started in -- because a host key does not
+  # exist until the machine has booted the system that mints it, so nixos-anywhere's own activation
+  # necessarily fails to decrypt and the recipient is added afterwards.
   #
   # ITS CONTENTS ARE mongo-1'S, RE-SEALED, AND THAT IS NOT A SHORTCUT. `mongodb/keyfile` is what
   # authenticates a member into the replica set; a member holding a different one is rejected with
@@ -86,6 +90,7 @@ creation_rules:
     key_groups:
       - age:
           - *operator
+          - *mongo_2
 
   - path_regex: nix/secrets/monitoring-1\.yaml$
     key_groups:
