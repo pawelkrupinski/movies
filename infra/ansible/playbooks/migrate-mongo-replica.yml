@@ -182,6 +182,17 @@
       ansible.builtin.set_fact:
         rs_before: "{{ migrate_rs_before.stdout | regex_search(migrate_json_re) | from_json }}"
 
+    # ALREADY A MEMBER IS A DIFFERENT QUESTION FROM ALREADY INITIATED, and conflating them made the
+    # rival-set guard below fire against a target that had joined perfectly. Once the member syncs it
+    # has the set's users, so the unauthenticated probe that guard depends on stops working and
+    # `rs.status()` answers `Unauthorized` -- which the probe reads as "initialised", which it is,
+    # as part of THIS set. Asking the primary settles it without a credential and without ambiguity:
+    # the primary's own configuration either lists the target or it does not.
+    - name: Note whether the target is already in this set
+      ansible.builtin.set_fact:
+        migrate_target_already_member: >-
+          {{ migrate_target_member in (rs_before.members | map(attribute='host') | list) }}
+
     - name: This host must be the PRIMARY of the set we are migrating
       ansible.builtin.assert:
         that:
@@ -224,7 +235,7 @@
       delegate_to: "{{ migrate_target }}"
       register: migrate_target_rs
       changed_when: false
-      when: migrate_phase == 'join'
+      when: migrate_phase == 'join' and not (migrate_target_already_member | bool)
 
     - name: Refuse to join a target that already believes it is its own set
       ansible.builtin.assert:
@@ -236,7 +247,7 @@
           Set `fleet.mongodb.initiateReplicaSet = false` on the target, deploy, then wipe its dbPath
           and restart mongod so it comes back uninitialised -- it holds no data worth keeping yet.
           This playbook will not wipe a database for you.
-      when: migrate_phase == 'join'
+      when: migrate_phase == 'join' and not (migrate_target_already_member | bool)
 
     # ---------------------------------------------------------------------------------------------
     # PHASE: join
@@ -255,6 +266,8 @@
       register: migrate_add
       changed_when: "'ADDED' in migrate_add.stdout"
       failed_when: "'FAILED' in migrate_add.stdout"
+      # Re-running `join` against a member that is already in the set is the normal way to resume
+      # after fixing something, so this reports ALREADY_MEMBER and changes nothing.
       when: migrate_phase == 'join'
 
     # WAITING ON stateStr AND ON LAG, not just on stateStr. A member reaches SECONDARY when it has
