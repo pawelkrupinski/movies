@@ -101,6 +101,32 @@ trait MovieRepository {
    *  to decide whether a film's slots may live outside the `movies` document. */
   def hasSlots: Boolean = false
 
+  /** The slot map a `movies` document is allowed to carry — showtimes removed once
+   *  `screenings` is their authority, kept when there is nowhere else to hold them.
+   *
+   *  On the trait rather than in the Mongo class because it is not this repository's
+   *  private business: `MongoStagingFolder` writes `movies` DIRECTLY, bypassing
+   *  `upsert` because its upserts and its staging deletes have to commit in one
+   *  session, and it has to write the same shape. It did not, and the difference is
+   *  not cosmetic. A slot map with its showtimes inline grows with the number of
+   *  venues screening the film, and the United States has 5,031 of them: on
+   *  2026-09-01 the fold of `Avengers: Doomsday` threw
+   *  `BsonMaximumSizeExceededException` on every single attempt, so the group was
+   *  never consumed, so `StagingReaper` re-enqueued it every tick — forever, with no
+   *  backoff and no give-up, since the exception carries no transient label to retry
+   *  on and none to abandon on either.
+   *
+   *  The stripped shape loses nothing: under the split `ScreeningsRepository.stitch`
+   *  treats `screenings` as authoritative and empties the showtimes of any slot it
+   *  has no row for, so an embedded board is discarded on the way back out. It is
+   *  weight the reader was already throwing away.
+   *
+   *  `final` because the rule is the storage contract, not an implementation
+   *  detail — a repository that answered differently would be a repository whose
+   *  documents mean something else. */
+  final def slotsForStorage(data: Map[Source, SourceData]): Map[Source, SourceData] =
+    if (hasScreenings) ScreeningsRepository.stripShowtimes(data) else data
+
   /** Whether the persistence layer is wired up. When false, callers can still
    *  use the in-memory cache but writes are no-ops. */
   def enabled: Boolean
@@ -366,10 +392,6 @@ class MongoMovieRepository(
 
   override def hasScreenings: Boolean = screenings.isDefined
   override def hasSlots:       Boolean = slots.isDefined
-
-
-  private def stripFor(data: Map[Source, SourceData]): Map[Source, SourceData] =
-    if (screenings.isDefined) ScreeningsRepository.stripShowtimes(data) else data
 
 
   /** Re-inject a stored row's showtimes from `screenings` (its authority under the
@@ -772,7 +794,7 @@ class MongoMovieRepository(
     // Under the read-split `movies` carries no showtimes (they go to `screenings`), and
     // once the slots have landed it carries no sourceData either — which is what shrinks
     // the document the change stream re-decodes on every write.
-    val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else stripFor(restitched)
+    val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else slotsForStorage(restitched)
     val dto  = StoredMovieDto.fromDomain(id, e.copy(data = dataForMovies), Instant.now())
     val opts = new ReplaceOptions().upsert(true)
     Try {
@@ -816,7 +838,7 @@ class MongoMovieRepository(
       // yields an EMPTY movies patch — movies stays put, no fat change event. When
       // both are empty the row already equals `after`: skip the write (and its no-op
       // `$set` + change event). "Present and up to date" is still success.
-      val strippedAfter = after.copy(data = stripFor(after.data))
+      val strippedAfter = after.copy(data = slotsForStorage(after.data))
       // With the slots split on, `movies` is not where slots live, so the patch must not
       // carry them: `upsert` drops the embedded map once the slots land, and a later patch
       // that still wrote `sourceData.<slot>` would resurrect it field by field and undo
@@ -824,7 +846,7 @@ class MongoMovieRepository(
       // simply goes stale — reads prefer `movie_slots` whenever a film has rows there, and
       // fall back to that stale copy only for a film with none, which is the same
       // already-correct value it had before.
-      val rawPatch = MovieRecordPatch.diff(before.copy(data = stripFor(before.data)), strippedAfter)
+      val rawPatch = MovieRecordPatch.diff(before.copy(data = slotsForStorage(before.data)), strippedAfter)
       val patch    = if (slots.isDefined) rawPatch.copy(data = Map.empty) else rawPatch
       if (patch.isEmpty && ops.isEmpty && slotWrites.isEmpty) true
       else Try {

@@ -132,22 +132,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       val repository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
       normalizer = titleNormalizer,
       screenings = Some(screenings), slots = Some(new MongoSlotsRepository(Some(db))))
-      val when       = models.Showtime(java.time.LocalDateTime.of(2026, 8, 1, 20, 0), None)
-      // A newcomer incubating in staging, concluded, with a real board — and NO `movies`
-      // row yet, so the fold is what creates it.
-      val stagingId = s"${Multikino.displayName}|${titleNormalizer.sanitize(newcomerTitle)}|2026"
-      Await.result(staging.replaceOne(Filters.eq("_id", stagingId),
-        org.mongodb.scala.Document("_id" -> stagingId, "tmdbId" -> 5252, "title" -> newcomerTitle,
-          "year" -> 2026,
-          "sourceData" -> org.mongodb.scala.Document(Multikino.displayName ->
-            org.mongodb.scala.Document("title" -> newcomerTitle,
-              // A real BSON date — the showtime codec reads DATE_TIME, and a string here
-              // aborts the fold's transaction rather than failing the assertion.
-              "showtimes" -> org.mongodb.scala.bson.BsonArray.fromIterable(Seq(
-                org.mongodb.scala.Document("dateTime" -> java.util.Date.from(
-                  when.dateTime.toInstant(java.time.ZoneOffset.UTC))).toBsonDocument)))),
-          "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
-        new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
+      seedConcludedNewcomer(staging)
 
       fold.folder().foldGroup(newcomerTitle)
 
@@ -164,6 +149,104 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
         }
       }
       }
+  }
+
+  /** A fold whose group is BIGGER THAN ONE DOCUMENT — the case that broke the United
+   *  States and could not be seen from anywhere else.
+   *
+   *  The fold writes `movies` directly, in its own session, because its upserts and its
+   *  staging deletes have to commit together and the repository's write path is not
+   *  session-aware. That bypass means every rule `MovieRepository.upsert` applies on the
+   *  way to disk has to be applied here by hand, and the storage rule was not: the
+   *  document went in with each venue's board inline. That is linear in the number of
+   *  venues screening the film — fine at Poland's 151, fatal at the United States' 5,031,
+   *  where on 2026-09-01 the fold of `Avengers: Doomsday` threw
+   *  `BsonMaximumSizeExceededException: Payload document size is larger than maximum of
+   *  16793600` on every attempt. The exception carries no transient label, so
+   *  `foldWithRetry` abandoned after one and rethrew; the staging rows were therefore
+   *  never consumed, so `StagingReaper` enqueued the same fold on the next tick, and the
+   *  next, with no backoff and no give-up.
+   *
+   *  Two cinemas, each holding a board that fits in its own staging row and does not fit
+   *  when unioned with the other — which is exactly the shape a wide release has, at a
+   *  scale that reproduces in seconds rather than needing five thousand venues. The
+   *  assertion is simply that the fold HAPPENS: before the fix this suite failed here
+   *  with the driver's exception, having consumed nothing.
+   *
+   *  Its sibling above proves the showtimes survive the trip; this one proves there is a
+   *  trip to survive. `StagingFoldDocumentSizeSpec` measures the same ceiling against the
+   *  real catalogue, in bytes, without needing a replica set. */
+  it should "fold a film whose venues carry more board than one document can hold" in {
+    FoldFixture.withFold(titleNormalizer.sanitize(oversizeTitle)) { fold =>
+      import fold.{screenings, staging}
+      val cinemas = Seq(Multikino, models.Helios)
+      cinemas.foreach(seedOversizeRow(staging, _))
+
+      fold.folder().foldGroup(oversizeTitle)
+
+      withClue("the fold did not consume its rows — it threw before committing, which is " +
+               "the overflow this test exists for: ") {
+        Await.result(staging.find(Filters.regex("_id",
+          s".*${titleNormalizer.sanitize(oversizeTitle)}.*")).toFuture(), 30.seconds) shouldBe empty
+      }
+      val folded = Await.result(fold.movies.find(Filters.regex("_id",
+        s"^${titleNormalizer.sanitize(oversizeTitle)}\\|")).toFuture(), 30.seconds)
+        .flatMap(_.get("_id").map(_.asString().getValue))
+      folded should have size 1
+      withClue("the fold committed but filed none of the board it folded: ") {
+        screenings.findForFilm(folded.head).values.map(_.size).sum shouldBe cinemas.size * OversizeShowtimes
+      }
+      }
+  }
+
+  private val oversizeTitle = "__foldoversize-it-sentinel__"
+
+  /** Enough showtimes that TWO of these slots cannot share one BSON document, and few
+   *  enough that building them costs a second. The padding rides on `room`, a plain
+   *  string field, so the weight is in the board itself — a fat synopsis would overflow
+   *  the same document and prove nothing, since it is not what the storage rule removes. */
+  private val OversizeShowtimes = 20000
+  private val OversizeRoom      = "Auditorium " + ("x" * 420)
+
+  private def seedOversizeRow(staging: org.mongodb.scala.MongoCollection[org.mongodb.scala.Document],
+                              cinema: models.Cinema): Unit = {
+    val board = (1 to OversizeShowtimes).map { n =>
+      org.mongodb.scala.Document(
+        "dateTime" -> java.util.Date.from(
+          java.time.LocalDateTime.of(2026, 8, 1, 12, 0).plusMinutes(n.toLong)
+            .toInstant(java.time.ZoneOffset.UTC)),
+        "room" -> OversizeRoom).toBsonDocument
+    }
+    val id = s"${cinema.displayName}|${titleNormalizer.sanitize(oversizeTitle)}|2026"
+    Await.result(staging.replaceOne(Filters.eq("_id", id),
+      org.mongodb.scala.Document("_id" -> id, "tmdbId" -> 5253, "title" -> oversizeTitle,
+        "year" -> 2026,
+        "sourceData" -> org.mongodb.scala.Document(cinema.displayName ->
+          org.mongodb.scala.Document("title" -> oversizeTitle,
+            "showtimes" -> org.mongodb.scala.bson.BsonArray.fromIterable(board))),
+        "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
+      new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 30.seconds)
+  }
+
+  /** A newcomer incubating in staging, concluded, with a real board — and NO `movies` row
+   *  yet, so the fold is what creates it. Shared by the two tests above, which ask
+   *  opposite questions of the same fold and would otherwise each carry their own copy of
+   *  this seeding. */
+  private def seedConcludedNewcomer(staging: org.mongodb.scala.MongoCollection[org.mongodb.scala.Document]): Unit = {
+    val when      = models.Showtime(java.time.LocalDateTime.of(2026, 8, 1, 20, 0), None)
+    val stagingId = s"${Multikino.displayName}|${titleNormalizer.sanitize(newcomerTitle)}|2026"
+    Await.result(staging.replaceOne(Filters.eq("_id", stagingId),
+      org.mongodb.scala.Document("_id" -> stagingId, "tmdbId" -> 5252, "title" -> newcomerTitle,
+        "year" -> 2026,
+        "sourceData" -> org.mongodb.scala.Document(Multikino.displayName ->
+          org.mongodb.scala.Document("title" -> newcomerTitle,
+            // A real BSON date — the showtime codec reads DATE_TIME, and a string here
+            // aborts the fold's transaction rather than failing the assertion.
+            "showtimes" -> org.mongodb.scala.bson.BsonArray.fromIterable(Seq(
+              org.mongodb.scala.Document("dateTime" -> java.util.Date.from(
+                when.dateTime.toInstant(java.time.ZoneOffset.UTC))).toBsonDocument)))),
+        "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
+      new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
   }
 
   private val newcomerTitle = "__foldnewcomer-it-sentinel__"

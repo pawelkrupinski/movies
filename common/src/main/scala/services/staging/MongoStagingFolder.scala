@@ -311,8 +311,20 @@ class MongoStagingFolder(
       val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(group))
       plan.moviesUpserts.foreach { case (k, record) =>
         val id = StoredMovieRecord.idFor(k)
+        // The SAME shape `MovieRepository.upsert` would have written. This write is
+        // direct — the upserts and the staging deletes have to commit in one session
+        // and the repository's write path is not session-aware — so the storage rule
+        // has to be applied here by hand, and for a long time it was not: the document
+        // went in with every venue's board inline. That is unbounded in the number of
+        // venues screening the film, and it stopped being theoretical at 5,031 of them
+        // (`slotsForStorage`, and the size spec beside this class).
+        //
+        // The in-memory `record` keeps its showtimes: `completeSideCollections` writes
+        // it through the repository straight after, which is what files them into
+        // `screenings`.
+        val forStorage = record.copy(data = movieRepository.slotsForStorage(record.data))
         await(movies.replaceOne(session, Filters.eq("_id", id),
-          StoredMovieDto.fromDomain(id, record, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
+          StoredMovieDto.fromDomain(id, forStorage, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
       }
       // Delete the retired `movies` rows ONLY — never their side-collection rows.
       //
