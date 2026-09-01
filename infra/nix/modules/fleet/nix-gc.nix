@@ -185,7 +185,7 @@ in
       wantedBy = [ "timers.target" ];
       timerConfig = {
         OnCalendar = cfg.dates;
-        # JITTER, because mongo-1 and monitoring-1 are both in nbg1 and may well share a
+        # JITTER, because monitoring-1 and k3s-worker-1 are both in fsn1 and may well share a
         # hypervisor; three hosts doing heavy I/O in the same minute is a self-inflicted spike on
         # the one of them that also serves the database.
         RandomizedDelaySec = "1h";

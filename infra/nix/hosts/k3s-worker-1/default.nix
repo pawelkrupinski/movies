@@ -34,12 +34,13 @@
   # switched OFF (in ../../../terraform/server.k3s-worker.tf), which is the same decision stated in
   # the other direction.
 
-  # JOINS THE CONTROL PLANE ON monitoring-1, over the private network. Both hosts are in Hetzner's
-  # `eu-central` network zone despite sitting in different datacentres (fsn1 here, nbg1 there), so
-  # 10.20.0.11 is directly reachable with no peering and no routes -- see terraform/network.tf. The
-  # ~4.5ms between Falkenstein and Nuremberg is paid by kubelet heartbeats, image pulls and every
-  # mongo-1 query the app pods make on the request path -- which is why this machine was moved out
-  # of hel1, where the same link measured 24ms. See the note in terraform/server.k3s-worker.tf.
+  # JOINS THE CONTROL PLANE ON monitoring-1, over the private network -- now the SAME datacentre
+  # (both fsn1 since 2026-09-01), so 10.20.0.11 is a local hop. It did not have to be: every host
+  # here is in Hetzner's `eu-central` network zone, which is the unit a cloud subnet is scoped to, so
+  # this join worked unchanged when the two were 24ms apart in hel1 and nbg1 -- see
+  # terraform/network.tf. What is NOT local is mongo-1, still in nbg1 at ~4.5ms, and that link is on
+  # the app pods' request path; it is the reason both machines moved here. See the note in
+  # terraform/server.k3s-worker.tf.
   fleet.k3sAgent = {
     enable = true;
     serverAddr = "https://10.20.0.11:6443";

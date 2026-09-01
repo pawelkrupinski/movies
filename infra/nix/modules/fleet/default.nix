@@ -414,7 +414,7 @@
     # ---------------------------------------------------------------------------------------------
     #
     # Three hosts is few enough to hold in your head and exactly few enough to confuse: two of them
-    # are `cx23` in nbg1 with adjacent private addresses. An operator who cannot tell two shells
+    # are `cx23` with adjacent private addresses. An operator who cannot tell two shells
     # apart is how a `systemctl stop` lands on the wrong machine.
     users.motd = ''
 

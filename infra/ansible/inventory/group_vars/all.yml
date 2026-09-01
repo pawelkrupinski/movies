@@ -3,8 +3,8 @@
 # is derived from the inventory or from the Terraform/nix tree where it can be, so that a rebuilt or
 # renumbered host does not leave a stale literal behind.
 #
-# THE FLEET IS THREE MACHINES (infra/terraform): mongo-1 and monitoring-1 in nbg1, k3s-worker-1 in
-# fsn1, all on 10.20.0.0/24, all NixOS, all labelled `env=prod`. There is no second environment, no
+# THE FLEET IS THREE MACHINES (infra/terraform): monitoring-1 and k3s-worker-1 in fsn1, mongo-1 in
+# nbg1, all on 10.20.0.0/24, all NixOS, all labelled `env=prod`. There is no second environment, no
 # Puppet, no Consul and no Vault -- so most of what bitcashier/infra keeps in this file has no
 # counterpart here and is absent rather than emptied out.
 

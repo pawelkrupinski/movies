@@ -9,7 +9,7 @@ hostnames onto two domains this project owns:
 | `showtimes-uk.fly.dev` | `uk.showtimes.cc` | United Kingdom |
 | `showtimes-de.fly.dev` | `de.showtimes.cc` | Germany |
 | — | `showtimes.cc` | the brand front door: a country picker, Poland included |
-| `grafana.2-28-52-210.sslip.io` | `grafana.kinowo.net` | Grafana (both names serve) |
+| `grafana.2-28-52-210.sslip.io` | `grafana.kinowo.net` | Grafana (sslip name RETIRED 2026-09-01 — see below) |
 
 `docs/adding-a-country.md` and `docs/restoring-a-country.md` cover the country
 dimension. This file covers the HOST dimension, and exists mainly for its
@@ -26,7 +26,7 @@ ordering — several of the steps below are only safe in one sequence.
    ```
    kinowo.net        A  2.28.47.31    # k3s-worker-1 — the web pods
    www.kinowo.net    A  2.28.47.31
-   grafana.kinowo.net A 2.28.52.210   # monitoring-1 — NOT the same host
+   grafana.kinowo.net A 128.140.49.167 # monitoring-1 — NOT the same host
    showtimes.cc      A  2.28.47.31
    www.showtimes.cc  A  2.28.47.31
    uk.showtimes.cc   A  2.28.47.31
@@ -70,7 +70,7 @@ ordering — several of the steps below are only safe in one sequence.
 6. **Pin the build**, so nothing is left running `:latest`:
 
    ```
-   ssh -i <k8sdeploy key> k8sdeploy@2.28.52.210 ghcr.io/pawelkrupinski/movies-web:<sha>
+   ssh -i <k8sdeploy key> k8sdeploy@128.140.49.167 ghcr.io/pawelkrupinski/movies-web:<sha>
    ```
 
 7. **Retire the Fly web apps.** `showtimes-uk` and `showtimes-de` have their

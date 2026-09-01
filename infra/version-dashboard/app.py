@@ -70,7 +70,7 @@ PORT = int(os.environ.get("KINOWO_DASHBOARD_PORT", "8788"))
 # has no authentication). That subnet is not routable from a laptop, and this fleet has no VPN and
 # no jump host -- so the only path from here is ssh to monitoring-1's public address and curl from
 # there. That is one extra hop and it is the reason the cache below exists.
-MONITORING_SSH = os.environ.get("KINOWO_MONITORING_SSH", "root@2.28.52.210")
+MONITORING_SSH = os.environ.get("KINOWO_MONITORING_SSH", "root@128.140.49.167")
 PROM_URL = os.environ.get("KINOWO_PROM_URL", "http://10.20.0.11:9090")
 
 # The series the page reads. One query, not one per metric: Prometheus returns them all in a single

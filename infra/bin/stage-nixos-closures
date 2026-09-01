@@ -11,7 +11,7 @@ not, and that is the one difference worth reading before anything else here.
   HERE (`ubuntu-latest`, GitHub's shared infrastructure): there is no machine inside 10.20.0.0/24
   that can build anything, so closures are copied over each host's PUBLIC address -- see
   `fleet.publicAddress` in nix/modules/fleet/default.nix. As of writing those are
-  mongo-1 2.28.56.140, monitoring-1 2.28.52.210, k3s-worker-1 2.28.47.31, pinned in
+  mongo-1 2.28.56.140, monitoring-1 128.140.49.167, k3s-worker-1 2.28.47.31, pinned in
   infra/terraform/primary_ips.tf. THEY ARE NOT WRITTEN DOWN IN THIS FILE -- see the note on
   `address_of` for why a roster here would be worse than reading them from the flake.
 

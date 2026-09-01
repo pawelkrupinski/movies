@@ -14,16 +14,20 @@
 # reached.
 #
 # ------------------------------------------------------------------------------------------------
-# THIS NODE IS IN A DIFFERENT LOCATION FROM ITS SERVER, AND THAT IS FINE FOR AN AGENT ONLY
+# THIS NODE AND ITS SERVER ARE NOW IN THE SAME LOCATION, AND THAT WAS NOT ALWAYS TRUE
 # ------------------------------------------------------------------------------------------------
 #
-# monitoring-1 (the server) is in nbg1; this machine is in fsn1. They share one Hetzner private
-# network, and the traffic between them is agent-to-API-server plus the VXLAN overlay -- both
-# tolerate a link measured in milliseconds rather than microseconds.
+# Both are in fsn1 as of 2026-09-01. Until then this machine was in hel1 and monitoring-1 in nbg1,
+# roughly 24ms apart, and this note recorded why that was acceptable: the traffic between an agent
+# and its API server is kubelet heartbeats plus the VXLAN overlay, and both tolerate a link measured
+# in milliseconds rather than microseconds. That reasoning was sound and is the reason the split was
+# left alone for as long as it was -- what moved the machines was the app pods' MONGO traffic, which
+# is on the request path and does not tolerate it (see terraform/server.k3s-worker.tf).
 #
-# WHAT MUST NOT FOLLOW FROM THAT is a second SERVER in fsn1 "for redundancy". That would put etcd's
-# raft quorum across the same link, where every write waits on it and a brief blip becomes a
-# leader election. Distance is cheap for an agent and expensive for a quorum.
+# WHAT STILL MUST NOT FOLLOW is a second SERVER placed far away "for redundancy". That would put
+# etcd's raft quorum across a long link, where every write waits on it and a brief blip becomes a
+# leader election. Distance stays cheap for an agent and expensive for a quorum, whatever the
+# current layout happens to be.
 #
 # THE NODE IS IDLE TODAY, on purpose: the cluster carries no kinowo workload yet. Standing it up
 # empty is what makes it possible to break it deliberately before anything depends on it.

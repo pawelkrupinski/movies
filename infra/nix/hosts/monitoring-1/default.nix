@@ -1,11 +1,21 @@
 { config, ... }:
 
 let
-  # Allocated by Terraform; read it back with
-  # `terraform -chdir=infra/terraform output -json hosts | jq -r '."monitoring-1".volumes."monitoring-data"'`.
-  # See the long note in ../mongo-1/default.nix for why a wrong id here is worse than a build
-  # failure -- the same reasoning applies, with Prometheus filling the root disk in mongod's place.
-  volumeDevice = "/dev/disk/by-id/scsi-0HC_Volume_106735107";
+  # THE FILESYSTEM'S OWN UUID, NOT THE HETZNER VOLUME'S DEVICE PATH, AND THE DIFFERENCE IS THE WHOLE
+  # POINT OF THIS LINE. `/dev/disk/by-id/scsi-0HC_Volume_<id>` names the ENCLOSURE -- which Hetzner
+  # volume is bolted to this machine -- and a Hetzner volume cannot leave its location. So when this
+  # host moved nbg1 -> fsn1 on 2026-09-01 the data had to be copied onto a NEW volume with a NEW id,
+  # and every spelling of the mount that named the old id was, at that moment, a host that boots
+  # without its metrics disk. A UUID names the DATA, and the data is what moved: the fsn1 volume was
+  # given this exact UUID with `tune2fs -U` after the copy, so the mount below did not have to change
+  # at all and the machine came up with its TSDB already where it expected it.
+  #
+  # A WRONG VALUE HERE IS STILL WORSE THAN A BUILD FAILURE, for the reason ../mongo-1/default.nix
+  # spells out at length -- with Prometheus filling the root disk in mongod's place. What changed is
+  # only which identity is being named, not how carefully it has to be right. Read it back with
+  # `blkid /dev/disk/by-id/scsi-0HC_Volume_$(terraform -chdir=infra/terraform output -json hosts \
+  #   | jq -r '."monitoring-1".volumes."monitoring-data"')`.
+  volumeDevice = "/dev/disk/by-uuid/1d0ae481-d7d3-42e1-8a77-bbc13164c9ee";
 in
 {
   imports = [
@@ -44,7 +54,7 @@ in
     #
     # Stable because terraform/primary_ips.tf pins it with `auto_delete = false`; it is
     # `monitoring_1_ipv4` there.
-    publicAddress = "2.28.52.210";
+    publicAddress = "128.140.49.167";
   };
 
   # No `nofail`, for the reason in the assertion above: a monitoring host that boots without its
@@ -111,13 +121,15 @@ in
       # using it and an issuance here could fail for reasons that have nothing to do with this fleet.
       "grafana.kinowo.net".upstream = "10.20.0.11:3000";
 
-      # KEPT SERVING, not redirected, and deliberately so. It is what every existing bookmark and
-      # every alert notification sent before this change points at, and making it a redirect would
-      # couple THIS host's only public service to a DNS record that may not have propagated yet --
-      # if grafana.kinowo.net does not resolve, a redirect takes Grafana away, and the monitoring
-      # box is exactly the thing you need reachable when something is wrong. Turn it into a
-      # `redirectTo` once the new name has been answering for a while.
-      "grafana.2-28-52-210.sslip.io".upstream = "10.20.0.11:3000";
+      # THE sslip.io NAME IS GONE, and the move to fsn1 is what settled it rather than a change of
+      # mind. `grafana.2-28-52-210.sslip.io` RESOLVES ITS OWN IP OUT OF ITS OWN LABEL -- that is what
+      # sslip.io is -- so the address it names is 2.28.52.210, a primary IP that could not follow
+      # this host to Falkenstein (Hetzner primary IPs are location-scoped) and was released with the
+      # nbg1 machine. Kept as a vhost it would not have degraded quietly: the name would still
+      # resolve, to an address this fleet no longer holds, and Caddy would fail the HTTP-01 renewal
+      # roughly sixty days later against a domain whose Let's Encrypt rate limit is shared with
+      # everyone else using sslip.io. grafana.kinowo.net is the name now, and it is the one the
+      # alert notifications have carried since roles/grafana.nix's rootUrl moved to it.
     };
   };
 

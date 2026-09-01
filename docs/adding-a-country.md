@@ -336,7 +336,7 @@ record, and the `webUrl` flip.
    is often a later commit than yours.
 
    **Two host-topology traps worth knowing before you debug anything:**
-   - `apply.sh` talks to the k3s API at `root@2.28.52.210`, which is
+   - `apply.sh` talks to the k3s API at `root@128.140.49.167`, which is
      **`monitoring-1`** — the control plane, running Grafana's Caddy. The pods,
      their NodePorts, and the PUBLIC Caddy all live on **`k3s-worker-1`**
      (`2.28.47.31` / `10.20.0.12`). Curling a web NodePort from the API host

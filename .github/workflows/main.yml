@@ -712,7 +712,7 @@ jobs:
                       -o BatchMode=yes \
                       -o StrictHostKeyChecking=accept-new \
                       -o ConnectTimeout=15 \
-                      k8sdeploy@2.28.52.210 \
+                      k8sdeploy@128.140.49.167 \
                       "ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}"
 
             - name: Record what the web tier is now running
@@ -905,7 +905,7 @@ jobs:
                       -o BatchMode=yes \
                       -o StrictHostKeyChecking=accept-new \
                       -o ConnectTimeout=15 \
-                      k8sdeploy@2.28.52.210 \
+                      k8sdeploy@128.140.49.167 \
                       "ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}"
 
             - name: Record what the worker tier is now running
