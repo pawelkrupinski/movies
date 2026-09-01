@@ -1,0 +1,470 @@
+{
+  "A Coruña": {
+    "capital": "A Coruña",
+    "lat": 43.37135,
+    "lon": -8.396,
+    "population": 250438,
+    "matched_name": "A Coruña",
+    "feature_code": "PPLA3",
+    "zoneId": "Europe/Madrid"
+  },
+  "Albacete": {
+    "capital": "Albacete",
+    "lat": 38.99424,
+    "lon": -1.85643,
+    "population": 173050,
+    "matched_name": "Albacete",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Alicante": {
+    "capital": "Alicante",
+    "lat": 38.34517,
+    "lon": -0.48149,
+    "population": 348901,
+    "matched_name": "Alicante",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Almería": {
+    "capital": "Almería",
+    "lat": 36.83814,
+    "lon": -2.45974,
+    "population": 196851,
+    "matched_name": "Almería",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Asturias": {
+    "capital": "Oviedo",
+    "lat": 43.36029,
+    "lon": -5.84476,
+    "population": 220027,
+    "matched_name": "Oviedo",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Badajoz": {
+    "capital": "Badajoz",
+    "lat": 38.87789,
+    "lon": -6.97061,
+    "population": 150530,
+    "matched_name": "Badajoz",
+    "feature_code": "PPLA3",
+    "zoneId": "Europe/Madrid"
+  },
+  "Barcelona": {
+    "capital": "Barcelona",
+    "lat": 41.38879,
+    "lon": 2.15899,
+    "population": 1686208,
+    "matched_name": "Barcelona",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Burgos": {
+    "capital": "Burgos",
+    "lat": 42.34106,
+    "lon": -3.70184,
+    "population": 176418,
+    "matched_name": "Burgos",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Cantabria": {
+    "capital": "Santander",
+    "lat": 43.46589,
+    "lon": -3.80493,
+    "population": 173635,
+    "matched_name": "Santander",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Castellón": {
+    "capital": "Castellón de la Plana",
+    "lat": 39.98567,
+    "lon": -0.04935,
+    "population": 171857,
+    "matched_name": "Castelló de la Plana",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Ceuta": {
+    "capital": "Ceuta",
+    "lat": 35.88919,
+    "lon": -5.32042,
+    "population": 83179,
+    "matched_name": "Ceuta",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Ciudad Real": {
+    "capital": "Ciudad Real",
+    "lat": 38.98626,
+    "lon": -3.92907,
+    "population": 74743,
+    "matched_name": "Ciudad Real",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Cuenca": {
+    "capital": "Cuenca",
+    "lat": 40.06667,
+    "lon": -2.13333,
+    "population": 54898,
+    "matched_name": "Cuenca",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Cáceres": {
+    "capital": "Cáceres",
+    "lat": 39.47649,
+    "lon": -6.37224,
+    "population": 96068,
+    "matched_name": "Cáceres",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Cádiz": {
+    "capital": "Cádiz",
+    "lat": 36.52672,
+    "lon": -6.2891,
+    "population": 116979,
+    "matched_name": "Cadiz",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Córdoba": {
+    "capital": "Córdoba",
+    "lat": 37.89155,
+    "lon": -4.77275,
+    "population": 325708,
+    "matched_name": "Córdoba",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Girona": {
+    "capital": "Girona",
+    "lat": 41.98311,
+    "lon": 2.82493,
+    "population": 100266,
+    "matched_name": "Girona",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Granada": {
+    "capital": "Granada",
+    "lat": 37.18817,
+    "lon": -3.60667,
+    "population": 233532,
+    "matched_name": "Granada",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Guadalajara": {
+    "capital": "Guadalajara",
+    "lat": 40.62862,
+    "lon": -3.16185,
+    "population": 93470,
+    "matched_name": "Guadalajara",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Guipúzcoa": {
+    "capital": "San Sebastián",
+    "lat": 43.31283,
+    "lon": -1.97499,
+    "population": 185357,
+    "matched_name": "Donostia / San Sebastián",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Huelva": {
+    "capital": "Huelva",
+    "lat": 37.26638,
+    "lon": -6.94004,
+    "population": 144258,
+    "matched_name": "Huelva",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Huesca": {
+    "capital": "Huesca",
+    "lat": 42.13615,
+    "lon": -0.4087,
+    "population": 53956,
+    "matched_name": "Huesca",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Islas Baleares": {
+    "capital": "Palma de Mallorca",
+    "lat": 39.56939,
+    "lon": 2.65024,
+    "population": 438234,
+    "matched_name": "Palma",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Jaén": {
+    "capital": "Jaén",
+    "lat": 37.76922,
+    "lon": -3.79028,
+    "population": 113457,
+    "matched_name": "Jaén",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "La Rioja": {
+    "capital": "Logroño",
+    "lat": 42.46615,
+    "lon": -2.45115,
+    "population": 151164,
+    "matched_name": "Logroño",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Las Palmas": {
+    "capital": "Las Palmas de Gran Canaria",
+    "lat": 28.10178,
+    "lon": -15.41573,
+    "population": 383516,
+    "matched_name": "Las Palmas de Gran Canaria",
+    "feature_code": "PPLA",
+    "zoneId": "Atlantic/Canary"
+  },
+  "León": {
+    "capital": "León",
+    "lat": 42.60003,
+    "lon": -5.57032,
+    "population": 124772,
+    "matched_name": "León",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Lugo": {
+    "capital": "Lugo",
+    "lat": 43.00992,
+    "lon": -7.55602,
+    "population": 98025,
+    "matched_name": "Lugo",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Lérida": {
+    "capital": "Lleida",
+    "lat": 41.61674,
+    "lon": 0.62218,
+    "population": 140797,
+    "matched_name": "Lleida",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Madrid": {
+    "capital": "Madrid",
+    "lat": 40.4165,
+    "lon": -3.70256,
+    "population": 3255944,
+    "matched_name": "Madrid",
+    "feature_code": "PPLC",
+    "zoneId": "Europe/Madrid"
+  },
+  "Melilla": {
+    "capital": "Melilla",
+    "lat": 35.29369,
+    "lon": -2.93833,
+    "population": 85985,
+    "matched_name": "Melilla",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Murcia": {
+    "capital": "Murcia",
+    "lat": 37.98704,
+    "lon": -1.13004,
+    "population": 471982,
+    "matched_name": "Murcia",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Málaga": {
+    "capital": "Málaga",
+    "lat": 36.72016,
+    "lon": -4.42034,
+    "population": 592346,
+    "matched_name": "Málaga",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Navarra": {
+    "capital": "Pamplona",
+    "lat": 42.81687,
+    "lon": -1.64323,
+    "population": 208243,
+    "matched_name": "Pamplona",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Ourense": {
+    "capital": "Ourense",
+    "lat": 42.33669,
+    "lon": -7.86407,
+    "population": 105233,
+    "matched_name": "Ourense",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Palencia": {
+    "capital": "Palencia",
+    "lat": 42.00955,
+    "lon": -4.52406,
+    "population": 78629,
+    "matched_name": "Palencia",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Pontevedra": {
+    "capital": "Pontevedra",
+    "lat": 42.431,
+    "lon": -8.64435,
+    "population": 82802,
+    "matched_name": "Pontevedra",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Salamanca": {
+    "capital": "Salamanca",
+    "lat": 40.42972,
+    "lon": -3.67975,
+    "population": 147707,
+    "matched_name": "Salamanca",
+    "feature_code": "PPLX",
+    "zoneId": "Europe/Madrid"
+  },
+  "Santa Cruz de Tenerife": {
+    "capital": "Santa Cruz de Tenerife",
+    "lat": 28.46824,
+    "lon": -16.25462,
+    "population": 211359,
+    "matched_name": "Santa Cruz de Tenerife",
+    "feature_code": "PPLA",
+    "zoneId": "Atlantic/Canary"
+  },
+  "Segovia": {
+    "capital": "Segovia",
+    "lat": 40.94808,
+    "lon": -4.11839,
+    "population": 51683,
+    "matched_name": "Segovia",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Sevilla": {
+    "capital": "Sevilla",
+    "lat": 37.38283,
+    "lon": -5.97317,
+    "population": 686741,
+    "matched_name": "Sevilla",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Soria": {
+    "capital": "Soria",
+    "lat": 41.76401,
+    "lon": -2.46883,
+    "population": 39112,
+    "matched_name": "Soria",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Tarragona": {
+    "capital": "Tarragona",
+    "lat": 41.11905,
+    "lon": 1.24544,
+    "population": 141542,
+    "matched_name": "Tarragona",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Teruel": {
+    "capital": "Teruel",
+    "lat": 40.3456,
+    "lon": -1.10646,
+    "population": 36240,
+    "matched_name": "Teruel",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Toledo": {
+    "capital": "Toledo",
+    "lat": 39.8581,
+    "lon": -4.02263,
+    "population": 86526,
+    "matched_name": "Toledo",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Valencia": {
+    "capital": "Valencia",
+    "lat": 39.47391,
+    "lon": -0.37966,
+    "population": 824340,
+    "matched_name": "Valencia",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Valladolid": {
+    "capital": "Valladolid",
+    "lat": 41.65541,
+    "lon": -4.72353,
+    "population": 300618,
+    "matched_name": "Valladolid",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Vizcaya": {
+    "capital": "Bilbao",
+    "lat": 43.26271,
+    "lon": -2.92528,
+    "population": 347342,
+    "matched_name": "Bilbao",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Zamora": {
+    "capital": "Zamora",
+    "lat": 41.50633,
+    "lon": -5.74456,
+    "population": 61827,
+    "matched_name": "Zamora",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  },
+  "Zaragoza": {
+    "capital": "Zaragoza",
+    "lat": 41.65606,
+    "lon": -0.87734,
+    "population": 686986,
+    "matched_name": "Zaragoza",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Álava": {
+    "capital": "Vitoria-Gasteiz",
+    "lat": 42.84998,
+    "lon": -2.67268,
+    "population": 257407,
+    "matched_name": "Gasteiz / Vitoria",
+    "feature_code": "PPLA",
+    "zoneId": "Europe/Madrid"
+  },
+  "Ávila": {
+    "capital": "Ávila",
+    "lat": 40.65724,
+    "lon": -4.69951,
+    "population": 57657,
+    "matched_name": "Ávila",
+    "feature_code": "PPLA2",
+    "zoneId": "Europe/Madrid"
+  }
+}

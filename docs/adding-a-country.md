@@ -16,14 +16,24 @@ Do this BEFORE writing any model code. It decides the roster shape, the cadence,
 and occasionally whether the country is worth doing at all — and every one of
 those is expensive to change once a `Country` is switchable.
 
-1. **Count the venues.** Nearly every source publishes a sitemap:
-   `sitemap-cinemas.xml/` on Flicks (trailing slash), the city-list page on
-   Webedia. `grep -c '<loc>'` is the whole measurement. This number, not the
-   country's population, is the cost driver.
+1. **Count the venues.** Some sources publish a sitemap — `sitemap-cinemas.xml/`
+   on Flicks (trailing slash) — and there `grep -c '<loc>'` is the whole
+   measurement. Others publish NONE: SensaCine 404s every sitemap name and names
+   none in `robots.txt`, so its own province index (`/cines/provincias-<id>/`,
+   paginated) is the only enumeration there is, and the count comes from sweeping
+   it. Do not trust the count a listing page's `meta description` advertises —
+   SensaCine's summed 6% high against the real deduplicated id count, consistently
+   per province, apparently counting closed venues. Whichever way you get it, this
+   number, not the country's population, is the cost driver.
 2. **Work out the sweep length** and check it against a cadence you would
    actually run: `venues x requests-per-venue x pace = sweep`. Requests-per-venue
-   is a property of the client (Flicks: 1 programme page + 1 AJAX call per
-   advertised day, ~36; Webedia: 1 per theater per date). The UK's numbers are
+   is a property of the client AND of the market (Flicks: 1 programme page + 1
+   AJAX call per advertised day, ~36; Webedia: 1 venue page + 1 per advertised
+   date — 13.4 in Germany but 7.8 in Spain, measured over 30 venues drawn from
+   both large and small provinces). **Measure it on a stratified sample rather
+   than inheriting the sibling's number**: it is the term the cadence guard
+   divides by, and Germany's stayed at a stale 5 through a horizon change,
+   reporting a comfortable 3h sweep while the real one had grown to 7.9h. The UK's numbers are
    the reference point — ~500 flicks-primary venues x 36 x 200ms = ~60min sweep
    on a 420min cadence, i.e. the pacer idle ~86% of the time. **Aim for that
    duty cycle, not for a sweep that merely fits**: a pacer at ~100% duty is a
@@ -113,15 +123,50 @@ those is expensive to change once a `Country` is switchable.
    via `filmstarts(theaterId, cinema)`); a genuinely new source is a new
    `CinemaScraper` fitting the existing contract (no reaper change — open/closed).
 
-   Clients live in a **per-country subpackage** — `services.cinemas.pl` /
-   `.uk` / `.de` — so a new country gets its own `services/cinemas/<cc>/`
-   directory. Anything country-agnostic (the `CinemaScraper` contract, the
+   A client used by ONE country lives in a **per-country subpackage** —
+   `services.cinemas.pl` / `.uk` / `.us` — so such a country gets its own
+   `services/cinemas/<cc>/` directory. A client that comes to serve TWO moves up
+   to `services.cinemas.common` beside `FlicksClient`; that is where
+   `WebediaShowtimesClient` went when Spain joined Germany on it, and leaving it
+   under `.de` would have made every Spanish scrape import a German package. Anything country-agnostic (the `CinemaScraper` contract, the
    `Retrying`/`Chunked`/`AdaptiveTimeout`/`UptimeRecording` wrappers, the
    `SlotsToMovies` fold, the Zyte egress plumbing) belongs in
    `services.cinemas.common` instead — if a new country's client wants to reuse
    a helper that currently sits under `pl`, lift the country-neutral part into
    `common` rather than importing across country packages. The catalog itself
    stays at `services.cinemas`, the one place that composes all of them.
+
+   **A client that now serves two countries moves to `common` and grows a
+   MARKET object** — `FlicksMarket` (UK + US), `WebediaMarket` (DE + ES). Do not
+   parameterise it by host alone. Spain's rollout found three things hiding
+   inside what looked like a host-only difference, and every one of them is
+   silent when wrong:
+
+   - **A localized PATH.** The website-JSON endpoint is uniform across the
+     Webedia family, but the venue page the client reads its day list off is
+     not: `/kinoprogramm/kino/<id>/` in Germany, `/cines/cine/<id>/` in Spain.
+   - **Language-shaped VALUES inside the payload.** `runtime` is `"1 Std. 46
+     Min."` in Germany and `"1h 46min"` in Spain; a certificate is a labelled
+     `"FSK 6"` in one and a bare `"16"` in the other. These parse to `None` or
+     to a wrong number rather than to an error.
+   - **Local ABBREVIATIONS the UI shows.** An original-version screening is
+     `OV`/`OmU` to a German and `VO`/`VOSE` to a Spaniard. The tag vocabulary is
+     shared; the token is the market's.
+
+   Match those language-shaped values **case-sensitively**. German `"Min"` and
+   Spanish `"min"` are the same letters, so a loose match let the German market
+   read a Spanish `"1h 46min"` as 46 minutes — an hour short, plausible, and
+   invisible. Strictness makes a market applied to the wrong payload produce
+   NOTHING, which something notices.
+
+   And give the new market **its own `RealHttpFetch.HostPolicies` row.** Rows
+   match by host SUFFIX, so `filmstarts.de` does not match `www.sensacine.com`
+   and a market with no row of its own **is not paced at all** — the condition
+   that produced the UK's self-inflicted 429 storm, and one that is much easier
+   to miss here because the two markets share a client, a parser and a
+   dashboard. Absent a measurement of the new origin, adopt the SIBLING's
+   converged pace rather than guessing a faster one; it costs sweep length and
+   risks nothing, and the `paceKnob` retunes it live.
 
 **Tests:** `CountrySpec`, `CatalogSpec`, and any city-count spec. `Source.all`
 grows — sanity-check `byDisplayName` uniqueness.
@@ -221,13 +266,22 @@ into a sibling's pod will OOM or throttle it.
    there is `enabled: false` and adding one would deploy a second copy. Fly deploys
    exactly one thing now, the Polish web app; `FlyDeployScopeSpec` holds that rule.
 
-## 4. Web frontend (`<cc>.showtimes.cc`)
+## 4. Web frontend (`showtimes.cc/<cc>/`)
 
-The web tier is three k3s Deployments on `k3s-worker-1`, not three Fly apps — see
+The web tier is one k3s Deployment per country on `k3s-worker-1`, not Fly apps — see
 `infra/kubernetes/web/README.md` for the shape and `docs/domain-cutover.md` for the
-host/DNS side. A fourth country is a fourth overlay, one line in each of the two places that
-name its NodePort by number (the Caddy vhost and the Prometheus target), a DNS
-record, and the `webUrl` flip.
+host/DNS side.
+
+**Every Showtimes country is a PATH on the one `showtimes.cc` host** — it was a
+subdomain each until 2026-08, and that move is what makes a new country cheap:
+`Country.pathPrefix` (`"/es"`) mounts the router, Caddy routes the path to the
+country's NodePort, and there is **no new DNS record and no new vhost**, so
+neither ACME issuance nor a Caddy restart is in the critical path. Poland is the
+exception and stays on its own domain, mounted at the root.
+
+So a new country is: an overlay, one line in each of the two places that name its
+NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
+`webUrl` flip.
 
 1. **A kustomize overlay, `infra/kubernetes/web/overlays/<cc>/`** — copy
    `overlays/de/` and change **only** the three things a country is allowed to
@@ -248,11 +302,12 @@ record, and the `webUrl` flip.
    **one replica** — a second pod behind one NodePort makes kube-proxy alternate
    between two independent sets of counters and every `kinowo_web_*` alert sees
    phantom resets.
-3. **A Caddy vhost** in `infra/nix/hosts/k3s-worker-1/default.nix`:
-   `"<cc>.showtimes.cc".upstream = "127.0.0.1:30913";`. Nothing in the cluster
-   terminates TLS — k3s runs with traefik and servicelb disabled — so Caddy on the
-   node *is* the ingress, and the pod's NodePort stays unreachable from outside
-   (the firewall opens 22/80/443 and nothing else).
+3. **A Caddy PATH UPSTREAM** in `infra/nix/hosts/k3s-worker-1/default.nix` — one
+   line inside the EXISTING `"showtimes.cc"` block, not a vhost of its own:
+   `"/es" = "127.0.0.1:30914";`. Nothing in the cluster terminates TLS — k3s runs
+   with traefik and servicelb disabled — so Caddy on the node *is* the ingress,
+   and the pod's NodePort stays unreachable from outside (the firewall opens
+   22/80/443 and nothing else).
 
    ⚠️ **MERGING THIS DOES NOT DEPLOY IT, AND NOTHING WILL DEPLOY IT FOR YOU.** CI
    only STAGES NixOS closures (`nix-stage-closures.yaml` never activates), and
@@ -280,11 +335,15 @@ record, and the `webUrl` flip.
 
    Check `journalctl -u nixos-auto-apply.service` for the classifier's verdict
    before assuming a nix change landed.
-4. **A DNS A record at OVH**, `<cc>.showtimes.cc → 2.28.47.31`, **before** the
-   first deploy. Caddy issues certificates over ACME HTTP-01, so a name that does
-   not yet resolve fails issuance and the visitor gets a hard TLS error rather than
-   a degraded page — and Let's Encrypt rate-limits *failed* validations, so being
-   early costs a backoff too. `docs/domain-cutover.md` has the full record list.
+4. **No DNS record, and no certificate.** A path-mounted country arrives on a
+   host that already resolves and already holds a valid certificate, so both of
+   the steps that used to gate a launch are simply gone. This is the single
+   biggest saving of the shared-host move, and it removes the failure that used
+   to bite hardest: a name that did not resolve yet failed ACME HTTP-01 issuance,
+   gave the visitor a hard TLS error rather than a degraded page, and earned a
+   Let's Encrypt backoff on the *failed* validation for being early.
+   `docs/domain-cutover.md` has the record list for a country that does want its
+   own domain (Poland is the only one).
 5. **A Prometheus target** in `infra/nix/files/monitoring/scrape-kinowo-apps.yaml`,
    under the `kinowo-web` job:
    `- targets: ["10.20.0.12:30913"]` with
@@ -343,7 +402,7 @@ record, and the `webUrl` flip.
      returns nothing for every country, including the ones serving perfectly.
    - The app containers have **no `curl`**, so `kubectl exec … curl` fails with
      `executable file not found`. Verify a new country from OUTSIDE
-     (`curl https://<cc>.showtimes.cc/`) or from its logs — `MongoConnection
+     (`curl https://showtimes.cc/<cc>/`) or from its logs — `MongoConnection
      connected to kinowo_<cc>` is the line that proves the grant in phase 3 worked.
 
 ## 5. Localization
@@ -351,17 +410,35 @@ record, and the `webUrl` flip.
 - **Web** (`web/src/main/resources/`): `messages.<lang>` mirroring `messages.en`'s
   keys; add `<lang>` to `play.i18n.langs` in `application.conf` (else the deployment
   silently falls back to Polish). Fix any hardcoded literals to `messages(...)`.
+  **Two things outside the bundle are language-shaped too, and neither fails
+  loudly.** `controllers.JsLocale` carries the showtime PLURAL FORMS the client
+  JS renders — a language that adds no entry there silently ships the English
+  "showing/showings" inside an otherwise translated page. And
+  `models.CityGrammar` supplies the preposition in front of a city name for the
+  locative slot ("in London", "en Madrid"); it read a hardcoded English "in" for
+  every non-Polish language until Spain, which would have put "in Madrid" in
+  every Spanish share card and every piece of Spanish structured data.
   Generate `og-home-<cc>.jpg` (the landing share card) AND the country's
-  per-city cards via the `regenerate-og-cards` workflow — add the country to its
-  matrix. This IS a launch blocker now: `OgCardAssetsSpec` fails on a country
-  whose landing or city cards are missing, because a named-but-absent card is
-  not a graceful degrade — it points every share at a 404 and the link previews
-  with no image at all. Germany and the US both shipped that way before the
-  spec existed.
+  per-city cards, and add the country to the `regenerate-og-cards` workflow's
+  matrix so the weekly refresh keeps them current. This IS a launch blocker:
+  `OgCardAssetsSpec` fails on a country whose landing or city cards are missing,
+  because a named-but-absent card is not a graceful degrade — it points every
+  share at a 404 and the link previews with no image at all. Germany and the US
+  both shipped that way before the spec existed.
+  **The workflow cannot produce the FIRST set** — it screenshots the live site,
+  which does not exist before launch. Generate placeholders locally instead; the
+  recipe and the reasoning are in phase 8.
 - **iOS** (`ios/`): add a `<lang>` localization to every key in
   `Localizable.xcstrings` + `InfoPlist.xcstrings`; add `<lang>` to `knownRegions`
   in `project.pbxproj`; add a `Country(code:"<cc>", languageCode:"<lang>")`
-  fallback-seed entry (locale is country-forced). Then add a case to
+  fallback-seed entry (locale is country-forced). The `.xcstrings` files are
+  JSON, so a script is the sane way to add ~85 keys — but re-serialise them in
+  the EXACT style each file already uses or the diff is the whole file instead of
+  the lines you added. The two catalogs here do not agree: `Localizable.xcstrings`
+  is written `"key": value` and `InfoPlist.xcstrings` `"key" : value`, both with a
+  2-space indent and keys sorted. A handful of keys carry NO localizations at all
+  (dev/tuning screens, where the key IS the string); leave those alone, as `de`
+  and `pl` do. Then add a case to
   `KinowoUITests/LocalizationUITests` — it launches the app per country and
   asserts what actually rendered, which is the only layer that catches a key
   you forgot to translate. Three traps worth knowing:
@@ -397,21 +474,26 @@ record, and the `webUrl` flip.
 
 ## 6. Deep links (mobile)
 
-The new `<cc>.showtimes.cc` links should open the native apps — **Universal
+The new `showtimes.cc/<cc>/` links should open the native apps — **Universal
 Links** on iOS, **App Links** on Android — not the browser. The AASA /
 `assetlinks.json` files are served identically on every deployment (same web
 binary, one app id `CQ4YC43YDM.dev.kinowo.Kinowo` / package `pl.kinowo`), so
-there is **no web change** — this is purely app-side. Add the new host in **four**
-places, mirroring the existing PL/UK/DE entries:
+there is **no web change** — this is purely app-side.
 
-1. **iOS entitlement** (`ios/Kinowo/Kinowo.entitlements`) — add
-   `applinks:<cc>.showtimes.cc` (and a `webcredentials:` line to match).
-2. **iOS parser** (`ios/Kinowo/Models/DeepLink.swift`) — add the host to `webHosts`.
-3. **Android manifest** (`android/app/src/main/AndroidManifest.xml`) — add a
-   `<data android:scheme="https" android:host="<cc>.showtimes.cc"/>` inside the
-   `autoVerify` App Link intent-filter.
-4. **Android parser** (`android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt`) —
-   add the host to `WEB_HOSTS`.
+**And since the countries share one host, there is no new HOST to register
+either** — `showtimes.cc` is already in both entitlements and the manifest, and
+already verified. What a new country adds is its PATH SEGMENT, so the parser
+knows to step over `/es/` before reading the city. **Two** places, mirroring the
+existing UK/DE/US entries:
+
+1. **iOS parser** (`ios/Kinowo/Models/DeepLink.swift`) — add the code to
+   `countryPathSegments`.
+2. **Android parser** (`android/app/src/main/java/pl/kinowo/deeplink/DeepLink.kt`) —
+   add the code to `COUNTRY_PATH_SEGMENTS`.
+
+Both are guarded so a segment that is ALSO a city slug still resolves as the
+city, which is why this is a set of country codes rather than a blanket
+"drop the first segment".
 
 Cross-country switching is automatic: both `handleDeepLink`s resolve the linked
 city's country from the live catalog (`countryOf`) and switch the deployment before
@@ -493,15 +575,42 @@ merge and `apply.sh` CI is trying to roll Deployments that do not exist yet.
 **The order that actually works, and why each step precedes the next:**
 
 1. **Mongo grant** (phase 3) — nothing works without it and it fails silently.
-2. **DNS A record** (phase 4) — must resolve BEFORE Caddy tries ACME, or issuance
-   fails and Let's Encrypt rate-limits the failure.
-3. **Merge**, and wait for a GREEN image build whose SHA contains your commit.
-4. **`apply.sh worker <cc> <image>` and `apply.sh web <cc> <image>`** — explicit
+   TWO users need one: the application user (`kinowo_app`, readWrite) and the
+   CI corpus reader (`kinowo-ci-corpus`, read), whose grant list
+   `ConvergenceLegWiringSpec` pins against `Country.all` — so the nix role
+   documenting it has to name the new database or a test fails.
+2. **Merge**, and wait for a GREEN image build whose SHA contains your commit.
+   (No DNS step for a path-mounted country — see phase 4.4.)
+3. **`apply.sh worker <cc> <image>` and `apply.sh web <cc> <image>`** — explicit
    image ref, per phase 4.8.
-5. **Activate the staged NixOS closure by hand** for the Caddy vhost (phase 4.3).
-   Auto-apply will NOT do this for you and the site is not reachable until it is
-   done — this is the step most likely to be forgotten, because every other
-   indicator is already green. Merge to `main` → CI builds once and deploys every leg. Verify each new
-machine is `started` + `/health` passing, the worker connected to `kinowo_<cc>`
-(hydrate logs), and the web app serves the repertoire. Watch the worker's
-credit/steal for the first warm window.
+4. **Activate the staged NixOS closure by hand** for the Caddy path upstream
+   (phase 4.3). Auto-apply will NOT do this for you — the change touches
+   `caddy.service`, which the classifier refuses by design — and `/{cc}/` 404s
+   until it is done, while every other indicator is already green. This is the
+   step most likely to be forgotten. It restarts Caddy, which briefly interrupts
+   TLS for EVERY country; that is seconds and it is accepted, but say so
+   afterwards rather than letting an unexplained blip pass.
+5. **Verify**: each new pod `Running` + `/health` passing, the worker's log
+   line `MongoConnection connected to kinowo_<cc>` (that is what proves step 1),
+   `curl https://showtimes.cc/<cc>/` serving, and the two Prometheus targets
+   green. Watch the first sweep's throttle percentage on panel 14 of
+   kinowo-worker-diag — that is where an unpaced or over-paced new host shows
+   up, and it is the number the pace was set against.
+
+**The share cards are a launch-order problem, and they are the one thing that
+cannot follow the normal order.** `OgCardAssetsSpec` fails while a country's
+`og-home-<cc>.jpg` and per-city cards are missing, so they must be committed
+BEFORE merge — but `regenerate-og-cards.yml` screenshots the LIVE site, which
+does not exist yet. Break the cycle by generating placeholders locally against
+an empty database: the generator renders a valid card with no films (wordmark +
+city line over an empty grid), and the weekly job replaces them with real
+posters once the country serves.
+
+```
+MONGODB_DB=<scratch> KINOWO_COUNTRY=<cc> sbt web/run          # local, empty corpus
+KINOWO_OG_BASE=http://localhost:9000 KINOWO_COUNTRY=<cc> \
+  sbt 'web/PageTest/runMain tools.OgCardGenerator home'       # then again with no arg for the cities
+```
+
+Say out loud in the commit that the cards are placeholders. Germany and the US
+both shipped with NO cards at all, which is what the spec was added to stop.

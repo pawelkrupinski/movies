@@ -1,0 +1,1 @@
+Cartelera de todos los cines de tu ciudad, con notas de IMDb, RT y Metacritic.

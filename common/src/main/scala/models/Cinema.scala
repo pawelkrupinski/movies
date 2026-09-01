@@ -1706,6 +1706,92 @@ object UsRoster {
     built.flatMap(_.venues).map(v => v.cinema.displayName -> (v.cinema: Cinema)).toMap
 }
 
+
+// ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
+// `SpanishRosterData` (generated from data/spain/provinces.json) carries 52
+// provinces / 595 cinemas. Same shape as `GermanCinema` and `UsCinema`: each
+// venue is built ONCE in `SpanishRoster` and reused everywhere, so one `Source`
+// instance serves the province, `Cinema.byCity` and the scrape catalog, and
+// identity equality holds like the hand-authored `case object` cinemas.
+final class SpanishCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
+
+/** One addressable Spanish place: a PROVINCE, which is both the unit SensaCine
+ *  itself enumerates (`/cines/provincias-<id>/`) and the one a Spanish visitor
+ *  names — "los cines de Alicante" is a thing people say, and there are 52 of
+ *  them, a list a picker stays readable at. So unlike the US there is no group
+ *  above it and no metro below it: Spain's picker is flat, like Germany's.
+ *
+ *  Deliberately plain data rather than a [[City]], for the reason [[UsPlace]]
+ *  is: the slug a province ends up addressable under depends on what every
+ *  OTHER country has already claimed, and `City` is the only place that can see
+ *  all those lists at once. It builds the `SpanishProvince` objects from these;
+ *  see `City.spanishCities`. */
+final case class SpanishPlace(
+  /** The slug this province wants — its own folded name. `City` qualifies it
+   *  with [[community]] only on a collision. */
+  preferredSlug: String,
+  name:          String,
+  /** The autonomous community the province belongs to — reference data from
+   *  `data/spain/communities.json`, and used for exactly one thing: qualifying
+   *  a slug another country already serves, the way a state qualifies a US
+   *  metro's. */
+  community:     String,
+  lat:           Double,
+  lon:           Double,
+  /** The province's own zone. A CONSTRUCTOR value rather than the constant
+   *  `GermanRegion` can afford, because Spain has TWO: the Canary provinces
+   *  (Las Palmas, Santa Cruz de Tenerife) run an hour behind the peninsula on
+   *  `Atlantic/Canary`, and a national default would move their "today"
+   *  boundary — the same trap `UsCity` documents for six US zones. */
+  zoneId:        ZoneId,
+  cinemas:       Seq[Cinema],
+)
+
+/** Materialises the generated Spanish roster into [[SpanishPlace]]s +
+ *  `SpanishCinema` venues, once. Exposes the places for `City.spanishCities`,
+ *  the by-display-name grouping for `Cinema.byCity`, and each cinema's SensaCine
+ *  `theaterId` for the scrape catalog — the Spanish counterpart of
+ *  [[GermanRoster]] and [[UsRoster]]. */
+object SpanishRoster {
+  /** Display names already spoken for, which a generated Spanish venue may NOT
+   *  reuse.
+   *
+   *  The same hazard [[GermanRoster.claimedElsewhere]] guards, now looking at
+   *  four countries instead of three: `displayName` is the wire key every
+   *  per-cinema slot is stored under and `Source.byDisplayName` is a plain
+   *  `toMap`, so a Spanish venue colliding with a Polish, UK, German **or US**
+   *  one silently rebinds the loser's stored showtimes to the winner. The
+   *  generator already refuses to emit a collision WITHIN Spain
+   *  (`data/spain/scripts/generate_roster.py`); this catches the cross-country
+   *  case, which the generator cannot see. `SourceWireKeySpec` fails on any that
+   *  slips through.
+   *
+   *  Reads the rosters' `byCity` rather than their raw data, so the comparison is
+   *  against the names actually built — the German and US venues are themselves
+   *  qualified on collision, and it is the qualified name that ends up on the
+   *  wire. */
+  private def claimedElsewhere: Set[String] =
+    (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
+      UsRoster.byCity.flatMap(_._2) ++
+      Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
+
+  private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, String)])] =
+    SpanishRosterData.provinces.map { case (slug, name, community, lat, lon, zone, cinemas) =>
+      // Qualify only the venues that would collide, so the roster's names — and the
+      // wire keys of every already-stored Spanish slot — stay exactly as they are
+      // otherwise.
+      val venues = cinemas.map { case (disp, pill, tid) =>
+        val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
+        (new SpanishCinema(unique, pill), tid)
+      }
+      (SpanishPlace(slug, name, community, lat, lon, ZoneId.of(zone), venues.map(_._1)), venues)
+    }
+
+  val places: Seq[SpanishPlace]              = built.map(_._1)
+  val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (p, v) => p.name -> v.map(_._1) }
+  val theaterIdByCinema: Map[Cinema, String] = built.flatMap(_._2).toMap
+}
+
 object Cinema {
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -2076,7 +2162,8 @@ object Cinema {
   lazy val byCity: Seq[(String, Seq[Cinema])] =
     polishAndUk ++
       GermanRoster.byCity ++  // Germany: the full 158-region roster (data-driven)
-      UsRoster.byCity        // USA: 55 states/territories, the level its venues are grouped at
+      UsRoster.byCity ++      // USA: 55 states/territories, the level its venues are grouped at
+      SpanishRoster.byCity   // Spain: the full 52-province roster (data-driven)
 
   lazy val all: Seq[Cinema] = byCity.flatMap(_._2)
 

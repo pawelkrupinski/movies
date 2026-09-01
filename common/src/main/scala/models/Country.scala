@@ -154,7 +154,7 @@ object Country {
 
   /** Germany — a German-language country on its own `kinowo_de` database,
    *  sourced from the AlloCiné/Filmstarts website-JSON
-   *  ([[services.cinemas.de.WebediaShowtimesClient]], via `www.filmstarts.de`).
+   *  ([[services.cinemas.common.WebediaShowtimesClient]], via `www.filmstarts.de`).
    *  No Filmweb (Polish-only). */
   case object Germany extends Country(
     code           = "de",
@@ -198,9 +198,37 @@ object Country {
     override val cityGroups: Seq[CityGroup] = City.usStates
   }
 
+  /** Spain — a Spanish-language country on its own `kinowo_es` database, sourced
+   *  from SensaCine: the same AlloCiné/Webedia website-JSON Germany runs on,
+   *  reached through the same [[services.cinemas.common.WebediaShowtimesClient]]
+   *  on the `Spain` market. No Filmweb (Polish-only).
+   *
+   *  Its cities are the 52 PROVINCES SensaCine itself enumerates — flat, like
+   *  Germany's regions, because 52 is a list a picker stays readable at and a
+   *  province is what a Spanish visitor names. 595 venues, a third of Germany's
+   *  roster, so its worker is sized like the UK's rather than like Germany's.
+   *
+   *  It shares a client with Germany but NOT a request budget: `www.sensacine.com`
+   *  is a different host, so the pace gate and the 429 back-off — both keyed by
+   *  full hostname — keep the two markets independent. That independence is only
+   *  real because the host has its own `HostPolicies` row; rows match by SUFFIX,
+   *  and a market without one is not paced at all. */
+  case object Spain extends Country(
+    code           = "es",
+    displayName    = "España",
+    language       = Locale.forLanguageTag("es-ES"),
+    mongoDb        = "kinowo_es",
+    filmwebEnabled = false,
+    webOrigin      = Some("https://showtimes.cc"),
+    pathPrefix     = "/es",
+    brandName      = "Showtimes",
+  ) {
+    val cities: Seq[City] = City.spanishCities
+  }
+
   /** Every country the codebase knows about. A worker iterates this; a web
    *  deployment picks one via [[fromEnv]]. */
-  val all: Seq[Country] = Seq(Poland, UnitedKingdom, Germany, UnitedStates)
+  val all: Seq[Country] = Seq(Poland, UnitedKingdom, Germany, UnitedStates, Spain)
 
   /** The fallback country when `KINOWO_COUNTRY` is unset — keeps single-country
    *  (Poland-only) deployments and tests working with no new env var. */

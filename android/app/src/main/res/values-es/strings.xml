@@ -1,0 +1,112 @@
+<resources>
+    <string name="app_name">Showtimes</string>
+
+    <!-- Country picker -->
+    <string name="country_label">País</string>
+
+    <!-- City gate -->
+    <string name="choose_city_title">Elige una ciudad</string>
+    <string name="choose_city_subtitle">Mostramos las sesiones de la ciudad que elijas.</string>
+    <string name="search_city_hint">Busca una ciudad</string>
+    <string name="clear">Borrar</string>
+    <string name="no_city_matching">No hay ninguna ciudad llamada «%1$s».</string>
+    <string name="choose_region_title">Elige una región</string>
+    <string name="choose_region_subtitle">Primero la región y después la ciudad.</string>
+    <string name="search_region_hint">Busca una región</string>
+    <string name="no_region_matching">No hay ninguna región llamada «%1$s».</string>
+    <string name="back_to_regions">Todas las regiones</string>
+    <string name="near_city_label">Estás cerca de</string>
+    <string name="show_repertoire">Ver las sesiones — %1$s</string>
+    <string name="choose_other_city">Elegir otra ciudad</string>
+
+    <!-- "You're nearer another city" prompt -->
+    <string name="nearer_city_title">Estás más cerca de %1$s</string>
+    <string name="switch_repertoire_question">¿Cambiar las sesiones a %1$s?</string>
+    <string name="switch_action">Cambiar</string>
+    <string name="not_now">Ahora no</string>
+
+    <!-- Repertoire list states -->
+    <string name="loading_repertoire">Cargando las sesiones…</string>
+    <string name="error_repertoire">No se han podido cargar las sesiones.</string>
+    <string name="retry">Reintentar</string>
+
+    <!-- Split-city cinema area picker (e.g. London) -->
+    <string name="areabar_all_cinemas">Todos los cines</string>
+    <string name="areapicker_title">Elige tus zonas</string>
+    <string name="areapicker_subtitle">Muestra solo los cines de las zonas que elijas. Puedes cambiarlo cuando quieras.</string>
+    <string name="areapicker_all">Todas las zonas</string>
+    <string name="areapicker_confirm">Ver la cartelera</string>
+
+    <!-- Generic actions / chrome -->
+    <string name="filters">Filtros</string>
+    <string name="back">Atrás</string>
+    <string name="close">Cerrar</string>
+    <string name="share">Compartir</string>
+    <string name="copy_link">Copiar enlace</string>
+    <string name="link_copied">Enlace copiado</string>
+    <string name="hide_film">Ocultar película</string>
+    <string name="all">Todo</string>
+    <string name="search_films">Buscar películas</string>
+
+    <!-- List screen -->
+    <string name="swipe_change_day">Desliza para cambiar de día</string>
+    <string name="no_showings">No hay sesiones.</string>
+
+    <!-- Film detail -->
+    <string name="film_not_found">Película no encontrada.</string>
+    <string name="meta_synopsis">Sinopsis</string>
+    <string name="meta_director">Director</string>
+    <string name="meta_cast">Reparto</string>
+    <string name="meta_countries">Países</string>
+    <string name="showings_header">Sesiones</string>
+    <string name="trailers">Tráileres</string>
+    <string name="trailer_number">Tráiler %1$d</string>
+
+    <!-- Filters sheet -->
+    <string name="sort">Ordenar</string>
+    <string name="filter_country">País</string>
+    <string name="filter_genre">Género</string>
+    <string name="filter_dimension">Formato</string>
+    <string name="filter_version">Versión</string>
+    <string name="version_subtitles">Subtítulos</string>
+    <string name="version_dubbing">Doblaje</string>
+    <string name="imax_only">Solo IMAX</string>
+    <string name="from_time">A partir de</string>
+    <string name="any">Cualquiera</string>
+    <string name="filter_city">Ciudad</string>
+    <string name="filter_cinemas">Cines</string>
+    <string name="hidden_films">Películas ocultas</string>
+    <string name="show">Mostrar</string>
+    <string name="show_all">Mostrar todo</string>
+
+    <!-- Account section -->
+    <string name="account">Cuenta</string>
+    <string name="sign_out">Cerrar sesión</string>
+    <string name="delete_account">Eliminar la cuenta</string>
+    <string name="sign_in">Iniciar sesión</string>
+    <string name="sign_in_google">Iniciar sesión con Google</string>
+    <string name="sign_in_facebook">Iniciar sesión con Facebook</string>
+
+    <!-- Date filter pills -->
+    <string name="date_today">Hoy</string>
+    <string name="date_tomorrow">Mañana</string>
+    <string name="date_week">7 días</string>
+
+    <!-- Sort options -->
+    <string name="sort_earliest">Próxima sesión</string>
+    <string name="sort_rating">Valoración</string>
+
+    <!-- Counts -->
+    <plurals name="showings_more">
+        <item quantity="one">+%1$d sesión</item>
+        <item quantity="other">+%1$d sesiones</item>
+    </plurals>
+    <plurals name="hidden_count">
+        <item quantity="one">%1$d oculta</item>
+        <item quantity="other">%1$d ocultas</item>
+    </plurals>
+    <plurals name="cinemas_off_count">
+        <item quantity="one">%1$d desactivado</item>
+        <item quantity="other">%1$d desactivados</item>
+    </plurals>
+</resources>

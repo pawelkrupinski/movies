@@ -55,7 +55,7 @@ on:
                 required: false
                 default: 'pl'
                 type: choice
-                options: [pl, de, uk, us]
+                options: [pl, de, uk, us, es]
 
 jobs:
     record-country-fixture:

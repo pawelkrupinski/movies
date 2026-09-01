@@ -218,7 +218,7 @@ object GatsbyBoxOfficeParser {
  *
  * These are shared because the repo already reaches this vendor twice: the
  * Gatsby "box office" sites here (Showcase / Everyman, UK) and the classic
- * website-JSON sites behind [[services.cinemas.de.WebediaShowtimesClient]]
+ * website-JSON sites behind [[services.cinemas.common.WebediaShowtimesClient]]
  * (Filmstarts, DE). Both serve the identical `ticketing[].urls[]` shape with
  * the identical `relay.mvtx.us` trailing-junk quirk, and both tag screenings
  * from the identical dotted vocabulary.

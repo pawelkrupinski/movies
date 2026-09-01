@@ -120,7 +120,8 @@ in
             roles: [ { role: "read", db: "kinowo"    },
                      { role: "read", db: "kinowo_uk" },
                      { role: "read", db: "kinowo_de" },
-                     { role: "read", db: "kinowo_us" } ] })
+                     { role: "read", db: "kinowo_us" },
+                     { role: "read", db: "kinowo_es" } ] })
 
         ONE ROLE PER COUNTRY, and the list has to grow with `Country.all`. It did not when
         the United States was added, and the failure is quiet in the worst way: the other

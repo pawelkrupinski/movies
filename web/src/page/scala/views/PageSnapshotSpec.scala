@@ -83,7 +83,8 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
   // Focused assertion for the navbar country switcher (independent of the whole
   // -page byte diff above): the PL deployment (Country.fromEnv default = Poland)
   // renders a #country-select listing every DEPLOYED country's host, with the
-  // current country pre-selected. Germany (no webUrl) must NOT appear.
+  // current country pre-selected — the one flag (`Country.webUrl`) that makes a
+  // country switchable, so nothing else enumerates them.
   "the navbar country switcher" should "render #country-select with each deployed country's host, current one selected" in {
     val html = views.html.repertoire(
       service.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
@@ -96,10 +97,13 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     html should include ("""value="https://kinowo.net"""")
     html should include ("""value="https://showtimes.cc/uk"""")
     html should include ("""value="https://showtimes.cc/de"""")
+    html should include ("""value="https://showtimes.cc/us"""")
+    html should include ("""value="https://showtimes.cc/es"""")
     // ...with the current country (Poland, fromEnv default) pre-selected.
     html should include ("""value="https://kinowo.net" selected""")
-    // Germany is now deployed (showtimes-de) → present in the switcher.
+    // Each deployed country's own label, in its own language.
     html should include (">Deutschland<")
+    html should include (">España<")
   }
 
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {

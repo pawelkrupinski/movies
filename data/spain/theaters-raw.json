@@ -1,0 +1,4167 @@
+[
+  {
+    "theaterId": "E0124",
+    "name": "Barbanza Multicines",
+    "town": "Ribeira",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0437",
+    "name": "Cantones Cines",
+    "town": "A Coruña",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0441",
+    "name": "Cines Forum Metropolitano",
+    "town": "A Coruña",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0494",
+    "name": "Multicines Bergantiños",
+    "town": "Carballo",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0694",
+    "name": "Cines Xunqueira",
+    "town": "Cee",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0734",
+    "name": "Yelmo Cines Espacio Coruña",
+    "town": "A Coruña",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0741",
+    "name": "Cine Duplex",
+    "town": "Ferrol",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0762",
+    "name": "Multicines Compostela",
+    "town": "Santiago De Compostela",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0770",
+    "name": "Cinesa Marineda City",
+    "town": "A Coruña",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0789",
+    "name": "Odeon Multicines Narón",
+    "town": "Narón",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0795",
+    "name": "Cinesa As Cancelas",
+    "town": "Santiago De Compostela",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0848",
+    "name": "Numax",
+    "town": "Santiago De Compostela",
+    "provinceId": "27438",
+    "provinceName": "A Coruña"
+  },
+  {
+    "theaterId": "E0205",
+    "name": "Yelmo Cines Imaginalia",
+    "town": "Albacete",
+    "provinceId": "27411",
+    "provinceName": "Albacete"
+  },
+  {
+    "theaterId": "E0448",
+    "name": "Gran Teatro de Villarrobledo",
+    "town": "Albacete",
+    "provinceId": "27411",
+    "provinceName": "Albacete"
+  },
+  {
+    "theaterId": "E0710",
+    "name": "Cines Coliseum",
+    "town": "Almansa",
+    "provinceId": "27411",
+    "provinceName": "Albacete"
+  },
+  {
+    "theaterId": "E0778",
+    "name": "Yelmo Cines Vialia Albacete",
+    "town": "Albacete",
+    "provinceId": "27411",
+    "provinceName": "Albacete"
+  },
+  {
+    "theaterId": "E0008",
+    "name": "Cine Aana Alicante",
+    "town": "Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0009",
+    "name": "Cine Aana San Juan",
+    "town": "San Juan de Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0033",
+    "name": "Cine BIC",
+    "town": "Alcoy",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0035",
+    "name": "Abc Elx",
+    "town": "Elche",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0197",
+    "name": "Auto Cine Drive In",
+    "town": "Denia",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0213",
+    "name": "Odeon Multicines Alicante",
+    "town": "San Vicente del Raspeig",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0249",
+    "name": "Cine Club Xábia",
+    "town": "Jávea",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0254",
+    "name": "Cine Jayan",
+    "town": "Jávea",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0268",
+    "name": "Cinema Roma",
+    "town": "Alfas Del Pi",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0293",
+    "name": "Cinebox Plaza Mar 2",
+    "town": "Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0397",
+    "name": "Cines Panoramis",
+    "town": "Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0422",
+    "name": "Cines Colci ",
+    "town": "Benidorm",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0423",
+    "name": "Cines Colci Rincón",
+    "town": "Benidorm",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0451",
+    "name": "Cine Imf Torrevieja",
+    "town": "Torrevieja",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0545",
+    "name": "Cine Navas",
+    "town": "Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0552",
+    "name": "Cines Axion de Orihuela",
+    "town": "Orihuela",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0631",
+    "name": "Yelmo Cines Puerta De Alicante",
+    "town": "Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0636",
+    "name": "Yelmo Cines Vinalopo",
+    "town": "Petrer",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0658",
+    "name": "Cine Imf Ondara",
+    "town": "Ondara",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0721",
+    "name": "Multicines El Altet",
+    "town": "Cocentaina",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0728",
+    "name": "CinesMax 3D Petrer",
+    "town": "Petrer",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0752",
+    "name": "Cines Axion de Santa Pola",
+    "town": "Santa Pola",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0783",
+    "name": "Autocine El Sur",
+    "town": "Mutxamel",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0819",
+    "name": "Kinépolis Alicante",
+    "town": "Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0853",
+    "name": "Cines Odeón",
+    "town": "Maitino",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0884",
+    "name": "Cines Axion Playa de San Juan ",
+    "town": "Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0924",
+    "name": "Cine Calp",
+    "town": "Calpe",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0950",
+    "name": "Terraza Imperial - Cine de Verano",
+    "town": "Callosa De Segura",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0951",
+    "name": "Cines Costa",
+    "town": "Alicante",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0957",
+    "name": "Colci Suyma",
+    "town": "Finestrat",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0961",
+    "name": "Cine La Esperanza",
+    "town": "San Vicente del Raspeig",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0968",
+    "name": "Cine Horadada",
+    "town": "Marina",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0970",
+    "name": "Cine Navia",
+    "town": "Dehesa De Campoamor",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0971",
+    "name": "Cine Las Villas",
+    "town": "Marina",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E2915",
+    "name": "Cine Club Villena",
+    "town": "Villena",
+    "provinceId": "27413",
+    "provinceName": "Alicante"
+  },
+  {
+    "theaterId": "E0359",
+    "name": "Kinépolis Almería Mediterráneo",
+    "town": "Almeria",
+    "provinceId": "27412",
+    "provinceName": "Almería"
+  },
+  {
+    "theaterId": "E0620",
+    "name": "Yelmo Cines Roquetas",
+    "town": "Roquetas de Mar",
+    "provinceId": "27412",
+    "provinceName": "Almería"
+  },
+  {
+    "theaterId": "E0865",
+    "name": "Cine Albox",
+    "town": "Albox",
+    "provinceId": "27412",
+    "provinceName": "Almería"
+  },
+  {
+    "theaterId": "E0909",
+    "name": "Yelmo Cines Torrecárdenas",
+    "town": "Almeria",
+    "provinceId": "27412",
+    "provinceName": "Almería"
+  },
+  {
+    "theaterId": "E0911",
+    "name": "Cine Terraza de Verano de Vera",
+    "town": "Vera",
+    "provinceId": "27412",
+    "provinceName": "Almería"
+  },
+  {
+    "theaterId": "E0943",
+    "name": "Cine de verano Aguadulce",
+    "town": "Parador Hortichuelas",
+    "provinceId": "27412",
+    "provinceName": "Almería"
+  },
+  {
+    "theaterId": "E0965",
+    "name": "Cine Berja",
+    "town": "Berja",
+    "provinceId": "27412",
+    "provinceName": "Almería"
+  },
+  {
+    "theaterId": "E0975",
+    "name": "Cine Tenis",
+    "town": "Garrucha",
+    "provinceId": "27412",
+    "provinceName": "Almería"
+  },
+  {
+    "theaterId": "E0290",
+    "name": "Cinebox Parque Astur",
+    "town": "Corvera de Asturias",
+    "provinceId": "27431",
+    "provinceName": "Asturias"
+  },
+  {
+    "theaterId": "E0398",
+    "name": "Cinesa Parque Principado",
+    "town": "Siero",
+    "provinceId": "27431",
+    "provinceName": "Asturias"
+  },
+  {
+    "theaterId": "E0623",
+    "name": "Yelmo Cines Los Prados",
+    "town": "Oviedo",
+    "provinceId": "27431",
+    "provinceName": "Asturias"
+  },
+  {
+    "theaterId": "E0784",
+    "name": "Autocine Gijón",
+    "town": "Gijon",
+    "provinceId": "27431",
+    "provinceName": "Asturias"
+  },
+  {
+    "theaterId": "E0814",
+    "name": "Odeon Multicines Parque Astur",
+    "town": "Corvera de Asturias",
+    "provinceId": "27431",
+    "provinceName": "Asturias"
+  },
+  {
+    "theaterId": "E1037",
+    "name": "Cine Fantasio Navia",
+    "town": "Navia",
+    "provinceId": "27431",
+    "provinceName": "Asturias"
+  },
+  {
+    "theaterId": "E0372",
+    "name": "Cines Victoria Don Benito",
+    "town": "Don Benito",
+    "provinceId": "27416",
+    "provinceName": "Badajoz"
+  },
+  {
+    "theaterId": "E0383",
+    "name": "Cines Victoria Mérida",
+    "town": "Merida",
+    "provinceId": "27416",
+    "provinceName": "Badajoz"
+  },
+  {
+    "theaterId": "E0408",
+    "name": "mk2 Conquistadores",
+    "town": "Badajoz",
+    "provinceId": "27416",
+    "provinceName": "Badajoz"
+  },
+  {
+    "theaterId": "E0508",
+    "name": "Multicines España",
+    "town": "Zafra",
+    "provinceId": "27416",
+    "provinceName": "Badajoz"
+  },
+  {
+    "theaterId": "E0719",
+    "name": "Cines Victoria Almendralejo",
+    "town": "Almendralejo",
+    "provinceId": "27416",
+    "provinceName": "Badajoz"
+  },
+  {
+    "theaterId": "E1022",
+    "name": "Cine La Fábrica",
+    "town": "Fuente De Cantos",
+    "provinceId": "27416",
+    "provinceName": "Badajoz"
+  },
+  {
+    "theaterId": "E1027",
+    "name": "Cine Municipal Herrera del Duque",
+    "town": "Herrera Del Duque",
+    "provinceId": "27416",
+    "provinceName": "Badajoz"
+  },
+  {
+    "theaterId": "E1038",
+    "name": "Yelmo Cines Premium El Faro",
+    "town": "Badajoz",
+    "provinceId": "27416",
+    "provinceName": "Badajoz"
+  },
+  {
+    "theaterId": "E0091",
+    "name": "Aribau Multicines",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0120",
+    "name": "Multicines Bages 3D",
+    "town": "Manresa",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0136",
+    "name": "Bosque Multicines",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0230",
+    "name": "Cine Capri",
+    "town": "Prat De Llobregat",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0276",
+    "name": "Cinebaix",
+    "town": "Sant Feliu De Llobregat",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0304",
+    "name": "Cinema Catalunya",
+    "town": "Terrassa",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0311",
+    "name": "Cinema Prado",
+    "town": "Sitges",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0312",
+    "name": "Cinema Retiro",
+    "town": "Sitges",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0314",
+    "name": "Cinema Sala Mozart",
+    "town": "Calella",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0351",
+    "name": "Cines Imperial",
+    "town": "Sabadell",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0374",
+    "name": "Cinesa Parc Vallès",
+    "town": "Terrassa",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0381",
+    "name": "Cinesa Diagonal",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0382",
+    "name": "Cinesa Diagonal Mar",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0388",
+    "name": "Cinesa SOM Multiespai",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0391",
+    "name": "Cinesa La Farga",
+    "town": "L'Hospitalet de LLobregat",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0396",
+    "name": "Kinépolis Mataró Parc",
+    "town": "Mataro",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0403",
+    "name": "Cinemes Sant Cugat",
+    "town": "Sant Cugat Del Valles",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0420",
+    "name": "Club Catalunya",
+    "town": "Terrassa",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0439",
+    "name": "Filmax Gran Via 3D",
+    "town": "L'Hospitalet de LLobregat",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0442",
+    "name": "Glòries Multicines",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0447",
+    "name": "Gran Sarrià Multicines",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0495",
+    "name": "Multicines Catalunya",
+    "town": "Berga",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0504",
+    "name": "Multicines Eix Macià",
+    "town": "Sabadell",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0507",
+    "name": "Ocine Granollers",
+    "town": "Granollers",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0521",
+    "name": "Odeon Multicines Llobregat",
+    "town": "Cornella De Llobregat",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0535",
+    "name": "Multicines Sucre",
+    "town": "Vic",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0581",
+    "name": "Renoir Floridablanca",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0612",
+    "name": "Cine Vigatà",
+    "town": "Vic",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0615",
+    "name": "Yelmo Cines Baricentro",
+    "town": "Barbera Del Valles",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0633",
+    "name": "Yelmo Cines Premium Sant Cugat",
+    "town": "Sant Cugat Del Valles",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0651",
+    "name": "Ocine Arenys",
+    "town": "Arenys De Mar",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0655",
+    "name": "Cines Montcada",
+    "town": "Montcada",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0661",
+    "name": "Cinesa Barnasud",
+    "town": "Gava",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0692",
+    "name": "Cineclub Vilafranca - Sala Zazie-Casa",
+    "town": "Vilafranca Del Penedes",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0713",
+    "name": "Ocine Màgic",
+    "town": "Badalona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0714",
+    "name": "Multicinemes La Vailet",
+    "town": "Sant Vicenç Dels Horts",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0735",
+    "name": "Yelmo Cines Abrera",
+    "town": "Abrera",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0745",
+    "name": "Ocine Sant Celoni Altrium",
+    "town": "Sant Celoni",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0748",
+    "name": "Cinemes Can Castellet",
+    "town": "Sant Boi De Llobregat",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0756",
+    "name": "Kinépolis Barcelona Full Splau",
+    "town": "Cornella De Llobregat",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0757",
+    "name": "Cine Kubrick",
+    "town": "Vilafranca Del Penedes",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0764",
+    "name": "Arenas Multicines 3D",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0806",
+    "name": "Yelmo Cines Premium Castelldefels",
+    "town": "Castelldefels",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0808",
+    "name": "Balmes Multicines",
+    "town": "Barcelona",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0827",
+    "name": "Cine Alhambra",
+    "town": "Samalus",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0836",
+    "name": "Cine la Calandria",
+    "town": "Masnou",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0857",
+    "name": "Cinesa Llobregat Centre",
+    "town": "Cornella De Llobregat",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0858",
+    "name": "Cinema Teatre Patronat",
+    "town": "Premia De Mar",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0889",
+    "name": "Cinema Esbarjo",
+    "town": "Canoves",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0906",
+    "name": "Ateneu Cinema ",
+    "town": "Igualada",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0907",
+    "name": "Cinema Ribes",
+    "town": "Olivella-Urbanitzacio",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0919",
+    "name": "Espai L'Amistat",
+    "town": "Premia De Mar",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E1006",
+    "name": "Mont-Àgora Cinemes",
+    "town": "Santa Margarida Montbui",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E2908",
+    "name": "Odeon Multicines Vilanova",
+    "town": "Vilanova I La Geltru",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "G02RB",
+    "name": "Cinema Edison",
+    "town": "Granollers",
+    "provinceId": "27420",
+    "provinceName": "Barcelona"
+  },
+  {
+    "theaterId": "E0279",
+    "name": "Odeon Multicines Burgos",
+    "town": "Burgos",
+    "provinceId": "27400",
+    "provinceName": "Burgos"
+  },
+  {
+    "theaterId": "E0370",
+    "name": "Cines Van Golem Arlanzón",
+    "town": "Burgos",
+    "provinceId": "27400",
+    "provinceName": "Burgos"
+  },
+  {
+    "theaterId": "E0647",
+    "name": "Cine Novedades Miranda de Ebro",
+    "town": "Miranda De Ebro",
+    "provinceId": "27400",
+    "provinceName": "Burgos"
+  },
+  {
+    "theaterId": "E0777",
+    "name": "Cines Victoria Ribera de Duero",
+    "town": "Aranda De Duero",
+    "provinceId": "27400",
+    "provinceName": "Burgos"
+  },
+  {
+    "theaterId": "E0123",
+    "name": "Cinesa Bahía de Santander",
+    "town": "Santander",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0257",
+    "name": "Cine La Vidriera",
+    "town": "Camargo",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0349",
+    "name": "Cines Embajadores Santander",
+    "town": "Santander",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0560",
+    "name": "Palacios De Festivales",
+    "town": "Santander",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0565",
+    "name": "Yelmo Cines Premium Peñacastillo",
+    "town": "Santander",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0567",
+    "name": "Cine Playa Dorada",
+    "town": "Noja",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0594",
+    "name": "Sala Bretón",
+    "town": "Astillero",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0599",
+    "name": "Teatro De Los Corrales De Buelna",
+    "town": "Corrales",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0688",
+    "name": "Cine Los Ángeles",
+    "town": "Santander",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0917",
+    "name": "Casa de Cultura Doctor Velasco ",
+    "town": "Laredo",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0918",
+    "name": "Teatro Casino Liceo de Santoña",
+    "town": "Santoña",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0979",
+    "name": "Filmoteca de Cantabria - Santander",
+    "town": "Santander",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E1045",
+    "name": "Ocine Premium Bahía Real",
+    "town": "Camargo",
+    "provinceId": "27397",
+    "provinceName": "Cantabria"
+  },
+  {
+    "theaterId": "E0366",
+    "name": "Cines Sucre",
+    "town": "Villarreal",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0493",
+    "name": "Cines Axion Benicarló",
+    "town": "Benicarlo",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0571",
+    "name": "Neocine Puerto Azahar",
+    "town": "Castellón de la plana",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0654",
+    "name": "Cinesa Salera",
+    "town": "Castellón de la plana",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0791",
+    "name": "Teatre Municipal Carmen Tur - Antic Cine España",
+    "town": "Vall D'uixo",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0892",
+    "name": "JJ Cinema ",
+    "town": "Vinaros",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0925",
+    "name": "Ocine Premium Estepark",
+    "town": "Castellón de la plana",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0926",
+    "name": "Terraza Neptuno",
+    "town": "Calzada",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0941",
+    "name": "Cine Terraza Avenida",
+    "town": "Calzada",
+    "provinceId": "27428",
+    "provinceName": "Castellón"
+  },
+  {
+    "theaterId": "E0478",
+    "name": "Marina Cinemas 7",
+    "town": "Ceuta",
+    "provinceId": "27404",
+    "provinceName": "Ceuta"
+  },
+  {
+    "theaterId": "E0496",
+    "name": "Multicines Cinemancha",
+    "town": "Alcazar De San Juan",
+    "provinceId": "27394",
+    "provinceName": "Ciudad Real"
+  },
+  {
+    "theaterId": "E0526",
+    "name": "Multicines Ortega",
+    "town": "Puertollano",
+    "provinceId": "27394",
+    "provinceName": "Ciudad Real"
+  },
+  {
+    "theaterId": "E0562",
+    "name": "Parque De Ocio Las Vías",
+    "town": "Ciudad Real",
+    "provinceId": "27394",
+    "provinceName": "Ciudad Real"
+  },
+  {
+    "theaterId": "E0659",
+    "name": "La Dehesa Tomelloso",
+    "town": "Tomelloso",
+    "provinceId": "27394",
+    "provinceName": "Ciudad Real"
+  },
+  {
+    "theaterId": "E0701",
+    "name": "Multicines Valdepeñas",
+    "town": "Valdepeñas",
+    "provinceId": "27394",
+    "provinceName": "Ciudad Real"
+  },
+  {
+    "theaterId": "E0990",
+    "name": "Daimiel Cinema",
+    "town": "Daimiel",
+    "provinceId": "27394",
+    "provinceName": "Ciudad Real"
+  },
+  {
+    "theaterId": "E1023",
+    "name": "Cine Teatro Municipal Pedro Muñoz",
+    "town": "Pedro Muñoz",
+    "provinceId": "27394",
+    "provinceName": "Ciudad Real"
+  },
+  {
+    "theaterId": "E1024",
+    "name": "Cine Reina Sofía Socuéllamos",
+    "town": "Socuellamos",
+    "provinceId": "27394",
+    "provinceName": "Ciudad Real"
+  },
+  {
+    "theaterId": "E0020",
+    "name": "Abaco Cuenca",
+    "town": "Cuenca",
+    "provinceId": "27434",
+    "provinceName": "Cuenca"
+  },
+  {
+    "theaterId": "E0502",
+    "name": "Odeon Multicines Cuenca",
+    "town": "Cuenca",
+    "provinceId": "27434",
+    "provinceName": "Cuenca"
+  },
+  {
+    "theaterId": "E0852",
+    "name": "Odeon Multicines Mirador",
+    "town": "Cuenca",
+    "provinceId": "27434",
+    "provinceName": "Cuenca"
+  },
+  {
+    "theaterId": "E0914",
+    "name": "Cine de Verano Tarancón",
+    "town": "Tarancon",
+    "provinceId": "27434",
+    "provinceName": "Cuenca"
+  },
+  {
+    "theaterId": "E1031",
+    "name": "Cine Iniesta",
+    "town": "Iniesta",
+    "provinceId": "27434",
+    "provinceName": "Cuenca"
+  },
+  {
+    "theaterId": "E0067",
+    "name": "Multicines Alkázar",
+    "town": "Plasencia",
+    "provinceId": "27403",
+    "provinceName": "Cáceres"
+  },
+  {
+    "theaterId": "E0143",
+    "name": "Multicines Cáceres",
+    "town": "Caceres",
+    "provinceId": "27403",
+    "provinceName": "Cáceres"
+  },
+  {
+    "theaterId": "E0772",
+    "name": "Cine Arroyo de la Luz",
+    "town": "Arroyo De La Luz",
+    "provinceId": "27403",
+    "provinceName": "Cáceres"
+  },
+  {
+    "theaterId": "E0832",
+    "name": "Cine Coria",
+    "town": "Guijo De Coria",
+    "provinceId": "27403",
+    "provinceName": "Cáceres"
+  },
+  {
+    "theaterId": "E0867",
+    "name": "Cine Avenida Jaraíz",
+    "town": "Jaraiz De La Vera",
+    "provinceId": "27403",
+    "provinceName": "Cáceres"
+  },
+  {
+    "theaterId": "E0886",
+    "name": "Cines Navalmoral",
+    "town": "Navalmoral De La Mata",
+    "provinceId": "27403",
+    "provinceName": "Cáceres"
+  },
+  {
+    "theaterId": "E0171",
+    "name": "Multicines el Centro",
+    "town": "Cadiz",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0212",
+    "name": "Cines Plaza San Fernando",
+    "town": "San Fernando",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0218",
+    "name": "Al-Andalus Sanlucar",
+    "town": "Sanlucar De Barrameda",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0245",
+    "name": "Odeon Bahía Plaza",
+    "town": "Barrios",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0332",
+    "name": "mk2 Bahía de Cádiz",
+    "town": "Cadiz",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0491",
+    "name": "Multicines Bahia Mar",
+    "town": "El Puerto de Santa Maria",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0520",
+    "name": "Multicines Las Salinas",
+    "town": "Chiclana De La Frontera",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0568",
+    "name": "Portalejo Cinemas",
+    "town": "Rota",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0669",
+    "name": "Yelmo Cines Área Sur",
+    "town": "Jerez De La Frontera",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0766",
+    "name": "Cines Victoria Rota",
+    "town": "Rota",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0902",
+    "name": "Al-Andalus Cádiz",
+    "town": "Cadiz",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0905",
+    "name": "Arcos Cinema",
+    "town": "Arcos De La Frontera",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0910",
+    "name": "Yelmo Cines Premium Puerta Europa ",
+    "town": "Algeciras",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0912",
+    "name": "Cine Alba Chipiona",
+    "town": "Chipiona",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0999",
+    "name": "Cine de Verano La Muralla",
+    "town": "Zahara De Los Atunes",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E1018",
+    "name": "Teatro San Francisco",
+    "town": "Manzanete",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E1019",
+    "name": "Teatro Maestro Francisco Fatou",
+    "town": "Ubrique",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E1042",
+    "name": "Yelmo Cines Premium Bahía Sur",
+    "town": "San Fernando",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E1044",
+    "name": "Multicines Jerez UCC",
+    "town": "Jerez De La Frontera",
+    "provinceId": "27436",
+    "provinceName": "Cádiz"
+  },
+  {
+    "theaterId": "E0409",
+    "name": "mk2 El Tablero",
+    "town": "Cordoba",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E0489",
+    "name": "Artesiete Lucena",
+    "town": "Lucena",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E0512",
+    "name": "Guadalquivir Cinemas 10",
+    "town": "Cordoba",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E0859",
+    "name": "Cine Pósito",
+    "town": "Pozoblanco",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E0868",
+    "name": "Cinestudio Municipal Cabra",
+    "town": "Cabra",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E0915",
+    "name": "Cine Baena",
+    "town": "Baena",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E0948",
+    "name": "Cine Delicias",
+    "town": "Cordoba",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E1009",
+    "name": "Peñarroya Cinema",
+    "town": "Estacion De Espiel",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E1012",
+    "name": "Cine Municipal Huércal-Overa",
+    "town": "Estacion De Espiel",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E1013",
+    "name": "Cine Mota del Cuervo",
+    "town": "Estacion De Espiel",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E1016",
+    "name": "Centro Cultural de la Villa - Pastora Soler",
+    "town": "Estacion De Espiel",
+    "provinceId": "27398",
+    "provinceName": "Córdoba"
+  },
+  {
+    "theaterId": "E0281",
+    "name": "Odeon Multicines Girona",
+    "town": "Salt",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0315",
+    "name": "Cinema Teatre Comtal",
+    "town": "Ripoll",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0316",
+    "name": "Cinema Truffaut",
+    "town": "Girona",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0323",
+    "name": "Multicines Olot",
+    "town": "Olot",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0324",
+    "name": "Cinemes Roses",
+    "town": "Roses",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0345",
+    "name": "Cat Cinemes",
+    "town": "Figueres",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0362",
+    "name": "Ocine Girona",
+    "town": "Girona",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0456",
+    "name": "Cinema Kyton",
+    "town": "Palamós",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0462",
+    "name": "Ocine Blanes",
+    "town": "Blanes",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0554",
+    "name": "Ocine Platja d'Aro",
+    "town": "Platja d'Aro",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0896",
+    "name": "Cinema Montgrí",
+    "town": "Fontanilles",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0969",
+    "name": "Cinema Casino",
+    "town": "Begur",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0978",
+    "name": "Teatro Municipal de Palafrugel",
+    "town": "Palafrugell",
+    "provinceId": "27421",
+    "provinceName": "Girona"
+  },
+  {
+    "theaterId": "E0301",
+    "name": "Megarama Granada",
+    "town": "Granada",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0452",
+    "name": "Kinépolis Granada",
+    "town": "Pulianas",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0689",
+    "name": "Cine Madrigal",
+    "town": "Granada",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0712",
+    "name": "Teatro Isabel La Catolica",
+    "town": "Granada",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0722",
+    "name": "Artesiete Alhsur",
+    "town": "Zubia",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0743",
+    "name": "Cine Liszt Terraza de verano",
+    "town": "Zubia",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0787",
+    "name": "Ocine Serrallo",
+    "town": "Granada",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0849",
+    "name": "Salón Cine Ideal",
+    "town": "Baza",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0866",
+    "name": "Kinépolis Nevada",
+    "town": "Armilla",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0869",
+    "name": "Motril Cinema",
+    "town": "Gorgoracha",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0952",
+    "name": "Cine San Cristobal",
+    "town": "Almuñecar",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0960",
+    "name": "Cañaveral Cinema",
+    "town": "Salobreña",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0981",
+    "name": "Huétor Cinema",
+    "town": "Huetor-Tajar",
+    "provinceId": "27399",
+    "provinceName": "Granada"
+  },
+  {
+    "theaterId": "E0511",
+    "name": "Multicines Guadalajara",
+    "town": "Guadalajara",
+    "provinceId": "27395",
+    "provinceName": "Guadalajara"
+  },
+  {
+    "theaterId": "E0955",
+    "name": "Cultura Azuqueca",
+    "town": "Azuqueca De Henares",
+    "provinceId": "27395",
+    "provinceName": "Guadalajara"
+  },
+  {
+    "theaterId": "E0214",
+    "name": "Aita Mari Zinema",
+    "town": "Zumaia",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0227",
+    "name": "Baztartxo Antzokia",
+    "town": "Azkoitia",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0263",
+    "name": "Cine Modelo",
+    "town": "Eibar",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0296",
+    "name": "Cinesa Urbil",
+    "town": "Usurbil",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0329",
+    "name": "Cines Antiguo Berri",
+    "town": "San Sebastián",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0472",
+    "name": "Leidor Zinema",
+    "town": "Ibarra",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0537",
+    "name": "Ocine Mendibil",
+    "town": "Irun",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0551",
+    "name": "Oñatiko Zinea",
+    "town": "Oñati",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0570",
+    "name": "Cine Príncipe",
+    "town": "San Sebastián",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0603",
+    "name": "Cine Trueba",
+    "town": "San Sebastián",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0605",
+    "name": "Usurbe Antzokia",
+    "town": "Beasain",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0637",
+    "name": "Multicines Niessen Zinemak",
+    "town": "Renteria",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0769",
+    "name": "Teatro Coliseo",
+    "town": "Eibar",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0890",
+    "name": "Herri Antzokia ",
+    "town": "Ordizia",
+    "provinceId": "27415",
+    "provinceName": "Guipúzcoa"
+  },
+  {
+    "theaterId": "E0278",
+    "name": "Cines Aqualón",
+    "town": "Huelva",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0429",
+    "name": "Condado Cinemas 7",
+    "town": "Palma Del Condado",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0516",
+    "name": "Multicines La Dehesa - Islantilla",
+    "town": "Isla-Cristina",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0641",
+    "name": "Al-Andalus Punta Umbría 3D",
+    "town": "Punta Umbria",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0765",
+    "name": "Cine Vip 3d Lepe",
+    "town": "Lepe",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0788",
+    "name": "Cine 3D Ayamonte",
+    "town": "Ayamonte",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0805",
+    "name": "Artesiete Holea",
+    "town": "Huelva",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0945",
+    "name": "La Dehesa Ayamonte",
+    "town": "Ayamonte",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0995",
+    "name": "Cine Alba Mazagón",
+    "town": "Mazagon",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E2913",
+    "name": "Cortegana Cinema",
+    "town": "Cortegana",
+    "provinceId": "27424",
+    "provinceName": "Huelva"
+  },
+  {
+    "theaterId": "E0250",
+    "name": "Cine Cortés",
+    "town": "Barbastro",
+    "provinceId": "27408",
+    "provinceName": "Huesca"
+  },
+  {
+    "theaterId": "E0256",
+    "name": "Cine La Paz",
+    "town": "Binefar",
+    "provinceId": "27408",
+    "provinceName": "Huesca"
+  },
+  {
+    "theaterId": "E0271",
+    "name": "Cine Teatro Victoria",
+    "town": "Monzon",
+    "provinceId": "27408",
+    "provinceName": "Huesca"
+  },
+  {
+    "theaterId": "E0497",
+    "name": "CineMundo Huesca",
+    "town": "Huesca",
+    "provinceId": "27408",
+    "provinceName": "Huesca"
+  },
+  {
+    "theaterId": "E0643",
+    "name": "Auditorio La Colina",
+    "town": "Sabiñanigo",
+    "provinceId": "27408",
+    "provinceName": "Huesca"
+  },
+  {
+    "theaterId": "E0667",
+    "name": "Palacio De Congresos Boltaña",
+    "town": "Boltaña",
+    "provinceId": "27408",
+    "provinceName": "Huesca"
+  },
+  {
+    "theaterId": "E0964",
+    "name": "Teatro Municipal Los Titiriteros",
+    "town": "Binefar",
+    "provinceId": "27408",
+    "provinceName": "Huesca"
+  },
+  {
+    "theaterId": "E0229",
+    "name": "Cinema Ca-Los",
+    "town": "Ciutadella De Menorca",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0360",
+    "name": "Cines Ocimax",
+    "town": "Palma de Mallorca",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0365",
+    "name": "CineCiutat",
+    "town": "Palma de Mallorca",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0386",
+    "name": "Cinesa Festival Park",
+    "town": "Marratxi",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0503",
+    "name": "Multicines Eivissa",
+    "town": "Ibiza",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0522",
+    "name": "Multicines Manacor",
+    "town": "Manacor",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0533",
+    "name": "Multicines Rivoli",
+    "town": "Palma de Mallorca",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0593",
+    "name": "Sala Augusta",
+    "town": "Palma de Mallorca",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0639",
+    "name": "Ocimax Multisalas",
+    "town": "Mao",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0755",
+    "name": "Teatro España",
+    "town": "Santa Eulalia",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0782",
+    "name": "Cinemes Moix Negre",
+    "town": "Ciutadella De Menorca",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0839",
+    "name": "Cine Regio",
+    "town": "Sant Antoni De Portmany",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0863",
+    "name": "Artesiete Fan",
+    "town": "Palma de Mallorca",
+    "provinceId": "27435",
+    "provinceName": "Islas Baleares"
+  },
+  {
+    "theaterId": "E0239",
+    "name": "Multicines Bowling",
+    "town": "Linares",
+    "provinceId": "27425",
+    "provinceName": "Jaén"
+  },
+  {
+    "theaterId": "E0436",
+    "name": "Europa Pantallas 8",
+    "town": "Andujar",
+    "provinceId": "27425",
+    "provinceName": "Jaén"
+  },
+  {
+    "theaterId": "E0538",
+    "name": "Multicines Úbeda",
+    "town": "Ubeda",
+    "provinceId": "27425",
+    "provinceName": "Jaén"
+  },
+  {
+    "theaterId": "E0822",
+    "name": "París Multicines",
+    "town": "Andujar",
+    "provinceId": "27425",
+    "provinceName": "Jaén"
+  },
+  {
+    "theaterId": "E0823",
+    "name": "Multicines Carolina",
+    "town": "Carolina",
+    "provinceId": "27425",
+    "provinceName": "Jaén"
+  },
+  {
+    "theaterId": "E1017",
+    "name": "Teatro Maestro Álvarez Alonso",
+    "town": "Martos",
+    "provinceId": "27425",
+    "provinceName": "Jaén"
+  },
+  {
+    "theaterId": "E1025",
+    "name": "Cine Teatro Martínez Montañés",
+    "town": "Alcala La Real",
+    "provinceId": "27425",
+    "provinceName": "Jaén"
+  },
+  {
+    "theaterId": "E2912",
+    "name": "Autocinema Tenerife",
+    "town": "Fraile",
+    "provinceId": "27425",
+    "provinceName": "Jaén"
+  },
+  {
+    "theaterId": "E0358",
+    "name": "Cines Moderno",
+    "town": "Logroño",
+    "provinceId": "27429",
+    "provinceName": "La Rioja"
+  },
+  {
+    "theaterId": "E0733",
+    "name": "Yelmo Cines Premium Berceo",
+    "town": "Logroño",
+    "provinceId": "27429",
+    "provinceName": "La Rioja"
+  },
+  {
+    "theaterId": "E0801",
+    "name": "Cines Arcca",
+    "town": "Calahorra",
+    "provinceId": "27429",
+    "provinceName": "La Rioja"
+  },
+  {
+    "theaterId": "E0804",
+    "name": "Cines 7 Infantes",
+    "town": "Logroño",
+    "provinceId": "27429",
+    "provinceName": "La Rioja"
+  },
+  {
+    "theaterId": "E0829",
+    "name": "Cine Avenida Rincón de Soto",
+    "town": "Rincon De Soto",
+    "provinceId": "27429",
+    "provinceName": "La Rioja"
+  },
+  {
+    "theaterId": "E0830",
+    "name": "Cine Avenida Santo Domingo",
+    "town": "Sto Domingo De La Calzada",
+    "provinceId": "27429",
+    "provinceName": "La Rioja"
+  },
+  {
+    "theaterId": "E0986",
+    "name": "Teatro Bretón",
+    "town": "Haro",
+    "provinceId": "27429",
+    "provinceName": "La Rioja"
+  },
+  {
+    "theaterId": "E0484",
+    "name": "Multicine Atlántida",
+    "town": "Arrecife",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0485",
+    "name": "Multicines Deiland",
+    "town": "Arrecife",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0618",
+    "name": "Yelmo Cines Fuerteventura",
+    "town": "Antigua",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0634",
+    "name": "Yelmo Cines Vecindario",
+    "town": "Santa Lucia de Tirajana",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0723",
+    "name": "Artesiete Las Terrazas",
+    "town": "Telde",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0754",
+    "name": "Yelmo Cines Las Arenas",
+    "town": "Las Palmas de Gran Canaria",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0785",
+    "name": "Deiland Multicines",
+    "town": "Arrecife",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0898",
+    "name": "Odeón Puerto del Rosario",
+    "town": "Puerto Del Rosario",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0972",
+    "name": "Yelmo Cines Premium Alisios",
+    "town": "Las Palmas de Gran Canaria",
+    "provinceId": "27392",
+    "provinceName": "Las Palmas"
+  },
+  {
+    "theaterId": "E0274",
+    "name": "Cine Velasco",
+    "town": "Astorga",
+    "provinceId": "27389",
+    "provinceName": "León"
+  },
+  {
+    "theaterId": "E0280",
+    "name": "Odeon Multicines León",
+    "town": "León",
+    "provinceId": "27389",
+    "provinceName": "León"
+  },
+  {
+    "theaterId": "E0369",
+    "name": "Cines Van Gogh",
+    "town": "León",
+    "provinceId": "27389",
+    "provinceName": "León"
+  },
+  {
+    "theaterId": "E0458",
+    "name": "La Dehesa Ponferrada",
+    "town": "Ponferrada",
+    "provinceId": "27389",
+    "provinceName": "León"
+  },
+  {
+    "theaterId": "E0854",
+    "name": "Cine Paramés",
+    "town": "Santa Maria Del Paramo",
+    "provinceId": "27389",
+    "provinceName": "León"
+  },
+  {
+    "theaterId": "E0888",
+    "name": "El cine Villablino",
+    "town": "Villablino",
+    "provinceId": "27389",
+    "provinceName": "León"
+  },
+  {
+    "theaterId": "E0901",
+    "name": "Cine Marí",
+    "town": "Cistierna",
+    "provinceId": "27389",
+    "provinceName": "León"
+  },
+  {
+    "theaterId": "E0501",
+    "name": "Multicines Cristal",
+    "town": "Lugo",
+    "provinceId": "27439",
+    "provinceName": "Lugo"
+  },
+  {
+    "theaterId": "E0513",
+    "name": "Multicines Hollywood",
+    "town": "Monforte de Lemos",
+    "provinceId": "27439",
+    "provinceName": "Lugo"
+  },
+  {
+    "theaterId": "E0684",
+    "name": "Yelmo Cines As Termas",
+    "town": "Lugo",
+    "provinceId": "27439",
+    "provinceName": "Lugo"
+  },
+  {
+    "theaterId": "E0740",
+    "name": "Cine Ribadeo",
+    "town": "Ribadeo",
+    "provinceId": "27439",
+    "provinceName": "Lugo"
+  },
+  {
+    "theaterId": "E0846",
+    "name": "Cines Viveiro 3D",
+    "town": "Viveiro",
+    "provinceId": "27439",
+    "provinceName": "Lugo"
+  },
+  {
+    "theaterId": "E0232",
+    "name": "Cinema Era Audiovisuau",
+    "town": "Vielha",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0302",
+    "name": "Cinema Armengol",
+    "town": "Bellpuig",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0303",
+    "name": "Cinema Casal Agramunt",
+    "town": "Agramunt",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0305",
+    "name": "Cinema La Lira",
+    "town": "Tremp",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0309",
+    "name": "Cinema Paris",
+    "town": "Solsona",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0310",
+    "name": "Cinema Planell",
+    "town": "Linyola",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0313",
+    "name": "Cinema Ribagorza",
+    "town": "Pont De Suert",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0319",
+    "name": "Cinemes Guiu",
+    "town": "La Seu d'Urgell",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0325",
+    "name": "Cinemes Urgell",
+    "town": "Mollerussa",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0650",
+    "name": "Cinema El Casal",
+    "town": "Almacelles",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0652",
+    "name": "Jca Cinemes Alpicat",
+    "town": "Alpicat",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0799",
+    "name": "Cinemes Majestic",
+    "town": "Tàrrega",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0973",
+    "name": "Cinema Mollerussa",
+    "town": "Mollerussa",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0985",
+    "name": "Sala d''actes Ajuntament",
+    "town": "Balaguer",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E1033",
+    "name": "Autocine Resquitx - Golmés",
+    "town": "Mollerussa",
+    "provinceId": "27432",
+    "provinceName": "Lérida"
+  },
+  {
+    "theaterId": "E0190",
+    "name": "Cines Villa",
+    "town": "Villa del Prado",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0199",
+    "name": "Cinebox 3 C",
+    "town": "Tres Cantos",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0207",
+    "name": "Yelmo Cines TresAguas",
+    "town": "Alcorcon",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0209",
+    "name": "Kinépolis Madrid Diversia",
+    "town": "Alcobendas",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0233",
+    "name": "Cine Aranjuez",
+    "town": "Aranjuez",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0246",
+    "name": "Cinesa Nassica",
+    "town": "Getafe",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0247",
+    "name": "Cinesa Méndez Álvaro",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0291",
+    "name": "Yelmo Cines Premium Parque Corredor",
+    "town": "Torrejon De Ardoz",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0353",
+    "name": "Cines La Rambla",
+    "town": "Coslada",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0364",
+    "name": "Cines Princesa",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0385",
+    "name": "Cinesa Equinoccio",
+    "town": "Majadahonda",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0389",
+    "name": "Cinesa Heron City Las Rozas",
+    "town": "Las Rozas de Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0392",
+    "name": "Cinesa La Moraleja",
+    "town": "Alcobendas",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0394",
+    "name": "Cinesa Plaza Loranca 2",
+    "town": "Fuenlabrada",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0399",
+    "name": "Cinesa Parquesur",
+    "town": "Leganés",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0401",
+    "name": "Cinesa Príncipe Pío",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0406",
+    "name": "Cinesa Intu Xanadú",
+    "town": "Arroyomolinos",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0419",
+    "name": "Cine Teatro Municipal",
+    "town": "San Martin de Valdeiglesias",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0432",
+    "name": "mk2 Palacio de Hielo (antiguos Cines Dreams)",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0453",
+    "name": "Kinépolis Madrid",
+    "town": "Pozuelo De Alarcon",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0459",
+    "name": "Yelmo Cines La Vaguada",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0475",
+    "name": "Yelmo Cines Plenilunio",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0498",
+    "name": "Multicines Cisneros",
+    "town": "Alcala De Henares",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0582",
+    "name": "Cines Zoco Majadahonda",
+    "town": "Majadahonda",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0584",
+    "name": "Restón Cinema",
+    "town": "Valdemoro",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0621",
+    "name": "Yelmo Cines Ideal",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0630",
+    "name": "Yelmo Cines Planetocio",
+    "town": "Collado Villalba",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0646",
+    "name": "Cinesa Manoteras",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0671",
+    "name": "Yelmo Cines Rivas H2O",
+    "town": "Rivas-vaciamadrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0672",
+    "name": "Cine de verano el castillo",
+    "town": "Villaviciosa De Odon",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0674",
+    "name": "Cine de Verano El Molino",
+    "town": "Pelayos De La Presa",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0675",
+    "name": "Cine de Verano Valdemoro",
+    "town": "Valdemoro",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0681",
+    "name": "Yelmo Cines Islazul",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0707",
+    "name": "Cine Colíseo de la Cultura",
+    "town": "Villaviciosa De Odon",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0729",
+    "name": "Cine Los Molinos",
+    "town": "Boadilla Del Monte",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0731",
+    "name": "Cinesa La Gavia",
+    "town": "Madrid",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0750",
+    "name": "Cine de Verano Juan Falco",
+    "town": "Valdemorillo",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0753",
+    "name": "Cine Giralt Laporta",
+    "town": "Valdemorillo",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0760",
+    "name": "Cines Boadilla",
+    "town": "Boadilla Del Monte",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0761",
+    "name": "Cines Dos de Mayo",
+    "town": "Mostoles",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0815",
+    "name": "Odeon Multicines Tres Cantos",
+    "town": "Tres Cantos",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0818",
+    "name": "Sala Babel",
+    "town": "Fuente La Teja",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0877",
+    "name": "Odeon Multicines Sambil Dolby Atmos",
+    "town": "Leganés",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0935",
+    "name": "Spazio Cines",
+    "town": "Parla",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0936",
+    "name": "Casa de Cultura Guadarrama",
+    "town": "Guadarrama",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0937",
+    "name": "Centro de Arte y Cine de Verano Soto del Real",
+    "town": "Soto Del Real",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E1000",
+    "name": "Teatro Fernández-Baldor",
+    "town": "Fuente La Teja",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E1004",
+    "name": "Ocine Urban X-Madrid",
+    "town": "Alcorcon",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E2900",
+    "name": "Ocine Plaza Éboli",
+    "town": "Pinto",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E2910",
+    "name": "Cines Plaza Coslada",
+    "town": "Coslada",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E2916",
+    "name": "Yelmo Cines Plaza Norte 2",
+    "town": "San Sebastián de los Reyes",
+    "provinceId": "27410",
+    "provinceName": "Madrid"
+  },
+  {
+    "theaterId": "E0841",
+    "name": "Cine Teatro Perelló",
+    "town": "Melilla",
+    "provinceId": "27405",
+    "provinceName": "Melilla"
+  },
+  {
+    "theaterId": "E0193",
+    "name": "Neocine Centrofama",
+    "town": "Murcia",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0431",
+    "name": "Neocine Dos Mares",
+    "town": "San Javier",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0506",
+    "name": "Multicines El Hornillo",
+    "town": "Aguilas",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0546",
+    "name": "Neocine Mandarache",
+    "town": "Cartagena",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0547",
+    "name": "Neocine Thader",
+    "town": "Murcia",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0656",
+    "name": "Cinesa Nueva Condomina",
+    "town": "Murcia",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0660",
+    "name": "Neocine HD Digital Vega Plaza",
+    "town": "Molina de Segura",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0663",
+    "name": "NeoCine Espacio Mediterraneo",
+    "town": "Cartagena",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0690",
+    "name": "Neocine Rex",
+    "town": "Murcia",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0751",
+    "name": "Cines Almenara Lorca",
+    "town": "Lorca",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0774",
+    "name": "Neocine El Tiro",
+    "town": "Murcia",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0838",
+    "name": "Cine Pya",
+    "town": "Yecla",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0921",
+    "name": "Cinema Velasco Totana",
+    "town": "San Jose De La Montaña",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0922",
+    "name": "Terraza Auditorio Parque Municipal",
+    "town": "San Jose De La Montaña",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0938",
+    "name": "Cine de Verano Abarán",
+    "town": "Abaran",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0942",
+    "name": "Cine Acapulco",
+    "town": "San Pedro Del Pinatar",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0946",
+    "name": "Cine La Manga",
+    "town": "Cartagena",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0947",
+    "name": "Cine Sirenas",
+    "town": "Islas Menores",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0949",
+    "name": "Terraza España",
+    "town": "Colonia Julio Ruiz Alda",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0953",
+    "name": "Nuevos Cines Cabos de Palos ",
+    "town": "Playa Honda",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0956",
+    "name": "Cines IMF Galán",
+    "town": "Gorguel",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0962",
+    "name": "Cine de Verano de Archena",
+    "town": "Archena",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0977",
+    "name": "Cine Bahía",
+    "town": "Puerto De Mazarron",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0988",
+    "name": "Terraza Centro Joven",
+    "town": "Mula",
+    "provinceId": "27407",
+    "provinceName": "Murcia"
+  },
+  {
+    "theaterId": "E0048",
+    "name": "Alameda Multicines Malaga",
+    "town": "Malaga",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0059",
+    "name": "Multicines Alfil 3D",
+    "town": "Fuengirola",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0195",
+    "name": "Cine Albéniz",
+    "town": "Malaga",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0215",
+    "name": "Cine Pixel",
+    "town": "Coin",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0390",
+    "name": "Kinépolis La Cañada",
+    "town": "Marbella",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0410",
+    "name": "Cines La Verónica",
+    "town": "Antequera",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0413",
+    "name": "mk2 Malaga Nostrum",
+    "town": "Malaga",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0414",
+    "name": "mk2 Miramar",
+    "town": "Fuengirola",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0427",
+    "name": "Cines Gran Marbella",
+    "town": "Marbella",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0433",
+    "name": "mk2 El Ingenio",
+    "town": "Velez-Malaga",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0534",
+    "name": "Multicines Ronda",
+    "town": "Ronda",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0589",
+    "name": "Multicines Rosaleda",
+    "town": "Malaga",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0632",
+    "name": "Yelmo Cines Rincón De La Victoria",
+    "town": "Rincon De La Victoria",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0845",
+    "name": "Red Dog Cinemas",
+    "town": "Marbella",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0976",
+    "name": "Centro Cultural Villa de Nerja",
+    "town": "Nerja",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E1005",
+    "name": "Cine San Francisco",
+    "town": "Alhaurin El Grande",
+    "provinceId": "27437",
+    "provinceName": "Málaga"
+  },
+  {
+    "theaterId": "E0259",
+    "name": "Cines Los Llanos Zinemak",
+    "town": "Estella",
+    "provinceId": "27414",
+    "provinceName": "Navarra"
+  },
+  {
+    "theaterId": "E0283",
+    "name": "Yelmo Cines Itaroa",
+    "town": "Huarte",
+    "provinceId": "27414",
+    "provinceName": "Navarra"
+  },
+  {
+    "theaterId": "E0317",
+    "name": "Ocine Tudela",
+    "town": "Tudela",
+    "provinceId": "27414",
+    "provinceName": "Navarra"
+  },
+  {
+    "theaterId": "E0371",
+    "name": "Cines Las Cañas Viana",
+    "town": "Viana",
+    "provinceId": "27414",
+    "provinceName": "Navarra"
+  },
+  {
+    "theaterId": "E0443",
+    "name": "Golem La Morea",
+    "town": "Cordovilla",
+    "provinceId": "27414",
+    "provinceName": "Navarra"
+  },
+  {
+    "theaterId": "E0444",
+    "name": "Golem Baiona",
+    "town": "Pamplona",
+    "provinceId": "27414",
+    "provinceName": "Navarra"
+  },
+  {
+    "theaterId": "E0445",
+    "name": "Golem Yamaguchi",
+    "town": "Pamplona",
+    "provinceId": "27414",
+    "provinceName": "Navarra"
+  },
+  {
+    "theaterId": "E0289",
+    "name": "Cinebox Ourense",
+    "town": "Ourense",
+    "provinceId": "27427",
+    "provinceName": "Ourense"
+  },
+  {
+    "theaterId": "E0813",
+    "name": "Multicines Ponte Vella",
+    "town": "Ourense",
+    "provinceId": "27427",
+    "provinceName": "Ourense"
+  },
+  {
+    "theaterId": "E0834",
+    "name": "Cine Gesma",
+    "town": "Xinzo De Limia",
+    "provinceId": "27427",
+    "provinceName": "Ourense"
+  },
+  {
+    "theaterId": "E0847",
+    "name": "NovoCine Leiro 3D",
+    "town": "Agra",
+    "provinceId": "27427",
+    "provinceName": "Ourense"
+  },
+  {
+    "theaterId": "E0331",
+    "name": "Multicines Avenida",
+    "town": "Palencia",
+    "provinceId": "27406",
+    "provinceName": "Palencia"
+  },
+  {
+    "theaterId": "E0334",
+    "name": "Cines Campoo",
+    "town": "Aguilar De Campo",
+    "provinceId": "27406",
+    "provinceName": "Palencia"
+  },
+  {
+    "theaterId": "E0361",
+    "name": "Cines Ortega",
+    "town": "Palencia",
+    "provinceId": "27406",
+    "provinceName": "Palencia"
+  },
+  {
+    "theaterId": "E0998",
+    "name": "Cine AMGu",
+    "town": "Guardo",
+    "provinceId": "27406",
+    "provinceName": "Palencia"
+  },
+  {
+    "theaterId": "E1003",
+    "name": "Cines Campoo 3D",
+    "town": "Aguilar De Campo",
+    "provinceId": "27406",
+    "provinceName": "Palencia"
+  },
+  {
+    "theaterId": "E0298",
+    "name": "Multicines Cinexpo",
+    "town": "Pontevedra",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0510",
+    "name": "Multicines Gran Arousa",
+    "town": "Vilagarcia",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0525",
+    "name": "Multicines Norte",
+    "town": "Vigo",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0602",
+    "name": "Teatro Salesianos",
+    "town": "Vigo",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0635",
+    "name": "Yelmo Cines Travesía Vigo",
+    "town": "Vigo",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0739",
+    "name": "Cines Tamberlick Plaza Elíptica",
+    "town": "Vigo",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0742",
+    "name": "Cines Avenida 3D",
+    "town": "Caldas De Reis",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0835",
+    "name": "Cine Imperial",
+    "town": "Ramallosa",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0875",
+    "name": "Cine Club Pontevedra",
+    "town": "Pontevedra",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0895",
+    "name": "Minicines Central ",
+    "town": "Estrada",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0899",
+    "name": "Cine Seixo",
+    "town": "Aguete",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E2902",
+    "name": "Yelmo Cines Premium Vialia Vigo",
+    "town": "Vigo",
+    "provinceId": "27440",
+    "provinceName": "Pontevedra"
+  },
+  {
+    "theaterId": "E0299",
+    "name": "Megarama Salamanca",
+    "town": "Salamanca",
+    "provinceId": "27419",
+    "provinceName": "Salamanca"
+  },
+  {
+    "theaterId": "E0368",
+    "name": "Cines Van Dyck Tormes",
+    "town": "Salamanca",
+    "provinceId": "27419",
+    "provinceName": "Salamanca"
+  },
+  {
+    "theaterId": "E0492",
+    "name": "Multicines Béjar",
+    "town": "Bejar",
+    "provinceId": "27419",
+    "provinceName": "Salamanca"
+  },
+  {
+    "theaterId": "E0606",
+    "name": "Cines Van Dyck",
+    "town": "Salamanca",
+    "provinceId": "27419",
+    "provinceName": "Salamanca"
+  },
+  {
+    "theaterId": "E0793",
+    "name": "Cine Calderón",
+    "town": "Peñaranda De Bracamonte",
+    "provinceId": "27419",
+    "provinceName": "Salamanca"
+  },
+  {
+    "theaterId": "E0800",
+    "name": "Cine Juventud",
+    "town": "Ciudad Rodrigo",
+    "provinceId": "27419",
+    "provinceName": "Salamanca"
+  },
+  {
+    "theaterId": "E0267",
+    "name": "Cine Realejos",
+    "town": "Realejos",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0284",
+    "name": "Multicines Tenerife",
+    "town": "San Cristobal de la Laguna",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0532",
+    "name": "Multicines Puntalarga",
+    "town": "Candelaria",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0541",
+    "name": "Multicines Zentral Center",
+    "town": "Adeje",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0583",
+    "name": "Cines Price Prime",
+    "town": "Santa Cruz De Tenerife",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0622",
+    "name": "Yelmo Cines La Villa de Orotava",
+    "town": "Orotava",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0627",
+    "name": "Yelmo Cines Meridiano",
+    "town": "Santa Cruz De Tenerife",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0700",
+    "name": "X-Sur Cine",
+    "town": "Adeje",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0900",
+    "name": "Teatro Chico",
+    "town": "Santa Cruz De La Palma",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0940",
+    "name": "Multicines Millennium",
+    "town": "Llanos De Aridane",
+    "provinceId": "27430",
+    "provinceName": "Santa Cruz de Tenerife"
+  },
+  {
+    "theaterId": "E0285",
+    "name": "Cines Luz de Castilla",
+    "town": "Segovia",
+    "provinceId": "27401",
+    "provinceName": "Segovia"
+  },
+  {
+    "theaterId": "E0716",
+    "name": "Artesiete Segovia",
+    "town": "Segovia",
+    "provinceId": "27401",
+    "provinceName": "Segovia"
+  },
+  {
+    "theaterId": "E0027",
+    "name": "Cinesa Camas",
+    "town": "Camas",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0112",
+    "name": "Avenida 5 Cines",
+    "town": "Sevilla",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0191",
+    "name": "Cineapolis Dos Hermanas 3D",
+    "town": "Dos Hermanas",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0217",
+    "name": "Al-Andalus Mega Ocio",
+    "town": "Bormujos",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0222",
+    "name": "Los Arcos Multicines",
+    "town": "Sevilla",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0400",
+    "name": "Odeon Multicines Plaza de Armas",
+    "town": "Sevilla",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0411",
+    "name": "mk2 Alcores",
+    "town": "Alcala De Guadaira",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0415",
+    "name": "mk2 Nervión Plaza",
+    "town": "Sevilla",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0476",
+    "name": "Zona Este",
+    "town": "Sevilla",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0666",
+    "name": "Metromar Cinemas 12",
+    "town": "Mairena Del Aljarafe",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0676",
+    "name": "Cinema Tomares",
+    "town": "Tomares",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0720",
+    "name": "Artesiete Écija",
+    "town": "Ecija",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0724",
+    "name": "Cine Planelles",
+    "town": "Marchena",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0984",
+    "name": "Teatro Municipal Juan Bernabé",
+    "town": "Lebrija",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0996",
+    "name": "Cine Méliès Estepa",
+    "town": "Estepa",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E1002",
+    "name": "Yelmo Cines Premium Lagoh",
+    "town": "Sevilla",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E1020",
+    "name": "Teatro Municipal Las Cabezas de San Juan",
+    "town": "Cabezas De San Juan",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E1039",
+    "name": "Cineapolis Utrera",
+    "town": "Utrera",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E1040",
+    "name": "Cineapolis WAY",
+    "town": "Dos Hermanas",
+    "provinceId": "27426",
+    "provinceName": "Sevilla"
+  },
+  {
+    "theaterId": "E0265",
+    "name": "Cine Palafox Burgo de Osma",
+    "town": "Burgo De Osma",
+    "provinceId": "27390",
+    "provinceName": "Soria"
+  },
+  {
+    "theaterId": "E0356",
+    "name": "Cines Lara",
+    "town": "Golmayo",
+    "provinceId": "27390",
+    "provinceName": "Soria"
+  },
+  {
+    "theaterId": "E0989",
+    "name": "Cine Calderón - Almazán",
+    "town": "Almazan",
+    "provinceId": "27390",
+    "provinceName": "Soria"
+  },
+  {
+    "theaterId": "E0076",
+    "name": "Cinemes Amposta",
+    "town": "Amposta",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0161",
+    "name": "Cinema Casal Montblanquí",
+    "town": "Montblanc",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0320",
+    "name": "MCB Altafulla - Les Bruixes",
+    "town": "Altafulla",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0479",
+    "name": "MCB Calafell",
+    "town": "Calafell",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0509",
+    "name": "Ocine Gavarres",
+    "town": "Tarragona",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0556",
+    "name": "Ocine Roquetes",
+    "town": "Roquetes",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0727",
+    "name": "Ocine Vila-seca",
+    "town": "Vila-Seca",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0807",
+    "name": "Yelmo Cines Parc Central",
+    "town": "Tarragona",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0811",
+    "name": "Rambla de L'art",
+    "town": "Cambrils",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0908",
+    "name": "JCA Cinemes Tarragona Valls",
+    "town": "Valls",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0920",
+    "name": "Cines Axion Reus",
+    "town": "Reus",
+    "provinceId": "27433",
+    "provinceName": "Tarragona"
+  },
+  {
+    "theaterId": "E0653",
+    "name": "Cines Alcañiz",
+    "town": "Alcañiz",
+    "provinceId": "27417",
+    "provinceName": "Teruel"
+  },
+  {
+    "theaterId": "E0697",
+    "name": "Cine Maravillas",
+    "town": "Teruel",
+    "provinceId": "27417",
+    "provinceName": "Teruel"
+  },
+  {
+    "theaterId": "E0810",
+    "name": "Cine Arens de Lledó",
+    "town": "Arens De Lledo",
+    "provinceId": "27417",
+    "provinceName": "Teruel"
+  },
+  {
+    "theaterId": "E0412",
+    "name": "mk2 Luz del Tajo",
+    "town": "Toledo",
+    "provinceId": "27396",
+    "provinceName": "Toledo"
+  },
+  {
+    "theaterId": "E0574",
+    "name": "Real Cinema De Olías",
+    "town": "Olias Del Rey",
+    "provinceId": "27396",
+    "provinceName": "Toledo"
+  },
+  {
+    "theaterId": "E0803",
+    "name": "Artesiete Los Alfares",
+    "town": "Talavera de la Reina",
+    "provinceId": "27396",
+    "provinceName": "Toledo"
+  },
+  {
+    "theaterId": "E0831",
+    "name": "Cine Central 3D",
+    "town": "Casalgordo",
+    "provinceId": "27396",
+    "provinceName": "Toledo"
+  },
+  {
+    "theaterId": "E0837",
+    "name": "Cine Princesa",
+    "town": "Villacañas",
+    "provinceId": "27396",
+    "provinceName": "Toledo"
+  },
+  {
+    "theaterId": "E0870",
+    "name": "Quintanar Cinema",
+    "town": "Quintanar De La Orden",
+    "provinceId": "27396",
+    "provinceName": "Toledo"
+  },
+  {
+    "theaterId": "E0872",
+    "name": "Cines Redux",
+    "town": "Torrijos",
+    "provinceId": "27396",
+    "provinceName": "Toledo"
+  },
+  {
+    "theaterId": "E0034",
+    "name": "Abc El Saler",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0036",
+    "name": "Abc Gandia",
+    "town": "Gandia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0037",
+    "name": "Abc Gran Turia",
+    "town": "Xirivella",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0040",
+    "name": "Abc Park",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0071",
+    "name": "Alucine Sagunto",
+    "town": "Sagunto",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0104",
+    "name": "Autocine Star",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0119",
+    "name": "Cines Babel",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0187",
+    "name": "Cines Lys",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0210",
+    "name": "Cines Victoria Cullera",
+    "town": "Cullera",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0248",
+    "name": "Yelmo Cines Campanar",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0282",
+    "name": "Ozone Gandía",
+    "town": "Grau I Platja",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0287",
+    "name": "Cines MN4",
+    "town": "Alfafar",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0405",
+    "name": "Cinesa Bonaire",
+    "town": "Aldaia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0407",
+    "name": "Cinestudio D´or",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0434",
+    "name": "Kinepolis Alzira",
+    "town": "Alzira",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0454",
+    "name": "Kinépolis Valencia",
+    "town": "Paterna",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0474",
+    "name": "Ocine Premium Aqua",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0617",
+    "name": "Cineapolis El Teler",
+    "town": "Ontinyent",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0645",
+    "name": "Cine Tívoli",
+    "town": "Burjassot",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0664",
+    "name": "Cines Axion de Xàtiva",
+    "town": "Xàtiva",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0730",
+    "name": "Terraza de Verano Oliva",
+    "town": "Oliva",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0758",
+    "name": "Centre Cultural Benetússer El Molí",
+    "town": "Benetússer",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0759",
+    "name": "Centre Cultural Almassafes",
+    "town": "Almussafes",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0773",
+    "name": "Yelmo Cines Mercado de Campanar",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0883",
+    "name": "Cine Montecarlo",
+    "town": "Buñol",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0927",
+    "name": "Cine Terraza Charly",
+    "town": "Guardamar De La Safor",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0928",
+    "name": "Cine Terraza Olimpo",
+    "town": "Tavernes De La Valldigna",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0929",
+    "name": "Cine de Verano Tugar",
+    "town": "Grau I Platja",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0930",
+    "name": "Cine de Verano Serra",
+    "town": "Porta Coeli",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0931",
+    "name": "Terraza Lumiere",
+    "town": "Alboraya",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0932",
+    "name": "Yelmo Cines VidaNova Parc",
+    "town": "Sagunto",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0967",
+    "name": "Teatro Flumen",
+    "town": "Valencia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0987",
+    "name": "Terraza de Verano",
+    "town": "Eliana",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0992",
+    "name": "Cine La Unió Musical",
+    "town": "Lliria",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0993",
+    "name": "Cine Palacio de la Música de Buñol",
+    "town": "Buñol",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E1026",
+    "name": "Cines Axion Premium Gandía",
+    "town": "Gandia",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E1029",
+    "name": "Cine Teatro Principal Requena",
+    "town": "Cofrentes",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E1030",
+    "name": "Teatro García Berlanga",
+    "town": "Pai I Capellans",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E2914",
+    "name": "Cine Avenida El Perelló",
+    "town": "Perello",
+    "provinceId": "27391",
+    "provinceName": "Valencia"
+  },
+  {
+    "theaterId": "E0235",
+    "name": "Cine Avenida",
+    "town": "Pedrajas De San Esteban",
+    "provinceId": "27423",
+    "provinceName": "Valladolid"
+  },
+  {
+    "theaterId": "E0243",
+    "name": "Cine Casablanca",
+    "town": "Valladolid",
+    "provinceId": "27423",
+    "provinceName": "Valladolid"
+  },
+  {
+    "theaterId": "E0297",
+    "name": "Yelmo Cines Premium VallSur",
+    "town": "Valladolid",
+    "provinceId": "27423",
+    "provinceName": "Valladolid"
+  },
+  {
+    "theaterId": "E0333",
+    "name": "Cines Broadway",
+    "town": "Valladolid",
+    "provinceId": "27423",
+    "provinceName": "Valladolid"
+  },
+  {
+    "theaterId": "E0357",
+    "name": "Cines Manhattan",
+    "town": "Valladolid",
+    "provinceId": "27423",
+    "provinceName": "Valladolid"
+  },
+  {
+    "theaterId": "E0600",
+    "name": "Teatro Principal",
+    "town": "Medina De Rioseco",
+    "provinceId": "27423",
+    "provinceName": "Valladolid"
+  },
+  {
+    "theaterId": "E0698",
+    "name": "Multicines Coliseo",
+    "town": "Medina Del Campo",
+    "provinceId": "27423",
+    "provinceName": "Valladolid"
+  },
+  {
+    "theaterId": "E0796",
+    "name": "Ocine Rio Shopping",
+    "town": "Arroyo De La Encomienda",
+    "provinceId": "27423",
+    "provinceName": "Valladolid"
+  },
+  {
+    "theaterId": "E0376",
+    "name": "Yelmo Cines Artea",
+    "town": "Leioa",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0424",
+    "name": "Cinesa Max Ocio",
+    "town": "Barakaldo",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0425",
+    "name": "Cinesa Zubiarte",
+    "town": "Bilbao",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0464",
+    "name": "Getxo Zinemak",
+    "town": "Getxo",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0488",
+    "name": "Multicines 7 Bilbao",
+    "town": "Bilbao",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0598",
+    "name": "Serantes Kultur Aretoa",
+    "town": "Santurtzi",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0626",
+    "name": "Yelmo Cines Megapark",
+    "town": "Barakaldo",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0737",
+    "name": "Golem Alhóndiga",
+    "town": "Bilbao",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0767",
+    "name": "Cine Torrebillela",
+    "town": "Mungia",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0768",
+    "name": "Cine Zugaza",
+    "town": "Durango",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0874",
+    "name": "Zalla Zine - Antzokia ",
+    "town": "Mimetiz",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0880",
+    "name": "Autocine Getxo",
+    "town": "Andra Mari",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0891",
+    "name": "Ikusgarri Zinema",
+    "town": "Lekeitio",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0894",
+    "name": "Liceo Antzokia",
+    "town": "Gernika-Lumo",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0903",
+    "name": "Ermua Antzokia",
+    "town": "Ermua",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0904",
+    "name": "Zornotza Aretoa",
+    "town": "Amorebieta",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0923",
+    "name": "Cine Torrezabal",
+    "town": "Kurtzea",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E1021",
+    "name": "Olalde Aretoa",
+    "town": "Mungia",
+    "provinceId": "27393",
+    "provinceName": "Vizcaya"
+  },
+  {
+    "theaterId": "E0540",
+    "name": "Multicines Zamora",
+    "town": "Zamora",
+    "provinceId": "27409",
+    "provinceName": "Zamora"
+  },
+  {
+    "theaterId": "E0264",
+    "name": "Cine Palafox Zaragoza",
+    "town": "Zaragoza",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E0387",
+    "name": "Cinesa Grancasa",
+    "town": "Zaragoza",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E0595",
+    "name": "Sala Goya",
+    "town": "Mequinenza",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E0668",
+    "name": "Teatro Cine Goya",
+    "town": "Caspe",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E0711",
+    "name": "Cine Sala Cervantes",
+    "town": "Zaragoza",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E0732",
+    "name": "Cines Aragonia",
+    "town": "Zaragoza",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E0790",
+    "name": "Cinesa Puerto Venecia",
+    "town": "Zaragoza",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E1007",
+    "name": "Teatro Capitol",
+    "town": "Calatayud",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E1008",
+    "name": "Teatro Reina Sofía",
+    "town": "Zuera",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E1041",
+    "name": "Artesiete La Torre",
+    "town": "Zaragoza",
+    "provinceId": "27418",
+    "provinceName": "Zaragoza"
+  },
+  {
+    "theaterId": "E0346",
+    "name": "Cines Florida",
+    "town": "Vitoria",
+    "provinceId": "27402",
+    "provinceName": "Álava"
+  },
+  {
+    "theaterId": "E0763",
+    "name": "Cines Guridi",
+    "town": "Vitoria",
+    "provinceId": "27402",
+    "provinceName": "Álava"
+  },
+  {
+    "theaterId": "E0786",
+    "name": "Yelmo Cines Boulevard",
+    "town": "Vitoria",
+    "provinceId": "27402",
+    "provinceName": "Álava"
+  },
+  {
+    "theaterId": "E0821",
+    "name": "Cine Municipal Llodio",
+    "town": "Laudio/Llodio",
+    "provinceId": "27402",
+    "provinceName": "Álava"
+  },
+  {
+    "theaterId": "E0885",
+    "name": "Cines Gorbeia Zinemak ",
+    "town": "Etxabarri-Ibiña",
+    "provinceId": "27402",
+    "provinceName": "Álava"
+  },
+  {
+    "theaterId": "E0344",
+    "name": "Cines Bulevar",
+    "town": "Avila",
+    "provinceId": "27388",
+    "provinceName": "Ávila"
+  },
+  {
+    "theaterId": "E0828",
+    "name": "Cine Arenas",
+    "town": "Arenas De San Pedro",
+    "provinceId": "27388",
+    "provinceName": "Ávila"
+  },
+  {
+    "theaterId": "E0861",
+    "name": "Cine Candeleda",
+    "town": "Candeleda",
+    "provinceId": "27388",
+    "provinceName": "Ávila"
+  },
+  {
+    "theaterId": "E0966",
+    "name": "Cine Rueda",
+    "town": "Navaluenga",
+    "provinceId": "27388",
+    "provinceName": "Ávila"
+  },
+  {
+    "theaterId": "E0980",
+    "name": "Cine Blasco",
+    "town": "Fuente De La Salud",
+    "provinceId": "27388",
+    "provinceName": "Ávila"
+  },
+  {
+    "theaterId": "E0991",
+    "name": "Cine-Teatro Lagasca",
+    "town": "Barco De Avila",
+    "provinceId": "27388",
+    "provinceName": "Ávila"
+  }
+]

@@ -5,7 +5,7 @@ import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
-import services.cinemas.de.WebediaShowtimesClient
+import services.cinemas.common.{WebediaMarket, WebediaShowtimesClient}
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.io.Source
@@ -37,7 +37,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     try src.mkString finally src.close()
   }
 
-  private val page = WebediaShowtimesClient.parsePage(fixture)
+  private val page = WebediaShowtimesClient.parsePage(fixture, WebediaMarket.Germany)
 
   "parsePage" should "read every film and the page count" in {
     page.totalPages shouldBe 1
@@ -65,7 +65,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   it should "leave ageRating None when no release carries a certificate" in {
     val noCert = """{"results":[{"movie":{"internalId":42,"title":"Ungeprüft","releases":[{"name":"kino"}]}}]}"""
-    WebediaShowtimesClient.parsePage(noCert).films.head.ageRating shouldBe None
+    WebediaShowtimesClient.parsePage(noCert, WebediaMarket.Germany).films.head.ageRating shouldBe None
   }
 
   it should "flatten version buckets into local-time showtimes with format tokens" in {
@@ -138,8 +138,8 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
       new ScriptedByUrl(url =>
         if (url.contains("/kinoprogramm/kino/")) venuePage
         else throw new java.io.IOException("planChunks must not fetch per-day pages")),
-      "www.filmstarts.de", "A0263", venue,
-      today = LocalDate.of(2026, 7, 19))
+      WebediaMarket.Germany, "A0263", venue,
+      today = Some(LocalDate.of(2026, 7, 19)))
 
     val days = client.planChunks()
     days.size shouldBe 24
@@ -160,8 +160,8 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     val today  = LocalDate.of(2026, 7, 10)
     val client = new WebediaShowtimesClient(
       new ScriptedByUrl(_ => venuePage),
-      "www.filmstarts.de", "A0263", venue,
-      today = today)
+      WebediaMarket.Germany, "A0263", venue,
+      today = Some(today))
 
     val days = client.planChunks()
     days should contain("2026-08-13")      // was exactly at the old cap
@@ -176,7 +176,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
     val absurd  = today.plusYears(50).toString
     val page    = s"""<section data-showtimes-dates="[&quot;2026-07-11&quot;,&quot;$absurd&quot;]"></section>"""
     val client  = new WebediaShowtimesClient(
-      new ScriptedByUrl(_ => page), "www.filmstarts.de", "A0263", venue, today = today)
+      new ScriptedByUrl(_ => page), WebediaMarket.Germany, "A0263", venue, today = Some(today))
 
     val days = client.planChunks()
     days should contain("2026-07-11")
@@ -205,8 +205,8 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
         if (url.contains("/kinoprogramm/kino/")) OneDayVenuePage
         else if (url.contains("d-2026-07-11")) fixture
         else throw new java.io.IOException(s"unexpected fetch: $url")),
-      "www.filmstarts.de", "A0263", cinemaxxWuerzburg,
-      today = LocalDate.of(2026, 7, 11))
+      WebediaMarket.Germany, "A0263", cinemaxxWuerzburg,
+      today = Some(LocalDate.of(2026, 7, 11)))
     val movies = client.fetch()
 
     movies should not be empty
@@ -233,7 +233,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   private val OneDayVenuePage = """<section data-showtimes-dates="[&quot;2026-07-11&quot;]"></section>"""
 
   private def clientOver(http: tools.HttpFetch) =
-    new WebediaShowtimesClient(http, "www.filmstarts.de", "A0263", venue, today = LocalDate.of(2026, 7, 11))
+    new WebediaShowtimesClient(http, WebediaMarket.Germany, "A0263", venue, today = Some(LocalDate.of(2026, 7, 11)))
 
   it should "FAIL when the whole scrape can't reach the host, rather than report zero films" in {
     val allFailing = new ScriptedByUrl(_ => throw new java.io.IOException("HTTP 429"))
@@ -251,7 +251,7 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
 
   private def fakeClient() =
     new WebediaShowtimesClient(
-      new FakeHttpFetch("webedia-de"), "www.filmstarts.de", "A0263", venue, today = LocalDate.of(2026, 7, 11))
+      new FakeHttpFetch("webedia-de"), WebediaMarket.Germany, "A0263", venue, today = Some(LocalDate.of(2026, 7, 11)))
 
   "fetchChunk" should "parse one day's page into that day's films" in {
     val films = fakeClient().fetchChunk("2026-07-11")

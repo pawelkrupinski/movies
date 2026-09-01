@@ -57,7 +57,7 @@ data class DeepLink(
          *  before the city is read, and only when the segment isn't itself a
          *  known city. Mirrors the non-empty `Country.pathPrefix`es on the
          *  server. */
-        private val COUNTRY_PATH_SEGMENTS = setOf("uk", "de", "us")
+        private val COUNTRY_PATH_SEGMENTS = setOf("uk", "de", "us", "es")
         /** Reserved custom-scheme host (the OAuth callback) — never a city. */
         private val RESERVED_SCHEME_HOSTS = setOf("auth-done")
 

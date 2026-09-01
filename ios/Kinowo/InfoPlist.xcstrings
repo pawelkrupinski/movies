@@ -17,6 +17,12 @@
             "value" : "Showtimes"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showtimes"
+          }
+        },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
@@ -36,6 +42,12 @@
           }
         },
         "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Showtimes"
+          }
+        },
+        "es" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Showtimes"
@@ -63,6 +75,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "We use your location to pick the nearest city with showtimes."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Usamos tu ubicación para elegir la ciudad más cercana con cartelera."
           }
         },
         "pl" : {

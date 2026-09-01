@@ -267,6 +267,60 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     FilterDescription.forIndex(London, Map("director" -> Seq("David Frankel")), schedules).title shouldBe "Showtimes — films dir. David Frankel"
   }
 
+  // ── Spanish deployment (a Spanish province → es-ES language) ───────────────
+  // This whole file was a two-way Polish/English branch until Spain arrived, and
+  // "not translated" was NOT the failure mode: the city phrase is an English
+  // caption glued to `CityGrammar`'s per-language preposition, so a Spanish
+  // deployment served the mixed "Cinema listings en Madrid" — on every page
+  // title, every OG description and every share card. These pin the third
+  // language end to end.
+
+  private val Madrid: City = Country.Spain.bySlug("madrid")
+
+  "cityHeading" should "read the Spanish caption, not an English one with a Spanish preposition" in {
+    FilterDescription.cityHeading(Madrid) shouldBe "Cartelera de cine en Madrid"
+    FilterDescription.cityHeading(Madrid) should not include "Cinema listings"
+  }
+
+  "FilterDescription for a Spanish city" should "produce the Spanish default title + description" in {
+    FilterDescription.defaultTitle(Madrid) shouldBe "Cartelera de cine en Madrid – sesiones de hoy | Showtimes"
+    val d = FilterDescription.defaultDescription(Madrid)
+    d should include ("La cartelera de todos los cines de Madrid")
+    d should include ("sesiones de hoy")
+    d should not include "Filmweb"    // Filmweb is Polish-only
+    d should not include "today"
+  }
+
+  it should "phrase date / dim / lang / imax / from filters in Spanish" in {
+    FilterDescription.forIndex(Madrid, Map("date" -> Seq("tomorrow")), schedules).title shouldBe "Showtimes — películas mañana"
+    FilterDescription.forIndex(Madrid, Map("date" -> Seq("week")), schedules).title shouldBe "Showtimes — películas esta semana"
+    FilterDescription.forIndex(Madrid, Map("dim" -> Seq("3D"), "lang" -> Seq("NAP")), schedules).title shouldBe "Showtimes — películas 3D, subtituladas"
+    FilterDescription.forIndex(Madrid, Map("lang" -> Seq("DUB")), schedules).title shouldBe "Showtimes — películas dobladas"
+    FilterDescription.forIndex(Madrid, Map("imax" -> Seq("1")), schedules).title shouldBe "Showtimes — películas IMAX"
+    FilterDescription.forIndex(Madrid, Map("from" -> Seq("18:30")), schedules).title shouldBe "Showtimes — películas desde las 18:30"
+  }
+
+  it should "wrap the search query in Spanish angle quotes" in {
+    FilterDescription.forIndex(Madrid, Map("q" -> Seq("Dune")), schedules).title shouldBe "Showtimes — películas «Dune»"
+  }
+
+  it should "phrase genre / country / director filters in Spanish" in {
+    FilterDescription.forIndex(Madrid, Map("genre" -> Seq("Komedia")), schedules).title shouldBe "Showtimes — películas del género Komedia"
+    FilterDescription.forIndex(Madrid, Map("genre" -> Seq("Animacja", "Komedia")), schedules).title shouldBe "Showtimes — películas sin los géneros Dramat"
+    FilterDescription.forIndex(Madrid, Map("country" -> Seq("Japonia")), schedules).title shouldBe "Showtimes — películas de Japonia"
+    FilterDescription.forIndex(Madrid, Map("director" -> Seq("David Frankel")), schedules).title shouldBe "Showtimes — películas dir. David Frankel"
+  }
+
+  /** Germany is deliberately NOT translated here and reads English — the Spain
+   *  change added a third language rather than a general i18n layer, and
+   *  smuggling German copy into it would have been an unreviewed change to a
+   *  live country. Pinned so the gap is a decision on the record, not a
+   *  discovery someone makes from a German share card. */
+  "a German city" should "still read the English copy, unchanged by the Spanish branch" in {
+    val berlin = Country.Germany.bySlug("berlin")
+    FilterDescription.cityHeading(berlin) shouldBe "Cinema listings in Berlin"
+  }
+
   it should "phrase cinema filters with the English 'at' / 'without' prepositions" in {
     val cinemas = London.cinemaDisplayNames
     // Include just the first cinema → smaller included side → "at <pill>".

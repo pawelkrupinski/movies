@@ -41,6 +41,8 @@ scrape_configs:
         labels: { app: kinowo-worker, country: uk, tier: worker, platform: k3s }
       - targets: ["10.20.0.12:30903"]
         labels: { app: kinowo-worker, country: us, tier: worker, platform: k3s }
+      - targets: ["10.20.0.12:30904"]
+        labels: { app: kinowo-worker, country: es, tier: worker, platform: k3s }
 
     # DROP `exported_country`, WHICH IS 3961 SERIES OF PURE NOISE. Both apps export a `country`
     # label of their own, and this job also SETS one from the target definition -- so Prometheus
@@ -87,6 +89,8 @@ scrape_configs:
         labels: { app: kinowo, country: uk, tier: web, platform: k3s, instance: kinowo-web-uk }
       - targets: ["10.20.0.12:30913"]
         labels: { app: kinowo, country: us, tier: web, platform: k3s, instance: kinowo-web-us }
+      - targets: ["10.20.0.12:30914"]
+        labels: { app: kinowo, country: es, tier: web, platform: k3s, instance: kinowo-web-es }
 
     # DROP `exported_country`, WHICH IS 3961 SERIES OF PURE NOISE. Both apps export a `country`
     # label of their own, and this job also SETS one from the target definition -- so Prometheus

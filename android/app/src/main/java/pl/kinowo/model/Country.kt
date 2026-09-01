@@ -39,7 +39,7 @@ data class Country(
         /** Compile-time FALLBACK registry, used only until the bundled/fetched
          *  catalog loads (and if it ever fails to decode). The live registry is
          *  the `/api/catalog` payload the catalog repository publishes. Poland is
-         *  the default. Codes match the server (`pl`/`uk`/`de`/`us`). */
+         *  the default. Codes match the server (`pl`/`uk`/`de`/`us`/`es`). */
         val all: List<Country> = listOf(
             Country(
                 code = "pl",
@@ -72,6 +72,17 @@ data class Country(
                 // the catalog loads; the live payload's per-country `timezone`
                 // (derived server-side from the first US region) replaces it.
                 zoneId = ZoneId.of("America/New_York"),
+            ),
+            Country(
+                code = "es",
+                displayName = "España",
+                baseUrl = "https://showtimes.cc/es",
+                languageTag = "es",
+                // Peninsular Spain. The Canary provinces run an hour behind on
+                // Atlantic/Canary; like the US entry above this nominal value
+                // only matters before the catalog loads, and the live payload's
+                // per-country `timezone` replaces it.
+                zoneId = ZoneId.of("Europe/Madrid"),
             ),
         )
 

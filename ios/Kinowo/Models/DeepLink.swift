@@ -48,7 +48,7 @@ struct DeepLink: Equatable {
     /// city is read, and only when the segment isn't itself a known city — so a
     /// country whose city list ever gained a slug like "us" still resolves.
     /// Mirrors the non-empty `Country.pathPrefix`es on the server.
-    static let countryPathSegments: Set<String> = ["uk", "de", "us"]
+    static let countryPathSegments: Set<String> = ["uk", "de", "us", "es"]
     /// Reserved custom-scheme host already used for the OAuth callback — never a
     /// city, so never a navigation deep link.
     static let reservedSchemeHosts: Set<String> = ["auth-done"]

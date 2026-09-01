@@ -69,6 +69,19 @@ scrape_configs:
         labels:
           app: kinowo-worker-us
 
+  # Spain worker — the Spanish (kinowo_es) scrape/enrich pipeline, on SensaCine.
+  # Its kinowo_worker_* series carry country="es". Like the US one it never ran on
+  # Fly: it was onboarded straight onto k3s, and its target lives here only so this
+  # retired tree stays internally consistent with the deploy set the Grafana*Specs
+  # derive.
+  - job_name: kinowo-worker-es
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['kinowo-worker-es.internal:9000']
+        labels:
+          app: kinowo-worker-es
+
   # filmowo (the recommend app) is a separate Fly app in the SAME org, so its
   # 6PN hostname resolves from here too. Its Node server binds 9002 (not 9000
   # like the kinowo apps) and serves /metrics there. Unlike the kinowo targets,
@@ -121,3 +134,15 @@ scrape_configs:
       - targets: ['showtimes-us.internal:9000']
         labels:
           app: showtimes-us
+
+  # Spain web app (KINOWO_COUNTRY=es) — self-labels country="es", so its kinowo_web_* /
+  # kinowo_uptime_* series land under the shared $country var. Same note as the Spanish
+  # worker above: it is a k3s deployment, and this target exists for the retired
+  # stack's own consistency.
+  - job_name: showtimes-es-web
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+      - targets: ['showtimes-es.internal:9000']
+        labels:
+          app: showtimes-es

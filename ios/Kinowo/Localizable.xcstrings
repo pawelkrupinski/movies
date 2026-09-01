@@ -11,6 +11,12 @@
             "state": "new",
             "value": "%1$lld/%2$lld"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld/%2$lld"
+          }
         }
       }
     },
@@ -30,6 +36,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "All areas"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas las zonas"
           }
         },
         "pl": {
@@ -54,6 +66,12 @@
             "value": "Show listings"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver la cartelera"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -74,6 +92,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Show cinemas only in the areas you pick. You can change this anytime."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra solo los cines de las zonas que elijas. Puedes cambiarlo cuando quieras."
           }
         },
         "pl": {
@@ -98,6 +122,12 @@
             "value": "Choose your areas"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige tus zonas"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -118,6 +148,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "All cinemas"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todos los cines"
           }
         },
         "pl": {
@@ -142,6 +178,12 @@
             "value": "%1$d of %2$d cinemas"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$d de %2$d cines"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -162,6 +204,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "All states"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas las regiones"
           }
         },
         "pl": {
@@ -186,6 +234,12 @@
             "value": "Choose another city"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir otra ciudad"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -206,6 +260,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Choose a state"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una región"
           }
         },
         "pl": {
@@ -230,6 +290,12 @@
             "value": "Choose a city"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elige una ciudad"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -250,6 +316,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "City"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciudad"
           }
         },
         "pl": {
@@ -274,6 +346,12 @@
             "value": "Looks like you’re near"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Parece que estás cerca de"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -294,6 +372,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "No city named “%@”."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ninguna ciudad llamada «%@»."
           }
         },
         "pl": {
@@ -318,6 +402,12 @@
             "value": "No state named “%@”."
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay ninguna región llamada «%@»."
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -338,6 +428,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finding your nearest city…"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando tu ciudad más cercana…"
           }
         },
         "pl": {
@@ -362,6 +458,12 @@
             "value": "Search for a city"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca una ciudad"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -382,6 +484,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search for a state"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca una región"
           }
         },
         "pl": {
@@ -406,6 +514,12 @@
             "value": "Show showtimes — %@"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver las sesiones — %@"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -426,6 +540,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Couldn’t load showtimes."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se han podido cargar las sesiones."
           }
         },
         "pl": {
@@ -450,6 +570,12 @@
             "value": "Loading showtimes…"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando las sesiones…"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -472,6 +598,12 @@
             "value": "Try again"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reintentar"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -492,6 +624,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Country"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "País"
           }
         },
         "pl": {
@@ -518,6 +656,12 @@
             "value": "All"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -540,6 +684,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Today"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hoy"
           }
         },
         "pl": {
@@ -566,6 +716,12 @@
             "value": "Tomorrow"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mañana"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -588,6 +744,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "7 days"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "7 días"
           }
         },
         "pl": {
@@ -614,6 +776,12 @@
             "value": "Copy link"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Copiar enlace"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -636,6 +804,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Share"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir"
           }
         },
         "pl": {
@@ -662,6 +836,12 @@
             "value": "Cast"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reparto"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -686,6 +866,12 @@
             "value": "Countries"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Países"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -705,6 +891,12 @@
           }
         },
         "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Director"
+          }
+        },
+        "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Director"
@@ -734,6 +926,12 @@
             "value": "Synopsis"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sinopsis"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -756,6 +954,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Open trailer"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver el tráiler"
           }
         },
         "pl": {
@@ -782,6 +986,12 @@
             "value": "Showtimes"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesiones"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -804,6 +1014,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Trailer %lld"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tráiler %lld"
           }
         },
         "pl": {
@@ -830,6 +1046,12 @@
             "value": "TRAILERS"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TRÁILERES"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -852,6 +1074,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Account"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta"
           }
         },
         "pl": {
@@ -878,6 +1106,12 @@
             "value": "All"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todo"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -900,6 +1134,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Any"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cualquiera"
           }
         },
         "pl": {
@@ -926,6 +1166,12 @@
             "value": "Cancel"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -948,6 +1194,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cast"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reparto"
           }
         },
         "pl": {
@@ -974,6 +1226,12 @@
             "value": "Cinemas"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cines"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -996,6 +1254,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "City"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciudad"
           }
         },
         "pl": {
@@ -1022,6 +1286,12 @@
             "value": "Clear"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1044,6 +1314,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Country"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "País"
           }
         },
         "pl": {
@@ -1070,6 +1346,12 @@
             "value": "Delete account"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar la cuenta"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1094,6 +1376,12 @@
             "value": "Dimension"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1113,6 +1401,12 @@
           }
         },
         "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Director"
+          }
+        },
+        "es": {
           "stringUnit": {
             "state": "translated",
             "value": "Director"
@@ -1142,6 +1436,12 @@
             "value": "Done"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hecho"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1164,6 +1464,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Dubbed"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Doblada"
           }
         },
         "pl": {
@@ -1190,6 +1496,12 @@
             "value": "From"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desde"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1212,6 +1524,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Genre"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Género"
           }
         },
         "pl": {
@@ -1238,6 +1556,12 @@
             "value": "Hidden films"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Películas ocultas"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1260,6 +1584,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Hour"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hora"
           }
         },
         "pl": {
@@ -1286,6 +1616,12 @@
             "value": "IMAX only"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solo IMAX"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1308,6 +1644,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Minute"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Minuto"
           }
         },
         "pl": {
@@ -1334,6 +1676,12 @@
             "value": "Sign in"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1356,6 +1704,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign in with Facebook"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión con Facebook"
           }
         },
         "pl": {
@@ -1382,6 +1736,12 @@
             "value": "Sign in with Google"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión con Google"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1404,6 +1764,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sign out"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar sesión"
           }
         },
         "pl": {
@@ -1430,6 +1796,12 @@
             "value": "Sign out?"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Cerrar sesión?"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1452,6 +1824,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Sort by"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ordenar por"
           }
         },
         "pl": {
@@ -1478,6 +1856,12 @@
             "value": "Sorting"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orden"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1500,6 +1884,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Subtitles"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subtítulos"
           }
         },
         "pl": {
@@ -1526,6 +1916,12 @@
             "value": "Filters"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtros"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1548,6 +1944,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Version"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Versión"
           }
         },
         "pl": {
@@ -1574,6 +1976,12 @@
             "value": "No showtimes."
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay sesiones."
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1596,6 +2004,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Show"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar"
           }
         },
         "pl": {
@@ -1622,6 +2036,12 @@
             "value": "Show all"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar todo"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1646,6 +2066,12 @@
             "value": "No poster"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin cartel"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1668,6 +2094,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Search for a film"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca una película"
           }
         },
         "pl": {
@@ -1713,6 +2145,24 @@
                 "stringUnit": {
                   "state": "translated",
                   "value": "+%lld showtimes"
+                }
+              }
+            }
+          }
+        },
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld sesión"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "+%lld sesiones"
                 }
               }
             }
@@ -1766,6 +2216,12 @@
             "value": "Press and hold to see the screen: %@"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantén pulsado para ver la sala: %@"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1788,6 +2244,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Next showing"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Próxima sesión"
           }
         },
         "pl": {
@@ -1814,6 +2276,12 @@
             "value": "Rating"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valoración"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1838,6 +2306,12 @@
             "value": "Swipe to change the day"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desliza para cambiar de día"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1858,6 +2332,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Switch"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar"
           }
         },
         "pl": {
@@ -1882,6 +2362,12 @@
             "value": "You’re closer to %@"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estás más cerca de %@"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1904,6 +2390,12 @@
             "value": "Not now"
           }
         },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora no"
+          }
+        },
         "pl": {
           "stringUnit": {
             "state": "translated",
@@ -1924,6 +2416,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Switch showtimes to %@?"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "¿Cambiar las sesiones a %@?"
           }
         },
         "pl": {

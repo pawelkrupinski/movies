@@ -44,24 +44,42 @@ object FilterDescription {
    *  suffix of the default city title. */
   private def brand(city: City): String = city.country.brandName
 
-  /** Whether this city's deployment renders in Polish (Poland) vs. another
-   *  language (English UK, …). All the copy below branches on it. */
-  private def isPolish(city: City): Boolean = city.country.language.getLanguage == "pl"
+  /** Pick this deployment's literal for a phrase written out in each language.
+   *
+   *  Polish and Spanish are spelled out; every other language reads ENGLISH.
+   *  That is the right answer for the UK and the US, and it is the honest
+   *  fallback for Germany, whose copy here has never been translated — a German
+   *  deployment has always served "Cinema listings in Berlin", and this change
+   *  deliberately leaves that exactly as it was rather than smuggling a
+   *  translation into a Spain rollout.
+   *
+   *  Spanish had to be spelled out rather than left on the fallback, because the
+   *  fallback is NOT merely untranslated here: the city phrase is assembled from
+   *  an English caption plus [[models.CityGrammar]]'s per-language preposition,
+   *  so a Spanish deployment rendered the mixed "Cinema listings en Madrid" — on
+   *  every page title, every OG description and every share card. */
+  private def tr(city: City)(polish: String, english: String, spanish: String): String =
+    city.country.language.getLanguage match {
+      case "pl" => polish
+      case "es" => spanish
+      case _    => english
+    }
 
   /** "Repertuar kin w Poznaniu" / "Cinema listings in London" — the city-scoped
    *  heading shared by the default page title ([[defaultTitle]]) and the city
    *  OG-card overlay ([[MovieController.cityOgImage]]). Reads the declined
    *  locative for Polish, "in {City}" for English, off [[City.locativePhrase]]. */
-  def cityHeading(city: City): String =
-    if (isPolish(city)) s"Repertuar kin ${city.locativePhrase}"
-    else                s"Cinema listings ${city.locativePhrase}"
+  def cityHeading(city: City): String = {
+    val caption = tr(city)("Repertuar kin", "Cinema listings", "Cartelera de cine")
+    s"$caption ${city.locativePhrase}"
+  }
 
   /** Default (no-filter) `<title>` for a city listing — keyword-first so the tab
    *  and the Google result lead with what people search ("repertuar kin
    *  <miasto>", "godziny seansów" / "cinema listings <city>", "showtimes")
    *  rather than the bare brand. */
   def defaultTitle(city: City): String = {
-    val tail = if (isPolish(city)) "godziny seansów na dziś" else "today's showtimes"
+    val tail = tr(city)("godziny seansów na dziś", "today's showtimes", "sesiones de hoy")
     truncate(s"${cityHeading(city)} – $tail | ${brand(city)}", MaxTitle)
   }
 
@@ -73,9 +91,12 @@ object FilterDescription {
     val genitiveLabel = city.genitivePluralLabel
     val locative      = city.locativePhrase
     val s =
-      if (isPolish(city))
+      if (city.country.language.getLanguage == "pl")
         s"Repertuar wszystkich $genitiveLabel kin – godziny seansów na dziś, " +
           s"oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes. Sprawdź, co dziś grają w kinie $locative."
+      else if (city.country.language.getLanguage == "es")
+        s"La cartelera de todos los cines de $genitiveLabel – sesiones de hoy, " +
+          s"valoraciones de IMDb, Metacritic y Rotten Tomatoes. Mira qué ponen hoy en el cine $locative."
       else
         s"All $genitiveLabel cinema listings – today's showtimes, " +
           s"IMDb, Filmweb, Metacritic and Rotten Tomatoes ratings. See what's on today $locative."
@@ -98,7 +119,7 @@ object FilterDescription {
     val phrases = buildPhrases(city, query, schedules)
     Option.when(phrases.nonEmpty) {
       val body     = phrases.mkString(", ")
-      val filmWord = if (isPolish(city)) "filmy" else "films"
+      val filmWord = tr(city)("filmy", "films", "películas")
       val joined   = s"${brand(city)} — $filmWord $body"
       Meta(truncate(joined, MaxTitle), truncate(joined, MaxDescription))
     }
@@ -118,19 +139,20 @@ object FilterDescription {
 
   private def buildPhrases(city: City, query: Map[String, Seq[String]], schedules: Seq[FilmSchedule]): Seq[String] = {
     val out = scala.collection.mutable.ArrayBuffer.empty[String]
-    // Pick the Polish or the English literal for this deployment. Keeps the two
-    // languages side by side at each call site (rather than forking the whole
-    // builder) and leaves the Polish output byte-identical.
-    val pl = isPolish(city)
-    def tr(polish: String, english: String): String = if (pl) polish else english
+    // Keeps every language's literal side by side at the call site rather than
+    // forking the whole builder, and leaves the Polish and English output
+    // byte-identical. Shadows the outer helper of the same name so the `city`
+    // argument isn't repeated thirty times.
+    def tr(polish: String, english: String, spanish: String): String =
+      FilterDescription.tr(city)(polish, english, spanish)
 
     // Search query first — it's the most specific filter and the user-typed
     // text deserves prime real estate in the share preview.
-    parameterOf(query, "q").filter(_.nonEmpty).foreach { q => out += tr(s"„$q”", s"“$q”") }
+    parameterOf(query, "q").filter(_.nonEmpty).foreach { q => out += tr(s"„$q”", s"“$q”", s"«$q»") }
 
     parameterOf(query, "date").foreach {
-      case "tomorrow" => out += tr("jutro", "tomorrow")
-      case "week"     => out += tr("w tym tygodniu", "this week")
+      case "tomorrow" => out += tr("jutro", "tomorrow", "mañana")
+      case "week"     => out += tr("w tym tygodniu", "this week", "esta semana")
       // `anytime` is the no-restriction view — the description would otherwise
       // read "filmy kiedykolwiek" which says nothing the bare "Kinowo" doesn't
       // already. Silent, same as `today`.
@@ -147,14 +169,14 @@ object FilterDescription {
     out ++= inclusionPhrase(
       included = maybeListOf(query, "room"),
       universe = allRooms,
-      includedSingularPreposition = tr("w sali ", "in screen "),
-      includedPluralPreposition   = tr("w salach ", "in screens "),
-      excludedPreposition         = tr("bez sal ", "without screens "),
+      includedSingularPreposition = tr("w sali ", "in screen ", "en la sala "),
+      includedPluralPreposition   = tr("w salach ", "in screens ", "en las salas "),
+      excludedPreposition         = tr("bez sal ", "without screens ", "sin las salas "),
       // Drop the "Cinema|" prefix when describing — the same Sala 5 exists
       // across many cinemas, but a single bare room name still reads cleanly
       // in the title and avoids "Cinema City Kinepolis|Sala 5" walls of text.
       display   = key => key.substring(key.indexOf('|') + 1),
-      countNoun = tr("sal", "screens"),
+      countNoun = tr("sal", "screens", "salas"),
     )
 
     val allCinemas: Set[String] = city.cinemaDisplayNames.toSet
@@ -162,64 +184,64 @@ object FilterDescription {
     out ++= inclusionPhrase(
       included = maybeListOf(query, "cinema"),
       universe = allCinemas,
-      includedSingularPreposition = tr("w ", "at "),
-      includedPluralPreposition   = tr("w ", "at "),
-      excludedPreposition         = tr("bez ", "without "),
+      includedSingularPreposition = tr("w ", "at ", "en "),
+      includedPluralPreposition   = tr("w ", "at ", "en "),
+      excludedPreposition         = tr("bez ", "without ", "sin "),
       display   = c => cityPills.getOrElse(c, c),
-      countNoun = tr("kin", "cinemas"),
+      countNoun = tr("kin", "cinemas", "cines"),
     )
 
     parameterOf(query, "dim").foreach { case d @ ("2D" | "3D") => out += d; case _ => () }
     parameterOf(query, "lang").foreach {
-      case "NAP" => out += tr("z napisami", "with subtitles")
-      case "DUB" => out += tr("z dubbingiem", "with dubbing")
+      case "NAP" => out += tr("z napisami", "with subtitles", "subtituladas")
+      case "DUB" => out += tr("z dubbingiem", "with dubbing", "dobladas")
       case _     => ()
     }
     if (parameterOf(query, "imax").contains("1")) out += "IMAX"
-    parameterOf(query, "from").filter(_.matches("\\d{1,2}:\\d{2}")).foreach(f => out += tr(s"od $f", s"from $f"))
+    parameterOf(query, "from").filter(_.matches("\\d{1,2}:\\d{2}")).foreach(f => out += tr(s"od $f", s"from $f", s"desde las $f"))
 
     val allCountries = schedules.flatMap(_.movie.countries).toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "country"),
       universe = allCountries,
-      includedSingularPreposition = tr("z ", "from "),
-      includedPluralPreposition   = tr("z ", "from "),
-      excludedPreposition         = tr("bez ", "without "),
+      includedSingularPreposition = tr("z ", "from ", "de "),
+      includedPluralPreposition   = tr("z ", "from ", "de "),
+      excludedPreposition         = tr("bez ", "without ", "sin "),
       display   = identity,
-      countNoun = tr("krajów", "countries"),
+      countNoun = tr("krajów", "countries", "países"),
     )
 
     val allGenres = schedules.flatMap(_.movie.genres).toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "genre"),
       universe = allGenres,
-      includedSingularPreposition = tr("gatunku ", "genre "),
-      includedPluralPreposition   = tr("z gatunków ", "genres "),
-      excludedPreposition         = tr("bez gatunków ", "without genres "),
+      includedSingularPreposition = tr("gatunku ", "genre ", "del género "),
+      includedPluralPreposition   = tr("z gatunków ", "genres ", "de los géneros "),
+      excludedPreposition         = tr("bez gatunków ", "without genres ", "sin los géneros "),
       display   = identity,
-      countNoun = tr("gatunków", "genres"),
+      countNoun = tr("gatunków", "genres", "géneros"),
     )
 
     val allDirectors = schedules.flatMap(_.director).toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "director"),
       universe = allDirectors,
-      includedSingularPreposition = tr("reż. ", "dir. "),
-      includedPluralPreposition   = tr("reż. ", "dir. "),
-      excludedPreposition         = tr("bez reż. ", "without dir. "),
+      includedSingularPreposition = tr("reż. ", "dir. ", "dir. "),
+      includedPluralPreposition   = tr("reż. ", "dir. ", "dir. "),
+      excludedPreposition         = tr("bez reż. ", "without dir. ", "sin dir. "),
       display   = identity,
-      countNoun = tr("reżyserów", "directors"),
+      countNoun = tr("reżyserów", "directors", "directores"),
     )
 
     val allCast = schedules.flatMap(_.cast).toSet
     out ++= inclusionPhrase(
       included = maybeListOf(query, "cast"),
       universe = allCast,
-      includedSingularPreposition = tr("z ", "with "),
-      includedPluralPreposition   = tr("z ", "with "),
-      excludedPreposition         = tr("bez ", "without "),
+      includedSingularPreposition = tr("z ", "with ", "con "),
+      includedPluralPreposition   = tr("z ", "with ", "con "),
+      excludedPreposition         = tr("bez ", "without ", "sin "),
       display   = identity,
-      countNoun = tr("aktorów", "actors"),
+      countNoun = tr("aktorów", "actors", "actores"),
     )
 
     out.toSeq

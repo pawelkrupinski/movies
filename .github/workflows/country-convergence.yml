@@ -33,7 +33,7 @@ on:
     # minute spent queueing behind something else is a minute in which the next push
     # can supersede the run before it reaches an assertion. Starting with the deploy
     # rather than after it is head start against exactly that. The runner-pool cost is
-    # three concurrent jobs while the deploy's six legs run; the deploy legs are
+    # four concurrent jobs while the deploy's six legs run; the deploy legs are
     # flyctl-remote-build waits, so they contend for slots, not for CPU.
     #
     # Deploy-time dispatch is best-effort by construction. The nightly schedule below
@@ -63,7 +63,7 @@ concurrency:
     # push to main. One authoritative answer is worth more than several competing
     # ones. (ConvergenceConcurrencyConfigSpec)
     #
-    # It is deliberate because these three legs are CHEAP to throw away — 12 to 73
+    # It is deliberate because these four legs are CHEAP to throw away — 12 to 73
     # warm minutes, against a fixture tree that stays warm either way. That is what
     # stopped being true for the United States, which is why it left: its leg spends
     # hours recording the tree it is replaying, so a supersede costs the work AND
@@ -83,7 +83,7 @@ jobs:
     #
     # `fail-fast: false`, and that is the whole point of the split: every country
     # reports independently, and a country whose sample fails stops only that
-    # country's full leg. Under the old shared `needs:` it stopped all three, so one
+    # country's full leg. Under the old shared `needs:` it stopped all of them, so one
     # country's flap cost the day's answer for the other two as well.
     #
     # `permissions` here is the CEILING for the called workflow's jobs, which narrow
@@ -96,9 +96,11 @@ jobs:
             matrix:
                 include:
                     # `job`/`suite` and `sampleJob`/`sampleSuite` are this country's
-                    # timeout budgets, in minutes. These three carry the numbers the leg
+                    # timeout budgets, in minutes. These four carry the numbers the leg
                     # has always defaulted to; they are the warm countries, and what makes
-                    # them warm is an enrichment tree their own legs keep refreshed.
+                    # them warm is an enrichment tree their own legs keep refreshed. Spain
+                    # joins them on the same budget: 595 venues is between the UK's paced set
+                    # and Germany's roster, both of which fit it comfortably.
                     #
                     # The United States is NOT here. It runs the same leg from
                     # `us-convergence.yml`, on a budget several times this one and a lane
@@ -107,13 +109,14 @@ jobs:
                     # leaves the next run just as cold. That whole argument, and why it
                     # does NOT apply to a 12-minute Poland leg, is in that file's header.
                     #
-                    # `heap` is the sbt JVM's `-Xmx`, and 4g is what these three have
+                    # `heap` is the sbt JVM's `-Xmx`, and 4g is what these four have
                     # always run on — it is what `.jvmopts` names and what a 16 GB runner
                     # would default to. Stated rather than inherited, so the number a leg
                     # runs on is a decision somebody made. The US needs more; see there.
                     - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
                     - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
                     - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write

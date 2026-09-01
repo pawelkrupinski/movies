@@ -45,13 +45,16 @@ object JsLocale {
     if (isPolish(locale)) PolishMonths
     else Month.values.toSeq.map(_.getDisplayName(TextStyle.FULL, locale))
 
-  /** Showtime plural forms + the plural rule shared.js selects with. Polish has
-   *  three forms (seans / seanse / seansów); English two (showing / showings). */
-  private def showtime(locale: Locale): (String, JsObject) =
-    if (isPolish(locale))
-      "pl" -> Json.obj("one" -> "seans", "few" -> "seanse", "many" -> "seansów")
-    else
-      "en" -> Json.obj("one" -> "showing", "other" -> "showings")
+  /** Showtime plural forms + the plural RULE shared.js selects with. The rule id
+   *  is not the language: `pl` is the three-form rule (seans / seanse / seansów)
+   *  and `en` the two-form one/other rule, which German and Spanish share — the
+   *  only branch `shared.js` takes is `=== 'pl'`. So a new language adds its
+   *  WORD FORMS here and reuses whichever rule its grammar follows. */
+  private def showtime(locale: Locale): (String, JsObject) = locale.getLanguage match {
+    case "pl" => "pl" -> Json.obj("one" -> "seans", "few" -> "seanse", "many" -> "seansów")
+    case "es" => "en" -> Json.obj("one" -> "sesión", "other" -> "sesiones")
+    case _    => "en" -> Json.obj("one" -> "showing", "other" -> "showings")
+  }
 
   /** The `KINOWO_LOCALE` object literal (compact JSON) for the given deployment
    *  messages. Scalar UI strings come from the message bundle so they stay in

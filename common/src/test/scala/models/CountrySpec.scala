@@ -23,15 +23,17 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.byCode("DE") shouldBe Some(Country.Germany)
     Country.byCode("us") shouldBe Some(Country.UnitedStates)
     Country.byCode("US") shouldBe Some(Country.UnitedStates)
+    Country.byCode("es") shouldBe Some(Country.Spain)
+    Country.byCode("ES") shouldBe Some(Country.Spain)
     Country.byCode("xx") shouldBe None
     Country.byCode("") shouldBe None
   }
 
-  "A KINOWO_COUNTRIES-style code list" should "resolve 'pl,uk,de,us' to all four countries, in order" in {
+  "A KINOWO_COUNTRIES-style code list" should "resolve 'pl,uk,de,us,es' to all five countries, in order" in {
     // The exact contract each worker's KINOWO_COUNTRIES depends on
     // (WorkerMain.resolveCountries splits on comma and maps each via byCode).
-    "pl,uk,de,us".split(",").toList.flatMap(c => Country.byCode(c.trim)) shouldBe
-      List(Country.Poland, Country.UnitedKingdom, Country.Germany, Country.UnitedStates)
+    "pl,uk,de,us,es".split(",").toList.flatMap(c => Country.byCode(c.trim)) shouldBe
+      List(Country.Poland, Country.UnitedKingdom, Country.Germany, Country.UnitedStates, Country.Spain)
   }
 
   "Country.UnitedKingdom" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
@@ -109,6 +111,50 @@ class CountrySpec extends AnyFlatSpec with Matchers {
       .cities.map(_.labels.nominative) should contain ("Los Angeles")
   }
 
+  "Country.Spain" should "be a Spanish, Filmweb-free deployment (SensaCine-sourced) on its own database" in {
+    Country.Spain.code shouldBe "es"
+    Country.Spain.mongoDb shouldBe "kinowo_es"
+    Country.Spain.filmwebEnabled shouldBe false
+    Country.Spain.language.toLanguageTag shouldBe "es-ES"
+    Country.Spain.brandName shouldBe "Showtimes"   // "Kinowo" is Polish-only
+    Country.Spain.cities shouldBe City.spanishCities
+  }
+
+  "Country.Spain.cities" should "be one city per province, flat like Germany's regions" in {
+    // The 52 provinces SensaCine itself enumerates. Flat, with no CityGroup above
+    // them: 52 is a list a picker stays readable at, and a province is the unit a
+    // Spanish visitor names — unlike a US state, which nobody asks what is on in.
+    Country.Spain.cities should have size 52
+    Country.Spain.cityGroups shouldBe empty
+    Country.Spain.cities.map(_.slug) should contain allOf ("madrid", "barcelona", "valencia", "las-palmas")
+    all(Country.Spain.cities.map(_.cinemas.size)) should be > 0
+    Country.Spain.cities.flatMap(_.cinemas).size shouldBe 595
+  }
+
+  it should "qualify a province slug another country already serves, and only that one" in {
+    // `/toledo/` is the live US metro in Ohio — a published URL with a sitemap
+    // entry and a `city` cookie behind it — so the NEWCOMER moves, not the
+    // incumbent. Every other province keeps its bare name.
+    Country.Spain.bySlug.get("toledo") shouldBe None
+    Country.Spain.cities.map(_.slug) should contain ("toledo-castilla-la-mancha")
+    City.bySlug("toledo").get.country shouldBe Country.UnitedStates
+    // The LABEL is untouched — inside Spain "Toledo" is not ambiguous, and the
+    // picker is what a visitor reads.
+    Country.Spain.bySlug("toledo-castilla-la-mancha").labels.nominative shouldBe "Toledo"
+  }
+
+  "Spanish provinces" should "carry their own time zone, so the Canaries are not on peninsular time" in {
+    // Spain has TWO zones, which is why `SpanishProvince` takes one per place like
+    // `UsCity` rather than hardcoding one like `GermanRegion`. An hour is enough to
+    // move a day boundary, so a Canary venue's late showing would otherwise fall on
+    // the wrong day.
+    def zoneOf(slug: String) = Country.Spain.bySlug(slug).zoneId.getId
+    zoneOf("madrid")                 shouldBe "Europe/Madrid"
+    zoneOf("barcelona")              shouldBe "Europe/Madrid"
+    zoneOf("las-palmas")             shouldBe "Atlantic/Canary"
+    zoneOf("santa-cruz-de-tenerife") shouldBe "Atlantic/Canary"
+  }
+
   "US places" should "carry their own time zone rather than one national default" in {
     // Unlike Germany (one Europe/Berlin for every region), the US spans six zones,
     // so `UsCity` takes the zone per place. A single national default would put
@@ -122,7 +168,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     zoneOf("phoenix")     shouldBe "America/Phoenix"   // no DST, deliberately its own
   }
 
-  "Every modelled cinema display name" should "be globally unique across all four countries" in {
+  "Every modelled cinema display name" should "be globally unique across all five countries" in {
     // displayName is the WIRE KEY every per-cinema slot is stored under
     // (`movie_slots`, `screenings`, the embedded `sourceData` map) and
     // `Source.byDisplayName` is a plain `toMap` — so two venues sharing a name
@@ -170,9 +216,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   "Country.Poland.cities" should "be exactly today's Polish city list; City.all is the union across countries" in {
     Country.Poland.cities shouldBe City.polishCities
-    // City.all is the concatenation of every country's list (PL + UK + DE + US).
+    // City.all is the concatenation of every country's list (PL + UK + DE + US + ES).
     City.all should contain theSameElementsAs
-      (City.polishCities ++ City.ukCities ++ City.germanCities ++ City.usCities)
+      (City.polishCities ++ City.ukCities ++ City.germanCities ++ City.usCities ++ City.spanishCities)
     Country.all.flatMap(_.cities) should contain theSameElementsAs City.all
   }
 
@@ -182,6 +228,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     London.country shouldBe Country.UnitedKingdom
     City.bySlug("berlin").get.country shouldBe Country.Germany
     City.bySlug("los-angeles").get.country shouldBe Country.UnitedStates
+    City.bySlug("barcelona").get.country shouldBe Country.Spain
     // Every city belongs to exactly the country whose list contains it.
     City.all.foreach(c => Country.of(c).cities should contain(c))
   }
@@ -202,11 +249,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   "Country.switchable" should "list every deployed country (webUrl defined), Poland first" in {
     // The navbar country <select> iterates this, in this order.
     Country.switchable shouldBe
-      Seq(Country.Poland, Country.UnitedKingdom, Country.Germany, Country.UnitedStates)
+      Seq(Country.Poland, Country.UnitedKingdom, Country.Germany, Country.UnitedStates, Country.Spain)
     Country.Poland.webUrl shouldBe Some("https://kinowo.net")
     Country.UnitedKingdom.webUrl shouldBe Some("https://showtimes.cc/uk")
     Country.Germany.webUrl shouldBe Some("https://showtimes.cc/de")
     Country.UnitedStates.webUrl shouldBe Some("https://showtimes.cc/us")
+    Country.Spain.webUrl shouldBe Some("https://showtimes.cc/es")
     // Being switchable is the ONE flag that adds a country to the navbar
     // <select>, the debug ?country= switcher and the /api/catalog mobile
     // endpoint — all three iterate this, so nothing else enumerates them.
@@ -263,6 +311,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedKingdom.servesApex("showtimes.cc") shouldBe false
     Country.Germany.servesApex("showtimes.cc") shouldBe false
     Country.UnitedStates.servesApex("showtimes.cc") shouldBe false
+    Country.Spain.servesApex("showtimes.cc") shouldBe false
     // A country's own domain is never the front door either.
     Country.Poland.servesApex("kinowo.net") shouldBe false
   }
@@ -276,11 +325,13 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedKingdom.mountPath shouldBe "/uk/"
     Country.Germany.mountPath shouldBe "/de/"
     Country.UnitedStates.mountPath shouldBe "/us/"
+    Country.Spain.mountPath shouldBe "/es/"
     // The origin is the bare host — the prefix is the only thing that differs
-    // between the three Showtimes countries.
+    // between the four Showtimes countries.
     Country.UnitedKingdom.webOrigin shouldBe Some("https://showtimes.cc")
     Country.Germany.webOrigin shouldBe Some("https://showtimes.cc")
     Country.UnitedStates.webOrigin shouldBe Some("https://showtimes.cc")
+    Country.Spain.webOrigin shouldBe Some("https://showtimes.cc")
     Country.Poland.webOrigin shouldBe Some("https://kinowo.net")
     // Every mount point is absolute and slash-terminated: Play rejects a
     // context that does not start with "/", and the trailing slash is what

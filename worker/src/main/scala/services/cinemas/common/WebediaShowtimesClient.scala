@@ -1,11 +1,10 @@
-package services.cinemas.de
+package services.cinemas.common
 
 import tools.HttpFetch
 import models._
 import play.api.libs.json._
-import services.cinemas.common.{AgeRating, ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime}
 import scala.util.Try
 
 /**
@@ -34,40 +33,49 @@ import scala.util.Try
  * whose `startsAt` is a local ISO `LocalDateTime` (no zone — it is already the
  * venue's wall-clock) and whose booking deep-link is `data.ticketing[].urls`.
  *
- * One instance serves one venue — its `theaterId` (Germany: "A0263") + the
- * [[Cinema]] it feeds, mirroring [[FilmwebShowtimesClient]]. Host-parameterized
- * so the same client covers FR/ES/TR by swapping the host; only Germany
- * (`www.filmstarts.de`) is wired today. TMDB enriches synopsis/cast downstream,
+ * One instance serves one venue — its `theaterId` (Germany: "A0263", Spain:
+ * "E0123") + the [[Cinema]] it feeds, mirroring [[FilmwebShowtimesClient]].
+ * Everything that differs between the family's national sites is carried by
+ * [[WebediaMarket]], so the same client serves Germany and Spain (and would
+ * serve FR/TR/BR/MX by adding a market). TMDB enriches synopsis/cast downstream,
  * so this client only carries what the JSON actually provides.
  */
 class WebediaShowtimesClient(
   http:      HttpFetch,
-  host:      String,              // e.g. "www.filmstarts.de"
+  market:    WebediaMarket,
   theaterId: String,              // e.g. "A0263" — the letter prefix is per-country
   override val cinema: Cinema,
-  today:     LocalDate = LocalDate.now(ZoneId.of("Europe/Berlin"))
+  /** The day the horizon is measured from. `None` means "now, in the market's
+   *  own zone" — an OPTION rather than a defaulted `LocalDate.now(market.zoneId)`
+   *  because Scala 3 will not let a default argument read another parameter of
+   *  the same list, and the market is where the zone lives. Same shape as
+   *  [[FlicksClient]]. */
+  today:     Option[LocalDate] = None
 ) extends ChunkedCinemaScraper {
+
+  private val referenceDay: LocalDate = today.getOrElse(LocalDate.now(market.zoneId))
 
   import WebediaShowtimesClient._
 
-  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(s"https://$host")
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(s"https://${market.host}")
 
-  // The public, browser-renderable venue page. This ONE path segment
-  // (`/kinoprogramm/kino/`) is Filmstarts/German-localized; the JSON endpoint
-  // above is uniform across the family. Parameterize it when a second country lands.
-  override def sourceUrl: Option[String] = Some(s"https://$host/kinoprogramm/kino/$theaterId/")
+  // The public, browser-renderable venue page. This ONE path is localized per
+  // market (`/kinoprogramm/kino/` in Germany, `/cines/cine-` in Spain); the JSON
+  // endpoint above is uniform across the family, so it is the only piece of the
+  // URL shape that moved onto WebediaMarket when Spain landed.
+  override def sourceUrl: Option[String] = Some(market.venuePageUrl(theaterId))
 
   // Each populated day is one chunk, run as its own `ScrapeChunk` task (see
   // ChunkedCinemaScraper / ScrapeChunkHandler). The days spread across the task
-  // queue and the shared Filmstarts pace gate instead of bursting from a single
+  // queue and the market's shared pace gate instead of bursting from a single
   // task that parks a worker thread for days×1s. The in-process `fetch()` the
   // trait composes (planChunks → fetchChunk → reduceChunks) is used only by the
   // deterministic fixture harness + unit tests.
 
   /** The days to scrape, read off the venue page's (`sourceUrl`)
    *  `data-showtimes-dates` attribute — the exact days that have screenings
-   *  inside Filmstarts' own fixed ~28-day booking window, gap days excluded
-   *  (verified empty in the per-day API). Reading it once lifts the horizon from
+   *  inside the site's own booking window, gap days excluded (verified empty in
+   *  the per-day API) — ~28 days on Filmstarts, ~21 on SensaCine. Reading it once lifts the horizon from
    *  the old fixed 7-day grid to the site's full window WITHOUT firing a request
    *  per empty day: the page names precisely which days to fetch. Data does exist
    *  sparsely beyond that window, but it is unadvertised (no signal names those
@@ -77,7 +85,7 @@ class WebediaShowtimesClient(
    *  No fallback: this IS the nav/index fetch the `ChunkedCinemaScraper` contract
    *  allows, and its failure fails the whole scrape (recorded as a normal
    *  outcome). A fetch error propagates; a 200 that lacks the attribute entirely
-   *  — Filmstarts markup changed, or a block/error page came back — is a
+   *  — the market's markup changed, or a block/error page came back — is a
    *  discovery failure too, so `parseShowtimeDates` returns `None` and we throw
    *  rather than silently scraping nothing. An attribute that IS present but
    *  lists no days is a legitimately empty venue (empty result, kept by the
@@ -88,8 +96,8 @@ class WebediaShowtimesClient(
     val html = http.get(url)
     parseShowtimeDates(html)
       .getOrElse(throw new IllegalStateException(
-        s"$url carries no data-showtimes-dates attribute — Filmstarts markup changed?"))
-      .filter(d => !d.isBefore(today) && !d.isAfter(today.plusDays(MaxHorizonDays.toLong)))
+        s"$url carries no data-showtimes-dates attribute — ${market.host} markup changed?"))
+      .filter(d => !d.isBefore(referenceDay) && !d.isAfter(referenceDay.plusDays(MaxHorizonDays.toLong)))
       .map(_.toString)
   }
 
@@ -107,9 +115,10 @@ class WebediaShowtimesClient(
    *  keeps last-known data.) */
   def fetchChunk(dateKey: String): Seq[CinemaMovie] = {
     val date  = LocalDate.parse(dateKey)
-    val first = parsePage(http.get(showtimesUrl(host, theaterId, date, 1)))
+    val first = parsePage(http.get(showtimesUrl(market.host, theaterId, date, 1)), market)
     val extra = (2 to first.totalPages).flatMap { p =>
-      Try(http.get(showtimesUrl(host, theaterId, date, p))).toOption.toSeq.flatMap(parsePage(_).films)
+      Try(http.get(showtimesUrl(market.host, theaterId, date, p))).toOption.toSeq
+        .flatMap(parsePage(_, market).films)
     }
     (first.films ++ extra).map(raw => toCinemaMovie(raw, raw.showtimes))
   }
@@ -189,8 +198,8 @@ object WebediaShowtimesClient {
 
   /** The days a venue has showtimes on, read off the venue page's
    *  `data-showtimes-dates="[&quot;2026-07-19&quot;,…]"` — an HTML-entity-escaped
-   *  JSON array of ISO dates spanning Filmstarts' fixed ~28-day window with gap
-   *  days omitted. The entity-escaping is irrelevant to a date regex, so pull the
+   *  JSON array of ISO dates spanning the site's own booking window with gap
+   *  days omitted (~28 days on Filmstarts, ~21 on SensaCine). The entity-escaping is irrelevant to a date regex, so pull the
    *  ISO dates straight out of the attribute value; deduped and sorted.
    *
    *  `None` when the attribute is ABSENT — unexpected markup, so the caller fails
@@ -222,15 +231,18 @@ object WebediaShowtimesClient {
   )
 
   /** Parse one `/_/showtimes/theater-<id>/d-<date>/p-<n>/` response. Pure +
-   *  public so the spec feeds it the recorded JSON directly. */
-  def parsePage(json: String): Page = {
+   *  public so the spec feeds it the recorded JSON directly. Takes the market
+   *  because two things inside a result are language-shaped rather than
+   *  structural: the `runtime` string's unit words and the version tokens. */
+  def parsePage(json: String, market: WebediaMarket): Page = {
     val js = Try(Json.parse(json)).getOrElse(JsNull)
     val totalPages = (js \ "pagination" \ "totalPages").asOpt[Int].getOrElse(1)
-    val films = (js \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty).flatMap(parseResult)
+    val films = (js \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+      .flatMap(parseResult(_, market))
     Page(films, totalPages)
   }
 
-  private def parseResult(js: JsValue): Option[RawWebediaFilm] = {
+  private def parseResult(js: JsValue, market: WebediaMarket): Option[RawWebediaFilm] = {
     val movie = js \ "movie"
     for {
       id    <- (movie \ "internalId").asOpt[Long]
@@ -240,7 +252,7 @@ object WebediaShowtimesClient {
       title          = title,
       originalTitle  = (movie \ "originalTitle").asOpt[String].map(_.trim).filter(_.nonEmpty),
       year           = (movie \ "data" \ "productionYear").asOpt[Int],
-      runtimeMinutes = (movie \ "runtime").asOpt[String].flatMap(parseRuntime),
+      runtimeMinutes = (movie \ "runtime").asOpt[String].flatMap(parseRuntime(_, market)),
       genres         = (movie \ "genres").asOpt[Seq[JsValue]].getOrElse(Nil)
         .flatMap(g => (g \ "translate").asOpt[String]).map(_.trim).filter(_.nonEmpty),
       director       = parseDirectors(movie \ "credits"),
@@ -251,12 +263,13 @@ object WebediaShowtimesClient {
         .map(tools.TextNormalization.stripHtmlKeepingParagraphs).filter(_.nonEmpty),
       // German FSK certificate off the first `releases[]` element that carries one
       // (a film's earliest releases can lack a certificate while a later one has
-      // it). Kept verbatim — e.g. "FSK 6" — because the "FSK" prefix IS the
-      // recognisable German label; `normalize` only drops blank/placeholder codes.
+      // it). Kept verbatim — German "FSK 6", Spanish "+12" — because the local
+      // spelling IS the recognisable label; `normalize` only drops blank/placeholder codes.
       ageRating      = AgeRating.normalize(
         (movie \ "releases").asOpt[Seq[JsValue]].getOrElse(Nil)
-          .flatMap(r => (r \ "certificate" \ "code").asOpt[String]).headOption),
-      showtimes      = parseShowtimes(js \ "showtimes")
+          .flatMap(r => (r \ "certificate" \ "code").asOpt[String]).headOption
+          .map(market.certificateLabel)),
+      showtimes      = parseShowtimes(js \ "showtimes", market)
     )
   }
 
@@ -273,14 +286,14 @@ object WebediaShowtimesClient {
   /** Flatten the version-bucketed `showtimes` object into a flat screening list.
    *  Each bucket (`original`/`dubbed`/`local`/…) is an array; the language
    *  version + projection become [[Showtime.format]] tokens. */
-  private def parseShowtimes(js: JsLookupResult): Seq[Showtime] =
+  private def parseShowtimes(js: JsLookupResult, market: WebediaMarket): Seq[Showtime] =
     js.asOpt[JsObject].map(_.fields.toSeq).getOrElse(Seq.empty).flatMap { case (_, bucket) =>
       bucket.asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty).flatMap { s =>
         (s \ "startsAt").asOpt[String].flatMap(parseLocalDateTime).map { dt =>
           val booking = (s \ "data" \ "ticketing").asOpt[Seq[JsValue]].getOrElse(Nil)
             .flatMap(t => (t \ "urls").asOpt[Seq[String]].getOrElse(Nil))
             .headOption.map(cleanBookingUrl)
-          Showtime(dt, booking, None, formatTokens(s))
+          Showtime(dt, booking, None, formatTokens((s \ "tags").asOpt[Seq[String]].getOrElse(Nil), market))
         }
       }
     }
@@ -290,11 +303,18 @@ object WebediaShowtimesClient {
    *  `Localization.Subtitle.*`) rather than the noisier `projection`/
    *  `diffusionVersion` fields (which spell 3D as `F_3D` and leave the original/
    *  subtitled version encoded only in the bucket + tags): the non-digital
-   *  projection formats (3D, IMAX…) plus a language token — `OV` for an
-   *  original-version screening, `OmU` when subtitled. A plain dubbed digital
-   *  screening yields no token (the German default). */
-  private def formatTokens(s: JsValue): List[String] = {
-    val tags = (s \ "tags").asOpt[Seq[String]].getOrElse(Nil).map(_.toLowerCase)
+   *  projection formats (3D, IMAX…) plus a language token — the market's own
+   *  original-version abbreviation (`OV` in Germany, `VO` in Spain) and its
+   *  subtitled one (`OmU` / `VOSE`). A plain dubbed digital screening yields no
+   *  token: dubbing is the default in both markets, so it is the un-marked case.
+   *
+   *  Public, and taking the raw tag list rather than the screening object, so a
+   *  spec can pin a tag COMBINATION the recorded captures do not hold — the same
+   *  reason [[GatsbyBoxOfficeParser.formatTokens]] is public. A single day's
+   *  capture of one venue is usually all-dubbed-digital (both of ours are), so
+   *  the version branches would otherwise ship untested. */
+  def formatTokens(rawTags: Seq[String], market: WebediaMarket): List[String] = {
+    val tags = rawTags.map(_.toLowerCase)
     val projection = List(
       "format.projection.3d"   -> "3D",
       "format.projection.imax" -> "IMAX",
@@ -302,20 +322,29 @@ object WebediaShowtimesClient {
       "format.projection.dolby" -> "DOLBY"
     ).collect { case (needle, token) if tags.exists(_.contains(needle)) => token }
     val language =
-      if (tags.exists(_.contains("subtitle")))          List("OmU")
-      else if (tags.exists(_.contains("version.original"))) List("OV")
-      else                                              Nil
+      if (tags.exists(_.contains("subtitle")))              List(market.subtitledToken)
+      else if (tags.exists(_.contains("version.original"))) List(market.originalVersionToken)
+      else                                                  Nil
     (projection ++ language).distinct
   }
 
   private def parseLocalDateTime(s: String): Option[LocalDateTime] =
     Try(LocalDateTime.parse(s.trim)).toOption
 
-  /** "1 Std. 56 Min." → 116; "56 Min." → 56. `None` when neither part is present. */
-  private def parseRuntime(s: String): Option[Int] = {
-    val hours   = """(\d+)\s*Std""".r.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
-    val minutes = """(\d+)\s*Min""".r.findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
-    Some(hours * 60 + minutes).filter(_ > 0)
+  /** German "1 Std. 56 Min." → 116, Spanish "1h 56min" → 116, "56 Min." → 56.
+   *  `None` when neither part is present.
+   *
+   *  The unit words come from the market, and the match is CASE-SENSITIVE on
+   *  purpose. Germany's "Min" and Spain's "min" are the same letters, so a
+   *  case-insensitive match would let the German market read a Spanish
+   *  "1h 56min" as 56 minutes — an hour short, silently, and plausible enough
+   *  that nothing downstream would flag it. Case-sensitivity makes a market
+   *  applied to the wrong payload produce NOTHING rather than something wrong. */
+  private def parseRuntime(s: String, market: WebediaMarket): Option[Int] = {
+    def part(marker: String): Int =
+      s"(\\d+)\\s*${java.util.regex.Pattern.quote(marker)}".r
+        .findFirstMatchIn(s).map(_.group(1).toInt).getOrElse(0)
+    Some(part(market.hourMarker) * 60 + part(market.minuteMarker)).filter(_ > 0)
   }
 
   /** The relay booking URLs arrive with a trailing "; SSR" render marker glued

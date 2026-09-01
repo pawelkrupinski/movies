@@ -100,7 +100,7 @@ object VueCinemasPlatformParser {
    *  Language: German venues mark an original-with-subtitles screening either as
    *  the `Session` attribute `om-u` or via a `Language` attribute whose name
    *  says "…Untertiteln" — both map to `OmU`, the token
-   *  `services.cinemas.de.WebediaShowtimesClient` already uses for Germany. A
+   *  `services.cinemas.common.WebediaShowtimesClient` already uses for Germany. A
    *  screening in the venue's default language gets no language token (matching
    *  Multikino's and Webedia's behaviour), so UK rows stay untagged. */
   private def formatTokens(session: JsValue): List[String] = {

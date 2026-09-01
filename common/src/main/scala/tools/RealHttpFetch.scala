@@ -433,6 +433,36 @@ object RealHttpFetch {
       paceKnob           = Some("KINOWO_FILMSTARTS_PACE_MS"),
     ),
 
+    // SensaCine (Webedia ES). Spain's 594 venues reach the SAME client Germany
+    // does on a DIFFERENT host, and that difference is the whole reason this row
+    // exists: `HostPolicies` rows match by host SUFFIX, so `filmstarts.de` does
+    // NOT match `www.sensacine.com` and a market without its own row is not paced
+    // AT ALL. That is the exact condition that produced the UK's self-inflicted
+    // 429 storm, and it would be worse here because the two markets look
+    // identical in the code — one client, one parser, one set of dashboards.
+    //
+    // 1400ms is Filmstarts' number, adopted deliberately rather than measured:
+    // same vendor, same platform, same request shape, and Germany spent three
+    // separate retunes (250 -> 500 -> 1000 -> 1400ms) discovering that anything
+    // faster sits above what a Webedia origin tolerates sustained. Starting a
+    // sibling market at the pace its sibling converged on costs Spain some sweep
+    // length and risks nothing; starting it fast would rediscover the same
+    // blackout-and-breaker cycle on a second country.
+    //
+    // It is only a STARTING point, and it is cheap to move: a Spanish venue
+    // advertises far fewer days than a German one (measured 2026-09-01 over 30
+    // venues: mean 7.8 requests per venue including its listing fetch, max 19,
+    // against Germany's 13.4), so the sweep is 594 x 12 x 1400ms = ~2.8h inside a
+    // 420min cadence — a ~40% duty cycle, well clear of the 100% the UK tried and
+    // reverted. If Spain proves to tolerate more, KINOWO_SENSACINE_PACE_MS retunes
+    // it live, and WorkerScrapeCadenceConfigSpec fails if the pace and the cadence
+    // in infra/kubernetes/worker/overlays/es/patch.yaml ever drift apart.
+    HostPolicy(
+      Set("sensacine.com"),
+      minRequestInterval = Some(Duration.ofMillis(1400)),
+      paceKnob           = Some("KINOWO_SENSACINE_PACE_MS"),
+    ),
+
     // Flicks (www.flicks.co.uk) — 500 UK venues, each fanning out one sessions
     // request per advertised day (~36 at the measured ~35 days/venue, so ~18k
     // requests per cycle) onto ONE origin. It was 843 venues until the chains went

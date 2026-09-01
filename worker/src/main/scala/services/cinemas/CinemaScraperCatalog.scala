@@ -2,8 +2,7 @@ package services.cinemas
 
 import models._
 import tools.{CachingDetailFetch, HttpFetch}
-import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, VueCinemasPlatformClient, ZyteFallback}
-import services.cinemas.de.WebediaShowtimesClient
+import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient, ZyteFallback}
 import services.cinemas.pl._
 import services.cinemas.common.{FlicksClient, FlicksMarket}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
@@ -1476,13 +1475,31 @@ class CinemaScraperCatalog(
 
   // ── Germany (AlloCiné/Filmstarts website-JSON) ───────────────────────────
   private def filmstarts(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
-    new WebediaShowtimesClient(http, "www.filmstarts.de", theaterId, cinema, today = today)
+    new WebediaShowtimesClient(http, WebediaMarket.Germany, theaterId, cinema, today = Some(today))
   // Germany — data-driven from the full GermanRoster (158 regions / 1,529 cinemas):
   // one filmstarts scraper per cinema, keyed by region slug (the slug City.slug uses).
   // Each cinema's Filmstarts theaterId comes from GermanRoster.theaterIdByCinema.
   private val germanBaseByCity: Map[String, Seq[CinemaScraper]] =
     models.GermanRoster.regions.map { region =>
       region.slug -> region.cinemas.map(c => filmstarts(models.GermanRoster.theaterIdByCinema(c), c))
+    }.toMap
+
+  // ── Spain (AlloCiné/SensaCine website-JSON) ──────────────────────────────
+  // The SAME client Germany uses, on a different market — so a different HOST,
+  // which is what keeps the two countries' pace gates and 429 back-offs
+  // independent of each other; see `WebediaMarket`.
+  private def sensacine(theaterId: String, cinema: Cinema): WebediaShowtimesClient =
+    new WebediaShowtimesClient(http, WebediaMarket.Spain, theaterId, cinema, today = Some(today))
+
+  // Spain — data-driven from the full SpanishRoster (52 provinces / 595 cinemas):
+  // one sensacine scraper per cinema, keyed by the PROVINCE slug City.slug uses.
+  // Keyed off `Country.Spain.cities` rather than off `SpanishRoster.places`,
+  // because the slug a province is finally addressable under is decided in
+  // `City.spanishCities` (one of them is qualified away from a US metro's) and
+  // the catalogue has to agree with the roster the web tier serves.
+  private val spanishBaseByCity: Map[String, Seq[CinemaScraper]] =
+    models.Country.Spain.cities.map { city =>
+      city.slug -> city.cinemas.map(c => sensacine(models.SpanishRoster.theaterIdByCinema(c), c))
     }.toMap
 
   // ── United States (chain-primary, Flicks for the rest) ───────────────────
@@ -1674,8 +1691,9 @@ class CinemaScraperCatalog(
     "wiltshire" -> wiltshireScrapers,
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
-  ) ++ germanBaseByCity  // Germany: the full 158-region roster (data-driven)
-    ++ usBaseByCity     // USA: 457 metros + small states (data-driven)
+  ) ++ germanBaseByCity   // Germany: the full 158-region roster (data-driven)
+    ++ usBaseByCity       // USA: 457 metros + small states (data-driven)
+    ++ spanishBaseByCity  // Spain: the full 52-province roster (data-driven)
 
   /** Per-city scrapers plus any Filmweb-catchment venues for that city. */
   val byCity: Map[String, Seq[CinemaScraper]] =

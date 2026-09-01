@@ -60,6 +60,7 @@ jobs:
                     - { country: germany,        code: de }
                     - { country: united-kingdom, code: uk }
                     - { country: united-states,  code: us }
+                    - { country: spain,          code: es }
         runs-on: ubuntu-latest
         timeout-minutes: 30
         permissions:

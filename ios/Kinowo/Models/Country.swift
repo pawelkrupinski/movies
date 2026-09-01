@@ -52,7 +52,7 @@ struct Country: Codable, Hashable {
     /// Compile-time FALLBACK registry, used only until the bundled/fetched
     /// catalog loads (and if that ever fails to decode). The live registry is the
     /// `/api/catalog` payload the `CatalogStore` publishes. Poland is first (the
-    /// default). Codes match the server (`pl`/`uk`/`de`/`us`).
+    /// default). Codes match the server (`pl`/`uk`/`de`/`us`/`es`).
     static let all: [Country] = [
         Country(
             code: "pl",
@@ -85,6 +85,17 @@ struct Country: Codable, Hashable {
             // catalog loads; the live payload's per-country `timezone` (derived
             // server-side from the first US region) replaces it immediately.
             timeZone: TimeZone(identifier: "America/New_York") ?? warsawZone
+        ),
+        Country(
+            code: "es",
+            displayName: "España",
+            baseURL: URL(string: "https://showtimes.cc/es")!,
+            languageCode: "es",
+            // Peninsular Spain. The Canary provinces run an hour behind on
+            // Atlantic/Canary; like the US entry above this nominal value only
+            // matters before the catalog loads, and the live payload's
+            // per-country `timezone` replaces it immediately.
+            timeZone: TimeZone(identifier: "Europe/Madrid") ?? warsawZone
         ),
     ]
 

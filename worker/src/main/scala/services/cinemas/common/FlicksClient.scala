@@ -14,7 +14,7 @@ import scala.util.Try
  * runs the SAME site on several ccTLDs. One instance serves one venue of one
  * [[FlicksMarket]]: `flicks.co.uk` for the UK — the chosen source there after
  * Webedia retired its British sibling Screenrush (`screenrush.co.uk` is gone
- * from DNS, so [[services.cinemas.de.WebediaShowtimesClient]] can't reach the
+ * from DNS, so [[services.cinemas.common.WebediaShowtimesClient]] can't reach the
  * UK) — and `flicks.us` for the United States, which is why this client lives in
  * `services.cinemas.common` rather than a per-country package.
  *

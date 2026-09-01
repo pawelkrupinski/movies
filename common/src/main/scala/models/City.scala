@@ -38,15 +38,25 @@ private[models] object CityGrammar {
     def genitivePluralLabel(labels: CityLabels): String = labels.genitivePlural
   }
 
-  /** Non-declining languages (English, default): the nominative, with the
-   *  English preposition for the locative slot ("in London"). */
-  private object Nominative extends CityGrammar {
-    def locativePhrase(labels: CityLabels): String    = s"in ${labels.nominative}"
+  /** Non-declining languages: the nominative, with the language's own
+   *  preposition in front of it for the locative slot ("in London", "en Madrid").
+   *  The preposition is a parameter rather than a literal because it is the only
+   *  thing that differs — German's is "in" like English's, Spanish's is not, and
+   *  a hardcoded "in" would have put "in Madrid" in every Spanish share card and
+   *  every piece of Spanish structured data. */
+  private final class Nominative(preposition: String) extends CityGrammar {
+    def locativePhrase(labels: CityLabels): String      = s"$preposition ${labels.nominative}"
     def genitivePluralLabel(labels: CityLabels): String = labels.nominative
   }
 
-  def of(locale: Locale): CityGrammar =
-    if (locale.getLanguage == "pl") Polish else Nominative
+  private val In = new Nominative("in")   // English, German
+  private val En = new Nominative("en")   // Spanish
+
+  def of(locale: Locale): CityGrammar = locale.getLanguage match {
+    case "pl" => Polish
+    case "es" => En
+    case _    => In
+  }
 }
 
 /**
@@ -879,6 +889,26 @@ final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
   override val areas: Seq[CinemaAreaGroup] = areas0
 }
 
+/** A Spanish PROVINCE — the data-driven `City` subtype, and the unit both the
+ *  source and a Spanish visitor use. SensaCine enumerates its own catalogue by
+ *  province (`/cines/provincias-<id>/`), and 52 of them is a list a picker stays
+ *  readable at, so unlike the US there is nothing to group them under: Spain's
+ *  picker is flat, like Germany's.
+ *
+ *  The roster (595 cinemas over 52 provinces) is generated into
+ *  `SpanishRosterData` and materialised by [[SpanishRoster]]; instances are built
+ *  ONCE (in `City.spanishCities`), so identity equality holds just like the
+ *  hand-authored `case object` cities.
+ *
+ *  Like [[UsCity]] and unlike [[GermanRegion]] the zone is a CONSTRUCTOR
+ *  parameter: the Canary provinces run an hour behind the peninsula, and a
+ *  single national zone would move their day boundary. */
+final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: Double,
+                            zoneId: ZoneId, cinemas0: Seq[Cinema])
+  extends City(slug, labels, lat, lon, zoneId) {
+  val cinemas: Seq[Cinema] = cinemas0
+}
+
 /** A named group of [[City]]s in a picker — a US STATE over its metros
  *  ("California → Los Angeles", the way a visitor finds one). The state is not
  *  a place you can open: `/california/` is nothing, and its films live at
@@ -1018,6 +1048,45 @@ object City {
         groups :+ CityGroup(place.stateName, place.stateSlug, Seq(city))
     }
 
+  /** Spain's cities — the authoritative list for [[Country.Spain]]. One city per
+   *  PROVINCE (52 of them), materialised data-driven from `SpanishRosterData`
+   *  (see [[SpanishProvince]] / [[SpanishRoster]]) rather than hand-authored case
+   *  objects, the same shape Germany uses.
+   *
+   *  The slug is assigned HERE rather than in [[SpanishRoster]] for the reason
+   *  [[usSlugs]] spells out: `City.bySlug` is a single global namespace, and a
+   *  province name is not unique in it. */
+  private[models] val spanishCities: Seq[City] = {
+    val slugs = spanishSlugs(SpanishRoster.places)
+    SpanishRoster.places.zip(slugs).map { case (p, slug) =>
+      new SpanishProvince(slug, CityLabels(p.name, p.name, p.name), p.lat, p.lon, p.zoneId, p.cinemas)
+    }
+  }
+
+  /** The URL slug of each [[SpanishRoster.places]] entry, in that order.
+   *
+   *  A province keeps its own folded name wherever that is free, and is
+   *  qualified with its autonomous community where it is not
+   *  (`toledo-castilla-la-mancha`) — the same rule, and the same reason, as a US
+   *  metro qualifying with its state.
+   *
+   *  ONE province needs it today: Toledo, whose name the US roster already
+   *  serves as the Ohio metro at `/toledo/`. Spain qualifies rather than the US,
+   *  because `/toledo/` is a live published URL with a sitemap entry, an
+   *  indexed page and a `city` cookie behind it, and the newcomer is the one
+   *  that can still choose. Unlike the US case there is no "biggest claimant
+   *  keeps it" tie-break to make: two provinces never share a name.
+   *
+   *  Qualifying only the SLUG — the label stays "Toledo", which is what the
+   *  Spanish picker shows and what is unambiguous inside Spain. */
+  private def spanishSlugs(places: Seq[SpanishPlace]): Seq[String] = {
+    val foreign = (polishCities ++ allUkCities ++ germanCities ++ usCities).map(_.slug).toSet
+    places.map { p =>
+      if (foreign.contains(p.preferredSlug)) Slugify.stable(s"${p.name} ${p.community}")
+      else p.preferredSlug
+    }
+  }
+
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse
    *  lookups. A single-country web deployment scopes to `country.cities`.
@@ -1028,14 +1097,14 @@ object City {
    *  make the two objects' static initialisers wait on each other and deadlock
    *  when loaded on parallel threads. Keep the dependency one-directional:
    *  `Country → City`. A new country adds its list to this concatenation. */
-  val all: Seq[City] = polishCities ++ ukCities ++ germanCities ++ usCities
+  val all: Seq[City] = polishCities ++ ukCities ++ germanCities ++ usCities ++ spanishCities
 
   /** Every modelled city across all countries — including cities that are
    *  declared in code but currently disabled, so absent from the live [[all]]
    *  (e.g. the UK cities filtered out by [[activeUkCities]]). [[all]] is the
    *  LIVE roster that web serves and the worker scrapes; this is the FULL roster
    *  used only by coverage/partition checks that must also see disabled cities. */
-  val allModelled: Seq[City] = polishCities ++ allUkCities ++ germanCities ++ usCities
+  val allModelled: Seq[City] = polishCities ++ allUkCities ++ germanCities ++ usCities ++ spanishCities
 
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 

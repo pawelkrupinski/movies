@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.ChainFlicksFallback
 import services.cinemas.us.UsChainVenues
-import tools.RateLimitedHttpFetch
+import tools.{RateLimitedHttpFetch, RealHttpFetch}
 
 import scala.concurrent.duration.*
 
@@ -52,6 +52,22 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
    *  measured against one horizon does not survive the horizon changing — the
    *  invariant below is only as honest as this number. */
   private val RequestsPerGermanVenue = 14
+
+  /** SensaCine requests one SPANISH venue costs per sweep — the same client and
+   *  the same shape as Germany's (one venue page for `data-showtimes-dates`,
+   *  then one day-page per advertised day), but NOT the same number, which is
+   *  the point of measuring it per market rather than inheriting it.
+   *
+   *  Measured 2026-09-01 over 30 venues drawn from both large and small
+   *  provinces: mean 7.8 requests per venue (median 11, max 19), with 8 of the
+   *  30 dark — an empty `data-showtimes-dates`, costing just the listing fetch.
+   *  A Spanish venue advertises about half what a German one does.
+   *
+   *  12 is that mean rounded UP with room for a busier season, and rounding up
+   *  is the safe direction: this number only makes the invariant below stricter.
+   *  Germany's sat at a stale 5 through a horizon change and reported a
+   *  comfortable 3h sweep while the real one had grown to 7.9h. */
+  private val RequestsPerSpanishVenue = 12
 
   /** UK venues whose scrape actually reaches the PACED flicks.co.uk origin on the
    *  happy path. The chain venues (Cineworld, Vue, Odeon, Everyman, Showcase) went
@@ -215,6 +231,63 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     overlayEnv("us", "KINOWO_SCRAPE_TASKS_PER_VENUE") shouldBe Some(RequestsPerFlicksVenue.toString)
   }
 
+  "the Spain worker" should "scrape on a cadence its paced SensaCine sweep can drain within" in {
+    // THE SAME INVARIANT, and the same trap Germany and the US each hit from a
+    // different direction: Spain reaches the SAME client Germany does
+    // (`WebediaShowtimesClient`) on a DIFFERENT host, and `HostPolicies` rows match
+    // by host SUFFIX — so `filmstarts.de` does not cover `www.sensacine.com` and a
+    // Spanish sweep would run entirely UNPACED while every dashboard, parser and
+    // spec it shares with Germany looked fine. The pace assertion below is the one
+    // that catches that.
+    //
+    // 1400ms is Filmstarts' converged number adopted for a sibling market rather
+    // than a measured Spanish ceiling. Germany spent three retunes
+    // (250 -> 500 -> 1000 -> 1400ms) finding what a Webedia origin tolerates
+    // sustained; starting Spain there costs sweep length and risks nothing, and
+    // KINOWO_SENSACINE_PACE_MS retunes it live.
+    val pace = RateLimitedHttpFetch.configuredInterval(
+      "https://www.sensacine.com/_/showtimes/theater-E0291/d-2026-09-02/p-1/")
+    val cadence = cadenceOf(workerOverlay("es")).map(_.toInt).map(_.minutes)
+
+    withClue("sensacine.com must have its OWN pace row — it does not inherit filmstarts.de's: ") {
+      pace should not be empty
+    }
+
+    val requests = Country.Spain.cities.flatMap(_.cinemas).distinct.size * RequestsPerSpanishVenue
+    val sweep    = (requests * pace.get.toMillis).millis
+    withClue(s"$requests requests at ${pace.get.toMillis}ms = ${sweep.toMinutes}min sweep vs ${cadence.get.toMinutes}min cadence: ") {
+      sweep should be <= cadence.get
+    }
+
+    // Reported, not asserted — same as UK and US. `sweep <= cadence` passes at exact
+    // equality, which is a pacer at 100% duty against one third-party origin 24/7.
+    val headroom = 1.0 - sweep.toMillis.toDouble / cadence.get.toMillis
+    info(f"SensaCine sweep uses ${100 * (1 - headroom)}%.1f%% of the ${cadence.get.toMinutes}min window (headroom ${100 * headroom}%+.1f%%)")
+  }
+
+  it should "charge the scrape queue the same per-venue cost the sweep above is computed from" in {
+    // Same coupling the US test spells out: the reaper ADMITS a venue against
+    // KINOWO_SCRAPE_TASKS_PER_VENUE while the cadence is sized from
+    // RequestsPerSpanishVenue. Drift, and the queue bursts by COUNT with this guard
+    // still reporting the sweep fits.
+    overlayEnv("es", "KINOWO_SCRAPE_TASKS_PER_VENUE") shouldBe Some(RequestsPerSpanishVenue.toString)
+  }
+
+  it should "keep sensacine.com paced independently of its German sibling" in {
+    // The two markets share a client, a parser and a set of dashboards, so the ONE
+    // thing keeping their request budgets apart is that the pace gate and the 429
+    // back-off both bucket by full hostname. Assert they resolve to separate rows
+    // rather than one matching both.
+    val es = RateLimitedHttpFetch.configuredInterval("https://www.sensacine.com/cines/cine/E0291/")
+    val de = RateLimitedHttpFetch.configuredInterval("https://www.filmstarts.de/kinoprogramm/kino/A0263/")
+    es should not be empty
+    de should not be empty
+    // Equal TODAY (Spain adopted its sibling's number), but they are separate knobs:
+    // KINOWO_SENSACINE_PACE_MS moves one without the other.
+    RealHttpFetch.HostPolicies.count(_.hostSuffixes.contains("sensacine.com")) shouldBe 1
+    RealHttpFetch.HostPolicies.count(_.hostSuffixes.contains("filmstarts.de")) shouldBe 1
+  }
+
   "every worker toml" should "set the cadence explicitly rather than inheriting the code default" in {
     val workerTomls = RepoFile
       .flyTomls()
@@ -280,8 +353,9 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     val uk = hoursOf("fly.worker.uk.toml")
     val de = hoursOf("fly.worker.de.toml")
     val us = hoursOf(workerOverlay("us"))
+    val es = hoursOf(workerOverlay("es"))
 
-    val sentence = s"${pl}h for pl, ${uk}h for uk, ${de}h for de, ${us}h for us"
+    val sentence = s"${pl}h for pl, ${uk}h for uk, ${de}h for de, ${us}h for us, ${es}h for es"
     // BOTH copies, because there are two and only one of them is read by anybody. The
     // live dashboard is the one on monitoring-1; the fly/ copy is the frozen rollback
     // for the stopped Fly Grafana. Guarding only the frozen one is how the live panel

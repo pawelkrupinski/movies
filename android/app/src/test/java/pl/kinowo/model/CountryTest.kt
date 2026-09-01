@@ -39,6 +39,15 @@ class CountryTest {
     }
 
     @Test
+    fun esEntryForcesSpanishOnItsOwnDeployment() {
+        val es = Country.byCode("es")
+        assertEquals("es", es.code)
+        assertEquals("España", es.displayName)
+        assertEquals("https://showtimes.cc/es", es.baseUrl)
+        assertEquals("es", es.languageTag)
+    }
+
+    @Test
     fun legacyIsoCodesNormalizeToServerCodes() {
         // Earlier builds persisted ISO codes (PL/GB/US); the catalog keys on
         // pl/uk/us.

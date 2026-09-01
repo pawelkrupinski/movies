@@ -144,6 +144,14 @@ class DeepLinkTest {
         assertEquals("wicked", dl.filmSlug)
     }
 
+    @Test fun esCountrySegmentOpensInApp() {
+        // Spain's provinces arrive via the live catalog too, so pass the runtime
+        // slug set the way the German and US cases do.
+        val dl = DeepLink.parse("https://showtimes.cc/es/madrid/movie/la-odisea", setOf("madrid"))!!
+        assertEquals("madrid", dl.citySlug)
+        assertEquals("la-odisea", dl.filmSlug)
+    }
+
     /** The subdomains the Showtimes countries used to answer on are gone — they
      *  stop serving outright rather than redirecting, so a link to one must not
      *  be claimed by the app either. */

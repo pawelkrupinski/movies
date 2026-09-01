@@ -125,6 +125,15 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertEqual(dl?.filmSlug, "wicked")
     }
 
+    func testESCountrySegmentOpensInApp() {
+        // Spain's provinces arrive via the live catalog too, so pass the runtime
+        // slug set the way the German and US cases do.
+        let dl = DeepLink.parse(URL(string: "https://showtimes.cc/es/madrid/movie/la-odisea")!,
+                                knownCitySlugs: ["madrid"])
+        XCTAssertEqual(dl?.citySlug, "madrid")
+        XCTAssertEqual(dl?.filmSlug, "la-odisea")
+    }
+
     /// The subdomains the Showtimes countries used to answer on are gone — they
     /// stop serving outright rather than redirecting, so a link to one must not
     /// be claimed by the app either (the browser is what shows the failure).

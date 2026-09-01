@@ -59,6 +59,7 @@ jobs:
                     - { country: united-kingdom, code: uk }
                     - { country: germany,        code: de }
                     - { country: united-states,  code: us }
+                    - { country: spain,          code: es }
         runs-on: ubuntu-latest
         # ~5s a card, and the US is 457 of them (its states and their metros) —
         # the sweep alone is ~40 minutes there before a cold compile.

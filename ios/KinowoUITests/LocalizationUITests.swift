@@ -70,6 +70,13 @@ final class LocalizationUITests: XCTestCase {
                           filtersButton: "Filter")
     }
 
+    func testSpainRendersSpanishCaptions() throws {
+        launch(country: "es", language: "es")
+        assertTopBarReads(datePills: ["Hoy", "Mañana", "7 días", "Todo"],
+                          searchPlaceholder: "Busca una película",
+                          filtersButton: "Filtros")
+    }
+
     // MARK: - detail screen
     //
     // Its meta-block captions are passed to `metaBlock` as a `String` (it
@@ -90,6 +97,11 @@ final class LocalizationUITests: XCTestCase {
     func testGermanyRendersGermanDetailCaptions() throws {
         launchDetail(country: "de", language: "de")
         assertDetailReads(["REGIE", "BESETZUNG", "LÄNDER"])
+    }
+
+    func testSpainRendersSpanishDetailCaptions() throws {
+        launchDetail(country: "es", language: "es")
+        assertDetailReads(["DIRECTOR", "REPARTO", "PAÍSES"])
     }
 
     // MARK: - helpers

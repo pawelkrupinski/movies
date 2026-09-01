@@ -136,6 +136,7 @@ object OgCardGenerator {
   private[tools] def homeTagline(country: Country): String = country.language.getLanguage match {
     case "pl" => "Repertuar kin w Twoim mieście"
     case "de" => "Kinoprogramm in deiner Stadt"
+    case "es" => "Cartelera de cine en tu ciudad"
     case _    => "Cinema listings in your city"
   }
 

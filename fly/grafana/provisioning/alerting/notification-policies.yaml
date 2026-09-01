@@ -89,3 +89,15 @@ policies:
         group_wait: 10s
         group_interval: 30s
         repeat_interval: 5m
+
+      - receiver: WorkerThrottleEs
+        object_matchers:
+          - ['notify', '=', 'worker-throttle']
+          - ['app', '=', 'kinowo-worker-es']
+        continue: false
+        group_by:
+          - alertname
+          - app
+        group_wait: 10s
+        group_interval: 30s
+        repeat_interval: 5m
