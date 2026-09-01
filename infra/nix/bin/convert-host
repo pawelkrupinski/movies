@@ -95,12 +95,32 @@ echo "==> waiting for the rescue system on $ip"
 # error the retry logic can see.
 ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5
           -o ServerAliveInterval=5 -o ServerAliveCountMax=3)
+#
+# THE TEST MUST BE ABLE TO FAIL, and the version this replaces could not. It ran
+# `test -d /root && grep -qi rescue /etc/motd || true` -- and the trailing `|| true` makes the whole
+# command exit 0 whatever it finds, so the loop broke on the first ssh that merely CONNECTED. The
+# reset issued above is asynchronous, so that first connection is usually to the machine we are
+# about to destroy, still running the old system. The loop then "succeeded" against a host that
+# rebooted a moment later, and every command after it talked to a socket going away underneath it.
+#
+# `hostname` is the check because Hetzner's rescue system is literally called `rescue`, and unlike
+# /etc/motd it cannot be matched by accident on an Ubuntu image. Waiting for the machine to BE the
+# rescue system is the thing this loop was always meant to do.
+rescue_ready=0
 for _ in $(seq 1 60); do
-  if ssh "${ssh_opts[@]}" -o BatchMode=yes "root@$ip" 'test -d /root && grep -qi rescue /etc/motd 2>/dev/null || true' 2>/dev/null; then
+  if [[ "$(ssh "${ssh_opts[@]}" -o BatchMode=yes "root@$ip" hostname 2>/dev/null)" == "rescue" ]]; then
+    rescue_ready=1
     break
   fi
   sleep 5
 done
+
+if ((!rescue_ready)); then
+  echo "convert-host: $ip never came up as the rescue system (waited 5 minutes)." >&2
+  echo "  Check the machine in the Hetzner console; it may have booted the installed system" >&2
+  echo "  instead, which means enable_rescue did not take before the reset." >&2
+  exit 1
+fi
 
 # REFUSE TO INSTALL ONTO A HETZNER VOLUME. This is the guard for the failure that cost mongo-1 a
 # rebuild on 2026-08-29: the host's disko layout named `/dev/sda`, an attached volume won the race
