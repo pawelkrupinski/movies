@@ -203,9 +203,20 @@
     # `fleet.mongodb.initiateReplicaSet = false` on the target is what prevents it. This checks the
     # outcome rather than the setting, because the setting can be right in the repo and not yet
     # deployed.
+    # NO CREDENTIAL ON THIS ONE, AND IT IS THE ONLY TASK HERE THAT MANAGES WITHOUT. The target is
+    # empty at this point: its users live in `admin` and are documents, so they arrive with the
+    # initial sync and DO NOT EXIST YET. Handing it `migrate_admin_uri` fails with "Authentication
+    # failed", which reads like a wrong password rather than like a database that has no users at
+    # all. mongod's localhost exception is what makes an unauthenticated loopback connection work
+    # while no user exists -- the same mechanism roles/mongodb.nix's initiator relies on, for the
+    # same reason and at the same moment in a host's life.
+    #
+    # It stops working the instant the sync lands, which is fine: this task only ever runs in
+    # `join`, before the member is added. Every other probe against the target runs after the users
+    # have replicated and uses the credential.
     - name: The target must NOT have initiated a replica set of its own
       ansible.builtin.raw: >-
-        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        mongosh --host 127.0.0.1 --port 27017 --quiet --eval
         'try { const s = rs.status();
                print(JSON.stringify({initialised: true, set: s.set, members: s.members.length})); }
          catch (e) { print(JSON.stringify({initialised: e.codeName !== "NotYetInitialized",
