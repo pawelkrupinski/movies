@@ -413,8 +413,13 @@
     # ---------------------------------------------------------------------------------------------
 
     - name: Refuse to promote before the applications can follow an election
+      # ONE COMMAND WITH AN INLINE ASSIGNMENT, not `export` on its own line. Folded, two lines become
+      # `export KUBECONFIG=... kubectl get secret ...`, which makes `export` treat the whole kubectl
+      # invocation as variable names and print nothing -- and this task reads its own empty output as
+      # "the URI does not say replicaSet", so the guard REFUSED a correctly repointed deployment.
+      # A guard that fires when its probe silently produced nothing is worse than no guard.
       ansible.builtin.raw: >-
-        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        KUBECONFIG=/etc/rancher/k3s/k3s.yaml
         kubectl get secret -n kinowo web-secrets -o jsonpath='{.data.MONGODB_URI}' | base64 -d
       delegate_to: "{{ migrate_k8s_host | default('monitoring-1', true) }}"
       register: migrate_uri_check
@@ -424,6 +429,10 @@
     - name: The application URI must name the replica set, not one member
       ansible.builtin.assert:
         that:
+          # NON-EMPTY FIRST. `not in` is vacuously true of an empty string, so a probe that failed to
+          # produce anything would satisfy the second condition and half-satisfy this guard on no
+          # evidence at all.
+          - migrate_uri_check.stdout | regex_search('mongodb://')
           - "'replicaSet=' in migrate_uri_check.stdout"
           - "'directConnection=true' not in migrate_uri_check.stdout"
         fail_msg: >-
