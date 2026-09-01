@@ -91,16 +91,6 @@
     migrate_remote_archive: "/var/tmp/{{ kinowo_mongo_database }}.archive.gz"
     migrate_proxy_log: "{{ migrate_dump_dir }}/flyctl-proxy.log"
 
-    # ONE STATEMENT OF THE COUNTING QUERY, used against both ends. Two copies would drift, and the
-    # direction of the drift is the bad one: a verification that counts the source one way and the
-    # target another can only ever produce mismatches nobody trusts, which is how a check stops being
-    # read. `countDocuments` and not `estimatedDocumentCount`: the estimate comes from collection
-    # metadata, is allowed to be stale, and is exactly wrong for the one question being asked here.
-    migrate_count_js: >-
-      const d = db.getSiblingDB("{{ kinowo_mongo_database }}");
-      print(JSON.stringify(d.getCollectionNames().sort().reduce(
-        (acc, c) => { acc[c] = d.getCollection(c).countDocuments({}); return acc; }, {})));
-
   tasks:
     # -------------------------------------------------------------------------------------------
     # REFUSALS
@@ -279,7 +269,7 @@
         # rather than to distrust the restore.
         - name: Count the source before dumping
           ansible.builtin.command:
-            argv: [mongosh, "{{ migrate_source_uri }}", --quiet, --eval, "{{ migrate_count_js }}"]
+            argv: [mongosh, "{{ migrate_source_uri }}", --quiet, --eval, "{{ kinowo_mongo_count_js }}"]
           register: migrate_source_before
           changed_when: false
           delegate_to: localhost
@@ -304,7 +294,7 @@
 
         - name: Count the source after dumping
           ansible.builtin.command:
-            argv: [mongosh, "{{ migrate_source_uri }}", --quiet, --eval, "{{ migrate_count_js }}"]
+            argv: [mongosh, "{{ migrate_source_uri }}", --quiet, --eval, "{{ kinowo_mongo_count_js }}"]
           register: migrate_source_after
           changed_when: false
           delegate_to: localhost
@@ -377,7 +367,7 @@
     # ends independently, with the same query, is the only version of this that can disagree.
     - name: Count the target
       ansible.builtin.raw: >-
-        mongosh "{{ migrate_target_uri }}" --quiet --eval '{{ migrate_count_js }}'
+        mongosh "{{ migrate_target_uri }}" --quiet --eval '{{ kinowo_mongo_count_js }}'
       register: migrate_target_counts_raw
       changed_when: false
 

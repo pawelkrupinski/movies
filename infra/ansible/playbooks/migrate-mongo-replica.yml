@@ -1,0 +1,462 @@
+---
+# Move the kinowo database from one mongod host to another WITHOUT TAKING IT DOWN, by making the new
+# host a member of the existing replica set and then handing it the primary.
+#
+#   set -a; . .env.local; set +a
+#   cd infra/ansible
+#   ansible-playbook playbooks/migrate-mongo-replica.yml \
+#     -e migrate_source=mongo-1 -e migrate_target=mongo-2 -e migrate_confirmed=mongo-2 \
+#     -e migrate_phase=join
+#
+# WHY THIS EXISTS ALONGSIDE migrate-mongo-from-fly.yml, which also "migrates mongo". That one copies
+# a database between two unrelated servers with mongodump/mongorestore, and its cost is a window in
+# which the copy is stale -- fine when the source stays authoritative and the cutover is a separate,
+# later decision. This one cannot use that shape at all, because the requirement here is NO
+# DOWNTIME: the only mechanism MongoDB offers for that is replication itself. The new host joins the
+# set, catches up from the oplog, and is then handed the primary by an election. At no point is there
+# a moment when no member can serve a read or a write.
+#
+# IT IS ALSO THE ONLY SHAPE THAT WORKS ACROSS HETZNER LOCATIONS. A Hetzner volume cannot leave its
+# location and a primary IP cannot either (see reference: the fsn1 move on 2026-09-01), so the "copy
+# the disk" instinct -- snapshot the host, rebuild it elsewhere -- is unavailable for the one machine
+# whose disk IS the product. Replication moves the DATA and lets the addresses differ.
+#
+# ------------------------------------------------------------------------------------------------
+# THE PHASES, AND WHY THEY ARE SEPARATE INVOCATIONS RATHER THAN ONE RUN
+# ------------------------------------------------------------------------------------------------
+#
+#   join     Add the target as a NON-VOTING, priority-0 secondary and wait for it to catch up.
+#   repoint  Point the applications at the replica set instead of at one address.
+#   promote  Give the target a vote, hand it the primary, verify the handover.
+#   retire   Remove the old member from the set.
+#
+# They are separate because the safe pause is BETWEEN them, not inside them. `join` can run for as
+# long as the initial sync takes and can be abandoned at any point with no consequence; `promote` is
+# the only phase that changes who is authoritative and it is seconds long. Fusing them would mean a
+# single run whose failure mode is "we are half-promoted and nobody knows which member is primary".
+#
+# EVERY PHASE IS RE-RUNNABLE. Each one checks the state it intends to create and reports `ok`
+# instead of `changed` when it is already there, so a re-run after a fixed problem is the expected
+# way to use this, exactly as in migrate-mongo-from-fly.yml.
+#
+# ------------------------------------------------------------------------------------------------
+# WHY `join` ADDS A MEMBER THAT CANNOT VOTE AND CANNOT BE ELECTED
+# ------------------------------------------------------------------------------------------------
+#
+# `rs0` is a ONE-MEMBER set. One member means a majority of one: the primary is elected by itself and
+# stays primary as long as it is running. Adding an ordinary second member makes the majority TWO,
+# and from that instant the database needs BOTH machines up to accept a write -- so a set that was
+# surviving on one host would start failing if either host hiccuped, and it would do so during an
+# initial sync, which is the longest and least interesting part of this operation.
+#
+# `votes: 0, priority: 0` keeps the majority at one. The new member replicates, is readable, and
+# counts for nothing in an election, so the availability of the database is EXACTLY what it was
+# before the playbook ran. The vote is granted in `promote`, seconds before it is used, and the old
+# member is removed immediately after -- so the two-voter window is measured in seconds rather than
+# in however long 2GB takes to copy.
+#
+# ------------------------------------------------------------------------------------------------
+# WHAT THIS DOES NOT DO
+# ------------------------------------------------------------------------------------------------
+#
+#   * It does not BUILD the target. That is `convert-host-to-nixos.yml` plus a deploy, and the target
+#     must already be running mongod with the same replica-set name and the SAME keyFile -- the
+#     keyfile is what authenticates a member into the set, and a member with a different one is
+#     rejected with an authentication error that names nothing useful.
+#   * It does not create users. They arrive with the initial sync, because they are documents in
+#     `admin`. Creating them on the target as well would be a write to a member that is not primary,
+#     which mongod refuses anyway.
+#   * It does not destroy the old host, its volume or its primary IP. `retire` removes it from the
+#     SET; the machine keeps running with its data intact and is the rollback until somebody deletes
+#     it deliberately.
+#   * It does not touch the Fly 6PN peer. Nothing has depended on it since web and worker moved to
+#     k3s on 2026-08-29 (see hosts/mongo-1/default.nix), and a new peer for the target is a `fly
+#     wireguard create`, not a migration step.
+
+- name: Move the kinowo database to another replica-set member, with no downtime
+  hosts: "{{ migrate_source | default('mongo-1', true) }}"
+  gather_facts: false
+
+  vars:
+    ansible_host: >-
+      {{ kinowo_public_ipv4 if kinowo_connect_over == 'public' else hcloud_private_ipv4 }}
+    # `raw` throughout and root, for the reason roles/nixos_deploy gives: a NixOS host has no python
+    # unless its configuration declares one, and this playbook has to work against a machine whose
+    # configuration is one deploy old.
+    ansible_user: root
+
+    # THE ADMIN CREDENTIAL, AND WHY IT IS A LOOPBACK URI. Every mongosh invocation below runs ON a
+    # mongod host, never from the controller: 27017 is bound to the private subnet and to loopback,
+    # and the controller is on neither. So one URI is correct on BOTH hosts, which is what lets
+    # `promote` talk to the old primary and the new one with the same variable.
+    #
+    # IT MUST BE A `root` (or clusterManager) CREDENTIAL. `rs.add`, `rs.reconfig` and `rs.stepDown`
+    # are all clusterManager actions; the application user, the backup user and the exporter user all
+    # authenticate happily and then fail the actual command with "not authorized on admin".
+    migrate_admin_uri: >-
+      {{ lookup('ansible.builtin.env', 'KINOWO_MONGO_ROOT_URI')
+         | default(lookup('ansible.builtin.env', 'MONGO_ROOT_URI'), true) }}
+
+    # The member strings, exactly as they appear in `rs.conf()`. These are `<private ip>:27017` and
+    # they MUST equal `fleet.mongodb.replSetMemberHost` on each host: mongod compares the member host
+    # in the config against the addresses it has bound, and a member that cannot find itself in the
+    # configuration refuses to start replicating with "No host described in new configuration ... maps
+    # to this node".
+    migrate_source_member: >-
+      {{ migrate_source_member_override
+         | default(hostvars[migrate_source | default('mongo-1', true)]['hcloud_private_ipv4']
+                   ~ ':27017', true) }}
+    migrate_target_member: >-
+      {{ migrate_target_member_override
+         | default(hostvars[migrate_target]['hcloud_private_ipv4'] ~ ':27017', true) }}
+
+    migrate_phase: "{{ migrate_phase_override | default('join', true) }}"
+
+    # How far behind the target may be and still count as caught up. Replication lag is normal and
+    # never exactly zero on a set that is being written to; demanding zero would loop for ever on a
+    # healthy database. Ten seconds is well inside the oplog window and well inside what an election
+    # will tolerate.
+    migrate_max_lag_seconds: "{{ migrate_max_lag_seconds_override | default(10, true) }}"
+
+  tasks:
+    # ---------------------------------------------------------------------------------------------
+    # REFUSALS. Everything that would be expensive to discover halfway through.
+    # ---------------------------------------------------------------------------------------------
+
+    - name: Exactly one source host, and the target must be the one that was confirmed
+      ansible.builtin.assert:
+        that:
+          - ansible_play_hosts_all | length == 1
+          - migrate_target | default('') != ''
+          - migrate_confirmed | default('') == migrate_target
+        fail_msg: >-
+          This play resolved {{ ansible_play_hosts_all | length }} source host(s)
+          ({{ ansible_play_hosts_all | join(', ') }}) with target "{{ migrate_target | default('') }}"
+          confirmed as "{{ migrate_confirmed | default('') }}".
+          Re-run with -e migrate_target=<host> -e migrate_confirmed=<same host>.
+          The confirmation is required because `promote` moves which machine is authoritative for the
+          entire product database, and `retire` removes a member from the set.
+
+    - name: The phase must be one this playbook implements
+      ansible.builtin.assert:
+        that: migrate_phase in ['join', 'repoint', 'promote', 'retire']
+        fail_msg: >-
+          migrate_phase was "{{ migrate_phase }}". Run them in order:
+          join -> repoint -> promote -> retire. See the header for what each one does and why they
+          are separate invocations.
+
+    - name: An admin credential must be present
+      ansible.builtin.assert:
+        that: migrate_admin_uri | length > 0
+        fail_msg: >-
+          Neither KINOWO_MONGO_ROOT_URI nor MONGO_ROOT_URI is set. Source .env.local first
+          (`set -a; . .env.local; set +a`). It must be a `root` credential over loopback --
+          see the note on migrate_admin_uri for why the application credential will not do.
+
+    - name: Read the replica set as it stands
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'JSON.stringify({
+           set: rs.status().set,
+           primary: db.hello().primary,
+           isWritablePrimary: db.hello().isWritablePrimary === true,
+           members: rs.conf().members.map(m => ({host: m.host, votes: m.votes, priority: m.priority})),
+           states: rs.status().members.reduce((a, m) => { a[m.name] = m.stateStr; return a; }, {})
+         })'
+      register: migrate_rs_before
+      changed_when: false
+
+    - name: Parse it
+      ansible.builtin.set_fact:
+        rs_before: "{{ migrate_rs_before.stdout | trim | from_json }}"
+
+    - name: This host must be the PRIMARY of the set we are migrating
+      ansible.builtin.assert:
+        that:
+          - rs_before.isWritablePrimary
+          - rs_before.set == kinowo_mongo_replset
+        fail_msg: >-
+          {{ inventory_hostname }} reports set "{{ rs_before.set }}" and
+          isWritablePrimary={{ rs_before.isWritablePrimary }}.
+          Every command here is a write to the replica-set configuration, which only the primary
+          accepts. Point -e migrate_source at whichever host `rs.status()` calls PRIMARY.
+
+    # THE TRAP THIS ASSERTION EXISTS FOR, and it is the one that would be worst to discover late.
+    # roles/mongodb.nix runs `mongodb-init-replicaset` on every boot, and on a host with an empty
+    # dbPath that unit answers `NotYetInitialized` and calls `rs.initiate()` -- giving the NEW machine
+    # its own private one-member set, also called rs0, with its own history. Adding a member that is
+    # already initialised does not merge the two: it fails, and the failure text talks about
+    # configuration versions rather than about the real problem.
+    #
+    # `fleet.mongodb.initiateReplicaSet = false` on the target is what prevents it. This checks the
+    # outcome rather than the setting, because the setting can be right in the repo and not yet
+    # deployed.
+    - name: The target must NOT have initiated a replica set of its own
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'try { const s = rs.status();
+               print(JSON.stringify({initialised: true, set: s.set, members: s.members.length})); }
+         catch (e) { print(JSON.stringify({initialised: e.codeName !== "NotYetInitialized",
+                                           codeName: e.codeName})); }'
+      delegate_to: "{{ migrate_target }}"
+      register: migrate_target_rs
+      changed_when: false
+      when: migrate_phase == 'join'
+
+    - name: Refuse to join a target that already believes it is its own set
+      ansible.builtin.assert:
+        that: not (migrate_target_rs.stdout | trim | from_json).initialised
+        fail_msg: >-
+          {{ migrate_target }} has ALREADY INITIATED a replica set of its own
+          ({{ migrate_target_rs.stdout | trim }}). That is roles/mongodb.nix's
+          `mongodb-init-replicaset` unit doing its job on a host that should not have run it.
+          Set `fleet.mongodb.initiateReplicaSet = false` on the target, deploy, then wipe its dbPath
+          and restart mongod so it comes back uninitialised -- it holds no data worth keeping yet.
+          This playbook will not wipe a database for you.
+      when: migrate_phase == 'join'
+
+    # ---------------------------------------------------------------------------------------------
+    # PHASE: join
+    # ---------------------------------------------------------------------------------------------
+
+    - name: Add the target as a non-voting, never-electable secondary
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'const target = "{{ migrate_target_member }}";
+         if (rs.conf().members.some(m => m.host === target)) {
+           print("ALREADY_MEMBER");
+         } else {
+           const r = rs.add({host: target, priority: 0, votes: 0});
+           print(r.ok === 1 ? "ADDED" : "FAILED " + JSON.stringify(r));
+         }'
+      register: migrate_add
+      changed_when: "'ADDED' in migrate_add.stdout"
+      failed_when: "'FAILED' in migrate_add.stdout"
+      when: migrate_phase == 'join'
+
+    # WAITING ON stateStr AND ON LAG, not just on stateStr. A member reaches SECONDARY when it has
+    # finished the initial COPY, and it is then still replaying however much oplog accumulated while
+    # that copy ran. Promoting at that moment is legal and slow: the election succeeds and the new
+    # primary then serves reads from behind. The lag check is what makes "caught up" mean caught up.
+    - name: Wait for the target to finish its initial sync and catch up
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'const target = "{{ migrate_target_member }}";
+         const st = rs.status();
+         const p = st.members.find(m => m.stateStr === "PRIMARY");
+         const t = st.members.find(m => m.name === target);
+         if (!t) { print("MISSING"); }
+         else {
+           const lag = (p.optimeDate - t.optimeDate) / 1000;
+           print(t.stateStr + " lag=" + lag);
+         }'
+      register: migrate_sync
+      until: >-
+        'SECONDARY' in migrate_sync.stdout and
+        (migrate_sync.stdout | regex_search('lag=([0-9.-]+)', '\\1') | first | float)
+          <= (migrate_max_lag_seconds | float)
+      retries: 120
+      delay: 15
+      changed_when: false
+      when: migrate_phase == 'join'
+
+    - name: Compare document counts on both members
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        '{{ kinowo_mongo_count_js }}'
+      register: migrate_counts_source
+      changed_when: false
+      when: migrate_phase == 'join'
+
+    - name: Read the same counts from the target
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'db.getMongo().setReadPref("secondaryPreferred"); {{ kinowo_mongo_count_js }}'
+      delegate_to: "{{ migrate_target }}"
+      register: migrate_counts_target
+      changed_when: false
+      when: migrate_phase == 'join'
+
+    - name: The target must hold the same documents as the source
+      ansible.builtin.assert:
+        that: (migrate_counts_source.stdout | trim | from_json) == (migrate_counts_target.stdout | trim | from_json)
+        fail_msg: >-
+          Counts differ after the sync reported itself caught up.
+          source: {{ migrate_counts_source.stdout | trim }}
+          target: {{ migrate_counts_target.stdout | trim }}
+          A small difference on a live database can simply be a write that landed between the two
+          reads -- re-run this phase, it is free. A large or growing one is a real replication
+          problem and `promote` must not be run until it is understood.
+        success_msg: >-
+          Both members hold identical counts. The target is a complete, current copy and the set can
+          be handed over whenever `repoint` has been done.
+      when: migrate_phase == 'join'
+
+    # ---------------------------------------------------------------------------------------------
+    # PHASE: repoint
+    # ---------------------------------------------------------------------------------------------
+    #
+    # THE OLDER PLAYBOOK DELIBERATELY DECLINED TO REPOINT THE APPLICATION and this one deliberately
+    # does it, which is worth explaining rather than leaving as an inconsistency. There, repointing
+    # was the cutover itself -- the single irreversible act, correctly a person's decision. Here the
+    # cutover is `promote`, and repointing is a PREREQUISITE for it being invisible: an application
+    # pinned to one address with `directConnection=true` does not follow an election, it just keeps
+    # talking to a machine that has become a secondary and starts failing every write with
+    # "not primary". Doing it as its own phase, before the handover, is what makes the handover a
+    # non-event.
+    #
+    # WHAT CHANGES: `directConnection=true` (talk to exactly this host) becomes `replicaSet=rs0` with
+    # both members as seeds (discover the set and follow its primary). After this the driver tracks
+    # membership on its own, which is why neither `promote` nor `retire` needs another restart.
+    - name: Repoint the applications at the replica set rather than at one address
+      ansible.builtin.raw: >-
+        set -e
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        for s in web-secrets worker-secrets; do
+          cur=$(kubectl get secret -n kinowo "$s" -o jsonpath='{.data.MONGODB_URI}' | base64 -d)
+          new=$(printf '%s' "$cur" \
+            | sed -e 's#@{{ migrate_source_member }}#@{{ migrate_source_member }},{{ migrate_target_member }}#' \
+                  -e 's#directConnection=true#replicaSet={{ kinowo_mongo_replset }}#')
+          if [ "$cur" = "$new" ]; then echo "UNCHANGED $s"; else
+            kubectl patch secret -n kinowo "$s" --type=json \
+              -p "[{\"op\":\"replace\",\"path\":\"/data/MONGODB_URI\",\"value\":\"$(printf '%s' "$new" | base64 -w0)\"}]" >/dev/null
+            echo "PATCHED $s"
+          fi
+        done
+      delegate_to: "{{ migrate_k8s_host | default('monitoring-1', true) }}"
+      register: migrate_repoint
+      changed_when: "'PATCHED' in migrate_repoint.stdout"
+      when: migrate_phase == 'repoint'
+
+    # ROLLED, NOT RESTARTED, AND THE DIFFERENCE IS THE WHOLE POINT OF THIS TASK. The web deployments
+    # are maxSurge=1 / maxUnavailable=0, so `rollout restart` starts the replacement, waits for it to
+    # pass its readiness probe, and only then stops the old pod -- there is no moment with no web pod
+    # serving. The workers are strategy Recreate and DO stop before they start; that is accepted
+    # rather than overlooked, because a worker gap delays the next scrape cycle and nothing else.
+    - name: Roll the pods onto the new connection string
+      ansible.builtin.raw: >-
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        kubectl rollout restart deployment -n kinowo &&
+        kubectl rollout status deployment -n kinowo --timeout=600s
+      delegate_to: "{{ migrate_k8s_host | default('monitoring-1', true) }}"
+      register: migrate_rollout
+      changed_when: true
+      when: migrate_phase == 'repoint'
+
+    # ---------------------------------------------------------------------------------------------
+    # PHASE: promote
+    # ---------------------------------------------------------------------------------------------
+
+    - name: Refuse to promote before the applications can follow an election
+      ansible.builtin.raw: >-
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        kubectl get secret -n kinowo web-secrets -o jsonpath='{.data.MONGODB_URI}' | base64 -d
+      delegate_to: "{{ migrate_k8s_host | default('monitoring-1', true) }}"
+      register: migrate_uri_check
+      changed_when: false
+      when: migrate_phase == 'promote'
+
+    - name: The application URI must name the replica set, not one member
+      ansible.builtin.assert:
+        that:
+          - "'replicaSet=' in migrate_uri_check.stdout"
+          - "'directConnection=true' not in migrate_uri_check.stdout"
+        fail_msg: >-
+          web-secrets still carries a directConnection URI, so the applications are pinned to one
+          address and would NOT follow the election this phase is about to cause -- every write would
+          fail with "not primary" until somebody noticed. Run `-e migrate_phase=repoint` first.
+      when: migrate_phase == 'promote'
+
+    # ONE reconfig, granting the vote and the higher priority together. Two reconfigs would leave a
+    # moment with two equal-priority voters, where the election this phase wants can be won by the
+    # member it is trying to move away from.
+    - name: Give the target a vote and the higher priority
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'const cfg = rs.conf();
+         const target = "{{ migrate_target_member }}";
+         let touched = false;
+         cfg.members.forEach(m => {
+           if (m.host === target && (m.votes !== 1 || m.priority !== 2)) { m.votes = 1; m.priority = 2; touched = true; }
+         });
+         if (!touched) { print("ALREADY_VOTING"); }
+         else { cfg.version += 1; const r = rs.reconfig(cfg); print(r.ok === 1 ? "RECONFIGURED" : "FAILED " + JSON.stringify(r)); }'
+      register: migrate_reconfig
+      changed_when: "'RECONFIGURED' in migrate_reconfig.stdout"
+      failed_when: "'FAILED' in migrate_reconfig.stdout"
+      when: migrate_phase == 'promote'
+
+    # `rs.stepDown` on a healthy set is the SHORTEST possible handover: the primary tells the set it
+    # is standing down, the highest-priority caught-up secondary is elected immediately, and drivers
+    # that are watching the topology reconnect within a second. It is deliberately not "stop mongod",
+    # which produces the same outcome via a timeout measured in seconds of failed writes.
+    - name: Hand the primary to the target
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'if (db.hello().isWritablePrimary !== true) { print("ALREADY_STEPPED_DOWN"); }
+         else { try { rs.stepDown(60); } catch (e) {} print("STEPPED_DOWN"); }'
+      register: migrate_stepdown
+      changed_when: "'STEPPED_DOWN' in migrate_stepdown.stdout and 'ALREADY' not in migrate_stepdown.stdout"
+      when: migrate_phase == 'promote'
+
+    - name: Wait for the target to be PRIMARY
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'print(db.hello().isWritablePrimary === true ? "PRIMARY" : "NOT_YET")'
+      delegate_to: "{{ migrate_target }}"
+      register: migrate_target_primary
+      until: "'PRIMARY' in migrate_target_primary.stdout"
+      retries: 20
+      delay: 3
+      changed_when: false
+      when: migrate_phase == 'promote'
+
+    # ---------------------------------------------------------------------------------------------
+    # PHASE: retire
+    # ---------------------------------------------------------------------------------------------
+    #
+    # RUN FROM THE TARGET, because after `promote` the target is the primary and only the primary may
+    # reconfigure the set. Removing the old member takes the set back to a single voting member and a
+    # majority of one -- the same shape it had before this playbook ran, on a different machine.
+    - name: Remove the old member from the set
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'const source = "{{ migrate_source_member }}";
+         if (!rs.conf().members.some(m => m.host === source)) { print("ALREADY_REMOVED"); }
+         else if (db.hello().isWritablePrimary !== true) { print("FAILED not primary here"); }
+         else { const r = rs.remove(source); print(r.ok === 1 ? "REMOVED" : "FAILED " + JSON.stringify(r)); }'
+      delegate_to: "{{ migrate_target }}"
+      register: migrate_remove
+      changed_when: "'REMOVED' in migrate_remove.stdout"
+      failed_when: "'FAILED' in migrate_remove.stdout"
+      when: migrate_phase == 'retire'
+
+    - name: Read the set back
+      ansible.builtin.raw: >-
+        mongosh {{ migrate_admin_uri | quote }} --quiet --eval
+        'JSON.stringify({set: rs.status().set,
+                         members: rs.conf().members.map(m => ({host: m.host, votes: m.votes, priority: m.priority})),
+                         states: rs.status().members.reduce((a, m) => { a[m.name] = m.stateStr; return a; }, {})})'
+      delegate_to: "{{ migrate_target }}"
+      register: migrate_rs_after
+      changed_when: false
+      when: migrate_phase in ['promote', 'retire']
+
+    - name: Show the resulting set
+      ansible.builtin.debug:
+        msg: "{{ migrate_rs_after.stdout | trim | from_json }}"
+      when: migrate_phase in ['promote', 'retire']
+
+    - name: After retire the set must be exactly one voting member, and it must be the target
+      ansible.builtin.assert:
+        that:
+          - (migrate_rs_after.stdout | trim | from_json).members | length == 1
+          - (migrate_rs_after.stdout | trim | from_json).members[0].host == migrate_target_member
+        fail_msg: >-
+          The set did not come back as a single member on {{ migrate_target_member }}:
+          {{ migrate_rs_after.stdout | trim }}
+        success_msg: >-
+          {{ migrate_target_member }} is now the whole of {{ kinowo_mongo_replset }}.
+          {{ migrate_source }} still holds its data and is the rollback until it is deleted
+          deliberately -- this playbook never destroys it.
+      when: migrate_phase == 'retire'

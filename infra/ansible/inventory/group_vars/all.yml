@@ -190,3 +190,22 @@ kinowo_fly_mongo_app: kinowo-mongo
 # second copy here would be a second thing to keep in step -- with the failure mode that a migration
 # faithfully copies the wrong database and verifies it against itself.
 kinowo_mongo_database: "{{ lookup('ansible.builtin.env', 'MONGODB_DB') | default('kinowo', true) }}"
+
+# THE REPLICA SET'S NAME. Every mongo host's nix configuration sets `fleet.mongodb.replSetName` to
+# this, and two playbooks assert against it -- migrate-mongo-from-fly.yml refuses to restore onto a
+# standalone, and migrate-mongo-replica.yml refuses to move a member between two sets that merely
+# share a name. Stated once here so those two agree by construction.
+kinowo_mongo_replset: "{{ lookup('ansible.builtin.env', 'KINOWO_MONGO_REPLSET') | default('rs0', true) }}"
+
+# ONE STATEMENT OF THE COUNTING QUERY, shared by every playbook that has to prove two mongods hold
+# the same data. It lived in migrate-mongo-from-fly.yml until migrate-mongo-replica.yml needed the
+# same check; a second copy would drift, and the direction of the drift is the bad one -- a
+# verification that counts one end differently from the other can only produce mismatches nobody
+# trusts, which is how a check stops being read.
+#
+# `countDocuments` and not `estimatedDocumentCount`: the estimate comes from collection metadata, is
+# allowed to be stale, and is exactly wrong for the one question being asked.
+kinowo_mongo_count_js: >-
+  const d = db.getSiblingDB("{{ kinowo_mongo_database }}");
+  print(JSON.stringify(d.getCollectionNames().sort().reduce(
+    (acc, c) => { acc[c] = d.getCollection(c).countDocuments({}); return acc; }, {})));
