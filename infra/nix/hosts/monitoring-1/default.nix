@@ -73,6 +73,7 @@ in
     enable = true;
     nodeTargets = [
       { address = "10.20.0.10"; host = "mongo-1"; role = "mongodb"; }
+      { address = "10.20.0.13"; host = "mongo-2"; role = "mongodb"; }
       { address = "10.20.0.11"; host = "monitoring-1"; role = "monitoring"; }
       { address = "10.20.0.12"; host = "k3s-worker-1"; role = "k3s-worker"; }
     ];

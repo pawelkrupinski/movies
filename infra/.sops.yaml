@@ -71,6 +71,22 @@ creation_rules:
           - *operator
           - *mongo_1
 
+  # mongo-2 NAMES THE OPERATOR ALONE UNTIL IT HAS BEEN CONVERTED, which is the state every host in
+  # this file started in (see the note on the anchors above). Its host key does not exist yet: the
+  # machine mints one on its first boot as NixOS. The operator can therefore CREATE and edit
+  # nix/secrets/mongo-2.yaml now, but the host cannot decrypt it -- so the first deploy after
+  # conversion fails at activation until the anchor is added here and `sops updatekeys` is run.
+  #
+  # ITS CONTENTS ARE mongo-1'S, RE-SEALED, AND THAT IS NOT A SHORTCUT. `mongodb/keyfile` is what
+  # authenticates a member into the replica set; a member holding a different one is rejected with
+  # an authentication error that names nothing useful. Same for the exporter and CI passwords, whose
+  # users are documents in `admin` and arrive on this host by initial sync. Same values, separately
+  # sealed -- which is the one shape the "never a shared file" rule below still permits.
+  - path_regex: nix/secrets/mongo-2\.yaml$
+    key_groups:
+      - age:
+          - *operator
+
   - path_regex: nix/secrets/monitoring-1\.yaml$
     key_groups:
       - age:

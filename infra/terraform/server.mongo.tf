@@ -84,3 +84,70 @@ module "mongo_1" {
     }
   }
 }
+
+# THE SECOND DATABASE MACHINE, AND IT IS A MIGRATION IN PROGRESS RATHER THAN A STANDING PAIR.
+#
+# `rs0` is a one-member replica set and is meant to stay that way: two voting members need BOTH up
+# to reach a majority, so a pair is strictly less available than a single node unless there is a
+# third to break ties. mongo-2 exists to receive the database and then to BE the database, after
+# which mongo-1 is retired -- see infra/ansible/playbooks/migrate-mongo-replica.yml, which adds this
+# host with `votes: 0, priority: 0` precisely so the majority stays at one for as long as the copy
+# takes.
+#
+# WHY REPLICATION AND NOT A SNAPSHOT, which is how k3s-worker-1 and monitoring-1 moved to fsn1 on
+# 2026-09-01. Those hosts could be snapshotted and rebuilt because their state either did not matter
+# or fitted in an rsync during a maintenance window. Neither is true here: the requirement was NO
+# DOWNTIME, and a Hetzner volume cannot leave its location, so the disk could not follow and a
+# window could not be taken. Replication is the only mechanism that moves a live database without
+# one -- which is also why this host gets its own private address rather than inheriting 10.20.0.10.
+module "mongo_2" {
+  # FALSE UNTIL IT IS CONVERTED, unlike its neighbours, and this is the one moment that default is
+  # right: Hetzner's rebuild protection also refuses `enable_rescue`, and rescue is how NixOS gets
+  # onto the machine. Set it true once `convert-host mongo-2` has run.
+  delete_protection = false
+
+  source = "./modules/server"
+
+  name        = "mongo-2"
+  server_type = "cx23"
+  image       = "ubuntu-24.04" # bootstrap only; the machine runs NixOS. See modules/server/vars.tf.
+  location    = "fsn1"
+  network_ids = [hcloud_network.kinowo.id]
+  private_ip  = "10.20.0.13"
+
+  primary_ipv4_id = hcloud_primary_ip.fleet["mongo_2_ipv4"].id
+  primary_ipv6_id = hcloud_primary_ip.fleet["mongo_2_ipv6"].id
+
+  labels = {
+    role = "mongo"
+    env  = "prod"
+  }
+
+  # SAME 10GB AS mongo-1'S, because it holds the same corpus with the same 4GB oplog -- see the
+  # budget note on that volume. It is EMPTY at creation and is filled by the initial sync, which is
+  # the entire point: the data arrives over the network from the primary, not from a copied disk.
+  volumes = {
+    mongo-data-fsn1 = {
+      size        = 10
+      location    = "fsn1"
+      mount_point = "/var/lib/mongodb"
+
+      # Independently protected for the same reason mongo-1's is: clearing the SERVER's protection
+      # to re-run a conversion must not be able to take the database's disk with it.
+      delete_protection = true
+    }
+  }
+}
+
+# Adopted 2026-09-01. The machine was created by hand as stock Ubuntu and is brought under Terraform
+# at the name, type and location it already had -- except `name`, which is an in-place update from
+# Hetzner's generated `ubuntu-4gb-fsn1-1`.
+import {
+  to = module.mongo_2.hcloud_server.default
+  id = "164241785"
+}
+
+import {
+  to = module.mongo_2.hcloud_volume.default["mongo-data-fsn1"]
+  id = "106767580"
+}

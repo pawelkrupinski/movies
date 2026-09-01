@@ -24,11 +24,14 @@
 # availability, which this fleet has not bought (see the honest note in wireguard-fly.nix about
 # single points of failure -- the database is another one, and it is on purpose for now).
 #
-# `rs.initiate()` IS NOT DONE HERE, and its absence is a decision. Initiating a replica set writes
-# a member's HOST NAME into the set's own config, so an automated initiate on every boot is one
-# address change away from a set that believes in a member nothing can reach. It is a one-time
-# manual step at build, and `verify-mongodb` (not written yet) is where the check that it happened
-# belongs.
+# `rs.initiate()` IS DONE HERE, ONCE, AND ONLY WHERE `initiateReplicaSet` ALLOWS IT. This comment
+# used to say it was not done here at all; `mongodb-init-replicaset` was added later and the note
+# was not updated, which is worth stating because the two readings differ on exactly the dangerous
+# case. Initiating writes a member's HOST NAME into the set's own config, so an automated initiate
+# is one address change away from a set that believes in a member nothing can reach -- and, worse,
+# an empty dbPath is indistinguishable from a never-initiated set, so a host built to JOIN an
+# existing set will happily create a rival one instead. The unit therefore fires only when it finds
+# `NotYetInitialized` AND this host is allowed to be an originator; see `initiateReplicaSet`.
 #
 # WHAT WATCHES THIS IS A SEPARATE ROLE, AND IT IS NOT OPTIONAL COLOUR. Nothing in this file can be
 # asked whether mongod is PRIMARY or how much oplog window is left -- both come out of
@@ -339,6 +342,31 @@ in
 
         CHANGING IT AFTER INITIATION DOES NOTHING. The initiator below only ever runs on a set that
         has never been initiated; moving a live member is `rs.reconfig`, by hand, deliberately.
+      '';
+    };
+
+    initiateReplicaSet = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Whether this host may CREATE the replica set if it finds itself uninitiated.
+
+        TRUE IS RIGHT FOR THE FIRST HOST AND WRONG FOR EVERY LATER ONE, which is the whole reason
+        this option exists. `mongodb-init-replicaset` below reacts to `NotYetInitialized` by calling
+        `rs.initiate()` — correct on the machine that is bringing the set into being, and actively
+        destructive on a machine that was built to JOIN an existing set: an empty dbPath answers
+        `NotYetInitialized` too, so the new host quietly gives itself its OWN one-member set, with
+        the same name, its own history, and no relationship to the real one.
+
+        THE FAILURE IS NOT LOUD. Both machines then report a healthy `rs0` with themselves as
+        PRIMARY, every unit is green, and the only symptom is that `rs.add()` from the real primary
+        fails with a message about configuration versions rather than about the real problem. It was
+        found while planning the nbg1 -> fsn1 database move on 2026-09-01, where the new member is
+        meant to receive the corpus by initial sync.
+
+        SET IT FALSE ON ANY HOST THAT WILL BE ADDED TO AN EXISTING SET, and let the current primary
+        do the adding — `infra/ansible/playbooks/migrate-mongo-replica.yml` is that procedure, and
+        it refuses to run against a target that ignored this.
       '';
     };
 
@@ -655,7 +683,7 @@ in
     # NOT DURING A BOOTSTRAP RESTORE. Initiating a set while a dump of that set's own oplog and
     # users is being written into it is a race with nothing to gain: the restore brings the set
     # configuration it needs, and this unit runs on the deploy that turns bootstrap mode back off.
-    systemd.services.mongodb-init-replicaset = lib.mkIf (!cfg.bootstrapMode) {
+    systemd.services.mongodb-init-replicaset = lib.mkIf (!cfg.bootstrapMode && cfg.initiateReplicaSet) {
       description = "Initiate the MongoDB replica set if it has never been initiated";
       wantedBy = [ "multi-user.target" ];
       after = [ "mongodb.service" ];

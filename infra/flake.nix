@@ -119,6 +119,7 @@
       # identical expression.
       nixosConfigurations = {
         mongo-1 = host "mongo-1";
+        mongo-2 = host "mongo-2";
         monitoring-1 = host "monitoring-1";
         k3s-worker-1 = host "k3s-worker-1";
       };
@@ -150,6 +151,7 @@
         # nix/modules/fleet/auto-apply.nix -- tags govern what a human does, that governs what the
         # timer is allowed to do.
         mongo-1 = node "mongo-1" [ "database" ];
+        mongo-2 = node "mongo-2" [ "database" ];
         monitoring-1 = node "monitoring-1" [ "monitoring" "k3s" ];
         k3s-worker-1 = node "k3s-worker-1" [ "k3s" ];
       };
