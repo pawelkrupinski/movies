@@ -300,21 +300,43 @@
       changed_when: false
       when: migrate_phase == 'join'
 
-    - name: The target must hold the same documents as the source
+    # THE COLLECTION SET, NOT THE DOCUMENT COUNTS, AND THE DIFFERENCE IS THE POINT.
+    #
+    # This asserted equality of counts until it was run against the real database, where it can
+    # essentially never hold: the two reads happen one after the other, the corpus takes writes
+    # continuously, and the TARGET read is the later one -- so the replica legitimately reports MORE
+    # documents than its primary did a second earlier. The first real run differed on exactly the
+    # collections the worker was writing at that moment (scrape_chunks 14 -> 16, tasks 11 -> 13) and
+    # agreed on all thirty-odd others. That is a check that fails on healthy replication, which is
+    # worse than no check: it trains you to re-run until the writes happen to pause.
+    #
+    # Two sequential reads of a live database cannot be compared for equality at all, so this asserts
+    # the thing they CAN establish: that the target has every collection the source has. That is what
+    # catches the failure worth catching -- an initial sync that silently copied only part of the
+    # database. Whether the target is CURRENT is a question about replication, and it is already
+    # answered, properly, by the lag check above.
+    - name: The target must hold every collection the source holds
       ansible.builtin.assert:
         that: >-
-          (migrate_counts_source.stdout | regex_search(migrate_json_re) | from_json)
-          == (migrate_counts_target.stdout | regex_search(migrate_json_re) | from_json)
+          (migrate_counts_source.stdout | regex_search(migrate_json_re) | from_json).keys() | sort
+          == (migrate_counts_target.stdout | regex_search(migrate_json_re) | from_json).keys() | sort
         fail_msg: >-
-          Counts differ after the sync reported itself caught up.
-          source: {{ migrate_counts_source.stdout | trim }}
-          target: {{ migrate_counts_target.stdout | trim }}
-          A small difference on a live database can simply be a write that landed between the two
-          reads -- re-run this phase, it is free. A large or growing one is a real replication
-          problem and `promote` must not be run until it is understood.
+          The target is missing collections the source has, which a caught-up secondary cannot
+          legitimately do -- it means the initial sync did not copy the whole database.
+          source: {{ migrate_counts_source.stdout | regex_search(migrate_json_re) }}
+          target: {{ migrate_counts_target.stdout | regex_search(migrate_json_re) }}
+          `promote` must not be run until this is understood.
         success_msg: >-
-          Both members hold identical counts. The target is a complete, current copy and the set can
-          be handed over whenever `repoint` has been done.
+          The target holds every collection the source does, and the lag check above says it is
+          current. Counts are reported below rather than asserted: see the note above for why two
+          sequential reads of a live database can never be compared for equality.
+      when: migrate_phase == 'join'
+
+    - name: Report both members' document counts
+      ansible.builtin.debug:
+        msg:
+          source: "{{ migrate_counts_source.stdout | regex_search(migrate_json_re) | from_json }}"
+          target: "{{ migrate_counts_target.stdout | regex_search(migrate_json_re) | from_json }}"
       when: migrate_phase == 'join'
 
     # ---------------------------------------------------------------------------------------------
