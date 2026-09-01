@@ -193,6 +193,11 @@
         migrate_target_already_member: >-
           {{ migrate_target_member in (rs_before.members | map(attribute='host') | list) }}
 
+    # NOT IN `retire`, AND THE EXEMPTION IS THE WHOLE POINT OF THAT PHASE. Every phase up to and
+    # including `promote` reconfigures the set from the source, so the source must be primary. After
+    # `promote` it deliberately is NOT: the target holds the primary, which is what `promote` was
+    # for, and `retire` therefore runs its reconfig on the target instead. Asserting the source is
+    # primary in that phase demands the migration be un-done before it can be finished.
     - name: This host must be the PRIMARY of the set we are migrating
       ansible.builtin.assert:
         that:
@@ -201,8 +206,22 @@
         fail_msg: >-
           {{ inventory_hostname }} reports set "{{ rs_before.set }}" and
           isWritablePrimary={{ rs_before.isWritablePrimary }}.
-          Every command here is a write to the replica-set configuration, which only the primary
-          accepts. Point -e migrate_source at whichever host `rs.status()` calls PRIMARY.
+          Every command in this phase is a write to the replica-set configuration, which only the
+          primary accepts. Point -e migrate_source at whichever host `rs.status()` calls PRIMARY.
+      when: migrate_phase != 'retire'
+
+    - name: In retire the TARGET must be the primary, because promote made it one
+      ansible.builtin.assert:
+        that:
+          - rs_before.set == kinowo_mongo_replset
+          - rs_before.states[migrate_target_member] | default('') == 'PRIMARY'
+        fail_msg: >-
+          {{ migrate_target_member }} is
+          "{{ rs_before.states[migrate_target_member] | default('not a member') }}", not PRIMARY.
+          `retire` removes the OLD member, which only the new primary may do -- so it is only safe
+          once `promote` has actually handed over. Run `-e migrate_phase=promote` first, or check
+          why the election did not settle on the target.
+      when: migrate_phase == 'retire'
 
     # THE TRAP THIS ASSERTION EXISTS FOR, and it is the one that would be worst to discover late.
     # roles/mongodb.nix runs `mongodb-init-replicaset` on every boot, and on a host with an empty
