@@ -192,12 +192,24 @@ groups:
       # THE HEADLINE RULE, AND THE REASON THE EXPORTER EXISTS AT ALL.
       #
       # Member states: 1 PRIMARY, 2 SECONDARY, 0 STARTUP, 3 RECOVERING, 5 STARTUP2, 6 UNKNOWN,
-      # 8 DOWN, 9 ROLLBACK, 10 REMOVED. On a ONE-MEMBER set the only healthy value is 1, so this is
-      # written as `!= 1` rather than as a list of bad states -- a new state code added by a future
-      # server version is then covered by default, which is the safe direction.
+      # 8 DOWN, 9 ROLLBACK, 10 REMOVED.
+      #
+      # 1 OR 2, NOT 1 ALONE, AND THE SECOND VALUE WAS ADDED THE DAY THE SET STOPPED BEING ONE
+      # MEMBER. This was `!= 1` while `rs0` had exactly one member, where the only healthy state is
+      # PRIMARY. Adding a second member to move the database between Hetzner locations (see
+      # ansible/playbooks/migrate-mongo-replica.yml) makes SECONDARY a permanently healthy state on
+      # exactly one of the two hosts -- so the old expression would have fired `critical`, for ever,
+      # against a member doing precisely what it was built to do, starting the moment Prometheus
+      # first scraped it.
+      #
+      # Everything else is still covered by exclusion rather than by a list of bad states, so a new
+      # state code from a future server version alerts by default -- which remains the safe
+      # direction. What is NOT covered is "no member is primary": every member reporting 2 is two
+      # healthy-looking secondaries and a database refusing writes. `MongodNoPrimary` below is that
+      # rule, and it is the one that matters on a set with more than one member.
       # -------------------------------------------------------------------------------------------
       - alert: MongodNotPrimary
-        expr: mongodb_mongod_replset_my_state != 1
+        expr: mongodb_mongod_replset_my_state != 1 and mongodb_mongod_replset_my_state != 2
         # TWO MINUTES, SHORTER THAN `MongodNotRunning`'s THREE, and deliberately so. A restart passes
         # through STARTUP2 and RECOVERING on the way to PRIMARY, so some patience is required -- but
         # every second spent here is a second of writes failing while the site looks healthy, which
@@ -209,16 +221,50 @@ groups:
         annotations:
           summary: "mongod on {{ $labels.host }} is not PRIMARY (state {{ $value }})"
           description: >-
-            THE DATABASE IS UP AND REFUSING WRITES. `rs0` has one member, so there is nothing to
-            fail over to and no election that can fix this: reads succeed, every write fails, and
-            CHANGE STREAMS -- which the web tier's whole live-update path depends on -- cannot be
-            opened. The Fly-hosted read tier will keep serving its projected read model out of
-            memory and keep passing its health checks, so NOTHING WILL LOOK BROKEN while the
-            showtimes age. State 0/3/5 is a member still starting or recovering and may clear on its
-            own; 6, 8 or 10 usually means mongod cannot see the replica-set configuration it is
-            registered in, which on this host means the member host in that config
-            (`fleet.mongodb.replSetMemberHost`, 10.20.0.10:27017) is not an address mongod is
-            bound to. `mongosh --eval 'rs.status()'` on the box is the first command.
+            THIS MEMBER IS NEITHER PRIMARY NOR A HEALTHY SECONDARY. State 0/3/5 is a member
+            still starting or recovering and may clear on its own; 6, 8 or 10 usually means mongod
+            cannot see the replica-set configuration it is registered in, which on this fleet means
+            the member host in that config (`fleet.mongodb.replSetMemberHost`) is not an address
+            mongod is bound to. `mongosh --eval 'rs.status()'` on the box is the first command.
+
+            A SECONDARY (state 2) IS NOT THIS ALERT and never was intended to be -- see the note on
+            the expression. The failure where the set is up and refusing every write is
+            `MongodNoPrimary`: reads succeed, writes fail, and CHANGE STREAMS -- which the web
+            tier's whole live-update path depends on -- cannot be opened, while the read tier keeps
+            serving its projected read model out of memory and passing its health checks. NOTHING
+            LOOKS BROKEN while the showtimes age.
+
+      # -------------------------------------------------------------------------------------------
+      # THE RULE THAT `MongodNotPrimary` STOPPED BEING when SECONDARY became healthy. With one
+      # member, "not primary" and "no primary" were the same sentence. With two they are not: every
+      # member can report a perfectly healthy 2 while the set has no leader at all, which is a
+      # database that serves reads and refuses every write -- the exact failure the old wording
+      # described, now needing its own expression.
+      #
+      # `absent()` IS NOT USABLE HERE. The series does not disappear when nobody is primary; it is
+      # present and equal to 2 on every member. Counting is the only way to ask the question, and
+      # `max` over the whole set is deliberate -- one primary anywhere is enough.
+      # -------------------------------------------------------------------------------------------
+      - alert: MongodNoPrimary
+        expr: max(mongodb_mongod_replset_my_state == 1) or vector(0)
+        # THE SAME TWO MINUTES AS `MongodNotPrimary`, for the same reason: an election is seconds,
+        # and a deliberate step-down during a migration should not page. Anything longer than a
+        # couple of minutes without a leader is not an election any more.
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "no mongod in rs0 is PRIMARY"
+          description: >-
+            THE SET HAS NO LEADER AND IS REFUSING EVERY WRITE. Reads still succeed and change
+            streams cannot be opened, so the read tier goes on serving its projection out of memory
+            and passing health checks while the showtimes age -- nothing looks broken.
+
+            On a set with one voting member this means that member is not PRIMARY and
+            `MongodNotPrimary` will say which state it is in instead. On a set mid-migration it
+            usually means a reconfig left two voters and one of them is unreachable, so neither can
+            take a majority: `mongosh --eval 'rs.status()'` on either box names the member that is
+            not answering.
 
       - alert: MongodReplsetStateAbsent
         expr: absent(mongodb_mongod_replset_my_state)
