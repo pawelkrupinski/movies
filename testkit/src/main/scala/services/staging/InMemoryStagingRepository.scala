@@ -32,6 +32,13 @@ class InMemoryStagingRepository(
   // (Prod's Mongo repo never hits this: prod staging holds a handful of trickling
   // newcomers, not the whole corpus.)
   private val store = mutable.TreeMap.empty[String, StagingRecord]
+  // The same cinema index `MongoStagingRepository` keeps, for the same reason and on the
+  // same hot path: `MovieCache.recordCinemaScrape` asks for ONE venue's rows once per
+  // venue, and answering it by filtering `findAll` is O(backlog) per venue — quadratic
+  // across a tick that is itself filling the backlog. This fake is what the convergence
+  // harness runs (`TestWiring` wires no Mongo), so without this the leg pays that
+  // quadratic even though the production repository doesn't.
+  private val idsByCinema = mutable.Map.empty[models.Cinema, mutable.Set[String]]
   private val lock  = new AnyRef
   val upserts       = mutable.ListBuffer.empty[(Source, String, Option[Int], MovieRecord)]
   val deletes       = mutable.ListBuffer.empty[(Source, String, Option[Int])]
@@ -43,8 +50,24 @@ class InMemoryStagingRepository(
     // fromStorage returns None for an unknown/renamed cinema — match the old
     // findAll, which dropped those rows, by not retaining them.
     val built = StagingRecord.fromStorage(id, record, normalizer)
-    built.fold(store.remove(id))(sr => store.put(id, sr))
+    built.fold(drop(id)) { sr =>
+      drop(id)
+      store.put(id, sr)
+      models.Source.cinemaOf(sr.cinema).foreach(c => idsByCinema.getOrElseUpdate(c, mutable.Set.empty) += id)
+    }
     built
+  }
+
+  /** The ONLY way a row leaves the store, so the cinema index can't drift from it. */
+  private def drop(id: String): Unit = {
+    store.remove(id).foreach { sr =>
+      models.Source.cinemaOf(sr.cinema).foreach { c =>
+        idsByCinema.get(c).foreach { ids =>
+          ids -= id
+          if (ids.isEmpty) idsByCinema -= c
+        }
+      }
+    }
   }
 
   seed.foreach { case (c, t, y, e) => put(StagingRecord.idFor(c, t, y, normalizer), e) }
@@ -55,6 +78,11 @@ class InMemoryStagingRepository(
   // (the promoter) see a stable order independent of insertion/scrape order.
   def findAll(): Seq[StagingRecord] = lock.synchronized {
     store.values.toSeq
+  }
+
+  /** `_id`-sorted like [[findAll]], so a caller sees the same order either way. */
+  override def findByCinema(cinema: models.Cinema): Seq[StagingRecord] = lock.synchronized {
+    idsByCinema.get(cinema).toSeq.flatMap(_.toSeq.sorted.flatMap(store.get))
   }
 
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit = lock.synchronized {
@@ -80,13 +108,13 @@ class InMemoryStagingRepository(
   }
 
   def delete(cinema: Source, title: String, year: Option[Int]): Unit = lock.synchronized {
-    store.remove(StagingRecord.idFor(cinema, title, year, normalizer))
+    drop(StagingRecord.idFor(cinema, title, year, normalizer))
     deletes.append((cinema, title, year))
     deleteWatcher.foreach(_(StagingRecord.idFor(cinema, title, year, normalizer)))
   }
 
   override def deleteRow(row: StagingRecord): Unit = lock.synchronized {
-    store.remove(row.id)
+    drop(row.id)
     deletes.append((row.cinema, row.title, row.year))
     deleteWatcher.foreach(_(row.id))
   }

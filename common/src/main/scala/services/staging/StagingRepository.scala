@@ -100,6 +100,23 @@ trait StagingRepository {
     findAll().filter(row => normalizer.sanitize(row.title) == anchor)
   }
 
+  /**
+   * The rows of ONE cinema — what a scrape tick needs to carry a newcomer's prior slot
+   * forward and to prune the venue's rows it no longer lists.
+   *
+   * Same bargain as [[findByAnchor]], for the same reason: `MovieCache.recordCinemaScrape`
+   * asked it once per VENUE as `findAll().collect { _.cinema == cinema }`, so against
+   * Mongo every venue decoded the whole country's staging backlog to keep a handful, and
+   * the cost grew with the backlog the tick itself was filling. That is the quadratic
+   * this method's sibling already fixed for the reaper.
+   *
+   * `row.cinema` is the `Source` the row was diverted under; unlike the anchor it does
+   * NOT drift, since a row's venue is fixed at its first write. The default still
+   * filters [[findAll]], so a store that cannot do better is unchanged.
+   */
+  def findByCinema(cinema: models.Cinema): Seq[StagingRecord] =
+    findAll().filter(row => models.Source.cinemaOf(row.cinema).contains(cinema))
+
   /** The country whose rules anchor these rows. ABSTRACT, like
    *  `MovieRepository.normalizer`; the worker wires its own. */
   def normalizer: TitleNormalizer
@@ -300,18 +317,44 @@ class MongoStagingRepository(
     Try(Await.result(c.find(Filters.in("_id", ids*)).toFuture(), 30.seconds))
 
   private val anchorById = new java.util.concurrent.ConcurrentHashMap[String, String]()
+  /** The cinema half of the same row index — built in the same pass as the anchor, so a
+   *  scrape tick's per-venue read costs a map scan and a keyed fetch rather than decoding
+   *  the whole backlog. */
+  private val cinemaById = new java.util.concurrent.ConcurrentHashMap[String, models.Cinema]()
   @volatile private var anchorIndexBuilt = false
-
-  private def anchorOf(id: String, record: MovieRecord): Option[String] =
-    StagingRecord.fromStorage(id, record, normalizer).map(row => normalizer.sanitize(row.title))
 
   private def ensureAnchorIndex(): Unit =
     if (!anchorIndexBuilt) synchronized {
       if (!anchorIndexBuilt) {
-        findAll().foreach(row => anchorById.put(row.id, normalizer.sanitize(row.title)))
+        findAll().foreach { row =>
+          anchorById.put(row.id, normalizer.sanitize(row.title))
+          models.Source.cinemaOf(row.cinema).foreach(cinemaById.put(row.id, _))
+        }
         anchorIndexBuilt = true
       }
     }
+
+  /** Decoded rows are re-checked against `cinema` before being returned, so a stale index
+   *  entry can only ever cost a wasted fetch — never a wrong row. Degrades to the full
+   *  scan on a read failure for the reason spelled out on [[findByAnchor]]: a short answer
+   *  here would read as "this venue stages nothing" and silently skip its prune. */
+  override def findByCinema(cinema: models.Cinema): Seq[StagingRecord] = coll.toSeq.flatMap { c =>
+    ensureAnchorIndex()
+    val ids = {
+      import scala.jdk.CollectionConverters._
+      cinemaById.asScala.collect { case (id, cin) if cin == cinema => id }.toSeq
+    }
+    if (ids.isEmpty) Seq.empty
+    else fetchByIds(c, ids) match {
+      case Success(rows) =>
+        rows.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer).toSeq)
+          .filter(row => models.Source.cinemaOf(row.cinema).contains(cinema))
+      case Failure(exception) =>
+        logger.warn(s"StagingRepository.findByCinema('${cinema.displayName}') could not fetch ${ids.size} row(s): " +
+          s"${exception.getClass.getSimpleName}: ${exception.getMessage} — falling back to a full scan")
+        super.findByCinema(cinema)
+    }
+  }
 
   /** Decoded rows are re-checked against `anchor` before being returned, so a stale index
    *  entry can only ever cost a wasted fetch — never a wrong row. */
@@ -387,7 +430,12 @@ class MongoStagingRepository(
   }
 
   private def upsertId(id: String, record: MovieRecord): Unit = coll.foreach { c =>
-    anchorOf(id, record).foreach(anchorById.put(id, _))
+    // Both halves of the row index move with the write, or `findByAnchor` /
+    // `findByCinema` answer from a snapshot that predates it.
+    StagingRecord.fromStorage(id, record, normalizer).foreach { row =>
+      anchorById.put(id, normalizer.sanitize(row.title))
+      models.Source.cinemaOf(row.cinema).foreach(cinemaById.put(id, _))
+    }
     val dto = StoredMovieDto.fromDomain(id, record, Instant.now())
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
@@ -404,6 +452,7 @@ class MongoStagingRepository(
 
   private def deleteId(id: String): Unit = coll.foreach { c =>
     anchorById.remove(id)
+    cinemaById.remove(id)
     Try {
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()

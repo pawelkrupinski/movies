@@ -263,6 +263,46 @@ class CaffeineMovieCache(
   private[services] val skippedUnreadable = new java.util.concurrent.atomic.AtomicLong(0)
 
   private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
+
+  /** The derived views of `positive` that `recordCinemaScrape` needs, kept current as
+   *  rows are written rather than rebuilt per venue — see [[CorpusIndex]] for the
+   *  quadratic that cost the United States leg every run it ever had.
+   *
+   *  It shadows `positive`, so it is only as correct as the funnels below: EVERY write
+   *  to `positive` goes through `store` / `evict` / the `putIfPresent` compute, and
+   *  nothing else may call `positive.put` or `positive.invalidate` directly. The cache
+   *  is unbounded, so there is no eviction path to miss. */
+  private val corpusIndex =
+    new CorpusIndex(normalizer, (k, r) => r.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, r), normalizer))
+
+  /** Write a row and keep the index with it. The ONLY way into `positive`. */
+  private def store(key: CacheKey, record: MovieRecord): Unit = {
+    positive.put(key, record)
+    corpusIndex.put(key, record)
+  }
+
+  /** Drop a row and keep the index with it. The ONLY way out of `positive`. */
+  private def evict(key: CacheKey): Unit = {
+    positive.invalidate(key)
+    corpusIndex.remove(key)
+  }
+
+  /** What the index currently believes, and what the rows actually say.
+   *
+   *  The pair exists for [[CorpusIndexConsistencySpec]], which replays a realistic
+   *  scrape/fold/prune/rekey sequence and asserts they stay equal. A funnel that
+   *  stopped updating the index would otherwise fail SILENTLY and far away — as a film
+   *  re-diverting into staging every tick, which is the exact flap the widened divert
+   *  gate was built to stop. */
+  private[movies] def indexSnapshot: CorpusIndex.Snapshot = corpusIndex.snapshot
+
+  private[movies] def rowsRebuiltIndexSnapshot: CorpusIndex.Snapshot = {
+    import scala.jdk.CollectionConverters._
+    val rebuilt = new CorpusIndex(normalizer,
+      (k, r) => r.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, r), normalizer))
+    positive.asMap().asScala.foreach { case (k, r) => rebuilt.put(k, r) }
+    rebuilt.snapshot
+  }
   private val negative: Cache[CacheKey, java.lang.Boolean] =
     Caffeine.newBuilder().expireAfterWrite(24, TimeUnit.HOURS).build()
 
@@ -416,7 +456,7 @@ class CaffeineMovieCache(
 
   private def persist(key: CacheKey, e: MovieRecord): Unit = {
     val clean = withoutZeroRatings(e)
-    positive.put(key, forCache(clean))
+    store(key, forCache(clean))
     // `clean` may carry stripped slots (folds/canonicalize read from the stripped cache);
     // `upsert` re-stitches those from the film's screenings so a full write never deletes them.
     repository.upsert(key.cleanTitle, key.year, clean)
@@ -605,7 +645,7 @@ class CaffeineMovieCache(
           logger.warn(s"canonicalize '${canonical.cleanTitle}': keeping ${stranded.size} row(s) whose " +
             "cinemas could not be carried onto the winner — they fold again on the next pass.")
         moved.foreach(invalidate)
-        keys.filter(_ == canonical).foreach(positive.invalidate)
+        keys.filter(_ == canonical).foreach(evict)
         put(canonical, merged)
       }
       // Victims = every other row in the cluster folded away; a lone respelled
@@ -904,7 +944,7 @@ class CaffeineMovieCache(
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
     retriggerChangedEnrichments(siblingRecord, siblingKey, merged, canonical)
     moved.foreach { victim =>
-      positive.invalidate(victim)
+      evict(victim)
       repository.delete(victim.cleanTitle, victim.year)
     }
     if (stranded.nonEmpty)
@@ -962,6 +1002,9 @@ class CaffeineMovieCache(
     })
     if (updated == null) false
     else {
+    // `computeIfPresent` writes inside Caffeine's own lock, so it cannot go through
+    // `store`; index the value it produced instead. Same contract, one line later.
+    corpusIndex.put(key, updated)
     val prior     = before.get()
     val fullAfter = full.get()
     // Write-guard by DIGEST: equal non-showtime fields AND equal per-slot showtime digest
@@ -1006,7 +1049,7 @@ class CaffeineMovieCache(
   /** Drop a row from positive cache + Mongo — used by the TMDB stage to clear
    *  a stale row before re-keying it under a corrected (title, year). */
   private[services] def invalidate(key: CacheKey): Unit = {
-    positive.invalidate(key)
+    evict(key)
     repository.delete(key.cleanTitle, key.year)
     touch()
   }
@@ -1112,15 +1155,6 @@ class CaffeineMovieCache(
   private def cinemaSlotKey(cinema: Cinema, title: String): Source =
     CinemaShowing.keyFor(cinema, title, normalizer)
 
-  /** Every slot this cinema currently holds in the cache. Shared by the two
-   *  degraded-scrape guards, which read the same held-slot set along different
-   *  axes — how many slots (breadth) and how many showtimes (depth). */
-  private def heldSlotsOf(cinema: Cinema): Iterator[(Source, SourceData)] = {
-    import scala.jdk.CollectionConverters._
-    positive.asMap().asScala.values.iterator
-      .flatMap(_.data.iterator)
-      .collect { case (s, sd) if Source.cinemaOf(s).contains(cinema) => (s, sd) }
-  }
 
   def recordCinemaScrape(cinema: Cinema, movies: Seq[CinemaMovie],
                          listingIsComplete: Boolean = true): Seq[(CinemaMovie, CacheKey, Boolean)] = {
@@ -1158,7 +1192,7 @@ class CaffeineMovieCache(
     // direct `.size` reads 0 for every cinema and the floor below never engages. That is
     // production's shape and it made this guard dead code; the specs, which wire no
     // screenings repository, kept their lists resident and passed regardless.
-    val knownCinemaShowtimes = heldSlotsOf(cinema).map { case (_, sd) =>
+    val knownCinemaShowtimes = corpusIndex.slotsOf(cinema).map { case (_, _, sd) =>
       ShowtimesDigest.slotShowtimeCount(sd) }.sum
     val batchShowtimes       = movies.iterator.map(_.showtimes.size).sum
     if (knownCinemaShowtimes >= MinShowtimesForDepthGuard &&
@@ -1175,8 +1209,9 @@ class CaffeineMovieCache(
     depthRejections.remove(cinema.displayName)
 
     // Cold-mirror guard (only matters when diversion is wired). The newcomer test
-    // further down reads the in-memory mirror (`knownSanitized` / `knownAliases` /
-    // `knownByCinemaSlot`) to tell a genuinely-new film from a known one. A COLD mirror
+    // further down reads the in-memory mirror (`corpusIndex`, and through it the
+    // sanitized titles, aliases and cinema slots of every row) to tell a genuinely-new
+    // film from a known one. A COLD mirror
     // — empty because a post-reboot `bootHydrate` `findAll()` came back empty while Mongo
     // was still coming up, and the change stream only carries post-boot writes (see
     // `bootHydrate`) — makes EVERY known film look new, so a scrape landing in that window
@@ -1273,14 +1308,16 @@ class CaffeineMovieCache(
           }
         }
 
-    import scala.jdk.CollectionConverters._
+    // No `CollectionConverters` here any more: this method no longer walks Caffeine's
+    // Java map at all — every question it used to answer by scanning it is a point
+    // query on `corpusIndex` now.
     // Partial-scrape guard: count the cinema's slots held BEFORE this tick's writes,
     // then decide whether the fresh batch is implausibly small (a degraded fetch).
     // If so, the prune below is skipped — the films this tick failed to mention keep
     // their slots until a healthy tick, instead of flickering off the site. Generic
     // across cinemas; Multikino (Cloudflare + session wall) is the recurring victim.
     // The BREADTH half of the pair; the depth half bails at the top of this method.
-    val knownCinemaSlots = heldSlotsOf(cinema).size
+    val knownCinemaSlots = corpusIndex.slotsOf(cinema).size
     val scrapeLooksPartial =
       // A caller that KNOWS the listing is short says so, and that beats any inference:
       // a chunked scrape reduced from some of its date-chunks returns most of the board
@@ -1292,90 +1329,58 @@ class CaffeineMovieCache(
       !listingIsComplete || (
         knownCinemaSlots >= MinSlotsForShrinkGuard &&
         deduped.size < knownCinemaSlots * PruneFloorRatio)
-    // When `staging` is wired, divert a genuinely-NEW film (its `sanitize(title)`
-    // group is absent from `movies`) to the staging sink to incubate; a film
-    // already known to `movies` keeps the direct path. Snapshot the known
-    // sanitized titles once (diversion never adds to `movies`, so the set is
-    // stable across this tick) and this cinema's existing staging rows (for the
-    // prior-slot carry-forward + the staging prune below).
-    val knownSanitized: Set[String] =
-      if (staging.isEmpty) Set.empty
-      else positive.asMap().asScala.keysIterator.map(k => k.normalized).toSet
-    // Sanitized TMDB aliases (Polish + original title) of every CONCLUDED, BARE
-    // row, so a cinema's original-language listing of a known film ("Tangled") is
-    // recognised as already-known and lands on the existing resolved row instead
-    // of incubating a parallel newcomer. Gated on `isBareFilmTitle` (the same
-    // predicate as `concludedKeyFor`'s alias arm and `groupByFilm`'s fold): a
-    // decorated edition that merely carries the base title as an alias must NOT
-    // make a genuinely-new bare film look already-known. Empty when staging is
-    // unwired (no diversion happens).
-    val knownAliases: Set[String] =
-      if (staging.isEmpty) Set.empty
-      else positive.asMap().asScala.iterator
-        .collect { case (k, e) if e.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, e), normalizer) =>
-          e.tmdbTitleAliases.iterator.map(normalizer.sanitize) }
-        .flatten.toSet
-    // Widened recognition: index every movies row by each of its CINEMA SLOTS'
-    // sanitized titles, scoped to the slot's cinema. So a scrape lands on a film
-    // this cinema's data already sits in — even under a decoration NO title rule
-    // strips ("Zzz Nonexistent Fest: Toy Story 5") — instead of re-incubating it.
-    // Without this, a folded row keyed off the BARE display form never matches the
-    // cinema's DECORATED scrape key, so a known film re-diverts into staging every
-    // 30-min tick: the served-count flap (Trójmiasto / GCF), reproduced rule-free in
-    // `UnknownBannerReDivertSpec`. The per-banner canonical rules fix specific known
-    // banners; this catches the general case for unknown ones. Derived fresh each
-    // tick from the rows (exactly like `knownSanitized`), so a merge/split that moves
-    // a cinema's slot to another row is reflected automatically — no persisted map to
-    // keep in sync, nothing to update on fold.
-    // Index every movies row by each of its cinema SLOTS' (cinema, sanitized title)
-    // → the row's key. Multi-valued slots are covered by `cinemaShowings` (a venue
-    // can hold the original AND a dubbed edition). Two uses, both derived fresh each
-    // tick from the rows (no persisted map; a merge/split that moves a slot is
-    // reflected automatically):
-    //   - the divert gate (`knownByCinemaSlot`) recognises a film this cinema
-    //     already sits in — even under a decoration no rule strips — so a known
-    //     film isn't re-incubated (Trójmiasto/GCF flap, UnknownBannerReDivertSpec);
-    //   - the land path routes a scrape onto the row that ALREADY HOLDS this exact
-    //     (cinema, title) slot, so a same-cinema dub/decorated edition folded onto
-    //     the base film updates its slot IN PLACE rather than re-spawning a
-    //     title-keyed row and re-folding every tick (the same-cinema churn the
-    //     per-(cinema,title) slot model exists to kill).
-    val rowByCinemaSlot: Map[(Cinema, String), CacheKey] =
-      positive.asMap().asScala.iterator.flatMap { case (k, rec) =>
-        rec.cinemaShowings.iterator.flatMap { case (cin, sd) =>
-          sd.title.iterator.map(t => (cin, normalizer.sanitize(t)) -> k)
-        }
-      }.toSeq.groupBy(_._1).view.mapValues(_.map(_._2).minBy(canonicalRank)).toMap
-    val knownByCinemaSlot: Set[(Cinema, String)] =
-      if (staging.isEmpty) Set.empty else rowByCinemaSlot.keySet
+    // The divert gate's four questions, all POINT queries against `corpusIndex`.
+    //
+    // Each was a full walk of the corpus, rebuilt on every venue — see [[CorpusIndex]]
+    // for what that cost. The questions themselves are unchanged, and so are the
+    // reasons they are asked:
+    //
+    //   - `holdsTitle` — is this film's `sanitize(title)` group already in `movies`?
+    //     A genuinely-NEW film is diverted to staging to incubate; a known one keeps
+    //     the direct path.
+    //   - `holdsAlias` — is it a known film listed under another language? A CONCLUDED,
+    //     BARE row's TMDB aliases (Polish + original title) count as known, so a
+    //     cinema's original-language listing ("Tangled") lands on the resolved row
+    //     instead of incubating a parallel newcomer. Gated on `isBareFilmTitle` so a
+    //     decorated edition carrying the base title as an alias can't make a genuinely
+    //     new bare film look known.
+    //   - `holdsCinemaSlot` / `keysForCinemaSlot` — does a row already hold THIS
+    //     cinema's slot, even under a decoration no title rule strips ("Zzz Nonexistent
+    //     Fest: Toy Story 5")? Without it a folded row keyed off the BARE display form
+    //     never matches the cinema's DECORATED scrape key, so a known film re-diverts
+    //     into staging every tick: the served-count flap (Trójmiasto / GCF), reproduced
+    //     rule-free in `UnknownBannerReDivertSpec`. The land path uses the same index to
+    //     route the scrape onto the row that already holds the slot, so a same-cinema
+    //     dub/decorated edition updates in place instead of re-spawning a title-keyed
+    //     row and re-folding every tick.
+    //   - `rowsFor` — EVERY row a sanitized title currently lives on, for the
+    //     different-film check below. Picking one (lowest `canonicalRank`) was
+    //     deterministic but asked the wrong question whenever two genuinely different
+    //     films share a title, one row per year: a cinema screening the LATER film was
+    //     checked against the EARLIER row, correctly told "different film", and diverted
+    //     to staging — where the fold put it straight back on the row it belonged to,
+    //     for the next scrape to divert again. Forever. Germany, 2026-08-30: "Die
+    //     einfachen Dinge" is both a 1953 film (tmdbId 67600) and a 2023 one (1000572).
+    //     A divert is only justified when the listing differs from ALL of them.
+    //
+    // The index moves WITH the writes, which is why this is an index and not a
+    // once-per-tick snapshot: each venue's scrape writes rows the next venue must see.
+    val diverting = staging.isDefined
+    // The canonical key among the rows holding a slot — the ranking stays here, with
+    // the one definition of `canonicalRank`, rather than inside the index.
+    def keyHoldingCinemaSlot(norm: String): Option[CacheKey] = {
+      val keys = corpusIndex.keysForCinemaSlot(cinema, norm)
+      if (keys.isEmpty) None else Some(keys.minBy(canonicalRank))
+    }
+    // This cinema's staging rows, for the prior-slot carry-forward and the staging
+    // prune below. Cinema-SCOPED: the inline `findAll().collect { _.cinema == cinema }`
+    // it replaces decoded every staged document in the country to keep a handful, which
+    // is the same quadratic the corpus walks above carried — and the same one
+    // `findByAnchor` was added to fix for the reaper.
     val priorStagingRows: Map[String, services.staging.StagingRecord] =
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
-        _.findAll().iterator.collect { case r if r.cinema == cinema => normalizer.sanitize(r.title) -> r }.toMap
+        _.findByCinema(cinema).iterator.map(r => normalizer.sanitize(r.title) -> r).toMap
       }
-    // EVERY row a sanitized title currently lives on, for the different-film check
-    // below — not just the canonical one.
-    //
-    // Picking one (the lowest `canonicalRank`, i.e. the earliest year) was deterministic
-    // but asked the wrong question whenever two genuinely different films share a title,
-    // one row per year. A cinema screening the LATER film was checked against the EARLIER
-    // row; the answer came back "yes, a different film", perfectly correctly, and the
-    // cinema was diverted to staging — where the fold resolved it and put it straight
-    // back on the row it already belonged to, for the next identical scrape to divert
-    // again. Forever. Germany, 2026-08-30: "Die einfachen Dinge" is both a 1953 film
-    // (tmdbId 67600) and a 2023 one (1000572), and the convergence leg caught
-    // Filmhauskino im Künstlerhaus being re-diverted on EVERY tick.
-    //
-    // A divert is only justified when the listing is a different film from ALL of them —
-    // when none of the existing rows is already its home. With a single row (the
-    // overwhelmingly common case) `forall` is exactly the old `exists`, so the shape this
-    // check was built for — "Joanna d'Arc" absorbing a second film onto its only row —
-    // is unchanged.
-    val rowsFor: String => Seq[MovieRecord] =
-      positive.asMap().asScala.toSeq
-        .groupBy { case (k, _) => k.normalized }
-        .view.mapValues(_.map { case (_, record) => record })
-        .toMap
-        .withDefaultValue(Seq.empty)
     val divertedSanitized = scala.collection.mutable.Set.empty[String]
     // Titles diverted into staging for the FIRST time this cinema (no prior row) —
     // the newcomers whose initial step StagingReaper should kick off an event,
@@ -1400,12 +1405,12 @@ class CaffeineMovieCache(
       // row. Needs a differing original title CORROBORATED by runtime or year, so a
       // cinema that merely prints the Polish title in `originalTitle` — common on
       // the smaller sites — is waved through (see `MixedFilmDetector`).
-      val sameTitledRows = rowsFor(norm)
+      val sameTitledRows = corpusIndex.rowsFor(norm)
       val aDifferentFilm = staging.isDefined && sameTitledRows.nonEmpty && sameTitledRows.forall(record =>
         MixedFilmDetector.wouldAddASecondFilm(
           record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
-      val divert       = staging.isDefined && ((!knownSanitized(norm) && !knownAliases(norm) &&
-                         !knownByCinemaSlot((cinema, norm))) || aDifferentFilm)
+      val divert       = diverting && ((!corpusIndex.holdsTitle(norm) && !corpusIndex.holdsAlias(norm) &&
+                         !corpusIndex.holdsCinemaSlot(cinema, norm)) || aDifferentFilm)
       // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
       // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
       // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)
@@ -1464,7 +1469,7 @@ class CaffeineMovieCache(
               // onto the base film under a different display title), land on THAT
               // row and update the slot in place, instead of spawning a new
               // title-keyed row that re-resolves and re-folds every tick.
-              case None => rowByCinemaSlot.getOrElse((cinema, norm), primary)
+              case None => keyHoldingCinemaSlot(norm).getOrElse(primary)
             }
           }
           val existingOpt   = Option(positive.getIfPresent(key))
@@ -1549,14 +1554,11 @@ class CaffeineMovieCache(
       RemovalAudit.scrapePruneSkipped(cinema.displayName, batchFilms = deduped.size,
         knownSlots = knownCinemaSlots, reason = "partial-scrape-guard")
     else {
-      val toPrune = positive.asMap().asScala.iterator
-        .flatMap { case (k, e) =>
-          val staleKeys = e.data.iterator.collect {
-            case (s, sd) if Source.cinemaOf(s).contains(cinema) && !touchedSlots.contains(sd) => s
-          }.toSet
-          if (staleKeys.nonEmpty) Iterator.single(k -> staleKeys) else Iterator.empty
-        }
-        .toList
+      // This cinema's slots, straight from the index — the seventh full-corpus walk
+      // this method used to make per venue, and the one that ran on every healthy tick.
+      val toPrune = corpusIndex.slotsOf(cinema).iterator
+        .collect { case (k, s, sd) if !touchedSlots.contains(sd) => k -> s }
+        .toList.groupBy(_._1).view.mapValues(_.map(_._2).toSet).toList
       toPrune.foreach { case (k, staleKeys) =>
         // Drop only the stale slot keys, under the per-title lock, via `putIfPresent`
         // so a concurrent sibling-slot write isn't clobbered. Before dropping, retain
@@ -1801,10 +1803,10 @@ class CaffeineMovieCache(
     var changed = 0
     byKey.foreach { case (k, record) =>
       if (!Option(positive.getIfPresent(k)).exists(ShowtimesDigest.leanEqual(_, record))) changed += 1
-      positive.put(k, forCache(record))
+      store(k, forCache(record))
     }
     val removed = positive.asMap().keySet().asScala.toSeq.filterNot(byKey.keySet.contains)
-    removed.foreach(positive.invalidate)
+    removed.foreach(evict)
     cacheMetrics.recordRehydrate(changed, removed.size)
     if (changed > 0 || removed.nonEmpty)
       logger.info(s"MovieCache rehydrate: caught $changed changed row(s) + ${removed.size} orphan-delete(s) " +
@@ -1884,7 +1886,7 @@ class CaffeineMovieCache(
    *  the identity-gate `put` (Mongo is already the source of truth here, no
    *  re-folding needed). */
   private def applyUpsert(r: StoredMovieRecord): Unit = {
-    positive.put(CacheKey(r.title, r.year, normalizer), forCache(r.record))
+    store(CacheKey(r.title, r.year, normalizer), forCache(r.record))
     touch()
   }
 
@@ -1899,7 +1901,7 @@ class CaffeineMovieCache(
     positive.asMap().keySet().asScala
       .find(k => StoredMovieRecord.idFor(k) == id)
       .foreach { k =>
-        positive.invalidate(k)
+        evict(k)
         // An out-of-band Mongo delete arriving via the change stream — the mirror
         // of a fold/UnscreenedCleanup/re-key removal another writer made. The only
         // signal that a cache row vanished for a reason NOT originating on this node.
