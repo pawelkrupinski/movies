@@ -432,7 +432,7 @@
           # NON-EMPTY FIRST. `not in` is vacuously true of an empty string, so a probe that failed to
           # produce anything would satisfy the second condition and half-satisfy this guard on no
           # evidence at all.
-          - migrate_uri_check.stdout | regex_search('mongodb://')
+          - "'mongodb://' in migrate_uri_check.stdout"
           - "'replicaSet=' in migrate_uri_check.stdout"
           - "'directConnection=true' not in migrate_uri_check.stdout"
         fail_msg: >-
