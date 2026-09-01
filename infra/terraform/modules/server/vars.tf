@@ -13,9 +13,16 @@ variable "server_type" {
 # ON THIS FLEET THE IMAGE IS NOT WHAT THE MACHINE RUNS. Every host here is bootstrapped from a
 # stock Hetzner Ubuntu image and then converted to NixOS in place, from the Hetzner rescue system,
 # by `infra/nix/bin/convert-host` (nixos-anywhere + disko, which repartitions the disk). Hetzner
-# keeps reporting the original image forever, so this value records HOW THE MACHINE WAS BOOTSTRAPPED
-# and nothing more. Do not "correct" it to something NixOS-shaped: it is ForceNew, so an edit here
-# destroys and rebuilds the machine to deliver a difference no running system would observe.
+# reports the original image for as long as the machine is not rebuilt, so this value records HOW THE
+# MACHINE WAS BOOTSTRAPPED and nothing more. Do not "correct" it to something NixOS-shaped: it is
+# ForceNew, so an edit here destroys and rebuilds the machine to deliver a difference no running
+# system would observe.
+#
+# A HETZNER REBUILD REWRITES WHAT THE API REPORTS, which is why server.tf now ignores this attribute
+# on UPDATE. k3s-worker-1 was moved hel1 -> fsn1 on 2026-09-01 by rebuilding a standing fsn1 machine
+# from a snapshot of the live host, and the API reported that snapshot's id afterwards -- which read
+# as a forced replacement of the host serving the whole product. See the `ignore_changes` note in
+# server.tf. This variable still governs the CREATE path for a genuinely new host.
 #
 # bitcashier/infra points this at a prebuilt `role=nixos-base` snapshot instead. That is the nicer
 # shape and it is deliberately NOT copied here: the snapshot lives in that project's Hetzner

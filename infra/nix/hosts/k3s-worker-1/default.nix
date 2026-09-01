@@ -26,19 +26,20 @@
     #
     # Stable because terraform/primary_ips.tf pins it with `auto_delete = false`; it is
     # `k3s_worker_1_ipv4` there.
-    publicAddress = "204.168.140.213";
+    publicAddress = "2.28.47.31";
   };
 
-  # THE ONLY HOST IN hel1, and the only one with no `fileSystems` entry beyond disko's root -- see
+  # THE ONLY HOST IN fsn1, and the only one with no `fileSystems` entry beyond disko's root -- see
   # ./disko.nix for why it holds no state. It is also the only host with Hetzner's daily backups
   # switched OFF (in ../../../terraform/server.k3s-worker.tf), which is the same decision stated in
   # the other direction.
 
   # JOINS THE CONTROL PLANE ON monitoring-1, over the private network. Both hosts are in Hetzner's
-  # `eu-central` network zone despite sitting in different datacentres (hel1 here, nbg1 there), so
+  # `eu-central` network zone despite sitting in different datacentres (fsn1 here, nbg1 there), so
   # 10.20.0.11 is directly reachable with no peering and no routes -- see terraform/network.tf. The
-  # ~20ms between Helsinki and Nuremberg is paid by kubelet heartbeats and image pulls, which is
-  # why nothing latency-sensitive should be scheduled here without moving the machine first.
+  # ~4.5ms between Falkenstein and Nuremberg is paid by kubelet heartbeats, image pulls and every
+  # mongo-1 query the app pods make on the request path -- which is why this machine was moved out
+  # of hel1, where the same link measured 24ms. See the note in terraform/server.k3s-worker.tf.
   fleet.k3sAgent = {
     enable = true;
     serverAddr = "https://10.20.0.11:6443";
@@ -75,7 +76,7 @@
   # cert-manager AND a LoadBalancer story, to do what Caddy already does on this host with automatic
   # ACME and no renewal timer to forget.
   #
-  # EVERY NAME BELOW MUST RESOLVE TO 204.168.140.213 BEFORE A DEPLOY, or Let's Encrypt's HTTP-01
+  # EVERY NAME BELOW MUST RESOLVE TO 2.28.47.31 BEFORE A DEPLOY, or Let's Encrypt's HTTP-01
   # challenge fails and Caddy serves a self-signed certificate — which browsers reject outright, so
   # the failure mode is a hard TLS error rather than a degraded page. The A records live at OVH.
   fleet.publicProxy = {

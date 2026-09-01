@@ -1,4 +1,4 @@
-# A k3s AGENT -- k3s-worker-1, the cx43 in hel1. The half of the cluster meant to carry workload.
+# A k3s AGENT -- k3s-worker-1, the cx43 in fsn1. The half of the cluster meant to carry workload.
 #
 # DELIBERATELY A SEPARATE ROLE FROM k3s-server.nix RATHER THAN A FLAG ON IT, which is bitcashier's
 # reasoning and holds here unchanged: the two differ in what they are allowed to LOSE. A server
@@ -17,11 +17,11 @@
 # THIS NODE IS IN A DIFFERENT LOCATION FROM ITS SERVER, AND THAT IS FINE FOR AN AGENT ONLY
 # ------------------------------------------------------------------------------------------------
 #
-# monitoring-1 (the server) is in nbg1; this machine is in hel1. They share one Hetzner private
+# monitoring-1 (the server) is in nbg1; this machine is in fsn1. They share one Hetzner private
 # network, and the traffic between them is agent-to-API-server plus the VXLAN overlay -- both
 # tolerate a link measured in milliseconds rather than microseconds.
 #
-# WHAT MUST NOT FOLLOW FROM THAT is a second SERVER in hel1 "for redundancy". That would put etcd's
+# WHAT MUST NOT FOLLOW FROM THAT is a second SERVER in fsn1 "for redundancy". That would put etcd's
 # raft quorum across the same link, where every write waits on it and a brief blip becomes a
 # leader election. Distance is cheap for an agent and expensive for a quorum.
 #
@@ -69,7 +69,7 @@ in
     nodeLabels = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ ];
-      example = [ "kinowo.pl/location=hel1" ];
+      example = [ "kinowo.pl/location=fsn1" ];
       description = ''
         Labels this node carries, as `key=value`.
 

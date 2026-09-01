@@ -49,10 +49,30 @@ resource "hcloud_server" "default" {
     // report the drift. That is deliberate -- the only correction Terraform can offer here is one
     // that destroys the address it is correcting.
     //
+    // `image` IS HERE BECAUSE A HETZNER REBUILD REWRITES IT, AND IT IS ForceNew. vars.tf used to say
+    // Hetzner "keeps reporting the original image forever, so this value records HOW THE MACHINE WAS
+    // BOOTSTRAPPED"; the first half of that stopped being true on 2026-09-01. Moving k3s-worker-1
+    // from hel1 to fsn1 was done by snapshotting the live host and rebuilding a standing fsn1 machine
+    // from that image -- Hetzner cannot move a server between locations -- and after the rebuild the
+    // API reports the SNAPSHOT id, not `ubuntu-26.04`. The next plan therefore read
+    // `image = "426993870" -> "ubuntu-26.04" # forces replacement`: one `apply` away from destroying
+    // the host that serves the entire product.
+    //
+    // THE ALTERNATIVE WAS TO PIN THE SNAPSHOT ID HERE, and it is worse in both directions -- it makes
+    // the configuration depend on a 45GB snapshot nobody may delete, and it still force-replaces the
+    // day somebody does. Ignoring the attribute cannot destroy anything.
+    //
+    // WHAT THIS COSTS is the same shape as `public_net` above: Terraform no longer notices what a
+    // host was built from. That costs nothing real on this fleet, because `image` is bootstrap
+    // provenance only -- every host here is re-imaged in place by nix/bin/convert-host and runs NixOS
+    // from the flake regardless of which Hetzner image it was born on. The flake, not this attribute,
+    // is what says what a machine runs.
+    //
     // `ignore_changes` binds UPDATES ONLY; a resource is always created with its configured values.
     // So the `public_net` block above still governs the CREATE path, which is a different API call
-    // with no unassign in it, and is what puts a rebuilt host back on its old address.
-    ignore_changes = [ssh_keys, public_net]
+    // with no unassign in it, and is what puts a rebuilt host back on its old address. The same is
+    // true of `image`: a genuinely NEW host is still created from what vars.tf names.
+    ignore_changes = [ssh_keys, public_net, image]
   }
 
   dynamic "network" {

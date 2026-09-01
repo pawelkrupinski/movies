@@ -16,9 +16,9 @@ resource "hcloud_network" "kinowo" {
   }
 }
 
-# ONE subnet, and it spans both datacentres. nbg1 (mongo-1, monitoring-1) and hel1 (k3s-worker-1)
+# ONE subnet, and it spans both datacentres. nbg1 (mongo-1, monitoring-1) and fsn1 (k3s-worker-1)
 # are both in the `eu-central` network zone, which is the unit a cloud subnet is scoped to -- so the
-# worker in Helsinki sits on the same 10.20.0.0/24 as the control plane in Nuremberg with no
+# worker in Falkenstein sits on the same 10.20.0.0/24 as the control plane in Nuremberg with no
 # peering, no routes and no second subnet. Had they landed in different zones this design would not
 # work at all and the worker would need a public-network k3s join instead.
 resource "hcloud_network_subnet" "kinowo_cloud" {

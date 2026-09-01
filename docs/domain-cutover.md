@@ -24,13 +24,13 @@ ordering — several of the steps below are only safe in one sequence.
    validations, so deploying early buys a backoff as well as an outage.
 
    ```
-   kinowo.net        A  204.168.140.213     # k3s-worker-1 — the web pods
-   www.kinowo.net    A  204.168.140.213
-   grafana.kinowo.net A 2.28.52.210         # monitoring-1 — NOT the same host
-   showtimes.cc      A  204.168.140.213
-   www.showtimes.cc  A  204.168.140.213
-   uk.showtimes.cc   A  204.168.140.213
-   de.showtimes.cc   A  204.168.140.213
+   kinowo.net        A  2.28.47.31    # k3s-worker-1 — the web pods
+   www.kinowo.net    A  2.28.47.31
+   grafana.kinowo.net A 2.28.52.210   # monitoring-1 — NOT the same host
+   showtimes.cc      A  2.28.47.31
+   www.showtimes.cc  A  2.28.47.31
+   uk.showtimes.cc   A  2.28.47.31
+   de.showtimes.cc   A  2.28.47.31
    ```
 
    The records live at OVH. Both addresses are pinned by

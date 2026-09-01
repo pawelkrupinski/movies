@@ -266,7 +266,7 @@ record, and the `webUrl` flip.
 
    Until someone activates it the country's host has DNS and a running pod but no
    vhost, so it answers with another site's certificate or a TLS error — and every
-   other check looks green. Activate on `k3s-worker-1` (`204.168.140.213`):
+   other check looks green. Activate on `k3s-worker-1` (`2.28.47.31`):
 
    ```
    S=$(readlink -f /var/lib/nixdeploy/staged-system)
@@ -280,7 +280,7 @@ record, and the `webUrl` flip.
 
    Check `journalctl -u nixos-auto-apply.service` for the classifier's verdict
    before assuming a nix change landed.
-4. **A DNS A record at OVH**, `<cc>.showtimes.cc → 204.168.140.213`, **before** the
+4. **A DNS A record at OVH**, `<cc>.showtimes.cc → 2.28.47.31`, **before** the
    first deploy. Caddy issues certificates over ACME HTTP-01, so a name that does
    not yet resolve fails issuance and the visitor gets a hard TLS error rather than
    a degraded page — and Let's Encrypt rate-limits *failed* validations, so being
@@ -339,7 +339,7 @@ record, and the `webUrl` flip.
    - `apply.sh` talks to the k3s API at `root@2.28.52.210`, which is
      **`monitoring-1`** — the control plane, running Grafana's Caddy. The pods,
      their NodePorts, and the PUBLIC Caddy all live on **`k3s-worker-1`**
-     (`204.168.140.213` / `10.20.0.12`). Curling a web NodePort from the API host
+     (`2.28.47.31` / `10.20.0.12`). Curling a web NodePort from the API host
      returns nothing for every country, including the ones serving perfectly.
    - The app containers have **no `curl`**, so `kubectl exec … curl` fails with
      `executable file not found`. Verify a new country from OUTSIDE

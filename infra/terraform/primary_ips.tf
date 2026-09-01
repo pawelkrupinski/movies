@@ -31,8 +31,8 @@ locals {
     mongo_1_ipv6      = { type = "ipv6", location = "nbg1" }
     monitoring_1_ipv4 = { type = "ipv4", location = "nbg1" }
     monitoring_1_ipv6 = { type = "ipv6", location = "nbg1" }
-    k3s_worker_1_ipv4 = { type = "ipv4", location = "hel1" }
-    k3s_worker_1_ipv6 = { type = "ipv6", location = "hel1" }
+    k3s_worker_1_ipv4 = { type = "ipv4", location = "fsn1" }
+    k3s_worker_1_ipv6 = { type = "ipv6", location = "fsn1" }
   }
 }
 
@@ -94,10 +94,10 @@ import {
 
 import {
   to = hcloud_primary_ip.fleet["k3s_worker_1_ipv4"]
-  id = "147084552" # 204.168.140.213
+  id = "147574152" # 2.28.47.31
 }
 
 import {
   to = hcloud_primary_ip.fleet["k3s_worker_1_ipv6"]
-  id = "147084553" # 2a01:4f9:c012:19d7::/64
+  id = "147574153" # 2a01:4f8:c012:6976::/64
 }
