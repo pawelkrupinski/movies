@@ -110,6 +110,18 @@
       {{ migrate_target_member_override
          | default(hostvars[migrate_target]['hcloud_private_ipv4'] ~ ':27017', true) }}
 
+    # EXTRACT THE JSON, DO NOT TRUST THE WHOLE OF stdout, because mongosh does not have the line to
+    # itself. Ansible's `raw` allocates a pty, mongosh sees a terminal and writes an xterm TITLE
+    # escape before its output -- `ESC ]0;mongosh mongodb://<credentials>@...BEL` -- and closes with
+    # another one. The same command through a plain `ssh -T` prints clean JSON, which is exactly why
+    # this is easy to miss: it reproduces only under Ansible. `from_json` then fails with
+    # "Expecting value: line 1 column 1", naming nothing that suggests a terminal escape.
+    #
+    # A greedy match from the first `{` to the last `}` is safe here and not merely convenient:
+    # every value below is a single `JSON.stringify` of an object, so the outermost braces are its
+    # own, and the escapes that bracket it contain no braces at all.
+    migrate_json_re: '\{.*\}'
+
     migrate_phase: "{{ migrate_phase_override | default('join', true) }}"
 
     # How far behind the target may be and still count as caught up. Replication lag is normal and
@@ -168,7 +180,7 @@
 
     - name: Parse it
       ansible.builtin.set_fact:
-        rs_before: "{{ migrate_rs_before.stdout | trim | from_json }}"
+        rs_before: "{{ migrate_rs_before.stdout | regex_search(migrate_json_re) | from_json }}"
 
     - name: This host must be the PRIMARY of the set we are migrating
       ansible.builtin.assert:
@@ -205,7 +217,7 @@
 
     - name: Refuse to join a target that already believes it is its own set
       ansible.builtin.assert:
-        that: not (migrate_target_rs.stdout | trim | from_json).initialised
+        that: not (migrate_target_rs.stdout | regex_search(migrate_json_re) | from_json).initialised
         fail_msg: >-
           {{ migrate_target }} has ALREADY INITIATED a replica set of its own
           ({{ migrate_target_rs.stdout | trim }}). That is roles/mongodb.nix's
@@ -279,7 +291,9 @@
 
     - name: The target must hold the same documents as the source
       ansible.builtin.assert:
-        that: (migrate_counts_source.stdout | trim | from_json) == (migrate_counts_target.stdout | trim | from_json)
+        that: >-
+          (migrate_counts_source.stdout | regex_search(migrate_json_re) | from_json)
+          == (migrate_counts_target.stdout | regex_search(migrate_json_re) | from_json)
         fail_msg: >-
           Counts differ after the sync reported itself caught up.
           source: {{ migrate_counts_source.stdout | trim }}
@@ -444,14 +458,14 @@
 
     - name: Show the resulting set
       ansible.builtin.debug:
-        msg: "{{ migrate_rs_after.stdout | trim | from_json }}"
+        msg: "{{ migrate_rs_after.stdout | regex_search(migrate_json_re) | from_json }}"
       when: migrate_phase in ['promote', 'retire']
 
     - name: After retire the set must be exactly one voting member, and it must be the target
       ansible.builtin.assert:
         that:
-          - (migrate_rs_after.stdout | trim | from_json).members | length == 1
-          - (migrate_rs_after.stdout | trim | from_json).members[0].host == migrate_target_member
+          - (migrate_rs_after.stdout | regex_search(migrate_json_re) | from_json).members | length == 1
+          - (migrate_rs_after.stdout | regex_search(migrate_json_re) | from_json).members[0].host == migrate_target_member
         fail_msg: >-
           The set did not come back as a single member on {{ migrate_target_member }}:
           {{ migrate_rs_after.stdout | trim }}
