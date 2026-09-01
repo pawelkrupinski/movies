@@ -78,7 +78,7 @@ android {
         // The marketing version comes from ONE file both stores read, so a release
         // shows the same number on Play and the App Store instead of two numbers
         // that drift the first time someone bumps one and forgets the other.
-        // scripts/mobile-release.sh writes it; store-versions-test.sh guards it.
+        // scripts/mobile-release.sh writes it; scripts/mobile-release-test.sh guards it.
         versionName = mobileVersion
         // Play rejects re-uploading a versionCode, so CI passes a strictly
         // increasing one (the workflow run number) via KINOWO_VERSION_CODE.
