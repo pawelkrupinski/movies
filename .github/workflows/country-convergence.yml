@@ -106,9 +106,14 @@ jobs:
                     # tree that makes the next one fast, so superseding it at hour four
                     # leaves the next run just as cold. That whole argument, and why it
                     # does NOT apply to a 12-minute Poland leg, is in that file's header.
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
-                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20 }
+                    #
+                    # `heap` is the sbt JVM's `-Xmx`, and 4g is what these three have
+                    # always run on — it is what `.jvmopts` names and what a 16 GB runner
+                    # would default to. Stated rather than inherited, so the number a leg
+                    # runs on is a decision somebody made. The US needs more; see there.
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUk,      sample: convergenceUkSample,      job: 135, suite: 120, sampleJob: 32, sampleSuite: 20, heap: 4g }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -123,6 +128,7 @@ jobs:
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
+            heap:                          ${{ matrix.heap }}
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
 

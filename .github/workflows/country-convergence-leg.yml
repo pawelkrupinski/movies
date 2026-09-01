@@ -79,6 +79,29 @@ on:
                 required: false
                 type: number
                 default: 20
+            # THE HEAP IS PER-COUNTRY for the same reason the budgets are, and it is the
+            # one ceiling nothing in this repository was setting from the command line.
+            # `.jvmopts` names `-Xmx4g` for the unforked local `testUnit`, the leg's sbt
+            # launcher reads that file, and 4g is also what a 16 GB runner's JVM would
+            # have defaulted to anyway — so every leg has always run on 4g by accident
+            # rather than by decision.
+            #
+            # A convergence leg holds the WHOLE country at once: the replayed corpus, the
+            # enrichment cache, and the read model it reloads at the end of the boot. The
+            # three warm countries fit; the United States did not. Its leg reached
+            # `reloadReadModel` over a 114,002-document projection, spent the next 45
+            # seconds above 70% GC, and died on `.jvmopts`' `-XX:+ExitOnOutOfMemoryError`
+            # (exit 3) before ScalaTest had reported a single assertion — twice, on
+            # consecutive runs. A leg that cannot reach an assertion answers nothing.
+            #
+            # Applied to BOTH sbt invocations, not just the full one. `-Xmx` is a ceiling
+            # rather than a reservation, so a sample that stays well under it pays
+            # nothing, and one knob is one fewer way for the two jobs to drift apart.
+            heap:
+                description: Max JVM heap for this country's sbt runs, as an -Xmx value.
+                required: false
+                type: string
+                default: 4g
 
 env:
     # The rolling release the per-country fixture trees live in. One tag, three assets,
@@ -153,7 +176,7 @@ jobs:
               timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
               run: |
                   set -o pipefail
-                  sbt ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
+                  sbt -J-Xmx${{ inputs.heap }} ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
               env:
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}
@@ -231,7 +254,7 @@ jobs:
               timeout-minutes: ${{ inputs.suite-timeout-minutes }}
               run: |
                   set -o pipefail
-                  sbt ${{ inputs.command }} 2>&1 | tee convergence.log
+                  sbt -J-Xmx${{ inputs.heap }} ${{ inputs.command }} 2>&1 | tee convergence.log
               env:
                   # The spec installs this country's TitleRuleSet itself; naming the
                   # country here too means anything that reads the environment

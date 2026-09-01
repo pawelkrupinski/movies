@@ -193,6 +193,49 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   /** GitHub cancels a hosted job at 360 minutes whatever `timeout-minutes` says, so a
    *  budget above that is not a longer leg — it is the same cancellation with the guard
    *  that was supposed to prevent it silently disarmed. */
+  /** The heap every leg's sbt JVM runs on, labelled — one entry per caller row.
+   *
+   *  Read from the CALLERS, because that is where the number that actually binds lives.
+   *  The leg's `default:` is what a caller silently inherits, and inheriting it is how
+   *  the ceiling stopped being anybody's decision in the first place. */
+  private def heaps: Seq[(String, String)] =
+    rows.map(fields => (fields("country"), fields.getOrElse("heap",
+      fail(s"${fields("country")} declares no `heap` — its leg would inherit a ceiling nobody chose"))))
+
+  private def heapGigabytes(value: String): Int =
+    "^(\\d+)g$".r.findFirstMatchIn(value)
+      .getOrElse(fail(s"heap `$value` is not an -Xmx value in whole gigabytes"))
+      .group(1).toInt
+
+  /** The ceiling that killed the United States' leg twice on 2026-09-01.
+   *
+   *  Nothing was passing `-Xmx` at all: `.jvmopts` names `-Xmx4g` for the unforked local
+   *  `testUnit`, the leg's sbt launcher reads that file, and a 16 GB runner's JVM would
+   *  have landed on the same 4g by default anyway — so every leg ran on a number nobody
+   *  had chosen for it. A convergence leg holds the whole country resident at once, and
+   *  the US leg spent its last 45 seconds above 70% GC and exited 3 on
+   *  `-XX:+ExitOnOutOfMemoryError` before ScalaTest reported a single assertion. A budget
+   *  in minutes buys nothing when the heap runs out first, and a timeout rule that never
+   *  looked at the heap said the leg was comfortably inside its 315. */
+  it should "run every leg on a heap its caller chose, passed to sbt rather than inherited" in {
+    heaps.foreach { case (country, heap) =>
+      withClue(s"$country: ")(heapGigabytes(heap) should be >= 4)
+    }
+    withClue("neither sbt invocation may fall back to `.jvmopts`' 4g: ") {
+      leg.linesIterator.filter(_.trim.startsWith("sbt ")).toList.foreach(
+        _ should include("-J-Xmx${{ inputs.heap }}"))
+    }
+  }
+
+  /** The US is the country the knob exists for, so a US row that drifts back to the warm
+   *  countries' 4g is the regression this rule is here to catch — and it would read as a
+   *  timeout, not as a heap, every time. */
+  it should "give the United States more heap than the warm countries" in {
+    val us   = heapGigabytes(heaps.toMap.apply("united-states"))
+    val warm = heaps.filterNot(_._1 == "united-states").map { case (_, heap) => heapGigabytes(heap) }
+    warm.foreach(gigabytes => us should be > gigabytes)
+  }
+
   it should "keep every budget under the platform's own 360-minute ceiling" in {
     budgetPairs.foreach { case (label, ceiling, _) =>
       withClue(s"$label: ")(ceiling should be <= 360)

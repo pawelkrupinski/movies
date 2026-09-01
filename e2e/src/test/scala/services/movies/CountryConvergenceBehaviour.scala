@@ -318,11 +318,22 @@ abstract class CountryConvergenceBehaviour(
     info(s"${country.displayName}: $seeded cinemas replayed from cinema_scrapes, " +
          s"${w.archivedListings.values.map(_.size).sum} film listings")
     bootSettled(w)
+    // ONE read of the corpus for all four of these, not one each.
+    //
+    // They describe the SAME post-boot state — coverage, coverage conditioned on a
+    // tmdbId, the films that resolved to nothing, and the floor that refuses a run
+    // which resolved none — so four reads could only ever agree, and they arrive at
+    // the moment the leg holds the most: the replayed corpus, the enrichment cache,
+    // and the read model this boot has just reloaded. `findAll` here is every film
+    // WITH its slots and showtimes, which on the United States is the whole 5,031-venue
+    // programme; materialising it four times over is what turned that peak into 45
+    // seconds above 70% GC and an OOM before the first assertion.
+    val booted = w.movieRepository.findAll()
     info(s"${country.displayName}: enrichment cache after boot — ${enrichmentCache.statistics}")
-    info(s"${country.displayName}: enrichment coverage — ${enrichmentCoverage(w)}")
-    info(s"${country.displayName}: ratings given a tmdbId — ${ratingsGivenTmdbId(w)}")
-    info(s"${country.displayName}: unresolved — ${unresolvedFilms(w)}")
-    requireEnrichmentReached(w)
+    info(s"${country.displayName}: enrichment coverage — ${enrichmentCoverage(booted)}")
+    info(s"${country.displayName}: ratings given a tmdbId — ${ratingsGivenTmdbId(booted)}")
+    info(s"${country.displayName}: unresolved — ${unresolvedFilms(booted)}")
+    requireEnrichmentReached(booted)
     (w, merges, archive)
   }
 
@@ -342,9 +353,9 @@ abstract class CountryConvergenceBehaviour(
    * and a ratio would need re-tuning per country as each corpus drifts, which is how
    * a guard becomes a flake and then gets deleted.
    */
-  private def requireEnrichmentReached(w: ArchiveReplayWiring): Unit = {
-    val resolved = w.movieRepository.findAll().count(_.record.tmdbId.isDefined)
-    withClue(s"${country.displayName} resolved NOTHING — ${enrichmentCoverage(w)}. " +
+  private def requireEnrichmentReached(corpus: Seq[StoredMovieRecord]): Unit = {
+    val resolved = corpus.count(_.record.tmdbId.isDefined)
+    withClue(s"${country.displayName} resolved NOTHING — ${enrichmentCoverage(corpus)}. " +
              s"A fixpoint over an unenriched corpus proves nothing; check TMDB_API_KEY is " +
              s"readable from the working directory: ") {
       resolved should be > 0
@@ -396,8 +407,8 @@ abstract class CountryConvergenceBehaviour(
    *  the replay built. Unlike the band below this is not compared against anything, so
    *  it stays over all records: a film the archive still carries and prod no longer
    *  screens is exactly as informative about whether a resolver is answering. */
-  private def enrichmentCoverage(w: ArchiveReplayWiring): String = {
-    val records = w.movieRepository.findAll().map(_.record)
+  private def enrichmentCoverage(corpus: Seq[StoredMovieRecord]): String = {
+    val records = corpus.map(_.record)
     val counts  = CorpusCoverage.of(records)
     s"${counts.films} films — tmdbId ${counts.tmdbId}, tmdbNoMatch ${records.count(_.tmdbNoMatch)}, " +
     s"imdbId ${counts.imdbId}, imdbRating ${counts.imdbRating}, " +
@@ -447,8 +458,8 @@ abstract class CountryConvergenceBehaviour(
    *  Reporting the conditional rate separates "we could not identify the film" from "we
    *  identified it and could not rate it", which is the difference between chasing title
    *  rules and chasing an HTTP failure. */
-  private def ratingsGivenTmdbId(w: ArchiveReplayWiring): String = {
-    val resolved = w.movieRepository.findAll().map(_.record).filter(_.tmdbId.isDefined)
+  private def ratingsGivenTmdbId(corpus: Seq[StoredMovieRecord]): String = {
+    val resolved = corpus.map(_.record).filter(_.tmdbId.isDefined)
     if (resolved.isEmpty) "no films resolved a tmdbId"
     else {
       def rate(label: String, predicate: MovieRecord => Boolean): String = {
@@ -475,8 +486,8 @@ abstract class CountryConvergenceBehaviour(
    *
    *  Sorted and capped so the report stays diffable between runs rather than dumping a
    *  few hundred lines; the count is always reported in full. */
-  private def unresolvedFilms(w: ArchiveReplayWiring): String = {
-    val unresolved = w.movieRepository.findAll()
+  private def unresolvedFilms(corpus: Seq[StoredMovieRecord]): String = {
+    val unresolved = corpus
       .filter(_.record.tmdbId.isEmpty)
       .map(stored => stored.year.fold(stored.title)(year => s"${stored.title} ($year)"))
       .sorted

@@ -80,7 +80,17 @@ jobs:
                     # the leg's input docs for why a cold country given a warm country's
                     # budget is cancelled before it can record the tree that would have
                     # made it fast.
-                    - { country: united-states, code: us, cmd: convergenceUs, sample: convergenceUsSample, job: 330, suite: 315, sampleJob: 75, sampleSuite: 60 }
+                    #
+                    # `heap` is the sbt JVM's `-Xmx`, and 8g against the other three's 4g
+                    # is the ceiling this country actually needs. A leg holds the whole
+                    # country resident at once — the replayed corpus, the enrichment
+                    # cache, and the read model it reloads once the boot has projected
+                    # it. On 2026-09-01 that projection was 114,002 documents, and both
+                    # runs that day spent their last 45 seconds above 70% GC and then
+                    # exited 3 on `.jvmopts`' `-XX:+ExitOnOutOfMemoryError` — before
+                    # ScalaTest had reported one assertion. A budget buys nothing if the
+                    # heap runs out first.
+                    - { country: united-states, code: us, cmd: convergenceUs, sample: convergenceUsSample, job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 8g }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -95,5 +105,6 @@ jobs:
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
+            heap:                          ${{ matrix.heap }}
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit
