@@ -84,7 +84,17 @@ echo "==> waiting for the rescue system on $ip"
 # installed NixOS. Pinning it would mean two known-hosts edits per conversion, so this deliberately
 # does not verify it -- the exposure is one SSH session to a machine we are about to overwrite
 # entirely, on a connection whose only payload is a public flake.
-ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5)
+#
+# ServerAliveInterval IS NOT BELT AND BRACES HERE, it is the difference between this script failing
+# and this script HANGING FOR EVER. `ConnectTimeout` bounds only the CONNECT; a session that
+# establishes and then dies silently -- which is exactly what a rescue system does when it is reset
+# or its network blips -- leaves ssh waiting on a socket nothing will ever answer, with no timeout
+# of any kind. That happened converting mongo-2 on 2026-09-02: the `readlink -f` probe below sat
+# open for eleven minutes against a machine that was up and idle, and the only symptom was a script
+# that printed nothing. Three missed five-second probes and ssh gives up, which turns a hang into an
+# error the retry logic can see.
+ssh_opts=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=5
+          -o ServerAliveInterval=5 -o ServerAliveCountMax=3)
 for _ in $(seq 1 60); do
   if ssh "${ssh_opts[@]}" -o BatchMode=yes "root@$ip" 'test -d /root && grep -qi rescue /etc/motd 2>/dev/null || true' 2>/dev/null; then
     break
