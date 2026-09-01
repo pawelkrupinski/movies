@@ -369,7 +369,11 @@
     # both members as seeds (discover the set and follow its primary). After this the driver tracks
     # membership on its own, which is why neither `promote` nor `retire` needs another restart.
     - name: Repoint the applications at the replica set rather than at one address
-      ansible.builtin.raw: >-
+      # A LITERAL BLOCK (`|`), NOT A FOLDED ONE (`>-`), and the difference is not cosmetic: folding
+      # replaces every newline with a space, so a shell script written across lines arrives as one
+      # line and `set -e export KUBECONFIG=... for s in ...; do` is a syntax error. Every other raw
+      # task here is a single command and folds harmlessly; these two are scripts.
+      ansible.builtin.raw: |
         set -e
         export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
         for s in web-secrets worker-secrets; do
@@ -394,9 +398,10 @@
     # serving. The workers are strategy Recreate and DO stop before they start; that is accepted
     # rather than overlooked, because a worker gap delays the next scrape cycle and nothing else.
     - name: Roll the pods onto the new connection string
-      ansible.builtin.raw: >-
+      ansible.builtin.raw: |
+        set -e
         export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
-        kubectl rollout restart deployment -n kinowo &&
+        kubectl rollout restart deployment -n kinowo
         kubectl rollout status deployment -n kinowo --timeout=600s
       delegate_to: "{{ migrate_k8s_host | default('monitoring-1', true) }}"
       register: migrate_rollout
