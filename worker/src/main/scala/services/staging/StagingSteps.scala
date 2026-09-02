@@ -34,7 +34,11 @@ class StagingSteps(
   enrichers:         Seq[DetailEnricher],
   resolveStaging:    (String, Option[Int], MovieRecord) => Option[MovieRecord],
   recoverImdbId:     (String, Option[Int], models.MovieRecord) => Option[String],
-  freshness:         FreshnessStore
+  freshness:         FreshnessStore,
+  // The country's badge vocabulary, for the detail-page `format` merged in
+  // `enrichDetail` — the staging path writes through the repository rather than
+  // the cache, so it carries its own copy of the same wiring.
+  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default
 ) extends Logging {
   // The staging rows anchor under their repository's country rules — take them
   // from it rather than a second copy that could disagree.
@@ -104,7 +108,7 @@ class StagingSteps(
         enricher.fetchDetail(ref) match {
           case DetailFetchOutcome.Fetched(detail) =>
             val before = row.record.data.getOrElse(target, SourceData())
-            val after  = detail.mergeInto(before)
+            val after  = detail.mergeInto(before, screeningTokens)
             val merged = row.record.copy(data = row.record.data + (target -> after))
             stagingRepository.upsertRow(row.copy(record = merged))
             // Say whether the merge actually CONTRIBUTED anything. It used to log the

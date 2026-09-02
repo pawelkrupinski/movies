@@ -91,6 +91,16 @@ sealed abstract class Country(
    *  a country whose every screening is in one language would be. */
   def versionTokens: Option[VersionTokens] = None
 
+  /** The token a VOICE-OVER screening carries — one narrator read over the
+   *  original soundtrack, which is neither dubbing nor subtitles and is a version
+   *  of its own wherever it is offered. Poland writes it `LEK`; the
+   *  English-speaking deployments `LEC`.
+   *
+   *  Its own member rather than a third field on [[VersionTokens]] because that
+   *  pair is what the Filtry radios FILTER on, and a voice-over screening is not
+   *  one of the two choices those radios offer. */
+  def voiceoverToken: String = "LEK"
+
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
 
   /** [[cities]] ordered alphabetically by display name under this country's
@@ -172,6 +182,7 @@ object Country {
     // 2026-09-02) is the one a visitor filters for, `DUB` the rare foreign-language
     // print. Both are what the chains' own labels normalise to.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
+    override val voiceoverToken: String = "LEC"
   }
 
   /** Germany — a German-language country on its own `kinowo_de` database,
@@ -222,6 +233,7 @@ object Country {
     // Same pair as the UK, and for the same reason — a subtitled print is the
     // marked case, a dubbed one rare.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
+    override val voiceoverToken: String = "LEC"
   }
 
   /** Spain — a Spanish-language country on its own `kinowo_es` database, sourced

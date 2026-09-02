@@ -49,8 +49,53 @@ import java.util.concurrent.ConcurrentHashMap
  * precisely how `Glasgow Film Club` came to be a badge. It is logged once per
  * distinct label so a genuinely new format shows up in the logs instead of on
  * 40,000 screenings.
+ *
+ * One token is the COUNTRY's to spell, which is why this is a class with a
+ * per-country instance rather than an object: see [[voiceover]].
  */
+class ScreeningTokens(
+  /** The token a VOICE-OVER screening carries — see [[models.Country.voiceoverToken]].
+   *  Every OTHER token in the vocabulary is the same in every country (a source
+   *  either says IMAX or it doesn't), so this one parameter is the whole reason
+   *  the vocabulary is instantiated per country instead of being a shared table. */
+  val voiceover: String
+) extends Logging {
+  import ScreeningTokens._
+
+  /** The token(s) `raw` means — empty when it is not a screening attribute. */
+  def canonical(raw: String): List[String] = {
+    val k = key(raw)
+    if (k.isEmpty) Nil
+    else if (VoiceoverLabels.contains(k)) List(voiceover)
+    else Canonical.get(k).orElse(LanguageNames.get(k)).getOrElse {
+      if (!NotAScreeningAttribute.contains(k) && reported.add(k))
+        logger.info(s"ScreeningTokens: dropping unrecognised screening label '$raw' — " +
+          "add it to Canonical if it names a format, version or accessibility feature")
+      Nil
+    }
+  }
+
+  /** Normalise one screening's tokens: each mapped to the shared vocabulary,
+   *  unrecognised ones dropped, duplicates collapsed, source order kept. */
+  def normalize(tokens: Seq[String]): List[String] =
+    tokens.iterator.flatMap(canonical).distinct.toList
+}
+
 object ScreeningTokens extends Logging {
+
+  /** This vocabulary as `country` spells it. */
+  def of(country: models.Country): ScreeningTokens = new ScreeningTokens(country.voiceoverToken)
+
+  /** The default country's spelling, for the single-country constructions that
+   *  predate the country split — the same default `MovieCache`'s
+   *  `enrichmentLanguage` takes, and for the same reason. */
+  val Default: ScreeningTokens = of(models.Country.default)
+
+  /** The labels that name a voice-over, whose TOKEN is the country's own. Helios
+   *  spells it `LEC`, and does so 42 times to `LEK`'s one: its `speakingType`
+   *  vocabulary is exactly {Napisy, DUB, ORG, LEC}, and lektor is the only one of
+   *  Poland's four versions the other three leave unnamed. */
+  private val VoiceoverLabels: Set[String] = Set("lek", "lekt", "lektor", "lec")
 
   /** Source spelling (see [[key]]) → the token(s) it means. The keys are the
    *  real labels measured in the five production databases, plus the ones the
@@ -83,11 +128,8 @@ object ScreeningTokens extends Logging {
     // Poland's own words arrive both spelled out and abbreviated.
     "nap" -> List("NAP"), "napisy" -> List("NAP"), "napisypl" -> List("NAP"),
     "dub" -> List("DUB"), "dubb" -> List("DUB"), "dubbing" -> List("DUB"), "dubbingpl" -> List("DUB"), "dubbed" -> List("DUB"),
-    "lek" -> List("LEK"), "lekt" -> List("LEK"), "lektor" -> List("LEK"),
-    // Helios spells lektor `LEC`, and does so 42 times to `LEK`'s one: its
-    // `speakingType` vocabulary is exactly {Napisy, DUB, ORG, LEC}, and lektor is
-    // the only one of Poland's four versions the other three leave unnamed.
-    "lec" -> List("LEK"),
+    // (the voice-over labels are NOT here — their token is the country's own,
+    // see `VoiceoverLabels` above)
     "org" -> List("ORG"), "oryginalny" -> List("ORG"),
     "sub" -> List("SUB"), "subbed" -> List("SUB"), "subtitled" -> List("SUB"), "subtitles" -> List("SUB"),
     // The market abbreviations the Webedia clients emit, kept verbatim: each is
@@ -137,20 +179,4 @@ object ScreeningTokens extends Logging {
   private def key(raw: String): String =
     raw.toLowerCase(Locale.ROOT).filter(c => c.isLetterOrDigit)
 
-  /** The token(s) `raw` means — empty when it is not a screening attribute. */
-  def canonical(raw: String): List[String] = {
-    val k = key(raw)
-    if (k.isEmpty) Nil
-    else Canonical.get(k).orElse(LanguageNames.get(k)).getOrElse {
-      if (!NotAScreeningAttribute.contains(k) && reported.add(k))
-        logger.info(s"ScreeningTokens: dropping unrecognised screening label '$raw' — " +
-          "add it to Canonical if it names a format, version or accessibility feature")
-      Nil
-    }
-  }
-
-  /** Normalise one screening's tokens: each mapped to the shared vocabulary,
-   *  unrecognised ones dropped, duplicates collapsed, source order kept. */
-  def normalize(tokens: Seq[String]): List[String] =
-    tokens.iterator.flatMap(canonical).distinct.toList
 }

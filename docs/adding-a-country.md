@@ -153,7 +153,9 @@ those is expensive to change once a `Country` is switchable.
      token passes `services.movies.ScreeningTokens` at ingest, which maps each
      spelling onto the shared vocabulary and drops what is not a screen format,
      a language version or per-screening accessibility. A new country's labels
-     go in that table — not into per-client code, and not through untouched.
+     go in that table — not into per-client code, and not through untouched. One
+     token in it is the country's own to spell: `Country.voiceoverToken`, `LEK`
+     in Poland and `LEC` in the English-speaking deployments.
    - **Local ABBREVIATIONS the UI shows.** The four language versions are
      `OV`/`OmU`/`OmeU`/`DF` to a German and `VO`/`VOSE`/`VOSI`/`DOB` to a
      Spaniard. The tag vocabulary is shared; the token is the market's — and the

@@ -1,5 +1,6 @@
 package services.cinemas
 
+import services.movies.ScreeningTokens
 import org.scalatest.matchers.should.Matchers
 import models.{Showtime, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -22,13 +23,13 @@ class FilmDetailSpec extends AnyFlatSpec with Matchers {
       title     = Some("Chłopiec na krańcach świata"),
       showtimes = Seq(at(16, 45, "b1", Nil), at(19, 0, "b2", List("NAP")))
     )
-    val merged = FilmDetail(format = List("LEK")).mergeInto(slot)
+    val merged = FilmDetail(format = List("LEK")).mergeInto(slot, ScreeningTokens.Default)
     // The un-badged showing gains LEK; the one the listing already set to NAP is left alone.
     merged.showtimes.map(_.format) shouldBe Seq(List("LEK"), List("NAP"))
   }
 
   it should "leave showings untouched when the detail carries no format" in {
     val slot = SourceData(title = Some("X"), showtimes = Seq(at(16, 45, "b", Nil)))
-    FilmDetail(synopsis = Some("prose")).mergeInto(slot).showtimes.map(_.format) shouldBe Seq(Nil)
+    FilmDetail(synopsis = Some("prose")).mergeInto(slot, ScreeningTokens.Default).showtimes.map(_.format) shouldBe Seq(Nil)
   }
 }

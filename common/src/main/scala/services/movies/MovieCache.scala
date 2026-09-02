@@ -243,6 +243,14 @@ class CaffeineMovieCache(
   // `CountryNames.canonical`). The worker wires `country.language`; defaults to
   // Polish so every existing single-country construction is unchanged.
   enrichmentLanguage: java.util.Locale = CountryNames.DefaultLanguage,
+  // The country's badge vocabulary. Sibling of `enrichmentLanguage` above and
+  // wired from the same `country`: one token in it — the voice-over version — is
+  // the country's own to spell (`LEK` in Poland, `LEC` in the English-speaking
+  // deployments). Defaults to the default country like its siblings, so every
+  // existing single-country construction is unchanged. Unlike `normalizer` a
+  // wrong value here mis-SPELLS a badge rather than mis-keying a row, which is
+  // why this one may default at all.
+  screeningTokens: ScreeningTokens = ScreeningTokens.Default,
   // The country's title rules. Sibling of `enrichmentLanguage` above and wired
   // from the same `country` by the worker; both default to Poland so existing
   // single-country constructions are unchanged. Every `CacheKey` this cache
@@ -1274,7 +1282,7 @@ class CaffeineMovieCache(
     val formatted: Seq[CinemaMovie] = movies.map { cm =>
       val tokens = cleanAndFormat(cm)._2
       cm.copy(showtimes = cm.showtimes.map { st =>
-        st.copy(format = ScreeningTokens.normalize(if (st.format.isEmpty) tokens else st.format))
+        st.copy(format = screeningTokens.normalize(if (st.format.isEmpty) tokens else st.format))
       })
     }
 

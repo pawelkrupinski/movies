@@ -957,6 +957,25 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     stored.map(_.format) shouldBe Seq(List("IMAX", "LASER", "AD", "HINDI"))
   }
 
+  // The one token in the vocabulary the COUNTRY spells: a voice-over screening is
+  // `LEK` on a Polish deployment and `LEC` on an English-speaking one. The cache
+  // carries its country's vocabulary the way it already carries that country's
+  // language and title rules, so the badge is spelled right at ingest rather than
+  // translated at render — the same choice the VOSE/OmU/DOB tokens made.
+  it should "spell a voice-over screening the way its country does" in {
+    def recordedFormat(tokens: ScreeningTokens): Seq[List[String]] = {
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(),
+        normalizer = titleNormalizer, screeningTokens = tokens)
+      val slot = showtime("2026-06-08T18:00").copy(format = List("LEC"))
+      cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Wonka", Multikino, showtimes = Seq(slot))))
+        .map(_._2).distinct.flatMap(k => cache.get(k))
+        .flatMap(_.cinemaShowings.collect { case (Multikino, sd) => sd })
+        .flatMap(_.showtimes).map(_.format)
+    }
+    recordedFormat(ScreeningTokens.of(models.Country.Poland))         shouldBe Seq(List("LEK"))
+    recordedFormat(ScreeningTokens.of(models.Country.UnitedKingdom))  shouldBe Seq(List("LEC"))
+  }
+
   it should "rebuild a slot's showtimes from the fresh scrape alone — a dropped recently-past showing is NOT retained" in {
     val repo  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)

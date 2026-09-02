@@ -37,7 +37,7 @@ case class FilmDetail(
    *  values as authoritative — a present listing value is never replaced by a
    *  detail one; for poster it preserves the cinema's own listing poster (which
    *  several clients prefer over the detail-page poster). */
-  def mergeInto(slot: SourceData): SourceData = slot.copy(
+  def mergeInto(slot: SourceData, screeningTokens: ScreeningTokens): SourceData = slot.copy(
     synopsis       = slot.synopsis.orElse(synopsis),
     cast           = if (slot.cast.nonEmpty) slot.cast else cast,
     director       = if (slot.director.nonEmpty) slot.director else director,
@@ -56,7 +56,7 @@ case class FilmDetail(
     // freely as a listing does.
     showtimes      = if (format.isEmpty) slot.showtimes
                      else slot.showtimes.map(st =>
-                       if (st.format.isEmpty) st.copy(format = ScreeningTokens.normalize(format)) else st)
+                       if (st.format.isEmpty) st.copy(format = screeningTokens.normalize(format)) else st)
   )
 }
 

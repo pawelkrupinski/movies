@@ -14,7 +14,10 @@ import org.scalatest.matchers.should.Matchers
  */
 class ScreeningTokensSpec extends AnyFlatSpec with Matchers {
 
-  private def one(raw: String): List[String] = ScreeningTokens.canonical(raw)
+  private val poland  = ScreeningTokens.of(models.Country.Poland)
+  private val britain = ScreeningTokens.of(models.Country.UnitedKingdom)
+
+  private def one(raw: String): List[String] = poland.canonical(raw)
 
   // The defect that motivated the whole vocabulary: the UK shipped the same
   // concept under two and three spellings at once, so a visitor filtering or
@@ -43,8 +46,6 @@ class ScreeningTokensSpec extends AnyFlatSpec with Matchers {
   it should "collapse Poland's spelled-out words onto its abbreviations" in {
     one("napisy")     shouldBe List("NAP")
     one("2d")         shouldBe List("2D")
-    one("LEKT")       shouldBe List("LEK")
-    one("lektor")     shouldBe List("LEK")
     one("oryginalny") shouldBe List("ORG")
   }
 
@@ -110,11 +111,28 @@ class ScreeningTokensSpec extends AnyFlatSpec with Matchers {
   }
 
   "normalize" should "map, drop and dedupe a whole screening's labels in source order" in {
-    ScreeningTokens.normalize(
+    poland.normalize(
       Seq("IMAX at AMC", "Wheelchair Accessible", "Audio Described", "AD", "RealD 3D")) shouldBe
       List("IMAX", "AD", "3D")
 
-    ScreeningTokens.normalize(Nil)                          shouldBe Nil
-    ScreeningTokens.normalize(Seq("Wheelchair Accessible")) shouldBe Nil
+    poland.normalize(Nil)                          shouldBe Nil
+    poland.normalize(Seq("Wheelchair Accessible")) shouldBe Nil
   }
+
+  // The ONE token the vocabulary spells per country: a voice-over screening — a
+  // single narrator over the original audio, neither dubbed nor subtitled.
+  // Poland writes it LEK, the English-speaking deployments LEC, and Helios's own
+  // `LEC` is the same version whichever country is reading it.
+  "a voice-over screening" should "carry the token its country spells it with" in {
+    for (label <- Seq("LEK", "LEKT", "lektor", "LEC", "lec")) withClue(s"$label: ") {
+      poland.canonical(label)  shouldBe List("LEK")
+      britain.canonical(label) shouldBe List("LEC")
+    }
+    ScreeningTokens.of(models.Country.UnitedStates).canonical("lektor") shouldBe List("LEC")
+    // Every other token is the same everywhere — a source either says IMAX or it doesn't.
+    for (label <- Seq("IMAX", "napisy", "3D", "Audio Described")) withClue(s"$label: ") {
+      poland.canonical(label) shouldBe britain.canonical(label)
+    }
+  }
+
 }

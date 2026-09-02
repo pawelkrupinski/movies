@@ -564,7 +564,12 @@ class WorkerWiring(
   lazy val movieCache: CaffeineMovieCache =
     new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository),
       retrigger = enrichmentRetrigger, mergeMetrics = taskMetrics, cacheMetrics = taskMetrics,
-      enrichmentLanguage = country.language, normalizer = titleNormalizer)
+      enrichmentLanguage = country.language, screeningTokens = screeningTokens, normalizer = titleNormalizer)
+
+  // This deployment's badge vocabulary. One instance, shared by every path that
+  // writes a `Showtime.format`, so the cache and the two detail-merge paths
+  // cannot disagree about how the country spells a voice-over.
+  lazy val screeningTokens: services.movies.ScreeningTokens = services.movies.ScreeningTokens.of(country)
 
   // After a merge changes an enrichment's input fields, re-kick that enrichment
   // (per case) as a worker task — clearing its freshness stamp so the tmdbId-keyed
@@ -959,8 +964,9 @@ class WorkerWiring(
   // handler (pickup gate) so they agree on "due" — see [[services.tasks.DueWindow]].
   val detailDueWindow = new services.tasks.DueWindow(6L.hours)
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
-    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache, freshnessStore, uptimeMonitor, eventBus,
-    detailDueWindow
+    detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
+    freshnessStore, uptimeMonitor, eventBus, detailDueWindow,
+    screeningTokens = screeningTokens
   )
   // Detail enqueue is event-driven: one enqueuer per deferred cinema fires the
   // first detail fetch off CinemaMovieAdded; the reaper is the periodic
@@ -1024,7 +1030,8 @@ class WorkerWiring(
   // concluded film into `movies` and deletes its staging rows.
   lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer, movieRepository)
   lazy val stagingSteps = new StagingSteps(
-    stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor, freshnessStore)
+    stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
+    freshnessStore, screeningTokens)
   lazy val stagingHandlers: Seq[services.tasks.TaskHandler] = Seq(
     new StagingDetailHandler(stagingSteps),
     new StagingResolveTmdbHandler(stagingSteps),

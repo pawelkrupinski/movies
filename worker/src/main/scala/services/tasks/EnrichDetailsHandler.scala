@@ -84,7 +84,12 @@ class EnrichDetailsHandler(
   bus:              EventBus,
   // SAME instance the DetailReaper enqueues on — see the class doc / [[DueWindow]].
   dueWindow:        DueWindow,
-  clock:            Clock = Clock.systemUTC()
+  clock:            Clock = Clock.systemUTC(),
+  // The country's badge vocabulary, for the detail-page `format` merged below.
+  // Wired at the composition root beside the cache's own copy; defaulted like the
+  // cache's, for the same reason — a wrong value mis-SPELLS a badge rather than
+  // mis-keying a row.
+  screeningTokens:  services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default
 ) extends TaskHandler with Logging {
 
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
@@ -180,7 +185,7 @@ class EnrichDetailsHandler(
             cache.putIfPresent(rowKey, current =>
               current.copy(
                 data          = targets.foldLeft(current.data)((d, tgt) =>
-                                  d + (tgt -> detail.mergeInto(d.getOrElse(tgt, SourceData())))),
+                                  d + (tgt -> detail.mergeInto(d.getOrElse(tgt, SourceData()), screeningTokens))),
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
             uptime.recordSuccess(service)
