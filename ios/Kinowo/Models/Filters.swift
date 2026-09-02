@@ -280,7 +280,7 @@ struct CinemaSection: Identifiable, Hashable {
 }
 
 /// Mirrors the web's `#sort-by` dropdown (shared.js `compareCards`).
-/// `earliest` keeps the server's earliest-showtime order (the default);
+/// `earliest` puts the soonest remaining screening first (the default);
 /// `rating` orders by weighted rating, descending. Both are offered in the
 /// iOS Filtry sheet.
 /// The user-facing captions live in `SortOption.label` over in
@@ -291,24 +291,35 @@ enum SortOption: String, CaseIterable, Hashable {
 }
 
 extension Sequence where Element == Film {
-    /// Apply the chosen sort. `.earliest` preserves the server's
-    /// earliest-showtime order (the list already arrives sorted that way);
-    /// `.rating` orders by weighted rating descending, falling back to the
-    /// earliest order for ties — matching the web's `compareCards`.
+    /// Apply the chosen sort. `.earliest` orders by each film's soonest
+    /// remaining screening; `.rating` orders by weighted rating descending.
+    /// Both tie-break to the earliest showing and then to input order —
+    /// exactly the web's `compareCards` (`shared.js`) and Android's
+    /// `sortedFor`.
+    ///
+    /// The key has to be recomputed here rather than trusted from the payload:
+    /// the server sorts once by each film's earliest showtime across the WHOLE
+    /// schedule, but the listing shows a `filteredFor` copy narrowed to one day
+    /// and the enabled cinemas/formats. On the Tomorrow page, or with a
+    /// from-hour set, a film's soonest VISIBLE slot is not the one the server
+    /// ranked it by — which is why keeping the incoming order put the cards in
+    /// the wrong sequence everywhere except the current day.
+    ///
+    /// Swift's `sorted` is not stable, so the input offset is carried through
+    /// as the final tie-break rather than assumed.
     func sorted(by option: SortOption) -> [Film] {
-        switch option {
-        case .earliest:
-            return Array(self)
-        case .rating:
-            return enumerated()
-                .sorted { lhs, rhs in
-                    let a = lhs.element.ratings.weightedRating
-                    let b = rhs.element.ratings.weightedRating
+        enumerated()
+            .map { (offset: $0.offset, film: $0.element, earliest: $0.element.earliestShowing) }
+            .sorted { lhs, rhs in
+                if option == .rating {
+                    let a = lhs.film.ratings.weightedRating
+                    let b = rhs.film.ratings.weightedRating
                     if a != b { return a > b }
-                    return lhs.offset < rhs.offset // tie-break: earliest order
                 }
-                .map(\.element)
-        }
+                if lhs.earliest != rhs.earliest { return lhs.earliest < rhs.earliest }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.film)
     }
 
     /// Drop screenings already in the past and re-sort cinemas by the

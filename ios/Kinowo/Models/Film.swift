@@ -54,6 +54,24 @@ struct Film: Identifiable, Hashable, Codable {
     let cast: [String]
     let showings: [DayShowings]
 
+    /// Earliest screening this film still carries, as a sortable
+    /// `YYYY-MM-DDTHH:MM` string across every day and cinema — the iOS twin of
+    /// the web's `group.dataset.date + 'T' + badge.time` and Android's
+    /// `Film.earliestShowing`. The fixed-width ISO layout makes lexicographic
+    /// order chronological, so no date parsing is needed.
+    ///
+    /// It reads `showings` as they stand, which is the whole point: the listing
+    /// hands `sorted(by:)` a `filteredFor` copy already pruned to the visible
+    /// day / cinemas / formats, so the key is the earliest *visible* showtime,
+    /// not the server's global one. A film with no showings left (unreachable
+    /// after filtering, but possible for a bare fixture) sorts last.
+    var earliestShowing: String {
+        showings
+            .lazy
+            .flatMap { day in day.cinemas.lazy.flatMap { $0.showtimes }.map { "\(day.date)T\($0.time)" } }
+            .min() ?? "\u{FFFF}"
+    }
+
     struct Ratings: Hashable, Codable {
         let imdb: Double?
         let imdbURL: URL?

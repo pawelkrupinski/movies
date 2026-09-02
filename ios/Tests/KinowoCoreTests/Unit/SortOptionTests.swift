@@ -16,10 +16,20 @@ final class SortOptionTests: XCTestCase {
         )
     }
 
-    private func film(_ title: String, _ r: Film.Ratings) -> Film {
+    private func film(_ title: String, _ r: Film.Ratings = .empty,
+                      showings: [DayShowings] = []) -> Film {
         Film(title: title, posterURL: nil, fallbackPosterURLs: [],
              runtimeMinutes: nil, releaseYear: nil, genres: [], ratings: r,
-             countries: [], directors: [], cast: [], showings: [])
+             countries: [], directors: [], cast: [], showings: showings)
+    }
+
+    /// `<date> at <cinema>: <times>` in one line, so a sort case reads as the
+    /// schedule it is asserting about.
+    private func day(_ date: String, _ cinemas: (String, [String])...) -> DayShowings {
+        DayShowings(date: date, label: date, cinemas: cinemas.map { name, times in
+            CinemaShowings(cinema: name, cinemaURL: nil,
+                           showtimes: times.map { Showtime(time: $0, format: "", room: nil, bookingURL: nil) })
+        })
     }
 
     // MARK: – weightedRating
@@ -68,11 +78,82 @@ final class SortOptionTests: XCTestCase {
         XCTAssertEqual(films.sorted(by: .rating).map(\.title), ["Rated", "Unrated"])
     }
 
-    func testEarliestSortPreservesInputOrder() {
+    func testEarliestSortIsStableForFilmsWithNoShowings() {
+        // Nothing to rank on — both carry the same sentinel key, so the input
+        // order survives (Swift's `sorted` is not itself stable).
         let films = [
             film("First", ratings(imdb: 1.0)),
             film("Second", ratings(imdb: 9.0)),
         ]
         XCTAssertEqual(films.sorted(by: .earliest).map(\.title), ["First", "Second"])
+    }
+
+    func testEarliestSortOrdersBySoonestShowing() {
+        let films = [
+            film("Evening", showings: [day("2026-05-22", ("X", ["18:00"]))]),
+            film("Morning", showings: [day("2026-05-22", ("X", ["09:00"]))]),
+            film("Yesterday", showings: [day("2026-05-21", ("X", ["23:00"]))]),
+        ]
+        XCTAssertEqual(films.sorted(by: .earliest).map(\.title),
+                       ["Yesterday", "Morning", "Evening"])
+    }
+
+    func testEarliestSortLooksAcrossEveryDayAndCinema() {
+        let films = [
+            film("Late", showings: [day("2026-05-22", ("X", ["20:00"]))]),
+            // The soonest slot is buried in the second cinema-group, and its
+            // own group lists a later slot first.
+            film("EarlyBuried", showings: [
+                day("2026-05-23", ("X", ["21:00"])),
+                day("2026-05-22", ("X", ["21:00"]), ("Y", ["22:00", "08:30"])),
+            ]),
+        ]
+        XCTAssertEqual(films.sorted(by: .earliest).map(\.title), ["EarlyBuried", "Late"])
+    }
+
+    func testEarliestSortRanksTheDayPageByThatDaysShowings() {
+        // The regression this sort exists for. The server ranks the payload by
+        // each film's earliest showtime across the WHOLE schedule, so "Opener"
+        // (today 10:00) arrives first. On the Tomorrow page it plays at 22:00
+        // and "Sleeper" at 09:00 — the day page has to re-rank, or it shows the
+        // global order and the cards read as unsorted.
+        let payloadOrder = [
+            film("Opener", showings: [
+                day("2026-05-22", ("X", ["10:00"])),
+                day("2026-05-23", ("X", ["22:00"])),
+            ]),
+            film("Sleeper", showings: [day("2026-05-23", ("X", ["09:00"]))]),
+        ]
+        XCTAssertEqual(payloadOrder.sorted(by: .earliest).map(\.title), ["Opener", "Sleeper"])
+
+        let tomorrow = payloadOrder.filteredFor(
+            date: .specific("2026-05-23"), format: .empty, query: "", hidden: []
+        )
+        XCTAssertEqual(tomorrow.sorted(by: .earliest).map(\.title), ["Sleeper", "Opener"])
+    }
+
+    func testEarliestSortFollowsTheFromHourFilter() {
+        // Same shape one axis over: a from-hour bound hides the slot the server
+        // ranked "Matinee" by, so the visible order flips.
+        let films = [
+            film("Matinee", showings: [day("2026-05-22", ("X", ["09:00", "23:00"]))]),
+            film("Primetime", showings: [day("2026-05-22", ("X", ["20:00"]))]),
+        ]
+        XCTAssertEqual(films.sorted(by: .earliest).map(\.title), ["Matinee", "Primetime"])
+
+        let fromEight = films.filteredFor(
+            date: .anytime, format: FormatFilter(fromHour: 20), query: "", hidden: []
+        )
+        XCTAssertEqual(fromEight.sorted(by: .earliest).map(\.title), ["Primetime", "Matinee"])
+    }
+
+    func testRatingSortTieBreaksOnEarliestShowingBeforeInputOrder() {
+        // `compareCards` falls through rating → earliest → input order; equal
+        // ratings must not leave a later film above a sooner one.
+        let films = [
+            film("Later", ratings(imdb: 7.0), showings: [day("2026-05-22", ("X", ["20:00"]))]),
+            film("Sooner", ratings(imdb: 7.0), showings: [day("2026-05-22", ("X", ["10:00"]))]),
+        ]
+        XCTAssertEqual(films.sorted(by: .rating).map(\.title), ["Sooner", "Later"])
     }
 }
