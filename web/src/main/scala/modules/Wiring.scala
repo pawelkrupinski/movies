@@ -6,7 +6,7 @@ import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
 import services.fallback.{FallbackStore, MongoFallbackStore}
-import services.metrics.{WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
+import services.metrics.{WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
 import services.movies.{MongoMovieRepository, MovieRepository}
 import services.readmodel.{MongoReadModelRepository, ReadModelReader, WebReadModel}
 import services.tasks.{BulkTaskResultStore, MongoBulkTaskResultStore, MongoTaskQueue, TaskQueue}
@@ -343,6 +343,11 @@ trait Wiring {
   // on the registry IS its whole job — so a `lazy val` would never be forced and
   // the panels would stay as blank as they were with Fly's metrics gone.
   private val webHostMetrics = new WebHostMetrics(webJvmMetrics.registry, metricsCountry.code)
+  // How much heap the gzipped-response cache is holding, against its budget. NOT
+  // lazy for the same reason as the line above: registering the gauges is the
+  // whole job. It forces `gzippedResponseCache`, which is only a map — no I/O, no
+  // ordering constraint.
+  private val webCacheMetrics = new WebCacheMetrics(webJvmMetrics.registry, metricsCountry.code, gzippedResponseCache)
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics, webJvmMetrics, metricsCountry.code)
   // Read-only on the web side: the worker writes fallback state; the /uptime page's
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).
