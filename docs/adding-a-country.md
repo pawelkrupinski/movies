@@ -589,6 +589,22 @@ merge and `apply.sh` CI is trying to roll Deployments that do not exist yet.
    CI corpus reader (`kinowo-ci-corpus`, read), whose grant list
    `ConvergenceLegWiringSpec` pins against `Country.all` — so the nix role
    documenting it has to name the new database or a test fails.
+
+   **Naming the database in `roles/mongo-ci-read.nix` does NOT grant it.** That
+   list is documentation of a state a human has to produce; `db.createUser()`
+   ran once, and every country after the first is a `grantRolesToUser` issued by
+   hand against the running mongod with the root credentials:
+
+   ```
+   db.getSiblingDB("admin").grantRolesToUser(
+     "kinowo-ci-corpus", [ { role: "read", db: "kinowo_<cc>" } ])
+   ```
+
+   Spain merged with `kinowo_es` in the nix list and no grant on the host, so the
+   first nightly `Record scrape fixtures` died with `not authorized on kinowo_es
+   to execute command find: cinema_scrapes` — and the convergence leg, which only
+   reads what that job recorded, was red for a day with a message about a missing
+   fixture rather than a missing grant.
 2. **Merge**, and wait for a GREEN image build whose SHA contains your commit.
    (No DNS step for a path-mounted country — see phase 4.4.)
 3. **`apply.sh worker <cc> <image>` and `apply.sh web <cc> <image>`** — explicit
@@ -606,6 +622,20 @@ merge and `apply.sh` CI is trying to roll Deployments that do not exist yet.
    green. Watch the first sweep's throttle percentage on panel 14 of
    kinowo-worker-diag — that is where an unpaced or over-paced new host shows
    up, and it is the number the pace was set against.
+
+6. **Record the country's first convergence corpus by hand**, once the worker
+   has completed a sweep and `cinema_scrapes` holds something worth replaying:
+   `gh workflow run "Record scrape fixtures"` (~10 minutes, all countries in
+   parallel). The convergence legs replay a corpus RECORDED OUT OF BAND — they
+   never reach prod Mongo themselves — and `convergence-setup` looks only at
+   SUCCESSFUL runs of that workflow, so until one has published a
+   `scrape-fixtures-<cc>` artifact the country's leg fails every assertion with
+   "no corpus fixture for <cc>". Waiting for the nightly is a day of red on a
+   country that is otherwise fine, and a nightly that fails (see step 1) is
+   another day. The leg has no enrichment tree either on its first run: it
+   fetches live, publishes what it recorded, and the run after it is the fast
+   one — so expect the first leg to be slow, and read a timeout there as a cold
+   start rather than a regression.
 
 **The share cards are a launch-order problem, and they are the one thing that
 cannot follow the normal order.** `OgCardAssetsSpec` fails while a country's
