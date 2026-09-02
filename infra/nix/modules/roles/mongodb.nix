@@ -105,7 +105,7 @@ let
       # database at any point.
       #
       # IT CANNOT BE LOOPBACK-ONLY, WHICH WAS THE FIRST ATTEMPT AND DID NOT WORK. The replica-set
-      # member is configured as `replSetMemberHost` (10.20.0.10 here), and a member that cannot bind
+      # member is configured as `replSetMemberHost` (10.20.0.13 here), and a member that cannot bind
       # the address it is registered under does not recognise itself in the configuration: mongod
       # answers `InvalidReplicaSetConfig`, never becomes primary, and therefore accepts no writes --
       # so the restore the mode exists for cannot run at all.

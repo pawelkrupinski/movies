@@ -66,7 +66,7 @@
 
     privateAddress = lib.mkOption {
       type = lib.types.str;
-      example = "10.20.0.10";
+      example = "10.20.0.13";
       description = ''
         This host's address on the 10.20.0.0/24 private network, and the value colmena uses as
         `deployment.targetHost`.

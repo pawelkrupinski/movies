@@ -387,7 +387,7 @@ in
           };
         };
       });
-      default = [{ address = "10.20.0.10"; host = "mongo-1"; role = "mongodb"; }];
+      default = [{ address = "10.20.0.13"; host = "mongo-1"; role = "mongodb"; }];
       description = ''
         Where mongodb_exporter runs. See roles/mongodb-exporter.nix for why it exists at all: it is
         the only thing on this fleet that can tell a mongod which is `active` and refusing writes

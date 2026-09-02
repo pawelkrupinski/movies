@@ -262,7 +262,7 @@ in
     # IT BINDS ONE ADDRESS, SO IT HAS TO WAIT FOR THAT ADDRESS. node_exporter EXITS rather than
     # retrying if the address is not configured yet:
     #
-    #     listen tcp 10.20.0.10:9100: bind: cannot assign requested address
+    #     listen tcp 10.20.0.13:9100: bind: cannot assign requested address
     #
     # `network-online.target` is what "the addresses are configured" is spelled as, and `wants` is
     # required as well as `after` -- the target is inert unless something pulls it in. The private

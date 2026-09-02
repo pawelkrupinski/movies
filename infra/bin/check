@@ -139,6 +139,46 @@ for host in "${hosts[@]}"; do
   fi
 done
 
+step "systemd key placement"
+# SYSTEMD IGNORES A KEY IT DOES NOT RECOGNISE, WHICH IS WHY THIS NEEDS CHECKING AT ALL.
+#
+# `StartLimitIntervalSec` and `StartLimitBurst` are `[Unit]` directives. Written under
+# `serviceConfig` they are rendered into `[Service]`, where systemd logs
+# `Unknown key 'startLimitBurst' in section [Service], ignoring` and quietly applies the DEFAULT
+# limit instead. Nothing fails: the unit starts, runs and looks perfect -- the protection the author
+# wrote simply is not there. mongodb-exporter carried exactly that for as long as the role existed,
+# and it was found by reading the journal for an unrelated reason.
+#
+# `nix eval` cannot catch it, because both spellings are valid Nix and produce a valid unit. Only
+# the SECTION is wrong, so this asks each host's built units where these keys actually landed.
+placement_bad=()
+for host in "${hosts[@]}"; do
+  offenders="$(nix "${nix_flags[@]}" eval --raw \
+    ".#nixosConfigurations.$host.config.systemd.services" \
+    --apply 'svcs:
+       let bad = builtins.filter (n:
+             let sc = (svcs.${n}.serviceConfig or {}); in
+             sc ? StartLimitIntervalSec || sc ? StartLimitBurst
+             || sc ? startLimitIntervalSec || sc ? startLimitBurst)
+           (builtins.attrNames svcs);
+       in builtins.concatStringsSep " " bad' 2>/dev/null)" || offenders="EVALFAIL"
+  if [ "$offenders" = "EVALFAIL" ]; then
+    echo "  FAILED could not evaluate $host (see its nix eval step above)"
+    failed=1
+  elif [ -n "$offenders" ]; then
+    placement_bad+=("$host: $offenders")
+  fi
+done
+
+if [ "${#placement_bad[@]}" -eq 0 ]; then
+  echo "  ok  no StartLimit* directives are hidden in a [Service] section"
+else
+  echo "  FAILED StartLimit* under serviceConfig, where systemd ignores it:"
+  printf '           %s\n' "${placement_bad[@]}"
+  echo "         Move them to the unit level (beside wantedBy), not into serviceConfig."
+  failed=1
+fi
+
 step "replica-set origin"
 # EXACTLY ONE HOST MAY CREATE THE REPLICA SET, and nothing else in this gate can see a violation.
 #

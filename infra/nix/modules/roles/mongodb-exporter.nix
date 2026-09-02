@@ -170,7 +170,7 @@ in
     #
     # `directConnection=true` MATCHES WHAT EVERY OTHER CLIENT ON THIS FLEET DOES, and it matters
     # more than it looks. Without it the driver reads the replica-set configuration, discovers the
-    # member is registered as 10.20.0.10:27017 (`fleet.mongodb.replSetMemberHost`), and reconnects
+    # member is registered as 10.20.0.13:27017 (`fleet.mongodb.replSetMemberHost`), and reconnects
     # there -- so a connection deliberately made over loopback quietly becomes one over the private
     # NIC, and a bootstrap window that binds loopback only would break the exporter for reasons
     # that have nothing to do with the exporter.
@@ -204,6 +204,22 @@ in
     systemd.services.mongodb-exporter = {
       description = "mongodb_exporter (kinowo)";
       wantedBy = [ "multi-user.target" ];
+
+      # IT BINDS ONE ADDRESS, SO IT HAS TO SURVIVE THAT ADDRESS BEING LATE. This is the same trap
+      # modules/fleet/observability.nix documents for node_exporter: a single-address bind fails
+      # outright rather than retrying, the default five restarts in ten seconds are spent losing the
+      # same race, and systemd then gives up permanently with `start-limit-hit`. A monitoring process
+      # that disables itself is the worst shape this can fail in.
+      #
+      # AT THE UNIT LEVEL, NOT IN `serviceConfig`, AND THAT IS THE ENTIRE POINT OF THIS COMMENT.
+      # These two are `[Unit]` directives. Written under `serviceConfig` they land in `[Service]`,
+      # where systemd does not know them -- it logs `Unknown key 'startLimitBurst' in section
+      # [Service], ignoring` and applies the DEFAULT limit instead. So the protection described
+      # above was never in effect on any host carrying this role, and nothing failed: the unit ran
+      # perfectly, the guard simply was not there. Found on mongo-1 on 2026-09-02, in the exporter's
+      # own journal, while looking at something else.
+      startLimitIntervalSec = 120;
+      startLimitBurst = 10;
 
       # `after` mongod BUT NOT `requires`. An exporter that refuses to start because the database
       # is down is an exporter that publishes nothing at the exact moment somebody needs to know
@@ -246,14 +262,6 @@ in
 
         Restart = "on-failure";
         RestartSec = 10;
-
-        # IT BINDS ONE ADDRESS, SO IT HAS TO SURVIVE THAT ADDRESS BEING LATE. This is the same trap
-        # modules/fleet/observability.nix documents for node_exporter: a single-address bind fails
-        # outright rather than retrying, the default five restarts in ten seconds are spent losing
-        # the same race, and systemd then gives up permanently with `start-limit-hit`. A monitoring
-        # process that disables itself is the worst shape this can fail in.
-        startLimitIntervalSec = 120;
-        startLimitBurst = 10;
 
         # BELOW mongod ON BOTH AXES, deliberately. The exporter exists to describe the database; it
         # must never be why the database is slow. mongod carries OOMScoreAdjust = -500 in
