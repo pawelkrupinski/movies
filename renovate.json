@@ -14,7 +14,7 @@
   "rangeStrategy": "pin",
   "packageRules": [
     {
-      "description": "The Compose compiler plugin and the kotlinx-serialization plugin are version-locked to the Kotlin release (the Compose plugin in particular MUST equal the Kotlin version, currently 2.4.0). Bump them in one PR so they never drift apart. (AGP 9 bundles the Kotlin Gradle plugin, so there is no standalone org.jetbrains.kotlin.android entry to include.)",
+      "description": "The Compose compiler plugin and the kotlinx-serialization plugin are version-locked to the Kotlin release (the Compose plugin in particular MUST equal the Kotlin version, currently 2.4.10). Bump them in one PR so they never drift apart. (AGP 9 bundles the Kotlin Gradle plugin, so there is no standalone org.jetbrains.kotlin.android entry to include.)",
       "matchManagers": ["gradle"],
       "matchDepTypes": ["plugin"],
       "matchPackageNames": [
@@ -30,7 +30,7 @@
       "groupName": "AndroidX Lifecycle"
     },
     {
-      "description": "okhttp + mockwebserver are the same com.squareup.okhttp3 release (5.4.0) and must move in lockstep, or the test artifact won't resolve against the main one.",
+      "description": "okhttp + mockwebserver are the same com.squareup.okhttp3 release (5.5.0) and must move in lockstep, or the test artifact won't resolve against the main one.",
       "matchManagers": ["gradle"],
       "matchPackageNames": ["com.squareup.okhttp3:**"],
       "groupName": "OkHttp"

@@ -234,7 +234,7 @@ kotlin {
 }
 
 dependencies {
-    val composeBom = platform("androidx.compose:compose-bom:2026.06.00")
+    val composeBom = platform("androidx.compose:compose-bom:2026.08.00")
     implementation(composeBom)
     androidTestImplementation(composeBom)
 
@@ -251,7 +251,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    implementation("androidx.navigation:navigation-compose:2.9.8")
+    implementation("androidx.navigation:navigation-compose:2.10.0")
 
     // Custom Tabs for the web OAuth sign-in flow (the Android analog of iOS's
     // ASWebAuthenticationSession): an in-app browser tab that shares no cookies
@@ -261,17 +261,31 @@ dependencies {
 
     // One-shot coarse location for the first-launch city gate (nearest
     // supported city; denial falls back to an explicit pick).
-    implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.google.android.gms:play-services-location:21.4.0")
+
+    // Play's "outdated SDK" scanner reads what is BUNDLED in the AAB, not what
+    // we declare — and play-services-basement has declared androidx.fragment
+    // 1.1.0 (2019) at every play-services-location release to date, which is
+    // what got 2.0.0 flagged. Nothing here uses Fragment; it rides along purely
+    // as basement's own dependency, so lifting it to a current release is a
+    // no-op at runtime. A constraint rather than an `implementation` keeps it
+    // honest: we ask for a floor without pretending the app depends on it.
+    // `verifyBundledSdkFloors` below is what stops this drifting back.
+    constraints {
+        implementation("androidx.fragment:fragment:1.9.0") {
+            because("play-services-basement pulls fragment 1.1.0, which Google Play flags as an outdated SDK")
+        }
+    }
 
     implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Backdrop blur for the floating search pill — real frosted-glass that
     // distorts the grid scrolling under it (RenderEffect on API 32+, graceful
     // tint-only fallback below). 1.7.x tracks the Compose 1.9/1.10 line that
-    // Compose BOM 2026.06.00 pulls in.
-    implementation("dev.chrisbanes.haze:haze:1.7.2")
+    // Compose BOM 2026.08.00 pulls in.
+    implementation("dev.chrisbanes.haze:haze:1.7.3")
 
-    implementation("com.squareup.okhttp3:okhttp:5.4.0")
+    implementation("com.squareup.okhttp3:okhttp:5.5.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
 
@@ -281,7 +295,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
     // Records the request path KinowoApi builds, so the city-slug prefix is
     // asserted without a live server.
-    testImplementation("com.squareup.okhttp3:mockwebserver:5.4.0")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.5.0")
 
     // JVM (off-device) Compose UI tests via Robolectric — renders the real
     // composables and measures layout bounds without an emulator, so the
@@ -342,6 +356,100 @@ val appId = "net.pawel.kinowo"
 // resolves relative to the applicationId) would point at the wrong class.
 val mainComponent = "$appId/pl.kinowo.MainActivity"
 val noSdkMessage = "Android SDK not found — set sdk.dir in local.properties or ANDROID_HOME / ANDROID_SDK_ROOT."
+
+
+// Google Play flags an app whose BUNDLED SDKs are outdated, so the versions
+// that matter are the resolved ones, not the declared ones. Renovate never
+// sees these: it bumps declared dependencies only, and every module below
+// arrives transitively — which is exactly how androidx.fragment sat at 1.1.0
+// until Play complained about release 2.0.0.
+//
+// Each entry is held up by a matching `constraints` entry in `dependencies`.
+// Drop an entry once upstream ships a POM that clears the floor on its own.
+val sdkVersionFloors = mapOf(
+    "androidx.fragment:fragment" to "1.9.0",
+)
+
+abstract class VerifyBundledSdkFloors : DefaultTask() {
+    /** The release runtime classpath as `group:name` -> resolved version. */
+    @get:Input abstract val resolvedModules: MapProperty<String, String>
+
+    /** `group:name` -> the lowest version Google Play accepts. */
+    @get:Input abstract val floors: MapProperty<String, String>
+
+    @TaskAction
+    fun verify() {
+        val resolved = resolvedModules.get()
+        val violations = floors.get().toSortedMap().mapNotNull { (module, floor) ->
+            val actual = resolved[module]
+            when {
+                actual == null ->
+                    "$module is no longer on the release runtime classpath — drop its floor, or restore the constraint that puts it there"
+                !isAtLeast(actual, floor) ->
+                    "$module resolved to $actual, below the $floor floor (Google Play flags it as an outdated SDK)"
+                else -> null
+            }
+        }
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                violations.joinToString("\n", prefix = "Bundled SDK version floors violated:\n") { "  - $it" }
+            )
+        }
+    }
+
+    private fun isAtLeast(actual: String, floor: String): Boolean {
+        fun numbers(version: String) =
+            version.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 }
+
+        val actualNumbers = numbers(actual)
+        val floorNumbers = numbers(floor)
+        for (i in 0 until maxOf(actualNumbers.size, floorNumbers.size)) {
+            val left = actualNumbers.getOrElse(i) { 0 }
+            val right = floorNumbers.getOrElse(i) { 0 }
+            if (left != right) return left > right
+        }
+        // Same release numbers: a pre-release qualifier (1.9.0-alpha01) sits
+        // BELOW the release it leads up to.
+        return !actual.contains('-') || floor.contains('-')
+    }
+}
+
+val verifyBundledSdkFloors = tasks.register<VerifyBundledSdkFloors>("verifyBundledSdkFloors") {
+    group = "verification"
+    description = "Fails if an SDK bundled into the release build resolves below the floor Google Play requires."
+    floors.set(sdkVersionFloors)
+}
+
+// The variant API rather than `configurations.named(...)`: AGP creates
+// `releaseRuntimeClasspath` well after this script is evaluated, so looking it
+// up by name here fails outright.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        verifyBundledSdkFloors.configure {
+            resolvedModules.set(
+                variant.runtimeConfiguration.incoming.resolutionResult.rootComponent.map { root ->
+                    val modules = mutableMapOf<String, String>()
+                    val visited = mutableSetOf<ComponentIdentifier>()
+                    val queue = ArrayDeque(listOf(root))
+                    while (queue.isNotEmpty()) {
+                        val component = queue.removeFirst()
+                        if (!visited.add(component.id)) continue
+                        component.moduleVersion?.let { modules["${it.group}:${it.name}"] = it.version }
+                        component.dependencies
+                            .filterIsInstance<ResolvedDependencyResult>()
+                            .forEach { queue.addLast(it.selected) }
+                    }
+                    modules
+                }
+            )
+        }
+    }
+}
+
+// Gate the artifacts Play actually scans, and the standard verification
+// lifecycle. `check` alone would not do: CI builds the AAB without it.
+tasks.matching { it.name in setOf("check", "assembleRelease", "bundleRelease") }
+    .configureEach { dependsOn(verifyBundledSdkFloors) }
 
 tasks.register("bootEmulator") {
     group = "emulator"
