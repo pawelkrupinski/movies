@@ -2,12 +2,8 @@ package tools
 
 import ch.qos.logback.classic.Level
 import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.core.read.ListAppender
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.slf4j.LoggerFactory
-
-import scala.jdk.CollectionConverters._
 
 /**
  * What a fallback chain SAYS while it is working normally.
@@ -33,19 +29,12 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     s"https://fallback-logging-spec.test/$label-${java.util.UUID.randomUUID()}"
 
   private def capture[A](body: => A): (A, Seq[ILoggingEvent]) = {
-    val logger   = LoggerFactory.getLogger(classOf[FallbackHttpFetch]).asInstanceOf[ch.qos.logback.classic.Logger]
-    val captured = new ListAppender[ILoggingEvent]
-    captured.setContext(logger.getLoggerContext)
-    captured.start()
-    logger.addAppender(captured)
-    val previous = logger.getLevel
-    logger.setLevel(Level.TRACE)          // so a DEBUG line is observable if one is emitted
-    try (body, captured.list.asScala.toSeq)
-    finally {
-      logger.setLevel(previous)
-      logger.detachAppender(captured)
-      captured.stop()
+    var result = Option.empty[A]
+    // TRACE so a DEBUG line is observable if one is emitted.
+    val events = LogCapture.capture(classOf[FallbackHttpFetch].getName, Some(Level.TRACE)) {
+      result = Some(body)
     }
+    (result.get, events)
   }
 
   private def failing(message: String): HttpFetch = new HttpFetch {

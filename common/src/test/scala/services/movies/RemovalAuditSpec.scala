@@ -2,11 +2,12 @@ package services.movies
 
 import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
-import ch.qos.logback.core.read.ListAppender
+import ch.qos.logback.core.AppenderBase
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.slf4j.LoggerFactory
 
+import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._
 
 /** Locks the removal-audit contract: every helper writes to the ONE dedicated
@@ -16,8 +17,8 @@ import scala.jdk.CollectionConverters._
  *  gate for the audit: before it existed the removal sites logged nothing. */
 class RemovalAuditSpec extends AnyFlatSpec with Matchers {
 
-  /** Run `body` with a logback ListAppender attached to the audit logger (forced to
-   *  DEBUG so both levels are captured), returning the events THIS THREAD emitted.
+  /** Run `body` with a collecting appender on the audit logger (forced to DEBUG so
+   *  both levels are captured), returning the events THIS THREAD emitted.
    *
    *  The thread filter is load-bearing, not tidiness. `kinowo.removal-audit` is a
    *  fixed-name, process-global logger, so the appender catches every audit line any
@@ -26,17 +27,29 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
    *  assertions below pin an EXACT event list, so one foreign line failed them; the
    *  odds rise sharply when `MONGODB_URI` is set and the Mongo-backed suites do real
    *  work. Every call under test is synchronous on the test thread, so keeping only
-   *  this thread's events is both precise and complete. */
+   *  this thread's events is both precise and complete.
+   *
+   *  Those same foreign threads are why this does NOT use logback's `ListAppender`,
+   *  whose `list` is a bare `ArrayList` appended to without synchronization: reading
+   *  it while another suite logs throws `ConcurrentModificationException`, which is
+   *  how `MovieCacheSpec` failed CI on 2026-09-02. `tools.LogCapture` is the shared
+   *  version of this; `common`'s tests cannot reach testkit (it depends on `common`,
+   *  and the reverse would be a project cycle), so the appender is repeated here.
+   *  Keep the two in step. */
   private def capture(body: => Unit): Seq[ILoggingEvent] = {
-    val lg  = LoggerFactory.getLogger(RemovalAudit.LoggerName).asInstanceOf[LogbackLogger]
-    val app = new ListAppender[ILoggingEvent]()
+    val lg     = LoggerFactory.getLogger(RemovalAudit.LoggerName).asInstanceOf[LogbackLogger]
+    val events = new ConcurrentLinkedQueue[ILoggingEvent]()
+    val app = new AppenderBase[ILoggingEvent] {
+      override def append(event: ILoggingEvent): Unit = { events.add(event); () }
+    }
+    app.setContext(lg.getLoggerContext)
     app.start()
     val prevLevel = lg.getLevel
     val thread    = Thread.currentThread().getName
     lg.setLevel(Level.DEBUG)
     lg.addAppender(app)
-    try { body; app.list.asScala.toSeq.filter(_.getThreadName == thread) }
-    finally { lg.detachAppender(app); lg.setLevel(prevLevel) }
+    try { body; events.iterator().asScala.toSeq.filter(_.getThreadName == thread) }
+    finally { lg.detachAppender(app); app.stop(); lg.setLevel(prevLevel) }
   }
 
   "RemovalAudit.filmRemoved" should "log one INFO line carrying the id and reason" in {

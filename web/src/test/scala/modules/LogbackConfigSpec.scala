@@ -1,14 +1,11 @@
 package modules
 
-import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{Level, Logger}
-import ch.qos.logback.core.read.ListAppender
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.slf4j.LoggerFactory
 import services.movies.RemovalAudit
-
-import scala.jdk.CollectionConverters._
+import tools.LogCapture
 
 class LogbackConfigSpec extends AnyFlatSpec with Matchers {
 
@@ -45,17 +42,12 @@ class LogbackConfigSpec extends AnyFlatSpec with Matchers {
     root.getLoggerContext.getLogger(RemovalAudit.LoggerName)
       .getEffectiveLevel.toInt should be <= Level.INFO.toInt
 
-    val captured = new ListAppender[ILoggingEvent]
-    captured.setContext(root.getLoggerContext)
-    captured.start()
-    root.addAppender(captured)
-    try RemovalAudit.filmRemoved("movies.delete", "a-film-2026", reason = "orphan-id-reap")
-    finally {
-      root.detachAppender(captured)
-      captured.stop()
+    // No level override: this asserts the CONFIGURED level reaches the appenders.
+    val captured = LogCapture.capture(org.slf4j.Logger.ROOT_LOGGER_NAME) {
+      RemovalAudit.filmRemoved("movies.delete", "a-film-2026", reason = "orphan-id-reap")
     }
 
-    captured.list.asScala
+    captured
       .filter(_.getLoggerName == RemovalAudit.LoggerName)
       .map(_.getFormattedMessage) should contain(
         "[movies.delete] film removed: id=a-film-2026 reason=orphan-id-reap")

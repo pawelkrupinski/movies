@@ -1037,20 +1037,12 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   private def multikinoSlot(cache: CaffeineMovieCache, title: String): Option[SourceData] =
     cache.get(cache.keyOf(title, Some(2026))).flatMap(_.cinemaShowings.collectFirst { case (Multikino, sd) => sd })
 
-  // Capture the RemovalAudit logger's output for the duration of `body`. Inlined
-  // rather than shared with RemovalAuditSpec: that lives in `common` test, this in
-  // `worker` test, and the common↔testkit dependency direction leaves no shared
-  // test-util location without a cycle.
-  private def captureRemovalAudit(body: => Unit): Seq[ch.qos.logback.classic.spi.ILoggingEvent] = {
-    val lg  = org.slf4j.LoggerFactory.getLogger(RemovalAudit.LoggerName).asInstanceOf[ch.qos.logback.classic.Logger]
-    val app = new ch.qos.logback.core.read.ListAppender[ch.qos.logback.classic.spi.ILoggingEvent]()
-    app.start()
-    val prev = lg.getLevel
-    lg.setLevel(ch.qos.logback.classic.Level.DEBUG)
-    lg.addAppender(app)
-    try { body; import scala.jdk.CollectionConverters._; app.list.asScala.toSeq }
-    finally { lg.detachAppender(app); lg.setLevel(prev) }
-  }
+  // Capture the RemovalAudit logger's output for the duration of `body`, forced to
+  // DEBUG so the skipped-prune decisions are visible. `RemovalAudit.LoggerName` is
+  // process-global and the suites run in parallel, which is why this goes through
+  // `LogCapture` rather than a `ListAppender` of its own — see that class.
+  private def captureRemovalAudit(body: => Unit): Seq[ch.qos.logback.classic.spi.ILoggingEvent] =
+    tools.LogCapture.capture(RemovalAudit.LoggerName, Some(ch.qos.logback.classic.Level.DEBUG))(body)
 
   it should "keep a cinema's other slots when a scrape collapses to a fraction of what it holds (a partial/degraded response)" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)

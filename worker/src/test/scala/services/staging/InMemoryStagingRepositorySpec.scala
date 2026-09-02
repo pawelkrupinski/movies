@@ -1,14 +1,10 @@
 package services.staging
 
-import ch.qos.logback.classic.spi.ILoggingEvent
-import ch.qos.logback.classic.{Level, Logger => LogbackLogger}
-import ch.qos.logback.core.read.ListAppender
+import ch.qos.logback.classic.Level
 import models.{CinemaCityKinepolis, Helios, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import org.slf4j.LoggerFactory
-
-import scala.jdk.CollectionConverters._
+import tools.LogCapture
 
 class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
 
@@ -17,14 +13,10 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
       cinema -> SourceData(title = Some(title), rawTitle = Some(title), releaseYear = year)))
 
   /** Capture the WARN lines `body` emits from `InMemoryStagingRepository`'s logger. */
-  private def warnsDuring(body: => Unit): Seq[String] = {
-    val logger   = LoggerFactory.getLogger(classOf[InMemoryStagingRepository]).asInstanceOf[LogbackLogger]
-    val appender = new ListAppender[ILoggingEvent]
-    appender.start()
-    logger.addAppender(appender)
-    try body finally logger.detachAppender(appender)
-    appender.list.asScala.toSeq.filter(_.getLevel == Level.WARN).map(_.getFormattedMessage)
-  }
+  private def warnsDuring(body: => Unit): Seq[String] =
+    LogCapture.capture(classOf[InMemoryStagingRepository].getName)(body)
+      .filter(_.getLevel == Level.WARN)
+      .map(_.getFormattedMessage)
 
   "InMemoryStagingRepository" should "keep one row per (cinema, title, year) and read them back" in {
     val repository = new InMemoryStagingRepository

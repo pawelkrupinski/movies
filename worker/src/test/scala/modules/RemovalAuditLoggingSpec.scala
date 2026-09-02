@@ -1,16 +1,12 @@
 package modules
 
-import ch.qos.logback.classic.spi.ILoggingEvent
 import ch.qos.logback.classic.{Level, LoggerContext}
 import ch.qos.logback.classic.joran.JoranConfigurator
-import ch.qos.logback.core.read.ListAppender
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.slf4j.Logger.ROOT_LOGGER_NAME
-import org.slf4j.LoggerFactory
 import services.movies.RemovalAudit
-
-import scala.jdk.CollectionConverters._
+import tools.LogCapture
 
 /**
  * Guards that [[RemovalAudit]]'s INFO lines actually REACH an appender.
@@ -30,18 +26,13 @@ import scala.jdk.CollectionConverters._
 class RemovalAuditLoggingSpec extends AnyFlatSpec with Matchers {
 
   "RemovalAudit" should "emit its 'N films removed' line to the root appenders" in {
-    val root     = LoggerFactory.getLogger(ROOT_LOGGER_NAME).asInstanceOf[ch.qos.logback.classic.Logger]
-    val captured = new ListAppender[ILoggingEvent]
-    captured.setContext(root.getLoggerContext)
-    captured.start()
-    root.addAppender(captured)
-    try RemovalAudit.filmsRemoved("unscreened-cleanup", Seq("Ein Film (2026)"), reason = "no-current-screenings")
-    finally {
-      root.detachAppender(captured)
-      captured.stop()
+    // No level override: the point is that the CONFIGURED level lets the line reach
+    // the root appenders, which a forced DEBUG would answer for us.
+    val captured = LogCapture.capture(ROOT_LOGGER_NAME) {
+      RemovalAudit.filmsRemoved("unscreened-cleanup", Seq("Ein Film (2026)"), reason = "no-current-screenings")
     }
 
-    val audited = captured.list.asScala.filter(_.getLoggerName == RemovalAudit.LoggerName)
+    val audited = captured.filter(_.getLoggerName == RemovalAudit.LoggerName)
     audited.map(_.getFormattedMessage) should contain(
       "[unscreened-cleanup] 1 film(s) removed: reason=no-current-screenings ids=[Ein Film (2026)]")
   }
