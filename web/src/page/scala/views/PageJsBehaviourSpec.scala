@@ -2415,6 +2415,50 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // ── The day-scoped grid is in earliest-showtime order, absolutely ──────────
+  //
+  // Every other ordering test here is COMPARATIVE — it asserts the swipe preview
+  // matches the commit, or that an axis reorders and restores. Both sides run
+  // the same `compareCards`, so a regression in the shared comparator (or in the
+  // key fed to it) satisfies them all while the grid is visibly wrong. That is
+  // not hypothetical: the iOS client shipped for months with its earliest-sort a
+  // no-op, ordering every day page by the server's GLOBAL earliest showtime,
+  // and no comparative test could see it.
+  //
+  // These two assert the property itself: on a given day, each visible card's
+  // soonest showtime THAT DAY is >= the one before it.
+
+  "the grid on a specific day" should "order the visible cards by their earliest showtime on that day" in {
+    onPath("/") { page =>
+      val day = "2026-06-10"
+      selectSpecificDay(page, day)
+
+      val keys = visibleEarliestTimes(page, day)
+      // Non-vacuity: several cards, and genuinely different times to order by —
+      // a one-card or all-tied day would pass no matter what the sort did.
+      keys.size should be > 1
+      keys.distinct.size should be > 1
+      keys shouldBe keys.sorted
+    }
+  }
+
+  // The same property on a COLD BOOT. `?date=` is applied by `applyFiltersFromURL`
+  // inside `bootView` before the grid is uncloaked, so the first paint already
+  // belongs to that day — including its order. Nothing asserted that: the
+  // `?date=` specs check `#date-filter`'s value and stop there.
+  it should "already be in that day's order on a ?date= cold boot, with no interaction" in {
+    val day = "2026-06-10"
+    onPath(s"/?date=$day") { page =>
+      page.waitFor("document.querySelector('#film-grid > .col[data-title]') !== null")
+      page.evalString("document.getElementById('date-filter').value") shouldBe day
+
+      val keys = visibleEarliestTimes(page, day)
+      keys.size should be > 1
+      keys.distinct.size should be > 1
+      keys shouldBe keys.sorted
+    }
+  }
+
   // ── Neighbour-column order matches the committed grid ───────────────────────
   //
   // Regression for "the cards I see while dragging reorder when I let go". The
@@ -3951,6 +3995,45 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       "[...document.querySelectorAll('#film-grid > .col[data-title]')]" +
       "  .filter(c => c.style.display !== 'none').map(c => c.dataset.title).join('|')"
     )
+
+  /** Point `#date-filter` at a specific ISO date and run a filter pass. The
+   *  static select only carries today/tomorrow/week/anytime, so the option the
+   *  URL-sync / stepDate path would have added is added here first. */
+  private def selectSpecificDay(page: CdpPage, day: String): Unit =
+    page.eval(
+      s"(() => { const sel = document.getElementById('date-filter');" +
+      s"  const o = document.createElement('option'); o.value = ${jsString(day)};" +
+      s"  sel.appendChild(o); sel.value = ${jsString(day)}; applyFilters(); })()"
+    )
+
+  /** Each visible card's earliest VISIBLE showtime on `day`, in current DOM
+   *  order — the key `sortByEarliestVisible` claims to have sorted on, read back
+   *  off the rendered grid. Reads `data-time` (what `badgeFacts` reads) rather
+   *  than badge text, which also carries the format chip. Cards showing nothing
+   *  on `day` contribute nothing. */
+  private def visibleEarliestTimes(page: CdpPage, day: String): Seq[String] =
+    page.evalString(
+      s"""(() => {
+        |  const earliest = c => {
+        |    let best = null;
+        |    c.querySelectorAll('.date-group[data-date=${jsString(day)}]').forEach(g => {
+        |      if (g.style.display === 'none') return;
+        |      g.querySelectorAll('.cinema-group[data-cinema]').forEach(cg => {
+        |        if (cg.style.display === 'none') return;
+        |        cg.querySelectorAll('.badge-time').forEach(b => {
+        |          if (b.style.display === 'none') return;
+        |          const t = (b.dataset.time || '').trim();
+        |          if (t && (best === null || t < best)) best = t;
+        |        });
+        |      });
+        |    });
+        |    return best;
+        |  };
+        |  return [...document.querySelectorAll('#film-grid > .col[data-title]')]
+        |    .filter(c => c.style.display !== 'none')
+        |    .map(earliest).filter(Boolean).join('|');
+        |})()""".stripMargin
+    ).split('|').filter(_.nonEmpty).toSeq
 
   /** Drag left far enough to lock and arm the carousel, and keep the finger
    *  down: the NEXT day's preview column stays mounted for inspection. */
