@@ -37,12 +37,37 @@ sealed abstract class WebediaMarket(
    *  digits that precede them. */
   val hourMarker:   String,
   val minuteMarker: String,
-  /** The token an ORIGINAL-VERSION screening is tagged with, and the one for a
-   *  SUBTITLED screening — the local abbreviation a filter pill shows, so it has
-   *  to be the one that country's cinemagoers read: `OV`/`OmU` in Germany,
-   *  `VO`/`VOSE` in Spain. */
-  val originalVersionToken: String,
-  val subtitledToken:       String,
+  /** The tokens this market's cinemagoers read for the four language versions a
+   *  screening can be in — the abbreviation the showtime badge and the Filtry
+   *  "version" radio both show, so each has to be the spelling that country
+   *  actually prints:
+   *
+   *    - `originalVersionToken`  — original audio, no subtitles (`OV` / `VO`)
+   *    - `subtitledToken`        — original audio, subtitles in THIS market's
+   *                                language (`OmU` / `VOSE`)
+   *    - `englishSubtitledToken` — original audio, ENGLISH subtitles, which both
+   *                                markets spell differently from their own
+   *                                (`OmeU` / `VOSI`); a real and frequently
+   *                                sought-out version in expat-heavy cities
+   *    - `dubbedToken`           — dubbed into this market's language
+   *                                (`DF` / `DOB`)
+   *
+   *  Dubbing is the DEFAULT in both markets, so the dubbed token is the one a
+   *  visitor rarely needs — but it is still emitted, because a cinema that mixes
+   *  versions is exactly where it earns its keep, and `_filmShowings` strips the
+   *  tokens a cinema's every slot shares, so an all-dubbed venue shows none of
+   *  them. */
+  val originalVersionToken:  String,
+  val subtitledToken:        String,
+  val englishSubtitledToken: String,
+  val dubbedToken:           String,
+  /** Audio languages OTHER than this market's own that a dubbed screening is
+   *  worth naming for, `Localization.Language.<X>` suffix (lower-case) → token.
+   *  A Catalan-dubbed screening is a different audience from a Castilian one, and
+   *  Catalan is the only such language a probe of 172 Spanish venues
+   *  (2026-09-02) actually saw; Germany has no such split, so its map is empty.
+   *  Add a row here — not a rule elsewhere — when another one shows up. */
+  val dubbedLanguageTokens: Map[String, String] = Map.empty,
 ) {
   /** The public, browser-renderable venue page for `theaterId` — the ONE path
    *  that is localized per market (the JSON endpoint is uniform). Its
@@ -68,8 +93,10 @@ object WebediaMarket {
     zoneId               = ZoneId.of("Europe/Berlin"),
     hourMarker           = "Std",
     minuteMarker         = "Min",
-    originalVersionToken = "OV",
-    subtitledToken       = "OmU",
+    originalVersionToken  = "OV",
+    subtitledToken        = "OmU",
+    englishSubtitledToken = "OmeU",
+    dubbedToken           = "DF",
   ) {
     protected def venuePath: String = "/kinoprogramm/kino/"
   }
@@ -90,8 +117,11 @@ object WebediaMarket {
     zoneId               = ZoneId.of("Europe/Madrid"),
     hourMarker           = "h",
     minuteMarker         = "min",
-    originalVersionToken = "VO",
-    subtitledToken       = "VOSE",
+    originalVersionToken  = "VO",
+    subtitledToken        = "VOSE",
+    englishSubtitledToken = "VOSI",
+    dubbedToken           = "DOB",
+    dubbedLanguageTokens  = Map("catalan" -> "CAT"),
   ) {
     protected def venuePath: String = "/cines/cine/"
 

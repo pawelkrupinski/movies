@@ -149,9 +149,12 @@ those is expensive to change once a `Country` is switchable.
      Min."` in Germany and `"1h 46min"` in Spain; a certificate is a labelled
      `"FSK 6"` in one and a bare `"16"` in the other. These parse to `None` or
      to a wrong number rather than to an error.
-   - **Local ABBREVIATIONS the UI shows.** An original-version screening is
-     `OV`/`OmU` to a German and `VO`/`VOSE` to a Spaniard. The tag vocabulary is
-     shared; the token is the market's.
+   - **Local ABBREVIATIONS the UI shows.** The four language versions are
+     `OV`/`OmU`/`OmeU`/`DF` to a German and `VO`/`VOSE`/`VOSI`/`DOB` to a
+     Spaniard. The tag vocabulary is shared; the token is the market's — and the
+     subtitled/dubbed pair has to be repeated on `Country.versionTokens`, which
+     is what the Filtry panel's version radios filter on (a country that marks
+     neither version gets no row at all).
 
    Match those language-shaped values **case-sensitively**. German `"Min"` and
    Spanish `"min"` are the same letters, so a loose match let the German market

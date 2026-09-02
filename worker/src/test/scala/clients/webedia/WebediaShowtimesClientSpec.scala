@@ -16,7 +16,8 @@ import scala.io.Source
  *  one film per `results[]`, title + `originalTitle` (Moana → a TMDB hint),
  *  production year, "1 Std. 56 Min."-style runtime, director off `credits`, the
  *  German FSK certificate off `releases[].certificate.code`, the `startsAt` local
- *  `LocalDateTime`s, a `3D` format token read from `tags`, and cleaned relay
+ *  `LocalDateTime`s, a `3D` format token read from `tags`, a `DF` version token
+ *  read from the bucket key, and cleaned relay
  *  booking links. */
 class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
@@ -71,13 +72,16 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
   it should "flatten version buckets into local-time showtimes with format tokens" in {
     val vaiana = page.films.find(_.title == "Vaiana").value
 
-    // The 13:00 dubbed 3D screening — 3D is read from the `Format.Projection.3d` tag.
+    // The 13:00 dubbed 3D screening — 3D is read from the `Format.Projection.3d`
+    // tag, `DF` from the `dubbed` bucket the screening sits in.
     val threeD = vaiana.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 11, 13, 0)).value
-    threeD.format should contain("3D")
+    threeD.format shouldBe List("3D", "DF")
 
-    // A plain digital screening carries no format token (the German dubbed default).
+    // A plain digital screening carries no SCREEN format — `Format.Projection.Digital`
+    // is the baseline every German slot shares — but is still named as the German
+    // dubbed version, which is what tells it apart at a cinema that also runs OmU.
     val plain = vaiana.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 11, 11, 40)).value
-    plain.format shouldBe empty
+    plain.format shouldBe List("DF")
   }
 
   it should "clean the trailing '; SSR' render-marker off booking links" in {

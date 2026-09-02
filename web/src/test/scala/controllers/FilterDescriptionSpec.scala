@@ -229,12 +229,36 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     FilterDescription.forIndex(London, Map("date" -> Seq("tomorrow")), schedules).title shouldBe "Showtimes — films tomorrow"
   }
 
-  it should "phrase date / dim / lang / imax / from filters in English" in {
+  it should "phrase date / dim / imax / from filters in English" in {
     FilterDescription.forIndex(London, Map("date" -> Seq("week")), schedules).title shouldBe "Showtimes — films this week"
-    FilterDescription.forIndex(London, Map("dim" -> Seq("3D"), "lang" -> Seq("NAP")), schedules).title shouldBe "Showtimes — films 3D, with subtitles"
-    FilterDescription.forIndex(London, Map("lang" -> Seq("DUB")), schedules).title shouldBe "Showtimes — films with dubbing"
+    FilterDescription.forIndex(London, Map("dim" -> Seq("3D")), schedules).title shouldBe "Showtimes — films 3D"
     FilterDescription.forIndex(London, Map("imax" -> Seq("1")), schedules).title shouldBe "Showtimes — films IMAX"
     FilterDescription.forIndex(London, Map("from" -> Seq("18:30")), schedules).title shouldBe "Showtimes — films from 18:30"
+  }
+
+  // Nothing marks a language version in the UK — every film screens in English —
+  // so the version radios aren't rendered there and a hand-typed `?lang=` names
+  // a token no badge on the page carries. Describing it would put a filter in
+  // the title that narrows nothing.
+  it should "describe no version filter for a country that marks neither" in {
+    FilterDescription.forIndex(London, Map("dim" -> Seq("3D"), "lang" -> Seq("NAP")), schedules).title shouldBe
+      "Showtimes — films 3D"
+    // …and with nothing left to name, the title falls back to the unfiltered default.
+    FilterDescription.forIndex(London, Map("lang" -> Seq("DUB")), schedules).title shouldBe
+      FilterDescription.defaultTitle(London)
+  }
+
+  // Germany's version tokens are its own (`OmU`/`DF`), and its copy has never
+  // been translated, so the English phrases are reached through a German
+  // deployment rather than a British one.
+  it should "phrase the German version tokens in English" in {
+    val berlin = Country.Germany.bySlug("berlin")
+    FilterDescription.forIndex(berlin, Map("dim" -> Seq("3D"), "lang" -> Seq("OmU")), schedules).title shouldBe
+      "Showtimes — films 3D, with subtitles"
+    FilterDescription.forIndex(berlin, Map("lang" -> Seq("DF")), schedules).title shouldBe "Showtimes — films with dubbing"
+    // Poland's pair means nothing here.
+    FilterDescription.forIndex(berlin, Map("lang" -> Seq("NAP")), schedules).title shouldBe
+      FilterDescription.defaultTitle(berlin)
   }
 
   it should "wrap the search query in English double quotes" in {
@@ -294,8 +318,8 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   it should "phrase date / dim / lang / imax / from filters in Spanish" in {
     FilterDescription.forIndex(Madrid, Map("date" -> Seq("tomorrow")), schedules).title shouldBe "Showtimes — películas mañana"
     FilterDescription.forIndex(Madrid, Map("date" -> Seq("week")), schedules).title shouldBe "Showtimes — películas esta semana"
-    FilterDescription.forIndex(Madrid, Map("dim" -> Seq("3D"), "lang" -> Seq("NAP")), schedules).title shouldBe "Showtimes — películas 3D, subtituladas"
-    FilterDescription.forIndex(Madrid, Map("lang" -> Seq("DUB")), schedules).title shouldBe "Showtimes — películas dobladas"
+    FilterDescription.forIndex(Madrid, Map("dim" -> Seq("3D"), "lang" -> Seq("VOSE")), schedules).title shouldBe "Showtimes — películas 3D, subtituladas"
+    FilterDescription.forIndex(Madrid, Map("lang" -> Seq("DOB")), schedules).title shouldBe "Showtimes — películas dobladas"
     FilterDescription.forIndex(Madrid, Map("imax" -> Seq("1")), schedules).title shouldBe "Showtimes — películas IMAX"
     FilterDescription.forIndex(Madrid, Map("from" -> Seq("18:30")), schedules).title shouldBe "Showtimes — películas desde las 18:30"
   }

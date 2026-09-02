@@ -128,11 +128,18 @@
       <label class="panel-label"><input type="radio" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
       <label class="panel-label"><input type="radio" name="format-dim"  value="3D"         onchange="onFormatChange()"> 3D</label>
       <div class="panel-divider"></div>
-      <div class="panel-section-label">@messages("nav.version")</div>
-      <label class="panel-label"><input type="radio" name="format-lang" value=""   checked onchange="onFormatChange()"> @messages("nav.all")</label>
-      <label class="panel-label"><input type="radio" name="format-lang" value="NAP"        onchange="onFormatChange()"> @messages("nav.subtitles")</label>
-      <label class="panel-label"><input type="radio" name="format-lang" value="DUB"        onchange="onFormatChange()"> @messages("nav.dubbing")</label>
-      <div class="panel-divider"></div>
+      @* The version radios filter on a LITERAL format token, and the token a
+         subtitled/dubbed screening carries is the country's own (`NAP`/`DUB` in
+         Poland, `VOSE`/`DOB` in Spain, `OmU`/`DF` in Germany). A country whose
+         films all screen in one language marks neither, so it gets no row at
+         all rather than two radios that can only match nothing. *@
+      @city.country.versionTokens.map { tokens =>
+        <div class="panel-section-label">@messages("nav.version")</div>
+        <label class="panel-label"><input type="radio" name="format-lang" value="" checked onchange="onFormatChange()"> @messages("nav.all")</label>
+        <label class="panel-label"><input type="radio" name="format-lang" value="@tokens.subtitled" onchange="onFormatChange()"> @messages("nav.subtitles")</label>
+        <label class="panel-label"><input type="radio" name="format-lang" value="@tokens.dubbed" onchange="onFormatChange()"> @messages("nav.dubbing")</label>
+        <div class="panel-divider"></div>
+      }
       <label class="panel-label"><input type="checkbox" id="format-imax"           onchange="onFormatChange()"> @messages("nav.imaxOnly")</label>
       <div class="panel-divider"></div>
       <div class="panel-section-label">@messages("nav.fromHour")</div>

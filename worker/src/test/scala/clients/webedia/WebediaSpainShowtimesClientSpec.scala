@@ -122,26 +122,152 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
     booking should startWith("https://relay.mvtx.us/ticketing/")
     booking should not include " "
     booking should not endWith ";"
+
+    // Every screening on this captured day sits in the `dubbed` bucket, so every
+    // one is named as the Spanish dub. `Format.Projection.Digital` is the
+    // baseline and yields nothing.
+    all(page.films.flatMap(_.showtimes).map(_.format)) shouldBe List("DOB")
   }
 
-  // A dubbed digital screening — which is all this venue served on the captured
-  // day — is the UNMARKED case in both markets, so the version tokens below are
-  // pinned from the tag combinations directly.
+  // EVERY language version this venue's captured day served is dubbed, which is
+  // exactly why the branches below are pinned from bucket+tag combinations
+  // directly: a single day at a single venue is nearly always all-dubbed-digital.
+  // The combinations are the ones 172 Spanish and 120 German venues actually
+  // returned when probed on 2026-09-02.
   "formatTokens" should "use the Spanish version abbreviations, not the German ones" in {
     val subtitled = Seq("Localization.Version.Original", "Localization.Subtitle.Spanish")
     val original  = Seq("Localization.Version.Original", "Format.Projection.Digital")
     val dubbed    = Seq("Localization.Version.Spanish", "Format.Projection.Digital")
 
-    WebediaShowtimesClient.formatTokens(subtitled, WebediaMarket.Spain)   shouldBe List("VOSE")
-    WebediaShowtimesClient.formatTokens(original,  WebediaMarket.Spain)   shouldBe List("VO")
-    WebediaShowtimesClient.formatTokens(dubbed,    WebediaMarket.Spain)   shouldBe Nil
-    // The same tags on the German market still read OmU/OV — the tokens are the
+    WebediaShowtimesClient.formatTokens("original", subtitled, WebediaMarket.Spain) shouldBe List("VOSE")
+    WebediaShowtimesClient.formatTokens("original", original,  WebediaMarket.Spain) shouldBe List("VO")
+    WebediaShowtimesClient.formatTokens("dubbed",   dubbed,    WebediaMarket.Spain) shouldBe List("DOB")
+    // The same tags on the German market read OmU/OV/DF — the tokens are the
     // market's, not the tag vocabulary's.
-    WebediaShowtimesClient.formatTokens(subtitled, WebediaMarket.Germany) shouldBe List("OmU")
-    WebediaShowtimesClient.formatTokens(original,  WebediaMarket.Germany) shouldBe List("OV")
+    WebediaShowtimesClient.formatTokens("original", subtitled, WebediaMarket.Germany) shouldBe List("OmU")
+    WebediaShowtimesClient.formatTokens("original", original,  WebediaMarket.Germany) shouldBe List("OV")
+    WebediaShowtimesClient.formatTokens("dubbed",   dubbed,    WebediaMarket.Germany) shouldBe List("DF")
 
     WebediaShowtimesClient.formatTokens(
-      Seq("Format.Projection.3d", "Localization.Subtitle.Spanish"), WebediaMarket.Spain) shouldBe List("3D", "VOSE")
+      "original", Seq("Format.Projection.3d", "Localization.Subtitle.Spanish"),
+      WebediaMarket.Spain) shouldBe List("3D", "VOSE")
+  }
+
+  // ENGLISH subtitles are their own version, and the one the old tags-only
+  // reading got flatly wrong: `Localization.Subtitle.English` merely CONTAINS
+  // "subtitle", so an English-subtitled screening was sold as `VOSE` — "original
+  // subtitulada en ESPAÑOL". Spain prints VOSI for it and Germany OmeU; a sweep
+  // probe of 120 German venues found seven such screenings in one day.
+  it should "tell English subtitles apart from the market's own" in {
+    val englishSubs = Seq("Localization.Version.Original", "Localization.Subtitle.English")
+    WebediaShowtimesClient.formatTokens("original", englishSubs, WebediaMarket.Spain)   shouldBe List("VOSI")
+    WebediaShowtimesClient.formatTokens("original", englishSubs, WebediaMarket.Germany) shouldBe List("OmeU")
+  }
+
+  // The BUCKET decides the version, not the tags. A `local` screening — a
+  // domestic film in its own language — is routinely tagged
+  // `Localization.Version.Original`, and reading that tag is what used to put a
+  // `VO` badge on Spanish films for a Spanish audience, for whom their own
+  // language is the unmarked default.
+  it should "leave a domestic film in its own language unmarked" in {
+    val localOriginal = Seq(
+      "Format.Projection.Digital", "Localization.Language.Spanish", "Localization.Version.Original")
+    WebediaShowtimesClient.formatTokens("local", localOriginal, WebediaMarket.Spain) shouldBe Nil
+    // …while the SAME tags in the dubbed bucket are a dub into Castilian.
+    WebediaShowtimesClient.formatTokens("dubbed", localOriginal, WebediaMarket.Spain) shouldBe List("DOB")
+  }
+
+  // Two thirds of Spain's dubbed screenings carry no `Localization.*` tag at all
+  // (1317 of 2198 slots across 172 venues) — the bucket key is the ONLY thing
+  // that names them, so a tags-only reading left them permanently unmarked.
+  it should "read a dubbed screening off the bucket key alone" in {
+    WebediaShowtimesClient.formatTokens(
+      "dubbed", Seq("Format.Projection.Digital"), WebediaMarket.Spain) shouldBe List("DOB")
+    WebediaShowtimesClient.formatTokens("dubbed", Nil, WebediaMarket.Spain) shouldBe List("DOB")
+  }
+
+  // Spain dubs into Catalan as well as Castilian, and the two are different
+  // audiences — the badge says which.
+  it should "name a Catalan dub rather than calling it the default one" in {
+    WebediaShowtimesClient.formatTokens(
+      "dubbed", Seq("Format.Projection.Digital", "Localization.Language.Catalan"),
+      WebediaMarket.Spain) shouldBe List("CAT")
+  }
+
+  // The premium formats both sites advertise, and the two BASELINE tags every
+  // screening carries — a token every slot in the country shares tells a visitor
+  // nothing, so `Format.Projection.Digital` and `Format.Sound.DolbyDigital`
+  // deliberately produce none.
+  it should "surface the screen formats and skip the baseline ones" in {
+    def spain(tags: String*) = WebediaShowtimesClient.formatTokens("dubbed", tags, WebediaMarket.Spain)
+
+    spain("Format.Projection.Digital")                     shouldBe List("DOB")
+    spain("Format.Projection.Imax")                        shouldBe List("IMAX", "DOB")
+    spain("Format.Projection.Laser")                       shouldBe List("LASER", "DOB")
+    spain("Format.Projection.4k")                          shouldBe List("4K", "DOB")
+    spain("Auditorium.Experience.DolbyAtmos")              shouldBe List("ATMOS", "DOB")
+    spain("Auditorium.Experience.ScreenX")                 shouldBe List("SCREENX", "DOB")
+    spain("Showtime.Service.VIP")                          shouldBe List("VIP", "DOB")
+    // Spain's own 4D spelling: one `4de` needle covers `4DE` and `4DE3D` alike,
+    // and the site sends the plain 3D tag alongside the latter.
+    spain("Format.Projection.3d", "Format.Projection.4DE3D") shouldBe List("3D", "4DE", "DOB")
+
+    def germany(tags: String*) = WebediaShowtimesClient.formatTokens("dubbed", tags, WebediaMarket.Germany)
+    germany("Format.Projection.2D", "Format.Projection.Digital")   shouldBe List("2D", "DF")
+    germany("Auditorium.Experience.DBox")                          shouldBe List("DBOX", "DF")
+    germany("Auditorium.Experience.PLF")                           shouldBe List("PLF", "DF")
+    germany("Showtime.Experience.Premium")                         shouldBe List("PREMIUM", "DF")
+    germany("Format.Sound.DolbyDigital", "Format.Projection.Digital") shouldBe List("DF")
+  }
+
+  // `Showtime.Accessibility.Dubbed` rides along on ORIGINAL, subtitled screenings
+  // in Spain (24 of them across the venues probed) — it is an accessibility
+  // track, not a statement about the audio, and reading it as one would have
+  // re-broken exactly the case the bucket key exists to get right.
+  it should "ignore the accessibility tags when deciding the version" in {
+    WebediaShowtimesClient.formatTokens(
+      "original",
+      Seq("Format.Projection.Digital", "Localization.Subtitle.Spanish",
+          "Localization.Version.Original", "Showtime.Accessibility.Dubbed"),
+      WebediaMarket.Spain) shouldBe List("VOSE")
+  }
+
+  // The Filtry panel's version radios filter on a LITERAL token, so the pair
+  // `Country` offers has to be the pair this client emits. They live in two
+  // modules (`common` vs `worker`) and would otherwise drift silently — the
+  // filter would simply stop matching anything, exactly as it did before it was
+  // made country-aware.
+  "the market's version tokens" should "be the ones the Filtry panel filters on" in {
+    models.Country.Spain.versionTokens.value shouldBe
+      models.VersionTokens(WebediaMarket.Spain.subtitledToken, WebediaMarket.Spain.dubbedToken)
+    models.Country.Germany.versionTokens.value shouldBe
+      models.VersionTokens(WebediaMarket.Germany.subtitledToken, WebediaMarket.Germany.dubbedToken)
+  }
+
+  // A SECOND capture, from a venue that actually MIXES versions — the one thing
+  // the E0291 day above cannot show. Cinesa Diagonal Mar (Barcelona, theater
+  // E0382, 2026-09-05), where "La Odisea" runs dubbed and VOSE on the same IMAX
+  // screen, so every branch below is read off a real payload rather than a tag
+  // list this spec typed out.
+  // Source URL: https://www.sensacine.com/_/showtimes/theater-E0382/d-2026-09-05/p-1/
+  private lazy val mixedVersionPage = WebediaShowtimesClient.parsePage(read(
+    "test/resources/fixtures/webedia-es/www.sensacine.com/_/showtimes/theater-E0382/d-2026-09-05/p-1.json"),
+    WebediaMarket.Spain)
+
+  "a venue that mixes versions" should "mark each screening with the version it actually runs" in {
+    val odyssey = mixedVersionPage.films.find(_.title == "La Odisea: The IMAX Experience").value
+    // Sorted here because `parsePage` emits bucket by bucket — the cross-day
+    // time ordering is `reduceChunks`' job, exercised separately.
+    odyssey.showtimes.map(st => st.dateTime.toLocalTime.toString -> st.format).sortBy(_._1) shouldBe Seq(
+      "10:50" -> List("IMAX", "DOB"),
+      "14:25" -> List("IMAX", "VOSE"),
+      "18:05" -> List("IMAX", "DOB"),
+      "21:45" -> List("IMAX", "VOSE"),
+    )
+
+    // …and a film with no premium screen carries the version token alone.
+    val spiderman = mixedVersionPage.films.find(_.title == "Spider-Man: Brand New Day").value
+    spiderman.showtimes.map(_.format).distinct should contain theSameElementsAs Seq(List("DOB"), List("VOSE"))
   }
 
   "sourceUrl" should "point at the Spanish venue-page path" in {

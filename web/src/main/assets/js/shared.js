@@ -8,7 +8,8 @@
   // ── Format-filter dropdown ────────────────────────────────────────────────
 
   // Three axes live inside one panel: Wymiar (radio, 2D/3D), Wersja (radio,
-  // NAP/DUB), IMAX (checkbox). Each visible badge must carry every selected
+  // the country's own subtitled/dubbed tokens, absent where nothing marks
+  // either), IMAX (checkbox). Each visible badge must carry every selected
   // token on its data-format attribute. Empty selection on an axis = no
   // constraint for that axis.
   function getFormatFilter() {
@@ -322,7 +323,10 @@
 
   function resetFormatFilter() {
     document.querySelector('input[name="format-dim"][value=""]').checked  = true;
-    document.querySelector('input[name="format-lang"][value=""]').checked = true;
+    // The version radios are only rendered for a country that MARKS its
+    // subtitled/dubbed screenings — see `_navbar`; the UK and US carry no row.
+    const langAll = document.querySelector('input[name="format-lang"][value=""]');
+    if (langAll) langAll.checked = true;
     document.getElementById('format-imax').checked   = false;
     document.getElementById('from-hour').value       = '';
     document.getElementById('from-minute').value     = '0';
@@ -1748,7 +1752,8 @@
   //   date    — date-filter select (today/tomorrow/week/anytime/YYYY-MM-DD)
   //   q       — search-input text
   //   dim     — format-dim radio  (2D / 3D)
-  //   lang    — format-lang radio (NAP / DUB)
+  //   lang    — format-lang radio, the country's own subtitled/dubbed token
+  //             (NAP / DUB in Poland, VOSE / DOB in Spain, OmU / DF in Germany)
   //   imax    — format-imax checkbox ("1" when on)
   //   from    — from-hour:minute composite (HH:MM)
   //   sort    — sort-by select ('rating'; 'earliest' default omitted)

@@ -5,6 +5,7 @@ import models._
 import play.api.libs.json._
 
 import java.time.{LocalDate, LocalDateTime}
+import java.util.Locale
 import scala.util.Try
 
 /**
@@ -284,48 +285,104 @@ object WebediaShowtimesClient {
     }.filter(_.nonEmpty).distinct
 
   /** Flatten the version-bucketed `showtimes` object into a flat screening list.
-   *  Each bucket (`original`/`dubbed`/`local`/…) is an array; the language
-   *  version + projection become [[Showtime.format]] tokens. */
+   *  Each bucket (`original`/`dubbed`/`local`, each optionally `_st`/`_sme`) is
+   *  an array; the bucket KEY plus the screening's tags become
+   *  [[Showtime.format]] tokens. The key is carried into `formatTokens` because
+   *  it is the only reliable statement of the language version: the majority of
+   *  dubbed screenings carry no `Localization.*` tag at all (probed 2026-09-02
+   *  over 120 venues per market: 337 of 850 slots in Spain, 723 of 914 in
+   *  Germany), so a tags-only reading can name the original versions but never
+   *  the dubbed ones. */
   private def parseShowtimes(js: JsLookupResult, market: WebediaMarket): Seq[Showtime] =
-    js.asOpt[JsObject].map(_.fields.toSeq).getOrElse(Seq.empty).flatMap { case (_, bucket) =>
+    js.asOpt[JsObject].map(_.fields.toSeq).getOrElse(Seq.empty).flatMap { case (bucketKey, bucket) =>
       bucket.asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty).flatMap { s =>
         (s \ "startsAt").asOpt[String].flatMap(parseLocalDateTime).map { dt =>
           val booking = (s \ "data" \ "ticketing").asOpt[Seq[JsValue]].getOrElse(Nil)
             .flatMap(t => (t \ "urls").asOpt[Seq[String]].getOrElse(Nil))
             .headOption.map(cleanBookingUrl)
-          Showtime(dt, booking, None, formatTokens((s \ "tags").asOpt[Seq[String]].getOrElse(Nil), market))
+          Showtime(dt, booking, None,
+            formatTokens(bucketKey, (s \ "tags").asOpt[Seq[String]].getOrElse(Nil), market))
         }
       }
     }
 
-  /** Format/version tokens for one screening, read from the clean namespaced
-   *  `tags` (`Format.Projection.3d`, `Localization.Version.Original`,
-   *  `Localization.Subtitle.*`) rather than the noisier `projection`/
-   *  `diffusionVersion` fields (which spell 3D as `F_3D` and leave the original/
-   *  subtitled version encoded only in the bucket + tags): the non-digital
-   *  projection formats (3D, IMAX…) plus a language token — the market's own
-   *  original-version abbreviation (`OV` in Germany, `VO` in Spain) and its
-   *  subtitled one (`OmU` / `VOSE`). A plain dubbed digital screening yields no
-   *  token: dubbing is the default in both markets, so it is the un-marked case.
+  /** Screen-format tokens, in a fixed order, for the namespaced `tags` a
+   *  screening carries — the clean vocabulary, rather than the noisier
+   *  `projection`/`experience`/`sound` fields that spell 3D as `F_3D` and leave
+   *  the language version encoded only in the bucket.
    *
-   *  Public, and taking the raw tag list rather than the screening object, so a
-   *  spec can pin a tag COMBINATION the recorded captures do not hold — the same
-   *  reason [[GatsbyBoxOfficeParser.formatTokens]] is public. A single day's
-   *  capture of one venue is usually all-dubbed-digital (both of ours are), so
-   *  the version branches would otherwise ship untested. */
-  def formatTokens(rawTags: Seq[String], market: WebediaMarket): List[String] = {
-    val tags = rawTags.map(_.toLowerCase)
-    val projection = List(
-      "format.projection.3d"   -> "3D",
-      "format.projection.imax" -> "IMAX",
-      "format.projection.4dx"  -> "4DX",
-      "format.projection.dolby" -> "DOLBY"
-    ).collect { case (needle, token) if tags.exists(_.contains(needle)) => token }
-    val language =
-      if (tags.exists(_.contains("subtitle")))              List(market.subtitledToken)
-      else if (tags.exists(_.contains("version.original"))) List(market.originalVersionToken)
-      else                                                  Nil
-    (projection ++ language).distinct
+   *  The needles are matched as SUBSTRINGS of a lower-cased tag, which is what
+   *  lets one `format.projection.4de` row cover both `4DE` and `4DE3D`. The two
+   *  BASELINE tags every screening carries — `Format.Projection.Digital` and
+   *  `Format.Sound.DolbyDigital` — are deliberately absent: a token every slot
+   *  in the country shares tells a visitor nothing.
+   *
+   *  Probed 2026-09-02 over 120 venues per market; the list is the union of
+   *  what both sites actually emit (Spain: Imax/Laser/4k/3d/4DE/4DE3D,
+   *  DolbyAtmos, VIP — Germany: 2D/3d/4k, DBox/DolbyAtmos/PLF, Premium), plus
+   *  the 4DX and Dolby projection rows the family has always spelled this way. */
+  private val ScreenTokens: List[(String, String)] = List(
+    "format.projection.2d"             -> "2D",
+    "format.projection.3d"             -> "3D",
+    "format.projection.4de"            -> "4DE",
+    "format.projection.4dx"            -> "4DX",
+    "format.projection.4k"             -> "4K",
+    "format.projection.imax"           -> "IMAX",
+    "format.projection.laser"          -> "LASER",
+    "format.projection.dolby"          -> "DOLBY",
+    "auditorium.experience.dolbyatmos" -> "ATMOS",
+    "auditorium.experience.screenx"    -> "SCREENX",
+    "auditorium.experience.dbox"       -> "DBOX",
+    "auditorium.experience.plf"        -> "PLF",
+    "showtime.experience.premium"      -> "PREMIUM",
+    "showtime.service.vip"             -> "VIP",
+  )
+
+  /** Format + language-version tokens for one screening: the non-baseline screen
+   *  formats above, then ONE language token from [[versionToken]].
+   *
+   *  Public, and taking the bucket key + raw tag list rather than the screening
+   *  object, so a spec can pin a COMBINATION the recorded captures do not hold —
+   *  the same reason [[GatsbyBoxOfficeParser.formatTokens]] is public. A single
+   *  day's capture of one venue is usually all-dubbed-digital, so most branches
+   *  would otherwise ship untested. */
+  def formatTokens(bucketKey: String, rawTags: Seq[String], market: WebediaMarket): List[String] = {
+    val tags = rawTags.map(_.toLowerCase(Locale.ROOT))
+    val screen = ScreenTokens.collect { case (needle, token) if tags.exists(_.contains(needle)) => token }
+    (screen ++ versionToken(bucketKey, tags, market)).distinct
+  }
+
+  /** The ONE language-version token a screening earns, or none.
+   *
+   *  The BUCKET decides which of the three versions this is, not the tags: a
+   *  `local` screening is routinely tagged `Localization.Version.Original` (it
+   *  is, literally — a Spanish film in Spanish), and reading that tag is what
+   *  used to put a `VO` badge on domestic films for whom their own language is
+   *  the unmarked default. So `local` yields nothing, and only the tags of an
+   *  `original` bucket are consulted — for the SUBTITLE language, which is the
+   *  one thing the bucket key doesn't carry. `dubbed` names the audio language
+   *  when it isn't the market's own (a Catalan dub in Spain).
+   *
+   *  Tags are the fallback for an unrecognised bucket only, so a future key the
+   *  site adds still resolves rather than silently going unmarked. */
+  private def versionToken(bucketKey: String, tags: Seq[String], market: WebediaMarket): Option[String] = {
+    val key        = bucketKey.toLowerCase(Locale.ROOT)
+    val isLocal    = key.startsWith("local")
+    val isDubbed   = key.startsWith("dubbed")
+    val isOriginal = key.startsWith("original") ||
+      (!isLocal && !isDubbed && tags.exists(_.contains("localization.version.original")))
+    val subtitles  = tags.filter(_.contains("localization.subtitle."))
+
+    if (isLocal)         None
+    else if (isOriginal) Some(
+      if (subtitles.exists(_.endsWith("english"))) market.englishSubtitledToken
+      else if (subtitles.nonEmpty)                 market.subtitledToken
+      else                                         market.originalVersionToken)
+    else if (isDubbed)   Some(
+      market.dubbedLanguageTokens.collectFirst {
+        case (language, token) if tags.exists(_.contains(s"localization.language.$language")) => token
+      }.getOrElse(market.dubbedToken))
+    else                 None
   }
 
   private def parseLocalDateTime(s: String): Option[LocalDateTime] =

@@ -192,10 +192,16 @@ object FilterDescription {
     )
 
     parameterOf(query, "dim").foreach { case d @ ("2D" | "3D") => out += d; case _ => () }
-    parameterOf(query, "lang").foreach {
-      case "NAP" => out += tr("z napisami", "with subtitles", "subtituladas")
-      case "DUB" => out += tr("z dubbingiem", "with dubbing", "dobladas")
-      case _     => ()
+    // The two version tokens are the COUNTRY's own (`NAP`/`DUB` in Poland,
+    // `VOSE`/`DOB` in Spain, `OmU`/`DF` in Germany) — the same pair the Filtry
+    // radios are rendered from, so a token spelled for one country never has to
+    // be recognised here for another.
+    for {
+      selected <- parameterOf(query, "lang")
+      tokens   <- city.country.versionTokens
+    } {
+      if (selected == tokens.subtitled)   out += tr("z napisami", "with subtitles", "subtituladas")
+      if (selected == tokens.dubbed)      out += tr("z dubbingiem", "with dubbing", "dobladas")
     }
     if (parameterOf(query, "imax").contains("1")) out += "IMAX"
     parameterOf(query, "from").filter(_.matches("\\d{1,2}:\\d{2}")).foreach(f => out += tr(s"od $f", s"from $f", s"desde las $f"))

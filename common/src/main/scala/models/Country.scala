@@ -78,6 +78,18 @@ sealed abstract class Country(
    *  groups PARTITION [[cities]] — `CountrySpec` holds that. */
   def cityGroups: Seq[CityGroup] = Nil
 
+  /** The two [[Showtime.format]] tokens THIS country's sources mark a subtitled
+   *  and a dubbed screening with, or `None` where nothing marks either.
+   *
+   *  The Filtry panel's "version" radios filter on a literal token, so the pair
+   *  has to be the one the country's own scrapers emit: `NAP`/`DUB` in Poland
+   *  (from `FormatTags`), `OmU`/`DF` and `VOSE`/`DOB` in the Webedia markets
+   *  (from `WebediaMarket`, whose spec pins the two lists together). The
+   *  English-speaking countries mark neither — everything screens in English —
+   *  so the whole row is left out rather than offering a filter that can only
+   *  ever match nothing, which is what Germany and Spain were shipped with. */
+  def versionTokens: Option[VersionTokens] = None
+
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
 
   /** [[cities]] ordered alphabetically by display name under this country's
@@ -111,6 +123,10 @@ sealed abstract class Country(
   def homeOgImage: String = if (this == Country.default) "og-home.jpg" else s"og-home-$code.jpg"
 }
 
+/** A country's subtitled/dubbed [[Showtime.format]] tokens — see
+ *  [[Country.versionTokens]]. */
+case class VersionTokens(subtitled: String, dubbed: String)
+
 object Country {
 
   /** `url` with its scheme stripped — `kinowo.net`, `showtimes.cc/uk`. For the
@@ -134,6 +150,7 @@ object Country {
     brandName      = "Kinowo",
   ) {
     val cities: Seq[City] = City.polishCities
+    override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
   }
 
   /** The United Kingdom — an English-language country on its own `kinowo_uk`
@@ -167,6 +184,7 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
+    override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
   }
 
   /** The United States — an English-language country on its own `kinowo_us`
@@ -224,6 +242,7 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.spanishCities
+    override val versionTokens: Option[VersionTokens] = Some(VersionTokens("VOSE", "DOB"))
   }
 
   /** Every country the codebase knows about. A worker iterates this; a web
