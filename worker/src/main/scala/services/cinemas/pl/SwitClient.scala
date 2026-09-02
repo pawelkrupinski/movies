@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -52,6 +53,11 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
       // the "Napisy PL" subtitle tag, so scope to the purple class.
       val genres   = card.select("span[class*=text-purple]").asScala.toSeq.map(_.text.trim).filter(_.nonEmpty)
                        .map(tools.TextNormalization.titleCaseIfAllLower)
+      // …and the blue one IS the language version, which this cinema states
+      // nowhere else — the title is the bare film name, so the central
+      // `FormatTags` title strip has nothing to peel off it.
+      val version  = card.select("span[class*=text-blue]").asScala.toSeq
+                       .flatMap(b => FormatTags.formatTokensIn(b.text)).distinct.toList
       val detailUrl = Option(card.attr("onclick")).flatMap(o => """window\.location='([^']+)'""".r.findFirstMatchIn(o).map(_.group(1)))
       CinemaMovie(
         movie     = Movie(title = t, runtimeMinutes = runtime, releaseYear = year, genres = genres),
@@ -61,7 +67,7 @@ class SwitClient(http: HttpFetch) extends CinemaScraper {
         synopsis  = Option(card.selectFirst("p.text-gray-700")).map(_.text.trim).filter(_.length > 20),
         cast      = Seq.empty,
         director  = director,
-        showtimes = showtimes
+        showtimes = showtimes.map(_.copy(format = version))
       )
     }
   }

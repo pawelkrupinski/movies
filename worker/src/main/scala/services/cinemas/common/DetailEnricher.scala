@@ -1,5 +1,6 @@
 package services.cinemas.common
 
+import services.movies.ScreeningTokens
 import models.{Cinema, MovieRecord, Source, SourceData}
 import services.cinemas.pl.FilmwebShowtimesClient
 
@@ -49,9 +50,13 @@ case class FilmDetail(
     trailerUrl     = slot.trailerUrl.orElse(trailerUrl),
     ageRating      = slot.ageRating.orElse(ageRating),
     // Badge the film's showings with the detail-page language, but never
-    // overwrite a per-screening format the listing already set.
+    // overwrite a per-screening format the listing already set. Through
+    // `ScreeningTokens` like every other badge — this is the second way a
+    // source's own words reach a showtime, and a detail page words them as
+    // freely as a listing does.
     showtimes      = if (format.isEmpty) slot.showtimes
-                     else slot.showtimes.map(st => if (st.format.isEmpty) st.copy(format = format) else st)
+                     else slot.showtimes.map(st =>
+                       if (st.format.isEmpty) st.copy(format = ScreeningTokens.normalize(format)) else st)
   )
 }
 

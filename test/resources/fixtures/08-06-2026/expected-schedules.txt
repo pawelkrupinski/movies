@@ -299,7 +299,7 @@ cinemaScrapes:
   Helios Łódź / Babystar / 2025
   Helios Żory / Babystar / 2025
 showings:
-  2026-06-11  Helios Posnania               10:30 Sala 8 2D/LEC
+  2026-06-11  Helios Posnania               10:30 Sala 8 2D/LEK
 
 === Backrooms. Bez wyjścia ===
 displayTitle:      Backrooms. Bez wyjścia

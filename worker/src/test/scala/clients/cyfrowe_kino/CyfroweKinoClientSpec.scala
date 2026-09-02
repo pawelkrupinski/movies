@@ -45,4 +45,19 @@ class CyfroweKinoClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   it should "carry a poster for every film" in {
     all(movies.map(_.posterUrl)) shouldBe defined
   }
+
+  // The version segment the title clean DROPS is the only statement of language
+  // this cinema makes; it now lands on the badge instead of being discarded as
+  // noise. Same `NoiseSeg` pattern on both sides, so title and badge cannot
+  // disagree about what a segment is.
+  it should "keep the version segment it strips from the title as the badge" in {
+    val film = movies.find(_.movie.title.toLowerCase.contains("werdykt")).value
+    all(film.showtimes.map(_.format)) shouldBe List("NAP")
+  }
+
+  it should "yield no token for an age segment, which names no version" in {
+    CyfroweKinoClient.versionOf("15.06 / JAKIŚ FILM / od lat 12") shouldBe Nil
+    CyfroweKinoClient.versionOf("15.06 / JAKIŚ FILM / dubbing")   shouldBe List("DUB")
+  }
+
 }

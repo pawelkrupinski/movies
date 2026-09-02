@@ -33,7 +33,7 @@ class SwitClientSpec extends AnyFlatSpec with Matchers {
       Showtime(
         LocalDateTime.of(2026, 6, 5, 16, 45),
         Some("https://biletyna.pl/film/Diabel-ubiera-sie-u-Prady-2/Warszawa?utm_source=dkswit.com.pl&utm_medium=APIv2&utm_campaign=general"),
-        None, Nil
+        None, List("NAP")
       )
   }
 
@@ -41,4 +41,14 @@ class SwitClientSpec extends AnyFlatSpec with Matchers {
     byTitle("Diabeł ubiera się u Prady 2").movie.genres shouldBe Seq("Komediodramat")
     byTitle("Zawodowcy").movie.genres                   shouldBe Seq.empty
   }
+
+  // The card's BLUE badge is the language version ("Napisy PL") where the purple
+  // one is the genre. Both were read off the same card and only the genre kept,
+  // so a subtitled screening looked identical to any other on the badge.
+  it should "read the language version off the blue badge, not the genre pill" in {
+    byTitle("Diabeł ubiera się u Prady 2").showtimes.map(_.format).distinct shouldBe Seq(List("NAP"))
+    // A card with no blue badge stays unmarked rather than inheriting a neighbour's.
+    byTitle("Zawodowcy").showtimes.map(_.format).distinct shouldBe Seq(Nil)
+  }
+
 }

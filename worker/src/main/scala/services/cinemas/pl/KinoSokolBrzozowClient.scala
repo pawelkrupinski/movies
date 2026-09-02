@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -43,14 +44,15 @@ object KinoSokolBrzozowClient {
   // "12 czerwca 2026" → day, Polish genitive month, year.
   private val DatePat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})""".r
 
-  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], filmUrl: Option[String])
+  private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String],
+                             filmUrl: Option[String], format: List[String])
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
     val slots = document.select("div.wp_theatre_event").asScala.toSeq.flatMap(parseEvent)
 
-    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking)) { (title, group, showtimes) =>
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, format = s.format)) { (title, group, showtimes) =>
       CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
@@ -77,6 +79,13 @@ object KinoSokolBrzozowClient {
       title    = title,
       dateTime = dt,
       booking  = Option(ev.selectFirst("a.wp_theatre_event_tickets_url")).map(_.attr("abs:href")).filter(_.nonEmpty),
-      filmUrl  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty)
+      filmUrl  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
+      // The venue line is this cinema's LANGUAGE VERSION, per screening — the
+      // same film runs "2D dubbing pl" in the afternoon and "2D napisy pl" in the
+      // evening. Nothing else on the page says so: the title is identical for
+      // both, so the central `FormatTags` title strip cannot reach it and the two
+      // showings were indistinguishable on the badge.
+      format   = Option(ev.selectFirst(".wp_theatre_event_venue"))
+        .map(_.text).map(FormatTags.formatTokensIn).getOrElse(Nil)
     )
 }

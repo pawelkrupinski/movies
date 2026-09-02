@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
@@ -51,7 +52,7 @@ object KinoSlezaClient {
   private def parseMovie(movie: Element, cinema: Cinema): Option[CinemaMovie] =
     for {
       title    <- Option(movie.selectFirst("h5.movie-title")).map(_.ownText.trim).filter(_.nonEmpty)
-      showtimes = parseShowtimes(movie)
+      showtimes = parseShowtimes(movie).map(_.copy(format = versionOf(movie)))
       if showtimes.nonEmpty
     } yield CinemaMovie(
       movie     = Movie(title, genres = genresOf(movie)),
@@ -78,6 +79,17 @@ object KinoSlezaClient {
                 t.group(1).toInt, t.group(2).toInt)).toOption
       } yield Showtime(dt, None)
     }.distinctBy(_.dateTime).sortBy(_.dateTime)
+
+  /** The language version is what follows the first `//` in the same
+   *  "Komedia, Dramat // napisy //" metadata line the genres come from — this
+   *  cinema states it nowhere else, and its titles are bare, so the central
+   *  `FormatTags` title strip has nothing to peel. A Polish-language film says
+   *  `// PL //`, which names no version and yields no token. */
+  private def versionOf(movie: Element): List[String] =
+    Option(movie.selectFirst("p em strong")).map(_.text).toSeq
+      .flatMap(_.split("//").drop(1))
+      .flatMap(FormatTags.formatTokensIn)
+      .distinct.toList
 
   /** Genres are the comma-list before the first `//` in the "Komedia, Dramat //
    *  napisy //" metadata line (anything after `//` is format, not genre). */

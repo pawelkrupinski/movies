@@ -10,11 +10,8 @@ import org.scalatest.matchers.should.Matchers
  * token, and the token a subtitled or dubbed screening carries is the country's
  * own: `NAP`/`DUB` in Poland, `VOSE`/`DOB` in Spain, `OmU`/`DF` in Germany.
  *
- * They were hardcoded to Poland's pair for every deployment, so Spain and
- * Germany shipped two radios that could only ever match nothing — and the
- * English-speaking countries, whose films all screen in one language and whose
- * scrapers mark neither version, got a whole section that filtered to an empty
- * page.
+ * They were hardcoded to Poland's pair for every deployment, so every country
+ * but Poland shipped two radios that could only ever match nothing.
  */
 class NavbarVersionFilterSpec extends AnyFlatSpec with Matchers {
 
@@ -46,15 +43,26 @@ class NavbarVersionFilterSpec extends AnyFlatSpec with Matchers {
     html should not include """value="NAP""""
   }
 
-  // Nothing marks a version in the UK or the US, so the row is left out rather
-  // than offering a filter with no matching badge anywhere on the page.
-  it should "be left out entirely for a country that marks neither version" in {
+  // Britain and America subtitle rather than dub, and their chains' labels
+  // normalise to `SUB`/`DUB` — 13,341 subtitled screenings across the two on
+  // 2026-09-02, so the row belongs there too.
+  it should "filter on SUB/DUB in the English-speaking countries" in {
     for (country <- Seq(models.Country.UnitedKingdom, models.Country.UnitedStates)) {
       val html = render(cityIn(country))
-      html should not include "format-lang"
-      // …while the axes that DO apply everywhere are untouched.
-      html should include ("""name="format-dim"""")
-      html should include ("""id="format-imax"""")
+      withClue(s"${country.code}: ") {
+        html should include ("""name="format-lang" value="SUB"""")
+        html should include ("""name="format-lang" value="DUB"""")
+        html should not include """value="NAP""""
+      }
     }
+  }
+
+  // The row is conditional, not unconditional: a country that marked neither
+  // version would get no section at all rather than a filter with no matching
+  // badge anywhere on the page. No country is in that position today, so the
+  // branch is exercised through the model.
+  "a country that marks neither version" should "render no version row" in {
+    models.Country.all.filter(_.versionTokens.isEmpty) shouldBe empty
+    render(models.Poznan) should include ("format-lang")
   }
 }

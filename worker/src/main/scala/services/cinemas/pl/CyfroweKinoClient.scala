@@ -1,6 +1,7 @@
 package services.cinemas.pl
 
 import models._
+import services.movies.FormatTags
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.HttpFetch
@@ -58,7 +59,7 @@ object CyfroweKinoClient {
     for {
       rawTitle <- Option(item.selectFirst("h3.amy-movie-field-title a")).map(_.text)
       title     = titles.cinemaClean("cyfrowe-kino", cleanTitle(rawTitle)) if title.nonEmpty
-      showtimes = parseShowtimes(item)
+      showtimes = parseShowtimes(item).map(_.copy(format = versionOf(rawTitle)))
       if showtimes.nonEmpty
     } yield CinemaMovie(
       movie     = Movie(title),
@@ -84,6 +85,19 @@ object CyfroweKinoClient {
         }
       }
     }.distinctBy(_.dateTime).sortBy(_.dateTime)
+
+  /** The version segments `cleanTitle` drops on its way to the title — the
+   *  `napisy` in "15.06 / DKF WERDYKT / napisy" — read as what they are. They are
+   *  matched by the same [[NoiseSeg]] pattern for the same reason (a whole
+   *  slash-segment naming a version), so the two readings cannot drift apart:
+   *  what one removes from the title, the other keeps as the badge. An age
+   *  segment ("od lat 12") names no version and yields nothing.
+   *
+   *  Public — unlike its `cleanTitle` sibling — so a spec can feed it the age
+   *  segment the recorded fixture does not happen to contain. */
+  def versionOf(raw: String): List[String] =
+    raw.split("/").map(_.trim).filter(s => NoiseSeg.findFirstMatchIn(s).isDefined)
+      .flatMap(FormatTags.formatTokensIn).distinct.toList
 
   /** "15.06 / DKF WERDYKT / napisy" → "Werdykt". Split on `/`, drop the
    *  short-date and version/age segments, take the longest remaining segment as

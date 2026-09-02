@@ -41,4 +41,23 @@ class KinoSlezaClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   it should "carry a poster for every film" in {
     all(movies.map(_.posterUrl)) shouldBe defined
   }
+
+  // …and the part AFTER the `//` is the language version, which this cinema
+  // states nowhere else — its titles are the bare film name, so nothing else on
+  // the page tells a dubbed screening from a subtitled one.
+  it should "read the language version off the same metadata line" in {
+    val subtitled = movies.find(_.movie.title == "Diabeł ubiera się u Prady 2").value
+    all(subtitled.showtimes.map(_.format)) shouldBe List("NAP")
+
+    val dubbed = movies.find(_.movie.title == "Toy Story 5").value
+    all(dubbed.showtimes.map(_.format)) shouldBe List("DUB")
+  }
+
+  // "Animacja // PL //" is a Polish-language film, not a version — the unmarked
+  // case, and the one a loose reading would have badged.
+  it should "leave a Polish-language film unmarked" in {
+    val polish = movies.filter(_.showtimes.exists(_.format.isEmpty))
+    polish should not be empty
+  }
+
 }

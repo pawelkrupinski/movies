@@ -236,15 +236,16 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     FilterDescription.forIndex(London, Map("from" -> Seq("18:30")), schedules).title shouldBe "Showtimes — films from 18:30"
   }
 
-  // Nothing marks a language version in the UK — every film screens in English —
-  // so the version radios aren't rendered there and a hand-typed `?lang=` names
-  // a token no badge on the page carries. Describing it would put a filter in
-  // the title that narrows nothing.
-  it should "describe no version filter for a country that marks neither" in {
+  // The UK's version pair is `SUB`/`DUB`. Poland's `NAP` names a token no badge
+  // on a British page carries, so a hand-typed `?lang=NAP` describes nothing —
+  // otherwise the title would advertise a filter that narrows to an empty page.
+  it should "describe only the country's OWN version tokens" in {
+    FilterDescription.forIndex(London, Map("lang" -> Seq("SUB")), schedules).title shouldBe
+      "Showtimes — films with subtitles"
     FilterDescription.forIndex(London, Map("dim" -> Seq("3D"), "lang" -> Seq("NAP")), schedules).title shouldBe
       "Showtimes — films 3D"
     // …and with nothing left to name, the title falls back to the unfiltered default.
-    FilterDescription.forIndex(London, Map("lang" -> Seq("DUB")), schedules).title shouldBe
+    FilterDescription.forIndex(London, Map("lang" -> Seq("NAP")), schedules).title shouldBe
       FilterDescription.defaultTitle(London)
   }
 

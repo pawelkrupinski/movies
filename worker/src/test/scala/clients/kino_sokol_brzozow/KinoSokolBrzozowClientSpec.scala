@@ -27,4 +27,16 @@ class KinoSokolBrzozowClientSpec extends AnyFlatSpec with Matchers with OptionVa
     val film = movies.find(_.movie.title.toLowerCase.contains("mandalorian")).value
     film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 12, 16, 45))
   }
+
+  // The venue line ("2D dubbing pl" / "2D napisy pl") is the ONLY place this
+  // cinema states its language version — every title on the page is the bare
+  // film name, so the central `FormatTags` title strip has nothing to peel and
+  // a dubbed screening was indistinguishable from a subtitled one on the badge.
+  it should "read the language version off the event's venue line" in {
+    val dubbed = movies.find(_.movie.title.toLowerCase.contains("mandalorian")).value
+    all(dubbed.showtimes.map(_.format)) shouldBe List("2D", "DUB")
+
+    val subtitled = movies.find(_.movie.title.toLowerCase.contains("objawienia")).value
+    all(subtitled.showtimes.map(_.format)) shouldBe List("2D", "NAP")
+  }
 }

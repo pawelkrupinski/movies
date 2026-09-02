@@ -1263,11 +1263,19 @@ class CaffeineMovieCache(
       FormatTags.extractFormatTags(normalizer.cinemaClean(ruleKey, cm.movie.title))
     val cleaned: CinemaMovie => String = cm => cleanAndFormat(cm)._1
     // Badge each screening with its film's format tokens (unless the client already
-    // set one), BEFORE the same-title fold below unions them.
+    // set one), BEFORE the same-title fold below unions them — then put EVERY
+    // token, the client's included, through `ScreeningTokens`. That second step is
+    // the one gate a source's own words pass to become a badge: it maps each
+    // spelling onto the shared vocabulary (`Audio Described` and `AD` onto one
+    // `AD`, `napisy` onto `NAP`) and drops what is not a screening attribute at
+    // all — a venue's `Wheelchair Accessible`, a `Parent & Baby Club`. Doing it
+    // here rather than per client is the same argument `FormatTags` makes: a
+    // hundred scrapers, one answer to what a badge says.
     val formatted: Seq[CinemaMovie] = movies.map { cm =>
       val tokens = cleanAndFormat(cm)._2
-      if (tokens.isEmpty) cm
-      else cm.copy(showtimes = cm.showtimes.map(st => if (st.format.isEmpty) st.copy(format = tokens) else st))
+      cm.copy(showtimes = cm.showtimes.map { st =>
+        st.copy(format = ScreeningTokens.normalize(if (st.format.isEmpty) tokens else st.format))
+      })
     }
 
     // A single cinema can report one film as several rows — one per screening

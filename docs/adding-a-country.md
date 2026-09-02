@@ -149,6 +149,11 @@ those is expensive to change once a `Country` is switchable.
      Min."` in Germany and `"1h 46min"` in Spain; a certificate is a labelled
      `"FSK 6"` in one and a bare `"16"` in the other. These parse to `None` or
      to a wrong number rather than to an error.
+   - **The badge VOCABULARY.** A source's own words never reach a badge: every
+     token passes `services.movies.ScreeningTokens` at ingest, which maps each
+     spelling onto the shared vocabulary and drops what is not a screen format,
+     a language version or per-screening accessibility. A new country's labels
+     go in that table — not into per-client code, and not through untouched.
    - **Local ABBREVIATIONS the UI shows.** The four language versions are
      `OV`/`OmU`/`OmeU`/`DF` to a German and `VO`/`VOSE`/`VOSI`/`DOB` to a
      Spaniard. The tag vocabulary is shared; the token is the market's — and the

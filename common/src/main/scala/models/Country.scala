@@ -84,10 +84,11 @@ sealed abstract class Country(
    *  The Filtry panel's "version" radios filter on a literal token, so the pair
    *  has to be the one the country's own scrapers emit: `NAP`/`DUB` in Poland
    *  (from `FormatTags`), `OmU`/`DF` and `VOSE`/`DOB` in the Webedia markets
-   *  (from `WebediaMarket`, whose spec pins the two lists together). The
-   *  English-speaking countries mark neither — everything screens in English —
-   *  so the whole row is left out rather than offering a filter that can only
-   *  ever match nothing, which is what Germany and Spain were shipped with. */
+   *  (from `WebediaMarket`, whose spec pins the two lists together), `SUB`/`DUB`
+   *  in the English-speaking ones. `None` leaves the row out entirely rather than
+   *  offering a filter that can only ever match nothing, which is what Germany
+   *  and Spain were shipped with; no country is currently in that position, but
+   *  a country whose every screening is in one language would be. */
   def versionTokens: Option[VersionTokens] = None
 
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
@@ -167,6 +168,10 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.ukCities
+    // Britain subtitles rather than dubs: `SUB` (captions, 4,000 screenings on
+    // 2026-09-02) is the one a visitor filters for, `DUB` the rare foreign-language
+    // print. Both are what the chains' own labels normalise to.
+    override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
   }
 
   /** Germany — a German-language country on its own `kinowo_de` database,
@@ -214,6 +219,9 @@ object Country {
     /** The states and territories, each over the metros cut out of it — the one
      *  country whose picker is grouped. */
     override val cityGroups: Seq[CityGroup] = City.usStates
+    // Same pair as the UK, and for the same reason — a subtitled print is the
+    // marked case, a dubbed one rare.
+    override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
   }
 
   /** Spain — a Spanish-language country on its own `kinowo_es` database, sourced

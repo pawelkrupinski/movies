@@ -23689,7 +23689,7 @@
       "dateTime" : "2026-06-11T10:50:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/c3e3c55c-9dd3-42b3-afe8-c16612b1b229?cinemaId=3e616682-1048-46d8-954d-a2c8de8e7ee4",
       "room" : "Sala 3",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|bialystok|Helios Biała",
@@ -23701,7 +23701,7 @@
       "dateTime" : "2026-06-11T11:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/5117d951-cbb5-4588-8c86-97111bd1144f?cinemaId=d516a0dd-b0ab-4e15-85b2-0286eaf6dde6",
       "room" : "Sala 6",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|bialystok|Helios Jurowiecka",
@@ -23713,7 +23713,7 @@
       "dateTime" : "2026-06-11T10:50:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/a9d51b6d-cb7e-4807-8321-eceba876bb46?cinemaId=5c699a45-d219-4f4e-90f4-4aac0ca44a88",
       "room" : "Sala 1",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|bielsko-biala|Helios Bielsko-Biała",
@@ -23725,7 +23725,7 @@
       "dateTime" : "2026-06-11T10:45:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/727fdc43-4211-4061-87d8-2e03d2af2f74?cinemaId=cb932ba4-3dfd-4946-b3fd-1687603f78f7",
       "room" : "Sala 5",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|bydgoszcz|Helios Bydgoszcz",
@@ -23737,7 +23737,7 @@
       "dateTime" : "2026-06-11T11:15:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/24fb4d81-e20c-43d4-b275-bf1c32d32351?cinemaId=8acb28a0-2e4b-4beb-a13a-bb97e17085cc",
       "room" : "Sala 7",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|dabrowa-gornicza|Helios Dąbrowa Górnicza",
@@ -23749,7 +23749,7 @@
       "dateTime" : "2026-06-11T11:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/5b78ac5e-5ae4-4729-9fcc-938a6b2ddf61?cinemaId=d61fc6d9-bac1-44f0-a34a-00868e694c9b",
       "room" : "Sala 1",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|elblag|Helios Tczew",
@@ -23761,7 +23761,7 @@
       "dateTime" : "2026-06-11T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/0a962e3a-12db-4d9b-b3de-2eeba369fcfc?cinemaId=58fbf23b-c605-4185-b1e9-6a3c5d7878ce",
       "room" : "Sala 1",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|gorzow-wielkopolski|Helios Gorzów Wielkopolski",
@@ -23773,7 +23773,7 @@
       "dateTime" : "2026-06-11T12:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/7b07a154-3d71-4e49-9311-fd7ccc594d40?cinemaId=6f51c391-4d6d-4aeb-bf78-6c61b676865f",
       "room" : "SALA 4 KOLEJARZ",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|jelenia-gora|Helios Jelenia Góra",
@@ -23785,7 +23785,7 @@
       "dateTime" : "2026-06-11T11:50:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/2f1877bd-39a4-44c5-925b-6b8c31e601c9?cinemaId=88c70097-4f24-49b5-bd35-c752e3543d4e",
       "room" : "Sala 5",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|kalisz|Helios Kalisz",
@@ -23797,7 +23797,7 @@
       "dateTime" : "2026-06-11T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/1b3c0545-9cdb-4e6d-bb5a-90173fb0057d?cinemaId=99d1a365-3dad-4c9b-a9e9-6e6177630708",
       "room" : "Sala 4",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-06-11T13:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/2dc15166-18a5-4037-ba6d-e81f3b7367ae?cinemaId=99d1a365-3dad-4c9b-a9e9-6e6177630708",
@@ -23814,7 +23814,7 @@
       "dateTime" : "2026-06-11T10:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/74d62943-3741-43ad-819b-620ca76f4c25?cinemaId=1a433348-f89c-4b18-bfa4-4332e3bbf0c8",
       "room" : "Sala 2",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|katowice|Helios Katowice",
@@ -23826,7 +23826,7 @@
       "dateTime" : "2026-06-11T10:45:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/ae33beec-ecd2-4955-8a7b-3f91454b2503?cinemaId=b661164e-04d4-41af-bdca-0f9a745c3898",
       "room" : "Sala 3",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|kielce|Helios Kielce",
@@ -23838,7 +23838,7 @@
       "dateTime" : "2026-06-10T10:45:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/d7312150-fba8-4ae5-843e-2795b25a918d?cinemaId=d01162e6-31a4-41b9-97cd-1ef7707522fe",
       "room" : "Sala 6",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|konin|Helios Konin",
@@ -23850,7 +23850,7 @@
       "dateTime" : "2026-06-11T10:45:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/83379b11-eab5-4976-bd27-ef6b56c9de68?cinemaId=0fe6ba65-dc83-49c1-8f01-bef8675b9927",
       "room" : "Sala 4",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|koszalin|Helios Koszalin",
@@ -23862,7 +23862,7 @@
       "dateTime" : "2026-06-11T11:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/39de5da6-e056-4974-a3ba-4706ffeb52d8?cinemaId=4b58d474-bf12-405f-b76d-f1f88cae2b07",
       "room" : "Sala 1",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|legnica|Helios Legnica",
@@ -23874,7 +23874,7 @@
       "dateTime" : "2026-06-11T11:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/aaffca5c-8e3b-4e9c-91f7-a53e44ac7866?cinemaId=34b23726-7c53-483b-a0e5-13dfca6075ba",
       "room" : "Sala 4",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|legnica|Helios Lubin",
@@ -23886,7 +23886,7 @@
       "dateTime" : "2026-06-11T11:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/4ff25eb5-8a22-4a25-ad68-e2c30becc5cd?cinemaId=71192dbe-94ef-43c0-9079-ae7c9747a2f4",
       "room" : "Sala 5",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|lodz|Helios Łódź",
@@ -23898,7 +23898,7 @@
       "dateTime" : "2026-06-11T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/7ab0ff25-e889-4f2f-bd6f-579fb3bcd517?cinemaId=46055d88-5f34-44a0-9584-b041caa71e26",
       "room" : "Sala 4 - Przedwiośnie",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|nowy-sacz|Helios Nowy Sącz",
@@ -23910,7 +23910,7 @@
       "dateTime" : "2026-06-10T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/8d1ea989-5348-48e1-af7c-9ded50c876a2?cinemaId=223cd021-5821-481a-9d04-31511fb44042",
       "room" : "Sala 1",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|olsztyn|Helios Olsztyn",
@@ -23922,7 +23922,7 @@
       "dateTime" : "2026-06-11T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/f5f119b6-a78b-465c-8184-a409c4f5b72d?cinemaId=6f3ef265-ef99-48e9-84f4-ed862badb756",
       "room" : "Sala 7",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|opole|Helios Karolinka",
@@ -23934,7 +23934,7 @@
       "dateTime" : "2026-06-11T11:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/8b5db131-da06-4b5e-b982-28e52f718862?cinemaId=ec0ba789-c70b-42e7-8adf-8c9595888672",
       "room" : "Sala 1",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|opole|Helios Kędzierzyn-Koźle",
@@ -23946,7 +23946,7 @@
       "dateTime" : "2026-06-11T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/e6847776-9c0e-435a-a7de-ebec31e29e34?cinemaId=cf760fa9-32ba-4541-ae07-ef14532a911d",
       "room" : "Sala 4",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|opole|Helios Solaris",
@@ -23958,7 +23958,7 @@
       "dateTime" : "2026-06-11T09:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/e001322c-8f94-4929-81b0-d61ca4039289?cinemaId=d01e6010-d098-4899-951b-a7b7208df75a",
       "room" : "Sala 6 - Kosmos",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|plock|Helios Płock",
@@ -23970,7 +23970,7 @@
       "dateTime" : "2026-06-11T11:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/6b9becef-edb1-470d-9137-d4c470d48149?cinemaId=4623d4a3-d0be-49d8-82d8-ef16a67a848c",
       "room" : "Sala 3",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|poznan|Helios Posnania",
@@ -23982,7 +23982,7 @@
       "dateTime" : "2026-06-11T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/283d3130-592c-4229-a8f6-175ee668d3bb?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2",
       "room" : "Sala 8",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|przemysl|Helios Przemyśl",
@@ -23994,7 +23994,7 @@
       "dateTime" : "2026-06-11T10:15:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/66fe1fd1-8da9-49d3-8f82-6098600eea2a?cinemaId=19a14011-0e44-43cd-9d12-8e8a16e9d744",
       "room" : "Sala 3",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|radom|Helios Radom",
@@ -24005,7 +24005,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-11T11:15:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/24fb4d81-e20c-43d4-b275-bf1c32d32351?cinemaId=287fc8f4-7bee-49b4-afcd-b22b52e520b9",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|radom|Helios Starachowice",
@@ -24017,7 +24017,7 @@
       "dateTime" : "2026-06-11T11:45:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/6d57394b-46f9-4342-ba8b-9d4734adeb51?cinemaId=9906f18b-ed73-41d8-a35e-bfcda930b2d3",
       "room" : "Sala 2",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|rybnik|Helios Żory",
@@ -24029,7 +24029,7 @@
       "dateTime" : "2026-06-11T10:45:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/557c95be-3f45-493b-94e7-d63c0402b20e?cinemaId=d116bcc0-8675-41d8-b0b0-3e7155df9ffc",
       "room" : "Sala 2",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|rzeszow|Helios Krosno",
@@ -24041,11 +24041,11 @@
       "dateTime" : "2026-06-11T09:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/93fc104b-ad70-47df-856b-88bbdfd1f1e9?cinemaId=be832e9d-5b79-47ef-a0b0-1b465349ce89",
       "room" : "Sala 1",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-06-16T09:45:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/fad03eaa-08b0-44be-896e-c34ba5897336?cinemaId=be832e9d-5b79-47ef-a0b0-1b465349ce89",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|rzeszow|Helios Rzeszów",
@@ -24057,7 +24057,7 @@
       "dateTime" : "2026-06-10T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/be3c64d4-cd90-41cf-b69c-069711e2aec4?cinemaId=409eac78-9718-4fa3-b590-d1e1fb60892d",
       "room" : "Sala 4",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|sosnowiec|Helios Sosnowiec",
@@ -24068,7 +24068,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-11T11:15:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/24fb4d81-e20c-43d4-b275-bf1c32d32351?cinemaId=880f2a3a-e9e8-447c-95ca-72c49ca38a1e",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|szczecin|Helios Kupiec",
@@ -24080,7 +24080,7 @@
       "dateTime" : "2026-06-11T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/11dcd2a7-bd48-4d89-87a3-d57cc1e4631e?cinemaId=3e60a454-c438-4c9b-b24f-7c6feff3b5ed",
       "room" : "Sala 4",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|szczecin|Helios Outlet Park",
@@ -24092,7 +24092,7 @@
       "dateTime" : "2026-06-11T10:45:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/d9620539-059b-421a-93b2-3d5a51a07d90?cinemaId=b898bbed-7ab6-428f-a57b-26d6b6e6a04b",
       "room" : "Sala 3",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|trojmiasto|Helios Forum",
@@ -24104,7 +24104,7 @@
       "dateTime" : "2026-06-11T09:15:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/c9d6260f-eb6f-4cdd-b93e-a63292b0eb5a?cinemaId=60cfe883-55aa-4e28-be7f-233f589a34cb",
       "room" : "Sala 2",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|trojmiasto|Helios Metropolia",
@@ -24116,7 +24116,7 @@
       "dateTime" : "2026-06-11T11:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/96fc7416-5655-496f-855a-f86c03132fbf?cinemaId=d09e2607-693f-479f-8deb-59a18add40eb",
       "room" : "Sala 5",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|trojmiasto|Helios Riviera",
@@ -24128,7 +24128,7 @@
       "dateTime" : "2026-06-11T10:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/3fab5364-e1ce-4676-87da-87928d087639?cinemaId=0bdb21cd-cf7d-4efb-829f-d1913a666b83",
       "room" : "Sala 2",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|warszawa|Helios Blue City",
@@ -24140,7 +24140,7 @@
       "dateTime" : "2026-06-11T10:30:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/93a21db5-a618-4d9a-a922-fb02291a80e2?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
       "room" : "SALA 2",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|wroclaw|Helios Aleja Bielany",
@@ -24152,7 +24152,7 @@
       "dateTime" : "2026-06-11T11:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/cb049c98-a6cb-4334-b989-86ffce3b3006?cinemaId=7582cee7-2815-4897-8715-e90a5b99d2e4",
       "room" : "Sala 7",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "babystar|2026|wroclaw|Helios Magnolia Park",
@@ -24164,7 +24164,7 @@
       "dateTime" : "2026-06-11T10:00:00",
       "bookingUrl" : "https://bilety.helios.pl/screen/7774b8dc-b2ad-4a01-82e0-20ea5f4cd044?cinemaId=c21c6e3b-874c-4432-b44e-a155ec9102cd",
       "room" : "Sala 1",
-      "format" : [ "2D", "LEC" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "backroomsbezwyjscia|2026|bialystok|Helios Alfa",
@@ -31474,7 +31474,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-09T18:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/670556",
-      "format" : [ "2D", "oryginalny" ]
+      "format" : [ "2D", "ORG" ]
     } ]
   }, {
     "_id" : "czlowiekzmarmuru|1977|konin|Kino nad Wartą",
@@ -31809,19 +31809,19 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-19T17:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671701",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-22T17:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671702",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-26T17:45:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671707",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-29T17:45:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671708",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "czytajaclolitewteheranie|2024|krakow|Kino Sfinks",
@@ -35467,7 +35467,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-09T16:50:00",
       "bookingUrl" : "https://biletyna.pl/film/Diabel-ubiera-sie-u-Prady-2/Warszawa?utm_source=dkswit.com.pl&utm_medium=APIv2&utm_campaign=general",
-      "format" : [ ]
+      "format" : [ "NAP" ]
     } ]
   }, {
     "_id" : "diabelubierasieuprady2|2026|warszawa|KinoGram",
@@ -37983,19 +37983,19 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-26T15:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671703",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-26T19:45:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671704",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-29T15:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671705",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-29T19:45:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671706",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "drugiezycie|2025|konin|Kino Oskard",
@@ -58626,7 +58626,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-25T11:00:00",
       "bookingUrl" : "https://ckis-konin.bilety24.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=937410",
-      "format" : [ "2D", "LEKT" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "filmowyklubseniora18lecietakiejestzycie|2025|poznan|Kino Rialto",
@@ -58752,7 +58752,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T14:00:00",
       "bookingUrl" : "https://kinoteatrrialto.bilety24.pl/kup-bilety/?id=932563",
-      "format" : [ "2D", "LEKT" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "filmyzlektoremthelastshowgirl||katowice|Kinoteatr Rialto",
@@ -58763,7 +58763,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-23T14:00:00",
       "bookingUrl" : "https://kinoteatrrialto.bilety24.pl/kup-bilety/?id=932543",
-      "format" : [ "2D", "LEKT" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "fleakfutrzakija|2025|kalisz|Helios Kalisz",
@@ -61303,15 +61303,15 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-08T18:00:00",
       "bookingUrl" : "https://kinoluna.bilety24.pl/kup-bilety/?id=938680",
-      "format" : [ "2D", "LEKT" ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-06-09T16:00:00",
       "bookingUrl" : "https://kinoluna.bilety24.pl/kup-bilety/?id=938684",
-      "format" : [ "2D", "LEKT" ]
+      "format" : [ "2D", "LEK" ]
     }, {
       "dateTime" : "2026-06-10T18:15:00",
       "bookingUrl" : "https://kinoluna.bilety24.pl/kup-bilety/?id=938690",
-      "format" : [ "2D", "LEKT" ]
+      "format" : [ "2D", "LEK" ]
     } ]
   }, {
     "_id" : "klatwadolinywezyzautorskanarracjalony|1988|wroclaw|Kino Nowe Horyzonty",
@@ -61612,7 +61612,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-25T18:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/670555",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "kobietynaskrajuzalamanianerwowego|1988|szczecin|Kino Zamek",
@@ -67442,15 +67442,15 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-13T17:45:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671692",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-14T15:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671693",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-15T17:45:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671694",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "kumotry|2026|krakow|Kino Mikro",
@@ -80572,7 +80572,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-11T18:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/670554",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "matador|1986|szczecin|Kino Pionier 1907",
@@ -83891,15 +83891,15 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T16:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671666",
-      "format" : [ "2D", "oryginalny" ]
+      "format" : [ "2D", "ORG" ]
     }, {
       "dateTime" : "2026-06-17T18:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671668",
-      "format" : [ "2D", "oryginalny" ]
+      "format" : [ "2D", "ORG" ]
     }, {
       "dateTime" : "2026-06-24T16:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671669",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "mikeyinicky|1976|krakow|Kino Paradox",
@@ -84242,7 +84242,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-08T16:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671678",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "milczacaprzyjaciolka|2026|krakow|Cinema City Bonarka",
@@ -120225,7 +120225,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-08T19:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671639",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "orlyrepubliki|2025|konin|Helios Konin",
@@ -125457,27 +125457,27 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-13T15:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671680",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-13T19:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671685",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-14T16:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671686",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-14T19:15:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671688",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-15T15:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671689",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-15T19:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671690",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "podziemnykrag|1999|konin|Helios Konin",
@@ -129073,7 +129073,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-18T18:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/670623",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "prawopozadania|1987|poznan|Kino Malta Charlie Monroe",
@@ -130758,7 +130758,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-30T18:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/670855",
-      "format" : [ "2D", "oryginalny" ]
+      "format" : [ "2D", "ORG" ]
     } ]
   }, {
     "_id" : "rewizjeivprzegladfilmowandrzejawajdyczlowiekzmarmuru|1977|zielona-gora|Kino ŚDK",
@@ -133661,19 +133661,19 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-19T15:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671696",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-19T19:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671697",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-22T15:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671698",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-22T19:30:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671699",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "snyosloniach|2026|krakow|Kino Mikro",
@@ -185368,7 +185368,7 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-23T18:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/670557",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "wartoscsentymentalna|2025|krakow|Kino Kika",
@@ -194338,15 +194338,15 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-10T18:15:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671626",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-17T16:00:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671630",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     }, {
       "dateTime" : "2026-06-24T18:15:00",
       "bookingUrl" : "https://iframe639.biletyna.pl/event/view/id/671632",
-      "format" : [ "2D", "napisy" ]
+      "format" : [ "2D", "NAP" ]
     } ]
   }, {
     "_id" : "wolnoscpowlosku|2025|poznan|Kino Muza",

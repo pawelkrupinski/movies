@@ -932,6 +932,31 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     slots.flatMap(_.title).exists(_.toLowerCase.contains("ukrai"))    shouldBe true
   }
 
+  // The other half of the central strip: a client that reads its source's OWN
+  // labels (every UK/US chain, and most of Poland's) had them written to the
+  // badge verbatim. Measured across the five production databases on 2026-09-02
+  // that meant 59 distinct UK tokens, headed by `Wheelchair Accessible` on 43,225
+  // screenings and `Audio Described` and `AD` sitting beside each other as two
+  // spellings of one thing. `ScreeningTokens` is the gate they now pass.
+  it should "put a client's own labels through the shared vocabulary before they reach a badge" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val slot = showtime("2026-06-08T18:00").copy(format = List(
+      "IMAX with Laser at AMC",  // one label, two attributes
+      "Wheelchair Accessible",   // a property of the VENUE, not the screening
+      "Audio Described",         // …the same thing as the next one
+      "AD",
+      "Parent & Baby Club",      // an audience, not a way of showing the film
+      "Hindi"))                  // the audio language IS a version
+    val touched = cache.recordCinemaScrape(Multikino, Seq(
+      cinemaMovie("Wonka", Multikino, showtimes = Seq(slot))))
+
+    val stored = touched.map(_._2).distinct.flatMap(k => cache.get(k))
+      .flatMap(_.cinemaShowings.collect { case (Multikino, sd) => sd })
+      .flatMap(_.showtimes)
+    stored.map(_.format) shouldBe Seq(List("IMAX", "LASER", "AD", "HINDI"))
+  }
+
   it should "rebuild a slot's showtimes from the fresh scrape alone — a dropped recently-past showing is NOT retained" in {
     val repo  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
