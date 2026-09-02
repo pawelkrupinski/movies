@@ -122,25 +122,17 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     ((movie \ "director").as[JsArray].value.head \ "name").as[String] shouldBe "Denis Villeneuve"
   }
 
-  it should "carry an aggregateRating from IMDb on a 0–10 scale, with no fabricated count" in {
-    val movie = byType(parseArray(StructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)), r = ratings(imdb = Some(8.5))))), "Movie").head
-    val rat   = (movie \ "aggregateRating").as[JsObject]
-    (rat \ "ratingValue").as[Double] shouldBe 8.5
-    (rat \ "bestRating").as[Int]     shouldBe 10
-    (rat \ "ratingCount").asOpt[Int] shouldBe None
-    (rat \ "reviewCount").asOpt[Int] shouldBe None
-  }
-
-  it should "fall back to Filmweb, then Metacritic on a 0–100 scale" in {
-    val fw = byType(parseArray(StructuredData.film(canonical, Poznan, film("D", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)), r = ratings(filmweb = Some(7.3))))), "Movie").head
-    ((fw \ "aggregateRating" \ "ratingValue").as[Double], (fw \ "aggregateRating" \ "bestRating").as[Int]) shouldBe (7.3, 10)
-    val mc = byType(parseArray(StructuredData.film(canonical, Poznan, film("D", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)), r = ratings(metascore = Some(82))))), "Movie").head
-    (mc \ "aggregateRating" \ "bestRating").as[Int] shouldBe 100
-  }
-
-  it should "omit aggregateRating when no source has a score" in {
-    val movie = byType(parseArray(StructuredData.film(canonical, Poznan, film("D", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)), r = ratings()))), "Movie").head
+  // Google's review-snippet guidelines forbid aggregating other sites' ratings,
+  // and Search Console rejected the block we used to emit for carrying neither
+  // ratingCount nor reviewCount. Every score on the page is IMDb's / Filmweb's /
+  // Metacritic's / RT's, so the Movie claims no aggregateRating at all — not
+  // even when all four sources have scored the film.
+  it should "never claim an aggregateRating, however many sources have a score" in {
+    val scored = ratings(imdb = Some(8.5), filmweb = Some(7.3), metascore = Some(82), rt = Some(91))
+    val json   = StructuredData.film(canonical, Poznan, film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)), r = scored))
+    val movie  = byType(parseArray(json), "Movie").head
     (movie \ "aggregateRating").asOpt[JsObject] shouldBe None
+    json should not include "AggregateRating"
   }
 
   it should "emit one ScreeningEvent per showtime with a zoned startDate and theater location" in {

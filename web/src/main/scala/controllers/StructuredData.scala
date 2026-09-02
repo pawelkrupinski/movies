@@ -13,13 +13,15 @@ import java.time.format.DateTimeFormatter
  *  Three page shapes:
  *    - landing  → WebSite + Organization
  *    - city     → BreadcrumbList + ItemList of the films on show
- *    - film     → Movie (+ aggregateRating) + BreadcrumbList + one ScreeningEvent
- *                 per showtime
+ *    - film     → Movie + BreadcrumbList + one ScreeningEvent per showtime
  *
- *  `aggregateRating` carries the honest ratingValue/best/worst only — we don't
- *  store a public rating COUNT, and inventing one to satisfy Google's
- *  rich-result eligibility would violate the structured-data guidelines. The
- *  rating is valid schema.org; it just may not light up the stars snippet.
+ *  No `aggregateRating`: every score we show is somebody else's (IMDb, Filmweb,
+ *  Metacritic, Rotten Tomatoes), and Google's review-snippet guidelines say
+ *  "Don't aggregate reviews or ratings from other websites". Marking them up
+ *  also demanded a ratingCount/reviewCount we don't hold and won't invent —
+ *  Search Console flagged exactly that ("Either ratingCount or reviewCount
+ *  should be specified") on 2026-09-02. The scores stay on the page for
+ *  readers; they just aren't claimed as ours in the JSON-LD.
  */
 object StructuredData {
 
@@ -109,7 +111,6 @@ object StructuredData {
       .++(seqPersons("actor", fs.cast.take(15)))
       .++(m.releaseYear.fold(Json.obj())(y => Json.obj("dateCreated" -> y.toString)))
       .++(m.runtimeMinutes.fold(Json.obj())(min => Json.obj("duration" -> s"PT${min}M")))
-      .++(aggregateRating(fs).fold(Json.obj())(r => Json.obj("aggregateRating" -> r)))
 
     val events = fs.showings.flatMap { case (_, perCinema) =>
       perCinema.flatMap { cs =>
@@ -150,23 +151,6 @@ object StructuredData {
         Json.obj("@type" -> "ListItem", "position" -> (i + 1), "name" -> name, "item" -> url)
       },
     )
-
-  /** IMDb first, then Filmweb (both 0–10), then Metacritic / Rotten Tomatoes
-   *  (0–100). No ratingCount — we hold no public count and won't fabricate one. */
-  private def aggregateRating(fs: FilmSchedule): Option[JsValue] = {
-    val r = fs.resolved.ratings
-    val picked: Option[(Double, Int)] =
-      r.imdb.map(_ -> 10)
-        .orElse(r.filmweb.map(_ -> 10))
-        .orElse(r.metascore.map(_.toDouble -> 100))
-        .orElse(r.rottenTomatoes.map(_.toDouble -> 100))
-    picked.map { case (value, best) =>
-      Json.obj(
-        "@type" -> "AggregateRating",
-        "ratingValue" -> value, "bestRating" -> best, "worstRating" -> (if (best == 10) 1 else 0),
-      )
-    }
-  }
 
   private def absoluteImage(origin: String, fs: FilmSchedule): Option[String] =
     fs.posterUrl.map { p =>
