@@ -30,6 +30,7 @@ global:
 # rule's position here has no effect on when it fires. It is alphabetical so that a missing entry
 # is visible by eye against `ls /etc/prometheus/rules/`.
 rule_files:
+  - "/etc/prometheus/rules/cinema-scrape.rules"
   - "/etc/prometheus/rules/filesystem-capacity.rules"
   - "/etc/prometheus/rules/host-health.rules"
   - "/etc/prometheus/rules/k3s.rules"

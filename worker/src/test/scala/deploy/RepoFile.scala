@@ -68,7 +68,6 @@ object RepoFile {
       .toOption
       .flatMap(freshnessMinutesIn)
 
-  /** Every `fly*.toml` at the repo root, newest country last — the authoritative deploy set. */
   /** Every workflow file under `.github/workflows/`, sorted by name — the set a
    *  repo-wide rule about what CI is allowed to do has to be checked against.
    *  Enumerated rather than listed in each spec, so a workflow added tomorrow is
@@ -80,6 +79,7 @@ object RepoFile {
       .sortBy(_.getName)
       .toSeq
 
+  /** Every `fly*.toml` at the repo root, newest country last — the authoritative deploy set. */
   def flyTomls(): Seq[java.io.File] =
     Option(new java.io.File(".").listFiles())
       .getOrElse(Array.empty[java.io.File])

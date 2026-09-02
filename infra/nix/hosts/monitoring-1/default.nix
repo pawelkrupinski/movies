@@ -78,7 +78,7 @@ in
     ];
   };
 
-  # GRAFANA MAY BE BOUNCED BY AN UNATTENDED SWITCH ON THIS HOST, AND NOTHING ELSE MAY.
+  # GRAFANA AND PROMETHEUS MAY BE BOUNCED BY AN UNATTENDED SWITCH ON THIS HOST, AND NOTHING ELSE MAY.
   #
   # Every dashboard edit rewrites grafana.service -- the provisioning directory's store path is in
   # config.ini, which is in ExecStart -- so without this line the applier refuses the closure and,
@@ -93,11 +93,27 @@ in
   # is Grafana; the worst case is somebody reloading a page mid-incident. That is a far smaller cost
   # than a fleet whose deploys have quietly stopped, which is what the alternative buys.
   #
-  # ONE NAMED UNIT, NOT `[ "*" ]`, for the reason that file gives about `reloadableUnits`:
-  # prometheus.service and alertmanager.service would be equally cheap to bounce, but nothing has
-  # yet needed them to be, and a wildcard also forgives every unit nobody has thought about. The
-  # fleet's neverDisturbUnits floor (sshd, mongodb, k3s) is checked first and still applies.
-  fleet.autoApply.restartableUnits = [ "grafana.service" ];
+  # PROMETHEUS EARNED ITS LINE THE WAY THIS COMMENT PREDICTED IT WOULD. It used to say that
+  # prometheus.service "would be equally cheap to bounce, but nothing has yet needed it to be";
+  # cinema-scrape.rules is what needed it. Every alert-rule edit rewrites prometheus.service the
+  # same way a dashboard edit rewrites grafana.service -- roles/prometheus.nix puts each rule file
+  # in `restartTriggers` deliberately, because a rule written into /etc and never re-read is silent
+  # in precisely the way an unloaded rule file is -- so without this line the applier would refuse
+  # the closure and every unrelated change staged for this machine along with it, SILENTLY, exactly
+  # as the missing Grafana entry did on 2026-08-30.
+  #
+  # THE SENTENCE modules/fleet/default.nix ASKS TO BE WRITTEN OUT FOR EACH ENTRY: a Prometheus
+  # restart at an arbitrary moment costs a few seconds of scrape gap and loses no data at all --
+  # the TSDB is on disk and the WAL is replayed on start (roles/prometheus.nix says so at the
+  # `restartTriggers` it sets). Nothing outside this fleet can see it. The one visible cost is that
+  # `for:` timers restart with the process, so an alert part-way through its pending window waits
+  # again; on rules whose shortest `for:` is 5m that is not a real risk of missing anything.
+  #
+  # STILL NAMED UNITS, NOT `[ "*" ]`, for the reason modules/fleet/default.nix gives about
+  # `reloadableUnits`: alertmanager.service would be equally cheap to bounce, but nothing has yet
+  # needed it to be, and a wildcard also forgives every unit nobody has thought about. The fleet's
+  # neverDisturbUnits floor (sshd, mongodb, k3s) is checked first and still applies.
+  fleet.autoApply.restartableUnits = [ "grafana.service" "prometheus.service" ];
 
   fleet.grafana = {
     enable = true;

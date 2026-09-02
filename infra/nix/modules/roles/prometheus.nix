@@ -146,6 +146,11 @@ let
   # compared by eye without sorting one of them in your head. The comparison is the only check
   # there is until the guard script exists.
   ruleNames = [
+    # IS EVERY CINEMA STILL BEING SCRAPED. The application's own roster-freshness census, and the
+    # only file here that watches the product rather than the machines it runs on. Its failure is
+    # the silent kind: a cinema nobody scrapes emits no series at all, so every traffic counter
+    # stays clean while the roster goes dark.
+    "cinema-scrape"
     "filesystem-capacity"
     # THE HOSTS THEMSELVES -- memory, OOM, CPU, failed units, read-only filesystems. NEW at the
     # post-migration audit: on Fly the host was somebody else's problem, and nothing had replaced
