@@ -45,71 +45,15 @@ runs:
     # the fetch that was in flight. That is what makes publishing from a leg that ran
     # out of time worth doing at all.
     #
-    # `if-no-files-found`-equivalent handling inline, for the first run on a new
-    # country where nothing has been recorded yet.
+    # The packing and its cache guard live in a script rather than here, so
+    # `EnrichmentTreePackingSpec` can run the real thing against a fabricated tree —
+    # including the "nothing recorded yet" case a new country starts in.
     - name: Pack the enrichment fixtures this leg recorded
       shell: bash
       run: |
-          set -uo pipefail
-          DIR="test/resources/fixtures/enrichment-${{ inputs.code }}"
-          if [ ! -d "$DIR" ]; then
-              echo "nothing recorded — no $DIR"
-              exit 0
-          fi
-          echo "recorded fixture files: $(find "$DIR" -type f -not -path '*/.enrichment-cache/*' | wc -l)"
-          echo "remembered enrichment answers: $( { find "$DIR/.enrichment-cache" -name '*.entry' 2>/dev/null || true; } | wc -l )"
-          mkdir -p enrichment-upload
-          # NOT `set -e` around this tar, and the exit code is graded rather than
-          # tested for zero.
-          #
-          # This step runs on `always()`, so its most valuable case is the leg that
-          # just ran out of time — and a step killed by `timeout-minutes` does not
-          # take the JVM with it instantly. The runner only reaps orphans in its
-          # post-job phase, well after this, so `RecordingHttpFetch` is still
-          # writing responses into the very tree being read. GNU tar notices, prints
-          # "file changed as we read it", and exits 1 — a WARNING status, with a
-          # complete and perfectly valid archive on disk. Under `set -e` that
-          # failed the step and threw away the whole capture, which is precisely
-          # the "a timeout that discards its own progress cannot converge" trap the
-          # rest of this action exists to close. Germany's first full leg in a week
-          # lost its entire corpus capture to it.
-          #
-          # 2 and above is a real tar failure (unwritable target, corrupt stream)
-          # and still fails the step.
-          tar -czf "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz" "$DIR"
-          packed=$?
-          if [ "$packed" -gt 1 ]; then
-              echo "::error::tar failed with status $packed"
-              exit "$packed"
-          fi
-          if [ "$packed" -eq 1 ]; then
-              echo "tar reported files changing under it — the leg's JVM is still recording; archive kept"
-          fi
-          du -h "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
-          # The cache is dot-prefixed and lives INSIDE the tree, so `tar` carries it
-          # along with the recorded responses and one asset restores both. Asserted
-          # rather than assumed: if a future change to this tar drops hidden paths, the
-          # loss is invisible — every leg simply gets slower and still passes.
-          # `grep -c`, which reads to EOF, NOT `grep -q`, which doesn't.
-          #
-          # `tar -tzf … | grep -q` exits the moment it matches and closes the pipe; GNU
-          # tar is still streaming, takes SIGPIPE and returns 141, and under
-          # `set -euo pipefail` the PIPELINE is then a failure even though the pattern
-          # was found. The `!` turned that into "the cache is missing", so this guard
-          # failed all three legs on a tarball that contained the cache perfectly — the
-          # published asset had 3,745 cache paths in it. Reading the listing to the end
-          # removes the race entirely, and the count is worth printing anyway.
-          #
-          # (BSD tar on macOS absorbs the SIGPIPE, so this could not be reproduced
-          # locally — it needs a Linux runner. Verified instead by inspecting the asset
-          # the same run published.)
-          cached=$(tar -tzf "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz" \
-                   | grep -c '/\.enrichment-cache/.*\.entry' || true)
-          echo "remembered answers inside the archive: $cached"
-          if [ -d "$DIR/.enrichment-cache" ] && [ "$cached" -eq 0 ]; then
-              echo "::error::the enrichment cache exists on disk but is NOT in the tarball"
-              exit 1
-          fi
+          .github/scripts/pack-enrichment-tree.sh \
+              "test/resources/fixtures/enrichment-${{ inputs.code }}" \
+              "enrichment-upload/enrichment-${{ inputs.code }}.tar.gz"
 
     # Replaces the country's asset IN PLACE, so the release holds one copy per country
     # and never a history — the newest capture is the only one anyone reads, and

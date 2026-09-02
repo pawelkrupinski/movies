@@ -286,10 +286,14 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // warning status beside a complete archive. Under `set -e` that failed the step
     // and discarded the whole capture — the exact trap the publish exists to close,
     // and it cost Germany's first full leg in a week its entire corpus capture.
-    val publish = RepoFile.read(".github/actions/convergence-publish/action.yml")
-    publish should include("packed=$?")
+    val packer = RepoFile.read(".github/scripts/pack-enrichment-tree.sh")
+    packer should include("packed=$?")
     withClue("tar's warning status (1) must not fail the step; 2+ still must: ") {
-      publish should include("""if [ "$packed" -gt 1 ]""")
+      packer should include("""if [ "$packed" -gt 1 ]""")
+    }
+    withClue("the publish must pack through that script, not a copy of it: ") {
+      RepoFile.read(".github/actions/convergence-publish/action.yml") should
+        include(".github/scripts/pack-enrichment-tree.sh")
     }
   }
 
