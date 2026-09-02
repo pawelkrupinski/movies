@@ -14,6 +14,9 @@
 #                      matters: it type-checks the whole module tree, runs every `assertions` entry,
 #                      and proves each host would build. A module that references a missing option
 #                      or an unset secret fails here rather than at 03:00 on the auto-apply timer.
+#   reboot-required    the decision behind `nixos_reboot_required`, whose only other test is to
+#                      reboot a machine and read a metric afterwards -- which is how it stayed
+#                      wrong.
 #   replica-set origin WHICH hosts may CREATE the replica set. `nix eval` proves each host builds;
 #                      it cannot notice that two of them would both build a unit that calls
 #                      `rs.initiate()`, which is a silent, data-losing mistake rather than a broken
@@ -138,6 +141,23 @@ for host in "${hosts[@]}"; do
     failed=1
   fi
 done
+
+step "reboot-required decision"
+# THE ONE PIECE OF FLEET LOGIC WHOSE OTHER TEST IS "REBOOT A MACHINE AND LOOK". It decides
+# `nixos_reboot_required`, which is what the dashboard turns into "reboot owed" -- and it was wrong
+# for as long as it lived inline in an activation script, reporting that a reboot was owed on every
+# host from the moment it booted. See nix/files/reboot-required.sh.
+if [ -f test/test_reboot_required.sh ]; then
+  if out="$(bash test/test_reboot_required.sh 2>&1)"; then
+    echo "$out" | tail -1 | sed 's/^/  /'
+  else
+    echo "$out" | sed 's/^/  /'
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_reboot_required.sh is missing"
+  failed=1
+fi
 
 step "systemd key placement"
 # SYSTEMD IGNORES A KEY IT DOES NOT RECOGNISE, WHICH IS WHY THIS NEEDS CHECKING AT ALL.

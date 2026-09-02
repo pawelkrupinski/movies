@@ -34,6 +34,12 @@ let
   cfg = config.fleet.observability;
   textfileDir = cfg.textfileDirectory;
 
+  # THE REBOOT DECISION, AS A FILE RATHER THAN A SHELL FRAGMENT. Kept out of the activation script
+  # so it can be run against directories a test controls -- ../../../test/test_reboot_required.sh.
+  # Inline it was only observable by rebooting a machine, which is how it stayed wrong.
+  rebootRequiredScript = pkgs.writeShellScript "reboot-required"
+    (builtins.readFile ../../files/reboot-required.sh);
+
   # WHETHER THERE IS SOMETHING STAGED HERE THAT NOBODY HAS SWITCHED TO, and what this host is
   # actually running. See the unit below for why this is a timer rather than a value baked into
   # the closure.
@@ -205,16 +211,21 @@ in
         closureMetricsFile=${textfileDir}/nixos-closure.prom
         if [ -d ${textfileDir} ]; then
           running=$(basename "$systemConfig")
-          booted=$(basename "$(readlink -f /run/booted-system 2>/dev/null || echo unknown)")
+          # `|| echo unknown` used to hide the interesting case: during a boot the readlink does
+          # not resolve, so `basename` returned the literal `booted-system` and published it as a
+          # closure name. Fall back to the closure being activated, which at boot IS what booted.
+          bootedPath=$(readlink -f /run/booted-system 2>/dev/null)
+          if [ -z "$bootedPath" ] || [ ! -e "$bootedPath" ]; then bootedPath="$systemConfig"; fi
+          booted=$(basename "$bootedPath")
 
-          # Missing on either side counts as DIFFERING: not being able to read one is not evidence
-          # they match, and the safe direction for "should somebody reboot this" is yes.
-          rebootRequired=0
-          for component in kernel initrd kernel-modules systemd; do
-            bootedComponent=$(readlink -f "/run/booted-system/$component" 2>/dev/null || echo missing-booted)
-            candidateComponent=$(readlink -f "$systemConfig/$component" 2>/dev/null || echo missing-candidate)
-            if [ "$bootedComponent" != "$candidateComponent" ]; then rebootRequired=1; fi
-          done
+          # THE DECISION LIVES IN nix/files/reboot-required.sh, and it moved there because it was
+          # WRONG here in a way this file could not show. Inline, a missing `/run/booted-system`
+          # counted as "differs" -- and that is the normal state during a BOOT, when this very
+          # activation script runs. So every host published `nixos_reboot_required 1` from the
+          # moment it came up and kept it until its next switch: the machine that had just rebooted
+          # was the one the dashboard flagged. See that file for the argument and
+          # test/test_reboot_required.sh for the cases.
+          rebootRequired=$(${rebootRequiredScript} "$(readlink -f /run/booted-system 2>/dev/null)" "$systemConfig")
 
           cat > "$closureMetricsFile.tmp" <<METRICS
         # HELP nixos_closure_info The system closure this host is running, as its store path basename
