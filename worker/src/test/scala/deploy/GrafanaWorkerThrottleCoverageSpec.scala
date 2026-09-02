@@ -133,6 +133,7 @@ class GrafanaWorkerThrottleCoverageSpec extends AnyFlatSpec with Matchers {
     // Both layers, named explicitly: `kinowo-worker-us` exists ONLY in the k3s
     // overlays, so if this ever drops back to the toml derivation the assertion says
     // so instead of quietly narrowing what the three checks above demand.
-    workerApps should contain allOf ("kinowo-worker", "kinowo-worker-uk", "kinowo-worker-de", "kinowo-worker-us")
+    workerApps should contain allOf (
+      "kinowo-worker", "kinowo-worker-uk", "kinowo-worker-de", "kinowo-worker-us", "kinowo-worker-es")
   }
 }

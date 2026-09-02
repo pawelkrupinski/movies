@@ -517,7 +517,7 @@ object AuthController {
    *  The NONCE is the security half and is unchanged — it is compared against the
    *  copy in the browser's own session cookie, so it still binds the callback to
    *  the browser that began the flow. The country code is a routing hint and
-   *  nothing more: it is read only to pick one of the four deployments we ship,
+   *  nothing more: it is read only to pick one of the deployments we ship,
    *  never trusted as a URL, so a hand-edited `state` can send a callback to
    *  another of our own countries and nowhere else. */
   private[controllers] def newState(country: models.Country): String =
@@ -591,7 +591,7 @@ object AuthController {
    *  An allowlist rather than a validated URL because this redirect carries a
    *  credential. Any rule of the shape "same host" or "https and one of our
    *  domains" is one open-redirect away from handing a live sign-in code to
-   *  somebody else's server; a list of the four addresses we actually deploy is
+   *  somebody else's server; a list of the addresses we actually deploy is
    *  not. A trailing slash is tolerated because the switcher's `<option>` values
    *  are base URLs and callers append to them.
    *

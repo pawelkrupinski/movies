@@ -35,7 +35,7 @@
 #
 # Usage:  scripts/local-mirror/sync-enrichment-cache.sh [--dry-run] [country…]
 #           --dry-run   dump + count only; don't touch the local collections
-#           country…    pl / de / uk (default: all three)
+#           country…    pl / de / uk / us / es (default: all five)
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
@@ -46,11 +46,11 @@ COUNTRIES=()
 for arg in "$@"; do
   case "$arg" in
     --dry-run)  DRY=1 ;;
-    pl|de|uk)   COUNTRIES+=("$arg") ;;
+    pl|de|uk|us|es) COUNTRIES+=("$arg") ;;
     *) echo "[enrich-cache] unknown argument: $arg (see the header for usage)" >&2; exit 1 ;;
   esac
 done
-[ ${#COUNTRIES[@]} -gt 0 ] || COUNTRIES=(pl de uk)
+[ ${#COUNTRIES[@]} -gt 0 ] || COUNTRIES=(pl de uk us es)
 
 # Read KEY=VALUE from .env.local WITHOUT sourcing it — the Mongo URIs contain
 # `&`/`?`, which a shell `source` would treat as backgrounding / globbing.

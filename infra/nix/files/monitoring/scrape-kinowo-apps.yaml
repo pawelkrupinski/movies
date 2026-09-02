@@ -72,11 +72,11 @@ scrape_configs:
   # as phantom resets on every alert built from these series -- see the replica note in
   # infra/kubernetes/web/overlays/pl/patch.yaml.
   - job_name: kinowo-web
-    # /metrics WITH NO COUNTRY PREFIX, even though three of these four deployments serve their
+    # /metrics WITH NO COUNTRY PREFIX, even though four of these five deployments serve their
     # pages under one (showtimes.cc/uk/...). This scrape goes straight to the NodePort and never
     # through Caddy, so it never carries the prefix; `modules.AppLoader.rootOperationalRoutes`
     # keeps /metrics (and /health) answering at the root wherever the app is mounted, so this stays
-    # one path for all four targets.
+    # one path for all five targets.
     metrics_path: /metrics
     scrape_interval: 30s
     scrape_timeout: 10s

@@ -58,8 +58,8 @@ trait Wiring {
 
   // ── Users ─────────────────────────────────────────────────────────────────
   // `users` + `userStates` come off `Country.usersDbName` rather than this
-  // deployment's own database, so ONE account follows a visitor across all four
-  // countries instead of four unrelated accounts wearing the same email. That
+  // deployment's own database, so ONE account follows a visitor across every
+  // country instead of one unrelated account per country wearing the same email. That
   // matters most where the session cookie now DOES travel: the three Showtimes
   // countries share one origin, so a `userId` minted under /uk arrives at /de,
   // and against a per-country database it would resolve to nobody — a silent

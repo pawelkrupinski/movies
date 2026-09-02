@@ -1757,7 +1757,7 @@ object SpanishRoster {
    *  reuse.
    *
    *  The same hazard [[GermanRoster.claimedElsewhere]] guards, now looking at
-   *  four countries instead of three: `displayName` is the wire key every
+   *  five countries instead of three: `displayName` is the wire key every
    *  per-cinema slot is stored under and `Source.byDisplayName` is a plain
    *  `toMap`, so a Spanish venue colliding with a Polish, UK, German **or US**
    *  one silently rebinds the loser's stored showtimes to the winner. The

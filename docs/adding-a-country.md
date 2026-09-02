@@ -295,7 +295,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    Add `<cc>` to `COUNTRIES=(...)` in `infra/kubernetes/apply.sh`, which enumerates
    them for `apply.sh web all`.
 2. **Allocate the next free NodePort.** The workers hold 30900–30902 and the web
-   tier 30910 (pl) / 30911 (de) / 30912 (uk), so a fourth takes 30913. It is
+   tier 30910 (pl) / 30911 (de) / 30912 (uk) / 30913 (us) / 30914 (es), so a sixth takes 30915. It is
    **fixed, never allocated**: the Caddy vhost and the Prometheus target both name
    the number, so a Service re-created with a fresh port takes the site off the
    internet and turns the scrape target red at the same moment. Keep the overlay at

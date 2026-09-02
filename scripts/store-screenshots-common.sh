@@ -63,20 +63,20 @@ release_lock() { [ -n "$LOCK_DIR" ] && rm -rf "$LOCK_DIR"; LOCK_DIR=""; }
 # ── countries ─────────────────────────────────────────────────────────────────
 # Every country --all-top walks. A country is one deployment + one locale + one
 # UI language, so this list is the single place a new country is added.
-COUNTRIES="${COUNTRIES:-pl uk de}"
-locale_country() { case "$1" in en-GB) echo uk;; pl-PL) echo pl;; de-DE) echo de;; *) echo "";; esac; }
-country_locale() { case "$1" in pl) echo pl-PL;; uk) echo en-GB;; de) echo de-DE;; *) echo "";; esac; }
+COUNTRIES="${COUNTRIES:-pl uk de us es}"
+locale_country() { case "$1" in en-GB) echo uk;; pl-PL) echo pl;; de-DE) echo de;; en-US) echo us;; es-ES) echo es;; *) echo "";; esac; }
+country_locale() { case "$1" in pl) echo pl-PL;; uk) echo en-GB;; de) echo de-DE;; us) echo en-US;; es) echo es-ES;; *) echo "";; esac; }
 # The UI language a country forces, mirroring `Country.languageCode` in the apps.
 # NOT derived from the locale: the store locale is the listing's (en-GB), the UI
 # language is the bundle's (en), and only the second is what a launch pins.
-country_language() { case "$1" in pl) echo pl;; uk) echo en;; de) echo de;; *) echo "";; esac; }
+country_language() { case "$1" in pl) echo pl;; uk) echo en;; de) echo de;; us) echo en;; es) echo es;; *) echo "";; esac; }
 # ENDONYMS from the catalog — identical in every locale, so they double as a tap
 # target regardless of the app's language.
 country_name()   { case "$1" in pl) echo Polska;; uk) echo "United Kingdom";; de) echo Deutschland;; esac; }
-country_base()   { case "$1" in pl) echo "https://kinowo.net";; uk) echo "https://uk.showtimes.cc";; de) echo "https://de.showtimes.cc";; *) echo "";; esac; }
+country_base()   { case "$1" in pl) echo "https://kinowo.net";; uk) echo "https://showtimes.cc/uk";; de) echo "https://showtimes.cc/de";; us) echo "https://showtimes.cc/us";; es) echo "https://showtimes.cc/es";; *) echo "";; esac; }
 # The gate's "Country" header, which IS localized — seeing it is proof the
 # country switch landed.
-country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; esac; }
+country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; us) echo Country;; es) echo "País";; esac; }
 # The area picker's confirm button, shown only by SPLIT cities.
 showlist_label() { case "$1" in pl) echo "Pokaż repertuar";; uk) echo "Show listings";; de) echo "Programm anzeigen";; esac; }
 
@@ -177,7 +177,7 @@ effective_k() { # $1 requested, $2 country count
 # one request's wall-clock rather than one per city.
 rank_cities() { # $1 country, $2 N, $3 optional 1-based start rank
   local country="$1" n="$2" off="${3:-1}" base; base="$(country_base "$country")"
-  [ -n "$base" ] || die "unknown country '$country' (use pl | uk | de)"
+  [ -n "$base" ] || die "unknown country '$country' (use pl | uk | de | us | es)"
   BASE="$base" COUNTRY="$country" TOPN="$n" OFFSET="$off" python3 - <<'PY'
 import os, json, time, urllib.request, concurrent.futures as cf
 base, country, n = os.environ["BASE"], os.environ["COUNTRY"], int(os.environ["TOPN"])

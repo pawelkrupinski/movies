@@ -282,7 +282,8 @@ forward in the next commit; don't undo the push.
 
 ### Worker downtime is fine — keep the web tier answering
 
-**Workers** (`kinowo-worker`, `kinowo-worker-de`, `kinowo-worker-uk`)
+**Workers** (`kinowo-worker`, `kinowo-worker-de`, `kinowo-worker-uk`,
+`kinowo-worker-us`, `kinowo-worker-es`)
 can go fully down without ceremony. They scrape, enrich, and project on
 a cadence; a gap just delays the next cycle and the read model keeps
 serving what's already projected. When moving a machine, swapping a

@@ -82,6 +82,10 @@ class CountryTest {
         // The US spans six zones; the fallback carries a nominal Eastern one
         // that the catalog's per-country value replaces as soon as it loads.
         assertEquals(ZoneId.of("America/New_York"), Country.byCode("us").zoneId)
+        // Spain has two zones — the Canaries run an hour behind the peninsula —
+        // so the fallback carries the peninsular one and the catalog's
+        // per-province value is what actually prunes a Las Palmas showing.
+        assertEquals(ZoneId.of("Europe/Madrid"), Country.byCode("es").zoneId)
     }
 
     @Test

@@ -236,7 +236,7 @@ object Country {
 
   /** The countries a user can SWITCH to from the web navbar: those with a real
    *  deployment host ([[Country.webUrl]] defined), in [[all]] order (Poland,
-   *  UK, Germany, US). The country `<select>` renders only when this holds more than
+   *  UK, Germany, US, Spain). The country `<select>` renders only when this holds more than
    *  one entry. */
   val switchable: Seq[Country] = all.filter(_.webOrigin.isDefined)
 
@@ -265,7 +265,7 @@ object Country {
    *  launching a country. It is silent because nothing fails until a real person
    *  tries to sign in on the new site.
    *
-   *  So all four countries send the provider HERE, and the deployment mounted at
+   *  So every country sends the provider HERE, and the deployment mounted at
    *  the apex ([[servesApex]]) either finishes the flow — when the country that
    *  started it is on this same origin, so the browser is still sending the
    *  cookie holding its CSRF state — or relays it, unchanged, to the one that
@@ -326,7 +326,7 @@ object Country {
    *
    *  Indexed rather than scanned: this is on the path of every film link a page
    *  renders (each one asks its city for the deployment's URL prefix), and the
-   *  scan it replaces walked all four countries' city lists per call. */
+   *  scan it replaces walked every country's city list per call. */
   def of(city: City): Country = byCity.getOrElse(city, default)
 
   private lazy val byCity: Map[City, Country] =
@@ -399,8 +399,8 @@ object Country {
   /** The database holding the SHARED `users` + `userStates` collections.
    *
    *  Everything else about a deployment is per country -- its films, its cities,
-   *  its own `kinowo_uk` / `kinowo_de` database -- but a PERSON is not. The four
-   *  web pods are four addresses onto one product, and an account that exists on
+   *  its own `kinowo_uk` / `kinowo_de` database -- but a PERSON is not. The
+   *  web pods are several addresses onto one product, and an account that exists on
    *  `/uk` and not on `/de` is the same person being told they have no account;
    *  worse, a session cookie that DOES reach the neighbouring country (they share
    *  one origin, see [[mountPath]]) would resolve its `userId` against a database
@@ -414,7 +414,7 @@ object Country {
    *  single-database shape with nothing to configure.
    *
    *  Identity makes the move safe: [[models.User]]`.id` is the lowercased email,
-   *  so the same person already carries the same key in all four databases and
+   *  so the same person already carries the same key in every database and
    *  merging them is a union rather than a re-key. */
   def usersDbName: String = usersDbNameFrom(Env.get("MONGODB_USERS_DB"), resolvedDbName)
 

@@ -12,7 +12,7 @@ description: MongoDB, recorded fixtures and a warm sbt for a country's convergen
 
 inputs:
   code:
-    description: The country's two-letter code (pl / de / uk).
+    description: The country's two-letter code (pl / de / uk / us / es).
     required: true
   token:
     description: A token that can read this repo's runs and releases.

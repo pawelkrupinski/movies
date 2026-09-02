@@ -38,6 +38,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
     httpConfigFor(Country.UnitedKingdom).context shouldBe "/uk/"
     httpConfigFor(Country.Germany).context       shouldBe "/de/"
     httpConfigFor(Country.UnitedStates).context  shouldBe "/us/"
+    httpConfigFor(Country.Spain).context         shouldBe "/es/"
   }
 
   // Poland owns kinowo.net outright: it must stay at the root, byte-for-byte on
@@ -61,6 +62,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
     httpConfigFor(Country.UnitedKingdom).session.path shouldBe "/"
     httpConfigFor(Country.Germany).session.path       shouldBe "/"
     httpConfigFor(Country.UnitedStates).session.path  shouldBe "/"
+    httpConfigFor(Country.Spain).session.path         shouldBe "/"
 
     // Poland is alone on kinowo.net and already mounted at the root; nothing
     // about it moves.
@@ -77,6 +79,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
     httpConfigFor(Country.UnitedKingdom).flash.path shouldBe "/uk/"
     httpConfigFor(Country.Germany).flash.path       shouldBe "/de/"
     httpConfigFor(Country.UnitedStates).flash.path  shouldBe "/us/"
+    httpConfigFor(Country.Spain).flash.path         shouldBe "/es/"
     httpConfigFor(Country.Poland).flash.path        shouldBe "/"
   }
 

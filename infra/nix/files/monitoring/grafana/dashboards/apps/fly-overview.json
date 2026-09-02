@@ -124,7 +124,7 @@
           }
         }
       ],
-      "description": "1 = Prometheus scraped that tier's own /metrics endpoint on the last try. The two tiers are reached completely differently and fail differently: both are k3s NodePorts on the private network now (the workers on 10.20.0.12:30900-30902, the web pods on 30910-30912), so a 0 on either really is that pod being down, wedged or mid-rollout. The 6PN-over-WireGuard hop that used to stand between Prometheus and the web tier went with the Fly frontend, and with it the ambiguity where a red web target could equally mean a dropped tunnel over a site that was serving users perfectly well."
+      "description": "1 = Prometheus scraped that tier's own /metrics endpoint on the last try. The two tiers are reached completely differently and fail differently: both are k3s NodePorts on the private network now (the workers on 10.20.0.12:30900-30904, the web pods on 30910-30914), so a 0 on either really is that pod being down, wedged or mid-rollout. The 6PN-over-WireGuard hop that used to stand between Prometheus and the web tier went with the Fly frontend, and with it the ambiguity where a red web target could equally mean a dropped tunnel over a site that was serving users perfectly well."
     },
     {
       "id": 8,
@@ -281,7 +281,7 @@
     },
     {
       "id": 33,
-      "title": "Web (k3s \u00b7 pl/de/uk) \u2014 films served per city (all future showings)",
+      "title": "Web (k3s \u00b7 all countries) \u2014 films served per city (all future showings)",
       "description": "Distinct films the web is currently serving on each /:city/ page (every film with a future showing), sampled once a minute from the real serving path (toSchedules) and exposed on web /metrics as kinowo_web_movies_served{scope=\"all\"}. A city dropping to 0 here is the read-model-outage signal (a malformed web_movies row empties the whole corpus). The MoviesServedSwing + MoviesServedCityEmpty alerts watch this series.",
       "type": "timeseries",
       "datasource": {
@@ -320,7 +320,7 @@
     },
     {
       "id": 34,
-      "title": "Web (k3s \u00b7 pl/de/uk) \u2014 films served per city (showing tomorrow)",
+      "title": "Web (k3s \u00b7 all countries) \u2014 films served per city (showing tomorrow)",
       "description": "Distinct films each /:city/ page shows for tomorrow (\u22651 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
       "type": "timeseries",
       "datasource": {
@@ -606,7 +606,7 @@
     },
     {
       "id": 10,
-      "title": "Residential proxy \u2014 fetches served vs failed (web tier \u00b7 pl/de/uk, recent 30 min)",
+      "title": "Residential proxy \u2014 fetches served vs failed (web tier \u00b7 all countries, recent 30 min)",
       "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed \u2192 Zyte fallback' is a silent cost regression \u2014 scraping keeps working via Zyte, so no cinema bar goes red. Drives the 'Residential proxy failing' alert.",
       "type": "timeseries",
       "datasource": {
@@ -654,7 +654,7 @@
     },
     {
       "id": 54,
-      "title": "Venues answering with an EMPTY listing (web tier \u00b7 pl/de/uk, recent 30 min)",
+      "title": "Venues answering with an EMPTY listing (web tier \u00b7 all countries, recent 30 min)",
       "description": "How many services report kinowo_uptime_recent_zeroes \u2014 checks that neither succeeded nor failed: the request went through, the response parsed, and it held no screenings. This is the third outcome the /uptime page tracks and the only one no other panel or alert reads, which is what makes it the quietest failure we have: a cinema site that starts answering 200 with an empty listing counts as zero failures, so the proxy panel beside this one stays green, the failure-share alerts stay silent, and the films simply stop arriving. READ THE LEVEL AS A POPULATION, NOT A FAULT \u2014 measured 2026-07-28, ~123 of ~2,766 services sit here at any moment and every one of them had zero successes, which is what a genuinely dormant venue looks like (see the white-cinema sweeps: dormant, not broken). The signal is the STEP: a jump in this count is a batch of venues that just stopped returning results, and that lands later on the films-served and showtime-volume panels below. Which venues is a question for /uptime, which lists them by name \u2014 this panel exists to tell you WHEN to go look.",
       "type": "timeseries",
       "datasource": {
@@ -2579,7 +2579,7 @@
     {
       "id": 49,
       "title": "projection duration heatmap \u2014 bright band high = expensive-film spikes",
-      "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half). \u00b7 EXPECT THIS TO BE EMPTY MOST OF THE TIME, and that is not a fault. It is a rate over readmodel_project_duration_seconds_bucket, and that histogram's _count has sat at 1 since boot on all three workers -- the projector is event-driven and rarely fires. An all-zero heatmap draws as blank. If you want to know whether the read model is moving at all, readmodel_writes_total is the counter that actually increments.",
+      "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half). \u00b7 EXPECT THIS TO BE EMPTY MOST OF THE TIME, and that is not a fault. It is a rate over readmodel_project_duration_seconds_bucket, and that histogram's _count has sat at 1 since boot on every worker -- the projector is event-driven and rarely fires. An all-zero heatmap draws as blank. If you want to know whether the read model is moving at all, readmodel_writes_total is the counter that actually increments.",
       "type": "heatmap",
       "datasource": {
         "type": "prometheus",
@@ -2907,7 +2907,7 @@
     {
       "id": 9010,
       "title": "mongo-1 \u2014 CPU busy, iowait and run queue",
-      "description": "mongo-1 is a 2-vCPU cx23 serving EVERY country at once: the four workers and the four web deployments above all talk to this one machine, so unlike every panel higher up this one does not narrow with the Country variable. Read it against the task-duration and projection panels above \u2014 when p95 task duration climbs with no change in what the workers are doing, this is the first place to look. IOWAIT IS THE INTERESTING LINE, not busy: mongod blocking on the data volume shows up here long before it shows up as a slow query, and it is the shape that precedes a WiredTiger cache too small for the working set (see the memory panel beside this). Run queue is node_load15 divided by core count and scaled to a percentage, so 100% means the box has exactly as much runnable work as it has cores \u2014 sustained above that and processes are waiting for CPU rather than for the disk.",
+      "description": "mongo-1 is a 2-vCPU cx23 serving EVERY country at once: the five workers and the five web deployments above all talk to this one machine, so unlike every panel higher up this one does not narrow with the Country variable. Read it against the task-duration and projection panels above \u2014 when p95 task duration climbs with no change in what the workers are doing, this is the first place to look. IOWAIT IS THE INTERESTING LINE, not busy: mongod blocking on the data volume shows up here long before it shows up as a slow query, and it is the shape that precedes a WiredTiger cache too small for the working set (see the memory panel beside this). Run queue is node_load15 divided by core count and scaled to a percentage, so 100% means the box has exactly as much runnable work as it has cores \u2014 sustained above that and processes are waiting for CPU rather than for the disk.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -3638,7 +3638,7 @@
       ]
     }
   ],
-  "description": "One screen for the whole application, all of it on k3s: three scraping workers (pl, de, uk) and three web deployments (pl, de, uk), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare the three. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy, and -- in the last two rows -- is the one machine both tiers depend on (mongo-1, the database) healthy, and is the machine that drew this page (monitoring-1) still collecting. Those two rows do NOT narrow with the Country variable: there is one mongod and one Prometheus behind every country on this page. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
+  "description": "One screen for the whole application, all of it on k3s: five scraping workers (pl, uk, de, us, es) and five web deployments (pl, uk, de, us, es), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare them all. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy, and -- in the last two rows -- is the one machine both tiers depend on (mongo-1, the database) healthy, and is the machine that drew this page (monitoring-1) still collecting. Those two rows do NOT narrow with the Country variable: there is one mongod and one Prometheus behind every country on this page. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
   "links": [
     {
       "type": "dashboards",

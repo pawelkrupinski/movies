@@ -59,7 +59,7 @@ object AppLoader {
 
   /** Mount the whole application at its country's [[models.Country.mountPath]].
    *
-   *  WHY THIS EXISTS. Three of the four deployments now share one domain and
+   *  WHY THIS EXISTS. Every deployment but Poland's now shares one domain and
    *  are told apart by a path segment — `showtimes.cc/uk/kent/`, not
    *  `uk.showtimes.cc/kent/` — while Poland keeps `kinowo.net/poznan/` at the
    *  root. One process still serves exactly one country against one database;

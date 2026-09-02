@@ -12,7 +12,7 @@
 #     to drop a fresh capture under test/resources/fixtures/today/.
 #
 # Env:
-#   KINOWO_COUNTRY      which country to record: pl (default) | de | uk. The
+#   KINOWO_COUNTRY      which country to record: pl (default) | de | uk | us | es. The
 #                       recorder walks `country.cities`, so WITHOUT this it
 #                       silently records Poland whatever you meant — which is why
 #                       the corpus was Poland-only for as long as it existed and
@@ -77,8 +77,8 @@ fi
 # records a catalogue you didn't ask for while looking like it worked.
 COUNTRY="${KINOWO_COUNTRY:-pl}"
 case "$COUNTRY" in
-    pl|de|uk) ;;
-    *) echo "::error::KINOWO_COUNTRY='$COUNTRY' is not one of pl|de|uk." >&2; exit 1 ;;
+    pl|de|uk|us|es) ;;
+    *) echo "::error::KINOWO_COUNTRY='$COUNTRY' is not one of pl|de|uk|us|es." >&2; exit 1 ;;
 esac
 export KINOWO_COUNTRY="$COUNTRY"
 export KINOWO_COUNTRIES="$COUNTRY"

@@ -26,7 +26,9 @@ case "$CODE" in
     pl) SPEC=convergencePoland  ;;
     de) SPEC=convergenceGermany ;;
     uk) SPEC=convergenceUk      ;;
-    *)  echo "usage: $0 <pl|de|uk>" >&2; exit 2 ;;
+    us) SPEC=convergenceUs      ;;
+    es) SPEC=convergenceSpain   ;;
+    *)  echo "usage: $0 <pl|de|uk|us|es>" >&2; exit 2 ;;
 esac
 
 RELEASE_TAG=convergence-fixtures

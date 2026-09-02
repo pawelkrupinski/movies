@@ -51,7 +51,7 @@ on:
     workflow_dispatch:
         inputs:
             country:
-                description: 'Country to record (pl | de | uk | us)'
+                description: 'Country to record (pl | de | uk | us | es)'
                 required: false
                 default: 'pl'
                 type: choice

@@ -690,7 +690,7 @@ jobs:
               # payload is an image reference, against a key pinned to a forced command on
               # monitoring-1 (infra/nix/modules/roles/k8s-deploy.nix). That endpoint decides which
               # Deployments an image belongs to FROM THE REPOSITORY NAME, so `movies-web` rolls
-              # web-pl/-de/-uk/-us and nothing else; the same key cannot be talked into deploying
+              # web-pl/-de/-uk/-us/-es and nothing else; the same key cannot be talked into deploying
               # anything not in its target list.
               #
               # THIS IS A ROLLING UPDATE OF THE ONLY USER-FACING TIER. The Deployments carry

@@ -1,7 +1,7 @@
 {
   "uid": "kinowo-http",
   "title": "Kinowo \u2014 HTTP (requests & round trips)",
-  "description": "Request rate, response time and outbound fetch health, from the applications' OWN metrics. This replaces what Fly's managed Prometheus used to give (fly_app_http_response_time, fly_edge_*): those tokens are revoked and unmintable, and the app's own numbers are better -- they measure the work rather than the edge, and they keep working off Fly. NOTE the inbound half is NOT scoped by $country, which applies to the OUTBOUND half only. It was written when the web tier served Poland alone; there are now three web deployments (pl, de, uk) on k3s and the inbound panels sum across all of them, so read a request rate or a latency percentile here as the whole product's, not one country's.",
+  "description": "Request rate, response time and outbound fetch health, from the applications' OWN metrics. This replaces what Fly's managed Prometheus used to give (fly_app_http_response_time, fly_edge_*): those tokens are revoked and unmintable, and the app's own numbers are better -- they measure the work rather than the edge, and they keep working off Fly. NOTE the inbound half is NOT scoped by $country, which applies to the OUTBOUND half only. It was written when the web tier served Poland alone; there are now five web deployments (pl, uk, de, us, es) on k3s and the inbound panels sum across all of them, so read a request rate or a latency percentile here as the whole product's, not one country's.",
   "tags": [
     "kinowo",
     "http"

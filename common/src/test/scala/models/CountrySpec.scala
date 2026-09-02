@@ -318,7 +318,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   "A country's mount point" should "be the root for the country that owns its domain and a code segment for the rest" in {
     // ONE setting drives Play's `play.http.context`, the session/flash cookie
-    // paths and every reverse route; the four deployments differ only here.
+    // paths and every reverse route; the deployments differ only here.
     Country.Poland.pathPrefix shouldBe ""
     Country.Poland.mountPath shouldBe "/"
     Country.UnitedKingdom.pathPrefix shouldBe "/uk"

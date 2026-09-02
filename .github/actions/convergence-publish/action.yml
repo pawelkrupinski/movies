@@ -22,7 +22,7 @@ description: Tar the enrichment tree this leg recorded and replace the country's
 
 inputs:
   code:
-    description: The country's two-letter code (pl / de / uk).
+    description: The country's two-letter code (pl / de / uk / us / es).
     required: true
   token:
     description: A token that can write this repo's releases.

@@ -93,6 +93,8 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(Country.byCode("de").languageCode, "de")
         // The US ships no bundle of its own — it reuses the English one.
         XCTAssertEqual(Country.byCode("us").languageCode, "en")
+        // Spain is the only country since Germany to bring a bundle of its own.
+        XCTAssertEqual(Country.byCode("es").languageCode, "es")
     }
 
     /// The in-app "Kraj" section renders only when there's more than one
