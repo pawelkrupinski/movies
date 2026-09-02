@@ -37,8 +37,7 @@ repo_root="$(cd "$flake_dir/.." && pwd)"
 # under `set -u` the script dies with "mongo: unbound variable", naming a variable nobody wrote.
 # This ran on the operator's Mac and did exactly that. `case` works on every bash there is.
 case "$host" in
-  mongo-1)      id=163926647; ip=2.28.56.140 ;;
-  mongo-2)      id=164241785; ip=178.105.221.61 ;;
+  mongo-1)      id=164241785; ip=178.105.221.61 ;;
   monitoring-1) id=164234644; ip=128.140.49.167 ;;
   k3s-worker-1) id=164234589; ip=2.28.47.31 ;;
   *)            id=""; ip="" ;;

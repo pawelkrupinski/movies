@@ -31,7 +31,7 @@
   #
   # convert-host refuses to install if this path is missing on the target or resolves to a volume.
   disko.devices.disk.main = {
-    device = "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_126303519";
+    device = "/dev/disk/by-id/scsi-0QEMU_QEMU_HARDDISK_126555739";
     type = "disk";
     content = {
       type = "gpt";

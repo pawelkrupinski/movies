@@ -27,10 +27,8 @@
 # discoverable -- `GET /v1/primary_ips` returns `"datacenter": null` for all six of these.
 locals {
   primary_ips = {
-    mongo_1_ipv4      = { type = "ipv4", location = "nbg1" }
-    mongo_1_ipv6      = { type = "ipv6", location = "nbg1" }
-    mongo_2_ipv4      = { type = "ipv4", location = "fsn1" }
-    mongo_2_ipv6      = { type = "ipv6", location = "fsn1" }
+    mongo_1_ipv4      = { type = "ipv4", location = "fsn1" }
+    mongo_1_ipv6      = { type = "ipv6", location = "fsn1" }
     monitoring_1_ipv4 = { type = "ipv4", location = "fsn1" }
     monitoring_1_ipv6 = { type = "ipv6", location = "fsn1" }
     k3s_worker_1_ipv4 = { type = "ipv4", location = "fsn1" }
@@ -76,21 +74,11 @@ resource "hcloud_primary_ip" "fleet" {
 # state.
 import {
   to = hcloud_primary_ip.fleet["mongo_1_ipv4"]
-  id = "147084435" # 2.28.56.140
-}
-
-import {
-  to = hcloud_primary_ip.fleet["mongo_1_ipv6"]
-  id = "147084437" # 2a01:4f8:1c19:11e9::/64
-}
-
-import {
-  to = hcloud_primary_ip.fleet["mongo_2_ipv4"]
   id = "147587790" # 178.105.221.61
 }
 
 import {
-  to = hcloud_primary_ip.fleet["mongo_2_ipv6"]
+  to = hcloud_primary_ip.fleet["mongo_1_ipv6"]
   id = "147587791" # 2a01:4f8:c014:7518::/64
 }
 

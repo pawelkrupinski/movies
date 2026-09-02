@@ -87,7 +87,7 @@
     publicAddress = lib.mkOption {
       type = lib.types.str;
       default = "";
-      example = "2.28.56.140";
+      example = "178.105.221.61";
       description = ''
         The host's public IPv4, as pinned in infra/terraform/primary_ips.tf.
 

@@ -29,7 +29,7 @@
 # Configuration, in precedence order:
 #   $KINOWO_MONGO_SSH      environment override (a one-off, or a rescue host)
 #   KINOWO_MONGO_SSH=      in .env.local
-#   root@2.28.56.140       mongo-1's public address, as pinned in
+#   root@178.105.221.61       mongo-1's public address, as pinned in
 #                          infra/nix/hosts/mongo-1/default.nix
 #
 # Contract for callers:
@@ -60,7 +60,7 @@ prod_tunnel_target() {
     from_env="$( { grep -E '^KINOWO_MONGO_SSH=' "$PROD_TUNNEL_ENV_FILE" 2>/dev/null || true; } \
       | head -1 | cut -d= -f2- | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//' )"
   fi
-  printf '%s\n' "${from_env:-root@2.28.56.140}"
+  printf '%s\n' "${from_env:-root@178.105.221.61}"
 }
 
 # Does prod actually ANSWER on :27017, or is the port merely accepting?

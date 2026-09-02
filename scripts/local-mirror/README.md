@@ -67,7 +67,7 @@ starts reading a collection the sync doesn't carry.
    prompt with:
 
    ```
-   ssh -o BatchMode=yes root@2.28.56.140 true      # must exit 0, silently
+   ssh -o BatchMode=yes root@178.105.221.61 true      # must exit 0, silently
    ```
 
    Override the target with `KINOWO_MONGO_SSH=<user>@<host>` in `.env.local`
@@ -272,7 +272,7 @@ laptop the only way in is ssh, and the only far-side address that answers inside
 that session is the loopback one:
 
 ```
-ssh -N -L 27017:127.0.0.1:27017 root@2.28.56.140
+ssh -N -L 27017:127.0.0.1:27017 root@178.105.221.61
 ```
 
 That is a **drop-in** for what `flyctl proxy` published on the same port, which

@@ -90,7 +90,6 @@ resource "hcloud_firewall_attachment" "fleet" {
 
   server_ids = [
     module.mongo_1.id,
-    module.mongo_2.id,
     module.monitoring_1.id,
     module.k3s_worker_1.id,
   ]

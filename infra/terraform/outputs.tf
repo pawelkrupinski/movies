@@ -10,12 +10,6 @@ output "hosts" {
       private_ip = module.mongo_1.private_ip
       volumes    = module.mongo_1.volume_ids
     }
-    mongo-2 = {
-      id         = module.mongo_2.id
-      public_ip  = module.mongo_2.public_ip
-      private_ip = module.mongo_2.private_ip
-      volumes    = module.mongo_2.volume_ids
-    }
     monitoring-1 = {
       id         = module.monitoring_1.id
       public_ip  = module.monitoring_1.public_ip

@@ -65,11 +65,6 @@ module "k3s_worker_1" {
 # `image` is pinned to what each was built from precisely BECAUSE it is ForceNew: declaring anything
 # else here proposes destroying all three. See modules/server/vars.tf.
 import {
-  to = module.mongo_1.hcloud_server.default
-  id = "163926647"
-}
-
-import {
   to = module.monitoring_1.hcloud_server.default
   id = "164234644"
 }

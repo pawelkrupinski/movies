@@ -27,7 +27,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$here/.."
 
 nix_flags=(--extra-experimental-features 'nix-command flakes')
-hosts=(mongo-1 mongo-2 monitoring-1 k3s-worker-1)
+hosts=(mongo-1 monitoring-1 k3s-worker-1)
 failed=0
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }

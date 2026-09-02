@@ -48,7 +48,7 @@
 #   MONGO_CI_SSH_KEY       required — the PRIVATE half of the key pinned to the
 #                          forced command on mongo-1
 #   MONGO_CI_SSH_HOST_KEY  required — mongo-1's host key, one known_hosts line
-#   MONGO_CI_SSH_TARGET    default mongociread@2.28.56.140 (hosts/mongo-1's
+#   MONGO_CI_SSH_TARGET    default mongociread@178.105.221.61 (hosts/mongo-1's
 #                          `fleet.publicAddress`, pinned by terraform)
 #
 # On success it appends KINOWO_CONVERGENCE_SCRAPES_URI to $GITHUB_ENV, so no step
@@ -56,7 +56,7 @@
 set -euo pipefail
 
 PORT="${1:-27018}"
-TARGET="${MONGO_CI_SSH_TARGET:-mongociread@2.28.56.140}"
+TARGET="${MONGO_CI_SSH_TARGET:-mongociread@178.105.221.61}"
 ATTEMPTS="${TUNNEL_ATTEMPTS:-3}"
 PROBE_TRIES="${TUNNEL_PROBE_TRIES:-30}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -70,10 +70,10 @@ WORK="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
 # runner is a fresh machine every night with an empty known_hosts, so trust-on-first-
 # use is trust-on-every-use — no verification at all — and what a wrong host would be
 # handed is the production read credential this script asks for two steps below.
-# Obtain the line with `ssh-keyscan -t ed25519 2.28.56.140`, from somewhere you trust.
+# Obtain the line with `ssh-keyscan -t ed25519 178.105.221.61`, from somewhere you trust.
 if [ -z "${MONGO_CI_SSH_HOST_KEY:-}" ]; then
   echo "[tunnel] MONGO_CI_SSH_HOST_KEY is not set. Refusing to connect unverified:" >&2
-  echo "[tunnel]   ssh-keyscan -t ed25519 2.28.56.140   → the MONGO_CI_SSH_HOST_KEY secret" >&2
+  echo "[tunnel]   ssh-keyscan -t ed25519 178.105.221.61   → the MONGO_CI_SSH_HOST_KEY secret" >&2
   exit 1
 fi
 
