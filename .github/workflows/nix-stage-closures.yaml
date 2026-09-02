@@ -111,6 +111,9 @@ on:
   pull_request:
     paths:
       - 'infra/nix/**'
+      # THE RULE TESTS TOO, because they are the only thing that reads nix/files/monitoring/rules
+      # for meaning and a change to a test alone is a change to what this job would say.
+      - 'infra/test/**'
       - 'infra/flake.nix'
       - 'infra/flake.lock'
       - '.github/workflows/nix-stage-closures.yaml'
@@ -146,6 +149,14 @@ jobs:
         with:
           extra_nix_config: |
             experimental-features = nix-command flakes
+
+      # THE RULES ARE NOT PART OF ANY HOST'S EVALUATION. `nix eval` type-checks the module that
+      # copies nix/files/monitoring/rules into the store; it never opens a file inside, so a rule
+      # that fires backwards evaluates perfectly and reaches Prometheus. This runs the same script
+      # bin/check does -- see infra/test/test_alert_rules.sh for why parsing was not enough.
+      - name: Alerting rules behave as their names claim
+        working-directory: infra
+        run: bash test/test_alert_rules.sh
 
       - name: Every host in the flake evaluates
         working-directory: infra

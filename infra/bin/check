@@ -14,6 +14,8 @@
 #                      matters: it type-checks the whole module tree, runs every `assertions` entry,
 #                      and proves each host would build. A module that references a missing option
 #                      or an unset secret fails here rather than at 03:00 on the auto-apply timer.
+#   alert rule tests   the alerting rules, fed a series and asked what they do -- the question
+#                      `promtool check rules` does not ask and Prometheus never asks at all.
 #   reboot-required    the decision behind `nixos_reboot_required`, whose only other test is to
 #                      reboot a machine and read a metric afterwards -- which is how it stayed
 #                      wrong.
@@ -113,6 +115,25 @@ if [ -f test/test_dashboards.py ]; then
     echo "$out" | tail -25 | sed 's/^/  /'
     failed=1
   fi
+fi
+
+step "alerting rule tests"
+# PROMETHEUS IS THE ONLY THING THAT EVER READ THESE FILES, and it reads them for syntax. An
+# expression that parses and means the opposite of its name loads without complaint and pages
+# forever: `MongodNoPrimary` was `max(state == 1) or vector(0)`, which returns a sample -- and
+# therefore FIRES -- exactly when a member IS primary. It called a healthy database leaderless for
+# as long as it existed, and could only have gone quiet during the outage it was written for.
+# test/alert-rules/ feeds each rule a series and asserts what it does. See test_alert_rules.sh.
+if [ -f test/test_alert_rules.sh ]; then
+  if out="$(bash test/test_alert_rules.sh 2>&1)"; then
+    echo "$out"
+  else
+    echo "$out"
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_alert_rules.sh is missing"
+  failed=1
 fi
 
 step "version-dashboard browser tests"

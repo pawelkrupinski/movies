@@ -244,9 +244,18 @@ groups:
       # `absent()` IS NOT USABLE HERE. The series does not disappear when nobody is primary; it is
       # present and equal to 2 on every member. Counting is the only way to ask the question, and
       # `max` over the whole set is deliberate -- one primary anywhere is enough.
+      #
+      # AND THE `== 0` ON THE END IS THE WHOLE RULE. An alerting expression fires on the PRESENCE of
+      # a sample, never on its truth, so `max(state == 1) or vector(0)` -- which is what this was --
+      # returns a sample of 1 exactly when a member IS primary and paged continuously against a
+      # healthy set, going quiet only in the situation it was written to catch. The comparison is
+      # what turns the two branches into an answer: the left branch survives it only when it is
+      # empty and `vector(0)` has stood in for it, which is to say when no member reports state 1.
+      # Nothing reporting at all lands on the same branch and fires too, deliberately -- a monitor
+      # that cannot see a primary should say so; `MongodReplsetStateAbsent` below explains why.
       # -------------------------------------------------------------------------------------------
       - alert: MongodNoPrimary
-        expr: max(mongodb_mongod_replset_my_state == 1) or vector(0)
+        expr: (max(mongodb_mongod_replset_my_state == 1) or vector(0)) == 0
         # THE SAME TWO MINUTES AS `MongodNotPrimary`, for the same reason: an election is seconds,
         # and a deliberate step-down during a migration should not page. Anything longer than a
         # couple of minutes without a leader is not an election any more.

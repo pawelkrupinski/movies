@@ -1,0 +1,132 @@
+# UNIT TESTS FOR THE MONGOD REPLICA-SET ALERTS, and specifically for the one thing a rule file
+# cannot be read for: WHETHER AN EXPRESSION FIRES WHEN IT SHOULD.
+#
+# `promtool check rules` proves a rule file parses. It says nothing about meaning, and the failure
+# this file was written for is entirely about meaning: `MongodNoPrimary` was
+#
+#     max(mongodb_mongod_replset_my_state == 1) or vector(0)
+#
+# which reads like a question and is not one. AN ALERT FIRES ON THE PRESENCE OF A SAMPLE, NOT ON
+# ITS TRUTH -- and `max(x == 1)` produces a sample precisely when a member IS primary. The rule
+# therefore fired continuously against a perfectly healthy set, and paged with the words "THE SET
+# HAS NO LEADER AND IS REFUSING EVERY WRITE" while mongo-1 was PRIMARY and writing. It could only
+# ever have gone quiet in the one situation it exists to catch.
+#
+# Every case below is written against the state the exporter actually reports (1 PRIMARY,
+# 2 SECONDARY), so the pair `MongodNotPrimary` / `MongodNoPrimary` is pinned together: they overlap
+# by design and the interesting assertions are the ones about which of them stays SILENT.
+rule_files:
+  - ../../nix/files/monitoring/rules/mongodb.rules
+
+evaluation_interval: 1m
+
+tests:
+
+  # ---------------------------------------------------------------------------------------------
+  # THE CASE THAT WAS BROKEN IN PRODUCTION. One member, PRIMARY, healthy -- the live shape of `rs0`
+  # after the nbg1 -> fsn1 move retired the second member. Neither rule may say anything at all.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: a single healthy PRIMARY is silent
+    input_series:
+      - series: 'mongodb_mongod_replset_my_state{host="mongo-1",instance="10.20.0.13:9216",job="mongodb",set="rs0"}'
+        values: "1x15"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MongodNoPrimary
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MongodNotPrimary
+        exp_alerts: []
+
+
+  # ---------------------------------------------------------------------------------------------
+  # A PRIMARY AND A SECONDARY -- the shape of the set for the whole of a migration. The secondary is
+  # doing exactly what it was added to do, so silence from both rules is the requirement.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: a PRIMARY beside a healthy SECONDARY is silent
+    input_series:
+      - series: 'mongodb_mongod_replset_my_state{host="mongo-1",instance="10.20.0.13:9216",job="mongodb",set="rs0"}'
+        values: "1x15"
+      - series: 'mongodb_mongod_replset_my_state{host="mongo-2",instance="10.20.0.14:9216",job="mongodb",set="rs0"}'
+        values: "2x15"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MongodNoPrimary
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MongodNotPrimary
+        exp_alerts: []
+
+
+  # ---------------------------------------------------------------------------------------------
+  # THE FAILURE THE RULE EXISTS FOR. Two members, both SECONDARY: every series is a healthy-looking
+  # 2, `MongodNotPrimary` is correctly silent, and the database is refusing every write.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: two secondaries and no leader fires MongodNoPrimary alone
+    input_series:
+      - series: 'mongodb_mongod_replset_my_state{host="mongo-1",instance="10.20.0.13:9216",job="mongodb",set="rs0"}'
+        values: "2x15"
+      - series: 'mongodb_mongod_replset_my_state{host="mongo-2",instance="10.20.0.14:9216",job="mongodb",set="rs0"}'
+        values: "2x15"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MongodNotPrimary
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: MongodNoPrimary
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations: &no_primary_annotations
+              summary: "no mongod in rs0 is PRIMARY"
+              description: "THE SET HAS NO LEADER AND IS REFUSING EVERY WRITE. Reads still succeed and change streams cannot be opened, so the read tier goes on serving its projection out of memory and passing health checks while the showtimes age -- nothing looks broken.\nOn a set with one voting member this means that member is not PRIMARY and `MongodNotPrimary` will say which state it is in instead. On a set mid-migration it usually means a reconfig left two voters and one of them is unreachable, so neither can take a majority: `mongosh --eval 'rs.status()'` on either box names the member that is not answering."
+
+  # ---------------------------------------------------------------------------------------------
+  # THE ONE-MEMBER SET THAT STEPPED DOWN. Both rules fire, and that is intended: `MongodNotPrimary`
+  # names the state the member is in, `MongodNoPrimary` says the set has no leader.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: a lone member in RECOVERING fires both rules
+    input_series:
+      - series: 'mongodb_mongod_replset_my_state{host="mongo-1",instance="10.20.0.13:9216",job="mongodb",set="rs0"}'
+        values: "3x15"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MongodNotPrimary
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              instance: "10.20.0.13:9216"
+              job: mongodb
+              set: rs0
+              severity: critical
+            exp_annotations:
+              summary: "mongod on mongo-1 is not PRIMARY (state 3)"
+              description: "THIS MEMBER IS NEITHER PRIMARY NOR A HEALTHY SECONDARY. State 0/3/5 is a member still starting or recovering and may clear on its own; 6, 8 or 10 usually means mongod cannot see the replica-set configuration it is registered in, which on this fleet means the member host in that config (`fleet.mongodb.replSetMemberHost`) is not an address mongod is bound to. `mongosh --eval 'rs.status()'` on the box is the first command.\nA SECONDARY (state 2) IS NOT THIS ALERT and never was intended to be -- see the note on the expression. The failure where the set is up and refusing every write is `MongodNoPrimary`: reads succeed, writes fail, and CHANGE STREAMS -- which the web tier's whole live-update path depends on -- cannot be opened, while the read tier keeps serving its projected read model out of memory and passing its health checks. NOTHING LOOKS BROKEN while the showtimes age."
+      - eval_time: 15m
+        alertname: MongodNoPrimary
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations: *no_primary_annotations
+
+  # ---------------------------------------------------------------------------------------------
+  # NOTHING REPORTING AT ALL. `or vector(0)` is what makes the rule answer in this case, and the
+  # answer is deliberately "fires": a monitoring stack that cannot see a primary should say so
+  # loudly rather than go quiet. `MongodReplsetStateAbsent` still explains the absence separately.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: no member state at all still fires
+    input_series:
+      - series: 'up{job="mongodb",instance="10.20.0.13:9216"}'
+        values: "0x15"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: MongodNoPrimary
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+            exp_annotations: *no_primary_annotations
