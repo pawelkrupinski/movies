@@ -273,6 +273,38 @@ class UptimeMonitor(
     }
   }
 
+  /** Every service's counts summed over the buckets at or after `cutoff` — what the
+   *  Prometheus exposition needs, and nothing else.
+   *
+   *  It exists because the obvious spelling (`services.map(s => s -> history(s))`)
+   *  is the /uptime OOM again, on a hot path: `history` materialises all 96 of a
+   *  service's slots INCLUDING each one's error strings, and the US registers one
+   *  service per venue (5,031), so a scrape allocated ~484k `BucketSnapshot`s plus
+   *  their error lists — every 30 seconds, forever, in the 768m heap that also
+   *  holds the read model. That is what OOM-killed `web-us` repeatedly, and since
+   *  `pekko.jvm-exit-on-fatal-error` exits rather than limps, a scrape of an
+   *  operational endpoint took the public site down for a restart.
+   *
+   *  The window is applied in the SKIP-LIST, not after the fact: `tailMap` touches
+   *  only the two or three slots a 30-minute window spans, and one small
+   *  [[RecentTotals]] per service replaces 96 snapshots. Services with no bucket in
+   *  the window still appear, at zero — a gauge that vanishes when a service goes
+   *  quiet reads as "no data" to an alert that needs to see the zero. */
+  def recentTotals(cutoff: Long): Seq[(String, RecentTotals)] =
+    data.entrySet().asScala.toSeq.map { entry =>
+      var successes = 0
+      var failures  = 0
+      var zeroes    = 0
+      val it = entry.getValue.tailMap(cutoff, true).values().iterator()
+      while (it.hasNext) {
+        val b = it.next()
+        successes += b.successes.get()
+        failures  += b.failures.get()
+        zeroes    += b.zeroes.get()
+      }
+      entry.getKey -> RecentTotals(successes, failures, zeroes)
+    }
+
   def services: Set[String] = data.keySet().asScala.toSet
 
   // ── Per-service tags (generic per-row labels) ────────────────────────────────
@@ -644,6 +676,11 @@ object UptimeMonitor {
     // this just lets the /uptime page mark the bar "served via Filmweb".
     val fallback = new AtomicBoolean(false)
   }
+
+  /** One service's counts over a time window — the whole of what the Prometheus
+   *  exposition reads, deliberately without the error strings a [[BucketSnapshot]]
+   *  carries. See [[UptimeMonitor.recentTotals]]. */
+  case class RecentTotals(successes: Int, failures: Int, zeroes: Int)
 
   /** A bucket's cumulative counts captured for one flush. */
   case class BucketWrite(

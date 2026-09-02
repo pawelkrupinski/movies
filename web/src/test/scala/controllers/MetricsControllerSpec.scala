@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.UptimeMonitor
-import services.UptimeMonitor.BucketSnapshot
+import services.UptimeMonitor.RecentTotals
 import services.metrics.WebJvmMetrics
 import services.readmodel.TestReadModel
 
@@ -18,28 +18,22 @@ import services.readmodel.TestReadModel
  */
 class MetricsControllerSpec extends AnyFlatSpec with Matchers {
 
-  private val now = 1_700_000_000_000L
-  private def minutesAgo(m: Int) = now - m * 60 * 1000L
+  // The window is applied by `UptimeMonitor.recentTotals` now, not here — the
+  // roster is one service per venue and summing 96 slots apiece on every scrape is
+  // what OOM-killed `web-us`. `UptimeMonitorSpec` owns the windowing tests; these
+  // own the exposition format.
+  "render" should "emit each family's total per service" in {
+    val totals = Seq("Residential proxy" -> RecentTotals(successes = 1, failures = 15, zeroes = 2))
 
-  "render" should "sum only the buckets inside the recent window, per family" in {
-    val snapshots = Map(
-      "Residential proxy" -> Seq(
-        BucketSnapshot(minutesAgo(5), successes = 0, failures = 12, zeroes = 0, errors = Seq("boom")),
-        BucketSnapshot(minutesAgo(1), successes = 1, failures = 3, zeroes = 0, errors = Nil),
-        // 40 min old — outside the 30-min window, must NOT count.
-        BucketSnapshot(minutesAgo(40), successes = 99, failures = 99, zeroes = 0, errors = Nil)
-      )
-    )
-
-    val out = MetricsController.render(snapshots, now, "pl")
+    val out = MetricsController.render(totals, "pl")
 
     out should include ("kinowo_uptime_recent_failures{country=\"pl\",service=\"Residential proxy\"} 15")
     out should include ("kinowo_uptime_recent_successes{country=\"pl\",service=\"Residential proxy\"} 1")
-    out should not include "99" // the stale bucket is excluded entirely
+    out should include ("kinowo_uptime_recent_zeroes{country=\"pl\",service=\"Residential proxy\"} 2")
   }
 
   it should "emit one HELP and TYPE header per metric family" in {
-    val out = MetricsController.render(Map("X" -> Seq(BucketSnapshot(now, 1, 0, 0, Nil))), now, "pl")
+    val out = MetricsController.render(Seq("X" -> RecentTotals(1, 0, 0)), "pl")
 
     out should include ("# TYPE kinowo_uptime_recent_successes gauge")
     out should include ("# TYPE kinowo_uptime_recent_failures gauge")
@@ -48,9 +42,15 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "escape quotes in a service-name label value" in {
-    val out = MetricsController.render(Map("weird\"name" -> Seq(BucketSnapshot(now, 1, 0, 0, Nil))), now, "pl")
+    val out = MetricsController.render(Seq("weird\"name" -> RecentTotals(1, 0, 0)), "pl")
 
     out should include ("service=\"weird\\\"name\"")
+  }
+
+  it should "emit services in name order, so the exposition is deterministic" in {
+    val out = MetricsController.render(Seq("Zeta" -> RecentTotals(1, 0, 0), "Alpha" -> RecentTotals(1, 0, 0)), "pl")
+
+    out.indexOf("service=\"Alpha\"") should be < out.indexOf("service=\"Zeta\"")
   }
 
   "the controller" should "serve recorded uptime health as Prometheus text" in {

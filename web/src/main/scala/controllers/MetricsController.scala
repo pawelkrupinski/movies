@@ -3,7 +3,7 @@ package controllers
 import models.Country
 import play.api.mvc._
 import services.UptimeMonitor
-import services.UptimeMonitor.BucketSnapshot
+import services.UptimeMonitor.RecentTotals
 import services.metrics.WebJvmMetrics
 
 /**
@@ -39,8 +39,11 @@ import services.metrics.WebJvmMetrics
 class MetricsController(cc: ControllerComponents, monitor: UptimeMonitor, movieMetrics: WebMovieMetrics,
   jvmMetrics: WebJvmMetrics, country: String = Country.default.code) extends AbstractController(cc) {
   def metrics: Action[AnyContent] = Action {
-    val snapshots = monitor.services.iterator.map(service => service -> monitor.history(service)).toMap
-    val body = MetricsController.render(snapshots, System.currentTimeMillis(), country) +
+    // Windowed AND summed by the monitor, not here. Pulling each service's full
+    // `history` to sum it in the controller is what OOM-killed `web-us` on a
+    // 30-second scrape loop — see `UptimeMonitor.recentTotals`.
+    val totals = monitor.recentTotals(System.currentTimeMillis() - MetricsController.RecentWindowMs)
+    val body = MetricsController.render(totals, country) +
       movieMetrics.render() + jvmMetrics.render()
     Ok(body).as("text/plain; version=0.0.4; charset=utf-8")
   }
@@ -54,7 +57,7 @@ object MetricsController {
    *  actively failing and falls back to 0 once it recovers. */
   val RecentWindowMs: Long = 30 * 60 * 1000L
 
-  private case class Family(name: String, help: String, value: BucketSnapshot => Int)
+  private case class Family(name: String, help: String, value: RecentTotals => Int)
   private val Families = Seq(
     Family("kinowo_uptime_recent_successes", "Successful uptime checks per service in the last 30 minutes.", _.successes),
     Family("kinowo_uptime_recent_failures", "Failed uptime checks per service in the last 30 minutes.", _.failures),
@@ -62,24 +65,22 @@ object MetricsController {
   )
 
   /** Render the Prometheus text exposition (version 0.0.4) of every service's
-   *  recent health. Pure — the controller supplies the `monitor.history`
-   *  snapshots and the clock — so it's unit-tested without an HTTP round-trip.
-   *  Services are emitted in name order so the output (and its tests) are
-   *  deterministic. */
-  def render(snapshotsByService: Map[String, Seq[BucketSnapshot]], nowMs: Long, country: String): String = {
-    val cutoff = nowMs - RecentWindowMs
-    val recent = snapshotsByService.view
-      .mapValues(_.filter(_.timestamp >= cutoff))
-      .toSeq
-      .sortBy(_._1)
+   *  recent health. Pure — the controller supplies the already-windowed per-service
+   *  totals — so it's unit-tested without an HTTP round-trip. Services are emitted
+   *  in name order so the output (and its tests) are deterministic.
+   *
+   *  It takes TOTALS rather than buckets on purpose: with one service per venue the
+   *  US roster is 5,031 rows, and handing this the raw slots to sum meant
+   *  materialising them all on every 30-second scrape. */
+  def render(totalsByService: Seq[(String, RecentTotals)], country: String): String = {
+    val recent = totalsByService.sortBy(_._1)
     val sb = new StringBuilder
     Families.foreach { family =>
       sb.append("# HELP ").append(family.name).append(' ').append(family.help).append('\n')
       sb.append("# TYPE ").append(family.name).append(" gauge\n")
-      recent.foreach { case (service, buckets) =>
-        val total = buckets.foldLeft(0)((acc, bucket) => acc + family.value(bucket))
+      recent.foreach { case (service, totals) =>
         sb.append(family.name).append("{country=\"").append(country).append("\",service=\"")
-          .append(escapeLabel(service)).append("\"} ").append(total).append('\n')
+          .append(escapeLabel(service)).append("\"} ").append(family.value(totals)).append('\n')
       }
     }
     sb.toString

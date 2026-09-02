@@ -447,4 +447,80 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.history("Kino Praha").head.fallback shouldBe false
     notifications shouldBe 2
   }
+
+  // ── recentTotals: the Prometheus exposition's read path ─────────────────────
+  //
+  // `/metrics` is scraped every 30 seconds and the US registers one service per
+  // venue (5,031), so this is the hottest roster-sized read in the process. The
+  // tests below pin both halves of what it owes: the same sums the old
+  // history-then-filter spelling produced, and a fraction of its allocation.
+
+  "recentTotals" should "sum only the buckets at or after the cutoff, per service" in {
+    val monitor = new UptimeMonitor()
+    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val step = UptimeMonitor.BucketDurationMs
+    monitor.applyExternalUpdate("Residential proxy", base - 4 * step, successes = 99, failures = 99, zeroes = 99, 0L, 0, Seq.empty)
+    monitor.applyExternalUpdate("Residential proxy", base - 1 * step, successes = 0,  failures = 12, zeroes = 1, 0L, 0, Seq("boom"))
+    monitor.applyExternalUpdate("Residential proxy", base,            successes = 1,  failures = 3,  zeroes = 0, 0L, 0, Seq.empty)
+    monitor.applyExternalUpdate("TMDB",              base,            successes = 7,  failures = 0,  zeroes = 0, 0L, 0, Seq.empty)
+
+    val totals = monitor.recentTotals(base - 2 * step).toMap
+
+    totals("Residential proxy") shouldBe UptimeMonitor.RecentTotals(successes = 1, failures = 15, zeroes = 1)
+    totals("TMDB")              shouldBe UptimeMonitor.RecentTotals(successes = 7, failures = 0,  zeroes = 0)
+  }
+
+  // A gauge that disappears when a service goes quiet reads as "no data" to an
+  // alert that needs to see the zero — so a service whose every bucket predates
+  // the window still gets a row.
+  it should "still emit a service whose buckets all fall outside the window" in {
+    val monitor = new UptimeMonitor()
+    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    monitor.applyExternalUpdate("Quiet cinema", base - 10 * UptimeMonitor.BucketDurationMs,
+      successes = 5, failures = 5, zeroes = 5, 0L, 0, Seq.empty)
+
+    monitor.recentTotals(base) shouldBe Seq("Quiet cinema" -> UptimeMonitor.RecentTotals(0, 0, 0))
+  }
+
+  /** Heap allocated by `work` on this thread. HotSpot-only; the suite runs on
+   *  Adoptium everywhere (CI and dev), so an absent bean is a real failure. */
+  private def allocatedBytes(work: => Any): Long = {
+    val bean = java.lang.management.ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
+    val id = Thread.currentThread().threadId()
+    val before = bean.getThreadAllocatedBytes(id)
+    val result = work
+    val after = bean.getThreadAllocatedBytes(id)
+    if (result == null) 0L else after - before
+  }
+
+  // THE OOM THIS METHOD EXISTS FOR. `MetricsController` used to build
+  // `services.map(s => s -> history(s)).toMap`, which materialises all 96 of every
+  // service's slots INCLUDING their error strings — on a US-sized roster that is
+  // ~484k objects every 30 seconds, and `web-us` crash-looped roughly hourly on it.
+  // Assert against the old spelling rather than an absolute byte count, so the
+  // bound calibrates itself to whatever the JVM and collections cost today.
+  it should "allocate an order of magnitude less than materialising every service's history" in {
+    val monitor = new UptimeMonitor()
+    val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
+    val step = UptimeMonitor.BucketDurationMs
+    val services = (1 to 1000).map(i => s"Cinema $i")
+    services.foreach { service =>
+      (0 until UptimeMonitor.MaxBuckets).foreach { slot =>
+        monitor.applyExternalUpdate(service, base - slot * step,
+          successes = 3, failures = 1, zeroes = 0, 0L, 0, Seq("connect timed out", "certificate_expired"))
+      }
+    }
+    val cutoff = base - 2 * step
+
+    // Warm both paths so classloading and JIT setup do not land in the measurement.
+    monitor.services.iterator.map(service => service -> monitor.history(service)).toMap
+    monitor.recentTotals(cutoff)
+
+    val viaHistory = allocatedBytes(monitor.services.iterator.map(service => service -> monitor.history(service)).toMap)
+    val viaTotals  = allocatedBytes(monitor.recentTotals(cutoff))
+
+    withClue(s"history=${viaHistory / 1024}KiB totals=${viaTotals / 1024}KiB: ") {
+      viaTotals should be < viaHistory / 10
+    }
+  }
 }
