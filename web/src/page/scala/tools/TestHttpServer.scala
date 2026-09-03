@@ -63,7 +63,7 @@ class TestHttpServer(
         val rawQ = exception.getRequestURI.getRawQuery
         // Routes match on the path-plus-query, because several tests boot a
         // page with a parameter already in `location.search` (`/?date=tomorrow`)
-        // and the route has to see it. Path-only routes (`/`, `/plan`,
+        // and the route has to see it. Path-only routes (`/`,
         // `/movie/{slug}`) don't come through with a query attached, so they keep
         // matching on the bare path — `routeKey` is the path verbatim when
         // there's no query at all.

@@ -5,7 +5,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.readmodel.TestReadModel
 
 import java.time.LocalDateTime
 
@@ -153,24 +152,4 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     contentAsString(res) shouldBe "Nieznane miasto: nieznane"
   }
 
-  private def planController(country: models.Country) =
-    new PlanController(
-      cc                     = play.api.test.Helpers.stubControllerComponents(),
-      movieControllerService = new MovieControllerService(TestReadModel.fromRecords(Seq.empty)),
-      userRepository         = new services.users.InMemoryUserRepository,
-      oauthProviders         = Set.empty,
-      environment            = play.api.Mode.Test,
-      servingCountry         = country,
-    )(using testsupport.TestMessages.deployment)
-
-  /** `/plan` resolved through the bare global `City.bySlug`, so it was the one
-   *  city-scoped page that answered for a city this deployment does not serve —
-   *  Berlin rendered an empty planner on the Polish host, the "successful
-   *  nothing-on-today" answer `MovieController.withCity` exists to prevent. */
-  "The plan page" should "404 a city of another country, and serve one of its own" in {
-    val pl = planController(models.Country.Poland)
-    status(pl.plan("berlin")(FakeRequest(GET, "/berlin/plan"))) shouldBe NOT_FOUND
-    status(pl.plan("london")(FakeRequest(GET, "/london/plan"))) shouldBe NOT_FOUND
-    status(pl.plan("krakow")(FakeRequest(GET, "/krakow/plan"))) shouldBe OK
-  }
 }

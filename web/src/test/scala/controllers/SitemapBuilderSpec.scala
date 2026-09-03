@@ -52,7 +52,6 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
 
     xml should include("<loc>https://showtimes.cc/uk/</loc>")
     xml should include("<loc>https://showtimes.cc/uk/kent/</loc>")
-    xml should include("<loc>https://showtimes.cc/uk/kent/plan</loc>")
     xml should include("<loc>https://showtimes.cc/uk/kent/movie/belle</loc>")
     xml should not include "/uk/uk/"
   }
@@ -75,12 +74,10 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     xml should not include "<priority>"
   }
 
-  it should "emit a listing + plan URL for each city" in {
+  it should "emit a listing URL for each city" in {
     val xml = SitemapBuilder.build(Origin, Country.Poland, entries)
     xml should include(s"<loc>$Origin/poznan/</loc>")
-    xml should include(s"<loc>$Origin/poznan/plan</loc>")
     xml should include(s"<loc>$Origin/wroclaw/</loc>")
-    xml should include(s"<loc>$Origin/wroclaw/plan</loc>")
   }
 
   /** A US metro is a city like any other — one listing URL, no level below it.
@@ -95,7 +92,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
 
     val us = SitemapBuilder.build(Brand, Country.UnitedStates, Seq(losAngeles -> Nil))
     us should include(s"<loc>$Brand/us/los-angeles/</loc>")
-    count(us, s"$Brand/us/los-angeles/") shouldBe 2                // the listing + plan
+    count(us, s"$Brand/us/los-angeles/") shouldBe 1                // the listing
     us should not include s"$Brand/us/los-angeles/santa-monica/"
 
     val uk = SitemapBuilder.build(Brand, Country.UnitedKingdom, Seq(London -> Nil))
@@ -126,7 +123,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     val xml = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = Some("2026-06-28"))
     xml should include("<lastmod>2026-06-28</lastmod>")
     xml should not include "<lastmod></lastmod>"
-    // Every city listing, plan and film URL regenerates with the read model…
+    // Every city listing and film URL regenerates with the read model…
     count(xml, "<lastmod>2026-06-28</lastmod>") shouldBe (xml.split("<url>").length - 2)
   }
 

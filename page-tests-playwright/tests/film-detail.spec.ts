@@ -98,12 +98,11 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
   for (const { from, label } of [
     { from: '/poznan/',      label: 'Filmy' },
     { from: '/poznan/movies', label: 'Filmy' },
-    { from: '/poznan/plan',  label: 'Plan'  },
   ]) {
     test(`the ← back link reads "${label}" and returns to ${from} when that was the referrer`, async ({ page }) => {
       // Land on the source page first so document.referrer is set when
-      // /movie loads. Pull a title off the embedded grid (homepage cards
-      // OR /plan picker cards both carry `data-title`) and navigate via
+      // /movie loads. Pull a title off the embedded grid (the homepage
+      // cards carry `data-title`) and navigate via
       // `window.location.href = …` so the browser writes a real
       // Referer header — `page.goto(referer: …)` would also work but
       // this exercises the same code path a user's card-tap takes.

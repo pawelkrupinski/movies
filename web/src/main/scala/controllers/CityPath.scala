@@ -5,7 +5,7 @@ import models.City
 /** The absolute path every one of a city's pages hangs off — `/poznan` on a
  *  country that owns its domain, `/uk/kent` on one mounted under a country
  *  segment of the shared brand domain. No trailing slash: callers append the
- *  page (`+ "/"`, `+ "/plan"`, `+ "/movie/$slug"`).
+ *  page (`+ "/"`, `+ "/movie/$slug"`).
  *
  *  Exists because the mount point is the easiest thing in this codebase to
  *  forget. Play strips `play.http.context` before matching routes, so inside a

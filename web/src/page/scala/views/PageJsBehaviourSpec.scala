@@ -103,15 +103,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val manyCinemasHtml: String = views.html.film(
         tools.ManyCinemaFilm(schedules.head), "http://test.local/movie-many",
         ogDescription = "", devMode = false).body
-      // `/plan` is static for the fixture corpus — the poster picker +
-      // "Twoje filmy" plan. Drives the Filmy-section fold behaviour
-      // (collapse on header click, expand on a click anywhere while
-      // folded) wired by the inline <script> in plan.scala.html.
-      val planHtml: String = views.html.plan(
-        controllers.PlanController.viewData(city, schedules),
-        cinemas, pills, devMode = false,
-        currentUser = anon, oauthProviders = noOauth
-      ).body
       // Logged-in render of the index so the inline config sets
       // `IS_LOGGED_IN = true` and shared.js runs its server-sync boot path.
       // Served at `/li`; the `/api/me/state` route below stands in for the
@@ -209,7 +200,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
           case p if sub(p).startsWith("/movie/") =>
             renderFilm(sub(p).stripPrefix("/movie/"))
-          case p if { val s = sub(p); s == "/plan" || s.startsWith("/plan?") } => planHtml
           case p if sub(p) == "/li"           => loggedInHtml
           case p if sub(p) == "/li-oauth"     => loggedInOauthHtml
           case p if p == "/api/me/state"      => userStateJson
@@ -3597,96 +3587,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── /plan Filmy-section fold ─────────────────────────────────────────────
-  // The poster picker collapses when its header bar is clicked, and the
-  // collapsed strip re-expands when clicked anywhere. State persists in
-  // the `planPostersFolded` localStorage key. See `wirePostersFold` /
-  // `planApplyPostersFold` in plan.scala.html.
-
-  // localStorage is per-origin and survives `openPage`'s fresh tab, so
-  // a fold set by one test leaks into the next. Reset to the expanded
-  // default (no key) and re-sync the DOM before each fold assertion.
-  private def resetFold(page: CdpPage): Unit =
-    page.eval("localStorage.removeItem('planPostersFolded'); planApplyPostersFold()")
-
-  private def isFolded(page: CdpPage): Boolean =
-    page.evalBool("document.getElementById('filmy-section').classList.contains('folded')")
-
-  private def rowDisplay(page: CdpPage): String =
-    page.evalString("getComputedStyle(document.getElementById('plan-movies-row')).display")
-
-  "the /plan Filmy section" should "start expanded with the poster grid visible" in {
-    onPath("/plan") { page =>
-      resetFold(page)
-      isFolded(page) shouldBe false
-      rowDisplay(page) should not be "none"
-      page.evalString("document.getElementById('plan-filmy-header').getAttribute('aria-expanded')") shouldBe "true"
-    }
-  }
-
-  it should "collapse when the header bar is clicked, hiding the grid and persisting the state" in {
-    onPath("/plan") { page =>
-      resetFold(page)
-      page.eval("document.getElementById('plan-filmy-header').click()")
-      isFolded(page) shouldBe true
-      rowDisplay(page) shouldBe "none"
-      page.evalString("localStorage.getItem('planPostersFolded')") shouldBe "1"
-      page.evalString("document.getElementById('plan-filmy-header').getAttribute('aria-expanded')") shouldBe "false"
-      page.evalString(
-        "document.querySelector('#filmy-section .plan-collapse-label').textContent"
-      ) shouldBe "Rozwiń plakaty"
-    }
-  }
-
-  it should "re-expand when the collapsed strip is clicked anywhere" in {
-    onPath("/plan") { page =>
-      resetFold(page)
-      page.eval("document.getElementById('plan-filmy-header').click()")
-      isFolded(page) shouldBe true
-
-      // A click on the section body (not just the header) while folded
-      // re-expands — the whole collapsed strip is the click target.
-      page.eval("document.getElementById('filmy-section').click()")
-      isFolded(page) shouldBe false
-      rowDisplay(page) should not be "none"
-      page.evalBool("localStorage.getItem('planPostersFolded') === null") shouldBe true
-    }
-  }
-
-  it should "not collapse when a poster inside the expanded grid is clicked" in {
-    onPath("/plan") { page =>
-      resetFold(page)
-      // Clicking a poster toggles its selection; it must NOT also fold
-      // the picker (only header clicks collapse while expanded). Click
-      // the poster wrap, not the title `<a>` — the latter navigates.
-      page.evalBool("!!document.querySelector('#plan-movies-row .plan-card .poster-wrap')") shouldBe true
-      page.eval("document.querySelector('#plan-movies-row .plan-card .poster-wrap').click()")
-      isFolded(page) shouldBe false
-    }
-  }
-
-  it should "keep the folded state across a reload" in {
-    onPath("/plan") { page =>
-      resetFold(page)
-      page.eval("document.getElementById('plan-filmy-header').click()")
-      isFolded(page) shouldBe true
-      page.reload()
-      isFolded(page) shouldBe true
-      rowDisplay(page) shouldBe "none"
-    }
-  }
-
-  it should "toggle via Enter on the focused header (keyboard a11y)" in {
-    onPath("/plan") { page =>
-      resetFold(page)
-      page.eval(
-        "(() => { const h = document.getElementById('plan-filmy-header'); h.focus();" +
-        " h.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true})); })()"
-      )
-      isFolded(page) shouldBe true
-    }
-  }
-
   // ── /debug/tune ± step buttons ───────────────────────────────────────────
 
   "the /debug/tune slider ± buttons" should "step the value and update the CSS var on the preview" in {
@@ -4518,7 +4418,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // (its path is the host root), so switching between them is a plain
   // navigation and stays signed in by itself. kinowo.net is a different
   // registrable domain, where no cookie setting can reach — go there directly
-  // and the visitor arrives signed out, hidden films and /plan picks apparently
+  // and the visitor arrives signed out, hidden films apparently
   // gone. `countrySwitchTarget` is the decision between the two, asserted here
   // in a real browser because it reads BOTH facts off the rendered page: whether
   // an avatar menu is present, and what this deployment's own base URL is.

@@ -17,7 +17,7 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
   private implicit val city: models.City = models.Poznan
 
   private def render(devMode: Boolean): String =
-    views.html._navbar(activePage = "films", devMode = devMode,
+    views.html._navbar(devMode = devMode,
       currentUser = None, oauthProviders = Set.empty).body
 
   "navbar partial" should "not render a Filmy nav link" in {

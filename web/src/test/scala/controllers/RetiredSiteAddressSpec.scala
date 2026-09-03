@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 class RetiredSiteAddressSpec extends AnyFlatSpec with Matchers {
 
   "the destination" should "be the same path on the live origin" in {
-    RetiredSite.destination("https://kinowo.net", "/poznan/plan", "") shouldBe "https://kinowo.net/poznan/plan"
+    RetiredSite.destination("https://kinowo.net", "/poznan/movies", "") shouldBe "https://kinowo.net/poznan/movies"
   }
 
   it should "carry the query string, which is the whole request for a filtered call" in {

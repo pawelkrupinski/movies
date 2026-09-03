@@ -32,7 +32,6 @@ GET     /:city/movies               controllers.MovieController.browse(city: Str
 GET     /:city/film                 controllers.MovieController.filmLegacy(city: String)
 GET     /:city/film/*rest           controllers.MovieController.filmSubPathLegacy(city: String, rest: String)
 GET     /:city/filmy                controllers.MovieController.browseLegacy(city: String)
-GET     /:city/plan                 controllers.PlanController.plan(city: String)
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────
 GET     /:city/api/repertoire       controllers.MovieController.apiRepertoire(city: String)
@@ -221,7 +220,7 @@ POST    /admin/config/reset              controllers.EnvConfigController.reset()
 GET     /robots.txt                 controllers.MovieController.robotsTxt
 
 # ── sitemap.xml ─────────────────────────────────────────────────────────────────
-# Full crawl map (landing + every city listing/plan + every film a city shows),
+# Full crawl map (landing + every city listing + every film a city shows),
 # built from the warm read model. Advertised in robots.txt so crawlers index the
 # long-tail film URLs without having to discover them by link-walking.
 GET     /sitemap.xml                controllers.MovieController.sitemap

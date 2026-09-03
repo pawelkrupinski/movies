@@ -210,7 +210,7 @@ class AppComponents(context: Context)
   // asset URLs in every template) emits the deployment's mount point too.
   lazy val router: Router =
     AppLoader.rootOperationalRoutes(healthController.check, metricsController.metrics)
-      .orElse(new Routes(httpErrorHandler, landingController, wellKnownController, movieController, planController, catalogController, clientSupportController, debugStreamController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, assets)
+      .orElse(new Routes(httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, debugStreamController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, assets)
         .withPrefix(httpConfiguration.context))
 
   start()

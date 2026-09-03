@@ -72,7 +72,6 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should include("<urlset")
     body should include("<loc>https://kinowo.net/</loc>")
     body should include("<loc>https://kinowo.net/poznan/</loc>")
-    body should include("<loc>https://kinowo.net/poznan/plan</loc>")
     body should include("<loc>https://kinowo.net/poznan/movie/testowy-film</loc>")
   }
 

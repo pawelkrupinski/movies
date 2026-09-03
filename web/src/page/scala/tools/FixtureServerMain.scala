@@ -105,11 +105,6 @@ object FixtureServerMain {
       implicit val ci: City = c
       views.html.browse(schedulesFor(c), "Filmy", devMode = false, currentUser = anon, oauthProviders = noOauth).body
     }
-    def planPageFor(c: City): String = {
-      implicit val ci: City = c
-      views.html.plan(controllers.PlanController.viewData(c, schedulesFor(c)),
-        c.cinemaDisplayNames, c.cinemaPillMap, devMode = false, currentUser = anon, oauthProviders = noOauth).body
-    }
     // Mirrors `MovieController.filmBySlug`: re-slug the corpus's titles and
     // match, since the slug fold is lossy and can't be reversed.
     def filmPageFor(c: City, slug: String): String = {
@@ -174,7 +169,6 @@ object FixtureServerMain {
           case s if s.startsWith("/movies?") &&
                      (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => browsePageFor(c)
           case s if s.startsWith("/movies?")                => indexPageFor(c)
-          case s if s == "/plan" || s.startsWith("/plan?") => planPageFor(c)
           case "/movie-many"                                => manyCinemaFilmPageFor(c)
           case s if s.startsWith("/movie/") =>
             filmPageFor(c, s.stripPrefix("/movie/"))

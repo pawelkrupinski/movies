@@ -14,7 +14,7 @@ import play.api.mvc._
  *     one. A person who typed the old host or followed an old bookmark is told
  *     so, rather than silently landing somewhere else and never updating it.
  *   - EVERYTHING ELSE redirects permanently ([[RetiredSite.redirectStatus]]).
- *     Deep links (a film page, `/plan`, every `/api/…` the mobile apps call)
+ *     Deep links (a film page, every `/api/…` the mobile apps call)
  *     have no reader to inform — they have a client that wants the resource, and
  *     a redirect is what gets it there. It is also what keeps SHARE PREVIEWS
  *     intact: Facebook, Slack, WhatsApp and Telegram all follow a 30x when they

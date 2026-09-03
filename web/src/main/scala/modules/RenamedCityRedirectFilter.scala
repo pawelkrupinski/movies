@@ -17,11 +17,11 @@ import scala.concurrent.Future
  * flag day.
  *
  * A FILTER rather than a branch in `MovieController.withCity` because the slug
- * appears in sixteen routes — the index, the film pages, `/plan`, three `/api/…`
+ * appears in fifteen routes — the index, the film pages, three `/api/…`
  * endpoints the mobile apps call, both OG-image endpoints — and `withCity` is
  * handed only the slug, never the path it has to rewrite. One filter covers
  * every route that exists now and every one added later; the alternative is
- * remembering this at sixteen call sites.
+ * remembering this at fifteen call sites.
  *
  * The rewrite is confined to the CITY segment: the path is split after the
  * deployment's mount point, and only that first segment is looked up. A film

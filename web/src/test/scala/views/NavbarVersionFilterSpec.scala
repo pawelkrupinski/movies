@@ -17,7 +17,7 @@ class NavbarVersionFilterSpec extends AnyFlatSpec with Matchers {
 
   private def render(city: models.City): String = {
     given models.City = city
-    views.html._navbar(activePage = "films", devMode = false,
+    views.html._navbar(devMode = false,
       currentUser = None, oauthProviders = Set.empty).body
   }
 

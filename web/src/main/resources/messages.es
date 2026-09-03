@@ -101,7 +101,6 @@ film.titleSuffix=– sesiones en {0} | {1}
 
 # ── Film page back-nav ──────────────────────────────────────────────────────
 back.films=Películas
-back.plan=Plan
 back.back=Atrás
 back.repertoire=Cartelera
 

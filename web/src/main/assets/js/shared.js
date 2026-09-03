@@ -64,7 +64,7 @@
   }
 
   // Sort select changed — re-run the page's filter+sort pass. Guarded for
-  // pages that render the navbar but have no real grid (/plan's stub
+  // pages that render the navbar but have no real grid (the stub
   // applyFilters is harmless, but a page without one at all mustn't throw).
   function onSortChange() {
     if (typeof applyFilters === 'function') applyFilters();
@@ -128,7 +128,7 @@
   // root), so those hops are a plain navigation and stay signed in by
   // themselves. kinowo.net is a different registrable domain, where no cookie
   // setting can reach: navigate there directly and the visitor arrives signed
-  // out with their hidden films and /plan picks apparently gone. `/auth/sso/start`
+  // out with their hidden films apparently gone. `/auth/sso/start`
   // mints a one-shot code here and hands it over, and the far side sets its own
   // session before landing them. `#auth-menu` is the avatar dropdown the navbar
   // renders only when signed in — the same fact, read off the page instead of
@@ -396,7 +396,7 @@
   }
 
   // Root for grid-wide DOM scans: the listing's `#view-root` when present,
-  // else the whole document (pages with no `#view-root`, e.g. /plan).
+  // else the whole document (pages with no `#view-root`).
   function gridScope() {
     return document.getElementById('view-root') || document;
   }
@@ -698,12 +698,13 @@
   // Entries naming a cinema in some OTHER city — preserved verbatim when this
   // city's select-all toggles the whole set, so a round-trip keeps them.
   function disabledCinemasElsewhere() { return getDisabledCinemas().filter(c => !ALL_CINEMAS.includes(c)); }
-  // /plan-side state. `selectedMovies` is the inverse of `hiddenFilms`
-  // (titles to schedule, not titles to skip). `favouriteRooms` are
-  // composite `"<Cinema displayName>|<Room>"` keys — same shape the
-  // grid pages' `data-room` badges and the Filtry → Sale list use, so
-  // a future "carry /plan's room picks into /" cross-page
-  // affordance can read the same set without a translation step.
+  // Carried in the `/api/me/state` sync alongside `hiddenFilms`, but NOTHING
+  // reads or writes them since the plan page was removed. Left in place
+  // deliberately: they are part of the stored `UserState` shape that older
+  // documents and the Android client already carry, and dropping a persisted
+  // field has broken whole-batch decodes here before. Remove them together
+  // with the server-side fields once that migration is done on purpose.
+  // `favouriteRooms` are composite `"<Cinema displayName>|<Room>"` keys.
   function getSelectedMovies()   { return _lsGet('selectedMovies') || []; }
   function setSelectedMovies(l)  { _lsSet('selectedMovies', l);    scheduleServerSync(); }
   function getFavouriteRooms()   { return _lsGet('favouriteRooms') || []; }
@@ -1600,7 +1601,7 @@
   //    carried forward by elapsed browser time, which is what the expiry prune
   //    counts on; a device clock set days out can't drag the day filter away
   //    from the listings the page actually shipped with. Only the repertoire
-  //    view defines it — elsewhere (/plan, /movie, /browse) there is no expiry to
+  //    view defines it — elsewhere (/movie, /browse) there is no expiry to
   //    stay in step with, so the browser clock is answer enough.
   //
   // `window.KINOWO_PINNED_TODAY` is set ONLY in page-test renders (fixture data

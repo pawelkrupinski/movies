@@ -13,7 +13,7 @@ import java.time.LocalDateTime
 
 /**
  * Whole-page HTML snapshot regression. Renders the user-facing pages
- * (`/` per city, `/plan`) against the recorded `08-06-2026` fixture corpus
+ * (`/` per city) against the recorded `08-06-2026` fixture corpus
  * and diffs each rendered body against a checked-in expected file.
  */
 class PageSnapshotSpec extends AnyFlatSpec with Matchers {
@@ -69,15 +69,6 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
       devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders, renderedAt = now
     )(models.Warszawa, summon[play.api.i18n.Messages]).body
     assertSnapshot(snapshotDirectory.resolve("expected-warszawa-index.html"), html)
-  }
-
-  "the /plan page" should "render the same HTML as the checked-in snapshot" in {
-    val data = controllers.PlanController.viewData(city, service.toSchedules(city, now))
-    val html = views.html.plan(
-      data, city.cinemaDisplayNames, city.cinemaPillMap,
-      devMode = false, currentUser = anonymousUser, oauthProviders = noOauthProviders
-    ).body
-    assertSnapshot(snapshotDirectory.resolve("expected-plan.html"), html)
   }
 
   // Focused assertion for the navbar country switcher (independent of the whole

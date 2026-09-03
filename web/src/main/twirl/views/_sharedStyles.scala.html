@@ -1097,7 +1097,7 @@
   /* ── Filmy (/) view chrome ─────────────────────────────────────────────────
      Lives here (shared, every page) rather than in repertoire's <head> so the
      listing's cinema labels + card content-visibility are always styled. Inert
-     on /plan (no `#film-grid > .col`). */
+     on any page without a `#film-grid > .col`. */
   /* Off-screen film cards skip layout + paint until scrolled into view
      (~460 px intrinsic-size keeps the scrollbar from jumping on measure). */
   #film-grid > .col { content-visibility: auto; contain-intrinsic-size: 0 460px; }

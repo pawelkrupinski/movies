@@ -3,7 +3,7 @@
 @(movie: Movie, linkGenres: Boolean, ageRating: Option[String] = None)(implicit city: models.City)
 @*
    The title link + runtime/year/genre pills shared, byte-for-byte, by the
-   listing card (`_movieCard`) and the /plan picker card (`_planCard`). The two
+   listing card (`_movieCard`). The two
    differ only in the genre element: the listing links each genre to its browse
    page, the picker renders a plain span (its grid is filtered client-side, not
    navigated). `linkGenres` picks between them; everything else is one source.

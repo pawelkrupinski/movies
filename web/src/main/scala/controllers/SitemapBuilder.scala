@@ -4,7 +4,7 @@ import models.City
 
 /** Builds the `sitemap.xml` body — a flat `<urlset>` of every crawlable page:
  *  the landing, each city listing (plus each metro listing, for a city whose
- *  `/{slug}/` is a chooser), each city plan, and every film deep-link the city
+ *  `/{slug}/` is a chooser), and every film deep-link the city
  *  is currently showing. Pure (no I/O) so it unit-tests against a fixed corpus;
  *  [[MovieController.sitemap]] feeds it the warm read-model schedules.
  *
@@ -32,7 +32,7 @@ object SitemapBuilder {
    *                 landing URL, which belongs to no city
    *  @param entries each city paired with the films it's currently showing
    *  @param lastmod the read model's mtime as a W3C date, stamped on the URLs
-   *                 whose body IS the read model — the city listings, plans and
+   *                 whose body IS the read model — the city listings and
    *                 film pages, all of which re-render on every projection. The
    *                 landing is left unstamped: it's a static city list that a
    *                 projection doesn't touch, and Google discards the lastmod
@@ -53,7 +53,6 @@ object SitemapBuilder {
     url(country.mountPath, stamped = false)
     entries.foreach { case (city, films) =>
       url(CityPath(city) + "/")
-      url(CityPath(city) + "/plan")
       // Distinct + sorted so the file is deterministic (stable across requests
       // and testable) regardless of the read model's iteration order.
       films.map(_.movie.title).distinct.sorted.foreach { title =>

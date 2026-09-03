@@ -101,7 +101,6 @@ film.titleSuffix=– Spielzeiten {0} | {1}
 
 # ── Film page back-nav ──────────────────────────────────────────────────────
 back.films=Filme
-back.plan=Plan
 back.back=Zurück
 back.repertoire=Programm
 

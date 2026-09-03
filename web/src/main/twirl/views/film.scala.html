@@ -212,7 +212,7 @@
     // correctly — anything not in the map falls through to "Wstecz".
     // `/` and `/movies` are aliases for the main listing, so both label
     // as "Filmy" (matches the navbar tab).
-    var LABELS = { '/': '@messages("back.films")', '/movies': '@messages("back.films")', '/plan': '@messages("back.plan")' };
+    var LABELS = { '/': '@messages("back.films")', '/movies': '@messages("back.films")' };
     var label = LABELS[p];
     if (!label) {
       if (p.indexOf('/movies/') === 0) label = '@messages("back.films")';

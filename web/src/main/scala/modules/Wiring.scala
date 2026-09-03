@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AuthController, CatalogController, ClientSupportController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, PlanController, SupportController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
+import controllers.{AdminAction, AuthController, CatalogController, ClientSupportController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, SupportController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -63,7 +63,7 @@ trait Wiring {
   // matters most where the session cookie now DOES travel: the three Showtimes
   // countries share one origin, so a `userId` minted under /uk arrives at /de,
   // and against a per-country database it would resolve to nobody — a silent
-  // sign-out with the visitor's hidden films and /plan picks apparently gone.
+  // sign-out with the visitor's hidden films apparently gone.
   // Unset (`MONGODB_USERS_DB`), this IS this deployment's database and one
   // connection object serves both — no second boot probe of a database we are
   // already talking to.
@@ -313,7 +313,6 @@ trait Wiring {
 
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, debugCountries, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
-  lazy val planController   = new PlanController(controllerComponents, movieControllerService, userRepository, oauthProviders.keySet, environmentMode)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
   lazy val catalogController = new CatalogController(controllerComponents)

@@ -13,7 +13,12 @@ case class UserState(
   hiddenFilms:     Set[String],
   disabledCinemas: Set[String],
   updatedAt:       Instant,
-  // /plan picks. `selectedMovies` is the inverse of `hiddenFilms` — titles
+  // VESTIGIAL since the plan page was removed: nothing reads or writes these
+  // two any more. Kept because they are part of the stored document shape and
+  // of the mobile sync contract, and dropping a persisted field has cost this
+  // repository whole-batch decode failures before — retire them deliberately,
+  // with a migration, not as a side effect.
+  // `selectedMovies` was the inverse of `hiddenFilms` — titles
   // the user wants to schedule. `favouriteRooms` is a set of composite
   // `"<Cinema displayName>|<Room>"` keys; per-cinema semantics on /plan are
   // "no entries for this cinema → all rooms OK, any entries → only those
