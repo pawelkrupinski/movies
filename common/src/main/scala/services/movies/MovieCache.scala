@@ -1738,9 +1738,43 @@ class CaffeineMovieCache(
     // Cyrillic row can't be matched by a Latin scrape and vice versa.
     val candidates = positive.asMap().asScala.iterator
       .filter { case (k, _) => k.normalized == normalizedRaw }
-      .map(_._1)
-      .toSet  // unique by CacheKey (which dedups by normalized form)
-    if (candidates.size == 1) Some(candidates.head) else None
+      .toSeq
+      .distinctBy(_._1)  // unique by CacheKey (which dedups by normalized form)
+    candidates match {
+      case Seq((key, record)) if settleWouldMerge(primary, key, record) => Some(key)
+      case _                                                           => None
+    }
+  }
+
+  /** Would the SETTLE put a fresh scrape keyed `primary` on the row at `key`?
+   *
+   *  Asked of `FilmCanonicalizer` itself — the same `groupByFilm` → `clusterByFilm`
+   *  composition `canonicalizeBySanitize` runs over the whole corpus and
+   *  `StagingFold.planGroup` runs over a fold's neighbourhood — rather than
+   *  re-stated here, because a second opinion about what one film is doesn't stay a
+   *  second opinion: it becomes a loop between the two.
+   *
+   *  It was one. This redirect matched on the sanitized title ALONE, while
+   *  `clusterByFilm` only joins a year-bearing unresolved row to a resolved cluster
+   *  within ±2 of its TMDB year. Poland's corpus, 2026-09-02: thirteen Cinema City
+   *  venues list "Ktoś całkiem obcy" at releaseYear 2024 (Brandt Andersen's *The
+   *  Strangers' Case*), and TMDB — which does not carry that film's Polish title —
+   *  answers a bare-title search with the 2007 *Perfect Stranger*. The settle kept
+   *  the two rows apart, seventeen years being rather more than two; this redirect
+   *  handed all thirteen Cinema City slots to the 2007 row anyway, one tick after
+   *  the corpus was declared settled, and the convergence leg failed on the 26
+   *  writes it took.
+   *
+   *  A candidate can only DIFFER from `primary` in its year — an equal key would
+   *  have been found by `getIfPresent` above — so this is exactly the year question
+   *  and nothing else. The incoming scrape is represented by an empty record: what
+   *  the rules read from it is the year in its key, and claiming any more than that
+   *  for a row that does not exist yet would be inventing evidence. */
+  private def settleWouldMerge(primary: CacheKey, key: CacheKey, record: MovieRecord): Boolean = {
+    val pair = Seq(primary -> MovieRecord(), key -> record)
+    FilmCanonicalizer.groupByFilm(pair, normalizer)
+      .flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer))
+      .exists(cluster => cluster.exists(_._1 == primary) && cluster.exists(_._1 == key))
   }
 
   def hasResolvedSiblingByTitle(rawTitle: String): Boolean = {

@@ -324,6 +324,49 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 2
   }
 
+  it should "REFUSE a token-run fold when the edition's own title is a resolved film's title" in {
+    // THE PRODUCTION SHAPE, which the contradiction guard above cannot see. Thirteen
+    // Cinema City venues list "Ktoś całkiem obcy" (2024) at 104 minutes and publish NO
+    // original title — and `MixedFilmDetector` reads its evidence only from slots that
+    // publish one, so that row contradicts nothing however plainly its runtime
+    // disagrees with the 122-minute "Obcy". The edge adopted it, `clusterByFilm`
+    // attached it (2024 is within ±2 of 2025), and every re-scrape pulled the venues
+    // back off Ozon's film — the churn the Poland convergence leg failed on twice.
+    //
+    // No cinema has to say anything for this to be answerable: the corpus holds a
+    // RESOLVED row keyed by that very title (the 2007 *Perfect Stranger*), so it is a
+    // film's own name rather than a decoration of the shorter "Obcy".
+    val rows = Seq(
+      key("Obcy", Some(2025)) -> MovieRecord(
+        tmdbId = Some(1429348),
+        data = Map[Source, SourceData](
+          Tmdb      -> SourceData(releaseYear = Some(2025)),
+          Multikino -> SourceData(title = Some("Obcy"), originalTitle = Some("L'étranger"),
+                                  runtimeMinutes = Some(122), releaseYear = Some(2025)))),
+      key("Ktoś całkiem obcy", Some(2007)) -> MovieRecord(
+        tmdbId = Some(7183),
+        data = Map[Source, SourceData](
+          Tmdb     -> SourceData(releaseYear = Some(2007)),
+          KinoLuna -> SourceData(title = Some("Ktoś całkiem obcy")))),
+      // Exactly what Cinema City publishes: a year, a runtime, and no original title.
+      key("Ktoś całkiem obcy", Some(2024)) -> MovieRecord(
+        data = Map[Source, SourceData](
+          CinemaCityArkadia -> SourceData(title = Some("Ktoś całkiem obcy"),
+                                          runtimeMinutes = Some(104), releaseYear = Some(2024))))
+    )
+
+    val components = FilmCanonicalizer.groupByFilm(rows, titleNormalizer)
+    withClue(s"components: ${components.map(_.map(r => s"${r._1.cleanTitle}|${r._1.year.getOrElse("-")}").mkString("+")).mkString(" / ")} ") {
+      // Ozon's film stands alone; the two same-titled rows share a component, where the
+      // year rules — not this edge — decide whether they are one film.
+      components should have size 2
+    }
+    val obcy = components.find(_.exists(_._1.cleanTitle == "Obcy")).get
+    withClue("the Cinema City venues must not be adopted onto Ozon's film: ") {
+      obcy.map(_._1.cleanTitle) shouldBe Seq("Obcy")
+    }
+  }
+
   it should "still fold a token-run edition whose cinema AGREES with the base film" in {
     // The counterpart, and the reason the refusal is keyed on a positive
     // contradiction rather than on the base being one token: a genuine decorated

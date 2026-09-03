@@ -1575,6 +1575,55 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     newRow.cinemaTitles should contain ("Mortal Kombat 2")
   }
 
+  // The scrape redirect and the settle must answer "is this the same film?" the
+  // SAME way. They didn't, and the disagreement is not a stalemate — it is a loop:
+  // the settle keeps the rows apart, the next scrape puts them back together.
+  it should "refuse to redirect a year-bearing scrape onto a row the settle calls a different film" in {
+    // Poland's corpus, 2026-09-02. Thirteen Cinema City venues list "Ktoś całkiem
+    // obcy" at releaseYear 2024 — Brandt Andersen's *The Strangers' Case* — while
+    // TMDB, which doesn't carry that film's Polish title, answers a bare-title
+    // search with the 2007 *Perfect Stranger*. `clusterByFilm` joins a year-bearing
+    // unresolved row to a resolved cluster only within ±2 of its TMDB year, so it
+    // holds the two apart; the redirect matched on the sanitized title alone and
+    // moved every Cinema City slot onto the 2007 row one tick after the corpus was
+    // declared settled. That was the convergence leg's 26 writes.
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    cache.put(cache.keyOf("Ktoś całkiem obcy", Some(2007)), MovieRecord(
+      tmdbId = Some(7183),
+      imdbId = Some("tt0457433"),
+      data   = Map[Source, SourceData](Tmdb -> SourceData(title = Some("Ktoś całkiem obcy"), releaseYear = Some(2007)))))
+
+    cache.recordCinemaScrape(CinemaCityArkadia, Seq(
+      cinemaMovie("Ktoś całkiem obcy", CinemaCityArkadia, year = Some(2024),
+                  showtimes = Seq(showtime("2026-09-10T18:00")))))
+
+    withClue("the 2007 film must not have grown a Cinema City board seventeen years later: ") {
+      cache.get(cache.keyOf("Ktoś całkiem obcy", Some(2007))).get.cinemaData.keySet shouldBe empty
+    }
+    withClue("the 2024 listing must get the row the settle would give it: ") {
+      cache.get(cache.keyOf("Ktoś całkiem obcy", Some(2024)))
+        .map(_.cinemaData.keySet) shouldBe Some(Set[Source](CinemaCityArkadia))
+    }
+  }
+
+  it should "still redirect a scrape whose year sits inside the settle's own adjacency window" in {
+    // The redirect's real job, unchanged: a cinema reporting the PRODUCTION year
+    // onto a row created at the release year is one film, and `clusterByFilm`'s
+    // year windows say so. Tightening the redirect to the settle's rule must not
+    // cost this — it is the "two copies of Kumotry" case.
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    cache.put(cache.keyOf("Kumotry", Some(2026)), MovieRecord())
+
+    cache.recordCinemaScrape(KinoBulgarska, Seq(
+      cinemaMovie("Kumotry", KinoBulgarska, year = Some(2025),
+                  showtimes = Seq(showtime("2026-09-10T18:00")))))
+
+    // ONE row, and `canonicalRank` promotes it onto the lower year — the redirect
+    // ran, which is what this pins; which of the two years wins is the rank's call.
+    cache.snapshot().size shouldBe 1
+    cache.get(cache.keyOf("Kumotry", Some(2025))).get.cinemaData.keySet shouldBe Set[Source](KinoBulgarska)
+  }
+
   it should "fold a redirected scrape's slot onto the existing row without creating a duplicate" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     cache.put(cache.keyOf("Bez wyjścia", Some(2025)),
@@ -1666,14 +1715,24 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
           cache.rekey(live, key2000, _ => resolved)
         }
       }(using executionContext)
-      // Thread B: a concurrent cinema scrape with year=2026. Contends for
+      // Thread B: a concurrent cinema scrape with year=2001. Contends for
       // the same lock — must either see the old (None) row (before the
       // re-key) and redirect onto it, or see the new (Some(2000)) row
       // (after the re-key) and redirect onto that. Either way: one row.
+      //
+      // 2001, not the 2026 this used to say, and the year is now load-bearing: the
+      // redirect asks `FilmCanonicalizer` whether the settle would merge the two
+      // rows, and the settle joins a year-bearing unresolved row to a resolved
+      // cluster only within ±2 of its TMDB year. A 2026 scrape onto a row TMDB
+      // resolved to 2000 is a merge the settle would undo on its next pass, so the
+      // redirect no longer makes it — and this spec would then be asserting the
+      // race through a merge the pipeline disagrees with. 2001 is a year the settle
+      // itself accepts, which leaves the RACE (one row, never a phantom) as the
+      // only thing under test here.
       val ccScrape = scala.concurrent.Future {
         latch.await()
         cache.recordCinemaScrape(CinemaCityPoznanPlaza, Seq(
-          cinemaMovie(title, CinemaCityPoznanPlaza, year = Some(2026))
+          cinemaMovie(title, CinemaCityPoznanPlaza, year = Some(2001))
         ))
       }(using executionContext)
 

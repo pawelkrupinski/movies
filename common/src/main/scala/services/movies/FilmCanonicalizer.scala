@@ -358,8 +358,35 @@ object FilmCanonicalizer {
     val nonEmptyBases    = resolvedBaseRuns.filter(_._1.nonEmpty)
     val basesByFirstToken = nonEmptyBases.groupBy(_._1.head)
     val basesByLastToken  = nonEmptyBases.groupBy(_._1.last)
+    // A title that is ITSELF a resolved film's title is not a decoration of a shorter
+    // one, and this edge only exists for decorations.
+    //
+    // The contradiction guard below asks the cinemas, and the cinemas can be silent:
+    // `MixedFilmDetector` reads its evidence only from slots that publish an
+    // `originalTitle`, so a venue that publishes none contradicts nothing however
+    // plainly its other fields disagree. Poland, 2026-09-02: thirteen Cinema City
+    // venues list "Ktoś całkiem obcy" (2024) at 104 minutes with no original title,
+    // so the row carried no identity group at all; the edge read its tokens as a
+    // decoration of the resolved one-token base "Obcy" (Ozon's "L'étranger", 2025,
+    // 122 min) and `clusterByFilm` then attached it — 2024 being within ±2 of 2025.
+    // Every settle moved those thirteen venues onto Ozon's film and every re-scrape
+    // pulled them back, which is the churn the convergence leg kept failing on.
+    //
+    // The corpus already held the answer without asking any cinema anything: a
+    // RESOLVED row keyed "Ktoś całkiem obcy" (tmdbId 7183, the 2007 *Perfect
+    // Stranger*) sits right there, so that title is a film's own name — whichever
+    // film it turns out to be — and the same-sanitize edge above has already put the
+    // two in one component, where the year rules decide between them. Reaching past
+    // that to adopt the row onto a DIFFERENT, shorter title is the edge overruling
+    // the very clustering it feeds.
+    val resolvedTitleKeys: Set[String] =
+      rows.indices.iterator
+        .filter(i => rows(i)._2.tmdbId.isDefined)
+        .map(i => normalizer.sanitize(rows(i)._1.cleanTitle))
+        .toSet
     rows.indices
-      .filter(j => rows(j)._2.tmdbId.isEmpty)
+      .filter(j => rows(j)._2.tmdbId.isEmpty &&
+                   !resolvedTitleKeys.contains(normalizer.sanitize(rows(j)._1.cleanTitle)))
       .foreach { j =>
         val whole = titleTokens(rows(j)._1.cleanTitle)
         if (whole.nonEmpty) {
