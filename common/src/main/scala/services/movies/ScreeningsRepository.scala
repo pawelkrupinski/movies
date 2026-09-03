@@ -170,21 +170,33 @@ object ScreeningsRepository {
    *  `replaceFilm`-delete their screenings; re-stitching keeps them. Slots carrying real
    *  showtimes pass through unchanged. Pure + unit-tested. */
   def reStitch(screenings: ScreeningsRepository, id: String, data: Map[Source, SourceData]): Map[Source, SourceData] =
-    reStitchChecked(screenings, id, data)._1
+    reStitchChecked(screenings, id, data).data
 
-  /** [[reStitch]] plus whether the screenings read that fed it SAW the film. A `false`
-   *  here means the stripped slots could not be refilled, so the result under-reports
-   *  the film's showtimes and MUST NOT be handed to a full `replaceFilm` — its delete
-   *  vector would erase every slot the read failed to return. */
+  /**
+   * A re-stitched record, beside the read that re-stitched it.
+   *
+   * `stored` is the film's screenings AS STORED — the read `data` was refilled from. It
+   * is carried out rather than dropped because the caller's next act is to write those
+   * same rows back, and comparing against what is already there is the difference between
+   * rewriting every slot of the film and writing nothing. Free: the read has happened
+   * either way. Meaningless when `complete` is false — a read that did not see the film
+   * cannot say what it holds.
+   */
+  case class ReStitched(data: Map[Source, SourceData], stored: Map[String, Seq[Showtime]], complete: Boolean)
+
+  /** [[reStitch]] plus whether the screenings read that fed it SAW the film. A
+   *  `complete = false` means the stripped slots could not be refilled, so the result
+   *  under-reports the film's showtimes and MUST NOT be handed to a full `replaceFilm` —
+   *  its delete vector would erase every slot the read failed to return. */
   def reStitchChecked(screenings: ScreeningsRepository, id: String,
-                      data: Map[Source, SourceData]): (Map[Source, SourceData], Boolean) = {
+                      data: Map[Source, SourceData]): ReStitched = {
     val (scr, complete) = screenings.findForFilmChecked(id)
     val stitched = data.map {
       case (src, sd) if sd.showtimes.isEmpty && sd.showtimesDigest.isDefined =>
         src -> sd.copy(showtimes = scr.getOrElse(src.displayName, Seq.empty))
       case other => other
     }
-    (stitched, complete)
+    ReStitched(stitched, scr, complete)
   }
 
   /** The per-slot screening writes needed to turn `before`'s showtimes into

@@ -767,10 +767,13 @@ class MongoMovieRepository(
     // A whole-record write can carry slots STRIPPED for the cache; `showtimesOf` would
     // drop them and `replaceFilm` would DELETE their screenings. Re-stitch first.
     // …and a re-stitch whose READ failed under-reports the film: every slot it could not
-    // refill looks showtime-less, so the `replaceFilm` below would delete it. `screeningsSeen`
-    // carries that distinction down to the write.
-    val (restitched, screeningsSeen) =
-      screenings.fold((e.data, true))(ScreeningsRepository.reStitchChecked(_, id, e.data))
+    // refill looks showtime-less, so the `replaceFilm` below would delete it.
+    // `stitch.complete` carries that distinction down to the write, and `stitch.stored`
+    // carries the read itself, so the write can tell an unchanged film from a changed one
+    // without asking again.
+    val stitch = screenings.fold(ScreeningsRepository.ReStitched(e.data, Map.empty, complete = true))(
+      ScreeningsRepository.reStitchChecked(_, id, e.data))
+    val restitched = stitch.data
     // Slots go FIRST, and `movies` only drops its embedded copy once they have actually
     // landed. Dropping it on a FAILED slot write would leave the film with no cinemas in
     // either place — the one way this migration can lose data — and a slots failure is
@@ -806,8 +809,21 @@ class MongoMovieRepository(
       // is not a slot that stopped screening.
       screenings.foreach { s =>
         val showtimes = ScreeningsRepository.showtimesOf(restitched)
-        if (screeningsSeen) s.replaceFilm(id, showtimes)
-        else showtimes.foreach { case (slotKey, st) => s.upsertSlot(id, slotKey, st) }
+        // Skip the rewrite when the stored rows already match — the same guard the slots
+        // write above has, and here it is FREE: `reStitchChecked` has already read these
+        // rows, so `stitch.stored` costs no round trip where the slots half pays one.
+        //
+        // It is worth having twice over. `replaceFilm` is one request but carries a
+        // `ReplaceOneModel` per slot of the film — 471 for a film showing across the UK —
+        // and `upsert` is the whole-record path EVERY scrape merge takes. So a venue's
+        // scrape rewrote every screening row of every film it touched, whether or not a
+        // showtime had moved, and a film at N venues is written by N venues.
+        //
+        // Equality is safe against the delete vector: if the stored rows equal what we
+        // would write, there is no slot for `replaceFilm` to prune. A differing read —
+        // including an empty one — writes, which is the safe direction.
+        if (!stitch.complete) showtimes.foreach { case (slotKey, st) => s.upsertSlot(id, slotKey, st) }
+        else if (showtimes != stitch.stored) s.replaceFilm(id, showtimes)
       }
       ()
     }.recover {
