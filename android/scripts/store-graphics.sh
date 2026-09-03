@@ -192,8 +192,7 @@ generate_locale() { # $1 locale
     render "$html" "$out"
     rm -f "$html"
     local w h
-    w="$(sips -g pixelWidth  "$out" | awk '/pixelWidth/{print $2}')"
-    h="$(sips -g pixelHeight "$out" | awk '/pixelHeight/{print $2}')"
+    IFS=x read -r w h <<< "$(png_size "$out")"
     [ "$w" = "$FEATURE_W" ] && [ "$h" = "$FEATURE_H" ] ||
       die "$locale card is ${w}×${h}; Play requires exactly ${FEATURE_W}×${FEATURE_H}"
   done_

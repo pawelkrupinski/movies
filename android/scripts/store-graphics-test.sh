@@ -111,8 +111,7 @@ check ".gitignore keeps the icon copies out" "" \
 for l in pl-PL en-GB de-DE; do
   f="$LISTINGS/$l/graphics/feature-graphic/1.png"
   if [ -f "$f" ]; then
-    check "$l card is exactly 1024x500" "1024x500" \
-      "$(sips -g pixelWidth -g pixelHeight "$f" | awk '/pixelWidth/{w=$2} /pixelHeight/{h=$2} END{print w"x"h}')"
+    check "$l card is exactly 1024x500" "1024x500" "$(png_size "$f")"
   else
     check "$l card exists" "1" "0"
   fi

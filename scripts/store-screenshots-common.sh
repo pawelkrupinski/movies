@@ -275,3 +275,25 @@ cmd_top() { # $1 country, $2 N, $3 optional 1-based start rank — a readable ta
 usage_of() { # $1 script path
   awk 'NR > 2 && /^#/ { sub(/^#+ ?/, ""); print; next } NR > 2 { exit }' "$1"
 }
+
+# A PNG's pixel dimensions as "WIDTHxHEIGHT", read out of the file itself.
+#
+# Not `sips`, which is macOS-only: these scripts' helper TESTS run on
+# `ubuntu-latest`, where the call it made was a "command not found" whose empty
+# output compared unequal to the expected size — so the dimension check reported
+# a wrong-sized card on every run, and the Android job stayed red on a card that
+# was the right size all along. A test that only works on the platform it was
+# written on is not portable, it is untested.
+#
+# The PNG spec fixes IHDR as the first chunk, so width and height are big-endian
+# uint32s at byte 16 and 20 — no decoder, no `file` output to parse, and the same
+# answer on both platforms. `od` is POSIX and present on each.
+png_size() { # $1 png path
+  local png="$1" bytes
+  bytes="$(od -An -tu1 -j16 -N8 "$png")" || return 1
+  # shellcheck disable=SC2086
+  set -- $bytes
+  [ "$#" -eq 8 ] || return 1
+  printf '%sx%s\n' "$(( ($1 << 24) | ($2 << 16) | ($3 << 8) | $4 ))" \
+                   "$(( ($5 << 24) | ($6 << 16) | ($7 << 8) | $8 ))"
+}

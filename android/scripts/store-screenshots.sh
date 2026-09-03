@@ -179,7 +179,7 @@ ensure_app() {
 
 # ── capture ───────────────────────────────────────────────────────────────────
 pad_playsafe() { # $1 in, $2 out — pad width so long:short ≤ 1.98:1 (Play caps at 2:1)
-  local h w; h="$(sips -g pixelHeight "$1" | awk '/pixelHeight/{print $2}')"
+  local h w; h="$(png_size "$1")"; h="${h#*x}"
   w=$(python3 -c "import math;print(int(math.ceil($h/1.98)))")
   sips --padToHeightWidth "$h" "$w" --padColor 000000 "$1" --out "$2" >>"$NOISE" 2>&1
 }
