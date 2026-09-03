@@ -242,9 +242,21 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   "FilterDescription for a UK city" should "produce the English default title + description" in {
     FilterDescription.defaultTitle(London) shouldBe "Cinema listings in London – today's showtimes | Showtimes"
     val d = FilterDescription.defaultDescription(London)
-    d should include ("All London cinema listings – today's showtimes")
+    // London covers commuter towns of its own, so it takes the multi-town form:
+    // it names them and drops the closing sentence, which would push it past
+    // MaxDescription. The one-town form is asserted below.
+    d should include ("All London cinema listings (")
     d should include ("IMDb, Filmweb, Metacritic and Rotten Tomatoes ratings")
-    d should include ("See what's on today in London")
+  }
+
+  it should "keep the English closing sentence for a place that is one town" in {
+    val oneTown = City.all
+      .find(c => c.country.language.getLanguage == "en" && c.otherCoveredPlaces.isEmpty)
+      .getOrElse(fail("no English one-town place left in the roster to assert the plain form on"))
+    val d = FilterDescription.defaultDescription(oneTown)
+    d should include ("cinema listings – today's showtimes")
+    d should include (s"See what's on today in ${oneTown.labels.nominative}")
+    d should not include "("
   }
 
   it should "use 'films' (not 'filmy') as the filtered-title noun, under the 'Showtimes' brand" in {

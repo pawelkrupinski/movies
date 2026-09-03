@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Unit test for harvest_towns.town_of — the rule that reads a town out of a UK
+postal address.
+
+The rule is not a guess, and this is where that is kept honest. Cineworld's
+recorded venue fixture carries BOTH the free-text address Flicks-style parsing
+has to cope with and the chain's own `addressInfo.city`, for 87 UK venues — so
+the parser is scored against a source that already knows the answer. It has to
+agree on every one of them.
+
+That corpus is what found the rule. Reading the last comma-separated part (the
+obvious first guess) scores 86/87, and the one it misses is the shape that
+matters: "…, Speke Road, L24 8QB, Speke, Merseyside" ends in a COUNTY. The
+postcode, not the position, is what marks the town.
+
+Run: python3 data/uk/scripts/test_harvest_towns.py
+"""
+import glob
+import importlib.util
+import json
+import os
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
+
+spec = importlib.util.spec_from_file_location("harvest_towns", os.path.join(HERE, "harvest_towns.py"))
+ht = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(ht)
+
+
+def test_town_carries_the_postcode():
+    assert ht.town_of("Riverside, Wherry Road, Norwich NR1 1XA") == "Norwich"
+    assert ht.town_of("High Street, Banchory AB31 5SR") == "Banchory"
+
+
+def test_postcode_stands_before_the_town():
+    assert ht.town_of("Queens Links Leisure Park, Links Road, AB24 5EN, Aberdeen") == "Aberdeen"
+
+
+def test_a_trailing_county_is_not_the_town():
+    # The shape the naive "last part" rule gets wrong.
+    assert ht.town_of("New Mersey Shopping Park, Speke Road, L24 8QB, Speke, Merseyside") == "Speke"
+
+
+def test_a_county_carrying_the_postcode_is_not_the_town():
+    # The postcode marks the town in almost every address, but not when the
+    # COUNTY is what carries it. 8 of the 842 harvested venues read this way.
+    assert ht.town_of("Bridge Road, Haslemere, Surrey GU27 2AS") == "Haslemere"
+    assert ht.town_of("Derby Square, Epsom, Surrey KT19 8AG") == "Epsom"
+
+
+def test_the_word_county_is_dropped_from_the_town():
+    assert ht.town_of("1 Millennium Place, Durham County DH1 1WA") == "Durham"
+    assert ht.town_of("Victoria Road, County Hartlepool TS24 8BH") == "Hartlepool"
+
+
+def test_postcode_last_falls_back_to_the_part_before_it():
+    assert ht.town_of("7 Leicester Square, London, WC2H 7NA") == "London"
+
+
+def test_no_postcode_at_all_takes_the_last_part():
+    assert ht.town_of("The Old Library, Acton Centre, Ealing") == "Ealing"
+    assert ht.town_of("") == ""
+
+
+def test_agrees_with_cineworlds_own_city_on_every_recorded_venue():
+    """The real corpus: 87 UK venues, scored against the chain's own field."""
+    matches = glob.glob(
+        os.path.join(ROOT, "test/resources/fixtures/cineworld/**/cinemas/**/*.json"), recursive=True)
+    assert matches, "no recorded Cineworld venue fixture to score against"
+
+    def venues(node):
+        if isinstance(node, dict):
+            if isinstance(node.get("address"), str) and "addressInfo" in node:
+                yield node
+            for value in node.values():
+                yield from venues(value)
+        elif isinstance(node, list):
+            for value in node:
+                yield from venues(value)
+
+    scored, wrong = 0, []
+    for venue in venues(json.load(open(matches[0]))):
+        city = (venue.get("addressInfo") or {}).get("city") or ""
+        if not city:
+            continue
+        scored += 1
+        got = ht.town_of(venue["address"])
+        # Cineworld writes a couple of its cities as "<town>, <county>"; the
+        # town is the half we want, and the half we assert on.
+        if got.lower() != city.split(",")[0].strip().lower():
+            wrong.append((venue["address"], city, got))
+    assert scored >= 80, f"expected the full venue list, scored only {scored}"
+    assert not wrong, f"{len(wrong)}/{scored} disagree, e.g. {wrong[:3]}"
+
+
+if __name__ == "__main__":
+    tests = [(k, v) for k, v in sorted(globals().items()) if k.startswith("test_")]
+    for name, fn in tests:
+        fn()
+        print(f"PASS {name}")
+    print(f"\n{len(tests)} tests passed")

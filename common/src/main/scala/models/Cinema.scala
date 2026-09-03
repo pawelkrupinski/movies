@@ -1714,14 +1714,12 @@ object UsRoster {
    *  A state whose venues all land in one metro contributes ONE place: itself.
    *  So does a state under [[MinCinemasToSplit]] venues — unless its metros are
    *  more than [[MaxSpanToStayWholeKm]] apart, which is Alaska and Hawaii. */
-  /** The towns a group of venues sits in, most venues first (ties alphabetical)
-   *  — the order [[City.coveredPlaces]] promises, and computed per GROUP rather
-   *  than read off a metro record because the same roster serves a whole state
-   *  as one place too, and that place's counts are its own. */
+  /** The towns a group of venues sits in — computed per GROUP rather than read
+   *  off a metro record because the same roster serves a whole state as one
+   *  place too, and that place's counts are its own. [[TownRanking]] gives it
+   *  the order every country's list shares. */
   private def townsOf(venues: Seq[Venue]): Seq[String] =
-    venues.filter(_.town.nonEmpty).groupBy(_.town).toSeq
-      .sortBy { case (town, sharing) => (-sharing.size, town) }
-      .map(_._1)
+    TownRanking.ranked(venues.map(_.town))
 
   val places: Seq[UsPlace] = built.flatMap { state =>
     val byMetro = CinemaAreaGroup.byLabel(state.venues.map(v => (v.cinema, v.metro)))

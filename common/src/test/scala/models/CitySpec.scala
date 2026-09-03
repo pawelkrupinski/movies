@@ -153,10 +153,34 @@ class CitySpec extends AnyFlatSpec with Matchers {
     madrid.coveredPlaces shouldBe madrid.coveredPlaces.distinct
   }
 
+  // The UK was the last roster with no town data at all: its venues are
+  // hand-written `case object`s, so there was nowhere for one to live, and most
+  // of its "cities" are counties. `/aberdeenshire/` named neither Aberdeen nor
+  // Peterhead — Aberdeen appears in two cinema names, Peterhead in one, and
+  // neither in a single heading, meta tag or piece of structured data.
+  it should "read a UK county's towns from the harvested venue table" in {
+    Aberdeenshire.coveredPlaces.head shouldBe "Aberdeenshire"
+    Aberdeenshire.otherCoveredPlaces should contain allOf ("Aberdeen", "Peterhead", "Banchory")
+    // Ranked like every other country's: the town with the most venues first.
+    Aberdeenshire.otherCoveredPlaces.head shouldBe "Aberdeen"
+  }
+
+  it should "cover the UK roster, not a handful of venues that happened to match" in {
+    val uk = City.allModelled.collect { case c: UkCity => c }
+    uk.size shouldBe 79
+    // A table that silently stopped matching displayNames would leave every one
+    // of these naming only itself again.
+    uk.count(_.otherCoveredPlaces.nonEmpty) should be >= 70
+  }
+
   it should "ignore compass bearings, which name no place outside their city" in {
-    London.areas.map(_.area.label) should contain("Central")  // London IS split…
-    London.coveredPlaces           shouldBe Seq("London")     // …but into directions
-    London.otherCoveredPlaces      shouldBe empty
+    London.areas.map(_.area.label) should contain("Central")   // London IS split…
+    // …but into directions. "Central" is not a place, and a `containsPlace`
+    // claiming one would be a claim about a town by that name.
+    London.coveredPlaces should contain noneOf ("Central", "North", "East", "South", "West")
+    // What it does cover are the commuter towns its venues sit in, which the
+    // bare "London" never named.
+    London.otherCoveredPlaces should contain allOf ("Epsom", "Woking", "Wembley")
   }
 
   "City.allJson" should "emit a slug/name/lat/lon object per city for the clients" in {
