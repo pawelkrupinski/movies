@@ -800,8 +800,37 @@ class MongoMovieRepository(
     val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else slotsForStorage(restitched)
     val dto  = StoredMovieDto.fromDomain(id, e.copy(data = dataForMovies), Instant.now())
     val opts = new ReplaceOptions().upsert(true)
+    // The film document AS STORED, so a re-write that changes nothing can be skipped.
+    //
+    // `upsert` is the whole-record path every scrape merge takes, so each of a film's
+    // venues wrote this document once per tick whether or not anything about the film had
+    // changed. Mongo does not collapse that: a byte-identical `replaceOne` still reports
+    // `modifiedCount: 1` and still writes an oplog entry — measured, not assumed. Each of
+    // those entries is a change-stream delivery, and every delivery re-decodes the film
+    // document and re-dispatches it downstream, which is the cost the read-split exists to
+    // keep small.
+    //
+    // This is the third guard in this method and the only one that pays a round trip of its
+    // own for the privilege: the screenings check reuses `reStitchChecked`'s read, the slots
+    // check reuses nothing but reads a different collection. One indexed `_id` read to drop
+    // a write, its oplog entry and its fanout is the same trade the slots guard already
+    // makes here.
+    val storedDto = Try(Await.result(c.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds))
+      .toOption.flatMap(_.headOption)
+    // Both timestamps are normalised away before comparing. `updatedAt` is stamped
+    // `Instant.now()` on every call, so comparing it would make every document differ and
+    // the guard dead on arrival. `slotsUpdatedAt` is subtler: `fromDomain` never sets it,
+    // but `updateIfPresent`'s slot path does — so leaving it in would make the guard miss
+    // every film whose slots had ever been patched, which is most of them. Skipping the
+    // write PRESERVES the stored marker rather than clearing it, which is the harmless
+    // direction: it only helps the change stream classify a later write.
+    //
+    // A read that FAILED yields None, which reads as "changed" and writes. A failed read is
+    // not evidence that the stored document matches.
+    val unchanged = storedDto.exists(stored =>
+      stored.copy(updatedAt = dto.updatedAt, slotsUpdatedAt = dto.slotsUpdatedAt) == dto)
     Try {
-      Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
+      if (!unchanged) Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
       // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
       // is upsert PLUS a delete of every slot the record doesn't name, so it may only run on
       // a record we know is complete. When the re-stitch read failed we still write what this

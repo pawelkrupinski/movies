@@ -397,8 +397,15 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       val handle2 = repo2.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == idD) gotD.countDown(), _ => ())
       // Keep writing D while the cursor works its way through invalidate → clear → reopen,
       // so the assertion is "the stream came back", not "it came back within one write".
+      // Each pass must CHANGE something. `upsert` skips a write that would store the
+      // document Mongo already holds, so a loop re-writing ONE identical record produces a
+      // single change event and then silence — and this test needs a STREAM of them, to
+      // catch the cursor whenever it finishes working through invalidate → clear → reopen.
+      // The moving field is arbitrary; that it moves is the point.
+      val tick = new java.util.concurrent.atomic.AtomicInteger(0)
       writer = new Thread(() => try while (!Thread.currentThread().isInterrupted) {
-        repo2.upsert("__integration-test-dropped-D__", Some(1911), MovieRecord(imdbId = Some("tt0000025")))
+        repo2.upsert("__integration-test-dropped-D__", Some(1911),
+          MovieRecord(imdbId = Some("tt0000025"), imdbRating = Some(tick.incrementAndGet() / 10.0)))
         Thread.sleep(2000)
       } catch { case _: InterruptedException => () }) // the finally-interrupt is how this thread ends
       writer.setDaemon(true)
