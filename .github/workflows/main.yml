@@ -632,6 +632,24 @@ jobs:
             - uses: docker/setup-buildx-action@v3
               if: steps.changed.outputs.changed == 'true'
 
+            - name: Compute an orderable image tag
+              id: tag
+              if: steps.changed.outputs.changed == 'true'
+              # WHY A THIRD TAG EXISTS. Flux's image automation chooses "the newest image" by
+              # SORTING tag names, and neither tag below can be sorted: a commit SHA has no order
+              # at all, and `latest` is one moving name rather than a series. This adds a tag that
+              # does sort -- a UTC timestamp, monotonic in real time -- keeping the short SHA on
+              # the end so the tag still says which commit built it. ImagePolicy extracts the
+              # number and takes the maximum; see infra/kubernetes/flux/image-automation.yaml.
+              #
+              # NOT `github.run_number`, which is monotonic only until the workflow file is renamed
+              # or recreated. A reset there would leave the highest OLD number winning forever and
+              # freeze deploys silently, which is the failure mode this whole stage exists to end.
+              run: |
+                  set -euo pipefail
+                  sha='${{ github.sha }}'
+                  echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
+
             - name: Build and push
               if: steps.changed.outputs.changed == 'true'
               uses: docker/build-push-action@v6
@@ -644,13 +662,16 @@ jobs:
                   build-args: |
                       BIN=web
                       COMMIT_SHA=${{ github.sha }}
-                  # BOTH TAGS, ALWAYS. The SHA tag is what a deploy pins, so a restarted pod comes
-                  # back on the exact build that was deployed; `latest` exists only so a
-                  # hand-applied manifest resolves to something. Never deploy `latest` — a pod that
-                  # restarts under it can come back on a different build with nothing recording
-                  # which.
+                  # THREE TAGS, ALWAYS, each doing a different job. The SHA tag is provenance:
+                  # a pod that restarts comes back on the exact build, and a human can map it to a
+                  # commit. The `main-<utc>-<sha7>` tag is the one Flux actually DEPLOYS, because
+                  # image automation has to pick the newest by sorting and neither of the others
+                  # sorts. `latest` survives only so a hand-applied manifest resolves to something.
+                  # Never deploy `latest` — a pod that restarts under it can come back on a
+                  # different build with nothing recording which.
                   tags: |
                       ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
+                      ghcr.io/${{ github.repository_owner }}/movies-web:${{ steps.tag.outputs.value }}
                       ghcr.io/${{ github.repository_owner }}/movies-web:latest
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
@@ -826,6 +847,24 @@ jobs:
                   done
                   echo "worker_hash=$(printf '%s' "$hash" | sha256sum | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
+            - name: Compute an orderable image tag
+              id: tag
+              if: steps.changed.outputs.changed == 'true'
+              # WHY A THIRD TAG EXISTS. Flux's image automation chooses "the newest image" by
+              # SORTING tag names, and neither tag below can be sorted: a commit SHA has no order
+              # at all, and `latest` is one moving name rather than a series. This adds a tag that
+              # does sort -- a UTC timestamp, monotonic in real time -- keeping the short SHA on
+              # the end so the tag still says which commit built it. ImagePolicy extracts the
+              # number and takes the maximum; see infra/kubernetes/flux/image-automation.yaml.
+              #
+              # NOT `github.run_number`, which is monotonic only until the workflow file is renamed
+              # or recreated. A reset there would leave the highest OLD number winning forever and
+              # freeze deploys silently, which is the failure mode this whole stage exists to end.
+              run: |
+                  set -euo pipefail
+                  sha='${{ github.sha }}'
+                  echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
+
             - name: Build and push
               if: steps.changed.outputs.changed == 'true'
               uses: docker/build-push-action@v6
@@ -839,13 +878,16 @@ jobs:
                       BIN=worker
                       COMMIT_SHA=${{ github.sha }}
                       WORKER_INPUT_HASH=${{ steps.worker_hash.outputs.worker_hash }}
-                  # BOTH TAGS, ALWAYS. The SHA tag is what a deploy pins, so a restarted pod comes
-                  # back on the exact build that was deployed; `latest` exists only so a
-                  # hand-applied manifest resolves to something. Never deploy `latest` — a pod that
-                  # restarts under it can come back on a different build with nothing recording
-                  # which.
+                  # THREE TAGS, ALWAYS, each doing a different job. The SHA tag is provenance:
+                  # a pod that restarts comes back on the exact build, and a human can map it to a
+                  # commit. The `main-<utc>-<sha7>` tag is the one Flux actually DEPLOYS, because
+                  # image automation has to pick the newest by sorting and neither of the others
+                  # sorts. `latest` survives only so a hand-applied manifest resolves to something.
+                  # Never deploy `latest` — a pod that restarts under it can come back on a
+                  # different build with nothing recording which.
                   tags: |
                       ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
+                      ghcr.io/${{ github.repository_owner }}/movies-worker:${{ steps.tag.outputs.value }}
                       ghcr.io/${{ github.repository_owner }}/movies-worker:latest
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
