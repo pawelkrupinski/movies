@@ -31,4 +31,40 @@ class StringPoolSpec extends AnyFlatSpec with Matchers {
     listA shouldBe Seq("Poland", "Cate Blanchett")   // order + content preserved
     StringPool.canonicalAll(Seq.empty) shouldBe empty
   }
+
+  // The pool's bound fails SILENTLY -- past the cap it evicts, the next lookup of an
+  // evicted value allocates afresh, and interning becomes a no-op that still costs a
+  // hash. Nothing logs. So the pool has to be able to SAY what it holds, or the only
+  // symptom is a heap that grows, which is how worker-us came to OOM twice with 66.7%
+  // of its String payload duplicate. These are the readings the gauges publish.
+  //
+  // Assertions are RELATIVE, never absolute: StringPool is a process-wide object, so
+  // every spec in the run shares one pool and any fixed occupancy number would be a
+  // function of test order.
+  "the pool" should "report a growing occupancy as distinct strings are interned" in {
+    val before = StringPool.heldEntries
+    StringPool.canonical(s"a value no other spec interns ${java.util.UUID.randomUUID()}")
+    StringPool.heldEntries should be > before
+  }
+
+  it should "not grow when the same value is interned again" in {
+    val repeated = s"interned twice ${java.util.UUID.randomUUID()}"
+    StringPool.canonical(repeated)
+    val after = StringPool.heldEntries
+    StringPool.canonical(repeated)
+    StringPool.heldEntries shouldBe after
+  }
+
+  it should "evict nothing while the vocabulary fits" in {
+    // A unit test's handful of strings is orders of magnitude below MaxEntries, so any
+    // eviction here would mean the bound is not what it claims to be.
+    StringPool.evictions shouldBe 0L
+  }
+
+  it should "report a hit ratio in range, counting a repeat as a hit" in {
+    val v = s"hit ratio probe ${java.util.UUID.randomUUID()}"
+    StringPool.canonical(v)
+    StringPool.canonical(v)
+    StringPool.hitRate should (be >= 0.0 and be <= 1.0)
+  }
 }

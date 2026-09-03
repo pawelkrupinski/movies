@@ -35,6 +35,10 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   // Native-memory + vitals sampler — one JVM, so a single process-level sampler.
   val jvmVitals: JvmVitalsSampler = new JvmVitalsSampler(registry)
 
+  // Intern-pool occupancy and eviction — also process-level: StringPool is one
+  // object shared by every country's wiring, so a `country` label would be a lie.
+  StringPoolMetrics.register(registry)
+
   // The registered-once task-pipeline metric objects, shared across countries.
   val taskSeries: WorkerTaskMetrics.Series = new WorkerTaskMetrics.Series(poolSize, countryCodes, registry)
 
