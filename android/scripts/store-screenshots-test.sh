@@ -482,6 +482,35 @@ _killcap="$(mktemp)"
 # app's "could not load" state. The emulators boot -read-only, so the setting
 # cannot persist in the AVD and MUST be reapplied on each boot — if this call
 # goes missing, the run still exits 0 and the damage only shows up in the images.
+# uiautomator sometimes returns the window frame with an EMPTY Compose semantics
+# tree (~2KB vs ~20KB). Every caller reads that as "element absent", so one bad
+# sample marks a city unreachable. ui_xml must retry rather than trust it.
+printf '\033[36m▸\033[0m an empty semantics dump is retried\n'
+# An earlier case unset ui_xml; re-source to get the real one back.
+source "$HERE/store-screenshots.sh"
+_uicap="$(mktemp)"
+NOISE="$(mktemp)"
+naps() { :; }
+# First read is the frame-only dump; the second carries real text.
+adb() {
+  case "$*" in
+    *"cat /sdcard/kinowo-ui.xml")
+      printf '%s\n' "$*" >> "$_uicap"
+      if [ "$(grep -c cat "$_uicap")" -ge 2 ]; then
+        printf '<hierarchy><node text="Polska" bounds="[1,2][3,4]"/></hierarchy>'
+      else
+        printf '<hierarchy><node text="" bounds="[0,0][1,1]"/></hierarchy>'
+      fi ;;
+    *) printf '%s\n' "$*" >> "$_uicap" ;;
+  esac
+}
+: > "$_uicap"
+_x="$(ui_xml)"
+check "it retries past the empty dump" "1" \
+  "$(printf '%s' "$_x" | grep -c 'text="Polska"')"
+check "it dumped more than once" "1" \
+  "$([ "$(grep -c 'uiautomator dump' "$_uicap")" -ge 2 ] && echo 1 || echo 0)"
+
 # The country pill row scrolls, and uiautomator reports only what is on screen.
 # Spain is the FIFTH country, so on a fresh gate it is off-screen and looks
 # missing — the capture used to blame the gate and skip every city.

@@ -197,7 +197,21 @@ in_app() { adb shell dumpsys activity activities 2>/dev/null | grep -m1 topResum
 # Amberg). Waiting for a node with the expected TEXT makes each step assert the
 # state it thinks it's in, so a miss fails loudly instead of silently capturing
 # the wrong country.
-ui_xml() { adb shell uiautomator dump /sdcard/kinowo-ui.xml >>"$NOISE" 2>&1 && adb shell cat /sdcard/kinowo-ui.xml 2>>"$NOISE"; }
+# uiautomator intermittently returns the window frame with an EMPTY Compose
+# semantics tree — a ~2KB dump where the real one is ~20KB — and every caller
+# reads that as "the element is not there". It is indistinguishable from a
+# genuinely blank screen except by size, so retry a dump that carries no text at
+# all rather than letting one bad sample decide a city is unreachable.
+ui_xml() {
+  local xml i
+  for i in 1 2 3 4; do
+    adb shell uiautomator dump /sdcard/kinowo-ui.xml >>"$NOISE" 2>&1
+    xml="$(adb shell cat /sdcard/kinowo-ui.xml 2>>"$NOISE")"
+    if printf '%s' "$xml" | grep -q 'text="[^"][^"]*"'; then printf '%s' "$xml"; return 0; fi
+    naps 1
+  done
+  printf '%s' "$xml"
+}
 
 # Tap-point of the first node reading $1; empty when absent. The text node
 # itself isn't the clickable one (Compose wraps it), so we aim at the label's
