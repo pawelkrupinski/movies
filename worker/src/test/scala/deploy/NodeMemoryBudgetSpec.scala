@@ -236,4 +236,30 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
       info(s"web/$cc: keep=$kept, worst ${worst}Mi <= ${ceiling}Mi sizeLimit")
     }
   }
+
+  // A ConfigMap patch REPLACES the whole key, so an overlay that names JAVA_OPTS at all owns
+  // every flag that pod boots with — inheriting nothing from the base. Add a flag to the base and
+  // the overlay countries silently do not get it.
+  //
+  // THAT IS NOT HYPOTHETICAL: the dump flags were added to the base on 2026-09-03 and web-us,
+  // the ONLY country with its own JAVA_OPTS and the one whose OOM prompted the whole change, came
+  // up without them. `kubectl apply` said "configured", the pod was healthy, and the tier that
+  // needed the forensics was the single tier that had none. It was caught by reading JAVA_OPTS
+  // back out of the running container, which is not a step anyone should have to remember.
+  //
+  // The volume above is worthless without these, so they are asserted together.
+  "every web country" should "actually boot with the heap-dump flags, base or overlay" in {
+    val required = Seq("-XX:+HeapDumpOnOutOfMemoryError", "-XX:HeapDumpPath=", "-XX:+ExitOnOutOfMemoryError", "-XX:ErrorFile=")
+    Countries.foreach { cc =>
+      val opts = javaOpts("web", cc)
+      required.foreach { flag =>
+        withClue(
+          s"web/$cc boots without `$flag`. If its overlay declares JAVA_OPTS it owns the WHOLE " +
+          "value and inherits nothing, so the flag has to be restated there: ") {
+          opts should include(flag)
+        }
+      }
+      info(s"web/$cc: dump-on-OOM flags present")
+    }
+  }
 }
