@@ -70,6 +70,33 @@ def test_no_postcode_at_all_takes_the_last_part():
     assert ht.town_of("") == ""
 
 
+def test_sync_keeps_fetches_and_forgets_the_right_venues():
+    held = {
+        "kept":    {"flicksSlug": "kept",    "displayName": "Kept Cinema",    "town": "Ayr"},
+        "gone":    {"flicksSlug": "gone",    "displayName": "Gone Cinema",    "town": "Ely"},
+        "renamed": {"flicksSlug": "renamed", "displayName": "Old Name",       "town": "Hull"},
+    }
+    wired = {"kept": "KeptCinema", "renamed": "RenamedCinema", "brandnew": "BrandNewCinema"}
+    names = {"KeptCinema": "Kept Cinema", "RenamedCinema": "New Name", "BrandNewCinema": "Brand New"}
+
+    keep, retired, renamed = ht.sync_plan(held, wired, names)
+
+    assert sorted(keep) == ["kept", "renamed"]
+    assert retired == ["gone"]                       # no longer wired: forgotten
+    assert renamed == ["New Name"]
+    # Re-keyed in place, so the row keeps matching after a rename in Cinema.scala.
+    assert keep["renamed"]["displayName"] == "New Name"
+    assert keep["renamed"]["town"] == "Hull"         # and keeps the town it had
+    # What is left for the sweep to actually fetch: only the new venue.
+    assert sorted(set(wired) - set(keep)) == ["brandnew"]
+
+
+def test_sync_of_an_unchanged_roster_fetches_nothing():
+    held = {"a": {"flicksSlug": "a", "displayName": "A Cinema", "town": "Ayr"}}
+    keep, retired, renamed = ht.sync_plan(held, {"a": "ACinema"}, {"ACinema": "A Cinema"})
+    assert (sorted(set({"a": "ACinema"}) - set(keep)), retired, renamed) == ([], [], [])
+
+
 def test_agrees_with_cineworlds_own_city_on_every_recorded_venue():
     """The real corpus: 87 UK venues, scored against the chain's own field."""
     matches = glob.glob(

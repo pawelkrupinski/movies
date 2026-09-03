@@ -161,6 +161,30 @@ def parse(html: str) -> tuple[str, float | None, float | None]:
             float(lon.group(1)) if lon else None)
 
 
+def sync_plan(held: dict, wired: dict, names: dict) -> tuple[dict, list, list]:
+    """What an incremental sweep keeps, forgets and re-keys.
+
+    Split out from the fetching so the decision can be tested without a network,
+    which is the half that can go quietly wrong. Returns the venues to KEEP (the
+    caller fetches whatever `wired` holds beyond them), the slugs no longer wired,
+    and the display names that changed.
+
+    Re-reading the display name matters more than it looks: it is the key
+    [[UkVenueTowns]] is keyed on, so a venue renamed in Cinema.scala would keep
+    its row under the old name and quietly stop matching — the town would vanish
+    from its city with nothing to say so.
+    """
+    keep = {slug: venue for slug, venue in held.items() if slug in wired}
+    retired = sorted(set(held) - set(wired))
+    renamed = []
+    for slug, venue in keep.items():
+        name = names.get(wired[slug], venue["displayName"])
+        if name != venue["displayName"]:
+            renamed.append(name)
+            venue["displayName"] = name
+    return keep, retired, sorted(renamed)
+
+
 _pace = threading.Lock()
 _last = [0.0]
 
@@ -179,6 +203,10 @@ def fetch(url: str) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0, help="harvest only the first N (a smoke run)")
+    ap.add_argument("--sync", action="store_true",
+                    help="top up venues.json against the wiring: harvest only the venues it does "
+                         "not yet hold, drop the ones no longer wired, and refresh the display "
+                         "names — what the weekly discovery job runs after wiring a new cinema")
     ap.add_argument("--reparse", action="store_true",
                     help="re-derive every town from the addresses already in venues.json, "
                          "hitting no network — what to run after changing town_of")
@@ -199,10 +227,28 @@ def main() -> int:
 
     wired = scala_venues()
     names = display_names()
-    slugs = sorted(wired)[: args.limit] if args.limit else sorted(wired)
+
+    # --sync is the incremental pass. The weekly discovery job wires new venues
+    # into Cinema.scala + the catalog, and a venue with no town simply drops out
+    # of its city's list — quietly, which is the failure worth designing away.
+    # So: harvest only what is missing, forget what is no longer wired, and
+    # re-read the display names, which are the table's KEY and change under a
+    # rename with nothing to notice it.
+    held: dict[str, dict] = {}
+    if args.sync and OUT.exists():
+        held, retired, renamed = sync_plan(
+            {v["flicksSlug"]: v for v in json.loads(OUT.read_text())}, wired, names)
+        print(f"sync: {len(held)} held, {len(retired)} no longer wired, "
+              f"{len(renamed)} renamed", file=sys.stderr)
+        for name in renamed:
+            print(f"  renamed -> {name}", file=sys.stderr)
+
+    slugs = sorted(set(wired) - set(held))
+    if args.limit:
+        slugs = slugs[: args.limit]
     print(f"harvesting {len(slugs)} UK venues from Flicks", file=sys.stderr)
 
-    done, failed = [], []
+    done, failed = list(held.values()), []
 
     def one(slug: str):
         obj = wired[slug]
@@ -233,8 +279,10 @@ def main() -> int:
 
     elapsed = time.monotonic() - started
     withtown = sum(1 for v in done if v["town"])
+    fetched = len(done) - len(held)
+    rate = f", {fetched / max(elapsed, 0.001):.1f} req/s" if fetched else ""
     print(f"wrote {OUT.relative_to(ROOT)}: {len(done)} venues, {withtown} with a town, "
-          f"{len(failed)} failed, {len(done) / max(elapsed, 1):.1f} req/s", file=sys.stderr)
+          f"{fetched} fetched, {len(failed)} failed{rate}", file=sys.stderr)
     for slug, err in failed[:10]:
         print(f"  FAILED {slug}: {err}", file=sys.stderr)
     return 0

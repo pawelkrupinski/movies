@@ -18,6 +18,12 @@ name: Discover UK cinemas
 # body, never written as broken Scala. It also lists GONE venues (wired by us but
 # dropped from Flicks' sitemap) as retirement candidates; it never auto-deletes.
 #
+# A newly wired venue then needs its TOWN, or it drops silently out of its city's
+# `City.coveredPlaces` — the page just stops naming one of the places it covers,
+# with nothing red to say so. So the same job tops up data/uk/venues.json
+# (`harvest_towns.py --sync`: only the venues the file lacks, a handful at most)
+# and regenerates the lookup, in the same PR as the wiring that needs it.
+#
 # Like regenerate-og-cards.yml / sync-title-rules, the PR is opened via the
 # "Kinowo Sync Bot" GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY)
 # so Branch CI runs on it — a PR opened with the default GITHUB_TOKEN never fires
@@ -61,6 +67,12 @@ jobs:
               working-directory: scripts/discover-cinemas
               run: python3 test_discover.py
 
+            # Guard the town parser before trusting the towns it derives. Scores
+            # itself against the 87 UK venues whose recorded Cineworld fixture
+            # carries the chain's own city beside the address.
+            - name: Unit-test the town parser
+              run: python3 data/uk/scripts/test_harvest_towns.py
+
             # Enumerate Flicks, diff, and splice new venues into the two source
             # files (--apply). Stdlib only — no pip install. Writes the markdown
             # report used for the PR body and the run summary.
@@ -69,13 +81,23 @@ jobs:
                   python3 scripts/discover-cinemas/discover.py --apply --report-path discovery-report.md
                   cat discovery-report.md >> "$GITHUB_STEP_SUMMARY"
 
+            # Give the venues it just wired their town. Incremental: --sync fetches
+            # only the ones venues.json does not already hold, forgets any that are
+            # no longer wired, and re-reads the display names it is keyed on (a
+            # rename in Cinema.scala would otherwise orphan a row in silence). A
+            # week with no new venues fetches nothing and changes no file.
+            - name: Harvest towns for the newly wired venues
+              run: |
+                  python3 data/uk/scripts/harvest_towns.py --sync
+                  python3 data/uk/scripts/generate_towns.py
+
             # Only compile when the discovery actually changed the wiring — a bad
             # splice must fail the job here, BEFORE a broken PR is opened. Weeks
             # with no new venues skip the (slow) compile entirely.
             - name: Check for wiring changes
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala; then
+                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/scala/models/UkVenueTowns.scala data/uk/venues.json; then
                       echo "wired=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "wired=true" >> "$GITHUB_OUTPUT"
@@ -120,6 +142,8 @@ jobs:
                   add-paths: |
                       common/src/main/scala/models/Cinema.scala
                       worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala
+                      common/src/main/scala/models/UkVenueTowns.scala
+                      data/uk/venues.json
                   commit-message: 'chore: wire newly-discovered UK cinemas from Flicks'
                   title: 'chore: wire newly-discovered UK cinemas'
                   body-path: discovery-report.md
