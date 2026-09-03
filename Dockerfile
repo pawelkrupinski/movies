@@ -51,6 +51,16 @@ EXPOSE 9000
 # blocks new dumps + log writes. Keep the 3 newest dumps + the 3 newest hs_err
 # crash logs, drop the retired JFR repo dir.
 #
+# ROTATE THE FIXED-NAME DUMP FIRST, or the prune below never fires and every OOM
+# after the first writes NOTHING. `-XX:HeapDumpPath=/data/heapdumps` names a
+# DIRECTORY, so the JVM picks the filename itself: `java_pid<pid>.hprof`. In a
+# container the JVM is always pid 1, so that name is a CONSTANT — there is only
+# ever one dump, `tail -n +4` never selects it, and the JVM refuses to overwrite
+# an existing file ("Unable to create /data/heapdumps/java_pid1.hprof: File
+# exists"). That is exactly what swallowed the dump for worker-us's
+# 2026-09-03T03:40 heap OOM. Renaming it to a timestamp on boot both preserves
+# the dump and gives the keep-3-newest prune the distinct names it assumes.
+#
 # DURABLE STDERR (worker only): the JVM's dying stderr — the `ExitOnOutOfMemoryError`
 # native-OOM line (`Native memory allocation (mmap/malloc) failed…`) and, on a clean
 # SIGTERM restart, the `-XX:+PrintNMTStatistics` summary — otherwise goes only to the
@@ -62,7 +72,8 @@ EXPOSE 9000
 # `else` branch runs the JVM unredirected, exactly as before. Cap the file on boot so
 # a crash-loop can't fill /data (keep the last ~4 MB). Hard JVM crashes (SIGSEGV) go
 # to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in fly.worker.toml JAVA_OPTS).
-CMD if [ -d /data/heapdumps ]; then ls -1t /data/heapdumps/*.hprof 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
+CMD if [ -f /data/heapdumps/java_pid1.hprof ]; then mv /data/heapdumps/java_pid1.hprof "/data/heapdumps/oom-$(date -u +%Y%m%dT%H%M%SZ).hprof"; fi; \
+    if [ -d /data/heapdumps ]; then ls -1t /data/heapdumps/*.hprof 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
     if [ -d /data/logs ]; then ls -1t /data/logs/hs_err_*.log 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
     if [ -f /data/logs/worker-stderr.log ] && [ "$(wc -c < /data/logs/worker-stderr.log)" -gt 16777216 ]; then \
       tail -c 4194304 /data/logs/worker-stderr.log > /data/logs/worker-stderr.log.tmp && mv /data/logs/worker-stderr.log.tmp /data/logs/worker-stderr.log; fi; \

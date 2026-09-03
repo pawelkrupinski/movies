@@ -35,6 +35,29 @@ class WorkerDurableDiagnosticsConfigSpec extends AnyFlatSpec with Matchers {
     dockerfile should include ("/data/logs/hs_err_*.log")
   }
 
+  it should "rotate the fixed-name heap dump before pruning, so a second OOM can still write one" in {
+    // `-XX:HeapDumpPath=/data/heapdumps` names a DIRECTORY, so the JVM chooses the
+    // filename: `java_pid<pid>.hprof`. A containerised JVM is always pid 1, so the
+    // name never varies — the dump is written once and every later OOM dies with
+    // "Unable to create /data/heapdumps/java_pid1.hprof: File exists", silently
+    // losing the evidence. worker-us's 2026-09-03T03:40 heap OOM was diagnosed from
+    // the container's stdout precisely because its dump had been swallowed this way.
+    // Renaming on boot restores the dump AND feeds the keep-3-newest prune the
+    // distinct filenames it was written to assume.
+    dockerfile should include ("mv /data/heapdumps/java_pid1.hprof")
+  }
+
+  it should "rotate that dump BEFORE the prune runs, not after" in {
+    // Order is the whole point: pruning first would still leave the fixed name in
+    // place (it is the only dump, so `tail -n +4` never selects it) and the next OOM
+    // would fail to write exactly as before.
+    val rotate = dockerfile.indexOf("mv /data/heapdumps/java_pid1.hprof")
+    val prune  = dockerfile.indexOf("ls -1t /data/heapdumps/*.hprof")
+    rotate should be >= 0
+    prune  should be >= 0
+    rotate should be < prune
+  }
+
   "fly.worker.toml JAVA_OPTS" should "point the hard-crash ErrorFile at the /data volume" in {
     workerToml should include ("-XX:ErrorFile=/data/logs/hs_err_%p.log")
   }

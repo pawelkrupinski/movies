@@ -156,4 +156,27 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  /** The floor the 2026-09-03 OOM bought. See the test below. */
+  private val WorkerUsHeapFloorMib = 1280
+
+  // The MIRROR of the test above, and the failure it missed. That one stops a heap
+  // outgrowing its container; this one stops a heap the container has already paid
+  // for going unclaimed. worker-us died at 03:40:17 on 2026-09-03 with
+  // `java.lang.OutOfMemoryError: Java heap space` while its cgroup peaked at 1.3G of
+  // a 2Gi limit — the JVM hit -Xmx1024m and self-terminated on
+  // `ExitOnOutOfMemoryError` with ~700MB of the pod's allowance never touched. A
+  // limit is not headroom the JVM can reach; only -Xmx is. US carries ~5000 venues
+  // against Germany's ~1500 on 1.6x the heap, which is how it ran out first.
+  "the US worker's heap" should "claim the container limit it was already given" in {
+    val heap = flagMib(javaOpts("worker", "us"), "-Xmx", "worker", "us")
+    withClue(
+      s"worker/us boots with -Xmx${heap}Mi. It OOMed on the Java heap at 1024Mi on 2026-09-03 " +
+      s"while the container still had ~700MB spare, so the floor is ${WorkerUsHeapFloorMib}Mi. " +
+      "Lowering it re-opens that crash; raising it further is fine only while the test above " +
+      "still passes: ") {
+      heap should be >= WorkerUsHeapFloorMib
+    }
+    info(s"worker/us: -Xmx${heap}Mi of a ${limitMib("worker", "us")}Mi limit")
+  }
 }
