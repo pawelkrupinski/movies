@@ -252,6 +252,7 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
       "headlamp"           -> "infra/kubernetes/headlamp/deployment.yaml",
       // Flux's source- and kustomize-controller, vendored from `flux install --export`.
       "flux"               -> "infra/kubernetes/flux/gotk-components.yaml",
+      "reloader"           -> "infra/kubernetes/reloader/deployment.yaml",
     )
     tenants.map { case (name, path) =>
       val mib = requestsIn(path)
