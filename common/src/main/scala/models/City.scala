@@ -87,6 +87,29 @@ sealed abstract class City(
    *  persist a chosen area under (`'areasChosen:' + city`). `None` for an
    *  unknown slug and for every flat city. */
   def areaBySlug(slug: String): Option[CinemaAreaGroup] = areas.find(_.area.slug == slug)
+  /** The real-world towns this listing covers, city first — the place names a
+   *  visitor (and a search engine) would look the page up by. For most of the
+   *  roster that is just the city's own name: one town, one page.
+   *
+   *  It is not, for the two shapes that are several towns under one name. A
+   *  SPLIT city's [[areas]] are already its sub-places, so the default reads
+   *  them, keeping only the labels that name a place at all
+   *  ([[CinemaArea.namesAPlace]]) — a US metro's districts are towns in their
+   *  own right (Manhattan, Santa Monica, Long Island) and belong here, London's
+   *  compass bearings are not and do not. A FLAT city that is nonetheless a
+   *  conurbation has no areas to read and overrides this outright; see
+   *  [[Trojmiasto]].
+   *
+   *  Read by `controllers.StructuredData.cityPage` (as schema.org
+   *  `containsPlace`), `controllers.FilterDescription.defaultDescription` and
+   *  the page's `<h1>`. Before those, a covered town appeared nowhere a crawler
+   *  could read it: "Sopot" was absent from `/trojmiasto/` entirely — title,
+   *  description, structured data, and every one of its cinemas' names. */
+  def coveredPlaces: Seq[String] =
+    (labels.nominative +: areas.map(_.area).filter(_.namesAPlace).map(_.label)).distinct
+  /** The covered towns OTHER than the city itself — empty for the ordinary
+   *  one-town city, and the whole reason a multi-town page needs extra words. */
+  final def otherCoveredPlaces: Seq[String] = coveredPlaces.filterNot(_ == labels.nominative)
   /** "Repertuar kin …" locative phrase, in this city's country language.
    *  Polish declines ("w Poznaniu", "we Wrocławiu"); English (and any other
    *  non-declining language) reads "in London". Delegated to [[CityGrammar]] so
@@ -204,6 +227,12 @@ case object Trojmiasto extends City(
   zoneId = ZoneId.of("Europe/Warsaw"),
 ) {
   val cinemas: Seq[Cinema] = Cinema.trojmiasto
+  /** The towns the conurbation is, biggest first — the three of the Tri-City
+   *  proper plus Rumia, whose Multikino this page also lists. Hand-written
+   *  because a flat city has no [[areas]] for the default to read, and needed
+   *  because "Trójmiasto" is a name nobody searches a cinema by: of the four,
+   *  only "Gdańsk" appeared on the page at all, inside `Multikino Gdańsk`. */
+  override val coveredPlaces: Seq[String] = Seq("Trójmiasto", "Gdańsk", "Gdynia", "Sopot", "Rumia")
 }
 
 case object Bydgoszcz extends City(

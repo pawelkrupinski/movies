@@ -98,6 +98,38 @@ class CitySpec extends AnyFlatSpec with Matchers {
     slugs.indexOf("lodz") should be < slugs.indexOf("zabrze")
   }
 
+  // ── coveredPlaces ───────────────────────────────────────────────────────────
+
+  "coveredPlaces" should "be the city itself, and nothing else, for a one-town city" in {
+    Poznan.coveredPlaces      shouldBe Seq("Poznań")
+    Poznan.otherCoveredPlaces shouldBe empty
+  }
+
+  it should "name every town a conurbation's own name hides" in {
+    // The page is `/trojmiasto/`, and "Sopot" and "Gdynia" occur in no slug, no
+    // label and no cinema display name — so without this the towns are on the
+    // page nowhere at all, and a search for either can match nothing.
+    Trojmiasto.coveredPlaces      shouldBe Seq("Trójmiasto", "Gdańsk", "Gdynia", "Sopot", "Rumia")
+    Trojmiasto.otherCoveredPlaces shouldBe Seq("Gdańsk", "Gdynia", "Sopot", "Rumia")
+  }
+
+  it should "read a split city's districts, which are towns in their own right" in {
+    val bay = City.all.find(_.labels.nominative == "San Francisco Bay Area")
+      .getOrElse(fail("no San Francisco Bay Area metro in the roster"))
+    bay.coveredPlaces.head shouldBe "San Francisco Bay Area"
+    // The metro is named after the BAY, so the city it is named after is one of
+    // its districts — and until now `/san-francisco-bay-area/` said "San
+    // Francisco" nowhere, any more than it said "Oakland".
+    bay.otherCoveredPlaces should contain allOf ("San Francisco", "East Bay", "South Bay")
+    bay.coveredPlaces      shouldBe bay.coveredPlaces.distinct
+  }
+
+  it should "ignore compass bearings, which name no place outside their city" in {
+    London.areas.map(_.area.label) should contain("Central")  // London IS split…
+    London.coveredPlaces           shouldBe Seq("London")     // …but into directions
+    London.otherCoveredPlaces      shouldBe empty
+  }
+
   "City.allJson" should "emit a slug/name/lat/lon object per city for the clients" in {
     val json = City.allJson
     json should include(""""slug":"poznan"""")

@@ -18,7 +18,15 @@ import tools.Slugify
  *  able to carry a name nobody wrote down in advance. The compass singletons keep their exact labels and
  *  slugs — clients persist the slug as a group key (`'areasChosen:' + city`), so
  *  re-slugging an existing area silently forgets a user's choice. */
-final case class CinemaArea(label: String, slug: String)
+final case class CinemaArea(label: String, slug: String) {
+  /** Whether this area's label names a PLACE somebody could search for — a town
+   *  or a district (Manhattan, Santa Monica, Long Island) — as opposed to a
+   *  bearing or a catch-all ("Central", "Other areas"), which name nothing
+   *  outside the city they sit in. Read by [[City.coveredPlaces]], which puts
+   *  the place names into the page's structured data, where a direction would be
+   *  worse than nothing: "Central" is a claim about a town called Central. */
+  def namesAPlace: Boolean = !CinemaArea.compass.contains(this) && this != CinemaArea.Other
+}
 
 object CinemaArea {
   /** An area whose slug is derived from its label — the usual case. The fold is

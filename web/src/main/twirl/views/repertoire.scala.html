@@ -32,6 +32,13 @@
 @_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
 <script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 
+@* The listing's only heading. Visually hidden because the design opens straight
+   onto the card grid with no title bar — but the page had no `<h1>` at all, so
+   the city was marked up only as a `<title>` and a meta tag. Rendered HERE,
+   outside `#view-pager`, so the day carousel's clones of `#view-root` can't
+   duplicate it into a second and third `<h1>`. *@
+<h1 class="visually-hidden">@controllers.FilterDescription.pageHeading(city)</h1>
+
 @* `#view-pager` is the day carousel viewport. `#day-track` is a flex row of
    100vw day columns; the real grid (`#view-root`) is the centre column. A
    horizontal swipe (or arrow / key / dropdown change) translates `#day-track`,

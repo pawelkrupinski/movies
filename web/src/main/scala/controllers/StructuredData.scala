@@ -82,6 +82,7 @@ object StructuredData {
     }
     render(Json.arr(
       breadcrumb(origin, Seq(city.country.brandName -> s"$origin/", city.labels.nominative -> cityUrl)),
+      place(cityUrl, city),
       Json.obj(
         "@context" -> Ctx, "@type" -> "ItemList",
         // Same city heading as the OG tags / card overlay, so the JSON-LD is
@@ -92,6 +93,30 @@ object StructuredData {
         "itemListElement" -> items,
       ),
     ))
+  }
+
+  /** The PLACE the listing is about, as a schema.org `City`: its coordinates,
+   *  and — for a listing that spans several towns — those towns as
+   *  `containsPlace`. Without it the only geography on a city page was its own
+   *  name, in the title and the breadcrumb, so a page covering several towns
+   *  named none of them anywhere a crawler could read: `/trojmiasto/` said
+   *  "Trójmiasto" and never Gdynia, Sopot or Rumia, and a US metro said "New
+   *  York" and never Brooklyn or Long Island.
+   *
+   *  A `City` rather than a bare `Place` because that is what every entry in
+   *  [[models.City.coveredPlaces]] is — a town, or a district of one — and
+   *  because `containsPlace` is the property that says so. */
+  private def place(cityUrl: String, city: City): JsValue = {
+    val towns = city.otherCoveredPlaces
+    Json.obj(
+      "@context" -> Ctx, "@type" -> "City",
+      "name" -> city.labels.nominative,
+      "url"  -> cityUrl,
+      "geo"  -> Json.obj("@type" -> "GeoCoordinates", "latitude" -> city.lat, "longitude" -> city.lon),
+    ) ++ (
+      if (towns.isEmpty) Json.obj()
+      else Json.obj("containsPlace" -> towns.map(t => Json.obj("@type" -> "City", "name" -> t)))
+    )
   }
 
   /** A film detail page: the Movie itself + a breadcrumb + a ScreeningEvent per

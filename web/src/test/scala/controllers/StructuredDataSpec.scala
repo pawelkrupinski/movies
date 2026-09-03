@@ -105,6 +105,30 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     (list \ "name").as[String] shouldBe "Cinema listings in London"
   }
 
+  it should "describe the city as a Place carrying its coordinates" in {
+    val arr   = parseArray(StructuredData.cityPage("https://kinowo.net/poznan/", Poznan, Seq(film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))))
+    val place = byType(arr, "City").head
+    (place \ "name").as[String]              shouldBe "Poznań"
+    (place \ "url").as[String]               shouldBe "https://kinowo.net/poznan/"
+    (place \ "geo" \ "latitude").as[Double]  shouldBe 52.4064
+    (place \ "geo" \ "longitude").as[Double] shouldBe 16.9252
+    // One town: there is nothing for it to contain, and an empty list would
+    // claim a subdivision the city does not have.
+    (place \ "containsPlace").asOpt[JsArray] shouldBe None
+  }
+
+  // "Trójmiasto" is a name nobody searches a cinema by, and its towns were on
+  // the page nowhere — not in the title, the description or a cinema name. This
+  // is where a crawler is told the listing covers them.
+  it should "name the towns a multi-town listing covers as containsPlace" in {
+    val arr   = parseArray(StructuredData.cityPage("https://kinowo.net/trojmiasto/", Trojmiasto, Seq(film("Diuna", Seq((MultikinoGdansk, LocalDateTime.of(2026, 5, 17, 18, 0), None))))))
+    val place = byType(arr, "City").head
+    (place \ "name").as[String] shouldBe "Trójmiasto"
+    (place \ "containsPlace").as[JsArray].value.map(p => (p \ "name").as[String]).toSeq shouldBe
+      Seq("Gdańsk", "Gdynia", "Sopot", "Rumia")
+    (place \ "containsPlace").as[JsArray].value.map(p => (p \ "@type").as[String]).toSet shouldBe Set("City")
+  }
+
   // ── film page ────────────────────────────────────────────────────────────────
 
   private val canonical = "https://kinowo.net/poznan/movie/diuna"
