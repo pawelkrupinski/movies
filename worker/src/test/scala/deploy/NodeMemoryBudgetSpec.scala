@@ -157,26 +157,35 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** The floor the 2026-09-03 OOM bought. See the test below. */
-  private val WorkerUsHeapFloorMib = 1280
+  /** Floors bought by a measured heap exhaustion, per tier+country. See the test
+   *  below for what each one cost. */
+  private val HeapFloorsMib = Map(("worker", "us") -> 1280, ("web", "us") -> 1024)
 
   // The MIRROR of the test above, and the failure it missed. That one stops a heap
   // outgrowing its container; this one stops a heap the container has already paid
-  // for going unclaimed. worker-us died at 03:40:17 on 2026-09-03 with
-  // `java.lang.OutOfMemoryError: Java heap space` while its cgroup peaked at 1.3G of
-  // a 2Gi limit — the JVM hit -Xmx1024m and self-terminated on
-  // `ExitOnOutOfMemoryError` with ~700MB of the pod's allowance never touched. A
-  // limit is not headroom the JVM can reach; only -Xmx is. US carries ~5000 venues
-  // against Germany's ~1500 on 1.6x the heap, which is how it ran out first.
-  "the US worker's heap" should "claim the container limit it was already given" in {
-    val heap = flagMib(javaOpts("worker", "us"), "-Xmx", "worker", "us")
-    withClue(
-      s"worker/us boots with -Xmx${heap}Mi. It OOMed on the Java heap at 1024Mi on 2026-09-03 " +
-      s"while the container still had ~700MB spare, so the floor is ${WorkerUsHeapFloorMib}Mi. " +
-      "Lowering it re-opens that crash; raising it further is fine only while the test above " +
-      "still passes: ") {
-      heap should be >= WorkerUsHeapFloorMib
+  // for going unclaimed. A limit is not headroom a JVM can reach; only -Xmx is, so a
+  // pod can die of OutOfMemoryError with hundreds of MB of its cgroup untouched --
+  // which means no memory-pressure alert fires and a bigger limit fixes nothing.
+  //
+  // Both floors here were bought that way, and BOTH pods had slack in the limit at
+  // the time:
+  //   worker-us  died 2026-09-03T03:40:17 on -Xmx1024m; cgroup peaked at 1.3G of 2Gi.
+  //   web-us     G1 Old Gen peaked at 760.5MiB of a 768MiB cap (99% of the heap LIVE)
+  //              while RSS peaked at 1515MiB of 2048MiB -- the shape behind its
+  //              ~40-restart crash loop of 2026-08-30..09-02.
+  // US carries ~5000 venues against Germany's ~1500, and one US "city" (California)
+  // renders an 18.9MB page, which is why it is the country that runs out first.
+  "the US deployments' heaps" should "claim the container limit they were already given" in {
+    HeapFloorsMib.foreach { case ((tier, cc), floor) =>
+      val heap  = flagMib(javaOpts(tier, cc), "-Xmx", tier, cc)
+      val limit = limitMib(tier, cc)
+      withClue(
+        s"$tier/$cc boots with -Xmx${heap}Mi against a ${limit}Mi limit, under a ${floor}Mi floor " +
+        "that a measured heap exhaustion bought. Lowering it re-opens that crash; raising it " +
+        "further is fine only while the test above still passes: ") {
+        heap should be >= floor
+      }
+      info(s"$tier/$cc: -Xmx${heap}Mi of a ${limit}Mi limit")
     }
-    info(s"worker/us: -Xmx${heap}Mi of a ${limitMib("worker", "us")}Mi limit")
   }
 }
