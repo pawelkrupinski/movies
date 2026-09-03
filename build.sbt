@@ -434,5 +434,12 @@ addCommandAlias("convergenceSpainSample",   "e2e/Test/testOnly services.movies.S
 addCommandAlias("convergencePoland",  "e2e/Test/testOnly services.movies.PolandConvergenceSpec")
 addCommandAlias("convergenceGermany", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec")
 addCommandAlias("convergenceUk",      "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec")
-addCommandAlias("convergenceUs",      "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec")
+// The US full leg runs everything EXCEPT the whole-corpus order-independence replay,
+// and `convergenceUsOrder` runs only that. Split because the two do not fit in one job:
+// the boot is 167 minutes and the three concurrent replays project to ~4h15m, against a
+// 315-minute suite step and GitHub's hard 360-minute job cancellation. No other country
+// splits — Poland's replays cost 287s and Germany's 439s, so theirs stay inline, and
+// every sample leg keeps the ~100-film version of the claim. See `OrderIndependence`.
+addCommandAlias("convergenceUs",      "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec -- -l services.movies.OrderIndependence")
+addCommandAlias("convergenceUsOrder", "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec -- -n services.movies.OrderIndependence")
 addCommandAlias("convergenceSpain",    "e2e/Test/testOnly services.movies.SpainConvergenceSpec")

@@ -41,8 +41,9 @@
 # there would undo the lane here, and would read as an ordinary supersede.
 # (ConvergenceConcurrencyConfigSpec, DeployImageReuseSpec)
 #
-# The price is two of the account's twenty concurrent jobs held for as long as the
-# leg runs. That is deliberate, and it is what an answer costs for this country.
+# The price is three of the account's twenty concurrent jobs held for as long as the
+# leg runs — the sample, then the full leg and the order-independence replay side by
+# side. That is deliberate, and it is what an answer costs for this country.
 #
 name: US convergence
 
@@ -90,7 +91,16 @@ jobs:
                     # exited 3 on `.jvmopts`' `-XX:+ExitOnOutOfMemoryError` — before
                     # ScalaTest had reported one assertion. A budget buys nothing if the
                     # heap runs out first.
-                    - { country: united-states, code: us, cmd: convergenceUs, sample: convergenceUsSample, job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 8g }
+                    #
+                    # `order`/`orderJob`/`orderSuite` split the whole-corpus
+                    # order-independence replay into a job of its own — the ONLY country
+                    # that does. The full leg boots this corpus in 167 minutes and the
+                    # three concurrent replays cost ~1.5x a boot again (the UK's measured
+                    # ratio: 2,586s of replays against a 1,676s boot), so together they
+                    # are 5.5 hours in a job GitHub cancels at 6. Every US leg before this
+                    # died on the replays' own 75-minute guard having diverged on nothing.
+                    # The two jobs run side by side off the same sample gate.
+                    - { country: united-states, code: us, cmd: convergenceUs, sample: convergenceUsSample, job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 8g, order: convergenceUsOrder, orderJob: 330, orderSuite: 315 }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -105,6 +115,9 @@ jobs:
             suite-timeout-minutes:         ${{ matrix.suite }}
             sample-job-timeout-minutes:    ${{ matrix.sampleJob }}
             sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
+            order-command:                 ${{ matrix.order }}
+            order-job-timeout-minutes:     ${{ matrix.orderJob }}
+            order-suite-timeout-minutes:   ${{ matrix.orderSuite }}
             heap:                          ${{ matrix.heap }}
         # TMDB_API_KEY / OMDB_API_KEY, and the GITHUB_TOKEN the setup action reads.
         secrets: inherit

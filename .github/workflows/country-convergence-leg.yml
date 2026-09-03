@@ -1,5 +1,9 @@
 #
-# ONE country's convergence leg: the fast sample gate, and the full run behind it.
+# ONE country's convergence leg: the fast sample gate, the full run behind it, and —
+# for a country whose corpus has outgrown a single job — the order-independence replay
+# beside it. The third is absent unless the caller names an `order-command`; only the
+# United States does, and only because its boot and its replays are 5.5 hours together
+# in a job GitHub cancels at 6.
 #
 # A reusable workflow rather than two matrix jobs in `country-convergence.yml`,
 # because GitHub has no way to say "this matrix leg needs THAT matrix leg" —
@@ -79,6 +83,33 @@ on:
                 required: false
                 type: number
                 default: 20
+            # THE SECOND FULL RUN, for a country whose corpus no longer fits in one job.
+            #
+            # Empty for every country but the United States, and the `order` job below
+            # does not exist for the ones that leave it empty. The US full leg boots the
+            # corpus in 167 minutes and the whole-corpus order-independence replay costs
+            # ~1.5x a boot again (measured on the UK: 2,586s of replays against a 1,676s
+            # boot) — 5.5 hours in a job GitHub cancels at 6, which is why no US leg had
+            # ever reached the end of that test. Splitting it out is not a weaker claim:
+            # the same assertion runs, on the same corpus, in a job sized for it.
+            order-command:
+                description: >-
+                    The sbt alias running this country's order-independence replay in a job of
+                    its own. Empty (the default) means the country runs it inside its full leg,
+                    which is where it belongs until the corpus outgrows the budget.
+                required: false
+                type: string
+                default: ''
+            order-job-timeout-minutes:
+                description: Ceiling for the whole order-independence job, including setup.
+                required: false
+                type: number
+                default: 135
+            order-suite-timeout-minutes:
+                description: Ceiling for the order-independence suite step alone. MUST stay clear of the job's.
+                required: false
+                type: number
+                default: 120
             # THE HEAP IS PER-COUNTRY for the same reason the budgets are, and it is the
             # one ceiling nothing in this repository was setting from the command line.
             # `.jvmopts` names `-Xmx4g` for the unforked local `testUnit`, the leg's sbt
@@ -331,51 +362,10 @@ jobs:
                   # would only report the same failure twice.
                   require_tests: true
 
-            # The findings, on the run's summary page, per country.
-            #
-            # ScalaTest's `info(...)` lines carry everything worth knowing about a leg —
-            # enrichment coverage down the whole ladder, cache hits versus live fills,
-            # cinemas and screenings in versus out, per-tick change-stream emissions —
-            # and they were reachable only by downloading a 5 MB job log and grepping it.
-            # Three countries' worth of that is a report nobody reads. Rendered here it is
-            # the first thing on the page, for a passing run as much as a failing one.
-            - name: Report the convergence findings
+            - uses: ./.github/actions/convergence-findings
               if: always()
-              shell: bash
-              run: |
-                  set -uo pipefail
-                  if [ ! -s convergence.log ]; then
-                      echo "### convergence (${{ inputs.country }})" >> "$GITHUB_STEP_SUMMARY"
-                      echo "The suite produced no output — see the job log." >> "$GITHUB_STEP_SUMMARY"
-                      exit 0
-                  fi
-                  # sbt colours its output; the escapes are noise in markdown.
-                  # `|| true` on every grep. The step declares `shell: bash`, which runs
-                  # with `-e`, and grep exits 1 when it matches NOTHING — so a run with no
-                  # `Tests:` line killed this step before it printed a character. That is
-                  # precisely the cancelled-or-crashed run whose partial output the report
-                  # exists to salvage: it failed only when it was most needed, and blamed
-                  # the reporting rather than the run.
-                  clean=$(sed -E 's/\x1b\[[0-9;]*m//g' convergence.log)
-                  totals=$(printf '%s\n' "$clean" | { grep -E '^\[info\] Tests: ' || true; } | tail -1 | sed 's/^\[info\] //')
-                  {
-                      echo "### convergence (${{ inputs.country }})"
-                      echo
-                      if [ -n "$totals" ]; then echo "**$totals**"; else echo "**No test totals — the suite did not finish.**"; fi
-                      echo
-                      echo '```'
-                      # The spec's own structure — suite, `should` clauses, the `+` info
-                      # lines — PLUS the `[pl] phase done in …` timings the harness prints
-                      # as it goes. Those are how a slow leg is diagnosed without attaching
-                      # a profiler to a live JVM, so they belong in the report rather than
-                      # only in a 5 MB job log. Everything else on stdout is application
-                      # logging, which is not a report.
-                      printf '%s\n' "$clean" \
-                        | { grep -E '^(\[info\] )?([A-Za-z0-9]+Spec:|- should |  \+ |the |\[[a-z]{2}\] )' || true; } \
-                        | sed 's/^\[info\] //' \
-                        | head -150
-                      echo '```'
-                  } >> "$GITHUB_STEP_SUMMARY"
+              with:
+                  title: convergence (${{ inputs.country }})
 
             # The capture this leg just spent an hour building, back to the release it
             # was restored from. Shared with the sample gate above — the two must agree
@@ -385,3 +375,79 @@ jobs:
               with:
                   code:  ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
+
+    # THE ORDER-INDEPENDENCE REPLAY, in a job of its own — for the one country whose
+    # corpus no longer fits beside its boot. Absent unless the caller names an
+    # `order-command`; see that input for the measurements.
+    #
+    # Deliberately NOT `needs: convergence`. The two are independent — the replay seeds
+    # its own archive and never touches the booted corpus — and chaining them would put
+    # a 4-hour job behind a 3-hour one, which is the 6-hour cancellation this split
+    # exists to escape. They run side by side off the same sample gate, so the leg
+    # costs one more concurrent runner while it is in flight rather than one more
+    # afternoon.
+    #
+    # The steps are the full leg's, minus one. See the `convergence` job above for why
+    # each ceiling, each `env` entry and each `always()` sits where it does; the reasons
+    # are identical and are not repeated here.
+    order:
+        name: order-independence
+        needs: sample
+        if: inputs.order-command != ''
+        runs-on: ubuntu-latest
+        timeout-minutes: ${{ inputs.order-job-timeout-minutes }}
+        permissions:
+            # `read`, not the other two jobs' `write`: this job restores the fixture tree
+            # from the rolling release and never writes it back (see the missing publish
+            # at the bottom). Naming a `permissions:` block at all sets every scope it
+            # omits to `none`, so leaving `contents` out does not inherit read — it
+            # revokes it, and the checkout is the first thing that fails.
+            contents: read
+            checks: write
+            # `gh run download` still reads artifacts, for the one-off bootstrap when the
+            # release doesn't exist yet.
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/convergence-setup
+              with:
+                  code:  ${{ inputs.code }}
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Run the ${{ inputs.country }} order-independence replay
+              id: suite
+              shell: bash
+              timeout-minutes: ${{ inputs.order-suite-timeout-minutes }}
+              run: |
+                  set -o pipefail
+                  sbt -J-Xmx${{ inputs.heap }} ${{ inputs.order-command }} 2>&1 | tee convergence.log
+              env:
+                  KINOWO_COUNTRY:   ${{ inputs.code }}
+                  KINOWO_COUNTRIES: ${{ inputs.code }}
+                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
+                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
+                  OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
+                  MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
+
+            - name: Publish order-independence test report
+              if: always()
+              uses: mikepenz/action-junit-report@v5
+              with:
+                  report_paths: 'target/test-reports/unit/**/*.xml'
+                  check_name: order-independence (${{ inputs.country }})
+                  detailed_summary: true
+                  include_passed: true
+                  require_tests: true
+
+            - uses: ./.github/actions/convergence-findings
+              if: always()
+              with:
+                  title: order-independence (${{ inputs.country }})
+
+            # NO `convergence-publish`, and that is the one deliberate difference from the
+            # full leg. Both jobs run off the same sample gate and would finish into the
+            # same rolling-release asset, and `gh release upload --clobber` is a
+            # last-writer-wins overwrite of a 428 MB tarball — two of them in flight is how
+            # the next run restores a truncated tree. This job has nothing to publish
+            # anyway: its replays share the preloaded cache and the leg that recorded it
+            # measured 4 live fills across the whole run.

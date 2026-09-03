@@ -12,7 +12,7 @@ import services.events.MovieDetailsComplete
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
 import services.titlerules.TitleRuleSet
 import tools.{ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CountryScrapeCorpus,
-  EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, ProdCoverageBaseline,
+  EnrichmentCache, EnrichmentFreshness, Env, FileEnrichmentCacheStore, PhaseTimer, ProdCoverageBaseline,
   SameThreadExecutionBudget}
 
 import java.time.{Instant, LocalDateTime}
@@ -79,7 +79,17 @@ abstract class CountryConvergenceBehaviour(
    * same fixpoint, order-independence, no-loss and production-band assertions over a
    * smaller corpus, so a failure means the same thing here as there.
    */
-  corpusKey: String
+  corpusKey: String,
+  /**
+   * The runaway guard on the order-independence replay — see [[ParallelReplays]].
+   *
+   * Per-country for the same reason the CI budgets are: the passes cost what the
+   * country's corpus costs, and one shared constant is a trap re-armed for whoever
+   * grows next. Keep it just under the suite-step ceiling of the job that runs this
+   * country's replays, so an overrun FAILS the step (which publishes a report) rather
+   * than cancelling the job (which does not).
+   */
+  replayGuard: FiniteDuration = ParallelReplays.DefaultWithin
 ) extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
   override def afterAll(): Unit = {
@@ -199,9 +209,14 @@ abstract class CountryConvergenceBehaviour(
     cache
   }
 
-  /** Independent random-order passes compared against each other. Three is enough
-   *  to catch an order dependency while keeping the heaviest country (Germany,
-   *  1,533 venues) inside its CI leg's budget. */
+  /** Independent random-order passes compared against each other. Three is enough to
+   *  catch an order dependency, and they run CONCURRENTLY, so the count costs contention
+   *  rather than wall clock.
+   *
+   *  It is no longer what keeps the heaviest country inside its leg's budget — the
+   *  United States, at 4,304 venues, does not fit whatever this is set to, because each
+   *  pass re-pays the serial whole-corpus scrape the boot has already paid once. That
+   *  country runs these replays in a CI job of its own; see [[OrderIndependence]]. */
   private val Passes = 3
 
   /** Fixed, so an order-dependent regression fails the same way every run rather
@@ -540,7 +555,7 @@ abstract class CountryConvergenceBehaviour(
    */
   /** Shared with the harness's own phases (`TestWiring.bootCorpus`), so a run's timings
    *  all read the same way whichever layer emitted them. */
-  private def step[A](label: String)(body: => A): A = tools.PhaseTimer.timed(country.code, label)(body)
+  private def step[A](label: String)(body: => A): A = PhaseTimer.timed(country.code, label)(body)
 
   /**
    * A REAL `cinema_scrapes` collection to replay instead of the generated corpus,
@@ -916,29 +931,46 @@ abstract class CountryConvergenceBehaviour(
     // that.
     // Short on purpose: the database name carries a pid and a nanosecond stamp, and
     // Mongo caps the whole thing at 63 characters.
-    val passStorage = ConvergenceStorage.fromEnv(s"${country.code}p${seed - OrderSeed}", TitleNormalizer.forCountry(country))
+    // The pass's own scope for the phase log, matching its database's suffix so a line
+    // in the interleaved output of `Passes` concurrent replays names which pass wrote it.
+    val scope = s"${country.code}p${seed - OrderSeed}"
+    val passStorage = ConvergenceStorage.fromEnv(scope, TitleNormalizer.forCountry(country))
     passStorages.synchronized(passStorages += passStorage)
     val w = new ArchiveReplayWiring(country, archive, Some(enrichmentCache), passStorage) {
       override lazy val backgroundBudget: tools.ExecutionBudget = new SameThreadExecutionBudget
     }
     val ready = mutable.ListBuffer.empty[MovieDetailsComplete]
-    rnd.shuffle(w.cinemaScrapers.toList).foreach { scraper =>
-      Try(scraper.fetch()).toOption.foreach { films =>
-        val touched = w.movieCache.recordCinemaScrape(scraper.cinema, rnd.shuffle(films.toList))
-        ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
+    // TIMED, like every other phase in this suite — and this was the ONLY one that said
+    // nothing at all. A US leg spent 75 minutes in here and was killed with the log
+    // holding three `MongoConnection connected` lines and then silence, so the failure
+    // could not distinguish a wedged replay from a slow one, or name the phase that was
+    // spending the budget. `bootCorpus` was given exactly this treatment for exactly
+    // this reason; the replays are the same shape and cost more.
+    PhaseTimer.timed(scope, "replayScrape") {
+      val scrapers = rnd.shuffle(w.cinemaScrapers.toList)
+      val started  = System.nanoTime()
+      var done     = 0
+      scrapers.foreach { scraper =>
+        Try(scraper.fetch()).toOption.foreach { films =>
+          val touched = w.movieCache.recordCinemaScrape(scraper.cinema, rnd.shuffle(films.toList))
+          ready ++= w.cinemaScrapeRunner.classify(scraper.cinema, touched)
+        }
+        done += 1
+        if (PhaseTimer.shouldReport(done, scrapers.size))
+          PhaseTimer.progress(scope, "scraped", done, scrapers.size, started)
       }
     }
     // Publish in a shuffled order too: production publishes inline as each cinema
     // lands, so the enrichment stage sees an arbitrary cross-film order.
-    rnd.shuffle(ready.toList).foreach(w.eventBus.publish)
-    w.drainServices()
-    w.drainStaging()
-    w.movieService.settle()
-    w.drainStaging()
-    w.movieService.settle()
-    w.concludeEnrichment()
-    w.readModelProjector.reconcile()
-    w.webReadModel.reload()
+    PhaseTimer.timed(scope, "replayPublish")(rnd.shuffle(ready.toList).foreach(w.eventBus.publish))
+    PhaseTimer.timed(scope, "replayDrainServices")(w.drainServices())
+    PhaseTimer.timed(scope, "replayDrainStaging")(w.drainStaging())
+    PhaseTimer.timed(scope, "replaySettle")(w.movieService.settle())
+    PhaseTimer.timed(scope, "replayDrainStagingSecondPass")(w.drainStaging())
+    PhaseTimer.timed(scope, "replaySettleSecondPass")(w.movieService.settle())
+    PhaseTimer.timed(scope, "replayConcludeEnrichment")(w.concludeEnrichment())
+    PhaseTimer.timed(scope, "replayProject")(w.readModelProjector.reconcile())
+    PhaseTimer.timed(scope, "replayReloadReadModel")(w.webReadModel.reload())
 
     val records = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     val screenings = w.screeningsRepository.findAll()
@@ -948,7 +980,7 @@ abstract class CountryConvergenceBehaviour(
   }
 
   s"the ${country.displayName} corpus" should
-    "come out identical — films, screenings and rendered rows — whatever order it arrives in" in {
+    "come out identical — films, screenings and rendered rows — whatever order it arrives in" taggedAs OrderIndependence in {
     TitleNormalizer.installRules(TitleRuleSet.forCountry(country))
     {
       // One archive per run, in Mongo like everything else. The passes each get their
@@ -959,7 +991,7 @@ abstract class CountryConvergenceBehaviour(
       // Concurrently: the passes are independent whole-corpus replays and running
       // them back-to-back made this the leg's long pole (three boots serially, on
       // top of the shared one). Same helper the fixture determinism specs use.
-      val passes = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong))(replay(archive, _))
+      val passes = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, _))
       val (records0, screenings0, rows0) = passes.head
       info(s"${country.displayName}: $Passes passes over ${records0.size} films, " +
            s"${screenings0.values.map(_.size).sum} slots, ${rows0.size} rendered rows")

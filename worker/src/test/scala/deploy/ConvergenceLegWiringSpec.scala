@@ -13,9 +13,10 @@ import org.scalatest.matchers.should.Matchers
  * UK's full legs, the UK's sample (slowest, largest corpus) held everyone's, and
  * one country's flap cost the day's answer for the other two.
  *
- * The fix is one reusable workflow holding a single sample → convergence pair,
- * called once per country. That is only correct while three things hold, and
- * none of them is visible at a glance in the YAML:
+ * The fix is one reusable workflow holding a country's sample and the run(s) behind it
+ * — `convergence` always, plus `order-independence` for a country whose corpus has
+ * outgrown one job — called once per country. That is only correct while three things
+ * hold, and none of them is visible at a glance in the YAML:
  *
  *   - the pair is genuinely chained (`convergence` needs `sample`) inside the
  *     called file, where "the sample" can only mean this country's;
@@ -72,12 +73,16 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       ("leg default (full)",   "job-timeout-minutes",        "suite-timeout-minutes"),
       ("leg default (sample)", "sample-job-timeout-minutes", "sample-suite-timeout-minutes"))
       .map { case (label, jobKey, suiteKey) => (label, defaultOf(jobKey), defaultOf(suiteKey)) }
+    val orderDefault = Seq(("leg default (order)",
+      defaultOf("order-job-timeout-minutes"), defaultOf("order-suite-timeout-minutes")))
     val perCountry = rows.flatMap { fields =>
       val country = fields("country")
       Seq((s"$country full",   fields("job").toInt,       fields("suite").toInt),
-          (s"$country sample", fields("sampleJob").toInt, fields("sampleSuite").toInt))
+          (s"$country sample", fields("sampleJob").toInt, fields("sampleSuite").toInt)) ++
+        // Only the country that splits its order-independence replay out declares these.
+        fields.get("orderJob").map(job => (s"$country order", job.toInt, fields("orderSuite").toInt))
     }
-    defaults ++ perCountry
+    defaults ++ orderDefault ++ perCountry
   }
 
   /** The `default:` under one of the leg's `workflow_call` inputs. */
@@ -90,7 +95,32 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  other on what "publish the tree" means. */
   private val PublishAction = "uses: ./.github/actions/convergence-publish"
 
+  /** And every job that RUNS a suite renders its findings through one, for the same
+   *  reason: the report is a filter over stdout deciding what counts as narration, and a
+   *  second copy that fell behind would quietly stop rendering the phase timings that are
+   *  the only way to read a leg while it is still running. */
+  private val FindingsAction = "uses: ./.github/actions/convergence-findings"
+
+  /** The jobs that publish the tree. `order` is deliberately NOT one of them — see the
+   *  rule below that pins it. */
   private val Jobs = Seq("sample", "convergence")
+
+  /** The countries that run their order-independence replay in a job of its own, as
+   *  country → that job's sbt alias. */
+  private lazy val splitOrder: Map[String, String] =
+    rows.flatMap(fields => fields.get("order").map(fields("country") -> _)).toMap
+
+  /** The ScalaTest tag the split filters on, spelled once. */
+  private val OrderTag = "services.movies.OrderIndependence"
+
+  /** What `addCommandAlias("<name>", …)` maps `name` to. Read by name rather than
+   *  matched as a whole line, so the alias table stays free to align its columns. */
+  private def aliasBody(alias: String): String =
+    ("addCommandAlias\\(\"" + alias + "\",\\s*\"([^\"]*)\"").r.findFirstMatchIn(build)
+      .getOrElse(fail(s"build.sbt defines no `$alias` alias")).group(1)
+
+  /** The spec an alias' `testOnly` names, before any `--` runner flags. */
+  private def specOf(aliasBody: String): String = aliasBody.split(" -- ").head
 
   /** Derived from the MODEL, not from a hard-coded list.
    *
@@ -302,5 +332,103 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     // now, and a permission short of `write` fails that step and nothing else — the
     // suite still passes, and the loop above quietly stays open.
     RepoFile.block(RepoFile.block(leg, "sample"), "permissions") should include("contents: write")
+  }
+
+  /**
+   * The United States' order-independence replay, split into a job of its own.
+   *
+   * The full leg boots the corpus in 167 minutes; the three concurrent whole-corpus
+   * replays cost ~1.5x a boot again (the UK's measured ratio — 2,586s of replays behind
+   * a 1,676s boot — applied to a 10,027s one). Together that is 5.5 hours in a job
+   * GitHub cancels at 6, and every US leg to that point had died inside the replays'
+   * own guard having diverged on nothing.
+   *
+   * The split is only real if BOTH aliases hold up their end: the full leg must EXCLUDE
+   * the tag, and the order leg must run exactly it. An alias that drops one of the two
+   * flags is silent — the full leg quietly goes back to five and a half hours, or the
+   * claim stops being checked on this country at all.
+   */
+  "the order-independence split" should "run the tagged test in the order leg and nowhere else in the full one" in {
+    splitOrder should not be empty
+    splitOrder.foreach { case (country, orderAlias) =>
+      val fullAlias = countries(country)._1
+      val full  = aliasBody(fullAlias)
+      val order = aliasBody(orderAlias)
+      withClue(s"$country full leg ($fullAlias) = `$full`: ") {
+        full should include(s"-l $OrderTag")
+        full should not include s"-n $OrderTag"
+      }
+      withClue(s"$country order leg ($orderAlias) = `$order`: ") {
+        order should include(s"-n $OrderTag")
+        order should not include s"-l $OrderTag"
+      }
+      withClue(s"$country's two legs must run the same spec: ") {
+        specOf(order) shouldBe specOf(full)
+      }
+    }
+  }
+
+  /** The tag has to exist as a ScalaTest `Tag` whose name matches the one the aliases
+   *  filter on. A typo either side is not an error — `-l` on a name nothing carries
+   *  excludes nothing, and `-n` on one selects nothing and reports a green run of zero
+   *  tests, which `require_tests` catches only because the leg writes no XML at all. */
+  it should "filter on a tag the e2e module actually defines" in {
+    RepoFile.read("e2e/src/test/scala/services/movies/OrderIndependence.scala") should
+      include("""Tag("services.movies.OrderIndependence")""")
+  }
+
+  /** Side by side off the sample, not behind the full leg: chaining a 4-hour job to a
+   *  3-hour one is the 6-hour cancellation the split exists to escape. */
+  it should "gate the order leg on the sample rather than on the full leg" in {
+    val block = RepoFile.block(leg, "order")
+    block should include("needs: sample")
+    block should not include "needs: convergence"
+  }
+
+  /** ONE writer to the rolling release per leg.
+   *
+   *  `convergence` and `order` run concurrently and finish into the same
+   *  `enrichment-<code>.tar.gz`, and `gh release upload --clobber` is a last-writer-wins
+   *  overwrite of a 428 MB asset — two in flight is how the next run restores a
+   *  truncated tree. The order leg has nothing to publish anyway: its replays share the
+   *  preloaded cache, and the leg that recorded that cache measured 4 live fills across
+   *  the whole run. */
+  it should "leave the publish to the leg that is not racing another job for it" in {
+    RepoFile.block(leg, "order") should not include PublishAction
+  }
+
+  /**
+   * Every job in the leg checks the repo out and restores the fixture tree from the
+   * rolling release, and both of those read `contents`.
+   *
+   * Naming a `permissions:` block sets every scope it OMITS to `none` — it is a
+   * replacement, not an addition — so a job that lists `checks: write` and forgets
+   * `contents` has not inherited read, it has revoked it, and `actions/checkout` fails
+   * on the first step with a 403 that reads as a token problem rather than a config one.
+   */
+  it should "grant every job the contents read its checkout and fixture restore need" in {
+    Seq("sample", "convergence", "order").foreach { job =>
+      withClue(s"$job: ") {
+        RepoFile.block(leg, job) should include regex """\bcontents:\s*(read|write)\b"""
+      }
+    }
+  }
+
+  it should "render every suite job's findings through the one report" in {
+    Seq("convergence", "order").foreach { job =>
+      withClue(s"$job: ") { RepoFile.block(leg, job) should include(FindingsAction) }
+    }
+  }
+
+  /** A country that names an order job must name its budgets too, and vice versa — a
+   *  half-declared row inherits the warm countries' 135/120 for a job that needs hours,
+   *  which is the exact shape that cancelled the US leg before its heap was raised. */
+  it should "declare a budget for every order leg, and an order leg for every budget" in {
+    rows.foreach { fields =>
+      withClue(s"${fields("country")}: ") {
+        fields.contains("order") shouldBe fields.contains("orderJob")
+        fields.contains("order") shouldBe fields.contains("orderSuite")
+      }
+    }
   }
 }
