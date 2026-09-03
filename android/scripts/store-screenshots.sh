@@ -245,6 +245,48 @@ tap_text() {
   tap ${point}
 }
 
+# The gate is up as soon as ANY country pill is drawn. It cannot be the TARGET
+# pill: the row scrolls horizontally and opens wherever the persisted country
+# left it, so Spain (fifth) is usually off-screen — waiting for it here reports
+# "the city gate never appeared" about a gate that is perfectly fine.
+wait_gate() { # $1 timeout seconds
+  local t=0 limit="${1:-150}" xml c
+  while [ "$t" -lt "$limit" ]; do
+    xml="$(ui_xml)"
+    for c in $COUNTRIES; do
+      [ -n "$(printf '%s' "$xml" | node_center "$(country_name "$c")")" ] && return 0
+    done
+    naps 3; t=$((t+3))
+  done
+  return 1
+}
+
+# Centre of the country pill reading $1, scrolling the row leftwards until it
+# shows up. uiautomator only reports what is on screen, so an off-screen pill is
+# indistinguishable from a missing one without this.
+scroll_to_country() { # $1 display name -> "x y"
+  local point xml c row_y w i
+  point="$(ui_xml | node_center "$1")"
+  [ -n "$point" ] && { echo "$point"; return 0; }
+  # Anchor the swipe on whichever pill IS visible: its Y is the row's Y, so no
+  # screen-size-specific coordinate is baked in here.
+  xml="$(ui_xml)"
+  for c in $COUNTRIES; do
+    row_y="$(printf '%s' "$xml" | node_center "$(country_name "$c")" | awk '{print $2}')"
+    [ -n "$row_y" ] && break
+  done
+  [ -n "$row_y" ] || return 1
+  w="$(adb shell wm size | tr -d '\r' | awk -F'[ x]' 'END{print $(NF)}')"
+  [ -n "$w" ] || w=1440
+  for i in 1 2 3 4 5 6; do
+    adb shell input swipe "$((w * 4 / 5))" "$row_y" "$((w / 5))" "$row_y" 300 >>"$NOISE" 2>&1
+    naps 1
+    point="$(ui_xml | node_center "$1")"
+    [ -n "$point" ] && { echo "$point"; return 0; }
+  done
+  return 1
+}
+
 # Tap the gate's city search box — the screen's only EditText, and unlabelled
 # (its placeholder is drawn by Compose, not exposed as node text), so it's found
 # by class rather than by text.
@@ -392,7 +434,7 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
     # Wait for a country PILL, not just a big frame: right after `am start` the
     # launcher is still on screen and compresses well past any size threshold,
     # so a size-only wait returns before the app has drawn anything.
-    wait_text "$(country_name "$country")" 150 >/dev/null ||
+    wait_gate 150 ||
       die "the city gate never appeared — cold launch may have failed (see BUILD=1)."
   done_
 
@@ -400,7 +442,11 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
   # previous run — which pm clear on a fresh boot doesn't always reset — would
   # otherwise leak in. Re-selecting the current country is a harmless no-op.
   step "country → $(country_name "$country")"
-    tap_text "$(country_name "$country")" 30             # forces locale + backend
+    local pill                                           # forces locale + backend
+    pill="$(scroll_to_country "$(country_name "$country")")" ||
+      die "'$(country_name "$country")' is not in the country row, even after scrolling it —
+   the app's catalog may not carry that country yet."
+    tap $pill
     # Picking a country forces its language, so the localized "Country" header
     # coming back is proof the switch took effect — the app recreates itself
     # (~30s of blank screen) between the tap and that label appearing.

@@ -482,6 +482,41 @@ _killcap="$(mktemp)"
 # app's "could not load" state. The emulators boot -read-only, so the setting
 # cannot persist in the AVD and MUST be reapplied on each boot — if this call
 # goes missing, the run still exits 0 and the damage only shows up in the images.
+# The country pill row scrolls, and uiautomator reports only what is on screen.
+# Spain is the FIFTH country, so on a fresh gate it is off-screen and looks
+# missing — the capture used to blame the gate and skip every city.
+printf '\033[36m▸\033[0m the country row is scrolled to find a pill\n'
+_scrollcap="$(mktemp)"
+NOISE="$(mktemp)"
+# cmd_country_top narrows the global COUNTRIES, and an earlier case above ran it
+# — restore the full list so the anchor-pill lookup has something to find.
+COUNTRIES="pl uk de us es"
+ui_xml() { printf 'x'; }
+# Spain becomes visible only once a swipe has been recorded — the capture file is
+# the state, so it survives the subshells `$( ui_xml | node_center )` runs in.
+node_center() {
+  cat >/dev/null
+  case "$1" in
+    Polska) echo "200 234" ;;                      # an anchor pill, always visible
+    España) [ -s "$_scrollcap" ] && echo "900 234" || echo "" ;;
+    *) echo "" ;;
+  esac
+}
+adb() { printf '%s\n' "$*" >> "$_scrollcap"; }
+naps() { :; }
+: > "$_scrollcap"
+_point="$(scroll_to_country "España" || true)"
+check "it finds the pill once scrolled into view" "900 234" "$_point"
+check "it swiped the row at the anchor pill's Y" "1" \
+  "$(grep -c 'shell input swipe .* 234 .* 234 300' "$_scrollcap" || true)"
+
+# A country the app does not carry must FAIL, not quietly return an empty point
+# that `tap` would then aim at nothing.
+node_center() { cat >/dev/null; case "$1" in Polska) echo "200 234";; *) echo "";; esac; }
+: > "$_scrollcap"
+if scroll_to_country "Nowhere" >/dev/null 2>&1; then _rc=0; else _rc=1; fi
+check "an absent country fails instead of returning empty" "1" "$_rc"
+
 printf '\033[36m▸\033[0m private DNS is disabled on boot\n'
 _dnscap="$(mktemp)"
 adb() { printf '%s\n' "$*" >> "$_dnscap"; }
