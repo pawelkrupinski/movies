@@ -172,8 +172,19 @@ case class MovieRecord(
    *  Empty when no listed cinema maps to a city (a stored row with no live
    *  showtimes). The debug page lists the global corpus but the /film page is
    *  city-scoped, so it deep-links each row via the first of these — picking
-   *  the page's own city would 404 for any film not playing there. */
-  def cities: Seq[City] = City.all.filter(c => cinemaData.keySet.exists(c.cinemaSet.contains))
+   *  the page's own city would 404 for any film not playing there.
+   *
+   *  Resolved through [[City.forCinema]]'s reverse index rather than by asking
+   *  every city whether it holds one of this film's venues: the latter walks the
+   *  GLOBAL city list (787 across five countries) and rebuilt [[cinemaData]] —
+   *  a sort plus a map build over every cinema slot — once PER CITY. On a US
+   *  wide release (~1000 slots) that alone cost ~450ms of the ~480ms projection;
+   *  the read model projects a row on every change-stream event, so it was the
+   *  dominant CPU driver of the whole worker. */
+  def cities: Seq[City] = {
+    val screening = cinemaData.keySet.flatMap(City.forCinema)
+    City.all.filter(screening.contains)
+  }
 
   // ── Merged top-level values derived from `data` ──────────────────────────
   //
