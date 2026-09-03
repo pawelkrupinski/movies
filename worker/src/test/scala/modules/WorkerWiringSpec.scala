@@ -335,6 +335,68 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     wiring.stop()
   }
 
+  /** A wiring whose STAGING handlers report how many of them are in flight at once.
+   *
+   *  Same instrument as `ConcurrencyRecordingWiring` above, one seam further in: the
+   *  staging handlers are replaced by a single spy that holds its slot briefly, so a
+   *  serial drain peaks at one claimant and a pooled one peaks at the budget's cap.
+   *  `stagingHandlers` is the whole set the drain dispatches on, so overriding it also
+   *  keeps the real reaper from enqueuing anything this spy would then mis-handle. */
+  class StagingConcurrencyWiring(budget: ExecutionBudget) extends SpyWiring {
+    override lazy val backgroundBudget: ExecutionBudget = budget
+
+    private val inFlight = new java.util.concurrent.atomic.AtomicInteger(0)
+    private val peak     = new java.util.concurrent.atomic.AtomicInteger(0)
+    def peakInFlight: Int = peak.get()
+
+    override lazy val stagingHandlers: Seq[services.tasks.TaskHandler] = Seq(
+      new services.tasks.TaskHandler {
+        override def taskType: TaskType = TaskType.StagingFold
+        override def handle(task: services.tasks.Task): services.tasks.HandlerOutcome = {
+          val now = inFlight.incrementAndGet()
+          peak.updateAndGet(seen => math.max(seen, now))
+          try { Thread.sleep(120); services.tasks.HandlerOutcome.Done }
+          finally { inFlight.decrementAndGet(); () }
+        }
+      })
+  }
+
+  /**
+   * Production drains the staging queue with the same POOL it drains every other
+   * queue with. The harness claimed one task at a time, and by 2026-09-03 that was
+   * the single most expensive thing a convergence leg did: Poland spent 287.8s of a
+   * 454.1s boot in the staging drain, working 7,770 tasks at ~37ms each against a
+   * WARM enrichment tree (2,914 cache hits, 421 live fills) — so it was not upstream
+   * network but a serial file of Mongo round-trips production overlaps four ways.
+   */
+  "the harness staging drain" should "claim through as many workers as the background budget allows" in {
+    val wiring = new StagingConcurrencyWiring(new SharedExecutionBudget(4))
+    (1 to 8).foreach(i => wiring.taskQueue.enqueue(TaskType.StagingFold, s"film-$i"))
+
+    wiring.advanceStagingOnce()
+
+    withClue(s"peak in-flight staging handlers: ${wiring.peakInFlight}: ") {
+      wiring.peakInFlight should be > 1
+    }
+    wiring.stop()
+  }
+
+  it should "stay strictly serial under a same-thread budget, like every other drain" in {
+    // The order-independence replay passes wire `SameThreadExecutionBudget` so their
+    // seeded shuffle is the only nondeterminism left. A staging drain that pooled
+    // regardless would put a thread race under the very assertion written to catch
+    // order dependence — and it would flake rather than fail.
+    val wiring = new StagingConcurrencyWiring(new tools.SameThreadExecutionBudget)
+    (1 to 8).foreach(i => wiring.taskQueue.enqueue(TaskType.StagingFold, s"film-$i"))
+
+    wiring.advanceStagingOnce()
+
+    withClue(s"peak in-flight staging handlers: ${wiring.peakInFlight}: ") {
+      wiring.peakInFlight shouldBe 1
+    }
+    wiring.stop()
+  }
+
   /** …and follows that same budget DOWN. The convergence suite's order-independence
    *  passes wire `SameThreadExecutionBudget` precisely so the only nondeterminism left
    *  is their seeded shuffle; a drain that pooled regardless would put a thread race

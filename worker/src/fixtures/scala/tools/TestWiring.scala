@@ -344,8 +344,11 @@ trait TestWiring extends WorkerWiring {
 
   private lazy val ratingHandlerByType = ratingHandlers.map(h => h.taskType -> h).toMap
 
-  /** How many claimants [[drainRatingQueueOnce]] runs — production's own pool size,
-   *  read off the SAME `backgroundBudget` that caps every other background consumer.
+  /** How many claimants the queue drains run — production's own pool size, read off
+   *  the SAME `backgroundBudget` that caps every other background consumer.
+   *
+   *  Shared by [[drainRatingQueueOnce]] and [[drainStagingQueueOnce]]: both stand in
+   *  for the one `TaskWorker` pool, so they answer "how many at once?" the same way.
    *
    *  Derived rather than declared, so it cannot drift from the lever callers already
    *  use. The convergence suite's order-independence passes and the determinism specs
@@ -354,7 +357,7 @@ trait TestWiring extends WorkerWiring {
    *  nothing extra to remember. Everything else — `bootCorpus` above all — gets the
    *  real budget's cap. An unbounded budget (`<= 0`) means "no cap", which is not a
    *  usable claimant count, so the pool default stands in. */
-  private[tools] def ratingDrainClaimants: Int =
+  private[tools] def drainClaimants: Int =
     backgroundBudget.maxConcurrent match {
       case bounded if bounded > 0 => bounded
       case _                      => TaskWorker.DefaultPoolSize
@@ -382,7 +385,7 @@ trait TestWiring extends WorkerWiring {
    */
   private def drainRatingQueueOnce(): Int = {
     val handled   = new java.util.concurrent.atomic.AtomicInteger(0)
-    val claimants = (0 until ratingDrainClaimants).map { i =>
+    val claimants = (0 until drainClaimants).map { i =>
       val workerId = s"rating-sync-$i"
       val thread   = new Thread(
         () =>
@@ -549,37 +552,64 @@ trait TestWiring extends WorkerWiring {
    *  so a film flows detail → resolve → imdb → fold in one drain. A transient step
    *  (Reschedule — e.g. a TMDB-fixture-less film) is completed-and-dropped so it
    *  can't spin this drain; `drainStaging`'s force-fold handles the leftover. A
-   *  stray non-staging task is completed too, matching `enrichDetailsSync`. */
+   *  stray non-staging task is completed too, matching `enrichDetailsSync`.
+   *
+   *  A POOL of [[drainClaimants]], for the reason [[drainRatingQueueOnce]] became one
+   *  — and it is now the phase that pays for it. Poland's leg on 2026-09-03 spent
+   *  287.8s of a 454.1s boot right here, draining 7,770 tasks one at a time at ~37ms
+   *  each; the enrichment tree was warm (2,914 hits against 421 live fills), so that
+   *  time is not upstream network but a serial file of Mongo round-trips —
+   *  claim, handle, complete, `onTaskFinished` — that production overlaps four ways.
+   *
+   *  Safe for the same reasons: `claim` is atomic per task, so N claimants partition
+   *  the queue rather than race for a row, and these are the handlers prod's pool
+   *  already runs side by side — `onTaskFinished` included, which prod dispatches from
+   *  whichever worker thread finished the step.
+   *
+   *  Determinism needs no rule of its own here: the order-independence replay passes
+   *  and the determinism specs swap in a `SameThreadExecutionBudget`, which reports a
+   *  cap of 1, so their drains stay strictly serial and their seeded shuffle stays the
+   *  only nondeterminism. */
   private def drainStagingQueueOnce(): Unit = {
-    val workerId = "staging-sync"
     // Counted by outcome, because a staging drain that folds nothing is otherwise
     // indistinguishable from one with nothing to do — and the two have very different
     // causes: no tasks CLAIMED means the queue isn't handing them over, while claimed
-    // tasks that never advance means the handlers are refusing them.
-    var claimed   = 0
-    var advanced  = 0
-    var unhandled = 0
-    Iterator.continually(taskQueue.claim(workerId, 5.minutes))
-      .takeWhile(_.isDefined).flatten
-      .foreach { task =>
-        claimed += 1
-        if (!stagingHandlerByType.contains(task.taskType)) unhandled += 1
-        val advance = stagingHandlerByType.get(task.taskType).exists { h =>
-          (try h.handle(task) catch { case _: Exception => HandlerOutcome.Reschedule(None) }) match {
-            case HandlerOutcome.Done | HandlerOutcome.Skipped => true
-            // Reschedule or Deferred — either way the step didn't finish, so the
-            // chain doesn't advance and the task is dropped rather than spun.
-            case _                                            => false
-          }
-        }
-        if (advance) advanced += 1
-        taskQueue.complete(task.id, workerId)
-        if (advance)
-          stagingReaper.onTaskFinished.applyOrElse(
-            services.events.TaskFinished(task.taskType, task.dedupKey, task.payload), (_: DomainEvent) => ())
-      }
-    if (claimed > 0 || unhandled > 0)
-      println(s"[${country.code}] staging queue: claimed $claimed, advanced $advanced, no-handler $unhandled")
+    // tasks that never advance means the handlers are refusing them. Atomics, because
+    // the claimants below count into them from several threads.
+    val claimed   = new java.util.concurrent.atomic.AtomicInteger(0)
+    val advanced  = new java.util.concurrent.atomic.AtomicInteger(0)
+    val unhandled = new java.util.concurrent.atomic.AtomicInteger(0)
+    val claimants = (0 until drainClaimants).map { i =>
+      val workerId = s"staging-sync-$i"
+      val thread = new Thread(
+        () =>
+          Iterator.continually(taskQueue.claim(workerId, 5.minutes))
+            .takeWhile(_.isDefined).flatten
+            .foreach { task =>
+              claimed.incrementAndGet()
+              if (!stagingHandlerByType.contains(task.taskType)) unhandled.incrementAndGet()
+              val advance = stagingHandlerByType.get(task.taskType).exists { h =>
+                (try h.handle(task) catch { case _: Exception => HandlerOutcome.Reschedule(None) }) match {
+                  case HandlerOutcome.Done | HandlerOutcome.Skipped => true
+                  // Reschedule or Deferred — either way the step didn't finish, so the
+                  // chain doesn't advance and the task is dropped rather than spun.
+                  case _                                            => false
+                }
+              }
+              if (advance) advanced.incrementAndGet()
+              taskQueue.complete(task.id, workerId)
+              if (advance)
+                stagingReaper.onTaskFinished.applyOrElse(
+                  services.events.TaskFinished(task.taskType, task.dedupKey, task.payload), (_: DomainEvent) => ())
+            },
+        workerId)
+      thread.start()
+      thread
+    }
+    claimants.foreach(_.join())
+    if (claimed.get() > 0 || unhandled.get() > 0)
+      println(s"[${country.code}] staging queue: claimed ${claimed.get()}, " +
+              s"advanced ${advanced.get()}, no-handler ${unhandled.get()}")
   }
 
   /** Scrape every cinema once in parallel, blocking until all have settled.
