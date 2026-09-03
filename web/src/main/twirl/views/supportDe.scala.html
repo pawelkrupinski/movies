@@ -1,0 +1,70 @@
+@()
+@*
+  Deutsche Hilfeseite — die Support-URL des de-DE-App-Store-Listings und des
+  Play-Listings. Vollständiges Gegenstück zu `supportEn`; eine Änderung in einer
+  Sprache verlangt dieselbe Änderung in den anderen.
+*@
+@_legalPage(lang = "de", heading = "Hilfe", contactLabel = "Kontakt",
+            updated = Some("Zuletzt aktualisiert: 3. September 2026")) {
+  <p>
+    <strong>@models.Country.fromEnv.brandName</strong> bündelt das Programm
+    jedes Kinos deiner Stadt — von den großen Ketten bis zu kleinen
+    Programmkinos — an einem Ort, mit den Bewertungen von IMDb, Rotten Tomatoes
+    und Metacritic zu jedem Film. Wenn deine Frage hier nicht beantwortet wird,
+    schreib uns: Wir lesen jede Nachricht und antworten in der Regel innerhalb
+    weniger Tage.
+  </p>
+  <p>
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>
+  </p>
+
+  <h2>1. Ein Kino oder eine Vorstellung fehlt</h2>
+  <p>
+    Wir holen das Programm mehrmals täglich von den Webseiten der Kinos selbst.
+    Eine gerade erst veröffentlichte Vorstellung kann ein paar Stunden brauchen,
+    bis sie erscheint, und ein Kino, das seine Website umbaut, kann herausfallen,
+    bis wir uns angepasst haben. Fehlt dein Kino länger als einen Tag, schick uns
+    Name und Stadt — wir sehen es uns an.
+  </p>
+
+  <h2>2. Eine Spielzeit oder ein Ticket-Link stimmt nicht</h2>
+  <p>
+    Jede Spielzeit führt direkt zur Buchungsseite des Kinos — wir verkaufen keine
+    Tickets und nehmen keine Zahlungen entgegen. Die Seite des Kinos ist immer
+    maßgeblich: Weicht sie von uns ab, glaub ihr, und sag uns bitte Bescheid,
+    damit wir das Programm korrigieren.
+  </p>
+
+  <h2>3. Eine Bewertung, ein Poster oder eine Beschreibung wirkt falsch</h2>
+  <p>
+    Die Bewertungen stammen von IMDb, Rotten Tomatoes und Metacritic, Poster und
+    Beschreibungen von TMDB. Gelegentlich wird ein Film dem falschen Eintrag
+    zugeordnet — meist bei Remakes oder zwei Filmen mit demselben Titel. Schick
+    uns Titel und Stadt, dann korrigieren wir die Zuordnung.
+  </p>
+
+  <h2>4. Filme und Kinos ausblenden</h2>
+  <p>
+    Tippe auf das ✕ auf einem Poster, um einen Film auszublenden, den du schon
+    gesehen hast oder der dich nicht interessiert. Du kannst auch Kinos
+    abschalten, die du nie besuchst — dann bleibt nur dein eigenes Programm.
+    Beide Listen kannst du jederzeit über die Symbolleiste der App ansehen und
+    rückgängig machen.
+  </p>
+
+  <h2>5. Brauche ich ein Konto?</h2>
+  <p>
+    Nein. Das gesamte Programm, alle Bewertungen und Filmdetails funktionieren
+    ohne Anmeldung. Ein Konto — Apple, Google oder Facebook — tut genau eines: Es
+    synchronisiert deine ausgeblendeten Filme und abgeschalteten Kinos über deine
+    Geräte hinweg. Die App ist kostenlos und werbefrei.
+  </p>
+
+  <h2>6. Konto und Daten löschen</h2>
+  <p>
+    Du kannst dein Konto samt allem, was dazu gespeichert ist, direkt in der App
+    löschen. Wenn wir das übernehmen sollen, schreib von der Adresse, mit der du
+    dich angemeldet hast, an die Adresse oben. Was wir speichern und warum, steht
+    in unserer <a href="/privacy-policy?lang=de">Datenschutzerklärung</a>.
+  </p>
+}

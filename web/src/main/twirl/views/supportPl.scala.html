@@ -1,0 +1,68 @@
+@()
+@*
+  Polska strona pomocy — adres wsparcia dla listingu App Store (pl) i Google
+  Play. Pełny odpowiednik `supportEn`; zmiana w jednym języku wymaga tej samej
+  zmiany w pozostałych.
+*@
+@_legalPage(lang = "pl", heading = "Pomoc", contactLabel = "Kontakt",
+            updated = Some("Ostatnia aktualizacja: 3 września 2026")) {
+  <p>
+    <strong>@models.Country.fromEnv.brandName</strong> zbiera repertuar
+    wszystkich kin w Twoim mieście — od dużych sieci po małe kina studyjne — w
+    jednym miejscu, wraz z ocenami IMDb, Rotten Tomatoes i Filmweb przy każdym
+    filmie. Jeśli nie znajdziesz tu odpowiedzi, napisz do nas: czytamy każdą
+    wiadomość i zwykle odpowiadamy w ciągu kilku dni.
+  </p>
+  <p>
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>
+  </p>
+
+  <h2>1. Brakuje kina albo seansu</h2>
+  <p>
+    Repertuar pobieramy ze stron samych kin, kilka razy dziennie. Świeżo dodany
+    seans może pojawić się u nas dopiero po kilku godzinach, a kino, które
+    zmieni swoją stronę, może zniknąć do czasu, aż się do niej dostosujemy.
+    Jeśli Twojego kina nie ma dłużej niż dobę, napisz nam jego nazwę i miasto —
+    sprawdzimy.
+  </p>
+
+  <h2>2. Godzina seansu albo link do biletów jest błędny</h2>
+  <p>
+    Każdy seans prowadzi wprost na stronę rezerwacji danego kina — nie
+    sprzedajemy biletów i nie przyjmujemy płatności. Strona kina jest zawsze
+    źródłem prawdy: jeśli różni się od naszej, zaufaj jej i daj nam znać,
+    żebyśmy poprawili repertuar.
+  </p>
+
+  <h2>3. Ocena, plakat albo opis wygląda źle</h2>
+  <p>
+    Oceny pochodzą z IMDb, Rotten Tomatoes i Filmweb, a plakaty i opisy z TMDB.
+    Czasem film zostanie dopasowany do niewłaściwego wpisu — najczęściej przy
+    remake'ach albo dwóch filmach o tym samym tytule. Napisz nam tytuł i miasto,
+    a poprawimy dopasowanie.
+  </p>
+
+  <h2>4. Ukrywanie filmów i kin</h2>
+  <p>
+    Dotknij ✕ na plakacie, żeby ukryć film, który już widziałeś albo który Cię
+    nie interesuje. Możesz też wyłączyć kina, do których nie chodzisz — zostanie
+    tylko Twój repertuar. Obie listy przejrzysz i cofniesz w każdej chwili z
+    paska narzędzi aplikacji.
+  </p>
+
+  <h2>5. Czy potrzebuję konta?</h2>
+  <p>
+    Nie. Cały repertuar, oceny i informacje o filmach działają bez logowania.
+    Konto — Apple, Google lub Facebook — robi jedno: synchronizuje ukryte filmy
+    i wyłączone kina między Twoimi urządzeniami. Aplikacja jest darmowa i nie ma
+    w niej reklam.
+  </p>
+
+  <h2>6. Usunięcie konta i danych</h2>
+  <p>
+    Konto wraz ze wszystkim, co jest z nim zapisane, usuniesz z poziomu
+    aplikacji. Jeśli wolisz, żebyśmy zrobili to my, napisz na powyższy adres z
+    tego adresu, na który się rejestrowałeś. Co przechowujemy i po co, opisuje
+    nasza <a href="/privacy-policy?lang=pl">polityka prywatności</a>.
+  </p>
+}

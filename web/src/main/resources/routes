@@ -181,6 +181,12 @@ GET     /privacy-policy             controllers.LegalController.privacy(lang: Op
 # already published. 301s onto the route above.
 GET     /polityka-prywatnosci       controllers.LegalController.privacyLegacyPath
 
+# Public support page. Apple requires a support URL per App Store listing locale
+# and a human reads it during review, so it answers questions rather than
+# selling the app. `lang` picks the language of the DOCUMENT — the listings link
+# ?lang=pl|en|de|es — and falls back to the deployment's own language when absent.
+GET     /support                    controllers.SupportController.support(lang: Option[String])
+
 # ── Facebook data deletion (Meta callback) ──────────────────────────────────
 # Meta POSTs a signed_request here when a user removes the app from their
 # Facebook account; we verify it, delete the matching local account, and

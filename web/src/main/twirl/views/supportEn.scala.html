@@ -1,0 +1,72 @@
+@()
+@*
+  English support page. Registered as the support URL of the en-GB App Store
+  listing and the Play listing, and served as the fallback for any deployment
+  whose language we do not publish a page in.
+
+  Apple reads this page during review, so it answers questions rather than
+  selling the app; a support URL that only shows the product is a Guideline 1.5
+  rejection. A change to any one language needs the same change in the others.
+*@
+@_legalPage(lang = "en", heading = "Support", contactLabel = "Contact",
+            updated = Some("Last updated: 3 September 2026")) {
+  <p>
+    <strong>@models.Country.fromEnv.brandName</strong> gathers the listings of
+    every cinema in your city — the big chains and the small independents — into
+    one place, with IMDb, Rotten Tomatoes and Metacritic ratings on each film.
+    If something here does not answer your question, write to us: we read every
+    message and normally reply within a few days.
+  </p>
+  <p>
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>
+  </p>
+
+  <h2>1. A cinema or a showtime is missing</h2>
+  <p>
+    Listings are collected from each cinema's own website several times a day.
+    A screening that was only just published can take a few hours to appear, and
+    a cinema that changes its website can drop out until we adapt to it. If a
+    venue you use has been missing for more than a day, email us its name and
+    city and we will look at it.
+  </p>
+
+  <h2>2. A showtime or a booking link is wrong</h2>
+  <p>
+    Every showtime links straight to the cinema's own booking page — we never
+    sell tickets and never take payment. The cinema's site is always the
+    authority: if it disagrees with us, believe it, and please tell us so we can
+    fix the listing.
+  </p>
+
+  <h2>3. A rating, poster or description looks wrong</h2>
+  <p>
+    Ratings come from IMDb, Rotten Tomatoes and Metacritic; posters and
+    descriptions come from TMDB. Occasionally a film is matched to the wrong
+    entry — most often a remake, or two films sharing a title. Send us the film
+    and the city and we will correct the match.
+  </p>
+
+  <h2>4. Hiding films and cinemas</h2>
+  <p>
+    Tap the ✕ on a poster to hide a film you have already seen or do not care
+    about. You can also switch off cinemas you never visit, so the listings show
+    only the ones you would actually go to. Both lists can be reviewed and
+    undone at any time from the app's toolbar.
+  </p>
+
+  <h2>5. Do I need an account?</h2>
+  <p>
+    No. Every listing, rating and film detail works without signing in. An
+    account — Apple, Google or Facebook — does one thing: it syncs your hidden
+    films and disabled cinemas across your devices. The app is free and carries
+    no adverts.
+  </p>
+
+  <h2>6. Deleting your account and data</h2>
+  <p>
+    You can delete your account, and everything stored with it, from within the
+    app. If you would rather we did it, email the address above from the address
+    you signed up with and we will remove it. What we hold and why is set out in
+    our <a href="/privacy-policy?lang=en">privacy policy</a>.
+  </p>
+}

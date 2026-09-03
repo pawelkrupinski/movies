@@ -9,19 +9,11 @@ import play.api.mvc._
 class LegalController(cc: ControllerComponents) extends AbstractController(cc) {
 
   /** `/privacy-policy?lang=pl|en|de` — the language comes from the LINK, not
-   *  from the deployment. Each store listing (App Store and Play, three locales
-   *  each) registers its own privacy URL, and all of them resolve against
-   *  whichever deployment serves that country, so a German listing has to be
-   *  able to get German prose out of a Polish-configured host.
-   *
-   *  An unknown or absent `lang` falls back to the deployment's own language
-   *  rather than 404ing: a bare `/privacy-policy` is what someone typing the
-   *  URL — or an old link — will hit.
+   *  from the deployment; see [[PublishedLanguages]] for why, and for how an
+   *  unknown or absent `lang` falls back instead of 404ing.
    */
   def privacy(lang: Option[String]): Action[AnyContent] = Action {
-    Ok(policy(lang.map(_.trim.toLowerCase)
-                  .filter(published.contains)
-                  .getOrElse(models.Country.fromEnv.language.getLanguage)))
+    Ok(policy(PublishedLanguages.resolve(lang, published)))
   }
 
   /** The policy used to live at `/polityka-prywatnosci`, a URL that is

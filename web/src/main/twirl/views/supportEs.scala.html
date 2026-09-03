@@ -1,0 +1,72 @@
+@()
+@*
+  Página de ayuda en español — la URL de soporte del listado es-ES de la App
+  Store. España pasó a ser territorio de la App Store junto a Polonia, Alemania,
+  el Reino Unido y Estados Unidos, así que el español se publica aquí aunque la
+  política de privacidad todavía no esté traducida (ese enlace cae al inglés).
+  Equivalente completo de `supportEn`; un cambio en un idioma exige el mismo
+  cambio en los demás.
+*@
+@_legalPage(lang = "es", heading = "Ayuda", contactLabel = "Contacto",
+            updated = Some("Última actualización: 3 de septiembre de 2026")) {
+  <p>
+    <strong>@models.Country.fromEnv.brandName</strong> reúne la cartelera de
+    todos los cines de tu ciudad — desde las grandes cadenas hasta las salas
+    independientes — en un solo sitio, con las notas de IMDb, Rotten Tomatoes y
+    Metacritic en cada película. Si aquí no encuentras respuesta, escríbenos:
+    leemos todos los mensajes y solemos contestar en unos pocos días.
+  </p>
+  <p>
+    <a href="mailto:@controllers.LegalContact.Email">@controllers.LegalContact.Email</a>
+  </p>
+
+  <h2>1. Falta un cine o una sesión</h2>
+  <p>
+    Recogemos la cartelera de las webs de los propios cines varias veces al día.
+    Una sesión recién publicada puede tardar unas horas en aparecer, y un cine
+    que cambia su web puede desaparecer hasta que nos adaptemos. Si tu cine
+    lleva más de un día sin aparecer, escríbenos su nombre y su ciudad y lo
+    revisamos.
+  </p>
+
+  <h2>2. Una hora o un enlace de entradas es incorrecto</h2>
+  <p>
+    Cada sesión enlaza directamente con la página de venta del propio cine:
+    nosotros no vendemos entradas ni cobramos nada. La web del cine manda
+    siempre: si no coincide con la nuestra, hazle caso a ella y avísanos para
+    que corrijamos la cartelera.
+  </p>
+
+  <h2>3. Una nota, un cartel o una sinopsis parece equivocada</h2>
+  <p>
+    Las notas vienen de IMDb, Rotten Tomatoes y Metacritic; los carteles y las
+    sinopsis, de TMDB. A veces una película se asocia a la ficha equivocada,
+    sobre todo con remakes o con dos películas que comparten título. Mándanos el
+    título y la ciudad y corregimos la correspondencia.
+  </p>
+
+  <h2>4. Ocultar películas y cines</h2>
+  <p>
+    Toca la ✕ del cartel para ocultar una película que ya has visto o que no te
+    interesa. También puedes desactivar los cines a los que nunca vas, de modo
+    que la cartelera muestre solo los que de verdad te sirven. Ambas listas se
+    consultan y se deshacen cuando quieras desde la barra de herramientas de la
+    aplicación.
+  </p>
+
+  <h2>5. ¿Necesito una cuenta?</h2>
+  <p>
+    No. Toda la cartelera, las notas y los detalles de cada película funcionan
+    sin iniciar sesión. Una cuenta — de Apple, Google o Facebook — sirve para una
+    sola cosa: sincronizar tus películas ocultas y tus cines desactivados entre
+    tus dispositivos. La aplicación es gratuita y no tiene publicidad.
+  </p>
+
+  <h2>6. Borrar tu cuenta y tus datos</h2>
+  <p>
+    Puedes borrar tu cuenta, y todo lo guardado con ella, desde la propia
+    aplicación. Si prefieres que lo hagamos nosotros, escribe a la dirección de
+    arriba desde el correo con el que te registraste. Qué guardamos y para qué lo
+    explica nuestra <a href="/privacy-policy?lang=es">política de privacidad</a>.
+  </p>
+}
