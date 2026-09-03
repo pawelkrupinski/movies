@@ -33,6 +33,7 @@ rule_files:
   - "/etc/prometheus/rules/cinema-scrape.rules"
   - "/etc/prometheus/rules/filesystem-capacity.rules"
   - "/etc/prometheus/rules/host-health.rules"
+  - "/etc/prometheus/rules/jvm-heap.rules"
   - "/etc/prometheus/rules/k3s.rules"
   - "/etc/prometheus/rules/mongodb.rules"
   - "/etc/prometheus/rules/monitoring-self.rules"

@@ -41,6 +41,41 @@ fi
 
 failed=0
 
+# ── THE THREE LISTS THAT MUST AGREE ───────────────────────────────────────────────────────────────
+# A rule file has to be named in THREE places to actually alert: it must exist on disk, be in
+# `ruleNames` in nix/modules/roles/prometheus.nix (which INSTALLS it into /etc), and be in
+# `rule_files` in nix/files/monitoring/prometheus.yaml (which makes Prometheus LOAD it).
+#
+# Miss the third and the failure is SILENT AND TOTAL: the file ships, `promtool` is perfectly happy
+# with it, Prometheus starts clean with no error in the log -- and the group is simply not there, so
+# the alerts never fire. Nothing anywhere says so.
+#
+# That is not hypothetical. `jvm-heap.rules` was added to `ruleNames` and to the repository on
+# 2026-09-03 and NOT to `rule_files`; it reached /etc/prometheus/rules/ on the very next fleet
+# apply, Prometheus reloaded without complaint, and the alert it exists for could never have fired.
+# It was caught by asking the running Prometheus which groups it had, which is not a check anyone
+# should have to remember to run. prometheus.nix already said this guard "does not have yet and
+# should" -- this is it.
+set -o pipefail
+nix_module="$infra/nix/modules/roles/prometheus.nix"
+prom_yaml="$infra/nix/files/monitoring/prometheus.yaml"
+
+# `ruleNames` entries are bare quoted names; take only the ones inside that list.
+installed="$(sed -n '/^  ruleNames = \[/,/^  \];/p' "$nix_module" | grep -oE '"[a-z0-9-]+"' | tr -d '"' | sort -u)"
+# `rule_files` entries are quoted absolute paths ending in .rules.
+loaded="$(sed -n '/^rule_files:/,/^$/p' "$prom_yaml" | grep -oE '/etc/prometheus/rules/[a-z0-9-]+\.rules' | sed 's|.*/||; s|\.rules$||' | sort -u)"
+present="$(ls "$infra"/nix/files/monitoring/rules/*.rules 2>/dev/null | sed 's|.*/||; s|\.rules$||' | sort -u)"
+
+if [ "$installed" = "$loaded" ] && [ "$installed" = "$present" ]; then
+  echo "  ok  every rule file is on disk, installed by ruleNames and loaded by rule_files"
+else
+  echo "  FAILED the rule-file lists disagree -- an alert in only some of them never fires."
+  echo "         on disk (nix/files/monitoring/rules/):"; echo "$present"   | sed 's/^/           /'
+  echo "         installed (prometheus.nix ruleNames):";  echo "$installed" | sed 's/^/           /'
+  echo "         loaded (prometheus.yaml rule_files):";   echo "$loaded"    | sed 's/^/           /'
+  failed=1
+fi
+
 for rules in "$infra"/nix/files/monitoring/rules/*.rules; do
   [ -e "$rules" ] || continue
   if out="$(promtool check rules "$rules" 2>&1)"; then
