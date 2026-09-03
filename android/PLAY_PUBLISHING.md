@@ -34,11 +34,22 @@ KINOWO_VERSION_CODE=$(date +%s) ./gradlew :app:publishReleaseBundle
 Promote an already-uploaded build to a wider track without rebuilding:
 
 ```bash
-./gradlew :app:promoteReleaseArtifact -Ptrack=production
+./gradlew :app:promoteReleaseArtifact \
+    --from-track internal --promote-track production \
+    --release-status completed --release-name 2.0.1
 ```
 
-(`track` values: `internal`, `alpha`, `beta`, `production`.) The R8 mapping file
+(Track values: `internal`, `alpha`, `beta`, `production`.) The R8 mapping file
 is uploaded automatically so Play can symbolicate crashes.
+
+**Use the `--from-track` / `--promote-track` options, not `-Ptrack`.** The
+`play {}` block above sets `track` to `internal` in the DSL, and an explicitly
+set DSL value beats the `-Ptrack` property — so `-Ptrack=production` promotes
+internal onto *itself*, prints `BUILD SUCCESSFUL`, and leaves production
+untouched. It logs which track it wrote (`Updating [completed] release ... in
+track 'production'`), so read that line rather than the exit status, and
+confirm against the Console or the API afterwards: a promotion that silently
+did nothing looks exactly like one that worked.
 
 ## Updating the store listing / description
 
