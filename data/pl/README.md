@@ -27,8 +27,35 @@ unzip -o data/pl/geonames/PL.zip -d data/pl/geonames
 python3 data/pl/scripts/build_venue_towns.py      # -> data/pl/venues.json
 python3 data/pl/scripts/test_build_venue_towns.py
 rm -rf data/pl/geonames                            # ~4MB dump, not checked in
+python3 data/pl/scripts/build_venue_towns.py --audit   # needs no dump
 python3 data/scripts/generate_venue_towns.py       # -> models.VenueTowns
 ```
+
+## Is the annotation set complete?
+
+Yes, checked rather than assumed. The table is built from annotations, so it
+cannot tell you about a venue nobody annotated — an in-town venue and a
+forgotten out-of-town one look identical in it.
+
+Filmweb can tell you, because it files each cinema under the town it is actually
+in. A venue that does not appear under its own city's listing is somewhere else,
+and if it has no annotation either, nothing on the page will ever say where.
+
+```
+python3 data/pl/scripts/build_venue_towns.py --audit    # one GET per city, writes nothing
+```
+
+Run 2026-09-03: 39 cities audited, **no venue is out of town without an
+annotation**. Two cities are skipped because Filmweb has no listing of their own
+name — `trojmiasto` (Filmweb files those venues under Gdańsk and Gdynia, and the
+city carries a complete hand-written list anyway) and `gorzow-wielkopolski`
+(three venues, two named after the city and one annotated as it).
+
+A guess from the venue NAMES instead finds nothing but noise: the 15 candidates
+it produces are shopping centres (Plaza, Posnania), Warsaw and Kraków districts
+that share a name with a town elsewhere (Bemowo, Mokotów, Kazimierz), and the
+trailing word of a two-word city (Jelenia **Góra**). Worth knowing before
+anybody tries that shortcut.
 
 ## Why the gazetteer
 

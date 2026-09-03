@@ -29,14 +29,21 @@ Usage:
     unzip -o data/pl/geonames/PL.zip -d data/pl/geonames
     python3 data/pl/scripts/build_venue_towns.py
     rm -rf data/pl/geonames   # ~4MB dump, not checked in
+
+`--audit` answers the question this table cannot answer about itself: whether a
+venue is out of town and simply never got annotated. See [[audit]].
 """
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import re
 import sys
+import time
 import unicodedata
+import urllib.parse
+import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 GEONAMES = ROOT / "data" / "pl" / "geonames" / "PL.txt"
@@ -149,7 +156,84 @@ def town_of(comment: str, exact: set, prefixes: dict) -> str:
     return candidate if len(matches) == 1 else ""
 
 
+FILMWEB_LISTING = "https://www.filmweb.pl/showtimes/"
+UA = "Mozilla/5.0 (compatible; kinowo-cinema-discovery/1.0)"
+LISTING_LINK = re.compile(r'href="/showtimes/[^"/]+/([^"]+)-(\d+)"')
+
+
+def city_labels() -> dict:
+    """City slug -> the city's own name, which is also its name on Filmweb."""
+    return dict(re.findall(
+        r'slug\s*=\s*"([^"]+)",\s*\n\s*labels\s*=\s*CityLabels\(nominative\s*=\s*"([^"]+)"',
+        CITY.read_text()))
+
+
+def tokens(name: str) -> set:
+    return {w for w in re.split(r"[^a-z0-9]+", fold(name)) if len(w) > 2}
+
+
+def audit() -> int:
+    """Find a venue that is out of town and was never annotated.
+
+    The table is built from annotations, so it cannot tell you about a venue
+    nobody annotated — an in-town venue and a forgotten out-of-town one look
+    exactly alike in it. Filmweb can: it files each cinema under the town it is
+    actually in, so a venue that does NOT appear under its own city's listing is
+    somewhere else, and if it has no annotation either, nothing on the page will
+    ever say where.
+
+    One GET per city, 41 of them. Run when the roster gains venues.
+    """
+    venues = json.loads(OUT.read_text())
+    labels = city_labels()
+
+    listings, unchecked = {}, []
+    for slug in sorted({v["citySlug"] for v in venues}):
+        name = labels.get(slug)
+        try:
+            request = urllib.request.Request(
+                FILMWEB_LISTING + urllib.parse.quote(name), headers={"User-Agent": UA})
+            with urllib.request.urlopen(request, timeout=30) as response:
+                html = response.read().decode("utf-8", "replace")
+            found = [urllib.parse.unquote(m.group(1)).replace("+", " ")
+                     for m in LISTING_LINK.finditer(html)]
+        except Exception as e:                                    # noqa: BLE001
+            found, e = [], e
+            print(f"  {slug}: listing could not be fetched ({e})", file=sys.stderr)
+        if found:
+            listings[slug] = found
+        else:
+            unchecked.append(slug)
+        time.sleep(0.4)
+
+    suspects = []
+    for venue in venues:
+        if venue["town"] or venue["citySlug"] not in listings:
+            continue
+        ours = tokens(venue["displayName"])
+        if not any(ours & tokens(listed) for listed in listings[venue["citySlug"]]):
+            suspects.append((venue["citySlug"], venue["displayName"]))
+
+    print(f"audited {len(listings)} cities; {len(unchecked)} have no Filmweb listing of "
+          f"their own and were skipped: {unchecked}")
+    if suspects:
+        print(f"{len(suspects)} venues are not listed under their own city and carry no "
+              f"annotation — find out where they are and annotate them:", file=sys.stderr)
+        for slug, name in suspects:
+            print(f"  {slug}: {name}", file=sys.stderr)
+        return 1
+    print("no venue is out of town without an annotation")
+    return 0
+
+
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--audit", action="store_true",
+                        help="check against Filmweb that no venue is out of town without "
+                             "an annotation; one GET per city, no files written")
+    if parser.parse_args().audit:
+        return audit()
+
     exact, prefixes = gazetteer()
     names, comments = annotations()
 
