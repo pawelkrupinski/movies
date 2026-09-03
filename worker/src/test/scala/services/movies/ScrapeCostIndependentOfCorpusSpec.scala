@@ -45,6 +45,15 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
    *  scraped — the walks paid for those too, and a per-cinema index must not. */
   private val elsewhere: Cinema = Multikino
 
+  /** A resolved row as a warm corpus holds it: a TMDB slot, so it is `tmdbConcluded`
+   *  AND carries `tmdbTitleAliases` — the two properties the landing walk charged for. */
+  private def concludedRow(title: String, cin: Cinema): MovieRecord =
+    MovieRecord(tmdbId = Some(title.hashCode.abs),
+      data = Map[Source, SourceData](
+        (cin: Source) -> SourceData(title = Some(title), rawTitle = Some(title), releaseYear = Some(2026)),
+        (Tmdb: Source) -> SourceData(title = Some(title), originalTitle = Some(s"$title Original"),
+                                     englishTitle = Some(s"$title English"), releaseYear = Some(2026))))
+
   private def corpusRow(title: String, cin: Cinema): MovieRecord =
     MovieRecord(tmdbId = Some(title.hashCode.abs),
       data = Map[Source, SourceData]((cin: Source) -> SourceData(
@@ -87,6 +96,54 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
    *  every staged document in the country to keep a handful, growing with the very
    *  backlog the tick is filling. `findByAnchor` was added to fix exactly this for the
    *  reaper; the scrape path kept the full scan. */
+  /**
+   * The LANDING half of the same rule, and the half the two tests above cannot see.
+   *
+   * They scrape a NEWCOMER, which diverts to staging and returns before
+   * `concludedKeyFor` is ever called — so the walk behind the landing path sat outside
+   * every existing probe. It is the more expensive of the two: for each row it runs
+   * `isBareFilmTitle` (a `sanitize` of the row's own title) and then a `sanitize` of
+   * every TMDB alias the row carries, once per LANDED LISTING. A warm corpus is almost
+   * entirely concluded rows with two or three aliases each, which is why the United
+   * States leg paid 72ms a listing against Germany's 8.7ms on identical code — Germany's
+   * local run is barely resolved, so it barely pays it, and CI's warm one does.
+   *
+   * `redirectToExistingVariant` walked the corpus a second time on the same path, for
+   * every listing this one missed. It is gone with this, but it compares a precomputed
+   * `CacheKey.normalized` rather than sanitizing, so no counter can see it — the
+   * traversal it shares with this one is what this test stands for.
+   */
+  it should "cost the same to LAND a listing on a concluded row whatever else the corpus holds" in {
+    def landCost(corpusSize: Int): Int = {
+      val normalizer = new CountingNormalizer(TitleNormalizer.forCountry(Country.default).rules)
+      val staging    = new InMemoryStagingRepository(normalizer = normalizer)
+      val cache      = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
+                                              staging = Some(staging), normalizer = normalizer)
+      // A corpus of CONCLUDED rows carrying TMDB aliases — what a warm country actually
+      // holds, and what the walk charged per landed listing. `corpusRow` alone is
+      // already `tmdbConcluded` (it has a tmdbId); the aliases are what make each row
+      // cost more than one `sanitize` to reject.
+      (1 to corpusSize).foreach { n =>
+        val title = s"Unrelated Film $n"
+        cache.put(CacheKey(title, Some(2026), normalizer), concludedRow(title, elsewhere))
+      }
+      // The row the scrape must LAND on, so the method runs to the end rather than
+      // diverting a newcomer into staging.
+      val landing = "The Scraped Film"
+      cache.put(CacheKey(landing, Some(2026), normalizer), concludedRow(landing, cinema))
+      normalizer.calls = 0
+      cache.recordCinemaScrape(cinema, Seq(scrapeOf(landing)))
+      normalizer.calls
+    }
+    val small = landCost(20)
+    val large = landCost(200)
+    withClue(s"20-film corpus: $small sanitize calls; 200-film corpus: $large — " +
+      "landing a listing that reads every concluded row's aliases is O(listings x corpus), " +
+      "and a tick over every venue then pays it once per listing: ") {
+      large shouldBe small
+    }
+  }
+
   it should "read only its own cinema's staging rows, never the whole backlog" in {
     val normalizer = SingleCountryNormalizer.titleNormalizer
     var fullScans  = 0

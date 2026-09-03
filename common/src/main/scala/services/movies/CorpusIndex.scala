@@ -76,9 +76,15 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  and the prune's stale-slot sweep. */
   private val slotsByCinema = mutable.Map.empty[Cinema, mutable.Map[(CacheKey, Source), SourceData]]
 
-  /** sanitized alias → how many concluded bare rows carry it. REFCOUNTED, not a set:
-   *  two rows can offer the same alias, and dropping one must not un-know it. */
-  private val aliasCounts = mutable.Map.empty[String, Int]
+  /** sanitized alias → the concluded bare rows carrying it.
+   *
+   *  A SET OF KEYS, not the refcount this used to be. The count answered `holdsAlias`
+   *  and nothing else, so the divert gate's "is this an alias of a concluded row" was
+   *  all it could serve; `concludedKeyFor` needed the KEYS and so kept walking the whole
+   *  corpus for them. Keying by `CacheKey` gives the same "two rows offer it, dropping
+   *  one must not un-know it" property the refcount was there for — set removal is
+   *  idempotent per row — and answers the harder question too. */
+  private val keysByAlias = mutable.Map.empty[String, mutable.Set[CacheKey]]
 
   /** Index `record` under `key`, replacing whatever that key contributed before. */
   def put(key: CacheKey, record: MovieRecord): Unit = synchronized {
@@ -96,8 +102,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     }
     if (isConcludedBareRow(key, record))
       record.tmdbTitleAliases.foreach { alias =>
-        val a = normalizer.sanitize(alias)
-        aliasCounts.update(a, aliasCounts.getOrElse(a, 0) + 1)
+        keysByAlias.getOrElseUpdate(normalizer.sanitize(alias), mutable.Set.empty) += key
       }
   }
 
@@ -109,11 +114,22 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     synchronized(rowsByNormalized.get(normalized).exists(_.nonEmpty))
 
   /** Is this sanitized title an alias of a concluded bare row? (`knownAliases`) */
-  def holdsAlias(alias: String): Boolean = synchronized(aliasCounts.contains(alias))
+  def holdsAlias(alias: String): Boolean = synchronized(keysByAlias.get(alias).exists(_.nonEmpty))
+
+  /** The concluded bare rows carrying this sanitized alias.
+   *
+   *  The alias arm of [[MovieCache.concludedKeyFor]], which walked the whole corpus
+   *  running `isBareFilmTitle` and a `sanitize` per alias per row — for every landed
+   *  listing. */
+  def keysForAlias(alias: String): Set[CacheKey] =
+    synchronized(keysByAlias.get(alias).map(_.toSet).getOrElse(Set.empty))
+
+  /** Every row under this sanitized title, WITH its key. */
+  def entriesFor(normalized: String): Seq[(CacheKey, MovieRecord)] =
+    synchronized(rowsByNormalized.get(normalized).map(_.toVector).getOrElse(Vector.empty))
 
   /** Every row under this sanitized title. (`rowsFor`) */
-  def rowsFor(normalized: String): Seq[MovieRecord] =
-    synchronized(rowsByNormalized.get(normalized).map(_.values.toVector).getOrElse(Vector.empty))
+  def rowsFor(normalized: String): Seq[MovieRecord] = entriesFor(normalized).map(_._2)
 
   /** Does any row already hold this cinema's slot? (`knownByCinemaSlot`) */
   def holdsCinemaSlot(cinema: Cinema, normalized: String): Boolean =
@@ -143,7 +159,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       rowsByNormalized = rowsByNormalized.map { case (n, rows) => n -> rows.keySet.toSet }.toMap,
       keysByCinemaSlot = keysByCinemaSlot.map { case (slot, keys) => slot -> keys.toSet }.toMap,
       slotsByCinema    = slotsByCinema.map { case (c, slots) => c -> slots.keySet.toSet }.toMap,
-      aliasCounts      = aliasCounts.toMap)
+      keysByAlias      = keysByAlias.map { case (a, keys) => a -> keys.toSet }.toMap)
   }
 
   private def forget(key: CacheKey): Unit = {
@@ -169,8 +185,9 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       if (isConcludedBareRow(key, record))
         record.tmdbTitleAliases.foreach { alias =>
           val a = normalizer.sanitize(alias)
-          aliasCounts.get(a).foreach { n =>
-            if (n <= 1) aliasCounts -= a else aliasCounts.update(a, n - 1)
+          keysByAlias.get(a).foreach { keys =>
+            keys -= key
+            if (keys.isEmpty) keysByAlias -= a
           }
         }
     }
@@ -186,5 +203,5 @@ private[movies] object CorpusIndex {
   final case class Snapshot(rowsByNormalized: Map[String, Set[CacheKey]],
                             keysByCinemaSlot: Map[(Cinema, String), Set[CacheKey]],
                             slotsByCinema: Map[Cinema, Set[(CacheKey, Source)]],
-                            aliasCounts: Map[String, Int])
+                            keysByAlias: Map[String, Set[CacheKey]])
 }

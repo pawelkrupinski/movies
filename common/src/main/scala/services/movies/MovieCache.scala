@@ -280,8 +280,18 @@ class CaffeineMovieCache(
    *  to `positive` goes through `store` / `evict` / the `putIfPresent` compute, and
    *  nothing else may call `positive.put` or `positive.invalidate` directly. The cache
    *  is unbounded, so there is no eviction path to miss. */
+  /** What makes a row a valid ALIAS target: resolved, and a bare presentation of its
+   *  film rather than a decorated edition of it.
+   *
+   *  Named once because the index is built twice — live, and rebuilt from the rows by
+   *  [[rebuiltIndexSnapshot]] for the consistency check. Two copies of a predicate that
+   *  MUST agree is how the check starts comparing an index against a differently-defined
+   *  one and calls the disagreement drift. */
+  private val isConcludedBareRow: (CacheKey, MovieRecord) => Boolean =
+    (k, r) => r.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, r), normalizer)
+
   private val corpusIndex =
-    new CorpusIndex(normalizer, (k, r) => r.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, r), normalizer))
+    new CorpusIndex(normalizer, isConcludedBareRow)
 
   /** Write a row and keep the index with it. The ONLY way into `positive`. */
   private def store(key: CacheKey, record: MovieRecord): Unit = {
@@ -306,8 +316,7 @@ class CaffeineMovieCache(
 
   private[movies] def rowsRebuiltIndexSnapshot: CorpusIndex.Snapshot = {
     import scala.jdk.CollectionConverters._
-    val rebuilt = new CorpusIndex(normalizer,
-      (k, r) => r.tmdbConcluded && FilmCanonicalizer.isBareFilmTitle((k, r), normalizer))
+    val rebuilt = new CorpusIndex(normalizer, isConcludedBareRow)
     positive.asMap().asScala.foreach { case (k, r) => rebuilt.put(k, r) }
     rebuilt.snapshot
   }
@@ -793,7 +802,6 @@ class CaffeineMovieCache(
     listingRuntime: Option[Int],
     cinema:         Cinema
   ): Option[CacheKey] = {
-    import scala.jdk.CollectionConverters._
     val norm = primary.normalized
     // A scrape lands on a concluded row when its title matches that row's key, OR
     // one of the row's TMDB aliases (its Polish / original title). The alias arm
@@ -812,12 +820,19 @@ class CaffeineMovieCache(
     // settle's fold: only a row that is itself a bare presentation of the film is
     // a valid alias target. The decorated→own-row direction is already self-gating
     // (its sanitize matches no alias).
-    val concluded = positive.asMap().asScala.iterator
-      .collect { case (k, e) if e.tmdbConcluded &&
-        (k.normalized == norm ||
-         (FilmCanonicalizer.isBareFilmTitle((k, e), normalizer) &&
-          e.tmdbTitleAliases.exists(a => normalizer.sanitize(a) == norm))) => k }
-      .toSeq
+    //
+    // BOTH ARMS ARE INDEX LOOKUPS. This walked the whole `positive` map — running
+    // `isBareFilmTitle` and a `sanitize` per alias on every row — once per LANDED
+    // LISTING, which is O(listings x corpus) and the reason a cold United States pass
+    // cost 72ms a listing against Germany's 8.7ms on the same code. The corpus grows as
+    // the listings land, so the price of a fixed chunk of venues climbs through the
+    // tick; `CorpusIndex` exists for exactly this shape and already carried both
+    // derivations, one of them (the alias set) in a form that could only answer
+    // `holdsAlias`.
+    //
+    // The candidates are a SET, not a sequence: `chooseConcluded` below is "a pure
+    // function of the row set plus this listing", so replacing an arbitrary Caffeine
+    // iteration order with an index lookup cannot change which key is chosen.
     // Prefer a row whose OWN key IS this title over one that matches only via a
     // TMDB alias. The alias arm exists to land an original-language listing that
     // has no row yet ("Tangled") onto the resolved row ("Zaplątani"); but once a
@@ -827,7 +842,11 @@ class CaffeineMovieCache(
     // first in the canonicalRank tie-break ("De" < "Dz"), splitting the Polish
     // film across two ever-growing rows the sanitize-keyed canonicalize can't
     // re-merge. So resolve key-matches first, alias-only matches only as fallback.
-    val (keyMatches, aliasOnly) = concluded.partition(k => k.normalized == norm)
+    val keyMatches = corpusIndex.entriesFor(norm).collect { case (k, e) if e.tmdbConcluded => k }
+    // `keysForAlias` is already gated on concluded-AND-bare (the index's own predicate),
+    // so the only arm left to apply is the partition's: a key that matches by its own
+    // normalised form belongs to `keyMatches`, never here.
+    val aliasOnly  = corpusIndex.keysForAlias(norm).filterNot(_.normalized == norm).toSeq
     def nearest(cands: Seq[CacheKey]): Option[CacheKey] = primary.year match {
       case None    => chooseConcluded(cands, listingRuntime, cinema, norm)
       case Some(y) =>
@@ -1731,15 +1750,15 @@ class CaffeineMovieCache(
    *  would create a separate row at its own key. */
   private def redirectToExistingVariant(primary: CacheKey): Option[CacheKey] = {
     if (positive.getIfPresent(primary) != null) return None
-    import scala.jdk.CollectionConverters._
-    val normalizedRaw = primary.normalized
     // Match by cleanTitle normalisation. Cross-script titles produce
     // different normalised forms (sanitize keeps Unicode letters), so a
     // Cyrillic row can't be matched by a Latin scrape and vice versa.
-    val candidates = positive.asMap().asScala.iterator
-      .filter { case (k, _) => k.normalized == normalizedRaw }
-      .toSeq
-      .distinctBy(_._1)  // unique by CacheKey (which dedups by normalized form)
+    //
+    // `rowsByNormalized` is keyed by exactly this, and holds one entry per `CacheKey`,
+    // so the lookup replaces both the whole-corpus filter — the SECOND such walk on the
+    // per-listing path, run for every listing `concludedKeyFor` missed, which cold is
+    // nearly all of them — and the `distinctBy` that deduplicated its result.
+    val candidates = corpusIndex.entriesFor(primary.normalized)
     candidates match {
       case Seq((key, record)) if settleWouldMerge(primary, key, record) => Some(key)
       case _                                                           => None
