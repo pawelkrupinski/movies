@@ -72,13 +72,13 @@ country_locale() { case "$1" in pl) echo pl-PL;; uk) echo en-GB;; de) echo de-DE
 country_language() { case "$1" in pl) echo pl;; uk) echo en;; de) echo de;; us) echo en;; es) echo es;; *) echo "";; esac; }
 # ENDONYMS from the catalog — identical in every locale, so they double as a tap
 # target regardless of the app's language.
-country_name()   { case "$1" in pl) echo Polska;; uk) echo "United Kingdom";; de) echo Deutschland;; esac; }
+country_name()   { case "$1" in pl) echo Polska;; uk) echo "United Kingdom";; de) echo Deutschland;; us) echo "United States";; es) echo "España";; esac; }
 country_base()   { case "$1" in pl) echo "https://kinowo.net";; uk) echo "https://showtimes.cc/uk";; de) echo "https://showtimes.cc/de";; us) echo "https://showtimes.cc/us";; es) echo "https://showtimes.cc/es";; *) echo "";; esac; }
 # The gate's "Country" header, which IS localized — seeing it is proof the
 # country switch landed.
 country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; us) echo Country;; es) echo "País";; esac; }
 # The area picker's confirm button, shown only by SPLIT cities.
-showlist_label() { case "$1" in pl) echo "Pokaż repertuar";; uk) echo "Show listings";; de) echo "Programm anzeigen";; esac; }
+showlist_label() { case "$1" in pl) echo "Pokaż repertuar";; uk) echo "Show listings";; de) echo "Programm anzeigen";; us) echo "Show listings";; es) echo "Ver la cartelera";; esac; }
 
 # ── where shots land ──────────────────────────────────────────────────────────
 # The published directory name is dictated by gradle-play-publisher's

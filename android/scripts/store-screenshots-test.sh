@@ -25,18 +25,36 @@ printf '\033[36m▸\033[0m store-screenshots helpers\n'
 
 # Every country --all-top walks must map to a locale and back, or a run writes
 # into the wrong listing dir.
+# EVERY lookup a capture depends on, for EVERY country — not a subset. A missing
+# entry returns the empty string rather than failing, so the run reads
+# "country never switched to " with a blank name and all ten cities are skipped;
+# that is exactly how Spain's first capture attempt died. Adding a country means
+# adding a row to each of these, and this loop is what says so.
 for c in $COUNTRIES; do
   check "$c → locale → country round-trips" "$c" "$(locale_country "$(country_locale "$c")")"
   check "$c has a listing locale"      "1" "$([ -n "$(country_locale "$c")" ] && echo 1 || echo 0)"
   check "$c has an area-picker label"  "1" "$([ -n "$(showlist_label "$c")" ] && echo 1 || echo 0)"
+  check "$c has a country pill name"   "1" "$([ -n "$(country_name "$c")" ] && echo 1 || echo 0)"
+  check "$c has a gate header"         "1" "$([ -n "$(country_header "$c")" ] && echo 1 || echo 0)"
+  check "$c has a backend base URL"    "1" "$([ -n "$(country_base "$c")" ] && echo 1 || echo 0)"
 done
 check "unknown country has no locale" "" "$(country_locale "fr")"
+check "unknown country has no pill name" "" "$(country_name "fr")"
 
 # The labels are what the split-city detection greps for; a wrong one means
 # London silently captures the area picker instead of the listing.
 check "uk area-picker label" "Show listings"     "$(showlist_label uk)"
 check "pl area-picker label" "Pokaż repertuar"   "$(showlist_label pl)"
 check "de area-picker label" "Programm anzeigen" "$(showlist_label de)"
+check "es area-picker label" "Ver la cartelera"  "$(showlist_label es)"
+
+# These must match pl.kinowo.model.Country.displayName character for character —
+# the capture taps the pill BY ITS TEXT.
+check "pl country pill" "Polska"         "$(country_name pl)"
+check "uk country pill" "United Kingdom" "$(country_name uk)"
+check "de country pill" "Deutschland"    "$(country_name de)"
+check "us country pill" "United States"  "$(country_name us)"
+check "es country pill" "España"         "$(country_name es)"
 
 # Blocks of four, end to end, zero-padded: city 1 → 001-004, city 2 → 005-008.
 check "first city block"  "/d/001.png /d/002.png /d/003.png /d/004.png" "$(shot_paths /d 1 | tr '\n' ' ' | sed 's/ $//')"

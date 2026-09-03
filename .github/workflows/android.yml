@@ -5,11 +5,23 @@ on:
         paths:
             - 'android/**'
             - '.github/workflows/android.yml'
+            # The store-script helper tests below live here and in ios/scripts,
+            # and the lookup tables they guard are SHARED with the iOS capture.
+            # Without these, editing the file that actually broke Spain's
+            # capture would not run the test that catches it.
+            - 'scripts/store-screenshots-common.sh'
+            - 'ios/scripts/store-screenshots*.sh'
     push:
         branches: [main]
         paths:
             - 'android/**'
             - '.github/workflows/android.yml'
+            # The store-script helper tests below live here and in ios/scripts,
+            # and the lookup tables they guard are SHARED with the iOS capture.
+            # Without these, editing the file that actually broke Spain's
+            # capture would not run the test that catches it.
+            - 'scripts/store-screenshots-common.sh'
+            - 'ios/scripts/store-screenshots*.sh'
     workflow_dispatch:
 
 # A newer push to the same ref cancels the older run mid-flight instead of
@@ -84,6 +96,20 @@ jobs:
             # keyed on the build scripts and wrapper version.
             - name: Set up Gradle
               uses: gradle/actions/setup-gradle@v4
+
+            # Pure-bash helper tests for the store-screenshot / store-graphics
+            # scripts: the country→locale→label lookups a capture depends on.
+            # They need no emulator and run in a second, but ran in NO workflow
+            # until now — so `us` and `es` sat without an area-picker label for
+            # weeks, red on anyone's laptop and invisible everywhere else. A
+            # missing entry returns "" rather than failing, which is how Spain's
+            # first capture skipped all ten cities.
+            - name: Store script helper tests
+              working-directory: ${{ github.workspace }}
+              run: |
+                  android/scripts/store-screenshots-test.sh
+                  android/scripts/store-graphics-test.sh
+                  ios/scripts/store-screenshots-test.sh
 
             - name: Unit tests
               run: ./gradlew --no-daemon testDebugUnitTest
