@@ -115,6 +115,22 @@ in
   # neverDisturbUnits floor (sshd, mongodb, k3s) is checked first and still applies.
   fleet.autoApply.restartableUnits = [ "grafana.service" "prometheus.service" ];
 
+  # CADDY RELOADS RATHER THAN RESTARTS, which is why it is here and not in the list above.
+  # `caddy.service` reports `CanReload=yes` with an `ExecReload` of `caddy reload --force`, so a
+  # vhost added or changed is picked up without dropping a connection -- including the TLS
+  # session somebody is reading Grafana over at that moment.
+  #
+  # WITHOUT IT THE APPLIER REFUSES THE WHOLE CLOSURE, SILENTLY -- the same failure the paragraph
+  # above describes for the missing Grafana entry on 2026-08-30, and it was about to happen
+  # again: publishing Headlamp adds a vhost, which changes this unit, and every unrelated change
+  # staged for this machine would have sat unapplied with nothing saying why.
+  #
+  # THE SENTENCE WRITTEN OUT: a graceful config reload of the reverse proxy at an arbitrary
+  # moment is a cost this host accepts -- it drops no connection and no request. A RESTART is
+  # deliberately NOT accepted and stays refused, so if the Caddy package itself changes and
+  # switch-to-configuration wants a bounce, a person takes that brief 502 knowingly.
+  fleet.autoApply.reloadableUnits = [ "caddy.service" ];
+
   fleet.grafana = {
     enable = true;
 
