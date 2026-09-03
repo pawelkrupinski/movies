@@ -933,9 +933,14 @@ final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
  *  parameter: the Canary provinces run an hour behind the peninsula, and a
  *  single national zone would move their day boundary. */
 final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: Double,
-                            zoneId: ZoneId, cinemas0: Seq[Cinema])
+                            zoneId: ZoneId, cinemas0: Seq[Cinema], towns: Seq[String])
   extends City(slug, labels, lat, lon, zoneId) {
   val cinemas: Seq[Cinema] = cinemas0
+  /** The province's towns, from the roster. A province is flat — no [[areas]]
+   *  for the default to read — but it is nonetheless several towns under one
+   *  name, so it names them the way [[Trojmiasto]] does. Deduped because most
+   *  provinces are named after their own capital, which is then both. */
+  override val coveredPlaces: Seq[String] = (labels.nominative +: towns).distinct
 }
 
 /** A named group of [[City]]s in a picker — a US STATE over its metros
@@ -1088,7 +1093,7 @@ object City {
   private[models] val spanishCities: Seq[City] = {
     val slugs = spanishSlugs(SpanishRoster.places)
     SpanishRoster.places.zip(slugs).map { case (p, slug) =>
-      new SpanishProvince(slug, CityLabels(p.name, p.name, p.name), p.lat, p.lon, p.zoneId, p.cinemas)
+      new SpanishProvince(slug, CityLabels(p.name, p.name, p.name), p.lat, p.lon, p.zoneId, p.cinemas, p.towns)
     }
   }
 

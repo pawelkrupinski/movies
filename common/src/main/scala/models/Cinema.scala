@@ -1744,6 +1744,12 @@ final case class SpanishPlace(
    *  `Atlantic/Canary`, and a national default would move their "today"
    *  boundary — the same trap `UsCity` documents for six US zones. */
   zoneId:        ZoneId,
+  /** The province's towns, most venues first — the place names a Spanish
+   *  visitor actually searches by. A province is not a town: "los cines de
+   *  Alicante" covers Elche, Benidorm and Denia, none of which the page named
+   *  anywhere before. Harvested from SensaCine's own per-town headers; see
+   *  [[City.coveredPlaces]], which is what puts them on the page. */
+  towns:         Seq[String],
   cinemas:       Seq[Cinema],
 )
 
@@ -1776,7 +1782,7 @@ object SpanishRoster {
       Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
 
   private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, String)])] =
-    SpanishRosterData.provinces.map { case (slug, name, community, lat, lon, zone, cinemas) =>
+    SpanishRosterData.provinces.map { case (slug, name, community, lat, lon, zone, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and the
       // wire keys of every already-stored Spanish slot — stay exactly as they are
       // otherwise.
@@ -1784,7 +1790,7 @@ object SpanishRoster {
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
         (new SpanishCinema(unique, pill), tid)
       }
-      (SpanishPlace(slug, name, community, lat, lon, ZoneId.of(zone), venues.map(_._1)), venues)
+      (SpanishPlace(slug, name, community, lat, lon, ZoneId.of(zone), towns, venues.map(_._1)), venues)
     }
 
   val places: Seq[SpanishPlace]              = built.map(_._1)

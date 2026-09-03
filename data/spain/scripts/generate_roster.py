@@ -18,6 +18,7 @@ Two things it refuses to do, because both fail SILENTLY downstream:
 
 Usage:  python3 data/spain/scripts/generate_roster.py
 """
+import collections
 import json
 import pathlib
 import re
@@ -39,6 +40,31 @@ def scala_string(value: str) -> str:
 
 def ident(slug: str) -> str:
     return "p_" + re.sub(r"[^a-z0-9]", "_", slug)
+
+
+# Spanish toponyms lowercase their particles ("Alcalá de Henares", "Alfás del
+# Pi"), but SensaCine's own town headers title-case every word, and those
+# headers are where `town` comes from. The names go on the page — into the
+# `<h1>` and the meta description — so they are cased the way Spanish writes
+# them. Accents SensaCine dropped ("Alcala") are not recoverable here and stay
+# as harvested.
+PARTICLES = {"de", "del", "la", "las", "el", "los", "y", "i", "a", "o"}
+
+
+def spanish_case(town: str) -> str:
+    words = town.split(" ")
+    return " ".join(
+        w.lower() if i > 0 and w.lower() in PARTICLES else w
+        for i, w in enumerate(words))
+
+
+def towns_of(province: dict) -> list[str]:
+    """The province's towns, the ones with most venues first (ties
+    alphabetical) — the order `City.coveredPlaces` promises, because the
+    consumers cap the list and the biggest towns are the ones worth naming."""
+    counts = collections.Counter(
+        spanish_case(c["town"]) for c in province["cinemas"] if c.get("town"))
+    return [t for t, _ in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
 def main() -> int:
@@ -73,8 +99,8 @@ def main() -> int:
         "private[models] object SpanishRosterData {",
         "  // (displayName, pillName, sensacine theaterId)",
         "  type C = (String, String, String)",
-        "  // (slug, name, autonomous community, lat, lon, zoneId, cinemas)",
-        "  type R = (String, String, String, Double, Double, String, Seq[C])",
+        "  // (slug, name, autonomous community, lat, lon, zoneId, towns, cinemas)",
+        "  type R = (String, String, String, Double, Double, String, Seq[String], Seq[C])",
         "",
     ]
 
@@ -83,14 +109,16 @@ def main() -> int:
             "    ({}, {}, {})".format(
                 scala_string(c["displayName"]), scala_string(c["displayName"]), scala_string(c["theaterId"]))
             for c in province["cinemas"])
+        towns = ", ".join(scala_string(t) for t in towns_of(province))
         lines.append(
-            "  private def {}: R = ({}, {}, {}, {}, {}, {}, Seq(\n{}\n  ))".format(
+            "  private def {}: R = ({}, {}, {}, {}, {}, {}, Seq({}), Seq(\n{}\n  ))".format(
                 ident(province["slug"]),
                 scala_string(province["slug"]),
                 scala_string(province["name"]),
                 scala_string(communities[province["name"]]),
                 province["lat"], province["lon"],
                 scala_string(province["zoneId"]),
+                towns,
                 venues))
 
     lines.append("")

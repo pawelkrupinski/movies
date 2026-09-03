@@ -124,6 +124,15 @@ class CitySpec extends AnyFlatSpec with Matchers {
     bay.coveredPlaces      shouldBe bay.coveredPlaces.distinct
   }
 
+  it should "read a Spanish province's towns, which the province's own name hides" in {
+    val madrid = City.all.find(_.slug == "madrid").getOrElse(fail("no Madrid province in the roster"))
+    madrid.coveredPlaces.head shouldBe "Madrid"
+    madrid.otherCoveredPlaces should contain allOf ("Getafe", "Alcala de Henares")
+    // The province is named after its capital, so the capital is both the
+    // province name and one of its towns — named once, not twice.
+    madrid.coveredPlaces shouldBe madrid.coveredPlaces.distinct
+  }
+
   it should "ignore compass bearings, which name no place outside their city" in {
     London.areas.map(_.area.label) should contain("Central")  // London IS split…
     London.coveredPlaces           shouldBe Seq("London")     // …but into directions
