@@ -50,8 +50,14 @@ EXPOSE 9000
 # JVM's -XX:HeapDumpPath directory exist before it has to write into it.
 # HeapDumpOnOutOfMemoryError writes a ~11MB dump per OOM and never cleans up; a
 # 2026-07-09 investigation found /data 100% full (750MB of stale dumps), which
-# blocks new dumps + log writes. Keep the 3 newest dumps + the 3 newest hs_err
-# crash logs, drop the retired JFR repo dir.
+# blocks new dumps + log writes. Keep `$HEAPDUMP_KEEP` (default 3) dumps + the 3
+# newest hs_err crash logs, drop the retired JFR repo dir.
+#
+# THE DEFAULT IS SIZED FOR THE WORKERS, whose dumps are ~11MB. A dump is roughly the
+# LIVE SET, and web-us's is ~600MB — three of those is 1.8GB against a 2Gi emptyDir,
+# and an emptyDir over its sizeLimit gets the POD EVICTED. Losing the public tier to
+# its own forensics is a worse failure than the one the dump explains, so web sets
+# HEAPDUMP_KEEP=1: one dump is what anybody actually reads.
 #
 # ROTATE THE FIXED-NAME DUMP FIRST, or the prune below never fires and every OOM
 # after the first writes NOTHING. `-XX:HeapDumpPath=/data/heapdumps` names a
@@ -76,7 +82,7 @@ EXPOSE 9000
 # to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in fly.worker.toml JAVA_OPTS).
 CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     if [ -f /data/heapdumps/java_pid1.hprof ]; then mv /data/heapdumps/java_pid1.hprof "/data/heapdumps/oom-$(date -u +%Y%m%dT%H%M%SZ).hprof"; fi; \
-    if [ -d /data/heapdumps ]; then ls -1t /data/heapdumps/*.hprof 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
+    if [ -d /data/heapdumps ]; then ls -1t /data/heapdumps/*.hprof 2>/dev/null | tail -n +$((${HEAPDUMP_KEEP:-3} + 1)) | xargs -r rm -f; fi; \
     if [ -d /data/logs ]; then ls -1t /data/logs/hs_err_*.log 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
     if [ -f /data/logs/worker-stderr.log ] && [ "$(wc -c < /data/logs/worker-stderr.log)" -gt 16777216 ]; then \
       tail -c 4194304 /data/logs/worker-stderr.log > /data/logs/worker-stderr.log.tmp && mv /data/logs/worker-stderr.log.tmp /data/logs/worker-stderr.log; fi; \
