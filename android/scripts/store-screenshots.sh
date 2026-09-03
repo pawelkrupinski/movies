@@ -276,8 +276,11 @@ scroll_to_country() { # $1 display name -> "x y"
     [ -n "$row_y" ] && break
   done
   [ -n "$row_y" ] || return 1
-  w="$(adb shell wm size | tr -d '\r' | awk -F'[ x]' 'END{print $(NF)}')"
-  [ -n "$w" ] || w=1440
+  # `wm size` prints "Physical size: 1344x2992" — WIDTHxHEIGHT. Taking the last
+  # field yields the HEIGHT, which on a portrait device is wider than the screen,
+  # so every swipe started off-screen and scrolled nothing at all.
+  w="$(adb shell wm size | tr -d '\r' | sed -n 's/.*: *\([0-9][0-9]*\)x[0-9][0-9]*.*/\1/p' | head -1)"
+  [ -n "$w" ] || w=1080
   for i in 1 2 3 4 5 6; do
     adb shell input swipe "$((w * 4 / 5))" "$row_y" "$((w / 5))" "$row_y" 300 >>"$NOISE" 2>&1
     naps 1

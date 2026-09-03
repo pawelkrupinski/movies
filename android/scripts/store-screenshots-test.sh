@@ -502,13 +502,22 @@ node_center() {
     *) echo "" ;;
   esac
 }
-adb() { printf '%s\n' "$*" >> "$_scrollcap"; }
+# `wm size` reports WIDTHxHEIGHT; the swipe must stay inside the WIDTH. Reading
+# the last field gave the height (2992 on a 1344-wide portrait screen), so every
+# swipe began off-screen and scrolled nothing while the run looked busy.
+adb() {
+  printf '%s\n' "$*" >> "$_scrollcap"
+  case "$*" in "shell wm size") printf 'Physical size: 1344x2992\n';; esac
+}
 naps() { :; }
 : > "$_scrollcap"
 _point="$(scroll_to_country "España" || true)"
 check "it finds the pill once scrolled into view" "900 234" "$_point"
 check "it swiped the row at the anchor pill's Y" "1" \
   "$(grep -c 'shell input swipe .* 234 .* 234 300' "$_scrollcap" || true)"
+# Both X coordinates must land inside the 1344-wide screen — not the 2992 height.
+check "the swipe stays within the screen WIDTH" "" \
+  "$(awk '/shell input swipe/ { if ($4 >= 1344 || $6 >= 1344) print "off-screen: "$4" -> "$6 }' "$_scrollcap")"
 
 # A country the app does not carry must FAIL, not quietly return an empty point
 # that `tap` would then aim at nothing.
