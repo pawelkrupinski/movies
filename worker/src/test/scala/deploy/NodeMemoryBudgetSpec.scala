@@ -237,6 +237,42 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** The memory requests of everything on k3s-worker-1 that is NOT a kinowo tier — the pods the
+   *  512Mi `SystemReserveMib` is set aside for. Read from the manifests, so this is what WILL be
+   *  requested, not what happens to be scheduled today. */
+  private def reserveTenants: Seq[(String, Int)] =
+    Seq("kube-state-metrics", "headlamp").map { component =>
+      val yaml = Seq(s"infra/kubernetes/$component/deployment.yaml")
+        .map(RepoFile.read).mkString("\n")
+      val lines = yaml.linesIterator.map(_.trim).toList
+      val memory = lines.dropWhile(_ != "requests:").drop(1).takeWhile(_ != "limits:").collectFirst {
+        case l if l.startsWith("memory:") => l.stripPrefix("memory:").trim.replace("\"", "")
+      }
+      withClue(s"$component declares no memory request: ")(memory should not be empty)
+      component -> parseMib(memory.get)
+    }
+
+  // THE RESERVE IS A BUDGET NOBODY WAS SPENDING AGAINST. `SystemReserveMib` is subtracted from the
+  // node's allocatable before the kinowo ledger is checked, so every mebibyte a non-kinowo pod
+  // takes is one the web tier's surge was promised — but nothing compared the two, and the reserve
+  // was invisible: a second exporter or a UI could be added indefinitely and only the SCHEDULER
+  // would eventually object, by leaving a web rollout Pending with `maxUnavailable: 0`.
+  //
+  // Measured 2026-09-03 when Headlamp was added: 64Mi (kube-state-metrics) + 128Mi (headlamp) =
+  // 192Mi of 512Mi. There is room for more; the point is that the next thing added has to fit,
+  // and now says so here rather than in an incident.
+  "the system reserve" should "cover everything scheduled outside the kinowo tiers" in {
+    val tenants = reserveTenants
+    val total   = tenants.map(_._2).sum
+    withClue(
+      s"${tenants.map { case (n, m) => s"$n ${m}Mi" }.mkString(" + ")} = ${total}Mi against a " +
+      s"${SystemReserveMib}Mi reserve. Over it, the node is oversubscribed by exactly the amount " +
+      "the web tier's rolling surge was promised, and a deploy hangs Pending rather than failing: ") {
+      total should be <= SystemReserveMib
+    }
+    info(s"reserve: ${total}Mi of ${SystemReserveMib}Mi used, ${SystemReserveMib - total}Mi spare")
+  }
+
   // A ConfigMap patch REPLACES the whole key, so an overlay that names JAVA_OPTS at all owns
   // every flag that pod boots with — inheriting nothing from the base. Add a flag to the base and
   // the overlay countries silently do not get it.
