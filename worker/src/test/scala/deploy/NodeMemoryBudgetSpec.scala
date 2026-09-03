@@ -200,15 +200,6 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
     parseMib(raw.get)
   }
 
-  private def dumpsKept(cc: String): Int = {
-    val overlay = RepoFile.read(s"infra/kubernetes/web/overlays/$cc/patch.yaml")
-    val source  = if (overlay.contains("HEAPDUMP_KEEP")) overlay else RepoFile.read("infra/kubernetes/web/base/all.yaml")
-    val raw = source.linesIterator.map(_.trim).collectFirst {
-      case l if l.startsWith("HEAPDUMP_KEEP:") => l.stripPrefix("HEAPDUMP_KEEP:").trim.replace("\"", "")
-    }
-    withClue(s"web/$cc does not say how many heap dumps to keep: ")(raw should not be empty)
-    raw.get.toInt
-  }
 
   // AN emptyDir OVER ITS sizeLimit GETS THE POD EVICTED, so the volume that exists to explain an
   // OOM must not be able to cause an outage of its own -- on the only user-facing tier, that trade
@@ -220,20 +211,23 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   // ACTUALLY weighs (~600MiB for web-us's 1024m heap), but it moves with the corpus and this
   // number must hold without anyone re-measuring it.
   //
-  // This is the guard for the whole class: raise a heap, raise HEAPDUMP_KEEP, or shrink a volume,
+  // This is the guard for the whole class: raise a heap or shrink a volume,
   // and whichever of the three you forget fails here rather than in an eviction.
   "the heap-dump volume" should "hold every dump it is configured to keep, on every web country" in {
     Countries.foreach { cc =>
       val heap    = flagMib(javaOpts("web", cc), "-Xmx", "web", cc)
-      val kept    = dumpsKept(cc)
       val ceiling = dumpVolumeMib(cc)
-      val worst   = (kept + 1) * heap
+      // The image keeps exactly ONE dump and only while it fits in half the volume, so the
+      // worst case on disk is the retained dump plus the one being written on the way down.
+      // A dump cannot exceed the heap that produced it, hence 2x -Xmx.
+      val worst   = 2 * heap
       withClue(
-        s"web/$cc keeps $kept dump(s) of a ${heap}Mi heap, so the volume can hold ${worst}Mi at " +
-        s"once, against a ${ceiling}Mi sizeLimit. Over that limit the kubelet EVICTS the pod: ") {
+        s"web/$cc has a ${heap}Mi heap, so its volume can hold ${worst}Mi at once (the kept dump " +
+        s"plus the one being written), against a ${ceiling}Mi sizeLimit. Over that limit the " +
+        "kubelet EVICTS the pod: ") {
         ceiling should be >= worst
       }
-      info(s"web/$cc: keep=$kept, worst ${worst}Mi <= ${ceiling}Mi sizeLimit")
+      info(s"web/$cc: worst ${worst}Mi <= ${ceiling}Mi sizeLimit")
     }
   }
 
