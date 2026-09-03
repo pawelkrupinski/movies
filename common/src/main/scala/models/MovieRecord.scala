@@ -116,11 +116,19 @@ case class MovieRecord(
   def cinemaShowings: Seq[(Cinema, SourceData)] =
     cinemaSlots.flatMap { case (source, sd) => Source.cinemaOf(source).map(_ -> sd) }
 
-  /** One representative slot per cinema — the keyed view the per-cinema accessors
-   *  (`filmUrlFor`, `showtimesFor`) and detail enrichment use. When a venue holds
-   *  several title-slots, the highest-priority/title one wins deterministically;
-   *  consumers that need EVERY slot (the display split, divert) use
-   *  [[cinemaShowings]] instead. */
+  /** The [[Cinema]] behind every slot, as an iterator (a venue listing the film
+   *  under two titles appears twice). The MEMBERSHIP questions — which cities
+   *  screen the film, whether a chain's shared detail slot applies to a city —
+   *  ask this rather than `cinemaData.keySet`: [[cinemaData]]'s sort and map
+   *  build exist only to pick a representative slot per venue, and asking it a
+   *  membership question pays O(n log n) for an answer that needs one pass. */
+  private def slotCinemas: Iterator[Cinema] = data.keysIterator.flatMap(Source.cinemaOf)
+
+  /** One representative slot per cinema — the keyed view detail enrichment uses.
+   *  When a venue holds several title-slots, the highest-priority/title one wins
+   *  deterministically; consumers that need EVERY slot (the display split, divert)
+   *  use [[cinemaShowings]] instead, and consumers that only ask WHICH venues are
+   *  present use [[slotCinemas]] rather than paying for the sort. */
   def cinemaData: Map[Cinema, SourceData] =
     cinemaSlots
       .sortBy { case (source, sd) => (Source.priorityOf(source), sd.title.getOrElse("")) }
@@ -182,7 +190,7 @@ case class MovieRecord(
    *  the read model projects a row on every change-stream event, so it was the
    *  dominant CPU driver of the whole worker. */
   def cities: Seq[City] = {
-    val screening = cinemaData.keySet.flatMap(City.forCinema)
+    val screening = slotCinemas.flatMap(City.forCinema).toSet
     City.all.filter(screening.contains)
   }
 
@@ -368,7 +376,7 @@ case class MovieRecord(
     Source.cinemaOf(source).forall { cinema =>
       city.cinemaSet.contains(cinema) ||
         Cinema.chainDetailVenues.get(cinema).exists { venues =>
-          cinemaData.keySet.exists(v => venues.contains(v) && city.cinemaSet.contains(v))
+          slotCinemas.exists(v => venues.contains(v) && city.cinemaSet.contains(v))
         }
     }
 
@@ -551,14 +559,6 @@ case class MovieRecord(
       }
     seen.toSeq
   }
-
-  /** Cinema → film deep-link, when that cinema reports one. */
-  def filmUrlFor(cinema: Cinema): Option[String] =
-    cinemaData.get(cinema).flatMap(_.filmUrl)
-
-  /** Cinema → showtimes (empty when that cinema isn't screening). */
-  def showtimesFor(cinema: Cinema): Seq[Showtime] =
-    cinemaData.get(cinema).map(_.showtimes).getOrElse(Seq.empty)
 
   /** Cinema-reported original/international title — first non-empty with
    *  Multikino preferred. Separate from `originalTitle` (the TMDB-resolved

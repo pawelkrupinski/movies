@@ -272,4 +272,33 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     record.synopsisForCity(Poznan)  shouldBe Some("Opis z sieci Cinema City.")
     record.synopsisForCity(Wroclaw) shouldBe Some("Krótki TMDB.")
   }
+
+  // The chain-detail branch above asks whether any venue of the chain is present
+  // AND in this city — a MEMBERSHIP question. It used to ask `cinemaData.keySet`,
+  // which rebuilds a sorted map over every slot on each call, once per city the
+  // film screens in. `synopsisByCity` walks every such city on every projection,
+  // so a wide record paid that rebuild hundreds of times. The record below is
+  // deliberately wider than any real film (it is the whole PL + US venue roster)
+  // to price the loop rather than the blurbs: the bound is ~10x the post-fix cost
+  // and was exceeded ~10x over by the per-city rebuild.
+  it should "not rebuild the slot map once per city when a chain slot is present" in {
+    val venues = (Country.Poland.cities ++ Country.UnitedStates.cities).flatMap(_.cinemas)
+    val record = MovieRecord(data = (
+      venues.map(c => (c: Source) -> SourceData(title = Some("Film"), synopsis = Some("Opis kina."))) :+
+        ((CinemaCityChain: Source) -> SourceData(synopsis = Some("Opis z sieci Cinema City.")))
+    ).toMap)
+    record.cities.size should be > 100
+
+    // The chain blurb wins in a city where a Cinema City venue screens the film —
+    // i.e. the chain-detail branch this test is timing really is being taken.
+    record.synopsisForCity(Poznan) shouldBe Some("Opis z sieci Cinema City.")
+
+    (1 to 2).foreach(_ => record.cities.map(record.synopsisForCity))
+    val started = System.nanoTime()
+    record.cities.map(record.synopsisForCity)
+    val elapsedMillis = (System.nanoTime() - started) / 1e6
+    withClue(f"synopsisForCity over ${record.cities.size} cities took $elapsedMillis%.0f ms: ") {
+      elapsedMillis should be < 900.0
+    }
+  }
 }
