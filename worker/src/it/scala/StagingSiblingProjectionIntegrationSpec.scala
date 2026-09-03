@@ -75,7 +75,22 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
           .toFuture(), 30.seconds))
   }
 
-  "the staging sibling lookup" should "not pull the siblings' payloads over the wire" in {
+  /**
+   * The lookup does not go to the database AT ALL any more, so the assertion is no
+   * longer "how few bytes" but "none".
+   *
+   * The projection this spec was written for was the second round of the same problem.
+   * First the warning decoded every sibling whole (19,748B a range, showtimes and all),
+   * which took `bootCorpus` from 30 seconds to 3,360 and timed the leg out; projecting to
+   * `_id` cut that to a few hundred bytes but left a QUERY per fresh insert, and a cold
+   * pass inserts every row fresh — 121,544 round trips for the United States, to decide
+   * whether to log a line. The `_id`s were in memory the whole time.
+   *
+   * Measured with the index already WARM, which is the state every call after the first
+   * sees: `ensureAnchorIndex` reads the collection once per repository, and the scrape
+   * path builds it on the venue's `findByCinema` before any row is written.
+   */
+  "the staging sibling lookup" should "not go to the database at all" in {
     val repository = new MongoStagingRepository(Some(db), normalizer = titleNormalizer)
     purge()
     try {
@@ -90,6 +105,10 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
         avgSize should be > 3000
       }
 
+      // Warm the row index, so what follows measures the LOOKUP and not the one-time
+      // build every implementation of it has always paid.
+      repository.findByAnchor(titleNormalizer.sanitize(title))
+
       Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), 30.seconds)
       Await.result(db.getCollection[Document]("system.profile").drop().toFuture(), 30.seconds)
       Await.result(db.runCommand(Document("profile" -> 2)).toFuture(), 30.seconds)
@@ -97,18 +116,19 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
       try repository.upsert(Multikino, title, Some(2029), MovieRecord())
       finally Await.result(db.runCommand(Document("profile" -> 0)).toFuture(), 30.seconds)
 
-      val ranged = Await.result(
+      val reads = Await.result(
         db.getCollection[Document]("system.profile")
           .find(Filters.and(Filters.eq("op", "query"), Filters.regex("ns", "pending_movies$")))
           .toFuture(), 30.seconds)
-        .filter(_.get("nreturned").exists(_.asNumber().intValue() > 1))
 
-      withClue("expected the sibling range query to be profiled: ") { ranged should not be empty }
-
-      val bytes = ranged.flatMap(_.get("responseLength").map(_.asNumber().intValue())).max
-      withClue(s"the sibling lookup pulled ${bytes}B back for a list of ids; projected to " +
-               s"`_id` it returns a few hundred: ") {
-        bytes should be < 2000
+      // `upsert` still reads the row it is replacing (`recordAt`, one `_id` equality) —
+      // that one carries the enrichment forward and has to happen. What must NOT be here
+      // is a lookup that returns SEVERAL rows: that is the sibling range, and it is the
+      // one this spec exists to keep out.
+      val ranged = reads.filter(_.get("nreturned").exists(_.asNumber().intValue() > 1))
+      withClue(s"the sibling lookup must answer from the in-memory row index, not the " +
+               s"database — profiled ${ranged.size} multi-row read(s) on the insert path: ") {
+        ranged shouldBe empty
       }
     } finally purge()
   }

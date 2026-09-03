@@ -144,6 +144,45 @@ class ScrapeCostIndependentOfCorpusSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /**
+   * The venue's newcomers go to staging in ONE call, not one per listing.
+   *
+   * Each of those calls was three serial round trips against Mongo — read the row,
+   * range-query its siblings, replace it — so a venue's 16 German or 28 American
+   * listings were ~50 or ~84 sequential queries, on the one thread a tick walks every
+   * venue with. Profiled mid-tick, the scraping thread was parked on the database in 52
+   * of 60 stacks. The batch is two round trips for the whole venue.
+   *
+   * Counted at the SEAM rather than in round trips, because that is what a unit test can
+   * see: the in-memory repository inherits `upsertAll`'s default (the same loop), so the
+   * rows written are identical either way and only the call shape differs — which is
+   * exactly the thing that has to hold for the Mongo override to be reachable at all.
+   */
+  it should "stage a venue's newcomers in one batch, whatever the venue lists" in {
+    // Counting the BATCH and its payload, not the `upsert` calls underneath: the
+    // in-memory repository's inherited default is itself that loop, so a counter on
+    // `upsert` measures the fake's own delegation rather than what the cache asked for.
+    def calls(listings: Int): (Int, Int) = {
+      val normalizer = SingleCountryNormalizer.titleNormalizer
+      var batches    = 0
+      var staged     = 0
+      val staging = new InMemoryStagingRepository(normalizer = normalizer) {
+        override def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): Unit = {
+          batches += 1; staged += rows.size; super.upsertAll(rows)
+        }
+      }
+      val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = normalizer),
+                                         staging = Some(staging), normalizer = normalizer)
+      cache.recordCinemaScrape(cinema, (1 to listings).map(n => scrapeOf(s"Newcomer $n")))
+      // Every one of them must actually have been staged — a batch of nothing would
+      // satisfy the count and test the opposite of the point.
+      staging.findAll().size shouldBe listings
+      (batches, staged)
+    }
+    calls(3)  shouldBe (1, 3)
+    calls(30) shouldBe (1, 30)
+  }
+
   it should "read only its own cinema's staging rows, never the whole backlog" in {
     val normalizer = SingleCountryNormalizer.titleNormalizer
     var fullScans  = 0

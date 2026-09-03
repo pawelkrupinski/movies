@@ -1416,6 +1416,9 @@ class CaffeineMovieCache(
       staging.fold(Map.empty[String, services.staging.StagingRecord]) {
         _.findByCinema(cinema).iterator.map(r => normalizer.sanitize(r.title) -> r).toMap
       }
+    /** This venue's diverted rows, staged in one batch once the loop has finished
+     *  deciding which they are. */
+    val divertsToStage = scala.collection.mutable.ArrayBuffer.empty[(Source, String, Option[Int], MovieRecord)]
     val divertedSanitized = scala.collection.mutable.Set.empty[String]
     // Titles diverted into staging for the FIRST time this cinema (no prior row) —
     // the newcomers whose initial step StagingReaper should kick off an event,
@@ -1463,10 +1466,21 @@ class CaffeineMovieCache(
           val priorSlot     = priorStagingRows.get(norm).flatMap(_.record.data.get(cinemaSlotKey(cinema, displayTitle)))
           val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
           val slot          = buildCinemaSlot(cm, displayTitle, priorSlot, effectiveYear)
-          staging.get.upsert(cinema, displayTitle, cm.movie.releaseYear, MovieRecord(
+          // COLLECTED, not written here: the venue's diverts go out together below, in
+          // two round trips rather than three per listing. Nothing later in this loop
+          // reads staging back — `priorStagingRows` was captured before it, and the
+          // prune at the end works off `divertedSanitized` — so the rows are the same
+          // rows, written at the end of the venue instead of one at a time through it.
+          //
+          // Outside `withTitleLock` by consequence, and that costs nothing: the lock
+          // serialises read-modify-write on the MOVIES row, and staging's other writer
+          // (`StagingFolder`) never takes it, so it has never serialised this collection.
+          // A staging row is keyed by `cinema|title|year` and one cinema is scraped by
+          // one thread, so no second scrape can be writing the rows this venue owns.
+          divertsToStage += ((cinema, displayTitle, cm.movie.releaseYear, MovieRecord(
             searchTitle = Some(normalizer.apiQuery(normalizer.recase(displayTitle))),
             data        = Map(cinemaSlotKey(cinema, displayTitle) -> slot)
-          ))
+          )))
           divertedSanitized += norm
           if (!priorStagingRows.contains(norm)) newlyDiverted += displayTitle
           None
@@ -1565,6 +1579,10 @@ class CaffeineMovieCache(
         }
       }
     }
+
+    // The venue's newcomers, in ONE read and ONE bulk write. Every divert decision is
+    // made by now, and nothing between here and there read staging back.
+    staging.foreach(_.upsertAll(divertsToStage.toSeq))
 
     // Prune (movies): any of THIS cinema's slots that existed before but weren't
     // touched this tick → drop that slot. With per-(cinema,title) slots a venue can

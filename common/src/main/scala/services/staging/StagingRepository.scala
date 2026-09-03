@@ -1,10 +1,10 @@
 package services.staging
 
 import com.mongodb.WriteConcern
-import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.client.model.{BulkWriteOptions, ReplaceOneModel, ReplaceOptions}
 import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.{MovieRecord, Source}
-import org.mongodb.scala.model.{Filters, Projections, Sorts}
+import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.{MovieCodecs, StoredMovieDto, TitleNormalizer}
@@ -127,6 +127,27 @@ trait StagingRepository {
    *  (`carryForwardEnrichment`) so a re-scrape only refreshes the cinema slot and
    *  can't blank the resolve step's stamp. Best-effort — never throws. */
   def upsert(cinema: Source, title: String, year: Option[Int], record: MovieRecord): Unit
+
+  /**
+   * Stage every row ONE venue's scrape diverted, in one pass.
+   *
+   * The scrape path writes a row per diverted listing, and each was three serial round
+   * trips — read the existing row, range-query its siblings, replace it. A venue lists
+   * 16 films in Germany and 28 in the United States, and a tick walks every venue on one
+   * thread, so the whole ingest ran at the latency of `3 x listings` sequential queries.
+   * Sampled mid-tick, the scraping thread was parked on the database in 52 of 60 stacks;
+   * this is what it was parked on.
+   *
+   * The DEFAULT is the loop it replaces, so a repository with no batch of its own — the
+   * in-memory one, the stubs — inherits identical behaviour rather than a second
+   * implementation of it. Only the Mongo one overrides, and only to change how many
+   * round trips the same writes take.
+   *
+   * Best-effort per row, like [[upsert]]: one row that cannot be written must not cost
+   * the venue its other fifteen.
+   */
+  def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): Unit =
+    rows.foreach { case (cinema, title, year, record) => upsert(cinema, title, year, record) }
 
   /** Write `row.record` back under the row's PERSISTED `id`. Use to re-stamp an
    *  EXISTING row (detail/resolve/imdb) so a title whose casing drifted updates
@@ -318,18 +339,73 @@ class MongoStagingRepository(
 
   private val anchorById = new java.util.concurrent.ConcurrentHashMap[String, String]()
   /** The cinema half of the same row index — built in the same pass as the anchor, so a
-   *  scrape tick's per-venue read costs a map scan and a keyed fetch rather than decoding
-   *  the whole backlog. */
+   *  scrape tick's per-venue read costs a keyed lookup and a keyed fetch rather than
+   *  decoding the whole backlog. */
   private val cinemaById = new java.util.concurrent.ConcurrentHashMap[String, models.Cinema]()
+
+  /**
+   * The three INVERSES of the maps above — the direction every caller actually asks in.
+   *
+   * `anchorById`/`cinemaById` answer "what is this row?", but nothing asks that. The
+   * lookups ask "which rows does this anchor / this cinema / this (cinema, title) have?",
+   * and answered it by walking the whole id map: a scan of every staged row in the
+   * country, per venue and per fold. The doc above called that "a scan of a few thousand
+   * strings", which it was for Poland — the United States stages 121,544, and the scan is
+   * inside a loop over 4,304 venues.
+   *
+   * The forward maps stay, because a re-key has to find the buckets a row is LEAVING.
+   */
+  private val idsByAnchor      = new java.util.concurrent.ConcurrentHashMap[String, java.util.Set[String]]()
+  private val idsByCinema      = new java.util.concurrent.ConcurrentHashMap[models.Cinema, java.util.Set[String]]()
+  /** Keyed by [[StagingRepository.cinemaTitlePrefix]] — the `cinema|title|` an `_id`
+   *  carries, NOT the row's current anchor. `siblingIds` is defined on that prefix (a row
+   *  keeps the sanitized title of its FIRST write), so this must be too. */
+  private val idsByCinemaTitle = new java.util.concurrent.ConcurrentHashMap[String, java.util.Set[String]]()
   @volatile private var anchorIndexBuilt = false
+
+  private def bucketAdd[K](index: java.util.concurrent.ConcurrentHashMap[K, java.util.Set[String]],
+                           key: K, id: String): Unit =
+    index.computeIfAbsent(key, _ => java.util.concurrent.ConcurrentHashMap.newKeySet[String]()).add(id)
+
+  private def bucketRemove[K](index: java.util.concurrent.ConcurrentHashMap[K, java.util.Set[String]],
+                              key: K, id: String): Unit =
+    Option(index.get(key)).foreach { ids =>
+      ids.remove(id)
+      // `remove(key, value)` — the two-arg form — so an empty bucket is only dropped if
+      // it is still the SAME set another thread has not just added to.
+      if (ids.isEmpty) index.remove(key, ids)
+    }
+
+  private def bucketIds[K](index: java.util.concurrent.ConcurrentHashMap[K, java.util.Set[String]],
+                           key: K): Seq[String] = {
+    import scala.jdk.CollectionConverters._
+    Option(index.get(key)).map(_.asScala.toVector).getOrElse(Vector.empty)
+  }
+
+  /** Index one row under all four maps, moving it off whatever it was filed under
+   *  before — a re-key changes a row's anchor, and a bucket it silently stayed in would
+   *  hand `findByAnchor` an id that no longer belongs to it. */
+  private def indexRow(id: String, anchor: String, cinema: Option[models.Cinema]): Unit = {
+    Option(anchorById.put(id, anchor)).filter(_ != anchor).foreach(bucketRemove(idsByAnchor, _, id))
+    bucketAdd(idsByAnchor, anchor, id)
+    cinema.foreach { c =>
+      Option(cinemaById.put(id, c)).filter(_ != c).foreach(bucketRemove(idsByCinema, _, id))
+      bucketAdd(idsByCinema, c, id)
+    }
+    bucketAdd(idsByCinemaTitle, StagingRepository.cinemaTitlePrefix(id), id)
+  }
+
+  private def unindexRow(id: String): Unit = {
+    Option(anchorById.remove(id)).foreach(bucketRemove(idsByAnchor, _, id))
+    Option(cinemaById.remove(id)).foreach(bucketRemove(idsByCinema, _, id))
+    bucketRemove(idsByCinemaTitle, StagingRepository.cinemaTitlePrefix(id), id)
+  }
 
   private def ensureAnchorIndex(): Unit =
     if (!anchorIndexBuilt) synchronized {
       if (!anchorIndexBuilt) {
-        findAll().foreach { row =>
-          anchorById.put(row.id, normalizer.sanitize(row.title))
-          models.Source.cinemaOf(row.cinema).foreach(cinemaById.put(row.id, _))
-        }
+        findAll().foreach(row =>
+          indexRow(row.id, normalizer.sanitize(row.title), models.Source.cinemaOf(row.cinema)))
         anchorIndexBuilt = true
       }
     }
@@ -340,10 +416,7 @@ class MongoStagingRepository(
    *  here would read as "this venue stages nothing" and silently skip its prune. */
   override def findByCinema(cinema: models.Cinema): Seq[StagingRecord] = coll.toSeq.flatMap { c =>
     ensureAnchorIndex()
-    val ids = {
-      import scala.jdk.CollectionConverters._
-      cinemaById.asScala.collect { case (id, cin) if cin == cinema => id }.toSeq
-    }
+    val ids = bucketIds(idsByCinema, cinema)
     if (ids.isEmpty) Seq.empty
     else fetchByIds(c, ids) match {
       case Success(rows) =>
@@ -360,10 +433,7 @@ class MongoStagingRepository(
    *  entry can only ever cost a wasted fetch — never a wrong row. */
   override def findByAnchor(anchor: String): Seq[StagingRecord] = coll.toSeq.flatMap { c =>
     ensureAnchorIndex()
-    val ids = {
-      import scala.jdk.CollectionConverters._
-      anchorById.asScala.collect { case (id, a) if a == anchor => id }.toSeq
-    }
+    val ids = bucketIds(idsByAnchor, anchor)
     if (ids.isEmpty) Seq.empty
     else fetchByIds(c, ids) match {
       case Success(rows) =>
@@ -397,27 +467,20 @@ class MongoStagingRepository(
    *  range over the shared `cinema|sanitize|` prefix — no collection scan, no regex
    *  escaping. The `|` separator (0x7C) sorts after every digit + letter, so the
    *  range can't bleed into a different film whose prefix is a superstring. */
-  private def siblingIds(id: String): Seq[String] = coll.toSeq.flatMap { c =>
-    val prefix = StagingRepository.cinemaTitlePrefix(id)
-    // Projected to `_id`, and read as a raw `Document` rather than a `StoredMovieDto`,
-    // because the `_id` is the only thing this uses — it exists solely to decide whether
-    // to log a duplicate-entry warning.
+  private def siblingIds(id: String): Seq[String] = {
+    ensureAnchorIndex()
+    // NO ROUND TRIP. This was a projected range query over the `cinema|title|` prefix,
+    // run on EVERY fresh insert — and it exists solely to decide whether to log a
+    // duplicate-entry warning. A cold pass inserts every row fresh, so a country paid one
+    // query per staged listing (121,544 of them for the United States) for a log line.
     //
-    // Fetching whole documents made that log line cost a full decode of every sibling,
-    // showtimes array and all, on EVERY fresh insert — so the cost grows with the staged
-    // backlog. A convergence leg stages a whole country before folding it: ~6,975 rows
-    // each decoding ~250 neighbours is on the order of 1.7M document decodes. It took
-    // `bootCorpus` from 30 seconds against in-memory repositories to 3,360 against Mongo
-    // and timed the leg out at CI's ceiling. Measured over one such range: 19,748 bytes
-    // returned unprojected, 311 projected.
-    Try(Await.result(
-      c.withDocumentClass[org.mongodb.scala.Document]()
-        .find(Filters.and(Filters.gte("_id", prefix), Filters.lt("_id", prefix + "\uffff")))
-        .projection(Projections.include("_id"))
-        .toFuture(), 10.seconds))
-      .toOption.getOrElse(Seq.empty)
-      .flatMap(document => document.get("_id").filter(_.isString).map(_.asString().getValue))
-      .filterNot(_ == id)
+    // Projecting it to `_id` was the previous round of this: fetching whole documents
+    // made the warning cost a full decode of every sibling, showtimes array and all
+    // (19,748 bytes returned unprojected, 311 projected), which took `bootCorpus` from 30
+    // seconds to 3,360 and timed the leg out at CI's ceiling. The query was always the
+    // wrong shape rather than the wrong projection: `_id` is the only thing it reads, and
+    // the repository already keeps every `_id` in memory.
+    bucketIds(idsByCinemaTitle, StagingRepository.cinemaTitlePrefix(id)).filterNot(_ == id)
   }
 
   override def upsertRow(row: StagingRecord): Unit = upsertId(row.id, row.record)
@@ -429,14 +492,71 @@ class MongoStagingRepository(
       .toOption.flatMap(_.headOption).map(dto => StoredMovieDto.toDomain(dto, normalizer).record)
   }
 
-  private def upsertId(id: String, record: MovieRecord): Unit = coll.foreach { c =>
-    // Both halves of the row index move with the write, or `findByAnchor` /
-    // `findByCinema` answer from a snapshot that predates it.
-    StagingRecord.fromStorage(id, record, normalizer).foreach { row =>
-      anchorById.put(id, normalizer.sanitize(row.title))
-      models.Source.cinemaOf(row.cinema).foreach(cinemaById.put(id, _))
+  /**
+   * A venue's diverted rows in TWO round trips — one read, one bulk write — instead of
+   * three per row. See the trait's [[StagingRepository.upsertAll]] for why that was the
+   * ingest's whole cost.
+   *
+   * Both of this repository's standing hazards are handled, and neither is hypothetical:
+   *
+   *  - A FAILED READ IS NOT DATA. If the prefetch fails, treating "no rows came back" as
+   *    "no rows exist" would carry no enrichment forward and blank the resolve stamp on
+   *    every row of the venue at once — the shape that has cost this repository a
+   *    production outage. It falls back to the per-row path, which reads each row itself.
+   *  - ONE BAD ROW MUST NOT KILL THE BATCH. A bulk write is all-or-nothing per request,
+   *    and a single undecodable document taking a whole venue's writes with it is the
+   *    other shape this repository has shipped. On any bulk failure it re-runs the rows
+   *    ONE AT A TIME, so a poison row costs itself and nothing else.
+   */
+  override def upsertAll(rows: Seq[(Source, String, Option[Int], MovieRecord)]): Unit =
+    if (rows.nonEmpty) coll.foreach { c =>
+      ensureAnchorIndex()
+      val keyed = rows.map { case (cinema, title, year, record) =>
+        StagingRecord.idFor(cinema, title, year, normalizer) -> record
+      }
+      fetchByIds(c, keyed.map(_._1).distinct) match {
+        case Failure(exception) =>
+          logger.warn(s"StagingRepository.upsertAll could not prefetch ${keyed.size} row(s): " +
+            s"${exception.getClass.getSimpleName}: ${exception.getMessage} — writing them one at a time, " +
+            "because an unread row is not an absent one and carrying nothing forward would blank its enrichment")
+          super.upsertAll(rows)
+        case Success(dtos) =>
+          val existing = dtos.map(dto => dto._id -> StoredMovieDto.toDomain(dto, normalizer).record).toMap
+          // Ordered, and later rows see earlier ones: two listings of one venue can key to
+          // the same `cinema|title|year`, and the serial path they replace had the second
+          // carry the first forward.
+          val pending = scala.collection.mutable.LinkedHashMap.empty[String, MovieRecord]
+          keyed.foreach { case (id, record) =>
+            val prior = pending.get(id).orElse(existing.get(id))
+            // On a fresh INSERT only, exactly as the per-row path warns.
+            if (prior.isEmpty)
+              StagingRepository.duplicateEntryWarning(id, alreadyPresent = false, siblingIds(id)).foreach(logger.warn(_))
+            pending.update(id, prior.fold(record)(StagingRepository.carryForwardEnrichment(_, record)))
+          }
+          val writes = pending.toSeq.map { case (id, record) =>
+            ReplaceOneModel(Filters.eq("_id", id), stagedDto(id, record), new ReplaceOptions().upsert(true))
+          }
+          Try(Await.result(c.bulkWrite(writes, new BulkWriteOptions().ordered(false)).toFuture(), 30.seconds))
+            .recover { case exception =>
+              logger.warn(s"StagingRepository.upsertAll bulk write of ${writes.size} row(s) failed: " +
+                s"${exception.getClass.getSimpleName}: ${exception.getMessage} — retrying them one at a time")
+              pending.foreach { case (id, record) => upsertId(id, record) }
+            }
+      }
     }
-    val dto = StoredMovieDto.fromDomain(id, record, Instant.now())
+
+  /** File the row under every index and render its document — the half of a write that is
+   *  the same whether one row is going out or a whole venue's. Both halves of the row
+   *  index move with the write, or `findByAnchor` / `findByCinema` answer from a snapshot
+   *  that predates it. */
+  private def stagedDto(id: String, record: MovieRecord): StoredMovieDto = {
+    StagingRecord.fromStorage(id, record, normalizer).foreach(row =>
+      indexRow(id, normalizer.sanitize(row.title), models.Source.cinemaOf(row.cinema)))
+    StoredMovieDto.fromDomain(id, record, Instant.now())
+  }
+
+  private def upsertId(id: String, record: MovieRecord): Unit = coll.foreach { c =>
+    val dto = stagedDto(id, record)
     Try {
       Await.result(c.replaceOne(Filters.eq("_id", id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       ()
@@ -451,8 +571,7 @@ class MongoStagingRepository(
   override def deleteRow(row: StagingRecord): Unit = deleteId(row.id)
 
   private def deleteId(id: String): Unit = coll.foreach { c =>
-    anchorById.remove(id)
-    cinemaById.remove(id)
+    unindexRow(id)
     Try {
       Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds)
       ()
