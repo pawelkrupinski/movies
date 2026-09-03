@@ -64,6 +64,26 @@ def spanish_case(town: str) -> str:
         for i, w in enumerate(words))
 
 
+def load_corrections(path: pathlib.Path) -> dict:
+    """The accent table, which is REQUIRED rather than optional.
+
+    Falling back to an empty one would still emit a perfectly valid roster —
+    with all 100 accents silently gone from the page headings and the structured
+    data, and nothing anywhere to say so. That is the same shape of failure the
+    community and displayName guards refuse, so it is refused the same way.
+    """
+    if not path.exists():
+        print(f"ERROR: {path.name} is missing — without it every accent SensaCine dropped "
+              f"stays dropped, silently. Rebuild it:\n"
+              f"  mkdir -p data/spain/geonames\n"
+              f"  curl -sL https://download.geonames.org/export/dump/ES.zip "
+              f"-o data/spain/geonames/ES.zip\n"
+              f"  unzip -o data/spain/geonames/ES.zip -d data/spain/geonames\n"
+              f"  python3 data/spain/scripts/build_town_names.py", file=sys.stderr)
+        sys.exit(1)
+    return json.loads(path.read_text())
+
+
 def town_name(raw: str, corrections: dict) -> str:
     """The town as Spanish writes it: GeoNames' spelling where it has one for
     exactly this town, and the casing rule everywhere else."""
@@ -81,7 +101,7 @@ def towns_of(province: dict, corrections: dict) -> list[str]:
 
 def main() -> int:
     provinces = json.loads((DATA / "provinces.json").read_text())
-    corrections = json.loads(TOWN_NAMES.read_text()) if TOWN_NAMES.exists() else {}
+    corrections = load_corrections(TOWN_NAMES)
     communities = json.loads((DATA / "communities.json").read_text())
     communities.pop("_comment", None)
 
@@ -144,7 +164,18 @@ def main() -> int:
     lines.append("}")
 
     OUT.write_text("\n".join(lines) + "\n")
-    print(f"Wrote {OUT.relative_to(ROOT)}: {len(provinces)} provinces / {len(seen)} cinemas")
+    # Say how much of the table actually landed: a correction whose key no
+    # longer matches a harvested town is dead weight after a re-crawl, and a
+    # count that has fallen to nothing is the silent failure above arriving by
+    # another route.
+    harvested = {c["town"] for p in provinces for c in p["cinemas"] if c.get("town")}
+    applied = sorted(k for k in corrections if k in harvested)
+    stale = sorted(k for k in corrections if k not in harvested)
+    print(f"Wrote {OUT.relative_to(ROOT)}: {len(provinces)} provinces / {len(seen)} cinemas / "
+          f"{len(applied)} town names corrected")
+    if stale:
+        print(f"  {len(stale)} corrections no longer match any harvested town — rerun "
+              f"build_town_names.py after a re-crawl: {stale[:8]}", file=sys.stderr)
     return 0
 
 
