@@ -187,6 +187,7 @@ android {
             isIncludeAndroidResources = true
         }
     }
+
     packaging {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
     }
@@ -831,4 +832,15 @@ tasks.register("runOnDevice") {
         sh(adb, "-s", serial, "shell", "am", "start", "-n", component)
         logger.lifecycle("✓ Launched the release build on $serial.")
     }
+}
+
+// PlayListingTest reads `src/main/play/` off the filesystem rather than from the
+// classpath, so Gradle has no way to know those files are test inputs: editing a
+// listing or a contact field left `testDebugUnitTest` UP-TO-DATE and the guard
+// never ran. Declaring the directory makes a store-metadata edit re-run the test
+// that guards it.
+tasks.withType<Test>().configureEach {
+    inputs.dir(layout.projectDirectory.dir("src/main/play"))
+        .withPropertyName("playStoreMetadata")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }

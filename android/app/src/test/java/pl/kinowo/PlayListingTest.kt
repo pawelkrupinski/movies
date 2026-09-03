@@ -1,5 +1,6 @@
 package pl.kinowo
 
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -31,6 +32,9 @@ class PlayListingTest {
             ?: error("Play listings dir not found from $base")
     }
 
+    /** `src/main/play/` — the listings' parent, where the contact fields live. */
+    private val playDir: File = listingsDir.parentFile
+
     private fun trimmed(locale: String, name: String): String =
         listingsDir.resolve("$locale/$name").readText().trim()
 
@@ -56,5 +60,24 @@ class PlayListingTest {
     @Test
     fun polishListingKeepsTheKinowoBrand() {
         assertTrue(trimmed("pl-PL", "title.txt").startsWith("Kinowo"))
+    }
+
+    /**
+     * Play's `contact-website.txt` is the SUPPORT WEBSITE field — the one a
+     * reviewer and a user click for help, not a second link to the product.
+     *
+     * It drifted twice: the live value was still `kinowo.fly.dev`, retired when
+     * the site moved to its own domain, and the checked-in value was the bare
+     * listings homepage. Both are wrong for a support field, and nothing failed
+     * — Play accepts any URL that resolves.
+     */
+    @Test
+    fun contactWebsiteIsTheSupportPageOnALiveDomain() {
+        val url = playDir.resolve("contact-website.txt").readText().trim()
+        assertFalse("contact website still points at the retired host: $url",
+            url.contains("fly.dev"))
+        assertTrue("Play's contact website is the support field — point it at the support page, not the listings: $url",
+            url.endsWith("/support"))
+        assertTrue("support URL must be absolute https: $url", url.startsWith("https://"))
     }
 }
