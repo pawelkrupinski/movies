@@ -94,6 +94,12 @@ final class CatalogStore: ObservableObject {
         cities.matching(query, inCountry: code, region: region)
     }
     func defaultCity(inCountry code: String) -> City? { cities.defaultCity(inCountry: code) }
+    /// The zone to reason about `slug`'s showtimes in — its own where the catalog
+    /// gave it one, else the country's. The one place the app resolves a city to a
+    /// clock, so the pruning and the day buckets cannot disagree.
+    func zone(ofSlug slug: String?, inCountry country: Country) -> TimeZone {
+        cities.zone(ofSlug: slug, fallback: country.timeZone)
+    }
     func nearestWithin100km(lat: Double, lon: Double, inCountry code: String) -> City? {
         cities.nearestWithin100km(lat: lat, lon: lon, inCountry: code)
     }

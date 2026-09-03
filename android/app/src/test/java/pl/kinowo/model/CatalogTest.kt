@@ -39,4 +39,41 @@ class CatalogTest {
         assertNull(Catalog.parseBody("{not json"))
         assertNull(Catalog.parseSeed("nope"))
     }
+
+    /**
+     * A city carries its OWN zone only where it differs from its country's, so
+     * most cities have none and must fall back rather than fail to decode.
+     */
+    @Test
+    fun parsesPerCityTimezoneWhenPresent() {
+        val json = """{"countries":[{"code":"us","name":"United States","baseUrl":"https://showtimes.cc/us","language":"en","brand":"Showtimes","timezone":"America/Los_Angeles"}],"cities":[{"slug":"knoxville","name":"Knoxville","lat":35.9,"lon":-83.9,"country":"us","region":"Tennessee","timezone":"America/New_York"},{"slug":"los-angeles","name":"Los Angeles","lat":34.05,"lon":-118.3,"country":"us","region":"California"}]}"""
+        val c = Catalog.parseBody(json)!!
+        assertEquals("America/New_York", c.cities[0].timezone)
+        assertNull(c.cities[1].timezone)
+    }
+
+    /**
+     * The country's zone is the fallback, and the point of the field is that a US
+     * metro does NOT take it: Tennessee is Central-predominant, so a Knoxville
+     * showtime pruned on the US country zone (Pacific, its biggest city) would go
+     * three hours wrong.
+     */
+    @Test
+    fun cityZoneFallsBackToTheCountrysOnlyWhenAbsent() {
+        val pacific = java.time.ZoneId.of("America/Los_Angeles")
+        val cities = listOf(
+            City(slug = "knoxville", name = "Knoxville", lat = 35.9, lon = -83.9, country = "us",
+                 timezone = "America/New_York"),
+            City(slug = "los-angeles", name = "Los Angeles", lat = 34.05, lon = -118.3, country = "us"),
+            City(slug = "bogus", name = "Bogus", lat = 0.0, lon = 0.0, country = "us",
+                 timezone = "Mars/Olympus"),
+        )
+        assertEquals(java.time.ZoneId.of("America/New_York"), cities.zoneFor("knoxville", pacific))
+        assertEquals(pacific, cities.zoneFor("los-angeles", pacific))
+        // A slug this catalog does not know, no slug at all, and an identifier the
+        // platform cannot parse all fall back — never a crash on a saved selection.
+        assertEquals(pacific, cities.zoneFor("nowhere", pacific))
+        assertEquals(pacific, cities.zoneFor(null, pacific))
+        assertEquals(pacific, cities.zoneFor("bogus", pacific))
+    }
 }

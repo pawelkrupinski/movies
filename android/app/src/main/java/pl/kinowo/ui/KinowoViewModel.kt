@@ -44,6 +44,7 @@ import pl.kinowo.deeplink.DeepLinkTitle
 import pl.kinowo.location.LocationCityResolver
 import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
+import pl.kinowo.model.zoneFor
 import pl.kinowo.model.countryOf
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
@@ -251,14 +252,16 @@ class KinowoViewModel(
             zone = currentZone(),
         ).sortedFor(sortBy)
 
-    /** The selected country's local zone — the live catalog entry when present,
-     *  else the compile-time registry. Drives timezone-correct pruning and the
-     *  Dziś/Jutro day buckets (a London show disappears on London time). */
+    /** The selected CITY's local zone — its own where the catalog gave it one,
+     *  else its country's (live catalog entry when present, else the compile-time
+     *  registry). Drives timezone-correct pruning and the Dziś/Jutro day buckets:
+     *  a London show disappears on London time, and a Knoxville one on Eastern
+     *  rather than on whichever single zone the US had to publish. */
     private fun currentZone(): java.time.ZoneId {
         val code = selectedCountryCode.value
         val country = countryCatalog.value.countries.withCode(Country.normalizeCode(code))
             ?: Country.byCode(code)
-        return country.zoneId
+        return countryCatalog.value.cities.zoneFor(selectedCity.value, country.zoneId)
     }
 
     /** Distinct cinema names anywhere in the payload, sorted by pill name. */

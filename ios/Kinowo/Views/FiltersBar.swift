@@ -576,7 +576,7 @@ struct FiltersSheet: View {
                         get: { prefs.selectedCity ?? catalog.defaultCity(inCountry: prefs.selectedCountry.code)?.slug ?? City.default.slug },
                         set: { slug in
                             prefs.setCity(slug)
-                            store.use(citySlug: slug)
+                            store.use(citySlug: slug, timeZone: catalog.zone(ofSlug: slug, inCountry: prefs.selectedCountry))
                             details.use(citySlug: slug)
                         }
                     )) {

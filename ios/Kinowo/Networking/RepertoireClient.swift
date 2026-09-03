@@ -20,10 +20,12 @@ final class RepertoireStore: ObservableObject {
     private var base: URL
     private var url: URL
     private var citySlug: String
-    /// The current deployment's local zone, so the on-foreground re-prune drops
-    /// past showtimes on the city's wall-clock (London on Europe/London, not
-    /// Warsaw). Set from the selected country in `use(country:)`; defaults to
-    /// Warsaw for the Poland-default init.
+    /// The zone the on-foreground re-prune drops past showtimes on — the CITY's
+    /// wall-clock (London on Europe/London, not Warsaw). Set from the country in
+    /// `use(country:)`, which is the fallback, and overridden per city by
+    /// `use(citySlug:timeZone:)`: a country has one zone to offer and the US
+    /// needs six, so pruning a Knoxville showtime on the country's would drop it
+    /// three hours early. Defaults to Warsaw for the Poland-default init.
     private var timeZone: TimeZone = .warsaw
     private let session: URLSession
     private var lastReloadedAt: Date?
@@ -68,7 +70,12 @@ final class RepertoireStore: ObservableObject {
     /// Re-point at a different city: rebuild the URL, drop the freshness
     /// stamp so the next `reload`/`reloadIfStale` actually fetches, and
     /// kick a reload so the grid swaps to the new city's repertoire.
-    func use(citySlug: String) {
+    /// `timeZone` is the new city's own (`[City].zone(ofSlug:fallback:)`), which
+    /// callers resolve against the catalog. It is adopted even when the URL is
+    /// unchanged — re-selecting the same slug on a different country lands here —
+    /// so the re-prune always reasons in the city actually being shown.
+    func use(citySlug: String, timeZone: TimeZone? = nil) {
+        if let timeZone { self.timeZone = timeZone }
         let next = City.apiURL(base: base, slug: citySlug, endpoint: "repertoire")
         guard next != url else { return }
         url = next

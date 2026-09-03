@@ -28,6 +28,29 @@ struct City: Codable, Hashable {
     /// and so a catalog from an older server still decodes.
     var region: String? = nil
 
+    /// This city's own IANA zone, where it differs from its country's; `nil`
+    /// otherwise — which is every city of the four countries that keep one zone
+    /// throughout, so the field costs nothing there.
+    ///
+    /// The US spans SIX zones and fifteen of its states straddle a boundary, so a
+    /// single country zone is wrong for most of it: pruning a Knoxville showtime
+    /// on the country's Pacific drops it three hours early. Resolve through
+    /// [`zone(fallback:)`], never by reading this directly.
+    ///
+    /// Carried by `/api/catalog` (and the bundled seed), same shape as `region`:
+    /// a `var` with a default so the memberwise init stays usable by the
+    /// hand-written `all` rows below, and so a catalog from an older server —
+    /// or any city of a single-zone country — still decodes.
+    var timezone: String? = nil
+
+    /// The wall-clock this city's showtimes are listed on: its own zone when the
+    /// catalog gave it one, else the country's. Past-showtime pruning and the
+    /// Dziś/Jutro buckets reason in this, so it has to be the CITY's — a country
+    /// only has one to offer and the US needs six.
+    func zone(fallback: TimeZone) -> TimeZone {
+        timezone.flatMap { TimeZone(identifier: $0) } ?? fallback
+    }
+
     /// Every city the app knows about across ALL countries, in the same order
     /// the web `City.all` lists them (Polish cities first, then the UK regions)
     /// so the pickers read identically across platforms. The data-driven rosters
@@ -264,6 +287,15 @@ extension Array where Element == City {
     /// `showtimes-uk` / `showtimes-de` link) switch the app to the right
     /// deployment before the repertoire loads.
     func country(ofSlug slug: String) -> String? { first { $0.slug == slug }?.country }
+
+    /// The zone to reason about `slug`'s showtimes in — that city's own where the
+    /// catalog gave it one, else `fallback` (its country's). Also the answer for a
+    /// slug this catalog does not know, which is what a stale saved selection or a
+    /// deep link into another deployment looks like.
+    func zone(ofSlug slug: String?, fallback: TimeZone) -> TimeZone {
+        guard let slug else { return fallback }
+        return first { $0.slug == slug }?.zone(fallback: fallback) ?? fallback
+    }
 
     /// [inCountry] ordered alphabetically under that country's collation (Polish
     /// for `pl`, so `Ł` sorts after `L`; English elsewhere) — what the pickers show.

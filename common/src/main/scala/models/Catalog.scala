@@ -29,6 +29,22 @@ object Catalog {
    * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
    * where the country's picker groups its cities, the group's label as `region`.
    */
+  /** The one zone a country is published under: its BIGGEST city's, ties by slug.
+   *
+   *  Four of the five keep one zone throughout, so for them any city answers. The
+   *  US spans six, and reading `cities.head` made a live value a function of
+   *  roster ORDER — a generator change that reshuffled the states once moved it
+   *  from Chicago to Pago Pago and nothing failed. Biggest does not move when the
+   *  roster is re-sorted, and it is the answer most of the country's users are on.
+   *
+   *  A client that reads a city's own `timezone` never needs this; it is the
+   *  fallback for a city that omits one (every city of a single-zone country) and
+   *  for an app too old to look. `Europe/Warsaw` for the — currently impossible —
+   *  city-less country. */
+  private def countryTimezone(c: Country): String =
+    c.cities.maxByOption(city => (city.cinemas.size, city.slug))
+      .map(_.zoneId.getId).getOrElse("Europe/Warsaw")
+
   val json: String = {
     val countries = Country.switchable
       .map { c =>
@@ -58,8 +74,7 @@ object Catalog {
         // the apps that still read only this field (`ios/Kinowo/Models/Country.swift`,
         // `android/.../model/Country.kt`, both for past-showtime pruning and the
         // day boundary).
-        val timezone = c.cities.maxByOption(city => (city.cinemas.size, city.slug))
-          .map(_.zoneId.getId).getOrElse("Europe/Warsaw")
+        val timezone = countryTimezone(c)
         s"""{"code":"${c.code}","name":"${c.displayName}","baseUrl":"${c.webUrl.get}","language":"${c.language.getLanguage}","brand":"${c.brandName}","timezone":"$timezone"}"""
       }
       .mkString("[", ",", "]")
@@ -71,9 +86,18 @@ object Catalog {
         // then "Los Angeles" is. Absent everywhere else, where a name is all a
         // visitor needs — so the field costs bytes only where it earns them.
         val regionOf = c.cityGroups.flatMap(g => g.cities.map(_.slug -> g.label)).toMap
+        // The city's own zone, but ONLY where it differs from the country's — the
+        // field a client falls back from, so writing it out where it would say the
+        // same thing costs bytes and says nothing. Four countries keep one zone
+        // throughout and emit none at all; the US spans six, and this is what lets
+        // an app prune a Los Angeles showtime on Pacific instead of on whatever one
+        // zone the country had to pick (see the country `timezone` above).
+        val countryZone = countryTimezone(c)
         c.cities.map { city =>
           val region = regionOf.get(city.slug).fold("")(label => s""","region":"$label"""")
-          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region}"""
+          val zone   = city.zoneId.getId
+          val tz     = if (zone == countryZone) "" else s""","timezone":"$zone""""
+          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$tz}"""
         }
       }
       .mkString("[", ",", "]")

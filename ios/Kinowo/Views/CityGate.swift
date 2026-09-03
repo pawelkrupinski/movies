@@ -11,6 +11,9 @@ struct CityGate: View {
     @EnvironmentObject var prefs: UserPreferences
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
+    // For the chosen city's own zone — a country has one to offer and the US
+    // needs six. Injected app-wide in `KinowoApp`, same as the others.
+    @EnvironmentObject var catalog: CatalogStore
 
     var body: some View {
         if let slug = prefs.selectedCity {
@@ -19,7 +22,7 @@ struct CityGate: View {
                 // own `.task` fires its first fetch, so nothing ever hits the
                 // fallback-city path on a cold launch with a saved choice.
                 .task(id: slug) {
-                    store.use(citySlug: slug)
+                    store.use(citySlug: slug, timeZone: catalog.zone(ofSlug: slug, inCountry: prefs.selectedCountry))
                     details.use(citySlug: slug)
                 }
         } else {

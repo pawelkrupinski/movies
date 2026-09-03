@@ -44,6 +44,26 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     Catalog.json should include(""""timezone":"Europe/Warsaw"""")
   }
 
+  it should "give a city its own zone only where it differs from its country's" in {
+    val j = Catalog.json
+    // A single-zone country writes none at all: the field is what a client falls
+    // back FROM, so emitting it where it would repeat the country's says nothing
+    // and costs bytes on every city of four countries out of five.
+    j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl"}""")
+    j should not include """"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","timezone""""
+    // The US spans six zones, so every metro off the country's own carries its.
+    // This is the whole point: an app pruning a Knoxville showtime on the
+    // country's Pacific would drop it three hours early.
+    def cityEntry(slug: String) =
+      j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
+    cityEntry("knoxville") should include(""""timezone":"America/New_York"""")
+    cityEntry("el-paso")   should include(""""timezone":"America/Denver"""")
+    cityEntry("juneau")    should include(""""timezone":"America/Juneau"""")
+    cityEntry("oahu")      should include(""""timezone":"Pacific/Honolulu"""")
+    // …and a US metro that IS on the country's zone stays silent.
+    cityEntry("los-angeles") should not include "timezone"
+  }
+
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
     j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl"}""")

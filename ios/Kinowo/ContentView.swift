@@ -221,7 +221,8 @@ struct ContentView: View {
         ) { suggestion in
             Button("switch.confirm") {
                 prefs.setCity(suggestion.target.slug)
-                store.use(citySlug: suggestion.target.slug)
+                store.use(citySlug: suggestion.target.slug,
+                          timeZone: suggestion.target.zone(fallback: prefs.selectedCountry.timeZone))
                 details.use(citySlug: suggestion.target.slug)
             }
             Button("switch.not_now", role: .cancel) {}
@@ -556,7 +557,7 @@ struct ContentView: View {
             excludedGenres: excludedGenres,
             excludedDirectors: excludedDirectors,
             excludedCast: excludedCast,
-            zone: prefs.selectedCountry.timeZone
+            zone: catalog.zone(ofSlug: prefs.selectedCity, inCountry: prefs.selectedCountry)
         )
         .sorted(by: sortOption)
     }

@@ -34,7 +34,37 @@ data class City(
      * decodes.
      */
     val region: String? = null,
+    /**
+     * This city's own IANA zone, where it differs from its country's; null
+     * otherwise — which is every city of the four countries that keep one zone
+     * throughout, so the field costs nothing there.
+     *
+     * The US spans SIX zones and fifteen of its states straddle a boundary, so a
+     * single country zone is wrong for most of it: pruning a Knoxville showtime
+     * on the country's Pacific drops it three hours early. Resolve through
+     * [zoneFor], never by reading this directly.
+     *
+     * Carried by `/api/catalog` (and the bundled seed), same shape as [region]:
+     * defaulted so a catalog from an older server, or one of the hand-written
+     * [Cities.all] rows, still decodes.
+     */
+    val timezone: String? = null,
 )
+
+/**
+ * The zone to reason about [slug]'s showtimes in — that city's own where the
+ * catalog gave it one, else [fallback] (its country's).
+ *
+ * Also the answer for a slug this catalog does not know, which is what a stale
+ * saved selection or a deep link into another deployment looks like, and for an
+ * identifier the platform cannot parse. Past-showtime pruning and the day
+ * buckets both go through here, so they cannot disagree.
+ */
+fun List<City>.zoneFor(slug: String?, fallback: java.time.ZoneId): java.time.ZoneId {
+    val city = slug?.let { s -> firstOrNull { it.slug == s } } ?: return fallback
+    val id = city.timezone ?: return fallback
+    return runCatching { java.time.ZoneId.of(id) }.getOrDefault(fallback)
+}
 
 /**
  * A one-shot offer to switch the repertoire to a [target] city the device is

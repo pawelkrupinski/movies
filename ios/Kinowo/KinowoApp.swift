@@ -81,7 +81,7 @@ struct KinowoApp: App {
         }
         if link.citySlug != prefs.selectedCity {
             prefs.setCity(link.citySlug)
-            store.use(citySlug: link.citySlug)
+            store.use(citySlug: link.citySlug, timeZone: catalog.zone(ofSlug: link.citySlug, inCountry: prefs.selectedCountry))
             details.use(citySlug: link.citySlug)
         }
         deepLink.pending = link
