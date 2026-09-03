@@ -147,7 +147,10 @@ class CitySpec extends AnyFlatSpec with Matchers {
   it should "read a Spanish province's towns, which the province's own name hides" in {
     val madrid = City.all.find(_.slug == "madrid").getOrElse(fail("no Madrid province in the roster"))
     madrid.coveredPlaces.head shouldBe "Madrid"
-    madrid.otherCoveredPlaces should contain allOf ("Getafe", "Alcala de Henares")
+    // Accented, which SensaCine's own headers are not: these names go in the
+    // page's heading and description, so they are spelled the way Spanish
+    // spells them (see data/spain/scripts/build_town_names.py).
+    madrid.otherCoveredPlaces should contain allOf ("Getafe", "Alcalá de Henares")
     // The province is named after its capital, so the capital is both the
     // province name and one of its towns — named once, not twice.
     madrid.coveredPlaces shouldBe madrid.coveredPlaces.distinct

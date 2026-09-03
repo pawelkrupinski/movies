@@ -30,7 +30,7 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Imaginalia", "Yelmo Cines Imaginalia", "E0205"),
     ("Yelmo Cines Vialia Albacete", "Yelmo Cines Vialia Albacete", "E0778")
   ))
-  private def p_alicante: R = ("alicante", "Alicante", "Comunidad Valenciana", 38.34517, -0.48149, "Europe/Madrid", Seq("Alicante", "Benidorm", "Jávea", "Marina", "Petrer", "San Vicente del Raspeig", "Alcoy", "Alfas del Pi", "Callosa de Segura", "Calpe", "Cocentaina", "Dehesa de Campoamor", "Denia", "Elche", "Finestrat", "Maitino", "Mutxamel", "Ondara", "Orihuela", "San Juan de Alicante", "Santa Pola", "Torrevieja", "Villena"), Seq(
+  private def p_alicante: R = ("alicante", "Alicante", "Comunidad Valenciana", 38.34517, -0.48149, "Europe/Madrid", Seq("Alicante", "Benidorm", "Javea", "Marina", "Petrer", "San Vicente del Raspeig", "Alcoy", "Alfas del Pi", "Callosa de Segura", "Calpe", "Cocentaina", "Dehesa de Campoamor", "Denia", "Elche", "Finestrat", "Maitino", "Mutxamel", "Ondara", "Orihuela", "San Juan de Alicante", "Santa Pola", "Torrevieja", "Villena"), Seq(
     ("Abc Elx", "Abc Elx", "E0035"),
     ("Auto Cine Drive In", "Auto Cine Drive In", "E0197"),
     ("Autocine El Sur", "Autocine El Sur", "E0783"),
@@ -67,7 +67,7 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Puerta De Alicante", "Yelmo Cines Puerta De Alicante", "E0631"),
     ("Yelmo Cines Vinalopo", "Yelmo Cines Vinalopo", "E0636")
   ))
-  private def p_almeria: R = ("almeria", "Almería", "Andalucía", 36.83814, -2.45974, "Europe/Madrid", Seq("Almeria", "Albox", "Berja", "Garrucha", "Parador Hortichuelas", "Roquetas de Mar", "Vera"), Seq(
+  private def p_almeria: R = ("almeria", "Almería", "Andalucía", 36.83814, -2.45974, "Europe/Madrid", Seq("Almería", "Albox", "Berja", "Garrucha", "Parador Hortichuelas", "Roquetas de Mar", "Vera"), Seq(
     ("Cine Albox", "Cine Albox", "E0865"),
     ("Cine Berja", "Cine Berja", "E0965"),
     ("Cine Tenis", "Cine Tenis", "E0975"),
@@ -77,7 +77,7 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Roquetas", "Yelmo Cines Roquetas", "E0620"),
     ("Yelmo Cines Torrecárdenas", "Yelmo Cines Torrecárdenas", "E0909")
   ))
-  private def p_asturias: R = ("asturias", "Asturias", "Asturias", 43.36029, -5.84476, "Europe/Madrid", Seq("Corvera de Asturias", "Gijon", "Navia", "Oviedo", "Siero"), Seq(
+  private def p_asturias: R = ("asturias", "Asturias", "Asturias", 43.36029, -5.84476, "Europe/Madrid", Seq("Corvera de Asturias", "Gijón", "Navia", "Oviedo", "Siero"), Seq(
     ("Autocine Gijón", "Autocine Gijón", "E0784"),
     ("Cine Fantasio Navia", "Cine Fantasio Navia", "E1037"),
     ("Cinebox Parque Astur", "Cinebox Parque Astur", "E0290"),
@@ -85,7 +85,7 @@ private[models] object SpanishRosterData {
     ("Odeon Multicines Parque Astur", "Odeon Multicines Parque Astur", "E0814"),
     ("Yelmo Cines Los Prados", "Yelmo Cines Los Prados", "E0623")
   ))
-  private def p_badajoz: R = ("badajoz", "Badajoz", "Extremadura", 38.87789, -6.97061, "Europe/Madrid", Seq("Badajoz", "Almendralejo", "Don Benito", "Fuente de Cantos", "Herrera del Duque", "Merida", "Zafra"), Seq(
+  private def p_badajoz: R = ("badajoz", "Badajoz", "Extremadura", 38.87789, -6.97061, "Europe/Madrid", Seq("Badajoz", "Almendralejo", "Don Benito", "Fuente de Cantos", "Herrera del Duque", "Mérida", "Zafra"), Seq(
     ("Cine La Fábrica", "Cine La Fábrica", "E1022"),
     ("Cine Municipal Herrera del Duque", "Cine Municipal Herrera del Duque", "E1027"),
     ("Cines Victoria Almendralejo", "Cines Victoria Almendralejo", "E0719"),
@@ -95,7 +95,7 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Premium El Faro", "Yelmo Cines Premium El Faro", "E1038"),
     ("mk2 Conquistadores", "mk2 Conquistadores", "E0408")
   ))
-  private def p_barcelona: R = ("barcelona", "Barcelona", "Cataluña", 41.38879, 2.15899, "Europe/Madrid", Seq("Barcelona", "Cornella de Llobregat", "Terrassa", "Granollers", "L'Hospitalet de LLobregat", "Premia de Mar", "Sabadell", "Sant Cugat del Valles", "Sitges", "Vic", "Vilafranca del Penedes", "Abrera", "Arenys de Mar", "Badalona", "Barbera del Valles", "Berga", "Calella", "Canoves", "Castelldefels", "Gava", "Igualada", "Manresa", "Masnou", "Mataro", "Montcada", "Olivella-Urbanitzacio", "Prat de Llobregat", "Samalus", "Sant Boi de Llobregat", "Sant Celoni", "Sant Feliu de Llobregat", "Sant Vicenç Dels Horts", "Santa Margarida Montbui", "Vilanova i la Geltru"), Seq(
+  private def p_barcelona: R = ("barcelona", "Barcelona", "Cataluña", 41.38879, 2.15899, "Europe/Madrid", Seq("Barcelona", "Cornellà de Llobregat", "Terrassa", "Granollers", "L'Hospitalet de Llobregat", "Premià de Mar", "Sabadell", "Sant Cugat del Vallès", "Sitges", "Vic", "Vilafranca del Penedès", "Abrera", "Arenys de Mar", "Badalona", "Barberà del Vallès", "Berga", "Calella", "Canoves", "Castelldefels", "Gavà", "Igualada", "Manresa", "Masnou", "Mataró", "Montcada", "Olivella-Urbanitzacio", "Prat de Llobregat", "Samalús", "Sant Boi de Llobregat", "Sant Celoni", "Sant Feliu de Llobregat", "Sant Vicenç dels Horts", "Santa Margarida Montbui", "Vilanova i la Geltrú"), Seq(
     ("Arenas Multicines 3D", "Arenas Multicines 3D", "E0764"),
     ("Aribau Multicines", "Aribau Multicines", "E0091"),
     ("Ateneu Cinema ", "Ateneu Cinema ", "E0906"),
@@ -173,7 +173,7 @@ private[models] object SpanishRosterData {
     ("Teatro De Los Corrales De Buelna", "Teatro De Los Corrales De Buelna", "E0599"),
     ("Yelmo Cines Premium Peñacastillo", "Yelmo Cines Premium Peñacastillo", "E0565")
   ))
-  private def p_castellon: R = ("castellon", "Castellón", "Comunidad Valenciana", 39.98567, -0.04935, "Europe/Madrid", Seq("Castellón de la plana", "Calzada", "Benicarlo", "Vall D'uixo", "Villarreal", "Vinaros"), Seq(
+  private def p_castellon: R = ("castellon", "Castellón", "Comunidad Valenciana", 39.98567, -0.04935, "Europe/Madrid", Seq("Castellón de la plana", "Calzada", "Benicarló", "Vall D'uixo", "Villarreal", "Vinaròs"), Seq(
     ("Cine Terraza Avenida", "Cine Terraza Avenida", "E0941"),
     ("Cines Axion Benicarló", "Cines Axion Benicarló", "E0493"),
     ("Cines Sucre", "Cines Sucre", "E0366"),
@@ -187,7 +187,7 @@ private[models] object SpanishRosterData {
   private def p_ceuta: R = ("ceuta", "Ceuta", "Ceuta", 35.88919, -5.32042, "Europe/Madrid", Seq("Ceuta"), Seq(
     ("Marina Cinemas 7", "Marina Cinemas 7", "E0478")
   ))
-  private def p_ciudad_real: R = ("ciudad-real", "Ciudad Real", "Castilla-La Mancha", 38.98626, -3.92907, "Europe/Madrid", Seq("Alcazar de San Juan", "Ciudad Real", "Daimiel", "Pedro Muñoz", "Puertollano", "Socuellamos", "Tomelloso", "Valdepeñas"), Seq(
+  private def p_ciudad_real: R = ("ciudad-real", "Ciudad Real", "Castilla-La Mancha", 38.98626, -3.92907, "Europe/Madrid", Seq("Alcázar de San Juan", "Ciudad Real", "Daimiel", "Pedro Muñoz", "Puertollano", "Socuéllamos", "Tomelloso", "Valdepeñas"), Seq(
     ("Cine Reina Sofía Socuéllamos", "Cine Reina Sofía Socuéllamos", "E1024"),
     ("Cine Teatro Municipal Pedro Muñoz", "Cine Teatro Municipal Pedro Muñoz", "E1023"),
     ("Daimiel Cinema", "Daimiel Cinema", "E0990"),
@@ -197,14 +197,14 @@ private[models] object SpanishRosterData {
     ("Multicines Valdepeñas", "Multicines Valdepeñas", "E0701"),
     ("Parque De Ocio Las Vías", "Parque De Ocio Las Vías", "E0562")
   ))
-  private def p_cuenca: R = ("cuenca", "Cuenca", "Castilla-La Mancha", 40.06667, -2.13333, "Europe/Madrid", Seq("Cuenca", "Iniesta", "Tarancon"), Seq(
+  private def p_cuenca: R = ("cuenca", "Cuenca", "Castilla-La Mancha", 40.06667, -2.13333, "Europe/Madrid", Seq("Cuenca", "Iniesta", "Tarancón"), Seq(
     ("Abaco Cuenca", "Abaco Cuenca", "E0020"),
     ("Cine Iniesta", "Cine Iniesta", "E1031"),
     ("Cine de Verano Tarancón", "Cine de Verano Tarancón", "E0914"),
     ("Odeon Multicines Cuenca", "Odeon Multicines Cuenca", "E0502"),
     ("Odeon Multicines Mirador", "Odeon Multicines Mirador", "E0852")
   ))
-  private def p_caceres: R = ("caceres", "Cáceres", "Extremadura", 39.47649, -6.37224, "Europe/Madrid", Seq("Arroyo de la Luz", "Caceres", "Guijo de Coria", "Jaraiz de la Vera", "Navalmoral de la Mata", "Plasencia"), Seq(
+  private def p_caceres: R = ("caceres", "Cáceres", "Extremadura", 39.47649, -6.37224, "Europe/Madrid", Seq("Arroyo de la Luz", "Cáceres", "Guijo de Coria", "Jaraíz de la Vera", "Navalmoral de la Mata", "Plasencia"), Seq(
     ("Cine Arroyo de la Luz", "Cine Arroyo de la Luz", "E0772"),
     ("Cine Avenida Jaraíz", "Cine Avenida Jaraíz", "E0867"),
     ("Cine Coria", "Cine Coria", "E0832"),
@@ -212,7 +212,7 @@ private[models] object SpanishRosterData {
     ("Multicines Alkázar", "Multicines Alkázar", "E0067"),
     ("Multicines Cáceres", "Multicines Cáceres", "E0143")
   ))
-  private def p_cadiz: R = ("cadiz", "Cádiz", "Andalucía", 36.52672, -6.2891, "Europe/Madrid", Seq("Cadiz", "Jerez de la Frontera", "Rota", "San Fernando", "Algeciras", "Arcos de la Frontera", "Barrios", "Chiclana de la Frontera", "Chipiona", "El Puerto de Santa Maria", "Manzanete", "Sanlucar de Barrameda", "Ubrique", "Zahara de los Atunes"), Seq(
+  private def p_cadiz: R = ("cadiz", "Cádiz", "Andalucía", 36.52672, -6.2891, "Europe/Madrid", Seq("Cadiz", "Jerez de la Frontera", "Rota", "San Fernando", "Algeciras", "Arcos de la Frontera", "Barrios", "Chiclana de la Frontera", "Chipiona", "El Puerto de Santa María", "Manzanete", "Sanlúcar de Barrameda", "Ubrique", "Zahara de los Atunes"), Seq(
     ("Al-Andalus Cádiz", "Al-Andalus Cádiz", "E0902"),
     ("Al-Andalus Sanlucar", "Al-Andalus Sanlucar", "E0218"),
     ("Arcos Cinema", "Arcos Cinema", "E0905"),
@@ -233,7 +233,7 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Área Sur", "Yelmo Cines Área Sur", "E0669"),
     ("mk2 Bahía de Cádiz", "mk2 Bahía de Cádiz", "E0332")
   ))
-  private def p_cordoba: R = ("cordoba", "Córdoba", "Andalucía", 37.89155, -4.77275, "Europe/Madrid", Seq("Estacion de Espiel", "Cordoba", "Baena", "Cabra", "Lucena", "Pozoblanco"), Seq(
+  private def p_cordoba: R = ("cordoba", "Córdoba", "Andalucía", 37.89155, -4.77275, "Europe/Madrid", Seq("Estacion de Espiel", "Córdoba", "Baena", "Cabra", "Lucena", "Pozoblanco"), Seq(
     ("Artesiete Lucena", "Artesiete Lucena", "E0489"),
     ("Centro Cultural de la Villa - Pastora Soler", "Centro Cultural de la Villa - Pastora Soler", "E1016"),
     ("Cine Baena", "Cine Baena", "E0915"),
@@ -261,7 +261,7 @@ private[models] object SpanishRosterData {
     ("Odeon Multicines Girona", "Odeon Multicines Girona", "E0281"),
     ("Teatro Municipal de Palafrugel", "Teatro Municipal de Palafrugel", "E0978")
   ))
-  private def p_granada: R = ("granada", "Granada", "Andalucía", 37.18817, -3.60667, "Europe/Madrid", Seq("Granada", "Zubia", "Almuñecar", "Armilla", "Baza", "Gorgoracha", "Huetor-Tajar", "Pulianas", "Salobreña"), Seq(
+  private def p_granada: R = ("granada", "Granada", "Andalucía", 37.18817, -3.60667, "Europe/Madrid", Seq("Granada", "Zubia", "Almuñécar", "Armilla", "Baza", "Gorgoracha", "Huétor-Tájar", "Pulianas", "Salobreña"), Seq(
     ("Artesiete Alhsur", "Artesiete Alhsur", "E0722"),
     ("Cañaveral Cinema", "Cañaveral Cinema", "E0960"),
     ("Cine Liszt Terraza de verano", "Cine Liszt Terraza de verano", "E0743"),
@@ -296,7 +296,7 @@ private[models] object SpanishRosterData {
     ("Teatro Coliseo", "Teatro Coliseo", "E0769"),
     ("Usurbe Antzokia", "Usurbe Antzokia", "E0605")
   ))
-  private def p_huelva: R = ("huelva", "Huelva", "Andalucía", 37.26638, -6.94004, "Europe/Madrid", Seq("Ayamonte", "Huelva", "Cortegana", "Isla-Cristina", "Lepe", "Mazagon", "Palma del Condado", "Punta Umbria"), Seq(
+  private def p_huelva: R = ("huelva", "Huelva", "Andalucía", 37.26638, -6.94004, "Europe/Madrid", Seq("Ayamonte", "Huelva", "Cortegana", "Isla-Cristina", "Lepe", "Mazagón", "Palma del Condado", "Punta Umbría"), Seq(
     ("Al-Andalus Punta Umbría 3D", "Al-Andalus Punta Umbría 3D", "E0641"),
     ("Artesiete Holea", "Artesiete Holea", "E0805"),
     ("Cine 3D Ayamonte", "Cine 3D Ayamonte", "E0788"),
@@ -308,7 +308,7 @@ private[models] object SpanishRosterData {
     ("La Dehesa Ayamonte", "La Dehesa Ayamonte", "E0945"),
     ("Multicines La Dehesa - Islantilla", "Multicines La Dehesa - Islantilla", "E0516")
   ))
-  private def p_huesca: R = ("huesca", "Huesca", "Aragón", 42.13615, -0.4087, "Europe/Madrid", Seq("Binefar", "Barbastro", "Boltaña", "Huesca", "Monzon", "Sabiñanigo"), Seq(
+  private def p_huesca: R = ("huesca", "Huesca", "Aragón", 42.13615, -0.4087, "Europe/Madrid", Seq("Binéfar", "Barbastro", "Boltaña", "Huesca", "Monzón", "Sabiñánigo"), Seq(
     ("Auditorio La Colina", "Auditorio La Colina", "E0643"),
     ("Cine Cortés", "Cine Cortés", "E0250"),
     ("Cine La Paz", "Cine La Paz", "E0256"),
@@ -317,7 +317,7 @@ private[models] object SpanishRosterData {
     ("Palacio De Congresos Boltaña", "Palacio De Congresos Boltaña", "E0667"),
     ("Teatro Municipal Los Titiriteros", "Teatro Municipal Los Titiriteros", "E0964")
   ))
-  private def p_islas_baleares: R = ("islas-baleares", "Islas Baleares", "Islas Baleares", 39.56939, 2.65024, "Europe/Madrid", Seq("Palma de Mallorca", "Ciutadella de Menorca", "Ibiza", "Manacor", "Mao", "Marratxi", "Sant Antoni de Portmany", "Santa Eulalia"), Seq(
+  private def p_islas_baleares: R = ("islas-baleares", "Islas Baleares", "Islas Baleares", 39.56939, 2.65024, "Europe/Madrid", Seq("Palma de Mallorca", "Ciutadella de Menorca", "Ibiza", "Manacor", "Marratxí", "Maó", "Sant Antoni de Portmany", "Santa Eulalia"), Seq(
     ("Artesiete Fan", "Artesiete Fan", "E0863"),
     ("Cine Regio", "Cine Regio", "E0839"),
     ("CineCiutat", "CineCiutat", "E0365"),
@@ -332,7 +332,7 @@ private[models] object SpanishRosterData {
     ("Sala Augusta", "Sala Augusta", "E0593"),
     ("Teatro España", "Teatro España", "E0755")
   ))
-  private def p_jaen: R = ("jaen", "Jaén", "Andalucía", 37.76922, -3.79028, "Europe/Madrid", Seq("Andujar", "Alcala la Real", "Carolina", "Fraile", "Linares", "Martos", "Ubeda"), Seq(
+  private def p_jaen: R = ("jaen", "Jaén", "Andalucía", 37.76922, -3.79028, "Europe/Madrid", Seq("Andújar", "Alcalá la Real", "Carolina", "Fraile", "Linares", "Martos", "Úbeda"), Seq(
     ("Autocinema Tenerife", "Autocinema Tenerife", "E2912"),
     ("Cine Teatro Martínez Montañés", "Cine Teatro Martínez Montañés", "E1025"),
     ("Europa Pantallas 8", "Europa Pantallas 8", "E0436"),
@@ -342,7 +342,7 @@ private[models] object SpanishRosterData {
     ("París Multicines", "París Multicines", "E0822"),
     ("Teatro Maestro Álvarez Alonso", "Teatro Maestro Álvarez Alonso", "E1017")
   ))
-  private def p_la_rioja: R = ("la-rioja", "La Rioja", "La Rioja", 42.46615, -2.45115, "Europe/Madrid", Seq("Logroño", "Calahorra", "Haro", "Rincon de Soto", "Sto Domingo de la Calzada"), Seq(
+  private def p_la_rioja: R = ("la-rioja", "La Rioja", "La Rioja", 42.46615, -2.45115, "Europe/Madrid", Seq("Logroño", "Calahorra", "Haro", "Rincón de Soto", "Sto Domingo de la Calzada"), Seq(
     ("Cine Avenida Rincón de Soto", "Cine Avenida Rincón de Soto", "E0829"),
     ("Cine Avenida Santo Domingo", "Cine Avenida Santo Domingo", "E0830"),
     ("Cines 7 Infantes", "Cines 7 Infantes", "E0804"),
@@ -362,7 +362,7 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Premium Alisios", "Yelmo Cines Premium Alisios", "E0972"),
     ("Yelmo Cines Vecindario", "Yelmo Cines Vecindario", "E0634")
   ))
-  private def p_leon: R = ("leon", "León", "Castilla y León", 42.60003, -5.57032, "Europe/Madrid", Seq("León", "Astorga", "Cistierna", "Ponferrada", "Santa Maria del Paramo", "Villablino"), Seq(
+  private def p_leon: R = ("leon", "León", "Castilla y León", 42.60003, -5.57032, "Europe/Madrid", Seq("León", "Astorga", "Cistierna", "Ponferrada", "Santa María del Páramo", "Villablino"), Seq(
     ("Cine Marí", "Cine Marí", "E0901"),
     ("Cine Paramés", "Cine Paramés", "E0854"),
     ("Cine Velasco", "Cine Velasco", "E0274"),
@@ -395,7 +395,7 @@ private[models] object SpanishRosterData {
     ("Jca Cinemes Alpicat", "Jca Cinemes Alpicat", "E0652"),
     ("Sala d''actes Ajuntament", "Sala d''actes Ajuntament", "E0985")
   ))
-  private def p_madrid: R = ("madrid", "Madrid", "Comunidad de Madrid", 40.4165, -3.70256, "Europe/Madrid", Seq("Madrid", "Alcobendas", "Alcorcon", "Boadilla del Monte", "Coslada", "Fuente la Teja", "Leganés", "Majadahonda", "Tres Cantos", "Valdemorillo", "Valdemoro", "Villaviciosa de Odon", "Alcala de Henares", "Aranjuez", "Arroyomolinos", "Collado Villalba", "Fuenlabrada", "Getafe", "Guadarrama", "Las Rozas de Madrid", "Mostoles", "Parla", "Pelayos de la Presa", "Pinto", "Pozuelo de Alarcon", "Rivas-vaciamadrid", "San Martin de Valdeiglesias", "San Sebastián de los Reyes", "Soto del Real", "Torrejon de Ardoz", "Villa del Prado"), Seq(
+  private def p_madrid: R = ("madrid", "Madrid", "Comunidad de Madrid", 40.4165, -3.70256, "Europe/Madrid", Seq("Madrid", "Alcobendas", "Alcorcón", "Boadilla del Monte", "Coslada", "Fuente la Teja", "Leganés", "Majadahonda", "Tres Cantos", "Valdemorillo", "Valdemoro", "Villaviciosa de Odón", "Alcalá de Henares", "Aranjuez", "Arroyomolinos", "Collado Villalba", "Fuenlabrada", "Getafe", "Guadarrama", "Las Rozas de Madrid", "Móstoles", "Parla", "Pelayos de la Presa", "Pinto", "Pozuelo de Alarcón", "Rivas-Vaciamadrid", "San Martín de Valdeiglesias", "San Sebastián de los Reyes", "Soto del Real", "Torrejón de Ardoz", "Villa del Prado"), Seq(
     ("Casa de Cultura Guadarrama", "Casa de Cultura Guadarrama", "E0936"),
     ("Centro de Arte y Cine de Verano Soto del Real", "Centro de Arte y Cine de Verano Soto del Real", "E0937"),
     ("Cine Aranjuez", "Cine Aranjuez", "E0233"),
@@ -451,7 +451,7 @@ private[models] object SpanishRosterData {
   private def p_melilla: R = ("melilla", "Melilla", "Melilla", 35.29369, -2.93833, "Europe/Madrid", Seq("Melilla"), Seq(
     ("Cine Teatro Perelló", "Cine Teatro Perelló", "E0841")
   ))
-  private def p_murcia: R = ("murcia", "Murcia", "Región de Murcia", 37.98704, -1.13004, "Europe/Madrid", Seq("Murcia", "Cartagena", "San Jose de la Montaña", "Abaran", "Aguilas", "Archena", "Colonia Julio Ruiz Alda", "Gorguel", "Islas Menores", "Lorca", "Molina de Segura", "Mula", "Playa Honda", "Puerto de Mazarron", "San Javier", "San Pedro del Pinatar", "Yecla"), Seq(
+  private def p_murcia: R = ("murcia", "Murcia", "Región de Murcia", 37.98704, -1.13004, "Europe/Madrid", Seq("Murcia", "Cartagena", "San Jose de la Montaña", "Abarán", "Archena", "Colonia Julio Ruiz Alda", "Gorguel", "Islas Menores", "Lorca", "Molina de Segura", "Mula", "Playa Honda", "Puerto de Mazarron", "San Javier", "San Pedro del Pinatar", "Yecla", "Águilas"), Seq(
     ("Cine Acapulco", "Cine Acapulco", "E0942"),
     ("Cine Bahía", "Cine Bahía", "E0977"),
     ("Cine La Manga", "Cine La Manga", "E0946"),
@@ -477,7 +477,7 @@ private[models] object SpanishRosterData {
     ("Terraza Centro Joven", "Terraza Centro Joven", "E0988"),
     ("Terraza España", "Terraza España", "E0949")
   ))
-  private def p_malaga: R = ("malaga", "Málaga", "Andalucía", 36.72016, -4.42034, "Europe/Madrid", Seq("Malaga", "Marbella", "Fuengirola", "Alhaurin el Grande", "Antequera", "Coin", "Nerja", "Rincon de la Victoria", "Ronda", "Velez-Malaga"), Seq(
+  private def p_malaga: R = ("malaga", "Málaga", "Andalucía", 36.72016, -4.42034, "Europe/Madrid", Seq("Málaga", "Marbella", "Fuengirola", "Alhaurín el Grande", "Antequera", "Coín", "Nerja", "Rincón de la Victoria", "Ronda", "Vélez-Málaga"), Seq(
     ("Alameda Multicines Malaga", "Alameda Multicines Malaga", "E0048"),
     ("Centro Cultural Villa de Nerja", "Centro Cultural Villa de Nerja", "E0976"),
     ("Cine Albéniz", "Cine Albéniz", "E0195"),
@@ -495,7 +495,7 @@ private[models] object SpanishRosterData {
     ("mk2 Malaga Nostrum", "mk2 Malaga Nostrum", "E0413"),
     ("mk2 Miramar", "mk2 Miramar", "E0414")
   ))
-  private def p_navarra: R = ("navarra", "Navarra", "Navarra", 42.81687, -1.64323, "Europe/Madrid", Seq("Pamplona", "Cordovilla", "Estella", "Huarte", "Tudela", "Viana"), Seq(
+  private def p_navarra: R = ("navarra", "Navarra", "Navarra", 42.81687, -1.64323, "Europe/Madrid", Seq("Pamplona", "Cordovilla", "Estella", "Huarte", "Tudela", "Viaña"), Seq(
     ("Cines Las Cañas Viana", "Cines Las Cañas Viana", "E0371"),
     ("Cines Los Llanos Zinemak", "Cines Los Llanos Zinemak", "E0259"),
     ("Golem Baiona", "Golem Baiona", "E0444"),
@@ -531,7 +531,7 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Premium Vialia Vigo", "Yelmo Cines Premium Vialia Vigo", "E2902"),
     ("Yelmo Cines Travesía Vigo", "Yelmo Cines Travesía Vigo", "E0635")
   ))
-  private def p_salamanca: R = ("salamanca", "Salamanca", "Castilla y León", 40.42972, -3.67975, "Europe/Madrid", Seq("Salamanca", "Bejar", "Ciudad Rodrigo", "Peñaranda de Bracamonte"), Seq(
+  private def p_salamanca: R = ("salamanca", "Salamanca", "Castilla y León", 40.42972, -3.67975, "Europe/Madrid", Seq("Salamanca", "Béjar", "Ciudad Rodrigo", "Peñaranda de Bracamonte"), Seq(
     ("Cine Calderón", "Cine Calderón", "E0793"),
     ("Cine Juventud", "Cine Juventud", "E0800"),
     ("Cines Van Dyck", "Cines Van Dyck", "E0606"),
@@ -555,7 +555,7 @@ private[models] object SpanishRosterData {
     ("Artesiete Segovia", "Artesiete Segovia", "E0716"),
     ("Cines Luz de Castilla", "Cines Luz de Castilla", "E0285")
   ))
-  private def p_sevilla: R = ("sevilla", "Sevilla", "Andalucía", 37.38283, -5.97317, "Europe/Madrid", Seq("Sevilla", "Dos Hermanas", "Alcala de Guadaira", "Bormujos", "Cabezas de San Juan", "Camas", "Ecija", "Estepa", "Lebrija", "Mairena del Aljarafe", "Marchena", "Tomares", "Utrera"), Seq(
+  private def p_sevilla: R = ("sevilla", "Sevilla", "Andalucía", 37.38283, -5.97317, "Europe/Madrid", Seq("Sevilla", "Dos Hermanas", "Alcalá de Guadaira", "Bormujos", "Cabezas de San Juan", "Camas", "Estepa", "Lebrija", "Mairena del Aljarafe", "Marchena", "Tomares", "Utrera", "Écija"), Seq(
     ("Al-Andalus Mega Ocio", "Al-Andalus Mega Ocio", "E0217"),
     ("Artesiete Écija", "Artesiete Écija", "E0720"),
     ("Avenida 5 Cines", "Avenida 5 Cines", "E0112"),
@@ -576,12 +576,12 @@ private[models] object SpanishRosterData {
     ("mk2 Alcores", "mk2 Alcores", "E0411"),
     ("mk2 Nervión Plaza", "mk2 Nervión Plaza", "E0415")
   ))
-  private def p_soria: R = ("soria", "Soria", "Castilla y León", 41.76401, -2.46883, "Europe/Madrid", Seq("Almazan", "Burgo de Osma", "Golmayo"), Seq(
+  private def p_soria: R = ("soria", "Soria", "Castilla y León", 41.76401, -2.46883, "Europe/Madrid", Seq("Almazán", "Burgo de Osma", "Golmayo"), Seq(
     ("Cine Calderón - Almazán", "Cine Calderón - Almazán", "E0989"),
     ("Cine Palafox Burgo de Osma", "Cine Palafox Burgo de Osma", "E0265"),
     ("Cines Lara", "Cines Lara", "E0356")
   ))
-  private def p_tarragona: R = ("tarragona", "Tarragona", "Cataluña", 41.11905, 1.24544, "Europe/Madrid", Seq("Tarragona", "Altafulla", "Amposta", "Calafell", "Cambrils", "Montblanc", "Reus", "Roquetes", "Valls", "Vila-Seca"), Seq(
+  private def p_tarragona: R = ("tarragona", "Tarragona", "Cataluña", 41.11905, 1.24544, "Europe/Madrid", Seq("Tarragona", "Altafulla", "Amposta", "Calafell", "Cambrils", "Montblanc", "Reus", "Roquetes", "Valls", "Vila-seca"), Seq(
     ("Cinema Casal Montblanquí", "Cinema Casal Montblanquí", "E0161"),
     ("Cinemes Amposta", "Cinemes Amposta", "E0076"),
     ("Cines Axion Reus", "Cines Axion Reus", "E0920"),
@@ -599,7 +599,7 @@ private[models] object SpanishRosterData {
     ("Cine Maravillas", "Cine Maravillas", "E0697"),
     ("Cines Alcañiz", "Cines Alcañiz", "E0653")
   ))
-  private def p_toledo: R = ("toledo", "Toledo", "Castilla-La Mancha", 39.8581, -4.02263, "Europe/Madrid", Seq("Casalgordo", "Olias del Rey", "Quintanar de la Orden", "Talavera de la Reina", "Toledo", "Torrijos", "Villacañas"), Seq(
+  private def p_toledo: R = ("toledo", "Toledo", "Castilla-La Mancha", 39.8581, -4.02263, "Europe/Madrid", Seq("Casalgordo", "Olías del Rey", "Quintanar de la Orden", "Talavera de la Reina", "Toledo", "Torrijos", "Villacañas"), Seq(
     ("Artesiete Los Alfares", "Artesiete Los Alfares", "E0803"),
     ("Cine Central 3D", "Cine Central 3D", "E0831"),
     ("Cine Princesa", "Cine Princesa", "E0837"),
@@ -608,7 +608,7 @@ private[models] object SpanishRosterData {
     ("Real Cinema De Olías", "Real Cinema De Olías", "E0574"),
     ("mk2 Luz del Tajo", "mk2 Luz del Tajo", "E0412")
   ))
-  private def p_valencia: R = ("valencia", "Valencia", "Comunidad Valenciana", 39.47391, -0.37966, "Europe/Madrid", Seq("Valencia", "Buñol", "Gandia", "Grau i Platja", "Sagunto", "Alboraya", "Aldaia", "Alfafar", "Almussafes", "Alzira", "Benetússer", "Burjassot", "Cofrentes", "Cullera", "Eliana", "Guardamar de la Safor", "Lliria", "Oliva", "Ontinyent", "Pai i Capellans", "Paterna", "Perello", "Porta Coeli", "Tavernes de la Valldigna", "Xirivella", "Xàtiva"), Seq(
+  private def p_valencia: R = ("valencia", "Valencia", "Comunidad Valenciana", 39.47391, -0.37966, "Europe/Madrid", Seq("Valencia", "Buñol", "Gandia", "Grau i Platja", "Sagunto", "Alboraya", "Aldaia", "Alfafar", "Almussafes", "Alzira", "Benetússer", "Burjassot", "Cofrentes", "Cullera", "Eliana", "Guardamar de la Safor", "Llíria", "Oliva", "Ontinyent", "Pai i Capellans", "Paterna", "Perello", "Porta Coeli", "Tavernes de la Valldigna", "Xirivella", "Xàtiva"), Seq(
     ("Abc El Saler", "Abc El Saler", "E0034"),
     ("Abc Gandia", "Abc Gandia", "E0036"),
     ("Abc Gran Turia", "Abc Gran Turia", "E0037"),
@@ -649,7 +649,7 @@ private[models] object SpanishRosterData {
     ("Yelmo Cines Mercado de Campanar", "Yelmo Cines Mercado de Campanar", "E0773"),
     ("Yelmo Cines VidaNova Parc", "Yelmo Cines VidaNova Parc", "E0932")
   ))
-  private def p_valladolid: R = ("valladolid", "Valladolid", "Castilla y León", 41.65541, -4.72353, "Europe/Madrid", Seq("Valladolid", "Arroyo de la Encomienda", "Medina de Rioseco", "Medina del Campo", "Pedrajas de San Esteban"), Seq(
+  private def p_valladolid: R = ("valladolid", "Valladolid", "Castilla y León", 41.65541, -4.72353, "Europe/Madrid", Seq("Valladolid", "Arroyo de la Encomienda", "Medina de Ríoseco", "Medina del Campo", "Pedrajas de San Esteban"), Seq(
     ("Cine Avenida", "Cine Avenida", "E0235"),
     ("Cine Casablanca", "Cine Casablanca", "E0243"),
     ("Cines Broadway", "Cines Broadway", "E0333"),
@@ -701,7 +701,7 @@ private[models] object SpanishRosterData {
     ("Cines Guridi", "Cines Guridi", "E0763"),
     ("Yelmo Cines Boulevard", "Yelmo Cines Boulevard", "E0786")
   ))
-  private def p_avila: R = ("avila", "Ávila", "Castilla y León", 40.65724, -4.69951, "Europe/Madrid", Seq("Arenas de San Pedro", "Avila", "Barco de Avila", "Candeleda", "Fuente de la Salud", "Navaluenga"), Seq(
+  private def p_avila: R = ("avila", "Ávila", "Castilla y León", 40.65724, -4.69951, "Europe/Madrid", Seq("Arenas de San Pedro", "Barco de Avila", "Candeleda", "Fuente de la Salud", "Navaluenga", "Ávila"), Seq(
     ("Cine Arenas", "Cine Arenas", "E0828"),
     ("Cine Blasco", "Cine Blasco", "E0980"),
     ("Cine Candeleda", "Cine Candeleda", "E0861"),

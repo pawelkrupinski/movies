@@ -65,15 +65,32 @@ Webedia/AlloCiné platform's Spanish deployment), mirroring
    python3 data/spain/scripts/geocode_provinces.py
    rm -rf data/spain/geonames   # ~11MB uncompressed dump, not checked in
    ```
-3. **Build** (`scripts/build_provinces.py`) — joins the crawl + geocode
+3. **Accents** (`scripts/build_town_names.py`) — SensaCine writes its town
+   headers unaccented and title-cased ("Alcala De Henares"), and only 28 of
+   the 423 towns keep their accents. Those names now go on the page — the
+   `<h1>`, the meta description, the schema.org `containsPlace` — so they are
+   corrected against the same GeoNames dump, into `town-names.json`. The
+   correction can only ever re-spell a town, never substitute one: a GeoNames
+   name is accepted only when it folds to the same ASCII as the harvested one.
+   The 60 towns GeoNames does not know under that name are left as harvested,
+   with only the particle-casing rule applied.
+   ```
+   mkdir -p data/spain/geonames
+   curl -sL https://download.geonames.org/export/dump/ES.zip -o data/spain/geonames/ES.zip
+   unzip -o data/spain/geonames/ES.zip -d data/spain/geonames
+   python3 data/spain/scripts/build_town_names.py
+   python3 data/spain/scripts/test_build_town_names.py
+   rm -rf data/spain/geonames
+   ```
+4. **Build** (`scripts/build_provinces.py`) — joins the crawl + geocode
    output into `provinces.json`, assigning each province a slug (lowercase,
    ASCII-folded, spaces/punctuation → hyphens — e.g. `Álava` → `alava`,
    `A Coruña` → `a-coruna`) and computing each cinema's `displayName`.
    ```
    python3 data/spain/scripts/build_provinces.py
    ```
-4. **Generate the Scala** (`scripts/generate_roster.py`) — turns
-   `provinces.json` + `communities.json` into
+5. **Generate the Scala** (`scripts/generate_roster.py`) — turns
+   `provinces.json` + `communities.json` + `town-names.json` into
    `common/src/main/scala/models/SpanishRosterData.scala`, the flat tuple data
    `models.SpanishRoster` materialises into `City`/`Cinema` objects. It refuses
    to emit a province with no community, or a duplicate `displayName` across

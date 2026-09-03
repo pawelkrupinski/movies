@@ -26,6 +26,7 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "spain"
+TOWN_NAMES = DATA / "town-names.json"
 OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "SpanishRosterData.scala"
 
 # Chunked exactly as the German roster is: one `Seq(...)` per 40 provinces, so no
@@ -42,12 +43,17 @@ def ident(slug: str) -> str:
     return "p_" + re.sub(r"[^a-z0-9]", "_", slug)
 
 
-# Spanish toponyms lowercase their particles ("Alcalá de Henares", "Alfás del
-# Pi"), but SensaCine's own town headers title-case every word, and those
-# headers are where `town` comes from. The names go on the page — into the
-# `<h1>` and the meta description — so they are cased the way Spanish writes
-# them. Accents SensaCine dropped ("Alcala") are not recoverable here and stay
-# as harvested.
+# SensaCine's own town headers title-case every word and mostly drop the
+# accents, and those headers are where `town` comes from. The names go on the
+# page — the `<h1>`, the meta description, the schema.org `containsPlace` — so
+# they are written the way Spanish writes them.
+#
+# Two passes, because the two problems have different answers. The ACCENTS are
+# not in anything SensaCine serves, so they come from GeoNames, via the
+# `town-names.json` table `build_town_names.py` builds (100 of the 423 towns).
+# The CASING is a rule — Spanish lowercases the particles in a toponym — and
+# applies to the rest, including the 60 towns GeoNames does not know under the
+# name we harvested.
 PARTICLES = {"de", "del", "la", "las", "el", "los", "y", "i", "a", "o"}
 
 
@@ -58,17 +64,24 @@ def spanish_case(town: str) -> str:
         for i, w in enumerate(words))
 
 
-def towns_of(province: dict) -> list[str]:
+def town_name(raw: str, corrections: dict) -> str:
+    """The town as Spanish writes it: GeoNames' spelling where it has one for
+    exactly this town, and the casing rule everywhere else."""
+    return corrections.get(raw) or spanish_case(raw)
+
+
+def towns_of(province: dict, corrections: dict) -> list[str]:
     """The province's towns, the ones with most venues first (ties
     alphabetical) — the order `City.coveredPlaces` promises, because the
     consumers cap the list and the biggest towns are the ones worth naming."""
     counts = collections.Counter(
-        spanish_case(c["town"]) for c in province["cinemas"] if c.get("town"))
+        town_name(c["town"], corrections) for c in province["cinemas"] if c.get("town"))
     return [t for t, _ in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))]
 
 
 def main() -> int:
     provinces = json.loads((DATA / "provinces.json").read_text())
+    corrections = json.loads(TOWN_NAMES.read_text()) if TOWN_NAMES.exists() else {}
     communities = json.loads((DATA / "communities.json").read_text())
     communities.pop("_comment", None)
 
@@ -109,7 +122,7 @@ def main() -> int:
             "    ({}, {}, {})".format(
                 scala_string(c["displayName"]), scala_string(c["displayName"]), scala_string(c["theaterId"]))
             for c in province["cinemas"])
-        towns = ", ".join(scala_string(t) for t in towns_of(province))
+        towns = ", ".join(scala_string(t) for t in towns_of(province, corrections))
         lines.append(
             "  private def {}: R = ({}, {}, {}, {}, {}, {}, Seq({}), Seq(\n{}\n  ))".format(
                 ident(province["slug"]),
