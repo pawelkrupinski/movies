@@ -127,6 +127,24 @@ X_SEARCH_FILM=694; Y_SEARCH_FILM=2800  # list: "Search films" field
 
 
 # ── self-setup ────────────────────────────────────────────────────────────────
+# Android 14 defaults Private DNS to OPPORTUNISTIC, which tries DNS-over-TLS on
+# port 853 before falling back. Behind a VPN on the host — and this machine has a
+# dozen utun interfaces — that attempt hangs instead of failing fast, so every
+# lookup dies with "Unable to resolve host". The app then renders its error state
+# and the capture writes four screenshots of "No se han podido cargar las
+# sesiones." while reporting success. Turning it off costs nothing when DNS is
+# healthy, and the emulators boot -read-only so the setting cannot persist in the
+# AVD — it has to be reapplied on every boot.
+# No array for the optional -s: an empty one trips `set -u` on bash 3.2, which is
+# what macOS still ships and what this script runs under.
+disable_private_dns() { # $1 optional serial
+  if [ -n "${1:-}" ]; then
+    adb -s "$1" shell settings put global private_dns_mode off >>"$NOISE" 2>&1 || true
+  else
+    adb shell settings put global private_dns_mode off >>"$NOISE" 2>&1 || true
+  fi
+}
+
 booted() { [ "$(adb get-state 2>/dev/null)" = "device" ] &&
            [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; }
 
@@ -140,6 +158,7 @@ ensure_emulator() {
     nohup "$EMU" -avd "$AVD" -no-snapshot-load -no-boot-anim -netdelay none -netspeed full >>"$NOISE" 2>&1 &
     local t=0
     until booted; do naps 3; t=$((t+3)); [ $t -gt 240 ] && die "emulator didn't finish booting"; done
+    disable_private_dns
     BOOTED_EMULATORS="$(adb get-serialno 2>/dev/null | tr -d '\r')"   # so cleanup shuts it down
     done_
   fi
@@ -519,6 +538,7 @@ boot_pool() { # $1 K
     until [ "$(SERIAL="$serial" adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
       naps 5; t=$((t + 5)); [ $t -gt 420 ] && die "$serial didn't finish booting"
     done
+    disable_private_dns "$serial"
     SERIAL="$serial" adb shell wm size reset >>"$NOISE" 2>&1 || true
     done_
   done

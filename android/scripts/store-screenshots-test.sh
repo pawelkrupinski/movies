@@ -476,6 +476,25 @@ unset -f open
 # developer's own emulator survives. Stub adb to record the SERIAL it targets; the
 # stub writes to its own file, unaffected by stop_emulators' stdout→NOISE redirect.
 _killcap="$(mktemp)"
+
+# Android 14's opportunistic Private DNS (DNS-over-TLS) hangs behind a VPN on the
+# host, so every lookup fails and the capture silently writes screenshots of the
+# app's "could not load" state. The emulators boot -read-only, so the setting
+# cannot persist in the AVD and MUST be reapplied on each boot — if this call
+# goes missing, the run still exits 0 and the damage only shows up in the images.
+printf '\033[36m▸\033[0m private DNS is disabled on boot\n'
+_dnscap="$(mktemp)"
+adb() { printf '%s\n' "$*" >> "$_dnscap"; }
+NOISE="$(mktemp)"
+: > "$_dnscap"
+disable_private_dns
+check "disable_private_dns turns it off" \
+  "shell settings put global private_dns_mode off" "$(cat "$_dnscap")"
+: > "$_dnscap"
+disable_private_dns "emulator-5558"
+check "it targets the given serial" \
+  "-s emulator-5558 shell settings put global private_dns_mode off" "$(cat "$_dnscap")"
+
 adb() { printf '%s: %s\n' "${SERIAL:-<none>}" "$*" >> "$_killcap"; }
 NOISE="$(mktemp)"
 BOOTED_EMULATORS="emulator-5554 emulator-5556"
