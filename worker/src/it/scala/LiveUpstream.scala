@@ -56,6 +56,21 @@ object LiveUpstream {
   )(body: => T): T =
     try RetryWithBackoff(totalBudget, sleep = sleep, now = now)(body)
     catch {
+      // A TRANSPORT failure needs no probe, and must not be judged by one.
+      //
+      // The probe exists because the clients swallow HTTP failures into `None`, so a
+      // failed assertion is ambiguous — a 429 and a changed slug convention read the
+      // same. An exception that escaped the client is not ambiguous: no response was
+      // ever received, so it cannot be a contract change, whatever a probe of the site
+      // root then says. Deciding it by probe is how a POST to IMDb's GraphQL endpoint
+      // timing out failed the build while `imdb.com/` answered 2xx a second later —
+      // "the upstream is up" was true and beside the point.
+      case transport: java.io.IOException =>
+        cancel(
+          s"$upstream did not answer at the transport level (${transport.getClass.getSimpleName}: " +
+          s"${Option(transport.getMessage).getOrElse("")}) — cancelled rather than failed, because a " +
+          "request that never got a response cannot tell us whether the contract changed.",
+          transport)
       case failure: Throwable =>
         Try(probe()) match {
           case Success(_) => throw failure

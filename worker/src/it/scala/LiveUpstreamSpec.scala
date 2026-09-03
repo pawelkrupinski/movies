@@ -43,6 +43,31 @@ class LiveUpstreamSpec extends AnyFlatSpec with Matchers {
       cancelled.getMessage should include ("canonicalUrl returned None"))
   }
 
+  /** The shape that failed a local `itAll` on 2026-09-03: a POST to IMDb's GraphQL
+   *  endpoint timed out, and `https://www.imdb.com/` — the probe — answered 2xx, so the
+   *  timeout was rethrown and reddened the build. A request that never got a response
+   *  says nothing about the contract, so the probe's opinion is irrelevant to it. */
+  it should "cancel a transport failure without asking the probe at all" in {
+    var probed = 0
+    val cancelled = intercept[TestCanceledException] {
+      fast(() => probed += 1)(throw new java.net.http.HttpConnectTimeoutException("HTTP connect timed out"))
+    }
+    cancelled.getMessage should include ("did not answer at the transport level")
+    withClue("a response that never arrived cannot be judged by whether the site root is up: ")(
+      probed shouldBe 0)
+  }
+
+  /** …and the distinction still holds in the other direction: a failure the CLIENT
+   *  swallowed arrives as an ordinary assertion failure, which is exactly the case the
+   *  probe exists to judge. */
+  it should "still probe, and still fail, for a swallowed failure on a reachable upstream" in {
+    var probed = 0
+    intercept[RuntimeException] {
+      fast(() => probed += 1)(throw new RuntimeException("canonicalUrl returned None"))
+    }
+    probed should be > 0
+  }
+
   // A flaky upstream that recovers within the budget never reaches the probe at all —
   // this is the burst case `RetryWithBackoff` already handled, and it must keep working.
   it should "still absorb a transient failure that recovers inside the budget" in {
