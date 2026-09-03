@@ -28,10 +28,10 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   });
 });
 
-// The US lists 467 places — 460 distance-clustered METROS plus the seven states
+// The US lists 468 places — 461 distance-clustered METROS plus the seven states
 // and territories both small enough and compact enough not to split — grouped
 // under their state, because "Los Angeles" is found under "California" and a
-// 467-row A-to-Z is not a list anybody reads. The state is a heading, never a
+// 468-row A-to-Z is not a list anybody reads. The state is a heading, never a
 // link: `/california/` is gone.
 //
 // The count is a roster fact, so it moves on a re-harvest and on any change to
@@ -41,14 +41,14 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
 test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
   test('lists metros under their state, and a pick lands on that metro', async ({ page }) => {
     await page.goto('/landing-us');
-    await expect(page.locator('.city-list a')).toHaveCount(467);
+    await expect(page.locator('.city-list a')).toHaveCount(468);
     const groups = page.locator('.city-group');
     await expect(groups).toHaveCount(55);
     await expect(groups.first()).toContainText('Alabama');
 
     const california = page.locator('.city-group', { hasText: 'California' }).first();
     await expect(california.locator('.city-group-label')).toHaveText('California');
-    await expect(california.locator('a')).toHaveCount(21);
+    await expect(california.locator('a')).toHaveCount(22);
     // Biggest metro first — City.usStates' own order.
     await expect(california.locator('a').first()).toHaveText('Los Angeles');
     // No state is addressable.

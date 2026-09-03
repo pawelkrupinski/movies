@@ -130,6 +130,61 @@ def test_zone_for_takes_the_majority_clock():
     assert cm.zone_for(straddle) == 'America/New_York', cm.zone_for(straddle)
 
 
+def test_fold_barrier_keeps_a_pair_out_of_a_metro_they_cannot_reach():
+    """Two venues 59 km apart, ~130 km from a big hub — the Bishop/Mammoth shape.
+
+    Without a barrier the fold hands the pair to the hub, because the gap is
+    inside FOLD_RADIUS_KM and the pair is under MIN_CLUSTER_VENUES. With one, it
+    keeps its own cluster, exactly as a cluster with no neighbour in range does.
+
+    Which of the two towns ends up the HUB is the ranking's business (size, then
+    density within the radius, then name), so the test reads it off the unbarred
+    run rather than asserting it — the barrier is keyed on the fold that happens,
+    which is what `FOLD_BARRIERS` has to name too.
+    """
+    towns = {
+        'Valley':   {'pt': (36.75, -119.79), 'venues': [venue('a', 'Valley', 36.75, -119.79),
+                                                        venue('b', 'Valley', 36.80, -119.73),
+                                                        venue('c', 'Valley', 36.85, -119.90)]},
+        'Mammoth':  {'pt': (37.64, -118.97), 'venues': [venue('d', 'Mammoth', 37.64, -118.97)]},
+        'Bishop':   {'pt': (37.36, -118.40), 'venues': [venue('e', 'Bishop', 37.36, -118.40)]},
+    }
+    folded = cm._cluster(towns)
+    assert set(folded.values()) == {'Valley'}, folded          # both swallowed
+
+    pair_hub = cm._cluster(towns, min_venues=1)['Bishop']       # the pair's own hub
+    assert pair_hub in ('Bishop', 'Mammoth'), pair_hub
+
+    cm.BARRIERS_APPLIED.clear()
+    kept = cm._cluster(towns, barriers={(pair_hub, 'Valley')})
+    assert kept['Bishop'] == pair_hub and kept['Mammoth'] == pair_hub, kept
+    assert kept['Valley'] == 'Valley', kept
+    assert (pair_hub, 'Valley') in cm.BARRIERS_APPLIED
+    cm.BARRIERS_APPLIED.clear()
+
+
+def test_a_barrier_that_does_not_fire_records_nothing():
+    # What `generate_roster.py` refuses on: an entry naming a fold that no longer
+    # happens leaves BARRIERS_APPLIED without it, and the generator dies.
+    cm.BARRIERS_APPLIED.clear()
+    towns = {
+        'Big':  {'pt': (36.75, -119.79), 'venues': [venue('a', 'Big', 36.75, -119.79),
+                                                    venue('b', 'Big', 36.80, -119.73),
+                                                    venue('c', 'Big', 36.85, -119.90)]},
+        'Near': {'pt': (37.64, -118.97), 'venues': [venue('d', 'Near', 37.64, -118.97)]},
+    }
+    cm._cluster(towns, barriers={('Nowhere', 'Big')})
+    assert cm.BARRIERS_APPLIED == set(), cm.BARRIERS_APPLIED
+
+
+def test_the_shipped_barriers_are_all_still_needed():
+    # Guards the real table rather than a synthetic one: every entry names a
+    # (state, hub, nearest) the roster's own clustering still produces.
+    for state, hub, nearest in cm.FOLD_BARRIERS:
+        assert isinstance(state, str) and hub and nearest
+    assert ('California', 'Mammoth Lakes', 'Fresno') in cm.FOLD_BARRIERS
+
+
 def _timezonefinder_available():
     try:
         import timezonefinder  # noqa: F401

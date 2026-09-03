@@ -82,10 +82,10 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Country.UnitedStates.cities" should "be one city per metro, the state being only how you find one" in {
-    // The addressable place is the metro: 460 of them, plus the seven states and
+    // The addressable place is the metro: 461 of them, plus the seven states and
     // territories with too few venues — and compact enough — to be worth
     // splitting. A state is a `CityGroup`, so `/california/` resolves to nothing.
-    Country.UnitedStates.cities should have size 467
+    Country.UnitedStates.cities should have size 468
     Country.UnitedStates.cities.map(_.slug) should contain allOf (
       "los-angeles", "new-york", "houston", "district-of-columbia", "san-juan")
     Country.UnitedStates.bySlug.get("california") shouldBe None

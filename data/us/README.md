@@ -88,6 +88,18 @@ Jersey's biggest cluster really is called "New York".
 `python3 data/us/scripts/cluster_metros.py` prints the venue-count distribution
 the current constants produce; it is the tool the radius was tuned with.
 
+The fold measures great-circle km, which is a fair stand-in for a drive almost
+everywhere the US puts cinemas — and is not one where a mountain crest or open
+water lies across the line. `FOLD_BARRIERS` names the folds where it is not, and
+the bar for an entry is not "no road": it is that the metro's NAME would be a
+containment no resident would say. Southeast Alaska reaches Sitka, Petersburg
+and Wrangell by ferry or plane alone and is still one place, because that is
+what the place is called. "Fresno" is not what Bishop is in — Bishop and Mammoth
+Lakes are 120 km from it on the map and ~400 km by the road that is open all
+year, the direct one over Tioga Pass being shut by snow from roughly November to
+May. They keep their own metro, which `UsRoster.MetroDisplayNames` names the
+Eastern Sierra. Every entry must still fire or the generator refuses to run.
+
 Time zones are resolved PER METRO, from the coordinates of the metro's own
 venues (`cluster_metros.zone_for`), not per state. Fifteen states straddle a
 boundary, and a state-level zone reached every city cut out of one: Knoxville and

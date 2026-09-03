@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
  * The US roster's shape: the addressable place is the METRO, and the state is
  * only how a visitor finds one. `/los-angeles/` is a page; `/california/` is
  * nothing at all. These lock the cut (which states split, which stay whole),
- * the slugs (460 metros joining a global namespace that already holds a UK
+ * the slugs (461 metros joining a global namespace that already holds a UK
  * Birmingham, and two states each holding a "Philadelphia"), the clock each
  * metro keeps, and the fact that re-keying the roster moved no cinema.
  */
@@ -25,8 +25,8 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
       .getOrElse(fail(s"no US city holds '$displayName'"))
 
   "The US roster" should "be one city per metro, plus the states with no metros to speak of" in {
-    // 460 metros over the 48 states worth splitting + the seven that stay whole.
-    City.usCities should have size 467
+    // 461 metros over the 48 states worth splitting + the seven that stay whole.
+    City.usCities should have size 468
     City.usStates should have size 55
   }
 
@@ -59,7 +59,7 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
     City.bySlug("texas") shouldBe None
     val california = group("California")
     california.cities.map(_.labels.nominative).take(2) shouldBe Seq("Los Angeles", "San Francisco Bay Area")
-    california.cities should have size 21
+    california.cities should have size 22
     california.cities.flatMap(_.cinemas) should have size 486
     // Biggest metro first — the one most of the state's visitors want.
     val sizes = california.cities.map(_.cinemas.size)
@@ -178,6 +178,26 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
     // …while a metro in its state's majority zone is unmoved.
     city("nashville").zoneId.getId shouldBe "America/Chicago"
     city("los-angeles").zoneId.getId shouldBe "America/Los_Angeles"
+  }
+
+  "A pair of towns the straight line puts in a metro they cannot reach" should "keep their own" in {
+    // The fold measures great-circle km, which is a fair approximation of a drive
+    // almost everywhere the US puts cinemas — and not across the Sierra crest.
+    // Bishop and Mammoth Lakes are 120 km from Fresno on the map and ~400 km by
+    // the road that is open all year, the direct one being Tioga Pass, shut by
+    // snow roughly November to May. `cluster_metros.FOLD_BARRIERS` keeps them out.
+    val sierra = metroOf("Bishop Twin Theatre")
+    sierra.labels.nominative shouldBe "Eastern Sierra"
+    sierra.cinemaDisplayNames should contain theSameElementsAs
+      Seq("Bishop Twin Theatre", "Minaret Cinema is D'Place")
+    // Named for the region, not for either town: a two-town metro called after
+    // one of them says the other is inside it, and Bishop is not in Mammoth Lakes.
+    City.bySlug("eastern-sierra") shouldBe Some(sierra)
+    City.bySlug("mammoth-lakes") shouldBe None
+    // Fresno keeps the San Joaquin Valley towns it really does reach.
+    val fresno = city("fresno")
+    fresno.cinemaDisplayNames should contain("Yosemite Cinema")   // Oakhurst, 62 km, no crest
+    fresno.cinemaDisplayNames should not contain "Bishop Twin Theatre"
   }
 
   "A venue whose coordinates were wrong" should "be filed where its address says it is" in {

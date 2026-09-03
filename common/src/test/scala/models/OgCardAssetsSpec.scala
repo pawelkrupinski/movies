@@ -56,7 +56,7 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     "og-kenai-peninsula.jpg", "og-kodiak.jpg", "og-nome.jpg", "og-old-valdez.jpg",
     "og-southeast-alaska.jpg",
     "og-hawaii-big-island.jpg", "og-maui.jpg", "og-oahu.jpg", "og-waimea.jpg",
-    "og-decorah.jpg", "og-fort-dodge.jpg", "og-rhinelander.jpg",
+    "og-decorah.jpg", "og-fort-dodge.jpg", "og-rhinelander.jpg", "og-eastern-sierra.jpg",
   )
 
   "every city, in every country" should "have the card its index page names" in {

@@ -19,8 +19,8 @@ from collections import defaultdict
 sys.path.insert(0, __file__.rsplit('/', 1)[0])
 from states import STATES
 from metros import labels_by_slug
-from cluster_metros import (check_coordinates, metros_for_state, same_clock,
-                            sub_areas_for_metro, zone_for)
+from cluster_metros import (BARRIERS_APPLIED, FOLD_BARRIERS, check_coordinates,
+                            metros_for_state, same_clock, sub_areas_for_metro, zone_for)
 
 
 def scala_str(s: str) -> str:
@@ -99,6 +99,14 @@ def main(src, out):
                                    for state, vs in by_state.items()})
     metro_of = {state: metros_for_state(state, vs, metro_labels[state])
                 for state, vs in by_state.items()}
+
+    # A barrier that stops applying is a fold that moved under it, and a rule with
+    # no effect is worse than no rule — it reads as a decision that is still being
+    # made. Refused for the same reason an unmapped SUB_AREA_REGIONS district is.
+    stale = sorted(b for b in FOLD_BARRIERS if (b[1], b[2]) not in BARRIERS_APPLIED)
+    if stale:
+        raise SystemExit(f"FOLD_BARRIERS entries that blocked nothing: {stale} — the fold they "
+                         f"describe no longer happens; drop them from cluster_metros.FOLD_BARRIERS")
 
     # A metro too big to browse as one list is clustered AGAIN, at a twelfth of
     # the radius, into the districts a local names — `UsMetroSubAreas` groups by

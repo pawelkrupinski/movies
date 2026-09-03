@@ -1618,16 +1618,25 @@ object UsRoster {
    *  whole region around it. The renamed label carries the URL with it — the
    *  slug is folded from the name shown, so this metro is `/san-francisco-bay-area/`.
    *
-   *  Only the Bay qualifies today. Its districts fold into East Bay / South Bay
-   *  / North Bay / Peninsula and a `San Francisco` that is the city proper (see
-   *  `SUB_AREA_REGIONS` in `data/us/scripts/cluster_metros.py`), which left a
-   *  metro and one of its own five regions sharing a name — and asserted a
-   *  containment no resident would say, San Jose and Oakland filed under San
-   *  Francisco. New York and Los Angeles are not here: each really is the city
-   *  its region is named for, however far the metro reaches past it.
+   *  Two qualify today.
+   *
+   *  The Bay's districts fold into East Bay / South Bay / North Bay / Peninsula
+   *  and a `San Francisco` that is the city proper (see `SUB_AREA_REGIONS` in
+   *  `data/us/scripts/cluster_metros.py`), which left a metro and one of its own
+   *  five regions sharing a name — and asserted a containment no resident would
+   *  say, San Jose and Oakland filed under San Francisco. New York and Los
+   *  Angeles are not here: each really is the city its region is named for,
+   *  however far the metro reaches past it.
+   *
+   *  The Eastern Sierra is the pair `cluster_metros.FOLD_BARRIERS` keeps out of
+   *  Fresno: Bishop and Mammoth Lakes, 59 km apart on US-395 and a metro of
+   *  exactly two towns. Naming a two-town metro after one of them says the other
+   *  is inside it, and Bishop — the bigger town — is not in Mammoth Lakes. The
+   *  region they ARE in is what a local calls the whole east side of the range.
    */
   private val MetroDisplayNames = Map(
     "San Francisco" -> "San Francisco Bay Area",
+    "Mammoth Lakes" -> "Eastern Sierra",
   )
 
   /** Below this many venues a state is ONE place rather than a list of metros.

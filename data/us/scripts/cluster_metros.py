@@ -104,6 +104,39 @@ MAX_VENUE_FROM_STATE_KM = 1500.0
 #: DST — a single-date probe would call them the same zone.
 TZ_PROBE_DATES = (datetime(2026, 1, 15, 12), datetime(2026, 7, 15, 12))
 
+#: Folds the straight line says are one drive and the map says are not, as
+#: `(state, starved hub, nearest hub)`. The fold pass measures great-circle km,
+#: which is the right approximation almost everywhere the US puts cinemas — and
+#: is not one where a mountain crest or open water lies across it.
+#:
+#: The bar is NOT "no road": it is that the metro's NAME would be a containment
+#: no resident would say, which is the same test `SUB_AREA_REGIONS` applies one
+#: level down. Southeast Alaska reaches Sitka, Petersburg and Wrangell only by
+#: ferry or plane and is still listed as one place, because "Southeast Alaska" is
+#: what that place is called and a visitor browsing it knows how they get around
+#: it. "Fresno" is not what Bishop is in.
+#:
+#: - Bishop and Mammoth Lakes sit on US-395 on the EAST side of the Sierra, 59 km
+#:   apart and a real pair. The fold hands them to Fresno, 120 km away in a
+#:   straight line over the crest: the direct route is Tioga Pass, closed by snow
+#:   roughly November to May, and the road that is open all year runs ~400 km
+#:   round the south end of the range. They are the Eastern Sierra, which is why
+#:   `UsRoster.MetroDisplayNames` renames the metro they keep.
+#:
+#: Every entry must actually fire — `generate_roster.py` refuses a stale one, the
+#: way it refuses an unmapped sub-area region. A barrier that stopped applying is
+#: a fold that changed under it, and the next reader should be told rather than
+#: left reading a rule with no effect.
+FOLD_BARRIERS = {
+    ('California', 'Mammoth Lakes', 'Fresno'),
+}
+
+#: The `(hub, nearest)` pairs that actually blocked a fold this run — the state
+#: is dropped because the pair is what `_cluster` matches on. Accumulates for the
+#: life of the process; read by `generate_roster.py` once every state has
+#: clustered, to refuse a [[FOLD_BARRIERS]] entry that no longer applies.
+BARRIERS_APPLIED = set()
+
 #: Towns whose Flicks `city` is not the name a local uses for the place, renamed
 #: before the sub-pass clusters on them. Keyed by (metro label, city) so a
 #: rename can never reach a same-named town in another metro, and applied to the
@@ -395,7 +428,8 @@ def _towns(venues):
     }
 
 
-def _cluster(towns, radius_km=None, min_venues=MIN_CLUSTER_VENUES, fold_radius_km=None):
+def _cluster(towns, radius_km=None, min_venues=MIN_CLUSTER_VENUES, fold_radius_km=None,
+             barriers=frozenset()):
     """{town: hub town} — greedy hub assignment at `radius_km`, then the fold.
 
     Defaults to the metro pass's own constants; `sub_areas_for_metro` re-enters
@@ -444,6 +478,12 @@ def _cluster(towns, radius_km=None, min_venues=MIN_CLUSTER_VENUES, fold_radius_k
             nearest = min(others, key=lambda o: (distance[(hub, o)], o))
             if distance[(hub, nearest)] > fold_radius_km:
                 continue
+            if (hub, nearest) in barriers:
+                # A barrier leaves the cluster starved on purpose — exactly what
+                # happens to a cluster with no neighbour in range at all, which
+                # the fold already treats as the honest answer for it.
+                BARRIERS_APPLIED.add((hub, nearest))
+                continue
             for town, h in assigned.items():
                 if h == hub:
                     assigned[town] = nearest
@@ -491,7 +531,7 @@ def metros_for_state(state, venues, metro_labels):
     generator dies if even that is not enough.
     """
     towns = _towns(venues)
-    assigned = _cluster(towns)
+    assigned = _cluster(towns, barriers={(hub, into) for st, hub, into in FOLD_BARRIERS if st == state})
     members = defaultdict(dict)
     for town, hub in sorted(assigned.items()):
         members[hub][town] = towns[town]
