@@ -519,6 +519,22 @@ check "it swiped the row at the anchor pill's Y" "1" \
 check "the swipe stays within the screen WIDTH" "" \
   "$(awk '/shell input swipe/ { if ($4 >= 1344 || $6 >= 1344) print "off-screen: "$4" -> "$6 }' "$_scrollcap")"
 
+# The row is filled from /api/catalog, which lands AFTER the first pill renders.
+# A pill that only appears on the ninth pass must still be found — a fixed handful
+# of swipes used to give up against the bundled three and call Spain missing.
+: > "$_scrollcap"
+_late=0
+node_center() {
+  cat >/dev/null
+  case "$1" in
+    Polska) echo "200 234" ;;
+    España) _late=$((_late + 1)); [ "$(grep -c swipe "$_scrollcap")" -ge 9 ] && echo "900 234" || echo "" ;;
+    *) echo "" ;;
+  esac
+}
+_point="$(scroll_to_country "España" || true)"
+check "it keeps scrolling while the catalog is still loading" "900 234" "$_point"
+
 # A country the app does not carry must FAIL, not quietly return an empty point
 # that `tap` would then aim at nothing.
 node_center() { cat >/dev/null; case "$1" in Polska) echo "200 234";; *) echo "";; esac; }

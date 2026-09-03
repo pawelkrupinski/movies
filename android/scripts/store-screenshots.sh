@@ -281,9 +281,15 @@ scroll_to_country() { # $1 display name -> "x y"
   # so every swipe started off-screen and scrolled nothing at all.
   w="$(adb shell wm size | tr -d '\r' | sed -n 's/.*: *\([0-9][0-9]*\)x[0-9][0-9]*.*/\1/p' | head -1)"
   [ -n "$w" ] || w=1080
-  for i in 1 2 3 4 5 6; do
+  # Bounded by TIME, not by a swipe count. The row is populated from
+  # /api/catalog, which lands a moment after the first pill renders — a handful
+  # of quick swipes can exhaust themselves against the three bundled countries
+  # before the fetch adds the rest, and then report the country as missing. Each
+  # pass re-dumps, so a row that grows mid-scroll is picked up.
+  local t=0
+  while [ "$t" -lt 60 ]; do
     adb shell input swipe "$((w * 4 / 5))" "$row_y" "$((w / 5))" "$row_y" 300 >>"$NOISE" 2>&1
-    naps 1
+    naps 2; t=$((t + 2))
     point="$(ui_xml | node_center "$1")"
     [ -n "$point" ] && { echo "$point"; return 0; }
   done
