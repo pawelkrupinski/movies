@@ -195,6 +195,20 @@ in
       disable = [ "traefik" "servicelb" "metrics-server" ];
 
       extraFlags = [
+        # ⚠️ THE DEPLOY ENDPOINT'S READ ACCESS, AND WHY IT IS DECLARED HERE RATHER THAN ONLY IN
+        # tmpfiles. roles/k8s-deploy.nix grants the k8sdeploy account group-read on
+        # /etc/rancher/k3s/k3s.yaml with a tmpfiles `z` rule, which is applied at boot -- but k3s
+        # REWRITES that file 0600 root:root every time the server starts. So any restart of
+        # k3s.service silently revokes the deploy account's access until the next boot, and the
+        # only symptom is CI failing at `Roll the new image onto k3s` with "permission denied",
+        # long after whatever restarted k3s. That is exactly what the OIDC switch on 2026-09-03
+        # did: deploys were broken for an hour, and the change that broke them looked unrelated.
+        #
+        # Asking k3s to write the mode itself makes the grant survive every restart, because it is
+        # applied by the thing doing the rewriting. The tmpfiles rule stays as the group-ownership
+        # half and as a repair for a file written before this flag existed.
+        "--write-kubeconfig-mode=0640"
+
         "--cluster-cidr=${cfg.clusterCidr}"
         "--service-cidr=${cfg.serviceCidr}"
 
