@@ -1528,14 +1528,14 @@ object GermanRoster {
     (Cinema.polishAndUk.flatMap(_._2) ++ Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
 
   private val built: Seq[(GermanRegion, Seq[(GermanCinema, String)])] =
-    GermanRosterData.regions.map { case (slug, name, lat, lon, cinemas) =>
+    GermanRosterData.regions.map { case (slug, name, lat, lon, cities, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and the wire
       // keys of every already-stored German slot — stay exactly as they are otherwise.
       val venues = cinemas.map { case (disp, pill, tid) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
         (new GermanCinema(unique, pill), tid)
       }
-      (new GermanRegion(slug, CityLabels(name, name, name), lat, lon, venues.map(_._1)), venues)
+      (new GermanRegion(slug, CityLabels(name, name, name), lat, lon, venues.map(_._1), cities), venues)
     }
   val regions: Seq[GermanRegion]             = built.map(_._1)
   val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, v) => r.labels.nominative -> v.map(_._1) }

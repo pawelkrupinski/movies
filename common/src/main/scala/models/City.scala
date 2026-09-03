@@ -886,9 +886,16 @@ case object Yorkshire extends City("yorkshire",
  *  (see `data/germany/`). Instances are built ONCE (in `GermanRoster`), so
  *  identity equality holds just like the hand-authored `case object` cities —
  *  every lookup uses those singletons. */
-final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Double, cinemas0: Seq[Cinema])
+final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Double, cinemas0: Seq[Cinema],
+                         cities: Seq[String])
   extends City(slug, labels, lat, lon, ZoneId.of("Europe/Berlin")) {
   val cinemas: Seq[Cinema] = cinemas0
+  /** The region's towns, most venues first, from the clustering that built it:
+   *  145 of the 158 regions are several towns around a hub, so the hub's name
+   *  is not the only place they cover — `/koeln/` also covers Düsseldorf, Bonn
+   *  and Leverkusen. Flat, like [[SpanishProvince]], so there are no [[areas]]
+   *  for the default to read. Deduped because the hub is both. */
+  override val coveredPlaces: Seq[String] = (labels.nominative +: cities).distinct
 }
 
 /** A US METRO — the data-driven `City` subtype, and the place a US visitor

@@ -6,10 +6,10 @@ package models
 private[models] object GermanRosterData {
   // (displayName, pillName, filmstarts theaterId)
   type C = (String, String, String)
-  // (slug, name, lat, lon, cinemas)
-  type R = (String, String, Double, Double, Seq[C])
+  // (slug, name, lat, lon, cities, cinemas)
+  type R = (String, String, Double, Double, Seq[String], Seq[C])
 
-  private def r_berlin: R = ("berlin", "Berlin", 52.52437, 13.41053, Seq(
+  private def r_berlin: R = ("berlin", "Berlin", 52.52437, 13.41053, Seq("Berlin", "Potsdam", "Oranienburg", "Buckow", "Falkensee", "Bernau", "Königs Wusterhausen", "Kleinmachnow", "Erkner", "Wildau"), Seq(
     ("ARTE Freiluftkino Kulturforum", "ARTE Freiluftkino Kulturforum", "A1807"),
     ("Acud Kino", "Acud Kino", "A0006"),
     ("Adria Filmtheater Steglitz", "Adria Filmtheater Steglitz", "A0008"),
@@ -107,7 +107,7 @@ private[models] object GermanRosterData {
     ("Movieland", "Movieland", "A0671"),
     ("CineStar Wildau", "CineStar Wildau", "A0330")
   ))
-  private def r_frankfurt_am_main: R = ("frankfurt-am-main", "Frankfurt am Main", 50.11552, 8.68417, Seq(
+  private def r_frankfurt_am_main: R = ("frankfurt-am-main", "Frankfurt am Main", 50.11552, 8.68417, Seq("Frankfurt am Main", "Wiesbaden", "Mainz", "Darmstadt", "Offenbach am Main", "Rodgau", "Dreieich", "Hofheim am Taunus", "Bad Vilbel", "Dietzenbach", "Mörfelden-Walldorf", "Kelkheim", "Friedrichsdorf", "Ginsheim-Gustavsburg", "Frankfurt", "Frankfurt (Oder)", "Hanau", "Langen", "Neu-Isenburg", "Kelkheim (Taunus)", "Weiterstadt", "Idstein", "Pfungstadt", "Gross-Gerau", "Bad Soden am Taunus", "Eschborn", "Karben", "Nidderau", "Kronberg im Taunus", "Eppstein", "Rödermark"), Seq(
     ("ASTOR Film Lounge MyZeil", "ASTOR Film Lounge MyZeil", "A2913"),
     ("CineStar Frankfurt am Main - Metropolis", "CineStar Frankfurt am Main - Metropolis", "A0378"),
     ("Cinema am Rossmarkt", "Cinema am Rossmarkt", "A0261"),
@@ -173,7 +173,7 @@ private[models] object GermanRosterData {
     ("Open-Air auf der Burg", "Open-Air auf der Burg", "A2283"),
     ("Neue Lichtspiele", "Neue Lichtspiele", "A1571")
   ))
-  private def r_stuttgart: R = ("stuttgart", "Stuttgart", 48.78232, 9.17702, Seq(
+  private def r_stuttgart: R = ("stuttgart", "Stuttgart", 48.78232, 9.17702, Seq("Stuttgart", "Ludwigsburg", "Tübingen", "Reutlingen", "Böblingen", "Kirchheim unter Teck", "Esslingen", "Esslingen am Neckar", "Fellbach", "Backnang", "Kornwestheim", "Weil der Stadt", "Erdmannhausen", "Sindelfingen", "Waiblingen", "Leonberg", "Winnenden", "Weinstadt", "Mühlacker", "Renningen", "Marbach am Neckar", "Plochingen", "Asperg", "Korb", "Waldenbuch", "Allmersbach im Tal", "Oberriexingen"), Seq(
     ("Atelier am Bollwerk", "Atelier am Bollwerk", "A0063"),
     ("Cinema Stuttgart", "Cinema Stuttgart", "A0233"),
     ("CinemaxX SI-Centrum Stuttgart", "CinemaxX SI-Centrum Stuttgart", "A0942"),
@@ -233,7 +233,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Bürgersaal", "Kinomobil Stuttgart - Bürgersaal", "A2557"),
     ("Kinomobil Stuttgart - Festhalle Oberriexingen", "Kinomobil Stuttgart - Festhalle Oberriexingen", "A1938")
   ))
-  private def r_koeln: R = ("koeln", "Köln", 50.93333, 6.95, Seq(
+  private def r_koeln: R = ("koeln", "Köln", 50.93333, 6.95, Seq("Köln", "Düsseldorf", "Bonn", "Leverkusen", "Hürth", "Kerpen", "Langenfeld", "Siegburg", "Bergisch Gladbach", "Troisdorf", "Sankt Augustin", "Euskirchen", "Frechen", "Hennef", "Brühl", "Monheim am Rhein", "Kalk"), Seq(
     ("Cinedom", "Cinedom", "A0027"),
     ("Cinenova", "Cinenova", "A0298"),
     ("Cineplex Filmpalast Köln", "Cineplex Filmpalast Köln", "A0031"),
@@ -291,7 +291,7 @@ private[models] object GermanRosterData {
     ("Emotion Kino", "Emotion Kino", "G02P3"),
     ("Lichtspiele Kalk", "Lichtspiele Kalk", "A2915")
   ))
-  private def r_muenchen: R = ("muenchen", "München", 48.13743, 11.57549, Seq(
+  private def r_muenchen: R = ("muenchen", "München", 48.13743, 11.57549, Seq("München", "Fürstenfeldbruck", "Ottobrunn", "Germering", "Dachau", "Erding", "Unterschleissheim", "Starnberg", "Gauting", "Gröbenzell", "Neufahrn", "Taufkirchen (Vils)", "Haar", "Gilching", "Gräfelfing", "Aschheim", "Weßling"), Seq(
     ("ABC-Kino", "ABC-Kino", "A1476"),
     ("Astor Cinema Lounge", "Astor Cinema Lounge", "A2636"),
     ("Astor Film Lounge im Arri", "Astor Film Lounge im Arri", "A1298"),
@@ -345,7 +345,7 @@ private[models] object GermanRosterData {
     ("Drive In Autokino Aschheim", "Drive In Autokino Aschheim", "A0452"),
     ("Kino Pfarrstadel", "Kino Pfarrstadel", "A2659")
   ))
-  private def r_hamburg: R = ("hamburg", "Hamburg", 53.55073, 9.99302, Seq(
+  private def r_hamburg: R = ("hamburg", "Hamburg", 53.55073, 9.99302, Seq("Hamburg", "Buchholz in der Nordheide", "Quickborn", "Altona", "Norderstedt", "Elmshorn", "Stade", "Buxtehude", "Wedel", "Neu Wulmstorf", "Uetersen", "Bargteheide", "Harsefeld"), Seq(
     ("3001 Kino", "3001 Kino", "A0002"),
     ("Abaton", "Abaton", "A0003"),
     ("Alabama-Kino", "Alabama-Kino", "A0012"),
@@ -389,7 +389,7 @@ private[models] object GermanRosterData {
     ("Kleines Theater", "Kleines Theater", "A0850"),
     ("Harsefelder Lichtspiele", "Harsefelder Lichtspiele", "A0602")
   ))
-  private def r_nuernberg: R = ("nuernberg", "Nürnberg", 49.45421, 11.07752, Seq(
+  private def r_nuernberg: R = ("nuernberg", "Nürnberg", 49.45421, 11.07752, Seq("Nürnberg", "Erlangen", "Fürth", "Neumarkt", "Neumarkt in der Oberpfalz", "Schwabach", "Eckental", "Grafenberg"), Seq(
     ("Admiral Filmpalast Nürnberg", "Admiral Filmpalast Nürnberg", "A0661"),
     ("Casablanca Nürnberg", "Casablanca Nürnberg", "A0172"),
     ("Cinecitta", "Cinecitta", "A0049"),
@@ -426,7 +426,7 @@ private[models] object GermanRosterData {
     ("Casino Lichtspiele Eckental", "Casino Lichtspiele Eckental", "A1343"),
     ("Kinomobil Stuttgart - Historische Kelter", "Kinomobil Stuttgart - Historische Kelter", "A2134")
   ))
-  private def r_dortmund: R = ("dortmund", "Dortmund", 51.51494, 7.466, Seq(
+  private def r_dortmund: R = ("dortmund", "Dortmund", 51.51494, 7.466, Seq("Dortmund", "Essen", "Gelsenkirchen", "Hagen", "Herne", "Recklinghausen", "Iserlohn", "Witten", "Marl", "Lünen", "Unna", "Werne", "Wetter", "Herdecke", "Altena"), Seq(
     ("CineStar Dortmund", "CineStar Dortmund", "A0029"),
     ("Filmbühne Zur Postkutsche", "Filmbühne Zur Postkutsche", "A0490"),
     ("Kino im U", "Kino im U", "A2615"),
@@ -459,7 +459,7 @@ private[models] object GermanRosterData {
     ("Onikon", "Onikon", "A1014"),
     ("Apollo Service Kino", "Apollo Service Kino", "A1297")
   ))
-  private def r_mannheim: R = ("mannheim", "Mannheim", 49.4891, 8.46694, Seq(
+  private def r_mannheim: R = ("mannheim", "Mannheim", 49.4891, 8.46694, Seq("Mannheim", "Heidelberg", "Neustadt an der Weinstraße", "Speyer", "Frankenthal", "Grünstadt", "Worms", "Neustadt an der Weinstrasse", "Weinheim", "Bensheim", "Viernheim", "Heppenheim", "Schwetzingen", "Schifferstadt", "Seeheim-Jugenheim", "Walldorf", "Ketsch", "Hemsbach", "Limburgerhof", "Biblis"), Seq(
     ("Atlantis Mannheim", "Atlantis Mannheim", "A1305"),
     ("Cinema Quadrat e.V.", "Cinema Quadrat e.V.", "A1368"),
     ("Cineplex Mannheim", "Cineplex Mannheim", "A0270"),
@@ -492,7 +492,7 @@ private[models] object GermanRosterData {
     ("Capitol LichtspielTheater Limburgerhof", "Capitol LichtspielTheater Limburgerhof", "A1336"),
     ("Die Filminsel", "Die Filminsel", "A1779")
   ))
-  private def r_krefeld: R = ("krefeld", "Krefeld", 51.33645, 6.55381, Seq(
+  private def r_krefeld: R = ("krefeld", "Krefeld", 51.33645, 6.55381, Seq("Krefeld", "Oberhausen", "Duisburg", "Mülheim an der Ruhr", "Mönchengladbach", "Neuss", "Moers", "Bottrop", "Ratingen", "Meerbusch - Lank", "Nettetal", "Kaarst", "Kamp-Lintfort", "Kempen", "Geldern"), Seq(
     ("CinemaxX Krefeld", "CinemaxX Krefeld", "A0278"),
     ("Fabrik Heeder", "Fabrik Heeder", "A0594"),
     ("Open Air Kino Krefelder Rennbahn", "Open Air Kino Krefelder Rennbahn", "A2812"),
@@ -522,7 +522,7 @@ private[models] object GermanRosterData {
     ("Kempener Lichtspiele", "Kempener Lichtspiele", "A0650"),
     ("Herzog-Theater", "Herzog-Theater", "A0687")
   ))
-  private def r_bielefeld: R = ("bielefeld", "Bielefeld", 52.03333, 8.53333, Seq(
+  private def r_bielefeld: R = ("bielefeld", "Bielefeld", 52.03333, 8.53333, Seq("Bielefeld", "Gütersloh", "Bünde", "Detmold", "Herford", "Bad Salzuflen", "Lemgo", "Lage", "Schloss Holte-Stukenbrock", "Versmold", "Kirchlengern", "Spenge", "Rödinghausen"), Seq(
     ("AJZ Kino", "AJZ Kino", "A0010"),
     ("CinemaxX Bielefeld", "CinemaxX Bielefeld", "A0271"),
     ("Kamera Bielefeld", "Kamera Bielefeld", "A0634"),
@@ -548,7 +548,7 @@ private[models] object GermanRosterData {
     ("Zentral-Theater Spenge", "Zentral-Theater Spenge", "A1288"),
     ("Else-Lichtspiele", "Else-Lichtspiele", "A0463")
   ))
-  private def r_chemnitz: R = ("chemnitz", "Chemnitz", 50.8357, 12.92922, Seq(
+  private def r_chemnitz: R = ("chemnitz", "Chemnitz", 50.8357, 12.92922, Seq("Chemnitz", "Zwickau", "Freiberg", "Limbach-Oberfrohna", "Annaberg-Buchholz", "Aue", "Schneeberg", "Marienberg", "Mittweida", "Hohenstein-Ernstthal", "Schwarzenberg/Erzgebirge", "Lichtenstein", "Gelenau", "Geyer"), Seq(
     ("Campusfilmnächte auf dem Sportplatz", "Campusfilmnächte auf dem Sportplatz", "A2831"),
     ("CineStar Chemnitz - am Roten Turm", "CineStar Chemnitz - am Roten Turm", "A0365"),
     ("Clubkino Siegmar", "Clubkino Siegmar", "A0415"),
@@ -573,7 +573,7 @@ private[models] object GermanRosterData {
     ("Clubkino", "Clubkino", "A0412"),
     ("Autokino Greifensteine", "Autokino Greifensteine", "A2184")
   ))
-  private def r_leipzig: R = ("leipzig", "Leipzig", 51.33962, 12.37129, Seq(
+  private def r_leipzig: R = ("leipzig", "Leipzig", 51.33962, 12.37129, Seq("Leipzig", "Halle", "Merseburg", "Grimma", "Taucha", "Groitzsch", "Leuna"), Seq(
     ("CineStar Leipzig", "CineStar Leipzig", "A0345"),
     ("Cineding", "Cineding", "A0225"),
     ("Cinémathèque in der naTo Leipzig e.V.", "Cinémathèque in der naTo Leipzig e.V.", "A0445"),
@@ -597,7 +597,7 @@ private[models] object GermanRosterData {
     ("Bürgerhaus Kino", "Bürgerhaus Kino", "A1320"),
     ("UCI Nova Eventis", "UCI Nova Eventis", "A1212")
   ))
-  private def r_karlsruhe: R = ("karlsruhe", "Karlsruhe", 49.00937, 8.40444, Seq(
+  private def r_karlsruhe: R = ("karlsruhe", "Karlsruhe", 49.00937, 8.40444, Seq("Karlsruhe", "Pforzheim", "Landau in der Pfalz", "Baden-Baden", "Rastatt", "Bruchsal", "Landau", "Ettlingen", "Bretten", "Gaggenau", "Gernsbach"), Seq(
     ("Die Kurbel Karlsruhe", "Die Kurbel Karlsruhe", "A2614"),
     ("Filmpalast am ZKM - Karlsruhe", "Filmpalast am ZKM - Karlsruhe", "A0513"),
     ("Kinemathek Karlsruhe", "Kinemathek Karlsruhe", "A1711"),
@@ -621,7 +621,7 @@ private[models] object GermanRosterData {
     ("Merkur-Kino-Center", "Merkur-Kino-Center", "A0944"),
     ("Kinocenter Gernsbach", "Kinocenter Gernsbach", "A0771")
   ))
-  private def r_saarbruecken: R = ("saarbruecken", "Saarbrücken", 49.23262, 7.00982, Seq(
+  private def r_saarbruecken: R = ("saarbruecken", "Saarbrücken", 49.23262, 7.00982, Seq("Saarbrücken", "Sankt Ingbert", "Regionalverband Saarbrücken", "Neunkirchen", "Neunkirchen (Innenstadt)", "Homburg", "Saarlouis", "Zweibrücken", "Sankt Wendel", "Lebach", "Illingen", "Schmelz", "Bous", "Rehlingen-Siersburg"), Seq(
     ("CineStar Saarbrücken", "CineStar Saarbrücken", "A0340"),
     ("Kino im Filmhaus", "Kino im Filmhaus", "A1125"),
     ("Passage Saarbrücken", "Passage Saarbrücken", "A1586"),
@@ -644,7 +644,7 @@ private[models] object GermanRosterData {
     ("Thalia-Lichtspiele", "Thalia-Lichtspiele", "A1646"),
     ("Kino auf der Burg", "Kino auf der Burg", "A2513")
   ))
-  private def r_bremen: R = ("bremen", "Bremen", 53.07582, 8.80717, Seq(
+  private def r_bremen: R = ("bremen", "Bremen", 53.07582, 8.80717, Seq("Bremen", "Osterholz-Scharmbeck", "Delmenhorst", "Achim", "Syke", "Schwanewede", "Ritterhude", "Worpswede"), Seq(
     ("CITY 46 / Kommunalkino Bremen e.V.", "CITY 46 / Kommunalkino Bremen e.V.", "A0696"),
     ("CineStar Bremen - Kristall-Palast", "CineStar Bremen - Kristall-Palast", "A0376"),
     ("Cinema Ostertor", "Cinema Ostertor", "A1366"),
@@ -665,7 +665,7 @@ private[models] object GermanRosterData {
     ("Ritterhuder-Lichtspiele", "Ritterhuder-Lichtspiele", "A1605"),
     ("Music Hall Worpswede", "Music Hall Worpswede", "A0979")
   ))
-  private def r_heilbronn: R = ("heilbronn", "Heilbronn", 49.13995, 9.22054, Seq(
+  private def r_heilbronn: R = ("heilbronn", "Heilbronn", 49.13995, 9.22054, Seq("Heilbronn", "Sinsheim", "Neckarsulm", "Öhringen", "Besigheim", "Mosbach", "Lauffen", "Grossbottwar", "Löchgau", "Kirchheim am Neckar", "Forchtenberg", "Hardthausen am Kocher", "Erligheim"), Seq(
     ("CinemaxX Heilbronn", "CinemaxX Heilbronn", "A2894"),
     ("Kinostar Arthaus Heilbronn", "Kinostar Arthaus Heilbronn", "A2748"),
     ("Open-Air-Kino-Heilbronn", "Open-Air-Kino-Heilbronn", "A2814"),
@@ -686,7 +686,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Gewölbekeller im Rathaus", "Kinomobil Stuttgart - Gewölbekeller im Rathaus", "A0786"),
     ("Kinomobil Stuttgart - Bürgerhaus Vordere Kelter", "Kinomobil Stuttgart - Bürgerhaus Vordere Kelter", "A0807")
   ))
-  private def r_schwaebisch_gmuend: R = ("schwaebisch-gmuend", "Schwäbisch Gmünd", 48.79947, 9.79809, Seq(
+  private def r_schwaebisch_gmuend: R = ("schwaebisch-gmuend", "Schwäbisch Gmünd", 48.79947, 9.79809, Seq("Schwäbisch Gmünd", "Heidenheim", "Schorndorf", "Schwäbisch Hall", "Göppingen", "Geislingen an der Steige", "Ebersbach", "Murrhardt", "Gaildorf", "Rudersberg", "Donzdorf", "Königsbronn", "Deggingen", "Schlat"), Seq(
     ("Brazil", "Brazil", "A0105"),
     ("Traumpalast Schwäbisch Gmünd", "Traumpalast Schwäbisch Gmünd", "A1193"),
     ("Capitol Heidenheim", "Capitol Heidenheim", "A0140"),
@@ -706,7 +706,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Feuerwehrhaus Deggingen", "Kinomobil Stuttgart - Feuerwehrhaus Deggingen", "A2128"),
     ("Kinomobil Stuttgart - Bürgerhaus", "Kinomobil Stuttgart - Bürgerhaus", "A0808")
   ))
-  private def r_hannover: R = ("hannover", "Hannover", 52.37052, 9.73322, Seq(
+  private def r_hannover: R = ("hannover", "Hannover", 52.37052, 9.73322, Seq("Hannover", "Hildesheim", "Lehrte", "Langenhagen", "Neustadt am Rübenberge", "Bad Nenndorf"), Seq(
     ("Apollo Hannover", "Apollo Hannover", "A0035"),
     ("Astor Grand Cinema", "Astor Grand Cinema", "A1370"),
     ("CinemaxX Raschplatz", "CinemaxX Raschplatz", "A0296"),
@@ -725,7 +725,7 @@ private[models] object GermanRosterData {
     ("Cinema im Leinepark", "Cinema im Leinepark", "A2873"),
     ("Phoenix Kurlichtspiele Bad Nenndorf", "Phoenix Kurlichtspiele Bad Nenndorf", "A0707")
   ))
-  private def r_braunschweig: R = ("braunschweig", "Braunschweig", 52.26594, 10.52673, Seq(
+  private def r_braunschweig: R = ("braunschweig", "Braunschweig", 52.26594, 10.52673, Seq("Braunschweig", "Wolfsburg", "Salzgitter", "Helmstedt", "Wolfenbüttel", "Peine", "Gifhorn", "Königslutter am Elm", "Grasleben"), Seq(
     ("C1 Cinema Braunschweig", "C1 Cinema Braunschweig", "A0284"),
     ("Roter Saal", "Roter Saal", "A2389"),
     ("SchunterKino", "SchunterKino", "A2745"),
@@ -744,7 +744,7 @@ private[models] object GermanRosterData {
     ("Kammerlichtspiele Könnigslutter am Elm", "Kammerlichtspiele Könnigslutter am Elm", "A0637"),
     ("Autokino in Grasleben", "Autokino in Grasleben", "A2937")
   ))
-  private def r_villingen_schwenningen: R = ("villingen-schwenningen", "Villingen-Schwenningen", 48.06226, 8.49358, Seq(
+  private def r_villingen_schwenningen: R = ("villingen-schwenningen", "Villingen-Schwenningen", 48.06226, 8.49358, Seq("Villingen-Schwenningen", "Alpirsbach", "Tuttlingen", "Oberndorf am Neckar", "Furtwangen im Schwarzwald", "Rottweil", "Donaueschingen", "Schramberg", "Trossingen", "Triberg im Schwarzwald"), Seq(
     ("Blue Boxx", "Blue Boxx", "A0102"),
     ("CineStar Villingen-Schwenningen", "CineStar Villingen-Schwenningen", "A2887"),
     ("Kommunales Kino Guckloch Schwarzwald-Baar-Kreis", "Kommunales Kino Guckloch Schwarzwald-Baar-Kreis", "A0863"),
@@ -763,7 +763,7 @@ private[models] object GermanRosterData {
     ("Kommunales Kino Trossingen", "Kommunales Kino Trossingen", "A2855"),
     ("Kronen-Lichtspiele Triberg im Schwarzwald", "Kronen-Lichtspiele Triberg im Schwarzwald", "A1526")
   ))
-  private def r_dresden: R = ("dresden", "Dresden", 51.05089, 13.73832, Seq(
+  private def r_dresden: R = ("dresden", "Dresden", 51.05089, 13.73832, Seq("Dresden", "Pirna", "Weinböhla", "Radeburg"), Seq(
     ("CLUB PASSAGE", "CLUB PASSAGE", "A0410"),
     ("CinemaxX Dresden", "CinemaxX Dresden", "A0285"),
     ("Cineplex Kristallpalast Dresden", "Cineplex Kristallpalast Dresden", "A1222"),
@@ -781,7 +781,7 @@ private[models] object GermanRosterData {
     ("Openair Zentralgasthof Weinböhla GmbH", "Openair Zentralgasthof Weinböhla GmbH", "A2202"),
     ("Kinobar", "Kinobar", "A1759")
   ))
-  private def r_jena: R = ("jena", "Jena", 50.92878, 11.5899, Seq(
+  private def r_jena: R = ("jena", "Jena", 50.92878, 11.5899, Seq("Jena", "Weimar", "Gera", "Rudolstadt", "Saalfeld", "Bad Klosterlausnitz"), Seq(
     ("CineStar Jena", "CineStar Jena", "A0328"),
     ("Filmarena Open-Air Kino Theatervorplatz", "Filmarena Open-Air Kino Theatervorplatz", "A1844"),
     ("Kino am Markt", "Kino am Markt", "A2732"),
@@ -799,7 +799,7 @@ private[models] object GermanRosterData {
     ("Cineplex Saalfeld", "Cineplex Saalfeld", "A0157"),
     ("Holzlandkino", "Holzlandkino", "A0618")
   ))
-  private def r_schweinfurt: R = ("schweinfurt", "Schweinfurt", 50.04937, 10.22175, Seq(
+  private def r_schweinfurt: R = ("schweinfurt", "Schweinfurt", 50.04937, 10.22175, Seq("Schweinfurt", "Würzburg", "Bad Neustadt an der Saale", "Kitzingen", "Bad Kissingen", "Karlstadt am Main", "Hammelburg", "Bad Königshofen im Grabfeld", "Dettelbach", "Sommerach"), Seq(
     ("Filmwelt Schweinfurt", "Filmwelt Schweinfurt", "A2475"),
     ("KuK Kino und Kneipe", "KuK Kino und Kneipe", "A0874"),
     ("Open Air am KuK", "Open Air am KuK", "A2532"),
@@ -817,7 +817,7 @@ private[models] object GermanRosterData {
     ("Cineworld Mainfrankenpark Dettelbach", "Cineworld Mainfrankenpark Dettelbach", "A0387"),
     ("Open Air Kino Winzerkeller Sommerach", "Open Air Kino Winzerkeller Sommerach", "A2277")
   ))
-  private def r_freiburg: R = ("freiburg", "Freiburg", 47.9959, 7.85222, Seq(
+  private def r_freiburg: R = ("freiburg", "Freiburg", 47.9959, 7.85222, Seq("Freiburg", "Freiburg im Breisgau", "Emmendingen", "Waldkirch", "Bad Krozingen", "Breisach am Rhein", "Titisee-Neustadt", "Kenzingen", "Schallstadt", "Buggingen"), Seq(
     ("CinemaxX Freiburg", "CinemaxX Freiburg", "A0291"),
     ("Friedrichsbau-Apollo", "Friedrichsbau-Apollo", "A0040"),
     ("Harmonie Freiburg", "Harmonie Freiburg", "A1218"),
@@ -834,7 +834,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Johann-Philipp-Glock-Schule", "Kinomobil Stuttgart - Johann-Philipp-Glock-Schule", "A2100"),
     ("Kino im Rathaus", "Kino im Rathaus", "A0728")
   ))
-  private def r_wuppertal: R = ("wuppertal", "Wuppertal", 51.25627, 7.14816, Seq(
+  private def r_wuppertal: R = ("wuppertal", "Wuppertal", 51.25627, 7.14816, Seq("Wuppertal", "Remscheid", "Lüdenscheid", "Hilden", "Mettmann", "Wermelskirchen", "Gevelsberg", "Schwelm", "Radevormwald"), Seq(
     ("Cinema Wuppertal", "Cinema Wuppertal", "A0381"),
     ("CinemaxX Wuppertal", "CinemaxX Wuppertal", "A0292"),
     ("Rex Wuppertal", "Rex Wuppertal", "A2680"),
@@ -851,7 +851,7 @@ private[models] object GermanRosterData {
     ("Kinocenter Schwelm", "Kinocenter Schwelm", "A0776"),
     ("Corso Kinocenter", "Corso Kinocenter", "A0425")
   ))
-  private def r_ravensburg: R = ("ravensburg", "Ravensburg", 47.78198, 9.61062, Seq(
+  private def r_ravensburg: R = ("ravensburg", "Ravensburg", 47.78198, 9.61062, Seq("Ravensburg", "Lindau", "Weingarten", "Bad Saulgau", "Wangen im Allgäu", "Bad Waldsee", "Tettnang", "Isny im Allgäu", "Lindenberg im Allgäu", "Kressbronn", "Argenbühl"), Seq(
     ("CineParC Ravensburg", "CineParC Ravensburg", "A1393"),
     ("Kinozentrum Frauentor", "Kinozentrum Frauentor", "A0845"),
     ("Club Vaudeville", "Club Vaudeville", "A0411"),
@@ -868,7 +868,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Lände-Cafe", "Kinomobil Stuttgart - Lände-Cafe", "A1761"),
     ("Kinomobil Stuttgart - Bürgersaal Rathaus", "Kinomobil Stuttgart - Bürgersaal Rathaus", "A1762")
   ))
-  private def r_regensburg: R = ("regensburg", "Regensburg", 49.01513, 12.10161, Seq(
+  private def r_regensburg: R = ("regensburg", "Regensburg", 49.01513, 12.10161, Seq("Regensburg", "Kelheim", "Abensberg", "Burglengenfeld", "Maxhütte-Haidhof", "Nittenau", "Wald"), Seq(
     ("CinemaxX Regensburg", "CinemaxX Regensburg", "A0289"),
     ("Filmgalerie im Leeren Beutel", "Filmgalerie im Leeren Beutel", "A0497"),
     ("Garbo", "Garbo", "A1436"),
@@ -884,7 +884,7 @@ private[models] object GermanRosterData {
     ("Kino-Center Nittenau", "Kino-Center Nittenau", "A1461"),
     ("Kinomobil Stuttgart - Feuerwehrhaus Wald", "Kinomobil Stuttgart - Feuerwehrhaus Wald", "A1937")
   ))
-  private def r_kiel: R = ("kiel", "Kiel", 54.32133, 10.13489, Seq(
+  private def r_kiel: R = ("kiel", "Kiel", 54.32133, 10.13489, Seq("Kiel", "Neumünster", "Rendsburg", "Eckernförde", "Preetz", "Plön", "Bordesholm"), Seq(
     ("CinemaxX Kiel", "CinemaxX Kiel", "A0279"),
     ("Hansafilmpalast", "Hansafilmpalast", "A2842"),
     ("Kommunales Kino in der Pumpe", "Kommunales Kino in der Pumpe", "A1522"),
@@ -900,7 +900,7 @@ private[models] object GermanRosterData {
     ("Astra-Filmtheater", "Astra-Filmtheater", "A1300"),
     ("Savoy (Bordesholm)", "Savoy (Bordesholm)", "A1614")
   ))
-  private def r_konstanz: R = ("konstanz", "Konstanz", 47.66033, 9.17582, Seq(
+  private def r_konstanz: R = ("konstanz", "Konstanz", 47.66033, 9.17582, Seq("Konstanz", "Friedrichshafen", "Überlingen", "Singen", "Singen am Hohentwiel", "Radolfzell am Bodensee", "Markdorf", "Gottmadingen", "Immenstaad am Bodensee", "Reichenau"), Seq(
     ("CineStar Konstanz", "CineStar Konstanz", "A0338"),
     ("Open Air am Neuwerk", "Open Air am Neuwerk", "A2774"),
     ("Zebra", "Zebra", "A1287"),
@@ -916,7 +916,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Strandbad Aquastaad", "Kinomobil Stuttgart - Strandbad Aquastaad", "A1951"),
     ("Kinomobil Stuttgart - Hochwart-Wiese", "Kinomobil Stuttgart - Hochwart-Wiese", "A1953")
   ))
-  private def r_landsberg_am_lech: R = ("landsberg-am-lech", "Landsberg am Lech", 48.04819, 10.88282, Seq(
+  private def r_landsberg_am_lech: R = ("landsberg-am-lech", "Landsberg am Lech", 48.04819, 10.88282, Seq("Landsberg am Lech", "Bad Wörishofen", "Diessen am Ammersee", "Weilheim", "Weilheim in Oberbayern", "Kaufering", "Seefeld", "Türkheim", "Inning-Stegen", "Penzing"), Seq(
     ("Filmforum im Stadttheater Landsberg", "Filmforum im Stadttheater Landsberg", "A2795"),
     ("Olympia Filmtheater Landsberg", "Olympia Filmtheater Landsberg", "A1579"),
     ("Open Air Kino Landsberg", "Open Air Kino Landsberg", "A2207"),
@@ -932,7 +932,7 @@ private[models] object GermanRosterData {
     ("Kino in der Alten Brauerei", "Kino in der Alten Brauerei", "A0735"),
     ("Cineplex Penzing", "Cineplex Penzing", "A2643")
   ))
-  private def r_augsburg: R = ("augsburg", "Augsburg", 48.37154, 10.89851, Seq(
+  private def r_augsburg: R = ("augsburg", "Augsburg", 48.37154, 10.89851, Seq("Augsburg", "Friedberg (Hessen)", "Königsbrunn", "Aichach", "Gersthofen", "Meitingen", "Wertingen"), Seq(
     ("CineStar Augsburg", "CineStar Augsburg", "A0350"),
     ("CinemaxX Augsburg", "CinemaxX Augsburg", "A0276"),
     ("Liliom", "Liliom", "A1541"),
@@ -947,7 +947,7 @@ private[models] object GermanRosterData {
     ("Cineplex Meitingen", "Cineplex Meitingen", "A0217"),
     ("Filmtheater Wertingen", "Filmtheater Wertingen", "A2120")
   ))
-  private def r_offenburg: R = ("offenburg", "Offenburg", 48.47377, 7.94495, Seq(
+  private def r_offenburg: R = ("offenburg", "Offenburg", 48.47377, 7.94495, Seq("Offenburg", "Freudenstadt", "Lahr", "Lahr am Schwarzwald", "Kehl", "Achern", "Oberkirch", "Haslach im Kinzigtal", "Rust", "Rheinmünster"), Seq(
     ("FORUM Offenburg", "FORUM Offenburg", "A2334"),
     ("Kommunales Kino im KiK", "Kommunales Kino im KiK", "A2854"),
     ("Sommer Kino Nächte Ortenau", "Sommer Kino Nächte Ortenau", "A2002"),
@@ -962,7 +962,7 @@ private[models] object GermanRosterData {
     ("Magic Cinema im Europa Park", "Magic Cinema im Europa Park", "A0936"),
     ("Kinomobil Stuttgart - Festhalle Rheinmünster-Schwarzach", "Kinomobil Stuttgart - Festhalle Rheinmünster-Schwarzach", "A0802")
   ))
-  private def r_tauberbischofsheim: R = ("tauberbischofsheim", "Tauberbischofsheim", 49.62472, 9.66278, Seq(
+  private def r_tauberbischofsheim: R = ("tauberbischofsheim", "Tauberbischofsheim", 49.62472, 9.66278, Seq("Tauberbischofsheim", "Wertheim am Main", "Bad Mergentheim", "Lauda-Königshofen", "Walldürn", "Ochsenfurt", "Marktheidenfeld", "Weikersheim", "Boxberg", "Dörzbach", "Assamstadt"), Seq(
     ("Filmtheater Badischer Hof", "Filmtheater Badischer Hof", "A0541"),
     ("Open Air Kino Rotary-Benefiz", "Open Air Kino Rotary-Benefiz", "A1995"),
     ("Roxy Wertheim", "Roxy Wertheim", "A1087"),
@@ -976,7 +976,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Schlosshof Schloss Eyb", "Kinomobil Stuttgart - Schlosshof Schloss Eyb", "A2227"),
     ("Kinomobil Stuttgart - Grundschule Assamstadt", "Kinomobil Stuttgart - Grundschule Assamstadt", "A1936")
   ))
-  private def r_kassel: R = ("kassel", "Kassel", 51.31667, 9.5, Seq(
+  private def r_kassel: R = ("kassel", "Kassel", 51.31667, 9.5, Seq("Kassel", "Baunatal", "Hofgeismar", "Fritzlar", "Melsungen", "Borgentreich"), Seq(
     ("Bali-Kinos im KulturBahnhof Kassel", "Bali-Kinos im KulturBahnhof Kassel", "A0078"),
     ("Cineplex Capitol Kassel", "Cineplex Capitol Kassel", "A1375"),
     ("Filmladen Kassel e.V.", "Filmladen Kassel e.V.", "A0505"),
@@ -989,7 +989,7 @@ private[models] object GermanRosterData {
     ("Freilichtkino Melsungen", "Freilichtkino Melsungen", "A2193"),
     ("Central-Kino Borgentreich", "Central-Kino Borgentreich", "A0201")
   ))
-  private def r_ingolstadt: R = ("ingolstadt", "Ingolstadt", 48.76508, 11.42372, Seq(
+  private def r_ingolstadt: R = ("ingolstadt", "Ingolstadt", 48.76508, 11.42372, Seq("Ingolstadt", "Neuburg an der Donau", "Pfaffenhofen an der Ilm", "Schrobenhausen", "Eichstätt", "Wolnzach", "Rennertshofen"), Seq(
     ("Altstadtkinos Ingolstadt - Cinema", "Altstadtkinos Ingolstadt - Cinema", "A1369"),
     ("Altstadtkinos Ingolstadt - Union", "Altstadtkinos Ingolstadt - Union", "A1225"),
     ("Audi Programmkino", "Audi Programmkino", "A2784"),
@@ -1002,7 +1002,7 @@ private[models] object GermanRosterData {
     ("Amper-Lichtspiele", "Amper-Lichtspiele", "A1466"),
     ("Cinema Kulturtreff Rennertshofen", "Cinema Kulturtreff Rennertshofen", "A0232")
   ))
-  private def r_hechingen: R = ("hechingen", "Hechingen", 48.35149, 8.96317, Seq(
+  private def r_hechingen: R = ("hechingen", "Hechingen", 48.35149, 8.96317, Seq("Hechingen", "Herrenberg", "Nagold", "Albstadt", "Rottenburg am Neckar", "Balingen", "Mössingen"), Seq(
     ("Burgtheater-Kinos", "Burgtheater-Kinos", "A2787"),
     ("Open Air Kino Burg Hohenzollern", "Open Air Kino Burg Hohenzollern", "A2053"),
     ("Schwanen-Kinos", "Schwanen-Kinos", "A2819"),
@@ -1015,7 +1015,7 @@ private[models] object GermanRosterData {
     ("Bali Kino-Palast", "Bali Kino-Palast", "A1308"),
     ("Lichtspiele Mössingen", "Lichtspiele Mössingen", "A1536")
   ))
-  private def r_juelich: R = ("juelich", "Jülich", 50.92149, 6.36267, Seq(
+  private def r_juelich: R = ("juelich", "Jülich", 50.92149, 6.36267, Seq("Jülich", "Düren", "Grevenbroich", "Eschweiler", "Alsdorf", "Erkelenz", "Heinsberg", "Hückelhoven", "Würselen", "Walheim"), Seq(
     ("KuBa", "KuBa", "A1680"),
     ("Open Air Kino Jülich", "Open Air Kino Jülich", "A2765"),
     ("Das Lumen Filmtheater", "Das Lumen Filmtheater", "A0418"),
@@ -1028,7 +1028,7 @@ private[models] object GermanRosterData {
     ("Metropolis Würselen", "Metropolis Würselen", "A1563"),
     ("Kinomobil Stuttgart - Römerhaus", "Kinomobil Stuttgart - Römerhaus", "A1954")
   ))
-  private def r_butzbach: R = ("butzbach", "Butzbach", 50.43395, 8.67122, Seq(
+  private def r_butzbach: R = ("butzbach", "Butzbach", 50.43395, 8.67122, Seq("Butzbach", "Neu-Anspach", "Grünberg", "Bad Nauheim", "Nidda", "Weilburg", "Lich", "Weilmünster"), Seq(
     ("Butzbacher Filmtheater", "Butzbacher Filmtheater", "A0154"),
     ("Open-Air-Kino im Landgrafenschloss", "Open-Air-Kino im Landgrafenschloss", "A2013"),
     ("Kino Neu Anspach", "Kino Neu Anspach", "A1612"),
@@ -1041,7 +1041,7 @@ private[models] object GermanRosterData {
     ("Traumstern", "Traumstern", "A1190"),
     ("Saalbau-Lichtspiele Weilmünster", "Saalbau-Lichtspiele Weilmünster", "A1611")
   ))
-  private def r_luebeck: R = ("luebeck", "Lübeck", 53.86893, 10.68729, Seq(
+  private def r_luebeck: R = ("luebeck", "Lübeck", 53.86893, 10.68729, Seq("Lübeck", "Bad Oldesloe", "Bad Schwartau", "Mölln", "Bad Segeberg", "Neustadt in Holstein", "Ratzeburg", "Schönberg"), Seq(
     ("CineStar Lübeck - Filmhaus", "CineStar Lübeck - Filmhaus", "A0498"),
     ("CineStar Lübeck - Stadthalle", "CineStar Lübeck - Stadthalle", "A0367"),
     ("Kino Koki - Kommunales Kino Lübeck", "Kino Koki - Kommunales Kino Lübeck", "A2241"),
@@ -1053,7 +1053,7 @@ private[models] object GermanRosterData {
     ("Burgtheater Ratzeburg", "Burgtheater Ratzeburg", "A0120"),
     ("Blitz-Lichtspiele Schönberg", "Blitz-Lichtspiele Schönberg", "A1318")
   ))
-  private def r_arnsberg: R = ("arnsberg", "Arnsberg", 51.38333, 8.08333, Seq(
+  private def r_arnsberg: R = ("arnsberg", "Arnsberg", 51.38333, 8.08333, Seq("Arnsberg", "Soest", "Meschede", "Plettenberg", "Lennestadt", "Brilon", "Schmallenberg"), Seq(
     ("Apollo Arnsberg-Neheim", "Apollo Arnsberg-Neheim", "A0038"),
     ("Centra-Theater Arnsberg", "Centra-Theater Arnsberg", "A0184"),
     ("Residenz Kino-Center", "Residenz Kino-Center", "A1062"),
@@ -1065,7 +1065,7 @@ private[models] object GermanRosterData {
     ("Cineplex Brilon", "Cineplex Brilon", "G00YX"),
     ("Lichtwerk", "Lichtwerk", "A1688")
   ))
-  private def r_loerrach: R = ("loerrach", "Lörrach", 47.61497, 7.66457, Seq(
+  private def r_loerrach: R = ("loerrach", "Lörrach", 47.61497, 7.66457, Seq("Lörrach", "Weil am Rhein", "Rheinfelden", "Schopfheim", "Müllheim", "Neuenburg am Rhein", "Kandern"), Seq(
     ("Cineplex Lörrach", "Cineplex Lörrach", "A0321"),
     ("Kino Free Cinema", "Kino Free Cinema", "A0560"),
     ("Open Air im Hof", "Open Air im Hof", "A2865"),
@@ -1077,7 +1077,7 @@ private[models] object GermanRosterData {
     ("Kino Im Stadthaus", "Kino Im Stadthaus", "A1486"),
     ("Kino Kandern", "Kino Kandern", "A0014")
   ))
-  private def r_memmingen: R = ("memmingen", "Memmingen", 47.98372, 10.18527, Seq(
+  private def r_memmingen: R = ("memmingen", "Memmingen", 47.98372, 10.18527, Seq("Memmingen", "Kaufbeuren", "Leutkirch im Allgäu", "Kempten im Allgäu", "Krumbach"), Seq(
     ("Cineplex Memmingen", "Cineplex Memmingen", "A2113"),
     ("Kaminwerk", "Kaminwerk", "A2848"),
     ("Rex Palast Memmingen", "Rex Palast Memmingen", "G0GK4"),
@@ -1089,7 +1089,7 @@ private[models] object GermanRosterData {
     ("Colosseum-Center", "Colosseum-Center", "A1382"),
     ("CinePark Krumbach (Schwaben)", "CinePark Krumbach (Schwaben)", "A0299")
   ))
-  private def r_noerdlingen: R = ("noerdlingen", "Nördlingen", 48.85122, 10.48868, Seq(
+  private def r_noerdlingen: R = ("noerdlingen", "Nördlingen", 48.85122, 10.48868, Seq("Nördlingen", "Aalen", "Dillingen an der Donau", "Neresheim", "Wemding", "Dischingen"), Seq(
     ("Movieworld Kino Nördlingen", "Movieworld Kino Nördlingen", "A2630"),
     ("Open Air Kino Ochsenzwinger Nördlingen", "Open Air Kino Ochsenzwinger Nördlingen", "A2484"),
     ("Ries Theater", "Ries Theater", "A1078"),
@@ -1101,7 +1101,7 @@ private[models] object GermanRosterData {
     ("Wemdinger Lichtspiele", "Wemdinger Lichtspiele", "A1275"),
     ("Open-Air Kino Ballmertshofer Filmfest", "Open-Air Kino Ballmertshofer Filmfest", "A2285")
   ))
-  private def r_bautzen: R = ("bautzen", "Bautzen", 51.18035, 14.43494, Seq(
+  private def r_bautzen: R = ("bautzen", "Bautzen", 51.18035, 14.43494, Seq("Bautzen", "Hoyerswerda", "Neustadt in Sachsen"), Seq(
     ("Filmpalast Bautzen", "Filmpalast Bautzen", "A0507"),
     ("Freiluftkino am Spreebogen Bautzen", "Freiluftkino am Spreebogen Bautzen", "A2697"),
     ("Open Air Kino im Hof der Ortenburg", "Open Air Kino im Hof der Ortenburg", "A2237"),
@@ -1112,7 +1112,7 @@ private[models] object GermanRosterData {
     ("Open Air an der schwarzen Mühle", "Open Air an der schwarzen Mühle", "A2526"),
     ("Grenzland Lichtspiele", "Grenzland Lichtspiele", "A0592")
   ))
-  private def r_rostock: R = ("rostock", "Rostock", 54.0887, 12.14049, Seq(
+  private def r_rostock: R = ("rostock", "Rostock", 54.0887, 12.14049, Seq("Rostock", "Güstrow", "Kühlungsborn", "Bad Doberan"), Seq(
     ("CineStar Rostock - Capitol", "CineStar Rostock - Capitol", "A0370"),
     ("CineStar Rostock - Lütten Klein", "CineStar Rostock - Lütten Klein", "A0358"),
     ("Lichtspieltheater Wundervoll (Frieda 23)", "Lichtspieltheater Wundervoll (Frieda 23)", "A2649"),
@@ -1123,7 +1123,7 @@ private[models] object GermanRosterData {
     ("Ostseekino Kühlungsborn", "Ostseekino Kühlungsborn", "A1484"),
     ("Kino- und Kulturverein", "Kino- und Kulturverein", "A0643")
   ))
-  private def r_trier: R = ("trier", "Trier", 49.75565, 6.63935, Seq(
+  private def r_trier: R = ("trier", "Trier", 49.75565, 6.63935, Seq("Trier", "Merzig", "Wittlich", "Wadern", "Nonnweiler"), Seq(
     ("Broadway Trier", "Broadway Trier", "A0109"),
     ("CineAStA", "CineAStA", "A2728"),
     ("CinemaxX Trier", "CinemaxX Trier", "A0288"),
@@ -1134,7 +1134,7 @@ private[models] object GermanRosterData {
     ("Starlight-Kino", "Starlight-Kino", "A1150"),
     ("Central-Filmtheater Nonnweiler", "Central-Filmtheater Nonnweiler", "A0190")
   ))
-  private def r_aschaffenburg: R = ("aschaffenburg", "Aschaffenburg", 49.97704, 9.15214, Seq(
+  private def r_aschaffenburg: R = ("aschaffenburg", "Aschaffenburg", 49.97704, 9.15214, Seq("Aschaffenburg", "Büdingen", "Gelnhausen", "Seligenstadt", "Babenhausen", "Erlenbach am Main"), Seq(
     ("Casino Aschaffenburg", "Casino Aschaffenburg", "A1342"),
     ("Kinopolis Aschaffenburg", "Kinopolis Aschaffenburg", "A0827"),
     ("OPEN AIR auf dem Campus FH", "OPEN AIR auf dem Campus FH", "A1959"),
@@ -1144,7 +1144,7 @@ private[models] object GermanRosterData {
     ("Turmpalast", "Turmpalast", "A1650"),
     ("Passage Erlenbach am Main", "Passage Erlenbach am Main", "A1032")
   ))
-  private def r_goerlitz: R = ("goerlitz", "Görlitz", 51.15518, 14.98853, Seq(
+  private def r_goerlitz: R = ("goerlitz", "Görlitz", 51.15518, 14.98853, Seq("Görlitz", "Zittau", "Mittelherwigsdorf", "Rietschen"), Seq(
     ("Camillo-Sommerkino im Rathaushof", "Camillo-Sommerkino im Rathaushof", "A2090"),
     ("CamilloKino", "CamilloKino", "A0138"),
     ("Filmpalast Görlitz", "Filmpalast Görlitz", "A0510"),
@@ -1155,7 +1155,7 @@ private[models] object GermanRosterData {
     ("Kulturfabrik Meda", "Kulturfabrik Meda", "A2710"),
     ("Kino-Cafe", "Kino-Cafe", "A0759")
   ))
-  private def r_goettingen: R = ("goettingen", "Göttingen", 51.53443, 9.93228, Seq(
+  private def r_goettingen: R = ("goettingen", "Göttingen", 51.53443, 9.93228, Seq("Göttingen", "Einbeck", "Northeim", "Duderstadt", "Witzenhausen", "Bad Sooden-Allendorf"), Seq(
     ("CinemaxX Göttingen", "CinemaxX Göttingen", "A1293"),
     ("Lumière", "Lumière", "A1548"),
     ("Open Air Kino im Freibad", "Open Air Kino im Freibad", "A1788"),
@@ -1166,7 +1166,7 @@ private[models] object GermanRosterData {
     ("Capitol-Kino", "Capitol-Kino", "A1335"),
     ("Kurtheater Bad Sooden-Allendorf", "Kurtheater Bad Sooden-Allendorf", "A0890")
   ))
-  private def r_rheine: R = ("rheine", "Rheine", 52.28509, 7.44055, Seq(
+  private def r_rheine: R = ("rheine", "Rheine", 52.28509, 7.44055, Seq("Rheine", "Lingen", "Nordhorn", "Ibbenbüren", "Gronau", "Emsdetten", "Steinfurt"), Seq(
     ("Cinetech das Erlebniskino Rheine", "Cinetech das Erlebniskino Rheine", "A0383"),
     ("Zinema City", "Zinema City", "A0398"),
     ("Central-Kino Emsland (Lingen)", "Central-Kino Emsland (Lingen)", "A0200"),
@@ -1177,7 +1177,7 @@ private[models] object GermanRosterData {
     ("Metropolis Kino Emsdetten", "Metropolis Kino Emsdetten", "A2809"),
     ("Kino Steinfurt", "Kino Steinfurt", "A0551")
   ))
-  private def r_plauen: R = ("plauen", "Plauen", 50.4973, 12.13782, Seq(
+  private def r_plauen: R = ("plauen", "Plauen", 50.4973, 12.13782, Seq("Plauen", "Hof", "Greiz", "Auerbach", "Oelsnitz", "Schleiz", "Markneukirchen"), Seq(
     ("Capitol-Kino Plauen", "Capitol-Kino Plauen", "A0156"),
     ("Malzhaus", "Malzhaus", "A2375"),
     ("Central-Kino Hof", "Central-Kino Hof", "A1346"),
@@ -1188,7 +1188,7 @@ private[models] object GermanRosterData {
     ("Neues Kino im Hörsaal", "Neues Kino im Hörsaal", "A0989"),
     ("Harmonie Lichtspiele Markneukirchen", "Harmonie Lichtspiele Markneukirchen", "A0600")
   ))
-  private def r_crailsheim: R = ("crailsheim", "Crailsheim", 49.13444, 10.07193, Seq(
+  private def r_crailsheim: R = ("crailsheim", "Crailsheim", 49.13444, 10.07193, Seq("Crailsheim", "Ellwangen", "Künzelsau", "Feuchtwangen", "Rothenburg", "Schrozberg", "Ilshofen", "Kirchberg an der Jagst"), Seq(
     ("Cinecity", "Cinecity", "A0224"),
     ("Kammer-Filmtheater Premium-Kino Crailsheim", "Kammer-Filmtheater Premium-Kino Crailsheim", "A0641"),
     ("Kino Regina Ellwangen", "Kino Regina Ellwangen", "A1590"),
@@ -1199,7 +1199,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Roland-Wurmthaler-Halle", "Kinomobil Stuttgart - Roland-Wurmthaler-Halle", "A0789"),
     ("Kino Klappe", "Kino Klappe", "A0744")
   ))
-  private def r_bad_aibling: R = ("bad-aibling", "Bad Aibling", 47.8638, 12.01055, Seq(
+  private def r_bad_aibling: R = ("bad-aibling", "Bad Aibling", 47.8638, 12.01055, Seq("Bad Aibling", "Wasserburg am Inn", "Rosenheim", "Grafing bei München", "Ebersberg", "Hausham", "Bad Endorf"), Seq(
     ("Aibvision Filmtheater und Lindenkino", "Aibvision Filmtheater und Lindenkino", "A1543"),
     ("Open Air am B&amp;O Parkhotel", "Open Air am B&amp;O Parkhotel", "A2862"),
     ("Kino Utopia", "Kino Utopia", "A1658"),
@@ -1210,7 +1210,7 @@ private[models] object GermanRosterData {
     ("Oberland Kinocenter", "Oberland Kinocenter", "A1001"),
     ("Marias Kino", "Marias Kino", "A1555")
   ))
-  private def r_osnabrueck: R = ("osnabrueck", "Osnabrück", 52.27264, 8.0498, Seq(
+  private def r_osnabrueck: R = ("osnabrueck", "Osnabrück", 52.27264, 8.0498, Seq("Osnabrück", "Bramsche", "Ankum"), Seq(
     ("Cinema-Arthouse", "Cinema-Arthouse", "A0257"),
     ("Filmtheater Hasetor", "Filmtheater Hasetor", "A1431"),
     ("HALL OF FAME - Kino de Luxe", "HALL OF FAME - Kino de Luxe", "A0348"),
@@ -1220,7 +1220,7 @@ private[models] object GermanRosterData {
     ("Universum e.V.", "Universum e.V.", "A1655"),
     ("Gloria Kinocenter", "Gloria Kinocenter", "A0576")
   ))
-  private def r_muenster: R = ("muenster", "Münster", 51.96236, 7.62571, Seq(
+  private def r_muenster: R = ("muenster", "Münster", 51.96236, 7.62571, Seq("Münster", "Munster", "Ahlen", "Dülmen", "Coesfeld"), Seq(
     ("Cinema &amp; Kurbelkiste Münster", "Cinema &amp; Kurbelkiste Münster", "A0243"),
     ("Kaisersaal-Lichtspiele", "Kaisersaal-Lichtspiele", "A0633"),
     ("Schlosstheater Münster", "Schlosstheater Münster", "A1130"),
@@ -1230,7 +1230,7 @@ private[models] object GermanRosterData {
     ("Cinema Coesfeld (Dülmen)", "Cinema Coesfeld (Dülmen)", "A0249"),
     ("Cinema Coesfeld (Coesfeld)", "Cinema Coesfeld (Coesfeld)", "A0229")
   ))
-  private def r_erfurt: R = ("erfurt", "Erfurt", 50.97734, 11.03536, Seq(
+  private def r_erfurt: R = ("erfurt", "Erfurt", 50.97734, 11.03536, Seq("Erfurt", "Gotha", "Ilmenau"), Seq(
     ("CineStar Erfurt", "CineStar Erfurt", "A0344"),
     ("Kinoklub am Hirschlachufer", "Kinoklub am Hirschlachufer", "A0778"),
     ("Open Air Kino egapark", "Open Air Kino egapark", "A2261"),
@@ -1240,7 +1240,7 @@ private[models] object GermanRosterData {
     ("Hochschulfilmclub TU Ilmenau", "Hochschulfilmclub TU Ilmenau", "A0610"),
     ("Linden Lichtspiele", "Linden Lichtspiele", "A0917")
   ))
-  private def r_ulm: R = ("ulm", "Ulm", 48.39841, 9.99155, Seq(
+  private def r_ulm: R = ("ulm", "Ulm", 48.39841, 9.99155, Seq("Ulm", "Neu-Ulm", "Ehingen", "Günzburg", "Sontheim", "Offingen"), Seq(
     ("Mephisto Ulm", "Mephisto Ulm", "A1559"),
     ("Obscura Ulm", "Obscura Ulm", "A0692"),
     ("Xinedome", "Xinedome", "A1285"),
@@ -1250,7 +1250,7 @@ private[models] object GermanRosterData {
     ("Kino in der Dampfsäg", "Kino in der Dampfsäg", "A2588"),
     ("Donaulichtspiele", "Donaulichtspiele", "A1395")
   ))
-  private def r_koblenz: R = ("koblenz", "Koblenz", 50.35357, 7.57883, Seq(
+  private def r_koblenz: R = ("koblenz", "Koblenz", 50.35357, 7.57883, Seq("Koblenz", "Neuwied", "Limburg", "Lahnstein", "Boppard", "Montabaur"), Seq(
     ("Kinopolis Koblenz", "Kinopolis Koblenz", "A0830"),
     ("Odeon-Kinocenter", "Odeon-Kinocenter", "A0062"),
     ("Metropol-Kino-Center", "Metropol-Kino-Center", "A1564"),
@@ -1260,7 +1260,7 @@ private[models] object GermanRosterData {
     ("Cinema Boppard", "Cinema Boppard", "A1360"),
     ("Capitol-Kinocenter Montabaur", "Capitol-Kinocenter Montabaur", "A0163")
   ))
-  private def r_bad_toelz: R = ("bad-toelz", "Bad Tölz", 47.76111, 11.5589, Seq(
+  private def r_bad_toelz: R = ("bad-toelz", "Bad Tölz", 47.76111, 11.5589, Seq("Bad Tölz", "Wolfratshausen", "Holzkirchen", "Penzberg", "Tutzing", "Rottach-Egern", "Kochel am See"), Seq(
     ("Capitol Filmtheater Bad Tölz", "Capitol Filmtheater Bad Tölz", "A0142"),
     ("Isar-Kinocenter", "Isar-Kinocenter", "A0628"),
     ("Kinocenter Wolfratshausen", "Kinocenter Wolfratshausen", "A1171"),
@@ -1270,7 +1270,7 @@ private[models] object GermanRosterData {
     ("Kino am Tegernsee", "Kino am Tegernsee", "A0093"),
     ("Filmstudio Kochel", "Filmstudio Kochel", "A0532")
   ))
-  private def r_minden: R = ("minden", "Minden", 52.28953, 8.91455, Seq(
+  private def r_minden: R = ("minden", "Minden", 52.28953, 8.91455, Seq("Minden", "Bad Oeynhausen", "Lohne", "Löhne", "Espelkamp", "Stadthagen", "Bückeburg", "Rahden"), Seq(
     ("Filmtheater &quot;Die Birke&quot;", "Filmtheater &quot;Die Birke&quot;", "A2798"),
     ("UCI Bad Oeynhausen", "UCI Bad Oeynhausen", "A2666"),
     ("Capitol-Kinocenter Lohne (Oldenburg)", "Capitol-Kinocenter Lohne (Oldenburg)", "A0162"),
@@ -1280,7 +1280,7 @@ private[models] object GermanRosterData {
     ("Residenz-Kino-Center", "Residenz-Kino-Center", "A1061"),
     ("Kinocenter Rahden", "Kinocenter Rahden", "A1730")
   ))
-  private def r_vechta: R = ("vechta", "Vechta", 52.73064, 8.28968, Seq(
+  private def r_vechta: R = ("vechta", "Vechta", 52.73064, 8.28968, Seq("Vechta", "Wildeshausen", "Diepholz", "Damme", "Quakenbrück", "Twistringen", "Lemförde", "Quernheim"), Seq(
     ("Schauburg Cineworld Vechta", "Schauburg Cineworld Vechta", "A1118"),
     ("Lindenhof-Lichtspiele", "Lindenhof-Lichtspiele", "A0919"),
     ("Central Diepholz", "Central Diepholz", "A1344"),
@@ -1290,7 +1290,7 @@ private[models] object GermanRosterData {
     ("Lichtburg Open Air Kino", "Lichtburg Open Air Kino", "A1865"),
     ("Lichtburg Lemförde", "Lichtburg Lemförde", "A0689")
   ))
-  private def r_schwerin: R = ("schwerin", "Schwerin", 53.62937, 11.41316, Seq(
+  private def r_schwerin: R = ("schwerin", "Schwerin", 53.62937, 11.41316, Seq("Schwerin", "Ludwigslust", "Wismar"), Seq(
     ("Capitol Kino Schwerin", "Capitol Kino Schwerin", "A0149"),
     ("Kino unterm Dach", "Kino unterm Dach", "A0559"),
     ("Multiplex Mega Movies", "Multiplex Mega Movies", "A0977"),
@@ -1299,7 +1299,7 @@ private[models] object GermanRosterData {
     ("Open Air Kino am Schweizerhaus", "Open Air Kino am Schweizerhaus", "A1992"),
     ("CineStar Wismar", "CineStar Wismar", "A0361")
   ))
-  private def r_cottbus: R = ("cottbus", "Cottbus", 51.75769, 14.32888, Seq(
+  private def r_cottbus: R = ("cottbus", "Cottbus", 51.75769, 14.32888, Seq("Cottbus", "Spremberg", "Senftenberg"), Seq(
     ("Kino in der Stadhalle Cottbus", "Kino in der Stadhalle Cottbus", "A2370"),
     ("Obenkino im Glad-House", "Obenkino im Glad-House", "A1000"),
     ("UCI am Lausitz Park", "UCI am Lausitz Park", "A1204"),
@@ -1308,7 +1308,7 @@ private[models] object GermanRosterData {
     ("Spremberger Filmnächte", "Spremberger Filmnächte", "A2758"),
     ("Kino am See", "Kino am See", "A1887")
   ))
-  private def r_bamberg: R = ("bamberg", "Bamberg", 49.89873, 10.90067, Seq(
+  private def r_bamberg: R = ("bamberg", "Bamberg", 49.89873, 10.90067, Seq("Bamberg", "Forchheim", "Zeil am Main"), Seq(
     ("Lichtspiel, Kino &amp; Café", "Lichtspiel, Kino &amp; Café", "A1535"),
     ("Odeon Lichtspiel, Kino &amp; Café", "Odeon Lichtspiel, Kino &amp; Café", "A1005"),
     ("Open Air Kino Hainbad", "Open Air Kino Hainbad", "A1983"),
@@ -1317,7 +1317,7 @@ private[models] object GermanRosterData {
     ("Open Air Kino In der Kaiserpfalz Forchheim", "Open Air Kino In der Kaiserpfalz Forchheim", "A1968"),
     ("Capitol-Theater (Foto Kino Schneyer)", "Capitol-Theater (Foto Kino Schneyer)", "A0166")
   ))
-  private def r_landshut: R = ("landshut", "Landshut", 48.52961, 12.16179, Seq(
+  private def r_landshut: R = ("landshut", "Landshut", 48.52961, 12.16179, Seq("Landshut", "Moosburg", "Dorfen", "Vilsbiburg", "Gangkofen"), Seq(
     ("Filmzentrum e.V. Kinoptikum", "Filmzentrum e.V. Kinoptikum", "A0834"),
     ("Kinopolis Landshut", "Kinopolis Landshut", "A0026"),
     ("Kleines Theater Landshut", "Kleines Theater Landshut", "A2852"),
@@ -1326,7 +1326,7 @@ private[models] object GermanRosterData {
     ("Cineplex Vilsbiburg", "Cineplex Vilsbiburg", "A0896"),
     ("Phantasia", "Phantasia", "A2587")
   ))
-  private def r_kaiserslautern: R = ("kaiserslautern", "Kaiserslautern", 49.443, 7.77161, Seq(
+  private def r_kaiserslautern: R = ("kaiserslautern", "Kaiserslautern", 49.443, 7.77161, Seq("Kaiserslautern", "Pirmasens", "Landstuhl", "Annweiler am Trifels", "Enkenbach Alsenborn", "Kusel"), Seq(
     ("UCI Kaiserslautern", "UCI Kaiserslautern", "A0669"),
     ("Union - Studio für Filmkunst", "Union - Studio für Filmkunst", "A1226"),
     ("Walhalla Kinocenter", "Walhalla Kinocenter", "A1659"),
@@ -1335,7 +1335,7 @@ private[models] object GermanRosterData {
     ("Provinzkino", "Provinzkino", "A1588"),
     ("Kinett", "Kinett", "A1458")
   ))
-  private def r_lueneburg: R = ("lueneburg", "Lüneburg", 53.25122, 10.41548, Seq(
+  private def r_lueneburg: R = ("lueneburg", "Lüneburg", 53.25122, 10.41548, Seq("Lüneburg", "Uelzen", "Winsen", "Geesthacht", "Schwarzenbek", "Boizenburg"), Seq(
     ("Filmpalast Lüneburg", "Filmpalast Lüneburg", "A0327"),
     ("Scala Kinocenter Lüneburg", "Scala Kinocenter Lüneburg", "A1616"),
     ("Central-Theater Uelzen", "Central-Theater Uelzen", "A0206"),
@@ -1344,7 +1344,7 @@ private[models] object GermanRosterData {
     ("Kino Grimm", "Kino Grimm", "A0695"),
     ("Kino Boizenburg", "Kino Boizenburg", "A0710")
   ))
-  private def r_hameln: R = ("hameln", "Hameln", 52.10397, 9.35623, Seq(
+  private def r_hameln: R = ("hameln", "Hameln", 52.10397, 9.35623, Seq("Hameln", "Rinteln", "Bad Pyrmont", "Holzminden", "Alfeld"), Seq(
     ("Maxx Hameln", "Maxx Hameln", "A1715"),
     ("Sumpfblume", "Sumpfblume", "A2825"),
     ("Kinocenter Rinteln", "Kinocenter Rinteln", "A1503"),
@@ -1353,7 +1353,7 @@ private[models] object GermanRosterData {
     ("Roxy Filmcentrum", "Roxy Filmcentrum", "A0697"),
     ("Kinowelt Alfeld", "Kinowelt Alfeld", "A1515")
   ))
-  private def r_burghausen: R = ("burghausen", "Burghausen", 48.16925, 12.83139, Seq(
+  private def r_burghausen: R = ("burghausen", "Burghausen", 48.16925, 12.83139, Seq("Burghausen", "Eggenfelden", "Waldkraiburg", "Mühldorf", "Simbach am Inn"), Seq(
     ("Anker-Filmtheater", "Anker-Filmtheater", "A1490"),
     ("Quadroscope", "Quadroscope", "A1147"),
     ("Gerniale Kino Open-Air", "Gerniale Kino Open-Air", "A2200"),
@@ -1362,7 +1362,7 @@ private[models] object GermanRosterData {
     ("Hollywood am Inn", "Hollywood am Inn", "A1675"),
     ("Bavaria-Kino-Center Simbach", "Bavaria-Kino-Center Simbach", "A1314")
   ))
-  private def r_bad_kreuznach: R = ("bad-kreuznach", "Bad Kreuznach", 49.8414, 7.86713, Seq(
+  private def r_bad_kreuznach: R = ("bad-kreuznach", "Bad Kreuznach", 49.8414, 7.86713, Seq("Bad Kreuznach", "Bingen am Rhein", "Ingelheim am Rhein", "Alzey", "Geisenheim", "Simmern", "Bad Sobernheim"), Seq(
     ("Cineplex Bad Kreuznach", "Cineplex Bad Kreuznach", "A0308"),
     ("KiKuBi", "KiKuBi", "A0251"),
     ("Casablanca Ingelheim am Rhein", "Casablanca Ingelheim am Rhein", "A0024"),
@@ -1371,7 +1371,7 @@ private[models] object GermanRosterData {
     ("Pro-Winzkino", "Pro-Winzkino", "A1589"),
     ("Rex Bad Sobernheim", "Rex Bad Sobernheim", "A1071")
   ))
-  private def r_magdeburg: R = ("magdeburg", "Magdeburg", 52.13129, 11.63189, Seq(
+  private def r_magdeburg: R = ("magdeburg", "Magdeburg", 52.13129, 11.63189, Seq("Magdeburg", "Burg"), Seq(
     ("CineStar Magdeburg", "CineStar Magdeburg", "A1259"),
     ("CinemaxX Magdeburg", "CinemaxX Magdeburg", "A0293"),
     ("Kulturzentrum auf dem Moritzhof", "Kulturzentrum auf dem Moritzhof", "A1709"),
@@ -1379,7 +1379,7 @@ private[models] object GermanRosterData {
     ("Studio-Kino", "Studio-Kino", "A1165"),
     ("Burg-Theater Burg", "Burg-Theater Burg", "A0124")
   ))
-  private def r_marburg: R = ("marburg", "Marburg", 50.80904, 8.77069, Seq(
+  private def r_marburg: R = ("marburg", "Marburg", 50.80904, 8.77069, Seq("Marburg", "Dillenburg", "Schwalmstadt"), Seq(
     ("Capitol Marburg", "Capitol Marburg", "A1332"),
     ("Cineplex Marburg", "Cineplex Marburg", "A0320"),
     ("Kino Cafe Trauma", "Kino Cafe Trauma", "A0714"),
@@ -1387,7 +1387,7 @@ private[models] object GermanRosterData {
     ("Movie Star Dillenburg", "Movie Star Dillenburg", "A0579"),
     ("Burgtheater Treysa", "Burgtheater Treysa", "A0123")
   ))
-  private def r_oldenburg: R = ("oldenburg", "Oldenburg", 53.14039, 8.21479, Seq(
+  private def r_oldenburg: R = ("oldenburg", "Oldenburg", 53.14039, 8.21479, Seq("Oldenburg", "Oldenburg (Oldenburg)", "Cloppenburg", "Zetel"), Seq(
     ("Casablanca-Programmkino", "Casablanca-Programmkino", "A0097"),
     ("CinemaxX Oldenburg", "CinemaxX Oldenburg", "A0281"),
     ("Studentisches Kino Gegenlicht", "Studentisches Kino Gegenlicht", "A0569"),
@@ -1395,7 +1395,7 @@ private[models] object GermanRosterData {
     ("CineCenter Cloppenburg", "CineCenter Cloppenburg", "A1354"),
     ("Zeli - Zeteler Lichtspiele e.V.", "Zeli - Zeteler Lichtspiele e.V.", "A1660")
   ))
-  private def r_fulda: R = ("fulda", "Fulda", 50.55162, 9.67518, Seq(
+  private def r_fulda: R = ("fulda", "Fulda", 50.55162, 9.67518, Seq("Fulda", "Schlüchtern", "Lauterbach", "Bad Brückenau"), Seq(
     ("CineStar Fulda", "CineStar Fulda", "A0366"),
     ("Kinoinitiative 35", "Kinoinitiative 35", "A2661"),
     ("Museumscafé", "Museumscafé", "A2860"),
@@ -1403,7 +1403,7 @@ private[models] object GermanRosterData {
     ("Lichtspielhaus Lauterbach (Hessen)", "Lichtspielhaus Lauterbach (Hessen)", "A0911"),
     ("Rhön-Lichtspiele", "Rhön-Lichtspiele", "A2314")
   ))
-  private def r_passau: R = ("passau", "Passau", 48.5665, 13.43122, Seq(
+  private def r_passau: R = ("passau", "Passau", 48.5665, 13.43122, Seq("Passau", "Bad Füssing", "Freyung"), Seq(
     ("Cineplex Passau", "Cineplex Passau", "A0322"),
     ("ProLi Cinema", "ProLi Cinema", "G011E"),
     ("ScharfrichterKino", "ScharfrichterKino", "A1622"),
@@ -1411,7 +1411,7 @@ private[models] object GermanRosterData {
     ("Kino im großen Kurhaus", "Kino im großen Kurhaus", "A1482"),
     ("Cineplex Freyung", "Cineplex Freyung", "A2642")
   ))
-  private def r_ansbach: R = ("ansbach", "Ansbach", 49.30481, 10.5931, Seq(
+  private def r_ansbach: R = ("ansbach", "Ansbach", 49.30481, 10.5931, Seq("Ansbach", "Neustadt an der Aisch", "Bad Windsheim", "Grosshabersdorf"), Seq(
     ("Capitol Kinocenter", "Capitol Kinocenter", "A1338"),
     ("Kammerspiele Ansbach", "Kammerspiele Ansbach", "A1733"),
     ("Kultur am Schloss", "Kultur am Schloss", "A1628"),
@@ -1419,7 +1419,7 @@ private[models] object GermanRosterData {
     ("Open Air im Freilandmuseum", "Open Air im Freilandmuseum", "A1828"),
     ("Lichtspiele Großhabersdorf", "Lichtspiele Großhabersdorf", "A1365")
   ))
-  private def r_paderborn: R = ("paderborn", "Paderborn", 51.71905, 8.75439, Seq(
+  private def r_paderborn: R = ("paderborn", "Paderborn", 51.71905, 8.75439, Seq("Paderborn", "Paderborn (Kernstadt)", "Bad Driburg", "Brakel", "Bad Lippspringe"), Seq(
     ("Pollux by Cineplex Paderborn", "Pollux by Cineplex Paderborn", "A0315"),
     ("UCI Paderborn", "UCI Paderborn", "A0832"),
     ("Programmkino Lichtblick e.V.", "Programmkino Lichtblick e.V.", "A1044"),
@@ -1427,7 +1427,7 @@ private[models] object GermanRosterData {
     ("Kino Brakel", "Kino Brakel", "A0711"),
     ("Odins Filmtheater", "Odins Filmtheater", "A1008")
   ))
-  private def r_traunstein: R = ("traunstein", "Traunstein", 47.86825, 12.64335, Seq(
+  private def r_traunstein: R = ("traunstein", "Traunstein", 47.86825, 12.64335, Seq("Traunstein", "Traunreut", "Bad Reichenhall", "Trostberg", "Prien am Chiemsee"), Seq(
     ("Cine Chiemgau Traunstein", "Cine Chiemgau Traunstein", "A0177"),
     ("Kinos am Bahnhof", "Kinos am Bahnhof", "A0136"),
     ("Cine Chiemgau Traunreut", "Cine Chiemgau Traunreut", "A1191"),
@@ -1435,7 +1435,7 @@ private[models] object GermanRosterData {
     ("Stadtkino Trostberg", "Stadtkino Trostberg", "A1620"),
     ("Mikes Kino", "Mikes Kino", "A0961")
   ))
-  private def r_brandenburg: R = ("brandenburg", "Brandenburg", 52.41667, 12.55, Seq(
+  private def r_brandenburg: R = ("brandenburg", "Brandenburg", 52.41667, 12.55, Seq("Brandenburg", "Brandenburg an der Havel", "Rathenow", "Werder", "Genthin", "Bad Belzig"), Seq(
     ("Concerthaus Kino", "Concerthaus Kino", "A0421"),
     ("Fontane Klub", "Fontane Klub", "A1930"),
     ("Haveltor Kino", "Haveltor Kino", "A0603"),
@@ -1443,7 +1443,7 @@ private[models] object GermanRosterData {
     ("Union Kino Genthin", "Union Kino Genthin", "A1239"),
     ("Hofgarten Kino", "Hofgarten Kino", "A0611")
   ))
-  private def r_altenburg: R = ("altenburg", "Altenburg", 50.98763, 12.43684, Seq(
+  private def r_altenburg: R = ("altenburg", "Altenburg", 50.98763, 12.43684, Seq("Altenburg", "Zeitz", "Glauchau", "Werdau", "Borna", "Geithain"), Seq(
     ("Capitol Altenburg", "Capitol Altenburg", "A0143"),
     ("Brühl Cinema Zeitz", "Brühl Cinema Zeitz", "A2637"),
     ("Clubkino Glauchau e.V.", "Clubkino Glauchau e.V.", "A2315"),
@@ -1451,7 +1451,7 @@ private[models] object GermanRosterData {
     ("Volksplatz Borna Open Air Kino", "Volksplatz Borna Open Air Kino", "A1804"),
     ("Kino im Bürgerhaus Geithain", "Kino im Bürgerhaus Geithain", "A2944")
   ))
-  private def r_riesa: R = ("riesa", "Riesa", 51.30777, 13.29168, Seq(
+  private def r_riesa: R = ("riesa", "Riesa", 51.30777, 13.29168, Seq("Riesa", "Meissen", "Döbeln", "Torgau", "Grossenhain", "Gröditz"), Seq(
     ("Filmpalast Capital Riesa", "Filmpalast Capital Riesa", "A0515"),
     ("Filmpalast Meißen", "Filmpalast Meißen", "A0371"),
     ("Cinema Döbeln", "Cinema Döbeln", "A0215"),
@@ -1459,7 +1459,7 @@ private[models] object GermanRosterData {
     ("Filmgalerie Großenhain", "Filmgalerie Großenhain", "A0496"),
     ("Castello", "Castello", "A0182")
   ))
-  private def r_sigmaringen: R = ("sigmaringen", "Sigmaringen", 48.08829, 9.23033, Seq(
+  private def r_sigmaringen: R = ("sigmaringen", "Sigmaringen", 48.08829, 9.23033, Seq("Sigmaringen", "Riedlingen", "Mengen", "Gammertingen", "Emmingen-Liptingen", "Kolbingen"), Seq(
     ("Hof-Theater", "Hof-Theater", "A0613"),
     ("Lichtspielhaus Riedlingen", "Lichtspielhaus Riedlingen", "A1148"),
     ("Kinocenter Mengen", "Kinocenter Mengen", "A1502"),
@@ -1467,7 +1467,7 @@ private[models] object GermanRosterData {
     ("Kinomobil Stuttgart - Musiksaal der Witthohschule", "Kinomobil Stuttgart - Musiksaal der Witthohschule", "A1941"),
     ("Kinomobil Stuttgart - Kolbingen Dorfplatz", "Kinomobil Stuttgart - Kolbingen Dorfplatz", "A0811")
   ))
-  private def r_anklam: R = ("anklam", "Anklam", 53.85637, 13.68965, Seq(
+  private def r_anklam: R = ("anklam", "Anklam", 53.85637, 13.68965, Seq("Anklam", "Ueckermünde", "Zinnowitz", "Heringsdorf", "Koserow", "Zempin"), Seq(
     ("Kino-Center Anklam", "Kino-Center Anklam", "A0703"),
     ("Volksbühne", "Volksbühne", "A1262"),
     ("Club-Kino", "Club-Kino", "A0413"),
@@ -1475,7 +1475,7 @@ private[models] object GermanRosterData {
     ("Autokino Usedom", "Autokino Usedom", "A0074"),
     ("Sommerkino Zempin (SAK)", "Sommerkino Zempin (SAK)", "A2092")
   ))
-  private def r_altensteig: R = ("altensteig", "Altensteig", 48.58649, 8.60395, Seq(
+  private def r_altensteig: R = ("altensteig", "Altensteig", 48.58649, 8.60395, Seq("Altensteig", "Bad Wildbad", "Schömberg", "Althengstett", "Lossburg", "Haiterbach"), Seq(
     ("Open-Air Kino im Schlossgarten", "Open-Air Kino im Schlossgarten", "A1934"),
     ("KiWi-Kino", "KiWi-Kino", "A0847"),
     ("Kurtheater Schömberg", "Kurtheater Schömberg", "A0888"),
@@ -1483,375 +1483,375 @@ private[models] object GermanRosterData {
     ("Kino unterm Sternenhimmel Loßburg", "Kino unterm Sternenhimmel Loßburg", "A2083"),
     ("Kinomobil Stuttgart - Festhalle Haiterbach", "Kinomobil Stuttgart - Festhalle Haiterbach", "A0804")
   ))
-  private def r_celle: R = ("celle", "Celle", 52.62264, 10.08047, Seq(
+  private def r_celle: R = ("celle", "Celle", 52.62264, 10.08047, Seq("Celle", "Burgdorf", "Wathlingen"), Seq(
     ("Achteinhalb", "Achteinhalb", "A0005"),
     ("Kammer-Lichtspiele / Filmpalast Celle", "Kammer-Lichtspiele / Filmpalast Celle", "A0638"),
     ("Open Air Kino", "Open Air Kino", "A2869"),
     ("Neue Schauburg Burgdorf", "Neue Schauburg Burgdorf", "A1572"),
     ("Kleines Kino Wathlingen", "Kleines Kino Wathlingen", "A2709")
   ))
-  private def r_neubrandenburg: R = ("neubrandenburg", "Neubrandenburg", 53.55735, 13.26105, Seq(
+  private def r_neubrandenburg: R = ("neubrandenburg", "Neubrandenburg", 53.55735, 13.26105, Seq("Neubrandenburg", "Neustrelitz", "Feldberger Seenlandschaft"), Seq(
     ("CineStar Neubrandenburg", "CineStar Neubrandenburg", "A0331"),
     ("Latücht - Kommunales Kino", "Latücht - Kommunales Kino", "A0894"),
     ("Basiskulturfabrik", "Basiskulturfabrik", "A0084"),
     ("Movie Star Neustrelitz", "Movie Star Neustrelitz", "A2333"),
     ("Clubkino Feldberg", "Clubkino Feldberg", "A2761")
   ))
-  private def r_dessau_rosslau: R = ("dessau-rosslau", "Dessau-Roßlau", 51.83864, 12.24555, Seq(
+  private def r_dessau_rosslau: R = ("dessau-rosslau", "Dessau-Roßlau", 51.83864, 12.24555, Seq("Dessau-Roßlau", "Dessau", "Lutherstadt Wittenberg", "Wittenberg"), Seq(
     ("Kiez-Kino", "Kiez-Kino", "A2849"),
     ("Open Air am Landhaus Dessau", "Open Air am Landhaus Dessau", "A2702"),
     ("UCI Dessau", "UCI Dessau", "A2890"),
     ("Sommerkino auf dem Cranach-Hof", "Sommerkino auf dem Cranach-Hof", "A2507"),
     ("Centralkino Wittenberg", "Centralkino Wittenberg", "A0209")
   ))
-  private def r_emden: R = ("emden", "Emden", 53.36592, 7.20846, Seq(
+  private def r_emden: R = ("emden", "Emden", 53.36592, 7.20846, Seq("Emden", "Aurich", "Papenburg", "Leer"), Seq(
     ("CineStar Emden", "CineStar Emden", "A0349"),
     ("Sommernachtskino im Van-Ameren Bad", "Sommernachtskino im Van-Ameren Bad", "A1859"),
     ("Kino Aurich", "Kino Aurich", "A2911"),
     ("Kino Papenburg", "Kino Papenburg", "A0466"),
     ("Kino Leer (Ostfriesland)", "Kino Leer (Ostfriesland)", "A0675")
   ))
-  private def r_waldshut_tiengen: R = ("waldshut-tiengen", "Waldshut-Tiengen", 47.62323, 8.21717, Seq(
+  private def r_waldshut_tiengen: R = ("waldshut-tiengen", "Waldshut-Tiengen", 47.62323, 8.21717, Seq("Waldshut-Tiengen", "Bad Säckingen", "Lenzkirch", "Sankt Blasien"), Seq(
     ("Albrecht Kino Waldshut", "Albrecht Kino Waldshut", "A2786"),
     ("Open Air-Kino Waldshut", "Open Air-Kino Waldshut", "A2225"),
     ("Gloria Bad Säckingen", "Gloria Bad Säckingen", "A1438"),
     ("Kultur im Kino", "Kultur im Kino", "A0889"),
     ("Kino im Kursaal", "Kino im Kursaal", "A2802")
   ))
-  private def r_bad_urach: R = ("bad-urach", "Bad Urach", 48.49107, 9.40009, Seq(
+  private def r_bad_urach: R = ("bad-urach", "Bad Urach", 48.49107, 9.40009, Seq("Bad Urach", "Nürtingen", "Metzingen", "Ensingen"), Seq(
     ("Bad Uracher Sommer Open Air", "Bad Uracher Sommer Open Air", "A2534"),
     ("Forum 22", "Forum 22", "A1731"),
     ("Traumpalast Nürtingen", "Traumpalast Nürtingen", "A1511"),
     ("Luna-Filmtheater", "Luna-Filmtheater", "A1549"),
     ("Kinomobil Stuttgart - BIO-Café Zimt und Zunder", "Kinomobil Stuttgart - BIO-Café Zimt und Zunder", "A0814")
   ))
-  private def r_frankfurt_an_der_oder: R = ("frankfurt-an-der-oder", "Frankfurt an der Oder", 52.34714, 14.55062, Seq(
+  private def r_frankfurt_an_der_oder: R = ("frankfurt-an-der-oder", "Frankfurt an der Oder", 52.34714, 14.55062, Seq("Frankfurt an der Oder", "Fürstenwalde", "Fürstenwalde an der Spree", "Beeskow", "Bad Saarow"), Seq(
     ("Kleines Kino", "Kleines Kino", "A2371"),
     ("Filmtheater Union", "Filmtheater Union", "A2383"),
     ("Open Air Kino Parkbühne", "Open Air Kino Parkbühne", "A2449"),
     ("Schukurama", "Schukurama", "A2366"),
     ("Cinema by Velotel", "Cinema by Velotel", "G0119")
   ))
-  private def r_amberg: R = ("amberg", "Amberg", 49.44287, 11.86267, Seq(
+  private def r_amberg: R = ("amberg", "Amberg", 49.44287, 11.86267, Seq("Amberg", "Weiden in der Oberpfalz", "Schwandorf", "Sulzbach", "Sulzbach-Rosenberg"), Seq(
     ("Cineplex Amberg", "Cineplex Amberg", "A2686"),
     ("Neue Welt Kinocenter", "Neue Welt Kinocenter", "A0985"),
     ("Lichtwerk Kino Schwandorf", "Lichtwerk Kino Schwandorf", "A2096"),
     ("Kinopolis Main-Taunus", "Kinopolis Main-Taunus", "A0831"),
     ("Lu-Li Sommernachtskino", "Lu-Li Sommernachtskino", "A2533")
   ))
-  private def r_straubing: R = ("straubing", "Straubing", 48.88126, 12.57385, Seq(
+  private def r_straubing: R = ("straubing", "Straubing", 48.88126, 12.57385, Seq("Straubing", "Deggendorf", "Dingolfing", "Plattling", "Wörth an der Donau"), Seq(
     ("Citydom", "Citydom", "A0400"),
     ("Lichtspielhaus Deggendorf", "Lichtspielhaus Deggendorf", "A0910"),
     ("Cinema Filmpalais", "Cinema Filmpalais", "A1363"),
     ("Focus Cinemas Plattling", "Focus Cinemas Plattling", "A0552"),
     ("Donau-Lichtspiele", "Donau-Lichtspiele", "A1396")
   ))
-  private def r_suhl: R = ("suhl", "Suhl", 50.60911, 10.69401, Seq(
+  private def r_suhl: R = ("suhl", "Suhl", 50.60911, 10.69401, Seq("Suhl", "Meiningen", "Schmalkalden", "Zella-Mehlis", "Masserberg"), Seq(
     ("Cineplex Suhl", "Cineplex Suhl", "A0304"),
     ("Casino Lichtspiele Meiningen", "Casino Lichtspiele Meiningen", "A0181"),
     ("Open Air Kino Schloss Wilhelmsburg", "Open Air Kino Schloss Wilhelmsburg", "A2246"),
     ("Clubkino Zella-Mehlis", "Clubkino Zella-Mehlis", "A2753"),
     ("Kino im Badehaus Masserberg", "Kino im Badehaus Masserberg", "A2708")
   ))
-  private def r_eisenach: R = ("eisenach", "Eisenach", 50.9807, 10.31522, Seq(
+  private def r_eisenach: R = ("eisenach", "Eisenach", 50.9807, 10.31522, Seq("Eisenach", "Mühlhausen", "Eschwege", "Bad Langensalza", "Bad Salzungen"), Seq(
     ("Capitol Eisenach", "Capitol Eisenach", "A0161"),
     ("Filmpalast Central Mühlhausen", "Filmpalast Central Mühlhausen", "A0198"),
     ("Cinemagic Eschwege", "Cinemagic Eschwege", "A0260"),
     ("Burgtheater Bad Langensalza", "Burgtheater Bad Langensalza", "A0121"),
     ("PAB Kinocenter", "PAB Kinocenter", "A0001")
   ))
-  private def r_nienburg: R = ("nienburg", "Nienburg", 52.64437, 9.21658, Seq(
+  private def r_nienburg: R = ("nienburg", "Nienburg", 52.64437, 9.21658, Seq("Nienburg", "Verden an der Aller", "Walsrode", "Sulingen", "Hoya"), Seq(
     ("Filmpalast Nienburg", "Filmpalast Nienburg", "A1468"),
     ("Cine City", "Cine City", "A0219"),
     ("Capitol-Theater Walsrode", "Capitol-Theater Walsrode", "A0167"),
     ("Filmpalast Sulingen", "Filmpalast Sulingen", "A1423"),
     ("Filmhof Hoya", "Filmhof Hoya", "A0500")
   ))
-  private def r_korbach: R = ("korbach", "Korbach", 51.27561, 8.873, Seq(
+  private def r_korbach: R = ("korbach", "Korbach", 51.27561, 8.873, Seq("Korbach", "Warburg", "Bad Wildungen", "Wolfhagen", "Willingen"), Seq(
     ("Cine K Korbach", "Cine K Korbach", "A2902"),
     ("Cineplex Warburg", "Cineplex Warburg", "A0311"),
     ("Wandelhalle Reinhardshausen", "Wandelhalle Reinhardshausen", "A2726"),
     ("Cinema Wolfhagen", "Cinema Wolfhagen", "A2790"),
     ("Kino Studio Willingen", "Kino Studio Willingen", "A0096")
   ))
-  private def r_daun: R = ("daun", "Daun", 50.19716, 6.82942, Seq(
+  private def r_daun: R = ("daun", "Daun", 50.19716, 6.82942, Seq("Daun", "Prüm", "Cochem", "Hillesheim", "Nürburg"), Seq(
     ("Kinopalast Vulkaneifel", "Kinopalast Vulkaneifel", "A0822"),
     ("Eifel-Kinocenter", "Eifel-Kinocenter", "A0407"),
     ("Apollo Cochern", "Apollo Cochern", "A0041"),
     ("Eifel-Film-Bühne", "Eifel-Film-Bühne", "A0458"),
     ("ring°kino", "ring°kino", "A2670")
   ))
-  private def r_oberstdorf: R = ("oberstdorf", "Oberstdorf", 47.40724, 10.27939, Seq(
+  private def r_oberstdorf: R = ("oberstdorf", "Oberstdorf", 47.40724, 10.27939, Seq("Oberstdorf", "Immenstadt im Allgäu"), Seq(
     ("Kurfilmtheater Oberstdorf", "Kurfilmtheater Oberstdorf", "A0883"),
     ("LOFT Oberstdorf", "LOFT Oberstdorf", "A0222"),
     ("Open Air Kino zwischen den Schanzen/Erdinger Arena", "Open Air Kino zwischen den Schanzen/Erdinger Arena", "A2551"),
     ("Union Filmtheater Immenstadt im Allgäu", "Union Filmtheater Immenstadt im Allgäu", "A1227")
   ))
-  private def r_flensburg: R = ("flensburg", "Flensburg", 54.78805, 9.43722, Seq(
+  private def r_flensburg: R = ("flensburg", "Flensburg", 54.78805, 9.43722, Seq("Flensburg", "Schleswig", "Kappeln"), Seq(
     ("Kino 51 Stufen", "Kino 51 Stufen", "A1481"),
     ("UCI Flensburg", "UCI Flensburg", "A0829"),
     ("Filmtheater Capitol Schleswig", "Filmtheater Capitol Schleswig", "A1126"),
     ("Capitol Theater Kappeln", "Capitol Theater Kappeln", "A1664")
   ))
-  private def r_gummersbach: R = ("gummersbach", "Gummersbach", 51.02608, 7.56473, Seq(
+  private def r_gummersbach: R = ("gummersbach", "Gummersbach", 51.02608, 7.56473, Seq("Gummersbach", "Olpe", "Attendorn"), Seq(
     ("Burgtheater Gummersbach", "Burgtheater Gummersbach", "A0119"),
     ("SEVEN Kinocenter Gummersbach", "SEVEN Kinocenter Gummersbach", "A2912"),
     ("Cineplex Olpe", "Cineplex Olpe", "A2115"),
     ("JAC Kino Attendorn", "JAC Kino Attendorn", "A2914")
   ))
-  private def r_garmisch_partenkirchen: R = ("garmisch-partenkirchen", "Garmisch-Partenkirchen", 47.49209, 11.09576, Seq(
+  private def r_garmisch_partenkirchen: R = ("garmisch-partenkirchen", "Garmisch-Partenkirchen", 47.49209, 11.09576, Seq("Garmisch-Partenkirchen", "Murnau am Staffelsee", "Oberammergau"), Seq(
     ("Hochland-Kino", "Hochland-Kino", "A0609"),
     ("Kinocenter Garmisch &amp; Aspen im Lamm", "Kinocenter Garmisch &amp; Aspen im Lamm", "A1508"),
     ("Kino im Griesbräu", "Kino im Griesbräu", "A0593"),
     ("Heimgarten Kino", "Heimgarten Kino", "A1451")
   ))
-  private def r_dorsten: R = ("dorsten", "Dorsten", 51.66166, 6.96514, Seq(
+  private def r_dorsten: R = ("dorsten", "Dorsten", 51.66166, 6.96514, Seq("Dorsten", "Gladbeck", "Dinslaken", "Wesel"), Seq(
     ("Central Kinocenter Dorsten", "Central Kinocenter Dorsten", "A2788"),
     ("Kommunales Kino im Studio der Stadtbücherei", "Kommunales Kino im Studio der Stadtbücherei", "A0861"),
     ("Lichtburg Dinslaken", "Lichtburg Dinslaken", "A2882"),
     ("Comet Kinos Wesel", "Comet Kinos Wesel", "A0420")
   ))
-  private def r_stralsund: R = ("stralsund", "Stralsund", 54.30911, 13.0818, Seq(
+  private def r_stralsund: R = ("stralsund", "Stralsund", 54.30911, 13.0818, Seq("Stralsund", "Greifswald", "Bergen auf Rügen", "Vitte"), Seq(
     ("CineStar Stralsund", "CineStar Stralsund", "A0359"),
     ("CineStar Greifswald", "CineStar Greifswald", "A0362"),
     ("Kino Bergen auf Rügen", "Kino Bergen auf Rügen", "A0709"),
     ("Zeltkino Hiddensee", "Zeltkino Hiddensee", "A2097")
   ))
-  private def r_cuxhaven: R = ("cuxhaven", "Cuxhaven", 53.86828, 8.69902, Seq(
+  private def r_cuxhaven: R = ("cuxhaven", "Cuxhaven", 53.86828, 8.69902, Seq("Cuxhaven", "Brunsbüttel", "Meldorf", "Büsum"), Seq(
     ("Bali-Service-Kino", "Bali-Service-Kino", "A0009"),
     ("Metropol Brunsbüttel 1", "Metropol Brunsbüttel 1", "A1565"),
     ("Deutsches Haus-Lichtspiele", "Deutsches Haus-Lichtspiele", "A1390"),
     ("Lichtblick Büsum", "Lichtblick Büsum", "A2909")
   ))
-  private def r_nordhausen: R = ("nordhausen", "Nordhausen", 51.5018, 10.7957, Seq(
+  private def r_nordhausen: R = ("nordhausen", "Nordhausen", 51.5018, 10.7957, Seq("Nordhausen", "Sangerhausen", "Sondershausen", "Bleicherode"), Seq(
     ("Filmpalast Nordhausen", "Filmpalast Nordhausen", "A0517"),
     ("Movie Star Sangerhausen", "Movie Star Sangerhausen", "A0188"),
     ("Cinema 64", "Cinema 64", "A2367"),
     ("Filmtheater Bleicherode", "Filmtheater Bleicherode", "A0534")
   ))
-  private def r_coburg: R = ("coburg", "Coburg", 50.25937, 10.96384, Seq(
+  private def r_coburg: R = ("coburg", "Coburg", 50.25937, 10.96384, Seq("Coburg", "Sonneberg", "Lichtenfels", "Kronach"), Seq(
     ("Utopolis", "Utopolis", "A1252"),
     ("Kammer Lichtspiele", "Kammer Lichtspiele", "A0640"),
     ("Neue Filmbühne Lichtenfels", "Neue Filmbühne Lichtenfels", "A0981"),
     ("Filmburg Kronach", "Filmburg Kronach", "A1410")
   ))
-  private def r_halberstadt: R = ("halberstadt", "Halberstadt", 51.89562, 11.05622, Seq(
+  private def r_halberstadt: R = ("halberstadt", "Halberstadt", 51.89562, 11.05622, Seq("Halberstadt", "Wernigerode", "Quedlinburg", "Thale"), Seq(
     ("Zuckerfabrik Kinopark", "Zuckerfabrik Kinopark", "A1013"),
     ("Volkslichtspiele Wernigerode", "Volkslichtspiele Wernigerode", "A1265"),
     ("Studiokino Eisenstein im Kulturzentrum", "Studiokino Eisenstein im Kulturzentrum", "A1167"),
     ("Central Theater Thale", "Central Theater Thale", "A0208")
   ))
-  private def r_meppen: R = ("meppen", "Meppen", 52.69064, 7.29097, Seq(
+  private def r_meppen: R = ("meppen", "Meppen", 52.69064, 7.29097, Seq("Meppen", "Haren", "Löningen", "Haselünne"), Seq(
     ("Kino Meppen", "Kino Meppen", "A0573"),
     ("Ferienzentrum Schloss Dankern", "Ferienzentrum Schloss Dankern", "A1387"),
     ("Li-Lo-Lichtspiele", "Li-Lo-Lichtspiele", "A0916"),
     ("Hasetor-Lichtspiele", "Hasetor-Lichtspiele", "A2650")
   ))
-  private def r_neuruppin: R = ("neuruppin", "Neuruppin", 52.92815, 12.80311, Seq(
+  private def r_neuruppin: R = ("neuruppin", "Neuruppin", 52.92815, 12.80311, Seq("Neuruppin", "Wittstock", "Wusterhausen", "Zempow"), Seq(
     ("Union Filmtheater Neuruppin", "Union Filmtheater Neuruppin", "A0685"),
     ("Astoria Wittstock", "Astoria Wittstock", "A2377"),
     ("Lindenkino", "Lindenkino", "A0920"),
     ("Autokino Zempow", "Autokino Zempow", "A0071")
   ))
-  private def r_bad_neuenahr_ahrweiler: R = ("bad-neuenahr-ahrweiler", "Bad Neuenahr-Ahrweiler", 50.54322, 7.1113, Seq(
+  private def r_bad_neuenahr_ahrweiler: R = ("bad-neuenahr-ahrweiler", "Bad Neuenahr-Ahrweiler", 50.54322, 7.1113, Seq("Bad Neuenahr-Ahrweiler", "Wachtberg", "Mayen", "Asbach"), Seq(
     ("Kino-Center Rhein-Ahr", "Kino-Center Rhein-Ahr", "A1115"),
     ("Drehwerk 1719", "Drehwerk 1719", "A2117"),
     ("Corso Kino", "Corso Kino", "A0424"),
     ("Cine 5", "Cine 5", "A2640")
   ))
-  private def r_rotenburg_an_der_wuemme: R = ("rotenburg-an-der-wuemme", "Rotenburg an der Wümme", 53.11032, 9.4036, Seq(
+  private def r_rotenburg_an_der_wuemme: R = ("rotenburg-an-der-wuemme", "Rotenburg an der Wümme", 53.11032, 9.4036, Seq("Rotenburg an der Wümme", "Soltau", "Schneverdingen", "Zeven"), Seq(
     ("Stadtkino Rotenburg", "Stadtkino Rotenburg", "A2372"),
     ("Gloria Kino Center Soltau", "Gloria Kino Center Soltau", "A1441"),
     ("LichtSpiel e.V. Schneverdingen", "LichtSpiel e.V. Schneverdingen", "A2673"),
     ("Central Theater Zeven", "Central Theater Zeven", "A2354")
   ))
-  private def r_salzwedel: R = ("salzwedel", "Salzwedel", 52.85297, 11.15287, Seq(
+  private def r_salzwedel: R = ("salzwedel", "Salzwedel", 52.85297, 11.15287, Seq("Salzwedel", "Wittingen", "Lüchow", "Jameln"), Seq(
     ("Filmpalast Salzwedel (Hansestadt)", "Filmpalast Salzwedel (Hansestadt)", "A1347"),
     ("Wittinger Lichtspiele", "Wittinger Lichtspiele", "A0676"),
     ("Kino Alte Brennerei", "Kino Alte Brennerei", "A0699"),
     ("Cafe Grenzbereiche", "Cafe Grenzbereiche", "A0133")
   ))
-  private def r_bad_berleburg: R = ("bad-berleburg", "Bad Berleburg", 51.05224, 8.39227, Seq(
+  private def r_bad_berleburg: R = ("bad-berleburg", "Bad Berleburg", 51.05224, 8.39227, Seq("Bad Berleburg", "Hilchenbach", "Bad Laasphe", "Winterberg"), Seq(
     ("Capitol Bad Berleburg", "Capitol Bad Berleburg", "A0165"),
     ("Viktoria Filmtheater", "Viktoria Filmtheater", "A1256"),
     ("Residenztheater", "Residenztheater", "A1063"),
     ("Filmtheater Winterberg", "Filmtheater Winterberg", "A0543")
   ))
-  private def r_weissenburg: R = ("weissenburg", "Weissenburg", 49.03095, 10.97221, Seq(
+  private def r_weissenburg: R = ("weissenburg", "Weissenburg", 49.03095, 10.97221, Seq("Weissenburg", "Gunzenhausen", "Treuchtlingen", "Freystadt"), Seq(
     ("Kinocenter Weißenburg in Bayern", "Kinocenter Weißenburg in Bayern", "A1506"),
     ("Movieworld", "Movieworld", "A0975"),
     ("Central Kino und Kultur Treuchtlingen", "Central Kino und Kultur Treuchtlingen", "A0189"),
     ("Kino im Cafe Restaurant Beck", "Kino im Cafe Restaurant Beck", "A1485")
   ))
-  private def r_marktredwitz: R = ("marktredwitz", "Marktredwitz", 50.00443, 12.08593, Seq(
+  private def r_marktredwitz: R = ("marktredwitz", "Marktredwitz", 50.00443, 12.08593, Seq("Marktredwitz", "Selb", "Tirschenreuth", "Mitterteich"), Seq(
     ("Cineplanet Marktredwitz", "Cineplanet Marktredwitz", "A0870"),
     ("Cineplex Kinocenter Selb", "Cineplex Kinocenter Selb", "A0763"),
     ("Cineplanet Tirschenreuth", "Cineplanet Tirschenreuth", "A0302"),
     ("Angerlichtspiele Mitterteich", "Angerlichtspiele Mitterteich", "A2635")
   ))
-  private def r_bremerhaven: R = ("bremerhaven", "Bremerhaven", 53.55357, 8.57553, Seq(
+  private def r_bremerhaven: R = ("bremerhaven", "Bremerhaven", 53.55357, 8.57553, Seq("Bremerhaven", "Wilhelmshaven", "Brake"), Seq(
     ("CineMotion Bremerhaven", "CineMotion Bremerhaven", "A1773"),
     ("UCI Wilhelmshaven", "UCI Wilhelmshaven", "A0043"),
     ("Centraltheater Brake", "Centraltheater Brake", "A2694")
   ))
-  private def r_bayreuth: R = ("bayreuth", "Bayreuth", 49.94782, 11.57893, Seq(
+  private def r_bayreuth: R = ("bayreuth", "Bayreuth", 49.94782, 11.57893, Seq("Bayreuth", "Kulmbach", "Hollfeld"), Seq(
     ("Cineplex Bayreuth", "Cineplex Bayreuth", "A0314"),
     ("Cineplex Kulmbach", "Cineplex Kulmbach", "A0764"),
     ("Kintopp", "Kintopp", "A1517")
   ))
-  private def r_goslar: R = ("goslar", "Goslar", 51.90425, 10.42766, Seq(
+  private def r_goslar: R = ("goslar", "Goslar", 51.90425, 10.42766, Seq("Goslar", "Herzberg am Harz", "Bad Gandersheim"), Seq(
     ("Cineplex Goslar", "Cineplex Goslar", "A0318"),
     ("Central-Lichtspiele Herzberg am Harz", "Central-Lichtspiele Herzberg am Harz", "A1351"),
     ("Kino Gandeon", "Kino Gandeon", "A2707")
   ))
-  private def r_bernburg: R = ("bernburg", "Bernburg", 51.79464, 11.7401, Seq(
+  private def r_bernburg: R = ("bernburg", "Bernburg", 51.79464, 11.7401, Seq("Bernburg", "Köthen", "Aschersleben"), Seq(
     ("Filmtheater Capitol Bernburg", "Filmtheater Capitol Bernburg", "A0542"),
     ("Cine Circus", "Cine Circus", "A0218"),
     ("Filmpalast Aschersleben", "Filmpalast Aschersleben", "A0356")
   ))
-  private def r_bad_hersfeld: R = ("bad-hersfeld", "Bad Hersfeld", 50.87197, 9.70891, Seq(
+  private def r_bad_hersfeld: R = ("bad-hersfeld", "Bad Hersfeld", 50.87197, 9.70891, Seq("Bad Hersfeld", "Alsfeld", "Bebra"), Seq(
     ("Cineplex Bad Hersfeld", "Cineplex Bad Hersfeld", "A0765"),
     ("Kinocenter Alsfeld", "Kinocenter Alsfeld", "A1505"),
     ("Biber-Kino-Center", "Biber-Kino-Center", "A0094")
   ))
-  private def r_waren_mueritz: R = ("waren-mueritz", "Waren (Müritz)", 53.51986, 12.68128, Seq(
+  private def r_waren_mueritz: R = ("waren-mueritz", "Waren (Müritz)", 53.51986, 12.68128, Seq("Waren (Müritz)", "Malchin", "Malchow"), Seq(
     ("CineStar Waren (Müritz)", "CineStar Waren (Müritz)", "A2794"),
     ("Filmbühne Malchin", "Filmbühne Malchin", "A0660"),
     ("Kino Malchow", "Kino Malchow", "A0535")
   ))
-  private def r_wittenberge: R = ("wittenberge", "Wittenberge", 53.00005, 11.74944, Seq(
+  private def r_wittenberge: R = ("wittenberge", "Wittenberge", 53.00005, 11.74944, Seq("Wittenberge", "Pritzwalk", "Perleberg"), Seq(
     ("Movie Star Wittenberge", "Movie Star Wittenberge", "A0968"),
     ("Kulturhaus Pritzwalk", "Kulturhaus Pritzwalk", "A2625"),
     ("Movie Star Perleberg", "Movie Star Perleberg", "A1234")
   ))
-  private def r_marktoberdorf: R = ("marktoberdorf", "Marktoberdorf", 47.77964, 10.61713, Seq(
+  private def r_marktoberdorf: R = ("marktoberdorf", "Marktoberdorf", 47.77964, 10.61713, Seq("Marktoberdorf", "Füssen", "Schongau"), Seq(
     ("Filmburg - Das Theaterkino", "Filmburg - Das Theaterkino", "A1409"),
     ("Alpenfilmtheater Füssen", "Alpenfilmtheater Füssen", "A1472"),
     ("Lagerhauskino", "Lagerhauskino", "A0892")
   ))
-  private def r_erbach_im_odenwald: R = ("erbach-im-odenwald", "Erbach im Odenwald", 49.66148, 8.99402, Seq(
+  private def r_erbach_im_odenwald: R = ("erbach-im-odenwald", "Erbach im Odenwald", 49.66148, 8.99402, Seq("Erbach im Odenwald", "Höchst im Odenwald", "Miltenberg"), Seq(
     ("Erbacher Lichtspiele", "Erbacher Lichtspiele", "A0690"),
     ("Höchster Lichtspiele", "Höchster Lichtspiele", "A0240"),
     ("Schloß-Theater", "Schloß-Theater", "A1131")
   ))
-  private def r_regen: R = ("regen", "Regen", 48.9719, 13.12824, Seq(
+  private def r_regen: R = ("regen", "Regen", 48.9719, 13.12824, Seq("Regen", "Zwiesel", "Viechtach"), Seq(
     ("CinePalast Regen", "CinePalast Regen", "A1460"),
     ("Filmtheater Zwiesel", "Filmtheater Zwiesel", "A0704"),
     ("Neue Post Lichtspiele", "Neue Post Lichtspiele", "A0983")
   ))
-  private def r_bad_schwalbach: R = ("bad-schwalbach", "Bad Schwalbach", 50.14196, 8.06964, Seq(
+  private def r_bad_schwalbach: R = ("bad-schwalbach", "Bad Schwalbach", 50.14196, 8.06964, Seq("Bad Schwalbach", "Nastätten", "Hahnstätten"), Seq(
     ("Bambi &amp; Camera", "Bambi &amp; Camera", "A1311"),
     ("Kinocenter Nastätten", "Kinocenter Nastätten", "A0774"),
     ("Kreml Kulturhaus", "Kreml Kulturhaus", "A2755")
   ))
-  private def r_niebuell: R = ("niebuell", "Niebüll", 54.78663, 8.82854, Seq(
+  private def r_niebuell: R = ("niebuell", "Niebüll", 54.78663, 8.82854, Seq("Niebüll", "Leck", "Wyk auf Föhr"), Seq(
     ("Eck&#039; s Kino", "Eck&#039; s Kino", "A1697"),
     ("Deli-Kino", "Deli-Kino", "A2368"),
     ("Filmtheater am Sandwall", "Filmtheater am Sandwall", "G011C")
   ))
-  private def r_uffenheim: R = ("uffenheim", "Uffenheim", 49.54415, 10.23286, Seq(
+  private def r_uffenheim: R = ("uffenheim", "Uffenheim", 49.54415, 10.23286, Seq("Uffenheim", "Creglingen", "Burgbernheim"), Seq(
     ("Open Air Rudolzhofen Kino", "Open Air Rudolzhofen Kino", "A2560"),
     ("Kinomobil Stuttgart - Kommunales Kino Creglingen", "Kinomobil Stuttgart - Kommunales Kino Creglingen", "A0800"),
     ("Open Air Kino&quot;Am Kappelenberg&quot;", "Open Air Kino&quot;Am Kappelenberg&quot;", "A2058")
   ))
-  private def r_bad_lobenstein: R = ("bad-lobenstein", "Bad Lobenstein", 50.45223, 11.6393, Seq(
+  private def r_bad_lobenstein: R = ("bad-lobenstein", "Bad Lobenstein", 50.45223, 11.6393, Seq("Bad Lobenstein", "Wurzbach", "Hirschberg"), Seq(
     ("Kino am Park", "Kino am Park", "A2656"),
     ("Kino Wurzbach", "Kino Wurzbach", "A0758"),
     ("Olympia Hirschberg", "Olympia Hirschberg", "A1580")
   ))
-  private def r_langeoog: R = ("langeoog", "Langeoog", 53.74552, 7.48175, Seq(
+  private def r_langeoog: R = ("langeoog", "Langeoog", 53.74552, 7.48175, Seq("Langeoog", "Spiekeroog", "Baltrum"), Seq(
     ("Windlicht", "Windlicht", "A2757"),
     ("Inselkino Spiekeroog", "Inselkino Spiekeroog", "A2884")
   ))
-  private def r_kleve: R = ("kleve", "Kleve", 51.78826, 6.13865, Seq(
+  private def r_kleve: R = ("kleve", "Kleve", 51.78826, 6.13865, Seq("Kleve", "Goch"), Seq(
     ("Tichelpark Kleve", "Tichelpark Kleve", "A1182"),
     ("Goli Theater Goch", "Goli Theater Goch", "A2597")
   ))
-  private def r_luckenwalde: R = ("luckenwalde", "Luckenwalde", 52.09029, 13.16772, Seq(
+  private def r_luckenwalde: R = ("luckenwalde", "Luckenwalde", 52.09029, 13.16772, Seq("Luckenwalde", "Dahme"), Seq(
     ("Union Kino-Center", "Union Kino-Center", "A1233"),
     ("Kino-Cafe Dahme", "Kino-Cafe Dahme", "A0836")
   ))
-  private def r_prenzlau: R = ("prenzlau", "Prenzlau", 53.31702, 13.86397, Seq(
+  private def r_prenzlau: R = ("prenzlau", "Prenzlau", 53.31702, 13.86397, Seq("Prenzlau", "Templin"), Seq(
     ("Union Filmtheater Prenzlau", "Union Filmtheater Prenzlau", "A0666"),
     ("Kino im Multikulturellen Centrum", "Kino im Multikulturellen Centrum", "A0016")
   ))
-  private def r_husum: R = ("husum", "Husum", 54.4858, 9.05239, Seq(
+  private def r_husum: R = ("husum", "Husum", 54.4858, 9.05239, Seq("Husum", "Heide"), Seq(
     ("Kino-Center Husum", "Kino-Center Husum", "A0762"),
     ("LichtBlick Heide", "LichtBlick Heide", "A0265")
   ))
-  private def r_finsterwalde: R = ("finsterwalde", "Finsterwalde", 51.63388, 13.70662, Seq(
+  private def r_finsterwalde: R = ("finsterwalde", "Finsterwalde", 51.63388, 13.70662, Seq("Finsterwalde", "Schwarzheide"), Seq(
     ("Weltspiegel Finsterwalde", "Weltspiegel Finsterwalde", "A1273"),
     ("Extra Kinowelt", "Extra Kinowelt", "A0477")
   ))
-  private def r_cham: R = ("cham", "Cham", 49.22565, 12.65501, Seq(
+  private def r_cham: R = ("cham", "Cham", 49.22565, 12.65501, Seq("Cham", "Oberviechtach"), Seq(
     ("Cine-World", "Cine-World", "A0389"),
     ("Kino in OVI", "Kino in OVI", "A1538")
   ))
-  private def r_fehmarn: R = ("fehmarn", "Fehmarn", 54.4378, 11.19352, Seq(
+  private def r_fehmarn: R = ("fehmarn", "Fehmarn", 54.4378, 11.19352, Seq("Fehmarn", "Oldenburg in Holstein"), Seq(
     ("Burg-Film-Theater", "Burg-Film-Theater", "A2729"),
     ("Lichtblick Filmtheater", "Lichtblick Filmtheater", "A0899")
   ))
-  private def r_westerland: R = ("westerland", "Westerland", 54.9079, 8.30326, Seq(
+  private def r_westerland: R = ("westerland", "Westerland", 54.9079, 8.30326, Seq("Westerland", "Norddorf auf Amrum"), Seq(
     ("Kinowelt Westerland", "Kinowelt Westerland", "A0843"),
     ("LichtBlick InselKino", "LichtBlick InselKino", "A2807")
   ))
-  private def r_sassnitz: R = ("sassnitz", "Sassnitz", 54.5157, 13.64451, Seq(
+  private def r_sassnitz: R = ("sassnitz", "Sassnitz", 54.5157, 13.64451, Seq("Sassnitz", "Göhren"), Seq(
     ("Lichtspiele Sassnitz", "Lichtspiele Sassnitz", "A2711"),
     ("Ostseebad Göhren Kinohalle - Regenbogencamp", "Ostseebad Göhren Kinohalle - Regenbogencamp", "A2815")
   ))
-  private def r_berchtesgaden: R = ("berchtesgaden", "Berchtesgaden", 47.63236, 13.00187, Seq(
+  private def r_berchtesgaden: R = ("berchtesgaden", "Berchtesgaden", 47.63236, 13.00187, Seq("Berchtesgaden", "Schönau am Königssee"), Seq(
     ("Kurkino im Kurhaus", "Kurkino im Kurhaus", "A0886"),
     ("Open Air Kino an der Sportanlage Schneewinkl am Königssee", "Open Air Kino an der Sportanlage Schneewinkl am Königssee", "A1977")
   ))
-  private def r_bernkastel_kues: R = ("bernkastel-kues", "Bernkastel-Kues", 49.91602, 7.07664, Seq(
+  private def r_bernkastel_kues: R = ("bernkastel-kues", "Bernkastel-Kues", 49.91602, 7.07664, Seq("Bernkastel-Kues", "Hoppstädten-Weiersbach"), Seq(
     ("Mosel-Kino", "Mosel-Kino", "A0180"),
     ("Movietown Neubrücke", "Movietown Neubrücke", "A0973")
   ))
-  private def r_hachenburg: R = ("hachenburg", "Hachenburg", 50.65998, 7.82276, Seq(
+  private def r_hachenburg: R = ("hachenburg", "Hachenburg", 50.65998, 7.82276, Seq("Hachenburg", "Neitersen"), Seq(
     ("Cinexx", "Cinexx", "A0392"),
     ("Wied Scala", "Wied Scala", "A1278")
   ))
-  private def r_lychen: R = ("lychen", "Lychen", 53.21089, 13.31556, Seq(
+  private def r_lychen: R = ("lychen", "Lychen", 53.21089, 13.31556, Seq("Lychen", "Wesenberg"), Seq(
     ("Altes Kino", "Altes Kino", "A2634"),
     ("Kino Wesenberg", "Kino Wesenberg", "A0757")
   ))
-  private def r_eberswalde_finow: R = ("eberswalde-finow", "Eberswalde-Finow", 52.83492, 13.81951, Seq(
+  private def r_eberswalde_finow: R = ("eberswalde-finow", "Eberswalde-Finow", 52.83492, 13.81951, Seq("Eberswalde-Finow"), Seq(
     ("Movie Magic", "Movie Magic", "A2891")
   ))
-  private def r_stendal: R = ("stendal", "Stendal", 52.60578, 11.86091, Seq(
+  private def r_stendal: R = ("stendal", "Stendal", 52.60578, 11.86091, Seq("Stendal"), Seq(
     ("Uppstall Kinos", "Uppstall Kinos", "A0664")
   ))
-  private def r_schwedt: R = ("schwedt", "Schwedt", 53.05963, 14.28154, Seq(
+  private def r_schwedt: R = ("schwedt", "Schwedt", 53.05963, 14.28154, Seq("Schwedt"), Seq(
     ("FilmforUM Schwedt", "FilmforUM Schwedt", "A0333")
   ))
-  private def r_itzehoe: R = ("itzehoe", "Itzehoe", 53.92099, 9.51529, Seq(
+  private def r_itzehoe: R = ("itzehoe", "Itzehoe", 53.92099, 9.51529, Seq("Itzehoe"), Seq(
     ("CineMotion Itzehoe", "CineMotion Itzehoe", "A0125")
   ))
-  private def r_parchim: R = ("parchim", "Parchim", 53.42631, 11.84875, Seq(
+  private def r_parchim: R = ("parchim", "Parchim", 53.42631, 11.84875, Seq("Parchim"), Seq(
     ("Movie Star Parchim", "Movie Star Parchim", "A0967")
   ))
-  private def r_luebben: R = ("luebben", "Lübben", 51.93814, 13.88826, Seq(
+  private def r_luebben: R = ("luebben", "Lübben", 51.93814, 13.88826, Seq("Lübben"), Seq(
     ("Spreewald Lichtspiele Lübben", "Spreewald Lichtspiele Lübben", "A1144")
   ))
-  private def r_demmin: R = ("demmin", "Demmin", 53.90762, 13.03142, Seq(
+  private def r_demmin: R = ("demmin", "Demmin", 53.90762, 13.03142, Seq("Demmin"), Seq(
     ("Filmeck Demmin", "Filmeck Demmin", "A2382")
   ))
-  private def r_letschin: R = ("letschin", "Letschin", 52.64379, 14.36007, Seq(
+  private def r_letschin: R = ("letschin", "Letschin", 52.64379, 14.36007, Seq("Letschin"), Seq(
     ("Haus Lichtblick", "Haus Lichtblick", "A2362")
   ))
-  private def r_sosa: R = ("sosa", "Sosa", 50.49917, 12.6512, Seq(
+  private def r_sosa: R = ("sosa", "Sosa", 50.49917, 12.6512, Seq("Sosa"), Seq(
     ("Freilichtbühne Sosa", "Freilichtbühne Sosa", "A2191")
   ))
-  private def r_prerow: R = ("prerow", "Prerow", 54.44469, 12.57677, Seq(
+  private def r_prerow: R = ("prerow", "Prerow", 54.44469, 12.57677, Seq("Prerow"), Seq(
     ("Cinema Ostseebad Prerow", "Cinema Ostseebad Prerow", "A0241")
   ))
-  private def r_fischbach_bei_dahn: R = ("fischbach-bei-dahn", "Fischbach bei Dahn", 49.08771, 7.7116, Seq(
+  private def r_fischbach_bei_dahn: R = ("fischbach-bei-dahn", "Fischbach bei Dahn", 49.08771, 7.7116, Seq("Fischbach bei Dahn"), Seq(
     ("Wasgau-Theater", "Wasgau-Theater", "A1269")
   ))
-  private def r_helgoland: R = ("helgoland", "Helgoland", 54.18143, 7.8863, Seq(
+  private def r_helgoland: R = ("helgoland", "Helgoland", 54.18143, 7.8863, Seq("Helgoland"), Seq(
     ("Hochseekino Helgoland", "Hochseekino Helgoland", "A2652")
   ))
-  private def r_kloeden: R = ("kloeden", "Klöden", 51.76178, 12.83169, Seq(
+  private def r_kloeden: R = ("kloeden", "Klöden", 51.76178, 12.83169, Seq("Klöden"), Seq(
     ("Sommerkino Klöden", "Sommerkino Klöden", "A2508")
   ))
 

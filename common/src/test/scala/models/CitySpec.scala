@@ -124,6 +124,15 @@ class CitySpec extends AnyFlatSpec with Matchers {
     bay.coveredPlaces      shouldBe bay.coveredPlaces.distinct
   }
 
+  it should "read a German region's towns, which the hub's own name hides" in {
+    val koeln = City.all.find(_.slug == "koeln").getOrElse(fail("no Köln region in the roster"))
+    koeln.coveredPlaces.head shouldBe "Köln"
+    // A region is the towns within ~35 km of its hub, so `/koeln/` has always
+    // listed Düsseldorf's and Bonn's cinemas while naming neither.
+    koeln.otherCoveredPlaces should contain allOf ("Düsseldorf", "Bonn")
+    koeln.coveredPlaces shouldBe koeln.coveredPlaces.distinct
+  }
+
   it should "read a Spanish province's towns, which the province's own name hides" in {
     val madrid = City.all.find(_.slug == "madrid").getOrElse(fail("no Madrid province in the roster"))
     madrid.coveredPlaces.head shouldBe "Madrid"
