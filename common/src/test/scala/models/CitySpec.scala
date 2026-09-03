@@ -144,6 +144,18 @@ class CitySpec extends AnyFlatSpec with Matchers {
     sd.otherCoveredPlaces should contain allOf ("Chula Vista", "Carlsbad", "El Cajon")
   }
 
+  // Poland's pages named no town but Trójmiasto's, on the assumption that a
+  // Polish city is one town. 36 of the 41 are not: `/tarnow/` lists cinemas in
+  // Biecz, Gorlice, Bochnia and Brzesko, and named none of them.
+  it should "read a Polish city's towns from the annotations beside its venues" in {
+    Tarnow.coveredPlaces.head shouldBe "Tarnów"
+    Tarnow.otherCoveredPlaces should contain allOf ("Biecz", "Gorlice", "Bochnia", "Brzesko")
+  }
+
+  it should "keep a Polish city that really is one town naming only itself" in {
+    Poznan.otherCoveredPlaces shouldBe empty
+  }
+
   it should "read a Spanish province's towns, which the province's own name hides" in {
     val madrid = City.all.find(_.slug == "madrid").getOrElse(fail("no Madrid province in the roster"))
     madrid.coveredPlaces.head shouldBe "Madrid"

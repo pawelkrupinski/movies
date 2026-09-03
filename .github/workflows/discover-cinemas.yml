@@ -89,7 +89,7 @@ jobs:
             - name: Harvest towns for the newly wired venues
               run: |
                   python3 data/uk/scripts/harvest_towns.py --sync
-                  python3 data/uk/scripts/generate_towns.py
+                  python3 data/scripts/generate_venue_towns.py
 
             # Only compile when the discovery actually changed the wiring — a bad
             # splice must fail the job here, BEFORE a broken PR is opened. Weeks
@@ -97,7 +97,7 @@ jobs:
             - name: Check for wiring changes
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/scala/models/UkVenueTowns.scala data/uk/venues.json; then
+                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/scala/models/VenueTowns.scala data/uk/venues.json; then
                       echo "wired=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "wired=true" >> "$GITHUB_OUTPUT"
@@ -142,7 +142,7 @@ jobs:
                   add-paths: |
                       common/src/main/scala/models/Cinema.scala
                       worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala
-                      common/src/main/scala/models/UkVenueTowns.scala
+                      common/src/main/scala/models/VenueTowns.scala
                       data/uk/venues.json
                   commit-message: 'chore: wire newly-discovered UK cinemas from Flicks'
                   title: 'chore: wire newly-discovered UK cinemas'

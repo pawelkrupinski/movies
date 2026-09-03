@@ -14,15 +14,15 @@ Before this, none of those words appeared on the page — not in the title, the
 description, the structured data, or (for most of them) a single cinema's name.
 
 So the town is kept beside the roster instead of inside it, in `venues.json`
-here, and generated into `models.UkVenueTowns` as a display-name → town table
-that `UkCity.extraPlaces` reads.
+here, and generated into `models.VenueTowns` as a display-name → town table that
+`City.extraPlaces` reads — shared with Poland, the other hand-written roster.
 
 ## Re-harvesting
 
 ```
 python3 data/uk/scripts/harvest_towns.py     # ~840 pages off Flicks, a few minutes
 python3 data/uk/scripts/test_harvest_towns.py
-python3 data/uk/scripts/generate_towns.py    # -> common/src/main/scala/models/UkVenueTowns.scala
+python3 data/scripts/generate_venue_towns.py  # -> common/src/main/scala/models/VenueTowns.scala
 ```
 
 `harvest_towns.py` needs no venue list of its own: every UK venue's Flicks slug

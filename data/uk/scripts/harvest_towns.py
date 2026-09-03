@@ -210,7 +210,7 @@ def sync_plan(held: dict, wired: dict, names: dict) -> tuple[dict, list, list]:
     and the display names that changed.
 
     Re-reading the display name matters more than it looks: it is the key
-    [[UkVenueTowns]] is keyed on, so a venue renamed in Cinema.scala would keep
+    `models.VenueTowns` is keyed on, so a venue renamed in Cinema.scala would keep
     its row under the old name and quietly stop matching — the town would vanish
     from its city with nothing to say so.
     """

@@ -107,12 +107,16 @@ sealed abstract class City(
    *  description, structured data, and every one of its cinemas' names. */
   final def coveredPlaces: Seq[String] =
     (labels.nominative +: (areas.map(_.area).filter(_.namesAPlace).map(_.label) ++ extraPlaces)).distinct
-  /** Places this city covers that its [[areas]] do not already name — the
-   *  roster's own per-venue town list for the countries that harvest one
-   *  (Germany, Spain, the US), or a hand-written list where nothing does
-   *  ([[Trojmiasto]]). Ordered most venues first, so the consumers that can only
-   *  name a few name the ones worth naming. */
-  protected def extraPlaces: Seq[String] = Nil
+  /** Places this city covers that its [[areas]] do not already name. Ordered
+   *  most venues first, so the consumers that can only name a few name the ones
+   *  worth naming.
+   *
+   *  The default is the venue table, which is the answer for the two countries
+   *  whose rosters are hand-written and therefore have nowhere to put a town —
+   *  the UK and Poland. The generated rosters (Germany, Spain, the US) carry
+   *  theirs in the tuple and override this; [[Trojmiasto]] is hand-written
+   *  because its towns predate the table and are more complete than it. */
+  protected def extraPlaces: Seq[String] = VenueTowns.of(cinemas)
   /** The covered towns OTHER than the city itself — empty for the ordinary
    *  one-town city, and the whole reason a multi-town page needs extra words. */
   final def otherCoveredPlaces: Seq[String] = coveredPlaces.filterNot(_ == labels.nominative)
@@ -572,13 +576,12 @@ case object Konin extends City(
  *  Warrington and Crewe. That is why they share a class at all: it is the one
  *  country whose venues are hand-written `case object`s, so its towns cannot
  *  ride along in a generated roster tuple the way Germany's, Spain's and the
- *  US's do, and they come from [[UkVenueTowns]] instead.
+ *  US's do — they come from [[VenueTowns]] instead, which every city reads by
+ *  default, so this class does not have to say so.
  *
- *  It also holds the zone the 79 of them were each repeating. */
+ *  What it is for now is the zone the 79 of them were each repeating. */
 sealed abstract class UkCity(slug: String, labels: CityLabels, lat: Double, lon: Double)
-  extends City(slug, labels, lat, lon, ZoneId.of("Europe/London")) {
-  override protected def extraPlaces: Seq[String] = UkVenueTowns.of(cinemas)
-}
+  extends City(slug, labels, lat, lon, ZoneId.of("Europe/London"))
 
 case object London extends UkCity("london",
   CityLabels("London", "London", "London"), 51.5074, -0.1278) {
