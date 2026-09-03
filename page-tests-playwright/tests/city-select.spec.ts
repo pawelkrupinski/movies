@@ -28,14 +28,20 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
   });
 });
 
-// The US lists 457 places — 448 distance-clustered METROS plus the nine states
-// and territories too small to split — grouped under their state, because
-// "Los Angeles" is found under "California" and a 457-row A-to-Z is not a list
-// anybody reads. The state is a heading, never a link: `/california/` is gone.
+// The US lists 467 places — 460 distance-clustered METROS plus the seven states
+// and territories both small enough and compact enough not to split — grouped
+// under their state, because "Los Angeles" is found under "California" and a
+// 467-row A-to-Z is not a list anybody reads. The state is a heading, never a
+// link: `/california/` is gone.
+//
+// The count is a roster fact, so it moves on a re-harvest and on any change to
+// the cut (`UsRoster.MinCinemasToSplit` / `MaxSpanToStayWholeKm`). `UsRosterSpec`
+// and `CountrySpec` pin the same number model-side; this one pins that the page
+// RENDERS all of them, which is the part they cannot see.
 test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
   test('lists metros under their state, and a pick lands on that metro', async ({ page }) => {
     await page.goto('/landing-us');
-    await expect(page.locator('.city-list a')).toHaveCount(457);
+    await expect(page.locator('.city-list a')).toHaveCount(467);
     const groups = page.locator('.city-group');
     await expect(groups).toHaveCount(55);
     await expect(groups.first()).toContainText('Alabama');
