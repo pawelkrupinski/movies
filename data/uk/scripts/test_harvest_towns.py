@@ -49,6 +49,13 @@ def test_a_county_carrying_the_postcode_is_not_the_town():
     assert ht.town_of("Derby Square, Epsom, Surrey KT19 8AG") == "Epsom"
 
 
+def test_an_island_group_is_not_the_town_either():
+    # Every island venue in the roster is written this way.
+    assert ht.town_of("Kenneth Street, Stornoway, Isle of Lewis HS1 2DS") == "Stornoway"
+    assert ht.town_of("Central Promenade, Douglas, Isle of Man, IM2 4NA") == "Douglas"
+    assert ht.town_of("Pickaquoy Centre, Muddisdale Road, Kirkwall, Okney Islands KW15 1LR") == "Kirkwall"
+
+
 def test_the_word_county_is_dropped_from_the_town():
     assert ht.town_of("1 Millennium Place, Durham County DH1 1WA") == "Durham"
     assert ht.town_of("Victoria Road, County Hartlepool TS24 8BH") == "Hartlepool"
@@ -79,7 +86,7 @@ def test_agrees_with_cineworlds_own_city_on_every_recorded_venue():
             for value in node:
                 yield from venues(value)
 
-    scored, wrong = 0, []
+    scored, wrong, sharper = 0, [], []
     for venue in venues(json.load(open(matches[0]))):
         city = (venue.get("addressInfo") or {}).get("city") or ""
         if not city:
@@ -88,10 +95,17 @@ def test_agrees_with_cineworlds_own_city_on_every_recorded_venue():
         got = ht.town_of(venue["address"])
         # Cineworld writes a couple of its cities as "<town>, <county>"; the
         # town is the half we want, and the half we assert on.
-        if got.lower() != city.split(",")[0].strip().lower():
-            wrong.append((venue["address"], city, got))
+        if got.lower() == city.split(",")[0].strip().lower():
+            continue
+        # Cineworld itself sometimes files a COUNTY where a town belongs —
+        # "Boldon Leisure Park, Bolden Colliery, NE35 9PB, Tyne and Wear" is
+        # filed under "Tyne and Wear". Answering the town there is the parser
+        # being RIGHT, so it counts as a pass; it is capped so the allowance
+        # cannot quietly become the rule.
+        (sharper if city.lower() in ht.COUNTIES else wrong).append((venue["address"], city, got))
     assert scored >= 80, f"expected the full venue list, scored only {scored}"
     assert not wrong, f"{len(wrong)}/{scored} disagree, e.g. {wrong[:3]}"
+    assert len(sharper) <= 3, f"{len(sharper)} venues fall through the county allowance: {sharper}"
 
 
 if __name__ == "__main__":

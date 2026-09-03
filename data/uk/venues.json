@@ -75,7 +75,7 @@
   "flicksSlug": "an-lanntair-arts-centre-stornoway-isle-of-lewis",
   "cinemaObject": "AnLanntairArtsCentreStornowayIsleOfLewis",
   "displayName": "An Lanntair Arts Centre Stornoway, Isle of Lewis",
-  "town": "Isle of Lewis",
+  "town": "Stornoway",
   "address": "Kenneth Street, Stornoway, Isle of Lewis HS1 2DS",
   "lat": 58.21066,
   "lon": -6.38795
@@ -1470,7 +1470,7 @@
   "flicksSlug": "commodore-ryde-isle-of-wight",
   "cinemaObject": "CommodoreRydeIsleOfWight",
   "displayName": "Commodore Ryde, Isle of Wight",
-  "town": "Isle of Wight",
+  "town": "Ryde",
   "address": "2 Star Street, Ryde, Isle of Wight PO33 2RX",
   "lat": 50.72457,
   "lon": -1.16027
@@ -3216,7 +3216,7 @@
   "flicksSlug": "mareel-lerwick-shetland-islands",
   "cinemaObject": "MareelLerwickShetlandIslands",
   "displayName": "Mareel Lerwick, Shetland Islands",
-  "town": "Shetland Islands",
+  "town": "Lerwick",
   "address": "Shetland Arts Development Agency, North Ness, Lerwick, Shetland Islands ZE1 0WQ",
   "lat": 60.15839,
   "lon": -1.14784
@@ -4638,7 +4638,7 @@
   "flicksSlug": "palace-cinemas-isle-of-man",
   "cinemaObject": "PalaceCinemasIsleOfMan",
   "displayName": "Palace Cinemas Isle of Man",
-  "town": "Isle of Man",
+  "town": "Douglas",
   "address": "Central Promenade, Douglas, Isle of Man, IM2 4NA",
   "lat": 54.157829,
   "lon": -4.47655
@@ -4737,7 +4737,7 @@
   "flicksSlug": "phoenix-cinema-blyth",
   "cinemaObject": "PhoenixCinemaBlyth",
   "displayName": "Phoenix Cinema Blyth",
-  "town": "Northumberland",
+  "town": "Blyth",
   "address": "37A Beaconsfield Street, Blyth, Northumberland, NE24 2DS",
   "lat": 55.12555,
   "lon": -1.50555
@@ -4764,7 +4764,7 @@
   "flicksSlug": "phoenix-kirkwall-okney-islands",
   "cinemaObject": "PhoenixKirkwallOkneyIslands",
   "displayName": "Phoenix Kirkwall, Okney Islands",
-  "town": "Okney Islands",
+  "town": "Kirkwall",
   "address": "Pickaquoy Centre, Muddisdale Road, Kirkwall, Okney Islands KW15 1LR",
   "lat": 58.98407,
   "lon": -2.97221
@@ -5781,7 +5781,7 @@
   "flicksSlug": "scott-bridgwater",
   "cinemaObject": "ScottCinemasBridgwater",
   "displayName": "Scott Cinemas Bridgwater",
-  "town": "Somerset",
+  "town": "Bridgwater",
   "address": "Northgate Yard, Mount Street, Bridgwater, Somerset, TA6 3FQ",
   "lat": 51.12973,
   "lon": -3.00687
@@ -5961,7 +5961,7 @@
   "flicksSlug": "sleaford-playhouse",
   "cinemaObject": "SleafordPlayhouse",
   "displayName": "Sleaford Playhouse",
-  "town": "Lincolnshire",
+  "town": "Sleaford",
   "address": "54 Westgate, Sleaford, Lincolnshire",
   "lat": 52.99929,
   "lon": -0.41343

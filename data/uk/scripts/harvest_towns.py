@@ -75,6 +75,13 @@ COUNTIES = frozenset(x.lower() for x in [
     "Suffolk", "Surrey", "Tayside", "Tyne and Wear", "Warwickshire", "West Lothian",
     "West Midlands", "West Sussex", "West Yorkshire", "Wiltshire", "Worcestershire",
     "Wirral",
+    # The island groups fill the same slot: "Kenneth Street, Stornoway, Isle of
+    # Lewis HS1 2DS" is Stornoway, and every island venue in the roster is
+    # written this way. "Okney" is Flicks' own misspelling of Orkney, which the
+    # display name in Cinema.scala carries too — spelled as harvested, because
+    # this list has to match what the address actually says.
+    "Isle of Lewis", "Isle of Man", "Isle of Wight", "Okney Islands",
+    "Orkney Islands", "Shetland Islands", "Western Isles",
 ])
 
 
@@ -111,19 +118,29 @@ def town_of(address: str) -> str:
     Cineworld's own `city` field (see test_harvest_towns.py).
     """
     parts = [p.strip() for p in address.split(",") if p.strip()]
+    if not parts:
+        return ""
+
+    chosen = len(parts) - 1                               # no postcode: the last part
     for i, part in enumerate(parts):
         if not POSTCODE.search(part):
             continue
-        town = POSTCODE.sub("", part).strip()
-        if town:                                          # "Norwich NR1 1XA"
-            # …unless what carries it is the county, and the town is in front.
-            if town.lower() in COUNTIES and i:
-                return _tidy(parts[i - 1])
-            return _tidy(town)
-        if i + 1 < len(parts):
-            return _tidy(parts[i + 1])                    # "AB24 5EN, Aberdeen"
-        return _tidy(parts[i - 1]) if i else ""           # "London, WC2H 7NA"
-    return _tidy(parts[-1]) if parts else ""
+        stripped = POSTCODE.sub("", part).strip()
+        if stripped:                                      # "Norwich NR1 1XA"
+            parts[i], chosen = stripped, i
+        elif i + 1 < len(parts):                          # "AB24 5EN, Aberdeen"
+            chosen = i + 1
+        elif i:                                           # "London, WC2H 7NA"
+            chosen = i - 1
+        else:
+            return ""
+        break
+
+    # A county or an island group is never the answer; the town is in front of
+    # it. Walk, rather than step once, because both can trail at once.
+    while chosen > 0 and _tidy(parts[chosen]).lower() in COUNTIES:
+        chosen -= 1
+    return _tidy(parts[chosen])
 
 
 def _tidy(town: str) -> str:
