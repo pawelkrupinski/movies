@@ -57,6 +57,25 @@ class PlayListingTest {
         assertTrue("full description should not be empty", trimmed("en-GB", "full-description.txt").isNotEmpty())
     }
 
+    /**
+     * Play has no keywords field — the short description IS the ranking surface,
+     * so leaving most of its 80 characters unused throws away the app's best
+     * search signal. Polish sat at 29/80 ("Repertuar kin w Twoim mieście") while
+     * English and German spent ~70, and nothing flagged it: an under-length
+     * string is perfectly valid to Play.
+     */
+    @Test
+    fun everyShortDescriptionSpendsItsKeywordBudget() {
+        val floor = 60
+        for (locale in listingsDir.listFiles { f -> f.isDirectory }!!.map { it.name }) {
+            val short = trimmed(locale, "short-description.txt")
+            assertTrue(
+                "$locale/short-description.txt uses only ${short.length} of $shortMax chars " +
+                    "(floor $floor) — Play ranks on this text, so spend it: \"$short\"",
+                short.length >= floor)
+        }
+    }
+
     @Test
     fun polishListingKeepsTheKinowoBrand() {
         assertTrue(trimmed("pl-PL", "title.txt").startsWith("Kinowo"))
