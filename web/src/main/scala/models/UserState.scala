@@ -2,8 +2,8 @@ package models
 
 import java.time.Instant
 
-// Multi-city note: `disabledCinemas` and `favouriteRooms` key on globally-
-// unique cinema display names ("Helios Posnania", "Cinema City Kinepolis"|room),
+// Multi-city note: `disabledCinemas` keys on globally-
+// unique cinema display names ("Helios Posnania", "Cinema City Kinepolis"),
 // so they never collide across cities — a future "Helios Wrocław" is a distinct
 // Cinema with a distinct displayName. Cross-city keys are inert: a page only
 // surfaces cinemas in its own city, so out-of-city entries are simply ignored.
@@ -12,21 +12,14 @@ case class UserState(
   userId:          String,
   hiddenFilms:     Set[String],
   disabledCinemas: Set[String],
-  updatedAt:       Instant,
-  // VESTIGIAL since the plan page was removed: nothing reads or writes these
-  // two any more. Kept because they are part of the stored document shape and
-  // of the mobile sync contract, and dropping a persisted field has cost this
-  // repository whole-batch decode failures before — retire them deliberately,
-  // with a migration, not as a side effect.
-  // `selectedMovies` was the inverse of `hiddenFilms` — titles
-  // the user wants to schedule. `favouriteRooms` is a set of composite
-  // `"<Cinema displayName>|<Room>"` keys; per-cinema semantics on /plan are
-  // "no entries for this cinema → all rooms OK, any entries → only those
-  // rooms OK". The same key shape is used elsewhere (badge `data-room` on
-  // the grid pages, the Filtry → Sale list).
-  selectedMovies:  Set[String]       = Set.empty,
-  favouriteRooms:  Set[String]       = Set.empty
+  updatedAt:       Instant
 )
+//
+// `selectedMovies` and `favouriteRooms` lived here until the plan page was removed. Documents
+// written before that still carry both, and this codec is derived straight from the case class —
+// so the removal was gated on proving the decoder SKIPS an unknown field rather than throwing on
+// it. `UserStateLegacyFieldsSpec` is that proof and stays: it decodes a /plan-era document, in two
+// field orders, and asserts the retired names are never written back.
 
 object UserState {
   def empty(userId: String, now: Instant = Instant.now()): UserState =

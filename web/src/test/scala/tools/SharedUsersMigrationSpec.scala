@@ -86,9 +86,8 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
 
   private def state(
     userId: String, updatedAt: Instant,
-    hidden: Set[String] = Set.empty, cinemas: Set[String] = Set.empty,
-    selected: Set[String] = Set.empty, rooms: Set[String] = Set.empty
-  ) = UserState(userId, hidden, cinemas, updatedAt, selected, rooms)
+    hidden: Set[String] = Set.empty, cinemas: Set[String] = Set.empty
+  ) = UserState(userId, hidden, cinemas, updatedAt)
 
   // UNION, not last-write-wins. The keys are already global and out-of-city
   // entries are inert (see `UserState`'s own note), so keeping both countries'
@@ -103,13 +102,12 @@ class SharedUsersMigrationSpec extends AnyFlatSpec with Matchers {
     merged.disabledCinemas shouldBe Set("Helios Posnania", "Cineworld Kent")
   }
 
-  it should "union the /plan picks too" in {
+  it should "union what both accounts hold" in {
     val merged = SharedUsersMigration.mergeState(Seq(
-      state("alice@example.com", Mid,  selected = Set("Dune"),  rooms = Set("Helios Posnania|3")),
-      state("alice@example.com", Late, selected = Set("Wicked"), rooms = Set("Cineworld Kent|IMAX"))))
-
-    merged.selectedMovies shouldBe Set("Dune", "Wicked")
-    merged.favouriteRooms shouldBe Set("Helios Posnania|3", "Cineworld Kent|IMAX")
+      state("alice@example.com", Mid,  hidden = Set("Dune"),   cinemas = Set("Helios Posnania")),
+      state("alice@example.com", Late, hidden = Set("Wicked"), cinemas = Set("Cineworld Kent"))))
+    merged.hiddenFilms     shouldBe Set("Dune", "Wicked")
+    merged.disabledCinemas shouldBe Set("Helios Posnania", "Cineworld Kent")
   }
 
   it should "carry the latest updatedAt of the rows it folded" in {

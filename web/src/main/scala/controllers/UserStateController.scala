@@ -9,15 +9,12 @@ import java.time.Instant
 
 /**
  * REST endpoint for the authenticated user's personalization state —
- * hidden films, disabled cinemas, /plan picks (selectedMovies,
- * favouriteRooms). The browser-side JS (Phase D) uses this to sync
+ * hidden films and disabled cinemas. The browser-side JS uses this to sync
  * localStorage with the server on login.
  *
  * Shape (both directions):
  *   { "hiddenFilms":     [titles…],
- *     "disabledCinemas": [cinema display names…],
- *     "selectedMovies":  [titles…],
- *     "favouriteRooms":  ["<Cinema displayName>|<Room>"…] }
+ *     "disabledCinemas": [cinema display names…] }
  */
 class UserStateController(
   cc:              ControllerComponents,
@@ -80,18 +77,16 @@ object UserStateController {
    */
   def toJson(state: UserState): JsValue = Json.obj(
     "hiddenFilms"     -> state.hiddenFilms.toSeq.sorted,
-    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted,
-    "selectedMovies"  -> state.selectedMovies.toSeq.sorted,
-    "favouriteRooms"  -> state.favouriteRooms.toSeq.sorted
+    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted
   )
 
   /** Parse a wire JSON into `UserState` as a PARTIAL update over `base`: a
    *  field present in the body overwrites that set, a field the body omits
    *  keeps `base`'s value (and a present-but-empty array clears it). This
-   *  lets a client send only the fields it owns without re-shipping — and,
-   *  crucially, without wiping the ones it doesn't model: the mobile apps
-   *  send only hiddenFilms + disabledCinemas, so the web-only /plan picks
-   *  (selectedMovies / favouriteRooms) must survive their writes. Wrong
+   *  lets a client send only the fields it owns without re-shipping, and
+   *  without wiping the ones it doesn't model — the rule that mattered when
+   *  the web carried two fields the mobile apps did not, and that stays
+   *  because the next such field should not have to rediscover it. Wrong
    *  shape (non-array value, non-string element) returns Left with a hint.
    */
   def fromJson(base: UserState, body: JsValue): Either[String, UserState] = {
@@ -107,8 +102,6 @@ object UserStateController {
     for {
       hf <- stringSet("hiddenFilms",     base.hiddenFilms)
       dc <- stringSet("disabledCinemas", base.disabledCinemas)
-      sm <- stringSet("selectedMovies",  base.selectedMovies)
-      fr <- stringSet("favouriteRooms",  base.favouriteRooms)
-    } yield UserState(base.userId, hf, dc, Instant.now(), sm, fr)
+    } yield UserState(base.userId, hf, dc, Instant.now())
   }
 }

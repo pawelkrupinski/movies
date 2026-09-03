@@ -698,21 +698,6 @@
   // Entries naming a cinema in some OTHER city — preserved verbatim when this
   // city's select-all toggles the whole set, so a round-trip keeps them.
   function disabledCinemasElsewhere() { return getDisabledCinemas().filter(c => !ALL_CINEMAS.includes(c)); }
-  // Carried in the `/api/me/state` sync alongside `hiddenFilms`, but NOTHING
-  // reads or writes them since the plan page was removed. Left in place
-  // deliberately: they are part of the stored `UserState` shape that older
-  // documents and the Android client already carry, and dropping a persisted
-  // field has broken whole-batch decodes here before. Remove them together
-  // with the server-side fields once that migration is done on purpose.
-  // `favouriteRooms` are composite `"<Cinema displayName>|<Room>"` keys.
-  function getSelectedMovies()   { return _lsGet('selectedMovies') || []; }
-  function setSelectedMovies(l)  { _lsSet('selectedMovies', l);    scheduleServerSync(); }
-  function getFavouriteRooms()   { return _lsGet('favouriteRooms') || []; }
-  function setFavouriteRooms(l)  { _lsSet('favouriteRooms', l);    scheduleServerSync(); }
-  window.getSelectedMovies = getSelectedMovies;
-  window.setSelectedMovies = setSelectedMovies;
-  window.getFavouriteRooms = getFavouriteRooms;
-  window.setFavouriteRooms = setFavouriteRooms;
 
   // Delegated click handler for hide-film buttons and card-tap navigation.
   // Sentry caught `e.target.closest is not a function` on Chrome Mobile —
@@ -2007,9 +1992,7 @@
       keepalive: !!(opts && opts.keepalive),
       body:    JSON.stringify({
         hiddenFilms:     getHidden(),
-        disabledCinemas: getDisabledCinemas(),
-        selectedMovies:  getSelectedMovies(),
-        favouriteRooms:  getFavouriteRooms()
+        disabledCinemas: getDisabledCinemas()
       })
     }).catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
@@ -2047,8 +2030,6 @@
         const union = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
         _lsSet('hiddenFilms',     union(getHidden(),          remote.hiddenFilms));
         _lsSet('disabledCinemas', union(getDisabledCinemas(), remote.disabledCinemas));
-        _lsSet('selectedMovies',  union(getSelectedMovies(),  remote.selectedMovies));
-        _lsSet('favouriteRooms',  union(getFavouriteRooms(),  remote.favouriteRooms));
         try { localStorage.setItem(SERVER_SYNCED_KEY, '1'); } catch {}
         pushStateToServer();   // persist the migrated union
       } else {
@@ -2057,8 +2038,6 @@
         const fromServer = srv => (srv || []).slice().sort();
         _lsSet('hiddenFilms',     fromServer(remote.hiddenFilms));
         _lsSet('disabledCinemas', fromServer(remote.disabledCinemas));
-        _lsSet('selectedMovies',  fromServer(remote.selectedMovies));
-        _lsSet('favouriteRooms',  fromServer(remote.favouriteRooms));
       }
       applyFilters();
     } catch (e) { /* network blew up — localStorage is still usable */ }

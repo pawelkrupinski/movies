@@ -36,9 +36,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(result)              shouldBe OK
     contentAsJson(result)       shouldBe Json.obj(
       "hiddenFilms"         -> Json.arr(),
-      "disabledCinemas"     -> Json.arr(),
-      "selectedMovies"      -> Json.arr(),
-      "favouriteRooms"      -> Json.arr()
+      "disabledCinemas"     -> Json.arr()
     )
   }
 
@@ -76,9 +74,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
       .withBody(Json.obj(
-        "hiddenFilms"     -> Json.arr("Hidden A"),
-        "selectedMovies"  -> Json.arr("Conclave"),
-        "favouriteRooms"  -> Json.arr("Multikino Stary Browar|Sala 5")
+        "hiddenFilms"     -> Json.arr("Hidden A")
       ))
 
     val result = ctl.put()(request)
@@ -87,46 +83,40 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val stored = repository.find("u1").value
     stored.hiddenFilms     shouldBe Set("Hidden A")
     stored.disabledCinemas shouldBe empty
-    stored.selectedMovies  shouldBe Set("Conclave")
-    stored.favouriteRooms  shouldBe Set("Multikino Stary Browar|Sala 5")
   }
 
-  it should "preserve fields the body omits (partial update — mobile sends only hidden+disabled)" in {
+  // THE RULE OUTLIVES THE FIELDS IT WAS WRITTEN FOR. This covered a client that sent only the
+  // sets it modelled while the web carried two more (`selectedMovies` / `favouriteRooms`, retired
+  // with the plan page). Both remaining fields are now modelled by every client, so the omission
+  // is constructed rather than incidental — but the rule is the contract, and the next field added
+  // on one platform before the other depends on it.
+  it should "preserve a field the body omits, rather than clearing it" in {
     val initial = UserState(
       userId          = "u1",
       hiddenFilms     = Set("OLD HIDE"),
       disabledCinemas = Set("OLD CINEMA"),
-      updatedAt       = Instant.now(),
-      selectedMovies  = Set("Plan Pick"),
-      favouriteRooms  = Set("Helios|Sala 1")
+      updatedAt       = Instant.now()
     )
     val (ctl, repository, _) = fixture(Some(initial))
-    // A mobile client PUTimestamp only the two sets it models — the web-only /plan
-    // picks must survive untouched.
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
-      .withBody(Json.obj(
-        "hiddenFilms"     -> Json.arr("New Hide"),
-        "disabledCinemas" -> Json.arr("New Cinema")
-      ))
+      .withBody(Json.obj("hiddenFilms" -> Json.arr("New Hide")))
 
     status(ctl.put()(request)) shouldBe OK
     val stored = repository.find("u1").value
-    stored.hiddenFilms     shouldBe Set("New Hide")       // present → replaced
-    stored.disabledCinemas shouldBe Set("New Cinema")     // present → replaced
-    stored.selectedMovies  shouldBe Set("Plan Pick")      // absent  → preserved
-    stored.favouriteRooms  shouldBe Set("Helios|Sala 1")  // absent  → preserved
+    stored.hiddenFilms     shouldBe Set("New Hide")    // present → replaced
+    stored.disabledCinemas shouldBe Set("OLD CINEMA")  // absent  → preserved
   }
 
   it should "still clear a field when the body sends it as an explicit empty array" in {
-    val initial = UserState("u1", Set("H"), Set.empty, Instant.now(), selectedMovies = Set("Pick"))
+    val initial = UserState("u1", Set("H"), Set("C"), Instant.now())
     val (ctl, repository, _) = fixture(Some(initial))
     val request = FakeRequest("PUT", "/api/me/state")
       .withSession("userId" -> "u1")
-      .withBody(Json.obj("selectedMovies" -> Json.arr()))
+      .withBody(Json.obj("disabledCinemas" -> Json.arr()))
     status(ctl.put()(request)) shouldBe OK
-    repository.find("u1").value.selectedMovies shouldBe empty   // present-but-empty → cleared
-    repository.find("u1").value.hiddenFilms    shouldBe Set("H") // absent → preserved
+    repository.find("u1").value.disabledCinemas shouldBe empty    // present-but-empty → cleared
+    repository.find("u1").value.hiddenFilms     shouldBe Set("H") // absent → preserved
   }
 
   it should "echo the saved state in the response so the client confirms what landed" in {
@@ -180,13 +170,11 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // ── Pure helpers (also covered indirectly by the action specs above) ────
 
   "UserStateController.fromJson" should "keep base fields the body omits and overwrite the ones it sends" in {
-    val base = UserState("u1", Set("H"), Set("D"), Instant.now(), Set("S"), Set("F"))
+    val base = UserState("u1", Set("H"), Set("D"), Instant.now())
     UserStateController.fromJson(base, Json.obj("hiddenFilms" -> Json.arr("H2"))) match {
       case Right(s) =>
         s.hiddenFilms     shouldBe Set("H2")  // present → overwritten
         s.disabledCinemas shouldBe Set("D")   // absent  → preserved
-        s.selectedMovies  shouldBe Set("S")   // absent  → preserved
-        s.favouriteRooms  shouldBe Set("F")   // absent  → preserved
       case Left(reason) => fail(s"expected Right, got Left($reason)")
     }
   }

@@ -79,8 +79,7 @@ object SharedUsersMigration {
       hiddenFilms     = a.hiddenFilms     ++ b.hiddenFilms,
       disabledCinemas = a.disabledCinemas ++ b.disabledCinemas,
       updatedAt       = if (a.updatedAt.isAfter(b.updatedAt)) a.updatedAt else b.updatedAt,
-      selectedMovies  = a.selectedMovies  ++ b.selectedMovies,
-      favouriteRooms  = a.favouriteRooms  ++ b.favouriteRooms))
+))
 
   /** The users `store` cannot be read back to hold, of the ones just handed to
    *  it — empty when the write landed.

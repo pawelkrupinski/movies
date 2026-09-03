@@ -13,7 +13,7 @@ import scala.util.Try
 
 /**
  * Per-user state store — hidden films + disabled cinemas + /plan picks
- * (selectedMovies, favouriteRooms), one document per user. Read on every
+ * one document per user. Read on every
  * page load for authenticated users (so the rendered page reflects their
  * server-side state, not stale localStorage); written when they hide a
  * film / disable a cinema / change their /plan state.

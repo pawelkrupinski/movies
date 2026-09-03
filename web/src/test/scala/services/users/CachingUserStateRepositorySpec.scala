@@ -13,9 +13,7 @@ class CachingUserStateRepositorySpec extends AnyFlatSpec with Matchers {
     userId          = "uuid-alice",
     hiddenFilms     = Set("Bad Movie"),
     disabledCinemas = Set("Multikino Stary Browar"),
-    updatedAt       = Instant.parse("2026-05-19T12:00:00Z"),
-    selectedMovies  = Set("Diabeł ubiera się u Prady 2"),
-    favouriteRooms  = Set("Cinema City Poznań Plaza|Sala IMAX")
+    updatedAt       = Instant.parse("2026-05-19T12:00:00Z")
   )
 
   private class CountingUserStateRepository(seed: Seq[UserState] = Seq.empty) extends UserStateRepository {

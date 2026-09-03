@@ -127,7 +127,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Static server-side state: one hidden film. response.json() parses the body
       // regardless of content-type, so serving it via the HTML route map is fine.
       val userStateJson =
-        """{"hiddenFilms":["Film A"],"disabledCinemas":[],"selectedMovies":[],"favouriteRooms":[]}"""
+        """{"hiddenFilms":["Film A"],"disabledCinemas":[]}"""
 
       // The global-corpus /debug page (not city-scoped) — a few corpus rows to
       // populate the main #t table behind the staging table under test.
