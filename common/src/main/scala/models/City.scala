@@ -105,8 +105,14 @@ sealed abstract class City(
    *  the page's `<h1>`. Before those, a covered town appeared nowhere a crawler
    *  could read it: "Sopot" was absent from `/trojmiasto/` entirely — title,
    *  description, structured data, and every one of its cinemas' names. */
-  def coveredPlaces: Seq[String] =
-    (labels.nominative +: areas.map(_.area).filter(_.namesAPlace).map(_.label)).distinct
+  final def coveredPlaces: Seq[String] =
+    (labels.nominative +: (areas.map(_.area).filter(_.namesAPlace).map(_.label) ++ extraPlaces)).distinct
+  /** Places this city covers that its [[areas]] do not already name — the
+   *  roster's own per-venue town list for the countries that harvest one
+   *  (Germany, Spain, the US), or a hand-written list where nothing does
+   *  ([[Trojmiasto]]). Ordered most venues first, so the consumers that can only
+   *  name a few name the ones worth naming. */
+  protected def extraPlaces: Seq[String] = Nil
   /** The covered towns OTHER than the city itself — empty for the ordinary
    *  one-town city, and the whole reason a multi-town page needs extra words. */
   final def otherCoveredPlaces: Seq[String] = coveredPlaces.filterNot(_ == labels.nominative)
@@ -232,7 +238,7 @@ case object Trojmiasto extends City(
    *  because a flat city has no [[areas]] for the default to read, and needed
    *  because "Trójmiasto" is a name nobody searches a cinema by: of the four,
    *  only "Gdańsk" appeared on the page at all, inside `Multikino Gdańsk`. */
-  override val coveredPlaces: Seq[String] = Seq("Trójmiasto", "Gdańsk", "Gdynia", "Sopot", "Rumia")
+  override protected val extraPlaces: Seq[String] = Seq("Gdańsk", "Gdynia", "Sopot", "Rumia")
 }
 
 case object Bydgoszcz extends City(
@@ -893,9 +899,10 @@ final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Dou
   /** The region's towns, most venues first, from the clustering that built it:
    *  145 of the 158 regions are several towns around a hub, so the hub's name
    *  is not the only place they cover — `/koeln/` also covers Düsseldorf, Bonn
-   *  and Leverkusen. Flat, like [[SpanishProvince]], so there are no [[areas]]
-   *  for the default to read. Deduped because the hub is both. */
-  override val coveredPlaces: Seq[String] = (labels.nominative +: cities).distinct
+   *  and Leverkusen. Flat, like [[SpanishProvince]], so the region's [[areas]]
+   *  name nothing and these are all it has. The hub is in its own list; the
+   *  dedupe in [[coveredPlaces]] is what stops it being named twice. */
+  override protected val extraPlaces: Seq[String] = cities
 }
 
 /** A US METRO — the data-driven `City` subtype, and the place a US visitor
@@ -915,9 +922,15 @@ final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Dou
  *  no US equivalent. Each place carries its state's predominant zone (see
  *  `data/us/scripts/states.py` for the handful of states that straddle two). */
 final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
-                   zoneId: ZoneId, cinemas0: Seq[Cinema], areas0: Seq[CinemaAreaGroup])
+                   zoneId: ZoneId, cinemas0: Seq[Cinema], areas0: Seq[CinemaAreaGroup],
+                   towns: Seq[String])
   extends City(slug, labels, lat, lon, zoneId) {
   val cinemas: Seq[Cinema] = cinemas0
+  /** The metro's towns. Its [[areas]] name places too, but only the five
+   *  biggest metros have any — every other US page, `/san-diego/` included,
+   *  covers a dozen towns and named none of them. Both, deduped: a district is
+   *  a grouping a local browses by ("East Bay"), a town is where a cinema is. */
+  override protected val extraPlaces: Seq[String] = towns
   /** The DISTRICTS of a metro too big to browse as one list — Manhattan,
    *  Brooklyn, Santa Monica — and `Nil` for every other place. The level below
    *  the metro, exactly as London's compass areas sit below London; see
@@ -944,10 +957,10 @@ final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: 
   extends City(slug, labels, lat, lon, zoneId) {
   val cinemas: Seq[Cinema] = cinemas0
   /** The province's towns, from the roster. A province is flat — no [[areas]]
-   *  for the default to read — but it is nonetheless several towns under one
-   *  name, so it names them the way [[Trojmiasto]] does. Deduped because most
-   *  provinces are named after their own capital, which is then both. */
-  override val coveredPlaces: Seq[String] = (labels.nominative +: towns).distinct
+   *  to name it — but it is nonetheless several towns under one name, so it
+   *  names them the way [[Trojmiasto]] does. Most provinces are named after
+   *  their own capital, which is then in both halves and deduped away. */
+  override protected val extraPlaces: Seq[String] = towns
 }
 
 /** A named group of [[City]]s in a picker — a US STATE over its metros
@@ -1013,7 +1026,7 @@ object City {
   private[models] val usCities: Seq[City] = {
     val slugs = usSlugs(UsRoster.places)
     UsRoster.places.zip(slugs).map { case (p, slug) =>
-      new UsCity(slug, CityLabels(p.label, p.label, p.label), p.lat, p.lon, p.zoneId, p.cinemas, p.districts)
+      new UsCity(slug, CityLabels(p.label, p.label, p.label), p.lat, p.lon, p.zoneId, p.cinemas, p.districts, p.towns)
     }
   }
 

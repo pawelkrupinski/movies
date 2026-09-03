@@ -117,10 +117,11 @@ class CitySpec extends AnyFlatSpec with Matchers {
     val bay = City.all.find(_.labels.nominative == "San Francisco Bay Area")
       .getOrElse(fail("no San Francisco Bay Area metro in the roster"))
     bay.coveredPlaces.head shouldBe "San Francisco Bay Area"
-    // The metro is named after the BAY, so the city it is named after is one of
-    // its districts — and until now `/san-francisco-bay-area/` said "San
-    // Francisco" nowhere, any more than it said "Oakland".
-    bay.otherCoveredPlaces should contain allOf ("San Francisco", "East Bay", "South Bay")
+    // The metro is named after the BAY, so it names neither the city it is
+    // named after nor any of the towns around it. Both halves land: the
+    // districts a local browses by, and the towns the cinemas are actually in.
+    bay.otherCoveredPlaces should contain allOf ("East Bay", "South Bay")   // districts
+    bay.otherCoveredPlaces should contain allOf ("San Francisco", "Berkeley", "San Jose")
     bay.coveredPlaces      shouldBe bay.coveredPlaces.distinct
   }
 
@@ -131,6 +132,16 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // listed Düsseldorf's and Bonn's cinemas while naming neither.
     koeln.otherCoveredPlaces should contain allOf ("Düsseldorf", "Bonn")
     koeln.coveredPlaces shouldBe koeln.coveredPlaces.distinct
+  }
+
+  // The gap the districts left: only the five biggest metros are sub-divided,
+  // so the other 432 had nothing but their own name — `/san-diego/` covers
+  // Chula Vista, Carlsbad and El Cajon and named none of them.
+  it should "name a plain metro's towns, which have no districts to name them" in {
+    val sd = City.all.find(_.labels.nominative == "San Diego").getOrElse(fail("no San Diego metro"))
+    sd.areas              shouldBe empty
+    sd.coveredPlaces.head shouldBe "San Diego"
+    sd.otherCoveredPlaces should contain allOf ("Chula Vista", "Carlsbad", "El Cajon")
   }
 
   it should "read a Spanish province's towns, which the province's own name hides" in {

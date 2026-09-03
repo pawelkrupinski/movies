@@ -146,8 +146,8 @@ def main(src, out):
         "package models",
         "",
         "private[models] object UsRosterData {",
-        "  // (displayName, pillName, flicks cinema slug, metro label, district label)",
-        "  type C = (String, String, String, String, String)",
+        "  // (displayName, pillName, flicks cinema slug, metro label, district label, town)",
+        "  type C = (String, String, String, String, String, String)",
         "  // (metro label, lat, lon, zoneId) — the centroid of that metro's own",
         "  // venues, and the zone THEY are in (not the state's; see states.py)",
         "  type M = (String, Double, Double, String)",
@@ -161,9 +161,15 @@ def main(src, out):
                      f'{lat}, {lon}, Seq(')
         for v in vs:
             t = scala_str(v['title'])
+            # The venue's own town, straight off the harvest. A metro is not a
+            # town — /san-diego/ covers Chula Vista, Carlsbad and El Cajon — and
+            # this is the field `City.coveredPlaces` names them from, so it is
+            # carried per VENUE rather than per metro: the same roster also
+            # serves whole states as one place, and each grouping counts its own.
             lines.append(f'    ("{t}", "{t}", "{scala_str(v["slug"])}", '
                          f'"{scala_str(metro_of[state][v["slug"]])}", '
-                         f'"{scala_str(sub_of.get(v["slug"], ""))}"),')
+                         f'"{scala_str(sub_of.get(v["slug"], ""))}", '
+                         f'"{scala_str(v.get("city", ""))}"),')
         lines.append('  ), Seq(')
         for label, mlat, mlon, mzone in metros:
             lines.append(f'    ("{scala_str(label)}", {mlat}, {mlon}, "{mzone}"),')

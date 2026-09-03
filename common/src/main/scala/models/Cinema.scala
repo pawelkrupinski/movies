@@ -1577,6 +1577,12 @@ final case class UsPlace(
   /** The districts a big metro is grouped by — see [[UsMetroSubAreas]]. Empty
    *  for every other place. */
   districts:     Seq[CinemaAreaGroup],
+  /** The towns this place's venues sit in, most venues first. A metro is not a
+   *  town — `/san-diego/` covers Chula Vista, Carlsbad and El Cajon, and named
+   *  none of them — and only the five biggest metros have [[districts]] to say
+   *  so, so this is where the other 432 get their place names. See
+   *  [[City.coveredPlaces]]. */
+  towns:         Seq[String],
 )
 
 /** Materialises the generated US roster into [[UsPlace]]s + `UsCinema` venues,
@@ -1666,7 +1672,8 @@ object UsRoster {
 
   /** One venue of the generated roster, with everything the places and the
    *  scrape catalog read off it. */
-  private final case class Venue(cinema: UsCinema, flicksSlug: String, metro: String, district: String)
+  private final case class Venue(cinema: UsCinema, flicksSlug: String, metro: String, district: String,
+                                town: String)
 
   /** One metro's own centre and its own clock. The zone is the metro's, resolved
    *  by `cluster_metros.zone_for` from the coordinates of the venues in it — not
@@ -1684,9 +1691,9 @@ object UsRoster {
     UsRosterData.regions.map { case (slug, name, lat, lon, cinemas, metros) =>
       // Qualify only the venues that would collide, so the roster's names — and
       // the wire keys of every already-stored US slot — stay exactly as they are.
-      val venues = cinemas.map { case (disp, pill, flicksSlug, metro, district) =>
+      val venues = cinemas.map { case (disp, pill, flicksSlug, metro, district, town) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp ($name)" else disp
-        Venue(new UsCinema(unique, pill), flicksSlug, metro, district)
+        Venue(new UsCinema(unique, pill), flicksSlug, metro, district, town)
       }
       State(slug, name, lat, lon, venues,
             metros.map { case (label, mlat, mlon, zone) =>
@@ -1707,13 +1714,24 @@ object UsRoster {
    *  A state whose venues all land in one metro contributes ONE place: itself.
    *  So does a state under [[MinCinemasToSplit]] venues — unless its metros are
    *  more than [[MaxSpanToStayWholeKm]] apart, which is Alaska and Hawaii. */
+  /** The towns a group of venues sits in, most venues first (ties alphabetical)
+   *  — the order [[City.coveredPlaces]] promises, and computed per GROUP rather
+   *  than read off a metro record because the same roster serves a whole state
+   *  as one place too, and that place's counts are its own. */
+  private def townsOf(venues: Seq[Venue]): Seq[String] =
+    venues.filter(_.town.nonEmpty).groupBy(_.town).toSeq
+      .sortBy { case (town, sharing) => (-sharing.size, town) }
+      .map(_._1)
+
   val places: Seq[UsPlace] = built.flatMap { state =>
     val byMetro = CinemaAreaGroup.byLabel(state.venues.map(v => (v.cinema, v.metro)))
     if (byMetro.sizeIs < 2 || (state.venues.sizeIs < MinCinemasToSplit && !sprawls(state)))
       Seq(UsPlace(state.slug, state.name, state.name, state.slug, state.lat, state.lon,
-                  wholeStateZone(state, byMetro), state.venues.map(_.cinema), Nil))
+                  wholeStateZone(state, byMetro), state.venues.map(_.cinema), Nil,
+                  townsOf(state.venues)))
     else {
       val districtOf = state.venues.map(v => (v.cinema: Cinema) -> v.district).toMap
+      val venueOf    = state.venues.map(v => (v.cinema: Cinema) -> v).toMap
       byMetro.map { metro =>
         val centre = state.metroCentres(metro.area.label)
         // A renamed metro re-folds its slug from the name shown, so label and
@@ -1721,7 +1739,8 @@ object UsRoster {
         // un-renamed metro keeps the slug it already had.
         val area = MetroDisplayNames.get(metro.area.label).fold(metro.area)(CinemaArea(_))
         UsPlace(state.slug, state.name, area.label, area.slug, centre.lat, centre.lon, centre.zoneId,
-                metro.cinemas, UsMetroSubAreas.districts(metro.cinemas.map(c => (c, districtOf(c)))))
+                metro.cinemas, UsMetroSubAreas.districts(metro.cinemas.map(c => (c, districtOf(c)))),
+                townsOf(metro.cinemas.map(venueOf)))
       }
     }
   }
