@@ -158,6 +158,29 @@ class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "each tier's documented base" should "keep its header where the deploy rewrite cannot drop it" in {
+    // Learned the expensive way, twice. The first two automated deploys silently
+    // deleted these files' headers — decff51a9 the worker's, f32d34f89 web's —
+    // including the block explaining that MONGODB_DB is set nowhere, which is the
+    // note standing between a reader and merging every country's corpus into one
+    // database.
+    //
+    // Nothing was red: image-automation rewrites these files through kustomize's
+    // YAML round-trip, and that round-trip preserves comments ATTACHED TO A NODE
+    // while dropping any that float before the first document. A `---` between the
+    // header and `apiVersion:` is exactly what makes it float, so the separator is
+    // the whole difference between documentation that survives deploys and
+    // documentation that one of them quietly eats.
+    Apps.foreach { app =>
+      val text = RepoFile.read(s"infra/kubernetes/$app/base/all.yaml")
+      withClue(s"$app lost its header: ")(text should include("COUNTRY-AGNOSTIC BASE"))
+      val beforeFirstNode = text.linesIterator.takeWhile(!_.startsWith("apiVersion")).map(_.trim).toSeq
+      withClue(s"$app: a `---` above the header detaches it, and the next deploy deletes it: ") {
+        beforeFirstNode should not contain "---"
+      }
+    }
+  }
+
   "the automation's commit" should "not start another CI run" in {
     // Without the marker: deploy commit -> CI -> new image -> newer tag ->
     // another deploy commit. The loop never settles and it spends the runner
