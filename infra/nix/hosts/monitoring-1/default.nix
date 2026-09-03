@@ -115,6 +115,23 @@ in
   # neverDisturbUnits floor (sshd, mongodb, k3s) is checked first and still applies.
   fleet.autoApply.restartableUnits = [ "grafana.service" "prometheus.service" ];
 
+  # WHO THIS API SERVER WILL BELIEVE BESIDES ITS OWN CERTIFICATES. Headlamp
+  # (infra/kubernetes/headlamp/) logs a person in with Google and then presents that token to the
+  # API; without this the token is not an identity here and the UI reports "the cluster did not
+  # accept your sign-in" after a login that otherwise succeeded.
+  #
+  # THE WIDENING IS BOUNDED TWICE OVER, which is what makes it acceptable on the box that also
+  # holds etcd. Google will only mint a token for this client to an account on the project's
+  # TEST-USER list -- an allow-list enforced before a request reaches the cluster -- and an
+  # authenticated subject still has no permission until a ClusterRoleBinding names it. The one
+  # that exists grants read-only, with `secrets` withheld.
+  fleet.k3sServer.oidc = {
+    issuerUrl = "https://accounts.google.com";
+    # Not a secret: a client id travels in every authorisation URL. The secret half is in the
+    # `headlamp-oidc` Kubernetes Secret.
+    clientId  = "283216110679-ur705ei6rk5hlaukm13rrfioe45ltite.apps.googleusercontent.com";
+  };
+
   # CADDY RELOADS RATHER THAN RESTARTS, which is why it is here and not in the list above.
   # `caddy.service` reports `CanReload=yes` with an `ExecReload` of `caddy reload --force`, so a
   # vhost added or changed is picked up without dropping a connection -- including the TLS

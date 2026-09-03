@@ -96,6 +96,35 @@ in
       '';
     };
 
+    oidc = lib.mkOption {
+      type = lib.types.nullOr (lib.types.submodule {
+        options = {
+          issuerUrl = lib.mkOption { type = lib.types.str; example = "https://accounts.google.com"; };
+          clientId  = lib.mkOption { type = lib.types.str; };
+        };
+      });
+      default = null;
+      description = ''
+        An OIDC provider the API SERVER will accept bearer tokens from, so a person can be a
+        Kubernetes subject rather than a shared ServiceAccount token everybody pastes.
+
+        NULL BY DEFAULT and set on one host, because it is a real widening: every identity the
+        issuer will mint becomes presentable to this API server. What keeps that bounded here is
+        the Google project's TESTING publishing status -- its test-user list is an allow-list
+        Google enforces before a token exists at all -- plus RBAC, which grants an authenticated
+        subject nothing until a binding names it.
+
+        `clientId` IS NOT A SECRET. It travels in every authorisation URL by construction; the
+        secret is the other half of the pair and lives in a Kubernetes Secret, not here.
+
+        ⚠️ CHANGING THIS RESTARTS THE API SERVER. `k3s.service` is in the fleet's
+        `neverDisturbUnits`, so an unattended switch refuses it and a person deploys it by hand --
+        which is the intended reading, not an obstacle: the control plane is unavailable for the
+        seconds it takes, and workloads keep running because kubelet does not need the API to hold
+        a pod up.
+      '';
+    };
+
     clusterCidr = lib.mkOption {
       type = lib.types.str;
       default = "10.42.0.0/16";
@@ -191,6 +220,26 @@ in
         # lookup from every pod then returns NXDOMAIN. It is left unset because this fleet has no
         # resolver of its own to point at; if systemd-resolved is enabled on this host, this flag
         # has to come back with a real nameserver behind it.
+      ] ++ lib.optionals (cfg.oidc != null) [
+        # WHO THE API SERVER WILL BELIEVE. Without these an OIDC token is simply not an identity
+        # here: the holder authenticates to whatever UI issued the login and is then rejected by
+        # the API with "the cluster did not accept your sign-in", which is a confusing place to
+        # discover the trust was never established.
+        "--kube-apiserver-arg=oidc-issuer-url=${cfg.oidc.issuerUrl}"
+        "--kube-apiserver-arg=oidc-client-id=${cfg.oidc.clientId}"
+
+        # EMAIL AS THE USERNAME, because a binding naming a person should be readable as one.
+        # The default claim is `sub`, which for Google is an opaque numeric id -- correct, stable,
+        # and impossible to review in an RBAC file.
+        "--kube-apiserver-arg=oidc-username-claim=email"
+
+        # PREFIXED, and this is the load-bearing half of the pair. Kubernetes requires a prefix
+        # whenever the username claim is not `sub`, and the reason is impersonation: without one,
+        # an OIDC token whose email happens to equal a client-certificate CN, or a
+        # ServiceAccount's name, would authenticate AS that subject. `oidc:` keeps every
+        # identity this issuer can mint inside a namespace of its own, so a binding can never
+        # accidentally grant more than it reads as.
+        "--kube-apiserver-arg=oidc-username-prefix=oidc:"
       ] ++ lib.optionals (!cfg.schedulable) [
         # k3s's own control-plane taint, applied explicitly rather than relying on a default that
         # differs between k3s and upstream Kubernetes.
