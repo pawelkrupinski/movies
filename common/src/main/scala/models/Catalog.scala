@@ -34,10 +34,32 @@ object Catalog {
       .map { c =>
         // The country's IANA zone, so the mobile apps prune past showtimes
         // against local wall-clock (a London show disappears on Europe/London,
-        // not Warsaw). Every city within a country shares one zone, so the
-        // first city's is representative; `Europe/Warsaw` is a safe default for
-        // the (currently impossible) city-less country.
-        val timezone = c.cities.headOption.map(_.zoneId.getId).getOrElse("Europe/Warsaw")
+        // not Warsaw).
+        //
+        // The zone of the country's BIGGEST city, not of whichever happens to
+        // sort first. Four of the five countries keep one zone throughout, so
+        // for them any city answers; the US spans six, and reading the first
+        // made this value a function of roster ORDER — a generator change that
+        // reshuffled the states once moved it from Chicago to Pago Pago, and
+        // nothing failed. Biggest is at least the answer most of the country's
+        // users are on, and it does not move when the roster is re-sorted.
+        //
+        // Biggest is also the safer of the two errors it can make. It is still
+        // ONE zone for a country that has six, and the US's biggest metro is Los
+        // Angeles: pruning on Pacific means every zone east of it prunes LATE, so
+        // a show LINGERS a couple of hours past its start. Reading the first city
+        // gave Central, on which a Los Angeles user drops a 19:00 show two hours
+        // EARLY — hiding a screening someone could still get to, which is the
+        // error that costs them something.
+        //
+        // Neither is right. The fix is a per-CITY zone in this payload with both
+        // apps preferring it over the country's; `City.zoneId` has been correct
+        // per metro since the US metro split, so the data is already here — it is
+        // the apps that still read only this field (`ios/Kinowo/Models/Country.swift`,
+        // `android/.../model/Country.kt`, both for past-showtime pruning and the
+        // day boundary).
+        val timezone = c.cities.maxByOption(city => (city.cinemas.size, city.slug))
+          .map(_.zoneId.getId).getOrElse("Europe/Warsaw")
         s"""{"code":"${c.code}","name":"${c.displayName}","baseUrl":"${c.webUrl.get}","language":"${c.language.getLanguage}","brand":"${c.brandName}","timezone":"$timezone"}"""
       }
       .mkString("[", ",", "]")

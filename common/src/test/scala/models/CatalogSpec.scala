@@ -30,6 +30,20 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     j should include(""""timezone":"Europe/Berlin"""")
   }
 
+  it should "take a multi-zone country's from its BIGGEST city, not its first" in {
+    // Four countries keep one zone throughout, so any city answers for them. The
+    // US spans six, and this field read whichever city sorted first — making a
+    // live value a function of ROSTER ORDER. A generator change that reshuffled
+    // the states once moved it from Chicago to Pacific/Pago_Pago, American Samoa's,
+    // and every suite stayed green. Pinned here so the next reshuffle says so.
+    val us = Catalog.json.split("\\{").find(_.contains(""""code":"us"""")).getOrElse(fail("no us entry"))
+    us should include(""""timezone":"America/Los_Angeles"""")   // Los Angeles, 133 venues
+    Country.UnitedStates.cities.maxBy(c => (c.cinemas.size, c.slug)).slug shouldBe "los-angeles"
+    // …and a single-zone country is unaffected by which city is biggest.
+    Catalog.json should include(""""code":"pl"""")
+    Catalog.json should include(""""timezone":"Europe/Warsaw"""")
+  }
+
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
     j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl"}""")

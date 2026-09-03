@@ -33,10 +33,16 @@ object CorpusCoverage {
 
   /** The clock the corpus's showtimes are written on. They are `LocalDateTime` with no
    *  zone — a cinema lists 19:00 local — so the capture instant has to be read in the
-   *  country's own zone before the two can be compared. Every city of a country shares
-   *  one zone today; the first is representative. */
+   *  country's own zone before the two can be compared.
+   *
+   *  The BIGGEST city's zone, not the first one in roster order. Four countries keep
+   *  one zone throughout and any city answers for them; the US spans six, so reading
+   *  the first made this cutoff a function of how the generator happened to sort the
+   *  states — it would have re-timed the coverage band silently on a reshuffle, which
+   *  is exactly the class of change that has already slipped past every test once. */
   def zoneOf(country: Country): ZoneId =
-    country.cities.headOption.map(_.zoneId).getOrElse(ZoneId.systemDefault())
+    country.cities.maxByOption(city => (city.cinemas.size, city.slug))
+      .map(_.zoneId).getOrElse(ZoneId.systemDefault())
 
   /** The capture instant as the corpus's own wall clock reads it. */
   def localise(at: Instant, country: Country): LocalDateTime =
