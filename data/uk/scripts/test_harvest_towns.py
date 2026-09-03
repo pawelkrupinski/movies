@@ -65,6 +65,26 @@ def test_postcode_last_falls_back_to_the_part_before_it():
     assert ht.town_of("7 Leicester Square, London, WC2H 7NA") == "London"
 
 
+def test_a_loosely_written_postcode_is_still_a_postcode():
+    # Both are in the roster. Missing them is worse than matching loosely: the
+    # whole tail then reads as the town, which is how "Coventry CV1 38AZ" became
+    # one.
+    assert ht.town_of("Sky Dome Leisure Complex, Croft Road, Coventry CV1 38AZ") == "Coventry"
+    assert ht.town_of("27 Maney Cor, Birmingham, Sutton Coldfield B72 1Q") == "Sutton Coldfield"
+
+
+def test_a_county_with_no_comma_in_front_of_it_is_still_dropped():
+    assert ht.town_of("18-24 Park Avenue, Whitley Bay Tyne & Wear NE26 1DG") == "Whitley Bay"
+
+
+def test_a_town_riding_on_the_end_of_a_street_line():
+    assert ht.town_of("5A High Street Tisbury, SP3 6LD") == "Tisbury"
+    # Only for a part that opens with a house number, or the rule would take
+    # ordinary town names apart.
+    assert ht.town_of("Halter Street, Bury St Edmunds IP33 1NE") == "Bury St Edmunds"
+    assert ht.town_of("Hill Road, Barton upon Humber DN18 5DL") == "Barton upon Humber"
+
+
 def test_no_postcode_at_all_takes_the_last_part():
     assert ht.town_of("The Old Library, Acton Centre, Ealing") == "Ealing"
     assert ht.town_of("") == ""

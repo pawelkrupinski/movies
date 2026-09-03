@@ -678,7 +678,7 @@
   "flicksSlug": "cineworld-boldon-tyne-wear",
   "cinemaObject": "CineworldBoldonTyneWear",
   "displayName": "Cineworld Boldon Tyne & Wear",
-  "town": "Boldon Tyne & Wear",
+  "town": "Boldon",
   "address": "Boldon Leisure Park, Boldon Tyne & Wear NE35 9PB",
   "lat": 54.94678,
   "lon": -1.46632
@@ -1110,7 +1110,7 @@
   "flicksSlug": "cineworld-newport-isle-of-wight",
   "cinemaObject": "CineworldNewportIsleOfWight",
   "displayName": "Cineworld Newport, Isle of Wight",
-  "town": "Newport Isle of Wight",
+  "town": "Newport",
   "address": "Coppins Bridge, Newport Isle of Wight PO30 2TA",
   "lat": 50.69896,
   "lon": -1.28941
@@ -2892,7 +2892,7 @@
   "flicksSlug": "jam-jar-cinema",
   "cinemaObject": "JamJarCinema",
   "displayName": "Jam Jar Cinema",
-  "town": "Whitley Bay Tyne & Wear",
+  "town": "Whitley Bay",
   "address": "18-24 Park Avenue, Whitley Bay Tyne & Wear NE26 1DG",
   "lat": 55.0425,
   "lon": -1.44617
@@ -3639,7 +3639,7 @@
   "flicksSlug": "odeon-cinema-coventry",
   "cinemaObject": "OdeonCinemaCoventry",
   "displayName": "Odeon Cinema Coventry",
-  "town": "Coventry CV1 38AZ",
+  "town": "Coventry",
   "address": "Sky Dome Leisure Complex, Croft Road, Coventry CV1 38AZ",
   "lat": 52.4077852,
   "lon": -1.5181824
@@ -4116,7 +4116,7 @@
   "flicksSlug": "odeon-cinema-tyne-wear-gateshead",
   "cinemaObject": "OdeonCinemaMetrocentre",
   "displayName": "Odeon Cinema Metrocentre",
-  "town": "Gateshead Tyne & Wear",
+  "town": "Gateshead",
   "address": "Garden Walk, Metrocentre, Gateshead Tyne & Wear NE11 9XZ",
   "lat": 54.95799,
   "lon": -1.66957
@@ -4125,7 +4125,7 @@
   "flicksSlug": "odeon-cinema-tyne-wear-wallsend",
   "cinemaObject": "OdeonCinemaSilverlink",
   "displayName": "Odeon Cinema Silverlink",
-  "town": "Wallsend Tyne & Wear",
+  "town": "Wallsend",
   "address": "Silverlink, Osprey Drive, Wallsend, Wallsend Tyne & Wear NE28 9NP",
   "lat": 55.01287,
   "lon": -1.49492
@@ -5592,7 +5592,7 @@
   "flicksSlug": "royal-cinema-sutton-coldfield",
   "cinemaObject": "RoyalCinemasSuttonColdfield",
   "displayName": "Royal Cinemas Sutton Coldfield",
-  "town": "Sutton Coldfield B72 1Q",
+  "town": "Sutton Coldfield",
   "address": "27 Maney Cor, The Royal Town of Sutton Coldfield, Birmingham, Sutton Coldfield B72 1Q",
   "lat": 52.5630465,
   "lon": -1.9042246
@@ -6411,7 +6411,7 @@
   "flicksSlug": "the-new-vic-tisbury-village-hall",
   "cinemaObject": "TheNewVicTisburyVillageHall",
   "displayName": "The New Vic, Tisbury Village Hall",
-  "town": "5A High Street Tisbury",
+  "town": "Tisbury",
   "address": "5A High Street Tisbury, SP3 6LD",
   "lat": 51.06495,
   "lon": -2.08084

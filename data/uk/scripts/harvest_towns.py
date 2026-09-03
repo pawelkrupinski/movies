@@ -50,7 +50,18 @@ WORKERS = 3
 PACE_SECONDS = 0.35
 
 # A UK postcode at the end of an address line: "NR1 1XA", "AB24 5EN", "W1D 7DH".
-POSTCODE = re.compile(r"\s*\b[A-Z]{1,2}\d[A-Z\d]?\s+\d[A-Z]{2}\b\s*")
+# A UK postcode. The inward half is written loosely enough in this corpus that
+# the textbook \d[A-Z]{2} misses real ones — "CV1 38AZ" and "B72 1Q" are both in
+# the roster — and a postcode left unmatched is worse than one matched loosely:
+# the whole tail then reads as the town, which is how "Coventry CV1 38AZ" became
+# a town name.
+POSTCODE = re.compile(r"\s*\b[A-Z]{1,2}\d[A-Z\d]?\s+\d{1,2}[A-Z]{1,2}\b\s*")
+
+# Street words, for the one shape where a town rides on the end of an address
+# line with no comma in front of it: "5A High Street Tisbury, SP3 6LD".
+STREET = re.compile(
+    r"\b(?:Street|Road|Avenue|Lane|Way|Place|Square|Drive|Close|Terrace|Row|Hill|Parade)\b\s+",
+    re.I)
 ADDRESS = re.compile(
     r'<address[^>]*class="[^"]*cinema-hero[^"]*"[^>]*>(.*?)</address>', re.S)
 TAGS = re.compile(r"<[^>]+>")
@@ -140,13 +151,42 @@ def town_of(address: str) -> str:
     # it. Walk, rather than step once, because both can trail at once.
     while chosen > 0 and _tidy(parts[chosen]).lower() in COUNTIES:
         chosen -= 1
-    return _tidy(parts[chosen])
+    return _clean(_tidy(parts[chosen]))
 
 
 def _tidy(town: str) -> str:
     """Drop the "County" a couple of addresses wrap the town in — "Durham
     County DH1 1WA" is Durham, and the county is not where you go."""
     return re.sub(r"^County\s+|\s+County$", "", town).strip()
+
+
+def _clean(town: str) -> str:
+    """The last two things between a chosen part and a town name.
+
+    Both are missing-comma shapes, where the walk over parts cannot help because
+    what should be two parts arrived as one:
+
+        18-24 Park Avenue, Whitley Bay Tyne & Wear NE26 1DG   -> Whitley Bay
+        5A High Street Tisbury, SP3 6LD                       -> Tisbury
+
+    The second only fires on a part that opens with a house number, because that
+    is what marks it as an address line rather than a town — without it the rule
+    would take "Bury St Edmunds" apart.
+    """
+    for county in COUNTIES:
+        # Word by word, and tolerant of "&" for "and" ("Tyne & Wear"), so the cut
+        # lands on a word boundary rather than on a character count the
+        # substitution would get wrong by the two characters "and" saves.
+        words = [r"(?:and|&)" if w == "and" else re.escape(w) for w in county.split()]
+        cut = re.sub(r"\s+" + r"\s+".join(words) + r"$", "", town, flags=re.I)
+        if cut != town and cut.strip():
+            town = cut.strip()
+            break
+    if re.match(r"^\d+[A-Za-z]?\s", town):
+        tail = STREET.split(town)[-1].strip()
+        if tail and tail != town:
+            return tail
+    return town
 
 
 def parse(html: str) -> tuple[str, float | None, float | None]:
