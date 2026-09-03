@@ -156,6 +156,10 @@ let
     # post-migration audit: on Fly the host was somebody else's problem, and nothing had replaced
     # `fly_instance_*` with a view of these three machines.
     "host-health"
+    # IS ANY JVM ABOUT TO RUN OUT OF HEAP. Added after web-us OOMed on 2026-09-03 while a merged,
+    # green, `deployed-web`-tagged heap raise sat unapplied: the CI deploy rolls images only, so a
+    # JAVA_OPTS change never reaches the cluster on its own and nothing anywhere went red.
+    "jvm-heap"
     # The k3s units, watched through node_exporter's systemd collector. There is no
     # kube-state-metrics on this fleet, so node conditions and workloads are NOT covered; the file
     # says so at length rather than writing rules against series nothing produces.

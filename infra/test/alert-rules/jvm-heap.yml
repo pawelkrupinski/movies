@@ -1,0 +1,94 @@
+# UNIT TESTS FOR THE JVM HEAP ALERT.
+#
+# `promtool check rules` proves the file parses. What it cannot say is whether the expression means
+# what the prose above it claims, and this rule has three ways to be quietly wrong:
+#
+#   1. It could fire on a HEALTHY pod. Peak heap ~= -Xmx is normal on every JVM here (93-99%), so
+#      an alert written against the instantaneous value would page constantly. The `min_over_time`
+#      floor is what separates "collecting hard" from "nothing left to collect into".
+#   2. It could cover only HALF THE FLEET. web runs G1 (`G1 Old Gen`), the workers run SerialGC
+#      (`Tenured Gen`). A rule naming one pool sits in the list looking like coverage while the
+#      other tier can die unwatched — the failure k3s.rules warns about at length.
+#   3. It could page on a ROUTINE RESTART, which is how an alert gets ignored.
+#
+# The series below are shaped like the real ones: `jvm_memory_pool_used_bytes` /
+# `jvm_memory_pool_max_bytes`, labelled by instance, job, country and pool.
+rule_files:
+  - ../../nix/files/monitoring/rules/jvm-heap.rules
+
+evaluation_interval: 1m
+
+tests:
+  # web-us on the day it died: a 768 MiB cap with the tenured floor parked around 690 MiB (90%).
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_pool_used_bytes{instance="web-us:9000",job="kinowo-web",country="us",pool="G1 Old Gen"}'
+        values: '690000000+0x200'
+      - series: 'jvm_memory_pool_max_bytes{instance="web-us:9000",job="kinowo-web",country="us",pool="G1 Old Gen"}'
+        values: '805306368+0x200'
+    alert_rule_test:
+      # Not yet — `for: 2h` is deliberately longer than any deploy gap, so a pod that restarts
+      # every couple of hours never pages on its own.
+      - eval_time: 1h
+        alertname: JvmOldGenNearCap
+        exp_alerts: []
+      - eval_time: 2h5m
+        alertname: JvmOldGenNearCap
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: web-us:9000
+              job: kinowo-web
+              country: us
+              pool: G1 Old Gen
+            exp_annotations:
+              summary: "kinowo-web us old gen is 85.68% of its cap"
+              description: "The tenured floor has sat above 85% of this JVM's heap cap for two hours, so what is left is not enough to collect into and the next large allocation is the one that fails. This is the shape that OOM-killed web-us on 2026-09-03. FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- the CI deploy rolls images only, so a JAVA_OPTS change in infra/kubernetes/**/patch.yaml reaches the cluster ONLY when somebody applies it by hand. Compare `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'` against the overlay. If they already agree, the corpus has outgrown the heap and the fix is the heap or the retention, not the ConfigMap."
+
+  # A HEALTHY pod must stay silent. Same cap, floor at ~62% — the shape web-de reads today.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_pool_used_bytes{instance="web-de:9000",job="kinowo-web",country="de",pool="G1 Old Gen"}'
+        values: '500000000+0x200'
+      - series: 'jvm_memory_pool_max_bytes{instance="web-de:9000",job="kinowo-web",country="de",pool="G1 Old Gen"}'
+        values: '805306368+0x200'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: JvmOldGenNearCap
+        exp_alerts: []
+
+  # THE SAWTOOTH, which is the whole reason the expression uses a floor. Occupancy swings between
+  # 55% and 99% of the cap every few minutes — an instantaneous rule would fire on this healthy
+  # pod, and the floor correctly does not.
+  - interval: 5m
+    input_series:
+      - series: 'jvm_memory_pool_used_bytes{instance="web-pl:9000",job="kinowo-web",country="pl",pool="G1 Old Gen"}'
+        values: '450000000 790000000 460000000 795000000 455000000 792000000'
+      - series: 'jvm_memory_pool_max_bytes{instance="web-pl:9000",job="kinowo-web",country="pl",pool="G1 Old Gen"}'
+        values: '805306368+0x10'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: JvmOldGenNearCap
+        exp_alerts: []
+
+  # THE WORKERS ARE COVERED TOO — SerialGC names its tenured pool differently, and a rule that
+  # matched only `G1 Old Gen` would watch nothing here. worker-us at 92% of 1280m.
+  - interval: 1m
+    input_series:
+      - series: 'jvm_memory_pool_used_bytes{instance="worker-us:9000",job="kinowo-worker",country="us",pool="Tenured Gen"}'
+        values: '1234000000+0x200'
+      - series: 'jvm_memory_pool_max_bytes{instance="worker-us:9000",job="kinowo-worker",country="us",pool="Tenured Gen"}'
+        values: '1342177280+0x200'
+    alert_rule_test:
+      - eval_time: 2h5m
+        alertname: JvmOldGenNearCap
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              instance: worker-us:9000
+              job: kinowo-worker
+              country: us
+              pool: Tenured Gen
+            exp_annotations:
+              summary: "kinowo-worker us old gen is 91.94% of its cap"
+              description: "The tenured floor has sat above 85% of this JVM's heap cap for two hours, so what is left is not enough to collect into and the next large allocation is the one that fails. This is the shape that OOM-killed web-us on 2026-09-03. FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- the CI deploy rolls images only, so a JAVA_OPTS change in infra/kubernetes/**/patch.yaml reaches the cluster ONLY when somebody applies it by hand. Compare `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'` against the overlay. If they already agree, the corpus has outgrown the heap and the fix is the heap or the retention, not the ConfigMap."

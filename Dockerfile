@@ -45,7 +45,9 @@ COPY stage/ ./
 # by re-applying 0755.
 RUN chmod +x bin/*
 EXPOSE 9000
-# Boot-prune the /data volume (worker only; the paths don't exist on web → no-op).
+# Boot-prune the /data volume. Both tiers now: web gained an emptyDir at /data so
+# its OOMs leave a dump behind too, and the `mkdir -p` below is what makes the
+# JVM's -XX:HeapDumpPath directory exist before it has to write into it.
 # HeapDumpOnOutOfMemoryError writes a ~11MB dump per OOM and never cleans up; a
 # 2026-07-09 investigation found /data 100% full (750MB of stale dumps), which
 # blocks new dumps + log writes. Keep the 3 newest dumps + the 3 newest hs_err
@@ -72,7 +74,8 @@ EXPOSE 9000
 # `else` branch runs the JVM unredirected, exactly as before. Cap the file on boot so
 # a crash-loop can't fill /data (keep the last ~4 MB). Hard JVM crashes (SIGSEGV) go
 # to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in fly.worker.toml JAVA_OPTS).
-CMD if [ -f /data/heapdumps/java_pid1.hprof ]; then mv /data/heapdumps/java_pid1.hprof "/data/heapdumps/oom-$(date -u +%Y%m%dT%H%M%SZ).hprof"; fi; \
+CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
+    if [ -f /data/heapdumps/java_pid1.hprof ]; then mv /data/heapdumps/java_pid1.hprof "/data/heapdumps/oom-$(date -u +%Y%m%dT%H%M%SZ).hprof"; fi; \
     if [ -d /data/heapdumps ]; then ls -1t /data/heapdumps/*.hprof 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
     if [ -d /data/logs ]; then ls -1t /data/logs/hs_err_*.log 2>/dev/null | tail -n +4 | xargs -r rm -f; fi; \
     if [ -f /data/logs/worker-stderr.log ] && [ "$(wc -c < /data/logs/worker-stderr.log)" -gt 16777216 ]; then \

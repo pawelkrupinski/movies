@@ -1,0 +1,77 @@
+---
+# IS ANY JVM ABOUT TO RUN OUT OF HEAP.
+#
+# ------------------------------------------------------------------------------------------------
+# THE FAILURE THIS EXISTS FOR
+# ------------------------------------------------------------------------------------------------
+#
+# web-us OOMed on 2026-09-03T14:53 with `-Xmx768m` while a commit raising it to 1024m had been
+# merged, green and tagged `deployed-web` for nearly three hours. NOTHING WAS RED. The CI deploy
+# endpoint can only run `kubectl set image` (infra/nix/modules/roles/k8s-deploy.nix -- it "cannot
+# run kubectl, and cannot name a resource"), so the new IMAGE rolled and the ConfigMap carrying
+# JAVA_OPTS never moved. The tier ran for hours at 88% of a heap nobody believed it still had, and
+# the first sign was a 502.
+#
+# So the rule below is deliberately NOT "did the config apply". Config drift is one way to arrive
+# here; a corpus that outgrew its heap is another, and `web-uk` and `web-pl` are on that path today
+# at 94.5% and 87.5% of their own caps. What both have in common is the only thing worth alerting
+# on: A JVM WHOSE LIVE SET NO LONGER LEAVES ROOM TO COLLECT.
+#
+# ------------------------------------------------------------------------------------------------
+# WHY OLD GEN, AND WHY NOT THE HEAP PEAK
+# ------------------------------------------------------------------------------------------------
+#
+# Peak heap ~= -Xmx is NORMAL -- that is when a collection runs, and every healthy pod here reads
+# 93-99%. Alerting on it pages for health. The live set is the signal, and its proxy is the OLD
+# GENERATION: tenured data that survived collection.
+#
+# `min_over_time(...[30m])` rather than the instantaneous value, because old-gen occupancy
+# sawtooths -- it climbs with tenured garbage and drops when a mixed collection reclaims it. The
+# floor of that sawtooth is what cannot be collected away, and it is the number that decides
+# whether the next large allocation has anywhere to go. On web-us the floor walked 630 -> 725 MiB
+# in the two hours before the OOM while the instantaneous value looked merely busy.
+#
+# ⚠️ THE FLOOR IS NOT THE LIVE SET, and this rule does not claim it is. G1 only truly compacts at a
+# full collection, so the floor drifts upward under a stable live set too -- measured on this very
+# incident, two forced full GCs 13 minutes apart showed the live set FLAT while the floor climbed.
+# That is not a defect in the alert: a floor that has climbed past the threshold means the room
+# left for allocation is gone whether the cause is retention or deferred compaction, and both end
+# in the same OOM.
+#
+# ------------------------------------------------------------------------------------------------
+# THE POOL NAMES DIFFER BY COLLECTOR, WHICH IS WHY THE MATCH IS A REGEX
+# ------------------------------------------------------------------------------------------------
+#
+# web runs G1 (`-XX:+UseG1GC`) and its tenured pool is `G1 Old Gen`; the workers run SerialGC and
+# theirs is `Tenured Gen`. A rule naming only one silently covers half the fleet -- the exact shape
+# k3s.rules warns about, where a series that never exists reads as coverage.
+#
+# ⚠️ HISTORY STARTS AT THE 2026-08-29 CUTOVER. `for:` windows longer than that were meaningless
+# before it and are fine now, but do not reach further back when tuning these.
+groups:
+  - name: jvm-heap
+    rules:
+      - alert: JvmOldGenNearCap
+        # The floor of the sawtooth, as a fraction of the pool's own cap.
+        expr: >-
+          min_over_time(jvm_memory_pool_used_bytes{pool=~"G1 Old Gen|Tenured Gen"}[30m])
+            / on (instance, pool) group_left
+          jvm_memory_pool_max_bytes{pool=~"G1 Old Gen|Tenured Gen"} > 0.85
+        # TWO HOURS, because this is a trend and not an event. web-us took ~2h from restart to OOM,
+        # so this fires with time to act on the pod that is going to die -- and a deploy rolling a
+        # pod resets the measurement, which is what keeps a routine restart from paging.
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.job }} {{ $labels.country }} old gen is {{ $value | humanizePercentage }} of its cap"
+          description: >-
+            The tenured floor has sat above 85% of this JVM's heap cap for two hours, so what is
+            left is not enough to collect into and the next large allocation is the one that
+            fails. This is the shape that OOM-killed web-us on 2026-09-03.
+            FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- the CI deploy
+            rolls images only, so a JAVA_OPTS change in infra/kubernetes/**/patch.yaml reaches the
+            cluster ONLY when somebody applies it by hand. Compare
+            `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'`
+            against the overlay. If they already agree, the corpus has outgrown the heap and the
+            fix is the heap or the retention, not the ConfigMap.
