@@ -139,8 +139,10 @@ let
   # `rule_files` list in files/monitoring/prometheus.yaml, which LOADS it. Present in one and
   # absent from the other, it is either a file nothing reads (silent -- the alerts simply never
   # fire) or a path Prometheus cannot find (loud -- it refuses to start). The silent half is the
-  # dangerous one; bitcashier guards it with a check script, which this repository does not have
-  # yet and should.
+  # dangerous one, so infra/test/test_alert_rules.sh compares the three lists -- the files on disk,
+  # this list, and prometheus.yaml's `rule_files` -- and fails if any name is missing from one of
+  # them. It was written after jvm-heap.rules shipped installed-but-never-loaded: promtool passed
+  # against the file, Prometheus reloaded clean, and the alert simply did not exist.
   #
   # ALPHABETICAL, matching the order in prometheus.yaml's `rule_files`, so the two lists can be
   # compared by eye without sorting one of them in your head. The comparison is the only check
