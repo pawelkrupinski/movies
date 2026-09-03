@@ -39,24 +39,17 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
   /** Cities whose card cannot exist yet, because `tools.OgCardGenerator`
    *  SCREENSHOTS the live page and theirs is not live until the commit that
    *  creates them has deployed. Cleared by dispatching `regenerate-og-cards.yml`
-   *  for the country once it has.
+   *  once it has.
    *
    *  Asserted to be EXACTLY the set still missing, not merely a permitted upper
    *  bound: an entry that has since been generated fails here and has to be
    *  deleted, so the list cannot quietly become the place missing cards go.
    *
-   *  2026-09-03 — Alaska's nine metros and Hawaii's four, split out of the two
-   *  state-wide cities that used to stand for them, plus the three that appeared
-   *  when four bad venue coordinates were corrected (`data/us/README.md`). The
-   *  cards of the six cities those two changes retired were deleted in the same
-   *  commit: each retired slug 301s to its successor, whose own card is the one a
-   *  crawler then reads, so nothing names them any more. */
+   *  2026-09-03 — the Eastern Sierra, the metro `cluster_metros.FOLD_BARRIERS`
+   *  keeps out of Fresno. The sixteen cities of the Alaska/Hawaii split and the
+   *  corrected venue coordinates were listed here too and are now generated. */
   private val awaitingFirstDeploy: Set[String] = Set(
-    "og-anchorage.jpg", "og-bethel.jpg", "og-fairbanks.jpg", "og-juneau.jpg",
-    "og-kenai-peninsula.jpg", "og-kodiak.jpg", "og-nome.jpg", "og-old-valdez.jpg",
-    "og-southeast-alaska.jpg",
-    "og-hawaii-big-island.jpg", "og-maui.jpg", "og-oahu.jpg", "og-waimea.jpg",
-    "og-decorah.jpg", "og-fort-dodge.jpg", "og-rhinelander.jpg", "og-eastern-sierra.jpg",
+    "og-eastern-sierra.jpg",
   )
 
   "every city, in every country" should "have the card its index page names" in {
