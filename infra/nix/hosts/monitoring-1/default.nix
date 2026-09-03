@@ -137,6 +137,18 @@ in
       # using it and an issuance here could fail for reasons that have nothing to do with this fleet.
       "grafana.kinowo.net".upstream = "10.20.0.11:3000";
 
+      # THE SECOND THING PUBLISHED HERE, and it clears the same bar the comment above sets:
+      # the proxy adds TLS and a name, not authentication, so only a service that
+      # authenticates its own users belongs on it. Headlamp does Google OIDC -- and the
+      # Google project is in TESTING mode, so its test-user list is an allow-list enforced
+      # before a request reaches the cluster at all.
+      #
+      # THE UPSTREAM IS A CLUSTER SERVICE, not a host port. This machine is a k3s node, so
+      # kube-proxy makes the ClusterIP routable from the host and Headlamp needs no NodePort
+      # on every node's interfaces. The address is PINNED in
+      # infra/kubernetes/headlamp/deployment.yaml precisely so this line can name it.
+      "headlamp.kinowo.net".upstream = "10.43.165.84:80";
+
       # THE sslip.io NAME IS GONE, and the move to fsn1 is what settled it rather than a change of
       # mind. `grafana.2-28-52-210.sslip.io` RESOLVES ITS OWN IP OUT OF ITS OWN LABEL -- that is what
       # sslip.io is -- so the address it names is 2.28.52.210, a primary IP that could not follow
