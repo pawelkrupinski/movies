@@ -133,6 +133,48 @@ class StagingSiblingProjectionIntegrationSpec extends AnyFlatSpec with Matchers 
     } finally purge()
   }
 
+  /**
+   * The (cinema, anchor) lookup must answer what filtering the group answers — and must
+   * not FETCH the group to do it.
+   *
+   * The detail step asks once per venue per film, so pulling the anchor's whole staging
+   * group and filtering is quadratic in how many venues show it: 573 venues for a German
+   * release is 328,329 document decodes for one film. The ids are the intersection of two
+   * indexes the repository already keeps, so the fetch should be the pair's own rows.
+   */
+  "the (cinema, anchor) lookup" should "fetch one venue's rows, not the whole film's group" in {
+    purge()
+    try {
+      val anchor = titleNormalizer.sanitize(title)
+      // The same film staged at MANY venues — the shape that makes this quadratic.
+      val venues: Seq[Source] = Seq(Multikino, models.CinemaCity, models.Helios)
+      venues.foreach(v => repositoryUnderTest.upsert(v, title, Some(2026), MovieRecord()))
+
+      var fetchedIds = 0
+      val counting = new MongoStagingRepository(Some(db), normalizer = titleNormalizer) {
+        override protected def fetchByIds(c: org.mongodb.scala.MongoCollection[services.movies.StoredMovieDto],
+                                          ids: Seq[String]): scala.util.Try[Seq[services.movies.StoredMovieDto]] = {
+          fetchedIds += ids.size
+          super.fetchByIds(c, ids)
+        }
+      }
+      // Warm the index, then count only the lookup itself.
+      counting.findByAnchor(anchor)
+      fetchedIds = 0
+
+      val one = counting.findByCinemaAndAnchor(Multikino, anchor)
+      withClue(s"the pair lookup fetched $fetchedIds row(s) for a film staged at ${venues.size} venues: ") {
+        fetchedIds should be <= 1
+      }
+      withClue("and must still answer exactly what filtering the group answers: ") {
+        one.map(_.id) shouldBe counting.findByAnchor(anchor).filter(_.cinema == Multikino).map(_.id)
+        one should not be empty
+      }
+    } finally purge()
+  }
+
+  private def repositoryUnderTest = new MongoStagingRepository(Some(db), normalizer = titleNormalizer)
+
   // The invariant an override must hold: answer EXACTLY what filtering `findAll` answers.
   // A previous attempt inferred the anchor from the `_id` — which holds the sanitized
   // title from the row's first write — and silently returned nothing once titles were

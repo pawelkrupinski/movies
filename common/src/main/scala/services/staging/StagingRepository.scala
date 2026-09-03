@@ -117,6 +117,22 @@ trait StagingRepository {
   def findByCinema(cinema: models.Cinema): Seq[StagingRecord] =
     findAll().filter(row => models.Source.cinemaOf(row.cinema).contains(cinema))
 
+  /**
+   * ONE cinema's rows for one anchor — the pair, not the whole film.
+   *
+   * The staging detail step asks per (cinema, anchor), and asked it by pulling the
+   * anchor's ENTIRE group and filtering to one venue. That is quadratic in how many
+   * venues show the film, which is precisely the shape staging carries: a German release
+   * is staged at 573 venues, so the step ran 573 times and decoded 573 rows each time —
+   * 328,329 document decodes for one film, and the United States stages its biggest at
+   * 1,345.
+   *
+   * The default IS that filter, so a repository without a narrower way to answer keeps
+   * today's behaviour exactly; the real one intersects two indexes it already maintains.
+   */
+  def findByCinemaAndAnchor(cinema: Source, anchor: String): Seq[StagingRecord] =
+    findByAnchor(anchor).filter(_.cinema == cinema)
+
   /** The country whose rules anchor these rows. ABSTRACT, like
    *  `MovieRepository.normalizer`; the worker wires its own. */
   def normalizer: TitleNormalizer
@@ -428,6 +444,32 @@ class MongoStagingRepository(
         super.findByCinema(cinema)
     }
   }
+
+  /** The intersection of the two id buckets, so the fetch is the pair's handful of rows
+   *  rather than the film's whole staging group.
+   *
+   *  Re-checked against BOTH cinema and anchor after decoding, exactly as the two
+   *  single-key lookups re-check theirs: a stale index entry may cost a wasted fetch and
+   *  may never return a wrong row. Falls back to the inherited filter-the-group when the
+   *  fetch fails, for the reason spelled out on [[findByAnchor]] — a short answer here
+   *  reads as "this venue owes no detail for this film" and silently skips it. */
+  override def findByCinemaAndAnchor(cinema: Source, anchor: String): Seq[StagingRecord] =
+    coll.toSeq.flatMap { c =>
+      ensureAnchorIndex()
+      val byCinema = models.Source.cinemaOf(cinema).map(bucketIds(idsByCinema, _).toSet).getOrElse(Set.empty)
+      val ids      = bucketIds(idsByAnchor, anchor).filter(byCinema.contains)
+      if (ids.isEmpty) Seq.empty
+      else fetchByIds(c, ids) match {
+        case Success(rows) =>
+          rows.flatMap(dto => StagingRecord.fromStorage(dto._id, StoredMovieDto.toDomain(dto, normalizer).record, normalizer).toSeq)
+            .filter(row => row.cinema == cinema && normalizer.sanitize(row.title) == anchor)
+        case Failure(exception) =>
+          logger.warn(s"StagingRepository.findByCinemaAndAnchor('${cinema.displayName}', '$anchor') could not " +
+            s"fetch ${ids.size} row(s): ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
+            "falling back to filtering the anchor's whole group")
+          super.findByCinemaAndAnchor(cinema, anchor)
+      }
+    }
 
   /** Decoded rows are re-checked against `anchor` before being returned, so a stale index
    *  entry can only ever cost a wasted fetch — never a wrong row. */

@@ -86,7 +86,11 @@ class StagingSteps(
   def fetchDetailFor(cinema: Source, anchor: String, giveUp: Boolean = false): Boolean = enricherFor(cinema) match {
     case None    => true                                                  // not a detail cinema — nothing owed
     case Some(e) =>
-      val fetched = rowsFor(anchor).filter(_.cinema == cinema).forall(r => fetchDetailRow(r, e) || !e.defersTmdbResolution)
+      // This venue's rows for the film, asked for as the pair they are. Filtering the
+      // anchor's whole group here is quadratic in how many venues show it — see
+      // `StagingRepository.findByCinemaAndAnchor`.
+      val fetched = stagingRepository.findByCinemaAndAnchor(cinema, anchor)
+        .forall(r => fetchDetailRow(r, e) || !e.defersTmdbResolution)
       if (!fetched && giveUp)
         logger.warn(s"Staging: giving up on ${cinema.displayName} detail for '$anchor' after repeated failures — degrading to listing-only")
       val ready = fetched || giveUp
