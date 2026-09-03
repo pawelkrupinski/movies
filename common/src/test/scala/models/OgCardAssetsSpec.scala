@@ -36,13 +36,39 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     missing(Country.all.map(_.homeOgImage)) shouldBe empty
   }
 
+  /** Cities whose card cannot exist yet, because `tools.OgCardGenerator`
+   *  SCREENSHOTS the live page and theirs is not live until the commit that
+   *  creates them has deployed. Cleared by dispatching `regenerate-og-cards.yml`
+   *  for the country once it has.
+   *
+   *  Asserted to be EXACTLY the set still missing, not merely a permitted upper
+   *  bound: an entry that has since been generated fails here and has to be
+   *  deleted, so the list cannot quietly become the place missing cards go.
+   *
+   *  2026-09-03 — Alaska's nine metros and Hawaii's four, split out of the two
+   *  state-wide cities that used to stand for them, plus the three that appeared
+   *  when four bad venue coordinates were corrected (`data/us/README.md`). The
+   *  cards of the six cities those two changes retired were deleted in the same
+   *  commit: each retired slug 301s to its successor, whose own card is the one a
+   *  crawler then reads, so nothing names them any more. */
+  private val awaitingFirstDeploy: Set[String] = Set(
+    "og-anchorage.jpg", "og-bethel.jpg", "og-fairbanks.jpg", "og-juneau.jpg",
+    "og-kenai-peninsula.jpg", "og-kodiak.jpg", "og-nome.jpg", "og-old-valdez.jpg",
+    "og-southeast-alaska.jpg",
+    "og-hawaii-big-island.jpg", "og-maui.jpg", "og-oahu.jpg", "og-waimea.jpg",
+    "og-decorah.jpg", "og-fort-dodge.jpg", "og-rhinelander.jpg",
+  )
+
   "every city, in every country" should "have the card its index page names" in {
     val absent = missing(Country.all.flatMap(_.cities).map(_.shareImage))
     // Only the first few names, or a country that was never swept prints its
     // whole roster — 546 filenames on one assertion line, in the run that
     // introduced this spec.
     withClue(s"${absent.size} cities have no committed share card; first: ") {
-      absent.take(8) shouldBe empty
+      absent.filterNot(awaitingFirstDeploy).take(8) shouldBe empty
+    }
+    withClue("cards listed as awaiting their first deploy that now exist — delete them from the list: ") {
+      awaitingFirstDeploy.diff(absent.toSet) shouldBe empty
     }
   }
 

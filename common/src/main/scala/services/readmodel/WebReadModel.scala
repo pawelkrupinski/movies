@@ -49,11 +49,19 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
     // until every one of its films had been projected again. Rows under the
     // current slug WIN — they are the freshly projected ones — and the former
     // bucket only fills the venues that have not caught up yet.
+    //
+    // Restricted to the city's OWN venues where the former slug was SPLIT rather
+    // than renamed — `alaska` became nine metros and its rows hold every Alaskan
+    // venue, so unfiltered Anchorage would serve Juneau's cinemas, 1,400 km and
+    // no road away. `City.ownVenuesOfSplitCity` is absent for a plain rename,
+    // whose rows are this city's already.
     val former = City.formerSlugs(citySlug).flatMap(bucket)
     if (former.isEmpty) current
     else {
       val projected = current.map(s => (s.filmId, s.cinema)).toSet
-      current ++ former.filterNot(s => projected((s.filmId, s.cinema)))
+      val mine      = City.ownVenuesOfSplitCity.get(citySlug)
+      current ++ former.filter(s =>
+        !projected((s.filmId, s.cinema)) && mine.forall(_.contains(s.cinema)))
     }
   }
 

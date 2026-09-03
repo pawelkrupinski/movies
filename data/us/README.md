@@ -88,10 +88,20 @@ Jersey's biggest cluster really is called "New York".
 `python3 data/us/scripts/cluster_metros.py` prints the venue-count distribution
 the current constants produce; it is the tool the radius was tuned with.
 
-Per-state time zones live in `scripts/states.py`, not here — they are code, not
-harvested data. A handful of states straddle two zones; the predominant one is
-used, and the field only decides where a listing's "today" boundary falls, never
-a showtime.
+Time zones are resolved PER METRO, from the coordinates of the metro's own
+venues (`cluster_metros.zone_for`), not per state. Fifteen states straddle a
+boundary, and a state-level zone reached every city cut out of one: Knoxville and
+Chattanooga were served on Central time, El Paso on Eastern — 138 venues in all.
+That is not only a "today" boundary. `City.zoneId` also decides when a showtime
+counts as started (so shows vanished an hour early in El Paso and lingered an
+hour in Knoxville) and the UTC offset the schema.org `ScreeningEvent`s carry to
+Google. The clock text itself was always right: showtimes are stored as
+`LocalDateTime` and printed verbatim.
+
+Eighteen metros still straddle a real boundary, and their minority venues — 30 of
+5,031 — keep the majority's clock. Splitting a metro at a zone line instead would
+cut travel-sheds people drive across daily, which is the worse answer; the
+generator prints the count so it cannot drift unnoticed.
 
 ## Re-harvesting
 
@@ -133,7 +143,32 @@ python3 data/us/scripts/generate_roster.py data/us/venues.json \
         common/src/main/scala/models/UsRosterData.scala
 ```
 
-The generator refuses to emit a roster with an unresolved duplicate display
+It needs `timezonefinder` (`python3 -m pip install timezonefinder`), the only
+dependency outside the standard library and only ever at regeneration time — the
+roster is checked in, so nothing at build or test time imports it.
+
+The generator refuses to emit a roster whose COORDINATES cannot be what they
+claim, because a venue's coordinates are the only thing deciding which metro —
+which city, which URL — it lands in, and a wrong one does not fail to cluster: it
+clusters somewhere plausible and wrong. Two checks, both in
+`cluster_metros.check_coordinates`, and each caught a record that had been
+shipping, every one contradicted by its own postcode:
+
+- a venue more than 1,500 km from its state's other venues — `Grand Theatre
+  Perry` (Iowa 50220) had a flipped longitude sign and sat in Mongolia, so it
+  became a one-venue metro instead of joining Des Moines 65 km away; `Newport
+  Performing Arts` is in Newport, **Oregon** (97365) and was filed under Newport
+  News, Virginia;
+- a town whose venues are more than 75 km apart — clustering collapses a town to
+  one point, so `Regal Largo Mall` (Largo, 33771) arriving as city "Key Largo"
+  put itself *and* the real Key Largo cinema in the Naples metro, 380 km apart;
+  `Sky Vu Drive In Monroe` (53566) arriving as "Tomah" did the same to the real
+  Tomah cinema.
+
+`python3 data/us/scripts/test_cluster_metros.py` covers both, and the zone
+majority.
+
+It also refuses to emit a roster with an unresolved duplicate display
 name: `displayName` is the wire key every per-cinema slot is stored under, so two
 venues sharing one silently rebind the loser's showtimes to the winner. It
 qualifies a repeated title with its town, then its state, and dies if that is

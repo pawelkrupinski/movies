@@ -1627,32 +1627,71 @@ object UsRoster {
   /** Below this many venues a state is ONE place rather than a list of metros.
    *  Its metros are real, but a state short enough to read at a glance is not
    *  worth breaking into pages of six cinemas each — and the state is then a
-   *  place a visitor recognises in its own right. This keeps Alaska, American
-   *  Samoa, Delaware, DC, Guam, Hawaii, Rhode Island, Vermont and the Virgin
-   *  Islands whole; every state a US visitor is likely to hit a wall of venues
-   *  in is well past it. */
+   *  place a visitor recognises in its own right. This keeps American Samoa,
+   *  Delaware, DC, Guam, Rhode Island, Vermont and the Virgin Islands whole;
+   *  every state a US visitor is likely to hit a wall of venues in is well past
+   *  it. */
   private val MinCinemasToSplit = 30
+
+  /** …but a short list is only one place if it is one PLACE. Past this far
+   *  apart, a state's metros are shown separately however few venues they hold.
+   *
+   *  A count alone made Alaska one city: 18 venues, so under the threshold, and
+   *  1,900 km from Nome to Wrangell — which are not merely far apart but have no
+   *  road between them at all, like Juneau, Sitka, Petersburg, Kodiak and Bethel.
+   *  Hawaii was the same shape across four islands. Neither is a place anyone
+   *  browses as one list, and the metros to show instead were already in the
+   *  roster; only the count gate was discarding them.
+   *
+   *  Twice `cluster_metros.FOLD_RADIUS_KM` rather than a number picked to fit:
+   *  the fold is the widest reach the generator will ever merge two towns
+   *  across, so beyond twice it no clustering would have considered these one
+   *  travel-shed either. It splits Alaska (1,909 km) and Hawaii (496 km) and
+   *  leaves Vermont (142 km) and Delaware (108 km) whole, which is the line a
+   *  reader would draw: Vermont end to end is a long drive, Hawaii is a flight. */
+  private val MaxSpanToStayWholeKm = 300.0
+
+  /** Great-circle km between two (lat, lon) points — the metro-centroid spread
+   *  [[MaxSpanToStayWholeKm]] is measured with. */
+  private def haversineKm(a: (Double, Double), b: (Double, Double)): Double = {
+    val (lat1, lon1) = a
+    val (lat2, lon2) = b
+    val (p1, p2)     = (math.toRadians(lat1), math.toRadians(lat2))
+    val dPhi         = math.toRadians(lat2 - lat1)
+    val dLambda      = math.toRadians(lon2 - lon1)
+    val h = math.pow(math.sin(dPhi / 2), 2) +
+            math.cos(p1) * math.cos(p2) * math.pow(math.sin(dLambda / 2), 2)
+    2 * 6371.0 * math.asin(math.sqrt(h))
+  }
 
   /** One venue of the generated roster, with everything the places and the
    *  scrape catalog read off it. */
   private final case class Venue(cinema: UsCinema, flicksSlug: String, metro: String, district: String)
 
+  /** One metro's own centre and its own clock. The zone is the metro's, resolved
+   *  by `cluster_metros.zone_for` from the coordinates of the venues in it — not
+   *  the state's, which is what put Knoxville on Central time and El Paso on
+   *  Eastern. */
+  private final case class MetroCentre(lat: Double, lon: Double, zoneId: ZoneId)
+
   /** One state or territory as the generated data has it — the level the venues
    *  are built at and `byCity` is grouped by, and the grouping [[places]] are
-   *  cut from. */
-  private final case class State(slug: String, name: String, lat: Double, lon: Double, zoneId: ZoneId,
-                                 venues: Seq[Venue], metroCentres: Map[String, (Double, Double)])
+   *  cut from. No zone of its own: a state does not keep a clock, its metros do. */
+  private final case class State(slug: String, name: String, lat: Double, lon: Double,
+                                 venues: Seq[Venue], metroCentres: Map[String, MetroCentre])
 
   private val built: Seq[State] =
-    UsRosterData.regions.map { case (slug, name, lat, lon, zone, cinemas, metros) =>
+    UsRosterData.regions.map { case (slug, name, lat, lon, cinemas, metros) =>
       // Qualify only the venues that would collide, so the roster's names — and
       // the wire keys of every already-stored US slot — stay exactly as they are.
       val venues = cinemas.map { case (disp, pill, flicksSlug, metro, district) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp ($name)" else disp
         Venue(new UsCinema(unique, pill), flicksSlug, metro, district)
       }
-      State(slug, name, lat, lon, ZoneId.of(zone), venues,
-            metros.map { case (label, mlat, mlon) => label -> (mlat, mlon) }.toMap)
+      State(slug, name, lat, lon, venues,
+            metros.map { case (label, mlat, mlon, zone) =>
+              label -> MetroCentre(mlat, mlon, ZoneId.of(zone))
+            }.toMap)
     }
 
   /** Every addressable US place, state by state and — within a state big enough
@@ -1665,26 +1704,43 @@ object UsRoster {
    *  `region_slug` it was harvested under (several adjacent slugs cover one
    *  travel-shed, and 788 venues carry no slug at all).
    *
-   *  A state under [[MinCinemasToSplit]] venues, or whose venues all land in one
-   *  metro anyway, contributes ONE place: itself. */
+   *  A state whose venues all land in one metro contributes ONE place: itself.
+   *  So does a state under [[MinCinemasToSplit]] venues — unless its metros are
+   *  more than [[MaxSpanToStayWholeKm]] apart, which is Alaska and Hawaii. */
   val places: Seq[UsPlace] = built.flatMap { state =>
     val byMetro = CinemaAreaGroup.byLabel(state.venues.map(v => (v.cinema, v.metro)))
-    if (state.venues.sizeIs < MinCinemasToSplit || byMetro.sizeIs < 2)
+    if (byMetro.sizeIs < 2 || (state.venues.sizeIs < MinCinemasToSplit && !sprawls(state)))
       Seq(UsPlace(state.slug, state.name, state.name, state.slug, state.lat, state.lon,
-                  state.zoneId, state.venues.map(_.cinema), Nil))
+                  wholeStateZone(state, byMetro), state.venues.map(_.cinema), Nil))
     else {
       val districtOf = state.venues.map(v => (v.cinema: Cinema) -> v.district).toMap
       byMetro.map { metro =>
-        val (lat, lon) = state.metroCentres(metro.area.label)
+        val centre = state.metroCentres(metro.area.label)
         // A renamed metro re-folds its slug from the name shown, so label and
         // URL never disagree; `CinemaArea(label)` is the same fold, so every
         // un-renamed metro keeps the slug it already had.
         val area = MetroDisplayNames.get(metro.area.label).fold(metro.area)(CinemaArea(_))
-        UsPlace(state.slug, state.name, area.label, area.slug, lat, lon, state.zoneId,
+        UsPlace(state.slug, state.name, area.label, area.slug, centre.lat, centre.lon, centre.zoneId,
                 metro.cinemas, UsMetroSubAreas.districts(metro.cinemas.map(c => (c, districtOf(c)))))
       }
     }
   }
+
+  /** Whether a state's metros are too far apart to be browsed as one list —
+   *  the widest gap between two of their centres, against
+   *  [[MaxSpanToStayWholeKm]]. */
+  private def sprawls(state: State): Boolean = {
+    val centres = state.metroCentres.values.map(c => (c.lat, c.lon)).toSeq
+    centres.combinations(2).exists(pair => haversineKm(pair(0), pair(1)) > MaxSpanToStayWholeKm)
+  }
+
+  /** The clock a whole-state place keeps: its BIGGEST metro's, ties by label.
+   *  Every state that stays whole has all its metros on one clock anyway — the
+   *  ones that did not, Alaska and Hawaii, are exactly the ones now split — so
+   *  this picks between equals; it is defined by weight rather than by roster
+   *  order so it stays an answer if that ever stops being true. */
+  private def wholeStateZone(state: State, byMetro: Seq[CinemaAreaGroup]): ZoneId =
+    state.metroCentres(byMetro.maxBy(m => (m.cinemas.size, m.area.label)).area.label).zoneId
 
   /** Every US venue under its STATE's name — one section per state on the
    *  uptime page, and the US half of `Cinema.byCity`. Not per metro: see the

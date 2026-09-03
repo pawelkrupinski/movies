@@ -10941,7 +10941,7 @@
     "state": "Iowa",
     "postCode": "50220",
     "lat": "41.8410100",
-    "lon": "94.1047800",
+    "lon": "-94.1047800",
     "region_slug": "des-moines"
   },
   {
@@ -13796,13 +13796,13 @@
   {
     "slug": "regal-largo-mall",
     "title": "Regal Largo Mall",
-    "address": "10500 Ulmerton Rd #500, Key Largo, Florida 33771",
-    "city": "Key Largo",
+    "address": "10500 Ulmerton Rd #500, Largo, Florida 33771",
+    "city": "Largo",
     "state": "Florida",
     "postCode": "33771",
     "lat": "27.8907460",
     "lon": "-82.7837560",
-    "region_slug": "florida-keys"
+    "region_slug": "tampa"
   },
   {
     "slug": "tavernier-cinema-5",
@@ -20066,13 +20066,13 @@
   {
     "slug": "sky-vu-drive-in-monroe",
     "title": "Sky Vu Drive In Monroe",
-    "address": "N 1936 Wi 69, Tomah, Wisconsin 53566",
-    "city": "Tomah",
+    "address": "N 1936 Wi 69, Monroe, Wisconsin 53566",
+    "city": "Monroe",
     "state": "Wisconsin",
     "postCode": "53566",
     "lat": "42.5719700",
     "lon": "-89.6550000",
-    "region_slug": "la-crosse"
+    "region_slug": "madison"
   },
   {
     "slug": "sparta-cinema",
@@ -51625,9 +51625,9 @@
   {
     "slug": "newport-performing-arts",
     "title": "Newport Performing Arts",
-    "address": "777 W Olive, Newport News, Virginia 97365",
-    "city": "Newport News",
-    "state": "Virginia",
+    "address": "777 W Olive St, Newport, Oregon 97365",
+    "city": "Newport",
+    "state": "Oregon",
     "postCode": "97365",
     "lat": "44.6361755",
     "lon": "-124.0619397",

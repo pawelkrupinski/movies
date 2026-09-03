@@ -87,8 +87,11 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should not include "/us/california/"
     // A district is a filter inside a metro, never a URL of its own.
     body should not include "/us/los-angeles/santa-monica/"
-    // A state small enough to be one city is advertised as that city.
-    body should include("<loc>https://kinowo.net/us/alaska/</loc>")
+    // A state small enough AND compact enough to be one city is advertised as
+    // that city; one whose metros are a flight apart is advertised as its metros.
+    body should include("<loc>https://kinowo.net/us/vermont/</loc>")
+    body should include("<loc>https://kinowo.net/us/anchorage/</loc>")
+    body should not include "/us/alaska/"
   }
 
   /** A country that shares `showtimes.cc` is served one segment down, so every

@@ -82,10 +82,10 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Country.UnitedStates.cities" should "be one city per metro, the state being only how you find one" in {
-    // The addressable place is the metro: 448 of them, plus the nine states and
-    // territories with too few venues to be worth splitting. A state is a
-    // `CityGroup`, so `/california/` resolves to nothing at all.
-    Country.UnitedStates.cities should have size 457
+    // The addressable place is the metro: 460 of them, plus the seven states and
+    // territories with too few venues — and compact enough — to be worth
+    // splitting. A state is a `CityGroup`, so `/california/` resolves to nothing.
+    Country.UnitedStates.cities should have size 467
     Country.UnitedStates.cities.map(_.slug) should contain allOf (
       "los-angeles", "new-york", "houston", "district-of-columbia", "san-juan")
     Country.UnitedStates.bySlug.get("california") shouldBe None
@@ -158,14 +158,18 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   "US places" should "carry their own time zone rather than one national default" in {
     // Unlike Germany (one Europe/Berlin for every region), the US spans six zones,
     // so `UsCity` takes the zone per place. A single national default would put
-    // California's day boundary three hours early. A metro inherits its state's.
+    // California's day boundary three hours early. A metro carries its OWN zone,
+    // resolved from its venues' coordinates — not its state's predominant one,
+    // which is a different answer for a metro on the far side of a boundary.
     def zoneOf(slug: String) =
       Country.UnitedStates.cities.find(_.slug == slug).get.zoneId.getId
     zoneOf("los-angeles") shouldBe "America/Los_Angeles"
     zoneOf("new-york")    shouldBe "America/New_York"
     zoneOf("houston")     shouldBe "America/Chicago"
-    zoneOf("hawaii")      shouldBe "Pacific/Honolulu"
+    zoneOf("oahu")        shouldBe "Pacific/Honolulu"
     zoneOf("phoenix")     shouldBe "America/Phoenix"   // no DST, deliberately its own
+    zoneOf("knoxville")   shouldBe "America/New_York"  // Tennessee's is Central
+    zoneOf("el-paso")     shouldBe "America/Denver"    // Texas's is Central
   }
 
   "Every modelled cinema display name" should "be globally unique across all five countries" in {

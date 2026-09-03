@@ -6,12 +6,13 @@ package models
 private[models] object UsRosterData {
   // (displayName, pillName, flicks cinema slug, metro label, district label)
   type C = (String, String, String, String, String)
-  // (metro label, lat, lon) — the centroid of that metro's own venues
-  type M = (String, Double, Double)
-  // (slug, name, lat, lon, zoneId, cinemas, metros)
-  type R = (String, String, Double, Double, String, Seq[C], Seq[M])
+  // (metro label, lat, lon, zoneId) — the centroid of that metro's own
+  // venues, and the zone THEY are in (not the state's; see states.py)
+  type M = (String, Double, Double, String)
+  // (slug, name, lat, lon, cinemas, metros)
+  type R = (String, String, Double, Double, Seq[C], Seq[M])
 
-  private def r_alabama: R = ("alabama", "Alabama", 32.83317, -86.75879, "America/Chicago", Seq(
+  private def r_alabama: R = ("alabama", "Alabama", 32.83317, -86.75879, Seq(
     ("411 Twin Drive In Centre", "411 Twin Drive In Centre", "411-twin-drive-in-centre", "Gadsden", ""),
     ("Alabama Theatre Birmingham", "Alabama Theatre Birmingham", "alabama-theatre-birmingham", "Birmingham", ""),
     ("AMC CLASSIC Auburn 14", "AMC CLASSIC Auburn 14", "amc-classic-auburn-14", "Montgomery", ""),
@@ -66,17 +67,17 @@ private[models] object UsRosterData {
     ("Warhouse Performing Arts Center", "Warhouse Performing Arts Center", "warhouse-performing-arts-center", "Tuscaloosa", ""),
     ("Wind Creek Cinema", "Wind Creek Cinema", "wind-creek-cinema", "Mobile", ""),
   ), Seq(
-    ("Birmingham", 33.46895, -86.73984),
-    ("Dothan", 31.27268, -85.76866),
-    ("Florence", 34.33922, -87.71048),
-    ("Gadsden", 34.10674, -85.82022),
-    ("Huntsville", 34.54122, -86.58245),
-    ("Mobile", 30.67173, -87.80828),
-    ("Montgomery", 32.47835, -86.21055),
-    ("Tuscaloosa", 32.69417, -87.85833),
+    ("Birmingham", 33.46895, -86.73984, "America/Chicago"),
+    ("Dothan", 31.27268, -85.76866, "America/Chicago"),
+    ("Florence", 34.33922, -87.71048, "America/Chicago"),
+    ("Gadsden", 34.10674, -85.82022, "America/Chicago"),
+    ("Huntsville", 34.54122, -86.58245, "America/Chicago"),
+    ("Mobile", 30.67173, -87.80828, "America/Chicago"),
+    ("Montgomery", 32.47835, -86.21055, "America/Chicago"),
+    ("Tuscaloosa", 32.69417, -87.85833, "America/Chicago"),
   ))
 
-  private def r_alaska: R = ("alaska", "Alaska", 60.16992, -146.99886, "America/Anchorage", Seq(
+  private def r_alaska: R = ("alaska", "Alaska", 60.16992, -146.99886, Seq(
     ("Bear Tooth Theatrepub", "Bear Tooth Theatrepub", "bear-tooth-theatrepub", "Anchorage", ""),
     ("Cinemark Century Anchorage 16", "Cinemark Century Anchorage 16", "cinemark-century-anchorage-16", "Anchorage", ""),
     ("Civic Center Valdez", "Civic Center Valdez", "civic-center-valdez", "Old Valdez", ""),
@@ -96,24 +97,24 @@ private[models] object UsRosterData {
     ("Suurvik Cinema", "Suurvik Cinema", "suurvik-cinema", "Bethel", ""),
     ("The Valley Cinema", "The Valley Cinema", "the-valley-cinema", "Anchorage", ""),
   ), Seq(
-    ("Anchorage", 61.26431, -149.7523),
-    ("Bethel", 60.78658, -161.78318),
-    ("Fairbanks", 64.83525, -147.75293),
-    ("Juneau", 58.34084, -134.4924),
-    ("Kenai Peninsula", 60.2322, -151.31675),
-    ("Kodiak", 57.78916, -152.40667),
-    ("Nome", 64.49634, -165.40043),
-    ("Old Valdez", 61.11583, -146.26639),
-    ("Southeast Alaska", 56.77853, -133.55776),
+    ("Anchorage", 61.26431, -149.7523, "America/Anchorage"),
+    ("Bethel", 60.78658, -161.78318, "America/Anchorage"),
+    ("Fairbanks", 64.83525, -147.75293, "America/Anchorage"),
+    ("Juneau", 58.34084, -134.4924, "America/Juneau"),
+    ("Kenai Peninsula", 60.2322, -151.31675, "America/Anchorage"),
+    ("Kodiak", 57.78916, -152.40667, "America/Anchorage"),
+    ("Nome", 64.49634, -165.40043, "America/Nome"),
+    ("Old Valdez", 61.11583, -146.26639, "America/Anchorage"),
+    ("Southeast Alaska", 56.77853, -133.55776, "America/Sitka"),
   ))
 
-  private def r_american_samoa: R = ("american-samoa", "American Samoa", -14.27338, -170.70192, "Pacific/Pago_Pago", Seq(
+  private def r_american_samoa: R = ("american-samoa", "American Samoa", -14.27338, -170.70192, Seq(
     ("Regal Nu'uuli Place Twin", "Regal Nu'uuli Place Twin", "regal-nuuuli-place-twin", "Pago Pago", ""),
   ), Seq(
-    ("Pago Pago", -14.27338, -170.70192),
+    ("Pago Pago", -14.27338, -170.70192, "Pacific/Pago_Pago"),
   ))
 
-  private def r_arizona: R = ("arizona", "Arizona", 33.58109, -111.64807, "America/Phoenix", Seq(
+  private def r_arizona: R = ("arizona", "Arizona", 33.58109, -111.64807, Seq(
     ("AK-Chin Circle Entertainment Center", "AK-Chin Circle Entertainment Center", "ak-chin-circle-entertainment-center", "Phoenix", ""),
     ("Allen Theatres Morenci", "Allen Theatres Morenci", "allen-theatres-morenci", "Eastern Arizona", ""),
     ("Allen Theatres Stargazer Safford", "Allen Theatres Stargazer Safford", "allen-theatres-stargazer-safford", "Eastern Arizona", ""),
@@ -202,18 +203,18 @@ private[models] object UsRosterData {
     ("WME Show Low 5", "WME Show Low 5", "wme-show-low-5", "Show Low", ""),
     ("WME Village 8", "WME Village 8", "wme-village-8", "Show Low", ""),
   ), Seq(
-    ("Eastern Arizona", 32.74416, -109.64859),
-    ("Flagstaff", 36.43402, -111.2694),
-    ("Holbrook", 35.19671, -109.97162),
-    ("Lake Havasu City", 34.61171, -114.25367),
-    ("Phoenix", 33.455, -111.98503),
-    ("Sedona", 34.52986, -111.72304),
-    ("Show Low", 34.25471, -109.66676),
-    ("Tucson", 32.13211, -110.88617),
-    ("Yuma", 32.71475, -114.61001),
+    ("Eastern Arizona", 32.74416, -109.64859, "America/Phoenix"),
+    ("Flagstaff", 36.43402, -111.2694, "America/Phoenix"),
+    ("Holbrook", 35.19671, -109.97162, "America/Phoenix"),
+    ("Lake Havasu City", 34.61171, -114.25367, "America/Phoenix"),
+    ("Phoenix", 33.455, -111.98503, "America/Phoenix"),
+    ("Sedona", 34.52986, -111.72304, "America/Phoenix"),
+    ("Show Low", 34.25471, -109.66676, "America/Phoenix"),
+    ("Tucson", 32.13211, -110.88617, "America/Phoenix"),
+    ("Yuma", 32.71475, -114.61001, "America/Phoenix"),
   ))
 
-  private def r_arkansas: R = ("arkansas", "Arkansas", 35.36006, -92.58015, "America/Chicago", Seq(
+  private def r_arkansas: R = ("arkansas", "Arkansas", 35.36006, -92.58015, Seq(
     ("AMC Chenal 9", "AMC Chenal 9", "amc-chenal-9", "Little Rock", ""),
     ("AMC Fiesta Square 12", "AMC Fiesta Square 12", "amc-fiesta-square-12", "Northwest Arkansas", ""),
     ("Arkansas Arts Center", "Arkansas Arts Center", "arkansas-arts-center", "Little Rock", ""),
@@ -261,15 +262,15 @@ private[models] object UsRosterData {
     ("Sun Valley Cinema", "Sun Valley Cinema", "sun-valley-cinema", "North Central Arkansas", ""),
     ("UEC Theatres Russellville", "UEC Theatres Russellville", "uec-theatres-russellville", "Fort Smith", ""),
   ), Seq(
-    ("Fort Smith", 35.03381, -93.9675),
-    ("Jonesboro", 35.88132, -90.37539),
-    ("Little Rock", 34.55389, -92.37371),
-    ("North Central Arkansas", 35.92103, -92.06025),
-    ("Northwest Arkansas", 36.16687, -94.06059),
-    ("Searcy", 35.25082, -91.56198),
+    ("Fort Smith", 35.03381, -93.9675, "America/Chicago"),
+    ("Jonesboro", 35.88132, -90.37539, "America/Chicago"),
+    ("Little Rock", 34.55389, -92.37371, "America/Chicago"),
+    ("North Central Arkansas", 35.92103, -92.06025, "America/Chicago"),
+    ("Northwest Arkansas", 36.16687, -94.06059, "America/Chicago"),
+    ("Searcy", 35.25082, -91.56198, "America/Chicago"),
   ))
 
-  private def r_california: R = ("california", "California", 35.67432, -119.59141, "America/Los_Angeles", Seq(
+  private def r_california: R = ("california", "California", 35.67432, -119.59141, Seq(
     ("2nd Street Cinema Beaumont", "2nd Street Cinema Beaumont", "2nd-street-cinema-beaumont", "Palm Springs", ""),
     ("3Below Theaters San Jose", "3Below Theaters San Jose", "3below-theaters-san-jose", "San Francisco", "South Bay"),
     ("4 Star Theatre San Francisco", "4 Star Theatre San Francisco", "4-star-theatre-san-francisco", "San Francisco", "San Francisco"),
@@ -757,30 +758,30 @@ private[models] object UsRosterData {
     ("West Wind Solano Drive-In", "West Wind Solano Drive-In", "west-wind-solano-drive-in", "San Francisco", "East Bay"),
     ("Yosemite Cinema", "Yosemite Cinema", "yosemite-cinema", "Fresno", ""),
   ), Seq(
-    ("Bakersfield", 35.35447, -119.05342),
-    ("Barstow", 34.87981, -117.25103),
-    ("Chico", 39.86344, -121.94358),
-    ("El Centro", 32.75904, -115.53357),
-    ("Eureka Arcata", 41.01828, -124.14101),
-    ("Fresno", 36.69865, -119.62379),
-    ("Inland Empire", 33.84977, -117.57738),
-    ("Los Angeles", 34.05657, -118.30565),
-    ("Modesto", 37.69514, -120.81284),
-    ("Monterey County", 36.87479, -121.76269),
-    ("Northern California", 40.87719, -122.5348),
-    ("Palm Springs", 33.85795, -116.55034),
-    ("Sacramento", 38.54371, -121.35274),
-    ("San Diego", 32.87578, -117.15722),
-    ("San Francisco", 37.71212, -122.19204),
-    ("San Luis Obispo", 35.21457, -120.62803),
-    ("Santa Barbara", 34.38462, -119.57599),
-    ("Santa Rosa", 38.53259, -122.65849),
-    ("Sierra Foothills", 39.21959, -120.86358),
-    ("Susanville", 40.5606, -120.69432),
-    ("Ukiah", 39.22683, -123.5147),
+    ("Bakersfield", 35.35447, -119.05342, "America/Los_Angeles"),
+    ("Barstow", 34.87981, -117.25103, "America/Los_Angeles"),
+    ("Chico", 39.86344, -121.94358, "America/Los_Angeles"),
+    ("El Centro", 32.75904, -115.53357, "America/Los_Angeles"),
+    ("Eureka Arcata", 41.01828, -124.14101, "America/Los_Angeles"),
+    ("Fresno", 36.69865, -119.62379, "America/Los_Angeles"),
+    ("Inland Empire", 33.84977, -117.57738, "America/Los_Angeles"),
+    ("Los Angeles", 34.05657, -118.30565, "America/Los_Angeles"),
+    ("Modesto", 37.69514, -120.81284, "America/Los_Angeles"),
+    ("Monterey County", 36.87479, -121.76269, "America/Los_Angeles"),
+    ("Northern California", 40.87719, -122.5348, "America/Los_Angeles"),
+    ("Palm Springs", 33.85795, -116.55034, "America/Los_Angeles"),
+    ("Sacramento", 38.54371, -121.35274, "America/Los_Angeles"),
+    ("San Diego", 32.87578, -117.15722, "America/Los_Angeles"),
+    ("San Francisco", 37.71212, -122.19204, "America/Los_Angeles"),
+    ("San Luis Obispo", 35.21457, -120.62803, "America/Los_Angeles"),
+    ("Santa Barbara", 34.38462, -119.57599, "America/Los_Angeles"),
+    ("Santa Rosa", 38.53259, -122.65849, "America/Los_Angeles"),
+    ("Sierra Foothills", 39.21959, -120.86358, "America/Los_Angeles"),
+    ("Susanville", 40.5606, -120.69432, "America/Los_Angeles"),
+    ("Ukiah", 39.22683, -123.5147, "America/Los_Angeles"),
   ))
 
-  private def r_colorado: R = ("colorado", "Colorado", 39.29698, -105.36763, "America/Denver", Seq(
+  private def r_colorado: R = ("colorado", "Colorado", 39.29698, -105.36763, Seq(
     ("88 Drive-In Theatre Commerce City", "88 Drive-In Theatre Commerce City", "88-drive-in-theatre-commerce-city", "Denver", ""),
     ("Alamo Drafthouse Littleton", "Alamo Drafthouse Littleton", "alamo-drafthouse-littleton", "Denver", ""),
     ("Alamo Drafthouse Sloans Lake", "Alamo Drafthouse Sloans Lake", "alamo-drafthouse-sloans-lake", "Denver", ""),
@@ -902,22 +903,22 @@ private[models] object UsRosterData {
     ("Wright Opera House", "Wright Opera House", "wright-opera-house", "Montrose", ""),
     ("Yuma Theatre", "Yuma Theatre", "yuma-theatre", "Holyoke", ""),
   ), Seq(
-    ("Alamosa", 37.82301, -105.92817),
-    ("Aspen", 39.25707, -106.65427),
-    ("Colorado Springs", 38.77113, -104.75413),
-    ("Craig", 40.48645, -107.18318),
-    ("Denver", 39.75711, -105.02354),
-    ("Durango", 37.28102, -107.83719),
-    ("Eads", 38.67354, -102.53525),
-    ("Fort Collins", 40.43627, -105.08566),
-    ("Grand Junction", 39.19662, -108.3872),
-    ("Holyoke", 40.44318, -102.38005),
-    ("Montrose", 38.3193, -107.7927),
-    ("Pueblo", 37.65104, -103.82744),
-    ("Sterling", 40.37812, -103.54446),
+    ("Alamosa", 37.82301, -105.92817, "America/Denver"),
+    ("Aspen", 39.25707, -106.65427, "America/Denver"),
+    ("Colorado Springs", 38.77113, -104.75413, "America/Denver"),
+    ("Craig", 40.48645, -107.18318, "America/Denver"),
+    ("Denver", 39.75711, -105.02354, "America/Denver"),
+    ("Durango", 37.28102, -107.83719, "America/Denver"),
+    ("Eads", 38.67354, -102.53525, "America/Denver"),
+    ("Fort Collins", 40.43627, -105.08566, "America/Denver"),
+    ("Grand Junction", 39.19662, -108.3872, "America/Denver"),
+    ("Holyoke", 40.44318, -102.38005, "America/Denver"),
+    ("Montrose", 38.3193, -107.7927, "America/Denver"),
+    ("Pueblo", 37.65104, -103.82744, "America/Denver"),
+    ("Sterling", 40.37812, -103.54446, "America/Denver"),
   ))
 
-  private def r_connecticut: R = ("connecticut", "Connecticut", 41.47889, -72.90724, "America/New_York", Seq(
+  private def r_connecticut: R = ("connecticut", "Connecticut", 41.47889, -72.90724, Seq(
     ("AMC CLASSIC Lisbon 12", "AMC CLASSIC Lisbon 12", "amc-classic-lisbon-12", "Hartford", ""),
     ("AMC Danbury 16", "AMC Danbury 16", "amc-danbury-16", "Stamford", ""),
     ("AMC Landmark 8", "AMC Landmark 8", "amc-landmark-8", "Stamford", ""),
@@ -967,11 +968,11 @@ private[models] object UsRosterData {
     ("Wesleyan University Middletown", "Wesleyan University Middletown", "wesleyan-university-middletown", "Hartford", ""),
     ("Westbrook Cinemas", "Westbrook Cinemas", "westbrook-cinemas", "Hartford", ""),
   ), Seq(
-    ("Hartford", 41.61227, -72.63887),
-    ("Stamford", 41.23567, -73.39661),
+    ("Hartford", 41.61227, -72.63887, "America/New_York"),
+    ("Stamford", 41.23567, -73.39661, "America/New_York"),
   ))
 
-  private def r_delaware: R = ("delaware", "Delaware", 39.40076, -75.52888, "America/New_York", Seq(
+  private def r_delaware: R = ("delaware", "Delaware", 39.40076, -75.52888, Seq(
     ("Cinema Art Theater", "Cinema Art Theater", "cinema-art-theater", "Delaware Beaches", ""),
     ("Cinemark Christiana", "Cinemark Christiana", "cinemark-christiana", "Philadelphia", ""),
     ("Cinemark Wilmington 10", "Cinemark Wilmington 10", "cinemark-wilmington-10", "Philadelphia", ""),
@@ -987,11 +988,11 @@ private[models] object UsRosterData {
     ("Theatre N at Nemours", "Theatre N at Nemours", "theatre-n-at-nemours", "Philadelphia", ""),
     ("Westown Movies Middletown", "Westown Movies Middletown", "westown-movies-middletown", "Philadelphia", ""),
   ), Seq(
-    ("Delaware Beaches", 38.74153, -75.24425),
-    ("Philadelphia", 39.66445, -75.64274),
+    ("Delaware Beaches", 38.74153, -75.24425, "America/New_York"),
+    ("Philadelphia", 39.66445, -75.64274, "America/New_York"),
   ))
 
-  private def r_district_of_columbia: R = ("district-of-columbia", "District of Columbia", 38.91099, -77.03081, "America/New_York", Seq(
+  private def r_district_of_columbia: R = ("district-of-columbia", "District of Columbia", 38.91099, -77.03081, Seq(
     ("Alamo Drafthouse DC Bryant Street", "Alamo Drafthouse DC Bryant Street", "alamo-drafthouse-dc-bryant-street", "Washington", ""),
     ("AMC Georgetown 14", "AMC Georgetown 14", "amc-georgetown-14", "Washington", ""),
     ("Angelika Pop-up at Union Market", "Angelika Pop-up at Union Market", "angelika-pop-up-at-union-market", "Washington", ""),
@@ -1005,10 +1006,10 @@ private[models] object UsRosterData {
     ("Regal Gallery Place Washington", "Regal Gallery Place Washington", "regal-gallery-place-washington", "Washington", ""),
     ("Suns Cinema Theater & Bar", "Suns Cinema Theater & Bar", "suns-cinema-theater-bar", "Washington", ""),
   ), Seq(
-    ("Washington", 38.91099, -77.03081),
+    ("Washington", 38.91099, -77.03081, "America/New_York"),
   ))
 
-  private def r_florida: R = ("florida", "Florida", 27.76416, -81.71726, "America/New_York", Seq(
+  private def r_florida: R = ("florida", "Florida", 27.76416, -81.71726, Seq(
     ("Alamo Drafthouse Naples", "Alamo Drafthouse Naples", "alamo-drafthouse-naples", "Naples", ""),
     ("Aloma Cinema Grill Winter Park", "Aloma Cinema Grill Winter Park", "aloma-cinema-grill-winter-park", "Orlando", ""),
     ("AMC Altamonte Mall 18", "AMC Altamonte Mall 18", "amc-altamonte-mall-18", "Orlando", ""),
@@ -1137,7 +1138,7 @@ private[models] object UsRosterData {
     ("O Cinema South Beach", "O Cinema South Beach", "o-cinema-south-beach", "Miami", ""),
     ("Oaks Melbourne 10", "Oaks Melbourne 10", "oaks-melbourne-10", "Space Coast", ""),
     ("Ocala Drive-In", "Ocala Drive-In", "ocala-drive-in", "Ocala", ""),
-    ("Ocean Reef Theater", "Ocean Reef Theater", "ocean-reef-theater", "Naples", ""),
+    ("Ocean Reef Theater", "Ocean Reef Theater", "ocean-reef-theater", "Miami", ""),
     ("Paradigm Cinemas Gateway", "Paradigm Cinemas Gateway", "paradigm-cinemas-gateway", "Miami", ""),
     ("Paragon Theaters Coral Square", "Paragon Theaters Coral Square", "paragon-theaters-coral-square", "West Palm Beach", ""),
     ("Paragon Theaters Deerfield", "Paragon Theaters Deerfield", "paragon-theaters-deerfield", "West Palm Beach", ""),
@@ -1167,7 +1168,7 @@ private[models] object UsRosterData {
     ("Regal Hollywood Sarasota", "Regal Hollywood Sarasota", "regal-hollywood-sarasota", "Sarasota Bradenton", ""),
     ("Regal Kendall Village Miami", "Regal Kendall Village Miami", "regal-kendall-village-miami", "Miami", ""),
     ("Regal Key West", "Regal Key West", "regal-key-west", "Florida Keys", ""),
-    ("Regal Largo Mall", "Regal Largo Mall", "regal-largo-mall", "Naples", ""),
+    ("Regal Largo Mall", "Regal Largo Mall", "regal-largo-mall", "Tampa Bay", ""),
     ("Regal Magnolia Place Coral Springs", "Regal Magnolia Place Coral Springs", "regal-magnolia-place-coral-springs", "West Palm Beach", ""),
     ("Regal Oakmont", "Regal Oakmont", "regal-oakmont-bradenton", "Sarasota Bradenton", ""),
     ("Regal Oviedo Mall", "Regal Oviedo Mall", "regal-oviedo-mall", "Orlando", ""),
@@ -1220,24 +1221,24 @@ private[models] object UsRosterData {
     ("Xscape Riverview 14", "Xscape Riverview 14", "xscape-riverview-14", "Tampa Bay", ""),
     ("Zephyrhills Cinema 10", "Zephyrhills Cinema 10", "zephyrhills-cinema-10", "Tampa Bay", ""),
   ), Seq(
-    ("Daytona Beach", 29.15795, -81.08303),
-    ("Destin Fort Walton Beach", 30.39195, -86.17052),
-    ("Florida Keys", 24.61373, -81.54873),
-    ("Jacksonville", 30.19069, -81.72103),
-    ("Miami", 25.8644, -80.26093),
-    ("Naples", 26.41026, -81.77956),
-    ("Ocala", 29.21713, -82.21106),
-    ("Orlando", 28.47999, -81.46017),
-    ("Pensacola", 30.44051, -87.06053),
-    ("Sarasota Bradenton", 27.31687, -82.37654),
-    ("Space Coast", 28.21309, -80.68577),
-    ("Tallahassee", 30.50628, -84.43859),
-    ("Tampa Bay", 28.03462, -82.46563),
-    ("Treasure Coast", 27.2539, -80.27794),
-    ("West Palm Beach", 26.43745, -80.15251),
+    ("Daytona Beach", 29.15795, -81.08303, "America/New_York"),
+    ("Destin Fort Walton Beach", 30.39195, -86.17052, "America/Chicago"),
+    ("Florida Keys", 24.61373, -81.54873, "America/New_York"),
+    ("Jacksonville", 30.19069, -81.72103, "America/New_York"),
+    ("Miami", 25.85112, -80.26136, "America/New_York"),
+    ("Naples", 26.3748, -81.82472, "America/New_York"),
+    ("Ocala", 29.21713, -82.21106, "America/New_York"),
+    ("Orlando", 28.47999, -81.46017, "America/New_York"),
+    ("Pensacola", 30.44051, -87.06053, "America/Chicago"),
+    ("Sarasota Bradenton", 27.31687, -82.37654, "America/New_York"),
+    ("Space Coast", 28.21309, -80.68577, "America/New_York"),
+    ("Tallahassee", 30.50628, -84.43859, "America/New_York"),
+    ("Tampa Bay", 28.03039, -82.47499, "America/New_York"),
+    ("Treasure Coast", 27.2539, -80.27794, "America/New_York"),
+    ("West Palm Beach", 26.43745, -80.15251, "America/New_York"),
   ))
 
-  private def r_georgia: R = ("georgia", "Georgia", 33.30256, -83.70963, "America/New_York", Seq(
+  private def r_georgia: R = ("georgia", "Georgia", 33.30256, -83.70963, Seq(
     ("AMC Avenue Forsyth 12", "AMC Avenue Forsyth 12", "amc-avenue-forsyth-12", "Atlanta", ""),
     ("AMC Barrett Commons 24", "AMC Barrett Commons 24", "amc-barrett-commons-24", "Atlanta", ""),
     ("AMC Camp Creek 14", "AMC Camp Creek 14", "amc-camp-creek-14", "Atlanta", ""),
@@ -1362,26 +1363,26 @@ private[models] object UsRosterData {
     ("Wilderness Outdoor Theatre Trenton", "Wilderness Outdoor Theatre Trenton", "wilderness-outdoor-theatre-trenton", "North Georgia", ""),
     ("Zebulon Theatre Cairo", "Zebulon Theatre Cairo", "zebulon-theatre-cairo", "Albany", ""),
   ), Seq(
-    ("Albany", 31.22655, -83.86941),
-    ("Athens", 34.0301, -83.47503),
-    ("Atlanta", 33.86958, -84.37798),
-    ("Augusta", 33.50337, -82.1815),
-    ("Brunswick Golden Isles", 31.40036, -81.76742),
-    ("Columbus", 32.57383, -84.97322),
-    ("Macon", 32.10013, -82.59901),
-    ("North Georgia", 34.79894, -84.53613),
-    ("Savannah", 32.10614, -81.13395),
-    ("Warner Robins", 32.8138, -83.72619),
+    ("Albany", 31.22655, -83.86941, "America/New_York"),
+    ("Athens", 34.0301, -83.47503, "America/New_York"),
+    ("Atlanta", 33.86958, -84.37798, "America/New_York"),
+    ("Augusta", 33.50337, -82.1815, "America/New_York"),
+    ("Brunswick Golden Isles", 31.40036, -81.76742, "America/New_York"),
+    ("Columbus", 32.57383, -84.97322, "America/New_York"),
+    ("Macon", 32.10013, -82.59901, "America/New_York"),
+    ("North Georgia", 34.79894, -84.53613, "America/New_York"),
+    ("Savannah", 32.10614, -81.13395, "America/New_York"),
+    ("Warner Robins", 32.8138, -83.72619, "America/New_York"),
   ))
 
-  private def r_guam: R = ("guam", "Guam", 13.50485, 144.79982, "Pacific/Guam", Seq(
+  private def r_guam: R = ("guam", "Guam", 13.50485, 144.79982, Seq(
     ("MM Theatres", "MM Theatres", "mm-theatres", "Apotgan", ""),
     ("Regal Guam", "Regal Guam", "regal-guam", "Apotgan", ""),
   ), Seq(
-    ("Apotgan", 13.50485, 144.79982),
+    ("Apotgan", 13.50485, 144.79982, "Pacific/Guam"),
   ))
 
-  private def r_hawaii: R = ("hawaii", "Hawaii", 20.92376, -157.1989, "Pacific/Honolulu", Seq(
+  private def r_hawaii: R = ("hawaii", "Hawaii", 20.92376, -157.1989, Seq(
     ("Consolidated Theatres Kahala Honolulu", "Consolidated Theatres Kahala Honolulu", "consolidated-theatres-kahala-honolulu", "Oahu", ""),
     ("Consolidated Theatres Kapolei", "Consolidated Theatres Kapolei", "consolidated-theatres-kapolei", "Oahu", ""),
     ("Consolidated Theatres Mililani", "Consolidated Theatres Mililani", "consolidated-theatres-mililani", "Oahu", ""),
@@ -1404,13 +1405,13 @@ private[models] object UsRosterData {
     ("Waikōloa Luxury Cinemas", "Waikōloa Luxury Cinemas", "waikloa-luxury-cinemas", "Hawaii Big Island", ""),
     ("Waimea Theatre", "Waimea Theatre", "waimea-theatre", "Waimea", ""),
   ), Seq(
-    ("Hawaii Big Island", 19.79719, -155.49179),
-    ("Maui", 20.88574, -156.71443),
-    ("Oahu", 21.35575, -157.92634),
-    ("Waimea", 21.95674, -159.67047),
+    ("Hawaii Big Island", 19.79719, -155.49179, "Pacific/Honolulu"),
+    ("Maui", 20.88574, -156.71443, "Pacific/Honolulu"),
+    ("Oahu", 21.35575, -157.92634, "Pacific/Honolulu"),
+    ("Waimea", 21.95674, -159.67047, "Pacific/Honolulu"),
   ))
 
-  private def r_idaho: R = ("idaho", "Idaho", 44.2216, -114.74126, "America/Boise", Seq(
+  private def r_idaho: R = ("idaho", "Idaho", 44.2216, -114.74126, Seq(
     ("AMC CLASSIC Pine Ridge 11", "AMC CLASSIC Pine Ridge 11", "amc-classic-pine-ridge-11", "Idaho Falls", ""),
     ("Argyros Performing Arts Center", "Argyros Performing Arts Center", "argyros-performing-arts-center", "Ketchum", ""),
     ("Blackfoot Movie Mill", "Blackfoot Movie Mill", "blackfoot-movie-mill", "Idaho Falls", ""),
@@ -1458,17 +1459,17 @@ private[models] object UsRosterData {
     ("Village Cinema Meridian", "Village Cinema Meridian", "village-cinema-meridian", "Boise", ""),
     ("Worm Creek Opera House", "Worm Creek Opera House", "worm-creek-opera-house", "Pocatello", ""),
   ), Seq(
-    ("Boise", 43.72437, -116.41201),
-    ("Coeur Dalene", 48.11045, -116.61263),
-    ("Idaho Falls", 43.48131, -111.94725),
-    ("Ketchum", 43.63127, -114.3443),
-    ("Lewiston", 46.36248, -116.57618),
-    ("Pocatello", 42.52043, -111.76906),
-    ("Salmon", 45.17553, -113.8933),
-    ("Twin Falls", 42.56934, -114.23783),
+    ("Boise", 43.72437, -116.41201, "America/Boise"),
+    ("Coeur Dalene", 48.11045, -116.61263, "America/Los_Angeles"),
+    ("Idaho Falls", 43.48131, -111.94725, "America/Boise"),
+    ("Ketchum", 43.63127, -114.3443, "America/Boise"),
+    ("Lewiston", 46.36248, -116.57618, "America/Los_Angeles"),
+    ("Pocatello", 42.52043, -111.76906, "America/Boise"),
+    ("Salmon", 45.17553, -113.8933, "America/Boise"),
+    ("Twin Falls", 42.56934, -114.23783, "America/Boise"),
   ))
 
-  private def r_illinois: R = ("illinois", "Illinois", 41.02916, -88.60754, "America/Chicago", Seq(
+  private def r_illinois: R = ("illinois", "Illinois", 41.02916, -88.60754, Seq(
     ("34 Drive-In Earlville", "34 Drive-In Earlville", "34-drive-in-earlville", "DeKalb", ""),
     ("400 Theater", "400 Theater", "400-theater", "Chicago", "Chicago"),
     ("ACX Harper Theater Hyde Park", "ACX Harper Theater Hyde Park", "acx-harper-theater-hyde-park", "Chicago", "Chicago"),
@@ -1652,20 +1653,20 @@ private[models] object UsRosterData {
     ("Wildey Theatre Edwardsville", "Wildey Theatre Edwardsville", "wildey-theatre-edwardsville", "St Louis", ""),
     ("Wilmette Theatre", "Wilmette Theatre", "wilmette-theatre", "Chicago", "Evanston"),
   ), Seq(
-    ("Champaign Urbana", 40.09438, -88.28243),
-    ("Chicago", 41.91725, -87.84944),
-    ("DeKalb", 41.97732, -88.49525),
-    ("Effingham", 39.09873, -88.46201),
-    ("Kankakee", 41.05563, -88.06107),
-    ("Peoria", 40.76888, -89.46723),
-    ("Quincy", 40.11217, -90.98392),
-    ("Rockford", 41.7034, -89.95416),
-    ("Southern Illinois", 37.83482, -89.00937),
-    ("Springfield", 39.62949, -89.56421),
-    ("St Louis", 38.67845, -89.93479),
+    ("Champaign Urbana", 40.09438, -88.28243, "America/Chicago"),
+    ("Chicago", 41.91725, -87.84944, "America/Chicago"),
+    ("DeKalb", 41.97732, -88.49525, "America/Chicago"),
+    ("Effingham", 39.09873, -88.46201, "America/Chicago"),
+    ("Kankakee", 41.05563, -88.06107, "America/Chicago"),
+    ("Peoria", 40.76888, -89.46723, "America/Chicago"),
+    ("Quincy", 40.11217, -90.98392, "America/Chicago"),
+    ("Rockford", 41.7034, -89.95416, "America/Chicago"),
+    ("Southern Illinois", 37.83482, -89.00937, "America/Chicago"),
+    ("Springfield", 39.62949, -89.56421, "America/Chicago"),
+    ("St Louis", 38.67845, -89.93479, "America/Chicago"),
   ))
 
-  private def r_indiana: R = ("indiana", "Indiana", 39.96479, -86.23467, "America/Indiana/Indianapolis", Seq(
+  private def r_indiana: R = ("indiana", "Indiana", 39.96479, -86.23467, Seq(
     ("13-24 Drive In Wabash", "13-24 Drive In Wabash", "13-24-drive-in-wabash", "Kokomo", ""),
     ("49er Drive In Valparaiso", "49er Drive In Valparaiso", "49er-drive-in-valparaiso", "South Bend Elkhart", ""),
     ("ABCinema", "ABCinema", "abcinema", "Fort Wayne", ""),
@@ -1799,25 +1800,25 @@ private[models] object UsRosterData {
     ("Xscape Jeffersonville 12", "Xscape Jeffersonville 12", "xscape-jeffersonville-12", "Louisville", ""),
     ("Yes Cinema Columbus", "Yes Cinema Columbus", "yes-cinema-columbus", "Bloomington", ""),
   ), Seq(
-    ("Bloomington", 39.10759, -86.58118),
-    ("Evansville", 38.05566, -87.35561),
-    ("Fort Wayne", 41.30782, -85.15249),
-    ("Indianapolis", 39.81351, -86.13638),
-    ("Kokomo", 40.81407, -85.67402),
-    ("Lafayette West Lafayette", 40.98657, -87.15886),
-    ("Louisville", 38.8519, -85.51492),
-    ("Richmond", 40.01225, -85.04959),
-    ("South Bend Elkhart", 41.45952, -86.33657),
-    ("Terre Haute", 39.57636, -87.20345),
+    ("Bloomington", 39.10759, -86.58118, "America/Indiana/Indianapolis"),
+    ("Evansville", 38.05566, -87.35561, "America/Chicago"),
+    ("Fort Wayne", 41.30782, -85.15249, "America/Indiana/Indianapolis"),
+    ("Indianapolis", 39.81351, -86.13638, "America/Indiana/Indianapolis"),
+    ("Kokomo", 40.81407, -85.67402, "America/Indiana/Indianapolis"),
+    ("Lafayette West Lafayette", 40.98657, -87.15886, "America/Chicago"),
+    ("Louisville", 38.8519, -85.51492, "America/Indiana/Indianapolis"),
+    ("Richmond", 40.01225, -85.04959, "America/Indiana/Indianapolis"),
+    ("South Bend Elkhart", 41.45952, -86.33657, "America/Indiana/Indianapolis"),
+    ("Terre Haute", 39.57636, -87.20345, "America/Indiana/Indianapolis"),
   ))
 
-  private def r_iowa: R = ("iowa", "Iowa", 42.004, -91.89084, "America/Chicago", Seq(
+  private def r_iowa: R = ("iowa", "Iowa", 42.004, -93.37281, Seq(
     ("61 Drive In Theatre", "61 Drive In Theatre", "61-drive-in-theatre", "Quad Cities", ""),
     ("ACX Promenade Sioux City", "ACX Promenade Sioux City", "acx-promenade-sioux-city", "Sioux City", ""),
     ("AMC CLASSIC Dubuque 14", "AMC CLASSIC Dubuque 14", "amc-classic-dubuque-14", "Dubuque", ""),
     ("AMC Council Bluffs 17", "AMC Council Bluffs 17", "amc-council-bluffs-17", "Omaha", ""),
     ("AMC Southern Hills 12", "AMC Southern Hills 12", "amc-southern-hills-12", "Sioux City", ""),
-    ("Avery Theater", "Avery Theater", "avery-theater", "Mason City", ""),
+    ("Avery Theater", "Avery Theater", "avery-theater", "Fort Dodge", ""),
     ("B&B Ankeny 12", "B&B Ankeny 12", "bb-ankeny-12", "Des Moines", ""),
     ("Bijou Movie Theater", "Bijou Movie Theater", "bijou-movie-theater", "Cedar Rapids", ""),
     ("Blue Grass Drive-In Theater", "Blue Grass Drive-In Theater", "blue-grass-drive-in-theater", "Quad Cities", ""),
@@ -1829,13 +1830,13 @@ private[models] object UsRosterData {
     ("Capri Theatre New Sharon", "Capri Theatre New Sharon", "capri-theatre-new-sharon", "Waterloo", ""),
     ("Castle Theatre Iowa", "Castle Theatre Iowa", "castle-theatre-iowa", "Dubuque", ""),
     ("Center Theatre Grundy", "Center Theatre Grundy", "center-theatre-grundy", "Waterloo", ""),
-    ("Charles Theatre", "Charles Theatre", "charles-theatre", "Osage", ""),
+    ("Charles Theatre", "Charles Theatre", "charles-theatre", "Mason City", ""),
     ("Cinema West Theatre Mason City", "Cinema West Theatre Mason City", "cinema-west-theatre-mason-city", "Mason City", ""),
     ("Cinemark Altoona", "Cinemark Altoona", "cinemark-altoona", "Des Moines", ""),
     ("Cinemark Ames 12", "Cinemark Ames 12", "cinemark-ames-12", "Des Moines", ""),
     ("Cinemark Century Jordan Creek 20", "Cinemark Century Jordan Creek 20", "cinemark-century-jordan-creek-20", "Des Moines", ""),
     ("Cinemark Davenport 18", "Cinemark Davenport 18", "cinemark-davenport-18", "Quad Cities", ""),
-    ("Clarion Theatre", "Clarion Theatre", "clarion-theatre", "Mason City", ""),
+    ("Clarion Theatre", "Clarion Theatre", "clarion-theatre", "Fort Dodge", ""),
     ("Clinton 8 Theatre", "Clinton 8 Theatre", "clinton-8-theatre", "Quad Cities", ""),
     ("Coliseum Theater Lamoni", "Coliseum Theater Lamoni", "coliseum-theater-lamoni", "Mount Ayr", ""),
     ("Collins Road Theatres", "Collins Road Theatres", "collins-road-theatres", "Cedar Rapids", ""),
@@ -1843,8 +1844,8 @@ private[models] object UsRosterData {
     ("Copper Creek 9 Pleasant Hill", "Copper Creek 9 Pleasant Hill", "copper-creek-9-pleasant-hill", "Des Moines", ""),
     ("Corning American Theatre", "Corning American Theatre", "corning-american-theatre", "Omaha", ""),
     ("Crawford County Cinema IV", "Crawford County Cinema IV", "crawford-county-cinema-iv", "Carroll", ""),
-    ("Cresco Theatre and Opera House", "Cresco Theatre and Opera House", "cresco-theatre-and-opera-house", "Osage", ""),
-    ("Decorah Viking 3", "Decorah Viking 3", "decorah-viking-3", "Oelwein", ""),
+    ("Cresco Theatre and Opera House", "Cresco Theatre and Opera House", "cresco-theatre-and-opera-house", "Decorah", ""),
+    ("Decorah Viking 3", "Decorah Viking 3", "decorah-viking-3", "Decorah", ""),
     ("Des Moines Fleur Cinema & Café", "Des Moines Fleur Cinema & Café", "des-moines-fleur-cinema-caf", "Des Moines", ""),
     ("DeWitt Operahouse Theatre", "DeWitt Operahouse Theatre", "dewitt-operahouse-theatre", "Quad Cities", ""),
     ("Dreamland Theatre Carson", "Dreamland Theatre Carson", "dreamland-theatre-carson", "Omaha", ""),
@@ -1853,11 +1854,11 @@ private[models] object UsRosterData {
     ("FilmScene on The Ped Mall", "FilmScene on The Ped Mall", "filmscene-on-the-ped-mall", "Cedar Rapids", ""),
     ("Flix Brewhouse Des Moines", "Flix Brewhouse Des Moines", "flix-brewhouse-des-moines", "Des Moines", ""),
     ("Forest Theatre", "Forest Theatre", "forest-theatre", "Mason City", ""),
-    ("Fort 8 Theatre", "Fort 8 Theatre", "fort-8-theatre", "Mason City", ""),
+    ("Fort 8 Theatre", "Fort 8 Theatre", "fort-8-theatre", "Fort Dodge", ""),
     ("Fox Theatre Fort Madison", "Fox Theatre Fort Madison", "fox-theatre-fort-madison", "Burlington", ""),
-    ("Fridley Algone State 5", "Fridley Algone State 5", "fridley-algone-state-5", "Mason City", ""),
+    ("Fridley Algone State 5", "Fridley Algone State 5", "fridley-algone-state-5", "Fort Dodge", ""),
     ("Fridley American 3 Cherokee", "Fridley American 3 Cherokee", "fridley-american-3-cherokee", "Sioux City", ""),
-    ("Fridley Carroll 5", "Fridley Carroll 5", "fridley-carroll-5", "Jefferson", ""),
+    ("Fridley Carroll 5", "Fridley Carroll 5", "fridley-carroll-5", "Carroll", ""),
     ("Fridley Cinema 4 Centerville", "Fridley Cinema 4 Centerville", "fridley-cinema-4-centerville", "Ottumwa", ""),
     ("Fridley Cinema 5 Sioux Center", "Fridley Cinema 5 Sioux Center", "fridley-cinema-5-sioux-center", "Paullina", ""),
     ("Fridley Muscatine Palms 10", "Fridley Muscatine Palms 10", "fridley-muscatine-palms-10", "Cedar Rapids", ""),
@@ -1867,17 +1868,17 @@ private[models] object UsRosterData {
     ("Gladbrook Theater", "Gladbrook Theater", "gladbrook-theater", "Waterloo", ""),
     ("Grand Theatre & Videos", "Grand Theatre & Videos", "grand-theatre-videos", "Des Moines", ""),
     ("Grand Theatre Eldora", "Grand Theatre Eldora", "grand-theatre-eldora", "Waterloo", ""),
-    ("Grand Theatre Perry", "Grand Theatre Perry", "grand-theatre-perry", "Perry", ""),
-    ("Harlan Theatre", "Harlan Theatre", "harlan-theatre", "Carroll", ""),
+    ("Grand Theatre Perry", "Grand Theatre Perry", "grand-theatre-perry", "Des Moines", ""),
+    ("Harlan Theatre", "Harlan Theatre", "harlan-theatre", "Omaha", ""),
     ("Holland Plaza Theatre", "Holland Plaza Theatre", "holland-plaza-theatre", "Paullina", ""),
-    ("Humota Theater", "Humota Theater", "humota-theater", "Mason City", ""),
+    ("Humota Theater", "Humota Theater", "humota-theater", "Fort Dodge", ""),
     ("Iowa Theater Onawa", "Iowa Theater Onawa", "iowa-theater-onawa", "Sioux City", ""),
     ("Iowa Theater Winterset", "Iowa Theater Winterset", "iowa-theater-winterset", "Des Moines", ""),
     ("Iowa Theatre Bloomfield", "Iowa Theatre Bloomfield", "iowa-theatre-bloomfield", "Ottumwa", ""),
     ("King Opera House Albia", "King Opera House Albia", "king-opera-house-albia", "Ottumwa", ""),
     ("King Theater Belle Plaine", "King Theater Belle Plaine", "king-theater-belle-plaine", "Waterloo", ""),
     ("King Theatre Ida Grove", "King Theatre Ida Grove", "king-theatre-ida-grove", "Carroll", ""),
-    ("Lake City Capri Theatre", "Lake City Capri Theatre", "lake-city-capri-theatre", "Jefferson", ""),
+    ("Lake City Capri Theatre", "Lake City Capri Theatre", "lake-city-capri-theatre", "Carroll", ""),
     ("Lake Theatre Clear Lake", "Lake Theatre Clear Lake", "lake-theatre-clear-lake", "Mason City", ""),
     ("Last Picture House Davenport", "Last Picture House Davenport", "last-picture-house-davenport", "Quad Cities", ""),
     ("Legacy Theatre Shenandoah", "Legacy Theatre Shenandoah", "legacy-theatre-shenandoah", "Omaha", ""),
@@ -1890,12 +1891,12 @@ private[models] object UsRosterData {
     ("Marcus Sycamore Cinema Iowa City", "Marcus Sycamore Cinema Iowa City", "marcus-sycamore-cinema-iowa-city", "Cedar Rapids", ""),
     ("Max Theatres Sibley", "Max Theatres Sibley", "max-theatres-sibley", "Paullina", ""),
     ("Metropolitan Opera House", "Metropolitan Opera House", "metropolitan-opera-house", "Waterloo", ""),
-    ("Mills Theatre – Lake Mills", "Mills Theatre – Lake Mills", "mills-theatre--lake-mills", "Osage", ""),
+    ("Mills Theatre – Lake Mills", "Mills Theatre – Lake Mills", "mills-theatre--lake-mills", "Mason City", ""),
     ("Neola Phoenix Theater", "Neola Phoenix Theater", "neola-phoenix-theater", "Omaha", ""),
-    ("New Lyric Theatre", "New Lyric Theatre", "new-lyric-theatre", "Mason City", ""),
+    ("New Lyric Theatre", "New Lyric Theatre", "new-lyric-theatre", "Fort Dodge", ""),
     ("New Strand Theatre West Liberty", "New Strand Theatre West Liberty", "new-strand-theatre-west-liberty", "Cedar Rapids", ""),
     ("North Grand Cinema", "North Grand Cinema", "north-grand-cinema", "Des Moines", ""),
-    ("Northwood Theatre", "Northwood Theatre", "northwood-theatre", "Osage", ""),
+    ("Northwood Theatre", "Northwood Theatre", "northwood-theatre", "Mason City", ""),
     ("Odyssey Great Lakes Cinema", "Odyssey Great Lakes Cinema", "odyssey-great-lakes-cinema", "Spencer", ""),
     ("Ottumwa 8 Theatre", "Ottumwa 8 Theatre", "ottumwa-8-theatre", "Ottumwa", ""),
     ("Palace Theatre Vinton", "Palace Theatre Vinton", "palace-theatre-vinton", "Cedar Rapids", ""),
@@ -1913,7 +1914,7 @@ private[models] object UsRosterData {
     ("Rose Theater Audubon", "Rose Theater Audubon", "rose-theater-audubon", "Carroll", ""),
     ("Royal 3 Cinema Le Mars", "Royal 3 Cinema Le Mars", "royal-3-cinema-le-mars", "Sioux City", ""),
     ("SCIT Theatre Leon", "SCIT Theatre Leon", "scit-theatre-leon", "Mount Ayr", ""),
-    ("Sierra Community Theatre Jefferson", "Sierra Community Theatre Jefferson", "sierra-community-theatre-jefferson", "Jefferson", ""),
+    ("Sierra Community Theatre Jefferson", "Sierra Community Theatre Jefferson", "sierra-community-theatre-jefferson", "Fort Dodge", ""),
     ("State Theatre Holstein", "State Theatre Holstein", "state-theatre-holstein", "Sioux City", ""),
     ("Story Theater Grand Opera House", "Story Theater Grand Opera House", "story-theater-grand-opera-house", "Des Moines", ""),
     ("Stuart Fremont Theatre", "Stuart Fremont Theatre", "stuart-fremont-theatre", "Des Moines", ""),
@@ -1924,7 +1925,7 @@ private[models] object UsRosterData {
     ("The Palms Theatres", "The Palms Theatres", "the-palms-theatres", "Des Moines", ""),
     ("The Palms Theatres Southpark", "The Palms Theatres Southpark", "the-palms-theatres-southpark", "Paullina", ""),
     ("The Revival Theater", "The Revival Theater", "the-revival-theater", "Burlington", ""),
-    ("Town Theater & Pizza Pub", "Town Theater & Pizza Pub", "town-theater-pizza-pub", "Oelwein", ""),
+    ("Town Theater & Pizza Pub", "Town Theater & Pizza Pub", "town-theater-pizza-pub", "Decorah", ""),
     ("Traer Theatre", "Traer Theatre", "traer-theatre", "Waterloo", ""),
     ("TRIO Entertainment Complex Oskaloosa", "TRIO Entertainment Complex Oskaloosa", "trio-entertainment-complex-oskaloosa", "Ottumwa", ""),
     ("Valle Drive-in Newton", "Valle Drive-in Newton", "valle-drive-in-newton", "Des Moines", ""),
@@ -1932,35 +1933,34 @@ private[models] object UsRosterData {
     ("Vision II Movie Theatre", "Vision II Movie Theatre", "vision-ii-movie-theatre", "Des Moines", ""),
     ("Vista 3 Storm Lake", "Vista 3 Storm Lake", "vista-3-storm-lake", "Paullina", ""),
     ("Voy Maquoketa", "Voy Maquoketa", "voy-maquoketa", "Dubuque", ""),
-    ("Watts Theatre Osage", "Watts Theatre Osage", "watts-theatre-osage", "Osage", ""),
+    ("Watts Theatre Osage", "Watts Theatre Osage", "watts-theatre-osage", "Mason City", ""),
     ("Wayne Theatre Corydon", "Wayne Theatre Corydon", "wayne-theatre-corydon", "Mount Ayr", ""),
-    ("Webster Theatre Webster City", "Webster Theatre Webster City", "webster-theatre-webster-city", "Mason City", ""),
+    ("Webster Theatre Webster City", "Webster Theatre Webster City", "webster-theatre-webster-city", "Fort Dodge", ""),
     ("Westland 10 Theatre West Burlington", "Westland 10 Theatre West Burlington", "westland-10-theatre-west-burlington", "Burlington", ""),
     ("Wieting Toledo", "Wieting Toledo", "wieting-toledo", "Waterloo", ""),
-    ("Windsor Theatre Hampton", "Windsor Theatre Hampton", "windsor-theatre-hampton", "Mason City", ""),
+    ("Windsor Theatre Hampton", "Windsor Theatre Hampton", "windsor-theatre-hampton", "Fort Dodge", ""),
     ("Wonderland Theatre Paullina", "Wonderland Theatre Paullina", "wonderland-theatre-paullina", "Paullina", ""),
   ), Seq(
-    ("Burlington", 40.7719, -91.41405),
-    ("Carroll", 41.93142, -95.27273),
-    ("Cedar Rapids", 41.74575, -91.54118),
-    ("Des Moines", 41.60679, -93.61087),
-    ("Dubuque", 42.39279, -90.89598),
-    ("Jefferson", 42.11627, -94.65842),
-    ("Mason City", 42.88609, -93.71758),
-    ("Mount Ayr", 40.70918, -93.80896),
-    ("Oelwein", 42.9909, -91.73698),
-    ("Omaha", 41.09994, -95.50663),
-    ("Osage", 43.31801, -92.87212),
-    ("Ottumwa", 40.96654, -92.6341),
-    ("Paullina", 43.05886, -95.69621),
-    ("Perry", 41.84101, 94.10478),
-    ("Quad Cities", 41.68185, -90.55841),
-    ("Sioux City", 42.49971, -96.01864),
-    ("Spencer", 43.19938, -94.92317),
-    ("Waterloo", 42.078, -92.68587),
+    ("Burlington", 40.7719, -91.41405, "America/Chicago"),
+    ("Carroll", 42.0801, -95.07491, "America/Chicago"),
+    ("Cedar Rapids", 41.74575, -91.54118, "America/Chicago"),
+    ("Decorah", 43.31596, -91.7953, "America/Chicago"),
+    ("Des Moines", 41.61654, -93.63145, "America/Chicago"),
+    ("Dubuque", 42.39279, -90.89598, "America/Chicago"),
+    ("Fort Dodge", 42.69017, -93.88602, "America/Chicago"),
+    ("Mason City", 43.25265, -93.21936, "America/Chicago"),
+    ("Mount Ayr", 40.70918, -93.80896, "America/Chicago"),
+    ("Oelwein", 42.79337, -91.80539, "America/Chicago"),
+    ("Omaha", 41.15569, -95.48784, "America/Chicago"),
+    ("Ottumwa", 40.96654, -92.6341, "America/Chicago"),
+    ("Paullina", 43.05886, -95.69621, "America/Chicago"),
+    ("Quad Cities", 41.68185, -90.55841, "America/Chicago"),
+    ("Sioux City", 42.49971, -96.01864, "America/Chicago"),
+    ("Spencer", 43.19938, -94.92317, "America/Chicago"),
+    ("Waterloo", 42.078, -92.68587, "America/Chicago"),
   ))
 
-  private def r_kansas: R = ("kansas", "Kansas", 38.48372, -97.78107, "America/Chicago", Seq(
+  private def r_kansas: R = ("kansas", "Kansas", 38.48372, -97.78107, Seq(
     ("AMC CLASSIC Salina 10", "AMC CLASSIC Salina 10", "amc-classic-salina-10", "McPherson", ""),
     ("AMC DINE-IN Studio 28", "AMC DINE-IN Studio 28", "amc-dine-in-studio-28", "Kansas City", ""),
     ("AMC Legends 14 Kansas City", "AMC Legends 14 Kansas City", "amc-legends-14-kansas-city", "Kansas City", ""),
@@ -2051,21 +2051,21 @@ private[models] object UsRosterData {
     ("VIP Majestic 4 Concordia", "VIP Majestic 4 Concordia", "vip-majestic-4-concordia", "Manhattan", ""),
     ("Wellington Regent Theatre", "Wellington Regent Theatre", "wellington-regent-theatre", "Wichita", ""),
   ), Seq(
-    ("Atchison", 39.34717, -95.73528),
-    ("Dodge City", 37.75987, -99.68728),
-    ("Hutchinson", 37.73949, -98.83615),
-    ("Kansas City", 38.96763, -94.84494),
-    ("Manhattan", 39.47037, -97.07872),
-    ("McPherson", 38.6195, -97.74189),
-    ("Northwest Kansas", 39.3253, -101.31236),
-    ("Salina", 39.3375, -98.44263),
-    ("Southeast Kansas", 37.49989, -95.34283),
-    ("Southwest Kansas", 37.45675, -101.35537),
-    ("Stockton", 39.52773, -99.57694),
-    ("Wichita", 37.71301, -97.40752),
+    ("Atchison", 39.34717, -95.73528, "America/Chicago"),
+    ("Dodge City", 37.75987, -99.68728, "America/Chicago"),
+    ("Hutchinson", 37.73949, -98.83615, "America/Chicago"),
+    ("Kansas City", 38.96763, -94.84494, "America/Chicago"),
+    ("Manhattan", 39.47037, -97.07872, "America/Chicago"),
+    ("McPherson", 38.6195, -97.74189, "America/Chicago"),
+    ("Northwest Kansas", 39.3253, -101.31236, "America/Chicago"),
+    ("Salina", 39.3375, -98.44263, "America/Chicago"),
+    ("Southeast Kansas", 37.49989, -95.34283, "America/Chicago"),
+    ("Southwest Kansas", 37.45675, -101.35537, "America/Chicago"),
+    ("Stockton", 39.52773, -99.57694, "America/Chicago"),
+    ("Wichita", 37.71301, -97.40752, "America/Chicago"),
   ))
 
-  private def r_kentucky: R = ("kentucky", "Kentucky", 37.75584, -85.18489, "America/New_York", Seq(
+  private def r_kentucky: R = ("kentucky", "Kentucky", 37.75584, -85.18489, Seq(
     ("AMC Newport on the Levee 20", "AMC Newport on the Levee 20", "amc-newport-on-the-levee-20", "Cincinnati", ""),
     ("AMC Stonybrook 20 Louisville", "AMC Stonybrook 20 Louisville", "amc-stonybrook-20-louisville", "Louisville", ""),
     ("Baxter Avenue Theatres", "Baxter Avenue Theatres", "baxter-avenue-theatres", "Louisville", ""),
@@ -2128,18 +2128,18 @@ private[models] object UsRosterData {
     ("Tri-county Cineplex Corbin", "Tri-county Cineplex Corbin", "tri-county-cineplex-corbin", "Eastern Kentucky", ""),
     ("Xscape Blankenbaker 16", "Xscape Blankenbaker 16", "xscape-blankenbaker-16", "Louisville", ""),
   ), Seq(
-    ("Ashland", 38.23225, -82.83415),
-    ("Bowling Green", 37.09512, -86.43315),
-    ("Cincinnati", 38.93458, -84.35659),
-    ("Eastern Kentucky", 37.046, -83.59193),
-    ("Lexington", 37.98809, -84.45368),
-    ("Louisville", 38.14628, -85.66653),
-    ("Owensboro", 37.44569, -87.39632),
-    ("Paducah", 36.90051, -88.51671),
-    ("Somerset", 37.22052, -85.11288),
+    ("Ashland", 38.23225, -82.83415, "America/New_York"),
+    ("Bowling Green", 37.09512, -86.43315, "America/Chicago"),
+    ("Cincinnati", 38.93458, -84.35659, "America/New_York"),
+    ("Eastern Kentucky", 37.046, -83.59193, "America/New_York"),
+    ("Lexington", 37.98809, -84.45368, "America/New_York"),
+    ("Louisville", 38.14628, -85.66653, "America/Kentucky/Louisville"),
+    ("Owensboro", 37.44569, -87.39632, "America/Chicago"),
+    ("Paducah", 36.90051, -88.51671, "America/Chicago"),
+    ("Somerset", 37.22052, -85.11288, "America/New_York"),
   ))
 
-  private def r_louisiana: R = ("louisiana", "Louisiana", 30.83998, -91.66334, "America/Chicago", Seq(
+  private def r_louisiana: R = ("louisiana", "Louisiana", 30.83998, -91.66334, Seq(
     ("Acadiana Cinemas Opelousas", "Acadiana Cinemas Opelousas", "acadiana-cinemas-opelousas", "Lafayette", ""),
     ("Acadiana Parkway Cinema 6", "Acadiana Parkway Cinema 6", "acadiana-parkway-cinema-6", "Monroe", ""),
     ("AMC Baton Rouge 16", "AMC Baton Rouge 16", "amc-baton-rouge-16", "Baton Rouge", ""),
@@ -2179,14 +2179,14 @@ private[models] object UsRosterData {
     ("Sci-Port Discovery Center IMAX", "Sci-Port Discovery Center IMAX", "sci-port-discovery-center-imax", "Shreveport", ""),
     ("Spring Theatre Springhill", "Spring Theatre Springhill", "spring-theatre-springhill", "Shreveport", ""),
   ), Seq(
-    ("Baton Rouge", 30.40929, -90.98105),
-    ("Lafayette", 30.48588, -92.43033),
-    ("Monroe", 32.15695, -92.4996),
-    ("New Orleans", 30.01028, -90.15996),
-    ("Shreveport", 32.595, -93.68138),
+    ("Baton Rouge", 30.40929, -90.98105, "America/Chicago"),
+    ("Lafayette", 30.48588, -92.43033, "America/Chicago"),
+    ("Monroe", 32.15695, -92.4996, "America/Chicago"),
+    ("New Orleans", 30.01028, -90.15996, "America/Chicago"),
+    ("Shreveport", 32.595, -93.68138, "America/Chicago"),
   ))
 
-  private def r_maine: R = ("maine", "Maine", 44.51248, -69.47575, "America/New_York", Seq(
+  private def r_maine: R = ("maine", "Maine", 44.51248, -69.47575, Seq(
     ("1932 Criterion Theatre", "1932 Criterion Theatre", "1932-criterion-theatre", "Bangor", ""),
     ("Alamo Theatre Bucksport", "Alamo Theatre Bucksport", "alamo-theatre-bucksport", "Bangor", ""),
     ("Apple Cinemas Saco", "Apple Cinemas Saco", "apple-cinemas-saco", "Portland", ""),
@@ -2232,13 +2232,13 @@ private[models] object UsRosterData {
     ("The Strand Theatre Rockland", "The Strand Theatre Rockland", "the-strand-theatre-rockland", "Augusta", ""),
     ("Waldo Theatre", "Waldo Theatre", "waldo-theatre", "Augusta", ""),
   ), Seq(
-    ("Augusta", 44.46412, -69.74276),
-    ("Bangor", 44.53812, -68.45209),
-    ("Portland", 43.72239, -70.33916),
-    ("Presque Isle", 46.57442, -68.0146),
+    ("Augusta", 44.46412, -69.74276, "America/New_York"),
+    ("Bangor", 44.53812, -68.45209, "America/New_York"),
+    ("Portland", 43.72239, -70.33916, "America/New_York"),
+    ("Presque Isle", 46.57442, -68.0146, "America/New_York"),
   ))
 
-  private def r_maryland: R = ("maryland", "Maryland", 39.12218, -76.78209, "America/New_York", Seq(
+  private def r_maryland: R = ("maryland", "Maryland", 39.12218, -76.78209, Seq(
     ("AFI Silver Theatre", "AFI Silver Theatre", "afi-silver-theatre", "Baltimore", ""),
     ("AMC Academy 8 Greenbelt", "AMC Academy 8 Greenbelt", "amc-academy-8-greenbelt", "Baltimore", ""),
     ("AMC Annapolis Mall 11", "AMC Annapolis Mall 11", "amc-annapolis-mall-11", "Baltimore", ""),
@@ -2302,13 +2302,13 @@ private[models] object UsRosterData {
     ("Warehouse Cinemas Rotunda", "Warehouse Cinemas Rotunda", "warehouse-cinemas-rotunda", "Baltimore", ""),
     ("Xscape Brandywine 14", "Xscape Brandywine 14", "xscape-brandywine-14", "Baltimore", ""),
   ), Seq(
-    ("Baltimore", 39.20629, -76.78435),
-    ("Ocean City", 38.30812, -75.3273),
-    ("Washington DC", 38.50738, -76.52239),
-    ("Western Maryland", 39.5976, -79.02952),
+    ("Baltimore", 39.20629, -76.78435, "America/New_York"),
+    ("Ocean City", 38.30812, -75.3273, "America/New_York"),
+    ("Washington DC", 38.50738, -76.52239, "America/New_York"),
+    ("Western Maryland", 39.5976, -79.02952, "America/New_York"),
   ))
 
-  private def r_massachusetts: R = ("massachusetts", "Massachusetts", 42.19636, -71.23317, "America/New_York", Seq(
+  private def r_massachusetts: R = ("massachusetts", "Massachusetts", 42.19636, -71.23317, Seq(
     ("Agawam Cinemas", "Agawam Cinemas", "agawam-cinemas", "Western Massachusetts", ""),
     ("Alamo Drafthouse Seaport Boston", "Alamo Drafthouse Seaport Boston", "alamo-drafthouse-seaport-boston", "Boston", ""),
     ("AMC Assembly Row 12", "AMC Assembly Row 12", "amc-assembly-row-12", "Boston", ""),
@@ -2408,14 +2408,14 @@ private[models] object UsRosterData {
     ("West Newton Cinema", "West Newton Cinema", "west-newton-cinema", "Boston", ""),
     ("Worcester Polytechnic Institute", "Worcester Polytechnic Institute", "worcester-polytechnic-institute", "Boston", ""),
   ), Seq(
-    ("Boston", 42.37097, -71.18517),
-    ("Cape Cod", 41.62224, -70.33037),
-    ("Great Barrington", 42.43058, -73.18461),
-    ("Providence", 41.56519, -70.94223),
-    ("Western Massachusetts", 42.28577, -72.48264),
+    ("Boston", 42.37097, -71.18517, "America/New_York"),
+    ("Cape Cod", 41.62224, -70.33037, "America/New_York"),
+    ("Great Barrington", 42.43058, -73.18461, "America/New_York"),
+    ("Providence", 41.56519, -70.94223, "America/New_York"),
+    ("Western Massachusetts", 42.28577, -72.48264, "America/New_York"),
   ))
 
-  private def r_michigan: R = ("michigan", "Michigan", 43.20376, -84.57736, "America/Detroit", Seq(
+  private def r_michigan: R = ("michigan", "Michigan", 43.20376, -84.57736, Seq(
     ("AMC Birchwood 10", "AMC Birchwood 10", "amc-birchwood-10", "Port Huron", ""),
     ("AMC Cherry Blossom 14", "AMC Cherry Blossom 14", "amc-cherry-blossom-14", "Northern Michigan", ""),
     ("AMC CLASSIC Ludington 8", "AMC CLASSIC Ludington 8", "amc-classic-ludington-8", "Northern Michigan", ""),
@@ -2581,24 +2581,24 @@ private[models] object UsRosterData {
     ("Windmill Pointe Park", "Windmill Pointe Park", "windmill-pointe-park", "Detroit", ""),
     ("Wonderland Cinema Niles Michigan", "Wonderland Cinema Niles Michigan", "wonderland-cinema-niles-michigan", "Southwest Michigan", ""),
   ), Seq(
-    ("Adrian", 41.90376, -84.2398),
-    ("Calumet", 47.17532, -88.52324),
-    ("Detroit", 42.41833, -83.25952),
-    ("Flint", 42.9459, -83.79862),
-    ("Gaylord", 45.3891, -84.4476),
-    ("Grand Rapids", 43.02457, -85.74222),
-    ("Ironwood", 46.4538, -90.1696),
-    ("Kalamazoo", 42.30827, -85.12576),
-    ("Midland", 43.67199, -84.61097),
-    ("Northern Michigan", 44.68042, -85.65525),
-    ("Port Huron", 43.09558, -82.60016),
-    ("Saginaw Bay City", 43.7494, -82.94116),
-    ("Southwest Michigan", 42.06036, -86.37444),
-    ("Upper Peninsula", 46.02081, -86.79395),
-    ("West Branch", 44.3177, -83.94775),
+    ("Adrian", 41.90376, -84.2398, "America/Detroit"),
+    ("Calumet", 47.17532, -88.52324, "America/Detroit"),
+    ("Detroit", 42.41833, -83.25952, "America/Detroit"),
+    ("Flint", 42.9459, -83.79862, "America/Detroit"),
+    ("Gaylord", 45.3891, -84.4476, "America/Detroit"),
+    ("Grand Rapids", 43.02457, -85.74222, "America/Detroit"),
+    ("Ironwood", 46.4538, -90.1696, "America/Menominee"),
+    ("Kalamazoo", 42.30827, -85.12576, "America/Detroit"),
+    ("Midland", 43.67199, -84.61097, "America/Detroit"),
+    ("Northern Michigan", 44.68042, -85.65525, "America/Detroit"),
+    ("Port Huron", 43.09558, -82.60016, "America/Detroit"),
+    ("Saginaw Bay City", 43.7494, -82.94116, "America/Detroit"),
+    ("Southwest Michigan", 42.06036, -86.37444, "America/Detroit"),
+    ("Upper Peninsula", 46.02081, -86.79395, "America/Detroit"),
+    ("West Branch", 44.3177, -83.94775, "America/Detroit"),
   ))
 
-  private def r_minnesota: R = ("minnesota", "Minnesota", 45.35323, -93.86165, "America/Chicago", Seq(
+  private def r_minnesota: R = ("minnesota", "Minnesota", 45.35323, -93.86165, Seq(
     ("Alamo Drafthouse Woodbury", "Alamo Drafthouse Woodbury", "alamo-drafthouse-woodbury", "Minneapolis St Paul", ""),
     ("AMC CLASSIC Mounds View 15", "AMC CLASSIC Mounds View 15", "amc-classic-mounds-view-15", "Minneapolis St Paul", ""),
     ("AMC Coon Rapids 16", "AMC Coon Rapids 16", "amc-coon-rapids-16", "Minneapolis St Paul", ""),
@@ -2720,23 +2720,23 @@ private[models] object UsRosterData {
     ("Woodbury 10", "Woodbury 10", "woodbury-10", "Minneapolis St Paul", ""),
     ("Zinema Duluth", "Zinema Duluth", "zinema-duluth", "Duluth", ""),
   ), Seq(
-    ("Alexandria", 45.8019, -95.70578),
-    ("Bemidji", 46.97693, -95.34897),
-    ("Brainerd Lakes", 46.35823, -93.89699),
-    ("Duluth", 46.76019, -92.20681),
-    ("Grand Forks", 48.2602, -96.15616),
-    ("Iron Range", 47.7477, -92.83732),
-    ("Madison", 43.10064, -89.35458),
-    ("Mankato", 43.93944, -93.99592),
-    ("Minneapolis St Paul", 44.951, -93.26798),
-    ("Montevideo", 44.65056, -96.05349),
-    ("Rochester", 43.87434, -92.26544),
-    ("Southwest Minnesota", 43.67757, -95.47323),
-    ("St Cloud", 45.8531, -94.10629),
-    ("West Central Minnesota", 45.09193, -94.55793),
+    ("Alexandria", 45.8019, -95.70578, "America/Chicago"),
+    ("Bemidji", 46.97693, -95.34897, "America/Chicago"),
+    ("Brainerd Lakes", 46.35823, -93.89699, "America/Chicago"),
+    ("Duluth", 46.76019, -92.20681, "America/Chicago"),
+    ("Grand Forks", 48.2602, -96.15616, "America/Chicago"),
+    ("Iron Range", 47.7477, -92.83732, "America/Chicago"),
+    ("Madison", 43.10064, -89.35458, "America/Chicago"),
+    ("Mankato", 43.93944, -93.99592, "America/Chicago"),
+    ("Minneapolis St Paul", 44.951, -93.26798, "America/Chicago"),
+    ("Montevideo", 44.65056, -96.05349, "America/Chicago"),
+    ("Rochester", 43.87434, -92.26544, "America/Chicago"),
+    ("Southwest Minnesota", 43.67757, -95.47323, "America/Chicago"),
+    ("St Cloud", 45.8531, -94.10629, "America/Chicago"),
+    ("West Central Minnesota", 45.09193, -94.55793, "America/Chicago"),
   ))
 
-  private def r_mississippi: R = ("mississippi", "Mississippi", 32.8392, -89.51628, "America/Chicago", Seq(
+  private def r_mississippi: R = ("mississippi", "Mississippi", 32.8392, -89.51628, Seq(
     ("Acadiana Picayune Cinema 4", "Acadiana Picayune Cinema 4", "acadiana-picayune-cinema-4", "Gulf Coast", ""),
     ("B&B Northpark Ridgeland 14", "B&B Northpark Ridgeland 14", "bb-northpark-ridgeland-14", "Jackson", ""),
     ("Biloxi Premiere 8", "Biloxi Premiere 8", "biloxi-premiere-8", "Gulf Coast", ""),
@@ -2771,14 +2771,14 @@ private[models] object UsRosterData {
     ("UEC Theatres Greenville", "UEC Theatres Greenville", "uec-theatres-greenville", "Tupelo", ""),
     ("UEC Theatres Starkville", "UEC Theatres Starkville", "uec-theatres-starkville", "Tupelo", ""),
   ), Seq(
-    ("Gulf Coast", 30.45775, -89.15454),
-    ("Hattiesburg", 31.78775, -89.2513),
-    ("Jackson", 32.33695, -90.28422),
-    ("Memphis", 34.85015, -89.9416),
-    ("Tupelo", 34.14119, -89.04804),
+    ("Gulf Coast", 30.45775, -89.15454, "America/Chicago"),
+    ("Hattiesburg", 31.78775, -89.2513, "America/Chicago"),
+    ("Jackson", 32.33695, -90.28422, "America/Chicago"),
+    ("Memphis", 34.85015, -89.9416, "America/Chicago"),
+    ("Tupelo", 34.14119, -89.04804, "America/Chicago"),
   ))
 
-  private def r_missouri: R = ("missouri", "Missouri", 38.35386, -92.3674, "America/Chicago", Seq(
+  private def r_missouri: R = ("missouri", "Missouri", 38.35386, -92.3674, Seq(
     ("21 Drive In Van Buren", "21 Drive In Van Buren", "21-drive-in-van-buren", "Cape Girardeau", ""),
     ("24:1 Cinema St Louis", "24:1 Cinema St Louis", "241-cinema-st-louis", "St Louis", ""),
     ("66 Drive-in Carthage", "66 Drive-in Carthage", "66-drive-in-carthage", "Joplin", ""),
@@ -2897,23 +2897,23 @@ private[models] object UsRosterData {
     ("VIP Lake West Cinemas Gravois Mills", "VIP Lake West Cinemas Gravois Mills", "vip-lake-west-cinemas-gravois-mills", "Lake Of The Ozarks", ""),
     ("Walt Theatre New Haven", "Walt Theatre New Haven", "walt-theatre-new-haven", "New Haven", ""),
   ), Seq(
-    ("Brookfield", 39.93027, -93.07147),
-    ("Cadet", 37.84072, -90.35254),
-    ("Cape Girardeau", 36.92229, -90.114),
-    ("Columbia", 38.92611, -92.21013),
-    ("Higginsville", 38.65555, -93.61684),
-    ("Joplin", 37.0939, -94.35559),
-    ("Kansas City", 39.06214, -94.41845),
-    ("Lake Of The Ozarks", 38.02562, -92.68658),
-    ("New Haven", 38.43287, -91.41998),
-    ("North Missouri", 40.0004, -94.40189),
-    ("Rolla", 37.37892, -91.98667),
-    ("Shelbina", 39.72235, -91.95037),
-    ("Springfield", 37.1117, -93.2515),
-    ("St Louis", 38.64418, -90.51606),
+    ("Brookfield", 39.93027, -93.07147, "America/Chicago"),
+    ("Cadet", 37.84072, -90.35254, "America/Chicago"),
+    ("Cape Girardeau", 36.92229, -90.114, "America/Chicago"),
+    ("Columbia", 38.92611, -92.21013, "America/Chicago"),
+    ("Higginsville", 38.65555, -93.61684, "America/Chicago"),
+    ("Joplin", 37.0939, -94.35559, "America/Chicago"),
+    ("Kansas City", 39.06214, -94.41845, "America/Chicago"),
+    ("Lake Of The Ozarks", 38.02562, -92.68658, "America/Chicago"),
+    ("New Haven", 38.43287, -91.41998, "America/Chicago"),
+    ("North Missouri", 40.0004, -94.40189, "America/Chicago"),
+    ("Rolla", 37.37892, -91.98667, "America/Chicago"),
+    ("Shelbina", 39.72235, -91.95037, "America/Chicago"),
+    ("Springfield", 37.1117, -93.2515, "America/Chicago"),
+    ("St Louis", 38.64418, -90.51606, "America/Chicago"),
   ))
 
-  private def r_montana: R = ("montana", "Montana", 46.90866, -110.45953, "America/Denver", Seq(
+  private def r_montana: R = ("montana", "Montana", 46.90866, -110.45953, Seq(
     ("AMC CLASSIC Billings 10", "AMC CLASSIC Billings 10", "amc-classic-billings-10", "Billings", ""),
     ("AMC CLASSIC Great Falls 10", "AMC CLASSIC Great Falls 10", "amc-classic-great-falls-10", "Great Falls", ""),
     ("AMC CLASSIC Shiloh 14", "AMC CLASSIC Shiloh 14", "amc-classic-shiloh-14", "Billings", ""),
@@ -2961,22 +2961,22 @@ private[models] object UsRosterData {
     ("Washoe Theatre Anaconda", "Washoe Theatre Anaconda", "washoe-theatre-anaconda", "Butte", ""),
     ("Yellowstone Giant Screen Theatre", "Yellowstone Giant Screen Theatre", "yellowstone-giant-screen-theatre", "Bozeman", ""),
   ), Seq(
-    ("Billings", 45.66695, -108.51019),
-    ("Bozeman", 45.30414, -111.40093),
-    ("Butte", 45.97875, -112.58151),
-    ("Glasgow", 47.81236, -105.77779),
-    ("Great Falls", 48.12134, -111.93177),
-    ("Havre", 48.55211, -109.67748),
-    ("Helena", 46.5263, -112.26979),
-    ("Kalispell", 48.50176, -114.97783),
-    ("Lewistown", 46.44501, -109.73706),
-    ("Miles City", 46.33694, -106.26267),
-    ("Missoula", 46.86562, -114.02301),
-    ("Plains", 47.58229, -114.79876),
-    ("Plentywood", 48.78297, -104.98972),
+    ("Billings", 45.66695, -108.51019, "America/Denver"),
+    ("Bozeman", 45.30414, -111.40093, "America/Denver"),
+    ("Butte", 45.97875, -112.58151, "America/Denver"),
+    ("Glasgow", 47.81236, -105.77779, "America/Denver"),
+    ("Great Falls", 48.12134, -111.93177, "America/Denver"),
+    ("Havre", 48.55211, -109.67748, "America/Denver"),
+    ("Helena", 46.5263, -112.26979, "America/Denver"),
+    ("Kalispell", 48.50176, -114.97783, "America/Denver"),
+    ("Lewistown", 46.44501, -109.73706, "America/Denver"),
+    ("Miles City", 46.33694, -106.26267, "America/Denver"),
+    ("Missoula", 46.86562, -114.02301, "America/Denver"),
+    ("Plains", 47.58229, -114.79876, "America/Denver"),
+    ("Plentywood", 48.78297, -104.98972, "America/Denver"),
   ))
 
-  private def r_nebraska: R = ("nebraska", "Nebraska", 41.13065, -98.68934, "America/Chicago", Seq(
+  private def r_nebraska: R = ("nebraska", "Nebraska", 41.13065, -98.68934, Seq(
     ("12th Street Cinema Aurora", "12th Street Cinema Aurora", "12th-street-cinema-aurora", "Grand Island", ""),
     ("ACX Aksarben Cinema", "ACX Aksarben Cinema", "acx-aksarben-cinema", "Omaha", ""),
     ("ACX Cinema Elkhorn 12+", "ACX Cinema Elkhorn 12+", "acx-cinema-elkhorn-12", "Omaha", ""),
@@ -3052,18 +3052,18 @@ private[models] object UsRosterData {
     ("West Point Community Theatre", "West Point Community Theatre", "west-point-community-theatre", "Norfolk", ""),
     ("Zorn Theater", "Zorn Theater", "zorn-theater", "Mccook", ""),
   ), Seq(
-    ("Grand Island", 40.69066, -98.30849),
-    ("Kearney", 40.60039, -99.68733),
-    ("Lincoln", 40.4203, -97.11514),
-    ("Mccook", 40.474, -101.38551),
-    ("Norfolk", 41.83061, -97.36913),
-    ("North Platte", 41.03523, -100.44351),
-    ("Omaha", 41.06244, -96.24798),
-    ("Scottsbluff", 41.98493, -103.18257),
-    ("Stuart", 42.43938, -99.15184),
+    ("Grand Island", 40.69066, -98.30849, "America/Chicago"),
+    ("Kearney", 40.60039, -99.68733, "America/Chicago"),
+    ("Lincoln", 40.4203, -97.11514, "America/Chicago"),
+    ("Mccook", 40.474, -101.38551, "America/Denver"),
+    ("Norfolk", 41.83061, -97.36913, "America/Chicago"),
+    ("North Platte", 41.03523, -100.44351, "America/Chicago"),
+    ("Omaha", 41.06244, -96.24798, "America/Chicago"),
+    ("Scottsbluff", 41.98493, -103.18257, "America/Denver"),
+    ("Stuart", 42.43938, -99.15184, "America/Chicago"),
   ))
 
-  private def r_nevada: R = ("nevada", "Nevada", 37.3864, -116.37181, "America/Los_Angeles", Seq(
+  private def r_nevada: R = ("nevada", "Nevada", 37.3864, -116.37181, Seq(
     ("AMC Rainbow Promenade 10", "AMC Rainbow Promenade 10", "amc-rainbow-promenade-10", "Las Vegas", ""),
     ("AMC Town Square 18", "AMC Town Square 18", "amc-town-square-18", "Las Vegas", ""),
     ("Beverly Theater Las Vegas", "Beverly Theater Las Vegas", "beverly-theater-las-vegas", "Las Vegas", ""),
@@ -3106,15 +3106,15 @@ private[models] object UsRosterData {
     ("West Wind El Rancho Reno Drive-In", "West Wind El Rancho Reno Drive-In", "west-wind-el-rancho-reno-drive-in", "Reno", ""),
     ("West Wind Las Vegas Drive-In", "West Wind Las Vegas Drive-In", "west-wind-las-vegas-drive-in", "Las Vegas", ""),
   ), Seq(
-    ("Elko", 40.8341, -115.77721),
-    ("Ely", 39.25102, -114.88322),
-    ("Fallon", 39.31218, -118.90349),
-    ("Las Vegas", 36.08312, -115.07856),
-    ("Reno", 39.3572, -119.78897),
-    ("Winnemucca", 40.96823, -117.742),
+    ("Elko", 40.8341, -115.77721, "America/Los_Angeles"),
+    ("Ely", 39.25102, -114.88322, "America/Los_Angeles"),
+    ("Fallon", 39.31218, -118.90349, "America/Los_Angeles"),
+    ("Las Vegas", 36.08312, -115.07856, "America/Los_Angeles"),
+    ("Reno", 39.3572, -119.78897, "America/Los_Angeles"),
+    ("Winnemucca", 40.96823, -117.742, "America/Los_Angeles"),
   ))
 
-  private def r_new_hampshire: R = ("new-hampshire", "New Hampshire", 43.31398, -71.63366, "America/New_York", Seq(
+  private def r_new_hampshire: R = ("new-hampshire", "New Hampshire", 43.31398, -71.63366, Seq(
     ("Apple Cinemas Hooksett", "Apple Cinemas Hooksett", "apple-cinemas-hooksett", "Manchester", ""),
     ("Apple Cinemas Merrimack", "Apple Cinemas Merrimack", "apple-cinemas-merrimack", "Manchester", ""),
     ("BarnZ's Barrington Cinema", "BarnZ's Barrington Cinema", "barnzs-barrington-cinema", "Portsmouth", ""),
@@ -3147,13 +3147,13 @@ private[models] object UsRosterData {
     ("The Park Theatre Jaffrey", "The Park Theatre Jaffrey", "the-park-theatre-jaffrey", "Manchester", ""),
     ("Wilton Town Hall Theatre", "Wilton Town Hall Theatre", "wilton-town-hall-theatre", "Manchester", ""),
   ), Seq(
-    ("Lebanon Hanover", 43.70944, -71.90304),
-    ("Littleton", 44.27393, -71.53096),
-    ("Manchester", 42.91156, -71.88443),
-    ("Portsmouth", 43.09161, -71.07314),
+    ("Lebanon Hanover", 43.70944, -71.90304, "America/New_York"),
+    ("Littleton", 44.27393, -71.53096, "America/New_York"),
+    ("Manchester", 42.91156, -71.88443, "America/New_York"),
+    ("Portsmouth", 43.09161, -71.07314, "America/New_York"),
   ))
 
-  private def r_new_jersey: R = ("new-jersey", "New Jersey", 40.34347, -74.43465, "America/New_York", Seq(
+  private def r_new_jersey: R = ("new-jersey", "New Jersey", 40.34347, -74.43465, Seq(
     ("ACME Screening Room Lambertville", "ACME Screening Room Lambertville", "acme-screening-room-lambertville", "Hackettstown", ""),
     ("AMC Aviation 12", "AMC Aviation 12", "amc-aviation-12-linden", "New York", ""),
     ("AMC Brick Plaza 10", "AMC Brick Plaza 10", "amc-brick-plaza-10", "New York", ""),
@@ -3234,12 +3234,12 @@ private[models] object UsRosterData {
     ("Washington Township Cinema", "Washington Township Cinema", "washington-township-cinema", "Hackettstown", ""),
     ("Westwood Cinemas", "Westwood Cinemas", "westwood-cinemas", "Hackettstown", ""),
   ), Seq(
-    ("Hackettstown", 40.85715, -74.44449),
-    ("New York", 40.60404, -74.28587),
-    ("Philadelphia", 39.55149, -74.80026),
+    ("Hackettstown", 40.85715, -74.44449, "America/New_York"),
+    ("New York", 40.60404, -74.28587, "America/New_York"),
+    ("Philadelphia", 39.55149, -74.80026, "America/New_York"),
   ))
 
-  private def r_new_mexico: R = ("new-mexico", "New Mexico", 34.69631, -106.1118, "America/Denver", Seq(
+  private def r_new_mexico: R = ("new-mexico", "New Mexico", 34.69631, -106.1118, Seq(
     ("Allen Eagle Hobbs 9", "Allen Eagle Hobbs 9", "allen-eagle-hobbs-9", "Roswell", ""),
     ("Allen Farmington 8", "Allen Farmington 8", "allen-farmington-8", "Gallup", ""),
     ("Allen La Cueva 6", "Allen La Cueva 6", "allen-la-cueva-6", "Roswell", ""),
@@ -3286,16 +3286,16 @@ private[models] object UsRosterData {
     ("The Silco Theater", "The Silco Theater", "the-silco-theater", "Truth or Consequences", ""),
     ("West Grants", "West Grants", "west-grants", "Gallup", ""),
   ), Seq(
-    ("Albuquerque", 35.0953, -106.62484),
-    ("Gallup", 35.94334, -108.31975),
-    ("Las Cruces", 32.64344, -106.39122),
-    ("Roswell", 32.99019, -103.96268),
-    ("Santa Fe", 35.83403, -105.80395),
-    ("Truth or Consequences", 33.05769, -107.53861),
-    ("Tucumcari", 35.24891, -103.69784),
+    ("Albuquerque", 35.0953, -106.62484, "America/Denver"),
+    ("Gallup", 35.94334, -108.31975, "America/Denver"),
+    ("Las Cruces", 32.64344, -106.39122, "America/Denver"),
+    ("Roswell", 32.99019, -103.96268, "America/Denver"),
+    ("Santa Fe", 35.83403, -105.80395, "America/Denver"),
+    ("Truth or Consequences", 33.05769, -107.53861, "America/Denver"),
+    ("Tucumcari", 35.24891, -103.69784, "America/Denver"),
   ))
 
-  private def r_new_york: R = ("new-york", "New York", 41.89561, -74.94601, "America/New_York", Seq(
+  private def r_new_york: R = ("new-york", "New York", 41.89561, -74.94601, Seq(
     ("56 Auto Drive-in Massena", "56 Auto Drive-in Massena", "56-auto-drive-in-massena", "Plattsburgh North Country", ""),
     ("92nd Street Cinema New York", "92nd Street Cinema New York", "92nd-street-cinema-new-york", "New York", "Manhattan"),
     ("AB Cinemas Mt. Kisco", "AB Cinemas Mt. Kisco", "ab-cinemas-mt-kisco", "Hudson Valley", ""),
@@ -3571,25 +3571,25 @@ private[models] object UsRosterData {
     ("Williamsburg Cinemas Brooklyn", "Williamsburg Cinemas Brooklyn", "williamsburg-cinemas-brooklyn", "New York", "Brooklyn"),
     ("Windham Theatre", "Windham Theatre", "windham-theatre", "Albany", ""),
   ), Seq(
-    ("Albany", 42.72441, -73.88625),
-    ("Binghamton", 42.41327, -75.09256),
-    ("Buffalo Niagara", 42.81199, -78.82764),
-    ("Corning Elmira", 42.17004, -77.40919),
-    ("Hudson Valley", 41.64394, -74.0309),
-    ("Indian Lake", 44.03208, -74.11925),
-    ("Jamestown", 42.12154, -79.12528),
-    ("Long Island", 41.00338, -72.31462),
-    ("New York", 40.77323, -73.84444),
-    ("Owego", 42.09836, -76.10209),
-    ("Plattsburgh North Country", 44.75957, -74.47669),
-    ("Rochester", 43.01448, -77.62072),
-    ("Sayville", 40.81054, -72.96834),
-    ("Syracuse", 42.89062, -76.54646),
-    ("Utica Rome", 43.22505, -75.45951),
-    ("Watertown North Country", 44.10014, -75.88674),
+    ("Albany", 42.72441, -73.88625, "America/New_York"),
+    ("Binghamton", 42.41327, -75.09256, "America/New_York"),
+    ("Buffalo Niagara", 42.81199, -78.82764, "America/New_York"),
+    ("Corning Elmira", 42.17004, -77.40919, "America/New_York"),
+    ("Hudson Valley", 41.64394, -74.0309, "America/New_York"),
+    ("Indian Lake", 44.03208, -74.11925, "America/New_York"),
+    ("Jamestown", 42.12154, -79.12528, "America/New_York"),
+    ("Long Island", 41.00338, -72.31462, "America/New_York"),
+    ("New York", 40.77323, -73.84444, "America/New_York"),
+    ("Owego", 42.09836, -76.10209, "America/New_York"),
+    ("Plattsburgh North Country", 44.75957, -74.47669, "America/New_York"),
+    ("Rochester", 43.01448, -77.62072, "America/New_York"),
+    ("Sayville", 40.81054, -72.96834, "America/New_York"),
+    ("Syracuse", 42.89062, -76.54646, "America/New_York"),
+    ("Utica Rome", 43.22505, -75.45951, "America/New_York"),
+    ("Watertown North Country", 44.10014, -75.88674, "America/New_York"),
   ))
 
-  private def r_north_carolina: R = ("north-carolina", "North Carolina", 35.55675, -79.8135, "America/New_York", Seq(
+  private def r_north_carolina: R = ("north-carolina", "North Carolina", 35.55675, -79.8135, Seq(
     ("a/perture cinema Winston-Salem", "a/perture cinema Winston-Salem", "aperture-cinema-winston-salem", "Triad", ""),
     ("ACE Theatre Complex", "ACE Theatre Complex", "ace-theatre-complex", "Triad", ""),
     ("Alamance Crossing Staduim 16 Burlington", "Alamance Crossing Staduim 16 Burlington", "alamance-crossing-staduim-16-burlington", "Triad", ""),
@@ -3731,20 +3731,20 @@ private[models] object UsRosterData {
     ("UEC Theatres Rocky Mount", "UEC Theatres Rocky Mount", "uec-theatres-rocky-mount", "Rocky Mount Wilson", ""),
     ("Varsity Chapel Hill", "Varsity Chapel Hill", "varsity-chapel-hill", "Triangle", ""),
   ), Seq(
-    ("Asheville", 35.4544, -82.57096),
-    ("Charlotte", 35.32812, -80.81138),
-    ("Elizabeth City", 36.07541, -76.05229),
-    ("Fayetteville", 35.05078, -79.11943),
-    ("Highlands", 35.10423, -83.61426),
-    ("Jacksonville", 35.04107, -77.20609),
-    ("Rocky Mount Wilson", 35.56817, -77.91324),
-    ("Triad", 36.08118, -79.94296),
-    ("Triangle", 35.89001, -78.70044),
-    ("Western NC Mountains", 36.17119, -81.2279),
-    ("Wilmington", 34.10277, -78.14876),
+    ("Asheville", 35.4544, -82.57096, "America/New_York"),
+    ("Charlotte", 35.32812, -80.81138, "America/New_York"),
+    ("Elizabeth City", 36.07541, -76.05229, "America/New_York"),
+    ("Fayetteville", 35.05078, -79.11943, "America/New_York"),
+    ("Highlands", 35.10423, -83.61426, "America/New_York"),
+    ("Jacksonville", 35.04107, -77.20609, "America/New_York"),
+    ("Rocky Mount Wilson", 35.56817, -77.91324, "America/New_York"),
+    ("Triad", 36.08118, -79.94296, "America/New_York"),
+    ("Triangle", 35.89001, -78.70044, "America/New_York"),
+    ("Western NC Mountains", 36.17119, -81.2279, "America/New_York"),
+    ("Wilmington", 34.10277, -78.14876, "America/New_York"),
   ))
 
-  private def r_north_dakota: R = ("north-dakota", "North Dakota", 47.5964, -100.10534, "America/Chicago", Seq(
+  private def r_north_dakota: R = ("north-dakota", "North Dakota", 47.5964, -100.10534, Seq(
     ("AMC Dakota Square 9", "AMC Dakota Square 9", "amc-dakota-square-9", "Minot", ""),
     ("Audi Theatre Cando", "Audi Theatre Cando", "audi-theatre-cando", "Devils Lake", ""),
     ("Belfield Theater and Performance Center", "Belfield Theater and Performance Center", "belfield-theater-and-performance-center", "Dickinson", ""),
@@ -3786,17 +3786,17 @@ private[models] object UsRosterData {
     ("Williston Grand Theatre", "Williston Grand Theatre", "williston-grand-theatre", "Williston", ""),
     ("Wing Theater", "Wing Theater", "wing-theater", "Harvey", ""),
   ), Seq(
-    ("Devils Lake", 48.45694, -99.42031),
-    ("Dickinson", 46.66949, -102.34767),
-    ("Fargo", 47.0526, -97.07599),
-    ("Grand Forks", 48.59169, -97.78789),
-    ("Harvey", 47.51026, -99.61946),
-    ("Jamestown", 46.76551, -98.12797),
-    ("Minot", 48.23161, -101.12264),
-    ("Williston", 48.37458, -102.93524),
+    ("Devils Lake", 48.45694, -99.42031, "America/Chicago"),
+    ("Dickinson", 46.66949, -102.34767, "America/Denver"),
+    ("Fargo", 47.0526, -97.07599, "America/Chicago"),
+    ("Grand Forks", 48.59169, -97.78789, "America/Chicago"),
+    ("Harvey", 47.51026, -99.61946, "America/Chicago"),
+    ("Jamestown", 46.76551, -98.12797, "America/Chicago"),
+    ("Minot", 48.23161, -101.12264, "America/Chicago"),
+    ("Williston", 48.37458, -102.93524, "America/Chicago"),
   ))
 
-  private def r_ohio: R = ("ohio", "Ohio", 40.47909, -82.88022, "America/New_York", Seq(
+  private def r_ohio: R = ("ohio", "Ohio", 40.47909, -82.88022, Seq(
     ("ACX Cinema Blue Ash 7+", "ACX Cinema Blue Ash 7+", "acx-cinema-blue-ash-7", "Cincinnati", ""),
     ("Ada Theatre", "Ada Theatre", "ada-theatre", "Sandusky", ""),
     ("AMC Anderson Towne Center 9", "AMC Anderson Towne Center 9", "amc-anderson-towne-center-9", "Cincinnati", ""),
@@ -3972,18 +3972,18 @@ private[models] object UsRosterData {
     ("Wheelersburg Cinema", "Wheelersburg Cinema", "wheelersburg-cinema", "Portsmouth", ""),
     ("Wilmington Plaza Cinema 5", "Wilmington Plaza Cinema 5", "wilmington-plaza-cinema-5", "Dayton", ""),
   ), Seq(
-    ("Cincinnati", 39.21244, -84.39702),
-    ("Cleveland", 41.19307, -81.50404),
-    ("Columbus", 40.0581, -82.97312),
-    ("Dayton", 39.92607, -84.19291),
-    ("Lima", 40.81768, -84.3898),
-    ("North Central Ohio", 40.49329, -82.25814),
-    ("Portsmouth", 39.31224, -82.14711),
-    ("Sandusky", 41.11699, -83.35745),
-    ("Toledo", 41.56144, -83.95735),
+    ("Cincinnati", 39.21244, -84.39702, "America/New_York"),
+    ("Cleveland", 41.19307, -81.50404, "America/New_York"),
+    ("Columbus", 40.0581, -82.97312, "America/New_York"),
+    ("Dayton", 39.92607, -84.19291, "America/New_York"),
+    ("Lima", 40.81768, -84.3898, "America/New_York"),
+    ("North Central Ohio", 40.49329, -82.25814, "America/New_York"),
+    ("Portsmouth", 39.31224, -82.14711, "America/New_York"),
+    ("Sandusky", 41.11699, -83.35745, "America/New_York"),
+    ("Toledo", 41.56144, -83.95735, "America/New_York"),
   ))
 
-  private def r_oklahoma: R = ("oklahoma", "Oklahoma", 35.63362, -96.99909, "America/Chicago", Seq(
+  private def r_oklahoma: R = ("oklahoma", "Oklahoma", 35.63362, -96.99909, Seq(
     ("89er Kingfisher", "89er Kingfisher", "89er-kingfisher", "Oklahoma City", ""),
     ("Admiral Twin Drive-in Tulsa", "Admiral Twin Drive-in Tulsa", "admiral-twin-drive-in-tulsa", "Tulsa", ""),
     ("Allred 5 Theater Pryor", "Allred 5 Theater Pryor", "allred-5-theater-pryor", "Tulsa", ""),
@@ -4064,19 +4064,19 @@ private[models] object UsRosterData {
     ("Washita Cordell", "Washita Cordell", "washita-cordell", "Carnegie", ""),
     ("Winchester Drive-in Oklahoma City", "Winchester Drive-in Oklahoma City", "winchester-drive-in-oklahoma-city", "Oklahoma City", ""),
   ), Seq(
-    ("Carnegie", 35.19566, -98.99781),
-    ("Durant", 34.09308, -95.5509),
-    ("Guymon", 36.70693, -101.48593),
-    ("Lawton", 34.53105, -97.73125),
-    ("Mcalester", 35.34231, -95.3824),
-    ("Northwest Oklahoma", 36.52258, -99.21661),
-    ("Oklahoma City", 35.41437, -97.42382),
-    ("Ponca City", 36.69991, -96.96046),
-    ("Tulsa", 36.11604, -95.93872),
-    ("Vinita", 36.7038, -94.92839),
+    ("Carnegie", 35.19566, -98.99781, "America/Chicago"),
+    ("Durant", 34.09308, -95.5509, "America/Chicago"),
+    ("Guymon", 36.70693, -101.48593, "America/Chicago"),
+    ("Lawton", 34.53105, -97.73125, "America/Chicago"),
+    ("Mcalester", 35.34231, -95.3824, "America/Chicago"),
+    ("Northwest Oklahoma", 36.52258, -99.21661, "America/Chicago"),
+    ("Oklahoma City", 35.41437, -97.42382, "America/Chicago"),
+    ("Ponca City", 36.69991, -96.96046, "America/Chicago"),
+    ("Tulsa", 36.11604, -95.93872, "America/Chicago"),
+    ("Vinita", 36.7038, -94.92839, "America/Chicago"),
   ))
 
-  private def r_oregon: R = ("oregon", "Oregon", 44.89143, -122.45621, "America/Los_Angeles", Seq(
+  private def r_oregon: R = ("oregon", "Oregon", 44.88915, -122.47055, Seq(
     ("5th Avenue Cinema (PSU)", "5th Avenue Cinema (PSU)", "5th-avenue-cinema-psu", "Portland", ""),
     ("99 West Drive-In Newberg", "99 West Drive-In Newberg", "99-west-drive-in-newberg", "Portland", ""),
     ("Academy Theater Portland", "Academy Theater Portland", "academy-theater-portland", "Portland", ""),
@@ -4141,6 +4141,7 @@ private[models] object UsRosterData {
     ("Moreland Theatre", "Moreland Theatre", "moreland-theatre", "Portland", ""),
     ("Mt Hood Theatre Gresham", "Mt Hood Theatre Gresham", "mt-hood-theatre-gresham", "Portland", ""),
     ("Newport Cinemas", "Newport Cinemas", "newport-cinemas", "Willamette Valley", ""),
+    ("Newport Performing Arts", "Newport Performing Arts", "newport-performing-arts", "Willamette Valley", ""),
     ("Northern Lights Pub Salem 3", "Northern Lights Pub Salem 3", "northern-lights-pub-salem-3", "Portland", ""),
     ("Northwest Film Center Portland", "Northwest Film Center Portland", "northwest-film-center-portland", "Portland", ""),
     ("Oak Grove Portland 8", "Oak Grove Portland 8", "oak-grove-portland-8", "Portland", ""),
@@ -4189,19 +4190,19 @@ private[models] object UsRosterData {
     ("Wildhorse Cineplex (Casino Pendleton)", "Wildhorse Cineplex (Casino Pendleton)", "wildhorse-cineplex-casino-pendleton", "Eastern Oregon", ""),
     ("Wunderland Milwaukie Cinemas", "Wunderland Milwaukie Cinemas", "wunderland-milwaukie-cinemas", "Portland", ""),
   ), Seq(
-    ("Bend", 44.23662, -121.22661),
-    ("Burns", 43.58651, -119.05482),
-    ("Central Coast", 43.49762, -123.982),
-    ("Eastern Oregon", 45.47864, -118.39693),
-    ("Hood River", 45.70937, -121.51327),
-    ("Medford", 42.31756, -123.04882),
-    ("North Coast", 45.76354, -123.88526),
-    ("Ontario", 44.02165, -116.94654),
-    ("Portland", 45.43042, -122.74297),
-    ("Willamette Valley", 44.49246, -123.15166),
+    ("Bend", 44.23662, -121.22661, "America/Los_Angeles"),
+    ("Burns", 43.58651, -119.05482, "America/Los_Angeles"),
+    ("Central Coast", 43.49762, -123.982, "America/Los_Angeles"),
+    ("Eastern Oregon", 45.47864, -118.39693, "America/Los_Angeles"),
+    ("Hood River", 45.70937, -121.51327, "America/Los_Angeles"),
+    ("Medford", 42.31756, -123.04882, "America/Los_Angeles"),
+    ("North Coast", 45.76354, -123.88526, "America/Los_Angeles"),
+    ("Ontario", 44.02165, -116.94654, "America/Boise"),
+    ("Portland", 45.43042, -122.74297, "America/Los_Angeles"),
+    ("Willamette Valley", 44.50144, -123.20855, "America/Los_Angeles"),
   ))
 
-  private def r_pennsylvania: R = ("pennsylvania", "Pennsylvania", 40.59096, -77.25056, "America/New_York", Seq(
+  private def r_pennsylvania: R = ("pennsylvania", "Pennsylvania", 40.59096, -77.25056, Seq(
     ("Allen Theatre Annville", "Allen Theatre Annville", "allen-theatre-annville", "Lancaster", ""),
     ("Ambler Theater", "Ambler Theater", "ambler-theater", "Philadelphia", ""),
     ("AMC 309 Cinema 9 North Wales", "AMC 309 Cinema 9 North Wales", "amc-309-cinema-9-north-wales", "Philadelphia", ""),
@@ -4387,22 +4388,22 @@ private[models] object UsRosterData {
     ("Westwood Plaza & Theatre Cafe Johnstown", "Westwood Plaza & Theatre Cafe Johnstown", "westwood-plaza-theatre-cafe-johnstown", "Altoona Johnstown", ""),
     ("Zoetropolis Cinema Stillhouse", "Zoetropolis Cinema Stillhouse", "zoetropolis-cinema-stillhouse", "Lancaster", ""),
   ), Seq(
-    ("Altoona Johnstown", 40.38691, -78.87646),
-    ("Bloomsburg", 41.05976, -76.796),
-    ("Erie", 41.92899, -80.10103),
-    ("Grove City", 41.31056, -80.25073),
-    ("Harrisburg", 40.0963, -77.12909),
-    ("Lancaster", 40.11064, -76.54576),
-    ("Lehigh Valley", 40.57731, -75.60299),
-    ("Philadelphia", 40.07102, -75.24979),
-    ("Pittsburgh", 40.47237, -79.95019),
-    ("Scranton Wilkes Barre", 41.35187, -75.68806),
-    ("State College", 40.82239, -77.91629),
-    ("Towanda", 41.762, -77.12),
-    ("Western PA", 41.41265, -78.95024),
+    ("Altoona Johnstown", 40.38691, -78.87646, "America/New_York"),
+    ("Bloomsburg", 41.05976, -76.796, "America/New_York"),
+    ("Erie", 41.92899, -80.10103, "America/New_York"),
+    ("Grove City", 41.31056, -80.25073, "America/New_York"),
+    ("Harrisburg", 40.0963, -77.12909, "America/New_York"),
+    ("Lancaster", 40.11064, -76.54576, "America/New_York"),
+    ("Lehigh Valley", 40.57731, -75.60299, "America/New_York"),
+    ("Philadelphia", 40.07102, -75.24979, "America/New_York"),
+    ("Pittsburgh", 40.47237, -79.95019, "America/New_York"),
+    ("Scranton Wilkes Barre", 41.35187, -75.68806, "America/New_York"),
+    ("State College", 40.82239, -77.91629, "America/New_York"),
+    ("Towanda", 41.762, -77.12, "America/New_York"),
+    ("Western PA", 41.41265, -78.95024, "America/New_York"),
   ))
 
-  private def r_puerto_rico: R = ("puerto-rico", "Puerto Rico", 18.31786, -66.35554, "America/Puerto_Rico", Seq(
+  private def r_puerto_rico: R = ("puerto-rico", "Puerto Rico", 18.31786, -66.35554, Seq(
     ("Auto Cine Santana", "Auto Cine Santana", "auto-cine-santana", "San Juan", ""),
     ("Caribbean Cinemas Aguadilla Mall", "Caribbean Cinemas Aguadilla Mall", "caribbean-cinemas-aguadilla-mall", "Mayaguez", ""),
     ("Caribbean Cinemas Arecibo", "Caribbean Cinemas Arecibo", "caribbean-cinemas-arecibo", "San Juan", ""),
@@ -4435,11 +4436,11 @@ private[models] object UsRosterData {
     ("Caribbean Popular Fine Arts", "Caribbean Popular Fine Arts", "caribbean-popular-fine-arts", "San Juan", ""),
     ("El Cine Mayagüez Town Center", "El Cine Mayagüez Town Center", "el-cine-mayag-ez-town-center", "Mayaguez", ""),
   ), Seq(
-    ("Mayaguez", 18.31995, -67.04655),
-    ("San Juan", 18.31735, -66.1897),
+    ("Mayaguez", 18.31995, -67.04655, "America/Puerto_Rico"),
+    ("San Juan", 18.31735, -66.1897, "America/Puerto_Rico"),
   ))
 
-  private def r_rhode_island: R = ("rhode-island", "Rhode Island", 41.64351, -71.49319, "America/New_York", Seq(
+  private def r_rhode_island: R = ("rhode-island", "Rhode Island", 41.64351, -71.49319, Seq(
     ("All South County Cinemas", "All South County Cinemas", "all-south-county-cinemas", "Providence", ""),
     ("Apple Cinemas Providence Place", "Apple Cinemas Providence Place", "apple-cinemas-providence-place", "Providence", ""),
     ("Apple Cinemas Warwick Mall", "Apple Cinemas Warwick Mall", "apple-cinemas-warwick-mall", "Providence", ""),
@@ -4451,10 +4452,10 @@ private[models] object UsRosterData {
     ("Showcase Warwick", "Showcase Warwick", "showcase-warwick", "Providence", ""),
     ("United Theatre Westerly", "United Theatre Westerly", "the-united-theatre", "Providence", ""),
   ), Seq(
-    ("Providence", 41.64351, -71.49319),
+    ("Providence", 41.64351, -71.49319, "America/New_York"),
   ))
 
-  private def r_south_carolina: R = ("south-carolina", "South Carolina", 33.91853, -80.95267, "America/New_York", Seq(
+  private def r_south_carolina: R = ("south-carolina", "South Carolina", 33.91853, -80.95267, Seq(
     ("AMC CLASSIC Myrtle Beach 12", "AMC CLASSIC Myrtle Beach 12", "amc-classic-myrtle-beach-12", "Myrtle Beach", ""),
     ("AMC Harbison 14", "AMC Harbison 14", "amc-harbison-14", "Columbia", ""),
     ("Auto Drive-in Greenwood", "Auto Drive-in Greenwood", "auto-drive-in-greenwood", "Greenwood", ""),
@@ -4504,17 +4505,17 @@ private[models] object UsRosterData {
     ("The Ball Theatre", "The Ball Theatre", "the-ball-theatre", "Charlotte", ""),
     ("The Big E Gaffney", "The Big E Gaffney", "the-big-e-gaffney", "Greenville", ""),
   ), Seq(
-    ("Charleston", 32.89104, -80.12601),
-    ("Charlotte", 34.88484, -80.85235),
-    ("Columbia", 33.99357, -81.05426),
-    ("Florence", 34.10501, -79.99421),
-    ("Greenville", 34.81174, -82.34896),
-    ("Greenwood", 33.95178, -82.01456),
-    ("Hilton Head", 32.40016, -80.84613),
-    ("Myrtle Beach", 33.67708, -79.00011),
+    ("Charleston", 32.89104, -80.12601, "America/New_York"),
+    ("Charlotte", 34.88484, -80.85235, "America/New_York"),
+    ("Columbia", 33.99357, -81.05426, "America/New_York"),
+    ("Florence", 34.10501, -79.99421, "America/New_York"),
+    ("Greenville", 34.81174, -82.34896, "America/New_York"),
+    ("Greenwood", 33.95178, -82.01456, "America/New_York"),
+    ("Hilton Head", 32.40016, -80.84613, "America/New_York"),
+    ("Myrtle Beach", 33.67708, -79.00011, "America/New_York"),
   ))
 
-  private def r_south_dakota: R = ("south-dakota", "South Dakota", 44.12645, -99.03969, "America/Chicago", Seq(
+  private def r_south_dakota: R = ("south-dakota", "South Dakota", 44.12645, -99.03969, Seq(
     ("7th Generation Cinema", "7th Generation Cinema", "7th-generation-cinema", "Mobridge", ""),
     ("AMC CLASSIC Rapid City 10", "AMC CLASSIC Rapid City 10", "amc-classic-rapid-city-10", "Rapid City", ""),
     ("Brookings Cinema 8", "Brookings Cinema 8", "brookings-cinema-8", "Watertown", ""),
@@ -4560,18 +4561,18 @@ private[models] object UsRosterData {
     ("West Mall 7 Theatres", "West Mall 7 Theatres", "west-mall-7-theatres", "Sioux Falls", ""),
     ("Winner Drive In Theatre", "Winner Drive In Theatre", "winner-drive-in-theatre", "Pierre", ""),
   ), Seq(
-    ("Aberdeen", 45.31304, -98.06754),
-    ("Mitchell", 43.37066, -98.22132),
-    ("Mobridge", 45.50819, -101.07163),
-    ("Philip", 43.94333, -101.3957),
-    ("Pierre", 43.39807, -99.45925),
-    ("Rapid City", 44.04534, -103.39791),
-    ("Sioux Falls", 43.6418, -96.78405),
-    ("Vermillion", 42.90582, -97.0864),
-    ("Watertown", 44.53336, -97.71137),
+    ("Aberdeen", 45.31304, -98.06754, "America/Chicago"),
+    ("Mitchell", 43.37066, -98.22132, "America/Chicago"),
+    ("Mobridge", 45.50819, -101.07163, "America/Denver"),
+    ("Philip", 43.94333, -101.3957, "America/Denver"),
+    ("Pierre", 43.39807, -99.45925, "America/Chicago"),
+    ("Rapid City", 44.04534, -103.39791, "America/Denver"),
+    ("Sioux Falls", 43.6418, -96.78405, "America/Chicago"),
+    ("Vermillion", 42.90582, -97.0864, "America/Chicago"),
+    ("Watertown", 44.53336, -97.71137, "America/Chicago"),
   ))
 
-  private def r_tennessee: R = ("tennessee", "Tennessee", 35.79331, -86.48415, "America/Chicago", Seq(
+  private def r_tennessee: R = ("tennessee", "Tennessee", 35.79331, -86.48415, Seq(
     ("AMC Antioch 8", "AMC Antioch 8", "amc-antioch-8", "Nashville", ""),
     ("AMC Bellevue 12 Nashville", "AMC Bellevue 12 Nashville", "amc-bellevue-12-nashville", "Nashville", ""),
     ("AMC Chattanooga 18", "AMC Chattanooga 18", "amc-chattanooga-18", "Chattanooga", ""),
@@ -4674,19 +4675,19 @@ private[models] object UsRosterData {
     ("UEC Theatres Cleveland", "UEC Theatres Cleveland", "uec-theatres-cleveland", "Chattanooga", ""),
     ("UEC Theatres Roxy Lebanon", "UEC Theatres Roxy Lebanon", "uec-theatres-roxy-lebanon", "Nashville", ""),
   ), Seq(
-    ("Chattanooga", 35.1616, -85.02495),
-    ("Jackson", 35.70959, -88.70822),
-    ("Knoxville", 35.91849, -83.97705),
-    ("Lafayette", 36.4277, -85.53736),
-    ("Lewisburg", 35.30466, -86.58159),
-    ("Martin", 36.33846, -88.89005),
-    ("Memphis", 35.16091, -89.84877),
-    ("Murfreesboro", 35.93027, -85.57969),
-    ("Nashville", 36.08803, -86.83328),
-    ("Tri Cities", 36.39784, -82.40089),
+    ("Chattanooga", 35.1616, -85.02495, "America/New_York"),
+    ("Jackson", 35.70959, -88.70822, "America/Chicago"),
+    ("Knoxville", 35.91849, -83.97705, "America/New_York"),
+    ("Lafayette", 36.4277, -85.53736, "America/Chicago"),
+    ("Lewisburg", 35.30466, -86.58159, "America/Chicago"),
+    ("Martin", 36.33846, -88.89005, "America/Chicago"),
+    ("Memphis", 35.16091, -89.84877, "America/Chicago"),
+    ("Murfreesboro", 35.93027, -85.57969, "America/Chicago"),
+    ("Nashville", 36.08803, -86.83328, "America/Chicago"),
+    ("Tri Cities", 36.39784, -82.40089, "America/New_York"),
   ))
 
-  private def r_texas: R = ("texas", "Texas", 31.17139, -97.66809, "America/Chicago", Seq(
+  private def r_texas: R = ("texas", "Texas", 31.17139, -97.66809, Seq(
     ("3 M Palace Colorado City", "3 M Palace Colorado City", "3-m-palace-colorado-city", "Abilene", ""),
     ("4 Star Cinema Kilgore", "4 Star Cinema Kilgore", "4-star-cinema-kilgore", "East Texas", ""),
     ("Abilene Premiere Cinema 10", "Abilene Premiere Cinema 10", "abilene-premiere-cinema-10", "Abilene", ""),
@@ -5056,38 +5057,38 @@ private[models] object UsRosterData {
     ("Xscape at 1488, Conroe", "Xscape at 1488, Conroe", "xscape-at-1488-conroe", "Houston", ""),
     ("Xscape at Katy Fulshear", "Xscape at Katy Fulshear", "xscape-at-katy-fulshear", "Houston", ""),
   ), Seq(
-    ("Abilene", 32.2831, -100.22432),
-    ("Amarillo", 35.3055, -101.91905),
-    ("Austin", 30.32553, -97.76441),
-    ("Beaumont Port Arthur", 30.05242, -94.09591),
-    ("Canadian", 36.17093, -100.79403),
-    ("Clarendon", 35.09832, -100.64158),
-    ("College Station", 30.57906, -96.21566),
-    ("Corpus Christi", 27.88231, -97.49895),
-    ("Daingerfield", 33.16438, -94.87354),
-    ("Dallas Fort Worth", 32.83446, -97.07708),
-    ("East Texas", 32.29389, -95.2504),
-    ("El Paso", 31.79114, -106.40774),
-    ("Ennis", 32.26046, -96.41321),
-    ("Galveston", 29.27968, -95.0859),
-    ("Graham", 33.00861, -98.41594),
-    ("Houston", 29.82737, -95.46898),
-    ("Killeen Temple", 31.05119, -98.021),
-    ("Laredo", 27.55366, -99.44489),
-    ("Lubbock", 33.57083, -101.91142),
-    ("Lufkin", 31.4396, -94.58781),
-    ("McKinney", 33.13621, -96.66125),
-    ("Midland Odessa", 31.78011, -102.33109),
-    ("Rio Grande Valley", 26.20014, -98.126),
-    ("San Antonio", 29.51544, -98.49884),
-    ("Stephenville", 31.86859, -98.84002),
-    ("Victoria", 29.14682, -97.03512),
-    ("Waco", 31.40805, -97.31283),
-    ("West Texas", 29.1259, -100.38475),
-    ("Wichita Falls", 33.9688, -98.78005),
+    ("Abilene", 32.2831, -100.22432, "America/Chicago"),
+    ("Amarillo", 35.3055, -101.91905, "America/Chicago"),
+    ("Austin", 30.32553, -97.76441, "America/Chicago"),
+    ("Beaumont Port Arthur", 30.05242, -94.09591, "America/Chicago"),
+    ("Canadian", 36.17093, -100.79403, "America/Chicago"),
+    ("Clarendon", 35.09832, -100.64158, "America/Chicago"),
+    ("College Station", 30.57906, -96.21566, "America/Chicago"),
+    ("Corpus Christi", 27.88231, -97.49895, "America/Chicago"),
+    ("Daingerfield", 33.16438, -94.87354, "America/Chicago"),
+    ("Dallas Fort Worth", 32.83446, -97.07708, "America/Chicago"),
+    ("East Texas", 32.29389, -95.2504, "America/Chicago"),
+    ("El Paso", 31.79114, -106.40774, "America/Denver"),
+    ("Ennis", 32.26046, -96.41321, "America/Chicago"),
+    ("Galveston", 29.27968, -95.0859, "America/Chicago"),
+    ("Graham", 33.00861, -98.41594, "America/Chicago"),
+    ("Houston", 29.82737, -95.46898, "America/Chicago"),
+    ("Killeen Temple", 31.05119, -98.021, "America/Chicago"),
+    ("Laredo", 27.55366, -99.44489, "America/Chicago"),
+    ("Lubbock", 33.57083, -101.91142, "America/Chicago"),
+    ("Lufkin", 31.4396, -94.58781, "America/Chicago"),
+    ("McKinney", 33.13621, -96.66125, "America/Chicago"),
+    ("Midland Odessa", 31.78011, -102.33109, "America/Chicago"),
+    ("Rio Grande Valley", 26.20014, -98.126, "America/Chicago"),
+    ("San Antonio", 29.51544, -98.49884, "America/Chicago"),
+    ("Stephenville", 31.86859, -98.84002, "America/Chicago"),
+    ("Victoria", 29.14682, -97.03512, "America/Chicago"),
+    ("Waco", 31.40805, -97.31283, "America/Chicago"),
+    ("West Texas", 29.1259, -100.38475, "America/Chicago"),
+    ("Wichita Falls", 33.9688, -98.78005, "America/Chicago"),
   ))
 
-  private def r_utah: R = ("utah", "Utah", 40.27183, -111.81228, "America/Denver", Seq(
+  private def r_utah: R = ("utah", "Utah", 40.27183, -111.81228, Seq(
     ("AMC Layton Hills 9", "AMC Layton Hills 9", "amc-layton-hills-9", "Salt Lake City", ""),
     ("AMC Provo 8", "AMC Provo 8", "amc-provo-8", "Salt Lake City", ""),
     ("AMC West Jordan 12", "AMC West Jordan 12", "amc-west-jordan-12", "Salt Lake City", ""),
@@ -5167,17 +5168,17 @@ private[models] object UsRosterData {
     ("Walker Cinemas 8 Perry", "Walker Cinemas 8 Perry", "walker-cinemas-8-perry", "Logan", ""),
     ("Wayfarer Theaters Payson", "Wayfarer Theaters Payson", "payson-stadium-cinema", "Sanpete Valley", ""),
   ), Seq(
-    ("Cedar City", 37.73773, -112.85225),
-    ("Logan", 41.63506, -111.90841),
-    ("Moab", 38.56398, -109.55165),
-    ("Richfield", 38.8218, -112.06444),
-    ("Saint George", 37.14143, -113.49444),
-    ("Salt Lake City", 40.66094, -111.87888),
-    ("Sanpete Valley", 39.54576, -111.45237),
-    ("Uinta Basin", 40.33453, -109.88248),
+    ("Cedar City", 37.73773, -112.85225, "America/Denver"),
+    ("Logan", 41.63506, -111.90841, "America/Denver"),
+    ("Moab", 38.56398, -109.55165, "America/Denver"),
+    ("Richfield", 38.8218, -112.06444, "America/Denver"),
+    ("Saint George", 37.14143, -113.49444, "America/Denver"),
+    ("Salt Lake City", 40.66094, -111.87888, "America/Denver"),
+    ("Sanpete Valley", 39.54576, -111.45237, "America/Denver"),
+    ("Uinta Basin", 40.33453, -109.88248, "America/Denver"),
   ))
 
-  private def r_vermont: R = ("vermont", "Vermont", 44.02451, -72.71408, "America/New_York", Seq(
+  private def r_vermont: R = ("vermont", "Vermont", 44.02451, -72.71408, Seq(
     ("Bellows Falls Opera House", "Bellows Falls Opera House", "bellows-falls-opera-house", "Brattleboro", ""),
     ("Bennington Cinemas", "Bennington Cinemas", "bennington-cinemas", "Brattleboro", ""),
     ("Bethel Drive-in", "Bethel Drive-in", "bethel-drive-in", "Montpelier", ""),
@@ -5202,18 +5203,18 @@ private[models] object UsRosterData {
     ("Welden Theatre St Albans", "Welden Theatre St Albans", "welden-theatre-st-albans", "Montpelier", ""),
     ("Woodstock Town Hall Theatre", "Woodstock Town Hall Theatre", "woodstock-town-hall-theatre", "Montpelier", ""),
   ), Seq(
-    ("Brattleboro", 43.02667, -72.71341),
-    ("Montpelier", 44.30169, -72.71427),
+    ("Brattleboro", 43.02667, -72.71341, "America/New_York"),
+    ("Montpelier", 44.30169, -72.71427, "America/New_York"),
   ))
 
-  private def r_virgin_islands: R = ("virgin-islands", "Virgin Islands", 18.03312, -64.82486, "America/St_Thomas", Seq(
+  private def r_virgin_islands: R = ("virgin-islands", "Virgin Islands", 18.03312, -64.82486, Seq(
     ("Caribbean Cinemas Sunny Isle", "Caribbean Cinemas Sunny Isle", "caribbean-cinemas-sunny-isle", "US Virgin Islands", ""),
     ("Caribbean Cinemas USVI Market Square", "Caribbean Cinemas USVI Market Square", "caribbean-cinemas-usvi-market-square", "US Virgin Islands", ""),
   ), Seq(
-    ("US Virgin Islands", 18.03312, -64.82486),
+    ("US Virgin Islands", 18.03312, -64.82486, "America/St_Thomas"),
   ))
 
-  private def r_virginia: R = ("virginia", "Virginia", 37.85843, -78.59198, "America/New_York", Seq(
+  private def r_virginia: R = ("virginia", "Virginia", 37.80195, -78.21307, Seq(
     ("Abingdon Cinemall", "Abingdon Cinemall", "abingdon-cinemall", "Southwest Virginia", ""),
     ("Airbus IMAX Theater", "Airbus IMAX Theater", "airbus-imax-theater", "Washington DC", ""),
     ("Alamo Drafthouse Charlottesville", "Alamo Drafthouse Charlottesville", "alamo-drafthouse-charlottesville", "Charlottesville", ""),
@@ -5253,7 +5254,7 @@ private[models] object UsRosterData {
     ("Cinemark Centreville 12", "Cinemark Centreville 12", "cinemark-centreville-12", "Washington DC", ""),
     ("Cinemark Chesapeake Square", "Cinemark Chesapeake Square", "cinemark-chesapeake-square", "Hampton Roads", ""),
     ("Cinemark Fairfax Corner 14", "Cinemark Fairfax Corner 14", "cinemark-fairfax-corner-14", "Washington DC", ""),
-    ("Cinemark Newport News", "Cinemark Newport News", "cinemark-newport-news", "Newport News", ""),
+    ("Cinemark Newport News", "Cinemark Newport News", "cinemark-newport-news", "Hampton Roads", ""),
     ("CMX CinéBistro Stony Point", "CMX CinéBistro Stony Point", "cinebistro-6-stony-point-richmond", "Richmond", ""),
     ("CMX Tysons Galleria McLean", "CMX Tysons Galleria McLean", "cmx-tysons-galleria-mclean", "Washington DC", ""),
     ("Commodore Theatre Portsmouth", "Commodore Theatre Portsmouth", "commodore-theatre-portsmouth", "Hampton Roads", ""),
@@ -5280,7 +5281,6 @@ private[models] object UsRosterData {
     ("Movie Tavern Williamsburg", "Movie Tavern Williamsburg", "movie-tavern-williamsburg", "Hampton Roads", ""),
     ("Movie Town Martinsville 5", "Movie Town Martinsville 5", "movie-town-martinsville-5", "Roanoke", ""),
     ("Naro Expanded Cinema Norfolk", "Naro Expanded Cinema Norfolk", "naro-expanded-cinema-norfolk", "Hampton Roads", ""),
-    ("Newport Performing Arts", "Newport Performing Arts", "newport-performing-arts", "Newport News", ""),
     ("Norton Cinema City Stadium 9", "Norton Cinema City Stadium 9", "norton-cinema-city-stadium-9", "Southwest Virginia", ""),
     ("Page Theatre Luray", "Page Theatre Luray", "page-theatre-luray", "Shenandoah Valley", ""),
     ("Paragon Theaters Founders Row", "Paragon Theaters Founders Row", "paragon-theaters-founders-row", "Washington DC", ""),
@@ -5301,7 +5301,7 @@ private[models] object UsRosterData {
     ("Regal Fredericksburg", "Regal Fredericksburg", "regal-fredericksburg", "Washington DC", ""),
     ("Regal Harbour View Grande Suffolk", "Regal Harbour View Grande Suffolk", "regal-harbour-view-grande-suffolk", "Hampton Roads", ""),
     ("Regal Harrisonburg", "Regal Harrisonburg", "regal-harrisonburg", "Charlottesville", ""),
-    ("Regal Kiln Creek", "Regal Kiln Creek", "regal-kiln-creek", "Newport News", ""),
+    ("Regal Kiln Creek", "Regal Kiln Creek", "regal-kiln-creek", "Hampton Roads", ""),
     ("Regal Kingstowne", "Regal Kingstowne", "regal-kingstowne", "Washington DC", ""),
     ("Regal Macarthur Center Norfolk", "Regal Macarthur Center Norfolk", "regal-macarthur-center-norfolk", "Hampton Roads", ""),
     ("Regal New River Valley Christiansburg", "Regal New River Valley Christiansburg", "regal-new-river-valley-christiansburg", "Roanoke", ""),
@@ -5336,20 +5336,19 @@ private[models] object UsRosterData {
     ("York River Crossing Cinemas", "York River Crossing Cinemas", "york-river-crossing-cinemas", "Hampton Roads", ""),
     ("Zeus Digital Theater", "Zeus Digital Theater", "zeus-digital-theater", "Charlottesville", ""),
   ), Seq(
-    ("Charlottesville", 38.0964, -78.57009),
-    ("Hampton Roads", 36.92551, -76.32233),
-    ("Lexington", 37.78349, -79.41427),
-    ("Newport News", 39.6106, -92.33391),
-    ("Richmond", 37.53939, -77.51089),
-    ("Roanoke", 37.07994, -79.97151),
-    ("Shenandoah Valley", 38.96941, -78.29099),
-    ("Southwest Virginia", 36.87034, -82.31258),
-    ("Virginia Eastern Shore", 37.77828, -75.84616),
-    ("Washington DC", 38.83355, -77.30594),
-    ("Wytheville", 36.93954, -81.15439),
+    ("Charlottesville", 38.0964, -78.57009, "America/New_York"),
+    ("Hampton Roads", 36.94274, -76.33708, "America/New_York"),
+    ("Lexington", 37.78349, -79.41427, "America/New_York"),
+    ("Richmond", 37.53939, -77.51089, "America/New_York"),
+    ("Roanoke", 37.07994, -79.97151, "America/New_York"),
+    ("Shenandoah Valley", 38.96941, -78.29099, "America/New_York"),
+    ("Southwest Virginia", 36.87034, -82.31258, "America/New_York"),
+    ("Virginia Eastern Shore", 37.77828, -75.84616, "America/New_York"),
+    ("Washington DC", 38.83355, -77.30594, "America/New_York"),
+    ("Wytheville", 36.93954, -81.15439, "America/New_York"),
   ))
 
-  private def r_washington: R = ("washington", "Washington", 47.38701, -121.62179, "America/Los_Angeles", Seq(
+  private def r_washington: R = ("washington", "Washington", 47.38701, -121.62179, Seq(
     ("7th St Theatre Hoquiam", "7th St Theatre Hoquiam", "7th-st-theatre-hoquiam", "Southwest Washington", ""),
     ("Alpine Colville", "Alpine Colville", "alpine-colville", "Colville", ""),
     ("AMC Alderwood Mall 16 Lynnwood", "AMC Alderwood Mall 16 Lynnwood", "amc-alderwood-mall-16-lynnwood", "Seattle", ""),
@@ -5499,19 +5498,19 @@ private[models] object UsRosterData {
     ("Yakima Cinema", "Yakima Cinema", "yakima-cinema", "Yakima", ""),
     ("Yelm Cinemas", "Yelm Cinemas", "yelm-cinemas", "Olympia", ""),
   ), Seq(
-    ("Bellingham", 48.53701, -122.50129),
-    ("Colville", 48.66391, -117.75035),
-    ("Olympia", 46.98924, -122.69713),
-    ("Portland", 45.73801, -122.63665),
-    ("Seattle", 47.63259, -122.36157),
-    ("Southwest Washington", 46.66878, -124.03987),
-    ("Spokane", 47.75011, -117.36111),
-    ("Tri Cities", 46.30702, -118.93796),
-    ("Wenatchee", 47.73476, -119.67682),
-    ("Yakima", 46.66937, -120.4803),
+    ("Bellingham", 48.53701, -122.50129, "America/Los_Angeles"),
+    ("Colville", 48.66391, -117.75035, "America/Los_Angeles"),
+    ("Olympia", 46.98924, -122.69713, "America/Los_Angeles"),
+    ("Portland", 45.73801, -122.63665, "America/Los_Angeles"),
+    ("Seattle", 47.63259, -122.36157, "America/Los_Angeles"),
+    ("Southwest Washington", 46.66878, -124.03987, "America/Los_Angeles"),
+    ("Spokane", 47.75011, -117.36111, "America/Los_Angeles"),
+    ("Tri Cities", 46.30702, -118.93796, "America/Los_Angeles"),
+    ("Wenatchee", 47.73476, -119.67682, "America/Los_Angeles"),
+    ("Yakima", 46.66937, -120.4803, "America/Los_Angeles"),
   ))
 
-  private def r_west_virginia: R = ("west-virginia", "West Virginia", 38.68374, -80.81401, "America/New_York", Seq(
+  private def r_west_virginia: R = ("west-virginia", "West Virginia", 38.68374, -80.81401, Seq(
     ("AMC Morgantown 12", "AMC Morgantown 12", "amc-morgantown-12", "Clarksburg", ""),
     ("Berkeley Plaza Theater 7", "Berkeley Plaza Theater 7", "berkeley-plaza-theater-7", "Eastern Panhandle", ""),
     ("Cinemark Huntington Mall", "Cinemark Huntington Mall", "cinemark-huntington-mall", "Charleston", ""),
@@ -5552,16 +5551,16 @@ private[models] object UsRosterData {
     ("Warner's Drive In", "Warner's Drive In", "warners-drive-in", "Eastern Panhandle", ""),
     ("Weirton Plaza Theatre", "Weirton Plaza Theatre", "weirton-plaza-theatre", "Clarksburg", ""),
   ), Seq(
-    ("Beckley", 37.88758, -80.6914),
-    ("Bluefield Princeton", 37.4557, -81.23215),
-    ("Charleston", 38.34244, -81.78731),
-    ("Clarksburg", 39.70101, -80.65225),
-    ("Eastern Panhandle", 39.21972, -78.61507),
-    ("Elkins", 38.86415, -80.27767),
+    ("Beckley", 37.88758, -80.6914, "America/New_York"),
+    ("Bluefield Princeton", 37.4557, -81.23215, "America/New_York"),
+    ("Charleston", 38.34244, -81.78731, "America/New_York"),
+    ("Clarksburg", 39.70101, -80.65225, "America/New_York"),
+    ("Eastern Panhandle", 39.21972, -78.61507, "America/New_York"),
+    ("Elkins", 38.86415, -80.27767, "America/New_York"),
   ))
 
-  private def r_wisconsin: R = ("wisconsin", "Wisconsin", 43.97744, -89.37634, "America/Chicago", Seq(
-    ("Adams Theatre", "Adams Theatre", "adams-theatre", "Southwest Wisconsin", ""),
+  private def r_wisconsin: R = ("wisconsin", "Wisconsin", 43.97744, -89.37634, Seq(
+    ("Adams Theatre", "Adams Theatre", "adams-theatre", "Wausau Stevens Point", ""),
     ("AMC CLASSIC Desert Star 15", "AMC CLASSIC Desert Star 15", "amc-classic-desert-star-15", "Southwest Wisconsin", ""),
     ("AMC CLASSIC Johnson Creek 12", "AMC CLASSIC Johnson Creek 12", "amc-classic-johnson-creek-12", "Madison", ""),
     ("AMC CLASSIC Manitowoc 10", "AMC CLASSIC Manitowoc 10", "amc-classic-manitowoc-10", "Fox Valley", ""),
@@ -5574,15 +5573,15 @@ private[models] object UsRosterData {
     ("Big Sky Drive-in Wisconsin Dells", "Big Sky Drive-in Wisconsin Dells", "big-sky-drive-in-wisconsin-dells", "Southwest Wisconsin", ""),
     ("Blaine Theatre Boscobel", "Blaine Theatre Boscobel", "blaine-theatre-boscobel", "Southwest Wisconsin", ""),
     ("Bonham Theatre & Video", "Bonham Theatre & Video", "bonham-theatre-video", "Madison", ""),
-    ("Broadway Theatre Medford", "Broadway Theatre Medford", "broadway-theatre-medford", "Wausau Stevens Point", ""),
+    ("Broadway Theatre Medford", "Broadway Theatre Medford", "broadway-theatre-medford", "Rhinelander", ""),
     ("Center Richland Center", "Center Richland Center", "center-richland-center", "Southwest Wisconsin", ""),
     ("Chilton Cinema", "Chilton Cinema", "chilton-cinema", "Fox Valley", ""),
     ("Chilton Twilight Drive-In Theater", "Chilton Twilight Drive-In Theater", "chilton-twilight-drive-in-theater", "Fox Valley", ""),
-    ("Cinema North Phillips", "Cinema North Phillips", "cinema-north-phillips", "Wausau Stevens Point", ""),
+    ("Cinema North Phillips", "Cinema North Phillips", "cinema-north-phillips", "Rhinelander", ""),
     ("Cinemark Tinseltown USA Kenosha", "Cinemark Tinseltown USA Kenosha", "cinemark-tinseltown-usa-kenosha", "Milwaukee", ""),
     ("Cinematheque (UW)", "Cinematheque (UW)", "cinematheque-uw", "Madison", ""),
     ("Classic Cinemas Beloit", "Classic Cinemas Beloit", "classic-cinemas-beloit", "Madison", ""),
-    ("Cosmo Merrill", "Cosmo Merrill", "cosmo-merrill", "Wausau Stevens Point", ""),
+    ("Cosmo Merrill", "Cosmo Merrill", "cosmo-merrill", "Rhinelander", ""),
     ("De Pere Cinema Cafe", "De Pere Cinema Cafe", "de-pere-cinema-cafe", "Fox Valley", ""),
     ("Discovery Cinema – Mulva Cultural Center De Pere", "Discovery Cinema – Mulva Cultural Center De Pere", "discovery-cinema---mulva-cultural-center-de-pere", "Fox Valley", ""),
     ("Dodge Theatre", "Dodge Theatre", "dodge-theatre", "Southwest Wisconsin", ""),
@@ -5598,14 +5597,14 @@ private[models] object UsRosterData {
     ("Hayward Cinema", "Hayward Cinema", "hayward-cinema", "Northwest Wisconsin", ""),
     ("Highway 18 Outdoor Theatre Jefferson", "Highway 18 Outdoor Theatre Jefferson", "highway-18-outdoor-theatre-jefferson", "Madison", ""),
     ("Historic Temple Theatre of Viroqua", "Historic Temple Theatre of Viroqua", "historic-temple-theatre-of-viroqua", "LA Crosse", ""),
-    ("Ho-Chunk Cinema", "Ho-Chunk Cinema", "ho-chunk-cinema", "Madison", ""),
+    ("Ho-Chunk Cinema", "Ho-Chunk Cinema", "ho-chunk-cinema", "Wausau Stevens Point", ""),
     ("Hudson 12 Theatre", "Hudson 12 Theatre", "hudson-12-theatre", "Minneapolis St Paul", ""),
     ("Lake Rice Lake 7", "Lake Rice Lake 7", "lake-rice-lake-7", "Northwest Wisconsin", ""),
-    ("Lakeland Cinema Woodruff", "Lakeland Cinema Woodruff", "lakeland-cinema-woodruff", "Wausau Stevens Point", ""),
+    ("Lakeland Cinema Woodruff", "Lakeland Cinema Woodruff", "lakeland-cinema-woodruff", "Rhinelander", ""),
     ("Marcus Bay Park Green Bay", "Marcus Bay Park Green Bay", "marcus-bay-park-green-bay", "Fox Valley", ""),
     ("Marcus BistroPlex Southridge", "Marcus BistroPlex Southridge", "marcus-bistroplex-southridge", "Milwaukee", ""),
     ("Marcus Campus Ripon", "Marcus Campus Ripon", "marcus-campus-ripon", "Fox Valley", ""),
-    ("Marcus Cedar Creek Mosinee", "Marcus Cedar Creek Mosinee", "marcus-cedar-creek-mosinee", "Wausau Stevens Point", ""),
+    ("Marcus Cedar Creek Mosinee", "Marcus Cedar Creek Mosinee", "marcus-cedar-creek-mosinee", "Rhinelander", ""),
     ("Marcus Green Bay East Cinema", "Marcus Green Bay East Cinema", "marcus-green-bay-east-cinema", "Fox Valley", ""),
     ("Marcus Hillside Delafield", "Marcus Hillside Delafield", "marcus-hillside-delafield", "Milwaukee", ""),
     ("Marcus Hollywood Appleton", "Marcus Hollywood Appleton", "marcus-hollywood-appleton", "Fox Valley", ""),
@@ -5640,7 +5639,7 @@ private[models] object UsRosterData {
     ("Odyssey Cinemas Fond Du Lac", "Odyssey Cinemas Fond Du Lac", "odyssey-cinemas-fond-du-lac", "Fox Valley", ""),
     ("Oriental Theatre Milwaukee", "Oriental Theatre Milwaukee", "oriental-theatre-milwaukee", "Milwaukee", ""),
     ("Palace Theatre Spooner", "Palace Theatre Spooner", "palace-theatre-spooner", "Minneapolis St Paul", ""),
-    ("Palace Twin Antigo", "Palace Twin Antigo", "palace-twin-antigo", "Wausau Stevens Point", ""),
+    ("Palace Twin Antigo", "Palace Twin Antigo", "palace-twin-antigo", "Rhinelander", ""),
     ("Park Theatre Park Falls", "Park Theatre Park Falls", "park-theatre-park-falls", "Northwest Wisconsin", ""),
     ("Phoenix Marinette Theatre", "Phoenix Marinette Theatre", "phoenix-marinette-theatre", "Green Bay", ""),
     ("Plaza Theater Burlington", "Plaza Theater Burlington", "plaza-theater-burlington", "Milwaukee", ""),
@@ -5649,11 +5648,11 @@ private[models] object UsRosterData {
     ("Rivoli Theatre Cedarburg", "Rivoli Theatre Cedarburg", "rivoli-theatre-cedarburg", "Milwaukee", ""),
     ("Rivoli Theatre La Crosse", "Rivoli Theatre La Crosse", "rivoli-theatre-la-crosse", "LA Crosse", ""),
     ("Rogers Cinema Marshfield", "Rogers Cinema Marshfield", "rogers-cinema-marshfield", "Wausau Stevens Point", ""),
-    ("Rogers Cinema Stevens Point 7", "Rogers Cinema Stevens Point 7", "rogers-cinema-stevens-point-7", "Southwest Wisconsin", ""),
+    ("Rogers Cinema Stevens Point 7", "Rogers Cinema Stevens Point 7", "rogers-cinema-stevens-point-7", "Wausau Stevens Point", ""),
     ("Rogers Cinema Waupaca", "Rogers Cinema Waupaca", "rogers-cinema-waupaca", "Fox Valley", ""),
     ("Rogers Cinema Wisconsin Rapids", "Rogers Cinema Wisconsin Rapids", "rogers-cinema-wisconsin-rapids", "Wausau Stevens Point", ""),
     ("Rosebud Cinema Wauwatosa", "Rosebud Cinema Wauwatosa", "rosebud-cinema-wauwatosa", "Milwaukee", ""),
-    ("Rouman Cinema Rhinelander 6", "Rouman Cinema Rhinelander 6", "rouman-cinema-rhinelander-6", "Wausau Stevens Point", ""),
+    ("Rouman Cinema Rhinelander 6", "Rouman Cinema Rhinelander 6", "rouman-cinema-rhinelander-6", "Rhinelander", ""),
     ("Schubert's Hartford Theatre", "Schubert's Hartford Theatre", "schuberts-hartford-theatre", "Milwaukee", ""),
     ("Sharon Lynne Wilson Center For The Arts", "Sharon Lynne Wilson Center For The Arts", "sharon-lynne-wilson-center-for-the-arts", "Milwaukee", ""),
     ("Shawano Cinema", "Shawano Cinema", "shawano-cinema", "Green Bay", ""),
@@ -5668,29 +5667,30 @@ private[models] object UsRosterData {
     ("Sturgeon Bay Cinemas", "Sturgeon Bay Cinemas", "sturgeon-bay-cinemas", "Green Bay", ""),
     ("The Bend Theater", "The Bend Theater", "the-bend-theater", "Milwaukee", ""),
     ("Theatres Of Whitewater", "Theatres Of Whitewater", "theatres-of-whitewater", "Madison", ""),
-    ("Three Lakes Center for the Arts", "Three Lakes Center for the Arts", "three-lakes-center-for-the-arts", "Wausau Stevens Point", ""),
+    ("Three Lakes Center for the Arts", "Three Lakes Center for the Arts", "three-lakes-center-for-the-arts", "Rhinelander", ""),
     ("Timbers Theater Siren", "Timbers Theater Siren", "timbers-theater-siren", "Minneapolis St Paul", ""),
     ("Time Community Theater Oshkosh", "Time Community Theater Oshkosh", "time-community-theater-oshkosh", "Fox Valley", ""),
     ("Times Cinema Milwaukee", "Times Cinema Milwaukee", "times-cinema-milwaukee", "Milwaukee", ""),
-    ("Tomahawk Cinema", "Tomahawk Cinema", "tomahawk-cinema", "Wausau Stevens Point", ""),
+    ("Tomahawk Cinema", "Tomahawk Cinema", "tomahawk-cinema", "Rhinelander", ""),
     ("Towne Cinema", "Towne Cinema", "towne-cinema", "Madison", ""),
     ("UW-Milwaukee Union Cinema", "UW-Milwaukee Union Cinema", "uw-milwaukee-union-cinema", "Milwaukee", ""),
-    ("Vilas Theatre Eagle River", "Vilas Theatre Eagle River", "vilas-theatre-eagle-river", "Wausau Stevens Point", ""),
+    ("Vilas Theatre Eagle River", "Vilas Theatre Eagle River", "vilas-theatre-eagle-river", "Rhinelander", ""),
     ("West Bend Cinema", "West Bend Cinema", "west-bend-cinema", "Milwaukee", ""),
   ), Seq(
-    ("Eau Claire", 44.93165, -91.47984),
-    ("Fox Valley", 44.11973, -88.30785),
-    ("Green Bay", 44.98973, -87.68002),
-    ("LA Crosse", 43.77199, -91.04771),
-    ("Madison", 43.10263, -89.27163),
-    ("Milwaukee", 43.03352, -88.07191),
-    ("Minneapolis St Paul", 45.36745, -92.43943),
-    ("Northwest Wisconsin", 45.77012, -91.07749),
-    ("Southwest Wisconsin", 43.30111, -90.25046),
-    ("Wausau Stevens Point", 45.31552, -89.70648),
+    ("Eau Claire", 44.93165, -91.47984, "America/Chicago"),
+    ("Fox Valley", 44.11973, -88.30785, "America/Chicago"),
+    ("Green Bay", 44.98973, -87.68002, "America/Chicago"),
+    ("LA Crosse", 43.77199, -91.04771, "America/Chicago"),
+    ("Madison", 43.04553, -89.19469, "America/Chicago"),
+    ("Milwaukee", 43.03352, -88.07191, "America/Chicago"),
+    ("Minneapolis St Paul", 45.36745, -92.43943, "America/Chicago"),
+    ("Northwest Wisconsin", 45.77012, -91.07749, "America/Chicago"),
+    ("Rhinelander", 45.47318, -89.64776, "America/Chicago"),
+    ("Southwest Wisconsin", 43.15773, -90.33601, "America/Chicago"),
+    ("Wausau Stevens Point", 44.30738, -89.97831, "America/Chicago"),
   ))
 
-  private def r_wyoming: R = ("wyoming", "Wyoming", 42.89397, -107.74418, "America/Denver", Seq(
+  private def r_wyoming: R = ("wyoming", "Wyoming", 42.89397, -107.74418, Seq(
     ("Acme Theatre Riverton", "Acme Theatre Riverton", "acme-theatre-riverton", "Central Wyoming", ""),
     ("American Dream Drive-in Powell", "American Dream Drive-in Powell", "american-dream-drive-in-powell", "Yellowstone Gateway", ""),
     ("Aspen Cinemas Evanston", "Aspen Cinemas Evanston", "aspen-cinemas-evanston", "Southwest Wyoming", ""),
@@ -5722,14 +5722,14 @@ private[models] object UsRosterData {
     ("Washakie Twin Cinemas", "Washakie Twin Cinemas", "washakie-twin-cinemas", "Yellowstone Gateway", ""),
     ("WYO Theater", "WYO Theater", "wyo-theater", "Sheridan", ""),
   ), Seq(
-    ("Casper", 42.55745, -106.30634),
-    ("Central Wyoming", 43.13213, -108.42791),
-    ("Cheyenne Laramie", 41.57679, -105.0138),
-    ("Northeast Wyoming", 44.07764, -104.86563),
-    ("Sheridan", 44.64889, -106.87002),
-    ("Southwest Wyoming", 41.44469, -110.39953),
-    ("Star Valley", 42.91138, -110.6086),
-    ("Yellowstone Gateway", 44.52936, -108.53862),
+    ("Casper", 42.55745, -106.30634, "America/Denver"),
+    ("Central Wyoming", 43.13213, -108.42791, "America/Denver"),
+    ("Cheyenne Laramie", 41.57679, -105.0138, "America/Denver"),
+    ("Northeast Wyoming", 44.07764, -104.86563, "America/Denver"),
+    ("Sheridan", 44.64889, -106.87002, "America/Denver"),
+    ("Southwest Wyoming", 41.44469, -110.39953, "America/Denver"),
+    ("Star Valley", 42.91138, -110.6086, "America/Denver"),
+    ("Yellowstone Gateway", 44.52936, -108.53862, "America/Denver"),
   ))
 
   val regions: Seq[R] = Seq(

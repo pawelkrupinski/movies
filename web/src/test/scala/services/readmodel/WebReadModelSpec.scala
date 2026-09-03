@@ -1,6 +1,6 @@
 package services.readmodel
 
-import models.{CityScreening, ResolvedMovie, ResolvedRatings}
+import models.{City, CityScreening, ResolvedMovie, ResolvedRatings}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -72,6 +72,28 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.reload()
 
     rm.screeningsForCity("san-francisco-bay-area").map(_._id) shouldBe Seq("new")
+  }
+
+  "A city SPLIT out of a shared slug" should "take only its own venues from the shared bucket" in {
+    // `alaska` was one city and is now nine metros, so — unlike a rename — its
+    // rows hold every OTHER metro's venues too. Anchorage must not serve Juneau's
+    // cinema, which is 1,400 km away with no road between them; and it must
+    // still serve its own, or the split blanks the state for a whole 14 h
+    // cadence.
+    val anchorage = City.bySlug("anchorage").getOrElse(fail("no anchorage"))
+    val juneau    = City.bySlug("juneau").getOrElse(fail("no juneau"))
+    val mine      = anchorage.cinemaDisplayNames.head
+    val theirs    = juneau.cinemaDisplayNames.head
+
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("dune|2021"))
+    repository.upsertScreening(CityScreening("mine", "dune|2021", "alaska", mine, None, Nil))
+    repository.upsertScreening(CityScreening("theirs", "dune|2021", "alaska", theirs, None, Nil))
+    val rm = new WebReadModel(repository)
+    rm.reload()
+
+    rm.screeningsForCity("anchorage").map(_._id) shouldBe Seq("mine")
+    rm.screeningsForCity("juneau").map(_._id) shouldBe Seq("theirs")
   }
 
   it should "leave a city that never changed slug reading only its own bucket" in {

@@ -119,7 +119,9 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   "A flat state" should "still serve its own listing — its venue list IS the page" in {
-    val res = usController().index("alaska")(req("/alaska/"))
+    // Vermont: 23 venues in two metros 142 km apart, which is one drive — under
+    // both `MinCinemasToSplit` and `MaxSpanToStayWholeKm`, so it stays one page.
+    val res = usController().index("vermont")(req("/vermont/"))
     status(res) shouldBe OK
     contentAsString(res) should include ("CINEMA_AREAS       = []")
   }

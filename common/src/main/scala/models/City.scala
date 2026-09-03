@@ -1056,14 +1056,57 @@ object City {
    *  An entry stays FOREVER: the cost is one map lookup per request, and the
    *  links it serves are the ones nobody can go back and fix.
    *
+   *  A slug can be succeeded by SEVERAL, because a city can be split as well as
+   *  renamed. The first is the one its URL redirects to; all of them read its
+   *  already-projected rows (see [[formerSlugs]]).
+   *
    *  - `san-francisco` → `san-francisco-bay-area` (2026-08-30). The metro is
    *    the whole Bay and its own regions include a San Francisco that is the
    *    city proper, so the old name both shadowed a region and filed San Jose
    *    and Oakland under a city they are not in. See `UsRoster.MetroDisplayNames`.
+   *  - `alaska` and `hawaii` → their metros (2026-09-03). Neither was a place
+   *    anyone browses as one list — see [[splitStates]].
    */
-  val renamedSlugs: Map[String, String] = Map(
-    "san-francisco" -> "san-francisco-bay-area",
-  )
+  lazy val slugSuccession: Map[String, Seq[String]] = Map(
+    "san-francisco" -> Seq("san-francisco-bay-area"),
+    // The four metros that stopped existing when four bad venue coordinates were
+    // corrected (`data/us/README.md`). Two of them WERE the bad coordinate:
+    // `/perry/` was a city whose one cinema had a flipped longitude sign and sat
+    // in Mongolia, 65 km of Iowa from the Des Moines it belongs to; `/newport-news/`
+    // was centred in rural Missouri, because a venue that is really in Newport,
+    // OREGON was filed under it. The other two are their neighbours, re-clustered
+    // once those venues moved. Listed rather than derived: they are facts about a
+    // roster that no longer exists, so there is nothing left for them to drift from.
+    "perry"        -> Seq("des-moines"),
+    "newport-news" -> Seq("hampton-roads", "willamette-valley"),
+    "jefferson"    -> Seq("carroll", "fort-dodge"),
+    "osage"        -> Seq("mason-city", "decorah"),
+  ) ++ splitStateSuccession
+
+  /** States that used to be ONE city and are now their metros, so a single old
+   *  slug is succeeded by several new ones.
+   *
+   *  Both were kept whole by a venue COUNT that had no idea how far apart the
+   *  venues were: Alaska's 18 reach 1,900 km from Nome to Wrangell with no road
+   *  between them, Hawaii's 21 lie across four islands. See
+   *  `UsRoster.MaxSpanToStayWholeKm`.
+   *
+   *  The successors are READ OFF the roster rather than listed here. A hand-written
+   *  list would be a second copy of the split — right on the day it was typed and
+   *  silently wrong after the next re-harvest moved a metro, which is the one
+   *  failure this map exists to prevent. */
+  private val splitStates: Set[String] = Set("alaska", "hawaii")
+
+  private lazy val splitStateSuccession: Map[String, Seq[String]] =
+    usStates.filter(group => splitStates(group.slug))
+      .map(group => group.slug -> group.cities.map(_.slug))
+      .toMap
+
+  /** Where an old slug's URL now points: its FIRST successor, which for a split
+   *  is the biggest metro cut out of it (`UsRoster.places` is biggest first).
+   *  `/alaska/` lands on Anchorage — the answer most of that traffic wanted, and
+   *  the picker is one tap away for the rest. */
+  lazy val renamedSlugs: Map[String, String] = slugSuccession.view.mapValues(_.head).toMap
 
   /** The slugs a city used to answer at, given the one it answers at now.
    *
@@ -1075,8 +1118,31 @@ object City {
    *  city keeps serving across that window. */
   def formerSlugs(current: String): Seq[String] = formerSlugsByCurrent.getOrElse(current, Nil)
 
+  /** For a city whose former slug is shared with SIBLINGS, the display names of
+   *  its own venues; absent for every other city.
+   *
+   *  A former slug that was renamed onto one city carries only that city's rows,
+   *  so [[formerSlugs]] alone is enough to serve them. A former slug that was
+   *  SPLIT carries all of them: the `alaska` rows hold every Alaskan venue, and
+   *  nine cities now read that one bucket. Without this each would serve the
+   *  other eight's cinemas until the next projection — Anchorage listing Juneau,
+   *  1,400 km and no road away.
+   *
+   *  Built once rather than per request: `WebReadModel.screeningsForCity` is the
+   *  read key of every repertoire request, and a set of a city's venue names is
+   *  not something to allocate on each one. Absent — rather than every city's
+   *  venues — so the common path stays a single failed map lookup. */
+  lazy val ownVenuesOfSplitCity: Map[String, Set[String]] = {
+    val splitSlugs = slugSuccession.collect { case (former, successors) if successors.sizeIs > 1 => former }.toSet
+    all.filter(city => formerSlugs(city.slug).exists(splitSlugs))
+      .map(city => city.slug -> city.cinemaDisplayNames.toSet)
+      .toMap
+  }
+
   private lazy val formerSlugsByCurrent: Map[String, Seq[String]] =
-    renamedSlugs.groupMap(_._2)(_._1).view.mapValues(_.toSeq).toMap
+    slugSuccession.toSeq
+      .flatMap { case (former, successors) => successors.map(_ -> former) }
+      .groupMap(_._1)(_._2)
 
   /** The US picker's grouping: one entry per state or territory, in roster
    *  order, holding the metros cut out of it (or the state itself, where it is
