@@ -20,6 +20,14 @@ import java.io.File
  * workflow only ever ran those two legs, and nothing failed when the other two
  * countries went live.
  *
+ * A city added by a commit cannot have its card in that same commit: the
+ * generator SCREENSHOTS the live page, and the new city's page does not exist
+ * upstream until the commit creating it has deployed. So a roster change that
+ * adds cities lands red here, and the card sweep follows it — dispatch
+ * `regenerate-og-cards.yml` once the deploy is out, or generate the few by hand
+ * with `KINOWO_COUNTRY=<code> sbt "web/PageTest/runMain tools.OgCardGenerator
+ * <slug>…"`, which takes about five seconds a card against prod.
+ *
  * Runs off the filenames rather than the rendered HTML on purpose: the page
  * specs (`RepertoirePreviewMetaSpec`, `LandingPreviewMetaSpec`) already pin the
  * URL a page emits, so what is left to prove is that the other end of that URL
@@ -36,32 +44,13 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     missing(Country.all.map(_.homeOgImage)) shouldBe empty
   }
 
-  /** Cities whose card cannot exist yet, because `tools.OgCardGenerator`
-   *  SCREENSHOTS the live page and theirs is not live until the commit that
-   *  creates them has deployed. Cleared by dispatching `regenerate-og-cards.yml`
-   *  once it has.
-   *
-   *  Asserted to be EXACTLY the set still missing, not merely a permitted upper
-   *  bound: an entry that has since been generated fails here and has to be
-   *  deleted, so the list cannot quietly become the place missing cards go.
-   *
-   *  2026-09-03 — the Eastern Sierra, the metro `cluster_metros.FOLD_BARRIERS`
-   *  keeps out of Fresno. The sixteen cities of the Alaska/Hawaii split and the
-   *  corrected venue coordinates were listed here too and are now generated. */
-  private val awaitingFirstDeploy: Set[String] = Set(
-    "og-eastern-sierra.jpg",
-  )
-
   "every city, in every country" should "have the card its index page names" in {
     val absent = missing(Country.all.flatMap(_.cities).map(_.shareImage))
     // Only the first few names, or a country that was never swept prints its
     // whole roster — 546 filenames on one assertion line, in the run that
     // introduced this spec.
     withClue(s"${absent.size} cities have no committed share card; first: ") {
-      absent.filterNot(awaitingFirstDeploy).take(8) shouldBe empty
-    }
-    withClue("cards listed as awaiting their first deploy that now exist — delete them from the list: ") {
-      awaitingFirstDeploy.diff(absent.toSet) shouldBe empty
+      absent.take(8) shouldBe empty
     }
   }
 
