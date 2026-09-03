@@ -240,17 +240,31 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
   /** The memory requests of everything on k3s-worker-1 that is NOT a kinowo tier — the pods the
    *  512Mi `SystemReserveMib` is set aside for. Read from the manifests, so this is what WILL be
    *  requested, not what happens to be scheduled today. */
-  private def reserveTenants: Seq[(String, Int)] =
-    Seq("kube-state-metrics", "headlamp").map { component =>
-      val yaml = Seq(s"infra/kubernetes/$component/deployment.yaml")
-        .map(RepoFile.read).mkString("\n")
-      val lines = yaml.linesIterator.map(_.trim).toList
-      val memory = lines.dropWhile(_ != "requests:").drop(1).takeWhile(_ != "limits:").collectFirst {
-        case l if l.startsWith("memory:") => l.stripPrefix("memory:").trim.replace("\"", "")
-      }
-      withClue(s"$component declares no memory request: ")(memory should not be empty)
-      component -> parseMib(memory.get)
+  private def reserveTenants: Seq[(String, Int)] = {
+    /** Every `requests: memory:` in one manifest. A file with several Deployments — Flux ships two
+     *  controllers in one — contributes all of them, or the reserve is under-counted by whatever
+     *  the first block happens to be. */
+    def requestsIn(path: String): Int = {
+      val lines = RepoFile.read(path).linesIterator.map(_.trim).toList
+      lines.sliding(6).collect {
+        case window if window.head == "requests:" =>
+          window.tail.takeWhile(l => !l.startsWith("limits:")).collectFirst {
+            case l if l.startsWith("memory:") => parseMib(l.stripPrefix("memory:").trim.replace("\"", ""))
+          }.getOrElse(0)
+      }.sum
     }
+    val tenants = Seq(
+      "kube-state-metrics" -> "infra/kubernetes/kube-state-metrics/deployment.yaml",
+      "headlamp"           -> "infra/kubernetes/headlamp/deployment.yaml",
+      // Flux's source- and kustomize-controller, vendored from `flux install --export`.
+      "flux"               -> "infra/kubernetes/flux/gotk-components.yaml",
+    )
+    tenants.map { case (name, path) =>
+      val mib = requestsIn(path)
+      withClue(s"$name declares no memory request in $path: ")(mib should be > 0)
+      name -> mib
+    }
+  }
 
   // THE RESERVE IS A BUDGET NOBODY WAS SPENDING AGAINST. `SystemReserveMib` is subtracted from the
   // node's allocatable before the kinowo ledger is checked, so every mebibyte a non-kinowo pod
