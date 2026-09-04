@@ -1,7 +1,9 @@
 # Restoring a stopped country
 
 > **Status: the 2026-08-02 shutdown was reversed on 2026-08-29.** UK and Germany
-> are deployed again — on `uk.showtimes.cc` and `de.showtimes.cc`, on the k3s
+> are deployed again — at `showtimes.cc/uk` and `showtimes.cc/de` (PATHS on the
+> one origin; the `uk.`/`de.` subdomains were the plan, never shipped, and have
+> no certificate), on the k3s
 > cluster rather than Fly (see `docs/domain-cutover.md`). Everything below is
 > kept because it is the general procedure, not a description of today; read it
 > as "what to do if a country is stopped again". Steps that used to name `flyctl`

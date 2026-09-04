@@ -6,8 +6,8 @@ hostnames onto two domains this project owns:
 | was | is | serves |
 | --- | --- | --- |
 | `kinowo.fly.dev` | `kinowo.net` | Poland |
-| `showtimes-uk.fly.dev` | `uk.showtimes.cc` | United Kingdom |
-| `showtimes-de.fly.dev` | `de.showtimes.cc` | Germany |
+| `showtimes-uk.fly.dev` | `showtimes.cc/uk` | United Kingdom |
+| `showtimes-de.fly.dev` | `showtimes.cc/de` | Germany |
 | — | `showtimes.cc` | the brand front door: a country picker, Poland included |
 | `grafana.2-28-52-210.sslip.io` | `grafana.kinowo.net` | Grafana (sslip name RETIRED 2026-09-01 — see below) |
 
@@ -29,9 +29,19 @@ ordering — several of the steps below are only safe in one sequence.
    grafana.kinowo.net A 128.140.49.167 # monitoring-1 — NOT the same host
    showtimes.cc      A  2.28.47.31
    www.showtimes.cc  A  2.28.47.31
-   uk.showtimes.cc   A  2.28.47.31
-   de.showtimes.cc   A  2.28.47.31
+   uk.showtimes.cc   A  2.28.47.31    # NOT how the UK is served — see below
+   de.showtimes.cc   A  2.28.47.31    # NOT how Germany is served — see below
    ```
+
+   > **The per-country subdomains were the original plan and are NOT what
+   > shipped.** Each country is mounted as a PATH on the one origin —
+   > `Country.webOrigin` + `Country.pathPrefix` in
+   > `common/src/main/scala/models/Country.scala` give `showtimes.cc/uk`,
+   > `/de`, `/us`, `/es`, with Poland at `kinowo.net` on its own domain. The two
+   > `A` records above still resolve but no certificate covers them, so
+   > `https://uk.showtimes.cc` fails the TLS handshake outright
+   > (`tlsv1 alert internal error`, re-confirmed 2026-09-04). Link to the path
+   > form; treat a subdomain URL anywhere as a bug.
 
    The records live at OVH. Both addresses are pinned by
    `infra/terraform/primary_ips.tf` with `auto_delete = false`, so they are safe

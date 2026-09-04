@@ -33,8 +33,9 @@ away). Two framing bugs were also found and fixed:
 
 The harness is no longer throwaway: `worker/src/test/scala/scripts/GateReport.scala`
 reads the **live** prod corpus via `MovieRepository.foreachRecord` (paginated —
-a single `findAll` over the flyctl proxy corrupts the BSON stream on the full
-736-doc load) and loops all three modes. Run it with:
+a single `findAll` corrupts the BSON stream on the full 736-doc load — found
+over what was then a `flyctl proxy`, but the fault is the unpaged read, not the
+hop, so it survived the move to the ssh forward) and loops all three modes. Run it with:
 
 ```
 MONGODB_URI=… TMDB_API_KEY=… sbt 'worker/Test/runMain scripts.GateReport [out.jsonl] [capPerMode]'

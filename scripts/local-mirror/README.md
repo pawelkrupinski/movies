@@ -368,11 +368,13 @@ and `LOCAL_MONGO_URI`/`LOCAL_MONGO_DB` (default `kinowo_local`) from `.env.local
 > `.github/workflows/sync-title-rules.yml`), and `scripts.ApplyExtraTitleRules`
 > (code→prod-DB, proposing new rules).
 
-> **CI still tunnels via Fly.** `.github/workflows/record-scrape-fixtures.yml`
-> (through `scripts/ci/wait-for-mongo-tunnel.sh`) opens a `flyctl proxy --app
-> kinowo-mongo` to reach prod Mongo, and the 2026-08-29 move stranded it.
-> Repointing CI needs an ssh deploy key in GitHub secrets — a separate decision
-> from this local repoint, which needs no new secret at all.
+> **CI was repointed too, and no longer tunnels via Fly.**
+> `.github/workflows/record-scrape-fixtures.yml` (through
+> `scripts/ci/wait-for-mongo-tunnel.sh`) reaches prod Mongo over an ssh key
+> pinned to a forced command on `mongo-1` — the narrowest route a driver-side
+> read can use; `infra/nix/modules/roles/mongo-ci-read.nix` argues the case. That
+> end needed a deploy key in GitHub secrets, which is why it landed separately
+> from this local repoint; this one needs no new secret at all.
 
 ## Teardown
 
