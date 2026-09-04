@@ -1,0 +1,110 @@
+---
+# CAN THE PROJECTION RATE STILL BE EXPLAINED? -- the question the read-model panels could not
+# answer for a whole evening, because half the answer had no metric.
+#
+# `ReadModelProjector` is fed by TWO change-stream cursors and only one of them was ever counted:
+#
+#   kinowo_worker_movie_change_events_total{country,op}       the `movies` cursor
+#   kinowo_worker_screenings_change_events_total{country,op}  the `screenings` cursor -- one event
+#       per changed screenings DOCUMENT, i.e. per (film, cinema slot), and normally the LARGER of
+#       the two by an order of magnitude
+#
+# Each event costs one `kinowo_worker_readmodel_project_calls_total`, so in a healthy worker the
+# projection rate tracks the SUM of the two within noise. On 2026-09-04 worker-de logged 184
+# movies events against 10,114 projections in 85 minutes and every panel that could have named the
+# cause plotted only the movies line -- which was flat. The number was not wrong, it was
+# unattributable, and there is no threshold that catches "unattributable". A RATIO against the
+# metered input is the only thing that does.
+#
+# WHAT THIS DELIBERATELY DOES NOT ALERT ON.
+#
+#   The redundant-write share. `kinowo_worker_screenings_writes_total{outcome="unchanged"}` counts
+#   writes the store recognised as no-ops and dropped. A HIGH share there is the guard EARNING ITS
+#   KEEP, not a fault -- `replaceFilm` is film-wide while its callers' change is one venue, so a
+#   wide release legitimately offers hundreds of unchanged rows per scrape (297 of 298 on prod DE).
+#   Alerting on it would page for healthy operation, which is how a channel gets ignored. It is a
+#   panel, and the number to read once this rule has already told you something is wrong.
+#
+#   Projections with no read-model output. `readmodel_writes_total` sits near zero even when
+#   projection is hot -- that is what the metadata-reuse cache is FOR -- so "hot with no output" is
+#   the normal shape, not the broken one.
+#
+# THE `country` LABEL comes from the SCRAPE (scrape-kinowo-apps.yaml labels each worker's NodePort
+# target), not from the application, so it is true by construction.
+groups:
+  - name: read-model-projection
+    rules:
+      # -----------------------------------------------------------------------------------------
+      # THE PROJECTOR IS RUNNING FAR AHEAD OF ANYTHING THAT COULD BE TRIGGERING IT.
+      #
+      # 3x, not 1.1x. One event is one projection by construction, but the two rates are measured
+      # over the same window from different counters and a burst that straddles the window edge
+      # skews the ratio either way; a cursor that reopens and replays from its resume token counts
+      # its events again and legitimately runs the ratio under 1. Three times the metered input is
+      # far outside any of that, and the shape this exists for ran at FIFTY-FIVE times.
+      #
+      # THE 0.5/s FLOOR IS THE POINT OF THE RULE, not decoration. At PL's quiet-hour 0.03/s a
+      # single stray projection against zero events is an infinite ratio, and every country idles
+      # there overnight. The floor is what keeps this rule about volume that costs something: 0.5
+      # projections/s is already above every country's measured baseline over 2026-09-01..04
+      # (PL 0.1-0.6, DE 0.02-0.4, US 0.6-1.4).
+      #
+      # A MISSING screenings COUNTER MAKES THIS SILENT, not loud: the sum of two instant vectors is
+      # empty when either side has no series, so this rule says nothing until a build that exports
+      # both is deployed. That is the safe direction, and `ReadModelProjectionMetricsAbsent` below
+      # is what notices the metrics have gone entirely.
+      - alert: ReadModelProjectionTriggerUnaccounted
+        expr: >-
+          (
+            sum by (country) (rate(kinowo_worker_readmodel_project_calls_total[30m]))
+            > 3 * (
+              sum by (country) (rate(kinowo_worker_movie_change_events_total[30m]))
+              + sum by (country) (rate(kinowo_worker_screenings_change_events_total[30m]))
+            )
+          ) > 0.5
+        # ONE HOUR. The rate windows are already 30m, so this is not waiting for the condition to
+        # be real -- it is waiting out a worker rollout, where a restarted cursor replays from its
+        # resume token and both counters restart at zero at slightly different moments. The fleet
+        # redeployed five times in the four hours before this rule was written.
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} is projecting {{ $value | printf \"%.2f\" }}/s more than its change streams can explain"
+          description: >-
+            `readmodel_project_calls_total` is running more than 3x the combined rate of the two
+            cursors that are supposed to drive it, so something is projecting rows that no metered
+            change-stream event asked for. Panel 47 on the application dashboard plots all three
+            series together and panel 48 draws the sum. Check, in order: whether a THIRD trigger
+            has been added and not metered (that is what this rule exists to catch -- the
+            `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening);
+            whether `ReadModelProjector.reconcile` is being called by something other than a
+            backfill script (the scheduled sweep re-projects nothing and logs "reprojected 0
+            doc(s)", so its log line settles that in one grep); and whether a cursor is reopening
+            in a loop, which replays its resume token and inflates projections without inflating
+            the event counters proportionally.
+
+      # -----------------------------------------------------------------------------------------
+      # THE COMPANION, in the shape mongodb.rules and cinema-scrape.rules use throughout: a rule
+      # that can only fire on a series has to be paired with one that fires on the series'
+      # ABSENCE, or the monitoring's own failure looks exactly like health. The rule above is
+      # silent when its inputs are missing, and silence is also what a well-behaved projector
+      # looks like.
+      #
+      # `absent()` OVER THE WHOLE METRIC, not per country: a per-country form would page for four
+      # countries throughout any deliberate single-country stop (the 2026-08-02 poland-only month).
+      - alert: ReadModelProjectionMetricsAbsent
+        expr: absent(kinowo_worker_readmodel_project_calls_total)
+        # ONE HOUR: longer than a rollout of every worker in the fleet.
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No worker is publishing read-model projection metrics"
+          description: >-
+            `kinowo_worker_readmodel_project_calls_total` has no series from any country, so
+            ReadModelProjectionTriggerUnaccounted cannot fire and the read model's whole input
+            path is unwatched. Either every worker is down -- in which case TargetDown in
+            monitoring-self.rules is also firing and is the better alert to read -- or the
+            projector is no longer wired to `WorkerTaskMetrics`, which TargetDown would NOT catch
+            because the pod is up and serving /metrics without this family in it.

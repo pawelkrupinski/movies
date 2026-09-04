@@ -528,7 +528,8 @@ class WorkerWiring(
     // Persist the screenings stream's resume token too (like `movies`): a showtime change
     // writes only `screenings`, so without this a restart drops showtime edits made while
     // down and only the full reproject catches them — the gap that kept it non-redundant.
-    new services.movies.MongoScreeningsRepository(mongoConnection.database, persistResumeToken = true)
+    new services.movies.MongoScreeningsRepository(mongoConnection.database, persistResumeToken = true,
+      metrics = taskMetrics)
   // Slot split: the per-cinema SourceData lives in `movie_slots`, one row per slot,
   // for the same reason showtimes moved to `screenings` — an UPDATE_LOOKUP change event
   // otherwise carries the whole film document, and those documents queue up on an
@@ -757,11 +758,17 @@ class WorkerWiring(
   // sourceFilmsMetrics, exposed as kinowo_worker_showtimes{country,city}.
   lazy val showtimesMetrics: services.metrics.WorkerShowtimesMetrics =
     new services.metrics.WorkerShowtimesMetrics(workerMetrics.showtimesGauge, country.code, cities = country.cities)
+  // The widest film's slot count — the blast radius of one film's write, since every write
+  // path is per-film and the screenings cursor rings once per row written (see
+  // WorkerSlotFanoutMetrics). Rides the same corpus pass as the three censuses above.
+  lazy val slotFanoutMetrics: services.metrics.WorkerSlotFanoutMetrics =
+    new services.metrics.WorkerSlotFanoutMetrics(workerMetrics.widestSlotsGauge, country.code)
   // ONE 5-minute corpus scan feeding all three censuses above. They each used to run
   // their own timer AND their own full scan of the same rows — 14,704 documents per
   // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
   lazy val corpusScan: services.metrics.WorkerCorpusScan =
-    new services.metrics.WorkerCorpusScan(movieRepository, Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics),
+    new services.metrics.WorkerCorpusScan(movieRepository,
+      Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics),
       metrics = services.metrics.CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code))
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).

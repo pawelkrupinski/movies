@@ -57,6 +57,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   val corpusGauge:    Gauge          = WorkerCorpusMetrics.gauge(registry)
   val servedGauge:    Gauge          = WorkerSourceFilmsMetrics.gauge(registry)
   val showtimesGauge: Gauge          = WorkerShowtimesMetrics.gauge(registry)
+  val widestSlotsGauge: Gauge        = WorkerSlotFanoutMetrics.gauge(registry)
   val (ratingNotRunGauge, ratingOldestAgeGauge) = RatingRunCensus.gauges(registry)
   val (scrapeOldestAgeGauge, scrapeNeverScrapedGauge) = CinemaScrapeCensus.gauges(registry)
   val (contentOldestAgeGauge, neverContentGauge) = CinemaContentCensus.gauges(registry)

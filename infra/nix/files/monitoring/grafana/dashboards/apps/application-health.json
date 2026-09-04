@@ -1515,6 +1515,84 @@
               }
             }
           ]
+        },
+        {
+          "id": 64,
+          "title": "Worker — screenings slot writes: made vs dropped as no-ops (per min)",
+          "description": "THE REDUNDANT-WRITE CANARY for the collection the read-model projection is actually driven by, from kinowo_worker_screenings_writes_total{outcome}. written = the row's showtimes moved, so it was written, reached the oplog, rang the screenings change stream and bought one projection of its film. unchanged = the store recognised the row as already correct and DROPPED the write, so it cost none of that. A HIGH UNCHANGED SHARE IS NOT A FAULT — it is this guard earning its keep. `replaceFilm` is film-wide while its callers' change is one venue, so a wide release legitimately offers hundreds of unchanged rows per scrape: prod DE measured 297 of 298 on 2026-09-04, and the widest US film carries 3,327 slots. Read the WRITTEN line instead — written climbing while the scrape rate (panels 20/21) stays flat is a caller that has started rewriting rows it did not change, and it is the only half of this panel that costs anything.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 178
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 10
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (outcome) (rate(kinowo_worker_screenings_writes_total{country=~\"$country\"}[$__rate_interval])) * 60",
+              "legendFormat": "{{outcome}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
+        },
+        {
+          "id": 65,
+          "title": "Worker — widest film's cinema slots, by country (one write's blast radius)",
+          "description": "kinowo_worker_film_widest_slots — how many cinema slots the WIDEST film in each country's corpus carries. Every write path in the read-split is per-FILM and the screenings cursor rings once per row written, so the cost of one venue changing one showtime is the slot count of the film it changed, not the corpus average. A MAXIMUM, because the distribution is long-tailed and only the tail is expensive: measured 2026-09-04, Germany averages ~16 venues per film against a widest of 698, and the US ~53 against 3,327. The no-op guard on `replaceFilm` removed the REDUNDANT part of that cost; it cannot remove this part — a wide release that really does change everywhere still writes every row it has. Read this beside the canary on the left: it is the ceiling that panel's `written` line can reach from a single film, and a step up in it means a new market has landed a film wider than anything the pipeline has carried.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 178
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 0
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (country) (kinowo_worker_film_widest_slots{country=~\"$country\"})",
+              "legendFormat": "{{country}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
         }
       ],
       "gridPos": {
@@ -2376,7 +2454,7 @@
         {
           "id": 47,
           "title": "kinowo-worker projection triggers & output (per-sec)",
-          "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. change-events/s is the projection TRIGGER (a movies/screenings write); projection-calls/s is how many rows projectAll ran on; readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU and the duration metric above was needed).",
+          "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. THERE ARE TWO TRIGGERS, and for a long time this panel drew only one: movie change-events/s is a `movies` write, screenings change-events/s is a `screenings` write (one row per film+cinema slot) — the second cursor, and normally the LARGER of the two. projection-calls/s should track their SUM; against the movies line alone it read as an unexplained 55:1 on worker-de (2026-09-04), which is what an unmetered trigger looks like. readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU). calls/s high with writes/s ~0 means the projector is being rung by writes that changed nothing.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2405,6 +2483,15 @@
               "refId": "A",
               "expr": "sum(rate(kinowo_worker_movie_change_events_total{country=~\"$country\"}[5m]))",
               "legendFormat": "movie change-events /s (projection trigger)",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "E",
+              "expr": "sum(rate(kinowo_worker_screenings_change_events_total{country=~\"$country\"}[5m]))",
+              "legendFormat": "screenings change-events /s (the OTHER projection trigger)",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"
@@ -2442,7 +2529,7 @@
         {
           "id": 48,
           "title": "Read-model projection efficiency",
-          "description": "How hard the read-model projection works. Over-triggering shows as high projection calls/s (the reproject/enrich churn re-projecting rows); an expensive-film tail shows as high p99 ms (one row whose resolve/synopsis work is costly). p50/p95/p99 are per-projection wall-clock in ms (LEFT axis); projections/s is the trigger rate (RIGHT axis). After the metadata-reuse cache, showtime-only churn keeps the percentiles low even when calls/s is high.",
+          "description": "How hard the read-model projection works. Over-triggering shows as high projections/s against a change-events/s that does NOT keep pace — one write ringing many projections, which is what a whole-film rewrite does (a `replaceFilm` re-writes every slot of the film, so a film at 3,327 US venues turns one changed showtime into 3,327 events). An expensive-film tail shows as high p99 ms instead. p50/p95/p99 are per-projection wall-clock in ms (LEFT axis); projections/s and change-events/s are on the RIGHT. change-events/s is the SUM of both cursors — `movies` and `screenings` — because the projector is fed by both and plotting only the first made a 2026-09-04 climb unattributable. After the metadata-reuse cache, showtime-only churn keeps the percentiles low even when calls/s is high.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2469,6 +2556,30 @@
                 "matcher": {
                   "id": "byName",
                   "options": "projections /s"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "short"
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  },
+                  {
+                    "id": "custom.axisLabel",
+                    "value": "projections / s"
+                  },
+                  {
+                    "id": "custom.fillOpacity",
+                    "value": 8
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "change-events /s (both cursors)"
                 },
                 "properties": [
                   {
@@ -2523,6 +2634,15 @@
               "refId": "D",
               "expr": "histogram_quantile(0.99, sum(rate(kinowo_worker_readmodel_project_duration_seconds_bucket{country=~\"$country\"}[5m])) by (le))*1000",
               "legendFormat": "p99 ms",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "E",
+              "expr": "sum(rate(kinowo_worker_movie_change_events_total{country=~\"$country\"}[5m])) + sum(rate(kinowo_worker_screenings_change_events_total{country=~\"$country\"}[5m]))",
+              "legendFormat": "change-events /s (both cursors)",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"

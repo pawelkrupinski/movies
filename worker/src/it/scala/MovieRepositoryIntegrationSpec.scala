@@ -463,8 +463,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // slot until one comes back proves the stream is live, and costs nothing once it is.
       val warmDeadline = System.currentTimeMillis() + 60000
       var established  = false
+      var warmHour     = 0
       while (!established && System.currentTimeMillis() < warmDeadline) {
-        repo1.upsertSlot(filmWarm, "Multikino␟W", at(9))
+        // A FRESH HOUR EVERY PASS. The warm-up used to re-write the same showtime, which was
+        // a change only the first time round — harmless while Mongo rang for byte-identical
+        // rewrites too, and an infinite loop the moment it stopped. Each pass is now a real
+        // change, so each has an event owed and the loop can actually converge.
+        warmHour += 1
+        repo1.upsertSlot(filmWarm, "Multikino␟W", at(warmHour % 23 + 1))
         established = gotWarm.await(1, TimeUnit.SECONDS)
       }
       withClue("the screenings change stream never delivered a warm-up event, so nothing " +
@@ -545,6 +551,133 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       seen.await(15, TimeUnit.SECONDS) shouldBe true
       recorded.synchronized(recorded.toList) should not be empty // an event was counted for the write
     } finally { handle.foreach(_.close()); repo.close() }
+  }
+
+  // …and the SECOND cursor's onNext feeds its own sink. This is the trigger the
+  // dashboard could not see: `movie_change_events` counts only the `movies` cursor, so a
+  // projection rate driven by screenings writes read as an unexplained 55:1 against its
+  // own stated trigger (worker-de, 2026-09-04). Same shape as the movies test above,
+  // because it is the same omission being closed.
+  it should "record screenings change-stream event stats onto the injected sink" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import java.time.LocalDateTime
+    import services.movies.{MongoScreeningsRepository, ScreeningsMetrics}
+
+    val recorded = scala.collection.mutable.ListBuffer.empty[String]
+    val sink = new ScreeningsMetrics {
+      def recordChangeEvent(op: String): Unit            = recorded.synchronized(recorded += op)
+      def recordWrite(outcome: String, count: Int): Unit = ()
+    }
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val repo   = new MongoScreeningsRepository(Some(db), metrics = sink)
+    val film   = "__it-screenings-metrics__"
+    val seen   = new CountDownLatch(1)
+    val handle = repo.watch(fid => if (fid == film) seen.countDown())
+    handle should not be empty
+    try {
+      // Write until one comes back rather than napping at the stream — the same
+      // establish-by-delivery rule the resume spec uses, and each attempt carries a
+      // DIFFERENT hour so every one of them is a genuine change with an event to count.
+      val deadline = System.currentTimeMillis() + 60000
+      var hour     = 0
+      var arrived  = false
+      while (!arrived && System.currentTimeMillis() < deadline) {
+        hour += 1
+        repo.upsertSlot(film, "Multikino␟M", Seq(Showtime(LocalDateTime.of(2099, 1, 1, hour % 24, 0), None)))
+        arrived = seen.await(1, TimeUnit.SECONDS)
+      }
+      withClue("the screenings change stream never delivered, so there is nothing to count: ") {
+        arrived shouldBe true
+      }
+      recorded.synchronized(recorded.toList) should not be empty
+    } finally { handle.foreach(_.close()); repo.deleteFilm(film); repo.close(); client.close() }
+  }
+
+  // THE CONTRACT `ScreeningsRepository.watch` HAS ALWAYS STATED — "a no-op write (unchanged
+  // showtimes) does NOT ring" — asserted against the MONGO store, which was the one
+  // implementation that did not honour it. `InMemoryScreeningsRepository` compares before it
+  // rings; Mongo stamped a fresh `updatedAt` into every row it wrote, so a byte-identical
+  // rewrite still reached the oplog and still rang. That is what turned one venue's changed
+  // showtime into a rewrite of all 298 rows of a German release, and 298 projections of one
+  // film (prod, 2026-09-04).
+  //
+  // NO SLEEP DECIDES THIS. A change stream delivers in oplog order, so the tripwire write —
+  // a genuine change, made AFTER the redundant one — cannot arrive before an event the
+  // redundant write would have produced. When the tripwire's ring lands, "nothing else
+  // arrived" is a fact rather than a guess about timing.
+  it should "not ring the screenings stream for a write that changes nothing" in {
+    import java.util.concurrent.atomic.AtomicInteger
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import java.time.LocalDateTime
+    import services.movies.{MongoScreeningsRepository, ScreeningsMetrics}
+
+    val unchanged = new AtomicInteger(0)
+    val written   = new AtomicInteger(0)
+    val sink = new ScreeningsMetrics {
+      def recordChangeEvent(op: String): Unit = ()
+      def recordWrite(outcome: String, count: Int): Unit =
+        (if (outcome == ScreeningsMetrics.Outcome.Unchanged) unchanged else written).addAndGet(count)
+    }
+    val client   = MongoClient(Env.get("MONGODB_URI").get)
+    val db       = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val repo     = new MongoScreeningsRepository(Some(db), metrics = sink)
+    val film     = "__it-screenings-noop__"
+    val after    = "__it-screenings-noop-tripwire__"
+    val slot     = "Multikino␟M"
+    def at(h: Int) = Seq(Showtime(LocalDateTime.of(2099, 1, 1, h, 0), None))
+
+    val rings    = new AtomicInteger(0)
+    val warmed   = new CountDownLatch(1)
+    val tripwire = new CountDownLatch(1)
+    // Both latches and the counter are fed from ONE watcher, so they see one cursor's
+    // ordering. Nothing here reads Mongo — the callback runs on the driver's event loop.
+    val handle   = repo.watch { fid =>
+      if (fid == film)  { rings.incrementAndGet(); warmed.countDown() }
+      if (fid == after) tripwire.countDown()
+    }
+    handle should not be empty
+    try {
+      // Establish by DELIVERY, not by napping: write a fresh hour each pass until one comes
+      // back. Every pass is a genuine change, so each has an event owed.
+      val deadline = System.currentTimeMillis() + 60000
+      var hour     = 0
+      var live     = false
+      while (!live && System.currentTimeMillis() < deadline) {
+        hour += 1
+        repo.upsertSlot(film, slot, at(hour % 23 + 1))
+        live = warmed.await(1, TimeUnit.SECONDS)
+      }
+      withClue("the screenings change stream never delivered, so a silent one proves nothing: ") {
+        live shouldBe true
+      }
+
+      val settled = repo.findForFilm(film)(slot)
+      rings.set(0); unchanged.set(0); written.set(0)
+
+      // (1) THE REDUNDANT WRITES — byte-identical to what is stored, through BOTH write paths.
+      repo.upsertSlot(film, slot, settled)
+      repo.replaceFilm(film, Map(slot -> settled))
+      // (2) THE TRIPWIRE — a different film, so a genuine change whose event orders after
+      //     anything (1) could have produced.
+      repo.upsertSlot(after, slot, at(7))
+
+      withClue("the tripwire write never arrived, so the stream stopped rather than stayed quiet: ") {
+        tripwire.await(30, TimeUnit.SECONDS) shouldBe true
+      }
+      withClue("two byte-identical writes rang the screenings stream, and every ring costs " +
+               "the read-model projector a stitch read plus a full projection of the film: ") {
+        rings.get() shouldBe 0
+      }
+      withClue("the redundant rows must be COUNTED as dropped, not silently skipped — that " +
+               "count is the canary this class of problem is diagnosed from: ") {
+        unchanged.get() shouldBe 2   // upsertSlot's row, and replaceFilm's
+        written.get()   shouldBe 1   // only the tripwire
+      }
+    } finally {
+      handle.foreach(_.close()); repo.deleteFilm(film); repo.deleteFilm(after)
+      repo.close(); client.close()
+    }
   }
 
   it should "handle Enrichments with all-None optional fields" in {
@@ -1462,15 +1595,25 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private def screeningsDb(client: MongoClient) =
     client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
 
-  // `replaceFilm` used to cost a blocking `replaceOne` per slot, then a `findForFilm`
-  // read, then a blocking `deleteOne` per stale slot — 12 sequential round-trips for a
-  // film showing in 10 cinemas, paid on EVERY `MovieRepository.upsert` (i.e. constantly,
-  // right through a scrape pass). It is now ONE ordered `bulkWrite`: all the slot upserts
-  // plus a single `deleteMany` of the slots the write no longer names, which the driver
-  // puts on the wire as one `update` command and one `delete` command, with no `find` at
-  // all. Counted through a real driver command listener, so it fails before the change
-  // (find=1, update=3, delete=2) and passes after (find=0, update=1, delete=1).
-  it should "replace a film's slots in ONE bulk round-trip, with no read" in {
+  // `replaceFilm` used to cost a blocking `replaceOne` per slot, then a `findForFilm` read,
+  // then a blocking `deleteOne` per stale slot — 12 sequential round-trips for a film showing
+  // in 10 cinemas, paid on EVERY `MovieRepository.upsert` (i.e. constantly, right through a
+  // scrape pass). It is now ONE ordered `bulkWrite`: the slot upserts plus a single
+  // `deleteMany` of the slots the write no longer names, which the driver puts on the wire as
+  // one `update` command and one `delete` command.
+  //
+  // THE READ IS BACK, ON PURPOSE, and this test changed with it. It was asserting find=0,
+  // which was the right bargain while the only cost of a redundant row was the row: a bulk
+  // write of 298 `ReplaceOneModel`s is one round trip either way. It is the WRONG bargain
+  // once you count what those rows cost downstream — each one lands in the oplog, rings the
+  // `screenings` change stream, and buys `ReadModelProjector` a stitch read plus a full
+  // projection of the same film. Prod, 2026-09-04: one venue's changed showtime on a film
+  // attached to 298 German cinemas rewrote all 298 rows, six times over, consecutive versions
+  // differing only in `updatedAt`. So this now pins the CURRENT trade — one indexed read
+  // buying the writes it avoids — and the round-trip collapse it was written for is still
+  // pinned beside it: the upserts remain ONE update command, the stale slots ONE delete,
+  // never one per slot.
+  it should "replace a film's slots in one bulk round-trip, reading once to write only what moved" in {
     import com.mongodb.event.{CommandListener, CommandStartedEvent}
     import com.mongodb.{ConnectionString, MongoClientSettings}
     import services.movies.MongoScreeningsRepository
@@ -1488,7 +1631,15 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val client = MongoClient(MongoClientSettings.builder()
       .applyConnectionString(new ConnectionString(Env.get("MONGODB_URI").get))
       .addCommandListener(listener).build())
-    val screenings = new MongoScreeningsRepository(Some(screeningsDb(client)))
+    val writes     = new ConcurrentHashMap[String, AtomicInteger]()
+    val sink = new services.movies.ScreeningsMetrics {
+      def recordChangeEvent(op: String): Unit = ()
+      def recordWrite(outcome: String, count: Int): Unit = {
+        writes.computeIfAbsent(outcome, _ => new AtomicInteger(0)).addAndGet(count); ()
+      }
+    }
+    def wrote(outcome: String): Int = Option(writes.get(outcome)).map(_.get()).getOrElse(0)
+    val screenings = new MongoScreeningsRepository(Some(screeningsDb(client)), metrics = sink)
     val film       = "__it-screenings-bulk-roundtrips__"
     try {
       // Seed four slots (this also forces the lazy collection + its createIndex, so those
@@ -1497,13 +1648,19 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         "A" -> Seq(show(10)), "B" -> Seq(show(11)), "C" -> Seq(show(12)), "STALE" -> Seq(show(13))))
       screenings.findForFilm(film).keySet shouldBe Set("A", "B", "C", "STALE")
 
-      commands.clear()
+      commands.clear(); writes.clear()
       // One changed slot, one unchanged, one brand new — and two slots going stale.
       screenings.replaceFilm(film, Map("A" -> Seq(show(20)), "B" -> Seq(show(11)), "NEW" -> Seq(show(14))))
 
-      count("find")   shouldBe 0 // the findForFilm read is gone entirely
-      count("update") shouldBe 1 // all three upserts ride one bulk update
-      count("delete") shouldBe 1 // both stale slots go in one deleteMany
+      count("find")   shouldBe 1 // ONE indexed read, and it is what the two lines below buy
+      count("update") shouldBe 1 // the upserts still ride one bulk update, never one per slot
+      count("delete") shouldBe 1 // both stale slots still go in one deleteMany
+
+      // …and the bulk update carries only what moved. The command count cannot see inside it,
+      // so the write outcomes are what say so — and they are the same numbers the redundant-
+      // write canary publishes, which is the metric this class of problem is diagnosed from.
+      wrote("written")   shouldBe 2 // A moved; NEW had no row
+      wrote("unchanged") shouldBe 1 // B was already exactly this, so it was not written
 
       // …and the collapse did not change the result.
       screenings.findForFilm(film) shouldBe Map(

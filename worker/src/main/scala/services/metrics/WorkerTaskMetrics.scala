@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, SplitMetrics}
+import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, ScreeningsMetrics, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
@@ -68,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ChangeStreamMetrics with CacheSyncMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ChangeStreamMetrics with ScreeningsMetrics with CacheSyncMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -91,6 +91,10 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // ── ChangeStreamMetrics ─────────────────────────────────────────────────────
   def recordEvent(op: String): Unit        = series.recordEvent(countryCode, op)
   def recordUpdateKind(kind: String): Unit = series.recordUpdateKind(countryCode, kind)
+
+  // ── ScreeningsMetrics ───────────────────────────────────────────────────────
+  def recordChangeEvent(op: String): Unit = series.recordScreeningsChangeEvent(countryCode, op)
+  def recordWrite(outcome: String, count: Int): Unit = series.recordScreeningsWrite(countryCode, outcome, count)
 
   // ── Task lifecycle ──────────────────────────────────────────────────────────
   def recordEnqueue(taskType: TaskType, result: String): Unit = series.recordEnqueue(countryCode, taskType, result)
@@ -257,6 +261,18 @@ object WorkerTaskMetrics {
       .labelNames("country", "kind")
       .register(registry)
 
+    private val screeningsChangeEvents = Counter.builder()
+      .name("kinowo_worker_screenings_change_events")
+      .help("Screenings change-stream events the SECOND cursor consumed since boot, by country and op (insert|update|replace|delete). The read-model projection's larger trigger: this cursor rings once per changed screenings DOCUMENT — one per (film, cinema slot) — and each ring costs a stitch read plus a full projection. Read readmodel_project_calls_total against the SUM of this and movie_change_events; against movie_change_events alone it reads as an unexplained 55:1, which is what a 2026-09-04 projection climb looked like while this half of the input had no counter.")
+      .labelNames("country", "op")
+      .register(registry)
+
+    private val screeningsWrites = Counter.builder()
+      .name("kinowo_worker_screenings_writes")
+      .help("Slot writes the screenings store was asked to make since boot, by country and outcome. written=the row's showtimes moved and it was written; unchanged=the row already held exactly what the caller asked for, so the write was DROPPED — it never reached the oplog, never rang the screenings change stream and never bought a read-model projection. A high unchanged SHARE is the guard working, not a fault: `replaceFilm` is film-wide while its callers' change is one venue, so a wide release rewrote every row it had (297 of 298 redundantly on prod DE, 2026-09-04). Watch the WRITTEN rate against the scrape rate instead — written climbing under a flat scrape rate is a caller that has started rewriting rows it did not change.")
+      .labelNames("country", "outcome")
+      .register(registry)
+
     seed()
 
     /** Materialize every series at 0 for every country so it exists from boot (no
@@ -287,6 +303,8 @@ object WorkerTaskMetrics {
           Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
         Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
         ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
+        ChangeStreamMetrics.Ops.foreach(o => screeningsChangeEvents.labelValues(c, o))
+        ScreeningsMetrics.Outcomes.foreach(o => screeningsWrites.labelValues(c, o))
         ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(c, k))
       }
       poolSizeGauge.set(poolSize.toDouble)
@@ -334,6 +352,11 @@ object WorkerTaskMetrics {
     // ── ChangeStreamMetrics ────────────────────────────────────────────────────
     def recordEvent(country: String, op: String): Unit       = changeEvents.labelValues(country, op).inc()
     def recordUpdateKind(country: String, kind: String): Unit = changeUpdateKinds.labelValues(country, kind).inc()
+
+    // ── ScreeningsMetrics ──────────────────────────────────────────────────────
+    def recordScreeningsChangeEvent(country: String, op: String): Unit = screeningsChangeEvents.labelValues(country, op).inc()
+    def recordScreeningsWrite(country: String, outcome: String, count: Int): Unit =
+      if (count > 0) screeningsWrites.labelValues(country, outcome).inc(count.toDouble)
 
     def recordEnqueue(country: String, taskType: TaskType, result: String): Unit =
       enqueued.labelValues(country, taskType.name, result).inc()

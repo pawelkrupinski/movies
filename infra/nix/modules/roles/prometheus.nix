@@ -181,6 +181,11 @@ let
     # Whether the fleet is still deploying itself. The failure this covers is completely silent:
     # an applier that has stopped leaves every service running and every other alert green.
     "nixos-deploy"
+    # CAN THE READ MODEL'S PROJECTION RATE STILL BE EXPLAINED. The projector is fed by two change
+    # streams and only one of them was counted, so a 40x climb on 2026-09-04 sat against a flat
+    # "projection trigger" line and could not be attributed for an evening. Alphabetically after
+    # nixos-deploy and before web-errors.
+    "read-model-projection"
     # IS THE SITE ANSWERING. Every other file here watches a machine or a process, all of which can
     # be green while the web tier serves a 500 to every visitor. Added after the "Error share" panel
     # spent an afternoon at 25% with nothing failing -- the file explains why the 4xx half of that

@@ -252,6 +252,27 @@ object ScreeningsRepository {
       s -> screenings.get(s.displayName).fold(if (sd.showtimes.isEmpty) sd else sd.copy(showtimes = Seq.empty))(st => sd.copy(showtimes = st))
     }
 
+  /** The rows of `incoming` a write actually has to make — the ones whose stored showtimes
+   *  differ, plus the ones with no stored row at all.
+   *
+   *  `replaceFilm` is film-wide but its CALLERS' change is not: one venue re-scrapes, its own
+   *  slot moves, the film's whole map therefore differs, and every other row of the film is
+   *  rewritten with nothing but a new `updatedAt`. That is not free — each rewritten row is a
+   *  `screenings` change event, and each event costs `ReadModelProjector` a stitch read and a
+   *  full projection OF THE SAME FILM. Measured on prod 2026-09-04: a newly-folded German
+   *  release attached to 298 venues produced six bursts of 298 writes, 297 of them redundant,
+   *  consecutive versions of a row differing only in `updatedAt`. The blast radius is a film's
+   *  venue count, and the widest US film carries 3,327 slots.
+   *
+   *  `readComplete = false` returns EVERYTHING: a read that did not see the film cannot say
+   *  which of its rows are unchanged, and writing a row that did not need it is the harmless
+   *  direction — skipping one that did is not. Same convention as `reStitchChecked`.
+   *
+   *  Pure, so the rule this whole guard rests on is unit-tested without a Mongo. */
+  def changedSlots(stored: Map[String, Seq[Showtime]], readComplete: Boolean,
+                   incoming: Map[String, Seq[Showtime]]): Map[String, Seq[Showtime]] =
+    if (!readComplete) incoming else incoming.filter { case (k, st) => !stored.get(k).contains(st) }
+
   /** The stored slots of `filmId` that `keep` no longer names — the DELETE half of
    *  `replaceFilm`, as ONE server-side predicate instead of a `findForFilm` read plus a
    *  `deleteOne` per stale slot.
@@ -307,7 +328,11 @@ class MongoScreeningsRepository(
   // Persist THIS stream's resume token so a restart replays showtime changes that landed
   // while down — the `movies` stream can't, a showtime write never touches `movies`. ON only
   // in the worker (the durable mirror); OFF for web /debug + scripts. See [[ChangeStreamResumeToken]].
-  persistResumeToken:   Boolean        = false
+  persistResumeToken:   Boolean        = false,
+  // What this store streams. The worker passes the Prometheus sink; everything else keeps
+  // the no-op. This cursor is the read-model projection's larger trigger and had no metric
+  // at all, which is what made a 40x projection climb unattributable — see [[ScreeningsMetrics]].
+  metrics:              ScreeningsMetrics = ScreeningsMetrics.noop
 ) extends ScreeningsRepository with Logging {
   import ScreeningsRepository.IdSep
 
@@ -392,7 +417,9 @@ class MongoScreeningsRepository(
    *     `$nin: []` still deletes every one of the film's slots;
    *   - a slot mapped to EMPTY showtimes is still STORED (callers filter those out via
    *     `showtimesOf`; `replaceFilm` itself never did), not treated as a delete;
-   *   - an unchanged slot is still rewritten — idempotent, as before.
+   *   - an unchanged slot is NO LONGER rewritten. That is the one semantic that changed, and
+   *     it changed because the rewrite was never idempotent where it counted: the row lands
+   *     in the oplog with a fresh `updatedAt`, rings the change stream, and buys a projection.
    *
    *  ORDERED, so the upserts land before the delete exactly as they did and the delete
    *  can never race ahead of a slot this same call is re-writing. The request list is
@@ -401,7 +428,20 @@ class MongoScreeningsRepository(
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = coll.foreach { c =>
     Try {
       val now     = Instant.now()
-      val upserts = slots.toSeq.map { case (k, st) =>
+      // Rewrite only the rows that MOVED. One indexed read on `filmId` — the same read the
+      // delete half used to make before it became a server-side predicate — buys the whole
+      // saving, because the redundant rows are not merely wasted writes: each one rings this
+      // collection's change stream and costs a projection of the film it belongs to. See
+      // `ScreeningsRepository.changedSlots` for the measurement.
+      //
+      // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film
+      // should end up with), never from the subset being written, so a row that is correct and
+      // therefore skipped is still a row this call keeps.
+      val (stored, readComplete) = findForFilmChecked(filmId)
+      val changed = ScreeningsRepository.changedSlots(stored, readComplete, slots)
+      metrics.recordWrite(ScreeningsMetrics.Outcome.Written,   changed.size)
+      metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, slots.size - changed.size)
+      val upserts = changed.toSeq.map { case (k, st) =>
         val dto = StoredScreeningsDto(idOf(filmId, k), filmId, k, st, now)
         ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
       }
@@ -414,9 +454,27 @@ class MongoScreeningsRepository(
   }
 
   def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = coll.foreach { c =>
-    Try(upsertOne(c, filmId, slotKey, showtimes))
-      .recover { case e => logger.warn(s"ScreeningsRepository.upsertSlot($filmId,$slotKey) failed: ${e.getMessage}") }
+    // Same no-op guard as `replaceFilm`, at the granularity this method works in: a point read
+    // on the composite `_id`. A row that is already what we would write must not be written,
+    // because the write is what rings the change stream — the trait's contract has always said
+    // so and `InMemoryScreeningsRepository` has always honoured it; only this side did not.
+    // A read that fails, and a row that is absent, both read as "differs" and write.
+    Try {
+      if (storedShowtimes(c, filmId, slotKey).contains(showtimes))
+        metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, 1)
+      else {
+        upsertOne(c, filmId, slotKey, showtimes)
+        metrics.recordWrite(ScreeningsMetrics.Outcome.Written, 1)
+      }
+    }.recover { case e => logger.warn(s"ScreeningsRepository.upsertSlot($filmId,$slotKey) failed: ${e.getMessage}") }
   }
+
+  /** One row's stored showtimes, or None when it is absent OR unreadable — the two cases
+   *  `upsertSlot` treats alike, because both mean "we cannot say this write is redundant". */
+  private def storedShowtimes(c: MongoCollection[StoredScreeningsDto],
+                              filmId: String, slotKey: String): Option[Seq[Showtime]] =
+    Try(Await.result(c.find(Filters.eq("_id", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))
+      .toOption.flatMap(Option(_)).map(_.showtimes)
 
   def deleteSlot(filmId: String, slotKey: String): Unit = coll.foreach { c =>
     Try { deleteOne(c, filmId, slotKey); RemovalAudit.slotRemoved("screenings.deleteSlot", filmId, slotKey, "slot-deleted") }
@@ -459,6 +517,10 @@ class MongoScreeningsRepository(
           override def onSubscribe(s: Subscription): Unit = { subRef.set(s); demand.opened(s) }
           override def onNext(change: ChangeStreamDocument[StoredScreeningsDto]): Unit = {
             reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
+            // Count the event BEFORE anything can drop it: an event the caller's `onChange`
+            // throws on, or one the resume-token save fails behind, still cost a projection.
+            metrics.recordChangeEvent(
+              ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse("")))
             // Advance the resume position BEFORE ringing onChange, so a re-stitch can never
             // observe the change before the token moves past it.
             resumeToken.advance(change.getResumeToken)

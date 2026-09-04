@@ -39,6 +39,7 @@ rule_files:
   - "/etc/prometheus/rules/mongodb.rules"
   - "/etc/prometheus/rules/monitoring-self.rules"
   - "/etc/prometheus/rules/nixos-deploy.rules"
+  - "/etc/prometheus/rules/read-model-projection.rules"
   - "/etc/prometheus/rules/web-errors.rules"
   - "/etc/prometheus/rules/web-latency.rules"
 

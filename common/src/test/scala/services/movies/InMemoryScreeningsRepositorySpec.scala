@@ -22,6 +22,35 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
     repo.findAll().keySet shouldBe Set("wonka|2026")
   }
 
+  // THE RULE THE WHOLE-FILM WRITE RESTS ON. `replaceFilm` is film-wide but its callers'
+  // change is one venue: a venue re-scrapes, its own slot moves, the film's map therefore
+  // differs, and every OTHER row of the film was rewritten with nothing but a new
+  // `updatedAt`. Each of those rewrites rings the screenings change stream and buys the
+  // read-model projector a stitch read plus a full projection of the same film — 297 of
+  // 298 rows redundant on prod DE (2026-09-04), and the widest US film carries 3,327.
+  "changedSlots" should "name only the rows whose showtimes moved, or that are not stored yet" in {
+    val stored = Map("A␟f" -> Seq(st(10)), "B␟f" -> Seq(st(11)))
+    ScreeningsRepository.changedSlots(stored, readComplete = true,
+      Map("A␟f" -> Seq(st(10)), "B␟f" -> Seq(st(11)))) shouldBe empty          // nothing moved
+    ScreeningsRepository.changedSlots(stored, readComplete = true,
+      Map("A␟f" -> Seq(st(10)), "B␟f" -> Seq(st(12)))) shouldBe
+        Map("B␟f" -> Seq(st(12)))                                              // one venue moved
+    ScreeningsRepository.changedSlots(stored, readComplete = true,
+      Map("A␟f" -> Seq(st(10)), "C␟f" -> Seq(st(13)))) shouldBe
+        Map("C␟f" -> Seq(st(13)))                                              // a new venue is a change
+    // Order matters inside a slot: two showtimes swapped is a different listing, not a
+    // no-op, and `Seq` equality is what says so.
+    ScreeningsRepository.changedSlots(Map("A␟f" -> Seq(st(10), st(11))), readComplete = true,
+      Map("A␟f" -> Seq(st(11), st(10)))) shouldBe Map("A␟f" -> Seq(st(11), st(10)))
+  }
+
+  it should "write EVERYTHING when the read that would have compared them failed" in {
+    // A read that did not see the film cannot say which rows are unchanged. Writing a row
+    // that did not need it is the harmless direction; skipping one that did is not.
+    ScreeningsRepository.changedSlots(Map.empty, readComplete = false,
+      Map("A␟f" -> Seq(st(10)))) shouldBe Map("A␟f" -> Seq(st(10)))
+  }
+
   "replaceFilm" should "set a film's screenings to exactly the given slots (deleting the rest)" in {
     val repo = new InMemoryScreeningsRepository
     repo.upsertSlot("f|2026", "A␟f", Seq(st(10)))

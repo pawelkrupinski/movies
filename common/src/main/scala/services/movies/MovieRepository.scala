@@ -842,15 +842,17 @@ class MongoMovieRepository(
       // is not a slot that stopped screening.
       screenings.foreach { s =>
         val showtimes = ScreeningsRepository.showtimesOf(restitched)
-        // Skip the rewrite when the stored rows already match — the same guard the slots
+        // Skip the whole call when the stored rows already match — the same guard the slots
         // write above has, and here it is FREE: `reStitchChecked` has already read these
         // rows, so `stitch.stored` costs no round trip where the slots half pays one.
         //
-        // It is worth having twice over. `replaceFilm` is one request but carries a
-        // `ReplaceOneModel` per slot of the film — 471 for a film showing across the UK —
-        // and `upsert` is the whole-record path EVERY scrape merge takes. So a venue's
-        // scrape rewrote every screening row of every film it touched, whether or not a
-        // showtime had moved, and a film at N venues is written by N venues.
+        // This is now the outer of TWO guards, and they answer different questions.
+        // `replaceFilm` itself drops the rows that did not move (see `changedSlots`), which
+        // is what stops one venue's change rewriting all 298 rows of a German release. This
+        // one asks whether ANY row moved, and when none did it saves `replaceFilm` the read
+        // it would need to find that out. `upsert` is the whole-record path EVERY scrape
+        // merge takes and a film at N venues is written by N venues, so that read is worth
+        // skipping on its own.
         //
         // Equality is safe against the delete vector: if the stored rows equal what we
         // would write, there is no slot for `replaceFilm` to prune. A differing read —
