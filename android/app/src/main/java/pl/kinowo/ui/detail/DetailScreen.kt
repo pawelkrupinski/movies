@@ -59,6 +59,7 @@ import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.ui.common.FullScreenPoster
 import pl.kinowo.ui.common.LocalCitySlug
+import pl.kinowo.ui.common.LocalShareOrigin
 import pl.kinowo.ui.common.LocalFilmDetailStyle
 import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
@@ -79,6 +80,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
     val style = LocalFilmDetailStyle.current
     // The share link is city-scoped; the slug comes from the city-gate root.
     val citySlug = LocalCitySlug.current
+    val shareOrigin = LocalShareOrigin.current
     // Whether the poster is currently shown full-screen (tap / long-press on it).
     var showFullPoster by remember { mutableStateOf(false) }
     Scaffold(
@@ -95,7 +97,7 @@ fun DetailScreen(film: Film?, details: FilmDetails?, onBack: () -> Unit) {
                     // a user would copy from the website's address bar.
                     if (film != null) {
                         val context = LocalContext.current
-                        IconButton(onClick = { shareFilm(context, citySlug, film.title, film.slug) }) {
+                        IconButton(onClick = { shareFilm(context, shareOrigin, citySlug, film.title, film.slug) }) {
                             Icon(Icons.Filled.Share, contentDescription = stringResource(R.string.share))
                         }
                     }

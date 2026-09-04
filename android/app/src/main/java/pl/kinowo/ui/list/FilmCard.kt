@@ -39,6 +39,7 @@ import pl.kinowo.R
 import pl.kinowo.model.Film
 import pl.kinowo.ui.common.LocalCardSpacingStyle
 import pl.kinowo.ui.common.LocalCitySlug
+import pl.kinowo.ui.common.LocalShareOrigin
 import pl.kinowo.ui.common.MetaPills
 import pl.kinowo.ui.common.PosterImage
 import pl.kinowo.ui.common.RatingBadges
@@ -74,6 +75,7 @@ fun FilmCard(
     val context = LocalContext.current
     // The share link is city-scoped; the slug comes from the city-gate root.
     val citySlug = LocalCitySlug.current
+    val shareOrigin = LocalShareOrigin.current
     val spacing = LocalCardSpacingStyle.current
     // Card gaps scale with the device's portrait width off the 360 dp baseline,
     // in lockstep with the chips (layoutWidthDp, so landscape matches portrait —
@@ -99,8 +101,8 @@ fun FilmCard(
             ShareMenu(
                 expanded = menuExpanded,
                 onDismiss = { menuExpanded = false },
-                onShare = { shareFilm(context, citySlug, film.title, film.slug) },
-                onCopy = { copyFilmLink(context, citySlug, film.title, film.slug) },
+                onShare = { shareFilm(context, shareOrigin, citySlug, film.title, film.slug) },
+                onCopy = { copyFilmLink(context, shareOrigin, citySlug, film.title, film.slug) },
             )
             // The poster owns the long-press → share menu (Udostępnij / Skopiuj
             // link), mirroring iOS `FilmCardView`, where the `.contextMenu` now

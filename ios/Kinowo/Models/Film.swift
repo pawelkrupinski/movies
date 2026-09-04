@@ -193,10 +193,12 @@ struct Showtime: Hashable, Identifiable, Codable {
 /// server), the legacy `?title=` form is emitted instead; the server still
 /// answers that form and 301s it onto the slug.
 ///
-/// The host is hardcoded rather than reusing `kinowoBaseURL` because that
-/// constant lives in the Combine-only `Auth` layer, which `KinowoCore`
-/// (this file's SPM target) excludes — the networking layer hardcodes the
-/// same host for the same reason.
+/// The origin is PASSED IN rather than hardcoded. It used to be the Polish
+/// host, which made every share from the UK, Germany, the US or Spain a dead
+/// link: a Barcelona film went out as `kinowo.net/barcelona/movie/…`, which
+/// 404s, because that city lives on `showtimes.cc/es`. Taking it as a parameter
+/// also keeps this file inside `KinowoCore`, which excludes the Combine-only
+/// `Auth` layer where `kinowoBaseURL` lives.
 enum FilmShareLink {
     /// Allowed set for the `title` query value: the unreserved chars plus
     /// the `*-._` that Java's `URLEncoder.encode` also leaves literal.
@@ -211,27 +213,27 @@ enum FilmShareLink {
     /// The canonical link for a film, given the slug `/api/repertoire` served
     /// for it. Both segments are already URL-safe (lowercase ASCII + hyphens),
     /// so nothing needs encoding.
-    static func url(forSlug slug: String, citySlug: String) -> URL {
-        URL(string: "https://kinowo.net/\(citySlug)/movie/\(slug)")!
+    static func url(origin: String, forSlug slug: String, citySlug: String) -> URL {
+        URL(string: "\(origin)/\(citySlug)/movie/\(slug)")!
     }
 
     /// The film's link, preferring its canonical slug address and falling back
     /// to the legacy query form for a film the server didn't send a slug for.
-    static func url(for film: Film, citySlug: String) -> URL {
+    static func url(origin: String, for film: Film, citySlug: String) -> URL {
         if let slug = film.slug, !slug.isEmpty {
-            return url(forSlug: slug, citySlug: citySlug)
+            return url(origin: origin, forSlug: slug, citySlug: citySlug)
         }
-        return url(forTitle: film.title, citySlug: citySlug)
+        return url(origin: origin, forTitle: film.title, citySlug: citySlug)
     }
 
     /// The pre-slug form. The film page is city-scoped, so the link must carry
     /// the slug of the city the sharer is browsing — a city-less
     /// `/movie?title=…` has no server route and 404s. `citySlug` is already
     /// URL-safe, so only the title needs encoding.
-    static func url(forTitle title: String, citySlug: String) -> URL {
+    static func url(origin: String, forTitle title: String, citySlug: String) -> URL {
         let encoded = title.addingPercentEncoding(withAllowedCharacters: titleAllowed) ?? title
         // Safe to force-unwrap: `encoded` and `citySlug` contain only URL-safe
         // characters and the surrounding string is a fixed, valid absolute URL.
-        return URL(string: "https://kinowo.net/\(citySlug)/movie?title=\(encoded)")!
+        return URL(string: "\(origin)/\(citySlug)/movie?title=\(encoded)")!
     }
 }

@@ -62,7 +62,7 @@ struct FilmDetailView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     // Shares the canonical `/<city>/film?title=…` link — same URL
                     // a user would copy from the website's address bar.
-                    ShareLink(item: FilmShareLink.url(for: film, citySlug: citySlug), subject: Text(film.title)) {
+                    ShareLink(item: FilmShareLink.url(origin: prefs.selectedCountry.baseURL.absoluteString, for: film, citySlug: citySlug), subject: Text(film.title)) {
                         Image(systemName: "square.and.arrow.up")
                     }
                 }

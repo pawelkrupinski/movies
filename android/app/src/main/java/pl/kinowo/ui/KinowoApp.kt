@@ -36,6 +36,7 @@ import pl.kinowo.ui.city.CityChoiceScreen
 import pl.kinowo.ui.city.CityConfirmScreen
 import pl.kinowo.ui.city.CityGateStart
 import pl.kinowo.ui.common.LocalCitySlug
+import pl.kinowo.ui.common.LocalShareOrigin
 import pl.kinowo.ui.detail.DetailScreen
 import pl.kinowo.ui.list.ListScreen
 
@@ -57,7 +58,12 @@ fun KinowoApp(viewModel: KinowoViewModel) {
     if (city == null) {
         CityGate(viewModel)
     } else {
-        CompositionLocalProvider(LocalCitySlug provides city) {
+        CompositionLocalProvider(
+            LocalCitySlug provides city,
+            // Share links are country-scoped: a Barcelona film lives on
+            // showtimes.cc/es, not on the Polish host.
+            LocalShareOrigin provides viewModel.shareOrigin(),
+        ) {
             Repertoire(viewModel)
             NearerCityPrompt(viewModel)
         }

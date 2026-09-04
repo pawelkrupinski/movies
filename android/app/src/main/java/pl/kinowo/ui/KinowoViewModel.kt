@@ -129,6 +129,11 @@ class KinowoViewModel(
     val selectedCountryCode: StateFlow<String?> =
         prefs.selectedCountryCode.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** Public origin of the country being browsed, for links we hand OUT (share,
+     *  copy). `byCode` maps a null or unknown code onto Poland, the same default
+     *  the API base uses, so this can never be empty. */
+    fun shareOrigin(): String = Country.byCode(selectedCountryCode.value).baseUrl
+
     /** What the first-launch gate should do — which country, and whether it may
      *  offer a located city (see [CityGateStart]).
      *

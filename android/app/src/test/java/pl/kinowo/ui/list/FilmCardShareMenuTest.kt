@@ -125,7 +125,7 @@ class FilmCardShareMenuTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         assertEquals(
-            filmShareUrl("poznan", film.title),
+            filmShareUrl("https://kinowo.net", "poznan", film.title),
             clipboard.primaryClip?.getItemAt(0)?.text?.toString(),
         )
     }
