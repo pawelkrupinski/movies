@@ -340,9 +340,41 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    nix-env -p /nix/var/nix/profiles/system --set $S && $S/bin/switch-to-configuration switch
    ```
 
-   This RESTARTS Caddy, which briefly interrupts TLS for **every** country's site,
-   not just the new one. It is seconds, and it is the accepted cost — but say so
-   out loud afterwards rather than letting an unexplained blip pass.
+   Adding a vhost RESTARTS Caddy, which briefly interrupts TLS for **every**
+   country's site, not just the new one. It is seconds, and it is the accepted
+   cost — but say so out loud afterwards rather than letting an unexplained blip
+   pass.
+
+   ⚠️ **A CHANGE TO A VHOST'S BODY IS NOT AN OUTAGE, AND THE BLOCK ABOVE DOES NOT
+   MEAN IT IS.** Both statements read as one thing and are two, which is worth
+   separating before you defer a deploy that costs nothing:
+
+   - **auto-apply blocks BOTH**, and cannot tell them apart. Editing a matcher, a
+     header, a route or a `crawlerThrottle` rewrites `/etc/caddy/caddy_config`,
+     and that rewrites the unit too — by exactly one line:
+
+     ```
+     4c4
+     < X-Reload-Triggers=/nix/store/q7yw82p1…-X-Reload-Triggers-caddy
+     ---
+     > X-Reload-Triggers=/nix/store/qn69h51y…-X-Reload-Triggers-caddy
+     ```
+
+     `units_would_change` compares unit derivations, so a reload trigger reads to
+     it exactly like a restart trigger and it refuses. Every Caddy change needs
+     the hand switch, not just a new vhost.
+   - **`switch-to-configuration` does NOT restart on that.** It reads
+     `X-Reload-Triggers` and reloads, so a config-body change costs no dropped
+     connections, no TLS gap, and nothing to announce afterwards. Only a NEW
+     VHOST restarts, because it adds `caddy.service.d/overrides.conf` for its
+     certificate — a real unit change, and the paragraph above is about that.
+
+   Measured on 2026-09-04, when the crawler throttle went out. Generation 80
+   activated at 19:52:32; the journal reads `Reloading Caddy...` / `Reloaded
+   Caddy` one second apart, and `systemctl show caddy -p ActiveEnterTimestamp`
+   still read `2026-09-01 20:07:24` afterwards — the process never went down.
+   This page previously said it would, which is the only reason that throttle sat
+   staged for half an hour longer than it had to.
 
    Check `journalctl -u nixos-auto-apply.service` for the classifier's verdict
    before assuming a nix change landed.
