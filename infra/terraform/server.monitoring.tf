@@ -52,7 +52,7 @@ module "monitoring_1" {
   # one more that is specific to monitoring: the metrics that explain an incident are written during
   # the incident, and a monitoring host whose root disk filled is a host that stopped recording at
   # exactly the moment the recording mattered. 40GB holds a comfortable retention for three
-  # node_exporters plus the Fly-side scrape; see the retention setting in roles/prometheus.nix,
+  # node_exporters plus the application scrape; see the retention setting in roles/prometheus.nix,
   # which is what actually bounds it.
   volumes = {
     monitoring-data = {

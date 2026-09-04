@@ -26,19 +26,22 @@
 # ================================================================================================
 #
 # WHAT WAS DELIBERATELY DROPPED FROM THE FLY VERSION, so that its absence does not read as a
-# mistake: the three `WorkerThrottle*` webhook contact points and their routes. Those POST to
+# mistake: the three `WorkerThrottle*` webhook contact points and their routes. Those POSTed to
 # `kinowo-worker*.internal:9000/throttle` over Fly's 6PN to drive the workers' reaper backoff.
-# THERE ARE NO WORKERS ON 6PN TO REACH ANY MORE -- since 2026-08-29 all three run as pods on k3s,
-# so `kinowo-worker*.internal` resolves to nothing and those webhooks would fail on every send,
-# leaving the workers never told to back off. (This host DOES hold a WireGuard peer, contrary to
-# what this note used to say -- monitoring-1 and mongo-1 both declare `fleet.wireguardFly`. The
-# peer is simply not a route to anything that still runs on Fly.) Restoring the throttle path means
-# pointing these webhooks at the pods' NodePorts on 10.20.0.12, not at 6PN.
+# THERE ARE NO WORKERS ON 6PN TO REACH -- since 2026-08-29 all of them run as pods on k3s, so
+# `kinowo-worker*.internal` resolves to nothing and those webhooks would fail on every send,
+# leaving the workers never told to back off. The 6PN peer this host held is gone too (2026-09-04),
+# along with the rest of the Fly integration.
+#
+# THE WORKER SIDE OF THAT PATH IS ALSO GONE: `CpuCreditPoller`, the in-process authoritative
+# throttle that read Fly's shared-CPU credit balance, was deleted with the platform. The worker's
+# `/throttle` endpoint and its reaper backoff remain and are platform-neutral, so restoring the
+# path means pointing a webhook at the pods' NodePorts on 10.20.0.12 -- not at 6PN -- and deciding
+# what signal should drive it now that there is no credit bucket to watch.
 #
 # THE CONSEQUENCE IS NOT SILENT, WHICH IS WHY THIS IS SAFE TO DO: with no route matching them, the
 # `worker-throttle` group's alerts fall through to the root policy and arrive on Telegram as
-# ordinary pages instead. Noisier, and visible. Restoring the webhooks means giving monitoring-1 a
-# 6PN peer of its own, at which point the blocks come back from the Fly file verbatim.
+# ordinary pages instead. Noisier, and visible.
 apiVersion: 1
 
 contactPoints:
@@ -64,25 +67,23 @@ policies:
   # cannot be missing.
   - orgId: 1
     receiver: Telegram
-    # GROUPED BY `app` AS WELL AS `alertname`, carried from the Fly policy: a multi-rule incident on
-    # one Fly app (credit exhausted AND p95 high, which is the same event twice) arrives as one
-    # message rather than a burst.
+    # GROUPED BY `app` AS WELL AS `alertname`, carried from the Fly policy: a multi-rule incident
+    # on one app (a task-age alert AND a queue-backlog alert, which are the same event twice)
+    # arrives as one message rather than a burst.
     #
-    # `host` IS ADDED BESIDE IT AT THE POST-MIGRATION AUDIT, AND IT IS DEAD WEIGHT TODAY -- said
-    # plainly so nobody spends time working out what it does. THIS POLICY ROUTES ONLY
-    # GRAFANA-MANAGED RULES, and every one of those is a Fly rule carrying `app` and no `host`
-    # (alerting/alert-rules.yaml). The rules that carry `host` are Prometheus's, in
-    # nix/files/monitoring/rules/, and they are routed by ALERTMANAGER's own config, which never
+    # `host` IS BESIDE IT AND IS DEAD WEIGHT TODAY -- said plainly so nobody spends time working out
+    # what it does. THIS POLICY ROUTES ONLY GRAFANA-MANAGED RULES, and every one of those carries
+    # `app` and no `host` (alerting/alert-rules.yaml). The rules that carry `host` are Prometheus's,
+    # in nix/files/monitoring/rules/, and they are routed by ALERTMANAGER's own config, which never
     # consults this file -- alertmanager.yaml groups them by `host` first, for exactly the reason
     # given here.
     #
-    # IT IS ADDED ANYWAY BECAUSE THE COST IS ZERO AND THE FAILURE IT PREVENTS IS QUIET. An alert
-    # with no `host` label groups on the empty value, so nothing changes for the twenty Fly rules.
-    # But the day somebody writes a Grafana rule against `local-prometheus` -- which is now the
-    # DEFAULT datasource, so that is the likely direction -- it will carry `host` and no `app`, and
-    # without this line every such alert from all three machines would collapse into one group and
-    # arrive as a single message that names one of them. That is the kind of grouping bug found
-    # during the incident it spoiled.
+    # IT IS THERE ANYWAY BECAUSE THE COST IS ZERO AND THE FAILURE IT PREVENTS IS QUIET. An alert
+    # with no `host` label groups on the empty value, so nothing changes for the rules that exist.
+    # But the day somebody writes a Grafana rule with a `host` label and no `app` -- against the
+    # node or mongodb jobs, say -- without this line every such alert from all three machines would
+    # collapse into one group and arrive as a single message that names one of them. That is the
+    # kind of grouping bug found during the incident it spoiled.
     group_by:
       - alertname
       - app

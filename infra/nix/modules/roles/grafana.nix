@@ -1,80 +1,70 @@
-# Grafana, provisioned as code -- the port of the `kinowo-grafana` Fly app.
+# Grafana, provisioned as code. It started life as a port of the `kinowo-grafana` Fly app.
 #
 # ------------------------------------------------------------------------------------------------
 # WHERE THE PROVISIONING COMES FROM
 # ------------------------------------------------------------------------------------------------
 #
 # The alert rules and the dashboards STARTED as the `kinowo-grafana` Fly app's, under
-# fly/grafana/provisioning/, copied into nix/files/monitoring/grafana/. That original is DELETED:
-# the Fly Grafana was scaled to zero when this host took over, its rollback workflow went unrun
-# long enough that the copy it would have deployed had drifted from what actually serves, and a
-# rollback to a Grafana nobody has seen is not a rollback. nix/files/monitoring/grafana/ is the
-# only copy now -- edit it, `nixos-rebuild switch`, done.
+# fly/grafana/provisioning/ in the application repository, copied into
+# nix/files/monitoring/grafana/. That original is DELETED: the Fly Grafana was scaled to zero when
+# this host took over, its rollback workflow went unrun long enough that the copy it would have
+# deployed had drifted from what actually serves, and a rollback to a Grafana nobody has seen is
+# not a rollback. nix/files/monitoring/grafana/ is the only copy now -- edit it,
+# `nixos-rebuild switch`, done.
 #
-# ------------------------------------------------------------------------------------------------
-# WHAT THE POST-MIGRATION AUDIT CHANGED, 2026-08-29.
-# ------------------------------------------------------------------------------------------------
-#
-# The copy was audited against the world that exists after the move off Fly, and four things
-# changed relative to the Fly original it was taken from. Recorded because the tombstone comments
-# below refer to it.
-#
-#   1. FOUR ALERT RULES DELETED AND ONE CHANGED in alerting/alert-rules.yaml -- two that named Fly
-#      volume mountpoints belonging to machines that no longer exist, one ("Mongo down") that was
-#      `noDataState: Alerting` on a retired app and therefore firing permanently, and one whose only
-#      consumer was a webhook this host cannot reach. The one change is `Serving app down`'s
-#      no-data handling, for the same permanent-firing reason. Every deletion leaves a tombstone
-#      comment in place of the rule, and every group carries a written verdict for each of its
-#      surviving rules. Twenty rules remain, not twenty-four.
-#   2. THE DASHBOARDS ARE SPLIT INTO TWO DIRECTORIES, dashboards/fleet and dashboards/apps, and
-#      provisioned into two Grafana folders by two providers (below). See the note on those
-#      providers for why quarantine beats a mixed folder.
-#   3. EACH FLY DASHBOARD GAINED A BANNER PANEL AND A RETITLE saying it is quarantined, why, and
-#      what would bring it back. A page full of "No data" with no explanation is indistinguishable
-#      from a page that is broken.
-#   4. A NEW DASHBOARD, dashboards/fleet/kinowo-fleet.json, which has no counterpart on the Fly
-#      side at all -- it is about the three Hetzner machines, which did not exist there.
-#   5. TWO NEW ROWS AT THE FOOT OF dashboards/apps/fly-overview.json, about mongo-1 and
-#      monitoring-1. They are the second place the copy diverges by ADDITION rather than deletion,
-#      and they could not have existed on Fly: the database was a Fly app whose internals nothing
-#      scraped, and there was no monitoring box to describe. They read the `node` and `mongodb`
-#      jobs, which exist only on this fleet. The `diff -r` this header recommends will show them.
-#
-# COPIED RATHER THAN REFERENCED BECAUSE OF THE FLAKE ROOT, which is infra/ and not the repository
-# root (infra/flake.nix's header sets out why: rooting it at the top drags ~18k tracked files of a
-# Scala application into the store on every evaluation). A Nix path outside the flake root does not
-# exist under pure evaluation, so reading `../fly/grafana/...` was never an option while that tree
-# existed. bitcashier's equivalent role DOES read its
+# COPIED RATHER THAN REFERENCED, while both existed, BECAUSE OF THE FLAKE ROOT, which is infra/ and
+# not the repository root (infra/flake.nix's header sets out why: rooting it at the top drags ~18k
+# tracked files of a Scala application into the store on every evaluation). A Nix path outside the
+# flake root does not exist under pure evaluation. bitcashier's equivalent role DOES read its
 # Grafana content in place, out of a Puppet tree, because its flake is rooted at the repository
-# root -- that is the one structural difference between the two fleets, and it is why this file
-# and that one differ on the one point they otherwise agree about.
-#
-# WHAT THE COPY COSTS, so nobody is surprised by it: the Fly instance is KEPT as the rollback, so
-# these files exist twice for the length of the migration and a rule fixed on the Fly side -- which
-# is when rules get fixed -- is not fixed here. infra/flake.nix names
-# `infra/bin/sync-grafana-provisioning` as what keeps the copy honest; THAT SCRIPT DOES NOT EXIST
-# YET, so today the answer is `diff -r` before trusting either copy. It should exist, and CI should
-# run it.
+# root -- that is the one structural difference between the two fleets.
 #
 # TRANSCRIBING WAS NEVER THE ALTERNATIVE. A wrong threshold in an alert rule does not fail, it goes
 # quiet -- indistinguishable from a good night -- so 1,279 lines of rules retyped by hand is a set
 # of alerts that is 95% right, which is worse than none because it is trusted.
 #
-# THE CONTACT POINTS AND THE NOTIFICATION POLICY ARE DIFFERENT: they are vendored because they had
-# to CHANGE (a different chat id, and the worker-throttle webhooks dropped), so they live in
-# nix/files/monitoring/grafana-contactpoints.yaml with their own reasoning written into them.
+# THE CONTACT POINTS AND THE NOTIFICATION POLICY live in their own file,
+# nix/files/monitoring/grafana-contactpoints.yaml, because they had to CHANGE on the way across (a
+# different chat id, and the worker-throttle webhooks dropped). Their reasoning is written into
+# them.
+#
+# ------------------------------------------------------------------------------------------------
+# TWO ROUNDS OF EDITS SINCE THE COPY, BOTH RECORDED BECAUSE THE TOMBSTONES BELOW REFER TO THEM
+# ------------------------------------------------------------------------------------------------
+#
+# 2026-08-29, THE POST-MIGRATION AUDIT. Four alert rules deleted and one changed: two named Fly
+# volume mountpoints belonging to machines that no longer existed, one ("Mongo down") was
+# `noDataState: Alerting` on a retired app and therefore firing permanently, and one's only
+# consumer was a webhook this host cannot reach. The dashboards were split into dashboards/fleet
+# and dashboards/apps, provisioned into two Grafana folders by two providers (below); the Fly-fed
+# ones gained a banner panel saying they were quarantined and why, since a page full of "No data"
+# with no explanation is indistinguishable from a broken one. Two dashboards were ADDED that could
+# not have existed on Fly: dashboards/fleet/kinowo-fleet.json, about the three Hetzner machines,
+# and two rows at the foot of dashboards/apps/application-health.json about mongo-1 and monitoring-1.
+#
+# 2026-09-04, THE FLY DATASOURCE REMOVED. `fly-prometheus` had no credential -- both read-only
+# tokens were revoked and the org-wide one cannot mint a replacement -- so every rule pointed at it
+# evaluated to an execution error and went quietly to Normal, protecting nothing. Ten rules read
+# `fly_instance_*` / `fly_app_*` and were deleted with it; ELEVEN read ordinary application metrics
+# this fleet's own Prometheus already scrapes, and were repointed at `local-prometheus`, where they
+# work. See the header of alerting/alert-rules.yaml, which carries the split rule by rule.
+#
+# THE QUARANTINE FOLDER THAT ROUND LEFT is now the only Fly-shaped thing here: dashboards/apps
+# still holds panels whose series no longer exist. They are empty rather than wrong, and the banner
+# panels say so.
 #
 # ------------------------------------------------------------------------------------------------
 # THE TWO GOTCHAS THAT MUST SURVIVE THIS PORT. BOTH ARE VERIFIED, BOTH COST A DEBUGGING SESSION.
 # ------------------------------------------------------------------------------------------------
 #
-# (a) THE FLY DATASOURCE'S AUTH HEADER IS `FlyV1 <token>`, NOT `Bearer <token>`. A Bearer header
-#     401s with "resolving organization" -- which reads like a revoked or wrong token, so the first
-#     instinct is to issue a new one, and a new token behaves identically. See the header of
-#     roles/prometheus.nix, which carries the same value in its scrape config for the same reason.
-#     The token itself is a read-only org token: `fly tokens create readonly --org personal`.
+# (a) THE TELEGRAM `chatid` MUST BE A QUOTED LITERAL, NEVER `${VAR}`. (There used to be a gotcha
+#     (a) about the Fly datasource's `FlyV1 <token>` auth header, which 401s with "resolving
+#     organization" when written as `Bearer` -- an error that reads like a revoked token and sends
+#     whoever is debugging it off to mint a new one. The datasource is gone; the trap is recorded
+#     here in case anything ever talks to api.fly.io again.)
 #
-# (b) THE TELEGRAM `chatid` MUST BE A QUOTED LITERAL, NEVER `${VAR}`. Grafana expands environment
+# (b) Restating that, because it is the one that takes the instance down:
+#     THE TELEGRAM `chatid`# (b) THE TELEGRAM `chatid` MUST BE A QUOTED LITERAL, NEVER `${VAR}`. Grafana expands environment
 #     variables in provisioning files, and that expansion RE-TYPES a numeric chatid as a YAML
 #     number regardless of how it was quoted -- so `chatid: '${TELEGRAM_CHAT_ID}'` produces a
 #     number where Grafana's schema wants a string, it fails to unmarshal ("cannot unmarshal number
@@ -86,21 +76,24 @@
 #     variable.
 #
 # ------------------------------------------------------------------------------------------------
-# WHAT THIS INSTANCE CANNOT DO YET, NAMED SO NOBODY THINKS IT WAS FORGOTTEN
+# WHAT IS STILL EMPTY HERE, NAMED SO NOBODY THINKS IT WAS FORGOTTEN
 # ------------------------------------------------------------------------------------------------
 #
-# The Fly instance runs a VictoriaMetrics sidecar that scrapes the apps' /metrics endpoints
-# DIRECTLY over Fly 6PN, which is how the web tier is monitored now that Fly's managed Prometheus
-# is unreachable. THIS HOST HOLDS ITS OWN 6PN PEER (roles/wireguard-fly.nix on monitoring-1), so the
-# `kinowo-web` scrape job reads the app's /metrics at `kinowo.internal:9000` directly. The
-# `app-metrics-live` datasource that used to stand in for that gap is gone -- the gap is closed.
+# Every app is scraped over its NodePort by the Prometheus next door
+# (nix/files/monitoring/scrape-kinowo-apps.yaml), so the application dashboards read real series.
+# What is NOT covered is anything only a host agent could see about somebody else's platform --
+# CPU steal, shared-CPU credit, edge 5xx and edge latency. Those panels are on
+# dashboards/apps/application-health.json and are permanently empty, because the series behind them came
+# from Fly's host agent and this fleet has no counterpart. Their closest replacements are
+# rules/host-health.rules (the box) and rules/jvm-heap.rules (each JVM), which alert rather than
+# chart.
 #
-# THE CONSEQUENCE IS A WHOLE FOLDER OF EMPTY DASHBOARDS, and the post-migration audit's answer to it
-# is quarantine rather than deletion: the three Fly dashboards live in their own Grafana folder,
-# named for the reason they are empty, each opening with a banner panel that says what would bring
-# it back. The one dashboard that works -- dashboards/fleet/kinowo-fleet.json, about the three
-# Hetzner machines -- is in a folder of its own so that "is the fleet healthy" is answerable without
-# walking past four pages of "No data". See the two dashboard providers below.
+# THAT LEAVES A FOLDER WITH SOME EMPTY PANELS IN IT, and the answer is quarantine rather than
+# deletion: the app dashboards live in their own Grafana folder, each opening with a banner panel
+# that says which of its panels cannot have data and why. The fleet dashboard --
+# dashboards/fleet/kinowo-fleet.json, about the three Hetzner machines -- is in a folder of its own
+# so that "is the fleet healthy" is answerable without walking past pages of "No data". See the two
+# dashboard providers below.
 #
 # Grafana's own SQLITE DATABASE DOES NOT COME ACROSS either. Alert state, silences and the
 # CI-posted deploy annotations start empty; every rule re-evaluates from Normal, so anything firing
@@ -138,10 +131,10 @@ in
       default = config.fleet.privateAddress;
       defaultText = "config.fleet.privateAddress";
       description = ''
-        THE PRIVATE ADDRESS. This Grafana holds a read token for the whole Fly org and can query
-        every metric this fleet has; it is reached over the VPN or the private network, never from
-        the internet. The Fly instance it replaces was public because on Fly there was no private
-        alternative -- that was a constraint, not a preference, and it does not come across.
+        THE PRIVATE ADDRESS. This Grafana can query every metric this fleet has; it is reached
+        over the VPN or the private network, never from the internet. The Fly instance it replaces
+        was public because on Fly there was no private alternative -- that was a constraint, not a
+        preference, and it did not come across.
       '';
     };
 
@@ -156,9 +149,10 @@ in
       default = "http://monitoring-1.kinowo.internal:3000";
       description = ''
         What Grafana writes into the links it generates -- alert notifications above all, which is
-        where a wrong value shows up: a Telegram alert whose "view rule" link points at the old
-        kinowo-grafana.fly.dev is worse than one with no link, because it lands on an instance that
-        may still be running and showing a different truth.
+        where a wrong value shows up: a Telegram alert whose "view rule" link points somewhere
+        else is worse than one with no link, because it lands on an instance that may still be
+        running and showing a different truth. The old value to watch for is kinowo-grafana.fly.dev,
+        which is now nothing at all.
       '';
     };
 
@@ -241,8 +235,9 @@ in
     sops.secrets."grafana/admin-password" = { owner = "grafana"; mode = "0400"; };
 
     # THE TWO THAT GO THROUGH THE ENVIRONMENT INSTEAD, because Grafana's provisioning files expand
-    # environment variables but have no `$__file{}`: the Fly token lands in a datasource header and
-    # the bot token in the Telegram contact point.
+    # environment variables but have no `$__file{}`: the bot token lands in the Telegram contact
+    # point. A `grafana/fly-token` sat beside it for the Fly datasource's `FlyV1` header until
+    # 2026-09-04; the datasource is gone and so is the secret.
     #
     # NOTE THE ASYMMETRY WITH THE CHAT ID, which is the whole of gotcha (b) in the header. The bot
     # TOKEN is a secret and is non-numeric, so Grafana's environment expansion keeps it a string
@@ -250,15 +245,13 @@ in
     # same expansion re-types it to a number and Grafana exits at startup unable to unmarshal it --
     # which is why it is a quoted literal in grafana-contactpoints.yaml and does NOT appear here.
     # That is not an inconsistency; it is the two halves of one trap.
-    sops.secrets."grafana/fly-token" = { owner = "grafana"; mode = "0400"; };
     sops.secrets."grafana/telegram-bot-token" = { owner = "grafana"; mode = "0400"; };
 
     # RENDERED INTO /run BY sops-nix, NEVER INTO THE STORE. Grafana reads this as an EnvironmentFile
-    # and expands the two names where the provisioning references them.
+    # and expands the name where the provisioning references it.
     sops.templates."grafana.env" = {
       owner = "grafana";
       content = ''
-        FLY_PROMETHEUS_TOKEN=${config.sops.placeholder."grafana/fly-token"}
         TELEGRAM_BOT_TOKEN=${config.sops.placeholder."grafana/telegram-bot-token"}
       '';
     };
@@ -333,67 +326,20 @@ in
           #
           # `deleteDatasources` RUNS BEFORE DATASOURCES ARE PROVISIONED, so an entry here does not
           # delete the datasource declared below it -- the delete happens first, then the create.
+          #
+          # BOTH ENTRIES BELOW ARE REMOVED DATASOURCES, listed here rather than merely deleted so
+          # Grafana drops them from instances that already provisioned them -- a datasource left
+          # behind stays queryable and keeps a stale uid resolvable, which is how a "working" panel
+          # ends up reading nothing. "Fly Prometheus" (uid `fly-prometheus`) went on 2026-09-04
+          # with the rest of the platform; its credential had been revoked for weeks, and the
+          # eleven alert rules that were still pointed at it now read `local-prometheus`, which has
+          # the data. "App Metrics (live)" went on 2026-08-29.
           deleteDatasources = [
             { name = "Fly Prometheus"; orgId = 1; }
-            # REMOVED 2026-08-29, and listed here rather than merely deleted so Grafana drops it
-            # from instances that already provisioned it -- a datasource left behind stays queryable
-            # and keeps a stale uid resolvable, which is how a "working" panel ends up reading
-            # nothing.
             { name = "App Metrics (live)"; orgId = 1; }
           ];
 
           datasources = [
-            {
-              # FLY'S MANAGED PROMETHEUS. Still the ONLY source of fly_instance_* / fly_edge_*
-              # (CPU credit, steal, memory, edge 5xx and p95): those are produced by Fly's own host
-              # agent and cannot be scraped from anywhere else. Every one of the alert rules read
-              # in nix/files/monitoring/grafana/alerting/alert-rules.yaml queries this uid, so the
-              # uid is a CONTRACT with that file, not a name.
-              # KEPT THOUGH NOTHING QUERIES IT. Its token is revoked and no dashboard references
-              # it any more -- the apps are scraped directly over this host's 6PN peer, which is
-              # better data than Fly's proxy view ever was. It stays as the declared path back: if a
-              # read-only Fly token is ever minted, `fleet.prometheus.scrapeFly = true` plus this
-              # entry is the whole of turning Fly's own view back on. An unreferenced datasource
-              # costs nothing; rediscovering how to re-enable it costs an afternoon.
-              name = "Fly Prometheus";
-              uid = "fly-prometheus";
-              orgId = 1;
-              type = "prometheus";
-              access = "proxy";
-              url = "https://api.fly.io/prometheus/personal";
-              # NO LONGER THE DEFAULT -- it was, on the Fly instance, where it was the only useful
-              # source. Here the default belongs to the datasource that WORKS, and this one has no
-              # credential: the read-only tokens were revoked and cannot be reissued (see
-              # `fleet.prometheus.scrapeFly`).
-              #
-              # WHY THE FLIP IS SAFE, and it was checked rather than assumed: the default is what a
-              # panel or an ad-hoc query resolves to when it names no datasource, and EVERY PANEL
-              # in all four vendored dashboards carries an explicit `datasource` block. (Some
-              # TARGETS omit one, but a target inherits its panel's, not the default.) So nothing
-              # silently changes datasource because of this line; what changes is where a NEW panel
-              # or a query typed into Explore points -- and pointing those at a datasource that
-              # 401s is a bad first experience of this Grafana.
-              isDefault = false;
-              editable = false;
-              jsonData = {
-                httpMethod = "POST";
-                prometheusType = "Prometheus";
-                timeInterval = "15s";
-                httpHeaderName1 = "Authorization";
-              };
-              secureJsonData = {
-                # GOTCHA (a). `FlyV1`, NOT `Bearer`. See the module header -- a Bearer header 401s
-                # with "resolving organization", which reads as a bad token and sends whoever is
-                # debugging it off to issue a new one.
-                #
-                # `$FLY_PROMETHEUS_TOKEN` without braces, deliberately: Grafana accepts both forms,
-                # and the braced form has to be escaped in Nix, where an unescaped `${...}` is
-                # string interpolation and would put the token's VALUE in the store if it ever
-                # resolved to one.
-                httpHeaderValue1 = "FlyV1 $FLY_PROMETHEUS_TOKEN";
-              };
-            }
-
             {
               # THE FLEET'S LOGS.
               #
@@ -470,15 +416,15 @@ in
           # because the shape has not changed while the reason entirely has.
           #
           # It was introduced when three of four dashboards read datasources that could not work --
-          # `fly-prometheus` (token revoked, unmintable) and a stand-in for a 6PN path this host did
-          # not have -- so those pages rendered nothing. The argument was that a folder of
+          # `fly-prometheus` (token revoked, unmintable) and a stand-in for a scrape path this host
+          # did not have -- so those pages rendered nothing. The argument was that a folder of
           # permanently-empty pages reads as "the monitoring is broken" to somebody opening Grafana
           # mid-incident, and is a folder people stop opening.
           #
-          # BOTH CAUSES ARE GONE. monitoring-1 now holds its own 6PN peer, so the web tier's own
-          # /metrics is scraped directly -- richer than the Fly proxy view it replaces, and with a
-          # credential this fleet holds. The worker is scraped from k3s. Both dashboards were
-          # rebuilt on those series and every query was verified returning data.
+          # BOTH CAUSES ARE GONE. Every app is scraped over its NodePort by the Prometheus next
+          # door -- richer than the Fly proxy view it replaces, and with a credential this fleet
+          # holds. Both dashboards were rebuilt on those series and every query was verified
+          # returning data.
           #
           # WHAT THE SPLIT MEANS NOW is simply subject: `Kinowo Fleet` is about the three machines
           # (hosts, disks, closures, auto-apply), `Application` is about the software running on
@@ -521,10 +467,10 @@ in
               # arrive early enough to be useful.
               name = "kinowo-apps";
               orgId = 1;
-              # RENAMED FROM "Fly (no data without a token)" ON 2026-08-29, because both halves of that name
-              # stopped being true. These dashboards no longer read Fly's managed Prometheus: the worker
-              # is on k3s and scraped by NodePort, and the web tier -- still on Fly -- is scraped
-              # directly over a 6PN WireGuard peer. Every query in them was verified returning data.
+              # RENAMED FROM "Fly (no data without a token)" ON 2026-08-29, because both halves of that
+              # name stopped being true. These dashboards do not read Fly's managed Prometheus: every
+              # panel in them queries `local-prometheus`, fed by this host's own scrape of the pods'
+              # NodePorts. Every query was verified returning data.
               #
               # The directory moved from dashboards/fly to dashboards/apps for the same reason: it
               # holds the APPLICATION's dashboards, and where each tier runs is now a label on the
@@ -558,22 +504,21 @@ in
         };
 
         alerting = {
-          # THE 20 ALERT RULES (24 before the post-migration audit deleted four), in the same four
-          # groups: fly-resources, fly-serving, app-uptime, worker-throttle. Every expression in
-          # them was validated against the live Fly endpoint when it was written, and every one
-          # queries the `fly-prometheus` uid above -- which is why that uid is carried across
-          # unrenamed. Renaming it here would empty all 20 rules without any of them failing.
+          # ELEVEN ALERT RULES in four groups: app-processes, serving, app-uptime, worker-throttle.
+          # There were 24 when this was ported, then 20 after the 2026-08-29 audit; the 2026-09-04
+          # Fly removal deleted the ten that read `fly_instance_*` / `fly_app_*` and repointed the
+          # eleven survivors at `local-prometheus`. All eleven query that uid, so the uid is a
+          # CONTRACT with alert-rules.yaml -- renaming it here would empty every rule without any
+          # of them failing.
           #
-          # NONE OF THEM IS PROTECTING ANYTHING TODAY, and that is worth knowing at the composition
-          # root rather than only in the file: the datasource they all query has no working token,
-          # so they evaluate to an execution error and (being `execErrState: OK`, nearly all of
-          # them) go quietly to Normal. A rule sitting in Normal because its datasource is
-          # unreachable looks exactly like a rule sitting in Normal because everything is fine.
+          # THEY CAN ACTUALLY FIRE NOW, which is new. Until the Fly datasource went, every one of
+          # them evaluated to an execution error and (being `execErrState: OK`) went quietly to
+          # Normal -- indistinguishable from everything being fine. They read the fleet's own
+          # Prometheus now.
           #
-          # THE ALERTING THAT IS ACTUALLY RUNNING ON THIS FLEET is Prometheus's, not Grafana's:
+          # THE OTHER HALF OF THIS FLEET'S ALERTING is Prometheus's rather than Grafana's:
           # nix/files/monitoring/rules/*.rules, evaluated by the process next door and delivered
-          # through Alertmanager. Grafana's unified alerting is kept enabled for these Fly rules
-          # and for the day they work again.
+          # through Alertmanager.
           rules.path = "${grafanaProvisioning}/alerting/alert-rules.yaml";
 
           # THE CONTACT POINT AND THE NOTIFICATION POLICY, vendored because they had to change.

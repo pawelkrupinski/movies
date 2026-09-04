@@ -205,10 +205,12 @@ in
       22 # ssh -- the only administrative path onto any of these machines
     ];
 
-    # EMPTY, AND THAT IS THE WHOLE POINT. It briefly carried 51820 for mongo-1's tunnel into Fly's
-    # 6PN, on the assumption that Fly dials in. It does not: `fly wireguard create` hands back a peer
-    # configuration naming Fly's gateway as the `Endpoint`, so THIS side initiates, and
-    # roles/wireguard-fly.nix sets no `listenPort` precisely so the source port stays ephemeral.
+    # EMPTY, AND THAT IS THE WHOLE POINT. It briefly carried 51820 for a tunnel into Fly's 6PN, on
+    # the assumption that Fly dials in. It does not: `fly wireguard create` hands back a peer
+    # configuration naming Fly's gateway as the `Endpoint`, so THIS side initiates, and the role
+    # that declared the peer set no `listenPort` precisely so the source port stays ephemeral.
+    # (Both the tunnel and that role are gone since 2026-09-04; the reasoning is kept for the next
+    # outbound tunnel.)
     # Return traffic therefore belongs to an already-established flow, which conntrack passes without
     # any rule naming it -- so the port opened nothing except a listener for the internet to find.
     #

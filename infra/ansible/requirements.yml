@@ -26,7 +26,7 @@ collections:
     version: "6.12.0"
 
   # ansible.posix.synchronize -- how roles/nixos_deploy gets the flake onto a target and how
-  # playbooks/migrate-mongo-from-fly.yml gets the dump archive onto mongo-1. It runs rsync on the
+  # playbooks/migrate-mongo-replica.yml gets a dump archive onto mongo-1. It runs rsync on the
   # CONTROLLER, so it needs no python on the far end (which a freshly converted NixOS host does not
   # have) but it does need `rsync` in that host's systemPackages.
   - name: ansible.posix

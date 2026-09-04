@@ -11,108 +11,82 @@
 # switch` is the whole loop. The two copies had already diverged by ~579 lines when the original
 # went, which is what a "kept as the rollback" copy nobody deploys turns into.
 #
-# THE datasource uid `fly-prometheus` in every rule below is a CONTRACT with roles/grafana.nix,
+# THE datasource uid `local-prometheus` in every rule below is a CONTRACT with roles/grafana.nix,
 # which provisions a datasource under exactly that uid; renaming either silently empties every rule
 # that queries it.
 #
 # ================================================================================================
-# POST-MIGRATION AUDIT, 2026-08-29.
+# THE FLY DATASOURCE IS GONE, 2026-09-04, AND THAT IS WHY THIS FILE LOOKS HALF-EMPTY
 # ================================================================================================
 #
-# This file was copied verbatim and then audited rule by rule against the world that exists after
-# the move off Fly. FOUR RULES WERE DELETED and ONE WAS CHANGED relative to that original; each
-# deletion leaves a comment where the rule used to be, so a reader finds an explanation rather
-# than a hole.
+# Until this date every rule here queried a `fly-prometheus` datasource whose credential had been
+# revoked -- so every rule evaluated to an execution error and, being `execErrState: OK`, went
+# quietly to Normal. NONE of them was protecting anything: a rule sitting in Normal because its
+# datasource is unreachable looks exactly like a rule sitting in Normal because everything is fine.
+# They were kept on the theory that a read-only token might be minted again. Fly now hosts one
+# thing from this estate -- a retired redirect host this fleet does not monitor -- so that day is
+# not coming, and the rules split cleanly in two:
+#
+#   * TEN QUERIED `fly_instance_*` / `fly_app_*`, produced by Fly's host agent and by nothing else.
+#     They are DELETED, each leaving a tombstone where it stood saying which series it read and
+#     what covers the same ground now (usually a rule in nix/files/monitoring/rules/*.rules,
+#     evaluated by Prometheus itself against the boxes the pods actually run on).
+#   * ELEVEN QUERIED ORDINARY APPLICATION METRICS -- `kinowo_uptime_*`, `kinowo_web_movies_served`,
+#     `kinowo_worker_*`, `process_start_time_seconds` -- which this fleet's own Prometheus has been
+#     scraping over the pods' NodePorts all along (nix/files/monitoring/scrape-kinowo-apps.yaml).
+#     They were only ever pointed at the wrong datasource. They are REPOINTED at
+#     `local-prometheus`, which is the first time since the token was revoked that they can fire.
+#
+# ⚠ EXPECT THE REPOINTED ELEVEN TO HAVE OPINIONS. They have been silently Normal for weeks, so the
+# first reconcile after this change is the first honest evaluation any of them has had. An alert
+# arriving then is most likely REAL and merely overdue -- read it before assuming the repoint
+# misfired. Their `app=~` selectors work unchanged because scrape-kinowo-apps.yaml labels each
+# target `app: kinowo` / `app: kinowo-worker`, the same names the Fly series carried.
+#
+# THE OTHER HALF OF THIS FLEET'S ALERTING is nix/files/monitoring/rules/*.rules, evaluated by
+# Prometheus rather than by Grafana and delivered through Alertmanager. Nothing about that changed.
 #
 # ------------------------------------------------------------------------------------------------
-# READ THIS BEFORE CONCLUDING THAT ANY RULE BELOW IS WORKING
+# THE ONE PATTERN THAT KEPT THE 2026-08-29 AUDIT SHORT, and it predates the migration
 # ------------------------------------------------------------------------------------------------
 #
-# EVERY RULE IN THIS FILE QUERIES THE `fly-prometheus` DATASOURCE, AND THAT DATASOURCE HAS NO
-# WORKING CREDENTIAL. Both read-only Fly tokens were revoked; the only token this estate has is
-# org-wide, it cannot mint a replacement (`createLimitedAccessToken Not authorized`), and an
-# org-wide token must not sit on the host that also runs the k3s control plane -- the long note on
-# `fleet.prometheus.scrapeFly` in roles/prometheus.nix sets out why. So as of the audit date:
-#
-#   * every rule here evaluates to an execution error, not to data;
-#   * the ones with `noDataState`/`execErrState: OK` -- which is nearly all of them -- go quietly
-#     to Normal, which is why this is not currently a firehose of false pages;
-#   * NONE of them is protecting anything. A rule in the Normal state because its datasource is
-#     unreachable looks exactly like a rule in the Normal state because everything is fine.
-#
-# THEY ARE KEPT RATHER THAN DELETED BECAUSE THE APPS THEY WATCH ARE STILL RUNNING. The web tier
-# (`kinowo`) and the scraping worker (`kinowo-worker`) are both still on Fly; the day a genuinely
-# read-only token exists, every rule below starts working again with no edit. Deleting them would
-# be throwing away working alerting to tidy up a credential problem.
-#
-# WHAT COVERS THE HETZNER SIDE INSTEAD is nix/files/monitoring/rules/*.rules, evaluated by
-# Prometheus rather than by Grafana, against the local `local-prometheus` datasource, with no Fly
-# dependency of any kind. Two of the deletions below were made specifically because a rule in that
-# directory now does the same job better.
-#
-# ------------------------------------------------------------------------------------------------
-# THE ONE PATTERN THAT KEPT THE AUDIT SHORT, and it was already in this file before the migration
-# ------------------------------------------------------------------------------------------------
-#
-# The fleet rules reach their apps by `app=~` REGEX, and every one of them is already
-# `noDataState: OK` -- so an app that stops simply drops out of them, silently and correctly. That
-# was written for the 2026-08-02 UK/DE shutdown (see the note above the `app-uptime` group) and it
-# is why `kinowo-mongo` and `showtimes-.*` were left in those regexes here rather than edited out:
-# a dead app costs nothing in a rule shaped this way, the regexes are asserted country-blind by
-# GrafanaCountryBlindAppMatcherSpec in the application repository, and narrowing them would break
-# that spec to fix a problem that does not exist. THE RULES THAT HAD TO BE TOUCHED ARE EXACTLY THE
-# ONES THAT DID NOT FOLLOW THAT PATTERN: two that named Fly VOLUME MOUNTPOINTS which no longer
-# exist, one that was `noDataState: Alerting` on an app that is gone, and one whose only consumer
-# was a webhook this host cannot reach.
+# The fleet rules reach their apps by `app=~` REGEX, and every one of them is `noDataState: OK` --
+# so an app that stops simply drops out of them, silently and correctly. That was written for the
+# 2026-08-02 UK/DE shutdown (see the note above the `app-uptime` group), and it is why a dead app
+# name left in a regex costs nothing. THE RULES THAT HAVE EVER HAD TO BE TOUCHED ARE EXACTLY THE
+# ONES THAT DID NOT FOLLOW THAT PATTERN.
 #
 apiVersion: 1
 
-# Alert rules wired to the Fly managed Prometheus. Every expression below was
-# validated against the live endpoint (org `personal`) before being committed —
-# metric names and label shapes are real, not copied from docs (the docs'
-# `fly_instance_exit_oom` does NOT exist in this org; Fly's own email covers the
-# OOM kill, and rule "memory-pressure" below catches the pre-OOM condition).
+# Alert rules over the fleet's own Prometheus. Each maps to a real past incident:
+#   - residential-proxy / enrichment-source failing -> a silently-degrading upstream
+#   - movies-served swing / city empty              -> the read model going thin or blank
+#   - showtime-volume collapsed                     -> a scrape that stopped landing
+#   - worker throttled / task-age / queue-backlog   -> the 2026-06-23 backlog spiral
 #
-# Each rule maps to a real past incident:
-#   - cpu-credit-exhausted / cpu-throttled  -> 2026-06-07 web 93% steal (shared
-#     vCPU credit exhaustion after the 5->19 city + zlib deploy)
-#   - memory-pressure                       -> 2026-06-06 Mongo OOM cascade
-#   - serving-app-down / http-5xx-high      -> the 502/503 web outage
-#   - http-p95-high                         -> "percentiles suddenly increasing"
-#
-# noDataState is OK for traffic/credit metrics (a quiet hobby app legitimately
-# has no HTTP series for minutes), EXCEPT serving-app-down where missing data IS
-# the alarm.
+# noDataState is OK almost everywhere (a quiet hobby app legitimately has no series for minutes),
+# EXCEPT `kinowo-web-serving-down`, where missing data IS the alarm.
 groups:
   # ================================================================================================
-  # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `fly-resources`
+  # WHAT IS LEFT OF THIS GROUP, and why it is one rule.
   #
-  #   KEEP  CPU credit exhausted (serving app)      kinowo is still on Fly; `app=~` + noData:OK, so
-  #                                                 the retired kinowo-mongo/showtimes-* simply drop
-  #                                                 out. Nothing to change.
-  #   KEEP  CPU throttled (serving app)             As above.
-  #   KEEP  CPU steal high                          As above. Steal is a property of Fly's shared
-  #                                                 hosts and has no analogue on a dedicated Hetzner
-  #                                                 vCPU, so this rule does not migrate -- it stays
-  #                                                 pointed at the apps that are still on Fly.
-  #   KEEP  Worker CPU starved (sustained throttle)  kinowo-worker is still on Fly.
-  #   KEEP  Worker crash-looping                     As above.
-  #   KEEP  Memory pressure (pre-OOM)                As above. The Hetzner hosts get their own
-  #                                                 coverage from MemoryAvailableLow/Critical in
-  #                                                 rules/host-health.rules; the two do not overlap
-  #                                                 because they watch different machines.
-  #   KEEP  Memory pressure building (PSI)           As above; rules/host-health.rules'
-  #                                                 `MemoryStallHigh` is its Hetzner counterpart,
-  #                                                 written from this rule's intent.
-  #   DROP  Disk space low (persistent volume)       Fly volumes that no longer exist. Tombstone
-  #                                                 below, at the point it was removed.
-  #   DROP  Disk projected to fill within 7 days     Same. Tombstone below.
+  # It held seven rules about the MACHINE: CPU credit exhausted, CPU throttled, CPU steal high,
+  # worker CPU starved, worker crash-looping, memory pressure, memory pressure (PSI) -- plus two
+  # disk rules dropped in the 2026-08-29 audit when the Fly volumes they named stopped existing.
+  # Six of the seven read `fly_instance_*`, which is Fly's host agent and nothing else, and went
+  # with the platform on 2026-09-04 (tombstones below, each at the point its rule stood).
   #
-  # EVERY "KEEP" ABOVE IS A KEEP WITH A CAVEAT, and the caveat is the same one for all of them: the
-  # datasource has no token, so none of these is currently doing anything. See the header.
+  # WHAT COVERS THE SAME GROUND: the boxes the pods run on are watched by node_exporter through
+  # rules/host-health.rules (memory available, memory stall, load) and rules/filesystem-capacity.rules
+  # (the disk rules' successors); each JVM's heap -- the binding constraint here, not the host's
+  # RAM -- by rules/jvm-heap.rules. Steal and shared-CPU credit have no analogue at all on a
+  # dedicated box; they were properties of somebody else's scheduler.
+  #
+  # The survivor is crash-looping, which reads `process_start_time_seconds` off the app's own
+  # /metrics and never needed Fly for anything but the datasource.
   # ================================================================================================
   - orgId: 1
-    name: fly-resources
+    name: app-processes
     folder: Fly Alerts
     interval: 1m
     rules:
@@ -120,124 +94,27 @@ groups:
       # Shared-cpu credit balance collapsing toward 0 on a serving app means it
       # is about to run at baseline only = the latency/steal incident. Worker is
       # excluded: it runs credit-starved by design (continuous scrape).
-      - uid: kinowo-cpu-credit-exhausted
-        title: CPU credit exhausted (serving app)
-        condition: C
-        for: 10m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-        annotations:
-          summary: '{{ $labels.app }} shared-CPU credit balance is near zero'
-          description: 'fly_instance_cpu_balance < 500 for 10m on {{ $labels.app }} ({{ $labels.instance }}). The machine is throttled to baseline CPU — this is the shape of the 2026-06-07 web 93%-steal incident. Check what deploy preceded it (deploy annotations on the dashboard).'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'min by (app, instance) (fly_instance_cpu_balance{app=~"kinowo|kinowo-mongo|showtimes-.*"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: lt, params: [500] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-cpu-credit-exhausted` read
+      # shared-CPU credit balance (`fly_instance_cpu_balance`) -- a Fly billing concept
+      # with no counterpart on a dedicated box.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # ---- CPU actively throttled ------------------------------------------
-      - uid: kinowo-cpu-throttled
-        title: CPU throttled (serving app)
-        condition: C
-        for: 10m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.app }} is being CPU-throttled'
-          description: 'rate(fly_instance_cpu_throttle) > 0.2 (throttled >20% of wall-clock) for 10m on {{ $labels.app }}. Serving latency will suffer.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo|kinowo-mongo|showtimes-.*"}[5m]))'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [0.2] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-cpu-throttled` read
+      # `fly_instance_cpu_throttle`, the hypervisor's throttle counter.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # ---- CPU steal (host contention, secondary signal) -------------------
-      - uid: kinowo-cpu-steal-high
-        title: CPU steal high
-        condition: C
-        for: 10m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.app }} CPU steal > 25%'
-          description: 'The hypervisor is stealing >25% of CPU from {{ $labels.app }} for 10m — noisy-neighbour or our own overcommit. Heap was fine in the 2026-06-07 incident; steal was the tell.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'sum by (app) (rate(fly_instance_cpu{mode="steal",app!="schowek"}[5m])) / sum by (app) (rate(fly_instance_cpu{app!="schowek"}[5m]))'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [0.25] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-cpu-steal-high` read
+      # `fly_instance_cpu{mode="steal"}` -- steal against noisy neighbours on a shared
+      # host. rules/host-health.rules watches the box the pods actually run on.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # ---- Worker CPU starvation (sustained throttle, NOT the chronic low balance) -
       # The worker runs credit-starved by design, so the credit-balance alert above
@@ -273,44 +150,11 @@ groups:
       # not a graceful drain. That leaves an external kill. To PROVE it, read the machine
       # event exit_code right after an ungraceful restart, BEFORE a deploy replaces the
       # machine and wipes its event history: flyctl machine status <id> -a kinowo-worker.
-      - uid: kinowo-worker-cpu-starved
-        title: Worker CPU starved (sustained throttle)
-        condition: C
-        for: 15m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.app }} is CPU-throttled for 15m+ (falling behind)'
-          description: 'rate(fly_instance_cpu_throttle) > 0.2 on {{ $labels.app }}, on a JVM already up >1h (see the warm-JVM guard below) (throttled >20% of wall-clock) for 15m — the worker is starved past its baseline. Likely a cold-boot scrape/enrich backlog, a heavy pass, or repeated reboots. Check recent worker deploys/restarts and the queue depth (web queue-monitor page); if it recurs without a deploy, the fix is a bigger [[vm]] (more shared-CPU credit), not scheduling. Short reboot blips (~90s) are expected and sit below this 15m window.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'max by (app, instance) (rate(fly_instance_cpu_throttle{app=~"kinowo-worker.*"}[5m])) and on (app, instance) ((time() - max by (app, instance) (process_start_time_seconds{app=~"kinowo-worker.*"})) > 3600)'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [0.2] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-worker-cpu-starved` read
+      # `fly_instance_cpu_throttle` for the worker apps.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # ---- Worker crash-looping (restarts far above the normal cadence) -----
       # The worker restarts a few times a day BY DESIGN — a JVM-internal non-heap
@@ -334,9 +178,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 3600, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: 'max by (app, instance) (changes(process_start_time_seconds{app=~"kinowo-worker.*"}[1h]))'
               instant: true
@@ -360,44 +204,13 @@ groups:
               refId: C
 
       # ---- Memory pressure (pre-OOM, the Mongo-cascade precursor) -----------
-      - uid: kinowo-memory-pressure
-        title: Memory pressure (pre-OOM)
-        condition: C
-        for: 15m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.app }} has < 8% memory available'
-          description: 'fly_instance_memory_mem_available/total < 0.08 for 15m on {{ $labels.app }} ({{ $labels.instance }}). This is the runway to an OOM kill — the 2026-06-06 Mongo OOM cascaded into a web outage. Fly also emails on the actual kill.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 900, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'min by (app, instance) (fly_instance_memory_mem_available{app!="schowek"} / fly_instance_memory_mem_total{app!="schowek"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: lt, params: [0.08] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-memory-pressure` read
+      # `fly_instance_memory_mem_available/total`, the host agent's view.
+      # rules/host-health.rules covers the box and rules/jvm-heap.rules covers each
+      # JVM's own heap, which is the binding constraint here anyway.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # ================================================================================
       # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Disk space low (persistent
@@ -446,67 +259,26 @@ groups:
       # The 2026-06-06 cascade was an OOM; this is the earliest tap on that
       # runway. Healthy idle boxes sit flat at 0, so a sustained avg60 > 5% is a
       # real, building squeeze. Covers the SPOF mongo + the web app.
-      - uid: kinowo-memory-pressure-psi
-        title: Memory pressure building (PSI)
-        condition: C
-        for: 5m
-        noDataState: OK
-        execErrState: OK
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.app }} under sustained memory pressure (PSI)'
-          description: 'fly_instance_memory_pressure_some (avg60) > 5% for 5m on {{ $labels.app }} ({{ $labels.instance }}) — tasks are stalling on memory allocation. This LEADS the mem-available collapse and the OOM kill that cascaded to a web outage on 2026-06-06. Check RSS/cache and consider a memory bump before it trips memory-pressure / OOMs.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'max by (app, instance) (fly_instance_memory_pressure_some{app=~"kinowo|kinowo-mongo|showtimes-.*", pressure_duration="avg60"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [5] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-memory-pressure-psi` read
+      # `fly_instance_memory_pressure_some` (PSI, from the host agent).
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
   # ================================================================================================
-  # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `fly-serving`
+  # WHAT IS LEFT OF THIS GROUP, and why it is one rule.
   #
-  #   DROP     Mongo down                 The app is retired AND the rule was noDataState:Alerting,
-  #                                       so it was firing permanently. Tombstone below. Replaced by
-  #                                       `MongodNotRunning` in rules/mongodb.rules.
-  #   KEEP     HTTP 5xx rate high         `kinowo` still serves from Fly and its edge 5xx rate is
-  #                                       still the truest "are users seeing errors" signal this
-  #                                       estate has. Nothing on Hetzner can replace it: the web
-  #                                       tier is not here.
-  #   KEEP     HTTP p95 latency high      As above.
-  #   REWRITE  Serving app down           noDataState/execErrState Alerting -> OK, because the
-  #                                       revoked token turned "no data" into a permanent page. The
-  #                                       reasoning, and how to undo it, is written above the rule.
-  #   KEEP     UK serving app down        Already handled correctly before the migration -- it was
-  #                                       flipped to noDataState:OK when showtimes-uk was stopped on
-  #                                       2026-08-02, with its own note explaining the restore. The
-  #                                       migration changes nothing about it, so it is left exactly
-  #                                       as found.
+  # Four rules watched the SERVING path through Fly's edge: 5xx rate, p95 latency, and two
+  # `fly_instance_up` down-alarms (one for `kinowo`, one for `showtimes-uk`). All four went with the
+  # platform on 2026-09-04. The sites are k3s pods scraped directly, so `kinowo-web-serving-down`
+  # below -- which was already on the local datasource, written during the 2026-08-29 cutover --
+  # covers every country's instance in one rule where the Fly ones needed one per app.
+  #
+  # The apps' own request instrumentation (rate, status, latency) is on the kinowo-http dashboard;
+  # what is not yet rewritten here is an ALERT on it, which is the honest gap this group leaves.
   # ================================================================================================
   - orgId: 1
-    name: fly-serving
+    name: serving
     folder: Fly Alerts
     interval: 1m
     rules:
@@ -535,84 +307,19 @@ groups:
       # ================================================================================
 
       # ---- HTTP 5xx rate ---------------------------------------------------
-      - uid: kinowo-http-5xx-high
-        title: HTTP 5xx rate high
-        condition: C
-        for: 5m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: critical
-        annotations:
-          summary: '{{ $labels.app }} serving > 5% 5xx'
-          description: 'Over 5% of responses are 5xx for 5m on {{ $labels.app }} — the shape of the boot-crash-loop / Mongo-blocked-bind outage. Cross-check the latest deploy marker.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'sum by (app) (rate(fly_app_http_responses_count{status=~"5..",app!="schowek"}[5m])) / sum by (app) (rate(fly_app_http_responses_count{app!="schowek"}[5m]))'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [0.05] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-http-5xx-high` read
+      # `fly_app_http_responses_count` -- Fly's EDGE view of responses. The apps' own
+      # instrumentation is on the kinowo-http dashboard.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # ---- HTTP p95 latency ------------------------------------------------
-      - uid: kinowo-http-p95-high
-        title: HTTP p95 latency high
-        condition: C
-        for: 10m
-        noDataState: OK
-        execErrState: Error
-        labels:
-          severity: warning
-        annotations:
-          summary: '{{ $labels.app }} p95 latency > 2s'
-          description: 'p95 response time > 2s for 10m on {{ $labels.app }} ("percentiles suddenly increasing"). Often the first visible symptom of CPU-credit exhaustion before it trips the credit alarm.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'histogram_quantile(0.95, sum by (app, le) (rate(fly_app_http_response_time_seconds_bucket{app!="schowek"}[5m])))'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [2] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-http-p95-high` read
+      # `fly_app_http_response_time_seconds_bucket`, Fly's edge latency histogram.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # ---- Serving app down ------------------------------------------------
       # The ONLY rule where missing data is the alarm: if kinowo stops reporting
@@ -707,44 +414,13 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
-      - uid: kinowo-serving-down
-        title: Serving app down
-        condition: C
-        for: 3m
-        noDataState: OK
-        execErrState: OK
-        labels:
-          severity: critical
-        annotations:
-          summary: 'kinowo (web, Fly) is down or not reporting'
-          description: 'DORMANT since the web tier moved to k3s on 2026-08-29 — `fly_instance_up{app="kinowo"}` is permanently absent and this rule cannot fire. `kinowo-web-serving-down` above is what watches the live tier. Kept only for the documented Fly rollback (main.yml matrix `enabled: true` + `flyctl scale count 1`); retire it with the Fly app.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'max (fly_instance_up{app="kinowo"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: lt, params: [1] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-serving-down` read
+      # `fly_instance_up{app="kinowo"}`. `kinowo-web-serving-down` watches the live
+      # tier over the fleet's own scrape; the one Fly app left is a redirect host this
+      # fleet does not monitor.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # ---- UK serving app down ---------------------------------------------
       # The showtimes-uk web app (KINOWO_COUNTRY=uk, London) is the UK-facing
@@ -767,44 +443,12 @@ groups:
       #
       # ON RESTORE: set both back to `Alerting`, so absence is the alarm again for
       # an app that is once more supposed to be running. See docs/restoring-a-country.md.
-      - uid: showtimes-uk-serving-down
-        title: UK serving app down
-        condition: C
-        for: 3m
-        noDataState: OK
-        execErrState: OK
-        labels:
-          severity: critical
-        annotations:
-          summary: 'showtimes-uk (UK web, Fly) is down or not reporting — DORMANT, see kinowo-web-serving-down'
-          description: 'fly_instance_up{app="showtimes-uk"} is 0 for 3m — the UK user-facing app is unreachable. Check `fly status -a showtimes-uk` and Mongo (a Mongo hiccup blocks web boot; UK reads the same cluster, db kinowo_uk). While the UK deployment is stopped this rule is deliberately silent on absence — see the noDataState note above.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: fly-prometheus
-            model:
-              datasource: { type: prometheus, uid: fly-prometheus }
-              editorMode: code
-              expr: 'max (fly_instance_up{app="showtimes-uk"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: lt, params: [1] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `showtimes-uk-serving-down` read
+      # `fly_instance_up{app="showtimes-uk"}`. The UK site is a k3s pod, covered by
+      # `kinowo-web-serving-down`'s per-instance `up{job="kinowo-web"}`.
+      #
+      # Nothing this repository deploys produces that series any more, so the rule
+      # could only evaluate to absent.
 
       # The fleet rules that reach these apps by `app=~` regex (CPU credit,
       # throttle, memory PSI, worker starvation/crash-loop/credit) were LEFT
@@ -846,7 +490,7 @@ groups:
   #      equivalent here; roles/grafana.nix's header names this as a known, unfixed gap.
   #
   # THE REAL FIX FOR BOTH IS THE SAME ONE and it is not a rule edit: give monitoring-1 its own Fly
-  # WireGuard peer, exactly as roles/wireguard-fly.nix does for mongo-1, and let the LOCAL
+  # WireGuard peer, as the Fly-era role used to, and let the LOCAL
   # Prometheus scrape the apps' /metrics endpoints directly. That would make this group work
   # against `local-prometheus` with no token at all -- at which point the datasource uid in these
   # six rules is the only thing that needs changing.
@@ -883,9 +527,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: 'sum(kinowo_uptime_recent_failures{service="Residential proxy"}) / clamp_min(sum(kinowo_uptime_recent_failures{service="Residential proxy"}) + sum(kinowo_uptime_recent_successes{service="Residential proxy"}), 1)'
               instant: true
@@ -950,9 +594,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: 'sum by (service, country) (kinowo_uptime_recent_failures{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}) / clamp_min(sum by (service, country) (kinowo_uptime_recent_failures{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}) + sum by (service, country) (kinowo_uptime_recent_successes{service=~"IMDb|TMDB|Filmweb|Metacritic|Rotten Tomatoes"}), 1)'
               instant: true
@@ -1001,9 +645,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: '(abs(kinowo_web_movies_served - avg_over_time(kinowo_web_movies_served[1h])) / clamp_min(avg_over_time(kinowo_web_movies_served[1h]), 1)) and (abs(kinowo_web_movies_served - avg_over_time(kinowo_web_movies_served[1h])) >= 4)'
               instant: true
@@ -1049,9 +693,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: '(kinowo_web_movies_served{scope="all"} == 0) and (avg_over_time(kinowo_web_movies_served{scope="all"}[6h] offset 10m) >= 4)'
               instant: true
@@ -1131,9 +775,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 21600, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: 'sum by (country) (kinowo_worker_showtimes) / clamp_min(max_over_time(sum by (country) (kinowo_worker_showtimes)[6h:10m]), 1)'
               instant: true
@@ -1191,9 +835,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 1800, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: 'sum by (country) (increase(kinowo_worker_corpus_scan_incomplete_total[30m]))'
               instant: true
@@ -1279,7 +923,7 @@ groups:
       # threshold lived out here precisely so the worker only had to receive firing/resolved.
       #
       # THE WEBHOOK IT DROVE DOES NOT EXIST ON THIS HOST. monitoring-1 is not a Fly 6PN peer
-      # -- only mongo-1 is (roles/wireguard-fly.nix) -- so the three `WorkerThrottle*` contact
+      # -- no host on this fleet is any more -- so the three `WorkerThrottle*` contact
       # points were deliberately not carried across, and grafana-contactpoints.yaml says so in
       # its own header. With no receiver named `worker-throttle`, this rule falls through to
       # the root policy and arrives on TELEGRAM instead: a critical-looking page about a
@@ -1315,9 +959,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: 'max(kinowo_worker_throttled{app="kinowo-worker"})'
               instant: true
@@ -1359,9 +1003,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: 'max(kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker"})'
               instant: true
@@ -1401,9 +1045,9 @@ groups:
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: fly-prometheus
+            datasourceUid: local-prometheus
             model:
-              datasource: { type: prometheus, uid: fly-prometheus }
+              datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
               expr: 'max(kinowo_worker_queue_depth{app="kinowo-worker", state="waiting"})'
               instant: true

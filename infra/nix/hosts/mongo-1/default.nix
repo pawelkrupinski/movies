@@ -21,13 +21,10 @@ in
     ../../modules/roles/mongodb.nix
     ../../modules/roles/mongodb-exporter.nix
 
-    # NO wireguard-fly.nix, UNLIKE mongo-1, AND THE ABSENCE IS THE DECISION. That peer existed so
-    # the Fly-hosted web and worker tiers could reach mongod over 6PN; both moved to k3s on
-    # 2026-08-29 and every client has reached the private address directly ever since, so mongo-1's
-    # own configuration already calls the tunnel "a tunnel the application no longer arrives on".
-    # Recreating it here would mean a second `fly wireguard create`, a second private key that
-    # flyctl prints exactly once, and a second thing to revoke -- to carry no traffic. If something
-    # ever needs it again, add the import and the peer together.
+    # NO FLY 6PN PEER, AND THE ABSENCE IS THE DECISION. Such a peer existed on the monitoring host
+    # so the Fly-hosted web and worker tiers could reach mongod over 6PN; both moved to k3s on
+    # 2026-08-29 and every client has reached the private address directly ever since. The role that
+    # declared it was deleted on 2026-09-04 with the rest of the Fly integration.
     ../../modules/fleet/logs.nix
   ];
 
@@ -91,8 +88,8 @@ in
     wiredTigerCacheSizeGB = 1.0;
 
     # Loopback for the local mongodump timer and this fleet's Prometheus, the private address for
-    # every client. NO 6PN ENTRY, because this host has no Fly peer (see the import list); mongo-1
-    # carries one only for a tunnel nothing uses. Never the public IP.
+    # every client. NO 6PN ENTRY, because there is no Fly peer anywhere on this fleet any more (see
+    # the import list). Never the public IP.
     bindAddresses = [ "127.0.0.1" "10.20.0.13" ];
   };
 

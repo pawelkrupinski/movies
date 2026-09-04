@@ -46,7 +46,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // frozen twin under fly/grafana/provisioning/dashboards for the stopped kinowo-grafana app,
     // and guarding THAT would have meant this spec passing while the dashboards people actually
     // open had no panel for a metric. The twin is gone; there is one copy to guard.
-    "infra/nix/files/monitoring/grafana/dashboards/apps/fly-overview.json",
+    "infra/nix/files/monitoring/grafana/dashboards/apps/application-health.json",
     "infra/nix/files/monitoring/grafana/dashboards/apps/worker-diagnostics.json",
     "infra/nix/files/monitoring/grafana/dashboards/fleet/kinowo-fleet.json",
     // Added 2026-08-29 with the HTTP dashboard. EVERY live dashboard has to be listed here or the

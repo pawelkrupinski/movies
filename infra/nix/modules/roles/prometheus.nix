@@ -3,28 +3,11 @@
 # WHAT IT WATCHES, AND WHAT WATCHES IT. Three node_exporters over the private network (mongo-1,
 # this host, k3s-worker-1); two exporters that speak for something the host cannot -- mongodb_exporter
 # on mongo-1 for what mongod thinks it is, and kube-state-metrics through a NodePort for what the
-# k3s cluster thinks it is; its own three processes; and -- separately and by a different mechanism
-# -- Fly's managed Prometheus, which is where every metric about the still-Fly-hosted web and
-# worker apps lives. NOTHING WATCHES THIS HOST FROM OUTSIDE. That is the standing weakness
+# k3s cluster thinks it is; its own three processes; and the application pods themselves, over
+# their NodePorts. NOTHING WATCHES THIS HOST FROM OUTSIDE. That is the standing weakness
 # of a single monitoring node and it is not solved here; what IS done is that Alertmanager's own
 # delivery path is exercised by a rule (see monitoring-self.rules), so a Telegram route that has
 # quietly stopped working is discovered by a heartbeat rather than by the first real incident.
-#
-# ------------------------------------------------------------------------------------------------
-# THE FLY AUTH HEADER IS `FlyV1`, NOT `Bearer`. THIS IS THE GOTCHA THAT COSTS AN AFTERNOON.
-# ------------------------------------------------------------------------------------------------
-#
-# Fly's managed Prometheus at https://api.fly.io/prometheus/personal authenticates with
-#
-#     Authorization: FlyV1 <token>
-#
-# A `Bearer <token>` header -- which is what every Prometheus example on the internet writes, and
-# what Prometheus's `authorization` block DEFAULTS TO when `type` is omitted -- returns 401 with
-# "resolving organization". Verified against the live endpoint. So the scrape config carries an
-# explicit `type: FlyV1`, and roles/grafana.nix carries the same value in a datasource header for
-# the same reason. If either is ever "cleaned up" to Bearer, the symptom is a 401 that reads like a
-# revoked token, and the first thing anybody does about a bad token is issue a new one -- which
-# does not help and buries the real cause under a credential change.
 #
 # ------------------------------------------------------------------------------------------------
 # WHY THIS PROCESS OUTRANKS ITS NEIGHBOUR
@@ -58,7 +41,6 @@ let
   render = name: src: pkgs.runCommand name { } ''
     substitute ${src} $out \
       --replace-quiet '@LISTEN_ADDRESS@' '${cfg.listenAddress}' \
-      --replace-quiet '@FLY_TOKEN_FILE@' '${cfg.flyTokenFile}' \
       --replace-quiet '@GRAFANA_PORT@' '${toString cfg.grafanaPort}' \
       --replace-quiet '@TELEGRAM_BOT_TOKEN_FILE@' '${cfg.telegramBotTokenFile}'
     if grep -nE '@[A-Z0-9_]+@' $out; then
@@ -96,7 +78,7 @@ let
   # list produces an empty `scrape_configs` rather than a half-written document the glob would
   # still match. The alternative was two more `@PLACEHOLDER@` jobs inside
   # files/monitoring/prometheus.yaml; this way "not deployed" is an empty list rather than a job
-  # pointed at nothing, which is the same reasoning the `scrapeFly` option gives at length.
+  # pointed at nothing.
   #
   # WHY EACH GETS A JOB OF ITS OWN RATHER THAN JOINING THE `node` JOB: the `node` job's targets all
   # speak the same metric namespace and share `TargetDown`'s "job is a machine" reading. These two
@@ -184,7 +166,7 @@ let
     "flux"
     # THE HOSTS THEMSELVES -- memory, OOM, CPU, failed units, read-only filesystems. NEW at the
     # post-migration audit: on Fly the host was somebody else's problem, and nothing had replaced
-    # `fly_instance_*` with a view of these three machines.
+    # the host agent's view with one of these three machines.
     "host-health"
     # IS ANY JVM ABOUT TO RUN OUT OF HEAP. Added after web-us OOMed on 2026-09-03 while a merged,
     # green, `deployed-web`-tagged heap raise sat unapplied: the CI deploy rolls images only, so a
@@ -199,7 +181,6 @@ let
     # Whether the fleet is still deploying itself. The failure this covers is completely silent:
     # an applier that has stopped leaves every service running and every other alert green.
     "nixos-deploy"
-    "wireguard-fly"
   ];
 in
 {
@@ -284,41 +265,6 @@ in
         rule evaluation and notification failures, which is the only way this stack notices that
         its own alerting has stopped. Kept in step with `fleet.grafana.port` by the assertion below
         rather than by two literals agreeing out of luck.
-      '';
-    };
-
-    scrapeFly = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = ''
-        Whether to scrape Fly's managed Prometheus for fly_instance_* / fly_edge_* / fly_app_*.
-
-        DEFAULT FALSE, AND THAT IS A CREDENTIAL DECISION RATHER THAN A FEATURE ONE. The job needs a
-        Fly token, and the only token available to this estate on 2026-08-29 was an ORG-WIDE one --
-        the two read-only tokens previously in .env.local have been revoked and both answer 401,
-        and the org token cannot mint a replacement (`createLimitedAccessToken Not authorized`).
-
-        AN ORG-WIDE FLY TOKEN MUST NOT LIVE ON THIS HOST. monitoring-1 also carries the k3s control
-        plane, so anything that compromises a workload there would gain the ability to DEPLOY to
-        Fly -- where the production web tier still runs. Scraping some gauges is not worth that.
-
-        Turning it on: mint a genuinely read-only token from an account that may
-        (`fly tokens create readonly --org personal`), put it in nix/secrets/monitoring-1.yaml as
-        `prometheus/fly-token`, and set this true.
-
-        LEFT OFF RATHER THAN LEFT FAILING, deliberately. A job with a dead token is a target that
-        sits red for ever, and a dashboard with a permanently red target is one where nobody looks
-        at red any more.
-      '';
-    };
-
-    flyTokenFile = lib.mkOption {
-      type = lib.types.str;
-      default = config.sops.secrets."prometheus/fly-token".path;
-      defaultText = ''config.sops.secrets."prometheus/fly-token".path'';
-      description = ''
-        Path to the Fly read-only org token (`fly tokens create readonly --org personal`), from
-        sops-nix. A PATH, not a value: the config file lives in the world-readable Nix store.
       '';
     };
 
@@ -492,20 +438,6 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # RESOLVE `.internal` THROUGH FLY'S DNS, which is what makes the `kinowo-web` job possible.
-    #
-    # Prometheus's `dns_sd_configs` uses the SYSTEM resolver, so `kinowo.internal` only means
-    # anything if this host knows to ask Fly. fdaa:74:b6b5::3 is the resolver Fly hands every 6PN
-    # peer, reachable only through the WireGuard tunnel in roles/wireguard-fly.nix -- so this and
-    # that role stand or fall together.
-    #
-    # SCOPED TO THE `internal` DOMAIN ONLY (`~internal`), never as a global resolver. Sending all of
-    # this host's DNS through Fly would make every lookup on the box depend on a tunnel to a third
-    # party, and the failure would look like the whole machine losing the network.
-    services.resolved.enable = true;
-    services.resolved.domains = [ "~internal" ];
-    networking.nameservers = lib.mkForce [ "fdaa:74:b6b5::3" "1.1.1.1" "9.9.9.9" ];
-
     # CREATE THE DIRECTORIES ON THE VOLUME. Neither service does this for itself and `StateDirectory=`
     # cannot help: it creates /var/lib/<name>, whereas these live at a NESTED path on a SEPARATE
     # MOUNT, which systemd will not create on the unit's behalf.
@@ -535,12 +467,11 @@ in
       }
     ];
 
-    # OWNED BY THE PROCESS THAT READS THEM, 0400. Prometheus reads the Fly token itself at scrape
-    # time (`credentials_file`) and Alertmanager reads the bot token at send time
-    # (`bot_token_file`) -- neither is ever interpolated into a config file, so neither reaches the
+    # OWNED BY THE PROCESS THAT READS IT, 0400. Alertmanager reads the bot token at send time
+    # (`bot_token_file`) -- it is never interpolated into a config file, so it never reaches the
     # store, and a file the wrong process owns fails at the moment it is needed rather than at
-    # start.
-    sops.secrets."prometheus/fly-token" = { owner = "prometheus"; mode = "0400"; };
+    # start. A `prometheus/fly-token` sat beside it, read at scrape time by the Fly federation job,
+    # until both went on 2026-09-04.
     sops.secrets."alertmanager/telegram-bot-token" = { owner = "alertmanager"; mode = "0400"; };
 
     users.users.prometheus = { isSystemUser = true; group = "prometheus"; description = "Prometheus"; };
@@ -560,19 +491,13 @@ in
       "prometheus/scrape.d/kube-state-metrics-targets.yaml".text = kubeStateMetricsYaml;
       "prometheus/scrape.d/flux-targets.yaml".text = fluxYaml;
 
-      # THE APPLICATION'S OWN METRICS, always installed -- unlike scrape-fly.yaml below, these need
-      # no credential anyone can revoke. The worker is reached by NodePort over the private subnet;
-      # the web tier by this host's 6PN peer, which is why `resolved` is configured for `.internal`
-      # further down.
+      # THE APPLICATION'S OWN METRICS. Every tier of every country, reached by NodePort over the
+      # private subnet, needing no credential anyone can revoke. A `scrape-fly.yaml` sat beside
+      # this behind a `scrapeFly` flag, federating Fly's managed Prometheus; it was never turned on
+      # -- an org-wide token must not sit on the host that also runs the k3s control plane, and the
+      # read-only ones were revoked -- and it went on 2026-09-04 with the platform.
       "prometheus/scrape.d/kinowo-apps.yaml".source =
         render "kinowo-apps.yaml" ../../files/monitoring/scrape-kinowo-apps.yaml;
-    } // lib.optionalAttrs cfg.scrapeFly {
-      # ONLY WHEN `scrapeFly` IS TRUE. prometheus.yaml globs this directory, so "off" is the file
-      # not existing rather than a job configured with a credential that does not work -- which
-      # would be a target sitting red for ever. See the option's own note for why the default is
-      # false, and what to do about it.
-      "prometheus/scrape.d/scrape-fly.yaml".source =
-        render "scrape-fly.yaml" ../../files/monitoring/scrape-fly.yaml;
     } // lib.listToAttrs (map
       (n: lib.nameValuePair "prometheus/rules/${n}.rules" {
         source = render "${n}.rules" (../../files/monitoring/rules + "/${n}.rules");
@@ -604,10 +529,6 @@ in
         config.environment.etc."prometheus/scrape.d/kube-state-metrics-targets.yaml".text
         config.environment.etc."prometheus/scrape.d/kinowo-apps.yaml".source
       ]
-      # Turning scrapeFly on or off changes a file Prometheus reads but not the unit, which is the
-      # exact "written and never read" case the note above describes.
-      ++ lib.optional cfg.scrapeFly
-        config.environment.etc."prometheus/scrape.d/scrape-fly.yaml".source
       ++ map (n: config.environment.etc."prometheus/rules/${n}.rules".source) ruleNames;
 
       serviceConfig = {

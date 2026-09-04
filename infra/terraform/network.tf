@@ -3,9 +3,9 @@
 # internet on any host here.
 #
 # 10.20.0.0/16 rather than bitcashier's 10.0.0.0/8: these are different Hetzner projects and their
-# networks never peer, so the ranges need not agree -- but mongo-1 also joins Fly's 6PN over
-# WireGuard (see infra/nix/modules/roles/wireguard-fly.nix), and picking a range that cannot
-# collide with anything already routed keeps that routing table trivially readable.
+# networks never peer, so the ranges need not agree. It was also chosen while a host on this fleet
+# still held a WireGuard peer into Fly's 6PN, where a range that cannot collide with anything
+# already routed kept the routing table trivially readable.
 resource "hcloud_network" "kinowo" {
   name              = "kinowo"
   ip_range          = "10.20.0.0/16"

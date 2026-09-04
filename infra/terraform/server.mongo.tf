@@ -1,6 +1,6 @@
-# The database host. Takes over from the self-hosted `kinowo-mongo` Fly app in arn.
+# The database host. It took over from the self-hosted `kinowo-mongo` Fly app in arn.
 #
-# WHY MOVING IT OFF FLY IS SAFE DESPITE THE ~27ms IT ADDS between the web tier (still Fly, arn) and
+# WHY MOVING IT OFF FLY WAS SAFE DESPITE THE ~27ms IT ADDED between the web tier (then Fly, arn) and
 # the database (here, nbg1): the web tier does ZERO Mongo round trips on a page render. It hydrates
 # the whole read model into two ConcurrentHashMaps at boot and keeps them fresh over Mongo change
 # streams (common/src/main/scala/services/readmodel/WebReadModel.scala), then serves responses out

@@ -340,7 +340,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     val es = hoursOf(workerOverlay("es"))
 
     val sentence = s"${pl}h for pl, ${uk}h for uk, ${de}h for de, ${us}h for us, ${es}h for es"
-    val dashboard = "infra/nix/files/monitoring/grafana/dashboards/apps/fly-overview.json"
+    val dashboard = "infra/nix/files/monitoring/grafana/dashboards/apps/application-health.json"
     withClue(s"$dashboard's oldest-scrape panel must say '$sentence': ") {
       RepoFile.read(dashboard) should include(sentence)
     }

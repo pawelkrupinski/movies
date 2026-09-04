@@ -153,7 +153,7 @@ nixos_flake_attribute_default: "{{ inventory_hostname }}"
 #
 # The case this guards is not hypothetical for this estate. A mongo rebuild means briefly two
 # machines labelled `role=mongo` -- the incumbent holding the data and a replacement holding none --
-# and playbooks/migrate-mongo-from-fly.yml restores a database onto whichever this resolves to.
+# and playbooks/migrate-mongo-replica.yml moves a member onto whichever this resolves to.
 #
 # ZERO is the other failure and it is quieter: inventory/hcloud.yml filters `status: [running]`, so a
 # host being reset into rescue LEAVES THE INVENTORY. `| first` of an empty list is undefined,
@@ -177,14 +177,6 @@ kinowo_mongo_host: >-
 # only address that answers, and it is read out of the inventory rather than restated as 10.20.0.10.
 kinowo_mongo_private_address: "{{ hostvars[kinowo_mongo_host].hcloud_private_ipv4 }}"
 
-# THE FLY APPLICATION THE DATABASE IS MOVING OFF. Named once, because two things read it and both are
-# guards: playbooks/migrate-mongo-from-fly.yml opens a `flyctl proxy` to it, and the same playbook
-# asserts afterwards that the counts agree with it.
-#
-# THE FLY SIDE IS THE ROLLBACK AND STAYS RUNNING. Nothing in this repository stops, scales or deletes
-# it. When the cutover is judged good, that is a separate deliberate act by a person.
-kinowo_fly_mongo_app: kinowo-mongo
-
 # The application's own database name, which is what gets dumped and restored. It is read from the
 # environment because that is where the app itself reads it (repo-root .env.local, MONGODB_DB) and a
 # second copy here would be a second thing to keep in step -- with the failure mode that a migration
@@ -192,14 +184,14 @@ kinowo_fly_mongo_app: kinowo-mongo
 kinowo_mongo_database: "{{ lookup('ansible.builtin.env', 'MONGODB_DB') | default('kinowo', true) }}"
 
 # THE REPLICA SET'S NAME. Every mongo host's nix configuration sets `fleet.mongodb.replSetName` to
-# this, and two playbooks assert against it -- migrate-mongo-from-fly.yml refuses to restore onto a
-# standalone, and migrate-mongo-replica.yml refuses to move a member between two sets that merely
-# share a name. Stated once here so those two agree by construction.
+# this, and migrate-mongo-replica.yml asserts against it -- it refuses to move a member between two
+# sets that merely share a name. Stated once here so the two agree by construction.
 kinowo_mongo_replset: "{{ lookup('ansible.builtin.env', 'KINOWO_MONGO_REPLSET') | default('rs0', true) }}"
 
-# ONE STATEMENT OF THE COUNTING QUERY, shared by every playbook that has to prove two mongods hold
-# the same data. It lived in migrate-mongo-from-fly.yml until migrate-mongo-replica.yml needed the
-# same check; a second copy would drift, and the direction of the drift is the bad one -- a
+# ONE STATEMENT OF THE COUNTING QUERY, for every playbook that has to prove two mongods hold the
+# same data. It began in the Fly-to-Hetzner migration playbook and moved here when
+# migrate-mongo-replica.yml needed the same check; a second copy would drift, and the direction of
+# the drift is the bad one -- a
 # verification that counts one end differently from the other can only produce mismatches nobody
 # trusts, which is how a check stops being read.
 #

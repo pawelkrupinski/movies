@@ -37,7 +37,7 @@
 # WHAT THIS ESTATE PUTS AT STAKE, so the strictness reads as proportionate rather than inherited:
 # infra/terraform/primary_ips.tf holds six adopted Primary IPs whose `ignore_changes` block exists
 # because on this provider an UNASSIGN DESTROYS THE ADDRESS and Hetzner offers no reclaim path; and
-# mongo-1's 80GB volume is the only copy of the database that is not on Fly. A `replace` on either is
+# mongo-1's 80GB volume is the only copy of the database there is. A `replace` on either is
 # not recoverable by re-running anything.
 
 # ---------------------------------------------------------------------------------------------

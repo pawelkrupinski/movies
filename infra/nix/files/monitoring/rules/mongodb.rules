@@ -61,7 +61,7 @@
 # EVERY RULE BELOW DEPENDS ON A node_exporter COLLECTOR BEING ENABLED, and this file cannot enforce
 # that -- `node_systemd_unit_state` needs the systemd collector, and the two `kinowo_*` series are
 # written into node_exporter's textfile directory by nix/modules/roles/mongodb.nix and
-# nix/modules/roles/wireguard-fly.nix. A collector that is off does not produce an error; it
+# nix/modules/roles/mongodb-exporter.nix. A collector that is off does not produce an error; it
 # produces silence, which is why each group carries an `absent()` companion.
 groups:
   - name: mongodb

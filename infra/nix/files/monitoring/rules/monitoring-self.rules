@@ -12,14 +12,8 @@
 # seen an alert?" (unanswerable) to "have I seen today's heartbeat?" (answerable). A second
 # monitoring endpoint elsewhere would be the real fix and does not exist.
 #
-# POST-MIGRATION AUDIT (2026-08-29): EVERY RULE HERE KEPT. `FlyFederationDown` needs a word, because
-# it is the one rule in this directory that reads a Fly-shaped series and it was checked rather than
-# waved through: its expression is `up{job="fly"} == 0`, and when `fleet.prometheus.scrapeFly` is
-# false that job is not configured, so the series is ABSENT and the rule cannot fire. It is
-# correct-by-absence rather than dead -- it costs nothing while the Fly scrape is off and starts
-# working the moment somebody turns it on. That is exactly the behaviour a capability that is
-# switched off should have, and it is why the rule stays rather than being deleted alongside the
-# Fly panels that were quarantined.
+# POST-MIGRATION AUDIT (2026-08-29): EVERY RULE HERE KEPT. A `FlyFederationDown` was kept then and
+# deleted on 2026-09-04 with the federation job it watched; see the tombstone where it stood.
 groups:
   - name: monitoring-self
     rules:
@@ -60,26 +54,12 @@ groups:
             Everything this fleet alerts on is a comparison against a series from this target, so
             while it is down those alerts are not firing -- they are unable to fire. Note the
             `job`: `node` is a machine, `prometheus`/`alertmanager`/`grafana` are this stack's own
-            processes on the monitoring host, and `fly` is the federation endpoint (see
-            FlyFederationDown below, which is deliberately separate).
+            processes on the monitoring host, and `kinowo-web`/`kinowo-worker` are the application
+            pods.
 
-      - alert: FlyFederationDown
-        expr: up{job="fly"} == 0
-        # AN HOUR, because this one is not urgent and it is somebody else's API. It is a warning by
-        # design: nothing in this fleet's alerting depends on it.
-        for: 1h
-        labels:
-          severity: warning
-        annotations:
-          summary: "Prometheus cannot federate from Fly's managed Prometheus"
-          description: >-
-            THIS IS THE EXPERIMENTAL HALF OF THE FLY PATH and its failure does not mean the Fly
-            apps are unwatched. The verified path is Grafana's `fly-prometheus` DATASOURCE, which
-            all 20 ported alert rules query and which does not go through this job at all. First
-            check whether the endpoint serves federation at all -- if it does not, this job was
-            never going to work and both it and this rule should be removed together rather than
-            left red. If it does, the usual causes are an expired read token or the auth header
-            having been "corrected" from FlyV1 to Bearer, which 401s with "resolving organization".
+      # A `FlyFederationDown` rule stood here (`up{job="fly"} == 0`) for the federation job that
+      # would have pulled fly_instance_* out of Fly's managed Prometheus. That job was never turned
+      # on -- see the note that used to be in scrape-fly.yaml -- and both went on 2026-09-04.
 
       - alert: PrometheusConfigReloadFailed
         expr: prometheus_config_last_reload_successful == 0

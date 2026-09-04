@@ -8,10 +8,11 @@
 #     -e migrate_source=mongo-1 -e migrate_target=mongo-2 -e migrate_confirmed=mongo-2 \
 #     -e migrate_phase=join
 #
-# WHY THIS EXISTS ALONGSIDE migrate-mongo-from-fly.yml, which also "migrates mongo". That one copies
-# a database between two unrelated servers with mongodump/mongorestore, and its cost is a window in
-# which the copy is stale -- fine when the source stays authoritative and the cutover is a separate,
-# later decision. This one cannot use that shape at all, because the requirement here is NO
+# WHY THIS IS A REPLICATION PLAYBOOK AND NOT A DUMP-AND-RESTORE ONE. Its predecessor, which brought
+# the database off Fly, copied between two unrelated servers with mongodump/mongorestore; its cost
+# was a window in which the copy is stale -- fine when the source stays authoritative and the
+# cutover is a separate, later decision. This one cannot use that shape at all, because the
+# requirement here is NO
 # DOWNTIME: the only mechanism MongoDB offers for that is replication itself. The new host joins the
 # set, catches up from the oplog, and is then handed the primary by an election. At no point is there
 # a moment when no member can serve a read or a write.
@@ -37,7 +38,7 @@
 #
 # EVERY PHASE IS RE-RUNNABLE. Each one checks the state it intends to create and reports `ok`
 # instead of `changed` when it is already there, so a re-run after a fixed problem is the expected
-# way to use this, exactly as in migrate-mongo-from-fly.yml.
+# way to use this.
 #
 # ------------------------------------------------------------------------------------------------
 # WHY `join` ADDS A MEMBER THAT CANNOT VOTE AND CANNOT BE ELECTED
@@ -69,9 +70,9 @@
 #   * It does not destroy the old host, its volume or its primary IP. `retire` removes it from the
 #     SET; the machine keeps running with its data intact and is the rollback until somebody deletes
 #     it deliberately.
-#   * It does not touch the Fly 6PN peer. Nothing has depended on it since web and worker moved to
-#     k3s on 2026-08-29 (see hosts/mongo-1/default.nix), and a new peer for the target is a `fly
-#     wireguard create`, not a migration step.
+#   * There is no Fly 6PN peer to think about any more. mongo-1 never held one, and the peer
+#     monitoring-1 held was removed on 2026-09-04 once nothing had depended on it since the
+#     2026-08-29 cutover.
 
 - name: Move the kinowo database to another replica-set member, with no downtime
   hosts: "{{ migrate_source | default('mongo-1', true) }}"

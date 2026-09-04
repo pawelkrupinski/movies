@@ -2,7 +2,7 @@
 # Prometheus's configuration, installed at /etc/prometheus/prometheus.yaml by
 # nix/modules/roles/prometheus.nix.
 #
-# `@LISTEN_ADDRESS@`, `@FLY_TOKEN_FILE@` and `@GRAFANA_PORT@` are substituted at build time from
+# `@LISTEN_ADDRESS@` and `@GRAFANA_PORT@` are substituted at build time from
 # that module's options, and the build FAILS if any at-sign placeholder survives the substitution
 # (the guard greps the OUTPUT for one, so this sentence deliberately does not spell the pattern out
 # -- writing it here literally would trip the guard on this very file). An unsubstituted
@@ -39,7 +39,6 @@ rule_files:
   - "/etc/prometheus/rules/mongodb.rules"
   - "/etc/prometheus/rules/monitoring-self.rules"
   - "/etc/prometheus/rules/nixos-deploy.rules"
-  - "/etc/prometheus/rules/wireguard-fly.rules"
 
 # EVERY JOB THAT IS NOT UNCONDITIONAL LIVES IN scrape.d, AND THIS IS ONE GLOB OVER ALL OF THEM.
 # Five files land there today:
@@ -59,14 +58,13 @@ rule_files:
 #                      private subnet, because Prometheus runs outside the cluster and holds no
 #                      Kubernetes credential -- deliberately. The trade is written out in
 #                      movies-gitops/kube-state-metrics/.
-#   kinowo-apps.yaml   the application's own jobs -- the worker on k3s and the web tier on Fly.
+#   kinowo-apps.yaml   the application's own jobs -- every tier of every country, on k3s.
 #                      Installed unconditionally; it needs no credential anyone can revoke.
-#   scrape-fly.yaml    written only when `fleet.prometheus.scrapeFly` is true. See the long note in
-#                      roles/prometheus.nix: the job needs a Fly token, the only one available is
-#                      org-wide, and an org-wide Fly token must not sit on the host that also runs
-#                      the k3s control plane. Off means ABSENT rather than failing -- a job with a
-#                      dead credential is a target that sits red for ever, and a target list with a
-#                      permanent red in it stops being read.
+#
+# A `scrape-fly.yaml` was a sixth, written only when `fleet.prometheus.scrapeFly` was true, which
+# it never was: the job needed a Fly token, the only one available was org-wide, and an org-wide
+# Fly token must not sit on the host that also runs the k3s control plane. It went on 2026-09-04
+# with the platform.
 #
 # A GLOB RATHER THAN TWO NAMED ENTRIES so that "off" needs no edit here; the file simply is not
 # written. `scrape_config_files` MUST APPEAR ONCE -- it was briefly written twice, and a duplicate
@@ -88,9 +86,9 @@ scrape_configs:
       - targets: ["@LISTEN_ADDRESS@:9093"]
 
   # Grafana publishes its own alert-rule evaluation and notification counters. On this fleet
-  # Grafana evaluates ALL 20 of the ported kinowo alert rules (24 before the post-migration audit
-  # dropped four), so a Grafana that is up but failing to evaluate is a monitoring outage that
-  # nothing else here would see.
+  # Grafana evaluates the eleven application alert rules (24 when they were ported; the
+  # post-migration audit dropped four and the Fly removal ten), so a Grafana that is up but failing
+  # to evaluate is a monitoring outage that nothing else here would see.
   - job_name: grafana
     metrics_path: /metrics
     static_configs:

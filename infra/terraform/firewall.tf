@@ -33,10 +33,12 @@ resource "hcloud_firewall" "fleet" {
 
   # NO INBOUND WireGuard RULE, and the absence is deliberate rather than an omission.
   #
-  # mongo-1 does join Fly's 6PN over WireGuard, but it is the side that DIALS OUT: `fly wireguard
-  # create` hands back a peer configuration carrying Fly's gateway as the `Endpoint`, so the tunnel
-  # is established from here outwards and return traffic arrives on the ephemeral source port of an
-  # already-established flow, which a stateful firewall passes without any rule naming it.
+  # A host on this fleet used to join Fly's 6PN over WireGuard, and still needed no rule: it was the
+  # side that DIALLED OUT (`fly wireguard create` hands back a peer configuration carrying Fly's
+  # gateway as the `Endpoint`), so the tunnel was established outwards and return traffic arrived on
+  # the ephemeral source port of an already-established flow, which a stateful firewall passes
+  # without any rule naming it. The peer is gone; the reasoning is kept for the next tunnel that
+  # dials out.
   #
   # AN OPERATOR VPN WAS BUILT HERE AND BACKED OUT THE SAME DAY, which is worth recording so it is
   # not proposed a second time. The problem it solved -- reaching Grafana, Prometheus and the k3s

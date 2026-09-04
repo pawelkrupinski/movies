@@ -2,10 +2,9 @@
 #
 # .github/workflows/record-scrape-fixtures.yml records each country's real `cinema_scrapes` corpus
 # and prod's enrichment coverage of that same repertoire, nightly, from a GitHub-hosted runner.
-# Until the database moved off Fly it reached it with `flyctl proxy --app kinowo-mongo`; that app is
-# stopped, and mongod here listens on 127.0.0.1, on 10.20.0.13 (a private subnet no runner can
-# route to) and on a Fly 6PN address (how the deployed apps arrive). So the job needs a route in,
-# and the only question is how wide it has to be.
+# Until the database moved off Fly, CI reached it with `flyctl proxy --app kinowo-mongo`; that app
+# is gone, and mongod here listens on 127.0.0.1 and on 10.20.0.13 (a private subnet no runner can
+# route to). So the job needs a route in, and the only question is how wide it has to be.
 #
 # The two easy answers are both refused, for the same reason nix/modules/fleet/deploy-staging.nix
 # and roles/k8s-deploy.nix refuse theirs -- the least managed machine involved is an
@@ -192,7 +191,7 @@ in
       # `command=` IS THE SECURITY BOUNDARY, and `restrict` is what stops the shape being worked
       # around: no port forwarding, no agent forwarding, no pty, no X11. Dropping `restrict` here
       # would be worse than on the other two endpoints -- a forwarding-capable key on THIS host is
-      # a route onto 10.20.0.13 and down the Fly tunnel.
+      # a route onto 10.20.0.13, the fleet's private subnet.
       openssh.authorizedKeys.keys = [
         ''command="${endpoint}",restrict ${cfg.authorizedKey}''
       ];

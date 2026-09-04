@@ -171,7 +171,7 @@
     # `delete_protection` precisely so that clearing the SERVER's protection to run a conversion
     # cannot take the database's disk with it. Detaching it before this and re-attaching afterwards
     # is a deliberate act by a person, and is the last line of defence for the only copy of the
-    # database that is not on Fly.
+    # database.
     - name: Refuse to convert a host that still carries a data volume
       ansible.builtin.assert:
         that:

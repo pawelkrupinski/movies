@@ -41,10 +41,10 @@ import services.metrics.{CorpusScanMetrics, PrometheusExposition, WorkerCorpusMe
  */
 class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
 
-  private val FlyOverview = "infra/nix/files/monitoring/grafana/dashboards/apps/fly-overview.json"
+  private val ApplicationHealth = "infra/nix/files/monitoring/grafana/dashboards/apps/application-health.json"
   private val AlertRules  = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
 
-  private lazy val dashboard  = RepoFile.read(FlyOverview)
+  private lazy val dashboard  = RepoFile.read(ApplicationHealth)
   private lazy val alertRules = RepoFile.read(AlertRules)
 
   /** The worker's real metric names, as the `/metrics` endpoint exposes them.
@@ -88,7 +88,7 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
 
   private def mustBeCharted(name: String): Unit = {
     mustBeExposed(name)
-    withClue(s"no panel in $FlyOverview queries $name. ") {
+    withClue(s"no panel in $ApplicationHealth queries $name. ") {
       dashboard should include(name)
     }
   }

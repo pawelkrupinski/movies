@@ -1,11 +1,12 @@
 # mongod -- the whole of kinowo's state.
 #
 # WHAT THIS REPLACES. A self-hosted MongoDB running on Fly.io in region `arn`, reached by the web
-# and worker apps over Fly's private 6PN network. Nothing about that access path changes here: this
-# host joins the SAME 6PN as a WireGuard peer (nix/modules/roles/wireguard-fly.nix) and mongod binds
-# the tunnel address, so the applications' connection URI changes HOST and nothing else -- no
-# TLS-on-the-public-internet, no IP allow-list, no bastion. Read that file before changing anything
-# about `bindAddresses` below; the two are one design in two halves.
+# and worker apps over Fly's private 6PN network. During the migration this host joined the SAME
+# 6PN as a WireGuard peer and mongod bound the tunnel address, so the applications' connection URI
+# changed HOST and nothing else -- no TLS-on-the-public-internet, no IP allow-list, no bastion.
+# EVERY CLIENT IS ON THE HETZNER PRIVATE NETWORK NOW (the app tiers became k3s pods on 2026-08-29),
+# so the tunnel, its role and its bind address were all removed on 2026-09-04. `bindAddresses`
+# below is loopback plus the private address, and nothing outside this fleet reaches mongod.
 #
 # ------------------------------------------------------------------------------------------------
 # THE REPLICA SET IS MANDATORY. A STANDALONE mongod HERE BREAKS THE WEB TIER SILENTLY.
@@ -21,8 +22,8 @@
 # So `replSetName` has NO default that could be dropped by accident, the assertion below refuses an
 # empty one, and a single-node replica set is the minimum correct configuration for this host --
 # not a step towards a "real" one. One member is enough for an oplog; more members would be about
-# availability, which this fleet has not bought (see the honest note in wireguard-fly.nix about
-# single points of failure -- the database is another one, and it is on purpose for now).
+# availability, which this fleet has not bought -- the database is a single point of failure, and
+# it is on purpose for now.
 #
 # `rs.initiate()` IS DONE HERE, ONCE, AND ONLY WHERE `initiateReplicaSet` ALLOWS IT. This comment
 # used to say it was not done here at all; `mongodb-init-replicaset` was added later and the note
@@ -99,10 +100,11 @@ let
 
     net = {
       port = cfg.port;
-      # BOOTSTRAP MODE DROPS THE FLY TUNNEL ADDRESS AND KEEPS THE REST. With `authorization` off the
-      # bind list IS the security boundary, so the window that removes authentication also removes
-      # the one route that reaches outside this fleet: the application cannot see an unauthenticated
-      # database at any point.
+      # BOOTSTRAP MODE DROPS EVERY IPv6 ADDRESS AND KEEPS THE REST. With `authorization` off the
+      # bind list IS the security boundary, so the window that removes authentication narrows to
+      # what is reachable from this host alone. (The address it was written to drop was the Fly 6PN
+      # tunnel's, the one route that reached outside this fleet; there is no such route now, and the
+      # filter is kept because it costs nothing and the next one would need it.)
       #
       # IT CANNOT BE LOOPBACK-ONLY, WHICH WAS THE FIRST ATTEMPT AND DID NOT WORK. The replica-set
       # member is configured as `replSetMemberHost` (10.20.0.13 here), and a member that cannot bind
@@ -119,8 +121,9 @@ let
 
       # REQUIRED THE MOMENT AN IPv6 ADDRESS APPEARS IN `bindIp`, AND ITS ABSENCE IS NOT A WARNING.
       # mongod is IPv4-only unless told otherwise; asked to bind `fdaa:...` without this it fails
-      # at startup rather than falling back. That matters here because the Fly tunnel address IS
-      # IPv6 -- 6PN is IPv6-only -- so this line and wireguard-fly.nix stand or fall together.
+      # at startup rather than falling back. It mattered when the Fly 6PN tunnel address was in the
+      # bind list -- 6PN is IPv6-only -- and it stays on so an IPv6 address can be added without
+      # rediscovering this.
       ipv6 = true;
     };
 
@@ -319,7 +322,7 @@ in
         WHY LOOPBACK-ONLY MATTERS MORE THAN THE AUTH FLAG. With auth off, the bind list IS the
         security boundary. Dropping to 127.0.0.1 means the only way to reach the database during the
         window is an SSH session on the host itself -- strictly narrower than the authenticated
-        configuration, which is reachable from the private network and from Fly.
+        configuration, which is reachable from anywhere on the private network.
 
         IT IS NOT A MODE TO LEAVE ON. It is set for one deploy, the restore is run, and it is turned
         off in the next -- and because it also unbinds the addresses the application uses, a host
@@ -334,11 +337,12 @@ in
       description = ''
         The `host` this node records for itself in the replica-set configuration.
 
-        THE PRIVATE ADDRESS, NOT THE WireGuard ONE, on this fleet. A member has to be able to reach
-        itself to hold an election, so naming the tunnel address would make the DATABASE depend on
-        the tunnel: a Fly-side network problem would stop mongod being primary rather than merely
-        stop Fly reaching it. The application connects with `directConnection=true`, which bypasses
-        replica-set discovery altogether, so no client ever resolves this value.
+        THE PRIVATE ADDRESS, NEVER A TUNNEL'S. A member has to be able to reach itself to hold an
+        election, so naming a tunnel address would make the DATABASE depend on that tunnel: a
+        network problem on the far side would stop mongod being primary rather than merely stop the
+        far side reaching it. (Written when the far side was Fly's 6PN.) The application connects
+        with `directConnection=true`, which bypasses replica-set discovery altogether, so no client
+        ever resolves this value.
 
         CHANGING IT AFTER INITIATION DOES NOTHING. The initiator below only ever runs on a set that
         has never been initiated; moving a live member is `rs.reconfig`, by hand, deliberately.
@@ -432,18 +436,17 @@ in
         EXACTLY WHERE mongod LISTENS, and the most consequential list in this file.
 
         THREE ADDRESSES AND NO MORE: loopback (for `mongosh` on the box and for the dump timer),
-        this host's PRIVATE Hetzner address (for anything else in this fleet -- monitoring, an
-        exporter, an operator on the private network), and the WireGuard tunnel address, which is
-        how the Fly-hosted applications reach it. THE PUBLIC ADDRESS IS NEVER IN THIS LIST. An
-        internet-facing mongod is a scanned-and-found-in-minutes proposition regardless of how good
-        the password is, and the assertion below refuses any address outside the loopback, RFC1918
-        and ULA ranges rather than trusting review to catch it.
+        this host's PRIVATE Hetzner address (for everything else in this fleet -- the applications
+        on k3s, monitoring, an exporter, an operator on the private network). It also carried a
+        WireGuard tunnel address while the applications were on Fly. THE PUBLIC ADDRESS IS NEVER IN
+        THIS LIST. An internet-facing mongod is a scanned-and-found-in-minutes proposition
+        regardless of how good the password is, and the assertion below refuses any address outside
+        the loopback, RFC1918 and ULA ranges rather than trusting review to catch it.
 
-        BARE ADDRESSES, NO PREFIX LENGTHS. `fleet.wireguardFly.address` carries its `/120` because
-        the kernel needs it to decide what is on-link; mongod's `bindIp` does not take one and will
-        not start if given one. The same address is therefore written twice, in two spellings --
-        which is worth a moment's care at build time and is the kind of thing to check first if
-        mongod refuses to start after a tunnel change.
+        BARE ADDRESSES, NO PREFIX LENGTHS, if a tunnel address is ever added back. A WireGuard
+        address carries a prefix length because the kernel needs it to decide what is on-link;
+        mongod's `bindIp` does not take one and will not start if given one, so the same address
+        ends up written twice in two spellings.
 
         NOTE WHAT THIS IS NOT: it is not a firewall. The firewall rules below also exist, and
         neither one is redundant -- binding is what the process does, filtering is what the kernel
@@ -584,7 +587,7 @@ in
           fleet.mongodb.bindAddresses contains an address outside loopback, RFC1918 and the ULA
           range: ${lib.concatStringsSep " " (lib.filter (a: !isPrivate a) cfg.bindAddresses)}.
           mongod must never listen on this machine's public address. Reach it over the private
-          network or the Fly WireGuard tunnel (nix/modules/roles/wireguard-fly.nix).
+          network.
         '';
       }
       {
@@ -838,10 +841,7 @@ in
     # intent is not. A role opening the port as well would be a second, invisible source of the
     # same rule.
     #
-    # THE TUNNEL'S SIDE IS OPENED ELSEWHERE: roles/wireguard-fly.nix opens this port on wg0,
-    # because every option in `fleet.firewall` is scoped to `fleet.privateInterface`.
-    #
-    # AND SO IS THE EXPORTER'S. roles/mongodb-exporter.nix appends 9216 to
+    # THE EXPORTER'S PORT IS OPENED ELSEWHERE. roles/mongodb-exporter.nix appends 9216 to
     # `fleet.firewall.privateTCPPorts` from its own file, for the same reason: a role states the
     # port it needs, and firewall.nix decides what that means.
     #

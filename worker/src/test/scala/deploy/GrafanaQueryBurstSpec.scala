@@ -36,7 +36,7 @@ import org.scalatest.matchers.should.Matchers
  * on the front page.
  */
 class GrafanaQueryBurstSpec extends AnyFlatSpec with Matchers {
-  private val Dashboard = "infra/nix/files/monitoring/grafana/dashboards/apps/fly-overview.json"
+  private val Dashboard = "infra/nix/files/monitoring/grafana/dashboards/apps/application-health.json"
   private lazy val json = RepoFile.read(Dashboard)
 
   /** Rows worth rendering unqueried-on-arrival. Everything below "what the two

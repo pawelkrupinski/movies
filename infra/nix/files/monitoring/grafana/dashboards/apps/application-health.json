@@ -1,11 +1,10 @@
 {
-  "uid": "fly-overview",
+  "uid": "application-health",
   "title": "Kinowo \u2014 application health (worker and web, both on k3s)",
   "tags": [
     "kinowo",
     "application",
-    "k3s",
-    "fly"
+    "k3s"
   ],
   "timezone": "browser",
   "schemaVersion": 39,

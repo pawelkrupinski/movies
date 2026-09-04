@@ -94,7 +94,7 @@ candidates and its design rules are all still accurate and still load-bearing.
 Production PL merges rows on every `SettleReaper` tick — :21 and :51 past the hour,
 never a zero tick, ~83 `kinowo_worker_merges_total{reason="canonicalize"}` a day. Each
 looping film also re-requests Filmweb, Metacritic and RT on every cycle, so the waste is
-external as well as internal. Grafana `fly-overview` panel-32 (merges by reason) and
+external as well as internal. Grafana `application-health` panel-32 (merges by reason) and
 panel-29 (staging incubation by step) beat together on the same 30-minute cadence.
 
 ## The mechanism (proven)

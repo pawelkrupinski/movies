@@ -137,7 +137,7 @@ groups:
             VICTIM IS NOT THE CULPRIT: the kernel takes the largest process, which on mongo-1 is
             mongod and on monitoring-1 is Prometheus, whatever actually consumed the memory. If the
             victim is mongod, note that the web tier will keep serving its in-memory read model and
-            look healthy while it stops updating -- the same silent shape wireguard-fly.rules
+            look healthy while it stops updating -- the same silent shape the Fly tunnel's rules
             describes.
 
       - alert: OomKillMetricAbsent

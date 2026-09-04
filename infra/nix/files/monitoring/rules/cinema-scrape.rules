@@ -97,7 +97,7 @@ groups:
             straight diagonal is ONE cinema failing every attempt (a failed scrape does not mark
             freshness, so it stays stale for ever and drags the maximum with it), while an
             oscillating but high ceiling is the whole sweep running slower than its window -- a
-            slow upstream, a pacing change, or a roster that grew. Panel 58 on the Fly-health
+            slow upstream, a pacing change, or a roster that grew. Panel 58 on the application
             dashboard draws it. Check the worker's logs for a venue erroring on every pass, and
             `RealHttpFetch.HostPolicies` for a pace that has been tightened without the cadence
             being widened to match; that pairing is what put DE 4x over its window in July 2026
@@ -128,7 +128,7 @@ groups:
             CinemaScrapeOldestAgeHigh and appear in no scrape counter -- they are invisible to
             every other signal. A full day is longer than any country's sweep, so this is not a
             cold start. Most likely a venue was added to the roster with a URL that has never
-            resolved, or a client throws before it can record anything. Panel 59 on the Fly-health
+            resolved, or a client throws before it can record anything. Panel 59 on the application
             dashboard counts them per country; the `cinema_scrapes` archive names which.
 
       # -----------------------------------------------------------------------------------------

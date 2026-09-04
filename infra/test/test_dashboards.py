@@ -31,17 +31,16 @@ MONITORING_HOST = os.path.join(HOSTS_DIR, "monitoring-1", "default.nix")
 MONITORING_FILES = os.path.join(HERE, "..", "nix", "files", "monitoring")
 
 # Everywhere a Prometheus job name is defined: the static config, the app scrape file, and the
-# three scrape.d generators that build a job out of a NixOS option.
+# scrape.d generators that build a job out of a NixOS option.
 JOB_NAME_SOURCES = [
     os.path.join(MONITORING_FILES, "prometheus.yaml"),
     os.path.join(MONITORING_FILES, "scrape-kinowo-apps.yaml"),
-    os.path.join(MONITORING_FILES, "scrape-fly.yaml"),
     PROMETHEUS_ROLE,
 ]
 
 # The uids roles/grafana.nix provisions. A panel pointing at anything else renders "Datasource not
 # found" -- which reads exactly like a broken query, so it is worth failing here instead.
-PROVISIONED_DATASOURCE_UIDS = {"local-prometheus", "fly-prometheus", "victorialogs"}
+PROVISIONED_DATASOURCE_UIDS = {"local-prometheus", "victorialogs"}
 
 # Panels that carry no query and so need no datasource or targets.
 PROSE_PANEL_TYPES = {"row", "text"}
@@ -273,7 +272,7 @@ class ApplicationDashboardCoverage(unittest.TestCase):
     """
 
     def setUp(self):
-        self.document = dict(dashboards())["apps/fly-overview.json"]
+        self.document = dict(dashboards())["apps/application-health.json"]
         self.queries = [
             t.get("expr") or ""
             for p in query_panels(self.document)
@@ -282,7 +281,7 @@ class ApplicationDashboardCoverage(unittest.TestCase):
 
     def assertQueried(self, needle):
         self.assertTrue(any(needle in q for q in self.queries),
-                        "no panel on apps/fly-overview.json queries %r" % needle)
+                        "no panel on apps/application-health.json queries %r" % needle)
 
     def test_it_shows_the_database_host_resources(self):
         for metric in ("node_cpu_seconds_total", "node_memory_MemAvailable_bytes",

@@ -22,7 +22,6 @@ in
     ./disko.nix
     ../../modules/roles/public-proxy.nix
     ../../modules/roles/k8s-deploy.nix
-    ../../modules/roles/wireguard-fly.nix
     ../../modules/roles/prometheus.nix
     ../../modules/roles/grafana.nix
     ../../modules/roles/k3s-server.nix
@@ -231,40 +230,19 @@ in
     schedulable = false;
   };
 
-  # A SECOND PEER INTO FLY'S 6PN, WHOSE ONE JOB NO LONGER EXISTS.
+  # THE 6PN PEER INTO FLY'S PRIVATE NETWORK IS GONE, 2026-09-04.
   #
-  # THE PROBLEM IT SOLVED. `kinowo` and its `/metrics` used to run on Fly, and the obvious way to
-  # see them -- Fly's managed Prometheus -- is unavailable: both read-only tokens for it are
-  # revoked, and the only remaining Fly token is org-wide and deploy-capable, which must not sit on
-  # the host that also runs the k3s control plane. So `fleet.prometheus.scrapeFly` is off and the
-  # Fly panels have no data. The way round it needed no Fly token at all: the app published its own
-  # `/metrics` on port 9000 over Fly's private network, so this peer scraped it DIRECTLY, on a
-  # WireGuard key this fleet holds rather than a token somebody else issues.
+  # It existed to scrape `kinowo`'s own `/metrics` on port 9000 over Fly's private network, back
+  # when the web tier ran there and Fly's managed Prometheus was unreachable (both read-only tokens
+  # revoked; the only remaining Fly token is org-wide and deploy-capable, which must not sit on the
+  # host that also runs the k3s control plane). The peer needed no Fly token at all -- a WireGuard
+  # key this fleet holds rather than a credential somebody else issues.
   #
-  # WHAT IS TRUE SINCE THE 2026-08-29 CUTOVER. The web tier moved to k3s beside the workers
-  # (movies-gitops/web/, docs/domain-cutover.md), Prometheus now reaches BOTH tiers over
-  # NodePorts on the Hetzner private network, and the 6PN DNS-discovery job that resolved
-  # `kinowo.internal` through this tunnel was deleted with the move -- see
-  # infra/nix/files/monitoring/scrape-kinowo-apps.yaml. Nothing of the product runs on Fly any more,
-  # so nothing on this host routinely sends a packet down this tunnel.
+  # The 2026-08-29 cutover moved both tiers to k3s, Prometheus reaches them over NodePorts on the
+  # Hetzner private network, and the DNS-discovery job that resolved `kinowo.internal` through this
+  # tunnel went with it. Nothing sent a packet down it after that. Revoke the peer on Fly's side
+  # with `fly wireguard remove` if it is still listed there.
   #
-  # WHICH MAKES THE PEER A CANDIDATE FOR REMOVAL, left in place deliberately rather than by
-  # oversight: it is the only pre-built route from the monitoring box into Fly's private network
-  # while the Fly org is being wound down, and it costs one interface and one keypair. If nothing
-  # has needed it by the time the org goes, delete it here and revoke it with `fly wireguard
-  # remove` -- and note that the wireguard-fly alert rules then have one fewer host to watch.
-  #
-  # SEPARATE PEER FROM mongo-1's, deliberately: `fly wireguard create` mints one keypair per peer,
-  # and sharing one across two hosts would mean two machines using one identity -- so revoking
-  # either means revoking both, and Fly's peer list would name a machine rather than a role.
-  fleet.wireguardFly = {
-    enable = true;
-    address = "fdaa:74:b6b5:a7b:35c:20a7:c070:5c02/120";
-    peerPublicKey = "tyYPi0DmwNDs3YEhnm4CeNy5I9m2QSsdry4H46Zfr3M=";
-    peerEndpoint = "arn1.gateway.6pn.dev:51820";
-    allowedIPs = [ "fdaa:74:b6b5::/48" ];
-  };
-
   fleet.firewall.monitoring = true;
   # HOW CI ROLLS THE WORKER OUT. A key pinned to a forced command that accepts one validated image
   # reference and updates one container -- see roles/k8s-deploy.nix for why CI is not simply given a

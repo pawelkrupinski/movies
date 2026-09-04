@@ -1,6 +1,6 @@
 {
   "uid": "kinowo-fleet",
-  "title": "Kinowo Fleet \u2014 Hetzner hosts",
+  "title": "Kinowo Fleet — Hetzner hosts",
   "tags": [
     "fleet",
     "hetzner",
@@ -14,7 +14,7 @@
     "from": "now-3h",
     "to": "now"
   },
-  "description": "One screen answering 'is the fleet healthy'. EVERY PANEL QUERIES THE LOCAL PROMETHEUS (uid local-prometheus, http://127.0.0.1:9090) and nothing here depends on Fly in any way, which is the whole point: it keeps working with no credential of any kind. Panels are ordered the way an incident is read -- what is broken, then which machine, then what changed. Read the text panel at the bottom for what this dashboard deliberately cannot see. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
+  "description": "One screen answering 'is the fleet healthy'. EVERY PANEL QUERIES THE LOCAL PROMETHEUS (uid local-prometheus, http://127.0.0.1:9090) and nothing here depends on any third party, which is the whole point: it keeps working with no credential of any kind. Panels are ordered the way an incident is read -- what is broken, then which machine, then what changed. Read the text panel at the bottom for what this dashboard deliberately cannot see. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
   "annotations": {
     "list": [
       {
@@ -136,7 +136,7 @@
       "id": 3,
       "type": "stat",
       "title": "mongod",
-      "description": "node_systemd_unit_state{name=\"mongodb.service\",state=\"active\"} on mongo-1. THE FAILURE THIS PANEL EXISTS FOR IS SILENT: with mongod down the Fly-hosted web tier keeps serving its projected read model from memory and its health checks stay green, so the site looks perfectly fine while it stops updating and every worker write fails. There is no mongodb_exporter on this fleet, so this is unit state ONLY -- it cannot tell you whether the member is PRIMARY or how much oplog window is left. Alert: MongodNotRunning, 3m.",
+      "description": "node_systemd_unit_state{name=\"mongodb.service\",state=\"active\"} on mongo-1. THE FAILURE THIS PANEL EXISTS FOR IS SILENT: with mongod down the web tier keeps serving its projected read model from memory and its health checks stay green, so the site looks perfectly fine while it stops updating and every worker write fails. There is no mongodb_exporter on this fleet, so this is unit state ONLY -- it cannot tell you whether the member is PRIMARY or how much oplog window is left. Alert: MongodNotRunning, 3m.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -211,71 +211,6 @@
         {
           "refId": "A",
           "expr": "node_systemd_unit_state{name=\"mongodb.service\",state=\"active\"}",
-          "legendFormat": "{{host}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          },
-          "instant": true
-        }
-      ]
-    },
-    {
-      "id": 4,
-      "type": "stat",
-      "title": "Fly WireGuard tunnel -- handshake age",
-      "description": "time() - kinowo_wireguard_latest_handshake_timestamp_seconds on mongo-1. THE SINGLE PATH BETWEEN THE RUNNING PRODUCT AND ITS DATA: the web tier and the worker are still on Fly and reach MongoDB only through this peer. WireGuard is silent by design -- `ip link` reports wg0 UP whether or not anything is on the other end -- so handshake age is the only observable there is. Under 2 minutes is normal (the peer keepalive is 25s); over 5 minutes means the path is gone and the site is quietly serving an ageing corpus. A reading of ~56 years is the never-handshaked case (the metric is 0), which is a CONFIGURATION fault, not a path one. Alerts: WireguardFlyHandshakeStale / WireguardFlyNeverHandshaked.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 1
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 120
-              },
-              {
-                "color": "red",
-                "value": 300
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "background",
-        "graphMode": "none",
-        "textMode": "value_and_name",
-        "justifyMode": "auto"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "time() - kinowo_wireguard_latest_handshake_timestamp_seconds",
           "legendFormat": "{{host}}",
           "datasource": {
             "type": "prometheus",
@@ -715,7 +650,7 @@
       "id": 11,
       "type": "timeseries",
       "title": "CPU busy % (all cores)",
-      "description": "100 * (1 - idle). PER HOST, NOT PER CORE: mongo-1 and monitoring-1 are 2-core cx23s and k3s-worker-1 is an 8-core cx43, so 100% means very different amounts of work on each and the lines are not comparable in absolute terms. There is NO 'steal' series here and that is the real difference from the Fly dashboards: these are dedicated vCPUs, so the credit/steal/throttle axis that dominated the Fly view simply does not exist. Alert: CpuBusySustained > 90% for 30m -- which k3s-worker-1 is EXPECTED to trip legitimately once it has workloads.",
+      "description": "100 * (1 - idle). PER HOST, NOT PER CORE: mongo-1 and monitoring-1 are 2-core cx23s and k3s-worker-1 is an 8-core cx43, so 100% means very different amounts of work on each and the lines are not comparable in absolute terms. There is NO 'steal' series here: these are dedicated vCPUs, so the credit/steal/throttle axis that dominated the old Fly view simply does not exist. Alert: CpuBusySustained > 90% for 30m -- which k3s-worker-1 is EXPECTED to trip legitimately once it has workloads.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -1094,77 +1029,6 @@
         "y": 26
       },
       "panels": []
-    },
-    {
-      "id": 17,
-      "type": "timeseries",
-      "title": "Fly WireGuard handshake age (s)",
-      "description": "The same series as the stat at the top, over time, because the SHAPE matters more than the value: healthy is a sawtooth resetting every couple of minutes, and a tunnel that has died is a straight diagonal climbing for ever. A single spike is a re-handshake that took a moment; a ramp is the site quietly serving an ageing corpus while every health check stays green. The 300s line is where WireguardFlyHandshakeStale fires.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 8,
-        "x": 0,
-        "y": 27
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "s",
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "spanNulls": 300000,
-            "lineWidth": 2,
-            "showPoints": "never",
-            "thresholdsStyle": {
-              "mode": "dashed"
-            }
-          },
-          "min": 0,
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 300
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "table",
-          "placement": "bottom",
-          "calcs": [
-            "lastNotNull",
-            "max"
-          ]
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "time() - kinowo_wireguard_latest_handshake_timestamp_seconds",
-          "legendFormat": "{{host}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          }
-        }
-      ]
     },
     {
       "id": 18,
@@ -1867,7 +1731,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "**Read this before concluding the fleet is fine because everything above is green.**\n\n* **Nothing here watches the product.** The web tier (`kinowo`) and the scraping worker\n  (`kinowo-worker`) are still on Fly. Their metrics live behind the `fly-prometheus`\n  datasource, whose read-only tokens were revoked and cannot be reissued, so the dashboards\n  in the **Fly (no data without a token)** folder are quarantined there rather than mixed\n  into this one. A perfectly green fleet screen is compatible with the site being down.\n* **mongod is watched as a UNIT, not as a database.** There is no `mongodb_exporter` here,\n  so nothing can say whether the single replica-set member is **PRIMARY** (a member that has\n  stepped down accepts reads, refuses every write, and keeps its unit `active` throughout),\n  nor how much **oplog window** is left -- and the application's change streams depend on\n  that window. Both need an exporter and a monitoring user.\n* **k3s is watched as a UNIT, not as a cluster.** There is no `kube-state-metrics`, so node\n  conditions, pods, deployments and scheduling are entirely invisible. A running `k3s.service`\n  whose node is `NotReady` reads green here.\n* **This host cannot watch itself while it is off.** Prometheus, Alertmanager and Grafana all\n  run on monitoring-1. If it stops, this dashboard stops with it and no alert fires. The daily\n  Telegram heartbeat is the only mechanism that turns that silence into a signal, and its\n  ABSENCE is what you are watching for -- so a quiet channel is not the same as a quiet fleet."
+        "content": "**Read this before concluding the fleet is fine because everything above is green.**\n\n* **Nothing here watches the product.** The web and worker pods have their own dashboards in\n  the **Application** folder, drawn from their own `/metrics`. A perfectly green fleet screen\n  is compatible with the site being down.\n* **mongod is watched as a UNIT, not as a database.** There is no `mongodb_exporter` here,\n  so nothing can say whether the single replica-set member is **PRIMARY** (a member that has\n  stepped down accepts reads, refuses every write, and keeps its unit `active` throughout),\n  nor how much **oplog window** is left -- and the application's change streams depend on\n  that window. Both need an exporter and a monitoring user.\n* **k3s is watched as a UNIT, not as a cluster.** There is no `kube-state-metrics`, so node\n  conditions, pods, deployments and scheduling are entirely invisible. A running `k3s.service`\n  whose node is `NotReady` reads green here.\n* **This host cannot watch itself while it is off.** Prometheus, Alertmanager and Grafana all\n  run on monitoring-1. If it stops, this dashboard stops with it and no alert fires. The daily\n  Telegram heartbeat is the only mechanism that turns that silence into a signal, and its\n  ABSENCE is what you are watching for -- so a quiet channel is not the same as a quiet fleet."
       }
     },
     {
