@@ -30,10 +30,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION_FILE="$REPO_ROOT/mobile-version.txt"
 PBXPROJ="$REPO_ROOT/ios/Kinowo.xcodeproj/project.pbxproj"
 
-say()  { printf '\033[36m▸\033[0m %s\n' "$*"; }
-ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
-warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
-die()  { printf '\033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/log.sh"
 
 # Dotted numerics only. A version that is not purely numeric would still build but
 # would break the derived build number and the server-side gate comparison.

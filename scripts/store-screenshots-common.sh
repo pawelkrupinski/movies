@@ -11,16 +11,10 @@
 # other than phones, SHOT_CLASS.
 
 # ── output ────────────────────────────────────────────────────────────────────
-say()   { printf '\033[36m▸\033[0m %s\n' "$*"; }
+# say/ok/warn/die are shared with the release scripts — see scripts/log.sh.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/log.sh"
 step()  { printf '  %s… ' "$*"; }
 done_() { printf '\033[32m✓\033[0m\n'; }
-ok()    { printf '\033[32m✓\033[0m %s\n' "$*"; }
-warn()  { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
-# $NOISE is optional: the Android driver funnels adb/gradle chatter into one, the
-# iOS driver has nothing that noisy. Tail it only when the caller kept one.
-die()   { printf '\033[31m✗\033[0m %s\n' "$*" >&2
-          [ -n "${NOISE:-}" ] && [ -s "$NOISE" ] && tail -5 "$NOISE" >&2
-          exit 1; }
 naps()  { command sleep "$1"; }
 
 # ── one run at a time ─────────────────────────────────────────────────────────

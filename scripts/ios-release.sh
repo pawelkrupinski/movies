@@ -28,9 +28,7 @@ TEAM_ID="CQ4YC43YDM"
 BUNDLE_ID="dev.kinowo.Kinowo"
 PROFILE="Kinowo App Store"
 
-say()  { printf '\033[36m▸\033[0m %s\n' "$*"; }
-ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
-die()  { printf '\033[31m✗\033[0m %s\n' "$*" >&2; exit 1; }
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/log.sh"
 
 upload=1
 [ "${1:-}" = "--no-upload" ] && upload=0
