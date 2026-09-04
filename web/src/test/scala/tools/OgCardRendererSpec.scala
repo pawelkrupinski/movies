@@ -111,7 +111,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   private def fiveCols(c: Color) = Seq.fill(5)(col(c))
 
   "OgCardRenderer.renderCityPageCard" should "render the page-like grid and keep the left brand panel dark" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net",fiveCols(Color.RED)))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", fiveCols(Color.RED), filmweb = true))
     img.getWidth shouldBe 1200
     img.getHeight shouldBe 630
     // A right-hand poster shows through where the gradient has faded.
@@ -123,7 +123,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "draw the white 'Kinowo' wordmark and the city line on the left" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net",Seq(col(Color.RED))))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", Seq(col(Color.RED)), filmweb = true))
     var bright = 0
     for (x <- 80 until 560; y <- 200 until 430)
       if (new Color(img.getRGB(x, y)).getRed > 200) bright += 1
@@ -131,13 +131,52 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "paint the per-film rating pills and showtime chips into the cards" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net",fiveCols(Color.BLUE)))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", fiveCols(Color.BLUE), filmweb = true))
     hasColourNear(img, ImdbGold) shouldBe true                              // an in-card rating pill
     hasColourNear(img, new Color(0xaa, 0xd4, 0xff), tol = 30) shouldBe true // a showtime chip's text
   }
 
+  // Filmweb is a Polish site and only Poland has it wired (Country.filmwebEnabled),
+  // so an FW pill on a UK/DE/ES card advertises a source that listing never shows.
+  // Both cases below render with NO films, so the whole canvas is the brand
+  // overlay — nothing else on it is orange, and scanning all of it avoids
+  // pinning the pill row's exact y, which the vertical centring moves.
+  private val FilmwebOrange = new Color(0xff, 0x6c, 0x00)
+
+  /** Pixels of the FW pill's orange. Counted, not merely detected: a handful of
+   *  stray anti-aliased pixels sit near this hue, so presence is a BLOCK of it.
+   *  Both cases below render with no films, so nothing else on the canvas is
+   *  orange and the whole image can be scanned — which avoids pinning the pill
+   *  row's y, that the overlay's vertical centring moves. */
+  private def filmwebOrangePixels(img: BufferedImage): Int = {
+    var n = 0
+    for (x <- 0 until img.getWidth; y <- 0 until img.getHeight) {
+      val c = new Color(img.getRGB(x, y))
+      if (math.abs(c.getRed - FilmwebOrange.getRed) < 18 &&
+          math.abs(c.getGreen - FilmwebOrange.getGreen) < 18 &&
+          math.abs(c.getBlue - FilmwebOrange.getBlue) < 18) n += 1
+    }
+    n
+  }
+
+  it should "carry the Filmweb pill on a Polish card" in {
+    val img = decode(OgCardRenderer.renderCityPageCard(
+      "Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", Nil, filmweb = true))
+    filmwebOrangePixels(img) should be > 300
+  }
+
+  it should "drop the Filmweb pill everywhere else" in {
+    for ((line, brand, host) <- Seq(
+           ("Cinema listings in Manchester", "Showtimes", "showtimes.cc/uk"),
+           ("Kinoprogramm in Berlin",        "Showtimes", "showtimes.cc/de"),
+           ("Cartelera de cine en Madrid",   "Showtimes", "showtimes.cc/es"))) withClue(s"$host: ") {
+      val img = decode(OgCardRenderer.renderCityPageCard(line, brand, host, Nil, filmweb = false))
+      filmwebOrangePixels(img) should be < 50
+    }
+  }
+
   it should "render a clean brand-only card (correct size) when there are no films" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin we Wrocławiu", "Kinowo", "kinowo.net", Nil))
+    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin we Wrocławiu", "Kinowo", "kinowo.net", Nil, filmweb = true))
     img.getWidth  shouldBe 1200
     img.getHeight shouldBe 630
   }

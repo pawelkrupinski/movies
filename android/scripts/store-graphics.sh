@@ -130,12 +130,14 @@ feature_html() { # $1 locale, $2 icon data-uri, $3 screenshot data-uri (may be e
   </div>
   <p>$tagline</p>
   <!-- Real ratings rather than bare source names: this is how a film actually
-       reads in the app, and it is the set the old Polish card carried. -->
+       reads in the app. Filmweb is a POLISH site and the app only carries it for
+       Poland (Country.filmwebEnabled), so the FW pill is Poland's alone — every
+       other card would be advertising a rating source that listing never shows. -->
   <div class="pills">
     <span class="pill imdb"><span class="l">IMDb</span><span class="v">7.9</span></span>
     <span class="pill solid">81</span>
     <span class="pill rt"><span class="l">RT</span><span class="v">91%</span></span>
-    <span class="pill fw"><span class="l">FW</span><span class="v">7.4</span></span>
+$( [ "$locale" = "pl-PL" ] && printf '    <span class="pill fw"><span class="l">FW</span><span class="v">7.4</span></span>\n' )
   </div>
 </div>
 $( [ -n "$shot" ] && printf '<div class="phone"><img src="%s"></div>' "$shot" )
@@ -155,8 +157,20 @@ render() { # $1 html file, $2 out png
     --force-device-scale-factor=1 --window-size="$WIDTH,$HEIGHT" \
     --user-data-dir="$tmpdir" --screenshot="$2" "file://$1" >/dev/null 2>&1 &
   pid=$!
-  while [ ! -s "$2" ] && [ "$t" -lt 90 ]; do naps 1; t=$((t + 1)); done
-  naps 1                                   # let the last bytes land before killing
+  # `-s` only means "not empty", and Chrome writes the file progressively — so
+  # this used to return on a PARTIAL png, and the caller's `png_size` then read a
+  # header that had not landed and failed a card that was in fact perfect
+  # ("card is ×; Play requires exactly 1024×500"). Wait for a png that parses AND
+  # has stopped growing.
+  local size last=""
+  while [ "$t" -lt 90 ]; do
+    if [ -s "$2" ]; then
+      size="$(stat -f%z "$2" 2>/dev/null || echo 0)"
+      [ "$size" = "$last" ] && png_size "$2" >/dev/null 2>&1 && break
+      last="$size"
+    fi
+    naps 1; t=$((t + 1))
+  done
   kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true
   rm -rf "$tmpdir"
   [ -s "$2" ] || die "Chrome produced no image for $2 after ${t}s"
@@ -192,8 +206,13 @@ generate_locale() { # $1 locale
   step "$locale feature graphic"
     render "$html" "$out"
     rm -f "$html"
-    local w h
-    IFS=x read -r w h <<< "$(png_size "$out")"
+    # Capture FIRST: on bash 3.2 (what macOS ships) an `IFS=x read` whose
+    # here-string is an inline command substitution comes back EMPTY, so every
+    # card failed as "card is ×; Play requires exactly 1024×500" while the png on
+    # disk was a perfect 1024×500. Same read, one variable earlier, works.
+    local w h size
+    size="$(png_size "$out")"
+    IFS=x read -r w h <<< "$size"
     [ "$w" = "$FEATURE_W" ] && [ "$h" = "$FEATURE_H" ] ||
       die "$locale card is ${w}×${h}; Play requires exactly ${FEATURE_W}×${FEATURE_H}"
   done_

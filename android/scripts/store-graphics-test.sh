@@ -36,6 +36,14 @@ check "de tagline" "Kinoprogramm in deiner Stadt"  "$(tagline_of de-DE)"
 check "en tagline" "Cinema listings in your city"  "$(tagline_of en-GB)"
 check "es tagline" "Cartelera de cine en tu ciudad" "$(tagline_of es-ES)"
 
+# Filmweb is a POLISH site, wired only where Country.filmwebEnabled. An FW pill
+# on any other card advertises a rating source that listing never shows.
+check "pl card carries the FW pill" "1" \
+  "$(feature_html pl-PL "" "" | grep -c 'pill fw')"
+for loc in en-GB de-DE es-ES; do
+  check "$loc card has no FW pill" "0" "$(feature_html "$loc" "" "" | grep -c 'pill fw')"
+done
+
 # The English default is a FALLBACK, not a translation: a listing locale with no
 # case of its own silently ships an English card. es-ES did exactly that until
 # now. Every locale that has a listing dir must have its own line.
@@ -83,11 +91,14 @@ check "and still carries the brand"              "1" "$(printf '%s' "$_no_shot" 
 
 # ── the pills are the app's, with real values ────────────────────────────────
 # Bare source names read as a legend; the app shows ratings, so the card does too.
-# These are the values the old Polish card carried, now on every language.
+# IMDb, Metacritic and RT are carried by every language.
 for want in 'class="l">IMDb</span><span class="v">7.9' 'class="pill solid">81' \
-            'class="l">RT</span><span class="v">91%' 'class="l">FW</span><span class="v">7.4'; do
+            'class="l">RT</span><span class="v">91%'; do
   check "the card shows ${want##*>}" "1" "$(printf '%s' "$_de" | grep -cF "$want")"
 done
+# Filmweb is POLAND'S alone — see the FW-pill checks above.
+check "the Polish card shows 7.4" "1" \
+  "$(feature_html pl-PL "" "" | grep -cF 'class="l">FW</span><span class="v">7.4')"
 # …and in the app's own colours, not an approximation. Each hex must still be the
 # one Theme.kt defines, or the pills quietly stop matching the product.
 THEME="$HERE/../app/src/main/java/pl/kinowo/ui/theme/Theme.kt"

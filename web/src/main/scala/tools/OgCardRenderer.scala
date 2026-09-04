@@ -125,9 +125,14 @@ object OgCardRenderer {
   private val regular = loadFont("/fonts/DejaVuSans.ttf")
   private val bold    = loadFont("/fonts/DejaVuSans-Bold.ttf")
 
-  // Decorative IMDb·Metacritic·RT·Filmweb pills for the city card's brand
+  // Decorative IMDb·Metacritic·RT(·Filmweb) pills for the city card's brand
   // overlay — the card advertises that we carry ratings, not any one score.
-  private val OverlayBadges = ratingBadges(imdb = Some(7.8), metascore = Some(81), rottenTomatoes = Some(91), filmweb = Some(7.4))
+  // Filmweb is a POLISH site, wired only where `Country.filmwebEnabled`, so a
+  // UK/DE/US/ES card carrying an FW pill advertises a source those listings
+  // never show. It used to be hardcoded on for every country.
+  private def overlayBadges(filmweb: Boolean): Seq[Badge] =
+    ratingBadges(imdb = Some(7.8), metascore = Some(81), rottenTomatoes = Some(91),
+                 filmweb = if (filmweb) Some(7.4) else None)
 
   /** Compose the card. `subtitle` is the year · genres line; `badges` are the
    *  rating pills from [[ratingBadges]]; `poster` is the decoded poster image or
@@ -226,7 +231,9 @@ object OgCardRenderer {
    *  `columns` are the city's first few DISTINCT films (no movie/poster repeats),
    *  each paired with its decoded poster (or None).
    *  No films → a clean brand-only card rather than an empty frame. */
-  def renderCityPageCard(cityLine: String, brand: String, host: String, columns: Seq[(CityCardFilm, Option[BufferedImage])]): Array[Byte] = {
+  def renderCityPageCard(cityLine: String, brand: String, host: String,
+                         columns: Seq[(CityCardFilm, Option[BufferedImage])],
+                         filmweb: Boolean): Array[Byte] = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -245,7 +252,7 @@ object OgCardRenderer {
       g.setPaint(new LinearGradientPaint(0f, 0f, Width.toFloat, 0f, stops, shades))
       g.fillRect(0, 0, Width, Height)
 
-      drawBrandOverlay(g, cityLine, brand, host)
+      drawBrandOverlay(g, cityLine, brand, host, filmweb)
     } finally g.dispose()
 
     toPng(img)
@@ -253,7 +260,8 @@ object OgCardRenderer {
 
   /** The left brand block: the `brand` wordmark ("Kinowo" / "Showtimes") + the
    *  city line + decorative rating pills + the `host` URL, vertically centred. */
-  private def drawBrandOverlay(g: Graphics2D, cityLine: String, brand: String, host: String): Unit = {
+  private def drawBrandOverlay(g: Graphics2D, cityLine: String, brand: String, host: String,
+                               filmweb: Boolean): Unit = {
     val leftX   = 80
     val brandFm = g.getFontMetrics(bold.deriveFont(86f))
     val tagFm   = g.getFontMetrics(regular.deriveFont(33f))
@@ -276,7 +284,7 @@ object OgCardRenderer {
     y += tagFm.getDescent
 
     y += gapTagPills
-    y = drawBadges(g, OverlayBadges, leftX, y, Width - Margin)
+    y = drawBadges(g, overlayBadges(filmweb), leftX, y, Width - Margin)
 
     y += gapPillsUrl
     g.setFont(regular.deriveFont(23f)); g.setColor(UrlCol)
