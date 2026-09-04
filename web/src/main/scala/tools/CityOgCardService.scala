@@ -30,7 +30,7 @@ case class CityCardFilm(
  */
 class CityOgCardService(posters: PosterFetch) {
   private val loader = new PosterImageLoader(posters)
-  private val cache  = new OgCardCache(maxSize = 200)
+  private val cache  = new OgCardCache(OgCard.MaxCacheBytes / 4)
 
   /** Render (and memoise by `cacheKey`, the city slug, for 12h) the page-like
    *  card from the city's first distinct films. A render where no poster decoded

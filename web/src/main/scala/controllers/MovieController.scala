@@ -914,7 +914,7 @@ class MovieController( cc: ControllerComponents,
             // The PNG card draws plain text — drop the markdown emphasis markers.
             synopsis = schedule.synopsis.map(tools.SynopsisMarkdown.strip)
           )
-          Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=86400")
+          Ok(bytes).as(tools.OgCardRenderer.MimeType).withHeaders("Cache-Control" -> "public, max-age=86400")
         case None => NotFound(s"Film not found: $title")
       }
     }
@@ -936,7 +936,7 @@ class MovieController( cc: ControllerComponents,
       val bytes = cityOgCardService.card(s"${c.slug}|$day", FilterDescription.cityHeading(c), c.country.brandName, c.country.shareHost, films, c.country.filmwebEnabled)
       // 1h, not a day: the card tracks the live repertoire (which shifts through
       // the day), and a shorter TTL means a regenerated card surfaces promptly.
-      Ok(bytes).as("image/png").withHeaders("Cache-Control" -> "public, max-age=3600")
+      Ok(bytes).as(tools.OgCardRenderer.MimeType).withHeaders("Cache-Control" -> "public, max-age=3600")
     }
   }
 

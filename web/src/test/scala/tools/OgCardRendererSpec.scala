@@ -19,6 +19,16 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     p
   }
 
+  // A poster with real entropy. `solidPoster` is a flat fill, which BOTH codecs
+  // compress to almost nothing -- comparing formats on it would prove nothing
+  // about a photograph, which is what a poster actually is.
+  private def noisyPoster(): BufferedImage = {
+    val p = new BufferedImage(400, 600, BufferedImage.TYPE_INT_RGB)
+    val rnd = new java.util.Random(1)
+    for (y <- 0 until 600; x <- 0 until 400) p.setRGB(x, y, rnd.nextInt(0xFFFFFF))
+    p
+  }
+
   private def decode(bytes: Array[Byte]): BufferedImage =
     ImageIO.read(new ByteArrayInputStream(bytes))
 
@@ -47,16 +57,43 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   private val RtGreen = new Color(0x1a, 0x8f, 0x1a)
   private val FwOrange = new Color(0xff, 0x6c, 0x00)
 
-  "OgCardRenderer" should "produce a 1200×630 PNG" in {
+  "OgCardRenderer" should "encode the 1200×630 card as a JPEG, not a lossless PNG" in {
     val bytes = OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(solidPoster(Color.RED)), "kinowo.net")
-    val img   = decode(bytes)
+    // The JPEG SOI marker. Asserted on the BYTES rather than on what ImageIO
+    // makes of them: ImageIO.read decodes either format happily, so a card that
+    // silently went back to PNG would pass every other test in this file while
+    // quadrupling both the response and the heap the card cache holds.
+    bytes(0) shouldBe 0xFF.toByte
+    bytes(1) shouldBe 0xD8.toByte
+    val img = decode(bytes)
     img should not be null
     img.getWidth  shouldBe 1200
     img.getHeight shouldBe 630
+    // And it must be the declared type, so the Content-Type the controller sets
+    // and the og:image:type the film page emits cannot drift from the encoder.
+    OgCardRenderer.MimeType shouldBe "image/jpeg"
+  }
+
+  it should "encode a photographic card far smaller than the same card lossless" in {
+    // The reason for the format, stated as a number. A real card is a poster
+    // montage: PNG stores it losslessly at ~4x the bytes, and OgCardCache holds
+    // those bytes, so this ratio is the difference between a cache that fits in
+    // a 384 MiB old gen and one that does not.
+    val badges = OgCardRenderer.ratingBadges(Some(8.8), Some(88), Some(91), Some(7.9))
+    val image  = OgCardRenderer.renderImage("Incepcja", "2010 · Sci-Fi", badges, Some(noisyPoster()), "kinowo.net",
+                                            director = Some("Christopher Nolan"), synopsis = Some("A thief who steals corporate secrets."))
+    val jpeg = OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", badges, Some(noisyPoster()), "kinowo.net",
+                                     director = Some("Christopher Nolan"), synopsis = Some("A thief who steals corporate secrets."))
+    val png = {
+      val baos = new java.io.ByteArrayOutputStream()
+      ImageIO.write(image, "png", baos)
+      baos.toByteArray
+    }
+    jpeg.length should be < (png.length / 2)
   }
 
   it should "composite the poster into the left slot and keep a dark background on the right" in {
-    val img = decode(OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(solidPoster(Color.RED)), "kinowo.net"))
+    val img = (OgCardRenderer.renderImage("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(solidPoster(Color.RED)), "kinowo.net"))
 
     // Centre of the poster slot (slot is ~56..401 wide, full height) — must be
     // dominated by the poster's red, proving the poster was actually drawn.
@@ -73,7 +110,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "draw light title text against the dark panel (some bright pixels in the title band)" in {
-    val img = decode(OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(solidPoster(Color.RED)), "kinowo.net"))
+    val img = (OgCardRenderer.renderImage("Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), Some(solidPoster(Color.RED)), "kinowo.net"))
     // Scan the title band (right of the poster, near the top) for near-white
     // anti-aliased glyph pixels.
     var bright = 0
@@ -87,13 +124,13 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     // sampling inside the slot still hits poster colour, not background.
     val banner = new BufferedImage(1200, 400, BufferedImage.TYPE_INT_RGB)
     val g = banner.createGraphics(); g.setColor(Color.GREEN); g.fillRect(0, 0, 1200, 400); g.dispose()
-    val img = decode(OgCardRenderer.render("Film", "", Nil, Some(banner), "kinowo.net"))
+    val img = (OgCardRenderer.renderImage("Film", "", Nil, Some(banner), "kinowo.net"))
     val mid = new Color(img.getRGB(220, 315))
     mid.getGreen should be > 150
   }
 
   it should "render a text-only card (no exception, correct size) when there is no poster" in {
-    val img = decode(OgCardRenderer.render("Film bez plakatu", "2026 · Dramat", OgCardRenderer.ratingBadges(None, None, None, Some(7.1)), None, "kinowo.net"))
+    val img = (OgCardRenderer.renderImage("Film bez plakatu", "2026 · Dramat", OgCardRenderer.ratingBadges(None, None, None, Some(7.1)), None, "kinowo.net"))
     img.getWidth  shouldBe 1200
     img.getHeight shouldBe 630
   }
@@ -111,7 +148,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   private def fiveCols(c: Color) = Seq.fill(5)(col(c))
 
   "OgCardRenderer.renderCityPageCard" should "render the page-like grid and keep the left brand panel dark" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", fiveCols(Color.RED), filmweb = true))
+    val img = (OgCardRenderer.renderCityPageCardImage("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", fiveCols(Color.RED), filmweb = true))
     img.getWidth shouldBe 1200
     img.getHeight shouldBe 630
     // A right-hand poster shows through where the gradient has faded.
@@ -123,7 +160,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "draw the white 'Kinowo' wordmark and the city line on the left" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", Seq(col(Color.RED)), filmweb = true))
+    val img = (OgCardRenderer.renderCityPageCardImage("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", Seq(col(Color.RED)), filmweb = true))
     var bright = 0
     for (x <- 80 until 560; y <- 200 until 430)
       if (new Color(img.getRGB(x, y)).getRed > 200) bright += 1
@@ -131,7 +168,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "paint the per-film rating pills and showtime chips into the cards" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", fiveCols(Color.BLUE), filmweb = true))
+    val img = (OgCardRenderer.renderCityPageCardImage("Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", fiveCols(Color.BLUE), filmweb = true))
     hasColourNear(img, ImdbGold) shouldBe true                              // an in-card rating pill
     hasColourNear(img, new Color(0xaa, 0xd4, 0xff), tol = 30) shouldBe true // a showtime chip's text
   }
@@ -160,7 +197,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "carry the Filmweb pill on a Polish card" in {
-    val img = decode(OgCardRenderer.renderCityPageCard(
+    val img = (OgCardRenderer.renderCityPageCardImage(
       "Repertuar kin w Poznaniu", "Kinowo", "kinowo.net", Nil, filmweb = true))
     filmwebOrangePixels(img) should be > 300
   }
@@ -170,13 +207,13 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
            ("Cinema listings in Manchester", "Showtimes", "showtimes.cc/uk"),
            ("Kinoprogramm in Berlin",        "Showtimes", "showtimes.cc/de"),
            ("Cartelera de cine en Madrid",   "Showtimes", "showtimes.cc/es"))) withClue(s"$host: ") {
-      val img = decode(OgCardRenderer.renderCityPageCard(line, brand, host, Nil, filmweb = false))
+      val img = (OgCardRenderer.renderCityPageCardImage(line, brand, host, Nil, filmweb = false))
       filmwebOrangePixels(img) should be < 50
     }
   }
 
   it should "render a clean brand-only card (correct size) when there are no films" in {
-    val img = decode(OgCardRenderer.renderCityPageCard("Repertuar kin we Wrocławiu", "Kinowo", "kinowo.net", Nil, filmweb = true))
+    val img = (OgCardRenderer.renderCityPageCardImage("Repertuar kin we Wrocławiu", "Kinowo", "kinowo.net", Nil, filmweb = true))
     img.getWidth  shouldBe 1200
     img.getHeight shouldBe 630
   }
@@ -188,7 +225,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
 
   it should "ellipsise an absurdly long title instead of overflowing" in {
     val longTitle = (1 to 60).map(_ => "Multiwersum").mkString(" ")
-    val img = decode(OgCardRenderer.render(longTitle, "", OgCardRenderer.ratingBadges(Some(8.6), None, None, None), Some(solidPoster(Color.RED)), "kinowo.net"))
+    val img = (OgCardRenderer.renderImage(longTitle, "", OgCardRenderer.ratingBadges(Some(8.6), None, None, None), Some(solidPoster(Color.RED)), "kinowo.net"))
     img.getWidth shouldBe 1200 // renders; the wrap/ellipsis logic kept it bounded
   }
 
@@ -203,10 +240,10 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
 
   it should "render the synopsis (and director) text in the space below the ratings" in {
     val synopsis = (1 to 40).map(_ => "Bohaterka").mkString(" ")
-    val withBody = decode(OgCardRenderer.render(
+    val withBody = (OgCardRenderer.renderImage(
       "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
       Some(solidPoster(Color.RED)), "kinowo.net", director = Some("Christopher Nolan"), synopsis = Some(synopsis)))
-    val without  = decode(OgCardRenderer.render(
+    val without  = (OgCardRenderer.renderImage(
       "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
       Some(solidPoster(Color.RED)), "kinowo.net"))
     // The body band is essentially empty without the new copy, and full of glyph
@@ -219,7 +256,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     // An absurdly long synopsis must be capped/ellipsised, never spilling onto
     // the kinowo.net footer at the very bottom.
     val flood = (1 to 400).map(_ => "Tekst").mkString(" ")
-    val img = decode(OgCardRenderer.render(
+    val img = (OgCardRenderer.renderImage(
       "Film", "2026 · Dramat", OgCardRenderer.ratingBadges(Some(7.1), None, None, None),
       None, "kinowo.net", synopsis = Some(flood)))
     // Band just above the footer baseline (Height-Margin = 574) must stay dark:
@@ -238,7 +275,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     // baseline at Height - Margin: no host paints none, and a longer host paints
     // more than a shorter one.
     def footerPixels(host: String): Int = {
-      val img = decode(OgCardRenderer.render("Film", "2026", Nil, None, host))
+      val img = (OgCardRenderer.renderImage("Film", "2026", Nil, None, host))
       var n = 0
       for (x <- 600 until OgCardRenderer.Width; y <- 548 until 578) {
         val c = new Color(img.getRGB(x, y))
@@ -256,18 +293,18 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   // ── Rating badge brand colours mirror the web `_ratingStyles` exactly ──────
 
   it should "paint the IMDb badge label in its brand gold (#f5c518)" in {
-    val img = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), None, "kinowo.net"))
+    val img = (OgCardRenderer.renderImage("Film", "2026", OgCardRenderer.ratingBadges(Some(8.8), None, None, None), None, "kinowo.net"))
     hasColourNear(img, ImdbGold) shouldBe true
   }
 
   it should "render Metacritic as a solid green pill (#66cc66)" in {
-    val img = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(None, Some(77), None, None), None, "kinowo.net"))
+    val img = (OgCardRenderer.renderImage("Film", "2026", OgCardRenderer.ratingBadges(None, Some(77), None, None), None, "kinowo.net"))
     hasColourNear(img, MetaGreen) shouldBe true
   }
 
   it should "use a red RT label when fresh (≥60%) and a green one when rotten" in {
-    val fresh  = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(None, None, Some(90), None), None, "kinowo.net"))
-    val rotten = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(None, None, Some(30), None), None, "kinowo.net"))
+    val fresh  = (OgCardRenderer.renderImage("Film", "2026", OgCardRenderer.ratingBadges(None, None, Some(90), None), None, "kinowo.net"))
+    val rotten = (OgCardRenderer.renderImage("Film", "2026", OgCardRenderer.ratingBadges(None, None, Some(30), None), None, "kinowo.net"))
     hasColourNear(fresh,  RtRed)   shouldBe true
     hasColourNear(fresh,  RtGreen) shouldBe false
     hasColourNear(rotten, RtGreen) shouldBe true
@@ -275,7 +312,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "paint the Filmweb badge label in its brand orange (#ff6c00)" in {
-    val img = decode(OgCardRenderer.render("Film", "2026", OgCardRenderer.ratingBadges(None, None, None, Some(7.2)), None, "kinowo.net"))
+    val img = (OgCardRenderer.renderImage("Film", "2026", OgCardRenderer.ratingBadges(None, None, None, Some(7.2)), None, "kinowo.net"))
     hasColourNear(img, FwOrange) shouldBe true
   }
 }

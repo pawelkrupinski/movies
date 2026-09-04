@@ -16,10 +16,10 @@ class CityOgImageControllerSpec extends AnyFlatSpec with Matchers {
 
   private val (controller, _) = TestMovieController.build(records = Nil)
 
-  "GET /:city/og-image" should "serve a 1200×630 image/png for a known city" in {
+  "GET /:city/og-image" should "serve a 1200×630 image/jpeg for a known city" in {
     val result = controller.cityOgImage("poznan").apply(FakeRequest())
     status(result) shouldBe OK
-    contentType(result) shouldBe Some("image/png")
+    contentType(result) shouldBe Some("image/jpeg")
     header("Cache-Control", result) shouldBe Some("public, max-age=3600")
     val img = ImageIO.read(new ByteArrayInputStream(contentAsBytes(result).toArray))
     img.getWidth  shouldBe 1200

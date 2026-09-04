@@ -4,7 +4,7 @@ import java.awt.geom.RoundRectangle2D
 import java.awt.image.BufferedImage
 import java.awt.{Color, Font, GradientPaint, Graphics2D, LinearGradientPaint, RenderingHints}
 import java.io.ByteArrayOutputStream
-import javax.imageio.ImageIO
+import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
 
 /**
  * Renders the 1200×630 Open Graph "share card" for a film page — the image
@@ -31,6 +31,15 @@ import javax.imageio.ImageIO
 object OgCardRenderer {
   val Width  = 1200
   val Height = 630
+
+  /** The card's wire format. Named here rather than spelled at each call site so
+   *  the controller's Content-Type, the `og:image:type` meta tag and the encoder
+   *  cannot drift apart -- a card served as `image/png` that is really a JPEG is
+   *  the kind of disagreement a preview scraper refuses rather than reports. */
+  val MimeType = "image/jpeg"
+
+  /** See [[toJpeg]] for why 0.85 and not the ImageIO default. */
+  private val JpegQuality = 0.85f
 
   private val Margin  = 56                  // text inset from the top/right/bottom edges
   // Full-bleed poster: flush to the left/top/bottom edges (no padding), spanning
@@ -142,7 +151,15 @@ object OgCardRenderer {
    *  pre-joined "Name, Name" string) and `synopsis` fill the space below the
    *  ratings — both optional, each omitted when absent. */
   def render(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],
-             host: String, director: Option[String] = None, synopsis: Option[String] = None): Array[Byte] = {
+             host: String, director: Option[String] = None, synopsis: Option[String] = None): Array[Byte] =
+    toJpeg(renderImage(title, subtitle, badges, poster, host, director, synopsis))
+
+  /** The film card as a raster, before it is encoded. Separate from [[render]]
+   *  so what the card LOOKS like and what it is ENCODED as are two questions
+   *  with two answers: the specs that sample pixels assert on this, and only the
+   *  format test goes through the lossy encoder. */
+  def renderImage(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],
+                  host: String, director: Option[String] = None, synopsis: Option[String] = None): BufferedImage = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -220,7 +237,7 @@ object OgCardRenderer {
       g.drawString(host, textRight - ffm.stringWidth(host), footerBaseline)
     } finally g.dispose()
 
-    toPng(img)
+    img
   }
 
   /** Compose the per-city share card so its background reads as the real
@@ -233,7 +250,13 @@ object OgCardRenderer {
    *  No films → a clean brand-only card rather than an empty frame. */
   def renderCityPageCard(cityLine: String, brand: String, host: String,
                          columns: Seq[(CityCardFilm, Option[BufferedImage])],
-                         filmweb: Boolean): Array[Byte] = {
+                         filmweb: Boolean): Array[Byte] =
+    toJpeg(renderCityPageCardImage(cityLine, brand, host, columns, filmweb))
+
+  /** The city card as a raster. See [[renderImage]] for why this is separate. */
+  def renderCityPageCardImage(cityLine: String, brand: String, host: String,
+                              columns: Seq[(CityCardFilm, Option[BufferedImage])],
+                              filmweb: Boolean): BufferedImage = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -255,7 +278,7 @@ object OgCardRenderer {
       drawBrandOverlay(g, cityLine, brand, host, filmweb)
     } finally g.dispose()
 
-    toPng(img)
+    img
   }
 
   /** The left brand block: the `brand` wordmark ("Kinowo" / "Showtimes") + the
@@ -391,9 +414,40 @@ object OgCardRenderer {
     g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON)
   }
 
-  private def toPng(img: BufferedImage): Array[Byte] = {
+  /** JPEG AND NOT PNG, BECAUSE A LOSSLESS PHOTOGRAPH IS HALF A MEGABYTE.
+   *
+   *  These cards are a full-bleed poster montage -- a photograph, with a
+   *  gradient behind it and a few hundred pixels of text on top. PNG stores
+   *  that losslessly: measured on a real card, 785 KB and 30 ms to deflate,
+   *  against 205 KB and 13 ms at this quality. Nothing about the card wants
+   *  lossless -- there is no transparency (the canvas is TYPE_INT_RGB), no flat
+   *  colour to keep crisp, and the consumers are Facebook, Slack and iMessage
+   *  previews that re-encode it anyway.
+   *
+   *  THE SIZE IS A HEAP PROBLEM AND NOT ONLY A BANDWIDTH ONE. [[OgCardCache]]
+   *  holds rendered cards, so at 785 KB a crawler sweeping the share cards
+   *  fills it with hundreds of megabytes of live byte arrays -- which is what
+   *  happened on 2026-09-04, when the old-gen floor on web-uk went from 29% to
+   *  71% of its cap within two hours of the sweep starting.
+   *
+   *  QUALITY 0.85, not the ImageIO default (0.75): the card carries small white
+   *  text over a dark gradient, which is where JPEG's chroma subsampling shows
+   *  first. 0.85 is the point at which that text stays clean; the difference
+   *  from 0.75 costs about 40 KB. */
+  private def toJpeg(img: BufferedImage): Array[Byte] = {
     val baos = new ByteArrayOutputStream()
-    ImageIO.write(img, "png", baos)
+    val writer = ImageIO.getImageWritersByFormatName("jpg").next()
+    val stream = ImageIO.createImageOutputStream(baos)
+    try {
+      writer.setOutput(stream)
+      val params = writer.getDefaultWriteParam
+      params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
+      params.setCompressionQuality(JpegQuality)
+      writer.write(null, new IIOImage(img, null, null), params)
+    } finally {
+      writer.dispose()
+      stream.close()
+    }
     baos.toByteArray
   }
 

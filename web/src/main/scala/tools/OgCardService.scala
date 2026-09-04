@@ -16,7 +16,7 @@ package tools
  */
 class OgCardService(posters: PosterFetch) {
   private val loader = new PosterImageLoader(posters)
-  private val cache  = new OgCardCache(maxSize = 1000)
+  private val cache  = new OgCardCache(OgCard.MaxCacheBytes)
 
   /** `posterUrls` is the ordered candidate list — the primary poster followed by
    *  the cinema fallbacks — mirroring the browser's `<img onerror>` fallback

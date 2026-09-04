@@ -49,7 +49,7 @@ class FilmPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   it should "declare the card as a 1200×630 PNG so previews render it large and uncropped" in {
     val html = render(sample)
-    html should include ("""<meta property="og:image:type"   content="image/png">""")
+    html should include ("""<meta property="og:image:type"   content="image/jpeg">""")
     html should include ("""<meta property="og:image:width"  content="1200">""")
     html should include ("""<meta property="og:image:height" content="630">""")
   }
