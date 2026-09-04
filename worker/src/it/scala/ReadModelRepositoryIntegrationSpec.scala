@@ -6,6 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.MongoReadModelRepository
 import tools.Env
+import tools.Eventually.eventually
 
 /**
  * Read-only check that the read model's id-only projections
@@ -16,6 +17,16 @@ import tools.Env
  *
  * Purely read-only against the live `web_movies` / `web_screenings`: it writes
  * nothing, so there are no sentinels to purge.
+ *
+ * BOTH ID CHECKS SETTLE, and they have to. Each compares TWO SEPARATE READS of a live
+ * collection, and `IntegrationTest / parallelExecution` is on — so a sibling spec writing
+ * or purging its own sentinel between the two reads makes them disagree about exactly that
+ * row while both are perfectly faithful. That is what failed on CI on 2026-09-04:
+ * `Set()` against `Set("backfillstitchprobe|1904")`, the sentinel
+ * `BackfillReadModelStitchIntegrationSpec` creates and deletes. A GENUINE projection
+ * infidelity is a property of the server-side `{_id}` / `{_id, filmId}` projection and
+ * never settles; a concurrent write settles on the next read. Retrying is what tells the
+ * two apart, and asserting on a single read is what conflated them.
  */
 class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -31,12 +42,16 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   override protected def afterAll(): Unit = try { rm.close(); client.close() } finally super.afterAll()
 
   "findAllMovieIds" should "project the same ids as a full findAllMovies decode" in {
-    rm.findAllMovieIds().toSet shouldBe rm.findAllMovies().map(_._id).toSet
+    // A wider poll than the helper's default: each attempt is TWO whole-collection reads,
+    // so hammering them every 20ms would cost more than the race it is waiting out.
+    eventually(rm.findAllMovieIds().toSet shouldBe rm.findAllMovies().map(_._id).toSet,
+      timeoutMs = 10000, pollMs = 250)
   }
 
   "findAllScreeningRefs" should "project the same (_id, filmId) pairs as a full findAllScreenings decode" in {
-    rm.findAllScreeningRefs().map(r => r._id -> r.filmId).toSet shouldBe
-      rm.findAllScreenings().map(s => s._id -> s.filmId).toSet
+    eventually(rm.findAllScreeningRefs().map(r => r._id -> r.filmId).toSet shouldBe
+      rm.findAllScreenings().map(s => s._id -> s.filmId).toSet,
+      timeoutMs = 10000, pollMs = 250)
   }
 
   // findAllScreenings is now keyset-PAGED (KeysetScan), not one unbounded find().toFuture().
