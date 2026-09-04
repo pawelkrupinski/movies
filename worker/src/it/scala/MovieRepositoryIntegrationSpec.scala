@@ -445,12 +445,31 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val filmA = "__it-screenings-resume-A__"
     val filmB = "__it-screenings-resume-B__"
     val filmC = "__it-screenings-resume-C__"
+    val filmWarm = "__it-screenings-resume-warmup__"
     val repo1 = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
     val gotA  = new CountDownLatch(1)
-    val handle1 = repo1.watch(fid => if (fid == filmA) gotA.countDown())
+    val gotWarm = new CountDownLatch(1)
+    val handle1 = repo1.watch { fid =>
+      if (fid == filmWarm) gotWarm.countDown()
+      if (fid == filmA) gotA.countDown()
+    }
     handle1 should not be empty
     try {
-      Thread.sleep(1500) // let the stream establish before the write
+      // THE STREAM IS ESTABLISHED WHEN IT DELIVERS, NOT AFTER A FIXED NAP. This was
+      // `Thread.sleep(1500)`, which is a guess about how long `watch` takes to open --
+      // and a write that lands before the watcher is listening produces exactly the
+      // failure a BROKEN RESUME produces (a latch that times out), so the one bug this
+      // spec exists to catch is indistinguishable from a slow runner. Writing a warm-up
+      // slot until one comes back proves the stream is live, and costs nothing once it is.
+      val warmDeadline = System.currentTimeMillis() + 60000
+      var established  = false
+      while (!established && System.currentTimeMillis() < warmDeadline) {
+        repo1.upsertSlot(filmWarm, "Multikino␟W", at(9))
+        established = gotWarm.await(1, TimeUnit.SECONDS)
+      }
+      withClue("the screenings change stream never delivered a warm-up event, so nothing " +
+               "below is testing resumption: ")(established shouldBe true)
+
       repo1.upsertSlot(filmA, "Multikino␟A", at(10))
       gotA.await(15, TimeUnit.SECONDS) shouldBe true
       handle1.foreach(_.close()) // watcher gone → force-saves the token (position: after A)
@@ -470,7 +489,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         seen.asScala should contain allOf (filmB, filmC)
       } finally { handle2.foreach(_.close()); repo2.close() }
     } finally {
-      Seq(filmA, filmB, filmC).foreach(repo1.deleteFilm)
+      Seq(filmA, filmB, filmC, filmWarm).foreach(repo1.deleteFilm)
       clearToken()
       repo1.close(); client.close()
     }
