@@ -64,8 +64,28 @@ def dashboards():
 
 
 def query_panels(document):
-    """The panels that ask Prometheus something -- rows and text banners excluded."""
-    return [p for p in document["panels"] if p.get("type") not in PROSE_PANEL_TYPES]
+    """The panels that ask Prometheus something -- rows and text banners excluded.
+
+    DESCENDS INTO ROWS, and that is the whole point of the function. A COLLAPSED row
+    keeps its children inside its own `panels` list instead of at the top level, so a
+    helper reading only `document["panels"]` sees whichever rows happen to be expanded
+    and silently skips every panel in the rest.
+
+    On apps/fly-overview.json that was 49 of 61 query panels. The coverage tests below
+    reported four panels missing -- the mongod internals, both machines' host
+    resources, the answering-vs-configured target counts -- every one of which had
+    been on the dashboard the whole time, inside a collapsed row. Four red assertions
+    naming panels that exist is the loud half; the quiet half is that the structure
+    tests were checking a fifth of the dashboard and passing.
+    """
+    def walk(panels):
+        for panel in panels:
+            if panel.get("type") == "row":
+                yield from walk(panel.get("panels", []))
+            elif panel.get("type") not in PROSE_PANEL_TYPES:
+                yield panel
+
+    return list(walk(document["panels"]))
 
 
 class DashboardStructure(unittest.TestCase):
