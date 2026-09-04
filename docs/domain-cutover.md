@@ -61,17 +61,20 @@ ordering — several of the steps below are only safe in one sequence.
    to skip the poll), which brings up Caddy's vhosts and teaches the deploy
    endpoint about `movies-web`.
 
-5. **Create the Deployments**, now that an image exists to pull:
+5. **Let Flux create the Deployments**, now that an image exists to pull. Add the
+   countries' Kustomizations to `movies-gitops/flux/gotk-sync.yaml`, then apply it
+   once — it is the only file Flux does not reconcile for itself:
 
    ```
-   movies-gitops/apply.sh web all
+   kubectl apply -f flux/gotk-sync.yaml
    ```
 
-6. **Pin the build**, so nothing is left running `:latest`:
-
-   ```
-   ssh -i <k8sdeploy key> k8sdeploy@128.140.49.167 ghcr.io/pawelkrupinski/movies-web:<sha>
-   ```
+   There is no separate pinning step any more. The base manifest names a real
+   build, written there by image-automation, so the Deployments come up on it and
+   move with the fleet from then on. (Until 2026-09-04 the manifest held a
+   `:latest` placeholder and the image had to be pinned afterwards over the ssh
+   deploy endpoint; that endpoint survives as break-glass and nothing calls it on a
+   push.)
 
 7. **Retire the Fly web apps.** `showtimes-uk` and `showtimes-de` have their
    `.github/workflows/main.yml` legs `enabled: false` and are scaled to zero —

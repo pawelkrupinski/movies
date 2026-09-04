@@ -43,9 +43,12 @@ convergence band. There is no second place to remember for any of them.
    `flyctl start` — scale the country's Deployments back up instead:
 
    ```
-   movies-gitops/apply.sh worker <cc>
-   movies-gitops/apply.sh web <cc>
+   # in movies-gitops: restore the country's two Kustomizations, then
+   kubectl apply -f flux/gotk-sync.yaml
    ```
+
+   Flux rebuilds both Deployments from the overlays and gives them the image the
+   base manifests name, so there is no image to choose and no pin to restore.
 
    The Fly instructions this step used to give (`flyctl scale count 1 -a showtimes-<cc>`,
    `flyctl machines start -a kinowo-worker-<cc>`) would start a SECOND copy of the country

@@ -271,9 +271,12 @@ into a sibling's pod will OOM or throttle it.
    (`10.20.0.12:<nodePort>`, labelled `country: <cc>`), and its Deployment name to
    `fleet.k8sDeploy.targets` in `infra/nix/modules/roles/k8s-deploy.nix` so CI can
    roll it.
-4. **Create and roll it**: `movies-gitops/apply.sh worker <cc>`, then let the next
-   push to main pin the image. There is no `main.yml` matrix leg — every worker leg
-   there is `enabled: false` and adding one would deploy a second copy. Fly deploys
+4. **Let Flux create it**: add a `worker-<cc>-config` Kustomization to
+   `movies-gitops/flux/gotk-sync.yaml`, then `kubectl apply -f flux/gotk-sync.yaml`
+   once — that file is the one thing Flux does not reconcile for itself. Flux builds
+   the Deployment from the overlay and keeps it thereafter, and image-automation
+   moves its image with everyone else's. There is no `main.yml` matrix leg — every
+   worker leg there is `enabled: false` and adding one would deploy a second copy. Fly deploys
    exactly one thing now, the Polish web app; `FlyDeployScopeSpec` holds that rule.
 
 ## 4. Web frontend (`showtimes.cc/<cc>/`)
@@ -302,8 +305,6 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    is never set here. CPU request: `500m` unless the roster is Poland-sized —
    memory stays at the base's 1Gi request+limit, which is the sizing proven not to
    OOM. Anything else you find yourself copying belongs in `base/` instead.
-   Add `<cc>` to `COUNTRIES=(...)` in `movies-gitops/apply.sh`, which enumerates
-   them for `apply.sh web all`.
 2. **Allocate the next free NodePort.** The workers hold 30900–30902 and the web
    tier 30910 (pl) / 30911 (de) / 30912 (uk) / 30913 (us) / 30914 (es), so a sixth takes 30915. It is
    **fixed, never allocated**: the Caddy vhost and the Prometheus target both name
@@ -389,23 +390,22 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    shares its origin, so the browser is still sending the cookie holding the CSRF
    state — or relays it untouched to the deployment that can. A country added under
    `showtimes.cc/<cc>` is the first case, so there is nothing to register.
-8. **Roll it out.** CI builds `ghcr.io/pawelkrupinski/movies-web:<sha>`; the new
-   Deployment does not exist yet, so create it once with
-   `movies-gitops/apply.sh web <cc>` and let CI pin builds after that. Never
-   plain `kubectl apply` — `apply.sh` exists to stop an apply reverting the pinned
-   image to `:latest`.
+8. **Roll it out.** Add a `web-<cc>-config` Kustomization to
+   `movies-gitops/flux/gotk-sync.yaml` and `kubectl apply -f flux/gotk-sync.yaml`
+   once. Flux creates the Deployment from the overlay and gives it the image the
+   base manifest names — which is a REAL build, written there by image-automation,
+   so a brand-new country comes up on whatever the rest of the fleet is running.
 
-   **Pass the image ref explicitly on a first-ever apply**:
-   `apply.sh web <cc> ghcr.io/pawelkrupinski/movies-web:<sha>`. With no Deployment
-   to read a pin from, `apply.sh` correctly lets the manifest value stand — and
-   that value is the `:latest` PLACEHOLDER, which is not what you want a brand-new
-   country pinned to. Pick a `<sha>` you have confirmed contains the new country
-   (`git merge-base --is-ancestor <your-commit> <sha>`); on a busy day several
-   pushes land at once and CI cancels superseded builds, so the newest GREEN image
-   is often a later commit than yours.
+   **This used to be the fiddliest step in the runbook, and is not any more.**
+   `apply.sh` existed because `kubectl apply` and `kubectl set image` fought over
+   the image field: every manifest's `image:` was a `:latest` PLACEHOLDER, so a
+   plain apply silently reverted production to `latest`, and a first-ever apply had
+   to be handed an explicit SHA or the new country came up on it. None of that
+   survives the pin moving into git (@4def6caa1) — `apply.sh` is deleted, and there
+   is no image ref to choose.
 
    **Two host-topology traps worth knowing before you debug anything:**
-   - `apply.sh` talks to the k3s API at `root@128.140.49.167`, which is
+   - The k3s API is at `root@128.140.49.167`, which is
      **`monitoring-1`** — the control plane, running Grafana's Caddy. The pods,
      their NodePorts, and the PUBLIC Caddy all live on **`k3s-worker-1`**
      (`2.28.47.31` / `10.20.0.12`). Curling a web NodePort from the API host
@@ -577,10 +577,10 @@ of a role while rejecting another's, so this can't regress silently.
 
 Provision everything (phases 3–4) **before** merging, so the deploy legs have live
 targets. If you cannot — the US was merged first, because its images had to exist
-before its Deployments could be pinned to them — then create the Deployments
-promptly afterwards and know what the gap looks like: `k8s-deploy.nix` names
-`worker-<cc>`/`web-<cc>` as roll targets from the moment it merges, so between
-merge and `apply.sh` CI is trying to roll Deployments that do not exist yet.
+before its Deployments existed — then add the Kustomizations promptly afterwards
+and know what the gap looks like: the country's overlay sits in the config repo
+reconciled by nobody, because `gotk-sync.yaml` is the one file Flux does not apply
+for itself. Nothing is red; the country simply never appears.
 
 **The order that actually works, and why each step precedes the next:**
 
@@ -607,8 +607,8 @@ merge and `apply.sh` CI is trying to roll Deployments that do not exist yet.
    fixture rather than a missing grant.
 2. **Merge**, and wait for a GREEN image build whose SHA contains your commit.
    (No DNS step for a path-mounted country — see phase 4.4.)
-3. **`apply.sh worker <cc> <image>` and `apply.sh web <cc> <image>`** — explicit
-   image ref, per phase 4.8.
+3. **`kubectl apply -f flux/gotk-sync.yaml`** in `movies-gitops`, once, so Flux
+   picks up the two new Kustomizations — per phase 4.8. No image ref to choose.
 4. **Activate the staged NixOS closure by hand** for the Caddy path upstream
    (phase 4.3). Auto-apply will NOT do this for you — the change touches
    `caddy.service`, which the classifier refuses by design — and `/{cc}/` 404s
