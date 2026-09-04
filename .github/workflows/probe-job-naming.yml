@@ -1,11 +1,17 @@
-# TEMPORARY probe: how does GitHub name a matrix job inside a CALLED workflow?
-# Dispatched by hand, deleted in the next commit.
+# TEMPORARY probe: how does GitHub name a matrix job inside a CALLED workflow,
+# when the CALLING job is itself a matrix? Dispatched by hand, deleted next commit.
 name: Probe job naming
 on:
     workflow_dispatch:
 jobs:
     leg:
-        name: probe
+        name: ${{ matrix.country }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { country: poland, phases: '["one","two"]' }
+                    - { country: spain,  phases: '["one"]' }
         uses: ./.github/workflows/probe-job-naming-leg.yml
         with:
-            phases: '["one","two"]'
+            phases: ${{ matrix.phases }}
