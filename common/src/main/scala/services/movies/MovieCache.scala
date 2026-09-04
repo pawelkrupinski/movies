@@ -1407,6 +1407,22 @@ class CaffeineMovieCache(
       val keys = corpusIndex.keysForCinemaSlot(cinema, norm)
       if (keys.isEmpty) None else Some(keys.minBy(canonicalRank))
     }
+    /** Drop `slotKeys` from the row at `key`, retaining each dropped slot's
+     *  synopsis (longest-seen, keyed by its source) so the displayed blurb stays
+     *  sticky once that slot is gone — see `MovieRecord.retainedSynopses`. Under
+     *  the per-title lock via `putIfPresent`, so a concurrent sibling-slot write
+     *  isn't clobbered. Shared by the stale-slot prune below and the
+     *  same-slot-on-two-rows cleanup in the write loop. */
+    def dropCinemaSlots(key: CacheKey, slotKeysOf: MovieRecord => Set[Source]): Unit =
+      putIfPresent(key, cur => {
+        val slotKeys = slotKeysOf(cur)
+        val captured = slotKeys.iterator.flatMap { s =>
+          cur.data.get(s).flatMap(_.synopsis).filter(_.nonEmpty).map(s -> _)
+        }.toMap
+        cur.copy(
+          data             = cur.data -- slotKeys,
+          retainedSynopses = MovieRecordMerge.mergeRetainedSynopses(cur.retainedSynopses, captured))
+      })
     // This cinema's staging rows, for the prior-slot carry-forward and the staging
     // prune below. Cinema-SCOPED: the inline `findAll().collect { _.cinema == cinema }`
     // it replaces decoded every staged document in the country to keep a handful, which
@@ -1571,6 +1587,28 @@ class CaffeineMovieCache(
                   put(key, base.copy(data = base.data + (slotKey -> slot)))
               }
           }
+          // This tick just decided which film this (cinema, title) belongs to, so
+          // any OTHER row still holding the same slot is stale by construction —
+          // drop it there. The write above lands the slot; without this it only
+          // ever COPIED, and the sole removal was the end-of-tick prune, which
+          // stands down on a partial scrape and only sees rows this cinema's own
+          // index lists. That is how "Zaproszenie" served the Kinepolis 21:40 and
+          // Kino Malta showtimes under BOTH `zaproszenie|2026` and
+          // `zaproszenie|1986` — one screening, two films, on the live site.
+          // Unlike the prune this is safe on a degraded tick: it removes a slot
+          // only because we just OBSERVED this venue listing this title, never
+          // because a fetch failed to mention it.
+          // The slots to drop are read off the OTHER row rather than assumed to be
+          // `slotKey`: the same venue's slot for this film can sit there under a
+          // different Source spelling (a bare `Cinema` from an older write, a
+          // `CinemaShowing` for a decorated edition), and dropping only `slotKey`
+          // would miss exactly the stranded copies this is here to clear.
+          (corpusIndex.keysForCinemaSlot(cinema, norm) - key).foreach { other =>
+            dropCinemaSlots(other, _.data.collect {
+              case (src, sd) if Source.cinemaOf(src).contains(cinema) &&
+                                sd.title.exists(t => normalizer.sanitize(t) == norm) => src
+            }.toSet)
+          }
           // A brand-new cinema observation grows what the TMDB stage can work
           // with; drop any stale "missing" verdict so the imminent publish
           // re-resolves against the grown row.
@@ -1612,21 +1650,7 @@ class CaffeineMovieCache(
       val toPrune = corpusIndex.slotsOf(cinema).iterator
         .collect { case (k, s, sd) if !touchedSlots.contains(sd) => k -> s }
         .toList.groupBy(_._1).view.mapValues(_.map(_._2).toSet).toList
-      toPrune.foreach { case (k, staleKeys) =>
-        // Drop only the stale slot keys, under the per-title lock, via `putIfPresent`
-        // so a concurrent sibling-slot write isn't clobbered. Before dropping, retain
-        // each dropped slot's synopsis (longest-seen, keyed by its source) so the
-        // displayed synopsis stays sticky once a cinema stops listing the film — see
-        // MovieRecord.retainedSynopses / synopsis.
-        putIfPresent(k, cur => {
-          val captured = staleKeys.iterator.flatMap { s =>
-            cur.data.get(s).flatMap(_.synopsis).filter(_.nonEmpty).map(s -> _)
-          }.toMap
-          cur.copy(
-            data             = cur.data -- staleKeys,
-            retainedSynopses = MovieRecordMerge.mergeRetainedSynopses(cur.retainedSynopses, captured))
-        })
-      }
+      toPrune.foreach { case (k, staleKeys) => dropCinemaSlots(k, _ => staleKeys) }
       // The batch signal the served-films sawtooth needed: which cinema dropped how
       // many slots off how many still-known films this tick.
       RemovalAudit.scrapePruned(cinema.displayName, films = toPrune.size,

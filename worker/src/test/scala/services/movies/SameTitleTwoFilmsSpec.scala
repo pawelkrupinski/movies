@@ -158,6 +158,34 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
     cinemasOn(c, 1961) shouldBe empty
   }
 
+  // The prod shape this class of bug ACTUALLY survives on. Everything above is a
+  // healthy tick, where the end-of-tick prune sweeps the venue's slot off the row
+  // it left. But that prune stands down on a degraded tick (`listingIsComplete =
+  // false` — a chunked scrape reduced from some of its date-chunks), because
+  // deleting slots a broken fetch merely failed to list is what flickers a
+  // still-playing film off the site. With the prune the ONLY remover, the write
+  // was a COPY: the venue's showtimes went on the new row and stayed on the old
+  // one too. That is `/poznan/movie/zaproszenie` on 2026-09-04 — Cinema City
+  // Kinepolis 21:40 and Kino Malta 20:35 rendered under BOTH the 2026 and the
+  // 1986 film. Moving the slot at the write is safe on a degraded tick precisely
+  // because it removes a slot only where we just OBSERVED the venue listing it.
+  it should "move the venue off the other film even when the tick is too short to prune" in {
+    val c = cache()
+    c.put(c.keyOf(Title, Some(2026)), resolved(NewFilm, 2026, 102, Seq(Helios)))
+    c.put(c.keyOf(Title, Some(1961)), resolved(OldFilm, 1961, 121, Nil))
+    // Multikino's slot stranded on the 1961 row, with its showtimes.
+    c.putIfPresent(c.keyOf(Title, Some(1961)), r => r.copy(data = r.data + ((Multikino: Source) ->
+      SourceData(title = Some(Title), runtimeMinutes = Some(105),
+        showtimes = Seq(Showtime(When, bookingUrl = None))))))
+
+    c.recordCinemaScrape(Multikino, Seq(yearlessScrape(Multikino, 105)), listingIsComplete = false)
+
+    cinemasOn(c, 2026) should contain(Multikino)
+    withClue("the venue's slot must MOVE, not be copied onto a second film: ") {
+      cinemasOn(c, 1961) should not contain Multikino
+    }
+  }
+
   // Convergence: whatever order the venues arrive in, and however many settles
   // run, the film ends up on ONE row with ONE card. This is the property the
   // duplicate broke — the corpus never reached a fixpoint, it just kept both.
