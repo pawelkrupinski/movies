@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
 /**
  * Guards that the worker's real `logback.xml` ships logs to a PERSISTENT file
  * under `KINOWO_LOG_DIR` — the mechanism that keeps logs across a Fly restart
- * (the volume at /data), since `flyctl logs` only retains a short rolling window
+ * (the volume at /data), since `kubectl logs` only retains a short rolling window
  * and loses exactly the pre-restart logs needed to diagnose a crash/throttle
  * spiral. Loads the actual production config into a private `LoggerContext`,
  * finds the file appender on the root logger, and asserts it is a rolling file

@@ -86,7 +86,7 @@ trait Wiring {
   // (a one-off `findAll`, no change stream).
   //
   // Local read-mirror: `/debug`'s `movieRepository.findAll()` is a full `movies`
-  // scan. Run locally it goes over the prod `flyctl` tunnel, where 1200+ full
+  // scan. Run locally it goes over the prod ssh tunnel, where 1200+ full
   // documents take 30–60s and intermittently hit findAll's 60s timeout (→ an empty
   // /debug table). When `MONGODB_MOVIES_MIRROR_URI` points at a local Mongo
   // kept synced from prod by `scripts/local-mirror/mirror.sh`, movieRepository reads

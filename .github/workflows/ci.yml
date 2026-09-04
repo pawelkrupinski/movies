@@ -10,8 +10,8 @@ name: CI
 #                       is confirmed to compile + pass the same gates main does.
 #
 # Everything below is identical to what gated deploy before the split — what
-# lives in main.yml is the shipping half: the Fly deploy matrix and the
-# per-tier GHCR build + k3s rollout jobs, all of which `needs: ci`.
+# lives in main.yml is the shipping half: the per-tier GHCR build jobs and the
+# one Fly deploy (the retired redirect host), all of which `needs: ci`.
 on:
     workflow_call:
 

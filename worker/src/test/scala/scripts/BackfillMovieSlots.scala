@@ -25,7 +25,7 @@ import tools.Env
  * already-migrated film is the rows we are trying to write, making the pass a no-op
  * that silently skips the films it exists to fix).
  *
- * Run against prod via the flyctl proxy (see reference_prod_mongo_access), once per
+ * Run against prod via the ssh tunnel (see reference_prod_mongo_access), once per
  * country database:
  *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   MONGODB_DB=kinowo    sbt "worker/Test/runMain scripts.BackfillMovieSlots"

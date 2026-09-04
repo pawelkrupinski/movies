@@ -10,7 +10,7 @@ package tools
  * exception message publishes the key with it. That is not theoretical: a dead
  * TMDB id (`/movie/1715017/external_ids`) reschedules forever, and each attempt
  * wrote the full v3 key into `/data/logs/worker.log`, which is kept on the Fly
- * volume for 14 days and read out over `flyctl ssh` during any incident.
+ * volume for 14 days and read out with `kubectl logs` during any incident.
  *
  * Only the VALUE is replaced, never the parameter name or the URL's shape:
  * callers match on the message (`MonitoringHttpFetch`'s `HTTP 5\d\d .*`

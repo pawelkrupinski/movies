@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
  * The live leak this closes: a deleted TMDB id rescheduled forever, and every
  * attempt logged `HTTP 404 for GET .../movie/1715017/external_ids?api_key=<v3 key>`
  * into `/data/logs/worker.log`, which persists on the Fly volume for 14 days and
- * is read out over `flyctl ssh` during any incident.
+ * is read out with `kubectl logs` during any incident.
  *
  * The message SHAPE is load-bearing and asserted separately: `MonitoringHttpFetch`
  * classifies connection failures with `HTTP 5\d\d .*`, so redaction may replace a

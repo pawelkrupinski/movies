@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-way sync of the admin-curated titleRules collection from prod into the
 # local dev kinowo_local. Runs the repo's scripts/local-mirror/sync-title-rules.sh
-# (which opens its OWN read-only flyctl tunnel to prod, mongodumps titleRules,
+# (which opens its OWN read-only ssh tunnel to prod, mongodumps titleRules,
 # guards on the record count, then mongorestore --drops it into kinowo_local).
 # Prod is read-only / never written.
 #

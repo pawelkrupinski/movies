@@ -1,7 +1,10 @@
 package tools
 
 /**
- * Connection options for a Mongo URI that crosses a `flyctl proxy`.
+ * Connection options for a Mongo URI that crosses an ssh port-forward to prod.
+ *
+ * (Written when that tunnel was a `flyctl proxy`; the reasoning holds for any
+ * supervised forwarding process.)
  *
  * The tunnel is not a reliable pipe: measured over one convergence run, the proxy
  * process EXITED and was restarted five times in half an hour. The supervisor

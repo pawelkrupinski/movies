@@ -267,46 +267,45 @@ Stop and ask only when something can't be undone cheaply:
   anything already on origin). Always ask.
 - Destructive ops with no easy backout: dropping a Mongo collection,
   truncating a table, deleting branches, `rm -rf` outside `target/`.
-  (Killing a live Fly *worker* machine is NOT in this bucket — see
-  "Worker downtime is fine" below.)
+  (Restarting or rescheduling a live *worker* pod is NOT in this bucket —
+  see "Worker downtime is fine" below.)
 - Committing files that might carry secrets (`.env.local`, credentials,
   API keys). Stage by explicit path; flag and ask before staging
   anything that smells like a secret.
 - A diff so large or cross-cutting that a reviewer would balk.
 
 Everything else — code with green tests, CSS tweaks, doc edits,
-refactors, multi-commit phases that each compile+test green, even a
-manual `flyctl deploy` to roll prod back to a known-good image during
-an incident — just do it. If a push triggers CI and CI fails, fix
+refactors, multi-commit phases that each compile+test green, even
+pinning a k3s deployment back to a known-good image by hand during an
+incident — just do it. If a push triggers CI and CI fails, fix
 forward in the next commit; don't undo the push.
 
 ### Worker downtime is fine — keep the web tier answering
 
-**Workers** (`kinowo-worker`, `kinowo-worker-de`, `kinowo-worker-uk`,
-`kinowo-worker-us`, `kinowo-worker-es`)
-can go fully down without ceremony. They scrape, enrich, and project on
-a cadence; a gap just delays the next cycle and the read model keeps
-serving what's already projected. When moving a machine, swapping a
-process, or redeploying after a config change — just `destroy` and
-`create` (or equivalent). Watch CI for the deploy to roll,
-sanity-check, move on. Up to ~15 minutes of worker downtime is in the
-"everything else, just do it" bucket above.
+**Workers** (the `worker-pl`, `worker-uk`, `worker-de`, `worker-us` and
+`worker-es` Deployments on k3s) can go fully down without ceremony. They
+scrape, enrich, and project on a cadence; a gap just delays the next cycle
+and the read model keeps serving what's already projected. When swapping a
+process or redeploying after a config change — just scale to zero and back,
+or delete the pod. Watch Flux for the rollout, sanity-check, move on. Up to
+~15 minutes of worker downtime is in the "everything else, just do it"
+bucket above.
 
 **The web / read tier (`kinowo.net`) is different — don't bring it
 completely down if there's any way not to.** It's the only part users
 see, and a page that 404s is the failure they notice. Prefer a rolling
-deploy that keeps at least one machine serving; when moving or resizing
-machines, create the replacement *before* destroying the old one.
+deploy that keeps at least one pod serving; when moving or resizing a
+node, bring the replacement up *before* taking the old one down.
 
 This is not a licence to build elaborate zero-downtime orchestration
 for the web tier either. A brief 5xx window as a rolling deploy passes
 through is fine, and so is a genuinely unavoidable short full outage —
-a region move, a machine the platform won't let you duplicate. When
+a host move, a node the platform won't let you duplicate. When
 that happens keep it short, and say out loud afterwards that the tier
 was fully down rather than letting it pass unmentioned.
 
-This is about LIFECYCLE — destroying machines, restarting processes,
-brief 5xx windows during a redeploy. Destructive *data* ops (dropping a
+This is about LIFECYCLE — replacing nodes, restarting processes, brief
+5xx windows during a redeploy. Destructive *data* ops (dropping a
 collection, truncating a table, deleting branches) still need explicit
 confirmation per the rule above; downtime is recoverable, data isn't.
 

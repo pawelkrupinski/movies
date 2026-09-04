@@ -148,8 +148,9 @@ groups:
       # worker-stderr.log, newest heap dump predates the index-only fix), not a JVM crash
       # (0 hs_err files), not the LivenessWatchdog (it has never logged "heartbeat stale"),
       # not a graceful drain. That leaves an external kill. To PROVE it, read the machine
-      # event exit_code right after an ungraceful restart, BEFORE a deploy replaces the
-      # machine and wipes its event history: flyctl machine status <id> -a kinowo-worker.
+      # exit reason right after an ungraceful restart, BEFORE the pod is replaced and its
+      # events age out: `kubectl -n kinowo describe pod <pod>` (look for OOMKilled) and
+      # `kubectl -n kinowo logs <pod> --previous`.
       # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-worker-cpu-starved` read
       # `fly_instance_cpu_throttle` for the worker apps.
       #
@@ -174,7 +175,7 @@ groups:
           severity: warning
         annotations:
           summary: '{{ $labels.app }} restarted > 4 times in the last hour'
-          description: 'changes(process_start_time_seconds[1h]) > 4 on {{ $labels.app }} — the worker is restarting far above its normal ~5-6h cadence. Check the `flyctl machine status <id>` event log for the exit reason (exit_code=3 = ExitOnOutOfMemoryError native OOM; 126/127 = bad launcher; 1 = boot failure), recent worker deploys, and the "Kinowo — Worker Diagnostics" dashboard (native memory + RSS climb). See reference_worker_native_oom_and_disk.'
+          description: 'changes(process_start_time_seconds[1h]) > 4 on {{ $labels.app }} — the worker is restarting far above its normal ~5-6h cadence. Check `kubectl -n kinowo describe pod <pod>` for the exit reason (exit code 3 = ExitOnOutOfMemoryError native OOM; 126/127 = bad launcher; 1 = boot failure; OOMKilled = the cgroup limit), recent worker deploys, and the "Kinowo — Worker Diagnostics" dashboard (native memory + RSS climb). See reference_worker_native_oom_and_disk.'
         data:
           - refId: A
             relativeTimeRange: { from: 3600, to: 0 }

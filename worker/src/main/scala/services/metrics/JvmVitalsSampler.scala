@@ -35,7 +35,7 @@ import scala.util.Try
  *     C-heap). This gap gauge is the primary signal for that off-book climb.
  *   - a compact `VITALS …` log line to `/data/logs` (heap / nonheap / threads /
  *     native-committed + RSS + off-book gap + the top categories) so the
- *     pre-death trend SURVIVES a restart even when the Grafana / `flyctl logs`
+ *     pre-death trend SURVIVES a restart even when the Grafana / `kubectl logs`
  *     windows don't.
  *
  * Native memory is read in-process via the HotSpot DiagnosticCommand MBean's
@@ -112,7 +112,7 @@ object JvmVitalsSampler {
 
   /** 60 s: high enough resolution to catch a native climb within a ~1 h flare,
    *  cheap (one MBean call). The VITALS log is throttled to 1-in-5 ticks so it
-   *  doesn't spam `flyctl logs`. */
+   *  doesn't spam the pod's logs. */
   val DefaultSampleInterval: FiniteDuration = 60.seconds
   val LogEveryTicks: Long = 5 // log the VITALS line every 5th sample (~5 min)
 

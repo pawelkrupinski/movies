@@ -24,8 +24,8 @@ name: Country convergence
 
 on:
     # Dispatched by `Main` — not on push. Its `kick-convergence` job
-    # hangs off the same `needs: ci` the deploy matrix does, so these legs start
-    # alongside the flyctl legs rather than behind them.
+    # hangs off the same `needs: ci` the deploy does, so these legs start alongside
+    # it rather than behind it.
     #
     # They are TENS of minutes long once enrichment actually runs (Poland 12 warm,
     # ~22 on a cache it has to build first; Germany and the UK carry 1.6x and 2.2x
@@ -33,8 +33,8 @@ on:
     # minute spent queueing behind something else is a minute in which the next push
     # can supersede the run before it reaches an assertion. Starting with the deploy
     # rather than after it is head start against exactly that. The runner-pool cost is
-    # four concurrent jobs while the deploy's six legs run; the deploy legs are
-    # flyctl-remote-build waits, so they contend for slots, not for CPU.
+    # four concurrent jobs while the deploy runs; the deploy is a flyctl release wait,
+    # so it contends for a slot, not for CPU.
     #
     # Deploy-time dispatch is best-effort by construction. The nightly schedule below
     # is the run that is guaranteed to finish.

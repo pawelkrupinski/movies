@@ -231,10 +231,10 @@ object WorkerMain extends Logging {
    *  attach from outside either; [[tools.HeapDumper]] could already do this from
    *  inside the process, it just had no trigger but the wedged-watchdog.
    *
-   *  Same exposure as /throttle and /metrics: port 9000 has no `[[services]]` block,
-   *  so it is reachable on Fly's private network and via `flyctl proxy`, not publicly.
+   *  Same exposure as /throttle and /metrics: port 9000 is reachable on the cluster's
+   *  private network (Prometheus scrapes it over a NodePort), never publicly.
    *
-   *    flyctl proxy 9000:9000 --app kinowo-worker-uk &
+   *    kubectl -n kinowo port-forward deploy/worker-uk 9000:9000 &
    *    curl -X POST localhost:9000/heapdump
    *
    *  POST-only: a dump stops the world for the length of a full GC and writes a few

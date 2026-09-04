@@ -28,7 +28,7 @@ import tools.Env
  * lot. [[run]] now refuses to prune screenings when it projected none, and `main` wires
  * both side repositories.
  *
- * Run against prod via the flyctl proxy (see reference_prod_mongo_access):
+ * Run against prod via the ssh tunnel (see reference_prod_mongo_access):
  *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   set -a; source .env.local; set +a
  *   sbt "worker/Test/runMain scripts.BackfillReadModel"
