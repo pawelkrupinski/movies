@@ -156,45 +156,18 @@ fun Showings(
                 ) {
                     for (cg in day.cinemas) {
                         if (budget <= 0) break
-                        // The language version every slot at this cinema shares is
-                        // said ONCE beside its name rather than on each chip — and
-                        // when there is no name here to say it (the Kina tab's
-                        // section already names the cinema, but is shared by films
-                        // with different versions) it stays on the chips, which is
-                        // the "2D DUB" shape ShowtimeChipFitTest holds two-per-row
-                        // against. See FormatTokenFilter.
-                        val version = FormatTokenFilter.commonVersion(cg)
                         if (showCinemaHeaders) {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = cg.cinema,
-                                    color = CinemaBlue,
-                                    fontSize = (12 * scale).sp,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = if (cg.cinemaURL != null) {
-                                        Modifier.clickable { openUrl(context, cg.cinemaURL) }
-                                    } else Modifier,
-                                )
-                                if (version.isNotEmpty()) {
-                                    Text(
-                                        text = version.joinToString(" "),
-                                        color = CinemaBlue,
-                                        fontSize = (10 * scale).sp,
-                                        fontWeight = FontWeight.Medium,
-                                        modifier = Modifier
-                                            .background(
-                                                CinemaBlue.copy(alpha = 0.16f),
-                                                RoundedCornerShape(3.dp),
-                                            )
-                                            .padding(horizontal = 3.dp, vertical = 1.dp),
-                                    )
-                                }
-                            }
+                            Text(
+                                text = cg.cinema,
+                                color = CinemaBlue,
+                                fontSize = (12 * scale).sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = if (cg.cinemaURL != null) {
+                                    Modifier.clickable { openUrl(context, cg.cinemaURL) }
+                                } else Modifier,
+                            )
                         }
-                        val common = FormatTokenFilter.tokensToStrip(cg, hasLabel = showCinemaHeaders)
+                        val common = FormatTokenFilter.tokensToStrip(cg)
                         val slots = cg.showtimes.take(budget)
                         budget -= slots.size
                         shown += slots.size

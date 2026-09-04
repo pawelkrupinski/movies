@@ -42,10 +42,10 @@ struct ShowingsView: View {
                         .padding(.top, spacing.dayLabelTop)
                     VStack(alignment: .leading, spacing: spacing.showingsBlock) {
                         ForEach(day.cinemas, id: \.cinema) { cinema in
-                            let strippedTokens = FormatTokenFilter.tokensToStrip(cinema, hasLabel: showCinemaHeaders)
+                            let strippedTokens = FormatTokenFilter.tokensToStrip(cinema)
                             VStack(alignment: .leading, spacing: spacing.cinemaToPills) {
                                 if showCinemaHeaders {
-                                    cinemaLabel(cinema, version: FormatTokenFilter.commonVersion(cinema))
+                                    cinemaLabel(cinema)
                                 }
                                 FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: spacing.pillRowSpacing) {
                                     ForEach(cinema.showtimes) { st in
@@ -83,8 +83,7 @@ struct ShowingsView: View {
             var dayLines = 1
             for cinema in day.cinemas {
                 let pillRows = Self.pillRowCount(
-                    cinema.showtimes,
-                    commonTokens: FormatTokenFilter.tokensToStrip(cinema, hasLabel: showCinemaHeaders),
+                    cinema.showtimes, commonTokens: FormatTokenFilter.tokensToStrip(cinema),
                     contentWidth: contentWidth)
                 let cinemaLines = 1 + pillRows
                 if lineCount + dayLines + cinemaLines <= maxVisibleLines {
@@ -152,34 +151,19 @@ struct ShowingsView: View {
     private static let cardShowingsWidth: CGFloat =
         ShowtimePillMetrics.cardShowingsWidth(screenWidth: UIScreen.main.bounds.width)
 
-    /// The cinema's name, plus the language version every one of its showtimes
-    /// shares — said once here rather than on each pill. See `FormatTokenFilter`.
     @ViewBuilder
-    private func cinemaLabel(_ cinema: CinemaShowings, version: [String]) -> some View {
-        HStack(spacing: 4) {
-            if let url = cinema.cinemaURL {
-                Link(destination: url) {
-                    Text("\(cinema.cinema) ↗")
-                        .font(.system(size: 10))
-                        .foregroundColor(.kinowoCinemaLabel)
-                }
-                .buttonStyle(.plain)
-            } else {
-                Text(cinema.cinema)
+    private func cinemaLabel(_ cinema: CinemaShowings) -> some View {
+        if let url = cinema.cinemaURL {
+            Link(destination: url) {
+                Text("\(cinema.cinema) ↗")
                     .font(.system(size: 10))
                     .foregroundColor(.kinowoCinemaLabel)
             }
-            if !version.isEmpty {
-                Text(version.joined(separator: " "))
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(.kinowoCinemaLabel)
-                    .padding(.horizontal, 3)
-                    .padding(.vertical, 1)
-                    .background(
-                        RoundedRectangle(cornerRadius: 3)
-                            .fill(Color.kinowoCinemaLabel.opacity(0.16))
-                    )
-            }
+            .buttonStyle(.plain)
+        } else {
+            Text(cinema.cinema)
+                .font(.system(size: 10))
+                .foregroundColor(.kinowoCinemaLabel)
         }
     }
 

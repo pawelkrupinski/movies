@@ -22,19 +22,19 @@ import pl.kinowo.model.Showtime
 
 /**
  * Off-device (Robolectric) render of the real `Showings` tree, checking that a
- * cinema screening a film in ONE language version still says which.
+ * showtime says which language version it is — always, on the chip itself.
  *
  * The regression it pins: the chip tag is built by stripping the tokens every
  * showtime at a cinema shares, so a film Multikino screens only dubbed — every
  * slot tagged `2D DUB` — had `DUB` eaten by that intersection and appeared
  * nowhere on the card. A visitor could no longer tell napisy from dubbing. The
- * version is now hoisted into the cinema label (or, where there is no label to
- * hoist it into, left on the chips).
+ * version is now excluded from the strip, so it stays on the chip a visitor is
+ * about to tap however uniform the cinema is.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-class CinemaVersionLabelTest {
+class CinemaVersionChipTest {
 
     @get:Rule
     val compose = createComposeRule()
@@ -68,40 +68,36 @@ class CinemaVersionLabelTest {
     }
 
     @Test
-    fun aDubbedOnlyCinemaSaysDubBesideItsName() {
+    fun aDubbedOnlyCinemaStillSaysDubOnEveryChip() {
         render(film("2D DUB", "2D DUB"), showCinemaHeaders = true)
-        // Once, in the label — not on either chip, which stay as narrow as they were.
-        compose.onNodeWithText("DUB", useUnmergedTree = true).assertExists()
+        compose.onAllNodesWithText("DUB", useUnmergedTree = true).assertCountEquals(2)
+        // The shared screen format is still dropped — that is what the
+        // stripping is FOR.
         compose.onNodeWithText("2D DUB", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
-    fun aSubtitledOnlyCinemaSaysNapBesideItsName() {
+    fun aSubtitledOnlyCinemaStillSaysNapOnEveryChip() {
         render(film("2D NAP", "2D NAP"), showCinemaHeaders = true)
-        compose.onNodeWithText("NAP", useUnmergedTree = true).assertExists()
+        compose.onAllNodesWithText("NAP", useUnmergedTree = true).assertCountEquals(2)
     }
 
     @Test
-    fun aSharedScreenFormatIsStillDroppedEntirely() {
+    fun aSharedScreenFormatIsDroppedEntirely() {
         render(film("2D", "2D"), showCinemaHeaders = true)
-        // "2D" on every chip tells a visitor nothing — that is what the
-        // stripping is FOR, and it keeps working.
         compose.onNodeWithText("2D", useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test
-    fun aVersionThatDiffersBetweenSlotsStaysOnTheChips() {
+    fun aVersionThatDiffersBetweenSlotsIsOnEachChip() {
         render(film("2D NAP", "2D DUB"), showCinemaHeaders = true)
-        // Nothing to hoist — the chips are the only place that can distinguish them.
         compose.onNodeWithText("NAP", useUnmergedTree = true).assertExists()
         compose.onNodeWithText("DUB", useUnmergedTree = true).assertExists()
     }
 
     @Test
-    fun withNoCinemaLabelTheVersionStaysOnEveryChip() {
-        // The Kina tab's section already names the cinema, but is shared by films
-        // with different versions — so there the chip is the only place it fits,
-        // and it has to be on BOTH chips (there is no label to say it once).
+    fun theVersionIsOnTheChipsWithNoCinemaHeaderToo() {
+        // The Kina tab drops the per-card cinema label; the chip is unchanged.
         render(film("2D DUB", "2D DUB"), showCinemaHeaders = false)
         compose.onAllNodesWithText("DUB", useUnmergedTree = true).assertCountEquals(2)
     }

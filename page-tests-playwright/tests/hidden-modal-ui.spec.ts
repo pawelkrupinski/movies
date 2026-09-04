@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { reload, setLocalStorageJson } from './helpers';
+import { gotoAndWaitForCards, reload } from './helpers';
 
 // Whether the hidden-films modal is currently open, read from the
 // `.open` class on `#hidden-modal-backdrop`. Returns `null` if the
@@ -19,12 +19,15 @@ const isModalOpen = (page: Page): Promise<boolean | null> =>
 test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
-    await setLocalStorageJson(page, 'hiddenFilms', ['Avatar', 'Cars']);
-    // Only the page's `DOMContentLoaded`-bound init has to run, so
-    // `updateNavbar()` picks up the localStorage we just set; the poster
-    // fetches a `load` wait would block on are irrelevant here. See `reload`.
-    await reload(page);
+    // Seed BEFORE the first navigation rather than loading, writing
+    // localStorage and reloading: the page's `DOMContentLoaded` init reads
+    // `hiddenFilms` once at boot, so an init script gets it there in time and
+    // the listing — 2.3 MB of HTML over ~190 cards — is parsed once instead of
+    // twice. The second parse was costing Firefox the whole test budget.
+    await page.addInitScript(() => {
+      localStorage.setItem('hiddenFilms', JSON.stringify(['Avatar', 'Cars']));
+    });
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('the Ukryte filmy row opens the modal + the count badge reflects the set size', async ({ page }) => {

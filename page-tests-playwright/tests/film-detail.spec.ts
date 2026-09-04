@@ -249,56 +249,40 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     // surface in `errors`.
     expect(errors).toEqual([]);
   });
-  // A cinema that screens a film in ONE language version says so once beside
-  // its name rather than on each pill. The regression: the pill tag is built by
-  // stripping what every slot at that cinema shares, so a film shown only
-  // dubbed — every slot `2D DUB` — had `DUB` eaten by that intersection and
-  // appeared nowhere, leaving no way to tell napisy from dubbing.
-  test('a cinema with one language version for the film says which, beside its name', async ({ page }) => {
+  // Every showtime says which language version it is, on the pill itself. The
+  // regression: the pill tag is built by stripping what every slot at a cinema
+  // shares, so a film shown only dubbed — every slot `2D DUB` — had `DUB` eaten
+  // by that intersection and appeared nowhere, leaving no way to tell napisy
+  // from dubbing.
+  test('every showtime carries its own language version, never stripped away', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
 
-    // Every rendered version tag must name a version its own cinema-group's
-    // slots actually carry — the label speaks for all of them.
-    const tags = await page.evaluate(() =>
-      [...document.querySelectorAll('.cinema-group')].flatMap((group) => {
-        const tag = group.querySelector('.cinema-label .cinema-fmt');
-        if (!tag) return [];
-        const slots = [...group.querySelectorAll('.badge-time')]
-          .map((b) => (b.getAttribute('data-format') || '').split(' ').filter(Boolean));
-        return [{ tag: tag.textContent!.trim(), slots }];
-      }),
-    );
-
-    expect(tags.length).toBeGreaterThan(0);
-    for (const { tag, slots } of tags) {
-      expect(tag).not.toBe('');
-      // Said once because EVERY slot carries it — that is what earned the hoist.
-      for (const slot of slots) {
-        for (const token of tag.split(' ')) expect(slot).toContain(token);
-      }
-    }
-
-    // And no slot's version is left unsaid: every NAP/DUB/LEK/ORG in the DOM is
-    // readable either on its own pill or on its cinema's label.
     const unsaid = await page.evaluate(() => {
       const VERSIONS = new Set(['NAP', 'DUB', 'LEK', 'ORG']);
       const missing: string[] = [];
-      for (const group of document.querySelectorAll('.cinema-group')) {
-        const label = (group.querySelector('.cinema-label .cinema-fmt')?.textContent || '').split(' ');
-        for (const badge of group.querySelectorAll('.badge-time')) {
-          const format = (badge.getAttribute('data-format') || '').split(' ').filter(Boolean);
-          const shown = (badge.querySelector('.badge-fmt')?.textContent || '').split(' ').concat(label);
-          for (const token of format) {
-            if (VERSIONS.has(token) && !shown.includes(token)) {
-              missing.push(`${group.getAttribute('data-cinema')} ${badge.getAttribute('data-time')} ${token}`);
-            }
+      for (const badge of document.querySelectorAll('.badge-time')) {
+        const format = (badge.getAttribute('data-format') || '').split(' ').filter(Boolean);
+        const shown = (badge.querySelector('.badge-fmt')?.textContent || '').split(' ');
+        for (const token of format) {
+          if (VERSIONS.has(token) && !shown.includes(token)) {
+            missing.push(`${badge.getAttribute('data-time')} ${token}`);
           }
         }
       }
       return missing;
     });
     expect(unsaid).toEqual([]);
+
+    // The check above is only worth anything if the page HAS versions to lose.
+    const withVersion = await page.evaluate(() =>
+      [...document.querySelectorAll('.badge-fmt')]
+        .filter((t) => /\b(NAP|DUB|LEK|ORG)\b/.test(t.textContent || '')).length,
+    );
+    expect(withVersion).toBeGreaterThan(100);
+
+    // And the tag is never hoisted onto a cinema label.
+    await expect(page.locator('.cinema-fmt')).toHaveCount(0);
   });
 
 });

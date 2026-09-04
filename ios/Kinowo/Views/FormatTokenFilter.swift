@@ -1,15 +1,15 @@
 import Foundation
 
-/// Which of a cinema's showtime-format tokens a pill may drop, and which the
-/// cinema's own label has to say instead.
+/// Which of a cinema's showtime-format tokens a pill may drop.
 ///
 /// A pill repeating what every showtime at that cinema shares reads as noise and
 /// costs width the two-per-row layout does not have, so `ShowingsView` strips
-/// `commonTokens` from each badge. That is right for a screen format — six pills
+/// `tokensToStrip` from each badge. That is right for a screen format — six pills
 /// all saying `2D` tell you nothing — but it was silently swallowing the LANGUAGE
 /// VERSION too: a film a cinema screens only dubbed has every slot tagged
 /// `2D DUB`, the intersection ate `DUB`, and the card could no longer tell napisy
-/// from dubbing. Same defect, and same fix, as the web's `CinemaFormat`.
+/// from dubbing. The version now never leaves the pill. Same rule as the web's
+/// `CinemaFormat` and Android's `FormatTokenFilter`.
 enum FormatTokenFilter {
 
     /// The tokens EVERY showtime at `cinema` carries.
@@ -21,34 +21,17 @@ enum FormatTokenFilter {
         return tokenSets.dropFirst().reduce(first) { $0.intersection($1) }
     }
 
-    /// The part of `commonTokens` that names a language version, in the source's
-    /// own order — what the cinema label says once instead of every pill saying
-    /// it. Empty when the version differs between showtimes, which is exactly
-    /// where a per-pill badge is the only thing that can carry it.
-    static func commonVersion(_ cinema: CinemaShowings) -> [String] {
-        let common = commonTokens(cinema)
-        guard let first = cinema.showtimes.first(where: { !$0.format.isEmpty }) else { return [] }
-        return first.format.split(separator: " ").map(String.init)
-            .filter { common.contains($0) && isLanguageVersion($0) }
-    }
-
-    /// What a pill at `cinema` may drop: everything common to the cinema when a
-    /// cinema LABEL is on screen to carry the version, and everything common
-    /// EXCEPT the version when it is not.
-    ///
-    /// `hasLabel` is `ShowingsView.showCinemaHeaders`. The Kina tab's per-cinema
-    /// section names the cinema but is shared by films with different versions,
-    /// so there the pill is the only place the version can live. A pill that
-    /// keeps it is the `"2D DUB"` shape `ShowtimePillMetricsTests` holds
-    /// two-per-row against, so this never widens past the guarantee.
+    /// What a pill at `cinema` may drop: everything common to the cinema EXCEPT
+    /// the language version, which every pill keeps however uniform the cinema
+    /// is. A pill that keeps it is the `"2D DUB"` shape
+    /// `ShowtimePillMetricsTests` holds two-per-row against, so this never
+    /// widens past the guarantee.
     ///
     /// Lives here rather than in `ShowingsView` because SwiftUI files are
     /// excluded from the `swift test` target — the rule is testable here and
     /// would not be there.
-    static func tokensToStrip(_ cinema: CinemaShowings, hasLabel: Bool) -> Set<String> {
-        let common = commonTokens(cinema)
-        guard !hasLabel else { return common }
-        return common.subtracting(commonVersion(cinema))
+    static func tokensToStrip(_ cinema: CinemaShowings) -> Set<String> {
+        commonTokens(cinema).filter { !isLanguageVersion($0) }
     }
 
     static func filter(_ format: String, removing common: Set<String>) -> String {

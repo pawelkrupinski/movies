@@ -40,64 +40,32 @@ class FormatTokenFilterTest {
     fun filterIsANoOpWhenNothingIsCommon() {
         assertEquals("2D NAP", FormatTokenFilter.filter("2D NAP", emptySet()))
     }
-    // ── commonVersion ────────────────────────────────────────────────────
-    //
-    // The version a whole cinema shares is what the LABEL says, so it is not
-    // simply dropped with the rest of the intersection. This is the napisy-vs-
-    // dubbing bug: every slot tagged "2D DUB" left no DUB anywhere on screen.
-
-    @Test
-    fun commonVersionIsTheSharedLanguageToken() {
-        val cg = cinema("Multikino", listOf(slot("14:30", "2D DUB"), slot("17:00", "2D DUB")))
-        assertEquals(listOf("DUB"), FormatTokenFilter.commonVersion(cg))
-    }
-
-    @Test
-    fun commonVersionKeepsSourceOrderAndDropsScreenFormat() {
-        val cg = cinema("Multikino", listOf(slot("14:30", "IMAX NAP ATMOS"), slot("17:00", "IMAX NAP ATMOS")))
-        assertEquals(listOf("NAP"), FormatTokenFilter.commonVersion(cg))
-    }
-
-    @Test
-    fun commonVersionEmptyWhenTheVersionDiffersBetweenSlots() {
-        val cg = cinema("Multikino", listOf(slot("14:30", "2D NAP"), slot("17:00", "2D DUB")))
-        assertEquals(emptyList<String>(), FormatTokenFilter.commonVersion(cg))
-    }
-
-    @Test
-    fun commonVersionEmptyWhenNothingIsCommon() {
-        val cg = cinema("X", listOf(slot("10:00", "2D"), slot("12:00", "IMAX 3D")))
-        assertEquals(emptyList<String>(), FormatTokenFilter.commonVersion(cg))
-    }
-
     // ── tokensToStrip ────────────────────────────────────────────────────
     //
     // The whole rendering decision: what a chip drops, and therefore what is
-    // left to read. `CinemaVersionLabelTest` renders it; these pin the rule.
+    // left to read. `CinemaVersionChipTest` renders it; these pin the rule.
 
     @Test
-    fun withACinemaLabelTheSharedVersionLeavesTheChip() {
+    fun theSharedVersionStaysOnTheChip() {
         val cg = cinema("Multikino", listOf(slot("14:30", "2D DUB"), slot("17:00", "2D DUB")))
-        val strip = FormatTokenFilter.tokensToStrip(cg, hasLabel = true)
-        assertEquals(setOf("2D", "DUB"), strip)
-        // Nothing on the chip — the label says DUB once instead.
-        assertEquals("", FormatTokenFilter.filter("2D DUB", strip))
-    }
-
-    @Test
-    fun withNoCinemaLabelTheSharedVersionStaysOnTheChip() {
-        val cg = cinema("Multikino", listOf(slot("14:30", "2D DUB"), slot("17:00", "2D DUB")))
-        val strip = FormatTokenFilter.tokensToStrip(cg, hasLabel = false)
+        val strip = FormatTokenFilter.tokensToStrip(cg)
         assertEquals(setOf("2D"), strip)
         assertEquals("DUB", FormatTokenFilter.filter("2D DUB", strip))
     }
 
     @Test
-    fun aSharedScreenFormatIsStillDroppedWithNoLabel() {
-        val cg = cinema("X", listOf(slot("14:30", "2D"), slot("17:00", "2D")))
-        // "2D" on every chip tells a visitor nothing — that is what the
-        // stripping is FOR, and it keeps working with or without a label.
-        assertEquals(setOf("2D"), FormatTokenFilter.tokensToStrip(cg, hasLabel = false))
+    fun aSharedScreenFormatIsStillDropped() {
+        val cg = cinema("X", listOf(slot("14:30", "IMAX NAP"), slot("17:00", "IMAX NAP")))
+        assertEquals(setOf("IMAX"), FormatTokenFilter.tokensToStrip(cg))
+        assertEquals("NAP", FormatTokenFilter.filter("IMAX NAP", setOf("IMAX")))
+    }
+
+    @Test
+    fun aVersionThatDiffersBetweenSlotsStaysOnEveryChip() {
+        val cg = cinema("Multikino", listOf(slot("14:30", "2D NAP"), slot("17:00", "2D DUB")))
+        val strip = FormatTokenFilter.tokensToStrip(cg)
+        assertEquals("NAP", FormatTokenFilter.filter("2D NAP", strip))
+        assertEquals("DUB", FormatTokenFilter.filter("2D DUB", strip))
     }
 
     // ── isLanguageVersion ────────────────────────────────────────────────

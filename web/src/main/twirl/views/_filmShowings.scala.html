@@ -9,9 +9,9 @@
    slot's badge. The label is always shown on the listing — even when the
    cinema filter is narrowed to one cinema.
 
-   A LANGUAGE version common to the whole cinema is not stripped but MOVED into
-   that label, said once instead of vanishing off every pill — see
-   `CinemaFormat`, which draws that line.
+   A LANGUAGE version is never stripped, however uniform the cinema is: it says
+   what you will hear and read, so it stays on the showtime you are about to
+   tap. See `CinemaFormat`, which draws that line.
 
    Both outbound shapes here — the cinema's page for the film, and each slot's
    booking deep-link — carry `rel="nofollow noopener"`. A city listing renders
@@ -30,19 +30,18 @@
   <div class="date-group" data-date="@date">
     <div class="date-label">@CardFormat.date(date)</div>
     @for(cinemaShowtimes <- cinemaShowtimesList) {
-      @defining(commonByCinema.getOrElse(cinemaShowtimes.cinema, CinemaFormat.Empty)) { shared =>
+      @defining(commonByCinema.getOrElse(cinemaShowtimes.cinema, Set.empty[String])) { commonToks =>
       <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
         <div class="cinema-label">
           @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
             case Some((_, url)) => { <a href="@url" target="_blank" rel="nofollow noopener" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
             case None           => { @cinemaShowtimes.cinema.displayName }
           }
-          @if(shared.version.nonEmpty) { <span class="cinema-fmt">@shared.version.mkString(" ")</span> }
         </div>
         <div>
           @for(slot <- cinemaShowtimes.showtimes) {
             @{
-              val tokens     = slot.format.filterNot(shared.common.contains).mkString(" ")
+              val tokens     = slot.format.filterNot(commonToks.contains).mkString(" ")
               val fmtBadge   = if (tokens.isEmpty) "" else s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(tokens)}</span>"""
               val roomAttr   = slot.room.map(r => s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""").getOrElse("")
               val fmtAttr    = slot.format.mkString(" ")

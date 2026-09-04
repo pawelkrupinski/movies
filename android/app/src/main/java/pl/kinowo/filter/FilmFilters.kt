@@ -279,15 +279,15 @@ fun List<Film>.groupedByCinema(): List<CinemaSection> {
 }
 
 /**
- * Which of a cinema-group's showtime-format tokens a chip may drop, and which
- * the cinema's own label has to say instead.
+ * Which of a cinema-group's showtime-format tokens a chip may drop.
  *
  * Dropping what every slot shares is what keeps a chip narrow enough for
  * two-per-row (`ShowtimeChipFitTest`) — six chips all saying "2D" tell you
  * nothing. But it was silently swallowing the LANGUAGE VERSION too: a film a
  * cinema screens only dubbed has every slot tagged `2D DUB`, the intersection
- * ate `DUB`, and the card could no longer tell napisy from dubbing. Same defect,
- * and same fix, as the web's `CinemaFormat` and iOS's `FormatTokenFilter`.
+ * ate `DUB`, and the card could no longer tell napisy from dubbing. The version
+ * now never leaves the chip. Same rule as the web's `CinemaFormat` and iOS's
+ * `FormatTokenFilter`.
  */
 object FormatTokenFilter {
     /** The tokens EVERY showtime at [cinema] carries. */
@@ -300,32 +300,13 @@ object FormatTokenFilter {
     }
 
     /**
-     * The part of [commonTokens] that names a language version, in the source's
-     * own order — what the cinema label says once instead of every chip saying
-     * it. Empty when the version differs between showtimes, which is exactly
-     * where a per-chip tag is the only thing that can carry it.
+     * What a chip at [cinema] may drop: everything common to the cinema EXCEPT
+     * the language version, which every chip keeps however uniform the cinema
+     * is. A chip that keeps it is the "2D DUB" shape `ShowtimeChipFitTest` holds
+     * two-per-row against, so this never widens past the guarantee.
      */
-    fun commonVersion(cinema: CinemaShowings): List<String> {
-        val common = commonTokens(cinema)
-        val first = cinema.showtimes.firstOrNull { it.format.isNotEmpty() } ?: return emptyList()
-        return first.format.split(" ").filter { it in common && isLanguageVersion(it) }
-    }
-
-    /**
-     * What a chip at [cinema] may drop: everything common to the cinema when a
-     * cinema LABEL is on screen to carry the version, and everything common
-     * EXCEPT the version when it is not.
-     *
-     * [hasLabel] is `Showings`'s `showCinemaHeaders`. The Kina tab's per-cinema
-     * section names the cinema but is shared by films with different versions,
-     * so there the chip is the only place the version can live. A chip that
-     * keeps it is the "2D DUB" shape `ShowtimeChipFitTest` holds two-per-row
-     * against, so this never widens past the guarantee.
-     */
-    fun tokensToStrip(cinema: CinemaShowings, hasLabel: Boolean): Set<String> {
-        val common = commonTokens(cinema)
-        return if (hasLabel) common else common - commonVersion(cinema).toSet()
-    }
+    fun tokensToStrip(cinema: CinemaShowings): Set<String> =
+        commonTokens(cinema).filterNot(::isLanguageVersion).toSet()
 
     fun filter(format: String, common: Set<String>): String {
         if (common.isEmpty()) return format

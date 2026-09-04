@@ -43,21 +43,6 @@
   a.badge-time:hover { background: #5a5a9e; color: #fff; }
   .badge-fmt { font-size: var(--showtime-fmt-font, .62rem); opacity: .7; margin-left: 2px; }
 
-  /* The language version every slot at a cinema shares, said once beside the
-     cinema's name instead of on each pill — see `CinemaFormat`. Sits on the
-     `.cinema-label` line, which both hosts style themselves (`browse` for the
-     listing, `_filmDetailStyles` for the film page), so it inherits that line's
-     size and only sets what makes it read as a tag rather than part of the
-     cinema's name. */
-  .cinema-fmt {
-    margin-left: .4em;
-    padding: 0 .35em;
-    border-radius: 4px;
-    background: rgba(102, 170, 221, .16);
-    font-size: .9em;
-    letter-spacing: .02em;
-  }
-
   @@media (max-width: 575px),
          (max-height: 500px) and (orientation: landscape) {
     .badge-time {
