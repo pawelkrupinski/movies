@@ -13,11 +13,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=store-graphics.sh
 source "$HERE/store-graphics.sh"             # sourcing must not start a render
 
-fails=0
-check() { # $1 what, $2 expected, $3 actual
-  if [ "$2" = "$3" ]; then printf '  \033[32m✓\033[0m %s\n' "$1"
-  else printf '  \033[31m✗\033[0m %s\n     expected: %s\n     actual:   %s\n' "$1" "$2" "$3"; fails=$((fails + 1)); fi
-}
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/scripts/shell-spec.sh"
 
 printf '\033[36m▸\033[0m store-graphics helpers\n'
 
@@ -139,5 +135,4 @@ for l in pl-PL en-GB de-DE; do
   fi
 done
 
-if [ "$fails" -eq 0 ]; then printf '\033[32m✓\033[0m all passed\n'; else printf '\033[31m✗\033[0m %s failed\n' "$fails"; fi
-exit $((fails > 0))
+spec_summary

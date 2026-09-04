@@ -16,11 +16,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=store-screenshots.sh
 source "$HERE/store-screenshots.sh"          # sourcing must not start a capture
 
-fails=0
-check() { # $1 what, $2 expected, $3 actual
-  if [ "$2" = "$3" ]; then printf '  \033[32m✓\033[0m %s\n' "$1"
-  else printf '  \033[31m✗\033[0m %s\n     expected: %s\n     actual:   %s\n' "$1" "$2" "$3"; fails=$((fails + 1)); fi
-}
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/scripts/shell-spec.sh"
 
 printf '\033[36m▸\033[0m ios store-screenshots helpers\n'
 
@@ -259,5 +255,4 @@ check "--top stays exempt (it only prints)" "1" \
 check "usage reaches the last header line" "1" "$(usage | grep -q 'NO_OPEN' && echo 1 || echo 0)"
 check "usage stops at the code" "" "$(usage | grep 'set -euo' || true)"
 
-if [ "$fails" -eq 0 ]; then printf '\033[32m✓\033[0m all passed\n'; else printf '\033[31m✗\033[0m %s failed\n' "$fails"; fi
-exit $((fails > 0))
+spec_summary

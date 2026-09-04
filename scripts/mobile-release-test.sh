@@ -14,11 +14,7 @@ REPO_ROOT="$(cd "$HERE/.." && pwd)"
 # shellcheck source=mobile-release.sh
 source "$HERE/mobile-release.sh"          # sourcing must not cut a release
 
-fails=0
-check() { # $1 what, $2 expected, $3 actual
-  if [ "$2" = "$3" ]; then printf '  \033[32m✓\033[0m %s\n' "$1"
-  else printf '  \033[31m✗\033[0m %s\n     expected: %s\n     actual:   %s\n' "$1" "$2" "$3"; fails=$((fails + 1)); fi
-}
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/shell-spec.sh"
 
 printf '\033[36m▸\033[0m mobile release versioning\n'
 
@@ -67,5 +63,4 @@ check "Android hardcodes no versionName" "0" \
 check "Android reads mobile-version.txt" "1" \
   "$(grep -c 'rootProject.file("../mobile-version.txt")' "$GRADLE")"
 
-if [ "$fails" -eq 0 ]; then printf '\033[32m✓\033[0m all passed\n'; else printf '\033[31m✗\033[0m %s failed\n' "$fails"; fi
-exit $((fails > 0))
+spec_summary
