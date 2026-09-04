@@ -310,3 +310,18 @@ ios_run_unlocked() {
     fi
   done
 }
+
+# reset_local_stack
+#
+# Free :9000 and reap a stale fixture worker — the pair every launcher runs
+# before starting anything, so a previous stack cannot hold the port or keep
+# mutating the local corpus underneath the new one.
+#
+# kill-stack.sh deliberately does NOT use this: its whole job is to report the
+# teardown, so it runs the two through `step` and prints a line for each. Folding
+# them there would trade its output for one fewer line.
+reset_local_stack() {
+  free_port 9000
+  kill_stale_worker
+}
+

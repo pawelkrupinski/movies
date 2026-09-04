@@ -10,6 +10,5 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib.sh"
 
-free_port 9000
-kill_stale_worker
+reset_local_stack
 dispatch "$REPO_ROOT" "Local web server (:9000)" ./scripts/dev-server.sh
