@@ -37,7 +37,7 @@ for c in $COUNTRIES; do
   check "$c has a country pill name"   "1" "$([ -n "$(country_name "$c")" ] && echo 1 || echo 0)"
   check "$c has a gate header"         "1" "$([ -n "$(country_header "$c")" ] && echo 1 || echo 0)"
   check "$c has a backend base URL"    "1" "$([ -n "$(country_base "$c")" ] && echo 1 || echo 0)"
-  check "$c has a search placeholder"  "1" "$([ -n "$(search_placeholder "$c")" ] && echo 1 || echo 0)"
+  check "$c has a listing marker"      "1" "$([ -n "$(listing_marker "$c")" ] && echo 1 || echo 0)"
 done
 check "unknown country has no locale" "" "$(country_locale "fr")"
 check "unknown country has no pill name" "" "$(country_name "fr")"
@@ -57,12 +57,12 @@ check "de country pill" "Deutschland"    "$(country_name de)"
 check "us country pill" "United States"  "$(country_name us)"
 check "es country pill" "España"         "$(country_name es)"
 
-# Must match R.string.search_films exactly — it is what proves the listing (not a
-# film's detail) is on screen before the FILTERS icon is tapped. Those two icons
-# share a position, so tapping too early opens the share sheet instead.
-check "pl search placeholder" "Szukaj filmu"     "$(search_placeholder pl)"
-check "es search placeholder" "Buscar películas" "$(search_placeholder es)"
-check "de search placeholder" "Filme suchen"     "$(search_placeholder de)"
+# Must match R.string.all exactly — it is what proves the listing (not a film's
+# detail) is on screen before the FILTERS icon is tapped. Those two icons share a
+# position, so tapping too early opens the share sheet instead.
+check "pl listing marker" "Wszystkie" "$(listing_marker pl)"
+check "es listing marker" "Todo"      "$(listing_marker es)"
+check "de listing marker" "Alle"      "$(listing_marker de)"
 
 # Blocks of four, end to end, zero-padded: city 1 → 001-004, city 2 → 005-008.
 check "first city block"  "/d/001.png /d/002.png /d/003.png /d/004.png" "$(shot_paths /d 1 | tr '\n' ' ' | sed 's/ $//')"
