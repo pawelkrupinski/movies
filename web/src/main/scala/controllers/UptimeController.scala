@@ -16,6 +16,10 @@ import scala.concurrent.duration._
 
 class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore, country: models.Country)(using mat: Materializer) extends AbstractController(cc) {
 
+  /** Bounds the rows an anonymous `imgEvent` caller can create — see the
+   *  endpoint's own comment for why it is anonymous at all. */
+  private val imageOrigins = new ImageOriginRoster()
+
   // The city groups this deployment can render, scoped to the ONE country it
   // serves. `Cinema.byCity` spans every country at once, and rows are matched to
   // a city BY DISPLAY NAME — so an unscoped grouping put any cinema whose name is
@@ -298,11 +302,36 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
    *  CDN outage. The one failure attributable to weserv — it broke a poster the
    *  origin was willing to serve — can only be established by re-requesting the
    *  image direct, which the tracker does client-side and posts as an ordinary
-   *  event against `images.weserv.nl`. */
-  def imgEvent: Action[JsValue] = adminAction(parse.json) { request =>
+   *  event against `images.weserv.nl`.
+   *
+   *  ── ⚠️ THE ONE /uptime ENDPOINT THAT IS NOT ADMIN-GATED, and it has to be ──
+   *
+   *  Every other route on this controller is an operator READING internal
+   *  state. This one is every VISITOR'S BROWSER writing the telemetry the rows
+   *  above are made of — a CDN outage is only observable from the machines that
+   *  tried to load the posters, which are the public's, not ours.
+   *
+   *  It was swept behind `adminAction` on 2026-06-12 along with the pages
+   *  (20c521c4, "/uptime (+ its fallback/stream/img-event)"), which quietly did
+   *  two things: the `img:` rows stopped being fed by anyone but a signed-in
+   *  admin's own browser, so the feature was dead for three months; and the
+   *  beacon became a permanent 401 stream that on 2026-09-04 was 100% of a
+   *  25% error share on the application-health dashboard while not one request
+   *  was actually failing. See web-errors.rules for the alerting that came out
+   *  of that.
+   *
+   *  What replaced the gate as the bound on an anonymous write:
+   *  [[ImageOriginRoster]] caps the number of rows a caller can create,
+   *  `MaxEventsPerBeacon` caps one request's records, and the body parser caps
+   *  its bytes. What is deliberately NOT defended against is a caller
+   *  fabricating plausible events for a real origin — an unauthenticated
+   *  writer can make a poster CDN look worse than it is, and that is the price
+   *  of measuring from the only place the measurement exists. */
+  def imgEvent: Action[JsValue] = Action(parse.json(maxLength = UptimeController.MaxBeaconBytes)) { request =>
     val events = (request.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
+      .take(UptimeController.MaxEventsPerBeacon)
     events.foreach { e =>
-      val host     = (e \ "host").asOpt[String].getOrElse("unknown")
+      val host     = imageOrigins.label((e \ "host").asOpt[String].getOrElse(""))
       val success  = (e \ "success").asOpt[Boolean].getOrElse(false)
       val fallback = (e \ "fallback").asOpt[Boolean].getOrElse(false)
       val proxied  = (e \ "proxied").asOpt[Boolean].getOrElse(false)
@@ -442,6 +471,19 @@ object UptimeController {
    *  proxy-fault event the browser posts (host = `images.weserv.nl`) lands in
    *  the same place as the proxied successes fanned out here. */
   val ProxyService = s"img: ${tools.PosterProxy.ProxyHost}"
+
+  /** One beacon's worth of events. The tracker flushes at 50
+   *  (`BATCH_SIZE_TRIGGER` in shared.js) or every 10s, so a page loading 200
+   *  posters posts several batches rather than one large one; this is well
+   *  clear of the real shape and stops a single request from doing unbounded
+   *  work on the monitor. */
+  val MaxEventsPerBeacon = 500
+
+  /** Body cap for the same request. 50 events of `{host, success, error}` is a
+   *  few KB, and a 64 KB ceiling refuses (413) anything that is not that.
+   *  Play's default `parse.json` limit is application-wide; this endpoint is
+   *  the only unauthenticated writer here, so it states its own. */
+  val MaxBeaconBytes = 64 * 1024
 }
 
 /** A row promoted into the leading "Failing" / "No screenings" triage sections,

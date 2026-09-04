@@ -321,9 +321,12 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // fallback, so each CDN gets its own row and a dead spare is distinguishable
   // from a poster the user actually saw break.
 
+  // ANONYMOUS ON PURPOSE — no session. The beacon is written by every visitor's
+  // browser, so a request carrying an admin session would be the one shape that
+  // never happens in production, and is exactly what hid the endpoint being
+  // 401ed for three months.
   private def imgEvents(events: JsObject*) =
-    FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
-      .withBody(Json.obj("events" -> JsArray(events)))
+    FakeRequest().withBody(Json.obj("events" -> JsArray(events)))
 
   private def imgController = {
     val monitor = new UptimeMonitor()
@@ -359,10 +362,41 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     services should contain ("img: m.media-amazon.com")
   }
 
-  it should "fall back to 'unknown' when the payload carries no host" in {
+  it should "accept the beacon from a visitor who is not signed in" in {
     val (ctl, monitor) = imgController
-    status(ctl.imgEvent(imgEvents(Json.obj("success" -> false)))) shouldBe NO_CONTENT
-    monitor.services should contain ("img: unknown")
+    // The whole point of the endpoint: a CDN outage is only observable from the
+    // browsers that tried to load the posters, and none of those is an admin's.
+    status(ctl.imgEvent(imgEvents(Json.obj("host" -> "image.tmdb.org", "success" -> true)))) shouldBe NO_CONTENT
+    monitor.services should contain ("img: image.tmdb.org")
+  }
+
+  it should "keep the pages themselves gated" in {
+    // Ungating the write must not have ungated the reads beside it.
+    status(controller.index(FakeRequest())) shouldBe UNAUTHORIZED
+  }
+
+  it should "fold a payload with no usable host into the overflow row" in {
+    val (ctl, monitor) = imgController
+    status(ctl.imgEvent(imgEvents(
+      Json.obj("success" -> false),
+      Json.obj("host" -> "not a hostname", "success" -> false),
+      Json.obj("host" -> "https://image.tmdb.org/p/a.jpg", "success" -> false)
+    ))) shouldBe NO_CONTENT
+    monitor.services should contain ("img: other")
+    monitor.services.filter(_.startsWith("img: ")) should have size 1
+  }
+
+  it should "stop an anonymous caller growing the monitor a row at a time" in {
+    val monitor = new UptimeMonitor()
+    val ctl = new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
+      fallbackStore, models.Country.Poland)
+    // The host is client-controlled and becomes a KEY — one bucket map and one
+    // Mongo document per distinct value. Past the cap they all share a row.
+    val flood = (1 to ImageOriginRoster.DefaultLimit + 50).map(i =>
+      Json.obj("host" -> s"cdn$i.example.com", "success" -> true))
+    status(ctl.imgEvent(imgEvents(flood*))) shouldBe NO_CONTENT
+    monitor.services.count(_.startsWith("img: ")) shouldBe ImageOriginRoster.DefaultLimit + 1
+    monitor.services should contain ("img: other")
   }
 
   // ── The proxy's own row ────────────────────────────────────────────────────

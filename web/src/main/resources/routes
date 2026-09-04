@@ -154,6 +154,10 @@ GET     /health                     controllers.HealthController.check
 GET     /metrics                    controllers.MetricsController.metrics
 GET     /uptime                     controllers.UptimeController.index()
 GET     /uptime/stream              controllers.UptimeController.stream()
+# THE ONLY ROUTE IN THIS BLOCK THAT IS NOT ADMIN-GATED, and deliberately: it is the visitors'
+# browsers reporting which poster CDNs served them, which is the only place that measurement
+# exists. nocsrf because it arrives as a `navigator.sendBeacon`. What bounds an anonymous write
+# is ImageOriginRoster + the caps on UptimeController.imgEvent, not a session.
 + nocsrf
 POST    /uptime/img-event           controllers.UptimeController.imgEvent()
 
