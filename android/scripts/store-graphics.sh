@@ -66,6 +66,7 @@ tagline_of() {
   case "$1" in
     pl-PL) echo "Repertuar kin w Twoim mieście";;
     de-DE) echo "Kinoprogramm in deiner Stadt";;
+    es-ES) echo "Cartelera de cine en tu ciudad";;
     *)     echo "Cinema listings in your city";;
   esac
 }

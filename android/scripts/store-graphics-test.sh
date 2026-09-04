@@ -34,6 +34,17 @@ check "de brand is Showtimes"  "Showtimes" "$(brand_of de-DE)"
 check "pl tagline" "Repertuar kin w Twoim mieście" "$(tagline_of pl-PL)"
 check "de tagline" "Kinoprogramm in deiner Stadt"  "$(tagline_of de-DE)"
 check "en tagline" "Cinema listings in your city"  "$(tagline_of en-GB)"
+check "es tagline" "Cartelera de cine en tu ciudad" "$(tagline_of es-ES)"
+
+# The English default is a FALLBACK, not a translation: a listing locale with no
+# case of its own silently ships an English card. es-ES did exactly that until
+# now. Every locale that has a listing dir must have its own line.
+for d in "$LISTINGS"/*/; do
+  loc="$(basename "$d")"
+  [ "$loc" = "en-GB" ] && continue
+  check "$loc has its own tagline" "0" \
+    "$([ "$(tagline_of "$loc")" = "Cinema listings in your city" ] && echo 1 || echo 0)"
+done
 check "the tagline is NOT the store blurb" "0" \
   "$([ "$(tagline_of de-DE)" = "$(tr -d '\n' < "$LISTINGS/de-DE/short-description.txt")" ] && echo 1 || echo 0)"
 
