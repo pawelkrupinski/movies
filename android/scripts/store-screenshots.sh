@@ -688,18 +688,6 @@ run_worker() { # $1 W, $2 K, $3 N, $4 OFFSET
 # Open THIS RUN's shots in one Preview: everything each locale gained since its
 # baseline. Counting the range keeps the order numeric (10.png after 9.png, not
 # after 1.png), which a glob would not.
-preview_all() { # $1 baselines captured before the run
-  local country locale dest first last i f; local all=()
-  for country in $COUNTRIES; do
-    locale="$(country_locale "$country")"; dest="$(candidates_dir "$locale")"
-    first="$(baseline_for "$1" "$locale")"
-    last=$(( $(next_shot_number "$dest") - 1 ))
-    for ((i = first; i <= last; i++)); do
-      f="$(printf '%s/%03d.png' "$dest" "$i")"; [ -f "$f" ] && all+=("$f")
-    done
-  done
-  [ ${#all[@]} -gt 0 ] && command -v open >/dev/null 2>&1 && open -a Preview "${all[@]}" >>"$NOISE" 2>&1 || true
-}
 
 cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country, one emulator per country
   local n="${1:-2}" off="${2:-1}"
@@ -773,13 +761,6 @@ cmd_all_top() { # $1 N, $2 OFFSET — capture N cities of EVERY country, one emu
 # effective_k 1 → a single emulator, one worker, same append/skip/Preview
 # behaviour. Use it to top up one locale (a country whose deep cities failed, or a
 # new country) without re-shooting the other two.
-cmd_country_top() { # $1 country, $2 N, $3 optional 1-based start rank
-  local country="${1:-}"
-  [ -n "$country" ] && [ -n "$(country_locale "$country")" ] ||
-    die "--country-top wants a country: --country-top uk 10 (or --country-top uk 10 4)"
-  COUNTRIES="$country"
-  cmd_all_top "${2:-2}" "${3:-1}"
-}
 
 # Print the header block — every comment line after the shebang, up to the first
 # line that isn't one. Reading the block rather than a fixed line range means

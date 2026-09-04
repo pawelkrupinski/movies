@@ -301,3 +301,37 @@ png_size() { # $1 png path
   printf '%sx%s\n' "$(( ($1 << 24) | ($2 << 16) | ($3 << 8) | $4 ))" \
                    "$(( ($5 << 24) | ($6 << 16) | ($7 << 8) | $8 ))"
 }
+
+# ── driver-shared commands ────────────────────────────────────────────────────
+# Both store-screenshots.sh drivers (android/, ios/) had byte-identical copies of
+# the two below. They are here rather than duplicated because everything they
+# touch — country_locale, candidates_dir, baseline_for, next_shot_number — is
+# already defined in this file.
+#
+# CONTRACT: the caller supplies `cmd_all_top`, `$COUNTRIES` and `$NOISE`. That
+# late binding is the reason these could not simply move without a note: a driver
+# that sources this file and does not define `cmd_all_top` will fail only when
+# --country-top is actually used.
+
+# Open every shot captured by this run, so a capture can be eyeballed at once.
+preview_all() { # $1 baselines captured before the run
+  local country locale dest first last i f; local all=()
+  for country in $COUNTRIES; do
+    locale="$(country_locale "$country")"; dest="$(candidates_dir "$locale")"
+    first="$(baseline_for "$1" "$locale")"
+    last=$(( $(next_shot_number "$dest") - 1 ))
+    for ((i = first; i <= last; i++)); do
+      f="$(printf '%s/%03d.png' "$dest" "$i")"; [ -f "$f" ] && all+=("$f")
+    done
+  done
+  [ ${#all[@]} -gt 0 ] && command -v open >/dev/null 2>&1 && open -a Preview "${all[@]}" >>"$NOISE" 2>&1 || true
+}
+
+# Narrow a --top run to one country.
+cmd_country_top() { # $1 country, $2 N, $3 optional 1-based start rank
+  local country="${1:-}"
+  [ -n "$country" ] && [ -n "$(country_locale "$country")" ] ||
+    die "--country-top wants a country: --country-top uk 10 (or --country-top uk 10 4)"
+  COUNTRIES="$country"
+  cmd_all_top "${2:-2}" "${3:-1}"
+}
