@@ -170,6 +170,25 @@ disappeared) and `read-model-snapshot.json` (+184 lines). `PageSnapshotSpec`
 green **without** regeneration — the recovered screenings are in Kraków and the
 snapshot cities are Poznań / Wrocław / Warszawa.
 
+**CONFIRMED IN PROD.** All 47 CI jobs green on `1632a0bb7`; Flux rolled
+`movies-worker:main-20260904171602-8af99c5` at 17:22:48 UTC. Every one of the
+four venues flipped on its first post-deploy scrape, and each of the three
+failure shapes is visible in a different column:
+
+| Venue | first post-deploy bucket | archive before → after |
+|---|---|---|
+| **OKF Iluzja** | 18:00 `s=1 z=0 f=0` — **white→green** | 08-31, 3 films/3 showtimes → **7 films / 24 showtimes** |
+| **Kino Agrafka** | 18:15 **`fallback: true` → `false`** | 4 films/23 (Filmweb) → **5 films / 24** (own site) |
+| **Kino Bułgarska 19** | 18:15 **`fallback: true` → `false`** | 18 films/58 (Filmweb) → **18 films / 58** (own site) |
+| **Kino Pod Baranami** | 17:30 `s=1`, green before AND after | 5 films/**5 showtimes** → 62 films / **199 showtimes** |
+
+Iluzja's 24 showtimes are exactly the 24 `span.time-f` on the live page, and Pod
+Baranami's 199 match the replayed capture's ~200 — the fix restores the whole
+programme, not a fragment of it. Bułgarska is the useful null result: its film
+count is unchanged because Filmweb happened to carry the same 18 films, so the
+ONLY signal that anything was ever wrong there was the `fallback` flag. Nothing
+in the film counts would have told you.
+
 ### Poland — the other 7 white venues, all re-probed live, all dormant
 
 | Venue | Source | What the source says |
