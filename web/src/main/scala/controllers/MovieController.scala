@@ -99,7 +99,7 @@ object ApiFilm {
       // Served rather than derived client-side: the fold handles Polish and
       // German diacritics, ß, and Cyrillic, and a Swift copy plus a Kotlin copy
       // would be two more places for it to drift from `tools.Slugify`.
-      slug             = tools.Slugify(fs.movie.title),
+      slug             = fs.slug.getOrElse(""),
       posterURL        = fs.posterUrl,
       fallbackPosterURLs = resolved.fallbackPosterUrls,
       runtimeMinutes   = fs.movie.runtimeMinutes,
@@ -154,7 +154,14 @@ case class FilmSchedule(
                          // The fully-resolved metadata document this schedule was built from —
                          // ratings, poster fallbacks, original title, trailers. Replaces the
                          // old `Option[MovieRecord]`: the web no longer holds MovieRecords.
-                         resolved: ResolvedMovie
+                         resolved: ResolvedMovie,
+                         // This film's `/{city}/movie/{slug}` address, assigned over the whole
+                         // corpus by `FilmSlugs` so two same-titled films get one each. `None`
+                         // only for a title that folds to no usable slug — `FilmHref` answers
+                         // those with the legacy query form. Carried on the schedule rather
+                         // than re-derived per call site so the card link, the canonical
+                         // og:url, the sitemap and the JSON-LD can't disagree.
+                         slug: Option[String]
                        )
 
 /**
@@ -229,7 +236,8 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
       director = resolved.directors,
       cinemaFilmUrls = cinemaFilmUrls,
       showings = showings,
-      resolved = resolved
+      resolved = resolved,
+      slug = readModel.filmSlugs.slugFor(resolved._id)
     )
 
   def film(city: City, title: String): Option[FilmSchedule] = {
@@ -250,24 +258,32 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
       .orElse(knownMovieFallback(city, title, decoded))
   }
 
-  /** Resolve the canonical `/{city}/movie/{slug}` address. Slugs are lossy and
-   *  irreversible, so the only way back to a film is to re-slug what the city is
-   *  showing and compare — cheap, since `toSchedules` is a warm in-memory join.
+  /** Resolve the canonical `/{city}/movie/{slug}` address.
    *
-   *  Two distinct titles CAN fold onto one slug ("Rocky II" and "Rocky 2" both
-   *  give `rocky-2`). `toSchedules` orders by earliest showtime, which shifts
-   *  through the day, so picking the head would make the same URL resolve to
-   *  different films at different hours. Tie-break on the title instead: stable
-   *  for as long as both films are showing. */
-  def filmBySlug(city: City, slug: String): Option[FilmSchedule] =
-    toSchedules(city).filter(s => tools.Slugify(s.movie.title) == slug).minByOption(_.movie.title)
+   *  `FilmSlugs` assigned the address, so it is also what reverses it — one
+   *  film per slug, whether or not another film shares its title. The re-slug
+   *  scan behind it is the fallback for a slug the map doesn't know: a link
+   *  minted before a re-key, or the sub-second window while the read model
+   *  reloads. Re-slugging alone is what USED to resolve every address, and on a
+   *  same-title pair it could only ever reach one of the two films — it stays
+   *  as a safety net, not as the rule.
+   *
+   *  The fallback tie-breaks on the title rather than taking the head, because
+   *  `toSchedules` orders by earliest showtime and that shifts through the day. */
+  def filmBySlug(city: City, slug: String): Option[FilmSchedule] = {
+    val addressed = readModel.filmSlugs.idFor(slug)
+    def matches(id: String, title: String): Boolean =
+      addressed.fold(tools.Slugify(title) == slug)(_ == id)
+
+    toSchedules(city).filter(s => matches(s.resolved._id, s.movie.title)).minByOption(_.movie.title)
       .orElse {
         readModelFallback(
           city,
-          readModel.allMovies().filter(m => tools.Slugify(m.title) == slug).minByOption(_.title),
+          readModel.allMovies().filter(m => matches(m._id, m.title)).minByOption(_.title),
           reference = s"slug='$slug'"
         )
       }
+  }
 
   /** Resilience for film deep-links: a title the read model KNOWS but that has no
    *  live schedule in this city right now must not 404 a shared/bookmarked link.
@@ -879,8 +895,8 @@ class MovieController( cc: ControllerComponents,
       movieControllerService.film(c, title) match {
         // A title with no usable slug has no other address to offer, so it
         // renders here rather than 301-ing to itself.
-        case Some(schedule) if FilmHref.slugOf(schedule.movie.title).isDefined =>
-          MovedPermanently(FilmHref(schedule.movie.title))
+        case Some(schedule) if schedule.slug.isDefined =>
+          MovedPermanently(FilmHref.forSlug(schedule.slug, schedule.movie.title))
         case Some(schedule) => renderFilm(schedule, request)
         case None           => NotFound(s"Film not found: $title")
       }
@@ -893,7 +909,7 @@ class MovieController( cc: ControllerComponents,
     // elsewhere. Scheme/host come from PageMeta so the X-Forwarded-* workaround
     // (Play 3.0's `request.secure` ignores the `trustedProxies` knob on this Fly
     // setup) is in one place.
-    val canonicalUrl = PageMeta.origin(request) + FilmHref(schedule.movie.title)
+    val canonicalUrl = PageMeta.origin(request) + FilmHref.forSlug(schedule.slug, schedule.movie.title)
     val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
     val user = currentUser(request)
     PersonalisedPage(user)(
@@ -1110,7 +1126,8 @@ object MovieController {
         director       = resolved.directors,
         cinemaFilmUrls = Seq.empty,
         showings       = showings,
-        resolved       = resolved
+        resolved       = resolved,
+        slug           = FilmHref.slugOf(resolved.title)
       )
 
     val rich = film(

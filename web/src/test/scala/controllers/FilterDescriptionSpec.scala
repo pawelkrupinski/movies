@@ -37,7 +37,8 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     showings      = Seq(
       LocalDate.of(2026, 5, 17) -> Seq(CinemaShowtimes(cinema, rooms.map(r => slot(cinema, r, "18:00"))))
     ),
-    resolved      = TestReadModel.resolved(title, None, MovieRecord())
+    resolved      = TestReadModel.resolved(title, None, MovieRecord()),
+    slug          = FilmHref.slugOf(title)
   )
 
   private val schedules: Seq[FilmSchedule] = Seq(

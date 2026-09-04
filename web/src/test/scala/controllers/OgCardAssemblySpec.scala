@@ -16,12 +16,14 @@ class OgCardAssemblySpec extends AnyFlatSpec with Matchers {
 
   private def sched(title: String, poster: Option[String] = None): FilmSchedule =
     FilmSchedule(Movie(title), posterUrl = poster, synopsis = None, cast = Nil, director = Nil,
-      cinemaFilmUrls = Nil, showings = Nil, resolved = TestReadModel.resolved(title, None, MovieRecord()))
+      cinemaFilmUrls = Nil, showings = Nil, resolved = TestReadModel.resolved(title, None, MovieRecord()),
+      slug = FilmHref.slugOf(title))
 
   private def ratedSched(title: String, ratings: ResolvedRatings, synopsis: Option[String] = None): FilmSchedule =
     FilmSchedule(Movie(title), posterUrl = None, synopsis = synopsis, cast = Nil, director = Nil,
       cinemaFilmUrls = Nil, showings = Nil,
-      resolved = TestReadModel.resolved(title, None, MovieRecord()).copy(ratings = ratings))
+      resolved = TestReadModel.resolved(title, None, MovieRecord()).copy(ratings = ratings),
+      slug = FilmHref.slugOf(title))
 
   private def ratings(imdb: Option[Double] = None, metascore: Option[Int] = None,
                       rt: Option[Int] = None, filmweb: Option[Double] = None): ResolvedRatings =

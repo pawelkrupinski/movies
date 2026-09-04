@@ -41,7 +41,8 @@ class OutboundLinkRelSpec extends AnyFlatSpec with Matchers {
       showings       = Seq(LocalDate.of(2026, 5, 13) -> Seq(CinemaShowtimes(Helios, Seq(
         Showtime(baseTime, Some("https://helios.pl/book/1"), Some("Sala 1"), List("2D"))
       )))),
-      resolved       = TestReadModel.resolved("Test movie", None, MovieRecord())
+      resolved       = TestReadModel.resolved("Test movie", None, MovieRecord()),
+      slug           = controllers.FilmHref.slugOf("Test movie")
     )
 
   // Every `<a>` pointing off-site must be nofollowed; nothing internal may be.

@@ -55,8 +55,11 @@ object SitemapBuilder {
       url(CityPath(city) + "/")
       // Distinct + sorted so the file is deterministic (stable across requests
       // and testable) regardless of the read model's iteration order.
-      films.map(_.movie.title).distinct.sorted.foreach { title =>
-        url(FilmHref(title, city))
+      // Keyed by the assigned slug, not the title: two films CAN share a
+      // title, and de-duplicating on the title dropped one of them from the
+      // index entirely.
+      films.map(f => (f.slug, f.movie.title)).distinct.sortBy(_._1).foreach { case (slug, title) =>
+        url(FilmHref.forSlug(slug, title, city))
       }
     }
 

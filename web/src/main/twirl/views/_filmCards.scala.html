@@ -1,8 +1,8 @@
 @import controllers.FilmSchedule
 @(films: Seq[FilmSchedule])(implicit city: models.City, messages: play.api.i18n.Messages)
 @for(film <- films) {
-<div class="col" data-title="@film.movie.title" data-slug="@tools.Slugify(film.movie.title)" data-countries="@film.movie.countries.mkString("|")" data-rating="@{f"${film.resolved.weightedRating}%.3f"}"@if(film.movie.genres.nonEmpty){ data-genres="@film.movie.genres.mkString("|")"}@film.resolved.ageRating.map { r => data-age-rating="@r"}@if(film.director.nonEmpty){ data-director="@film.director.mkString(", ")"}@if(film.cast.nonEmpty){ data-cast="@film.cast.mkString(", ")"}>
-  @_movieCard(film.movie, film.posterUrl, film.resolved) {
+<div class="col" data-title="@film.movie.title" data-slug="@film.slug" data-countries="@film.movie.countries.mkString("|")" data-rating="@{f"${film.resolved.weightedRating}%.3f"}"@if(film.movie.genres.nonEmpty){ data-genres="@film.movie.genres.mkString("|")"}@film.resolved.ageRating.map { r => data-age-rating="@r"}@if(film.director.nonEmpty){ data-director="@film.director.mkString(", ")"}@if(film.cast.nonEmpty){ data-cast="@film.cast.mkString(", ")"}>
+  @_movieCard(film.movie, film.posterUrl, film.resolved, film.slug) {
     @_filmShowings(film)
   }
 </div>

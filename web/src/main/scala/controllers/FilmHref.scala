@@ -17,10 +17,14 @@ import scala.annotation.targetName
  *  but `MovieController.film` answers it with a 301 to the slug so search
  *  engines consolidate on one address per film.
  *
- *  Slugs are lossy, so they are resolved by RE-SLUGGING the titles a city is
- *  showing and comparing (`MovieControllerService.filmBySlug`), never by
- *  reversing the fold. Two distinct titles can therefore share one slug; the
- *  resolver breaks that tie deterministically.
+ *  Slugs are lossy and irreversible, so a film's address is ASSIGNED over the
+ *  whole corpus by [[services.readmodel.FilmSlugs]] — two genuinely different
+ *  films can share a title ("Zaproszenie" 1986 and 2026), and folding each
+ *  title in isolation left one of them with no address at all. Every call site
+ *  that has a [[FilmSchedule]] passes the slug it was assigned ([[forSlug]]);
+ *  [[apply]] re-folds the title for the few that don't (the debug page's
+ *  corpus rows), which is still right for the ~99% of titles nothing collides
+ *  with.
  *
  *  The city comes in implicitly so call sites in city-scoped templates (which
  *  carry an implicit `City`) read `FilmHref(title)` unchanged. The explicit
@@ -31,8 +35,16 @@ object FilmHref {
   def apply(title: String)(implicit city: City): String = apply(title, city)
 
   @targetName("applyForCity")
-  def apply(title: String, city: City): String =
-    slugOf(title).fold(legacy(title, city))(slug => s"${CityPath(city)}/movie/$slug")
+  def apply(title: String, city: City): String = forSlug(slugOf(title), title, city)
+
+  /** The URL for a film whose address was already assigned. `slug` is `None`
+   *  for a title that folds to nothing addressable, which falls back to the
+   *  query form exactly as [[apply]] does. */
+  def forSlug(slug: Option[String], title: String)(implicit city: City): String = forSlug(slug, title, city)
+
+  @targetName("forSlugInCity")
+  def forSlug(slug: Option[String], title: String, city: City): String =
+    slug.fold(legacy(title, city))(s => s"${CityPath(city)}/movie/$s")
 
   /** The title's URL slug, or `None` when it folds to nothing addressable (a
    *  title that is entirely punctuation, or in a script the fold doesn't cover).

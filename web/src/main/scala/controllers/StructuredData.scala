@@ -73,11 +73,14 @@ object StructuredData {
   def cityPage(pageUrl: String, city: City, films: Seq[FilmSchedule]): String = {
     val origin   = originOf(pageUrl)
     val cityUrl  = s"$origin/${city.slug}/"
-    val titles   = films.map(_.movie.title).distinct.sorted
-    val items = titles.zipWithIndex.map { case (title, i) =>
+    // Distinct on the ASSIGNED slug rather than the title: same-titled films
+    // are separate entries with separate URLs, and collapsing them by title
+    // hid one of the two from the crawlable index.
+    val entries = films.map(f => (f.slug, f.movie.title)).distinct.sortBy(_._2)
+    val items = entries.zipWithIndex.map { case ((slug, title), i) =>
       Json.obj(
         "@type" -> "ListItem", "position" -> (i + 1),
-        "url" -> (origin + FilmHref(title, city)), "name" -> title,
+        "url" -> (origin + FilmHref.forSlug(slug, title, city)), "name" -> title,
       )
     }
     render(Json.arr(

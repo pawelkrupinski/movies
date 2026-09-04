@@ -42,6 +42,24 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
 
   def movie(id: String): Option[ResolvedMovie] = Option(movies.get(id))
   def allMovies(): Seq[ResolvedMovie]           = movies.values.asScala.toSeq
+
+  /** Film→URL addressing for the whole corpus at once ([[FilmSlugs]] explains
+   *  why it can't be a per-title fold). Recomputed only when the corpus
+   *  actually changes: it walks every movie, and a city listing would otherwise
+   *  redo that work on every request. `lastModified` is the same stamp the
+   *  change streams already bump, so a stale map can't outlive an upsert. */
+  def filmSlugs: FilmSlugs = {
+    val stamp = _lastModified
+    val cached = _filmSlugs
+    if (cached != null && cached._1 == stamp) cached._2
+    else {
+      val fresh = FilmSlugs(allMovies())
+      _filmSlugs = (stamp, fresh)
+      fresh
+    }
+  }
+
+  @volatile private var _filmSlugs: (java.time.Instant, FilmSlugs) = null
   def screeningsForCity(citySlug: String): Seq[CityScreening] = {
     val current = bucket(citySlug)
     // A city that changed slug still has most of its rows projected under the

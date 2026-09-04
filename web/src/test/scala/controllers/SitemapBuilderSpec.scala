@@ -33,7 +33,8 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
         Showtime(dateTime = LocalDateTime.of(2026, 5, 17, 18, 0), bookingUrl = None)
       )))
     ),
-    resolved       = TestReadModel.resolved(title, None, MovieRecord())
+    resolved       = TestReadModel.resolved(title, None, MovieRecord()),
+    slug           = FilmHref.slugOf(title)
   )
 
   private val entries: Seq[(City, Seq[FilmSchedule])] = Seq(

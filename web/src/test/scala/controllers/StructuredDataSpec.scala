@@ -47,7 +47,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
         countries = Seq("USA"), genres = Seq("Sci-Fi", "Dramat")),
       posterUrl = posterUrl, synopsis = synopsis,
       cast = Seq("Timothée Chalamet", "Zendaya"), director = Seq("Denis Villeneuve"),
-      cinemaFilmUrls = Nil, showings = byDate, resolved = resolved(title, r),
+      cinemaFilmUrls = Nil, showings = byDate, resolved = resolved(title, r), slug = FilmHref.slugOf(title),
     )
   }
 

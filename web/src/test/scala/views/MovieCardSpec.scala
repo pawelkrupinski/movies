@@ -2,6 +2,7 @@ package views
 
 import testsupport.TestMessages.given
 
+import controllers.FilmHref
 import models.{CinemaCityKinepolis, Imdb, Movie, MovieRecord, Multikino, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -15,7 +16,7 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
   private val emptyResolved = TestReadModel.resolved("Karuppu", None, MovieRecord())
 
   "_movieCard" should "render a 'Brak plakatu' placeholder when the poster URL is missing" in {
-    val rendered = views.html._movieCard(movie, None, emptyResolved)(Html("")).body
+    val rendered = views.html._movieCard(movie, None, emptyResolved, FilmHref.slugOf(movie.title))(Html("")).body
     rendered                          should include ("Brak plakatu")
     rendered                          should include ("class=\"no-poster\"")
     rendered                          should not include "<img"
@@ -25,7 +26,7 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
     // Karuppu (Cinema City 8203s2r) returns a posterLink that 404s — the live page
     // ends up with a broken image. The onerror handler swaps the <img> for the
     // visible "Brak plakatu" placeholder when the browser can't load the asset.
-    val rendered = views.html._movieCard(movie, Some("https://example.com/broken.jpg"), emptyResolved)(Html("")).body
+    val rendered = views.html._movieCard(movie, Some("https://example.com/broken.jpg"), emptyResolved, FilmHref.slugOf(movie.title))(Html("")).body
     // The src URL goes through `tools.PosterProxy` (HTTPS-forcing /
     // resizing image proxy on `images.weserv.nl`), so the original
     // string isn't in the HTML — but the proxied URL embeds it,
@@ -62,7 +63,7 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
         Imdb                -> SourceData(posterUrl = Some(imdb))
       )
     )
-    val rendered = views.html._movieCard(movie, Some(multikino), TestReadModel.resolved("Karuppu", None, record))(Html("")).body
+    val rendered = views.html._movieCard(movie, Some(multikino), TestReadModel.resolved("Karuppu", None, record), FilmHref.slugOf(movie.title))(Html("")).body
     rendered should include ("data-fallbacks=\"")
     // Three fallbacks, joined by a literal pipe. Each individually goes
     // through PosterProxy → weserv (Cinema City is HTTPS but still gets
@@ -86,7 +87,8 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
       )
     )
     val rendered = views.html._movieCard(
-      movie, Some("https://www.multikino.pl/x.jpg"), TestReadModel.resolved("Karuppu", None, onlyMultikino)
+      movie, Some("https://www.multikino.pl/x.jpg"), TestReadModel.resolved("Karuppu", None, onlyMultikino),
+      FilmHref.slugOf(movie.title)
     )(Html("")).body
     rendered should not include "data-fallbacks="
     // The walking-onerror handler is still wired up — it just no-ops
@@ -95,7 +97,7 @@ class MovieCardSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "render a poster-overlay hide button with delegated click handler" in {
-    val rendered = views.html._movieCard(movie, None, emptyResolved)(Html("")).body
+    val rendered = views.html._movieCard(movie, None, emptyResolved, FilmHref.slugOf(movie.title))(Html("")).body
     rendered should include ("""class="hide-btn"""")
     rendered should not include "onclick=\"hideFilm"
   }
