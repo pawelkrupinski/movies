@@ -31,8 +31,8 @@ echo "▶ dispatched commands (DEVPANEL_PRINT_ONLY)"
 android="$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-android.sh")"
 contains "android → waits for unlock"   "wait_for_android_unlock" "$android"
 contains "android → runOnDevice"        "cd $ROOT/android && ./gradlew runOnDevice" "$android"
-check "web → sbt web/run" \
-  "cd $ROOT && sbt web/run" \
+check "web → dev-server.sh (heap canary)" \
+  "cd $ROOT && ./scripts/dev-server.sh" \
   "$(DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/run-web.sh")"
 check "local stack → sbt localStack" \
   "cd $ROOT && sbt localStack" \
@@ -56,7 +56,7 @@ contains "ios → installs the .app"       "devicectl device install app" "$ios"
 contains "ios → launches the app"        "devicectl device process launch" "$ios"
 
 echo "▶ worktree override (DEVPANEL_REPO_ROOT)"
-contains "web honours override"  "cd /tmp/wt && sbt web/run" \
+contains "web honours override"  "cd /tmp/wt && ./scripts/dev-server.sh" \
   "$(DEVPANEL_REPO_ROOT=/tmp/wt DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/run-web.sh")"
 contains "android honours override" "cd /tmp/wt/android && ./gradlew runOnDevice" \
   "$(DEVPANEL_REPO_ROOT=/tmp/wt DEVPANEL_PRINT_ONLY=1 bash "$SCRIPTS/deploy-android.sh")"

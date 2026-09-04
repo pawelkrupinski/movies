@@ -68,6 +68,17 @@ class DevServerHeapCanarySpec extends AnyFlatSpec with Matchers {
     maxHeapMib(devServer) should be < maxHeapMib(jvmopts)
   }
 
+  "the DevPanel web launcher" should "route through the canary, not a bare sbt web/run" in {
+    // This is the script that actually starts the local server (its dispatch label
+    // "Local web server (:9000)" is the banner on the 2026-09-04 run that OOMed), so
+    // a canary it does not use protects nothing. Kept as ONE definition of the heap
+    // number rather than a second -J flag here that could drift from the wrapper.
+    val runWeb = RepoFile.read("tools/devpanel/scripts/run-web.sh")
+    runWeb should include("scripts/dev-server.sh")
+    withClue("run-web.sh must not dispatch a bare `sbt web/run`, which runs at the shared 4g: ")(
+      runWeb should not include "\" sbt web/run")
+  }
+
   it should "stay clear of the dev server's own measured high-water mark" in {
     // Worst measured legitimate run was 1577MB; a canary at or under that would
     // turn a heavy incremental compile into a false OOM. Keep real headroom.
