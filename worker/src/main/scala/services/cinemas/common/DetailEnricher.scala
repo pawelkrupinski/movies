@@ -37,27 +37,60 @@ case class FilmDetail(
    *  values as authoritative — a present listing value is never replaced by a
    *  detail one; for poster it preserves the cinema's own listing poster (which
    *  several clients prefer over the detail-page poster). */
-  def mergeInto(slot: SourceData, screeningTokens: ScreeningTokens): SourceData = slot.copy(
-    synopsis       = slot.synopsis.orElse(synopsis),
-    cast           = if (slot.cast.nonEmpty) slot.cast else cast,
-    director       = if (slot.director.nonEmpty) slot.director else director,
-    runtimeMinutes = slot.runtimeMinutes.orElse(runtimeMinutes),
-    releaseYear    = slot.releaseYear.orElse(releaseYear),
-    originalTitle  = slot.originalTitle.orElse(originalTitle),
-    countries      = if (slot.countries.nonEmpty) slot.countries else countries,
-    genres         = if (slot.genres.nonEmpty) slot.genres else genres,
-    posterUrl      = slot.posterUrl.orElse(posterUrl),
-    trailerUrl     = slot.trailerUrl.orElse(trailerUrl),
-    ageRating      = slot.ageRating.orElse(ageRating),
-    // Badge the film's showings with the detail-page language, but never
-    // overwrite a per-screening format the listing already set. Through
-    // `ScreeningTokens` like every other badge — this is the second way a
-    // source's own words reach a showtime, and a detail page words them as
-    // freely as a listing does.
-    showtimes      = if (format.isEmpty) slot.showtimes
-                     else slot.showtimes.map(st =>
-                       if (st.format.isEmpty) st.copy(format = screeningTokens.normalize(format)) else st)
-  )
+  def mergeInto(slot: SourceData, screeningTokens: ScreeningTokens): SourceData = merged(slot, screeningTokens, authoritative = false)
+
+  /** As [[mergeInto]], but for a RE-fetch of a detail page we have read before —
+   *  where the detail's own fields WIN over what the slot already holds.
+   *
+   *  `mergeInto`'s fill-only rule is right the first time (the listing is the
+   *  better source for what it publishes) and wrong every time after: it makes
+   *  the first value ever captured permanent, so a cinema that reuses a URL for a
+   *  different film keeps the old film's data for ever. Kino Pionier reused
+   *  `pionier1907.pl/event/lalka` — Wojciech Has's 1968 film — for the 2026
+   *  Kawalski one; `DetailReaper` re-read that page every 6 hours for weeks and
+   *  merged nothing, because 1968/151 was already there. That single stale slot
+   *  keyed a row `lalka|1968` that 120 slots of the NEW film then piled onto.
+   *
+   *  Only the fields the DETAIL PAGE owns are refreshed, and only when the fetch
+   *  actually read one — a page that parses to nothing must not blank a slot. The
+   *  listing keeps what is its: title, filmUrl, showtimes, and the poster several
+   *  clients deliberately prefer from the listing. They are re-scraped every tick
+   *  anyway, so they cannot go stale the way a once-fetched detail can. */
+  def refreshInto(slot: SourceData, screeningTokens: ScreeningTokens): SourceData = merged(slot, screeningTokens, authoritative = true)
+
+  /** `authoritative` flips each detail-owned field from "fill the gap" to "the
+   *  page just told us, believe it" — never overwriting with nothing either way. */
+  private def merged(slot: SourceData, screeningTokens: ScreeningTokens, authoritative: Boolean): SourceData = {
+    def opt[A](detail: Option[A], existing: Option[A]): Option[A] =
+      if (authoritative) detail.orElse(existing) else existing.orElse(detail)
+    def seq[A](detail: Seq[A], existing: Seq[A]): Seq[A] =
+      if (authoritative && detail.nonEmpty) detail else if (existing.nonEmpty) existing else detail
+    slot.copy(
+      // Detail-owned: what the page's own metadata block states about the film.
+      synopsis       = opt(synopsis, slot.synopsis),
+      cast           = seq(cast, slot.cast),
+      director       = seq(director, slot.director),
+      runtimeMinutes = opt(runtimeMinutes, slot.runtimeMinutes),
+      releaseYear    = opt(releaseYear, slot.releaseYear),
+      originalTitle  = opt(originalTitle, slot.originalTitle),
+      countries      = seq(countries, slot.countries),
+      genres         = seq(genres, slot.genres),
+      ageRating      = opt(ageRating, slot.ageRating),
+      // Listing-owned, on both paths: re-scraped every tick, so they never go
+      // stale the way a once-fetched detail does, and several clients prefer the
+      // listing's own poster over the detail page's.
+      posterUrl      = slot.posterUrl.orElse(posterUrl),
+      trailerUrl     = slot.trailerUrl.orElse(trailerUrl),
+      // Badge the film's showings with the detail-page language, but never
+      // overwrite a per-screening format the listing already set. Through
+      // `ScreeningTokens` like every other badge — this is the second way a
+      // source's own words reach a showtime, and a detail page words them as
+      // freely as a listing does.
+      showtimes      = if (format.isEmpty) slot.showtimes
+                       else slot.showtimes.map(st =>
+                         if (st.format.isEmpty) st.copy(format = screeningTokens.normalize(format)) else st)
+    )
+  }
 }
 
 /**

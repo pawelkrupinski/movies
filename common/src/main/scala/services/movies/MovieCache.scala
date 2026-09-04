@@ -1450,10 +1450,26 @@ class CaffeineMovieCache(
         val captured = slotKeys.iterator.flatMap { s =>
           cur.data.get(s).flatMap(_.synopsis).filter(_.nonEmpty).map(s -> _)
         }.toMap
+        val kept = cur.data -- slotKeys
         cur.copy(
-          data             = cur.data -- slotKeys,
+          data             = kept -- orphanedChainDetail(kept),
           retainedSynopses = MovieRecordMerge.mergeRetainedSynopses(cur.retainedSynopses, captured))
       })
+
+    /** A chain's shared detail slot once the last venue of that chain has left the
+     *  row. `CinemaCityChain` & co carry ONE network-wide detail for every venue of
+     *  the chain (`Cinema.chainDetailVenues`); nothing scrapes them, so the scrape
+     *  prune — which only ever touches the scraping cinema's own slot — cannot
+     *  reach them, and a same-title split that moves the venues away strands the
+     *  detail on the row they left. It then keeps describing the other film:
+     *  `zaproszenie|1986`, Wanda Jakubowska's war drama, rendered "Reżyseria:
+     *  Olivia Wilde" off precisely such an orphan. */
+    def orphanedChainDetail(data: Map[Source, SourceData]): Set[Source] = {
+      val venuesPresent = data.keySet.flatMap(Source.cinemaOf)
+      Cinema.chainDetailVenues.collect {
+        case (chain, venues) if data.contains(chain) && !venues.exists(venuesPresent.contains) => chain
+      }.toSet
+    }
     // This cinema's staging rows, for the prior-slot carry-forward and the staging
     // prune below. Cinema-SCOPED: the inline `findAll().collect { _.cinema == cinema }`
     // it replaces decoded every staged document in the country to keep a handful, which

@@ -177,6 +177,15 @@ class EnrichDetailsHandler(
             // merge clears the flag, so a periodic re-fetch of an already-done
             // row (DetailReaper refreshing showtimes) doesn't re-trigger TMDB.
             val wasPending = cache.get(rowKey).exists(_.detailPending)
+            // Have we read this detail page BEFORE? Checked before `markFresh`
+            // below stamps it. A re-read is authoritative for the fields the page
+            // owns (`FilmDetail.refreshInto`): a venue that reuses a URL for a
+            // different film — Kino Pionier's `/event/lalka`, Has's 1968 picture
+            // then the 2026 one — otherwise keeps the first film's year and
+            // runtime for ever, because the fill-only merge has nothing to fill.
+            // The FIRST read stays fill-only, so the listing keeps out-ranking the
+            // detail page exactly as before wherever both speak.
+            val isRefresh = freshness.lastFetchedAt(key).isDefined
             // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
@@ -185,7 +194,11 @@ class EnrichDetailsHandler(
             cache.putIfPresent(rowKey, current =>
               current.copy(
                 data          = targets.foldLeft(current.data)((d, tgt) =>
-                                  d + (tgt -> detail.mergeInto(d.getOrElse(tgt, SourceData()), screeningTokens))),
+                                  d + (tgt -> {
+                                    val existing = d.getOrElse(tgt, SourceData())
+                                    if (isRefresh) detail.refreshInto(existing, screeningTokens)
+                                    else detail.mergeInto(existing, screeningTokens)
+                                  })),
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
             uptime.recordSuccess(service)

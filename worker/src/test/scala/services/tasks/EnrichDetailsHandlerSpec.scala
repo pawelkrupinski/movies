@@ -11,7 +11,8 @@ import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.common.{DetailEnricher, FilmDetail}
 import tools.HttpStatusException
 
-import java.time.LocalDateTime
+import java.time.{Instant, LocalDateTime}
+import java.time.temporal.ChronoUnit
 import scala.concurrent.duration._
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
@@ -271,5 +272,36 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     val dk       = EnrichDetailsTasks.dedupKey("kino-apollo", key)
     queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, "http://ref")) shouldBe EnqueueResult.Added
     queue.enqueue(TaskType.EnrichDetails, dk, EnrichDetailsTasks.payload(enricher, key, "http://ref")) shouldBe EnqueueResult.Duplicate
+  }
+
+  // End to end: the venue reused its URL for a different film, which is what Kino
+  // Pionier did to `pionier1907.pl/event/lalka` — Wojciech Has's 1968 picture,
+  // then the 2026 one. `DetailReaper` re-reads that page every 6h, but the
+  // fill-only merge had nothing left to fill, so the first film's year survived
+  // every re-read and kept a whole row keyed `lalka|1968`.
+  it should "correct a slot when a re-fetch of the same URL returns a different film" in {
+    val cache = seededCache("Lalka")
+    val fresh = new InMemoryFreshnessStore
+    val had   = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      Some(FilmDetail(releaseYear = Some(1968), runtimeMinutes = Some(151), director = Seq("Wojciech Has"))))
+    val task  = taskFor("kino-apollo", cache, "Lalka", had)
+
+    new EnrichDetailsHandler(Map("kino-apollo" -> had), cache, fresh, new UptimeMonitor(), noBus, dueWindow)
+      .handle(task) shouldBe Done
+    cache.get(cache.keyOf("Lalka", None)).flatMap(_.cinemaData.get(KinoApollo))
+      .flatMap(_.releaseYear) shouldBe Some(1968)
+
+    // Two days on, the reaper re-reads that URL — and it is a different film now.
+    fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, Instant.now().minus(2, ChronoUnit.DAYS))
+    val has = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      Some(FilmDetail(releaseYear = Some(2026), runtimeMinutes = Some(162), director = Seq("Maciej Kawalski"))))
+    new EnrichDetailsHandler(Map("kino-apollo" -> has), cache, fresh, new UptimeMonitor(), noBus, dueWindow)
+      .handle(task) shouldBe Done
+
+    val slot = cache.get(cache.keyOf("Lalka", None)).flatMap(_.cinemaData.get(KinoApollo))
+    slot.flatMap(_.releaseYear)    shouldBe Some(2026)
+    slot.flatMap(_.runtimeMinutes) shouldBe Some(162)
+    slot.map(_.director)           shouldBe Some(Seq("Maciej Kawalski"))
+    withClue("the listing's showtimes must survive a refresh: ")(slot.map(_.showtimes.size) shouldBe Some(1))
   }
 }

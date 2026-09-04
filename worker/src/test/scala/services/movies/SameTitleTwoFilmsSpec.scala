@@ -270,6 +270,55 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // A chain's shared detail slot is written once per NETWORK (`CinemaCityChain`,
+  // see `Cinema.chainDetailVenues`) and, by design, is never scraped and never
+  // pruned — `recordCinemaScrape` only prunes the scraping cinema's own slot. So
+  // when a same-title split moves the last Cinema City venue off a row, the chain
+  // slot is stranded there and keeps describing a film the row no longer holds.
+  // Prod: `zaproszenie|1986` — Wanda Jakubowska's war drama — rendered
+  // "Reżyseria: Olivia Wilde" off exactly such an orphan.
+  "a chain's shared detail slot" should "not outlive the last venue of its chain on a row" in {
+    val c = cache()
+    c.put(c.keyOf(Title, Some(2026)), resolved(NewFilm, 2026, 102, Nil))
+    c.put(c.keyOf(Title, Some(1961)), resolved(OldFilm, 1961, 121, Nil))
+    // One Cinema City venue sitting on the old film's row (its own slot says
+    // nothing about the year), plus the network detail for the NEW film written
+    // onto that same row.
+    c.putIfPresent(c.keyOf(Title, Some(1961)), r => r.copy(data = r.data
+      + ((models.CinemaCityKinepolis: Source) -> SourceData(title = Some(Title),
+          showtimes = Seq(Showtime(When, bookingUrl = None))))
+      + ((models.CinemaCityChain: Source) -> SourceData(title = Some(Title),
+          director = Seq("Wrong Director"), synopsis = Some("the other film")))))
+
+    // Cinema City's venue lists the film at the new one's runtime, so it moves.
+    c.recordCinemaScrape(models.CinemaCityKinepolis, Seq(yearlessScrape(models.CinemaCityKinepolis, 102)))
+
+    cinemasOn(c, 2026) should contain(models.CinemaCityKinepolis)
+    withClue("no Cinema City venue is left on the 1961 row, so its chain detail is an orphan: ") {
+      c.get(c.keyOf(Title, Some(1961))).map(_.data.keySet).getOrElse(Set.empty) should
+        not contain (models.CinemaCityChain: Source)
+    }
+  }
+
+  it should "stay while any venue of its chain is still on the row" in {
+    val c = cache()
+    c.put(c.keyOf(Title, Some(2026)), resolved(NewFilm, 2026, 102, Nil))
+    c.put(c.keyOf(Title, Some(1961)), resolved(OldFilm, 1961, 121, Nil))
+    c.putIfPresent(c.keyOf(Title, Some(1961)), r => r.copy(data = r.data
+      + ((models.CinemaCityKinepolis: Source)   -> SourceData(title = Some(Title),
+          showtimes = Seq(Showtime(When, bookingUrl = None))))
+      + ((models.CinemaCityPoznanPlaza: Source) -> SourceData(title = Some(Title),
+          showtimes = Seq(Showtime(When, bookingUrl = None))))
+      + ((models.CinemaCityChain: Source)       -> SourceData(title = Some(Title),
+          director = Seq("Right Director")))))
+
+    // Only ONE of the two Cinema City venues moves.
+    c.recordCinemaScrape(models.CinemaCityKinepolis, Seq(yearlessScrape(models.CinemaCityKinepolis, 102)))
+
+    c.get(c.keyOf(Title, Some(1961))).map(_.data.keySet).getOrElse(Set.empty) should
+      contain (models.CinemaCityChain: Source)
+  }
+
   // Convergence: whatever order the venues arrive in, and however many settles
   // run, the film ends up on ONE row with ONE card. This is the property the
   // duplicate broke — the corpus never reached a fixpoint, it just kept both.
