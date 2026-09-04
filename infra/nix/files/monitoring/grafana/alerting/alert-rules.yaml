@@ -66,6 +66,60 @@ apiVersion: 1
 #
 # noDataState is OK almost everywhere (a quiet hobby app legitimately has no series for minutes),
 # EXCEPT `kinowo-web-serving-down`, where missing data IS the alarm.
+# ================================================================================================
+# ⚠ REMOVING A RULE FROM THIS FILE DOES NOT REMOVE IT FROM GRAFANA. THIS LIST IS WHAT DOES.
+# ================================================================================================
+#
+# Grafana's file provisioning is additive: `groups` below is applied as create-or-update, and a
+# rule that simply DISAPPEARS from the file is left in the database exactly as it was. It goes on
+# being scheduled, on being evaluated, and on notifying -- from a definition that no longer exists
+# anywhere a reader would look for it.
+#
+# THIS WAS NOT THEORY. On 2026-09-04, after the ten Fly rules were removed from `groups`, Grafana
+# still held FOURTEEN of them (the ten, plus four the 2026-08-29 audit had removed the same way and
+# nobody had noticed since). All fourteen queried the deleted `fly-prometheus` datasource, so every
+# evaluation logged `Failed to build rule evaluator: data source not found` -- roughly one line per
+# rule per interval, for weeks, on rules that were believed deleted. `execErrState: OK` is what
+# kept it from paging, which is also what kept it from being noticed.
+#
+# SO: DELETING A RULE IS TWO EDITS. Take it out of `groups`, leave a `RETIRED RULE <uid>` tombstone
+# where it stood, and add its uid here. `GrafanaRetiredRuleSpec` fails the build if a tombstone has
+# no matching entry, which is the half that is easy to forget.
+#
+# Entries are kept FOR EVER rather than pruned once applied. Grafana ignores a uid it does not
+# have, so the cost is one line; the cost of removing one is a rule quietly resurrecting on any
+# instance provisioned from an older database -- and the restored-from-backup case is exactly when
+# nobody is reading alert definitions.
+deleteRules:
+  - orgId: 1
+    uid: kinowo-cpu-credit-exhausted
+  - orgId: 1
+    uid: kinowo-cpu-throttled
+  - orgId: 1
+    uid: kinowo-cpu-steal-high
+  - orgId: 1
+    uid: kinowo-disk-space-low
+  - orgId: 1
+    uid: kinowo-disk-fill-projected
+  - orgId: 1
+    uid: kinowo-worker-cpu-starved
+  - orgId: 1
+    uid: kinowo-memory-pressure
+  - orgId: 1
+    uid: kinowo-memory-pressure-psi
+  - orgId: 1
+    uid: kinowo-http-5xx-high
+  - orgId: 1
+    uid: kinowo-http-p95-high
+  - orgId: 1
+    uid: kinowo-mongo-down
+  - orgId: 1
+    uid: kinowo-serving-down
+  - orgId: 1
+    uid: showtimes-uk-serving-down
+  - orgId: 1
+    uid: kinowo-worker-credit-low
+
 groups:
   # ================================================================================================
   # WHAT IS LEFT OF THIS GROUP, and why it is one rule.
@@ -87,14 +141,14 @@ groups:
   # ================================================================================================
   - orgId: 1
     name: app-processes
-    folder: Fly Alerts
+    folder: Kinowo Alerts
     interval: 1m
     rules:
       # ---- CPU credit exhaustion (the 93%-steal root cause) -----------------
       # Shared-cpu credit balance collapsing toward 0 on a serving app means it
       # is about to run at baseline only = the latency/steal incident. Worker is
       # excluded: it runs credit-starved by design (continuous scrape).
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-cpu-credit-exhausted` read
+      # RETIRED RULE kinowo-cpu-credit-exhausted -- deleted with the Fly platform, 2026-09-04. It read
       # shared-CPU credit balance (`fly_instance_cpu_balance`) -- a Fly billing concept
       # with no counterpart on a dedicated box.
       #
@@ -102,14 +156,14 @@ groups:
       # could only evaluate to absent.
 
       # ---- CPU actively throttled ------------------------------------------
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-cpu-throttled` read
+      # RETIRED RULE kinowo-cpu-throttled -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_instance_cpu_throttle`, the hypervisor's throttle counter.
       #
       # Nothing this repository deploys produces that series any more, so the rule
       # could only evaluate to absent.
 
       # ---- CPU steal (host contention, secondary signal) -------------------
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-cpu-steal-high` read
+      # RETIRED RULE kinowo-cpu-steal-high -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_instance_cpu{mode="steal"}` -- steal against noisy neighbours on a shared
       # host. rules/host-health.rules watches the box the pods actually run on.
       #
@@ -151,7 +205,7 @@ groups:
       # exit reason right after an ungraceful restart, BEFORE the pod is replaced and its
       # events age out: `kubectl -n kinowo describe pod <pod>` (look for OOMKilled) and
       # `kubectl -n kinowo logs <pod> --previous`.
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-worker-cpu-starved` read
+      # RETIRED RULE kinowo-worker-cpu-starved -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_instance_cpu_throttle` for the worker apps.
       #
       # Nothing this repository deploys produces that series any more, so the rule
@@ -205,7 +259,7 @@ groups:
               refId: C
 
       # ---- Memory pressure (pre-OOM, the Mongo-cascade precursor) -----------
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-memory-pressure` read
+      # RETIRED RULE kinowo-memory-pressure -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_instance_memory_mem_available/total`, the host agent's view.
       # rules/host-health.rules covers the box and rules/jvm-heap.rules covers each
       # JVM's own heap, which is the binding constraint here anyway.
@@ -214,8 +268,8 @@ groups:
       # could only evaluate to absent.
 
       # ================================================================================
-      # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Disk space low (persistent
-      # volume)", uid kinowo-disk-space-low.
+      # RETIRED RULE kinowo-disk-space-low -- dropped at the post-migration audit,
+      # 2026-08-29. "Disk space low (persistent volume)".
       #
       # It watched `fly_instance_filesystem_blocks_avail{mount=~"/data/db|/var/lib/grafana"}`
       # -- the Fly volumes belonging to the kinowo-mongo app and the kinowo-grafana app.
@@ -238,8 +292,8 @@ groups:
       # ================================================================================
 
       # ================================================================================
-      # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Disk projected to fill within
-      # 7 days", uid kinowo-disk-fill-projected.
+      # RETIRED RULE kinowo-disk-fill-projected -- dropped at the post-migration audit,
+      # 2026-08-29. "Disk projected to fill within 7 days".
       #
       # Same reason as the rule above it: it read `predict_linear` over
       # `fly_instance_filesystem_blocks_avail` on the SAME two Fly volumes, and those
@@ -260,7 +314,7 @@ groups:
       # The 2026-06-06 cascade was an OOM; this is the earliest tap on that
       # runway. Healthy idle boxes sit flat at 0, so a sustained avg60 > 5% is a
       # real, building squeeze. Covers the SPOF mongo + the web app.
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-memory-pressure-psi` read
+      # RETIRED RULE kinowo-memory-pressure-psi -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_instance_memory_pressure_some` (PSI, from the host agent).
       #
       # Nothing this repository deploys produces that series any more, so the rule
@@ -280,13 +334,13 @@ groups:
   # ================================================================================================
   - orgId: 1
     name: serving
-    folder: Fly Alerts
+    folder: Kinowo Alerts
     interval: 1m
     rules:
 
       # ================================================================================
-      # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Mongo down", uid
-      # kinowo-mongo-down.
+      # RETIRED RULE kinowo-mongo-down -- dropped at the post-migration audit, 2026-08-29.
+      # "Mongo down".
       #
       # It read `max(fly_instance_up{app="kinowo-mongo"})` with `noDataState: Alerting` and
       # `execErrState: Alerting` -- deliberately, because when it was written a Mongo that
@@ -308,7 +362,7 @@ groups:
       # ================================================================================
 
       # ---- HTTP 5xx rate ---------------------------------------------------
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-http-5xx-high` read
+      # RETIRED RULE kinowo-http-5xx-high -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_app_http_responses_count` -- Fly's EDGE view of responses. The apps' own
       # instrumentation is on the kinowo-http dashboard.
       #
@@ -316,7 +370,7 @@ groups:
       # could only evaluate to absent.
 
       # ---- HTTP p95 latency ------------------------------------------------
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-http-p95-high` read
+      # RETIRED RULE kinowo-http-p95-high -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_app_http_response_time_seconds_bucket`, Fly's edge latency histogram.
       #
       # Nothing this repository deploys produces that series any more, so the rule
@@ -415,7 +469,7 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `kinowo-serving-down` read
+      # RETIRED RULE kinowo-serving-down -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_instance_up{app="kinowo"}`. `kinowo-web-serving-down` watches the live
       # tier over the fleet's own scrape; the one Fly app left is a redirect host this
       # fleet does not monitor.
@@ -444,7 +498,7 @@ groups:
       #
       # ON RESTORE: set both back to `Alerting`, so absence is the alarm again for
       # an app that is once more supposed to be running. See docs/restoring-a-country.md.
-      # DELETED WITH THE FLY PLATFORM, 2026-09-04: `showtimes-uk-serving-down` read
+      # RETIRED RULE showtimes-uk-serving-down -- deleted with the Fly platform, 2026-09-04. It read
       # `fly_instance_up{app="showtimes-uk"}`. The UK site is a k3s pod, covered by
       # `kinowo-web-serving-down`'s per-instance `up{job="kinowo-web"}`.
       #
@@ -498,7 +552,7 @@ groups:
   # ================================================================================================
   - orgId: 1
     name: app-uptime
-    folder: Fly Alerts
+    folder: Kinowo Alerts
     interval: 1m
     rules:
       # ---- Residential (Decodo) proxy failing -----------------------------
@@ -909,12 +963,12 @@ groups:
   # throttle on a missing/erroring balance — fail-safe).
   - orgId: 1
     name: worker-throttle
-    folder: Fly Alerts
+    folder: Kinowo Alerts
     interval: 30s
     rules:
       # ================================================================================
-      # DROPPED AT THE POST-MIGRATION AUDIT (2026-08-29): "Worker credit low (drive
-      # backoff)", uid kinowo-worker-credit-low.
+      # RETIRED RULE kinowo-worker-credit-low -- dropped at the post-migration audit,
+      # 2026-08-29. "Worker credit low (drive backoff)".
       #
       # THIS RULE WAS NEVER A PAGE -- it was a CONTROL LOOP. It fired on kinowo-worker's Fly
       # CPU-credit balance falling under 6000, and the `notify: worker-throttle` label routed
