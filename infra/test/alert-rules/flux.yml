@@ -155,7 +155,7 @@ tests:
               summary: "flux image-automation-controller is not answering its metrics port"
               description: >-
                 Either the controller is down or its NodePort no longer matches. The ports are fixed
-                in infra/kubernetes/flux-metrics/services.yaml and must agree with
+                in movies-gitops/flux-metrics/services.yaml and must agree with
                 `fleet.prometheus.fluxTargets`; nothing checks that, and a disagreement looks exactly
                 like this. Check `kubectl -n flux-system get pods` first -- if they are Running, it
                 is the port.

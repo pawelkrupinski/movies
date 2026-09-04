@@ -116,7 +116,7 @@ in
   fleet.autoApply.restartableUnits = [ "grafana.service" "prometheus.service" ];
 
   # WHO THIS API SERVER WILL BELIEVE BESIDES ITS OWN CERTIFICATES. Headlamp
-  # (infra/kubernetes/headlamp/) logs a person in with Google and then presents that token to the
+  # (movies-gitops/headlamp/) logs a person in with Google and then presents that token to the
   # API; without this the token is not an identity here and the UI reports "the cluster did not
   # accept your sign-in" after a login that otherwise succeeded.
   #
@@ -179,7 +179,7 @@ in
       # THE UPSTREAM IS A CLUSTER SERVICE, not a host port. This machine is a k3s node, so
       # kube-proxy makes the ClusterIP routable from the host and Headlamp needs no NodePort
       # on every node's interfaces. The address is PINNED in
-      # infra/kubernetes/headlamp/deployment.yaml precisely so this line can name it.
+      # movies-gitops/headlamp/deployment.yaml precisely so this line can name it.
       "headlamp.kinowo.net".upstream = "10.43.165.84:80";
 
       # THE sslip.io NAME IS GONE, and the move to fsn1 is what settled it rather than a change of
@@ -242,7 +242,7 @@ in
   # WireGuard key this fleet holds rather than a token somebody else issues.
   #
   # WHAT IS TRUE SINCE THE 2026-08-29 CUTOVER. The web tier moved to k3s beside the workers
-  # (infra/kubernetes/web/, docs/domain-cutover.md), Prometheus now reaches BOTH tiers over
+  # (movies-gitops/web/, docs/domain-cutover.md), Prometheus now reaches BOTH tiers over
   # NodePorts on the Hetzner private network, and the 6PN DNS-discovery job that resolved
   # `kinowo.internal` through this tunnel was deleted with the move -- see
   # infra/nix/files/monitoring/scrape-kinowo-apps.yaml. Nothing of the product runs on Fly any more,

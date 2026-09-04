@@ -455,7 +455,7 @@ in
         monitoring-1 and holds no kubeconfig, which is deliberate -- `kubernetes_sd_configs` would
         mean giving the monitoring stack a credential that can read every object in the cluster
         (Secrets included) in exchange for discovering one endpoint that never moves. The trade is
-        in infra/kubernetes/kube-state-metrics/, in full, including what a NodePort costs.
+        in movies-gitops/kube-state-metrics/, in full, including what a NodePort costs.
 
         THE PORT IS FIXED AT 30080 AND MUST AGREE WITH THE Service MANIFEST. Nothing here can check
         that; a disagreement is a target that sits down.
@@ -484,7 +484,7 @@ in
         Watching only the two with "image" in the name would leave the halves that fetch and apply
         unwatched, which is the "rule that looks like coverage" failure k3s.rules warns about.
 
-        THE PORTS ARE FIXED AND MUST AGREE WITH infra/kubernetes/flux-metrics/services.yaml, for
+        THE PORTS ARE FIXED AND MUST AGREE WITH movies-gitops/flux-metrics/services.yaml, for
         the same reason kube-state-metrics' 30080 is fixed. A disagreement is a target that sits
         down and reads as Flux being broken.
       '';

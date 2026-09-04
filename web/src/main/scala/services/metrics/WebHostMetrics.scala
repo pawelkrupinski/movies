@@ -23,7 +23,7 @@ import scala.util.Try
  * `-Xmx384m` inside a 1 GB machine leaves room for exactly one surprise, and
  * this app has already OOM-crash-looped once at a smaller VM size (see the
  * `[[vm]]` note in fly.toml, and the memory limit in
- * infra/kubernetes/web/base/all.yaml, which is the same bet on this platform) —
+ * movies-gitops/web/base/all.yaml, which is the same bet on this platform) —
  * the tell was the free memory in whatever bounds the process, which
  * neither `jvm_memory_used_bytes` nor `process_resident_memory_bytes` can show,
  * because neither counts the page cache, the sidecar processes, or a second

@@ -43,8 +43,8 @@ convergence band. There is no second place to remember for any of them.
    `flyctl start` — scale the country's Deployments back up instead:
 
    ```
-   infra/kubernetes/apply.sh worker <cc>
-   infra/kubernetes/apply.sh web <cc>
+   movies-gitops/apply.sh worker <cc>
+   movies-gitops/apply.sh web <cc>
    ```
 
    The Fly instructions this step used to give (`flyctl scale count 1 -a showtimes-<cc>`,

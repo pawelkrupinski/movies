@@ -14,7 +14,7 @@
 # Kubernetes credentials -- deliberately, since the only credential k3s issues is cluster-admin -- so
 # it can neither discover pods nor resolve cluster DNS. A pod IP would work today and go stale on the
 # next rollout, reading as "worker down" every time the worker is deployed. The NodePort is the one
-# address that survives a restart. See infra/kubernetes/worker/ (base + overlays).
+# address that survives a restart. See movies-gitops/worker/ (base + overlays).
 
 # A MAPPING WITH `scrape_configs:`, NOT A BARE LIST. A file named by `scrape_config_files` is
 # parsed as a fragment of the main config, so it must carry the key -- a top-level sequence fails
@@ -70,7 +70,7 @@ scrape_configs:
   # ONE TARGET PER COUNTRY, and each is a SINGLE pod deliberately. A second replica behind one
   # NodePort would have kube-proxy alternate between two independent sets of counters, which reads
   # as phantom resets on every alert built from these series -- see the replica note in
-  # infra/kubernetes/web/overlays/pl/patch.yaml.
+  # movies-gitops/web/overlays/pl/patch.yaml.
   - job_name: kinowo-web
     # /metrics WITH NO COUNTRY PREFIX, even though four of these five deployments serve their
     # pages under one (showtimes.cc/uk/...). This scrape goes straight to the NodePort and never

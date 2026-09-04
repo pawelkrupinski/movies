@@ -65,3 +65,7 @@ logs/
 # to one, which is how a local run that links the tree in leaves it stageable.
 test/resources/fixtures/enrichment-*/
 test/resources/fixtures/enrichment-*
+
+# The GitOps manifests live in pawelkrupinski/movies-gitops. CI and `infra/bin/fetch-gitops`
+# check that repository out HERE, so the deploy specs read the same paths they always did.
+/infra/kubernetes/

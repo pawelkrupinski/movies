@@ -69,9 +69,8 @@ groups:
             The tenured floor has sat above 85% of this JVM's heap cap for two hours, so what is
             left is not enough to collect into and the next large allocation is the one that
             fails. This is the shape that OOM-killed web-us on 2026-09-03.
-            FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- the CI deploy
-            rolls images only, so a JAVA_OPTS change in infra/kubernetes/**/patch.yaml reaches the
-            cluster ONLY when somebody applies it by hand. Compare
+            FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- Flux reconciles the ConfigMap now and Reloader rolls the pod on a real change, so a
+            disagreement here means Flux is FAILING rather than merely waiting -- see flux.rules. Compare
             `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'`
             against the overlay. If they already agree, the corpus has outgrown the heap and the
             fix is the heap or the retention, not the ConfigMap.

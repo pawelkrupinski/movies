@@ -9,7 +9,7 @@
 #                         OUTSIDE the cluster. It sees one thing -- whether `k3s.service` is
 #                         running -- and it keeps seeing it when the cluster itself is unusable.
 #   `kube-state-metrics`  kube-state-metrics, running IN the cluster and scraped over a NodePort
-#                         (infra/kubernetes/kube-state-metrics/). It turns the state of Kubernetes
+#                         (movies-gitops/kube-state-metrics/). It turns the state of Kubernetes
 #                         OBJECTS into metrics: node conditions, Deployment replica counts, pod
 #                         waiting reasons, container termination reasons.
 #
@@ -114,7 +114,7 @@ groups:
 
   # ------------------------------------------------------------------------------------------------
   # THE OBJECT-STATE GROUP. Everything here needs kube-state-metrics to be running IN the cluster
-  # and reachable on its NodePort; see infra/kubernetes/kube-state-metrics/deployment.yaml for the
+  # and reachable on its NodePort; see movies-gitops/kube-state-metrics/deployment.yaml for the
   # exposure decision and what it costs.
   #
   # THESE SERIES CARRY NO `host` OR `role` LABEL, deliberately, and the scrape job is configured
@@ -177,7 +177,7 @@ groups:
             deployment {{ $labels.deployment }}` and then `describe pod` on the pending replica; the
             three causes worth ruling out in order are an image that cannot be pulled (the
             `ghcr-pull` secret is a read:packages token created out of band and is not in git -- see
-            infra/kubernetes/worker/README.md), a PersistentVolumeClaim that cannot bind, and a pod
+            movies-gitops/worker/README.md), a PersistentVolumeClaim that cannot bind, and a pod
             that cannot be scheduled at all. THAT LAST ONE IS A REAL CONSTRAINT ON THIS CLUSTER, not
             a hypothetical: monitoring-1 is tainted NoSchedule as the control plane, so there is one
             schedulable node, and a pod holding a local-path PVC cannot move off it.
@@ -250,7 +250,7 @@ groups:
             kube-state-metrics, so the cluster's workloads are currently unwatched -- node
             conditions, replica counts, crash loops and OOM kills all included. If `TargetDown`
             is silent alongside this, the exporter IS answering and the problem is inside it:
-            either the ClusterRole in infra/kubernetes/kube-state-metrics/rbac.yaml no longer grants
+            either the ClusterRole in movies-gitops/kube-state-metrics/rbac.yaml no longer grants
             `nodes`, or the `--resources=` list in the Deployment stopped naming them, or the image
             was bumped across a rename. Those two files are written to agree with each other and
             nothing enforces it. IT DOES NOT MEAN THE CLUSTER IS HEALTHY.

@@ -16,8 +16,8 @@
 # nothing on either side changing state to say so.
 #
 # WHAT CHANGED ON 2026-08-29, AND WHY EVERY RULE HERE IS KEPT ANYWAY. Both tiers moved off Fly onto
-# k3s (infra/kubernetes/, docs/domain-cutover.md), and they reach mongo-1 at its Hetzner PRIVATE
-# address -- `10.20.0.10:27017`, one hop across ens10, see infra/kubernetes/worker/README.md. So
+# k3s (movies-gitops/, docs/domain-cutover.md), and they reach mongo-1 at its Hetzner PRIVATE
+# address -- `10.20.0.10:27017`, one hop across ens10, see movies-gitops/worker/README.md. So
 # this tunnel is no longer the path between the product and its data; no application traffic goes
 # down it at all. The rules stay because the peers stay (mongo-1's and monitoring-1's, each
 # explained in its own host file), and an unmonitored tunnel is exactly the thing this file argues

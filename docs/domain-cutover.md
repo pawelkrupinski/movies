@@ -38,7 +38,7 @@ ordering — several of the steps below are only safe in one sequence.
    to hardcode in a zone file.
 
 2. **The cluster secret**, before any pod starts: `kinowo/web-secrets` (see
-   `infra/kubernetes/web/README.md` for its keys and why it is not in git). A pod
+   `movies-gitops/web/README.md` for its keys and why it is not in git). A pod
    without it does not crash-loop, it sits in `CreateContainerConfigError`, which
    reads like an image problem rather than a missing secret.
 
@@ -64,7 +64,7 @@ ordering — several of the steps below are only safe in one sequence.
 5. **Create the Deployments**, now that an image exists to pull:
 
    ```
-   infra/kubernetes/apply.sh web all
+   movies-gitops/apply.sh web all
    ```
 
 6. **Pin the build**, so nothing is left running `:latest`:

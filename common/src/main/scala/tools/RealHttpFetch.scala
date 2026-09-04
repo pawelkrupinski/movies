@@ -456,7 +456,7 @@ object RealHttpFetch {
     // 420min cadence — a ~40% duty cycle, well clear of the 100% the UK tried and
     // reverted. If Spain proves to tolerate more, KINOWO_SENSACINE_PACE_MS retunes
     // it live, and WorkerScrapeCadenceConfigSpec fails if the pace and the cadence
-    // in infra/kubernetes/worker/overlays/es/patch.yaml ever drift apart.
+    // in movies-gitops/worker/overlays/es/patch.yaml ever drift apart.
     HostPolicy(
       Set("sensacine.com"),
       minRequestInterval = Some(Duration.ofMillis(1400)),

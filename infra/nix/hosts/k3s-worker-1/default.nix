@@ -97,7 +97,7 @@
       # so the cut is clean rather than half-migrated.
       #
       # Each prefix still reaches its OWN pod against its OWN database (KINOWO_COUNTRY per overlay
-      # in infra/kubernetes/web/overlays); one pod serving four countries would mean one process
+      # in movies-gitops/web/overlays); one pod serving four countries would mean one process
       # against four databases. The app mounts itself at the matching prefix
       # (`play.http.context`, derived from models.Country.mountPath) so every URL it emits —
       # reverse routes, canonical link, og:url, sitemap, cookie paths — carries the segment, and

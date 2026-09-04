@@ -188,7 +188,7 @@ jobs:
                     # without a matching decision fails the build rather than quietly shipping.
                     #
                     # THE WHOLE WEB TIER MOVED TO KUBERNETES 2026-08-29: the three sites run as pods
-                    # on k3s (infra/kubernetes/web/) behind Caddy on k3s-worker-1, on domains this
+                    # on k3s (movies-gitops/web/) behind Caddy on k3s-worker-1, on domains this
                     # project owns — kinowo.net and showtimes.cc, countries served as paths — built
                     # by the `build-web` job at the bottom of this file and rolled out by Flux. Flipping
                     # `showtimes-uk` or `showtimes-de` back on would put a SECOND copy of those
@@ -236,7 +236,7 @@ jobs:
                       enabled: false
                     # MOVED TO KUBERNETES 2026-08-29, and this leg is disabled rather than deleted.
                     #
-                    # The PL worker now runs as a pod on k3s (infra/kubernetes/worker/), deployed by
+                    # The PL worker now runs as a pod on k3s (movies-gitops/worker/), deployed by
                     # the `build-worker` job at the bottom of this file and rolled out by Flux. Its Fly
                     # machine is STOPPED, not
                     # destroyed, so `flyctl deploy` here would not merely be redundant -- it would
@@ -641,7 +641,7 @@ jobs:
               # at all, and `latest` is one moving name rather than a series. This adds a tag that
               # does sort -- a UTC timestamp, monotonic in real time -- keeping the short SHA on
               # the end so the tag still says which commit built it. ImagePolicy extracts the
-              # number and takes the maximum; see infra/kubernetes/flux/image-automation.yaml.
+              # number and takes the maximum; see movies-gitops/flux/image-automation.yaml.
               #
               # NOT `github.run_number`, which is monotonic only until the workflow file is renamed
               # or recreated. A reset there would leave the highest OLD number winning forever and
@@ -712,7 +712,7 @@ jobs:
               # THAT RENAMED THIS JOB. It used to move only after `rollout status` returned, because
               # CI did the rolling, over an ssh forced command carrying an image reference. CI does
               # not deploy any more: image-automation commits the winning tag into
-              # infra/kubernetes/web/base/all.yaml and kustomize-controller applies it. What this
+              # movies-gitops/web/base/all.yaml and kustomize-controller applies it. What this
               # records is "an image for this commit was built and pushed", which is exactly the
               # question the path gate above asks and nothing more.
               #
@@ -835,7 +835,7 @@ jobs:
               # at all, and `latest` is one moving name rather than a series. This adds a tag that
               # does sort -- a UTC timestamp, monotonic in real time -- keeping the short SHA on
               # the end so the tag still says which commit built it. ImagePolicy extracts the
-              # number and takes the maximum; see infra/kubernetes/flux/image-automation.yaml.
+              # number and takes the maximum; see movies-gitops/flux/image-automation.yaml.
               #
               # NOT `github.run_number`, which is monotonic only until the workflow file is renamed
               # or recreated. A reset there would leave the highest OLD number winning forever and
@@ -904,7 +904,7 @@ jobs:
             - name: Record that an image exists for this commit
               # ⚠️ THIS MARKER NO LONGER MEANS "WHAT IS LIVE" — see the note on `record-web`. CI no
               # longer rolls anything: image-automation commits the winning tag into
-              # infra/kubernetes/worker/base/all.yaml and kustomize-controller applies it. Whether
+              # movies-gitops/worker/base/all.yaml and kustomize-controller applies it. Whether
               # the cluster has caught up is Flux's business and is alerted on directly, rather
               # than inferred from a green run here.
               # would diff from a commit production never ran.

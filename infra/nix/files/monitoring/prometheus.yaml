@@ -58,7 +58,7 @@ rule_files:
 #                      `fleet.prometheus.kubeStateMetricsTargets`. Scraped over a NodePort on the
 #                      private subnet, because Prometheus runs outside the cluster and holds no
 #                      Kubernetes credential -- deliberately. The trade is written out in
-#                      infra/kubernetes/kube-state-metrics/.
+#                      movies-gitops/kube-state-metrics/.
 #   kinowo-apps.yaml   the application's own jobs -- the worker on k3s and the web tier on Fly.
 #                      Installed unconditionally; it needs no credential anyone can revoke.
 #   scrape-fly.yaml    written only when `fleet.prometheus.scrapeFly` is true. See the long note in

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Put the GitOps manifests where the deploy specs expect them.
+#
+# They used to be `infra/kubernetes/` in this repository. They are now
+# pawelkrupinski/movies-gitops, because Flux pulls its source on every reconcile
+# — and, since image-automation began committing the deployed tag, on the write
+# path of every deploy. A shallow clone of THIS repository is 93.5s and a 1.3 GB
+# working tree of 18,806 files, to reach 420 KB of manifests in 36 of them.
+#
+# The checkout lands at the OLD PATH on purpose. Nine specs in
+# worker/src/test/scala/deploy/ compare those manifests against this repository's
+# CI workflow and nix config, and keeping the path identical means the split cost
+# them no changes at all. The directory is gitignored here.
+#
+# It tracks the config repo's `main` rather than a pinned commit, deliberately:
+# the specs should test what is actually deployed. A submodule pointer would go
+# stale silently, which is the failure this repository has spent a lot of effort
+# eliminating everywhere else.
+set -euo pipefail
+
+repo="https://github.com/pawelkrupinski/movies-gitops.git"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+dest="$root/infra/kubernetes"
+
+if [ -d "$dest/.git" ]; then
+    echo "updating $dest"
+    git -C "$dest" fetch --quiet origin main
+    git -C "$dest" reset --quiet --hard origin/main
+else
+    echo "cloning $repo -> $dest"
+    rm -rf "$dest"
+    git clone --quiet --depth 1 --single-branch --branch main "$repo" "$dest"
+fi
+echo "now at $(git -C "$dest" rev-parse --short HEAD) ($(git -C "$dest" log -1 --format=%s))"

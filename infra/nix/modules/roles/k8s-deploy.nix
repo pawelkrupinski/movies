@@ -2,7 +2,7 @@
 #
 # This was how CI rolled a new image out, and every word below about how it is bounded still holds.
 # What changed is that nothing calls it on a push any more: the running image is a fact in git,
-# image-automation writes the winning tag into infra/kubernetes/<tier>/base/all.yaml, and
+# image-automation writes the winning tag into movies-gitops/<tier>/base/all.yaml, and
 # kustomize-controller applies it. `K8sTierPathGatingSpec` asserts main.yml holds neither the key
 # nor this endpoint's address, because CI reaching for it again would fight Flux for the image
 # field -- CI writing the commit SHA tag, Flux writing the automation's, each reverting the other

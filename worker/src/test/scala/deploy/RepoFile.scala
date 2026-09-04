@@ -11,7 +11,22 @@ import scala.io.{Codec, Source}
  * `test/resources/...` the same way), so top-level paths resolve directly.
  */
 object RepoFile {
+
+  /** Where the GitOps manifests are checked out — see `infra/bin/fetch-gitops`. */
+  private val GitOpsRoot = "infra/kubernetes"
+
   def read(path: String): String = {
+    if (path.startsWith(s"$GitOpsRoot/") && !new java.io.File(path).exists())
+      throw new AssertionError(
+        s"""$path is missing because the GitOps manifests are no longer in this repository.
+           |
+           |They live in pawelkrupinski/movies-gitops now — Flux pulls its source on every
+           |reconcile, and a shallow clone of THIS repository is 93.5s and 18,806 files to reach
+           |36 of them. The specs still read the old paths, because CI checks that repository out
+           |right here. Locally:
+           |
+           |    ./infra/bin/fetch-gitops
+           |""".stripMargin)
     val src = Source.fromFile(path)(using Codec.UTF8)
     try src.mkString
     finally src.close()

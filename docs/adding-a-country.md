@@ -233,7 +233,7 @@ The worker is split **per country** — each pod watches only its own db's chang
 stream, because `KINOWO_COUNTRIES` also selects the database. A large roster folded
 into a sibling's pod will OOM or throttle it.
 
-1. **`infra/kubernetes/worker/overlays/<cc>/`** — clone `overlays/de/`. The overlay
+1. **`movies-gitops/worker/overlays/<cc>/`** — clone `overlays/de/`. The overlay
    carries only what genuinely differs: `KINOWO_COUNTRIES = "<cc>"`, the two
    scrape-rate levers, the JVM heap, and a fixed `nodePort` (30900/30901/30902 are
    taken; take the next free one). Everything else comes from `../../base`. Drop
@@ -271,7 +271,7 @@ into a sibling's pod will OOM or throttle it.
    (`10.20.0.12:<nodePort>`, labelled `country: <cc>`), and its Deployment name to
    `fleet.k8sDeploy.targets` in `infra/nix/modules/roles/k8s-deploy.nix` so CI can
    roll it.
-4. **Create and roll it**: `infra/kubernetes/apply.sh worker <cc>`, then let the next
+4. **Create and roll it**: `movies-gitops/apply.sh worker <cc>`, then let the next
    push to main pin the image. There is no `main.yml` matrix leg — every worker leg
    there is `enabled: false` and adding one would deploy a second copy. Fly deploys
    exactly one thing now, the Polish web app; `FlyDeployScopeSpec` holds that rule.
@@ -279,7 +279,7 @@ into a sibling's pod will OOM or throttle it.
 ## 4. Web frontend (`showtimes.cc/<cc>/`)
 
 The web tier is one k3s Deployment per country on `k3s-worker-1`, not Fly apps — see
-`infra/kubernetes/web/README.md` for the shape and `docs/domain-cutover.md` for the
+`movies-gitops/web/README.md` for the shape and `docs/domain-cutover.md` for the
 host/DNS side.
 
 **Every Showtimes country is a PATH on the one `showtimes.cc` host** — it was a
@@ -293,7 +293,7 @@ So a new country is: an overlay, one line in each of the two places that name it
 NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
 `webUrl` flip.
 
-1. **A kustomize overlay, `infra/kubernetes/web/overlays/<cc>/`** — copy
+1. **A kustomize overlay, `movies-gitops/web/overlays/<cc>/`** — copy
    `overlays/de/` and change **only** the three things a country is allowed to
    differ in: `nameSuffix: -<cc>` + the `country: <cc>` label in
    `kustomization.yaml`, `KINOWO_COUNTRY: "<cc>"` in the ConfigMap patch, and the
@@ -302,7 +302,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    is never set here. CPU request: `500m` unless the roster is Poland-sized —
    memory stays at the base's 1Gi request+limit, which is the sizing proven not to
    OOM. Anything else you find yourself copying belongs in `base/` instead.
-   Add `<cc>` to `COUNTRIES=(...)` in `infra/kubernetes/apply.sh`, which enumerates
+   Add `<cc>` to `COUNTRIES=(...)` in `movies-gitops/apply.sh`, which enumerates
    them for `apply.sh web all`.
 2. **Allocate the next free NodePort.** The workers hold 30900–30902 and the web
    tier 30910 (pl) / 30911 (de) / 30912 (uk) / 30913 (us) / 30914 (es), so a sixth takes 30915. It is
@@ -375,7 +375,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
 7. **Secrets need nothing new.** All three Deployments `envFrom` the one
    `kinowo/web-secrets` Secret in the cluster (`MONGODB_URI` at Mongo's private
    address, TMDB/OMDb, the OAuth client pairs, Sentry, the admin allowlist), so a
-   fourth country inherits it by existing — `infra/kubernetes/web/README.md` lists
+   fourth country inherits it by existing — `movies-gitops/web/README.md` lists
    the keys. Only a value genuinely specific to the new country would need adding,
    and the Secret is built from the repo-root `.env.local` and piped over SSH
    rather than passed as arguments, so no value ever reaches a process list.
@@ -391,7 +391,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    `showtimes.cc/<cc>` is the first case, so there is nothing to register.
 8. **Roll it out.** CI builds `ghcr.io/pawelkrupinski/movies-web:<sha>`; the new
    Deployment does not exist yet, so create it once with
-   `infra/kubernetes/apply.sh web <cc>` and let CI pin builds after that. Never
+   `movies-gitops/apply.sh web <cc>` and let CI pin builds after that. Never
    plain `kubectl apply` — `apply.sh` exists to stop an apply reverting the pinned
    image to `:latest`.
 

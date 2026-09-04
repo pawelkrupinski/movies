@@ -102,7 +102,7 @@ object AppLoader {
    *  Everything else about this deployment moved one segment down, and that is
    *  the point — but these two are not fetched by a browser following a link.
    *  `/health` is hit by the kubelet on the POD's own address (startup,
-   *  readiness and liveness probes in `infra/kubernetes/web/base/all.yaml`), and
+   *  readiness and liveness probes in `movies-gitops/web/base/all.yaml`), and
    *  `/metrics` by a Prometheus that runs outside the cluster and scrapes
    *  `10.20.0.12:<nodePort>/metrics` directly. Neither goes through Caddy, so
    *  neither ever sees the country prefix, and mounting them under it would

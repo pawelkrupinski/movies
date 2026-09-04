@@ -83,6 +83,27 @@ jobs:
         steps:
             - uses: actions/checkout@v5
 
+            # THE GITOPS MANIFESTS, CHECKED OUT WHERE THEY USED TO LIVE IN THIS TREE.
+            #
+            # They are pawelkrupinski/movies-gitops now, because Flux pulls its source on every
+            # reconcile -- and, since image-automation began committing the deployed tag, on the
+            # write path of every deploy. A shallow clone of this repository is 93.5s and a 1.3 GB
+            # tree of 18,806 files, to reach 420 KB of manifests in 36 of them.
+            #
+            # ⚠️ THE `path:` IS THE WHOLE TRICK. Nine specs in worker/src/test/scala/deploy/ compare
+            # those manifests against this repository's workflow and nix config -- heap sizes against
+            # node capacity, NodePorts against the Prometheus scrape config, the image tag CI builds
+            # against the ImagePolicy that selects it. Landing the checkout at the OLD PATH means the
+            # split cost them no changes at all. Move it and nine specs fail at once.
+            #
+            # `main`, not a pinned ref: these specs should test what is actually DEPLOYED. A pin
+            # would go stale silently, which is the failure this repository keeps having to design
+            # away. No credential -- the config repo is public, like this one.
+            - uses: actions/checkout@v5
+              with:
+                  repository: pawelkrupinski/movies-gitops
+                  path: infra/kubernetes
+
             - uses: actions/setup-java@v5
               with:
                   distribution: temurin
