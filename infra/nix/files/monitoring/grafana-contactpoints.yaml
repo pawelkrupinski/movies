@@ -27,21 +27,21 @@
 #
 # WHAT WAS DELIBERATELY DROPPED FROM THE FLY VERSION, so that its absence does not read as a
 # mistake: the three `WorkerThrottle*` webhook contact points and their routes. Those POSTed to
-# `kinowo-worker*.internal:9000/throttle` over Fly's 6PN to drive the workers' reaper backoff.
-# THERE ARE NO WORKERS ON 6PN TO REACH -- since 2026-08-29 all of them run as pods on k3s, so
-# `kinowo-worker*.internal` resolves to nothing and those webhooks would fail on every send,
-# leaving the workers never told to back off. The 6PN peer this host held is gone too (2026-09-04),
-# along with the rest of the Fly integration.
+# `kinowo-worker*.internal:9000/throttle` over Fly's 6PN to drive the workers' reaper backoff --
+# a genuine control loop, with the threshold in a Grafana alert and the gate inside the worker.
 #
-# THE WORKER SIDE OF THAT PATH IS ALSO GONE: `CpuCreditPoller`, the in-process authoritative
-# throttle that read Fly's shared-CPU credit balance, was deleted with the platform. The worker's
-# `/throttle` endpoint and its reaper backoff remain and are platform-neutral, so restoring the
-# path means pointing a webhook at the pods' NodePorts on 10.20.0.12 -- not at 6PN -- and deciding
-# what signal should drive it now that there is no credit bucket to watch.
+# EVERY PIECE OF IT IS NOW GONE, so there is nothing here to restore. The workers moved to k3s on
+# 2026-08-29, which made `kinowo-worker*.internal` resolve to nothing; the 6PN peer this host held
+# went on 2026-09-04 with the rest of the Fly integration; and the same day the worker's side was
+# deleted outright -- the credit poller, the gate, the `/throttle` endpoint, the watchdog, the
+# `kinowo_worker_throttled` gauge and the per-reaper enqueue caps. Shared-CPU credit was a Fly
+# billing concept with no counterpart on a dedicated eight-core box, and nothing had driven the
+# loop since the org's read-only tokens were revoked.
 #
-# THE CONSEQUENCE IS NOT SILENT, WHICH IS WHY THIS IS SAFE TO DO: with no route matching them, the
-# `worker-throttle` group's alerts fall through to the root policy and arrive on Telegram as
-# ordinary pages instead. Noisier, and visible.
+# A REPLACEMENT WOULD BE A NEW DESIGN, not these blocks copied back: it needs a signal that exists
+# here (the pod's own cgroup CPU-throttle counter is the obvious candidate) and something in the
+# worker to receive it. The alert rules that drove and reported the old loop are retired in
+# alerting/alert-rules.yaml, each with a tombstone.
 apiVersion: 1
 
 contactPoints:

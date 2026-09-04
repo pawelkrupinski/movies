@@ -62,7 +62,7 @@ apiVersion: 1
 #   - residential-proxy / enrichment-source failing -> a silently-degrading upstream
 #   - movies-served swing / city empty              -> the read model going thin or blank
 #   - showtime-volume collapsed                     -> a scrape that stopped landing
-#   - worker throttled / task-age / queue-backlog   -> the 2026-06-23 backlog spiral
+#   - worker task-age / queue-backlog               -> the 2026-06-23 backlog spiral
 #
 # noDataState is OK almost everywhere (a quiet hobby app legitimately has no series for minutes),
 # EXCEPT `kinowo-web-serving-down`, where missing data IS the alarm.
@@ -918,51 +918,29 @@ groups:
               refId: C
 
   # ================================================================================================
-  # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `worker-throttle`
+  # WHAT IS LEFT OF THIS GROUP, and why it is called `worker-queue`.
   #
-  #   DROP  Worker credit low (drive backoff)          Its only consumer was a webhook this host
-  #                                                    cannot reach. Tombstone inside the group,
-  #                                                    where the rule was.
-  #   KEEP  Worker throttling                          Reports that the worker IS backing off, for
-  #                                                    any reason, from the app's own
-  #                                                    `kinowo_worker_throttled` gauge. Still true,
-  #                                                    still a useful human heads-up.
-  #   KEEP  Worker task queue head-of-line age high    Application queue health; nothing to do with
-  #                                                    Fly beyond how the number is fetched.
-  #   KEEP  Worker task queue backlog high             As above.
+  # It was `worker-throttle`, and it was a CONTROL LOOP. `kinowo-worker-credit-low` fired on the
+  # worker's Fly shared-CPU credit balance and routed, by a `notify: worker-throttle` label, to a
+  # webhook contact point that POSTed to `kinowo-worker.internal:9000/throttle` over 6PN; the
+  # worker flipped a gate and every reaper backed off enqueue until credit rebuilt. The threshold
+  # lived out here so the worker only had to receive firing/resolved. `kinowo-worker-throttled`
+  # was the human-facing half, paging Telegram whenever the worker was actually backing off.
   #
-  # THE GROUP NAME IS NOW HALF A LIE AND IT IS LEFT ALONE DELIBERATELY. With the control rule gone
-  # this group throttles nothing -- the three survivors are plain notifications. Renaming it would
-  # change the group identity Grafana keys alert state on, for a cosmetic gain, and would diverge
-  # this copy from the Fly original by more than the audit already has. If the 6PN peer is ever
-  # added and the control rule comes back, the name becomes accurate again.
+  # BOTH ARE RETIRED, and so is everything they talked to: the 2026-08-29 audit dropped the control
+  # rule once this fleet had no 6PN peer to reach the webhook through, and 2026-09-04 deleted the
+  # worker's whole throttle path — gate, endpoint, watchdog, `kinowo_worker_throttled` gauge and
+  # the per-reaper enqueue caps — because shared-CPU credit is a Fly billing concept with no
+  # counterpart on a dedicated box, and nothing had driven it since the org's tokens were revoked.
   #
-  # THE 30s `interval` BELOW IS ALSO NOW OVERSPECIFIED, and is likewise left alone: it was 30s
-  # because a control loop wants to react quickly, and the three remaining rules would be perfectly
-  # happy at 1m. It costs three extra queries a minute against a datasource that 401s. Not worth an
-  # edit today; worth one if this group ever stops being a control loop for good.
+  # THE TWO SURVIVORS WERE NEVER PART OF THAT. `kinowo-worker-task-age-high` and
+  # `kinowo-worker-queue-backlog` read the application's own queue and say the pipeline is
+  # struggling; they are the only warning left that a worker is not keeping up, which is worth
+  # knowing now that nothing eases it off automatically. Hence the name.
+  #
+  # THE 30s `interval` IS A LEFTOVER of the control loop, which wanted to react quickly. Two queue
+  # gauges would be perfectly happy at 1m. Harmless, and not worth an edit on its own.
   # ================================================================================================
-  #
-  # ---- Worker CPU-credit throttle CONTROL (drives the worker's /throttle) -----
-  # HISTORICAL. The rule this paragraph describes was dropped at the audit -- see the tombstone
-  # inside the group below. It is kept here because it is the only written record of how the
-  # credit-driven backoff loop actually worked, and restoring that loop means restoring exactly
-  # this.
-  #
-  # NOT a page. The worker runs credit-starved by design; this rule is the
-  # external "credit logic" for its self-heal backoff. When kinowo-worker's
-  # shared-CPU credit balance drops below ~5k (its 2x cap is ~8k) the rule FIRES →
-  # the WorkerThrottle webhook POSTs http://kinowo-worker.internal:9000/throttle →
-  # ExternalThrottleGate flips on → all reapers (scrape/ratings/detail/tmdb) back
-  # off enqueue → the pool idles → credit rebuilds → balance climbs back above 5k →
-  # the alert RESOLVES → webhook (status=resolved) → reapers resume. The threshold
-  # lives HERE, outside the worker (it only receives firing/resolved). 30s eval over
-  # a 2-min AVERAGE of the balance + `for: 1m` so a single spurious low/zero scrape
-  # sample (fly_instance_cpu_balance is occasionally noisy) can't trip the backoff —
-  # it was firing while the dashboard balance sat well above 6k because the old rule
-  # read ONE instantaneous sample with `for: 0`. Routed to WorkerThrottle (NOT
-  # Telegram) by the `notify: worker-throttle` label. noData/execErr = OK (never
-  # throttle on a missing/erroring balance — fail-safe).
   - orgId: 1
     name: worker-queue
     folder: Kinowo Alerts
@@ -988,12 +966,11 @@ groups:
       # throttles anything. A control signal delivered to a human is not a quieter version of
       # a control loop; it is noise plus a broken control loop.
       #
-      # WHAT IS LOST, STATED PLAINLY: the worker's external credit-based backoff. Its
-      # IN-PROCESS scrape-duration backstop is unaffected and still runs, and
-      # `kinowo_worker_throttled` (the rule immediately below) still reports when the worker
-      # is backing off for any reason. RESTORING THE LOOP means giving monitoring-1 a 6PN peer
-      # of its own, at which point this rule and the webhook contact points come back together
-      # from the Fly copy verbatim -- both, or neither.
+      # WHAT IS LOST: the worker's external credit-based backoff. When this was written the
+      # in-process half still ran and `kinowo_worker_throttled` still reported it; on 2026-09-04
+      # both went too, so there is no backoff of any kind left to restore. Reinstating one means
+      # choosing a signal that exists on a dedicated box -- the pod's own cgroup CPU-throttle
+      # counter is the obvious candidate -- not resurrecting this rule.
       # ================================================================================
 
       # RETIRED RULE kinowo-worker-throttled -- deleted with the worker's throttle path,
