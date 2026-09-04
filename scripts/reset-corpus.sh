@@ -128,9 +128,7 @@ scale_deploy() {
 # The database moved to the Hetzner host mongo-1 on 2026-08-29, so the tunnel is
 # an ssh forward. See scripts/local-mirror/prod-tunnel.sh, the single definition
 # every prod-sourced local script shares.
-TUNNEL_TAG="reset"
-TUNNEL_PROBE_URI="$URI"
-PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
+init_prod_tunnel "reset" "$URI"
 cleanup() { close_prod_tunnel; }
 trap cleanup EXIT
 

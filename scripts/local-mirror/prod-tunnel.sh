@@ -66,6 +66,21 @@ envval() {
     | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
 }
 
+# Declare what this caller is and what it talks to, in one line instead of the
+# three-assignment preamble every caller copied. The env file defaults to
+# $ROOT/.env.local, which is what all three passed anyway.
+#
+#   init_prod_tunnel <tag> <probe-uri> [env-file]
+#
+# Callers still install their own EXIT trap: what has to be torn down differs
+# (the sync scripts also remove a mktemp dir, reset-corpus does not), and a
+# shared trap that guesses at that would be worse than three explicit ones.
+init_prod_tunnel() {
+  TUNNEL_TAG="$1"
+  TUNNEL_PROBE_URI="$2"
+  PROD_TUNNEL_ENV_FILE="${3:-${ROOT:-.}/.env.local}"
+}
+
 # The pid of a tunnel WE started. Empty means the port is served by someone
 # else's process (an `sbt run` forward, a manual one) and is not ours to kill.
 PROD_TUNNEL_PID=""

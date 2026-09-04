@@ -60,9 +60,7 @@ DST_DB="$(envval LOCAL_MONGO_DB)"; DST_DB="${DST_DB:-kinowo_local}"
 # nothing already serves :27017 — never fighting a tunnel someone else owns
 # (sbt run's, or a manual one). cleanup kills only ours. Shared with mirror.sh
 # and sync-enrichment-cache.sh so prod moving hosts is one edit, not four.
-TUNNEL_TAG="title-rules"
-TUNNEL_PROBE_URI="$SRC"
-PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
+init_prod_tunnel "title-rules" "$SRC"
 TMP=""
 cleanup() {
   close_prod_tunnel

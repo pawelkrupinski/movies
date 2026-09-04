@@ -66,9 +66,7 @@ DST="$(envval LOCAL_MONGO_URI)"; DST="${DST:-mongodb://127.0.0.1:${LOCAL_MIRROR_
 # ── ensure the prod tunnel (source), starting our OWN ssh forward only when
 # nothing already serves :27017 — never fighting a tunnel someone else owns.
 # Shared with mirror.sh and sync-title-rules.sh so prod moving hosts is one edit.
-TUNNEL_TAG="enrich-cache"
-TUNNEL_PROBE_URI="$SRC"
-PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
+init_prod_tunnel "enrich-cache" "$SRC"
 TMP=""
 cleanup() {
   close_prod_tunnel
