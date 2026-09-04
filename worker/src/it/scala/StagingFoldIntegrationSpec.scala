@@ -182,7 +182,12 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       val cinemas = Seq(Multikino, models.Helios)
       cinemas.foreach(seedOversizeRow(staging, _))
 
-      fold.folder().foldGroup(oversizeTitle)
+      // KEEP THE RETURN VALUE. It is the only thing separating "the fold declined to promote"
+      // from "the fold promoted and the row is not there", and those are opposite diagnoses.
+      // This assertion failed once in CI on 2026-09-04 — one run in eight, green on a clean
+      // rerun and 12/12 locally — reporting nothing but `List() had size 0`, which is equally
+      // consistent with either, so the occurrence bought no information at all.
+      val promoted = fold.folder().foldGroup(oversizeTitle)
 
       withClue("the fold did not consume its rows — it threw before committing, which is " +
                "the overflow this test exists for: ") {
@@ -192,12 +197,30 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       val folded = Await.result(fold.movies.find(Filters.regex("_id",
         s"^${titleNormalizer.sanitize(oversizeTitle)}\\|")).toFuture(), 30.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
-      folded should have size 1
+      withClue(
+        s"the fold consumed its staging rows and returned ${promoted.size} promotion(s) " +
+        s"${promoted.map(_._1).mkString("[", ", ", "]")}, but `movies` holds ${folded.size} row(s) " +
+        s"keyed '${titleNormalizer.sanitize(oversizeTitle)}|'. Every id in the collection " +
+        s"mentioning the sentinel at all: ${sentinelIds(fold).mkString("[", ", ", "]")}. " +
+        "A promotion with no row means the commit landed and the row was then lost or RE-KEYED " +
+        "(compare the two id lists); NO promotion means the fold judged the group unfoldable and " +
+        "never wrote. Establish which before reaching for a retry: ") {
+        folded should have size 1
+      }
       withClue("the fold committed but filed none of the board it folded: ") {
         screenings.findForFilm(folded.head).values.map(_.size).sum shouldBe cinemas.size * OversizeShowtimes
       }
       }
   }
+
+  /** Every `movies` id mentioning the sentinel, however it is keyed. The assertion above
+   *  queries by `sanitized|` PREFIX, which a re-keyed row would slip past — and "re-keyed"
+   *  is one of the two things a missing row can mean, so the diagnosis needs the wider set
+   *  beside the narrow one. */
+  private def sentinelIds(fold: FoldFixture.Handles): Seq[String] =
+    Await.result(fold.movies.find(Filters.regex("_id",
+      s".*${titleNormalizer.sanitize(oversizeTitle)}.*")).toFuture(), 30.seconds)
+      .flatMap(_.get("_id").map(_.asString().getValue))
 
   private val oversizeTitle = "__foldoversize-it-sentinel__"
 
