@@ -112,7 +112,15 @@ object DaemonExecutors {
    *  apply (a blocking stitch read + the synchronized read-model projection) on
    *  those loops made them contend and spin their wakeup eventfds, flooring the
    *  worker's CPU credit. A single thread keeps change events applied strictly in
-   *  order; blocking on it is fine — that's the point, it isn't an I/O loop. */
+   *  order; blocking on it is fine — that's the point, it isn't an I/O loop.
+   *
+   *  ITS QUEUE IS UNBOUNDED (`LinkedBlockingQueue`), as is every executor in this
+   *  object — `boundedEC` bounds CONCURRENCY with a semaphore, not queue depth. So a
+   *  producer that outruns this single consumer grows the queue until the heap is gone,
+   *  and each queued task retains whatever it closed over. That is only safe when the
+   *  PRODUCER is bounded: the change-stream caller bounds itself with a demand window
+   *  ([[services.movies.ChangeStreamDemand]]) rather than relying on this queue. Bound
+   *  your producer before handing work here, or size the work so it cannot run ahead. */
   def singleThreadExecutor(name: String): ExecutorService =
     dropRejectedAfterShutdown(Executors.newSingleThreadExecutor { r =>
       val thread = new Thread(r, name)

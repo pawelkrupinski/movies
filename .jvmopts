@@ -7,3 +7,13 @@
 # Fail LOUDLY instead. Without this an OOM leaves a misleading success: the run
 # reports the modules that finished and says nothing about the ones it skipped.
 -XX:+ExitOnOutOfMemoryError
+# ...and leave EVIDENCE. `ExitOnOutOfMemoryError` makes the death loud but says
+# nothing about what filled the heap: it prints one line and no stack. A local
+# `sbt web/run` OOM on 2026-09-04 cost a long investigation that ruled out four
+# suspects by hand and still could not name the retainer, purely because the dead
+# JVM left nothing behind. A dump costs nothing until the day it is needed, and
+# then it is the whole answer. `%p` (the JVM's pid placeholder) keeps reruns from
+# overwriting each other — a bare directory gives every dump one constant name, so
+# only the first is ever written. `target/` is sbt-created and gitignored.
+-XX:+HeapDumpOnOutOfMemoryError
+-XX:HeapDumpPath=target/oom-%p.hprof

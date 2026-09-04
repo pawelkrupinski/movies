@@ -40,7 +40,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
     "tt0000078", "tt0000079", "tt0000080", "tt0000081", "tt0000024", "tt0000025"
-  )
+  ) ++ (1 to 20).map(n => f"tt000021$n%02d") // the backpressure spec's 20 sentinels
 
   // Delete every sentinel this spec could have written. Matches BOTH the
   // sanitized `_id` shape the documents are actually stored under (`integrationtest…`
@@ -1704,6 +1704,53 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       withClue(s"screenings now: ${scr.findForFilm(id).keySet}: ")(
         scr.findForFilm(id).keySet should have size 2)
     } finally { slots.deleteFilm(id); scr.deleteFilm(id); client.close() }
+  }
+
+  // The change stream used to open with `request(Long.MaxValue)` while the apply that
+  // consumes it is ONE thread doing a blocking stitch read per event. Producer and
+  // consumer were coupled by nothing, so a consumer slower than the write rate grew an
+  // unbounded queue of fully decoded documents — bounded only by heap. It never bit in
+  // prod (the apply keeps up at ~30 ops/s in-cluster) but a local dev server, whose
+  // every stitch read crosses an ssh tunnel, is exactly the slow-consumer case.
+  //
+  // Pin it where it is observable: block the apply thread outright, write well past the
+  // demand window, and require the backlog to stop at the window. Before backpressure
+  // this reached the write count; after it, the driver stops pulling until the apply
+  // drains. The window is injected small so this costs a handful of writes, not 256.
+  it should "stop reading ahead once the apply thread stalls, instead of queueing without bound" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+
+    val Window = 4
+    val Writes = 20
+    val bounded = new MongoMovieRepository(normalizer = titleNormalizer, changeDemandWindow = Window)
+    val release = new CountDownLatch(1)
+    val applying = new CountDownLatch(1)
+
+    // Runs ON the apply thread: the first event parks there and never yields, so every
+    // later event can only sit in the queue behind it.
+    val handle = bounded.watchChanges(
+      onUpsert = _ => { applying.countDown(); release.await(30, TimeUnit.SECONDS); () },
+      onDelete = _ => ()
+    )
+    handle should not be empty // requires a replica set
+
+    try {
+      Thread.sleep(1500) // let the cursor establish before the writes
+      (1 to Writes).foreach { n =>
+        bounded.upsert(s"__integration-test-backpressure-${n}__", Some(1903), MovieRecord(imdbId = Some(f"tt000021$n%02d")))
+      }
+      applying.await(20, TimeUnit.SECONDS) shouldBe true
+      // Give the driver every chance to run ahead — that is the failure being excluded.
+      Thread.sleep(3000)
+
+      withClue(s"backlog after $Writes writes behind a stalled apply: ")(
+        bounded.changeApplyBacklog should be <= Window)
+    } finally {
+      release.countDown()
+      handle.foreach(_.close())
+      (1 to Writes).foreach(n => bounded.delete(s"__integration-test-backpressure-${n}__", Some(1903)))
+      bounded.close()
+    }
   }
 
 }

@@ -88,8 +88,14 @@ trait ScreeningsRepository {
   /** Push: ring `onChange(filmId)` whenever a film's screenings actually change, so
    *  the change-stream fanout can re-stitch + re-dispatch that film. A no-op write
    *  (unchanged showtimes) does NOT ring — mirroring the `movies` no-op guard.
-   *  Returns a handle to stop watching, or None when this impl can't push. */
-  def watch(onChange: String => Unit): Option[AutoCloseable] = None
+   *  Returns a handle to stop watching, or None when this impl can't push.
+   *
+   *  `demand` bounds how far the cursor may run ahead of the caller's apply — the
+   *  caller owns it, because the caller is what decides when an event is APPLIED (it
+   *  hands the work to a queue rather than doing it in `onChange`). Impls that ring
+   *  listeners synchronously have no backlog and can ignore it. */
+  def watch(onChange: String => Unit,
+            demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
 
   def close(): Unit = ()
 }
@@ -144,7 +150,9 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
     if (changed) ring(filmId)
   }
 
-  override def watch(onChange: String => Unit): Option[AutoCloseable] = {
+  // Rings listeners synchronously (see `ring`), so there is no queue and nothing for
+  // `demand` to bound — it is accepted only to honour the trait's contract.
+  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] = {
     listeners.add(onChange)
     Some(new AutoCloseable { override def close(): Unit = { listeners.remove(onChange); () } })
   }
@@ -436,7 +444,7 @@ class MongoScreeningsRepository(
    *  (insert/update/replace carry the doc's `filmId`; a delete carries only the
    *  composite `_id`, from which the `filmId` prefix is parsed). The caller re-reads
    *  + stitches the film. Requires a replica set (like the movies stream). */
-  override def watch(onChange: String => Unit): Option[AutoCloseable] = coll.map { c =>
+  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] = coll.map { c =>
     val subRef = new AtomicReference[Subscription]()
     // A terminal error is the END of a cursor — the driver never brings it back, and unlike
     // the movies stream there is not even a later registration to re-open this one. Without
@@ -448,7 +456,7 @@ class MongoScreeningsRepository(
       val base       = c.watch()
       resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
         .subscribe(new Observer[ChangeStreamDocument[StoredScreeningsDto]] {
-          override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
+          override def onSubscribe(s: Subscription): Unit = { subRef.set(s); demand.opened(s) }
           override def onNext(change: ChangeStreamDocument[StoredScreeningsDto]): Unit = {
             reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
             // Advance the resume position BEFORE ringing onChange, so a re-stitch can never
@@ -471,9 +479,10 @@ class MongoScreeningsRepository(
               logger.warn(s"screenings change stream ended (${e.getMessage}) — a reopen resumes from the " +
                 "persisted token; the backstop covers the meantime.")
             subRef.set(null)
+            demand.closed()
             reopen.failed()
           }
-          override def onComplete(): Unit = { subRef.set(null); reopen.failed() }
+          override def onComplete(): Unit = { subRef.set(null); demand.closed(); reopen.failed() }
         })
       logger.info(s"MongoScreeningsRepository: watching screenings change stream" +
         s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
@@ -483,6 +492,7 @@ class MongoScreeningsRepository(
     new AutoCloseable { override def close(): Unit = {
       reopen.close()
       resumeToken.save(force = true) // final position synchronously so the next process resumes here
+      demand.closed()
       Option(subRef.get()).foreach(_.unsubscribe())
     } }
   }

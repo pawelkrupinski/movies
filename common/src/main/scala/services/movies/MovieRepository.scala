@@ -386,7 +386,11 @@ class MongoMovieRepository(
   // document id IS the row's identity, so a repository writing under another
   // country's rules would split or collide rows. REQUIRED, not defaulted: this is
   // a production persistence path, and a silent fallback here is the 2026 incident.
-  override val normalizer: TitleNormalizer
+  override val normalizer: TitleNormalizer,
+  // How far each change-stream cursor may run ahead of the apply thread. Injected only
+  // so a spec can prove the bound with a handful of writes instead of a full window's
+  // worth; production never passes it. See [[ChangeStreamDemand]].
+  changeDemandWindow: Int = ChangeStreamDemand.DefaultWindow
 ) extends MovieRepository with Logging {
 
 
@@ -1034,10 +1038,38 @@ class MongoMovieRepository(
   // loops contend the projection monitor and busy-spin their wakeup eventfds (~24cc,
   // ~0 voluntary ctx-switches — proven on-box), flooring the shared-CPU credit. A
   // SINGLE thread keeps events applied strictly in order.
+  //
+  // Its queue is UNBOUNDED, so what keeps the backlog finite is the demand window each
+  // cursor opens with — see [[ChangeStreamDemand]]. Every `changeApply.execute` here
+  // must therefore be paired with an `applied()` in the task's `finally`, or that
+  // cursor stalls; `changeApplyBacklog` is the invariant made observable.
   private val changeApply  = tools.DaemonExecutors.singleThreadExecutor("movie-change-apply")
+  private val applyBacklog = new java.util.concurrent.atomic.AtomicInteger(0)
+  // Demand windows: one per cursor, since each is a separate subscription. Both drain
+  // into `changeApply`, so the queue is capped at the sum of the two windows.
+  private[movies] val moviesDemand     = new ChangeStreamDemand(changeDemandWindow)
+  private[movies] val screeningsDemand = new ChangeStreamDemand(changeDemandWindow)
   // Read-split only: a second cursor on `screenings`. A showtime change writes only
   // `screenings` (movies stays put), so without this the projector would never see it.
   private val screeningsWatch = new AtomicReference[Option[AutoCloseable]](None)
+
+  /** Change events handed to the apply thread but not yet applied — the depth of the
+   *  queue that used to be the leak. Bounded by the two demand windows; before
+   *  backpressure it was bounded only by heap. Public because it is the observable form
+   *  of that invariant: the integration spec asserts on it, and it is the number worth
+   *  putting behind a gauge if this ever needs watching in prod. */
+  def changeApplyBacklog: Int = applyBacklog.get()
+
+  /** Enqueue one change-stream apply: count it into the backlog, and release a unit of
+   *  the cursor's demand once it has actually run. Every hand-off to `changeApply` goes
+   *  through here so neither half can be forgotten at a call site. */
+  private def applyOffLoop(demand: ChangeStreamDemand)(work: => Unit): Unit = {
+    applyBacklog.incrementAndGet()
+    changeApply.execute { () =>
+      try work
+      finally { applyBacklog.decrementAndGet(); demand.applied() }
+    }
+  }
 
   // The shared cursor reopens (after a terminal error, and — the big win — after a WORKER
   // RESTART) from the last-seen token instead of "now", REPLAYING writes that landed while
@@ -1076,7 +1108,7 @@ class MongoMovieRepository(
       val base       = c.watch().fullDocument(FullDocument.UPDATE_LOOKUP)
       resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
         .subscribe(new Observer[ChangeStreamDocument[StoredMovieDto]] {
-          override def onSubscribe(s: Subscription): Unit = { changeSub.set(s); s.request(Long.MaxValue) }
+          override def onSubscribe(s: Subscription): Unit = { changeSub.set(s); moviesDemand.opened(s) }
           override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit = {
             changeReopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
             recordChangeMetrics(change)
@@ -1089,7 +1121,7 @@ class MongoMovieRepository(
               .map(v => if (v.isString) v.asString.getValue else v.toString)
             // Apply OFF the Netty I/O loop: the stitch read + projection must not run
             // there (they made the loops contend + spin — see `changeApply`).
-            changeApply.execute { () =>
+            applyOffLoop(moviesDemand) {
               fullDocument match {
                 // The movies doc has no showtimes — stitch them back from `screenings`
                 // (via decodeStitched) before fanning out, so consumers get a full row.
@@ -1113,9 +1145,10 @@ class MongoMovieRepository(
               logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — a reopen resumes from the " +
                 "persisted token; the backstop covers the meantime.")
             changeSub.set(null)
+            moviesDemand.closed()
             changeReopen.failed()
           }
-          override def onComplete(): Unit = { changeSub.set(null); changeReopen.failed() }
+          override def onComplete(): Unit = { changeSub.set(null); moviesDemand.closed(); changeReopen.failed() }
         })
       logger.info(s"MongoMovieRepository: watching change stream (shared by all listeners)" +
         s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
@@ -1124,8 +1157,9 @@ class MongoMovieRepository(
       // re-projects the film — the findById is a BLOCKING read, so run it (and the
       // fanout) on `changeApply`, never on the screenings cursor's I/O event loop.
       if (screeningsWatch.get().isEmpty)
-        screeningsWatch.set(screenings.flatMap(_.watch(filmId =>
-          changeApply.execute(() => findById(filmId).foreach(movieChanges.dispatchUpsert)))))
+        screeningsWatch.set(screenings.flatMap(_.watch(
+          filmId => applyOffLoop(screeningsDemand)(findById(filmId).foreach(movieChanges.dispatchUpsert)),
+          screeningsDemand)))
     }
   }
 
@@ -1137,6 +1171,7 @@ class MongoMovieRepository(
       // Persist the final position synchronously so the next process resumes from here.
       resumeToken.save(force = true)
       Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
+      moviesDemand.closed()
       screeningsWatch.getAndSet(None).foreach(h => Try(h.close()))
     }
   }
@@ -1161,7 +1196,9 @@ class MongoMovieRepository(
   }.recover { case exception => logger.warn(s"change-stream metrics failed: ${exception.getMessage}") }.getOrElse(())
 
   def close(): Unit = {
-    changeReopen.close(); resumeToken.save(force = true); changeApply.shutdown(); clientOpt.foreach(_.close())
+    changeReopen.close(); resumeToken.save(force = true)
+    moviesDemand.closed(); screeningsDemand.closed()
+    changeApply.shutdown(); clientOpt.foreach(_.close())
   }
 
   /** Index `(title, year)` so [[delete]]'s `$or(_id, title+year)` filter resolves

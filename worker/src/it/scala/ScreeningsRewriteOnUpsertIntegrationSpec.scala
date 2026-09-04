@@ -6,8 +6,8 @@ import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData
 import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository,
-                        ScreeningsRepository, StoredMovieRecord}
+import services.movies.{ChangeStreamDemand, MongoMovieRepository, MongoScreeningsRepository,
+                        MongoSlotsRepository, ScreeningsRepository, StoredMovieRecord}
 import tools.Env
 
 /**
@@ -62,7 +62,8 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       underlying.upsertSlot(filmId, slotKey, showtimes)
     def deleteSlot(filmId: String, slotKey: String): Unit = underlying.deleteSlot(filmId, slotKey)
     def deleteFilm(filmId: String): Unit = underlying.deleteFilm(filmId)
-    override def watch(onChange: String => Unit): Option[AutoCloseable] = underlying.watch(onChange)
+    override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+      underlying.watch(onChange, demand)
     override def close(): Unit = underlying.close()
   }
 
