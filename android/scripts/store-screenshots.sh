@@ -501,7 +501,13 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
 
   step "capturing 4 screens"
     tap "$X_ALL" "$Y_PILLS"                               # "All" dates
-    wait_frame "$((wait + 25))" 250000 || warn "$term list looks empty/blank — re-run"   # films + posters
+    # 250000 only separated "blank" from "drawn", and a grid whose posters are all
+    # still placeholder clapperboards already clears it — that is how a listing
+    # with no artwork at all ended up as screenshot 1. A poster-bearing grid runs
+    # ~2.5MB against ~390KB for the placeholder version, so this threshold waits
+    # for the artwork rather than merely for pixels. Cities with very few films
+    # may never reach it: that warns and shoots anyway, which is the old behaviour.
+    wait_frame "$((wait + 25))" 900000 || warn "$term list looks empty/blank — re-run"   # films + posters
     naps 3
     snap "$stage/1.png"                                   # repertoire
     if [ -n "${CLEAN_FILM:-}" ]; then
