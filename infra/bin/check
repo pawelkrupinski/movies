@@ -136,6 +136,25 @@ else
   failed=1
 fi
 
+step "public proxy behaviour"
+# THE ONE MODULE HERE WHOSE OUTPUT IS A REQUEST-MATCHING DECISION, and `nix eval` cannot ask it
+# anything. The facet throttle sits one character away from the film pages (`/{city}/movies` vs
+# `/{city}/movie/{slug}`) and one user-agent away from Meta's share-preview crawler; getting either
+# wrong de-indexes the content or breaks every link card, and both read as a config that evaluates
+# fine. test_public_proxy.sh renders the real vhost and asks the real Caddy. See it for the four
+# ways this goes quietly wrong.
+if [ -f test/test_public_proxy.sh ]; then
+  if out="$(bash test/test_public_proxy.sh 2>&1)"; then
+    echo "$out"
+  else
+    echo "$out"
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_public_proxy.sh is missing"
+  failed=1
+fi
+
 step "version-dashboard browser tests"
 # THE QUEUE IN bringAllToLatest IS NOT REACHABLE FROM PYTHON. Whether the bulk run really stops
 # taking new machines after a failure, and whether the production database's typed confirmation is

@@ -346,6 +346,14 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
 
    Check `journalctl -u nixos-auto-apply.service` for the classifier's verdict
    before assuming a nix change landed.
+
+   The FACETED-LISTING CRAWLER THROTTLE (`fleet.publicProxy.vhosts.*.crawlerThrottle`)
+   needs nothing here: its path regex is built from the `pathUpstreams` keys, so the
+   line you just added is what extends it to the new country. That is deliberate — a
+   throttle listing its own country codes would leave every new country as an
+   unthrottled hole nobody notices, which is the shape `meta-externalagent` walked into
+   on 2026-09-04. `infra/test/test_public_proxy.sh` asserts every mounted prefix is
+   covered, so a country that slipped through fails the check rather than the logs.
 4. **No DNS record, and no certificate.** A path-mounted country arrives on a
    host that already resolves and already holds a valid certificate, so both of
    the steps that used to gate a launch are simply gone. This is the single

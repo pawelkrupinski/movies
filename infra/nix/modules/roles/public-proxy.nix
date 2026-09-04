@@ -100,6 +100,66 @@ in
             example = { "/uk" = "127.0.0.1:30912"; };
           };
 
+          crawlerThrottle = lib.mkOption {
+            default = null;
+            description = ''
+              Answer 429 to a named crawler on the FACETED LISTING paths, instead of rendering them.
+
+              These paths (`/{city}/movies?cast=…`, and the Polish `/{city}/filmy`) are already
+              `Disallow`ed in the app's robots.txt: they are UI state, not content, and the facet
+              space is combinatorial -- city x every cast member -- so there is no finite set of
+              them to finish crawling. A crawler that honours robots.txt never arrives here and
+              never sees this. One that does not, does.
+
+              WHY 429 AND NOT 404. A 404 makes each request cheap, which is most of the win, but it
+              says nothing about RATE -- the crawler keeps discovering facet links in our own HTML
+              and keeps asking. 429 with `Retry-After` is the signal Meta documents its crawlers as
+              backing off from, so it reduces the arrival rate rather than only the cost of each
+              arrival.
+
+              WHY AT THE PROXY AND NOT IN THE APP. Two reasons, and the second is the one that is
+              easy to miss: the request never reaches the JVM (no read-model query, no multi-MB
+              render), AND it never reaches `WebHttpMetrics`, so it does not add a permanent 4xx
+              floor to the error-share panel -- the exact confusion web-errors.rules exists to
+              explain.
+
+              Matched by USER-AGENT SUBSTRING, so it is deliberately narrow: Meta's share-preview
+              agent is `facebookexternalhit`, a different string on different paths, and stays
+              untouched. So do the film pages and `og-image`, which are the content we want
+              indexed.
+            '';
+            example = { userAgents = [ "meta-externalagent" ]; };
+            type = lib.types.nullOr (lib.types.submodule {
+              options = {
+                userAgents = lib.mkOption {
+                  type = lib.types.listOf lib.types.str;
+                  description = ''
+                    User-agent substrings to throttle. Each becomes one wildcard `header User-Agent`
+                    line in a single matcher, which Caddy ORs together.
+                  '';
+                };
+                listingPaths = lib.mkOption {
+                  type = lib.types.listOf lib.types.str;
+                  default = [ "movies" "filmy" ];
+                  description = ''
+                    The final path segment of a faceted listing, in every language this domain
+                    serves it under. The country prefixes are NOT listed here -- they are read off
+                    `pathUpstreams`, so a new country cannot be onboarded into an unthrottled hole.
+                  '';
+                };
+                retryAfterSeconds = lib.mkOption {
+                  type = lib.types.ints.positive;
+                  default = 3600;
+                  description = ''
+                    The `Retry-After` a throttled crawler is handed. An hour: long enough to matter
+                    against a crawler running for days, short enough that a mistake here expires on
+                    its own rather than needing a deploy to undo.
+                  '';
+                };
+              };
+            });
+          };
+
           redirectTo = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
             default = null;
@@ -152,9 +212,39 @@ in
           fallback = if v.redirectTo != null
             then ''redir https://${v.redirectTo}{uri} permanent''
             else ''reverse_proxy ${v.upstream}'';
+
+          # THE FACETED-LISTING THROTTLE, emitted as the FIRST `handle` so it wins over the
+          # per-country ones. `handle` blocks at one level are mutually exclusive and evaluated in
+          # written order, which is the only reason this reads top-to-bottom while everything else
+          # in a Caddyfile is sorted into Caddy's own directive order.
+          #
+          # The country prefixes come off `pathUpstreams` rather than being spelled again, so the
+          # regex covers exactly the mounts this vhost actually has. `(?:...)` and not `(...)`:
+          # Caddy names its capture groups, and an unnamed capturing group here would be one more
+          # thing that has to stay in step for no benefit. The optional prefix is what makes the
+          # same expression cover a root-mounted deployment (kinowo.net's `/{city}/filmy`) and a
+          # path-mounted one (`showtimes.cc/us/{city}/movies`).
+          throttleBlock = lib.optionalString (v.crawlerThrottle != null) (
+            let
+              t = v.crawlerThrottle;
+              prefixes = lib.concatStringsSep "|" (map (p: lib.removePrefix "/" p) (lib.attrNames v.pathUpstreams));
+              prefixGroup = lib.optionalString (prefixes != "") "(?:/(?:${prefixes}))?";
+              listings = lib.concatStringsSep "|" t.listingPaths;
+              agentLines = lib.concatStringsSep "\n              " (map (a: ''header User-Agent *${a}*'') t.userAgents);
+            in ''
+              @throttledCrawler {
+                ${agentLines}
+                path_regexp facetListing ^${prefixGroup}/[^/]+/(?:${listings})/?$
+              }
+              handle @throttledCrawler {
+                header Retry-After "${toString t.retryAfterSeconds}"
+                respond "Filtered listings are disallowed by robots.txt on this host. The film pages and sitemap are open." 429
+              }
+            '');
         in {
         extraConfig = ''
           ${v.extraConfig}
+          ${throttleBlock}
           ${if v.pathUpstreams == { }
             then fallback
             else ''

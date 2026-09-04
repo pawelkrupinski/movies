@@ -80,13 +80,31 @@
   # EVERY NAME BELOW MUST RESOLVE TO 2.28.47.31 BEFORE A DEPLOY, or Let's Encrypt's HTTP-01
   # challenge fails and Caddy serves a self-signed certificate — which browsers reject outright, so
   # the failure mode is a hard TLS error rather than a degraded page. The A records live at OVH.
-  fleet.publicProxy = {
+  # WHO GETS 429ed ON THE FACETED LISTINGS, shared by both product domains because the policy is
+  # about the crawler rather than the brand.
+  #
+  # `meta-externalagent` is Meta's AI indexing crawler, and it is here on evidence rather than on
+  # principle. Over the retained showtimes.cc access logs it made 404,087 requests, 74.3% of them
+  # to `/{cc}/{city}/movies?cast=…` -- a path robots.txt has disallowed the whole time -- and it
+  # fetched /robots.txt ZERO times in that window. It was 99.4% of all traffic to the domain.
+  #
+  # Not `facebookexternalhit`: that is Meta's SHARE-PREVIEW agent, it does read robots.txt, and in
+  # the same logs it made 131 requests, all to city pages and og-image assets. Throttling it would
+  # break the Facebook/WhatsApp/Messenger link previews the og-image endpoints exist for.
+  fleet.publicProxy = let
+    facetThrottle = {
+      userAgents = [ "meta-externalagent" ];
+    };
+  in {
     enable = true;
     acmeEmail = "pawel@bitcashier.io";
     vhosts = {
       # Poland, on its own domain and its own brand. Mounted at the root, so its URLs are the ones
       # it has always served, byte for byte.
-      "kinowo.net".upstream = "127.0.0.1:30910";
+      "kinowo.net" = {
+        upstream = "127.0.0.1:30910";
+        crawlerThrottle = facetThrottle;
+      };
       "www.kinowo.net".redirectTo = "kinowo.net";
 
       # THE SHOWTIMES COUNTRIES SHARE ONE DOMAIN AND ARE TOLD APART BY A PATH SEGMENT.
@@ -121,6 +139,7 @@
           "/us" = "127.0.0.1:30913";
           "/es" = "127.0.0.1:30914";
         };
+        crawlerThrottle = facetThrottle;
       };
       "www.showtimes.cc".redirectTo = "showtimes.cc";
     };
