@@ -73,6 +73,20 @@ jobs:
               with:
                   xcode-version: latest-stable
 
+            # COMPILING the app is a separate step from RUNNING the UI tests,
+            # and only this one blocks. `swift test` builds the SPM view of the
+            # sources, which excludes every SwiftUI file (`Views/`, ContentView,
+            # KinowoApp — see Package.swift), so nothing else in CI type-checks
+            # them: a `Views/*.swift` that does not compile shipped to main green
+            # on 2026-09-04 and was caught only by a build to a real device.
+            - name: Build the app target
+              run: |
+                  xcodebuild build \
+                      -project ios/Kinowo.xcodeproj \
+                      -scheme Kinowo \
+                      -destination 'generic/platform=iOS Simulator' \
+                      CODE_SIGNING_ALLOWED=NO
+
             # KinowoUITests target + shared scheme are still being wired
             # by a parallel change. Don't block main until that lands.
             - name: Run XCUITest

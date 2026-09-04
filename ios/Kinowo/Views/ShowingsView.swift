@@ -152,7 +152,6 @@ struct ShowingsView: View {
     private static let cardShowingsWidth: CGFloat =
         ShowtimePillMetrics.cardShowingsWidth(screenWidth: UIScreen.main.bounds.width)
 
-    @ViewBuilder
     /// The cinema's name, plus the language version every one of its showtimes
     /// shares — said once here rather than on each pill. See `FormatTokenFilter`.
     @ViewBuilder
