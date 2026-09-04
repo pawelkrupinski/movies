@@ -267,7 +267,7 @@ wait_gate() { # $1 timeout seconds
   local t=0 limit="${1:-150}" xml c
   while [ "$t" -lt "$limit" ]; do
     xml="$(ui_xml)"
-    for c in $COUNTRIES; do
+    for c in $ALL_COUNTRIES; do
       [ -n "$(printf '%s' "$xml" | node_center "$(country_name "$c")")" ] && return 0
     done
     naps 3; t=$((t+3))
@@ -285,7 +285,7 @@ scroll_to_country() { # $1 display name -> "x y"
   # Anchor the swipe on whichever pill IS visible: its Y is the row's Y, so no
   # screen-size-specific coordinate is baked in here.
   xml="$(ui_xml)"
-  for c in $COUNTRIES; do
+  for c in $ALL_COUNTRIES; do
     row_y="$(printf '%s' "$xml" | node_center "$(country_name "$c")" | awk '{print $2}')"
     [ -n "$row_y" ] && break
   done

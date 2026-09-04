@@ -63,7 +63,12 @@ release_lock() { [ -n "$LOCK_DIR" ] && rm -rf "$LOCK_DIR"; LOCK_DIR=""; }
 # ── countries ─────────────────────────────────────────────────────────────────
 # Every country --all-top walks. A country is one deployment + one locale + one
 # UI language, so this list is the single place a new country is added.
-COUNTRIES="${COUNTRIES:-pl uk de us es}"
+# Every country the apps carry. COUNTRIES is what a RUN walks and gets narrowed
+# by --country-top; ALL_COUNTRIES never is, so anything asking "which pills could
+# be on screen" must read this one. Using COUNTRIES there silently degrades to the
+# single target country under --country-top.
+ALL_COUNTRIES="pl uk de us es"
+COUNTRIES="${COUNTRIES:-$ALL_COUNTRIES}"
 locale_country() { case "$1" in en-GB) echo uk;; pl-PL) echo pl;; de-DE) echo de;; en-US) echo us;; es-ES) echo es;; *) echo "";; esac; }
 country_locale() { case "$1" in pl) echo pl-PL;; uk) echo en-GB;; de) echo de-DE;; us) echo en-US;; es) echo es-ES;; *) echo "";; esac; }
 # The UI language a country forces, mirroring `Country.languageCode` in the apps.

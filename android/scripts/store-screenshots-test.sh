@@ -511,15 +511,28 @@ check "it retries past the empty dump" "1" \
 check "it dumped more than once" "1" \
   "$([ "$(grep -c 'uiautomator dump' "$_uicap")" -ge 2 ] && echo 1 || echo 0)"
 
+# `--country-top es` narrows COUNTRIES to "es". The gate check must still accept
+# ANY country's pill — reading COUNTRIES there means waiting for España, which is
+# off-screen, so a perfectly drawn gate times out as "never appeared".
+printf '\033[36m▸\033[0m the gate is recognised under --country-top\n'
+source "$HERE/store-screenshots.sh"
+NOISE="$(mktemp)"
+naps() { :; }
+COUNTRIES="es"
+ui_xml() { printf '<hierarchy><node text="Polska" bounds="[144,204][276,264]"/></hierarchy>'; }
+if wait_gate 6; then _g=0; else _g=1; fi
+check "a Polish pill still proves the gate drew" "0" "$_g"
+
 # The country pill row scrolls, and uiautomator reports only what is on screen.
 # Spain is the FIFTH country, so on a fresh gate it is off-screen and looks
 # missing — the capture used to blame the gate and skip every city.
 printf '\033[36m▸\033[0m the country row is scrolled to find a pill\n'
 _scrollcap="$(mktemp)"
 NOISE="$(mktemp)"
-# cmd_country_top narrows the global COUNTRIES, and an earlier case above ran it
-# — restore the full list so the anchor-pill lookup has something to find.
-COUNTRIES="pl uk de us es"
+# Narrowed the way `--country-top es` leaves it. The anchor lookup must NOT read
+# COUNTRIES: under --country-top that is just "es", so it would hunt the very pill
+# it is trying to scroll into view, find nothing, and return without swiping.
+COUNTRIES="es"
 ui_xml() { printf 'x'; }
 # Spain becomes visible only once a swipe has been recorded — the capture file is
 # the state, so it survives the subshells `$( ui_xml | node_center )` runs in.
