@@ -1,0 +1,121 @@
+# UNIT TESTS FOR THE WEB SERVING ALERTS.
+#
+# The rule file's whole argument is that a 4xx here is not evidence of anything and a 5xx is, so the
+# load-bearing test is the THIRD one: it replays 2026-09-04, when the error-share panel sat at ~25%
+# for an afternoon on nothing but 401s from the poster beacon, and asserts that NOTHING fires. A
+# rule that pages for that is worse than no rule -- it teaches you to ignore the channel.
+rule_files:
+  - ../../nix/files/monitoring/rules/web-errors.rules
+
+evaluation_interval: 1m
+
+tests:
+  # A TIER ACTUALLY FAILING: ~9% of responses are 5xx, at 0.2/s, which is the shape of a pod that
+  # boots and then cannot read.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{country="pl",job="kinowo-web",route="/:city/",method="GET",status="5xx"}'
+        values: '0+12x60'
+      - series: 'kinowo_web_http_requests_total{country="pl",job="kinowo-web",route="/:city/",method="GET",status="2xx"}'
+        values: '0+120x60'
+    alert_rule_test:
+      # `for: 10m` — a rolling deploy's own 5xx window is shorter than this.
+      - eval_time: 5m
+        alertname: WebServerErrorsServed
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: WebServerErrorsServed
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              country: pl
+            exp_annotations:
+              summary: "pl web is serving 9.091% 5xx"
+              description: "The web tier is the only part users see, so this is a user-visible outage rather than a degradation. Check the pod first -- `kubectl -n kinowo logs deploy/web-pl` -- and then whether it is failing to read: a 5xx on the read path is usually Mongo (mongodb.rules) or a heap that no longer leaves room to collect (jvm-heap.rules), and both have their own rules that should be read alongside this one."
+
+  # THE ABSOLUTE FLOOR. Same 33% share, but the tier is serving 1.5 requests a minute and exactly
+  # one of them failed. A share-only rule pages here; this one must not, because at this volume the
+  # share is noise and the next request will move it 30 points either way.
+  - interval: 2m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{country="es",job="kinowo-web",route="/es/:city/",method="GET",status="5xx"}'
+        values: '0+1x60'
+      - series: 'kinowo_web_http_requests_total{country="es",job="kinowo-web",route="/es/:city/",method="GET",status="2xx"}'
+        values: '0+2x60'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: WebServerErrorsServed
+        exp_alerts: []
+
+  # 2026-09-04, REPLAYED. A quarter of every response is a 4xx and it is entirely the poster beacon
+  # being 401ed on a site that is serving perfectly. Nothing here may fire.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{country="us",job="kinowo-web",route="/us/uptime/img-event",method="POST",status="4xx"}'
+        values: '0+30x120'
+      - series: 'kinowo_web_http_requests_total{country="us",job="kinowo-web",route="/us/:city/movies",method="GET",status="2xx"}'
+        values: '0+72x120'
+      - series: 'kinowo_web_http_requests_total{country="us",job="kinowo-web",route="/us/:city/movie/:slug",method="GET",status="2xx"}'
+        values: '0+14x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: WebServerErrorsServed
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: WebAssetsNotFound
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: WebHttpMetricsAbsent
+        exp_alerts: []
+
+  # THE BROKEN DEPLOY: the HTML references an asset fingerprint the pod will not serve, so every
+  # visitor gets an unstyled page and no request "fails" in a way any other rule can see.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{country="uk",job="kinowo-web",route="/uk/assets/:file",method="GET",status="4xx"}'
+        values: '0+3x60'
+      - series: 'kinowo_web_http_requests_total{country="uk",job="kinowo-web",route="/uk/assets/:file",method="GET",status="2xx"}'
+        values: '0+60x60'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: WebAssetsNotFound
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: WebAssetsNotFound
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: uk
+            exp_annotations:
+              summary: "uk web is 404ing its own assets"
+              description: "Visitors are being served HTML that references an asset the tier will not serve, which renders as an unstyled or inert page rather than as an error. The usual cause is a fingerprint the deploy changed on one side only -- compare the asset URLs in the rendered HTML against what the pod has."
+
+  # The ordinary trickle of asset 404s -- a stale bookmark, a crawler holding an old URL -- stays
+  # under the threshold. Measured at <0.001/s across all five countries over 2026-08-30..09-04.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{country="pl",job="kinowo-web",route="/assets/:file",method="GET",status="4xx"}'
+        values: '0+0.03x60'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: WebAssetsNotFound
+        exp_alerts: []
+
+  # THE TRIPWIRE. With the series gone the two rules above are comparisons against nothing, so they
+  # are silent -- and silence is what a healthy site looks like too.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="kinowo-web",instance="kinowo-web-pl"}'
+        values: '1x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: WebHttpMetricsAbsent
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: WebHttpMetricsAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "The web tier's request metric has stopped arriving"
+              description: "`WebServerErrorsServed` and `WebAssetsNotFound` are both silent while this is firing, and their silence means nothing. Either every web pod is gone (k3s.rules, monitoring-self.rules) or `WebHttpMetrics` stopped registering -- check `/metrics` on a web pod for the `kinowo_web_http_requests_total` family before assuming the scrape."

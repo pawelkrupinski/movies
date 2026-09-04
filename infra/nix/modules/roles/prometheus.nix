@@ -181,6 +181,12 @@ let
     # Whether the fleet is still deploying itself. The failure this covers is completely silent:
     # an applier that has stopped leaves every service running and every other alert green.
     "nixos-deploy"
+    # IS THE SITE ANSWERING. Every other file here watches a machine or a process, all of which can
+    # be green while the web tier serves a 500 to every visitor. Added after the "Error share" panel
+    # spent an afternoon at 25% with nothing failing -- the file explains why the 4xx half of that
+    # panel cannot be alerted on, so that nobody adds the obvious rule and gets paged for a working
+    # site.
+    "web-errors"
     # IS THE WEB TIER STILL FAST. Per-ROUTE, because the tier-wide quantile is noisier on 2-3 req/s
     # than the regression it would have to see: on 2026-09-04 one route at a 2s p95 owned ~70% of
     # the tier's request-seconds while error share, heap and restarts all stayed green.

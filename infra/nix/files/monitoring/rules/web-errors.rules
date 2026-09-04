@@ -1,0 +1,112 @@
+---
+# IS THE SITE ANSWERING, OR ONLY RESPONDING.
+#
+# --------------------------------------------------------------------------------------------------
+# WHY THERE WAS NOTHING HERE UNTIL NOW
+# --------------------------------------------------------------------------------------------------
+#
+# Every rule in this directory watches a MACHINE or a PROCESS -- the host's memory, the JVM's heap,
+# k3s's replica count, Flux's reconciliation. All of them can be green while the web tier serves a
+# 500 to every visitor, because none of them reads a response code. `TargetDown` is the closest and
+# it only says the pod answers `/metrics`.
+#
+# `kinowo_web_http_requests_total` (services/metrics/WebHttpMetrics.scala) is the one series that
+# says the site is answering at all, and until this file nothing alerted on it.
+#
+# --------------------------------------------------------------------------------------------------
+# WHY 5xx AND NOT "THE ERROR RATE"
+# --------------------------------------------------------------------------------------------------
+#
+# The obvious rule -- 4xx+5xx as a share of all requests, which is what the "Error share" panel on
+# the application-health dashboard draws -- CANNOT BE ALERTED ON HERE, and the reason is worth
+# writing down because the panel makes it look like it can.
+#
+# `status` is the CLASS, not the code (WebHttpMetrics explains why, and why widening it is the wrong
+# fix), so the 4xx line cannot separate "a route broke" from the several endpoints whose correct
+# answer to an anonymous caller IS a 4xx:
+#
+#   /api/me, /uptime/*, /tasks/*   admin-gated (controllers.AdminAction) -- 401 to everyone not
+#                                  signed in, permanently, by design.
+#   /:city/                        404 for any city slug that does not exist, which is what a
+#                                  slug-scanning crawler generates all night.
+#
+# Measured over 2026-08-30..09-04 with the admin surface and the unmatched-route bucket both
+# excluded, the 4xx share of PL's matched-route traffic still reaches 92% and sits at a p99 of ~0.3
+# -- entirely `/:city/` 404s against a small overnight denominator. There is no threshold that both
+# catches a regression and stays quiet through that.
+#
+# THE EVENT THAT PROMPTED THIS FILE IS THE PROOF. On 2026-09-04 the panel's error share went from
+# ~0.5% to ~25% and held there for hours. All of it was `POST /<cc>/uptime/img-event` -- the poster
+# telemetry beacon in assets/js/shared.js, which every browser posts and `adminAction` 401s -- rising
+# because a JS-executing crawler started walking the US/UK/DE film pages (`/us/:city/movie/:slug`
+# went 10x and `/us/:city/movie/og-image` went from nothing to 0.4/s in the same ten minutes). Not
+# one 5xx was served. A share alert would have paged for a working site.
+#
+# So this file alerts on the two things that are unambiguous, and on its own absence.
+#
+# ⚠️ HISTORY STARTS AT THE 2026-08-29 CUTOVER, and the web tier's own request metric only since the
+# Fly proxy metrics were lost. Do not tune these against anything earlier -- there is nothing there.
+groups:
+  - name: web-errors
+    rules:
+      - alert: WebServerErrorsServed
+        # A SHARE **AND** AN ABSOLUTE FLOOR, because either alone is wrong. The share alone fires
+        # when a tier serving six requests a minute happens to throw one; the absolute rate alone
+        # cannot tell a 1%-of-traffic blip from every request failing.
+        expr: >-
+          (
+            sum by (country) (rate(kinowo_web_http_requests_total{job="kinowo-web",status="5xx"}[10m]))
+              / on (country)
+            sum by (country) (rate(kinowo_web_http_requests_total{job="kinowo-web"}[10m]))
+          ) > 0.02
+          and on (country)
+          sum by (country) (rate(kinowo_web_http_requests_total{job="kinowo-web",status="5xx"}[10m])) > 0.01
+        # TEN MINUTES. The web tier serves a short 5xx window on every rolling deploy (CLAUDE.md
+        # calls that acceptable), and a pod that boots into a crash loop is still red well past
+        # this. Shorter and every deploy pages.
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.country }} web is serving {{ $value | humanizePercentage }} 5xx"
+          description: >-
+            The web tier is the only part users see, so this is a user-visible outage rather than a
+            degradation. Check the pod first -- `kubectl -n kinowo logs deploy/web-{{ $labels.country }}`
+            -- and then whether it is failing to read: a 5xx on the read path is usually Mongo
+            (mongodb.rules) or a heap that no longer leaves room to collect (jvm-heap.rules), and
+            both have their own rules that should be read alongside this one.
+
+      - alert: WebAssetsNotFound
+        # THE ONE 4xx WORTH PAGING ON. `/assets/:file` serves the fingerprinted CSS and JS, so a
+        # 404 here is not a crawler -- it is a page that rendered without its stylesheet or its
+        # script for every visitor who loaded it. Over 2026-08-30..09-04 this rate never exceeded
+        # 0.0006/s across all five countries, so the threshold is ~15x the observed ceiling and
+        # still trips within minutes of a broken deploy.
+        expr: >-
+          sum by (country) (rate(kinowo_web_http_requests_total{job="kinowo-web",route=~".*/assets/:file",status="4xx"}[10m])) > 0.01
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} web is 404ing its own assets"
+          description: >-
+            Visitors are being served HTML that references an asset the tier will not serve, which
+            renders as an unstyled or inert page rather than as an error. The usual cause is a
+            fingerprint the deploy changed on one side only -- compare the asset URLs in the
+            rendered HTML against what the pod has.
+
+      - alert: WebHttpMetricsAbsent
+        # The two rules above are comparisons against a series, so they cannot fire when it stops
+        # being scraped -- they go quiet, which reads exactly like a healthy site. This is the
+        # tripwire for that, the same shape as the *MetricsAbsent rules in the other files here.
+        expr: absent(kinowo_web_http_requests_total)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The web tier's request metric has stopped arriving"
+          description: >-
+            `WebServerErrorsServed` and `WebAssetsNotFound` are both silent while this is firing,
+            and their silence means nothing. Either every web pod is gone (k3s.rules,
+            monitoring-self.rules) or `WebHttpMetrics` stopped registering -- check `/metrics` on a
+            web pod for the `kinowo_web_http_requests_total` family before assuming the scrape.

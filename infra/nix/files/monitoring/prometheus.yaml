@@ -39,6 +39,7 @@ rule_files:
   - "/etc/prometheus/rules/mongodb.rules"
   - "/etc/prometheus/rules/monitoring-self.rules"
   - "/etc/prometheus/rules/nixos-deploy.rules"
+  - "/etc/prometheus/rules/web-errors.rules"
   - "/etc/prometheus/rules/web-latency.rules"
 
 # EVERY JOB THAT IS NOT UNCONDITIONAL LIVES IN scrape.d, AND THIS IS ONE GLOB OVER ALL OF THEM.

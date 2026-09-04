@@ -2662,7 +2662,7 @@
         {
           "type": "timeseries",
           "title": "Error share (4xx / 5xx as a share of all requests)",
-          "description": "Share of web-tier responses that were 4xx or 5xx. Guarded with `or vector(0)` so a healthy site draws a flat zero line rather than rendering \"No data\" — an empty panel here is indistinguishable from a broken one.",
+          "description": "Share of web-tier responses that were 4xx or 5xx. Guarded with `or vector(0)` so a healthy site draws a flat zero line rather than rendering \"No data\" — an empty panel here is indistinguishable from a broken one. ⚠️ READ THE 5xx LINE FOR AN OUTAGE, NOT THE TOTAL. The 4xx line has a permanent healthy floor and cannot be read as an error rate: `status` is the class rather than the code, so it mixes the 401 that `/api/me`, `/uptime` and `/tasks` correctly answer an anonymous caller with the 404 that `/:city/` correctly answers a slug-scanning crawler. On 2026-09-04 this panel sat at 25% for an afternoon on nothing but the poster-telemetry beacon being 401ed, with no request failing. Alerting is in web-errors.rules, which explains why only the 5xx half is alertable.",
           "id": 9004,
           "datasource": {
             "type": "prometheus",
