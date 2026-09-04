@@ -266,13 +266,25 @@ jobs:
                   fi
                   cp "$apk" "$RUNNER_TEMP/kinowo.apk"
                   cp "$aab" "$RUNNER_TEMP/kinowo.aab"
-                  gh release delete android-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
-                  gh release create android-latest \
-                      --repo "$GITHUB_REPOSITORY" \
-                      --target "$GITHUB_SHA" \
-                      --prerelease \
-                      --title "Kinowo Android (latest)" \
-                      --notes "Signed build from the latest \`main\` commit (${GITHUB_SHA:0:7}). \`kinowo.apk\` to sideload on Android (enable installing from unknown sources); \`kinowo.aab\` to upload to the Google Play Console." \
+                  # Upsert rather than delete-then-create. Deleting the release
+                  # (with --cleanup-tag) and immediately recreating it opens a
+                  # window in which the tag does not exist, and GitHub answered
+                  # one of those windows with `HTTP 403: Resource not accessible
+                  # by integration` on 2026-09-04 — a permissions-shaped error
+                  # from a race, since `contents: write` is declared above and
+                  # the same step succeeded on the runs either side of it. An
+                  # upsert never deletes the tag, so there is no window: create
+                  # the release when it is missing, and --clobber the assets.
+                  notes="Signed build from the latest \`main\` commit (${GITHUB_SHA:0:7}). \`kinowo.apk\` to sideload on Android (enable installing from unknown sources); \`kinowo.aab\` to upload to the Google Play Console."
+                  if gh release view android-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                      gh release edit android-latest --repo "$GITHUB_REPOSITORY" \
+                          --target "$GITHUB_SHA" --prerelease --notes "$notes"
+                  else
+                      gh release create android-latest --repo "$GITHUB_REPOSITORY" \
+                          --target "$GITHUB_SHA" --prerelease \
+                          --title "Kinowo Android (latest)" --notes "$notes"
+                  fi
+                  gh release upload android-latest --repo "$GITHUB_REPOSITORY" --clobber \
                       "$RUNNER_TEMP/kinowo.apk" \
                       "$RUNNER_TEMP/kinowo.aab"
 
@@ -292,13 +304,17 @@ jobs:
                       exit 1
                   fi
                   cp "$apk" "$RUNNER_TEMP/kinowo-tune.apk"
-                  gh release delete android-tune-latest --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
-                  gh release create android-tune-latest \
-                      --repo "$GITHUB_REPOSITORY" \
-                      --target "$GITHUB_SHA" \
-                      --prerelease \
-                      --title "Kinowo Android — tweak build (latest)" \
-                      --notes "Signed APK from the latest \`main\` build (${GITHUB_SHA:0:7}) WITH the on-device tweak screen — tap the \"Kinowo Tune\" launcher icon to open it. Sideload \`kinowo-tune.apk\` on Android; enable installing from unknown sources." \
+                  # Upsert, for the same reason as the release above.
+                  notes="Signed APK from the latest \`main\` build (${GITHUB_SHA:0:7}) WITH the on-device tweak screen — tap the \"Kinowo Tune\" launcher icon to open it. Sideload \`kinowo-tune.apk\` on Android; enable installing from unknown sources."
+                  if gh release view android-tune-latest --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+                      gh release edit android-tune-latest --repo "$GITHUB_REPOSITORY" \
+                          --target "$GITHUB_SHA" --prerelease --notes "$notes"
+                  else
+                      gh release create android-tune-latest --repo "$GITHUB_REPOSITORY" \
+                          --target "$GITHUB_SHA" --prerelease \
+                          --title "Kinowo Android — tweak build (latest)" --notes "$notes"
+                  fi
+                  gh release upload android-tune-latest --repo "$GITHUB_REPOSITORY" --clobber \
                       "$RUNNER_TEMP/kinowo-tune.apk"
 
             - name: Upload test report
