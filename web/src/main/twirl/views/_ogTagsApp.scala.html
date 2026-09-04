@@ -1,4 +1,4 @@
-@(pageTitle: String, pageDescription: String, pageUrl: String = "", fbAppId: Option[String] = None, imageUrl: String = models.Country.fromEnv.ogOrigin + "/assets/img/" + models.Country.fromEnv.homeOgImage, canonicalUrl: String = "")
+@(pageTitle: String, pageDescription: String, pageUrl: String = "", fbAppId: Option[String] = None, imageUrl: String = models.Country.fromEnv.ogOrigin + "/assets/img/" + models.Country.fromEnv.homeOgImage, canonicalUrl: String = "", robots: String = "")
 @*
     Open Graph + Twitter Card meta for every non-/movie page (index, kina,
     browse, plan). The /movie template has its own block because there we want
@@ -31,14 +31,35 @@
 
     canonicalUrl emits rel=canonical to consolidate duplicate URLs to one
     indexable address. It defaults to og:url (self-canonical — correct for the
-    landing, browse facets and plan); the city index overrides it to the bare
-    `/{city}/` so the `/{city}/movies` alias and every `?date=…`/`?cinema=…`
-    filter variation fold into one canonical instead of competing as
-    near-duplicates. Appended to the @_favicon() line (not its own line) so it
-    adds no stray whitespace, and omitted entirely when neither URL is known
-    (fixture/snapshot renders without a request) — exactly like og:url.
+    landing and plan); the city index overrides it to the bare `/{city}/` so the
+    `/{city}/movies` alias and every `?date=…`/`?cinema=…` filter variation fold
+    into one canonical instead of competing as near-duplicates, and the browse
+    facets do the same for the same reason. Appended to the @_favicon() line (not
+    its own line) so it adds no stray whitespace, and omitted entirely when
+    neither URL is known (fixture/snapshot renders without a request) — exactly
+    like og:url.
+
+    robots emits <meta name="robots">, appended to the same line as rel=canonical
+    for the same reason that one is: a Twirl `@if` block emits its surrounding
+    NEWLINES even when the condition is false, so the block form shifts
+    expected-*.html for every page that passes no robots value. Caught by
+    PageSnapshotSpec, which is exactly what it is for.
+
+    Empty on everything we want indexed, so
+    the absence of the tag is the default rather than a value that has to be
+    kept right. The browse facets pass "noindex,follow": the facet space is
+    city x every cast member, which is combinatorial rather than large, and
+    `follow` still hands the crawler the film links on the page — those are the
+    content, and they are indexable in their own right.
+
+    ⚠️ THIS TAG IS A SECOND LINE, NOT THE FIRST ONE. robots.txt already
+    Disallows `/{city}/movies` and `/{city}/filmy`, and a crawler that honours
+    that never fetches the page and therefore never reads this. It exists for
+    the ones that do not — `meta-externalagent` made 300,040 requests to those
+    disallowed paths without fetching robots.txt once. Do not "simplify" the two
+    into one: they address different crawlers.
 *@
-@_favicon()@Html(if(canonicalUrl.nonEmpty || pageUrl.nonEmpty) s"""<link rel="canonical" href="${if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}">""" else "")
+@_favicon()@Html(if(canonicalUrl.nonEmpty || pageUrl.nonEmpty) s"""<link rel="canonical" href="${if(canonicalUrl.nonEmpty) canonicalUrl else pageUrl}">""" else "")@Html(if(robots.nonEmpty) s"""<meta name="robots" content="$robots">""" else "")
 <meta property="og:title"       content="@pageTitle">
 <meta property="og:type"        content="website">
 <meta property="og:site_name"   content="@models.Country.fromEnv.brandName">

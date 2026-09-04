@@ -500,6 +500,18 @@ class MovieController( cc: ControllerComponents,
       films, heading, devMode, user, oauthProviders,
       pageUrl = PageMeta.canonicalUrl(request),
       fbAppId = PageMeta.fbAppId,
+      // A FACET IS UI STATE, NOT A PAGE. `?cast=` alone is one URL per cast
+      // member per city, so the set of these is combinatorial rather than
+      // merely large, and every one of them is a near-duplicate of the city
+      // listing built from the same films. og:url keeps the filtered URL (a
+      // shared filtered link should preview its filter), the canonical folds
+      // them back onto the listing, and `noindex,follow` keeps the crawler
+      // walking through to the film pages, which ARE the content.
+      //
+      // robots.txt already disallows this path; this is the second line, for
+      // the crawlers that ignore it — see the note on `_ogTagsApp`.
+      canonicalUrl = PageMeta.origin(request) + CityPath(city) + "/",
+      robots = MovieController.FacetRobots,
     )).withCookies(cityCookie(city)))
   }
 
@@ -958,6 +970,14 @@ class MovieController( cc: ControllerComponents,
 }
 
 object MovieController {
+
+  /** What the faceted browse pages tell a crawler about themselves.
+   *
+   *  `follow` and not `none`: the point is to keep the facet URLs out of an
+   *  index, not to hide the film links they carry. Those links are the reason
+   *  the page is worth crawling at all, and each one lands on a film page that
+   *  IS indexable. */
+  val FacetRobots = "noindex,follow"
 
   /** Cap on the active tasks `/debug/queue` returns per poll — high enough to
    *  cover a backed-up enrichment queue so a pending movie's place is still

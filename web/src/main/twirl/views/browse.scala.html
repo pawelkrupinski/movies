@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "", robots: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -11,6 +11,8 @@
     pageDescription = messages("browse.ogDescription", city.genitivePluralLabel, heading),
     pageUrl         = pageUrl,
     fbAppId         = fbAppId,
+    canonicalUrl    = canonicalUrl,
+    robots          = robots,
   )
   @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
   @_resourceHints()
