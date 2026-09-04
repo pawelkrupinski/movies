@@ -79,6 +79,28 @@ class PrometheusNodePortAgreementSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "the Flux metrics Services" should "admit a scraper from outside the cluster" in {
+    // Publishing the ports is only half of reachability, and the missing half cost
+    // an evening. Flux ships its own NetworkPolicy in gotk-components.yaml whose
+    // `allow-scraping` admits 8080 `from: [{namespaceSelector: {}}]` — which reads
+    // as "anywhere" and means "any pod in any namespace IN THIS CLUSTER".
+    // Prometheus is deliberately NOT in this cluster; it runs on monitoring-1
+    // holding no kubeconfig. So every scrape was denied while the Services, their
+    // endpoints and kube-proxy's NodePort rules were all correct, and the alerts
+    // meant to prove deploys still happen were themselves the thing that was down.
+    //
+    // kube-state-metrics is reachable only because its namespace has NO policy at
+    // all — an absence of rules, which is easy to mistake for a pattern to copy.
+    val manifest = RepoFile.read("infra/kubernetes/flux-metrics/services.yaml")
+    withClue("no NetworkPolicy beside the Services: ")(manifest should include("kind: NetworkPolicy"))
+    withClue("the fleet's private subnet must be admitted, or Prometheus cannot reach them: ") {
+      manifest should include("cidr: 10.20.0.0/24")
+    }
+    withClue("the policy must admit the port the Services actually serve: ") {
+      manifest should include("port: 8080")
+    }
+  }
+
   "the published NodePorts" should "not collide with each other" in {
     // One number reused is the nastiest version of this bug: both Services apply
     // cleanly, one of them silently does not get the port, and its target goes
