@@ -917,8 +917,18 @@ class CaffeineMovieCache(
       // Each candidate film's OWN runtime comes off its `Tmdb` slot, not the merged
       // `runtimeMinutes`: a row that has been absorbing another film's listings reports
       // THEIR minutes through the merge, and that row is precisely what is in question.
-      val byRuntime = RuntimeCorroboration.strictNearest(
-        published, candidates.map(k => k -> rowAt(k).flatMap(_.data.get(models.Tmdb)).flatMap(_.runtimeMinutes)))
+      // …falling back to the IMDb slot when TMDB carries none. TMDB routinely has
+      // no runtime for a film it has not released yet, and `strictNearest` only
+      // compares candidates that carry one — so the OTHER film became the sole
+      // entrant and won by walkover, however far off the published minutes it was.
+      // Prod: the 2026 "Lalka" has no TMDB runtime, so Has's 1968 row (152) took
+      // every venue publishing the new film's 162. IMDb has that 162. The IMDb slot
+      // is as film-specific and as free of cinema-merge contamination as the TMDB
+      // one, which is the property this needs.
+      def ownRuntime(k: CacheKey): Option[Int] =
+        rowAt(k).flatMap(r => r.data.get(models.Tmdb).flatMap(_.runtimeMinutes)
+          .orElse(r.data.get(models.Imdb).flatMap(_.runtimeMinutes)))
+      val byRuntime = RuntimeCorroboration.strictNearest(published, candidates.map(k => k -> ownRuntime(k)))
       val byIncumbency = candidates.filter(venueSlot(_).isDefined)
       val byVenueCount = candidates.groupBy(k => rowAt(k).map(_.cinemaShowings.size).getOrElse(0))
         .maxByOption(_._1).map(_._2).getOrElse(Nil)
@@ -1407,6 +1417,27 @@ class CaffeineMovieCache(
       val keys = corpusIndex.keysForCinemaSlot(cinema, norm)
       if (keys.isEmpty) None else Some(keys.minBy(canonicalRank))
     }
+    /** The release year THIS venue already records for this title, wherever its
+     *  slot currently sits. A deferred-detail client ships its listing with no
+     *  year at all — `IluzjonClient`, `NoweHoryzontyClient`, `KinoPodBaranamiClient`
+     *  and `PionierClient` all read `releaseYear` off the per-film DETAIL page — so
+     *  the listing tick that decides placement carries none, and the year lands on
+     *  the slot a beat later, after the key is settled. Every subsequent tick then
+     *  re-derives the same yearless placement, which is why such a split never
+     *  heals on its own: prod's `lalka|1968` held Kino Pod Baranami, Iluzjon and
+     *  Nowe Horyzonty, all three of them publishing 2026 on their own slots.
+     *
+     *  `chooseConcluded` already makes exactly this fallback for RUNTIME ("Multikino
+     *  sends 0 and its detail page fills the runtime in a beat later — so fall back
+     *  to what the venue's own slot already records"); the year had no equivalent.
+     *  Ordered by `canonicalRank` so the answer can't depend on iteration order. */
+    def venueSlotYear(norm: String): Option[Int] =
+      corpusIndex.keysForCinemaSlot(cinema, norm).toSeq.sortBy(canonicalRank).iterator
+        .flatMap(k => Option(positive.getIfPresent(k)).iterator.flatMap(_.cinemaShowings.collectFirst {
+          case (cin, slot) if cin == cinema && slot.title.exists(t => normalizer.sanitize(t) == norm) => slot
+        }))
+        .flatMap(_.releaseYear)
+        .nextOption()
     /** Drop `slotKeys` from the row at `key`, retaining each dropped slot's
      *  synopsis (longest-seen, keyed by its source) so the displayed blurb stays
      *  sticky once that slot is gone — see `MovieRecord.retainedSynopses`. Under
@@ -1445,8 +1476,11 @@ class CaffeineMovieCache(
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).flatMap { cm =>
       val displayTitle = cleaned(cm)
-      val primary      = keyOf(displayTitle, cm.movie.releaseYear)
       val norm         = normalizer.sanitize(displayTitle)
+      // The year that decides placement: this listing's, else the one this venue's
+      // own slot already records (see `venueSlotYear`). Without the fallback a
+      // deferred-detail venue is placed as yearless on every tick, for ever.
+      val primary      = keyOf(displayTitle, cm.movie.releaseYear.orElse(venueSlotYear(norm)))
       // A newcomer: `staging` is wired and this film's sanitize group isn't in
       // `movies` yet — AND it isn't a known film listed under another language (an
       // alias of a concluded row). (Same-tick spelling variants already collapsed

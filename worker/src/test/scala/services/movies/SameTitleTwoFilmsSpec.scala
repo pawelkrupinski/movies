@@ -186,6 +186,90 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // ── Lalka, prod 2026-09-04: the new film living on the old film's row ───────
+  //
+  // `lalka|1968` (Wojciech Has, TMDB 152 min) held 121 slots, all but ONE of them
+  // the 2026 Maciej Kawalski film — Multikino's 32 slots carrying its synopsis,
+  // Kino Pod Baranami / Iluzjon / Nowe Horyzonty publishing year 2026 and 162
+  // minutes. `/poznan/movie/lalka-1968` served the new film under the old one's
+  // year and ratings.
+  //
+  // What kept it there is that TMDB publishes NO runtime for the unreleased 2026
+  // film. `strictNearest` only compares candidates that carry a runtime of their
+  // own, so the 1968 row was the sole entrant and won by walkover — 10 minutes
+  // away from the venue's published 162, which the 2026 film matches exactly.
+  // IMDb HAS that runtime (162); reading only the Tmdb slot threw it away.
+  private val Lalka    = "Lalka"
+  private val HasFilm  = 81315    // Wojciech Has, 1968 — TMDB runtime 152
+  private val NewLalka = 1321666  // Maciej Kawalski, 2026 — TMDB runtime ABSENT, IMDb 162
+
+  /** A concluded row whose own runtime is known to some resolvers but not others —
+   *  the shape TMDB leaves behind for a film it has not dated yet. */
+  private def resolvedRuntimes(tmdbId: Int, year: Int, tmdbRuntime: Option[Int], imdbRuntime: Option[Int]): MovieRecord =
+    MovieRecord(
+      tmdbId = Some(tmdbId),
+      data   = Map[Source, SourceData](
+        models.Tmdb -> SourceData(title = Some(Lalka), releaseYear = Some(year), runtimeMinutes = tmdbRuntime),
+        models.Imdb -> SourceData(title = Some(Lalka), releaseYear = Some(year), runtimeMinutes = imdbRuntime)))
+
+  private def lalkaCinemas(c: MovieCache, year: Int): Set[Cinema] =
+    c.get(c.keyOf(Lalka, Some(year))).map(_.cinemaData.keySet).getOrElse(Set.empty)
+
+  "a candidate film TMDB gives no runtime" should "not lose the runtime comparison by walkover" in {
+    val c = cache()
+    c.put(c.keyOf(Lalka, Some(1968)), resolvedRuntimes(HasFilm, 1968, tmdbRuntime = Some(152), imdbRuntime = Some(153)))
+    c.put(c.keyOf(Lalka, Some(2026)), resolvedRuntimes(NewLalka, 2026, tmdbRuntime = None, imdbRuntime = Some(162)))
+
+    // Kino Pod Baranami lists "Lalka" at 162 minutes — the new film exactly, and
+    // ten minutes off Has's. Its listing ships no year (the year arrives later,
+    // on the deferred detail pass).
+    c.recordCinemaScrape(Multikino, Seq(
+      CinemaMovie(
+        movie     = Movie(title = Lalka, releaseYear = None, runtimeMinutes = Some(162)),
+        cinema    = Multikino,
+        posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+        showtimes = Seq(Showtime(When, bookingUrl = None)))))
+
+    lalkaCinemas(c, 2026) should contain(Multikino)
+    withClue("the venue's 162 minutes match the 2026 film exactly: ") {
+      lalkaCinemas(c, 1968) should not contain Multikino
+    }
+  }
+
+  // The second, independent reason those venues stayed put: their year never got a
+  // vote. Placement narrows candidates by the LISTING's year, and every one of
+  // these venues is a deferred-detail client (`IluzjonClient`, `NoweHoryzontyClient`,
+  // `KinoPodBaranamiClient`, `PionierClient` all read `releaseYear` off the detail
+  // page), so the listing tick carries none. The 2026 we already hold on that
+  // venue's own slot is ignored — even though the identical fallback exists one
+  // line away for runtime ("Multikino sends 0 and its detail page fills the runtime
+  // in a beat later"). So every tick re-derives the same yearless placement and the
+  // split never heals.
+  "a yearless listing from a venue whose own slot records the year" should
+    "be placed as though the listing carried it" in {
+    val c = cache()
+    c.put(c.keyOf(Lalka, Some(1968)), resolvedRuntimes(HasFilm, 1968, tmdbRuntime = Some(152), imdbRuntime = Some(153)))
+    c.put(c.keyOf(Lalka, Some(2026)), resolvedRuntimes(NewLalka, 2026, tmdbRuntime = None, imdbRuntime = None))
+    // The venue sits on the 1968 row, but its own slot already records 2026 —
+    // written by the detail pass after the placement was decided.
+    c.putIfPresent(c.keyOf(Lalka, Some(1968)), r => r.copy(data = r.data + ((Multikino: Source) ->
+      SourceData(title = Some(Lalka), releaseYear = Some(2026),
+        showtimes = Seq(Showtime(When, bookingUrl = None))))))
+
+    // Neither the listing nor either film offers a runtime to disambiguate with.
+    c.recordCinemaScrape(Multikino, Seq(
+      CinemaMovie(
+        movie     = Movie(title = Lalka, releaseYear = None, runtimeMinutes = None),
+        cinema    = Multikino,
+        posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil,
+        showtimes = Seq(Showtime(When, bookingUrl = None)))))
+
+    lalkaCinemas(c, 2026) should contain(Multikino)
+    withClue("the year on this venue's own slot must route it: ") {
+      lalkaCinemas(c, 1968) should not contain Multikino
+    }
+  }
+
   // Convergence: whatever order the venues arrive in, and however many settles
   // run, the film ends up on ONE row with ONE card. This is the property the
   // duplicate broke — the corpus never reached a fixpoint, it just kept both.
