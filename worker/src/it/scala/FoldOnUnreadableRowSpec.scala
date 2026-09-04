@@ -53,13 +53,35 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
    *  two read guards: `stitchedCinemaTitles` reads once per group row INSIDE the transaction,
    *  `completeSideCollections` reads again per upsert AFTER the commit. Counts `upsert` so the
    *  assertion can be on the write that must not happen, rather than on a downstream shape
-   *  that a no-op would satisfy anyway. */
-  private class FailAfterPlanningRepository extends UnreadableByIdMovieRepository {
+   *  that a no-op would satisfy anyway.
+   *
+   *  ⚠️ THE BUDGET IS PER FOLD AND THE PLANNING READ IS PER ATTEMPT, so this double only says
+   *  what it means while the fold makes exactly ONE attempt — which is why its spec pins
+   *  `maxRetries = 1`. Left at production's 3, a transient transaction error spends the good
+   *  read on attempt 1 and the RETRY's planning read gets `(None, false)`, so the fold dies on
+   *  the planning guard and the spec fails claiming the film was unreadable. That is not
+   *  hypothetical: it is what this spec did on CI on 2026-09-04, once, with the message
+   *  "Refusing to re-key the film" — the guard the OTHER test in this file is about.
+   *
+   *  `transientOnFirstAttempt` injects that retry deliberately, for the spec below that pins
+   *  the interaction: it lets attempt 1's planning read SUCCEED — spending the budget, exactly
+   *  as the real thing does — and then raises the transient error, which is the order a write
+   *  conflict actually arrives in. */
+  private class FailAfterPlanningRepository(transientOnFirstAttempt: Boolean = false)
+      extends UnreadableByIdMovieRepository {
     failing = false
     val completionWrites = new java.util.concurrent.atomic.AtomicInteger(0)
-    private val reads    = new java.util.concurrent.atomic.AtomicInteger(0)
-    override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) =
-      if (reads.incrementAndGet() > 1) (None, false) else super.findByIdChecked(id)
+    val reads            = new java.util.concurrent.atomic.AtomicInteger(0)
+    override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = {
+      val n   = reads.incrementAndGet()
+      val out = if (n > 1) (None, false) else super.findByIdChecked(id)
+      if (n == 1 && transientOnFirstAttempt) {
+        val e = new com.mongodb.MongoException("simulated write conflict")
+        e.addLabel(com.mongodb.MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL)
+        throw e
+      }
+      out
+    }
     override def upsert(t: String, y: Option[Int], e: models.MovieRecord): Unit = {
       completionWrites.incrementAndGet()
       super.upsert(t, y, e)
@@ -72,7 +94,10 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
       val stagingId  = fold.seedStagingRow(Multikino.displayName, title, Some(2026), tmdbId)
       val repository = new FailAfterPlanningRepository
 
-      fold.folder(repository).foldGroup(title)
+      // ONE ATTEMPT. `repository`'s good read is a per-FOLD budget and the fold's planning
+      // read is per ATTEMPT, so a retry would spend it in planning and this spec would fail
+      // as though the film were unreadable. See the double's own note.
+      fold.folder(repository, maxRetries = 1).foldGroup(title)
 
       withClue("the fold did not consume its staging row, so it never reached the completion " +
                "and this asserts nothing: ")(
@@ -82,6 +107,30 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
       withClue("the completion wrote the film after a FAILED read-back — that write names no " +
                "cinemas, and `replaceFilm` deletes every slot and screening it does not name: ")(
         writes shouldBe 0)
+      withClue("expected exactly two reads — one planning, one completion. More means the fold " +
+               "retried, spent the good read on the retry's PLANNING, and this asserted nothing: ")(
+        repository.reads.get() shouldBe 2)
+    }
+  }
+
+  it should "report a retried transaction as the transient error it was, not as an unreadable film" in {
+    // THE FLAKE THIS FILE HAD, MADE DETERMINISTIC. A transient transaction error is normal on a
+    // busy replica set — the it-suites share one Mongo and run in parallel — and the fold is
+    // built to retry it. What must never happen is the retry being REPORTED as the storage
+    // split failing to read a film back: that message names a data-loss guard, it is what the
+    // other test in this file is about, and reading it on CI sends you looking for a corruption
+    // that is not there. Whatever comes out of a fold that could not commit, it is the Mongo
+    // error, not `IllegalStateException("Refusing to re-key the film")`.
+    FoldFixture.withFold(sanitize) { fold =>
+      fold.seedMigratedFilm(title, Some(2026), tmdbId)
+      fold.seedStagingRow(Multikino.displayName, title, Some(2026), tmdbId)
+      val repository = new FailAfterPlanningRepository(transientOnFirstAttempt = true)
+
+      val thrown = intercept[Exception](fold.folder(repository, maxRetries = 1).foldGroup(title))
+      withClue(s"the fold blamed the film's cinemas for what was a write conflict: ${thrown.getMessage}\n") {
+        thrown shouldBe a[com.mongodb.MongoException]
+        thrown.getMessage should not include "Refusing to re-key the film"
+      }
     }
   }
 

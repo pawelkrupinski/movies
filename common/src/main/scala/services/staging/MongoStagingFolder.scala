@@ -38,12 +38,19 @@ class MongoStagingFolder(
   // REQUIRED, not an Option: a folder that silently skips the completion writes
   // produces films with no showtimes, which is the defect this parameter exists to
   // close, and a default would let a new call site re-open it by omission.
-  movieRepository: services.movies.MovieRepository
+  movieRepository: services.movies.MovieRepository,
+
+  /** How many ATTEMPTS a fold gets before it abandons — the retry budget for Mongo's
+   *  transient transaction errors, nothing more. A seam because a spec that injects a
+   *  failure through `movieRepository` has to know whether the fold's planning phase runs
+   *  once or several times: the planning read is per ATTEMPT, so a double whose budget is
+   *  per FOLD spends it on the retry and then fails the read the spec meant to leave
+   *  alone. See `FoldOnUnreadableRowSpec`. Production keeps 3. */
+  maxRetries: Int = 3
 ) extends StagingFolder with Logging {
 
 
   private val opTimeout  = 10.seconds
-  private val maxRetries = 3
 
   private def collection(name: String): Option[MongoCollection[StoredMovieDto]] =
     connection.database.map(

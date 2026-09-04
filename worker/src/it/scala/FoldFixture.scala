@@ -61,8 +61,9 @@ object FoldFixture {
 
     /** The folder as production wires it, or over a repository a spec supplies to inject a
      *  failure (see `FoldOnUnreadableRowSpec`). */
-    def folder(repository: MovieRepository = splitAwareRepository): MongoStagingFolder =
-      new MongoStagingFolder(connection, normalizer = titleNormalizer, movieRepository = repository)
+    def folder(repository: MovieRepository = splitAwareRepository, maxRetries: Int = 3): MongoStagingFolder =
+      new MongoStagingFolder(connection, normalizer = titleNormalizer, movieRepository = repository,
+        maxRetries = maxRetries)
 
     /** A MIGRATED film: a raw `movies` document carrying NO `sourceData`, which is the shape
      *  prod's corpus is converging to and the one that makes the fold blind to the film's
