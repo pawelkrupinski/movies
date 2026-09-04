@@ -358,7 +358,7 @@
     {
       "type": "timeseries",
       "title": "Share of requests slower than 1s",
-      "description": "The tail as a proportion, which is what a user notices. clamp_min on the denominator keeps this 0 rather than NaN when there is no traffic at all. \u00b7 THE BUCKET IS le=\"1.0\", NOT le=\"1\". The Java client writes bucket boundaries with a decimal point, so `le=\"1\"` matches NOTHING and the panel renders empty while the histogram is perfectly healthy -- a silent miss, because a label selector that matches no series is not an error. Check the real values with a /api/v1/series query before hand-writing an `le`.",
+      "description": "The tail as a proportion, which is what a user notices. A window with no traffic at all is a GAP, not 0% \u2014 dividing by a clamped-to-epsilon denominator used to draw idle minutes as 100% slow and drag the legend mean down with them. \u00b7 THE BUCKET IS le=\"1.0\", NOT le=\"1\". The Java client writes bucket boundaries with a decimal point, so `le=\"1\"` matches NOTHING and the panel renders empty while the histogram is perfectly healthy -- a silent miss, because a label selector that matches no series is not an error. Check the real values with a /api/v1/series query before hand-writing an `le`.",
       "id": 7,
       "datasource": {
         "type": "prometheus",
@@ -402,7 +402,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "1 - (sum(rate(kinowo_web_http_request_duration_seconds_bucket{le=\"1.0\"}[$__rate_interval])) / clamp_min(sum(rate(kinowo_web_http_request_duration_seconds_count[$__rate_interval])), 1e-9))",
+          "expr": "1 - (sum(rate(kinowo_web_http_request_duration_seconds_bucket{le=\"1.0\"}[$__rate_interval])) / (sum(rate(kinowo_web_http_request_duration_seconds_count[$__rate_interval])) > 0))",
           "legendFormat": "slower than 1s",
           "datasource": {
             "type": "prometheus",
@@ -543,7 +543,7 @@
     {
       "type": "timeseries",
       "title": "Outbound success rate",
-      "description": "Success as a share of all outbound fetches, per country. clamp_min keeps a quiet worker at 0 rather than NaN. A sustained dip with http_429 rising on the panel to the left means the pacing is too aggressive for a site, not that the site is broken.",
+      "description": "Success as a share of all outbound fetches, per country. A window in which the worker made no request at all is a GAP, not 0% \u2014 the denominator is filtered with `> 0` so idle minutes are absent rather than fabricated. They used to be drawn as 0% success, which is what made a low-volume country like uk or us read as a ~45% mean while it was really succeeding on ~93% of the requests it actually made. A sustained dip with http_429 rising on the panel to the left means the pacing is too aggressive for a site, not that the site is broken.",
       "id": 11,
       "datasource": {
         "type": "prometheus",
@@ -588,7 +588,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (country) (rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[$__rate_interval])) / clamp_min(sum by (country) (rate(kinowo_worker_http_total{country=~\"$country\"}[$__rate_interval])), 1e-9)",
+          "expr": "sum by (country) (rate(kinowo_worker_http_total{country=~\"$country\",outcome=\"success\"}[$__rate_interval])) / (sum by (country) (rate(kinowo_worker_http_total{country=~\"$country\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{country}}",
           "datasource": {
             "type": "prometheus",

@@ -480,7 +480,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "1000*sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[$__rate_interval]))/ clamp_min(sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[$__rate_interval])), 1e-9)",
+          "expr": "1000*sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[$__rate_interval]))/ (sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[$__rate_interval])) > 0)",
           "legendFormat": "avg project ms {{country}}",
           "datasource": {
             "type": "prometheus",
@@ -520,7 +520,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])) / clamp_min(sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[$__rate_interval])), 1e-9)",
+          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])) / (sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{country}} {{source}}",
           "datasource": {
             "type": "prometheus",
@@ -599,7 +599,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[$__rate_interval])) / clamp_min(sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])), 1e-9)",
+          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[$__rate_interval])) / (sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])) > 0)",
           "legendFormat": "{{country}} {{source}}",
           "datasource": {
             "type": "prometheus",

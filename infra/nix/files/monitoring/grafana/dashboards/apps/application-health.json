@@ -2710,7 +2710,7 @@
                 "type": "prometheus",
                 "uid": "local-prometheus"
               },
-              "expr": "(sum(rate(kinowo_web_http_requests_total{status=\"5xx\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(kinowo_web_http_requests_total[$__rate_interval])), 0.001)",
+              "expr": "(sum(rate(kinowo_web_http_requests_total{status=\"5xx\"}[$__rate_interval])) or vector(0)) / (sum(rate(kinowo_web_http_requests_total[$__rate_interval])) > 0)",
               "legendFormat": "5xx share"
             },
             {
@@ -2719,7 +2719,7 @@
                 "type": "prometheus",
                 "uid": "local-prometheus"
               },
-              "expr": "(sum(rate(kinowo_web_http_requests_total{status=\"4xx\"}[$__rate_interval])) or vector(0)) / clamp_min(sum(rate(kinowo_web_http_requests_total[$__rate_interval])), 0.001)",
+              "expr": "(sum(rate(kinowo_web_http_requests_total{status=\"4xx\"}[$__rate_interval])) or vector(0)) / (sum(rate(kinowo_web_http_requests_total[$__rate_interval])) > 0)",
               "legendFormat": "4xx share"
             }
           ]
@@ -3191,7 +3191,7 @@
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (op_type) (rate(mongodb_ss_opLatencies_latency{host=\"mongo-1\",op_type=~\"reads|writes|commands\"}[$__rate_interval])) / clamp_min(sum by (op_type) (rate(mongodb_ss_opLatencies_ops{host=\"mongo-1\",op_type=~\"reads|writes|commands\"}[$__rate_interval])), 0.001) / 1000",
+              "expr": "sum by (op_type) (rate(mongodb_ss_opLatencies_latency{host=\"mongo-1\",op_type=~\"reads|writes|commands\"}[$__rate_interval])) / (sum by (op_type) (rate(mongodb_ss_opLatencies_ops{host=\"mongo-1\",op_type=~\"reads|writes|commands\"}[$__rate_interval])) > 0) / 1000",
               "legendFormat": "{{op_type}}",
               "datasource": {
                 "type": "prometheus",
