@@ -412,22 +412,19 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * The matrix comes from the leg's INPUTS, never from a job's outputs.
+   * The matrix carries the PHASE and nothing else.
    *
-   * GitHub renders a job's `name:` from the run graph, which is built before any job has
-   * run — so a matrix read from `needs.<job>.outputs` is not known when the name is
-   * rendered, and the expression is printed rather than evaluated. The first cut of this
-   * split had the sample plan the rows and publish them as an output; every warm country's
-   * full leg then showed up as `poland / matrix.name`, the literal text, in the run graph
-   * and in its check-run. Nothing failed — the rows were right and the suites ran — which
-   * is exactly why it needs a rule.
+   * The first cut had the sample plan whole rows — alias, both budgets and a publish
+   * flag — and publish them as a JSON output the full run expanded. It worked, and it
+   * moved four numbers out of the `workflow_call` inputs, where every other budget in
+   * this file is declared with a default and a description and is read by the rules
+   * above. A phase-only matrix keeps them there: the row picks its alias and its
+   * ceilings off the same inputs the caller already passes.
    */
-  it should "expand its rows from the leg's inputs, so the job names resolve" in {
+  it should "carry only the phase in its matrix, and pick the rest off the leg's inputs" in {
     val block = RepoFile.block(leg, "convergence")
     block should include("name: ${{ matrix.phase }}")
-    withClue("a `needs`-derived matrix renders the name expression unevaluated: ") {
-      block should not include "needs.sample.outputs"
-    }
+    block should not include "needs.sample.outputs"
   }
 
   /** Both rows carry their OWN budgets — the caller's `orderJob`/`orderSuite` — and a

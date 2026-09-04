@@ -243,15 +243,15 @@ jobs:
     # entries that meant nothing, on the page where the ones that do are read. A matrix a
     # country expands to one row leaves nothing behind at all.
     #
-    # The phase is the ONLY thing the matrix carries, and everything else is picked off
-    # the caller's inputs by it. Two reasons, and the second is not cosmetic:
+    # The phase is the ONLY thing the matrix carries, and the row's alias and budgets are
+    # picked off the caller's inputs by it — so they stay declared where every other
+    # budget in this file is declared, as named inputs with defaults and descriptions,
+    # rather than as fields of a JSON blob a job built at runtime.
     #
-    #   - the row's own budgets and alias stay declared where every other budget is, as
-    #     named inputs rather than fields of a JSON blob;
-    #   - a matrix built from `inputs` is known when the run's graph is built, and one
-    #     built from a `needs` output is not. GitHub renders `name:` from the graph, so
-    #     the first spells `poland / convergence` and the second spelled the four warm
-    #     countries `poland / matrix.name` — the literal expression, unevaluated.
+    # (A job's `name:` renders as the literal `${{ matrix.phase }}` in the run graph
+    # until the job actually STARTS. A convergence row cancelled at creation — which is
+    # what `main.yml`'s `free-runners` does to this whole workflow on every push — never
+    # gets that far, and reads as a broken name when nothing is broken.)
     #
     # `fail-fast: false` because the rows are independent claims about the same country —
     # a divergent replay must not cancel the boot that would have said where, and vice
