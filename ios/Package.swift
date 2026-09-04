@@ -14,6 +14,9 @@ import PackageDescription
 //   swift-corelibs-foundation. The Xcode app still compiles those
 //   files for the real device build — they live in `Kinowo/` and
 //   `xcodebuild` picks them up through the `.pbxproj`.
+//   `Location/` is IN the target but wrapped in `#if canImport(CoreLocation)`,
+//   so it compiles to nothing on Linux and its resolver's ordering and
+//   deadlines are unit-tested on the macOS leg.
 // - `KinowoAuth` — Combine-dependent auth/sync layer (macOS/iOS only).
 //   Compiled as a separate module so StateSyncService can be tested via
 //   `swift test` on macOS without pulling SwiftUI into KinowoCore.
@@ -93,9 +96,6 @@ let package = Package(
                 "KinowoApp.swift",
                 "DeepLinkCoordinator.swift",
                 "Auth",
-                // CoreLocation — not on Linux. The pure nearest-city pick
-                // lives in `City.swift` (KinowoCore) and is tested there.
-                "Location",
                 // Combine (`ObservableObject` / `@Published`) — not on
                 // Linux. Logic in these files is a thin URLSession +
                 // parser-delegation shim; the parser layer below is
