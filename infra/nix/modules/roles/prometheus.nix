@@ -135,6 +135,29 @@ let
     };
   };
 
+  # FLUX, WHICH IS NOW THE DEPLOY PATH AND THEREFORE HAS TO BE WATCHED LIKE ONE.
+  #
+  # Four controllers have to agree for a commit to reach production, and any of them can stop
+  # WITHOUT ANYTHING GOING RED -- a custom resource turning `Ready=False` is not an event anybody
+  # sees. That is survivable while `kubectl set image` is the real deploy and Flux only reconciles
+  # config; it stops being survivable the moment Flux owns the rollout, which is why this job
+  # landed before that switch rather than after it.
+  #
+  # A `controller` LABEL, UNLIKE kube-state-metrics ABOVE. The distinction is whether the label is
+  # true of the DATA or only of the connection: kube-state-metrics describes the whole cluster from
+  # whichever node answers, so a per-target label there would lie. These series are each
+  # controller's own reconciliation counters, so naming the controller is the one label that makes
+  # an alert able to say WHICH half of the deploy path stopped.
+  fluxYaml = builtins.toJSON {
+    scrape_configs = lib.optional (cfg.fluxTargets != [ ]) {
+      job_name = "flux";
+      static_configs = map (t: {
+        targets = [ t.address ];
+        labels = { inherit (t) controller; };
+      }) cfg.fluxTargets;
+    };
+  };
+
   # A RULE FILE HAS TO BE IN TWO PLACES: this list, which INSTALLS it into /etc, and the
   # `rule_files` list in files/monitoring/prometheus.yaml, which LOADS it. Present in one and
   # absent from the other, it is either a file nothing reads (silent -- the alerts simply never
@@ -154,6 +177,11 @@ let
     # stays clean while the roster goes dark.
     "cinema-scrape"
     "filesystem-capacity"
+    # IS THE DEPLOY PATH STILL RUNNING. Flux owns the rollout now, and its failure mode is not an
+    # outage -- it is the cluster serving the last image it received while every CI run stays
+    # green. Added as a CONDITION of retiring `kubectl set image`, not as a follow-up to it:
+    # trading a red CI job for an unwatched NotReady condition would have been a downgrade.
+    "flux"
     # THE HOSTS THEMSELVES -- memory, OOM, CPU, failed units, read-only filesystems. NEW at the
     # post-migration audit: on Fly the host was somebody else's problem, and nothing had replaced
     # `fly_instance_*` with a view of these three machines.
@@ -433,6 +461,34 @@ in
         that; a disagreement is a target that sits down.
       '';
     };
+
+    fluxTargets = lib.mkOption {
+      type = lib.types.listOf (lib.types.submodule {
+        options = {
+          address = lib.mkOption { type = lib.types.str; description = "`address:port` of one Flux controller's metrics NodePort."; };
+          controller = lib.mkOption { type = lib.types.str; description = "The `controller` label -- which of the four this is."; };
+        };
+      });
+      default = [
+        { address = "10.20.0.12:30081"; controller = "source-controller"; }
+        { address = "10.20.0.12:30082"; controller = "kustomize-controller"; }
+        { address = "10.20.0.12:30083"; controller = "image-reflector-controller"; }
+        { address = "10.20.0.12:30084"; controller = "image-automation-controller"; }
+      ];
+      description = ''
+        The Flux controllers' metrics endpoints, reached through NodePorts on the private subnet.
+
+        WHY ALL FOUR AND NOT JUST THE IMAGE ONES. A deploy needs every one of them:
+        source-controller fetches the commit, image-reflector-controller scans the registry,
+        image-automation-controller commits the winning tag, kustomize-controller applies it.
+        Watching only the two with "image" in the name would leave the halves that fetch and apply
+        unwatched, which is the "rule that looks like coverage" failure k3s.rules warns about.
+
+        THE PORTS ARE FIXED AND MUST AGREE WITH infra/kubernetes/flux-metrics/services.yaml, for
+        the same reason kube-state-metrics' 30080 is fixed. A disagreement is a target that sits
+        down and reads as Flux being broken.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -502,6 +558,7 @@ in
       "prometheus/scrape.d/node-targets.yaml".text = nodeTargetsYaml;
       "prometheus/scrape.d/mongodb-targets.yaml".text = mongodbTargetsYaml;
       "prometheus/scrape.d/kube-state-metrics-targets.yaml".text = kubeStateMetricsYaml;
+      "prometheus/scrape.d/flux-targets.yaml".text = fluxYaml;
 
       # THE APPLICATION'S OWN METRICS, always installed -- unlike scrape-fly.yaml below, these need
       # no credential anyone can revoke. The worker is reached by NodePort over the private subnet;

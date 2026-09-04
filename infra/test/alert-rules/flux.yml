@@ -1,0 +1,161 @@
+# UNIT TESTS FOR THE FLUX DEPLOY-PATH ALERTS.
+#
+# `promtool check rules` proves the file parses. What it cannot say is whether these expressions
+# mean what their prose claims, and this rule file has one way to be wrong that matters more than
+# all the others:
+#
+#   ⚠️ `gotk_reconcile_condition` IS EMITTED FOR EVERY STATUS VALUE. Flux publishes one series per
+#      (kind, name, type, status) combination and moves the VALUE between 0 and 1 -- so a perfectly
+#      healthy object still produces a `status="False"` series, sitting at 0. An expression that
+#      selects those labels without `== 1` fires permanently, on everything, from the moment Flux
+#      starts. That is not hypothetical: the same shape once paged continuously on a healthy Mongo
+#      replica set. The FIRST test below is therefore the load-bearing one -- it asserts silence
+#      while every series exists.
+#
+# The rest cover the three ways the deploy path stops without an outage: a policy that matches
+# nothing, an automation somebody suspended and forgot, and a controller that is simply gone.
+rule_files:
+  - ../../nix/files/monitoring/rules/flux.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A COMPLETELY HEALTHY FLUX. Every series exists, including the False ones, all at their honest
+  # values. Nothing may fire.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'gotk_reconcile_condition{kind="ImagePolicy",name="movies-web",namespace="flux-system",type="Ready",status="True"}'
+        values: '1+0x300'
+      - series: 'gotk_reconcile_condition{kind="ImagePolicy",name="movies-web",namespace="flux-system",type="Ready",status="False"}'
+        values: '0+0x300'
+      - series: 'gotk_reconcile_condition{kind="Kustomization",name="web-pl-config",namespace="flux-system",type="Ready",status="False"}'
+        values: '0+0x300'
+      - series: 'gotk_suspend_status{kind="ImageUpdateAutomation",name="movies",namespace="flux-system"}'
+        values: '0+0x300'
+      - series: 'up{job="flux",controller="image-automation-controller"}'
+        values: '1+0x300'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: FluxReconciliationFailing
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: FluxDeployPathStalled
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: FluxSuspended
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: FluxControllerDown
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE POLICY MATCHES NO TAG. CI keeps building and pushing; none of it becomes a deploy. This is
+  # the invisible failure the critical alert exists for, and it must also show up in the general
+  # one, which is kind-agnostic on purpose.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'gotk_reconcile_condition{kind="ImagePolicy",name="movies-web",namespace="flux-system",type="Ready",status="False"}'
+        values: '1+0x300'
+    alert_rule_test:
+      # Not at 20m: a scan failing briefly is normal and must not page.
+      - eval_time: 20m
+        alertname: FluxDeployPathStalled
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: FluxDeployPathStalled
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              kind: ImagePolicy
+              name: movies-web
+              namespace: flux-system
+              type: Ready
+              status: "False"
+            exp_annotations:
+              summary: "new builds are no longer reaching the cluster (ImagePolicy/movies-web)"
+              description: >-
+                CI can still build and push images, and nothing in CI will go red, but none of them
+                become deploys while this is failing. The three usual causes, in the order worth
+                checking: the ImagePolicy matches no tag (compare the pattern against
+                `main-<utc14>-<sha7>` and remember FluxImageAutomationSpec guards exactly this), the
+                registry scan is failing, or the deploy key that lets image-automation PUSH has been
+                revoked -- that key is the only credential in this path and it is repo-scoped, id
+                162222850.
+      - eval_time: 35m
+        alertname: FluxReconciliationFailing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              kind: ImagePolicy
+              name: movies-web
+              namespace: flux-system
+              type: Ready
+              status: "False"
+            exp_annotations:
+              summary: "flux ImagePolicy/movies-web has been NotReady for 30m"
+              description: >-
+                This object has failed to reconcile for half an hour, so whatever it owns is now
+                whatever it was last able to apply. Start with `kubectl -n flux-system describe
+                ImagePolicy movies-web` -- the message on the Ready condition names the cause
+                directly, and the controller's log (`kubectl -n flux-system logs deploy/<controller>`)
+                has the detail.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # SUSPENDED AND FORGOTTEN. Reports no error at all; deploys simply stop. A deliberate pause
+  # during an incident must not page, a forgotten one must.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'gotk_suspend_status{kind="ImageUpdateAutomation",name="movies",namespace="flux-system"}'
+        values: '1+0x300'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: FluxSuspended
+        exp_alerts: []
+      - eval_time: 2h5m
+        alertname: FluxSuspended
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              kind: ImageUpdateAutomation
+              name: movies
+              namespace: flux-system
+            exp_annotations:
+              summary: "flux ImageUpdateAutomation/movies has been suspended for 2h"
+              description: >-
+                A suspended object is not reconciled and not deployed, and reports no error for it.
+                If this was a deliberate pause, resume it; if nobody remembers doing it, treat it as
+                an unexplained stop to the deploy path. Note that suspending by `kubectl patch` DOES
+                NOT STICK here -- the Kustomization reverts it from git within minutes -- so a
+                suspension that persists this long was committed, and resuming means a commit too.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE CONTROLLER IS GONE. Without this the rules above go quiet exactly when the thing they
+  # watch dies hardest, because an absent series cannot compare `== 1`.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'up{job="flux",controller="image-automation-controller"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: FluxControllerDown
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: FluxControllerDown
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              job: flux
+              controller: image-automation-controller
+            exp_annotations:
+              summary: "flux image-automation-controller is not answering its metrics port"
+              description: >-
+                Either the controller is down or its NodePort no longer matches. The ports are fixed
+                in infra/kubernetes/flux-metrics/services.yaml and must agree with
+                `fleet.prometheus.fluxTargets`; nothing checks that, and a disagreement looks exactly
+                like this. Check `kubectl -n flux-system get pods` first -- if they are Running, it
+                is the port.
