@@ -45,6 +45,27 @@
 # time, and mirror-resilience-spec.sh asserts that sourcing mirror.sh reads no
 # .env.local and starts nothing. So everything below is a function definition.
 
+# Read one key out of an env file, the way the app's own tools.Env does.
+#
+# Line-by-line, NOT `source`: .env.local's Mongo URIs carry `&` and `?`, which a
+# shell source would treat as backgrounding and globbing. `|| true` so a missing
+# key (grep exit 1 under pipefail) yields empty output instead of aborting the
+# caller before it can print a friendly message.
+#
+# This lives here because all four prod-sourced scripts — mirror.sh,
+# sync-title-rules.sh, sync-enrichment-cache.sh, ../reset-corpus.sh — already
+# source this file, and every one of them had defined a byte-identical copy of
+# it. The file below used a seventh inline copy whose comment said it "matches
+# envval in each caller"; a comment promising that two blocks stay identical is
+# the cheapest possible substitute for making them one.
+#
+#   envval KEY [file]   — file defaults to $PROD_TUNNEL_ENV_FILE, then $ROOT/.env.local
+envval() {
+  local file="${2:-${PROD_TUNNEL_ENV_FILE:-${ROOT:-.}/.env.local}}"
+  { grep -E "^$1=" "$file" 2>/dev/null || true; } | head -1 | cut -d= -f2- \
+    | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
+}
+
 # The pid of a tunnel WE started. Empty means the port is served by someone
 # else's process (an `sbt run` forward, a manual one) and is not ours to kill.
 PROD_TUNNEL_PID=""
@@ -54,11 +75,7 @@ prod_tunnel_target() {
   if [ -n "${KINOWO_MONGO_SSH:-}" ]; then printf '%s\n' "$KINOWO_MONGO_SSH"; return 0; fi
   local from_env=""
   if [ -n "${PROD_TUNNEL_ENV_FILE:-}" ] && [ -f "$PROD_TUNNEL_ENV_FILE" ]; then
-    # Line-by-line, not `source`: .env.local's Mongo URIs carry `&`/`?`, which a
-    # shell source would treat as backgrounding / globbing (matches envval in
-    # each caller and the app's own tools.Env).
-    from_env="$( { grep -E '^KINOWO_MONGO_SSH=' "$PROD_TUNNEL_ENV_FILE" 2>/dev/null || true; } \
-      | head -1 | cut -d= -f2- | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//' )"
+    from_env="$(envval KINOWO_MONGO_SSH "$PROD_TUNNEL_ENV_FILE")"
   fi
   printf '%s\n' "${from_env:-root@178.105.221.61}"
 }

@@ -39,6 +39,12 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
+# Shared plumbing for every prod-sourced local script: envval (the .env.local
+# reader), the tunnel, and — where relevant — the local Mongo starter. Sourced
+# HERE, above the first envval call, because it is what defines it. Sourcing is
+# side-effect free by contract, so an early source starts nothing.
+. "$HERE/prod-tunnel.sh"
+. "$HERE/local-mongo.sh"
 
 DB="convergence_test"
 DRY=""
@@ -52,12 +58,6 @@ for arg in "$@"; do
 done
 [ ${#COUNTRIES[@]} -gt 0 ] || COUNTRIES=(pl de uk us es)
 
-# Read KEY=VALUE from .env.local WITHOUT sourcing it — the Mongo URIs contain
-# `&`/`?`, which a shell `source` would treat as backgrounding / globbing.
-envval() {
-  { grep -E "^$1=" "$ROOT/.env.local" 2>/dev/null || true; } | head -1 | cut -d= -f2- \
-    | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
-}
 
 SRC="$(envval MONGO_ROOT_URI)"; [ -n "$SRC" ] || SRC="$(envval MONGODB_URI)"
 DST="$(envval LOCAL_MONGO_URI)"; DST="${DST:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true}"
@@ -69,7 +69,6 @@ DST="$(envval LOCAL_MONGO_URI)"; DST="${DST:-mongodb://127.0.0.1:${LOCAL_MIRROR_
 TUNNEL_TAG="enrich-cache"
 TUNNEL_PROBE_URI="$SRC"
 PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
-. "$HERE/prod-tunnel.sh"
 TMP=""
 cleanup() {
   close_prod_tunnel
@@ -77,11 +76,6 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-ensure_local_mongo() {
-  nc -z -w2 127.0.0.1 "${LOCAL_MIRROR_PORT:-28017}" 2>/dev/null && return 0
-  echo "[enrich-cache] local Mongo not reachable on :${LOCAL_MIRROR_PORT:-28017} — (re)starting"
-  "$HERE/start-local-mongo.sh"
-}
 
 ensure_prod_tunnel || { echo "[enrich-cache] prod Mongo unreachable — can you 'ssh' to the mongo host? (see prod-tunnel.sh)" >&2; exit 1; }
 [ -n "$DRY" ] || ensure_local_mongo

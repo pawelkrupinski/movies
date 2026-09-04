@@ -32,6 +32,12 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
+# Shared plumbing for every prod-sourced local script: envval (the .env.local
+# reader), the tunnel, and — where relevant — the local Mongo starter. Sourced
+# HERE, above the first envval call, because it is what defines it. Sourcing is
+# side-effect free by contract, so an early source starts nothing.
+. "$HERE/prod-tunnel.sh"
+. "$HERE/local-mongo.sh"
 
 COLL="titleRules"
 MIN_RULES=10
@@ -43,13 +49,6 @@ for arg in "$@"; do
   esac
 done
 
-# Read KEY=VALUE from .env.local WITHOUT sourcing it — the Mongo URIs contain
-# `&`/`?`, which a shell `source` would treat as backgrounding / globbing and
-# mangle (same approach as mirror.sh / reset-corpus.sh).
-envval() {
-  { grep -E "^$1=" "$ROOT/.env.local" 2>/dev/null || true; } | head -1 | cut -d= -f2- \
-    | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
-}
 
 SRC="$(envval MONGODB_URI)"
 SRC_DB="$(envval MONGODB_DB)"; SRC_DB="${SRC_DB:-kinowo}"
@@ -64,7 +63,6 @@ DST_DB="$(envval LOCAL_MONGO_DB)"; DST_DB="${DST_DB:-kinowo_local}"
 TUNNEL_TAG="title-rules"
 TUNNEL_PROBE_URI="$SRC"
 PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
-. "$HERE/prod-tunnel.sh"
 TMP=""
 cleanup() {
   close_prod_tunnel
@@ -72,12 +70,6 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# ── ensure the local Mongo (target), re-running the idempotent starter when down.
-ensure_local_mongo() {
-  nc -z -w2 127.0.0.1 "${LOCAL_MIRROR_PORT:-28017}" 2>/dev/null && return 0
-  echo "[title-rules] local Mongo not reachable on :${LOCAL_MIRROR_PORT:-28017} — (re)starting"
-  "$HERE/start-local-mongo.sh"
-}
 
 ensure_prod_tunnel  || { echo "[title-rules] prod Mongo unreachable — can you 'ssh' to the mongo host? (see prod-tunnel.sh)" >&2; exit 1; }
 [ -n "$DRY" ] || ensure_local_mongo

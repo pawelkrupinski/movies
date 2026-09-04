@@ -54,6 +54,11 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
+# Shared plumbing for every prod-sourced local script: envval (the .env.local
+# reader), the tunnel, and — where relevant — the local Mongo starter. Sourced
+# HERE, above the first envval call, because it is what defines it. Sourcing is
+# side-effect free by contract, so an early source starts nothing.
+. "$HERE/local-mirror/prod-tunnel.sh"
 
 # The country whose Deployments are scaled around the wipe. `MONGODB_DB` names the
 # database (kinowo / kinowo_uk / …); the overlays are suffixed by country code.
@@ -81,12 +86,6 @@ done
 # there would re-fire every scheduled sweep at once.
 [ "$MODE" = "local" ] && COLLECTIONS+=(scheduled_runs)
 
-# Read KEY=VALUE from .env.local WITHOUT sourcing it — the Mongo URI contains
-# `&`/`?`, which a shell `source` would mangle (same approach as mirror.sh).
-envval() {
-  { grep -E "^$1=" "$ROOT/.env.local" 2>/dev/null || true; } | head -1 | cut -d= -f2- \
-    | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
-}
 
 if [ "$MODE" = "local" ]; then
   URI="${LOCAL_MONGO_URI:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true}"
@@ -132,7 +131,6 @@ scale_deploy() {
 TUNNEL_TAG="reset"
 TUNNEL_PROBE_URI="$URI"
 PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
-. "$HERE/local-mirror/prod-tunnel.sh"
 cleanup() { close_prod_tunnel; }
 trap cleanup EXIT
 

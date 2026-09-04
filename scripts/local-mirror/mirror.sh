@@ -33,16 +33,13 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
+# Shared plumbing for every prod-sourced local script: envval (the .env.local
+# reader), the tunnel, and — where relevant — the local Mongo starter. Sourced
+# HERE, above the first envval call, because it is what defines it. Sourcing is
+# side-effect free by contract, so an early source starts nothing.
+. "$HERE/prod-tunnel.sh"
+. "$HERE/local-mongo.sh"
 
-# Read KEY=VALUE from .env.local WITHOUT sourcing it — the Mongo URIs contain
-# `&`/`?`, which a shell `source` would treat as backgrounding / globbing and
-# mangle (matching how the app's tools.Env parses the file line-by-line).
-envval() {
-  # `|| true` so a missing key (grep exit 1 under pipefail) yields empty output
-  # instead of aborting before the friendly check below.
-  { grep -E "^$1=" "$ROOT/.env.local" 2>/dev/null || true; } | head -1 | cut -d= -f2- \
-    | sed -e 's/^["'"'"']//' -e 's/["'"'"']$//'
-}
 # Reading .env.local is a STARTUP step, not a load-time one: mirror-resilience-spec.sh
 # sources this file for `supervise_db` alone and supplies its own endpoints, and it
 # must not need — or touch — real credentials to do that.
@@ -100,20 +97,10 @@ rotate_log() {
 # `flyctl proxy` this used to run — lives in prod-tunnel.sh, shared with the
 # other prod-sourced scripts so there is exactly one place to repoint.
 TUNNEL_TAG="mirror"
-. "$HERE/prod-tunnel.sh"
 ensure_tunnel() { ensure_prod_tunnel; }
 cleanup() { close_prod_tunnel; }
 trap cleanup EXIT INT TERM
 
-# Ensure the local mirror Mongo (native, brew-managed) is reachable on :28017,
-# re-running the idempotent starter only when it isn't — so a stopped service
-# self-heals. Returns non-zero (instead of crashing) when the starter can't bring
-# it up, so the loop just retries — e.g. at login before `brew services` has it.
-ensure_local_mongo() {
-  nc -z -w2 127.0.0.1 28017 2>/dev/null && return 0
-  echo "[mirror] local Mongo not reachable on :28017 — (re)starting"
-  "$HERE/start-local-mongo.sh" || return 1
-}
 
 # Which prod databases to mirror. Explicit KINOWO_MIRROR_DBS wins (space- or
 # comma-separated); otherwise discover every `kinowo*` database the tunnel
