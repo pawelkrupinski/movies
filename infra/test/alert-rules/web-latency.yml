@@ -1,0 +1,277 @@
+# UNIT TESTS FOR THE WEB LATENCY ALERTS.
+#
+# `promtool check rules` proves the file parses. These ask the three questions it cannot, and each
+# of them is a way this pair could sit in the rule list looking like coverage:
+#
+#   1. Does it FIRE on the shape that actually happened -- one route at a ~2s p95, half a request a
+#      second, on a tier whose aggregate p95 never left 0.39s? That is the 2026-09-04 regression,
+#      and it is the case a tier-wide rule cannot see.
+#   2. Does the TRAFFIC FLOOR bite? Without it a route serving one request a minute pages on a
+#      single cold start, and an alert that pages on nothing is an alert nobody reads.
+#   3. Do the TWO THRESHOLDS stay apart? 800ms is a regression on a rendered page and ordinary on
+#      an og-image. A single threshold for both would either page on healthy card rendering or miss
+#      a page that got 8x slower, and only a test distinguishes the two rules from one.
+#
+# The bucket boundaries below are the real ones the web tier emits (0.005 .. 10, +Inf); the series
+# carry the real label set (job, country, instance, route, le).
+rule_files:
+  - ../../nix/files/monitoring/rules/web-latency.rules
+
+evaluation_interval: 1m
+
+tests:
+  # 1. THE 2026-09-04 REGRESSION. /uk/:city/movie/og-image, 30 req/min (0.5 req/s), every one of
+  #    them landing between 1s and 2.5s -- a p95 of ~2.4s. The endpoint rule owns this route.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.005"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.01"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.025"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.05"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.1"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.15"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.25"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.5"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="1"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="2.5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="10"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="+Inf"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image"}'
+        values: '0+30x200'
+    alert_rule_test:
+      # `for: 15m` on top of a rate window that reads a partial range from its second sample, so the
+      # condition is true within a couple of minutes and the alert holds pending until ~17m. At 10m
+      # it must still be silent -- that is the point of the `for:`: a single slow minute cannot page.
+      - eval_time: 10m
+        alertname: WebEndpointLatencyHigh
+        exp_alerts: []
+      - eval_time: 50m
+        alertname: WebEndpointLatencyHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: uk
+              route: /uk/:city/movie/og-image
+            exp_annotations:
+              summary: "uk endpoint /uk/:city/movie/og-image p95 is 2.425s"
+              description: "One endpoint is spending seconds per request and, at this tier's traffic, that is enough to own most of its request-seconds while every other signal stays green. The og-image route is the known one: it renders the share card INLINE on the request path and fetches the poster from the upstream host to do it, walking up to six candidate URLs on a cold cache. Confirm which route it is from the label, then check whether its request rate moved -- a sustained rate on og-image is a crawler sweeping the share cards, not people."
+      # And the page rule must NOT also fire on it -- the two route sets partition, they do not
+      # overlap, so this regression pages once rather than twice.
+      - eval_time: 50m
+        alertname: WebPageLatencyHigh
+        exp_alerts: []
+
+  # 2. THE SAME ROUTE, HEALTHY. Same traffic, answering in 25-50ms from a warm card cache. Silent.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.005"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.01"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.025"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.05"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.1"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.15"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.25"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="0.5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="1"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="2.5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="10"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image",le="+Inf"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="uk",instance="kinowo-web-uk",route="/uk/:city/movie/og-image"}'
+        values: '0+30x200'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: WebEndpointLatencyHigh
+        exp_alerts: []
+
+  # 3. A RENDERED PAGE AT ~800ms. Below the endpoint rule's 1s and well above the 500ms a read-model
+  #    page earns, so the page rule fires and only the page rule.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="0.005"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="0.01"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="0.025"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="0.05"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="0.1"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="0.15"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="0.25"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="0.5"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="1"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="2.5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="10"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug",le="+Inf"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/:city/movie/:slug"}'
+        values: '0+30x200'
+    alert_rule_test:
+      - eval_time: 50m
+        alertname: WebPageLatencyHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: pl
+              route: /:city/movie/:slug
+            exp_annotations:
+              summary: "pl page /:city/movie/:slug p95 is 975ms"
+              description: "This route renders from the projected read model and normally answers in 20-100ms, so half a second means it has stopped reading from memory -- a cache it used to hit, a projection it now recomputes, or a JVM with no heap left to collect into. Check jvm-heap.rules for that last one first, then compare the route's request rate against yesterday: a crawler discovering a newly renamed URL space is how the 2026-09-04 regression arrived."
+
+  # 4. AN OG-IMAGE AT THE SAME ~800ms MUST STAY SILENT. This is the whole reason there are two rules
+  #    rather than one: the card endpoint doing real work in under a second is not a regression.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.005"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.01"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.025"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.05"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.1"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.15"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.25"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="0.5"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="1"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="2.5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="10"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image",le="+Inf"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="us",instance="kinowo-web-us",route="/us/:city/movie/og-image"}'
+        values: '0+30x200'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: WebEndpointLatencyHigh
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: WebPageLatencyHigh
+        exp_alerts: []
+
+  # 5. THE TRAFFIC FLOOR. Two requests a minute (0.033 req/s, under the 0.05 floor) at a 2.4s p95 --
+  #    the shape a cold start on a near-idle country gives every rule that lacks this guard.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="0.005"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="0.01"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="0.025"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="0.05"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="0.1"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="0.15"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="0.25"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="0.5"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="1"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="2.5"}'
+        values: '0+2x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="5"}'
+        values: '0+2x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="10"}'
+        values: '0+2x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me",le="+Inf"}'
+        values: '0+2x200'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="es",instance="kinowo-web-es",route="/es/api/me"}'
+        values: '0+2x200'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: WebEndpointLatencyHigh
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: WebPageLatencyHigh
+        exp_alerts: []
+
+  # 6. /uptime/stream IS NOT WATCHED, AND MUST NOT BE. Server-sent events held open for minutes at a
+  #    time: real traffic, a p95 no threshold here survives, and nothing wrong. If a future edit
+  #    widens the page rule's exclusion by accident, this is what goes red.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="0.005"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="0.01"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="0.025"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="0.05"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="0.1"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="0.15"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="0.25"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="0.5"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="1"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="2.5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="5"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="10"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_bucket{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream",le="+Inf"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_request_duration_seconds_count{job="kinowo-web",country="pl",instance="kinowo-web-pl",route="/uptime/stream"}'
+        values: '0+30x200'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: WebPageLatencyHigh
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: WebEndpointLatencyHigh
+        exp_alerts: []

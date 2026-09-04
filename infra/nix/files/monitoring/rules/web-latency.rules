@@ -1,0 +1,132 @@
+---
+# IS THE WEB TIER STILL ANSWERING AS FAST AS IT DID YESTERDAY.
+#
+# ------------------------------------------------------------------------------------------------
+# THE FAILURE THIS EXISTS FOR
+# ------------------------------------------------------------------------------------------------
+#
+# On 2026-09-04 at ~12:50 UTC the web tier's overall p95 doubled -- 45ms to 90ms -- and stayed
+# there. Nothing was red: no 5xx, no OOM, no restart, no deploy, and the error-share panel drew the
+# flat zero line it is supposed to. p50 did not move at all. The whole regression was ONE ROUTE:
+# `/:cc/:city/movie/og-image` went from 0.002 req/s to 0.5 req/s when a crawler started sweeping the
+# share cards, and that route serves at a p95 of 1.7-2.4 SECONDS because it renders the card inline
+# on the request path and fetches the poster from the upstream host to do it. It was consuming ~70%
+# of all request-seconds on the tier while every dashboard said the site was healthy.
+#
+# It had happened once before, on 2026-09-03, on `web-us` -- smaller, shorter, and equally unseen.
+# The only reason anyone looked either time is that a person happened to open a latency panel.
+#
+# ------------------------------------------------------------------------------------------------
+# WHY PER ROUTE AND NOT PER TIER
+# ------------------------------------------------------------------------------------------------
+#
+# A tier-wide quantile CANNOT catch this, and that is measured rather than assumed. Over the six
+# days 08-30..09-04 the per-instance p95 across all routes has a median of 17-69ms and a maximum of
+# 1.2s ON HEALTHY TRAFFIC -- this tier serves 2-3 req/s in total, so one slow request moves the
+# aggregate quantile a long way. Any tier-wide threshold silent through that noise (>= 1.5s) sits
+# above the incident, whose worst per-instance reading was 0.39s. The signal only separates from
+# the noise once the routes are held apart.
+#
+# ------------------------------------------------------------------------------------------------
+# TWO RULES, BECAUSE 500ms MEANS DIFFERENT THINGS ON DIFFERENT ROUTES
+# ------------------------------------------------------------------------------------------------
+#
+# A rendered page that takes half a second is a regression -- those routes read a projected read
+# model out of memory and normally answer in 20-100ms. An og-image, a sitemap or an /api/ response
+# taking half a second is ordinary; those do real work per request. So the routes are PARTITIONED
+# and each half gets the threshold its own baseline earns:
+#
+#   WebPageLatencyHigh      the HTML routes -- `/`, `/:city/`, `/:city/movie/:slug`, `/:city/movies`
+#                           and their country-prefixed spellings -- at 0.5s.
+#   WebEndpointLatencyHigh  og-image, /api/, /assets/ and the sitemap, at 1s.
+#
+# The split is written as an EXCLUSION on the first rule and an INCLUSION on the second, so a route
+# added tomorrow lands in the page bucket at the tighter threshold rather than going unwatched.
+#
+# ⚠️ THREE ROUTE FAMILIES ARE DELIBERATELY WATCHED BY NEITHER, and each would otherwise be a
+# standing false positive rather than a signal:
+#
+#   /uptime/stream  server-sent events. The response is held open for as long as the operator keeps
+#                   the page in front of them, so its "latency" is a reading time, not a service
+#                   time, and every threshold here is crossed by design.
+#   /uptime, /tasks operator pages, not product. /uptime's cost scales with the cinema roster by
+#                   construction and is expected to be slow.
+#   img-event       a POST beacon fired by those same operator pages.
+#   other           Play's catch-all bucket. A quantile over an unknown mixture of routes answers
+#                   no question anybody has.
+#
+# ------------------------------------------------------------------------------------------------
+# THE TRAFFIC FLOOR IS LOAD-BEARING
+# ------------------------------------------------------------------------------------------------
+#
+# `>= 0.05 req/s` -- roughly 90 requests in the 30m window. Below that a p95 is one or two requests
+# and reads as whatever the slowest of them did; `/es/api/me` would page on a single cold start.
+# The floor is what makes an absolute threshold safe on a tier this quiet.
+#
+# ⚠️ HISTORY STARTS AT THE 2026-08-29 CUTOVER, so the six-day baseline quoted above is all there is.
+# Re-measure before tuning either threshold rather than reaching further back.
+groups:
+  - name: web-latency
+    rules:
+      - alert: WebPageLatencyHigh
+        # The rate window is 30m rather than the usual few minutes because the quantile is over a
+        # handful of requests per minute: a 5m window on this tier is mostly sampling noise, and the
+        # alert would flap in and out of `for:` without ever holding.
+        expr: >-
+          (
+            histogram_quantile(0.95,
+              sum by (le, country, route) (
+                rate(kinowo_web_http_request_duration_seconds_bucket{
+                  route!~"other|.*(og-image|assets/|/api/|img-event|/uptime|/tasks|sitemap).*"
+                }[30m])
+              )
+            ) > 0.5
+          )
+          and on (country, route)
+          (
+            sum by (country, route) (
+              rate(kinowo_web_http_request_duration_seconds_count[30m])
+            ) >= 0.05
+          )
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} page {{ $labels.route }} p95 is {{ $value | humanizeDuration }}"
+          description: >-
+            This route renders from the projected read model and normally answers in 20-100ms, so
+            half a second means it has stopped reading from memory -- a cache it used to hit, a
+            projection it now recomputes, or a JVM with no heap left to collect into. Check
+            jvm-heap.rules for that last one first, then compare the route's request rate against
+            yesterday: a crawler discovering a newly renamed URL space is how the 2026-09-04
+            regression arrived.
+
+      - alert: WebEndpointLatencyHigh
+        expr: >-
+          (
+            histogram_quantile(0.95,
+              sum by (le, country, route) (
+                rate(kinowo_web_http_request_duration_seconds_bucket{
+                  route=~".*(og-image|assets/|/api/|sitemap).*"
+                }[30m])
+              )
+            ) > 1
+          )
+          and on (country, route)
+          (
+            sum by (country, route) (
+              rate(kinowo_web_http_request_duration_seconds_count[30m])
+            ) >= 0.05
+          )
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} endpoint {{ $labels.route }} p95 is {{ $value | humanizeDuration }}"
+          description: >-
+            One endpoint is spending seconds per request and, at this tier's traffic, that is enough
+            to own most of its request-seconds while every other signal stays green. The og-image
+            route is the known one: it renders the share card INLINE on the request path and fetches
+            the poster from the upstream host to do it, walking up to six candidate URLs on a cold
+            cache. Confirm which route it is from the label, then check whether its request rate
+            moved -- a sustained rate on og-image is a crawler sweeping the share cards, not people.
