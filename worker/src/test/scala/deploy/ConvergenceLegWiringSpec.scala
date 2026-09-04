@@ -408,22 +408,38 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       legJobs shouldBe Seq("sample", "convergence")
     }
     legDirectives should not include "if: inputs.order-command"
-    RepoFile.block(leg, "convergence") should
-      include("include: ${{ fromJson(needs.sample.outputs.runs) }}")
+    RepoFile.block(leg, "convergence") should include("phase: ${{ fromJson(inputs.order-command")
+  }
+
+  /**
+   * The matrix comes from the leg's INPUTS, never from a job's outputs.
+   *
+   * GitHub renders a job's `name:` from the run graph, which is built before any job has
+   * run — so a matrix read from `needs.<job>.outputs` is not known when the name is
+   * rendered, and the expression is printed rather than evaluated. The first cut of this
+   * split had the sample plan the rows and publish them as an output; every warm country's
+   * full leg then showed up as `poland / matrix.name`, the literal text, in the run graph
+   * and in its check-run. Nothing failed — the rows were right and the suites ran — which
+   * is exactly why it needs a rule.
+   */
+  it should "expand its rows from the leg's inputs, so the job names resolve" in {
+    val block = RepoFile.block(leg, "convergence")
+    block should include("name: ${{ matrix.phase }}")
+    withClue("a `needs`-derived matrix renders the name expression unevaluated: ") {
+      block should not include "needs.sample.outputs"
+    }
   }
 
   /** Both rows carry their OWN budgets — the caller's `orderJob`/`orderSuite` — and a
    *  row that fell back to the full leg's would be the 135/120 that cancelled the US
    *  leg before its heap was raised. */
-  it should "plan the replay row with its own alias and its own budgets" in {
-    val plan = RepoFile.block(leg, "sample")
+  it should "run the replay row on its own alias and its own budgets" in {
+    val block = RepoFile.block(leg, "convergence")
     Seq("inputs.order-command", "inputs.order-job-timeout-minutes",
         "inputs.order-suite-timeout-minutes").foreach { input =>
-      withClue(s"$input: ") { plan should include(input) }
-    }
-    withClue("the rows' ceilings must be the row's, not the job's one input: ") {
-      RepoFile.block(leg, "convergence") should include("timeout-minutes: ${{ matrix.job }}")
-      RepoFile.block(leg, "convergence") should include("timeout-minutes: ${{ matrix.suite }}")
+      withClue(s"$input: the replay row would fall back to the full leg's: ") {
+        block should include(input)
+      }
     }
   }
 
@@ -445,12 +461,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  preloaded cache, and the leg that recorded that cache measured 4 live fills across
    *  the whole run. */
   it should "leave the publish to the row that is not racing another for it" in {
-    RepoFile.block(leg, "convergence") should include(s"$PublishAction\n              if: always() && matrix.publish")
-    withClue("exactly one planned row may publish: ") {
-      val plan = RepoFile.block(leg, "sample")
-      plan should include("\"publish\":true")
-      plan should include("\"publish\":false")
-    }
+    RepoFile.block(leg, "convergence") should
+      include(s"$PublishAction\n              if: always() && matrix.phase == 'convergence'")
   }
 
   /**
