@@ -15,7 +15,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * prod) and now parses the `media-scorecard-json` `criticsScore.score`, writing the
  * score if changed. Idempotent (dedup key `rt|tmdb:<id>`); safe to re-run.
  *
- *   flyctl proxy 27017 -a kinowo-mongo
+ *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   sbt "worker/Test/runMain scripts.CountryRatingRefresh uk"   # or `pl`
  */
 object CountryRatingRefresh {

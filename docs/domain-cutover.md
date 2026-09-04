@@ -90,10 +90,11 @@ ordering — several of the steps below are only safe in one sequence.
    redirects. The price is a rolling restart of the redirect host on every push.
 
    **Fly now hosts exactly one thing from this repository, and CI deploys only
-   that.** `FlyDeployScopeSpec` enforces it across every workflow: the five other
-   matrix legs stay off, and `deploy-grafana.yml` — which would start the stopped
-   `kinowo-grafana` rollback machine — is `workflow_dispatch` only, no push
-   trigger.
+   that.** `FlyDeployScopeSpec` enforces it across every workflow. It used to do
+   so against six matrix legs held at `enabled: false` and a `deploy-grafana.yml`
+   held at `workflow_dispatch` only; the legs, the `fly.*.toml` configs behind
+   them, the `fly/` tree and that workflow are all deleted now, so there is one
+   inline deploy of one app and nothing to flip back on by accident.
 
 ## What DNS and a deploy do not cover
 

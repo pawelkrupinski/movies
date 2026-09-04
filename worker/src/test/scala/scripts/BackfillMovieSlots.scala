@@ -27,7 +27,7 @@ import tools.Env
  *
  * Run against prod via the flyctl proxy (see reference_prod_mongo_access), once per
  * country database:
- *   flyctl proxy 27017:27017 --app kinowo-mongo &
+ *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   MONGODB_DB=kinowo    sbt "worker/Test/runMain scripts.BackfillMovieSlots"
  *   MONGODB_DB=kinowo_uk sbt "worker/Test/runMain scripts.BackfillMovieSlots"
  *   MONGODB_DB=kinowo_de sbt "worker/Test/runMain scripts.BackfillMovieSlots"

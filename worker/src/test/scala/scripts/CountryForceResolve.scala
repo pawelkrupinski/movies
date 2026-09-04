@@ -24,7 +24,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * `.env.local` pins to prod `kinowo`), so this can't accidentally touch Poland.
  *
  * Run against a prod tunnel:
- *   flyctl proxy 27017 -a kinowo-mongo                       # separate shell
+ *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   sbt "worker/Test/runMain scripts.CountryForceResolve uk" # or `de`
  */
 object CountryForceResolve {
@@ -33,7 +33,7 @@ object CountryForceResolve {
     val dbName  = country.mongoDb
     val conn    = MongoConnection.fromEnvForDb(dbName, required = true)
     val db = conn.database.getOrElse {
-      println(s"Could not open $dbName — is the Mongo tunnel up (flyctl proxy 27017 -a kinowo-mongo) and MONGODB_URI set?")
+      println(s"Could not open $dbName — is the Mongo tunnel up (scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")
       sys.exit(1)
     }
     val repo  = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer)

@@ -18,8 +18,8 @@ import org.scalatest.matchers.should.Matchers
  *
  * So the budget is a fixed 20, and a new job has to take its slot from an
  * existing one rather than be added. Both files that contribute count: ci.yml's
- * jobs and main.yml's `build-image` all start at t=0. (The deploy matrix does
- * not — it `needs: ci`, so ci's jobs have released their slots by then.)
+ * jobs and main.yml's `free-runners` start at t=0. (The Fly deploy does not — it
+ * `needs: ci`, so ci's jobs have released their slots by then.)
  *
  * A NEEDS-LESS JOB IS THE ONLY KIND THAT COSTS ANYTHING HERE, and that is what
  * made folding `build-web-image.yaml` / `build-worker-image.yaml` into main.yml

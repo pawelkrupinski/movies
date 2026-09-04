@@ -13,8 +13,9 @@ import scala.util.Try
  * Samples, once a minute, how many films the web is currently serving per city
  * — in two scopes: every film with a future showing (`all`) and just those with
  * a showing tomorrow (`tomorrow`). Surfaced as Prometheus gauges through
- * [[MetricsController]] (`GET /metrics`), scraped by Fly's managed Prometheus
- * and graphed/alerted on by the self-hosted Grafana (`fly/grafana`).
+ * [[MetricsController]] (`GET /metrics`), scraped by the fleet's Prometheus on
+ * monitoring-1 and graphed/alerted on by the Grafana beside it
+ * (`infra/nix/modules/roles/grafana.nix`).
  *
  * The counts come from the real serving path
  * ([[MovieControllerService.toSchedules]]), so the metric can't drift from what

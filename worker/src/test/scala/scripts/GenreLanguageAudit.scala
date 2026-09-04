@@ -18,7 +18,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * "(unstamped → pl-PL)" bucket to drain gradually rather than all at once).
  *
  * Run against a prod tunnel:
- *   flyctl proxy 27017 -a kinowo-mongo
+ *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   sbt "worker/Test/runMain scripts.GenreLanguageAudit de"
  *   sbt "worker/Test/runMain scripts.GenreLanguageAudit de 'Super Mario Galaxy'"  # one film
  */
@@ -40,7 +40,7 @@ object GenreLanguageAudit {
     val dbName  = country.mongoDb
     val conn    = MongoConnection.fromEnvForDb(dbName, required = true)
     val db = conn.database.getOrElse {
-      println(s"Could not open $dbName — is the tunnel up (flyctl proxy 27017 -a kinowo-mongo)?")
+      println(s"Could not open $dbName — is the tunnel up (scripts/local-mirror/prod-tunnel.sh)?")
       sys.exit(1)
     }
     val repo = new MongoMovieRepository(sharedDb = Some(db), fallbackToOwnInit = false, normalizer = titleNormalizer)

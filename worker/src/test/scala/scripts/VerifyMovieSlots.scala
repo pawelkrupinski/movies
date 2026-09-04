@@ -25,7 +25,7 @@ import tools.Env
  *
  * Read-only. Exits non-zero on a FATAL finding so it can gate a deploy or run from cron.
  *
- *   flyctl proxy 27017:27017 --app kinowo-mongo &
+ *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   MONGODB_DB=kinowo_uk sbt "worker/Test/runMain scripts.VerifyMovieSlots"
  */
 object VerifyMovieSlots {

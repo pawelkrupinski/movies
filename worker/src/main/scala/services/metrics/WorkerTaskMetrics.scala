@@ -45,9 +45,9 @@ object TaskObserver {
  * It counts the full lifecycle of every deferred task (enqueue → claim → finish)
  * keyed by `TaskType`, times the work, and (refreshed from a live queue snapshot
  * at scrape time) exposes the current backlog. Built on the official Prometheus
- * Java client rather than a hand-rolled exposition; Fly's managed Prometheus
- * scrapes it via the `[[metrics]]` block in fly.worker.toml, and the self-hosted
- * Grafana charts the `rate(...)` of each family per `task_type`.
+ * Java client rather than a hand-rolled exposition; the fleet's Prometheus
+ * scrapes it over the pod's NodePort, and Grafana charts the `rate(...)` of each
+ * family per `task_type`.
  *
  * Multi-country: ONE JVM runs a [[modules.WorkerWiring]] per country against a
  * single shared [[WorkerTaskMetrics.Series]] (registered once on the shared

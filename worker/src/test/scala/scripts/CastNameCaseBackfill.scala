@@ -60,7 +60,7 @@ import tools.PersonName
  * visits `Country.all`.
  *
  * {{{
- *   flyctl proxy 27017 -a kinowo-mongo                    # separate shell
+ *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   sbt "worker/Test/runMain scripts.CastNameCaseBackfill"                # dry run, all countries
  *   sbt "worker/Test/runMain scripts.CastNameCaseBackfill uk"             # dry run, UK only
  *   sbt "worker/Test/runMain scripts.CastNameCaseBackfill --apply"        # WRITE, all countries
@@ -153,7 +153,7 @@ object CastNameCaseBackfill {
     val connection = MongoConnection.fromEnvForDb(country.mongoDb, required = true)
     val database = connection.database.getOrElse {
       println(s"${country.displayName}: could not open ${country.mongoDb} — is the Mongo tunnel up " +
-        "(flyctl proxy 27017 -a kinowo-mongo) and MONGODB_URI set?")
+        "(scripts/local-mirror/prod-tunnel.sh) and MONGODB_URI set?")
       sys.exit(1)
     }
     val startedAtMs = System.currentTimeMillis()

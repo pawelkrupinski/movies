@@ -6,15 +6,22 @@
 # repertoire — acceptable per the "short downtime is fine" rule).
 #
 # Two targets:
-#   (default)   PROD  — kinowo (web) + kinowo-worker (worker) on Fly, prod Mongo
-#                       over the ssh tunnel scripts/local-mirror/prod-tunnel.sh
-#                       opens to the Hetzner Mongo host. The
-#                       Fly machines are stopped FIRST so the worker can't race a
-#                       half-finished scrape into a collection we're dropping, and
-#                       restarted only after the wipe lands.
+#   (default)   PROD  — the `web-<cc>` + `worker-<cc>` Deployments on k3s, prod
+#                       Mongo over the ssh tunnel scripts/local-mirror/prod-tunnel.sh
+#                       opens to the Hetzner Mongo host. Both are scaled to ZERO
+#                       first so the worker can't race a half-finished scrape into a
+#                       collection we're dropping, and scaled back only after the
+#                       wipe lands. Needs a kubeconfig for the cluster.
+#
+#                       This used to stop and start FLY machines named `kinowo` and
+#                       `kinowo-worker`. Both tiers moved to k3s on 2026-08-29, which
+#                       made that both useless and harmful: the running worker was
+#                       never stopped (so it raced the wipe) and the restart STARTED
+#                       the stopped Fly worker, giving the fleet two workers holding
+#                       change streams against one database.
 #   --local           — the native brew Mongo the local web+worker share (:28017,
 #                       db `kinowo_local`; see scripts/local-mirror/start-local-mongo.sh).
-#                       No Fly apps and no tunnel — stop your local `sbt web/run` +
+#                       No cluster and no tunnel — stop your local `sbt web/run` +
 #                       `sbt worker/run` yourself first so the worker doesn't
 #                       re-scrape into the wipe.
 #
@@ -48,8 +55,10 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
 
-WEB_APP="kinowo"
-WORKER_APP="kinowo-worker"
+# The country whose Deployments are scaled around the wipe. `MONGODB_DB` names the
+# database (kinowo / kinowo_uk / …); the overlays are suffixed by country code.
+KUBE_NAMESPACE="${KUBE_NAMESPACE:-kinowo}"
+COUNTRY="${KINOWO_RESET_COUNTRY:-pl}"
 COLLECTIONS=(detailCache freshness movies pending_movies tasks web_movies web_screenings)
 
 MODE="prod"
@@ -94,7 +103,7 @@ if [ "$MODE" = "local" ]; then
   echo "[reset] LOCAL: stop your local web+worker (sbt) first so the worker can't re-scrape into the wipe."
   CONFIRM_WORD="wipe-local"
 else
-  echo "[reset] will stop+restart Fly apps: $WEB_APP, $WORKER_APP"
+  echo "[reset] will scale down+up: deploy/web-$COUNTRY, deploy/worker-$COUNTRY (ns $KUBE_NAMESPACE)"
   CONFIRM_WORD="wipe"
 fi
 if [ -z "$DRY" ] && [ -z "$ASSUME_YES" ]; then
@@ -102,30 +111,24 @@ if [ -z "$DRY" ] && [ -z "$ASSUME_YES" ]; then
   [ "$ans" = "$CONFIRM_WORD" ] || { echo "[reset] aborted."; exit 1; }
 fi
 
-# --- stop / start all machines for a Fly app (prod only) --------------------
-stop_app() {
-  local app="$1"
-  echo "[reset] stopping $app..."
-  local ids
-  ids="$(flyctl machines list --app "$app" --json | jq -r '.[].id')"
-  [ -n "$ids" ] || { echo "[reset]   (no machines)"; return; }
-  for id in $ids; do flyctl machine stop "$id" --app "$app"; done
-}
-
-start_app() {
-  local app="$1"
-  echo "[reset] starting $app..."
-  local ids
-  ids="$(flyctl machines list --app "$app" --json | jq -r '.[].id')"
-  [ -n "$ids" ] || { echo "[reset]   (no machines)"; return; }
-  for id in $ids; do flyctl machine start "$id" --app "$app"; done
+# --- scale a Deployment down / up (prod only) -------------------------------
+# Fatal on failure, unlike most of this script's helpers: the point of scaling to
+# zero is that nothing is writing while collections are dropped, so a scale that
+# silently failed would leave the worker racing the wipe — the exact thing this
+# guards against.
+scale_deploy() {
+  local name="$1" replicas="$2"
+  echo "[reset] scaling $name to $replicas..."
+  kubectl -n "$KUBE_NAMESPACE" scale "deploy/$name" --replicas="$replicas" \
+    || { echo "[reset] could not scale $name — is your kubeconfig pointed at the cluster?" >&2; exit 1; }
+  [ "$replicas" = "0" ] && kubectl -n "$KUBE_NAMESPACE" rollout status "deploy/$name" --timeout=120s
+  return 0
 }
 
 # --- tunnel to prod Mongo (prod only), torn down on any exit ----------------
-# The web + worker are still Fly apps (stop_app/start_app above), but the
-# DATABASE is not: it moved to the Hetzner host mongo-1 on 2026-08-29, so the
-# tunnel is an ssh forward. See scripts/local-mirror/prod-tunnel.sh, the single
-# definition every prod-sourced local script shares.
+# The database moved to the Hetzner host mongo-1 on 2026-08-29, so the tunnel is
+# an ssh forward. See scripts/local-mirror/prod-tunnel.sh, the single definition
+# every prod-sourced local script shares.
 TUNNEL_TAG="reset"
 TUNNEL_PROBE_URI="$URI"
 PROD_TUNNEL_ENV_FILE="$ROOT/.env.local"
@@ -148,7 +151,7 @@ require_local_mongo() {
 
 # --- run ---------------------------------------------------------------------
 if [ "$MODE" = "prod" ]; then
-  [ -z "$DRY" ] && { stop_app "$WEB_APP"; stop_app "$WORKER_APP"; }
+  [ -z "$DRY" ] && { scale_deploy "web-$COUNTRY" 0; scale_deploy "worker-$COUNTRY" 0; }
   open_tunnel               # needed to query, even for --dry-run
 else
   require_local_mongo
@@ -171,8 +174,8 @@ mongosh "$URI" --quiet --eval "
 "
 
 if [ "$MODE" = "prod" ] && [ -z "$DRY" ]; then
-  start_app "$WEB_APP"
-  start_app "$WORKER_APP"
+  scale_deploy "worker-$COUNTRY" 1
+  scale_deploy "web-$COUNTRY" 1
 fi
 
 # Local resets preserve the admin-curated titleRules (deliberately not in

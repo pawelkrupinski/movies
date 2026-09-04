@@ -17,7 +17,8 @@ and so you can re-check whether a previously-broken venue has recovered.
 (checked in `web/.../controllers/AdminAction.scala`); an anonymous `curl` returns
 `401 "Not logged in."`. So query prod Mongo directly instead:
 
-1. A `flyctl proxy 27017:27017 --app kinowo-mongo` is usually already running;
+1. An ssh forward to mongo-1 (`scripts/local-mirror/prod-tunnel.sh`) is usually
+   already running;
    start one if not (see the `prod-mongo-access` memory).
 2. Connect with `MONGODB_URI` from the root checkout `.env.local`, host swapped to
    `127.0.0.1:27017`.

@@ -41,7 +41,7 @@ import org.scalatest.matchers.should.Matchers
  */
 class GrafanaEnrichmentSourceAlertSpec extends AnyFlatSpec with Matchers {
 
-  private val AlertRules = "fly/grafana/provisioning/alerting/alert-rules.yaml"
+  private val AlertRules = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
 
   private lazy val alertRules = RepoFile.read(AlertRules)
 

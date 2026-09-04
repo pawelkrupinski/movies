@@ -275,9 +275,9 @@ into a sibling's pod will OOM or throttle it.
    `movies-gitops/flux/gotk-sync.yaml`, then `kubectl apply -f flux/gotk-sync.yaml`
    once — that file is the one thing Flux does not reconcile for itself. Flux builds
    the Deployment from the overlay and keeps it thereafter, and image-automation
-   moves its image with everyone else's. There is no `main.yml` matrix leg — every
-   worker leg there is `enabled: false` and adding one would deploy a second copy. Fly deploys
-   exactly one thing now, the Polish web app; `FlyDeployScopeSpec` holds that rule.
+   moves its image with everyone else's. Nothing to add in `main.yml`: the Fly deploy
+   job there ships exactly one app, the retired Polish redirect host, and
+   `FlyDeployScopeSpec` holds that rule.
 
 ## 4. Web frontend (`showtimes.cc/<cc>/`)
 
@@ -521,33 +521,27 @@ Play-installed build auto-verifies (see `web/src/main/resources/wellknown/README
 ## 7. Observability
 
 **The live stack is the fleet's own**, on `monitoring-1`: Prometheus + Grafana at
-`grafana.kinowo.net`, configured under `infra/nix/files/monitoring/`. The
-`fly/grafana/` tree is the RETIRED Grafana-on-Fly stack (`kinowo-grafana` is scaled
-to zero, and the deploy annotation step in `main.yml` carries the scar of pointing
-at it) — but it is still committed and still read by the `Grafana*Spec`s under
-`worker/src/test/scala/deploy/`, so keeping it consistent is a CI obligation rather
-than a production one. Do both:
+`grafana.kinowo.net`, configured under `infra/nix/files/monitoring/`. There used to
+be a second, retired copy under `fly/grafana/` — the Grafana-on-Fly stack the fleet
+took over from — which the `Grafana*Spec`s read and which therefore had to be kept
+consistent as a CI obligation. It is deleted; there is one stack and one place to
+edit.
 
-1. **`infra/nix/files/monitoring/scrape-kinowo-apps.yaml`** — the one that matters.
-   Add the new worker target to the `kinowo-worker` job and the new web target to
-   the `kinowo-web` job, each carrying `country: <cc>` in its own label block
-   (phases 3 and 4 give the NodePorts). Prometheus runs outside the cluster with no
-   Kubernetes credentials and discovers nothing, so a country missing from this file
-   is simply unmonitored — no error, no red target, no panel.
-2. **`fly/grafana/victoria/scrape.yml`** — add a `kinowo-worker-<cc>` target (its
-   `kinowo_worker_*` series carry `country="<cc>"`) and a `showtimes-<cc>-web`
-   target, so the retired stack stays internally consistent for the specs that read
-   it.
-3. **The throttle backstop** — `fly/grafana/provisioning/alerting/contact-points.yaml`
-   needs a `WorkerThrottle<Cc>` webhook pointing at
-   `http://kinowo-worker-<cc>.internal:9000/throttle`, and
-   `notification-policies.yaml` a route matching `app = kinowo-worker-<cc>` to it.
-   This one is unavoidable: Grafana cannot template a webhook URL from
-   `$labels.app`, so the target worker must be resolved at routing time. Skipping
-   it is caught by `GrafanaWorkerThrottleCoverageSpec` before it can ship. Read the
-   whole mechanism as inherited from the Fly era: its partner, the worker's primary
-   self-throttle `CpuCreditPoller`, watched a shared-cpu credit bucket that is a Fly
-   billing concept and does not exist for a pod on a dedicated eight-core box.
+1. **`infra/nix/files/monitoring/scrape-kinowo-apps.yaml`** — add the new worker
+   target to the `kinowo-worker` job and the new web target to the `kinowo-web` job,
+   each carrying `country: <cc>` in its own label block (phases 3 and 4 give the
+   NodePorts). Prometheus runs outside the cluster with no Kubernetes credentials and
+   discovers nothing, so a country missing from this file is simply unmonitored — no
+   error, no red target, no panel.
+
+That is the whole of it. Two Fly-era chores that used to belong here are gone with
+the platform: a Victoria scrape target for the retired stack, and a
+`WorkerThrottle<Cc>` webhook contact point posting to
+`http://kinowo-worker-<cc>.internal:9000/throttle`. The webhook was the backstop for
+the worker's primary self-throttle `CpuCreditPoller`, which watched a shared-CPU
+credit bucket — a Fly billing concept with no meaning for a pod on a dedicated
+eight-core box — and the `.internal` address it posted to was a Fly 6PN one that
+nothing on this fleet can resolve.
 
 Everything else follows automatically:
 
@@ -560,18 +554,10 @@ Everything else follows automatically:
   per-country: every worker and web pod of every country shares one box, so read
   them as the machine and drop to the per-process JVM panels for one country.
 - **Fly-host panels** (CPU load / credit / throttle / steal, memory, HTTP latency,
-  instance up) exist only in the retired `fly/grafana/` tree, are fleet-wide and are
-  NOT country-scoped — Fly's managed Prometheus exported no `country` label on
-  `fly_instance_*` / `fly_app_*`, only `app`. They scope by app-name convention
-  instead: `kinowo.*|showtimes-.*` for both roles, `kinowo|showtimes-.*` web-only,
-  `kinowo-worker.*` worker-only.
-
-Never widen those matchers by adding the new app to a list — an enumerated matcher
-is how `showtimes-de` went invisible on all six Fly-host panels and three alert
-rules until 2026-07-18. `GrafanaCountryBlindAppMatcherSpec`
-(`worker/src/test/scala/deploy/`) derives the deployed app set from the repo's
-`fly*.toml` files and fails CI if any `app=~"…"` matcher accepts one country's app
-of a role while rejecting another's, so this can't regress silently.
+  instance up) chart `fly_instance_*` / `fly_app_*`, which came from Fly's managed
+  Prometheus and carry no `country` label — only `app`. Nothing this repository
+  deploys produces them any more, so those panels are permanently empty and a new
+  country needs nothing from them.
 
 ## 8. Ship
 

@@ -7,8 +7,8 @@ import services.movies.StoredMovieRecord
 
 /**
  * A periodic census of the live `movies` corpus, exposed as Prometheus gauges on
- * the SAME registry/endpoint as [[WorkerTaskMetrics]] (`/metrics`, scraped by
- * Fly's managed Prometheus, charted by the self-hosted Grafana, `fly/grafana`).
+ * the SAME registry/endpoint as [[WorkerTaskMetrics]] (`/metrics`, scraped by the
+ * fleet's Prometheus on monitoring-1, charted by the Grafana beside it).
  * Where WorkerTaskMetrics counts the task *pipeline*, this counts the corpus
  * *contents*: how much of it has been resolved and rated.
  *

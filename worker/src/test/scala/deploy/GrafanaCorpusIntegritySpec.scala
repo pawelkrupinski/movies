@@ -41,8 +41,8 @@ import services.metrics.{CorpusScanMetrics, PrometheusExposition, WorkerCorpusMe
  */
 class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
 
-  private val FlyOverview = "fly/grafana/provisioning/dashboards/fly-overview.json"
-  private val AlertRules  = "fly/grafana/provisioning/alerting/alert-rules.yaml"
+  private val FlyOverview = "infra/nix/files/monitoring/grafana/dashboards/apps/fly-overview.json"
+  private val AlertRules  = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
 
   private lazy val dashboard  = RepoFile.read(FlyOverview)
   private lazy val alertRules = RepoFile.read(AlertRules)

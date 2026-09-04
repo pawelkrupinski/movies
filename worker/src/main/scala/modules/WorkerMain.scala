@@ -263,7 +263,7 @@ object WorkerMain extends Logging {
   private val MetricsActiveLimit = 1000
 
   /** Worker task-pipeline metrics for the VictoriaMetrics scrape (the `[[metrics]]`
-   *  block in fly.worker.toml). Registered on the SAME HttpServer as /health, AFTER
+   *  block in each worker overlay). Registered on the SAME HttpServer as /health, AFTER
    *  WorkerWiring is up since it reads the live queue + metrics. Served from a
    *  [[services.metrics.MetricsSnapshotCache]] so the scrape never blocks on the
    *  Mongo reads taskMetrics.scrape performs — see that class for why. */

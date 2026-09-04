@@ -266,7 +266,7 @@ search for `PYEOF`). Key logic:
 The harness (`GateReport.scala`, run as `sbt worker/Test/runMain scripts.GateReport`)
 lived in a throwaway worktree and was removed after the investigation. To recreate:
 
-**Inputs**: prod `movies` collection (via `flyctl proxy 27017:27017 --app kinowo-mongo`
+**Inputs**: prod `movies` collection (via `scripts/local-mirror/prod-tunnel.sh`
 + `MONGODB_URI` from `.env.local`); live TMDB / Filmweb / IMDb APIs
 (`TMDB_API_KEY` in `.env.local`).
 

@@ -194,7 +194,7 @@ lazy val worker = (project in file("worker"))
       // reporting all vanish. (Version pinned in Dependencies.scala to match Play.)
       logbackClassic,
       // The Prometheus client the task-pipeline metrics are built on (scraped by
-      // Fly Prometheus via the [[metrics]] block in fly.worker.toml) arrives via
+      // Prometheus, scraped over the worker's NodePort) arrives via
       // `common`, which owns it for both apps — see its libraryDependencies.
       scalatestPlay % Test,
     )

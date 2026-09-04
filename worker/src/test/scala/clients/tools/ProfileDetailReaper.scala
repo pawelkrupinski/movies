@@ -31,7 +31,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * venue across an 843-venue roster.
  *
  * Run (UK corpus, over the prod tunnel):
- *   flyctl proxy 27017 -a kinowo-mongo &
+ *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   MONGODB_DB=kinowo_uk sbt 'worker/Test/runMain clients.tools.ProfileDetailReaper'
  *
  * `def main`, not `extends App` — an `App` body runs inside `<clinit>`, so a

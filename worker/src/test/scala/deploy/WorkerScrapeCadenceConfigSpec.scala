@@ -11,8 +11,7 @@ import scala.concurrent.duration.*
 
 /**
  * Locks the PER-COUNTRY scrape cadence, which lives only in each worker's DEPLOY
- * CONFIG — its k3s overlay's ConfigMap, or the `[env]` block of the fly toml it
- * was onboarded with. `Freshness.defaultScrapeTtl` reads
+ * CONFIG — its k3s overlay's ConfigMap. `Freshness.defaultScrapeTtl` reads
  * `KINOWO_SCRAPE_FRESHNESS_MINUTES` (default 60) and `WorkerWiring` captures it
  * once into the shared `DueWindow`, so the sweep rate a country actually runs at
  * is decided by that config and nothing else — no `Country` field, no code path
@@ -23,12 +22,12 @@ import scala.concurrent.duration.*
  * and territories — ~10x the UK's paced set — against an origin whose 200ms pace
  * is a measured ceiling rather than a choice, so the cadence is the only lever
  * its ~10h sweep leaves. DE is next at 10h: ~1,529 cinemas across 158 Filmstarts
- * regions, on the least heap headroom in the fleet (see `fly.worker.de.toml`).
+ * regions, on the least heap headroom in the fleet.
  *
- * NOT EVERY COUNTRY HAS A FLY TOML. The US was onboarded straight onto k3s, so
- * its cadence exists only in `infra/kubernetes/worker/overlays/us/patch.yaml` —
- * which is the general case now that every main.yml Fly leg is disabled, and
- * why the reader below is syntax-agnostic.
+ * EVERY COUNTRY READS FROM ITS OVERLAY. The three oldest were onboarded onto Fly
+ * and carried their cadence in a `fly.worker*.toml` `[env]` block; those apps and
+ * their configs are gone, so `infra/kubernetes/worker/overlays/<cc>/patch.yaml`
+ * is now the only place any country's sweep rate exists.
  *
  * The mechanism itself — env var overriding the TTL — is covered by
  * `FreshnessStoreSpec`; this spec covers the deployed VALUES.
@@ -107,10 +106,9 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
   private def cadenceOf(config: String): Option[String] =
     RepoFile.freshnessMinutesIn(RepoFile.read(config)).map(_.toString)
 
-  /** The k3s overlay that actually deploys a country's worker. THE FLY TOMLS ARE
-   *  RETIRED for the three countries that have one (every WORKER leg in main.yml
-   *  is `enabled: false`; the pods on k3s-worker-1 are what run) and the US never had
-   *  one — so for it this file is the only place its cadence exists. */
+  /** The k3s overlay that actually deploys a country's worker — the pods on
+   *  k3s-worker-1 are what run, and this ConfigMap is the only place a country's
+   *  cadence exists. */
   private def workerOverlay(cc: String) = s"infra/kubernetes/worker/overlays/$cc/patch.yaml"
 
   /** One `KINOWO_*` value out of a worker overlay's ConfigMap. */
@@ -127,8 +125,8 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // sweep is 7.9h, so 180min was unreachable and DE's roster simply aged — the
     // invariant below now fails at 180 instead of passing on a stale constant.
     // 600 clears the ~8.4h sweep with ~17% headroom, matching the margin DE was
-    // originally sized for. See the invariant test below and fly.worker.de.toml.
-    cadenceOf("fly.worker.de.toml") shouldBe Some("600")
+    // originally sized for. See the invariant test below.
+    cadenceOf(workerOverlay("de")) shouldBe Some("600")
   }
 
   it should "pace Filmstarts slowly enough to stop the 429s, yet still sweep inside that cadence" in {
@@ -140,7 +138,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // invariant rather than the arithmetic, so either can move as long as the
     // sweep still fits.
     val pace     = RateLimitedHttpFetch.configuredInterval("https://www.filmstarts.de/kinoprogramm/kino/A0006/")
-    val cadence  = cadenceOf("fly.worker.de.toml").map(_.toInt).map(_.minutes)
+    val cadence  = cadenceOf(workerOverlay("de")).map(_.toInt).map(_.minutes)
     val requests = Country.Germany.cities.flatMap(_.cinemas).distinct.size * RequestsPerGermanVenue
 
     withClue("Filmstarts must stay paced — unpaced fan-out is what drew the 429s: ") {
@@ -154,7 +152,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
 
   "the PL worker" should "stay on the hourly cadence" in {
     // Guards against a fleet-wide sweep of a slower value: PL's roster drains hourly.
-    cadenceOf("fly.worker.toml") shouldBe Some("60")
+    cadenceOf(workerOverlay("pl")) shouldBe Some("60")
   }
 
   "the UK worker" should "scrape on a cadence its paced Flicks sweep can drain within" in {
@@ -165,7 +163,7 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // the paced origin carries 500. Assert the INVARIANT the way DE's test does, so
     // the pace and the cadence can each move as long as the sweep still fits.
     val pace    = RateLimitedHttpFetch.configuredInterval("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/")
-    val cadence = cadenceOf("fly.worker.uk.toml").map(_.toInt).map(_.minutes)
+    val cadence = cadenceOf(workerOverlay("uk")).map(_.toInt).map(_.minutes)
 
     withClue("Flicks must stay paced — unpaced fan-out is what drew the 429s: ") {
       pace should not be empty
@@ -288,25 +286,12 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     RealHttpFetch.HostPolicies.count(_.hostSuffixes.contains("filmstarts.de")) shouldBe 1
   }
 
-  "every worker toml" should "set the cadence explicitly rather than inheriting the code default" in {
-    val workerTomls = RepoFile
-      .flyTomls()
-      .map(_.getName)
-      .filter(_.startsWith("fly.worker"))
-
-    workerTomls should not be empty
-    workerTomls.foreach { toml =>
-      withClue(s"$toml is missing KINOWO_SCRAPE_FRESHNESS_MINUTES: ") {
-        cadenceOf(toml) should not be empty
-      }
-    }
-  }
-
   "every k3s worker overlay" should "set the cadence explicitly rather than inheriting the code default" in {
-    // The overlays are the layer that actually deploys now. A country onboarded onto
-    // k3s without a fly toml — the US is the first — has no other place to say this,
-    // and inheriting `Freshness.defaultScrapeTtl`'s 60min would put a 8.5h sweep on an
-    // hourly window.
+    // The overlays are the only layer that deploys a worker, so a country whose
+    // overlay omits this has no other place to say it, and inheriting
+    // `Freshness.defaultScrapeTtl`'s 60min would put an 8.5h sweep on an hourly
+    // window. (The three oldest countries used to say it in a `fly.worker*.toml`
+    // instead; those apps and configs are gone.)
     val overlays = Option(new java.io.File("infra/kubernetes/worker/overlays").listFiles())
       .getOrElse(Array.empty[java.io.File])
       .filter(_.isDirectory)
@@ -345,28 +330,19 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     // GROUPING rather than on any real drift, which is a guard failing for the wrong
     // reason. Spelling each country out has no such coupling.
     //
-    // The US clause is read from its k3s OVERLAY rather than a toml, because it has no
-    // toml — which is the general case now, not an exception: the tomls are retired and
-    // the overlays are what deploy. A country left out of the sentence entirely is the
-    // same failure in a milder form — the panel draws its line and states no band for it.
-    val pl = hoursOf("fly.worker.toml")
-    val uk = hoursOf("fly.worker.uk.toml")
-    val de = hoursOf("fly.worker.de.toml")
+    // Every clause is read from that country's k3s OVERLAY, which is what deploys it.
+    // A country left out of the sentence entirely is the same failure in a milder form —
+    // the panel draws its line and states no band for it.
+    val pl = hoursOf(workerOverlay("pl"))
+    val uk = hoursOf(workerOverlay("uk"))
+    val de = hoursOf(workerOverlay("de"))
     val us = hoursOf(workerOverlay("us"))
     val es = hoursOf(workerOverlay("es"))
 
     val sentence = s"${pl}h for pl, ${uk}h for uk, ${de}h for de, ${us}h for us, ${es}h for es"
-    // BOTH copies, because there are two and only one of them is read by anybody. The
-    // live dashboard is the one on monitoring-1; the fly/ copy is the frozen rollback
-    // for the stopped Fly Grafana. Guarding only the frozen one is how the live panel
-    // would be free to misstate the band.
-    Seq(
-      "fly/grafana/provisioning/dashboards/fly-overview.json",
-      "infra/nix/files/monitoring/grafana/dashboards/apps/fly-overview.json"
-    ).foreach { dashboard =>
-      withClue(s"$dashboard's oldest-scrape panel must say '$sentence': ") {
-        RepoFile.read(dashboard) should include(sentence)
-      }
+    val dashboard = "infra/nix/files/monitoring/grafana/dashboards/apps/fly-overview.json"
+    withClue(s"$dashboard's oldest-scrape panel must say '$sentence': ") {
+      RepoFile.read(dashboard) should include(sentence)
     }
   }
 }

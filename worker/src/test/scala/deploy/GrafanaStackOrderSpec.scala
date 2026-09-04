@@ -29,7 +29,7 @@ class GrafanaStackOrderSpec extends AnyFlatSpec with Matchers {
   private val ScrapePhaseTitleFragment = "error share, scrape phase (per country)"
   private val EnrichPhaseTitleFragment = "error share, enrich phase (per country)"
 
-  private val dashboard = RepoFile.read("fly/grafana/provisioning/dashboards/worker-diagnostics.json")
+  private val dashboard = RepoFile.read("infra/nix/files/monitoring/grafana/dashboards/apps/worker-diagnostics.json")
 
   /** One panel's raw JSON block, located by an ASCII fragment of its title and
    *  bounded at the next panel's `"id":` so a neighbour's targets never leak in. */

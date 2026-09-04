@@ -4,15 +4,18 @@
 > are deployed again — on `uk.showtimes.cc` and `de.showtimes.cc`, on the k3s
 > cluster rather than Fly (see `docs/domain-cutover.md`). Everything below is
 > kept because it is the general procedure, not a description of today; read it
-> as "what to do if a country is stopped again", and note that steps naming
-> `flyctl` now describe a tier that no longer runs on Fly.
+> as "what to do if a country is stopped again". Steps that used to name `flyctl`
+> have been repointed: nothing but the retired `kinowo` redirect host runs on Fly,
+> and a country is scaled through its k3s overlay.
 
 
 On **2026-08-02** the UK and German deployments were taken out of service to cut
 hosting cost, leaving Poland as the only country served. Nothing about those
 countries was deleted — their databases, city rosters, scrapers, title rules,
 translations, fly configs and BOTH app-store listings are all intact. What
-changed is a short list of switches, and this file is that list.
+changed is a short list of switches, and this file is that list. (Their Fly
+configs were among the things kept intact at the time; those apps and configs
+have since been deleted, and a country is restored onto k3s.)
 
 `docs/adding-a-country.md` is the other direction (a country that never existed).
 Use this one for `uk` and `de`.
@@ -95,7 +98,8 @@ convergence band. There is no second place to remember for any of them.
      `regenerate-snapshots` skill.
 
 6. **Re-arm its "serving app down" alert.** In
-   `fly/grafana/provisioning/alerting/alert-rules.yaml`, `showtimes-uk-serving-down`
+   `infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml`,
+   `showtimes-uk-serving-down`
    is kept but has `noDataState: OK` / `execErrState: OK` instead of `Alerting` —
    otherwise a deliberately-absent app pages critical to Telegram every 4 hours
    forever. Set both back to `Alerting` so absence is the alarm again. (There is no
@@ -129,7 +133,7 @@ convergence band. There is no second place to remember for any of them.
 
    So: bring the worker up (steps 1–2), **let it complete at least one full scrape
    and projection cycle** — the cadence is `KINOWO_SCRAPE_FRESHNESS_MINUTES` in
-   that country's `fly.worker.<cc>.toml`, so ~3h for DE and ~7h for UK — and only
+   that country's worker overlay, so ~10h for DE and ~7h for UK — and only
    then re-record, so corpus and baseline are captured together from a prod that is
    genuinely moving again:
 

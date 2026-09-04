@@ -1,35 +1,28 @@
-# VENDORED from fly/grafana/provisioning/alerting/alert-rules.yaml -- a COPY, not the original.
+# Grafana's alert rules, for nix/modules/roles/grafana.nix. THE ONLY COPY.
 #
-# WHY A COPY AT ALL, when the original is in this same repository. The flake root is infra/, not the
-# repository root (see infra/flake.nix's header for why: rooting it at the top would drag ~18k
-# tracked files of a Scala application into the store on every evaluation). A Nix path that reaches
-# outside the flake root does not exist in pure evaluation, so the Grafana role cannot read
-# ../fly/... however much it would prefer to. Vendoring that drifts is a real cost; a flake that
-# cannot evaluate is a worse one.
+# It started as a copy of fly/grafana/provisioning/alerting/alert-rules.yaml, in the application
+# repository, which the `kinowo-grafana` Fly app read directly. Copied rather than referenced
+# because the flake root is infra/, not the repository root (see infra/flake.nix's header: rooting
+# it at the top would drag ~18k tracked files of a Scala application into the store on every
+# evaluation), and a Nix path reaching outside the flake root does not exist in pure evaluation.
 #
-# THE COST, STATED PLAINLY SO NOBODY IS SURPRISED BY IT: the Fly instance is being KEPT as the
-# rollback, so during the migration these rules exist twice and a fix applied to one is not applied
-# to the other. A rule fixed on the Fly side during an incident -- which is exactly when rules get
-# fixed -- will not be here. infra/flake.nix names `infra/bin/sync-grafana-provisioning` as the
-# thing that keeps this copy honest; THAT SCRIPT DOES NOT EXIST YET, so today the answer is a
-# `diff -r` before believing either copy. It should exist, and CI should run it.
+# THAT ORIGINAL IS DELETED, along with the Fly Grafana it provisioned, so the drift this header
+# used to warn about is over: there is one file, this one, and editing it plus `nixos-rebuild
+# switch` is the whole loop. The two copies had already diverged by ~579 lines when the original
+# went, which is what a "kept as the rollback" copy nobody deploys turns into.
 #
 # THE datasource uid `fly-prometheus` in every rule below is a CONTRACT with roles/grafana.nix,
 # which provisions a datasource under exactly that uid; renaming either silently empties every rule
 # that queries it.
 #
-# sha256 of the source at the time of copying: 791dff7f24500ca8649e5825a56b5e608c5a391504bd231196013bdde28c4a9b
-#
 # ================================================================================================
-# IT IS NO LONGER AN UNEDITED COPY. POST-MIGRATION AUDIT, 2026-08-29.
+# POST-MIGRATION AUDIT, 2026-08-29.
 # ================================================================================================
 #
 # This file was copied verbatim and then audited rule by rule against the world that exists after
-# the move off Fly. FOUR RULES WERE DELETED and ONE WAS CHANGED; everything else is untouched. The
-# deletions each leave a comment where the rule used to be, so a reader diffing this against
-# fly/grafana/provisioning/alerting/alert-rules.yaml finds an explanation rather than a hole. THE
-# `diff -r` CHECK THAT THIS FILE'S HEADER RECOMMENDS WILL NOW SHOW DIFFERENCES: those five, and
-# nothing else. That is the intended state, not drift.
+# the move off Fly. FOUR RULES WERE DELETED and ONE WAS CHANGED relative to that original; each
+# deletion leaves a comment where the rule used to be, so a reader finds an explanation rather
+# than a hole.
 #
 # ------------------------------------------------------------------------------------------------
 # READ THIS BEFORE CONCLUDING THAT ANY RULE BELOW IS WORKING

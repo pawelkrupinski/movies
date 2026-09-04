@@ -36,7 +36,7 @@ import tools.Env
  *
  * Dry run by DEFAULT — pass `--apply` to write.
  *
- *   flyctl proxy 27017:27017 --app kinowo-mongo &
+ *   . scripts/local-mirror/prod-tunnel.sh && ensure_prod_tunnel   # ssh forward to mongo-1
  *   MONGODB_DB=kinowo sbt "worker/Test/runMain scripts.ConsolidateSplitFilms"
  *   MONGODB_DB=kinowo sbt "worker/Test/runMain scripts.ConsolidateSplitFilms --apply"
  */

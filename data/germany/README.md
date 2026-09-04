@@ -47,7 +47,7 @@ phase (see "Remaining work" below).
    load. `kinowo-worker` currently handles `pl,de` on one 2x/1gb machine sized for
    pl + 10 DE cinemas. Enabling the full roster needs Germany on its **own worker**
    (like UK's `kinowo-worker-uk`) or a resize — otherwise it OOMs/throttles.
-3. **Web** — `Country.Germany.webUrl` + `fly.de.toml` (`showtimes-de`), make DE
+3. **Web** — `Country.Germany.webUrl` + the `de` web overlay, make DE
    `switchable`, deploy matrix leg.
 4. **Mobile** — iOS + Android German support. If DE serves via the `/api/catalog`
    endpoint, the apps can consume the regions dynamically instead of hardcoding.

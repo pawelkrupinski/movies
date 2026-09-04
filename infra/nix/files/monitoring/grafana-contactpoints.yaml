@@ -1,8 +1,8 @@
 # Grafana's contact point and notification policy, for nix/modules/roles/grafana.nix.
 #
-# VENDORED -- the only part of fly/grafana/provisioning/ that is copied rather than read in place,
-# because it is the only part that had to CHANGE. The alert rules and dashboards are read straight
-# out of the application repository; see that module's header.
+# It started as fly/grafana/provisioning/alerting/{contact-points,notification-policies}.yaml,
+# merged into one file because a route naming a receiver that was never written is FATAL at
+# startup rather than inert. That original is gone with the Fly Grafana; see that module's header.
 #
 # ================================================================================================
 # THE CHAT ID IS A QUOTED LITERAL. IT MUST NEVER BECOME ${VAR}. KEEP THE QUOTES.

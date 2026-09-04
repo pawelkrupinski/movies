@@ -1,20 +1,23 @@
 # Grafana, provisioned as code -- the port of the `kinowo-grafana` Fly app.
 #
 # ------------------------------------------------------------------------------------------------
-# WHERE THE PROVISIONING COMES FROM, AND WHY IT IS VENDORED RATHER THAN READ IN PLACE
+# WHERE THE PROVISIONING COMES FROM
 # ------------------------------------------------------------------------------------------------
 #
-# The alert rules and the dashboards STARTED as the Fly instance's -- fly/grafana/provisioning/ --
-# copied into nix/files/monitoring/grafana/. Not transcribed, not rewritten: copied, and the
-# dashboards byte for byte.
+# The alert rules and the dashboards STARTED as the `kinowo-grafana` Fly app's, under
+# fly/grafana/provisioning/, copied into nix/files/monitoring/grafana/. That original is DELETED:
+# the Fly Grafana was scaled to zero when this host took over, its rollback workflow went unrun
+# long enough that the copy it would have deployed had drifted from what actually serves, and a
+# rollback to a Grafana nobody has seen is not a rollback. nix/files/monitoring/grafana/ is the
+# only copy now -- edit it, `nixos-rebuild switch`, done.
 #
 # ------------------------------------------------------------------------------------------------
-# THEY ARE NO LONGER BYTE-FOR-BYTE COPIES. POST-MIGRATION AUDIT, 2026-08-29.
+# WHAT THE POST-MIGRATION AUDIT CHANGED, 2026-08-29.
 # ------------------------------------------------------------------------------------------------
 #
 # The copy was audited against the world that exists after the move off Fly, and four things
-# changed. Anyone running the `diff -r` this header recommends will see exactly these and nothing
-# else; that is the intended state, not drift.
+# changed relative to the Fly original it was taken from. Recorded because the tombstone comments
+# below refer to it.
 #
 #   1. FOUR ALERT RULES DELETED AND ONE CHANGED in alerting/alert-rules.yaml -- two that named Fly
 #      volume mountpoints belonging to machines that no longer exist, one ("Mongo down") that was
@@ -40,8 +43,8 @@
 # COPIED RATHER THAN REFERENCED BECAUSE OF THE FLAKE ROOT, which is infra/ and not the repository
 # root (infra/flake.nix's header sets out why: rooting it at the top drags ~18k tracked files of a
 # Scala application into the store on every evaluation). A Nix path outside the flake root does not
-# exist under pure evaluation, so reading `../fly/grafana/...` from here is not an option, however
-# much this file would prefer one copy over two. bitcashier's equivalent role DOES read its
+# exist under pure evaluation, so reading `../fly/grafana/...` was never an option while that tree
+# existed. bitcashier's equivalent role DOES read its
 # Grafana content in place, out of a Puppet tree, because its flake is rooted at the repository
 # root -- that is the one structural difference between the two fleets, and it is why this file
 # and that one differ on the one point they otherwise agree about.
@@ -108,12 +111,10 @@
 let
   cfg = config.fleet.grafana;
 
-  # THE VENDORED COPY of fly/grafana/provisioning. See the header for why it is a copy.
-  #
-  # THESE FILES ARE SHIPPED BY NIX, NOT BY FLY, and nothing about the path says so. Editing the
-  # copy and running `fly deploy` changes nothing on this host; editing the ORIGINAL and running
-  # `nixos-rebuild switch` changes nothing either. During the migration both files exist and each
-  # is deployed by a different tool -- which is the trap this comment exists to name.
+  # THE PROVISIONING, and the only copy of it -- see the header for where it came from. Shipped by
+  # Nix: edit these files and `nixos-rebuild switch`. During the migration there was a second copy
+  # under fly/grafana/provisioning deployed by a different tool, and editing the wrong one changed
+  # nothing anywhere; that is why it is gone rather than kept "in case".
   grafanaProvisioning = ../../files/monitoring/grafana;
 
   # `restartableUnits` and `neverDisturbUnits` are fnmatch GLOBS -- the applier matches them with
@@ -346,7 +347,7 @@ in
               # FLY'S MANAGED PROMETHEUS. Still the ONLY source of fly_instance_* / fly_edge_*
               # (CPU credit, steal, memory, edge 5xx and p95): those are produced by Fly's own host
               # agent and cannot be scraped from anywhere else. Every one of the alert rules read
-              # out of fly/grafana/provisioning/alerting/alert-rules.yaml queries this uid, so the
+              # in nix/files/monitoring/grafana/alerting/alert-rules.yaml queries this uid, so the
               # uid is a CONTRACT with that file, not a name.
               # KEPT THOUGH NOTHING QUERIES IT. Its token is revoked and no dashboard references
               # it any more -- the apps are scraped directly over this host's 6PN peer, which is
@@ -532,7 +533,7 @@ in
               type = "file";
               # BOTH FALSE, WHICH IS A CHANGE FROM THE FLY PROVISIONING (it allows UI updates and
               # deletion). There, the dashboards were the only copy anyone could edit; here the
-              # file in fly/grafana/provisioning/dashboards IS the source and a UI edit would be
+              # file in nix/files/monitoring/grafana/dashboards IS the source and a UI edit would be
               # silently reverted on the next provisioning pass -- which is the confusing outcome.
               # Making it refuse the edit is kinder than letting it be made and lost.
               # FALSE, SO PROVISIONING PRUNES. It was true, and the effect was that a dashboard

@@ -285,7 +285,7 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
    * The two standalone workflows deployed to the cluster the moment their image
    * built — a push that failed ci still rolled a broken web image onto
    * kinowo.net. Folding them in here put them behind the same green build the Fly
-   * legs wait for. It is also what keeps them off the t=0 runner budget
+   * deploy waits for. It is also what keeps them off the t=0 runner budget
    * (CiRunnerBudgetSpec), so dropping the `needs:` breaks two things at once.
    */
   "neither k3s build" should "start before ci is green" in {

@@ -421,7 +421,7 @@ object RealHttpFetch {
     // client reads `data-showtimes-dates` and fetches only ADVERTISED days
     // (production counters: 51,973 day-chunks over 14,862 venue sweeps = ~3.5
     // days/venue), so a sweep is ~6.9k requests, not 10.7k — ~161min at 1400ms,
-    // still inside DE's 180min cadence (fly.worker.de.toml), which therefore does
+    // still inside DE's cadence (its k3s overlay), which therefore does
     // NOT move with this. Pace and cadence stay coupled all the same — pace sets
     // sweep length, cadence sets the budget, and WorkerScrapeCadenceConfigSpec
     // asserts sweep ≤ cadence so neither can drift alone.
@@ -479,7 +479,7 @@ object RealHttpFetch {
     // req/s the unpaced pool averaged, but — the point — it SERIALISES the fan-out
     // so the concurrent bursts that trip the limiter never form. The pace is GLOBAL
     // per host (RateLimitedHttpFetch: one token bucket, not one per worker), so it
-    // sets the sweep length: ~18k requests x 200ms = ~60min, and fly.worker.uk.toml's
+    // sets the sweep length: ~18k requests x 200ms = ~60min, and the UK overlay's
     // cadence must exceed that (the same pace↔cadence coupling DE has;
     // WorkerScrapeCadenceConfigSpec locks both). KINOWO_FLICKS_PACE_MS retunes it
     // live: if 200ms still throttles, step it down (and bump the cadence to match).

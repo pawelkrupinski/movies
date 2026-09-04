@@ -19,7 +19,7 @@ import org.scalatest.matchers.should.Matchers
  *
  * THE RULES LIVE IN PROMETHEUS, NOT GRAFANA, and that is load-bearing rather
  * than stylistic. The sibling `Grafana*AlertSpec`s in this package all read
- * `fly/grafana/provisioning/alerting/alert-rules.yaml`, whose every rule queries
+ * `infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml`, whose every rule queries
  * the `fly-prometheus` datasource — and that datasource has had no working
  * credential since 2026-08-29, so those rules evaluate to an execution error and
  * fall to Normal. A new rule written in that file would be born silent. The

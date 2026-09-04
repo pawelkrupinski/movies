@@ -42,7 +42,7 @@ Live at **<https://kinowo.net>**.
 | DI          | Compile-time (Play `BuiltInComponents`, `modules.AppLoader`) |
 | Build       | sbt 1.12, JDK 25 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |
-| Hosting     | Fly.io (`kinowo` + `kinowo-worker` apps, region `arn`) |
+| Hosting     | k3s on Hetzner (web + worker pods, `infra/`)  |
 
 ## Repository layout
 
@@ -52,12 +52,12 @@ common/                   # Shared domain used by both apps
 │       ├── models/           # Movie, MovieRecord, Showtime, Cinema, User, ...
 │       └── services/         # movies/ (cache/repository/merge), events/, cinemas/,
 │                             #   readmodel/, titlerules/, freshness/, staging/, tasks/
-worker/                   # Scrape + enrich app (kinowo-worker Fly app)
+worker/                   # Scrape + enrich app (one pod per country)
 │   └── src/main/scala/services/
 │       ├── cinemas/          # One client per cinema chain / venue
 │       ├── enrichment/       # TMDB / IMDb / Filmweb / Metacritic / RT clients + ratings
 │       └── tasks/, staging/, schedule/, alerts/   # scrape loop + read-model projection
-web/                      # Play serving app (kinowo Fly app)
+web/                      # Play serving app (one pod per country)
 │   ├── src/main/scala/
 │   │   ├── controllers/      # MovieController, AuthController, UserStateController, ...
 │   │   ├── modules/          # AppLoader composition root (compile-time DI)
@@ -69,7 +69,9 @@ testkit/                  # Shared test helpers
 e2e/                      # End-to-end specs
 android/                  # Native Compose Android app
 ios/Kinowo/               # SwiftUI iOS app (uses /api/repertoire + /api/details)
-fly.toml, fly.worker.toml, Dockerfile   # Fly.io deploy (two apps, one image)
+Dockerfile                # One image, BIN build-arg selects web or worker
+infra/                    # NixOS fleet, k3s manifests, Prometheus + Grafana
+fly.toml                  # The one app left on Fly: the retired kinowo redirect host
 ```
 
 ## Running locally
@@ -112,7 +114,7 @@ rehydrates its in-memory cache from Mongo via 4-way parallel cursors
   `/debug/readmodel` — the projected read model web actually serves
 - `POST /debug/reenrich?title=...` — drop one row and re-fetch every source
 - `POST /:city/debug/rehydrate` — reload the in-memory cache from Mongo
-- `/health` — Fly health check
+- `/health` — liveness/readiness probe
 
 ## Tests
 
@@ -130,26 +132,27 @@ CI runners don't need a Chrome install.
 
 ## Deploying
 
-Fly.io. Two apps in `arn` (Stockholm — nearest Fly region to Polish
-users, no `waw` exists): `kinowo` (serving, 1 GB shared-CPU, `fly.toml`)
-and `kinowo-worker` (scrape/enrich, `fly.worker.toml`), built from **one
-image** whose `BIN` build-arg selects the launcher (`web` or `worker`).
-Mongo is self-hosted on Fly too — `kinowo-mongo` app, same region,
-`fly/mongo/`.
+**k3s on Hetzner.** One web pod and one worker pod per country, all from
+**one image** whose `BIN` build-arg selects the launcher (`web` or
+`worker`). Mongo is self-hosted on `mongo-1`; `monitoring-1` carries the
+k3s control plane, Prometheus and Grafana. The whole fleet is NixOS,
+declared under [`infra/`](./infra); the Kubernetes manifests live in a
+separate repository (`movies-gitops`, fetched by `infra/bin/fetch-gitops`).
 
-Every push to `main` deploys both legs via GitHub Actions
-(`.github/workflows/main.yml`): it `sbt "web/stage" "worker/stage"`s
-each app, then `flyctl deploy --build-arg BIN=<bin>` per app. To deploy
-one app by hand after staging it:
+Every push to `main` builds and pushes the two images to GHCR
+(`.github/workflows/main.yml`, jobs `build-web` / `build-worker`), each
+path-gated so a web-only push does not restart the workers. **Flux's
+image automation rolls them out** — CI does not deploy to the cluster.
 
-```bash
-flyctl deploy -c fly.toml         --build-arg BIN=web
-flyctl deploy -c fly.worker.toml  --build-arg BIN=worker
-```
+**Fly.io hosts exactly one thing**: `kinowo`, the retired redirect host
+that keeps links predating the move to `kinowo.net` working
+(`docs/domain-cutover.md`). `fly.toml` sets `KINOWO_RETIRED=true`, which
+boots a composition root with no Mongo client in it. The `deploy` job in
+that same workflow ships it, and `FlyDeployScopeSpec` is what keeps
+anything else from being added back.
 
-`fly.toml` / `fly.worker.toml` pin each app's runtime config (memory,
-ALPN, health check). Brief downtime during a redeploy is acceptable per
-project conventions — this is a hobby-traffic app, not a 24/7 SLA.
+Brief downtime during a redeploy is acceptable per project conventions —
+this is a hobby-traffic app, not a 24/7 SLA.
 
 ## Conventions
 

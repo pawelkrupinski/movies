@@ -1,5 +1,7 @@
 package deploy
 
+import java.nio.file.{Files, Paths}
+
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -8,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
  * THAT: the Polish web app `kinowo`, which is what `kinowo.fly.dev` resolves to.
  *
  * This is a standing rule about the platform, not a snapshot of how far the
- * migration got. Everything else — both other countries' sites and all three
+ * migration got. Everything else — both other countries' sites and all five
  * workers — runs on k3s and is shipped by the GHCR jobs; a Fly deploy of any of
  * them would put a SECOND copy of a live service on a host with none of the
  * traffic, against the same databases. That failure is silent: the leg goes
@@ -16,74 +18,97 @@ import org.scalatest.matchers.should.Matchers
  * nobody checks. It was live for a day after the 2026-08-29 cutover before
  * anyone noticed.
  *
- * The matrix flag is one word, which makes it exactly the kind of thing a
- * "restore the UK for a moment" branch flips and forgets. Asserting the roster
- * here means restoring an app takes a deliberate edit in two files — the flip,
- * and the sentence in this spec saying why it is allowed.
+ * The rule used to be a `enabled: false` flag on each of six matrix rows, which
+ * is exactly the kind of thing a "restore the UK for a moment" branch flips and
+ * forgets. The rows, their `fly.*.toml` configs and the Fly apps themselves are
+ * gone now, so restoring one means writing it from scratch — but the deploy job
+ * is still one edit away from growing a matrix again, and these assertions are
+ * what make that edit deliberate.
  *
  * Tests run with the repo root as CWD, so the workflow paths resolve directly.
  */
 class FlyDeployScopeSpec extends AnyFlatSpec with Matchers {
 
   private lazy val mainYml = RepoFile.read(".github/workflows/main.yml")
+  private lazy val deployJob = RepoFile.block(mainYml, "deploy")
 
-  /** Every `- app: … enabled: …` row of the deploy matrix, in file order. */
-  private lazy val legs: Seq[(String, Boolean)] = {
-    val lines = RepoFile.block(mainYml, "deploy").linesIterator.toVector
-    lines.zipWithIndex.collect { case (line, at) if line.trim.startsWith("- app:") =>
-      val app = line.trim.stripPrefix("- app:").trim
-      // The flag is the last key of the row: scan forward to the next `enabled:`
-      // before the following row starts.
-      val enabled = lines.drop(at + 1).takeWhile(!_.trim.startsWith("- app:"))
-        .find(_.trim.startsWith("enabled:")).map(_.trim.stripPrefix("enabled:").trim)
-      withClue(s"leg '$app' has no `enabled:` flag: ")(enabled shouldBe defined)
-      app -> (enabled.get == "true")
-    }
+  "the Fly deploy job" should "deploy the Polish web app and nothing else" in {
+    // On the COMMANDS, not the file: the comments above the job name the apps
+    // that USED to be deployed while explaining why they are gone, and a spec
+    // that forbids saying so would delete the explanation along with the
+    // behaviour.
+    val commands = deployJob.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
+    commands.linesIterator.filter(_.contains("flyctl deploy")).toSeq shouldBe
+      Seq("              run: flyctl deploy -c fly.toml -a kinowo -i ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}")
   }
 
-  "the Fly deploy matrix" should "enable the Polish web app and nothing else" in {
-    legs.filter(_._2).map(_._1) shouldBe Seq("kinowo")
+  /**
+   * And it must not grow a matrix again. A matrix is a place to add a row, and
+   * every row anyone would add names an app that already runs on k3s — so the
+   * one-app rule is enforced by there being nowhere to put a second one, not by
+   * a flag on each row that a branch can flip.
+   */
+  it should "name its one app inline rather than iterating a matrix" in {
+    deployJob should not include "strategy:"
+    deployJob should not include "matrix."
   }
 
-  // Named individually rather than counted, so adding a seventh app to the
-  // matrix fails here instead of passing on an arithmetic coincidence.
-  it should "still carry every other app as a disabled row, ready to restore" in {
-    legs.map(_._1) should contain theSameElementsAs Seq(
-      "kinowo", "showtimes-uk", "showtimes-de", "kinowo-worker", "kinowo-worker-uk", "kinowo-worker-de")
-  }
-
-  // The leg releases whatever `fly.toml` describes, and `fly.toml` is where
-  // `KINOWO_RETIRED` lives — which is what makes deploying this host on every
-  // push safe. A leg pointed at another config would ship the SERVING app onto
-  // kinowo.fly.dev and undo the retirement without touching a line of Scala.
-  it should "deploy the Polish app from the config that carries its retirement flag" in {
-    val row = RepoFile.block(mainYml, "deploy").linesIterator.toVector
-      .dropWhile(!_.trim.startsWith("- app: kinowo")).take(5).map(_.trim)
-    row should contain ("toml: fly.toml")
-    row should contain ("bin: web")
+  /**
+   * The job releases whatever `fly.toml` describes, and `fly.toml` is where
+   * `KINOWO_RETIRED` lives — which is what makes deploying this host on every
+   * push safe: it boots `modules.RetiredComponents`, a composition root with no
+   * `Wiring` mixed in, so it cannot open a Mongo client. A job pointed at another
+   * config would ship the SERVING app onto kinowo.fly.dev and undo the retirement
+   * without touching a line of Scala.
+   */
+  it should "deploy from the config that carries the app's retirement flag" in {
     RepoFile.read("fly.toml") should include ("KINOWO_RETIRED = 'true'")
   }
 
-  // The rule is about the PLATFORM, so it has to hold across every workflow, not
-  // just the one with the matrix in it. Two files may reach Fly at all; a third
-  // that learns to has to be a deliberate edit here.
-  "the workflows that can reach Fly" should "be only the deploy matrix and the Grafana rollback" in {
+  /**
+   * ONE fly config, because there is one Fly app. The five that went with the
+   * cutover — two country frontends and three workers — were kept for months as
+   * "restoring one is a word plus a decision", which is how a config that
+   * describes nothing running stays in a repo indefinitely, drifting from the
+   * overlay that replaced it. `WorkerScrapeCadenceConfigSpec` used to read a
+   * country's scrape cadence out of one of them.
+   */
+  it should "be the only fly config in the repository" in {
+    RepoFile.flyTomls().map(_.getName) shouldBe Seq("fly.toml")
+    withClue("a fly config outside the repo root would dodge the check above: ") {
+      Files.exists(Paths.get("fly")) shouldBe false
+    }
+  }
+
+  /**
+   * The rule is about the PLATFORM, so it has to hold across every workflow, not
+   * just the one that deploys. `deploy-grafana.yml` was the second — a
+   * dispatch-only rollback for `kinowo-grafana`, kept after Grafana moved to
+   * monitoring-1 on the grounds that a rollback you have to reconstruct is not
+   * one. It went unrun long enough that its provisioning had drifted from the
+   * copy that actually serves, at which point it was a rollback to a Grafana
+   * nobody had seen.
+   */
+  "the workflows that can reach Fly" should "be only the one that deploys the Polish web app" in {
     val reaching = RepoFile.workflows()
       .filter(f => RepoFile.read(s".github/workflows/${f.getName}").contains("flyctl deploy"))
       .map(_.getName)
-    reaching should contain theSameElementsAs Seq("main.yml", "deploy-grafana.yml")
+    reaching shouldBe Seq("main.yml")
   }
 
-  // `kinowo-grafana` is the migration's rollback, and its machine is STOPPED — a
-  // `flyctl deploy` starts it. On a `push` trigger that made every alert-rule
-  // tweak boot a second Grafana holding a second copy of the same alerts, which
-  // is both a duplicate service and the exact thing the one-app rule forbids.
-  // Dispatch-only keeps the rollback without letting a commit fire it.
-  it should "leave the Grafana rollback on a manual trigger, never a push" in {
-    val grafana = RepoFile.read(".github/workflows/deploy-grafana.yml")
-    grafana should include ("workflow_dispatch:")
-    withClue("deploy-grafana.yml would redeploy the stopped Fly Grafana on a push: ") {
-      grafana.linesIterator.exists(_.trim == "push:") shouldBe false
-    }
+  /**
+   * And no workflow may reach Fly for anything else either — a `flyctl scale`,
+   * `flyctl machines start`, a `flyctl ssh console` against an app that is not
+   * `kinowo`. The deploy guard's own probe is the one exception, and it names
+   * `kinowo` on the same line.
+   */
+  it should "run no flyctl command against an app other than kinowo" in {
+    val offenders = for {
+      file <- RepoFile.workflows()
+      line <- RepoFile.read(s".github/workflows/${file.getName}").linesIterator
+      command = line.trim
+      if !command.startsWith("#") && command.contains("flyctl ") && !command.contains("-a kinowo")
+    } yield s"${file.getName}: $command"
+    offenders shouldBe empty
   }
 }

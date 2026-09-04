@@ -46,7 +46,7 @@ class GrafanaFieldMatcherIdSpec extends AnyFlatSpec with Matchers {
   private val MatcherId = """"matcher"\s*:\s*\{\s*"id"\s*:\s*"([^"]+)"""".r
 
   private def dashboards(): Seq[java.io.File] =
-    Option(new java.io.File("fly/grafana/provisioning/dashboards").listFiles())
+    Option(new java.io.File("infra/nix/files/monitoring/grafana/dashboards/apps").listFiles())
       .getOrElse(Array.empty[java.io.File])
       .filter(_.getName.endsWith(".json"))
       .sortBy(_.getName)

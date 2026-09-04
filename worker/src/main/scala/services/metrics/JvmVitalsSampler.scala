@@ -40,7 +40,7 @@ import scala.util.Try
  *
  * Native memory is read in-process via the HotSpot DiagnosticCommand MBean's
  * `vmNativeMemory("summary")` (no `jcmd` needed — the box is JRE-only). It
- * requires `-XX:NativeMemoryTracking=summary` (set in `fly.worker.toml`
+ * requires `-XX:NativeMemoryTracking=summary` (set in each worker overlay's
  * JAVA_OPTS). If NMT is off the command returns a "not enabled" string, the
  * parser yields no categories, the gauges stay at their seeded 0 and the sampler
  * logs once — it never throws.

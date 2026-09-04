@@ -9,11 +9,10 @@
   # NixOS config, and rooting the flake at the top would drag ~18k tracked files into the store on
   # every evaluation to reach the handful under infra/.
   #
-  # THE ONE THING THAT CROSSES THAT BOUNDARY is Grafana's provisioning, which lives at
-  # ../fly/grafana/provisioning because the Fly deployment still reads it and is being KEPT as the
-  # rollback. It is vendored into infra/nix/files/monitoring/grafana/ rather than referenced across
-  # the boundary, and infra/bin/sync-grafana-provisioning is what keeps the copy honest. Vendoring
-  # that drifts is a real cost; a flake that cannot evaluate is a worse one.
+  # NOTHING CROSSES THAT BOUNDARY any more. Grafana's provisioning used to: it lived at
+  # ../fly/grafana/provisioning, where the Fly deployment read it, and was vendored into
+  # infra/nix/files/monitoring/grafana/ rather than referenced across the boundary. The Fly Grafana
+  # is gone and so is that original, so the vendored copy is simply the copy.
 
   inputs = {
     # PIN, not a moving branch. Matches bitcashier/infra so that a module ported between the two

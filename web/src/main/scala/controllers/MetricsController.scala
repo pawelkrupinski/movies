@@ -7,9 +7,9 @@ import services.UptimeMonitor.RecentTotals
 import services.metrics.WebJvmMetrics
 
 /**
- * Prometheus exposition endpoint (`GET /metrics`), scraped by Fly's managed
- * Prometheus via the `[[metrics]]` block in fly.toml and charted/alerted on by
- * the self-hosted Grafana (`fly/grafana`).
+ * Prometheus exposition endpoint (`GET /metrics`), scraped over the pod's
+ * NodePort by the fleet's Prometheus (`infra/nix/files/monitoring/scrape-kinowo-apps.yaml`)
+ * and charted/alerted on by the Grafana beside it.
  *
  * The in-app /uptime health lives in Mongo (`uptimeBuckets`), invisible to
  * Fly's host-only metrics — so a service that fails silently never alerts. The

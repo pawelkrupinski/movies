@@ -24,8 +24,6 @@ import org.scalatest.matchers.should.Matchers
  *  - the leg must still `needs: ci`, or the split turns into shipping untested
  *    code. That is the whole reason the build may run early: nothing it produces
  *    reaches a machine until the tests are green.
- *
- * Plus the hash agreement below, which is the subtle one.
  */
 class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val mainYml    = RepoFile.read(".github/workflows/main.yml")
@@ -35,7 +33,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val buildWorker = RepoFile.block(mainYml, "build-worker")
 
   "the deploy leg" should "release a pre-built image rather than build one" in {
-    deployJob should include("-i ghcr.io/${{ github.repository_owner }}/${{ matrix.ghcr }}:${{ github.sha }}")
+    deployJob should include("-i ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}")
     deployJob should not include "--remote-only"
     deployJob should not include "download-artifact"
   }
@@ -53,7 +51,7 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still wait for a green build before releasing anything" in {
-    deployJob should include("needs: [ci, build-web, build-worker]")
+    deployJob should include("needs: [ci, build-web]")
   }
 
   it should "release a tag those builds actually push" in {
@@ -62,42 +60,42 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * ...and NOT release when they pushed nothing. Both builds are path-gated, so
-   * a push that misses a tier pushes no tag for it — where the old `build-image`
-   * built both unconditionally and the case could not arise. Without this the leg
-   * names a tag that was never pushed, and an unchanged tier turns a green build
-   * red.
+   * ...and NOT release when it pushed nothing. `build-web` is path-gated, so a
+   * push that misses the tier pushes no tag for it — where the old `build-image`
+   * built both tiers unconditionally and the case could not arise. Without this
+   * the job names a tag that was never pushed, and an unchanged tier turns a
+   * green build red.
    */
-  it should "skip a tier whose build pushed no tag for this commit" in {
+  it should "skip a commit whose web build pushed no tag" in {
     deployJob should include("needs.build-web.outputs.changed")
-    deployJob should include("needs.build-worker.outputs.changed")
   }
 
   /**
-   * The worker's no-op guard compares a hash BAKED INTO the image against one it
-   * recomputes from the checkout. Those two hashes are now written in different
-   * jobs, so they can drift apart — and drift is silent in the worst direction:
-   * the guard simply never matches, and every push pays the worker a cold
-   * freshness re-hydrate plus a scrape boot storm, which is the exact thing the
-   * guard exists to prevent.
+   * The worker's no-op guard compared a hash BAKED INTO the image against one it
+   * recomputed from the checkout, so a push that changed nothing about the worker
+   * artifact would not restart it into a cold freshness re-hydrate plus a scrape
+   * boot storm. It existed for the FLY worker deploy, which is gone: the worker is
+   * a k3s pod now, and what restarts it is Flux picking up an image tag — and
+   * `build-worker` is already path-gated, so a push that leaves the tier alone
+   * builds no image for Flux to pick up. Baking a hash nothing reads back is the
+   * kind of thing that survives for years; assert it is gone in BOTH places, since
+   * either half left behind is dead weight that reads as live wiring.
    */
-  it should "hash the same worker inputs in the image build as in the skip guard" in {
-    val inputs = "for p in worker common build.sbt project Dockerfile"
-    buildWorker should include(s"$inputs fly.worker.toml")
-    buildWorker should include("WORKER_INPUT_HASH=")
-    deployJob   should include(s"$inputs $${{ matrix.toml }}")
+  it should "not bake a worker input hash nothing reads back any more" in {
+    buildWorker should not include "WORKER_INPUT_HASH"
+    deployJob   should not include "WORKER_INPUT_HASH"
+    RepoFile.read("Dockerfile") should not include "WORKER_INPUT_HASH"
   }
 
   /**
    * The Grafana deploy marker was a job of its own (`annotate`, `needs: deploy`),
    * which spent ~10s of runner spin-up on the critical path to run one curl. It
-   * rides the web leg now — where it also lands at a truer moment, when the
+   * rides the deploy now — where it also lands at a truer moment, when the
    * user-visible tier shipped rather than when the last of six legs stopped.
    */
-  it should "mark the deploy from the web leg rather than a job of its own" in {
+  it should "mark the deploy from the deploy job rather than one of its own" in {
     mainYml should not include "annotate:"
     deployJob should include("Mark deploy in Grafana")
-    deployJob should include("matrix.app == 'kinowo'")
   }
 
   /**

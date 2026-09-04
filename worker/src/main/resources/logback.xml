@@ -2,7 +2,7 @@
   <include resource="logback-base.xml"/>
 
   <!-- Persistent log file on the Fly volume mounted at /data (KINOWO_LOG_DIR=
-       /data/logs in fly.worker.toml) so the worker's logs SURVIVE a restart —
+       /data/logs in each worker overlay) so the worker's logs SURVIVE a restart —
        `flyctl logs` only retains a short rolling window, which loses exactly the
        pre-restart logs you need to diagnose a crash/throttle spiral (the gap hit
        during the 2026-06-24 throttle incident). Unset (local dev) → ./logs.

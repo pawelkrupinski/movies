@@ -21,15 +21,6 @@
 FROM eclipse-temurin:25-jre
 ARG COMMIT_SHA=unknown
 ENV COMMIT_SHA=$COMMIT_SHA
-# Hash of the worker artifact's inputs (sources + build + image recipe + fly
-# config), baked in so the deploy workflow can read it back off the running
-# machine and SKIP a redeploy when those inputs are byte-identical — a web/iOS/
-# Android/Grafana-only push must not restart the worker, since every restart
-# pays a cold freshness re-hydrate + scrape boot storm that drains the
-# shared-CPU credit. Only the worker leg passes a real value; web leaves it
-# `unknown`. See the deploy guard in .github/workflows/main.yml.
-ARG WORKER_INPUT_HASH=unknown
-ENV WORKER_INPUT_HASH=$WORKER_INPUT_HASH
 ARG BIN=web
 ENV BIN=$BIN
 WORKDIR /app
@@ -79,14 +70,14 @@ EXPOSE 9000
 # DURABLE STDERR (worker only): the JVM's dying stderr — the `ExitOnOutOfMemoryError`
 # native-OOM line (`Native memory allocation (mmap/malloc) failed…`) and, on a clean
 # SIGTERM restart, the `-XX:+PrintNMTStatistics` summary — otherwise goes only to the
-# container stderr → `flyctl logs`, whose short retention rolls away before the ~5 h
+# container stderr → `kubectl logs`, whose short retention rolls away before the ~5 h
 # OOM can be read. Append it to /data/logs/worker-stderr.log so the pre-death readout
 # SURVIVES the restart. `launch()` keeps the `exec` (JVM stays PID-adjacent, receives
 # SIGTERM directly for the graceful NMT dump) while the redirect at the call site
 # hands the JVM an fd-2 pointing at the durable file. web has no /data volume → the
 # `else` branch runs the JVM unredirected, exactly as before. Cap the file on boot so
 # a crash-loop can't fill /data (keep the last ~4 MB). Hard JVM crashes (SIGSEGV) go
-# to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in fly.worker.toml JAVA_OPTS).
+# to -XX:ErrorFile=/data/logs/hs_err_%p.log (set in each k3s overlay's JAVA_OPTS).
 CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     if [ -f /data/heapdumps/java_pid1.hprof ]; then mv /data/heapdumps/java_pid1.hprof "/data/heapdumps/oom-$(date -u +%Y%m%dT%H%M%SZ).hprof"; fi; \
     if [ -d /data/heapdumps ]; then half=$(( $(df -Pk /data/heapdumps | awk 'NR==2{print $2}') / 2 )); newest=$(ls -1t /data/heapdumps/*.hprof 2>/dev/null | head -1); for f in /data/heapdumps/*.hprof; do [ -e "$f" ] || continue; if [ "$f" != "$newest" ]; then rm -f "$f"; elif [ "$(du -k "$f" | cut -f1)" -gt "$half" ]; then rm -f "$f"; fi; done; fi; \
@@ -100,12 +91,12 @@ CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     -Dhttp.address=0.0.0.0 \
     -Dpidfile.path=/dev/null; }; \
     if [ -d /data ]; then mkdir -p /data/logs; launch 2>> /data/logs/worker-stderr.log; else launch; fi
-    # JVM sizing (heap/GC/non-heap caps) is now per-app via `JAVA_OPTS` in each
-    # app's fly.toml — the launcher reads it — so the serving web app (kinowo)
-    # and the scrape/enrich worker can be sized independently from this one
-    # shared image. web runs a smaller heap (it no longer scrapes); the worker
-    # keeps the larger one. The historical rationale for the original single
-    # sizing is preserved below for reference.
+    # JVM sizing (heap/GC/non-heap caps) is now per-app via `JAVA_OPTS` — the
+    # launcher reads it — set in each tier+country's k3s overlay (and in `fly.toml`
+    # for the retired `kinowo` redirect host), so every app can be sized
+    # independently from this one shared image. web runs a smaller heap (it no
+    # longer scrapes); the worker keeps the larger one. The historical rationale
+    # for the original single sizing is preserved below for reference.
     #
     # JVM sizing on the 1 GB cgroup. Targets:
     #
@@ -128,7 +119,7 @@ CMD mkdir -p /data/heapdumps /data/logs 2>/dev/null; \
     #
     # GC logging was here as `-J-Xlog:gc*:stderr:…` while diagnosing
     # the heap-resize spikes; once the tuning above settled the
-    # variance it's just noise in `flyctl logs`. Re-add as a one-liner
+    # variance it's just noise in `kubectl logs`. Re-add as a one-liner
     # if a future perf investigation needs to correlate request
     # latency with pause records.
     #

@@ -15,9 +15,9 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  * for web.
  *
  * No `country` label: these are process-level facts about one JVM, and a web
- * deployment already serves exactly one country per Fly app (`KINOWO_COUNTRY`),
+ * deployment already serves exactly one country per pod (`KINOWO_COUNTRY`),
  * so the scrape's `app` label identifies the country's process on its own (see
- * fly/grafana/victoria/scrape.yml).
+ * infra/nix/files/monitoring/scrape-kinowo-apps.yaml).
  *
  * One instance per process, built in [[modules.Wiring]] — the collector names
  * may be registered only once per registry.
