@@ -1,4 +1,4 @@
-@import controllers.{FilmSchedule, CardFormat, FilmHref}
+@import controllers.{CinemaFormat, FilmSchedule, CardFormat, FilmHref}
 @(film: FilmSchedule)(implicit city: models.City)
 @*
    One film's showings, grouped by date → cinema → time slots. Used by
@@ -8,6 +8,10 @@
    when available); per-cinema common format tokens are stripped from each
    slot's badge. The label is always shown on the listing — even when the
    cinema filter is narrowed to one cinema.
+
+   A LANGUAGE version common to the whole cinema is not stripped but MOVED into
+   that label, said once instead of vanishing off every pill — see
+   `CinemaFormat`, which draws that line.
 
    Both outbound shapes here — the cinema's page for the film, and each slot's
    booking deep-link — carry `rel="nofollow noopener"`. A city listing renders
@@ -21,30 +25,24 @@
    this partial stays a plain render of the whole tree and neither host has to
    agree with the other about what a cap should be.
 *@
-@defining(
-  film.showings.flatMap(_._2)
-    .groupBy(_.cinema)
-    .map { case (c, css) =>
-      val fmts = css.flatMap(_.showtimes).map(_.format.toSet).filter(_.nonEmpty)
-      c -> (if (fmts.isEmpty) Set.empty[String] else fmts.reduce(_ intersect _))
-    }
-) { commonToksByCinema =>
+@defining(CinemaFormat.byCinema(film, services.movies.ScreeningTokens.of(city.country))) { commonByCinema =>
 @for((date, cinemaShowtimesList) <- film.showings) {
   <div class="date-group" data-date="@date">
     <div class="date-label">@CardFormat.date(date)</div>
     @for(cinemaShowtimes <- cinemaShowtimesList) {
-      @defining(commonToksByCinema.getOrElse(cinemaShowtimes.cinema, Set.empty[String])) { commonToks =>
+      @defining(commonByCinema.getOrElse(cinemaShowtimes.cinema, CinemaFormat.Empty)) { shared =>
       <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
         <div class="cinema-label">
           @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
             case Some((_, url)) => { <a href="@url" target="_blank" rel="nofollow noopener" class="cinema-label-link">@cinemaShowtimes.cinema.displayName ↗</a> }
             case None           => { @cinemaShowtimes.cinema.displayName }
           }
+          @if(shared.version.nonEmpty) { <span class="cinema-fmt">@shared.version.mkString(" ")</span> }
         </div>
         <div>
           @for(slot <- cinemaShowtimes.showtimes) {
             @{
-              val tokens     = slot.format.filterNot(commonToks.contains).mkString(" ")
+              val tokens     = slot.format.filterNot(shared.common.contains).mkString(" ")
               val fmtBadge   = if (tokens.isEmpty) "" else s"""<span class="badge-fmt">${play.twirl.api.HtmlFormat.escape(tokens)}</span>"""
               val roomAttr   = slot.room.map(r => s""" data-room="${play.twirl.api.HtmlFormat.escape(r)}"""").getOrElse("")
               val fmtAttr    = slot.format.mkString(" ")

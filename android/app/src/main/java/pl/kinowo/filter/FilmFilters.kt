@@ -279,10 +279,18 @@ fun List<Film>.groupedByCinema(): List<CinemaSection> {
 }
 
 /**
- * Tokens shared by every showtime of a cinema-group — used to drop a
- * redundant "2D" label when all of a cinema's slots are 2D.
+ * Which of a cinema-group's showtime-format tokens a chip may drop, and which
+ * the cinema's own label has to say instead.
+ *
+ * Dropping what every slot shares is what keeps a chip narrow enough for
+ * two-per-row (`ShowtimeChipFitTest`) — six chips all saying "2D" tell you
+ * nothing. But it was silently swallowing the LANGUAGE VERSION too: a film a
+ * cinema screens only dubbed has every slot tagged `2D DUB`, the intersection
+ * ate `DUB`, and the card could no longer tell napisy from dubbing. Same defect,
+ * and same fix, as the web's `CinemaFormat` and iOS's `FormatTokenFilter`.
  */
 object FormatTokenFilter {
+    /** The tokens EVERY showtime at [cinema] carries. */
     fun commonTokens(cinema: CinemaShowings): Set<String> {
         val tokenSets = cinema.showtimes
             .map { it.format.split(" ").filter(String::isNotEmpty).toSet() }
@@ -291,8 +299,60 @@ object FormatTokenFilter {
         return tokenSets.drop(1).fold(first) { acc, s -> acc.intersect(s) }
     }
 
+    /**
+     * The part of [commonTokens] that names a language version, in the source's
+     * own order — what the cinema label says once instead of every chip saying
+     * it. Empty when the version differs between showtimes, which is exactly
+     * where a per-chip tag is the only thing that can carry it.
+     */
+    fun commonVersion(cinema: CinemaShowings): List<String> {
+        val common = commonTokens(cinema)
+        val first = cinema.showtimes.firstOrNull { it.format.isNotEmpty() } ?: return emptyList()
+        return first.format.split(" ").filter { it in common && isLanguageVersion(it) }
+    }
+
+    /**
+     * What a chip at [cinema] may drop: everything common to the cinema when a
+     * cinema LABEL is on screen to carry the version, and everything common
+     * EXCEPT the version when it is not.
+     *
+     * [hasLabel] is `Showings`'s `showCinemaHeaders`. The Kina tab's per-cinema
+     * section names the cinema but is shared by films with different versions,
+     * so there the chip is the only place the version can live. A chip that
+     * keeps it is the "2D DUB" shape `ShowtimeChipFitTest` holds two-per-row
+     * against, so this never widens past the guarantee.
+     */
+    fun tokensToStrip(cinema: CinemaShowings, hasLabel: Boolean): Set<String> {
+        val common = commonTokens(cinema)
+        return if (hasLabel) common else common - commonVersion(cinema).toSet()
+    }
+
     fun filter(format: String, common: Set<String>): String {
         if (common.isEmpty()) return format
         return format.split(" ").filter { it.isNotEmpty() && it !in common }.joinToString(" ")
     }
+
+    /**
+     * Does [token] name a language version — what you will hear and read —
+     * rather than a screen format or an accessibility feature?
+     *
+     * Decided by EXCLUSION, because the version half of the vocabulary is the
+     * open one: it carries every market's own spelling (NAP/DUB/LEK/ORG,
+     * SUB/LEC, VO/VOSE/VOSI/DOB/CAT, OV/OmU/OmeU/DF) AND the audio language
+     * itself wherever a source names one — at a UK multiplex "Hindi" is the
+     * whole difference between two screenings of the same film, and no fixed
+     * list keeps up with that. The screen-format and accessibility halves are
+     * closed, so naming those and taking the complement stays in step with the
+     * server's `ScreeningTokens`, whose three categories partition the same
+     * vocabulary.
+     */
+    fun isLanguageVersion(token: String): Boolean = token.uppercase() !in NonVersionTokens
+
+    /** Screen format + per-screening accessibility — the closed categories. */
+    private val NonVersionTokens = setOf(
+        "2D", "3D", "IMAX", "4DX", "4DE", "SCREENX", "ISENSE", "PLF", "EPIC",
+        "INFINITY", "DBOX", "LASER", "HDR", "ATMOS", "DOLBY", "4K",
+        "70MM", "35MM", "16MM", "VIP", "PREMIUM",
+        "AD", "OC",
+    )
 }

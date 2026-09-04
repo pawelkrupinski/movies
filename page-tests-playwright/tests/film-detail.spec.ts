@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleSlug, firstVisibleTitle, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
+import { firstVisibleCard, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
 
 // `/poznan/movie/{slug}` detail page. Walks from a card on `/` to its
 // detail screen and asserts the page's content blocks render +
@@ -11,8 +11,9 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
   async function gotoFirstFilm(page: import('@playwright/test').Page): Promise<string> {
     await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
-    const title = await firstVisibleTitle(page);
-    const slug  = await firstVisibleSlug(page);
+    const card  = await firstVisibleCard(page);
+    const title = card?.title;
+    const slug  = card?.slug;
     expect(title).toBeTruthy();
     expect(slug).toBeTruthy();
     // `waitUntil: 'domcontentloaded'` for the same reason `gotoAndWaitForCards`
@@ -168,17 +169,17 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('.cinema-link')).toHaveCount(12);
-    expect(await page.locator('.cinema-link:visible').count()).toBe(10);
+    await expect(page.locator('.cinema-link:visible')).toHaveCount(10);
 
     const more = page.locator('.cinema-links .cinemas-more');
     await expect(more).toBeVisible();
     await more.click();
 
-    expect(await page.locator('.cinema-link:visible').count()).toBe(12);
+    await expect(page.locator('.cinema-link:visible')).toHaveCount(12);
     await expect(more).toBeHidden();
     // The pill fold owns `.folded`; the filter owns inline display. Unfolding
     // the pills leaves the showings tree exactly as the filter left it.
-    expect(await page.locator('.cinema-group:visible').count()).toBe(12);
+    await expect(page.locator('.cinema-group:visible')).toHaveCount(12);
   });
 
   // The showings tree does NOT fold — it renders every cinema, and what
@@ -199,7 +200,7 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
 
     // Eight left, all under the ten-pill cap, so nothing folds and the button
     // retires rather than offering rows that are no longer there.
-    expect(await page.locator('.cinema-link:visible').count()).toBe(8);
+    await expect(page.locator('.cinema-link:visible')).toHaveCount(8);
     await expect(page.locator('.cinema-links .cinemas-more')).toBeHidden();
     const shown = await page.locator('.cinema-link:visible')
       .evaluateAll((els) => els.map((e) => (e as HTMLElement).dataset.cinema));
@@ -210,7 +211,7 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
 
     await expect(page.locator('.cinema-group')).toHaveCount(12);
-    expect(await page.locator('.cinema-group:visible').count()).toBe(12);
+    await expect(page.locator('.cinema-group:visible')).toHaveCount(12);
     await expect(page.locator('.date-group .cinemas-more')).toHaveCount(0);
 
     const off = (await page.locator('.cinema-group[data-cinema]')
@@ -220,7 +221,7 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
       (window as unknown as { applyFilters: () => void }).applyFilters();
     }, off);
 
-    expect(await page.locator('.cinema-group:visible').count()).toBe(8);
+    await expect(page.locator('.cinema-group:visible')).toHaveCount(8);
     await expect(page.locator('#showings-empty')).toBeHidden();
   });
 
@@ -234,8 +235,8 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
       (window as unknown as { applyFilters: () => void }).applyFilters();
     }, all);
 
-    expect(await page.locator('.cinema-group:visible').count()).toBe(0);
-    expect(await page.locator('.date-group:visible').count()).toBe(0);
+    await expect(page.locator('.cinema-group:visible')).toHaveCount(0);
+    await expect(page.locator('.date-group:visible')).toHaveCount(0);
     await expect(page.locator('#showings-empty')).toBeVisible();
   });
 
@@ -248,4 +249,56 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     // surface in `errors`.
     expect(errors).toEqual([]);
   });
+  // A cinema that screens a film in ONE language version says so once beside
+  // its name rather than on each pill. The regression: the pill tag is built by
+  // stripping what every slot at that cinema shares, so a film shown only
+  // dubbed — every slot `2D DUB` — had `DUB` eaten by that intersection and
+  // appeared nowhere, leaving no way to tell napisy from dubbing.
+  test('a cinema with one language version for the film says which, beside its name', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    await pinDateFilterAnytime(page);
+
+    // Every rendered version tag must name a version its own cinema-group's
+    // slots actually carry — the label speaks for all of them.
+    const tags = await page.evaluate(() =>
+      [...document.querySelectorAll('.cinema-group')].flatMap((group) => {
+        const tag = group.querySelector('.cinema-label .cinema-fmt');
+        if (!tag) return [];
+        const slots = [...group.querySelectorAll('.badge-time')]
+          .map((b) => (b.getAttribute('data-format') || '').split(' ').filter(Boolean));
+        return [{ tag: tag.textContent!.trim(), slots }];
+      }),
+    );
+
+    expect(tags.length).toBeGreaterThan(0);
+    for (const { tag, slots } of tags) {
+      expect(tag).not.toBe('');
+      // Said once because EVERY slot carries it — that is what earned the hoist.
+      for (const slot of slots) {
+        for (const token of tag.split(' ')) expect(slot).toContain(token);
+      }
+    }
+
+    // And no slot's version is left unsaid: every NAP/DUB/LEK/ORG in the DOM is
+    // readable either on its own pill or on its cinema's label.
+    const unsaid = await page.evaluate(() => {
+      const VERSIONS = new Set(['NAP', 'DUB', 'LEK', 'ORG']);
+      const missing: string[] = [];
+      for (const group of document.querySelectorAll('.cinema-group')) {
+        const label = (group.querySelector('.cinema-label .cinema-fmt')?.textContent || '').split(' ');
+        for (const badge of group.querySelectorAll('.badge-time')) {
+          const format = (badge.getAttribute('data-format') || '').split(' ').filter(Boolean);
+          const shown = (badge.querySelector('.badge-fmt')?.textContent || '').split(' ').concat(label);
+          for (const token of format) {
+            if (VERSIONS.has(token) && !shown.includes(token)) {
+              missing.push(`${group.getAttribute('data-cinema')} ${badge.getAttribute('data-time')} ${token}`);
+            }
+          }
+        }
+      }
+      return missing;
+    });
+    expect(unsaid).toEqual([]);
+  });
+
 });

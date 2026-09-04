@@ -42,16 +42,16 @@ struct ShowingsView: View {
                         .padding(.top, spacing.dayLabelTop)
                     VStack(alignment: .leading, spacing: spacing.showingsBlock) {
                         ForEach(day.cinemas, id: \.cinema) { cinema in
-                            let commonTokens = FormatTokenFilter.commonTokens(cinema)
+                            let strippedTokens = FormatTokenFilter.tokensToStrip(cinema, hasLabel: showCinemaHeaders)
                             VStack(alignment: .leading, spacing: spacing.cinemaToPills) {
                                 if showCinemaHeaders {
-                                    cinemaLabel(cinema)
+                                    cinemaLabel(cinema, version: FormatTokenFilter.commonVersion(cinema))
                                 }
                                 FlowLayout(spacing: pillStyle.interPillGap, lineSpacing: spacing.pillRowSpacing) {
                                     ForEach(cinema.showtimes) { st in
                                         ShowtimeBadge(
                                             showtime: st,
-                                            displayFormat: FormatTokenFilter.filter(st.format, removing: commonTokens)
+                                            displayFormat: FormatTokenFilter.filter(st.format, removing: strippedTokens)
                                         )
                                     }
                                 }
@@ -82,8 +82,10 @@ struct ShowingsView: View {
             var keptCinemas: [CinemaShowings] = []
             var dayLines = 1
             for cinema in day.cinemas {
-                let commonTokens = FormatTokenFilter.commonTokens(cinema)
-                let pillRows = Self.pillRowCount(cinema.showtimes, commonTokens: commonTokens, contentWidth: contentWidth)
+                let pillRows = Self.pillRowCount(
+                    cinema.showtimes,
+                    commonTokens: FormatTokenFilter.tokensToStrip(cinema, hasLabel: showCinemaHeaders),
+                    contentWidth: contentWidth)
                 let cinemaLines = 1 + pillRows
                 if lineCount + dayLines + cinemaLines <= maxVisibleLines {
                     keptCinemas.append(cinema)
@@ -151,18 +153,34 @@ struct ShowingsView: View {
         ShowtimePillMetrics.cardShowingsWidth(screenWidth: UIScreen.main.bounds.width)
 
     @ViewBuilder
-    private func cinemaLabel(_ cinema: CinemaShowings) -> some View {
-        if let url = cinema.cinemaURL {
-            Link(destination: url) {
-                Text("\(cinema.cinema) ↗")
+    /// The cinema's name, plus the language version every one of its showtimes
+    /// shares — said once here rather than on each pill. See `FormatTokenFilter`.
+    @ViewBuilder
+    private func cinemaLabel(_ cinema: CinemaShowings, version: [String]) -> some View {
+        HStack(spacing: 4) {
+            if let url = cinema.cinemaURL {
+                Link(destination: url) {
+                    Text("\(cinema.cinema) ↗")
+                        .font(.system(size: 10))
+                        .foregroundColor(.kinowoCinemaLabel)
+                }
+                .buttonStyle(.plain)
+            } else {
+                Text(cinema.cinema)
                     .font(.system(size: 10))
                     .foregroundColor(.kinowoCinemaLabel)
             }
-            .buttonStyle(.plain)
-        } else {
-            Text(cinema.cinema)
-                .font(.system(size: 10))
-                .foregroundColor(.kinowoCinemaLabel)
+            if !version.isEmpty {
+                Text(version.joined(separator: " "))
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.kinowoCinemaLabel)
+                    .padding(.horizontal, 3)
+                    .padding(.vertical, 1)
+                    .background(
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.kinowoCinemaLabel.opacity(0.16))
+                    )
+            }
         }
     }
 
