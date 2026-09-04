@@ -3,6 +3,14 @@
 # default heap OOMs partway through: the launcher dies with a Java heap space
 # error, the remaining modules never run, and sbt still exits 0. A "green"
 # testUnit was silently covering only common + web.
+#
+# ⚠️ DO NOT LOWER THIS. `testUnit` was MEASURED on 2026-09-04 at a 4092MB peak
+# against this 4096MB ceiling — four megabytes of headroom. It is not a round
+# number picked for comfort; it is the number the test layer actually needs, and
+# anything smaller resurrects the silent-partial-run failure described above.
+# To run something under a SMALLER heap, pass `-J-Xmx...` on that invocation (it
+# is appended after this file and the JVM honours the last `-Xmx`) — that is what
+# `scripts/dev-server.sh` does to make the dev server's OOM canary trip early.
 -Xmx4g
 # Fail LOUDLY instead. Without this an OOM leaves a misleading success: the run
 # reports the modules that finished and says nothing about the ones it skipped.
