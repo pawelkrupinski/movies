@@ -6,6 +6,7 @@
 #if canImport(CoreLocation)
 import Foundation
 import CoreLocation
+import os
 
 /// The two CoreLocation commands the city gate issues. Behind a seam so a test
 /// can drive the resolver's timing — a slow permission grant, a fix that never
@@ -13,6 +14,9 @@ import CoreLocation
 /// the production implementation; it already has all three members.
 protocol LocationRequesting: AnyObject {
     var authorizationStatus: CLAuthorizationStatus { get }
+    /// The most recent fix CoreLocation already holds, if any. Reading it is
+    /// free and usually answers outright — see `requestFix()`.
+    var location: CLLocation? { get }
     func requestWhenInUseAuthorization()
     func requestLocation()
 }
@@ -65,9 +69,19 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     /// The live catalog cities to match a fix against — passed by `resolve` so
     /// the resolver reflects a server-fetched catalog, not a static list.
     private var cities: [City] = []
+    /// A fix CoreLocation already holds is as good as a fresh one for picking a
+    /// CITY if it is this recent — nobody crosses a 100 km radius in a quarter
+    /// of an hour. Older than this we ask for a fresh one, but still fall back
+    /// to the stale fix rather than answering "no city".
+    private let maxCachedFixAge: TimeInterval = 15 * 60
     private var continuation: CheckedContinuation<Outcome, Never>?
     private var coordinateContinuation: CheckedContinuation<Coordinate?, Never>?
     private var timeoutTask: Task<Void, Never>?
+    /// When the in-flight fix request gives up. Kept alongside `timeoutTask` so
+    /// a transient failure can tell "there is still time to ask again" from
+    /// "we are out of time".
+    private var fixDeadline: Date?
+    private let log = Logger(subsystem: "dev.kinowo.Kinowo", category: "citygate")
 
     /// Production: a real `CLLocationManager`, held through `requester` and
     /// wired to deliver its callbacks here.
@@ -94,6 +108,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         self.cities = cities
         return await withCheckedContinuation { (cont: CheckedContinuation<Outcome, Never>) in
             continuation = cont
+            self.log.notice("gate: resolving in \(countryCode, privacy: .public) against \(cities.count, privacy: .public) cities, authorization=\(self.requester.authorizationStatus.rawValue, privacy: .public)")
             start(for: requester.authorizationStatus)
         }
     }
@@ -132,9 +147,30 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         }
     }
 
+    /// Ask for a fix — but read the one CoreLocation already holds first. A
+    /// fresh `requestLocation()` on a cold radio is seconds away at best and
+    /// can fail outright indoors, while the cached fix is there immediately and
+    /// is plenty to name a city. The Android gate has always read its
+    /// `lastLocation` this way; iOS only ever waited for a fresh fix, which is
+    /// why the same phone in the same place could be offered a city on one
+    /// platform and the manual list on the other.
     private func requestFix() {
+        if let cached = requester.location, age(of: cached) <= maxCachedFixAge {
+            log.notice("gate: using the fix CoreLocation already held (\(Int(self.age(of: cached)), privacy: .public)s old)")
+            deliver(cached)
+            return
+        }
+        log.notice("gate: asking CoreLocation for a fresh fix")
         armTimeout(fixTimeout)
         requester.requestLocation()
+    }
+
+    private func age(of location: CLLocation) -> TimeInterval {
+        max(0, -location.timestamp.timeIntervalSinceNow)
+    }
+
+    private func deliver(_ location: CLLocation) {
+        deliverFix(lat: location.coordinate.latitude, lon: location.coordinate.longitude)
     }
 
     /// Whether a request is in flight. CoreLocation also calls the
@@ -147,6 +183,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     /// deliver it without a dialog.
     func authorizationChanged(to status: CLAuthorizationStatus) {
         guard isAwaitingOutcome else { return }
+        log.notice("gate: authorization is now \(status.rawValue, privacy: .public)")
         switch status {
         case .authorizedWhenInUse, .authorizedAlways:
             requestFix()
@@ -166,15 +203,43 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         if coordinateContinuation != nil {
             finishCoordinate(Coordinate(lat: lat, lon: lon))
         } else if let city = cities.nearestWithin100km(lat: lat, lon: lon, inCountry: countryCode) {
+            log.notice("gate: fix resolved to \(city.slug, privacy: .public)")
             finish(.city(city))
         } else {
+            log.notice("gate: fix landed over 100 km from every \(self.countryCode, privacy: .public) city — falling back to the manual list")
             finish(.unavailable)
         }
     }
 
+    /// A fix attempt that failed or came back empty. `kCLErrorLocationUnknown`
+    /// is CoreLocation saying "not yet", not "never" — the radios are warming
+    /// up, which is exactly what a first launch looks like — so ask again while
+    /// there is still time on the deadline instead of throwing the gate away on
+    /// the first stumble.
+    func fixFailed(transient: Bool) {
+        guard isAwaitingOutcome else { return }
+        if transient, let deadline = fixDeadline, Date() < deadline {
+            log.notice("gate: no fix yet — asking again")
+            requester.requestLocation()
+            return
+        }
+        deliverNoFix()
+    }
+
     /// Fail whichever request is in flight: the coordinate request resolves
-    /// to `nil`, the gate's `Outcome` request to `.unavailable`.
+    /// to `nil`, the gate's `Outcome` request to `.unavailable`. A fix we can
+    /// no longer get fresh is still worth answering with a STALE one — an
+    /// hours-old fix names the right city far more often than not, and the
+    /// alternative is handing the user a 41-city list they already told us they
+    /// did not want to read.
     func deliverNoFix() {
+        if let stale = requester.location {
+            log.notice("gate: no fresh fix — falling back to a \(Int(self.age(of: stale)), privacy: .public)s-old one")
+            fixDeadline = nil
+            deliver(stale)
+            return
+        }
+        log.notice("gate: no fix at all — falling back to the manual list")
         if coordinateContinuation != nil {
             finishCoordinate(nil)
         } else {
@@ -186,6 +251,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
 
     private func armTimeout(_ seconds: TimeInterval) {
         timeoutTask?.cancel()
+        fixDeadline = Date().addingTimeInterval(seconds)
         timeoutTask = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard !Task.isCancelled else { return }
@@ -196,6 +262,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     private func cancelTimeout() {
         timeoutTask?.cancel()
         timeoutTask = nil
+        fixDeadline = nil
     }
 
     private func finish(_ outcome: Outcome) {
@@ -221,7 +288,7 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else {
-            Task { @MainActor in self.deliverNoFix() }
+            Task { @MainActor in self.fixFailed(transient: true) }
             return
         }
         let lat = loc.coordinate.latitude
@@ -230,7 +297,13 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        Task { @MainActor in self.deliverNoFix() }
+        // `.locationUnknown` is "the fix isn't ready", every other code is final.
+        let transient = (error as? CLError)?.code == .locationUnknown
+        let code = (error as? CLError)?.code.rawValue ?? -1
+        Task { @MainActor in
+            self.log.notice("gate: CoreLocation failed, code=\(code, privacy: .public) transient=\(transient, privacy: .public)")
+            self.fixFailed(transient: transient)
+        }
     }
 }
 #endif

@@ -12,10 +12,16 @@ import XCTest
 /// them, so a test can assert both WHAT it asked for and WHEN.
 final class RecordingLocationRequester: LocationRequesting {
     var authorizationStatus: CLAuthorizationStatus
+    /// The fix CoreLocation is holding, as `CLLocationManager.location` would
+    /// report it. `nil` is a manager that has never had one.
+    var location: CLLocation?
     private(set) var authorizationRequests = 0
     private(set) var locationRequests = 0
 
-    init(status: CLAuthorizationStatus) { authorizationStatus = status }
+    init(status: CLAuthorizationStatus, location: CLLocation? = nil) {
+        authorizationStatus = status
+        self.location = location
+    }
 
     func requestWhenInUseAuthorization() { authorizationRequests += 1 }
     func requestLocation() { locationRequests += 1 }
@@ -32,6 +38,17 @@ private let granted = CLAuthorizationStatus.authorizedAlways
 
 @MainActor
 final class LocationCityResolverTests: XCTestCase {
+
+    /// A fix at a coordinate, aged as CoreLocation would report it.
+    private func fix(lat: Double, lon: Double, secondsOld: TimeInterval) -> CLLocation {
+        CLLocation(
+            coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+            altitude: 0,
+            horizontalAccuracy: 100,
+            verticalAccuracy: -1,
+            timestamp: Date().addingTimeInterval(-secondsOld)
+        )
+    }
 
     private let cities = [
         City(slug: "poznan", name: "Poznań", lat: 52.4064, lon: 16.9252, country: "pl"),
@@ -130,6 +147,91 @@ final class LocationCityResolverTests: XCTestCase {
 
         let result = await outcome
         XCTAssertEqual(result, .unavailable)
+    }
+
+    /// The fix CoreLocation is already holding answers outright. A fresh
+    /// `requestLocation()` on a cold radio is seconds away at best and can fail
+    /// indoors, and this is the gap that left an iPhone with working location
+    /// staring at the manual city list — Android has always read its
+    /// `lastLocation` first.
+    func testACachedFixAnswersWithoutWaitingForAFreshOne() async {
+        let requester = RecordingLocationRequester(
+            status: granted,
+            location: fix(lat: 52.4064, lon: 16.9252, secondsOld: 60)
+        )
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+
+        let outcome = await resolver.resolve(in: "pl", cities: cities)
+
+        XCTAssertEqual(outcome, .city(cities[0]))
+        XCTAssertEqual(requester.locationRequests, 0, "the held fix is the answer — nothing to wait for")
+    }
+
+    /// Old enough to have travelled, so a fresh fix is worth asking for.
+    func testAStaleCachedFixStillAsksForAFreshOne() async {
+        let requester = RecordingLocationRequester(
+            status: granted,
+            location: fix(lat: 52.2297, lon: 21.0122, secondsOld: 3600)
+        )
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+
+        async let outcome = resolver.resolve(in: "pl", cities: cities)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(requester.locationRequests, 1)
+        resolver.deliverFix(lat: 52.4064, lon: 16.9252)
+
+        let result = await outcome
+        XCTAssertEqual(result, .city(cities[0]), "the fresh fix wins over the stale one")
+    }
+
+    /// An hours-old fix names the right city far more often than not, and the
+    /// alternative is the list the user was trying to skip.
+    func testAStaleFixIsBetterThanNoCityWhenTheFreshOneNeverLands() async {
+        let requester = RecordingLocationRequester(
+            status: granted,
+            location: fix(lat: 52.2297, lon: 21.0122, secondsOld: 3600)
+        )
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 0.2)
+
+        let outcome = await resolver.resolve(in: "pl", cities: cities)
+
+        XCTAssertEqual(requester.locationRequests, 1)
+        XCTAssertEqual(outcome, .city(cities[1]), "Warszawa, from the stale fix")
+    }
+
+    /// `kCLErrorLocationUnknown` is "not yet", not "never" — the radios warming
+    /// up on a first launch. Giving up on it threw the whole gate away.
+    func testATransientFailureAsksAgainWithinTheDeadline() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+
+        async let outcome = resolver.resolve(in: "pl", cities: cities)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(requester.locationRequests, 1)
+
+        resolver.fixFailed(transient: true)
+        XCTAssertEqual(requester.locationRequests, 2, "a transient miss is retried, not surrendered to")
+        resolver.deliverFix(lat: 52.4064, lon: 16.9252)
+
+        let result = await outcome
+        XCTAssertEqual(result, .city(cities[0]))
+    }
+
+    /// A non-transient CoreLocation error has nothing to retry.
+    func testAFinalFailureGivesUpWithoutRetrying() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+
+        async let outcome = resolver.resolve(in: "pl", cities: cities)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        resolver.fixFailed(transient: false)
+
+        let result = await outcome
+        XCTAssertEqual(result, .unavailable)
+        XCTAssertEqual(requester.locationRequests, 1)
     }
 
     /// `resolveIfAuthorized` is the silent app-open check: never prompts, and
