@@ -251,6 +251,25 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.pickBest(hits, "Belle", None, Set.empty) shouldBe None
   }
 
+  // The prod leak: `zaproszenie|1986` (Wanda Jakubowska) stored
+  // filmweb.pl/film/Zaproszenie-2026-10109168 — the Olivia Wilde film, 40 years
+  // off. Nothing checked the year on that path: `matchesByDirector` passes when
+  // the CANDIDATE lists no director, and `yearGateOk` switched itself off
+  // whenever the CALLER had directors, so between them neither signal was ever
+  // actually compared. The gate must stand down only when the director check
+  // verified something, not merely because a director set was supplied.
+  it should "REJECT a same-title candidate 40 years off when the candidate names no director" in {
+    val hits = Seq(candidate(id = 10109168, title = "Zaproszenie", year = Some(2026)))
+    client.pickBest(hits, "Zaproszenie", Some(1986), Set("Wanda Jakubowska")) shouldBe None
+  }
+
+  it should "still accept a candidate the director check actually verified" in {
+    // The exemption the gate exists for: an overlapping director IS the
+    // disambiguation, so a legitimate re-date survives.
+    val hits = Seq(candidate(id = 1, title = "Zaproszenie", year = Some(2026), directors = Set("Olivia Wilde")))
+    client.pickBest(hits, "Zaproszenie", Some(2026), Set("Olivia Wilde")).map(_.id) shouldBe Some(1)
+  }
+
   it should "keep a UNIQUE exact-title match even with no year and no director" in {
     // A distinctive title with a single Filmweb match is unambiguous — resolve it
     // (the drop-gate is only for genuine ties).

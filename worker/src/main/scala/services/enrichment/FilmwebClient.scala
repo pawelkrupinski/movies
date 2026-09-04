@@ -323,14 +323,21 @@ class FilmwebClient(http: HttpFetch) {
    *  Lawa (1989)" screening must not take the unrelated "Lawa"/orig "Lava" 2014;
    *  "Belle" 1973 must not answer a 2022 query). Exemptions, all already
    *  disambiguated by something other than the bare title+year:
-   *    - caller HAS directors → director verification / the director+year
-   *      override decides, not this gate;
+   *    - the directors OVERLAP → director verification already named this film,
+   *      so it decides and not this gate;
    *    - year is unknown → nothing to gate against (legacy first-hit behaviour);
    *    - the match is a modifier-suffix, not exact → a "Title - Re-Release"
    *      legitimately re-dates and must survive;
-   *    - the candidate carries no year → can't be gated. */
+   *    - the candidate carries no year → can't be gated.
+   *
+   *  The first exemption used to read "the CALLER has directors", which stood
+   *  the gate down without anything having been verified: [[matchesByDirector]]
+   *  passes a candidate that lists NO director of its own, so between the two
+   *  checks a caller-supplied director set meant the years were never compared
+   *  at all. That is how Wanda Jakubowska's "Zaproszenie" (1986) came to store
+   *  Olivia Wilde's 2026 film — 40 years apart, exact same title. */
   private[enrichment] def yearGateOk(c: Candidate, query: String, year: Option[Int], directors: Set[String]): Boolean =
-    directors.nonEmpty || year.isEmpty || !matchesByExactTitle(c, query) ||
+    directorsOverlap(c.directors, directors) || year.isEmpty || !matchesByExactTitle(c, query) ||
       c.year.forall(cy => math.abs(cy - year.get) <= 1)
 
   /** Strict director+year override: accepts a candidate even when its title
