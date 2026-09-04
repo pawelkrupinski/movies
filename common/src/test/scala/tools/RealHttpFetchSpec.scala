@@ -87,18 +87,6 @@ class RealHttpFetchSpec extends AnyFlatSpec with Matchers {
     mc.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
   }
 
-  // ── Fly Prometheus credit poll (api.fly.io) ───────────────────────────────
-  // The CpuCreditPoller reads the machine's CPU-credit balance from api.fly.io on
-  // its own thread. A healthy query answers in ~1s; the 30s default let it hang
-  // the full budget when the worker was starved at the credit floor. Its policy
-  // caps it — a dropped poll just skips one balance sample, never load-bearing.
-
-  it should "give the Fly Prometheus host a tight budget, tighter than the default" in {
-    val fly = RealHttpFetch.requestTimeoutFor("https://api.fly.io/prometheus/org/api/v1/query?q=x")
-    fly shouldBe Duration.ofSeconds(5)
-    fly.compareTo(RealHttpFetch.DefaultRequestTimeout) should be < 0
-  }
-
   // ── Residential-proxy egress (Decodo static ISP) ──────────────────────────
 
   private def selectedPort(pc: RealHttpFetch.ProxyConfig): Int =

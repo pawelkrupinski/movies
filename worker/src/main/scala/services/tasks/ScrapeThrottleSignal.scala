@@ -29,10 +29,10 @@ object ScrapeThrottleSignal {
   def cap(signal: ScrapeThrottleSignal, normal: Int, trickle: Int): Int =
     if (signal.isThrottled) trickle else normal
 
-  /** Throttled when EITHER source says so — used to compose the externally-pushed
-   *  credit gate (the Grafana-driven backstop) with the in-process
-   *  [[CpuCreditPoller]] (the authoritative source, reading the real credit
-   *  balance), so a real crunch trips even if one source is silent. */
+  /** Throttled when EITHER source says so, so a real crunch trips even if one
+   *  source is silent. It composed the externally-pushed gate with the in-process
+   *  Fly credit poller; that poller is gone with the platform and there is one
+   *  producer today, but the composition is what a second one plugs into. */
   def either(a: ScrapeThrottleSignal, b: ScrapeThrottleSignal): ScrapeThrottleSignal =
     new ScrapeThrottleSignal {
       def isThrottled: Boolean = a.isThrottled || b.isThrottled

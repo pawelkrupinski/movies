@@ -20,7 +20,7 @@ import scala.util.Try
  * Why this exists ALONGSIDE [[ThrottleStuckWatchdog]]: that one fires only while
  * `throttle.isThrottled` is CONTINUOUSLY true, but the 2026-06-23 wedge was a
  * heap OOM, not a throttle spiral. When the heap blew, the OOM killed the
- * `CpuCreditPoller`'s HTTP selector, so the poller failed OPEN to "healthy" —
+ * then-live CPU-credit poller's HTTP selector, so it failed OPEN to "healthy" —
  * `isThrottled` read false and the throttle watchdog never tripped, while the
  * process limped on for ~2h answering the (then-static) `/health` 200. A pulse
  * that stalls regardless of throttle state catches that: it keys off "is the

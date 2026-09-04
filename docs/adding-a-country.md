@@ -538,7 +538,7 @@ That is the whole of it. Two Fly-era chores that used to belong here are gone wi
 the platform: a Victoria scrape target for the retired stack, and a
 `WorkerThrottle<Cc>` webhook contact point posting to
 `http://kinowo-worker-<cc>.internal:9000/throttle`. The webhook was the backstop for
-the worker's primary self-throttle `CpuCreditPoller`, which watched a shared-CPU
+the worker's primary self-throttle (a Fly credit poller), which watched a shared-CPU
 credit bucket — a Fly billing concept with no meaning for a pod on a dedicated
 eight-core box — and the `.internal` address it posted to was a Fly 6PN one that
 nothing on this fleet can resolve.

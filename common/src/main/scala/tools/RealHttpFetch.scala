@@ -359,12 +359,6 @@ object RealHttpFetch {
     // enrichment is best-effort, retried next cycle, so an occasional cut is free.
     HostPolicy(Set("metacritic.com"), requestTimeout = Duration.ofSeconds(15)),
 
-    // The Fly Prometheus CPU-credit poll (CpuCreditPoller, on its own thread). A
-    // healthy query answers in ~1s; the 30s default let it hang the full budget
-    // when the worker was starved at the credit floor. A dropped poll just skips
-    // one balance sample, retried next tick — never load-bearing.
-    HostPolicy(Set("api.fly.io"), requestTimeout = Duration.ofSeconds(5)),
-
     // Kino Iluzjon (Filmoteka Narodowa). Its TLS handshake is pathologically slow
     // — the TCP connect lands instantly but the handshake itself takes 20-30s (the
     // server's own latency, reproducible with openssl, not our cert path). Under

@@ -114,13 +114,13 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // Dropping the throttle restart (2026-07-03): a sustained credit-floor throttle is a
   // STRUCTURAL deficit (steady CPU ~0.30 cores just over the shared-cpu-4x earn rate
   // ~0.26), NOT a wedge a reboot can clear — restarting only burned the ~16k boot
-  // re-grant and looped every ~45min while the box was near-idle. Both throttle paths
-  // (the CpuCreditPoller downslope projection and the ThrottleStuckWatchdog 45-min
-  // wedge) are wired to `onThrottleWedged`, which must ALARM, never restart the machine.
-  it should "alarm, not restart the machine, when the CPU-credit throttle wedges" in {
+  // re-grant and looped every ~45min while the box was near-idle. The remaining
+  // throttle path (the ThrottleStuckWatchdog 45-min wedge) is wired to
+  // `onThrottleWedged`, which must ALARM, never restart the machine. (The second path,
+  // the Fly CpuCreditPoller's downslope projection, went with the platform.)
+  it should "alarm, not restart the machine, when the throttle wedges" in {
     val wiring = new SpyWiring
     wiring.onThrottleWedged("stuck watchdog")
-    wiring.onThrottleWedged("projection downslope")
     wiring.restartRequests shouldBe empty
     wiring.stop()
   }

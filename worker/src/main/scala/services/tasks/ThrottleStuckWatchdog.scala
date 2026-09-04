@@ -44,9 +44,12 @@ import scala.util.Try
  * the balance pinned below the release threshold — a self-inflicted crash loop
  * (observed 2026-06-24, ~30-min cadence). So `check` defers the restart while the
  * credit balance is on a net-upward path across `trendWindow`, and only fires once
- * recovery has stalled (flat or declining). `creditBalance` reads the live balance
- * (the [[CpuCreditPoller]]'s last sample); `None` (no Fly-Prometheus token, or a
- * failed read) disables the guard and falls back to the bare stuck behavior.
+ * recovery has stalled (flat or declining). `creditBalance` reads the live balance;
+ * `None` disables the guard and falls back to the bare stuck behaviour. IT IS `None`
+ * IN PRODUCTION TODAY — the only source it ever had was the Fly `CpuCreditPoller`,
+ * deleted with the platform, and a pod on a dedicated box has no credit bucket to
+ * read. The parameter stays because the guard is the interesting half of this class
+ * and a future signal (a cgroup CPU-pressure sample, say) plugs straight into it.
  *
  * NO FLOOR FAST-PATH (removed 2026-07-03): an earlier version restarted as soon
  * as credit sat below a floor threshold for 15 min, on the premise that "at the

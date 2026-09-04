@@ -84,7 +84,7 @@ class ScrapeReaper(
   // cold-restart window. Default 0 disables it, leaving tests/harness that drive
   // `tick()` directly (and the deterministic snapshot) unaffected.
   bootRamp: FiniteDuration = 0.seconds,
-  // While the worker is CPU-credit throttled (see [[CpuCreditPoller]]), this bounds
+  // While the worker is throttled (see [[ScrapeThrottleSignal]]), this bounds
   // the OUTSTANDING waiting scrape TASKS (not just the per-tick additions): each tick
   // tops the waiting backlog up to THIS many, so once it's at budget the tick adds
   // nothing and the pool drains to near-empty + idles, rebuilding credit (breaking
