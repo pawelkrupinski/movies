@@ -13,40 +13,236 @@ and so you can re-check whether a previously-broken venue has recovered.
 
 ## How to find the white list (methodology)
 
-`/uptime` (kinowo.net) is now **auth-gated** — OAuth login + `ADMIN_ALLOWLIST`
-(checked in `web/.../controllers/AdminAction.scala`); an anonymous `curl` returns
-`401 "Not logged in."`. So query prod Mongo directly instead:
+`/uptime` is **auth-gated** at every one of its addresses — `https://kinowo.net/uptime`
+(Poland), `https://showtimes.cc/<cc>/uptime` for `uk` / `de` / `us` / `es` — behind
+OAuth + `ADMIN_ALLOWLIST` (`web/.../controllers/AdminAction.scala`); an anonymous
+`curl` gets `401 "Not logged in."`. So query prod Mongo directly instead.
 
-1. An ssh forward to mongo-1 (`scripts/local-mirror/prod-tunnel.sh`) is usually
-   already running;
-   start one if not (see the `prod-mongo-access` memory).
-2. Connect with `MONGODB_URI` from the root checkout `.env.local`, host swapped to
-   `127.0.0.1:27017`.
-2b. **Sweep ALL THREE countries, not just Poland.** Each country's uptime lives in
-   its own database — `kinowo` (PL), `kinowo_de`, `kinowo_uk` (`Country.mongoDb`,
-   `common/.../models/Country.scala`) — on the SAME connection, so iterate with
-   `db.getSiblingDB(name)`. A PL-only sweep misses ~2,400 venues; runs before
-   2026-07-28 were PL-only. Scale differs enormously: PL ~20 white out of a small
-   bespoke-scraper roster, DE ~1,538 services on ONE client
-   (`WebediaShowtimesClient` → filmstarts.de), UK ~850 mostly on `FlicksClient`
-   → flicks.co.uk. For DE/UK, per-venue probing is infeasible — classify by
-   asking whether the AGGREGATOR advertises a programme (DE: `nextDate` +
-   `results` on `/_/showtimes/theater-<id>/d-<date>/p-1/`; UK: `data-date` day
-   tabs on `/cinema/<slug>/`), and only hand-probe the venues where it does.
+1. Mongo lives on the Hetzner host **`mongo-1`**, reached over an ssh forward
+   (`scripts/local-mirror/prod-tunnel.sh`), usually already running — check with
+   `ps aux | grep 'ssh -N -L 27017'`. The old `flyctl proxy` route died with the
+   Hetzner migration; do not reach for it. Connect with `MONGODB_URI` from the
+   root checkout's `.env.local` (it already points at `127.0.0.1:27017`).
+2. **Sweep ALL FIVE countries.** Each country's uptime lives in its own database —
+   `kinowo` (PL), `kinowo_uk`, `kinowo_de`, `kinowo_us`, `kinowo_es`
+   (`Country.mongoDb`, `common/.../models/Country.scala`) — on the SAME
+   connection, so iterate with `db.getSiblingDB(name)`. (Runs before 2026-07-28
+   were PL-only; runs between 2026-08-02 and 2026-08-29 were PL-only because the
+   other workers were stopped. Both are history — all five run now.)
 3. Collection `uptimeBuckets`, docs `{service, bucket, successes, failures,
-   zeroes, errors, ...}`. Replicate `UptimeController`'s predicate
-   (`web/.../controllers/UptimeController.scala`): per service take the last
-   `RecentScrapes = 3` non-empty buckets; status `zero` (white) =
-   `zeroes>0 && failures==0 && successes==0`. A venue is 3-scrape-white when those
-   3 are all `zero`. Skip `*|enrichment` services. Service name = the cinema's
-   `displayName` (`common/.../models/Cinema.scala`); map it to its client in
-   `worker/.../services/cinemas/CinemaScraperCatalog.scala`.
-4. **`uptimeBuckets` only retains ~24 h.** Every service's oldest surviving
-   bucket is a day old, so "has this venue EVER been green?" is only answerable
-   within that window — and a country whose worker has been stopped for more
-   than a day has an EMPTY `uptimeBuckets`, not a white one. Since 2026-08-02
-   that is DE and UK (see the `poland-only` memory), so a sweep now reaches
-   Poland only; do not read their zero counts as "nothing wrong".
+   zeroes, errors, fallback, ...}` — note the timestamp field is **`bucket`**, an
+   ISODate, not `bucketTimestamp`. Replicate `UptimeController`'s predicate
+   (`web/.../controllers/UptimeController.scala`): a bucket's status is
+   `failures>0 ? (successes+zeroes>0 ? yellow : red) : successes>0 ? green : zero`;
+   per service take the last `RecentScrapes = 3` non-`empty` buckets; the service
+   is white when all 3 are `zero`. Skip `*|enrichment` and `img:` services.
+   Service name = the cinema's `displayName` (`common/.../models/Cinema.scala`);
+   map it to its client in `worker/.../services/cinemas/CinemaScraperCatalog.scala`.
+4. **`uptimeBuckets` only retains ~24 h**, so "has this venue EVER been green?" is
+   only answerable inside that window — and a venue white across ALL its retained
+   buckets is long-dormant, not newly broken.
+
+### Triage, because the set is ~1,400 venues
+
+PL is ~325 services and its white list is small enough to probe venue by venue.
+The other four are not: UK ~850 (`FlicksClient` → flicks.co.uk), DE ~1,540
+(`WebediaShowtimesClient` → filmstarts.de), ES ~600 (same client → sensacine.com),
+US ~5,000 (flicks.us). Cut them down with signals, and hand-probe only survivors:
+
+- **A green→white transition inside the retained window is the sharpest cut** —
+  a venue that WAS working and stopped. Everything else is a venue that has been
+  white for as long as we can see.
+- **Join `cinema_scrapes`** (`_id` = displayName; `scrapedAt` + `films` = the last
+  CONTENT-BEARING scrape) to separate "had a programme days ago" from "never had
+  one in this window".
+- **Ask the AGGREGATOR whether it advertises a programme** before probing a venue
+  site. DE/ES: the venue page's `data-showtimes-dates` attribute is the exact day
+  list the scraper walks — `[]` means legitimately empty; the per-day JSON says
+  `{"error":true,"message":"no.showtime.error","nextDate":null,"results":[]}`.
+  UK/US: an empty venue renders Flicks' own `no-streaming-sessions` block ("we
+  haven't received movie times for this cinema yet") and no `data-date` day tabs.
+- **A whole client breaking shows up as a RATIO**, not as one venue. Compare each
+  country's white share against the others and against the previous run here.
+
+### Two ways a broken scraper hides from this sweep
+
+Both were caught on 2026-09-04 and neither shows as a white bar:
+
+- **The Filmweb fallback masks an empty own-site parse.** A bucket with
+  `fallback: true` means the venue's own scraper returned nothing and Filmweb is
+  covering for it — green bar, dead scraper. (Kino Agrafka and Kino Bułgarska 19
+  were both in that state for four days.)
+- **A partial parse stays green on whatever it still reads.** Kino Pod Baranami
+  kept the five November/December special screenings its date regex could still
+  match and dropped its ~200-showtime current week, reporting success throughout.
+
+So whenever you diagnose a root cause, immediately ask which OTHER venues share
+that code path and check them too, whatever colour their bar is.
+
+---
+
+## 2026-09-04
+
+**First all-five-country sweep.** Poland-only ended when the other workers came
+back on 2026-08-29, and the run brief was widened to every country on this date.
+Newest bucket 2026-09-04 16:45 UTC, retained window ~24 h in all five.
+
+| DB | services | white | white % | red |
+|---|---|---|---|---|
+| `kinowo` (PL) | 325 | **8** | 2.5% | 1 (an `img:` poster row, not a cinema) |
+| `kinowo_uk` | 854 | **57** | 6.7% | 1 |
+| `kinowo_de` | 1,538 | **386** | 25% | 21 |
+| `kinowo_us` | 5,038 | **779** | 15% | 2 |
+| `kinowo_es` | 602 | **198** | 33% | 1 |
+
+Those are the baseline numbers the next run should diff against. **Green→white
+transitions inside the whole retained window: 3, all in Spain, all genuine.** No
+country shows a systemic parser break.
+
+**One fix landed — and it took out four cinemas, only one of which was white.**
+See below. Access route also changed: `/uptime` is auth-gated at every address
+and `flyctl proxy` is gone, so the methodology section above was rewritten for
+the ssh-forward-to-`mongo-1` route and the five-database sweep.
+
+### The fix: `\w` doesn't match "września" — `ScraperParse` now owns the pattern — @ae0b7e57b
+
+**OKF Iluzja (Częstochowa) went white on 1 September** and was the only venue
+this showed up on. Its weekly page was fine — 7 day blocks, 24 showtimes, 72 film
+links, all server-rendered. What broke was one character class:
+
+```scala
+private val DatePat = """(\d{1,2})\s+(\w+)\s+(\d{4})""".r   // "4 września 2026"
+```
+
+Java's `\w` is ASCII-only unless the pattern is compiled with
+`UNICODE_CHARACTER_CLASS`, so it stops dead at the first diacritic. Verified
+directly:
+
+```
+"4 września 2026"    -> NO MATCH        "4 sierpnia 2026" -> MATCH
+"4 października 2026"-> NO MATCH        "4 grudnia 2026"  -> MATCH
+```
+
+Exactly **two** of the twelve genitive month names carry a diacritic — `września`
+and `października`. So the bug reads every date for ten months of the year and
+none at all in September and October, then heals itself on 1 November. The
+archive agrees to the day: Iluzja's last content-bearing scrape was
+2026-08-31 23:03.
+
+**The important half: three more cinemas had the same regex and NONE of them was
+white.** Grepping the month-token patterns turned up four `\w` spellings among
+~20 clients (every other client already used `\p{L}`), and the other three were
+hiding in the two ways now written into the methodology above:
+
+| Venue | Bar | What was actually happening |
+|---|---|---|
+| **OKF Iluzja** | white 24/24 | nothing to hide behind — the visible symptom |
+| **Kino Agrafka** (Kraków) | green 24/24 | `fallback: true` — Filmweb covering for a dead own-site parse |
+| **Kino Bułgarska 19** (Poznań) | green 24/24 | `fallback: true` — same |
+| **Kino Pod Baranami** (Kraków) | green 24/24, `fallback: false` | **partial parse.** Its archive held 5 films, all in November/December — "4 listopada", "16 grudnia", ASCII month names that still matched. The whole current week was being dropped. The replayed capture goes from 5 showtimes to ~200. |
+
+Pod Baranami is the one worth remembering: a venue can lose 97% of its programme
+and still report success on every bucket, because "success" only asks whether the
+parse returned *something*.
+
+**Fix.** The two shapes move onto `ScraperParse.DayMonthPat` /
+`DayMonthYearPat`, spelled `\p{L}`, with the trap written into the doc comment;
+the four broken clients and the seven that already spelled it `\p{L}`
+(`KinoSokolBrzozow`, `SystemBiletowy`, `KinoZbyszek`, `ArtKinoKrosno`,
+`KinoCentrumCsw`, `KinoAmok`, `Ekobilet`) all share them now, so there is one
+copy left to drift instead of eleven.
+
+**Test (fail-before / pass-after):** `clients.cinemas.DiacriticMonthNameSpec`
+replays each of the four venues' real repertoire page captured 2026-09-04.
+Before: Iluzja / Agrafka / Bułgarska return `List()`, Pod Baranami returns only
+its five Nov-Dec showtimes. After: all four parse the 4 September programme.
+`ScraperParseSpec` covers both diacritic months on the shared patterns directly.
+
+**Layers:** `sbt testUnit` green (13 + 3,135 + 1,150 + 821). The 37 `deploy.*` /
+`ScrapeCadenceSustainabilitySpec` failures on the first run were a missing local
+checkout, not this change — the GitOps manifests moved to `pawelkrupinski/movies-gitops`
+and `./infra/bin/fetch-gitops` restores them; all 184 pass after that, so **run
+`./infra/bin/fetch-gitops` once in a fresh worktree** before reading a `testUnit`
+result. `FilmScheduleEndToEndSpec` green after regenerating `expected-schedules.txt`
+(+2 blocks: Pod Baranami's Wajda retrospective titles "Bez znieczulenia (Rough
+Treatment)" and "Krajobraz po bitwie (Landscape After the Battle)" — no film
+disappeared) and `read-model-snapshot.json` (+184 lines). `PageSnapshotSpec`
+green **without** regeneration — the recovered screenings are in Kraków and the
+snapshot cities are Poznań / Wrocław / Warszawa.
+
+### Poland — the other 7 white venues, all re-probed live, all dormant
+
+| Venue | Source | What the source says |
+|---|---|---|
+| Kino KDK (Kutno) | `Bilety24OrganizerClient` `…/kino-kutnowskiego-domu-kultury-1474` | **0** `Film:` of 73 entries (51 Koncert, 9 Spektakl, 13 Wydarzenie) |
+| Kino Lewart (Lubartów) | `…/kino-lewart-w-lubartowie-1382` | literally **"Brak wydarzeń"** — see the rename note below |
+| Kino nad Wartą (Konin) | `…/koninskie-centrum-kultury-1626` | **0** `Film:` of 73 (62 Koncert, 11 Spektakl) |
+| Kino Wisła Brzeszcze | `…/osrodek-kultury-w-brzeszczach-1539` | **0** `Film:` of 45 (all Koncert) |
+| Patria (Zakopane) | `kinopatria.com/repertuar/` | 0 `h3.amy-movie-field-title`; renders **"Brak filmu"** |
+| Kino Chatka Żaka (Lublin) | `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` | 0 `div.box-row`; renders **"Brak wydarzeń"** |
+| DKF Politechnika | Filmweb 1645 | literal `[]` on every date sampled, into October |
+
+**Kino Lewart — the organizer was RENAMED, and the redirect still works.** Our
+URL `…/kino-lewart-w-lubartowie-1382` now 302s to
+`…/lubartowski-osrodek-kultury-1382` — same numeric id, so the scraper follows it
+cleanly and needs no change. The destination page carries no events of any kind.
+Recording it so a future run doesn't read the rename as the cause.
+
+**DKF Politechnika is now white for the seventh consecutive run**, and this run
+finally has a control for it: **Kino Zachęta recovered** (Filmweb 2405 returns
+real 4 and 6 September showtimes), which proves the Filmweb path and
+`FilmwebShowtimesClient` are working and isolates 1645 as genuinely empty
+upstream. The 08-24 entry set an October checkpoint for exactly this — it still
+stands: if 1645 is still `[]` in October, ask whether Filmweb has quietly dropped
+the venue rather than logging dormancy an eighth time.
+
+**Recovered since 2026-08-24 (5):** Piast, Kino MDK, Kino PDK, Kino Kuźnica,
+Kino Zachęta — every one of them a venue that autumn simply started for. Nothing
+was ever wrong with their scrapers, exactly as those entries predicted.
+
+### UK / DE / US / ES — triaged, not hand-probed
+
+No green→white transition anywhere in these four, so nothing broke inside the
+window. Two structural findings explain the bulk of the volume:
+
+**Summer is over, and it shows.** Cross-cutting the white set against
+open-air-sounding venue names (`terraza|verano|open.?air|autokino|freibad|sommer|drive.?in|freilicht`):
+
+| | seasonal-named venues | of them white | vs country baseline |
+|---|---|---|---|
+| DE | 175 | **158 (90%)** | 25% |
+| ES | 27 | **19 (70%)** | 33% |
+| US | 303 | 99 (33%) | 15% |
+| UK | 0 | — | 6.7% |
+
+A German Autokino or a Spanish *terraza de verano* closing on 31 August is not a
+scraper fault, and at 90% / 70% white these venues are a large, entirely expected
+share of the two worst-looking countries. UK has no such venues at all — and the
+lowest white rate of the four.
+
+**A six-venue spot-check confirmed the aggregators, not our parsers, are empty.**
+Herzog-Filmtheater and Alabama-Kino (DE), Hebden Bridge Picturehouse and Electric
+Picture Palace Southwold (UK), Michigan Theatre of Jackson (US): every one
+answers HTTP 200 with the aggregator's OWN empty-programme signal —
+`no.showtime.error` / `nextDate:null` / `data-showtimes-dates="[]"` for Webedia,
+the `no-streaming-sessions` "we haven't received movie times for this cinema yet"
+block for Flicks. No blocks, no redirects, no markup drift.
+
+**The sixth, Kinowerkstatt (Saarbrücken), was the interesting one — and it is a
+TIMING artifact, not a bug.** filmstarts advertised 4 days and a real 19:00
+screening while our last bucket (15:00 UTC) said zero. Replaying the live
+captures through `WebediaShowtimesClient` settled it: the client plans all four
+chunks and returns **3 films / 6 showtimes**. The programme was published
+upstream after our scrape and the venue will go green on its next tick. Worth
+recording as a method: when a DE/ES venue looks wrong, replay its captured venue
+page + per-day JSON through the real client before suspecting it — that
+distinguishes a parser bug from a publication lag in one run.
+
+**Red columns, for completeness** (out of brief, no action taken): DE's 21 reds
+are all `HTTP 404` on `filmstarts.de/kinoprogramm/kino/<id>/` and ES's 1 is an
+`HTTP 410` — the gone-upstream shape already quarantined in memory. UK's single
+red is Odeon Basingstoke ("All 2 backends failed" on the Vista `ocapi`), US's two
+are flicks.us 404s.
 
 ---
 
