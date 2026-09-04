@@ -84,26 +84,10 @@ class ScrapeReaper(
   // cold-restart window. Default 0 disables it, leaving tests/harness that drive
   // `tick()` directly (and the deterministic snapshot) unaffected.
   bootRamp: FiniteDuration = 0.seconds,
-  // While the worker is throttled (see [[ScrapeThrottleSignal]]), this bounds
-  // the OUTSTANDING waiting scrape TASKS (not just the per-tick additions): each tick
-  // tops the waiting backlog up to THIS many, so once it's at budget the tick adds
-  // nothing and the pool drains to near-empty + idles, rebuilding credit (breaking
-  // the metastable spiral) — then the full cap resumes. A flat per-tick cap couldn't
-  // do this: the queue dedups, so it kept adding new cinemas until the whole corpus
-  // was queued, pinning the pool busy. Most-overdue-first (see [[tick]]) means the
-  // bounded trickle still serves the stalest cinemas.
-  //
-  // Counted across ALL of [[ScrapeReaper.ScrapeWorkTypes]], not just ScrapeCinema: on
-  // a chunked country the ScrapeCinema task is only the planner, and the fetches it
-  // fans out are where the CPU goes. Budget in whole venues here and the bound misses
-  // ~36x the work on a UK Flicks venue — see that value's note.
-  // Default = unbounded so callers/tests that don't wire `throttle` keep the old
-  // behaviour (the not-throttled path is unaffected).
-  throttledMaxEnqueuePerTick: Int = Int.MaxValue,
-  throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
-  // Ceiling on outstanding scrape TASKS ([[ScrapeReaper.ScrapeWorkTypes]]) that applies
-  // on the HEALTHY path too — the smoothing bound, as opposed to the throttled
-  // emergency brake above.
+  // Ceiling on outstanding scrape TASKS ([[ScrapeReaper.ScrapeWorkTypes]]) — the
+  // smoothing bound, which is now the only one. It sat beside a throttled "emergency
+  // brake" that trimmed enqueue while an external signal said the box was CPU-starved;
+  // that signal was Fly's shared-CPU credit balance and went with the platform.
   //
   // `maxEnqueuePerTick` counts venues, and on a chunked country a venue is not a unit
   // of work: 40 UK venues is ~1,440 chunk fetches, roughly 20 minutes for a 4-worker
@@ -152,8 +136,7 @@ class ScrapeReaper(
   // Slicing the same batch into `enqueueSpread` groups enqueued at staggered offsets
   // within the interval keeps the parses from landing together: SAME total work and
   // freshness (a sub-minute stagger is negligible against the 60-min scrape window),
-  // lower CPU peak. Applies only to the healthy path — the throttled path already
-  // trickles a tiny, backlog-bounded amount whose accounting must stay synchronous.
+  // lower CPU peak.
   // Default 1 disables it (single group at offset 0), leaving tests that drive
   // `tick()` directly — and the deterministic snapshot — unaffected.
   enqueueSpread: Int = 1,
@@ -164,14 +147,11 @@ class ScrapeReaper(
   private val scheduler: ScheduledExecutorService = DaemonExecutors.scheduler("scrape-reaper")
 
   /** Venues this tick must admit for the roster to be swept once per freshness
-   *  window — `corpus / ticksPerWindow`, rounded up. The floor under the THROTTLED
-   *  trickle: backing off is meant to slow the pool down, not to park the corpus, and
-   *  [[ScrapeCadence.ThrottledMaxEnqueuePerTick]] is sized on exactly this reasoning
-   *  ("must still clear the whole catalogue within one freshness window"). It just
-   *  could not survive being divided by a chunked country's fan-out — 26 tasks / 36
-   *  per UK venue is one venue a tick against the 2.01 its 843-venue, 420-min roster
-   *  needs; DE's 26 / 16 is one against 8.52. Derived rather than configured, so it
-   *  tracks the roster and the window instead of drifting from them. */
+   *  window — `corpus / ticksPerWindow`, rounded up. The floor under every bound
+   *  below: capping enqueue is meant to smooth the pool's load, not to park the
+   *  corpus, so no cap may sit under the rate the roster's own freshness window
+   *  implies. Derived rather than configured, so it tracks the roster and the window
+   *  instead of drifting from them. */
   private val cadenceVenuesPerTick: Int = {
     val ticksPerWindow = math.max(1L, dueWindow.period.toMillis / math.max(1L, interval.toMillis))
     math.max(1, math.ceil(scrapers.size.toDouble / ticksPerWindow).toInt)
@@ -278,15 +258,6 @@ class ScrapeReaper(
         (freshness.lastFetchedAt(key).map(_.toEpochMilli).getOrElse(Long.MinValue), key)
       }
 
-    // Throttle backoff, BACKLOG-AWARE: when the pool is credit-starved, bound the
-    // OUTSTANDING waiting scrapes to `throttledMaxEnqueuePerTick` rather than adding
-    // that many AFRESH every tick. The queue dedups, so a flat per-tick cap keeps
-    // piling new cinemas on until the whole due corpus is queued — which pins the
-    // credit-starved pool permanently busy with NO idle gap, so credit never
-    // rebuilds (the self-sustaining throttle spiral of 2026-06-24). Capping the
-    // backlog lets the pool drain to near-empty and idle between ticks → credit
-    // recovers, then the full cap resumes. Most-overdue-first (above) means the
-    // bounded trickle still serves the stalest cinemas.
     // Outstanding work in TASKS. A waiting ScrapeCinema is counted as the fan-out it is
     // about to become, not the one task it currently is: on a chunked country the
     // planner is an INTENTION to enqueue ~36 more, and a budget that ignores that keeps
@@ -304,21 +275,7 @@ class ScrapeReaper(
       if (taskBudget == Int.MaxValue) Int.MaxValue
       else math.max(0, taskBudget - outstanding) / perVenue
 
-    if (throttle.isThrottled) {
-      // The throttled budget is a venue count from a time when a venue was a task, so
-      // floor it at what one WINDOW's sweep needs — see `cadenceVenuesPerTick`.
-      // Flooring at a single venue's fan-out instead (the first attempt) let the
-      // trickle collapse to one venue a tick on a chunked country, which is below the
-      // rate its own freshness window implies, so the roster aged without bound while
-      // the queue sat empty. Backing off must not mean falling behind for ever.
-      val cap      = venuesWithin(math.max(throttledMaxEnqueuePerTick, cadenceTaskFloor))
-      val enqueued = enqueueUpTo(due, cap)
-      if (enqueued > 0)
-        logger.warn(s"ScrapeReaper: CPU-credit throttle (slowest recent scrape ${throttle.slowScrapeMillis}ms) — " +
-          s"backlog-capped to $cap new ($outstanding scrape task(s) already waiting); enqueued $enqueued " +
-          s"most-overdue cinema(s) of ${due.size} due, letting the pool drain + rebuild credit.")
-      enqueued
-    } else if (enqueueSpread <= 1) {
+    if (enqueueSpread <= 1) {
       // Un-spread healthy path (the default): enqueue the whole capped batch now.
       val enqueued = enqueueUpTo(due, math.min(rampedCap(now), venuesWithin(spreadAwareOutstandingBudget)))
       if (enqueued > 0) logger.info(s"ScrapeReaper enqueued $enqueued stale cinema(s) ($outstanding scrape task(s) already waiting).")
@@ -399,21 +356,21 @@ class ScrapeReaper(
 object ScrapeReaper {
 
   /** Every task type a cinema scrape can be sitting in, and therefore everything the
-   *  throttled backlog bound has to count.
+   *  outstanding-task bound has to count.
    *
    *  `ScrapeCinema` alone is NOT the scrape's cost. A chunked venue's ScrapeCinema is
    *  just the PLANNER — it finishes almost immediately, having fanned out one
    *  `ScrapeChunk` per advertised day (~36 for a UK Flicks venue, ~16 for a German
    *  one) plus the `ScrapeChunkReduce` that stitches them. Counting only the planner
-   *  made the throttle back-off blind to two orders of magnitude of the work it had
-   *  just created: the reaper saw a near-empty ScrapeCinema queue, judged itself under
-   *  budget, and kept enqueueing — so the credit-starved pool never reached the idle
-   *  the back-off exists to buy, and credit never rebuilt.
+   *  makes the bound blind to two orders of magnitude of the work it has just created:
+   *  the reaper sees a near-empty ScrapeCinema queue, judges itself under budget, and
+   *  keeps enqueueing — so the pool never reaches the idle gap the bound exists to
+   *  buy.
    *
-   *  Measured on kinowo-worker-uk 2026-07-28: `kinowo_worker_throttled` sat at 1 all
-   *  day with 381-1142 tasks waiting against a cap of 26, CPU credit pinned at 0 under
-   *  8-17k centi-cores of steal. PL, whose venues mostly don't chunk, held 5-55 and
-   *  recovered between ticks exactly as designed. */
+   *  Measured on kinowo-worker-uk 2026-07-28, when a credit-throttle back-off used the
+   *  same count: 381-1142 tasks waiting against a cap of 26, with the pool pinned busy
+   *  all day. PL, whose venues mostly don't chunk, held 5-55 and recovered between
+   *  ticks exactly as designed. */
   val ScrapeWorkTypes: Seq[TaskType] =
     Seq(TaskType.ScrapeCinema, TaskType.ScrapeChunk, TaskType.ScrapeChunkReduce)
 }

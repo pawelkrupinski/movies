@@ -85,6 +85,20 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_uptime_recent_zeroes"
   )
 
+  /** `kinowo_*` families exported by the FLEET rather than by either application —
+   *  written by a shell script into node_exporter's textfile directory, so no
+   *  registry in this build can enumerate them. Listed here so the reverse guard
+   *  below does not read a perfectly live panel as dangling.
+   *
+   *  Both come from `mongodumpScript` / `publishDumpMetrics` in
+   *  nix/modules/roles/mongodb.nix on mongo-1: the backup timer is the only thing that
+   *  knows a dump happened, and a dump that silently stopped is invisible everywhere
+   *  else. */
+  private val FleetExportedFamilies = Seq(
+    "kinowo_mongodump_last_success_timestamp_seconds",
+    "kinowo_mongodump_last_size_bytes"
+  )
+
   /** Every `kinowo_worker_*` family the worker registers, base names, straight
    *  from the registry — NOT from the text exposition, which omits a family that
    *  has no data points yet and would quietly under-report the very metrics most
@@ -192,4 +206,48 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  /**
+   * AND THE OTHER DIRECTION, which is the one that breaks silently.
+   *
+   * Everything above asks "is this exported metric drawn?" — a panel too few. The
+   * failure that actually ships is a panel too many: a dashboard querying a
+   * `kinowo_*` family nothing exports any more. Prometheus answers an unknown metric
+   * with an empty result, not an error, so the panel renders "No data" and looks
+   * exactly like a quiet period. A TEMPLATE VARIABLE built on one is worse — its
+   * dropdown empties, every panel scoped by it matches nothing, and a whole dashboard
+   * goes blank at once.
+   *
+   * Both happened here on 2026-09-04: deleting the worker's throttle path removed
+   * `kinowo_worker_throttled`, which was charted on one panel AND was the
+   * `label_values(...)` source for the Country dropdown on TWO dashboards. Nothing in
+   * this spec noticed, because it only ever looked for orphaned metrics, never
+   * orphaned queries.
+   */
+  "every kinowo_ metric a dashboard queries" should "actually be exported by something" in {
+    val exported = (workerFamilies ++ WebExportedFamilies ++ FleetExportedFamilies).distinct
+    val queried  = MetricReference.findAllMatchIn(allDashboardJson).map(_.group(0)).toSeq.distinct.sorted
+
+    queried should not be empty // a broken regex must not pass vacuously
+
+    // A dashboard spells a family in several forms: `_total` on a counter,
+    // `_bucket`/`_sum`/`_count` on a histogram, `_created` on either. Match on the
+    // BASE family the way `chartedIn` does, from the other side.
+    val dangling = queried.filterNot(q => exported.exists(f => q == f || q.startsWith(f + "_")))
+
+    withClue(
+      s"queried by a panel or template variable but exported by nothing: ${dangling.mkString(", ")}. " +
+        "Prometheus answers an unknown metric with an empty result rather than an error, so each of " +
+        "these is a panel that reads as a quiet period — or, if it backs a `label_values` variable, " +
+        "a dashboard that goes blank. Either restore the metric or repoint the query. "
+    ) {
+      dangling shouldBe empty
+    }
+  }
+
+  /** Every `kinowo_*` identifier appearing anywhere in a dashboard — panel targets and
+   *  template-variable queries alike, since both break the same way. Deliberately not
+   *  parsed as PromQL: a regex over the raw JSON cannot miss a spelling the parser
+   *  would, and over-matching is caught by the base-family comparison above. */
+  private val MetricReference = raw"kinowo_[a-z0-9_]+".r
 }

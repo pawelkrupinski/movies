@@ -71,14 +71,6 @@ class TaskWorker(
   idleBackstop:      FiniteDuration = 30.seconds,
   poolSize:          Int            = TaskWorker.DefaultPoolSize,
   reapInterval:      FiniteDuration = 30.seconds,
-  // CPU-credit throttle signal + the duty-cycle pause a busy worker takes before
-  // each claim while throttled. The reaper backoff only trims NEW enqueues; a
-  // backlog already queued is otherwise churned at full pool concurrency, pinning
-  // the shared-cpu box at the throttle ceiling so credit never refills — the
-  // sustained-throttle spiral of 2026-06-23. Pausing the pool here forces the idle
-  // time credit rebuilds from. Default healthy/0 keeps existing behaviour.
-  throttle:          ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
-  throttlePause:     FiniteDuration       = 5.seconds,
   // Invoked with the task the instant it completes successfully (Done/Skipped),
   // never on a reschedule. The composition root wires this to publish a
   // `TaskFinished` event so consumers (e.g. StagingReaper) can chain follow-up
@@ -161,10 +153,6 @@ class TaskWorker(
    *  interrupting). A spurious interrupt while still running simply resumes the loop. */
   private[tasks] def tick(workerId: String): Unit =
     try {
-      // Duty-cycle the pool while CPU-credit throttled so the box idles enough to
-      // rebuild credit (see throttlePauseMillis). No-op when healthy.
-      val pause = throttlePauseMillis()
-      if (pause > 0L) sleepFor(pause)
       val since = doorbell.generation
       Try(claimAndRun(workerId)).getOrElse(PollResult.Idle) match {
         case PollResult.Completed => ()                              // got work — claim the next immediately
@@ -174,15 +162,6 @@ class TaskWorker(
     } catch {
       case _: InterruptedException => Thread.interrupted(); ()
     }
-
-  /** How long a worker pauses before its next claim: the shed pause while the
-   *  worker is CPU-credit throttled, else 0 (full speed). Pausing every worker
-   *  drops the pool's aggregate CPU below the shared-cpu baseline so Fly credit
-   *  rebuilds — the lever the reaper enqueue-backoff lacks, since it can't drain a
-   *  backlog that itself keeps the pool busy. Pure so a test drives the decision
-   *  without threads. */
-  private[tasks] def throttlePauseMillis(): Long =
-    if (throttle.isThrottled) throttlePause.toMillis else 0L
 
   /** Sleep, honouring a stop interrupt. */
   private def sleepFor(ms: Long): Unit =

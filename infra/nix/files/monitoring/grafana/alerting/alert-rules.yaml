@@ -119,6 +119,8 @@ deleteRules:
     uid: showtimes-uk-serving-down
   - orgId: 1
     uid: kinowo-worker-credit-low
+  - orgId: 1
+    uid: kinowo-worker-throttled
 
 groups:
   # ================================================================================================
@@ -962,7 +964,7 @@ groups:
   # Telegram) by the `notify: worker-throttle` label. noData/execErr = OK (never
   # throttle on a missing/erroring balance — fail-safe).
   - orgId: 1
-    name: worker-throttle
+    name: worker-queue
     folder: Kinowo Alerts
     interval: 30s
     rules:
@@ -994,50 +996,17 @@ groups:
       # from the Fly copy verbatim -- both, or neither.
       # ================================================================================
 
-      # ---- Worker throttle NOTIFICATION (Telegram on start / end) -----------------
-      # A human heads-up, separate from the control gate above. Fires to Telegram
-      # whenever the worker is ACTUALLY backing off — the kinowo_worker_throttled
-      # gauge = 1, set from the live composite signal, so it covers BOTH the external
-      # credit gate AND the in-process scrape-duration backstop (not just credit).
-      # `for: 2m` so a brief EWMA blip doesn't message; firing = "throttling started",
-      # resolved = "ended" (the Telegram contact point sends both). NO `notify` label,
-      # so it falls through to the default Telegram receiver, not the /throttle webhook.
-      - uid: kinowo-worker-throttled
-        title: Worker throttling
-        condition: C
-        for: 2m
-        noDataState: OK
-        execErrState: OK
-        annotations:
-          summary: 'kinowo-worker is throttling — reapers backing off to let CPU credit rebuild'
-          description: 'kinowo_worker_throttled = 1 for 2m: the worker is backing off all reapers (the credit gate or the scrape-duration backstop tripped). Expected under load on shared CPU; this resolves when it returns to full enqueue.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: local-prometheus
-            model:
-              datasource: { type: prometheus, uid: local-prometheus }
-              editorMode: code
-              expr: 'max(kinowo_worker_throttled{app="kinowo-worker"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [0.5] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # RETIRED RULE kinowo-worker-throttled -- deleted with the worker's throttle path,
+      # 2026-09-04. It paged Telegram whenever `kinowo_worker_throttled` sat at 1, i.e.
+      # whenever the reapers were backing off.
+      #
+      # THE WHOLE MECHANISM IS GONE, not just this view of it. The signal that drove the
+      # backoff was Fly's shared-CPU credit balance, read by an in-process poller and
+      # backstopped by a webhook to the worker over 6PN; credit is a Fly billing concept
+      # with no counterpart on a dedicated box, and nothing had set the signal since the
+      # org's tokens were revoked. The gauge, the gate, the `/throttle` endpoint and the
+      # per-reaper enqueue caps went together. `kinowo-worker-task-age-high` and
+      # `kinowo-worker-queue-backlog` below are what still say the pipeline is struggling.
 
       # ---- Task-queue head-of-line starvation ------------------------------------
       # The EARLIEST symptom of a throttle/backlog spiral. During the 2026-06-23

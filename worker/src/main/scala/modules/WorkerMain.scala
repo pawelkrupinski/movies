@@ -83,10 +83,10 @@ object WorkerMain extends Logging {
           health.stop(0)
           sys.exit(1)
       }
-    // /health and /throttle are properties of the MACHINE, not of any one country,
-    // so they fold across every wiring — see [[WorkerFleet]]. Metrics likewise cover
-    // all countries (shared registry, `country` label).
-    val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog), wirings.map(_.externalThrottleGate))
+    // /health is a property of the MACHINE, not of any one country, so it folds
+    // across every wiring — see [[WorkerFleet]]. Metrics likewise cover all countries
+    // (shared registry, `country` label).
+    val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog))
     // Process-wide config (KINOWO_HEAP_DUMP_DIR), so it reads the same on every
     // wiring — one dump dir per machine, not per country.
     val heapDumpDir = wirings.head.heapDumpDir
@@ -97,13 +97,7 @@ object WorkerMain extends Logging {
     addMetricsEndpoint(health, workerMetrics, wirings)
     logger.info(s"Worker metrics up on :$port/metrics")
 
-    // /throttle — an external pusher (a Grafana alert on fly_instance_cpu_balance)
-    // flips the worker's credit backoff on/off here; the credit threshold lives
-    // outside the worker, this just receives the decision. The alert watches a
-    // per-MACHINE metric, so the decision lands on every country's gate.
-    addThrottleEndpoint(health, fleet)
     addHeapDumpEndpoint(health, heapDumpDir)
-    logger.info(s"Worker throttle control up on :$port/throttle")
 
     // Now that the heartbeat + watchdog are running, let /health report real
     // liveness: it goes 503 (and the watchdog restarts the process) only once a
@@ -202,26 +196,6 @@ object WorkerMain extends Logging {
     server
   }
 
-  /** External throttle control: the credit-balance logic lives outside the worker
-   *  (a Grafana alert on `fly_instance_cpu_balance`), and toggles the worker's
-   *  reaper backoff through this endpoint. Accepts a simple `?state=on|off`
-   *  (curl/manual), a `?throttled=true|false`, OR a Grafana webhook body whose
-   *  `"status"` is `"firing"` (→ on) / `"resolved"` (→ off). Reads no metric and
-   *  holds no threshold — it just sets every country's `ExternalThrottleGate`
-   *  through the [[WorkerFleet]]. */
-  private def addThrottleEndpoint(server: HttpServer, fleet: WorkerFleet): Unit = {
-    server.createContext("/throttle", exchange => {
-      val state = throttleStateFrom(exchange)
-      state.foreach(fleet.setThrottled)
-      val body = state.fold("no state — pass ?state=on|off or a Grafana firing/resolved webhook")(
-        on => s"throttled=$on").getBytes("UTF-8")
-      exchange.sendResponseHeaders(if (state.isDefined) 200 else 400, body.length.toLong)
-      val os = exchange.getResponseBody
-      try os.write(body) finally os.close()
-    })
-    ()
-  }
-
   /** On-demand HPROF dump of the LIVE heap, written to the Fly volume.
    *
    *  `-XX:+HeapDumpOnOutOfMemoryError` only fires at the hard OOM, which is exactly
@@ -231,7 +205,7 @@ object WorkerMain extends Logging {
    *  attach from outside either; [[tools.HeapDumper]] could already do this from
    *  inside the process, it just had no trigger but the wedged-watchdog.
    *
-   *  Same exposure as /throttle and /metrics: port 9000 is reachable on the cluster's
+   *  Same exposure as /metrics: port 9000 is reachable on the cluster's
    *  private network (Prometheus scrapes it over a NodePort), never publicly.
    *
    *    kubectl -n kinowo port-forward deploy/worker-uk 9000:9000 &
@@ -255,11 +229,6 @@ object WorkerMain extends Logging {
     ()
   }
 
-  private def throttleStateFrom(exchange: com.sun.net.httpserver.HttpExchange): Option[Boolean] =
-    services.tasks.ExternalThrottleGate.parse(
-      Option(exchange.getRequestURI.getQuery),
-      new String(exchange.getRequestBody.readAllBytes(), "UTF-8"))
-
   private val MetricsActiveLimit = 1000
 
   /** Worker task-pipeline metrics for the VictoriaMetrics scrape (the `[[metrics]]`
@@ -281,7 +250,7 @@ object WorkerMain extends Logging {
       workerMetrics.taskSeries.scrape(
         wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample(
           w.country.code, w.taskQueue.monitor(MetricsActiveLimit),
-          w.stagingReaper.stepCounts(), w.throttleSignal.isThrottled)),
+          w.stagingReaper.stepCounts())),
         Instant.now()))
     snapshot.start()
     server.createContext("/metrics", exchange => {

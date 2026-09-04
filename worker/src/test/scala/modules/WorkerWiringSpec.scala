@@ -29,9 +29,6 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   class SpyWiring extends TestWiring {
     @volatile var scrapeStarted = false
     @volatile var tmdbRetryStarted = false
-    // Records restart requests instead of exiting the JVM, so a wedge response is observable.
-    @volatile var restartRequests = Vector.empty[String]
-    override protected[modules] def restartMachine(reason: String): Unit = restartRequests :+= reason
 
     override lazy val scrapeReaper: ScrapeReaper =
       new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore) {
@@ -108,20 +105,6 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       case budget: SharedExecutionBudget => budget.maxConcurrent shouldBe 4
       case other                         => fail(s"expected a SharedExecutionBudget, got $other")
     }
-    wiring.stop()
-  }
-
-  // Dropping the throttle restart (2026-07-03): a sustained credit-floor throttle is a
-  // STRUCTURAL deficit (steady CPU ~0.30 cores just over the shared-cpu-4x earn rate
-  // ~0.26), NOT a wedge a reboot can clear — restarting only burned the ~16k boot
-  // re-grant and looped every ~45min while the box was near-idle. The remaining
-  // throttle path (the ThrottleStuckWatchdog 45-min wedge) is wired to
-  // `onThrottleWedged`, which must ALARM, never restart the machine. (The second path,
-  // the Fly CpuCreditPoller's downslope projection, went with the platform.)
-  it should "alarm, not restart the machine, when the throttle wedges" in {
-    val wiring = new SpyWiring
-    wiring.onThrottleWedged("stuck watchdog")
-    wiring.restartRequests shouldBe empty
     wiring.stop()
   }
 

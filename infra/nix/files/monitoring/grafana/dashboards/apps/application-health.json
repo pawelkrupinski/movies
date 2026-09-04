@@ -1,6 +1,6 @@
 {
   "uid": "application-health",
-  "title": "Kinowo \u2014 application health (worker and web, both on k3s)",
+  "title": "Kinowo — application health (worker and web, both on k3s)",
   "tags": [
     "kinowo",
     "application",
@@ -53,9 +53,9 @@
           "type": "prometheus",
           "uid": "local-prometheus"
         },
-        "definition": "label_values(kinowo_worker_throttled, country)",
+        "definition": "label_values(kinowo_worker_queue_depth, country)",
         "query": {
-          "query": "label_values(kinowo_worker_throttled, country)",
+          "query": "label_values(kinowo_worker_queue_depth, country)",
           "refId": "country"
         },
         "current": {
@@ -87,7 +87,7 @@
     },
     {
       "id": 7,
-      "title": "Both tiers \u2014 is the process answering /metrics?",
+      "title": "Both tiers — is the process answering /metrics?",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -126,52 +126,10 @@
       "description": "1 = Prometheus scraped that tier's own /metrics endpoint on the last try. The two tiers are reached completely differently and fail differently: both are k3s NodePorts on the private network now (the workers on 10.20.0.12:30900-30904, the web pods on 30910-30914), so a 0 on either really is that pod being down, wedged or mid-rollout. The 6PN-over-WireGuard hop that used to stand between Prometheus and the web tier went with the Fly frontend, and with it the ambiguity where a red web target could equally mean a dropped tunnel over a site that was serving users perfectly well."
     },
     {
-      "id": 8,
-      "title": "Worker \u2014 throttled by country (1 = reapers backing off, 0 = full enqueue)",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 7
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "min": 0,
-          "max": 1,
-          "custom": {
-            "spanNulls": 300000,
-            "drawStyle": "line",
-            "lineInterpolation": "stepAfter",
-            "lineWidth": 2,
-            "fillOpacity": 35
-          }
-        },
-        "overrides": []
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "max by (country) (kinowo_worker_throttled{country=~\"$country\"})",
-          "legendFormat": "{{country}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          }
-        }
-      ],
-      "description": "The reaper backoff switch, per country. 1 means the worker has stopped enqueueing new scrape and enrichment work because something upstream is failing or the queue is not draining; 0 is normal operation. It is a LEVEL, not a rate \u2014 a country sitting at 1 for hours is a stalled pipeline, and every throughput panel below will be flat for the same reason. Backoff is unrecallable once parked, so this going to 1 and staying there is the signal to look at task outcomes rather than to wait."
-    },
-    {
       "id": 60,
       "type": "timeseries",
-      "title": "Worker pods (k3s) \u2014 container restarts by country",
-      "description": "Cumulative container restarts for each worker Deployment, from kube-state-metrics. A step up is a pod that died and was rescheduled \u2014 usually OOMKill or a failed liveness probe. Flat at zero is healthy.",
+      "title": "Worker pods (k3s) — container restarts by country",
+      "description": "Cumulative container restarts for each worker Deployment, from kube-state-metrics. A step up is a pod that died and was rescheduled — usually OOMKill or a failed liveness probe. Flat at zero is healthy.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -220,8 +178,8 @@
     },
     {
       "id": 9,
-      "title": "Both tiers \u2014 CPU burned by the JVM process (centi-cores)",
-      "description": "100 = one full core of actual JVM CPU, from each app's own process exporter \u2014 not the host's. This is the honest number for the worker now: it shares k3s-worker-1 with the k3s agent itself, so host CPU on the fleet dashboard is always higher than the worker's and cannot be read as the worker's load. The worker's baseline is a low hum with daytime humps that are read-model projection (broken out below); a sustained flat-topped plateau is the shape to worry about. The web tier serves requests, so its line tracks traffic. Step-ups that line up with a purple Deploy marker mean that release added load.",
+      "title": "Both tiers — CPU burned by the JVM process (centi-cores)",
+      "description": "100 = one full core of actual JVM CPU, from each app's own process exporter — not the host's. This is the honest number for the worker now: it shares k3s-worker-1 with the k3s agent itself, so host CPU on the fleet dashboard is always higher than the worker's and cannot be read as the worker's load. The worker's baseline is a low hum with daytime humps that are read-model projection (broken out below); a sustained flat-topped plateau is the shape to worry about. The web tier serves requests, so its line tracks traffic. Step-ups that line up with a purple Deploy marker mean that release added load.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -268,7 +226,7 @@
     {
       "id": 101,
       "type": "row",
-      "title": "What the two tiers are serving \u2014 the web deployments against the collection behind them (the workers)",
+      "title": "What the two tiers are serving — the web deployments against the collection behind them (the workers)",
       "collapsed": false,
       "panels": [],
       "gridPos": {
@@ -280,7 +238,7 @@
     },
     {
       "id": 33,
-      "title": "Web (k3s \u00b7 all countries) \u2014 films served per city (all future showings)",
+      "title": "Web (k3s · all countries) — films served per city (all future showings)",
       "description": "Distinct films the web is currently serving on each /:city/ page (every film with a future showing), sampled once a minute from the real serving path (toSchedules) and exposed on web /metrics as kinowo_web_movies_served{scope=\"all\"}. A city dropping to 0 here is the read-model-outage signal (a malformed web_movies row empties the whole corpus). The MoviesServedSwing + MoviesServedCityEmpty alerts watch this series.",
       "type": "timeseries",
       "datasource": {
@@ -319,8 +277,8 @@
     },
     {
       "id": 34,
-      "title": "Web (k3s \u00b7 all countries) \u2014 films served per city (showing tomorrow)",
-      "description": "Distinct films each /:city/ page shows for tomorrow (\u22651 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
+      "title": "Web (k3s · all countries) — films served per city (showing tomorrow)",
+      "description": "Distinct films each /:city/ page shows for tomorrow (≥1 showtime on the next local calendar day, Europe/Warsaw), from kinowo_web_movies_served{scope=\"tomorrow\"}. Same per-minute sample as the all-future panel; the next-day view that fills the gap as today's showings pass.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -358,8 +316,8 @@
     },
     {
       "id": 37,
-      "title": "kinowo \u2014 films the movies collection would serve per city (all future)",
-      "description": "The SOURCE-collection mirror of the web panel above. Worker-side count of distinct films the live `movies` collection would serve on each /:city/ page (every film with a future showing), sampled off-band every 5 min by WorkerSourceFilmsMetrics through the REAL projection path and gated on the same readyToProject rule the projector writes by \u2014 exposed on worker /metrics as kinowo_worker_movies_served{scope=\"all\"}. Compare against kinowo_web_movies_served{scope=\"all\"}: in steady state the two match per city, so a city where worker > web means the read model (web_movies) has drifted behind the corpus \u2014 a stuck projection or a malformed/pruned web_movies row. NOTE \u2014 this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "title": "kinowo — films the movies collection would serve per city (all future)",
+      "description": "The SOURCE-collection mirror of the web panel above. Worker-side count of distinct films the live `movies` collection would serve on each /:city/ page (every film with a future showing), sampled off-band every 5 min by WorkerSourceFilmsMetrics through the REAL projection path and gated on the same readyToProject rule the projector writes by — exposed on worker /metrics as kinowo_worker_movies_served{scope=\"all\"}. Compare against kinowo_web_movies_served{scope=\"all\"}: in steady state the two match per city, so a city where worker > web means the read model (web_movies) has drifted behind the corpus — a stuck projection or a malformed/pruned web_movies row. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -397,8 +355,8 @@
     },
     {
       "id": 38,
-      "title": "kinowo \u2014 films the movies collection would serve per city (showing tomorrow)",
-      "description": "Source-collection mirror of the web tomorrow panel above, from kinowo_worker_movies_served{scope=\"tomorrow\"} (worker-side, projected from `movies`, sampled every 5 min). Compare against kinowo_web_movies_served{scope=\"tomorrow\"}; a per-city gap is the same read-model-drift signal as the all-future pair. NOTE \u2014 this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "title": "kinowo — films the movies collection would serve per city (showing tomorrow)",
+      "description": "Source-collection mirror of the web tomorrow panel above, from kinowo_worker_movies_served{scope=\"tomorrow\"} (worker-side, projected from `movies`, sampled every 5 min). Compare against kinowo_web_movies_served{scope=\"tomorrow\"}; a per-city gap is the same read-model-drift signal as the all-future pair. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -436,8 +394,8 @@
     },
     {
       "id": 41,
-      "title": "kinowo \u2014 total upcoming showtimes per country (all cities)",
-      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city \u2014 sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing. NOTE \u2014 this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "title": "kinowo — total upcoming showtimes per country (all cities)",
+      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city — sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -475,8 +433,8 @@
     },
     {
       "id": 42,
-      "title": "kinowo \u2014 upcoming showtimes served per city",
-      "description": "Per-city breakdown of the panel to the left: individual upcoming showtimes (single dated slots) the source `movies` collection would serve on each /:city/ page, from kinowo_worker_showtimes{city} (worker-side, projected from `movies`, sampled every 5 min, upcoming-only, readyToProject-gated). Every slot belongs to exactly one city, so these series sum to the total panel. A single city's showtime volume cratering while its film count holds is a venue that lost screens/sessions. NOTE \u2014 this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "title": "kinowo — upcoming showtimes served per city",
+      "description": "Per-city breakdown of the panel to the left: individual upcoming showtimes (single dated slots) the source `movies` collection would serve on each /:city/ page, from kinowo_worker_showtimes{city} (worker-side, projected from `movies`, sampled every 5 min, upcoming-only, readyToProject-gated). Every slot belongs to exactly one city, so these series sum to the total panel. A single city's showtime volume cratering while its film count holds is a venue that lost screens/sessions. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -514,8 +472,8 @@
     },
     {
       "id": 36,
-      "title": "Worker \u2014 movies corpus coverage (records, ids, ratings)",
-      "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog. NOTE \u2014 this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "title": "Worker — movies corpus coverage (records, ids, ratings)",
+      "description": "Census of the live `movies` collection, sampled off-band every 5 min by WorkerCorpusMetrics and exposed as kinowo_worker_corpus_movies{subset}. total = distinct movie records; with_any_rating = at least one of imdb/fw/rt/mc; with_tmdb_id / with_imdb_id = resolution coverage; imdb_rating/rt_rating/mc_rating/fw_rating = per-source rating coverage. The gap between total and with_*_id is the resolution backlog; the gap between with_tmdb_id and each rating series is each site's enrichment backlog. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -553,8 +511,8 @@
     },
     {
       "id": 50,
-      "title": "Worker \u2014 corpus census: passes that could not read the whole corpus (per hour)",
-      "description": "READ THIS BEFORE READING ANY CENSUS PANEL ABOVE. The corpus census (one paged scan every 5 min feeding kinowo_worker_corpus_movies, kinowo_worker_movies_served and kinowo_worker_showtimes) publishes NOTHING when a batch read fails mid-scan \u2014 a partial count is fewer rows READ, not a smaller corpus, and as a gauge value the two are identical. So those gauges hold their last complete values and a read fault looks like a flat, plausible, perfectly healthy line. This counter is the only thing that tells the two apart: above zero, every census panel on this dashboard is STALE and its flatness means nothing. Named for the 2026-07-27 outage, where a `Missing field: sourceData` decode bug failed every batch and the censuses published total=0 for ~50 min while the corpus sat intact at 943 films \u2014 the panels then read as a corpus collapse; today they would read as calm. Pairs with the kinowo-corpus-census-stuck alert.",
+      "title": "Worker — corpus census: passes that could not read the whole corpus (per hour)",
+      "description": "READ THIS BEFORE READING ANY CENSUS PANEL ABOVE. The corpus census (one paged scan every 5 min feeding kinowo_worker_corpus_movies, kinowo_worker_movies_served and kinowo_worker_showtimes) publishes NOTHING when a batch read fails mid-scan — a partial count is fewer rows READ, not a smaller corpus, and as a gauge value the two are identical. So those gauges hold their last complete values and a read fault looks like a flat, plausible, perfectly healthy line. This counter is the only thing that tells the two apart: above zero, every census panel on this dashboard is STALE and its flatness means nothing. Named for the 2026-07-27 outage, where a `Missing field: sourceData` decode bug failed every batch and the censuses published total=0 for ~50 min while the corpus sat intact at 943 films — the panels then read as a corpus collapse; today they would read as calm. Pairs with the kinowo-corpus-census-stuck alert.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -593,13 +551,13 @@
     {
       "id": 102,
       "type": "row",
-      "title": "Upstream reachability \u2014 what the scrape is getting back",
+      "title": "Upstream reachability — what the scrape is getting back",
       "collapsed": true,
       "panels": [
         {
           "id": 10,
-          "title": "Residential proxy \u2014 fetches served vs failed (web tier \u00b7 all countries, recent 30 min)",
-          "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed \u2192 Zyte fallback' is a silent cost regression \u2014 scraping keeps working via Zyte, so no cinema bar goes red. Drives the 'Residential proxy failing' alert.",
+          "title": "Residential proxy — fetches served vs failed (web tier · all countries, recent 30 min)",
+          "description": "The Decodo residential-proxy leg of the cinema scrape, surfaced from the in-app /uptime health (Mongo) via web's /metrics scrape. A flip from all-green 'served by proxy' to all-red 'failed → Zyte fallback' is a silent cost regression — scraping keeps working via Zyte, so no cinema bar goes red. Drives the 'Residential proxy failing' alert.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -636,7 +594,7 @@
             {
               "refId": "B",
               "expr": "sum(kinowo_uptime_recent_failures{service=\"Residential proxy\"})",
-              "legendFormat": "failed \u2192 Zyte fallback",
+              "legendFormat": "failed → Zyte fallback",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"
@@ -646,8 +604,8 @@
         },
         {
           "id": 54,
-          "title": "Venues answering with an EMPTY listing (web tier \u00b7 all countries, recent 30 min)",
-          "description": "How many services report kinowo_uptime_recent_zeroes \u2014 checks that neither succeeded nor failed: the request went through, the response parsed, and it held no screenings. This is the third outcome the /uptime page tracks and the only one no other panel or alert reads, which is what makes it the quietest failure we have: a cinema site that starts answering 200 with an empty listing counts as zero failures, so the proxy panel beside this one stays green, the failure-share alerts stay silent, and the films simply stop arriving. READ THE LEVEL AS A POPULATION, NOT A FAULT \u2014 measured 2026-07-28, ~123 of ~2,766 services sit here at any moment and every one of them had zero successes, which is what a genuinely dormant venue looks like (see the white-cinema sweeps: dormant, not broken). The signal is the STEP: a jump in this count is a batch of venues that just stopped returning results, and that lands later on the films-served and showtime-volume panels below. Which venues is a question for /uptime, which lists them by name \u2014 this panel exists to tell you WHEN to go look.",
+          "title": "Venues answering with an EMPTY listing (web tier · all countries, recent 30 min)",
+          "description": "How many services report kinowo_uptime_recent_zeroes — checks that neither succeeded nor failed: the request went through, the response parsed, and it held no screenings. This is the third outcome the /uptime page tracks and the only one no other panel or alert reads, which is what makes it the quietest failure we have: a cinema site that starts answering 200 with an empty listing counts as zero failures, so the proxy panel beside this one stays green, the failure-share alerts stay silent, and the films simply stop arriving. READ THE LEVEL AS A POPULATION, NOT A FAULT — measured 2026-07-28, ~123 of ~2,766 services sit here at any moment and every one of them had zero successes, which is what a genuinely dormant venue looks like (see the white-cinema sweeps: dormant, not broken). The signal is the STEP: a jump in this count is a batch of venues that just stopped returning results, and that lands later on the films-served and showtime-volume panels below. Which venues is a question for /uptime, which lists them by name — this panel exists to tell you WHEN to go look.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -703,13 +661,13 @@
     {
       "id": 103,
       "type": "row",
-      "title": "The pipeline \u2014 deferred work on the worker (k3s)",
+      "title": "The pipeline — deferred work on the worker (k3s)",
       "collapsed": true,
       "panels": [
         {
           "id": 20,
-          "title": "Worker \u2014 task flow (per min): enqueued \u2192 started \u2192 fully worked",
-          "description": "The deferred-work pipeline on kinowo-worker, from worker /metrics. enqueued = new tasks added to the queue (dedup collapses excluded); started = tasks claimed by a worker; fully worked (done) = handlers that did real work (excludes 'skipped' freshness no-ops). In steady state the three track; started \u226b done means lots of skipped/rescheduled, done \u226a enqueued means a growing backlog.",
+          "title": "Worker — task flow (per min): enqueued → started → fully worked",
+          "description": "The deferred-work pipeline on kinowo-worker, from worker /metrics. enqueued = new tasks added to the queue (dedup collapses excluded); started = tasks claimed by a worker; fully worked (done) = handlers that did real work (excludes 'skipped' freshness no-ops). In steady state the three track; started ≫ done means lots of skipped/rescheduled, done ≪ enqueued means a growing backlog.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -765,8 +723,8 @@
         },
         {
           "id": 30,
-          "title": "Worker \u2014 enqueued (non-duplicate) by type (per min)",
-          "description": "Rate of tasks ADDED to the queue per task type (kinowo_worker_tasks_enqueued_total{result=\"added\"} \u2014 re-enqueues that the dedupKey collapses are excluded, so this is net new work, not churn). The per-type split of the 'enqueued' line in the overall flow panel above. Read with 'started by type' and 'fully-worked throughput by type' as one type's enqueue \u2192 claim \u2192 done funnel.",
+          "title": "Worker — enqueued (non-duplicate) by type (per min)",
+          "description": "Rate of tasks ADDED to the queue per task type (kinowo_worker_tasks_enqueued_total{result=\"added\"} — re-enqueues that the dedupKey collapses are excluded, so this is net new work, not churn). The per-type split of the 'enqueued' line in the overall flow panel above. Read with 'started by type' and 'fully-worked throughput by type' as one type's enqueue → claim → done funnel.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -807,8 +765,8 @@
         },
         {
           "id": 31,
-          "title": "Worker \u2014 started (claimed) by type (per min)",
-          "description": "Rate of tasks CLAIMED by a worker per task type (kinowo_worker_tasks_started_total). Counts every claim, including ones that then skip (data already fresh) or reschedule, so started \u226b the same type's 'fully-worked throughput' means that type is handing out a lot of no-op work. The per-type split of the 'started' line in the overall flow panel above.",
+          "title": "Worker — started (claimed) by type (per min)",
+          "description": "Rate of tasks CLAIMED by a worker per task type (kinowo_worker_tasks_started_total). Counts every claim, including ones that then skip (data already fresh) or reschedule, so started ≫ the same type's 'fully-worked throughput' means that type is handing out a lot of no-op work. The per-type split of the 'started' line in the overall flow panel above.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -849,8 +807,8 @@
         },
         {
           "id": 21,
-          "title": "Worker \u2014 fully-worked throughput by type (per min)",
-          "description": "rate of done (not skipped) tasks per task type \u2014 which kinds of work the worker is actually completing: cinema scrapes, detail enrichment, TMDB/IMDb resolution, the four rating sources, and the staging-incubation steps.",
+          "title": "Worker — fully-worked throughput by type (per min)",
+          "description": "rate of done (not skipped) tasks per task type — which kinds of work the worker is actually completing: cinema scrapes, detail enrichment, TMDB/IMDb resolution, the four rating sources, and the staging-incubation steps.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -891,8 +849,8 @@
         },
         {
           "id": 22,
-          "title": "Worker \u2014 task outcomes (per min)",
-          "description": "Every handler return, by outcome: done (real work), skipped (data already fresh \u2014 the queue handed out work that was no longer needed), rescheduled (transient retry/backoff), failed (handler threw), no_handler (claimed mid-deploy on a node without the handler). A spike in skipped/rescheduled is wasted churn; failed is the error signal.",
+          "title": "Worker — task outcomes (per min)",
+          "description": "Every handler return, by outcome: done (real work), skipped (data already fresh — the queue handed out work that was no longer needed), rescheduled (transient retry/backoff), failed (handler threw), no_handler (claimed mid-deploy on a node without the handler). A spike in skipped/rescheduled is wasted churn; failed is the error signal.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -946,7 +904,7 @@
         },
         {
           "id": 23,
-          "title": "Worker \u2014 fully-worked task duration (done, all types)",
+          "title": "Worker — fully-worked task duration (done, all types)",
           "description": "Handler wall-clock of done tasks, percentiles over the bucketed histogram (kinowo_worker_task_duration_seconds). Skipped/failed runs are excluded. A rising p95/p99 means the upstreams (cinema sites, TMDB/IMDb, Filmweb/RT/Metacritic) or the scrape are getting slower.",
           "type": "timeseries",
           "datasource": {
@@ -1003,8 +961,8 @@
         },
         {
           "id": 24,
-          "title": "Worker \u2014 queue depth",
-          "description": "Live size of the durable task queue: waiting (claimable) + worked_on (leased by a worker right now), from worker /metrics. worked_on tracks pool utilization against pool size (the worker runs poolSize workers, one task each). A climbing 'waiting' is a backlog the pool isn't draining \u2014 correlate it with the worker CPU panel at the top: a backlog with flat CPU means the pool is blocked on upstreams, a backlog with pegged CPU means it is genuinely saturated.",
+          "title": "Worker — queue depth",
+          "description": "Live size of the durable task queue: waiting (claimable) + worked_on (leased by a worker right now), from worker /metrics. worked_on tracks pool utilization against pool size (the worker runs poolSize workers, one task each). A climbing 'waiting' is a backlog the pool isn't draining — correlate it with the worker CPU panel at the top: a backlog with flat CPU means the pool is blocked on upstreams, a backlog with pegged CPU means it is genuinely saturated.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1090,8 +1048,8 @@
         },
         {
           "id": 25,
-          "title": "Worker \u2014 waiting tasks by type",
-          "description": "Current backlog broken down by task type (sampled from the bounded active snapshot). Shows WHICH work is piling up \u2014 e.g. a wave of staging-incubation steps, or rating refreshes backing up behind a slow source. An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
+          "title": "Worker — waiting tasks by type",
+          "description": "Current backlog broken down by task type (sampled from the bounded active snapshot). Shows WHICH work is piling up — e.g. a wave of staging-incubation steps, or rating refreshes backing up behind a slow source. An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1132,8 +1090,8 @@
         },
         {
           "id": 26,
-          "title": "Worker \u2014 oldest waiting task age by type (s)",
-          "description": "Head-of-line latency: how long the oldest still-waiting task of each type has sat in the queue. A steadily climbing line is starvation \u2014 that type's work isn't being picked up (no handler, perpetual backoff, or the pool saturated by another type). An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
+          "title": "Worker — oldest waiting task age by type (s)",
+          "description": "Head-of-line latency: how long the oldest still-waiting task of each type has sat in the queue. A steadily climbing line is starvation — that type's work isn't being picked up (no handler, perpetual backoff, or the pool saturated by another type). An EMPTY panel is the all-clear, not a broken query: the `> 0` filter hides the flat zero line every task type publishes when nothing of that type is waiting, which would otherwise bury the one type that is backing up under twenty idle ones.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1171,8 +1129,8 @@
         },
         {
           "id": 27,
-          "title": "Worker \u2014 fully-worked task duration p95 by type (s)",
-          "description": "Per-type tail latency of done (not skipped) tasks: the 95th-percentile handler wall-clock for each task type, over the bucketed histogram (kinowo_worker_task_duration_seconds). Splits the overall percentiles panel above by task_type so a slowdown localises to one upstream \u2014 e.g. ScrapeCinema (a cinema site), the *Rating types (Filmweb/RT/Metacritic/IMDb), or TMDB/IMDb resolution. Change 0.95 \u2192 0.50 for the median.",
+          "title": "Worker — fully-worked task duration p95 by type (s)",
+          "description": "Per-type tail latency of done (not skipped) tasks: the 95th-percentile handler wall-clock for each task type, over the bucketed histogram (kinowo_worker_task_duration_seconds). Splits the overall percentiles panel above by task_type so a slowdown localises to one upstream — e.g. ScrapeCinema (a cinema site), the *Rating types (Filmweb/RT/Metacritic/IMDb), or TMDB/IMDb resolution. Change 0.95 → 0.50 for the median.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1210,8 +1168,8 @@
         },
         {
           "id": 28,
-          "title": "Worker \u2014 fully-worked task duration p50 (median) by type (s)",
-          "description": "Per-type typical latency of done (not skipped) tasks: the 50th-percentile (median) handler wall-clock for each task type, over the bucketed histogram (kinowo_worker_task_duration_seconds). The median companion to the p95-by-type panel above \u2014 p50 reads the everyday cost of each work kind, p95 the tail.",
+          "title": "Worker — fully-worked task duration p50 (median) by type (s)",
+          "description": "Per-type typical latency of done (not skipped) tasks: the 50th-percentile (median) handler wall-clock for each task type, over the bucketed histogram (kinowo_worker_task_duration_seconds). The median companion to the p95-by-type panel above — p50 reads the everyday cost of each work kind, p95 the tail.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1249,8 +1207,8 @@
         },
         {
           "id": 29,
-          "title": "Worker \u2014 staging incubation: movies by step (total = all in staging)",
-          "description": "Films currently incubating in pending_movies, stacked by the step each needs NEXT on its way into the live `movies` collection: detail (a cinema's synopsis/poster still owed) \u2192 resolve_tmdb (no TMDB match yet) \u2192 resolve_imdb (TMDB hit, IMDb cross-ref pending) \u2192 fold (concluded, about to graduate). Distinct films (a film's multiple cinema rows count once). The stacked total is the total movie count in staging; a step that keeps growing is where incubation is stalling (correlate with the staging task queue panels + StagingStuckAlerter).",
+          "title": "Worker — staging incubation: movies by step (total = all in staging)",
+          "description": "Films currently incubating in pending_movies, stacked by the step each needs NEXT on its way into the live `movies` collection: detail (a cinema's synopsis/poster still owed) → resolve_tmdb (no TMDB match yet) → resolve_imdb (TMDB hit, IMDb cross-ref pending) → fold (concluded, about to graduate). Distinct films (a film's multiple cinema rows count once). The stacked total is the total movie count in staging; a step that keeps growing is where incubation is stalling (correlate with the staging task queue panels + StagingStuckAlerter).",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1300,13 +1258,13 @@
     {
       "id": 104,
       "type": "row",
-      "title": "Corpus movement \u2014 merges, change stream, read model",
+      "title": "Corpus movement — merges, change stream, read model",
       "collapsed": true,
       "panels": [
         {
           "id": 32,
-          "title": "Worker \u2014 movie-row merges by reason & splits (per min)",
-          "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total \u2014 one increment per VICTIM absorbed; a cluster of N counts N\u22121). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a \u00b1year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate; normalize-rebuild=a title-rule change re-keys rows that now share a key and unions them. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness \u2014 so a canonicalize spike here precedes the EnrichDetails \u2192 ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19. The splits series (kinowo_worker_splits_total) is the inverse \u2014 rows a title-rule change un-merged, counted as new rows spawned (a 1\u2192N split = N\u22121), each born fresh and re-resolving; normalize-rebuild merges are the re-merge half of a rebuild, splits the un-merge half.",
+          "title": "Worker — movie-row merges by reason & splits (per min)",
+          "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total — one increment per VICTIM absorbed; a cluster of N counts N−1). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a ±year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate; normalize-rebuild=a title-rule change re-keys rows that now share a key and unions them. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness — so a canonicalize spike here precedes the EnrichDetails → ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19. The splits series (kinowo_worker_splits_total) is the inverse — rows a title-rule change un-merged, counted as new rows spawned (a 1→N split = N−1), each born fresh and re-resolving; normalize-rebuild merges are the re-merge half of a rebuild, splits the un-merge half.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1356,7 +1314,7 @@
         },
         {
           "id": 39,
-          "title": "Worker \u2014 movies change-stream events (per min, by op)",
+          "title": "Worker — movies change-stream events (per min, by op)",
           "description": "Change events the shared cursor consumes from the movies collection, by operation. rate() is the change-stream volume the cache + read-model projector reproject from.",
           "type": "timeseries",
           "datasource": {
@@ -1395,8 +1353,8 @@
         },
         {
           "id": 40,
-          "title": "Worker \u2014 change-stream UPDATE field kinds (per min)",
-          "description": "For UPDATE events, which field kind changed: source_data = a cinema slot (scrape write, incl. slots stored in movie_slots \u2014 those carry a slotsUpdatedAt marker), rating, identity = tmdb/imdb id + resolution, updated_at_only = a no-op touching only updatedAt (redundant-write canary \u2014 should stay ~0).",
+          "title": "Worker — change-stream UPDATE field kinds (per min)",
+          "description": "For UPDATE events, which field kind changed: source_data = a cinema slot (scrape write, incl. slots stored in movie_slots — those carry a slotsUpdatedAt marker), rating, identity = tmdb/imdb id + resolution, updated_at_only = a no-op touching only updatedAt (redundant-write canary — should stay ~0).",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1434,8 +1392,8 @@
         },
         {
           "id": 51,
-          "title": "Worker \u2014 read-model prunes: films removed & sweeps that removed something (per min)",
-          "description": "The DELETION side of the read model, which the size gauges above cannot show: they tell you the corpus is smaller, never which mechanism shrank it. films-pruned = derived documents removed during reconcile because their source row vanished or was re-keyed (kinowo_worker_readmodel_films_pruned \u2014 the event that can briefly 404 a film deep-link until the new key propagates; pair with the merges/splits panel for the re-key cause). prune sweeps that removed something = kinowo_worker_readmodel_reconcile_sweeps{did_work=\"true\"}, the cheap id-only orphan prune actually finding orphans \u2014 deletes and re-keys the change stream cannot deliver. A burst here under a flat film count is the shape a slot/showtime loss makes now that slots live in movie_slots and the read model is projected from them.",
+          "title": "Worker — read-model prunes: films removed & sweeps that removed something (per min)",
+          "description": "The DELETION side of the read model, which the size gauges above cannot show: they tell you the corpus is smaller, never which mechanism shrank it. films-pruned = derived documents removed during reconcile because their source row vanished or was re-keyed (kinowo_worker_readmodel_films_pruned — the event that can briefly 404 a film deep-link until the new key propagates; pair with the merges/splits panel for the re-key cause). prune sweeps that removed something = kinowo_worker_readmodel_reconcile_sweeps{did_work=\"true\"}, the cheap id-only orphan prune actually finding orphans — deletes and re-keys the change stream cannot deliver. A burst here under a flat film count is the shape a slot/showtime loss makes now that slots live in movie_slots and the read model is projected from them.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1482,8 +1440,8 @@
         },
         {
           "id": 52,
-          "title": "Worker \u2014 cache backstop rehydrate: rows the change stream missed (per min)",
-          "description": "What the MovieCache's periodic full-reload backstop caught that the INCREMENTAL change stream did not deliver, by kind: changed = a cached value that differed from Mongo (a missed upsert), deleted = a key gone from Mongo the delete-apply never dropped. With resume-token persistence + cache delete-apply this should sit at ~0 in steady state, and a rate flat at 0 is the evidence the 30-min rehydrate could be retired; anything sustained above 0 means the change-stream path \u2014 the same path the read-model projector and every panel derived from it trust \u2014 is losing writes. NOTE: the one-time BOOT hydrate counts EVERY row as changed, so read the steady state after a restart, not the spike at it.",
+          "title": "Worker — cache backstop rehydrate: rows the change stream missed (per min)",
+          "description": "What the MovieCache's periodic full-reload backstop caught that the INCREMENTAL change stream did not deliver, by kind: changed = a cached value that differed from Mongo (a missed upsert), deleted = a key gone from Mongo the delete-apply never dropped. With resume-token persistence + cache delete-apply this should sit at ~0 in steady state, and a rate flat at 0 is the evidence the 30-min rehydrate could be retired; anything sustained above 0 means the change-stream path — the same path the read-model projector and every panel derived from it trust — is losing writes. NOTE: the one-time BOOT hydrate counts EVERY row as changed, so read the steady state after a restart, not the spike at it.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1521,8 +1479,8 @@
         },
         {
           "id": 53,
-          "title": "Worker \u2014 read-model metadata: reused vs recomputed (per min)",
-          "description": "Which HALF of a projection actually ran, from kinowo_worker_readmodel_metadata_projections{outcome}. reused = a showtime-only change at an already-present cinema, so only the cheap screenings half re-ran; recomputed = a rating / synopsis / new-cinema change, or a first projection, so the expensive metadata half (resolve + synopsisByCity + ratingsFor) ran too. This is the read-model's split of scrape churn into \"slots moved\" versus \"the film itself changed\" \u2014 the projection-side counterpart to source_data on the change-stream UPDATE-kinds panel above. rate(reused) / rate(reused+recomputed) is the reuse hit ratio; high reuse under heavy churn is the CPU win the metadata cache exists for, and a collapse in it explains a projection-CPU climb that the trigger rate alone does not.",
+          "title": "Worker — read-model metadata: reused vs recomputed (per min)",
+          "description": "Which HALF of a projection actually ran, from kinowo_worker_readmodel_metadata_projections{outcome}. reused = a showtime-only change at an already-present cinema, so only the cheap screenings half re-ran; recomputed = a rating / synopsis / new-cinema change, or a first projection, so the expensive metadata half (resolve + synopsisByCity + ratingsFor) ran too. This is the read-model's split of scrape churn into \"slots moved\" versus \"the film itself changed\" — the projection-side counterpart to source_data on the change-stream UPDATE-kinds panel above. rate(reused) / rate(reused+recomputed) is the reuse hit ratio; high reuse under heavy churn is the CPU win the metadata cache exists for, and a collapse in it explains a projection-CPU climb that the trigger rate alone does not.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1569,13 +1527,13 @@
     {
       "id": 105,
       "type": "row",
-      "title": "Enrichment coverage \u2014 ratings and cinema freshness",
+      "title": "Enrichment coverage — ratings and cinema freshness",
       "collapsed": true,
       "panels": [
         {
           "id": 55,
-          "title": "Worker \u2014 ratings never attempted: resolved films with no first run, by site",
-          "description": "The other half of the rating-coverage panel above. That one counts films that HAVE a rating; this counts TMDB-resolved films a site is eligible for whose first fetch has never happened at all \u2014 no freshness stamp, no attempt, from kinowo_worker_rating_resolved_not_run{site}. The distinction matters because the two failure modes look identical on a coverage gauge: a site that runs and finds nothing leaves the same hole as a site that never runs. A backlog that drains after each enrichment pass is normal incubation; one that sits flat and non-zero is a source that has stopped being enqueued (starved by the enqueue cap, or dropped by RatingSources eligibility for this country \u2014 Filmweb is Poland-only, so its absence outside PL is by design, not a stall).",
+          "title": "Worker — ratings never attempted: resolved films with no first run, by site",
+          "description": "The other half of the rating-coverage panel above. That one counts films that HAVE a rating; this counts TMDB-resolved films a site is eligible for whose first fetch has never happened at all — no freshness stamp, no attempt, from kinowo_worker_rating_resolved_not_run{site}. The distinction matters because the two failure modes look identical on a coverage gauge: a site that runs and finds nothing leaves the same hole as a site that never runs. A backlog that drains after each enrichment pass is normal incubation; one that sits flat and non-zero is a source that has stopped being enqueued (starved by the enqueue cap, or dropped by RatingSources eligibility for this country — Filmweb is Poland-only, so its absence outside PL is by design, not a stall).",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1613,8 +1571,8 @@
         },
         {
           "id": 56,
-          "title": "Worker \u2014 oldest never-attempted rating: wait since the film resolved, by site (h)",
-          "description": "How long the OLDEST resolved-but-never-fetched film has been waiting for each site, from kinowo_worker_rating_resolved_not_run_oldest_age_seconds{site}, in hours. The count to the left can look healthy while one film sits at the back of the queue forever, and the first-attempt delay histogram below cannot see this at all \u2014 it only times attempts that HAPPENED, so a site that never runs contributes no sample and reads as no problem. A line climbing in a straight diagonal is the signature: nothing is draining that site's backlog, and every hour of slope is an hour that film has gone unrated. The wait is dated from the film's TMDB resolution where that is known, and otherwise from when the worker first saw the row stuck \u2014 IMDb is eligible on an imdbId alone, so its backlog rows need not have a tmdbId to date from, and before that fallback existed they reported a flat 0 here no matter how long they sat. The fallback restarts at 0 after a worker restart; the tmdbId-dated rows do not.",
+          "title": "Worker — oldest never-attempted rating: wait since the film resolved, by site (h)",
+          "description": "How long the OLDEST resolved-but-never-fetched film has been waiting for each site, from kinowo_worker_rating_resolved_not_run_oldest_age_seconds{site}, in hours. The count to the left can look healthy while one film sits at the back of the queue forever, and the first-attempt delay histogram below cannot see this at all — it only times attempts that HAPPENED, so a site that never runs contributes no sample and reads as no problem. A line climbing in a straight diagonal is the signature: nothing is draining that site's backlog, and every hour of slope is an hour that film has gone unrated. The wait is dated from the film's TMDB resolution where that is known, and otherwise from when the worker first saw the row stuck — IMDb is eligible on an imdbId alone, so its backlog rows need not have a tmdbId to date from, and before that fallback existed they reported a flat 0 here no matter how long they sat. The fallback restarts at 0 after a worker restart; the tmdbId-dated rows do not.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1652,8 +1610,8 @@
         },
         {
           "id": 57,
-          "title": "Worker \u2014 first rating attempt: delay from TMDB resolution, p50 / p95 by site (min)",
-          "description": "For the attempts that DID happen, how long after a film resolved on TMDB its first fetch of each rating site ran (kinowo_worker_rating_first_attempt_delay_seconds, in minutes). Ratings are not enqueued the instant a film resolves \u2014 the EnrichmentReaper picks them up on its own cadence \u2014 so this is that first-pass latency, and a step up in p95 means the reaper is falling behind its intake rather than failing. Read it WITH the two panels above, never alone: this histogram is blind by construction to a site that never attempts anything, and the healthiest-looking flat line here can sit directly above a backlog that never drains. \u00b7 A FLAT ZERO LINE MEANS NO OBSERVATIONS IN THE WINDOW, NOT A ZERO DELAY. histogram_quantile over a histogram nothing has incremented returns NaN, and Grafana draws a NaN-only series as \"No data\" -- indistinguishable from a broken panel. NOTE THE `>= 0` IS LOAD-BEARING and not tidying: `or` only fills in where the left side has NO SERIES, and the NaN series exist, so the fallback never fired without it. The comparison drops NaN (NaN >= 0 is false), which empties the left side and lets `or` supply the zero.",
+          "title": "Worker — first rating attempt: delay from TMDB resolution, p50 / p95 by site (min)",
+          "description": "For the attempts that DID happen, how long after a film resolved on TMDB its first fetch of each rating site ran (kinowo_worker_rating_first_attempt_delay_seconds, in minutes). Ratings are not enqueued the instant a film resolves — the EnrichmentReaper picks them up on its own cadence — so this is that first-pass latency, and a step up in p95 means the reaper is falling behind its intake rather than failing. Read it WITH the two panels above, never alone: this histogram is blind by construction to a site that never attempts anything, and the healthiest-looking flat line here can sit directly above a backlog that never drains. · A FLAT ZERO LINE MEANS NO OBSERVATIONS IN THE WINDOW, NOT A ZERO DELAY. histogram_quantile over a histogram nothing has incremented returns NaN, and Grafana draws a NaN-only series as \"No data\" -- indistinguishable from a broken panel. NOTE THE `>= 0` IS LOAD-BEARING and not tidying: `or` only fills in where the left side has NO SERIES, and the NaN series exist, so the fallback never fired without it. The comparison drops NaN (NaN >= 0 is false), which empties the left side and lets `or` supply the zero.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1700,8 +1658,8 @@
         },
         {
           "id": 58,
-          "title": "Worker \u2014 oldest cinema scrape: how stale the worst cinema is, by country (h)",
-          "description": "Hours since the LEAST recently scraped cinema in each country last scraped successfully, from kinowo_worker_cinema_scrape_oldest_age_seconds. This is the roster's worst case, not its average: the HTTP-outcome panels count the scrapes that happened and can look perfectly clean while one venue has been dark for two days, because a cinema nobody scrapes contributes no samples to anything else. Healthy is a SAWTOOTH riding just under that country's scrape window \u2014 1h for pl, 7h for uk, 10h for de, 14h for us, 7h for es (KINOWO_SCRAPE_FRESHNESS_MINUTES, set per worker app) \u2014 as cinemas fall due, get scraped, and the maximum resets. A line climbing in a straight diagonal past the window is the failure: the ScrapeReaper is not draining its backlog (chunked-scrape starvation, or the pool blocked on a slow upstream) or one cinema throws on every attempt \u2014 a failed scrape deliberately does NOT mark freshness, so it stays stale and its age keeps climbing. Cinemas that have never scraped at all carry no age and are counted on the panel to the right, not folded in here.",
+          "title": "Worker — oldest cinema scrape: how stale the worst cinema is, by country (h)",
+          "description": "Hours since the LEAST recently scraped cinema in each country last scraped successfully, from kinowo_worker_cinema_scrape_oldest_age_seconds. This is the roster's worst case, not its average: the HTTP-outcome panels count the scrapes that happened and can look perfectly clean while one venue has been dark for two days, because a cinema nobody scrapes contributes no samples to anything else. Healthy is a SAWTOOTH riding just under that country's scrape window — 1h for pl, 7h for uk, 10h for de, 14h for us, 7h for es (KINOWO_SCRAPE_FRESHNESS_MINUTES, set per worker app) — as cinemas fall due, get scraped, and the maximum resets. A line climbing in a straight diagonal past the window is the failure: the ScrapeReaper is not draining its backlog (chunked-scrape starvation, or the pool blocked on a slow upstream) or one cinema throws on every attempt — a failed scrape deliberately does NOT mark freshness, so it stays stale and its age keeps climbing. Cinemas that have never scraped at all carry no age and are counted on the panel to the right, not folded in here.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1739,8 +1697,8 @@
         },
         {
           "id": 59,
-          "title": "Worker \u2014 cinemas that have never scraped, by country",
-          "description": "How many cinemas in each country's roster have no successful scrape at all (kinowo_worker_cinema_scrape_never_scraped). Held apart from the age panel on the left because a never-scraped cinema has no age: folding it in would either read as 0s old, hiding the worst case behind a healthy maximum, or need a sentinel that dwarfs the real ages and flattens the chart. A brief bump is normal right after a cinema is added to the catalogue or a country is onboarded, and it should fall back to 0 within a scrape window. A value stuck above 0 is a cinema that has never once worked \u2014 a broken client or a dead upstream that no error-rate panel can show you, because it never gets far enough to produce an outcome.",
+          "title": "Worker — cinemas that have never scraped, by country",
+          "description": "How many cinemas in each country's roster have no successful scrape at all (kinowo_worker_cinema_scrape_never_scraped). Held apart from the age panel on the left because a never-scraped cinema has no age: folding it in would either read as 0s old, hiding the worst case behind a healthy maximum, or need a sentinel that dwarfs the real ages and flattens the chart. A brief bump is normal right after a cinema is added to the catalogue or a country is onboarded, and it should fall back to 0 within a scrape window. A value stuck above 0 is a cinema that has never once worked — a broken client or a dead upstream that no error-rate panel can show you, because it never gets far enough to produce an outcome.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1778,8 +1736,8 @@
         },
         {
           "id": 62,
-          "title": "Worker \u2014 longest a cinema has gone without producing ANY films, by country (d)",
-          "description": "Days since the quietest cinema in each country last produced a single film, from kinowo_worker_cinema_content_oldest_age_seconds. Deliberately NOT the same question as panel 58: that one asks whether a cinema is still being SCRAPED, and a venue whose parser has quietly stopped matching passes it perfectly \u2014 the fetch succeeds, freshness is stamped, its age resets. It just returns nothing, which /uptime draws as a white 'zero results' row, identical to a cinema genuinely closed for the summer. What tells the two apart is TIME: a season ends, a broken selector does not. On 2026-08-03 fifteen Polish cinemas had never recorded a content-bearing scrape; twelve were shut and said so on their own pages, two (Kino Sfinks, Kino Ku\u017anica) had drifted, and nothing distinguished them. Expect this to climb through every off-season, so it is a prompt to open the venue's site, not an outage on its own \u2014 a line far past a plausible closure is worth chasing. Cinemas that have NEVER produced films carry no age and are counted on the panel to the right.",
+          "title": "Worker — longest a cinema has gone without producing ANY films, by country (d)",
+          "description": "Days since the quietest cinema in each country last produced a single film, from kinowo_worker_cinema_content_oldest_age_seconds. Deliberately NOT the same question as panel 58: that one asks whether a cinema is still being SCRAPED, and a venue whose parser has quietly stopped matching passes it perfectly — the fetch succeeds, freshness is stamped, its age resets. It just returns nothing, which /uptime draws as a white 'zero results' row, identical to a cinema genuinely closed for the summer. What tells the two apart is TIME: a season ends, a broken selector does not. On 2026-08-03 fifteen Polish cinemas had never recorded a content-bearing scrape; twelve were shut and said so on their own pages, two (Kino Sfinks, Kino Kuźnica) had drifted, and nothing distinguished them. Expect this to climb through every off-season, so it is a prompt to open the venue's site, not an outage on its own — a line far past a plausible closure is worth chasing. Cinemas that have NEVER produced films carry no age and are counted on the panel to the right.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1817,8 +1775,8 @@
         },
         {
           "id": 63,
-          "title": "Worker \u2014 cinemas that have NEVER produced a film, by country",
-          "description": "Cinemas in each country's roster with no content-bearing scrape on record at all, from kinowo_worker_cinema_never_content. Held apart from the age panel on the left because a cinema that has never produced films has no age to report \u2014 folding it in would either read as 0s, hiding the worst case behind a healthy-looking maximum, or need a sentinel that flattens the chart. A non-zero value is NORMAL: dormant arthouse and student venues live here for whole seasons. Watch it for STEPS. One more cinema joining while the rest of the roster keeps producing is what a drifted selector looks like, and it is the only moment that failure is cheap to catch \u2014 after that it is indistinguishable from a venue that simply closed.",
+          "title": "Worker — cinemas that have NEVER produced a film, by country",
+          "description": "Cinemas in each country's roster with no content-bearing scrape on record at all, from kinowo_worker_cinema_never_content. Held apart from the age panel on the left because a cinema that has never produced films has no age to report — folding it in would either read as 0s, hiding the worst case behind a healthy-looking maximum, or need a sentinel that flattens the chart. A non-zero value is NORMAL: dormant arthouse and student venues live here for whole seasons. Watch it for STEPS. One more cinema joining while the rest of the roster keeps producing is what a drifted selector looks like, and it is the only moment that failure is cheap to catch — after that it is indistinguishable from a venue that simply closed.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1865,13 +1823,13 @@
     {
       "id": 106,
       "type": "row",
-      "title": "Runtime \u2014 JVM memory and CPU on both tiers",
+      "title": "Runtime — JVM memory and CPU on both tiers",
       "collapsed": true,
       "panels": [
         {
           "id": 43,
-          "title": "Worker (k3s) \u2014 JVM heap against -Xmx, and RAM left on the host",
-          "description": "The worker runs SerialGC, so 'Old gen (tenured)' sitting near the -Xmx cap at rest is the danger sign: a whole-corpus reprojection's transient allocation then tips it into full-GC thrash, and the VM thread eats a core. 'Host free' is k3s-worker-1's remaining RAM \u2014 read it as the ceiling on raising -Xmx, NOT as the worker's own footprint, because the k3s agent and every other pod on that node share it. RSS and native memory (the other half of the story, and the half that caused the old OOM restarts) are on the worker-diagnostics dashboard.",
+          "title": "Worker (k3s) — JVM heap against -Xmx, and RAM left on the host",
+          "description": "The worker runs SerialGC, so 'Old gen (tenured)' sitting near the -Xmx cap at rest is the danger sign: a whole-corpus reprojection's transient allocation then tips it into full-GC thrash, and the VM thread eats a core. 'Host free' is k3s-worker-1's remaining RAM — read it as the ceiling on raising -Xmx, NOT as the worker's own footprint, because the k3s agent and every other pod on that node share it. RSS and native memory (the other half of the story, and the half that caused the old OOM restarts) are on the worker-diagnostics dashboard.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1988,7 +1946,7 @@
         },
         {
           "id": 44,
-          "title": "Web (k3s) \u2014 JVM heap against -Xmx, and process RSS",
+          "title": "Web (k3s) — JVM heap against -Xmx, and process RSS",
           "description": "The web tier's heap, read like the worker panel to its left, except it runs G1 rather than SerialGC so a full old gen is far less alarming. RSS is this process's own footprint; how close the MACHINE is to full is the panel below, which reads /proc/meminfo directly now that Fly's host metrics are gone. RSS climbing well past heap+non-heap means native growth, not a leak the heap graph can show.",
           "type": "timeseries",
           "datasource": {
@@ -2090,8 +2048,8 @@
         },
         {
           "id": 9007,
-          "title": "Web (k3s) \u2014 RAM left in the pod's cgroup, outside the JVM",
-          "description": "What the web process can still allocate before something kills it, read by the process itself: the pod's cgroup headroom (memory.max minus memory.current), NOT the node's free RAM. That distinction is the whole point on k3s \u2014 /proc/meminfo inside a container describes k3s-worker-1's ~16GB, so a meminfo-based line would sit near 90% free while a pod was being OOM-killed against its 1Gi limit. On a machine with no cgroup limit it falls back to MemAvailable, which counts reclaimable page cache rather than collapsing to near-zero the way MemFree does. This is the line the heap panel beside it cannot draw: heap and RSS say what this process holds, never what is left over for the page cache, a heap dump, or the next request's native allocation. It is also the tell for a failure this app has already had \u2014 a 384m heap OOM-crash-looped at a smaller VM size, and the machine's available memory is what went first. Replaces Fly's fly_instance_memory_mem_available, which died with the managed-Prometheus token. READ THE TOTAL AS THE NODE'S, not this pod's: /proc/meminfo inside a container reports the machine, so this is headroom on `k3s-worker-1` shared by all six application pods plus Caddy, while the pod's own ceiling is its 1Gi container limit and only the RSS line beside it approaches that.",
+          "title": "Web (k3s) — RAM left in the pod's cgroup, outside the JVM",
+          "description": "What the web process can still allocate before something kills it, read by the process itself: the pod's cgroup headroom (memory.max minus memory.current), NOT the node's free RAM. That distinction is the whole point on k3s — /proc/meminfo inside a container describes k3s-worker-1's ~16GB, so a meminfo-based line would sit near 90% free while a pod was being OOM-killed against its 1Gi limit. On a machine with no cgroup limit it falls back to MemAvailable, which counts reclaimable page cache rather than collapsing to near-zero the way MemFree does. This is the line the heap panel beside it cannot draw: heap and RSS say what this process holds, never what is left over for the page cache, a heap dump, or the next request's native allocation. It is also the tell for a failure this app has already had — a 384m heap OOM-crash-looped at a smaller VM size, and the machine's available memory is what went first. Replaces Fly's fly_instance_memory_mem_available, which died with the managed-Prometheus token. READ THE TOTAL AS THE NODE'S, not this pod's: /proc/meminfo inside a container reports the machine, so this is headroom on `k3s-worker-1` shared by all six application pods plus Caddy, while the pod's own ceiling is its 1Gi container limit and only the RSS line beside it approaches that.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2174,8 +2132,8 @@
         },
         {
           "id": 9008,
-          "title": "Web (k3s) \u2014 free space on the machine's root filesystem",
-          "description": "The web pods mount no volume (unlike the worker's 2Gi PVC, the web overlay declares none), so the only disk they can fill is `k3s-worker-1`'s own root filesystem, shared with every other pod on it: request logs, JVM temp files, and a heap dump if one is ever written \u2014 which on a 384m heap arrives as most of a gigabyte at once. Flat is the healthy shape; a staircase down means something is writing and never rotating. Replaces the fly_volume_* family. It is named disk rather than volume because if a volume is ever mounted this panel keeps reading the ROOT filesystem and will need a second series.",
+          "title": "Web (k3s) — free space on the machine's root filesystem",
+          "description": "The web pods mount no volume (unlike the worker's 2Gi PVC, the web overlay declares none), so the only disk they can fill is `k3s-worker-1`'s own root filesystem, shared with every other pod on it: request logs, JVM temp files, and a heap dump if one is ever written — which on a 384m heap arrives as most of a gigabyte at once. Flat is the healthy shape; a staircase down means something is writing and never rotating. Replaces the fly_volume_* family. It is named disk rather than volume because if a volume is ever mounted this panel keeps reading the ROOT filesystem and will need a second series.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2249,7 +2207,7 @@
         },
         {
           "id": 46,
-          "title": "kinowo-worker CPU drivers \u2014 projection vs JIT vs other (stacked = total CPU)",
+          "title": "kinowo-worker CPU drivers — projection vs JIT vs other (stacked = total CPU)",
           "description": "STACKED breakdown of the worker's process CPU (centi-cores): the three areas sum to total, so you can see at a glance how much of a daytime hump is READ-MODEL PROJECTION versus JIT versus everything else. Projection dominating is normal and self-limiting; 'other' dominating for a long stretch is GC or scrape work and worth chasing. The dashed total is drawn over the stack as a check that the three parts really do account for the CPU.",
           "type": "timeseries",
           "datasource": {
@@ -2418,7 +2376,7 @@
         {
           "id": 47,
           "title": "kinowo-worker projection triggers & output (per-sec)",
-          "description": "The per-second rates that DRIVE and RESULT FROM projection \u2014 split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. change-events/s is the projection TRIGGER (a movies/screenings write); projection-calls/s is how many rows projectAll ran on; readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot \u2014 which is exactly why raw writes under-report projection CPU and the duration metric above was needed).",
+          "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. change-events/s is the projection TRIGGER (a movies/screenings write); projection-calls/s is how many rows projectAll ran on; readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU and the duration metric above was needed).",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2574,8 +2532,8 @@
         },
         {
           "id": 49,
-          "title": "projection duration heatmap \u2014 bright band high = expensive-film spikes",
-          "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half). \u00b7 EXPECT THIS TO BE EMPTY MOST OF THE TIME, and that is not a fault. It is a rate over readmodel_project_duration_seconds_bucket, and that histogram's _count has sat at 1 since boot on every worker -- the projector is event-driven and rarely fires. An all-zero heatmap draws as blank. If you want to know whether the read model is moving at all, readmodel_writes_total is the counter that actually increments.",
+          "title": "projection duration heatmap — bright band high = expensive-film spikes",
+          "description": "Distribution of per-projection wall-clock over time, from the readmodel_project_duration_seconds histogram buckets. A bright band that jumps to a higher latency row = a burst of expensive-film projections (the resolve/synopsis tail); a band pinned low = cheap projections (incl. the metadata-reuse fast path recomputing only the screenings half). · EXPECT THIS TO BE EMPTY MOST OF THE TIME, and that is not a fault. It is a rate over readmodel_project_duration_seconds_bucket, and that histogram's _count has sat at 1 since boot on every worker -- the projector is event-driven and rarely fires. An all-zero heatmap draws as blank. If you want to know whether the read model is moving at all, readmodel_writes_total is the counter that actually increments.",
           "type": "heatmap",
           "datasource": {
             "type": "prometheus",
@@ -2636,7 +2594,7 @@
     },
     {
       "type": "row",
-      "title": "Web tier \u2014 HTTP (the app's own metrics)",
+      "title": "Web tier — HTTP (the app's own metrics)",
       "id": 9002,
       "gridPos": {
         "x": 0,
@@ -2704,7 +2662,7 @@
         {
           "type": "timeseries",
           "title": "Error share (4xx / 5xx as a share of all requests)",
-          "description": "Share of web-tier responses that were 4xx or 5xx. Guarded with `or vector(0)` so a healthy site draws a flat zero line rather than rendering \"No data\" \u2014 an empty panel here is indistinguishable from a broken one.",
+          "description": "Share of web-tier responses that were 4xx or 5xx. Guarded with `or vector(0)` so a healthy site draws a flat zero line rather than rendering \"No data\" — an empty panel here is indistinguishable from a broken one.",
           "id": 9004,
           "datasource": {
             "type": "prometheus",
@@ -2899,13 +2857,13 @@
     {
       "id": 9009,
       "type": "row",
-      "title": "The database underneath both tiers \u2014 mongo-1",
+      "title": "The database underneath both tiers — mongo-1",
       "collapsed": true,
       "panels": [
         {
           "id": 9010,
-          "title": "mongo-1 \u2014 CPU busy, iowait and run queue",
-          "description": "mongo-1 is a 2-vCPU cx23 serving EVERY country at once: the five workers and the five web deployments above all talk to this one machine, so unlike every panel higher up this one does not narrow with the Country variable. Read it against the task-duration and projection panels above \u2014 when p95 task duration climbs with no change in what the workers are doing, this is the first place to look. IOWAIT IS THE INTERESTING LINE, not busy: mongod blocking on the data volume shows up here long before it shows up as a slow query, and it is the shape that precedes a WiredTiger cache too small for the working set (see the memory panel beside this). Run queue is node_load15 divided by core count and scaled to a percentage, so 100% means the box has exactly as much runnable work as it has cores \u2014 sustained above that and processes are waiting for CPU rather than for the disk.",
+          "title": "mongo-1 — CPU busy, iowait and run queue",
+          "description": "mongo-1 is a 2-vCPU cx23 serving EVERY country at once: the five workers and the five web deployments above all talk to this one machine, so unlike every panel higher up this one does not narrow with the Country variable. Read it against the task-duration and projection panels above — when p95 task duration climbs with no change in what the workers are doing, this is the first place to look. IOWAIT IS THE INTERESTING LINE, not busy: mongod blocking on the data volume shows up here long before it shows up as a slow query, and it is the shape that precedes a WiredTiger cache too small for the working set (see the memory panel beside this). Run queue is node_load15 divided by core count and scaled to a percentage, so 100% means the box has exactly as much runnable work as it has cores — sustained above that and processes are waiting for CPU rather than for the disk.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2962,8 +2920,8 @@
         },
         {
           "id": 9011,
-          "title": "mongo-1 \u2014 WiredTiger cache against its cap, mongod's RSS, and RAM left on the box",
-          "description": "THE PANEL THIS FLEET HAS ALREADY BEEN BURNED BY. mongod was OOM-killed on 2026-07-29 and took the PL and UK read models with it; the fix was pinning the WiredTiger cache rather than letting it size itself to the machine. These five lines are the whole picture that made that diagnosable: the cache in use, the cap it is pinned to, mongod's resident set (which is the cache plus connections plus everything else), the RAM the kernel says is still available, and the machine's total. THE CACHE SITTING FLAT AT ITS CAP IS NORMAL \u2014 WiredTiger fills what it is given and evicts. What is not normal is RSS climbing while the cache stays put (that is connections or sort buffers, not data), or available RAM trending toward zero, which on a box with no swap ends in a kill rather than in a slowdown. mongodb_ss_mem_resident is reported in MiB by serverStatus and is multiplied out here so every line shares one axis.",
+          "title": "mongo-1 — WiredTiger cache against its cap, mongod's RSS, and RAM left on the box",
+          "description": "THE PANEL THIS FLEET HAS ALREADY BEEN BURNED BY. mongod was OOM-killed on 2026-07-29 and took the PL and UK read models with it; the fix was pinning the WiredTiger cache rather than letting it size itself to the machine. These five lines are the whole picture that made that diagnosable: the cache in use, the cap it is pinned to, mongod's resident set (which is the cache plus connections plus everything else), the RAM the kernel says is still available, and the machine's total. THE CACHE SITTING FLAT AT ITS CAP IS NORMAL — WiredTiger fills what it is given and evicts. What is not normal is RSS climbing while the cache stays put (that is connections or sort buffers, not data), or available RAM trending toward zero, which on a box with no swap ends in a kill rather than in a slowdown. mongodb_ss_mem_resident is reported in MiB by serverStatus and is multiplied out here so every line shares one axis.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -3089,8 +3047,8 @@
         },
         {
           "id": 9012,
-          "title": "mongo-1 \u2014 free space on the data volume",
-          "description": "/var/lib/mongodb is its OWN volume (/dev/sdb), separate from the root filesystem, and it is the one that matters: mongod does not degrade when it runs out of disk, it aborts, and it has done so on this project before. The root filesystem is deliberately not drawn here \u2014 it is on the fleet dashboard, and mixing the two on one axis hides the small volume behind the big one. Flat or slowly rising is the healthy shape. A step down that never recovers is usually the oplog resizing or a mongodump written to the wrong place; a staircase is the corpus growing, and the slope is how long there is to do something about it.",
+          "title": "mongo-1 — free space on the data volume",
+          "description": "/var/lib/mongodb is its OWN volume (/dev/sdb), separate from the root filesystem, and it is the one that matters: mongod does not degrade when it runs out of disk, it aborts, and it has done so on this project before. The root filesystem is deliberately not drawn here — it is on the fleet dashboard, and mixing the two on one axis hides the small volume behind the big one. Flat or slowly rising is the healthy shape. A step down that never recovers is usually the oplog resizing or a mongodump written to the wrong place; a staircase is the corpus growing, and the slope is how long there is to do something about it.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -3164,8 +3122,8 @@
         },
         {
           "id": 9013,
-          "title": "Mongo \u2014 server operations per second, by type",
-          "description": "What the database is actually being asked to do, from mongod's own opcounters \u2014 the server-side counterpart to the task-flow and projection panels higher up. `query` and `getmore` are the read tiers and the change streams; `update` is overwhelmingly the enrichment pipeline writing back ratings and synopses; `insert` is new films landing. THE USE OF THIS PANEL IS CORRELATION, not a threshold: worker task throughput falling while operations here stay flat means the workers are blocked on something that is not the database, and operations climbing while throughput is flat means work is being retried. Counts EVERY country together \u2014 there is one mongod, with a database per country on it.",
+          "title": "Mongo — server operations per second, by type",
+          "description": "What the database is actually being asked to do, from mongod's own opcounters — the server-side counterpart to the task-flow and projection panels higher up. `query` and `getmore` are the read tiers and the change streams; `update` is overwhelmingly the enrichment pipeline writing back ratings and synopses; `insert` is new films landing. THE USE OF THIS PANEL IS CORRELATION, not a threshold: worker task throughput falling while operations here stay flat means the workers are blocked on something that is not the database, and operations climbing while throughput is flat means work is being retried. Counts EVERY country together — there is one mongod, with a database per country on it.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -3204,8 +3162,8 @@
         },
         {
           "id": 9014,
-          "title": "Mongo \u2014 average operation latency by class",
-          "description": "How long the average read, write or command spends inside mongod, computed the way mongod itself reports it: total latency divided by operation count, both as rates, so it is an average over the window rather than a percentile. THAT IS THE LIMITATION TO KNOW \u2014 an average hides the tail, and the tail is what a change stream or a projection actually waits on. Use it as the corroborating line for the task-duration percentiles above: if p95 task duration doubled and this is flat, the time is being spent in the worker, not in the database. Reads climbing while writes stay flat is the classic signature of a working set that no longer fits the WiredTiger cache \u2014 check the memory panel above before assuming a slow query. THE `transactions` CLASS IS EXCLUDED ON PURPOSE: multi-document transactions are measured end to end, so they average hundreds of milliseconds against sub-millisecond reads and would flatten the two lines this panel exists to show. Nothing in this application opens one; if something starts to, it belongs on a panel of its own rather than on this axis.",
+          "title": "Mongo — average operation latency by class",
+          "description": "How long the average read, write or command spends inside mongod, computed the way mongod itself reports it: total latency divided by operation count, both as rates, so it is an average over the window rather than a percentile. THAT IS THE LIMITATION TO KNOW — an average hides the tail, and the tail is what a change stream or a projection actually waits on. Use it as the corroborating line for the task-duration percentiles above: if p95 task duration doubled and this is flat, the time is being spent in the worker, not in the database. Reads climbing while writes stay flat is the classic signature of a working set that no longer fits the WiredTiger cache — check the memory panel above before assuming a slow query. THE `transactions` CLASS IS EXCLUDED ON PURPOSE: multi-document transactions are measured end to end, so they average hundreds of milliseconds against sub-millisecond reads and would flatten the two lines this panel exists to show. Nothing in this application opens one; if something starts to, it belongs on a panel of its own rather than on this axis.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -3244,8 +3202,8 @@
         },
         {
           "id": 9015,
-          "title": "Mongo \u2014 WiredTiger tickets in use against the cap, and requests queued behind them",
-          "description": "MONGO'S REAL SATURATION SIGNAL, and the one that says 'the database is the bottleneck' rather than merely 'the database is busy'. WiredTiger admits a fixed number of concurrent read and write transactions; everything beyond that waits. Tickets in use sitting well under the cap means mongod has spare capacity however high the operation rate is. Tickets PINNED at the cap, with the queued line lifting off zero, means requests are now waiting for admission \u2014 and that wait is invisible in the operation-latency panel beside this one, because it happens before the operation starts being timed. That combination, not CPU, is what makes worker tasks time out.",
+          "title": "Mongo — WiredTiger tickets in use against the cap, and requests queued behind them",
+          "description": "MONGO'S REAL SATURATION SIGNAL, and the one that says 'the database is the bottleneck' rather than merely 'the database is busy'. WiredTiger admits a fixed number of concurrent read and write transactions; everything beyond that waits. Tickets in use sitting well under the cap means mongod has spare capacity however high the operation rate is. Tickets PINNED at the cap, with the queued line lifting off zero, means requests are now waiting for admission — and that wait is invisible in the operation-latency panel beside this one, because it happens before the operation starts being timed. That combination, not CPU, is what makes worker tasks time out.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -3337,13 +3295,13 @@
     {
       "id": 9020,
       "type": "row",
-      "title": "The box this page is produced on \u2014 monitoring-1 (Prometheus, Grafana, Alertmanager)",
+      "title": "The box this page is produced on — monitoring-1 (Prometheus, Grafana, Alertmanager)",
       "collapsed": true,
       "panels": [
         {
           "id": 9016,
-          "title": "monitoring-1 \u2014 CPU busy, run queue and memory used",
-          "description": "monitoring-1 IS NOT IN THE APPLICATION'S SERVING PATH \u2014 no request to kinowo touches it \u2014 so these lines are here for one reason only: everything above is drawn from series this machine collected, and a Prometheus that is starved does not report that it is starved, it reports gaps. A gap and an outage look identical on a timeseries. This box is a 2-vCPU cx23 also running the k3s control plane, Grafana, Alertmanager, VictoriaLogs and Caddy, so it has less headroom than its job suggests. Memory used is derived from MemAvailable rather than MemFree deliberately: MemFree collapses toward zero on any healthy Linux box as the page cache fills, which reads as an emergency and never is.",
+          "title": "monitoring-1 — CPU busy, run queue and memory used",
+          "description": "monitoring-1 IS NOT IN THE APPLICATION'S SERVING PATH — no request to kinowo touches it — so these lines are here for one reason only: everything above is drawn from series this machine collected, and a Prometheus that is starved does not report that it is starved, it reports gaps. A gap and an outage look identical on a timeseries. This box is a 2-vCPU cx23 also running the k3s control plane, Grafana, Alertmanager, VictoriaLogs and Caddy, so it has less headroom than its job suggests. Memory used is derived from MemAvailable rather than MemFree deliberately: MemFree collapses toward zero on any healthy Linux box as the page cache fills, which reads as an emergency and never is.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -3400,8 +3358,8 @@
         },
         {
           "id": 9017,
-          "title": "monitoring-1 \u2014 free space on the metrics volume, and what Prometheus has written there",
-          "description": "/var/lib/monitoring is a single 40GB volume shared by three things \u2014 Prometheus's TSDB, Grafana's sqlite and VictoriaLogs \u2014 and Prometheus is the one that grows without being asked. The TSDB line is the compacted on-disk block total, so it is what retention is actually spending, and it is drawn beside the free-space line because the interesting question is not how big it is but how much of the volume it will eventually want. THE FAILURE THIS WATCHES FOR IS A CARDINALITY MISTAKE, not steady growth: a label added to a hot metric multiplies series silently, and the first visible symptom is this line bending upward days before the volume fills. Prometheus stops ingesting when the disk is full, which makes every panel on this dashboard go flat at once and reads exactly like the application dying.",
+          "title": "monitoring-1 — free space on the metrics volume, and what Prometheus has written there",
+          "description": "/var/lib/monitoring is a single 40GB volume shared by three things — Prometheus's TSDB, Grafana's sqlite and VictoriaLogs — and Prometheus is the one that grows without being asked. The TSDB line is the compacted on-disk block total, so it is what retention is actually spending, and it is drawn beside the free-space line because the interesting question is not how big it is but how much of the volume it will eventually want. THE FAILURE THIS WATCHES FOR IS A CARDINALITY MISTAKE, not steady growth: a label added to a hot metric multiplies series silently, and the first visible symptom is this line bending upward days before the volume fills. Prometheus stops ingesting when the disk is full, which makes every panel on this dashboard go flat at once and reads exactly like the application dying.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -3484,8 +3442,8 @@
         },
         {
           "id": 9018,
-          "title": "monitoring-1 \u2014 memory held by Grafana, Prometheus and Alertmanager",
-          "description": "The three processes' own resident memory, against the machine total. Prometheus is the one to watch: its head block holds every active series in RAM, so this line tracks cardinality in real time and moves BEFORE the on-disk line beside it does. Grafana's is flat by nature \u2014 a rendering process \u2014 and a Grafana that starts climbing is usually a dashboard querying a far wider range than it needs. These are the only three processes on this box that anyone tunes; k3s, Caddy and VictoriaLogs are on the fleet dashboard, which is where a whole-machine memory question belongs.",
+          "title": "monitoring-1 — memory held by Grafana, Prometheus and Alertmanager",
+          "description": "The three processes' own resident memory, against the machine total. Prometheus is the one to watch: its head block holds every active series in RAM, so this line tracks cardinality in real time and moves BEFORE the on-disk line beside it does. Grafana's is flat by nature — a rendering process — and a Grafana that starts climbing is usually a dashboard querying a far wider range than it needs. These are the only three processes on this box that anyone tunes; k3s, Caddy and VictoriaLogs are on the fleet dashboard, which is where a whole-machine memory question belongs.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -3559,7 +3517,7 @@
         },
         {
           "id": 9019,
-          "title": "Is this page telling the truth? \u2014 targets answering against targets configured, by job",
+          "title": "Is this page telling the truth? — targets answering against targets configured, by job",
           "description": "THE PANEL TO READ FIRST WHEN SOMETHING ABOVE LOOKS DEAD. Every other panel on this dashboard draws nothing when the application is down AND when the scrape is down, and the two are indistinguishable from the line alone. Here the two counts separate them: `answering` below `configured` for a job means Prometheus could not reach those targets, so the gap above is a monitoring failure, not an outage. The counts are per job, so a single worker pod restarting shows as 3 of 4 on kinowo-worker rather than as a whole tier going quiet. The `node` job should always be 3 and `mongodb` always 1; if THOSE drop, the panels in the two rows above this one are the ones that have stopped being true.",
           "type": "timeseries",
           "datasource": {
@@ -3645,7 +3603,7 @@
       }
     }
   ],
-  "description": "One screen for the whole application, all of it on k3s: five scraping workers (pl, uk, de, us, es) and five web deployments (pl, uk, de, us, es), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare them all. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy, and -- in the last two rows -- is the one machine both tiers depend on (mongo-1, the database) healthy, and is the machine that drew this page (monitoring-1) still collecting. Those two rows do NOT narrow with the Country variable: there is one mongod and one Prometheus behind every country on this page. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
+  "description": "One screen for the whole application, all of it on k3s: five scraping workers (pl, uk, de, us, es) and five web deployments (pl, uk, de, us, es), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare them all. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy, and -- in the last two rows -- is the one machine both tiers depend on (mongo-1, the database) healthy, and is the machine that drew this page (monitoring-1) still collecting. Those two rows do NOT narrow with the Country variable: there is one mongod and one Prometheus behind every country on this page. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
   "links": [
     {
       "type": "dashboards",
@@ -3658,7 +3616,7 @@
       "icon": "external link",
       "includeVars": false,
       "keepTime": true,
-      "tooltip": "CPU, memory, disk and systemd state per Hetzner host \u2014 including k3s-worker-1, which runs the worker pod. Host numbers include k3s itself, so they are not the worker's own."
+      "tooltip": "CPU, memory, disk and systemd state per Hetzner host — including k3s-worker-1, which runs the worker pod. Host numbers include k3s itself, so they are not the worker's own."
     }
   ]
 }

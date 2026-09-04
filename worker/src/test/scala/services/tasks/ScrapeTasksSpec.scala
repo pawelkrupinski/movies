@@ -320,92 +320,13 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     enqueuedKeys shouldBe Set(ScrapeCinemaHandler.dedupKey(Helios), ScrapeCinemaHandler.dedupKey(Rialto))
   }
 
-  // Credit-throttle backoff: while the throttle signal reports the worker is
-  // credit-starved, the reaper enqueues only a TRICKLE (throttledMaxEnqueue
-  // PerTick) instead of the healthy cap — so the backlog drains and the pool earns
-  // idle to rebuild credit (breaking the metastable deadlock), then resumes.
-  it should "back off to throttledMaxEnqueuePerTick while the worker is CPU-credit throttled" in {
-    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
-    val queue    = new InMemoryTaskQueue
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 30000L }
-    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = throttled)
-    // All 5 cinemas are due, but throttled → only 2 enqueue (vs the full 5 healthy).
-    reaper.tick() shouldBe 2
-  }
-
-  it should "resume the full enqueue cap once the throttle clears" in {
-    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
-    val queue    = new InMemoryTaskQueue
-    var throttledFlag = true
-    val signal = new ScrapeThrottleSignal { def isThrottled = throttledFlag; def slowScrapeMillis = 0L }
-    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = signal)
-    reaper.tick() shouldBe 2 // throttled trickle
-    throttledFlag = false
-    reaper.tick() shouldBe 3 // recovered → the remaining 3 (first 2 still waiting, deduped)
-  }
-
-  // Backlog-aware throttle backoff: the throttled cap bounds the OUTSTANDING
-  // waiting scrapes, not just the per-tick additions. The queue dedups, so a flat
-  // per-tick cap kept piling NEW cinemas on every tick until the whole corpus was
-  // queued — pinning the credit-starved pool permanently busy with no idle gap, so
-  // credit never rebuilt (the 2026-06-24 spiral). Bounding the backlog lets the
-  // pool drain it + idle, rebuilding credit; a freed slot is topped back up.
-  it should "bound the OUTSTANDING waiting backlog while throttled, not re-add the cap every tick" in {
-    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
-    val queue     = new InMemoryTaskQueue
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 0L }
-    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = throttled)
-
-    reaper.tick() shouldBe 2 // fills the backlog budget (2 waiting)
-    reaper.tick() shouldBe 0 // already at budget → add nothing (a flat per-tick cap would add 2 more)
-
-    // Drain one waiting scrape: the freed slot is topped back up next tick — bounded, not zero forever.
-    val claimed = queue.claim("w", 1.minute).get
-    queue.complete(claimed.id, "w")
-    reaper.tick() shouldBe 1
-  }
-
-  // The backlog bound above counted ScrapeCinema ONLY, which made it blind to the
-  // work a chunked venue actually creates: one ScrapeCinema fans out into one
-  // ScrapeChunk per advertised day (~36 for a UK Flicks venue). So a "backed-off"
-  // reaper saw a handful of waiting cinemas, decided it was under budget, and kept
-  // topping up — while a thousand chunk fetches sat queued behind them. Measured on
-  // kinowo-worker-uk 2026-07-28: throttled=1 the whole day with 381-1142 waiting
-  // tasks against a cap of 26, CPU credit pinned at 0 with 8-17k cc of steal. PL,
-  // whose venues barely chunk, sat at 5-55 and recovered normally. The trickle has
-  // to be measured in the unit the pool actually works in.
-  it should "count a chunked venue's fan-out against the throttled backlog budget" in {
-    val scrapers  = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
-    val queue     = new InMemoryTaskQueue
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 0L }
-    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 2, throttle = throttled)
-
-    // A venue already fanned out: no ScrapeCinema waiting, but 3 chunk fetches are.
-    // That is already over a budget of 2, so a backed-off reaper must add nothing.
-    (1 to 3).foreach(i => queue.enqueue(TaskType.ScrapeChunk, s"chunk-$i", Map("chunk" -> i.toString)))
-    queue.waitingCount(TaskType.ScrapeCinema) shouldBe 0
-
-    reaper.tick() shouldBe 0
-
-    // Drain the fan-out and the budget frees up again — bounded, not zero forever.
-    (1 to 3).foreach { _ =>
-      val c = queue.claim("w", 1.minute).get
-      queue.complete(c.id, "w")
-    }
-    reaper.tick() shouldBe 2
-  }
-
-  // The HEALTHY cap has the same units problem the throttled one had, and it is what
-  // re-arms the spiral on every boot. A deploy re-grants CPU credit to ~16k, which is
-  // above the exit>14000 threshold, so a freshly-restarted worker reads as healthy and
-  // takes this path — where maxEnqueuePerTick is also counted in VENUES. 40 UK venues
+  // THE CAP IS COUNTED IN VENUES, and on a chunked country a venue is not a unit of
+  // work — which is what re-arms the burst on every boot, since a restart clears the
+  // backlog accounting and the reaper takes this path with a whole corpus due.
+  // 40 UK venues
   // is ~1,440 chunk fetches dumped in one tick: ~20 minutes of work for a 4-worker
-  // pool paced at 5 req/s. The pool pins at 100%, the 16k drains in minutes, and the
-  // worker enters throttle already carrying the backlog that keeps it there.
+  // pool paced at 5 req/s. The pool pins at 100% and stays there, carrying a backlog
+  // that keeps it pinned.
   //
   // The work itself is sustainable — UK needs ~72 tasks/min against a ~300/min ceiling,
   // a 24% duty cycle. Only the BURST is the problem, so bound the outstanding work and
@@ -453,13 +374,11 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
   // without advancing anything. Prod 2026-07-29: ~139 ScrapeCinema/h completed but
   // only ~30-45/h stamped, against ~120/h needed, so the oldest UK cinema aged in a
   // straight diagonal to 14.6h against a 7h window.
-  // The throttled trickle exists to back off, but it must still sweep the roster
-  // once per freshness window — that is what ScrapeCadence sizes it for. Expressed
-  // in VENUES that held; once the budget became task-denominated, dividing it by a
-  // chunked country's fan-out collapsed it to ONE venue a tick: UK max(26,36)/36 = 1
-  // against the 2.01/tick its 843-venue, 420-min roster needs, and DE max(26,16)/16
-  // = 1 against 8.52. Both countries' oldest-scrape age then climbed in a straight
-  // diagonal (UK to 15h against a 7h window) while the queue sat EMPTY.
+  // Any cap must still sweep the roster once per freshness window — that is what the
+  // cadence floor is for. Expressed in VENUES that held; once a budget became
+  // task-denominated, dividing it by a chunked country's fan-out collapsed it to ONE
+  // venue a tick, and the oldest-scrape age climbed in a straight diagonal (UK to 15h
+  // against a 7h window) while the queue sat EMPTY.
   // A chunked venue's fan-out is deliberately staggered over ChunkEnqueueSpread so it
   // can't monopolise the pool, which means a venue takes the WHOLE spread window to
   // finish however fast the pool is. Throughput is therefore concurrent-venues divided
@@ -480,41 +399,6 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
       tasksPerVenue = 10, chunkSpread = 3.minutes)
 
     reaper.tick() shouldBe 5
-  }
-
-  // The throttled floor had the SAME spread blindness the healthy budget did: it
-  // allowed cadenceVenuesPerTick worth of TASKS, as if a venue freed its budget within
-  // the tick, when it holds it for the whole spread. UK's floor came out at 3 x 36 =
-  // 108 tasks = 108/(36 x 300s) = 36 venues/h against the 120 its roster needs, so a
-  // throttled worker still aged the roster — prod 2026-07-29 logged "backlog-capped to
-  // 1 new (66 already waiting)" once a tick while the oldest cinema sat at 15.9h.
-  it should "make the throttled floor spread-aware too, not just the healthy budget" in {
-    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
-    val queue    = new InMemoryTaskQueue
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 0L }
-    // 5 cinemas / 2-tick window = 3 venues per tick, each holding budget for 3 ticks of
-    // spread → 9 concurrent venues → 90 tasks at 10 per venue. Without the spread term
-    // the floor is 3 x 10 = 30 tasks = 3 venues; with it, all 5 due venues fit.
-    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      dueWindow = new DueWindow(2.minutes), interval = 1.minute,
-      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 10,
-      tasksPerVenue = 10, chunkSpread = 3.minutes, throttle = throttled)
-
-    reaper.tick() shouldBe 5
-  }
-
-  it should "keep the throttled trickle wide enough to sweep the roster in one window" in {
-    val scrapers = Seq(Multikino, KinoApollo, KinoMuza, Rialto, Helios).map(c => new FakeScraper(c, movieAt(c)))
-    val queue    = new InMemoryTaskQueue
-    val throttled = new ScrapeThrottleSignal { def isThrottled = true; def slowScrapeMillis = 0L }
-    // 5 cinemas over a 2-tick window → 3 venues/tick to keep pace. At 10 tasks per
-    // venue a flat 10-task throttled budget would admit 1; the cadence floor lifts it.
-    val reaper = new ScrapeReaper(scrapers, queue, new InMemoryFreshnessStore,
-      dueWindow = new DueWindow(2.minutes), interval = 1.minute,
-      maxEnqueuePerTick = Int.MaxValue, throttledMaxEnqueuePerTick = 10,
-      tasksPerVenue = 10, throttle = throttled)
-
-    reaper.tick() shouldBe 3
   }
 
   it should "leave a cinema whose scrape is already running out of the due set" in {

@@ -11,17 +11,11 @@ import java.time.LocalDate
  * Guards that the SHIPPED scrape-enqueue caps keep pace with the freshness
  * setting over the REAL cinema catalogue.
  *
- * NOTE on the throttled cap: [[ScrapeReaper]] treats
- * `KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK` as a bound on the OUTSTANDING
- * waiting-scrape backlog, not a per-tick drain rate. So while a SHORT throttle
- * blip keeps pace (the backlog sits near empty, so each tick tops it up by ~the
- * full cap — the `cap × ticksPerWindow ≥ corpus` capacity below), a SUSTAINED
- * throttle deliberately slows: the backlog stays bounded so the credit-starved
- * pool idles and rebuilds credit instead of staying pinned busy (the 2026-06-24
- * spiral). The capacity guard still matters — it sizes the cap big enough that the
- * common blip doesn't lag — and the corpus size is read from the live catalogue,
- * so adding cinemas faster than the cap can sustain fails HERE and forces a
- * re-tune instead of silently letting scraping lag.
+ * There used to be a SECOND, lower cap here, used while an external signal said the
+ * box was CPU-starved. Its producer was Fly's shared-CPU credit balance and went
+ * with the platform; only the healthy cap is left. The corpus size is read from the
+ * live catalogue, so adding cinemas faster than that cap can sustain fails HERE and
+ * forces a re-tune instead of silently letting scraping lag.
  *
  * Checked PER COUNTRY against that country's OWN deployed window, because the
  * caps are shared but the windows are not: each worker scrapes one country and
@@ -69,21 +63,6 @@ class ScrapeCadenceSustainabilitySpec extends AnyFlatSpec with Matchers {
   /** Every country, each carrying the two numbers its own worker actually runs. */
   private def countries: Seq[(models.Country, Int, Int)] =
     models.Country.all.map(c => (c, corpusOf(c), ticksPerWindowOf(c)))
-
-  "the throttled scrape cap" should
-    "be big enough that a short throttle blip still keeps pace in EVERY country" in {
-    countries.foreach { case (country, corpus, ticks) =>
-      val capacity = capacityOf(country, ScrapeCadence.ThrottledMaxEnqueuePerTick)
-      withClue(s"${country.code}: corpus=$corpus, ticks/window=$ticks, " +
-        s"throttledCap=${ScrapeCadence.ThrottledMaxEnqueuePerTick}, capacity=$capacity: ") {
-        capacity should be >= corpus.toLong
-      }
-    }
-  }
-
-  it should "stay below the healthy cap so the worker pool still earns idle to rebuild CPU credit" in {
-    ScrapeCadence.ThrottledMaxEnqueuePerTick should be < ScrapeCadence.MaxEnqueuePerTick
-  }
 
   "the healthy scrape cap" should
     "clear EVERY country's catalogue within its own window with >=1.5x headroom" in {

@@ -43,8 +43,8 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
   private def scrapePl(series: WorkerTaskMetrics.Series,
                        snapshot: QueueSnapshot = emptySnapshot,
                        staging: Map[StagingStep, Int] = noStaging,
-                       throttled: Boolean = false): String =
-    series.scrape(Seq(CountryQueueSample("pl", snapshot, staging, throttled)), now)
+                      ): String =
+    series.scrape(Seq(CountryQueueSample("pl", snapshot, staging)), now)
 
   it should "tag every task-pipeline series with the emitting country" in {
     val (m, series) = newPl()
@@ -56,7 +56,6 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     // The label is present and carries "pl" on representative counter + gauge series.
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ScrapeCinema"} 1""")
     out should include ("""kinowo_worker_tasks_started_total{country="pl",task_type="ResolveTmdb"} 1""")
-    out should include ("""kinowo_worker_throttled{country="pl"} 0""")
   }
 
   it should "keep two countries' series separate on one shared registry" in {
@@ -69,21 +68,12 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     uk.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
 
     val out = series.scrape(Seq(
-      CountryQueueSample("pl", emptySnapshot, noStaging, throttled = true),
-      CountryQueueSample("uk", emptySnapshot, noStaging, throttled = false)), now)
+      CountryQueueSample("pl", emptySnapshot, noStaging),
+      CountryQueueSample("uk", emptySnapshot, noStaging)), now)
 
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ScrapeCinema"} 2""")
     out should include ("""kinowo_worker_tasks_enqueued_total{country="uk",result="added",task_type="ScrapeCinema"} 1""")
     // Per-country throttle: pl backing off, uk not.
-    out should include ("""kinowo_worker_throttled{country="pl"} 1""")
-    out should include ("""kinowo_worker_throttled{country="uk"} 0""")
-  }
-
-  it should "expose kinowo_worker_throttled as 0/1 from the scrape's throttle flag" in {
-    val (_, series) = newPl()
-    scrapePl(series)                       should include ("""kinowo_worker_throttled{country="pl"} 0""")
-    scrapePl(series, throttled = true)     should include ("""kinowo_worker_throttled{country="pl"} 1""")
-    scrapePl(series, throttled = false)    should include ("""kinowo_worker_throttled{country="pl"} 0""")
   }
 
   "WorkerTaskMetrics" should "count enqueues by type and result" in {

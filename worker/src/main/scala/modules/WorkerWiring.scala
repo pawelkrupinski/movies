@@ -25,7 +25,6 @@ import services.cinemas.uk.OdeonAuthHarvester
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration.DurationLong
 
@@ -799,70 +798,28 @@ class WorkerWiring(
     overrides = new services.config.MongoEnvOverrideStore(mongoConnection.database),
     registry  = new services.config.MongoEnvRegistryStore(mongoConnection.database),
     tickInterval = Env.positiveLong("KINOWO_CONFIG_REFRESH_SECONDS", 30L).seconds)
-  // Auto-recovery from a CPU-starvation spiral: the reapers back off enqueue while
-  // the throttle signal is on, so the box earns idle instead of digging deeper.
+  // THE REAPER-BACKOFF THROTTLE IS GONE, and the shape of what it was is worth a
+  // paragraph because the enqueue caps it shared are still here.
   //
-  // THE AUTHORITATIVE PRODUCER WAS A FLY ONE and is gone with the platform. It was
-  // `CpuCreditPoller`, which read `fly_instance_cpu_balance` for this app straight
-  // from `api.fly.io` — a shared-CPU credit bucket, which is a Fly billing concept
-  // and does not exist for a pod on a dedicated eight-core box. Its Grafana
-  // backstop, a webhook POSTing to `kinowo-worker*.internal:9000/throttle` over Fly
-  // 6PN, went with it. `externalThrottleGate` below is what remains: the mechanism
-  // is intact and platform-neutral — anything that can reach `/throttle` drives it,
-  // including the fleet's own Alertmanager — but NOTHING PUSHES IT TODAY. Wire a
-  // producer before relying on the backoff.
+  // It let something outside the worker say "you are CPU-starved, ease off": the
+  // reapers trimmed enqueue and the pool duty-cycled, so the box earned idle. Its
+  // producer was Fly's shared-CPU credit balance — an in-process poller against
+  // `api.fly.io`, backstopped by a Grafana webhook POSTing to
+  // `kinowo-worker*.internal:9000/throttle` over 6PN. Credit is a Fly billing concept
+  // with no counterpart for a pod on a dedicated eight-core box, and the poller had
+  // been failing open since the org's read-only tokens were revoked, so by the time
+  // the platform went the whole path had been inert for weeks. It was deleted rather
+  // than re-pointed at a k3s signal because nothing had asked it to do anything in
+  // that time. `ScrapeCadence.MaxEnqueuePerTick` / `MaxOutstandingScrapeTasks` and
+  // `ScrapeReaper`'s boot ramp and spread survive it: those smooth the load the
+  // reaper itself creates and never needed an external opinion.
   //
-  // THROTTLE RESPONSE — a sustained credit-floor throttle used to RESTART the
-  // machine (exit non-zero → Fly reschedule), on the theory that a fresh boot's
-  // ~16k credit re-grant would break the wedge. DROPPED 2026-07-03: the floor is
-  // STRUCTURAL, not a wedge a restart can clear. The worker's steady CPU (~0.30
-  // cores, dominated by Mongo async-NIO2 I/O) sits just ABOVE the shared-cpu-4x
-  // credit earn rate (~0.26 cores), so the boot re-grant drains back to the floor
-  // in ~10 min AND the boot burst itself (~0.55 cores) costs more credit than it
-  // saves. Restarting was a self-inflicted ~45-min loop that PREVENTED the very
-  // recovery it meant to force (measured 4 restarts/3h while the box was near-idle,
-  // credit pinned at the floor throughout). So both throttle paths now only ALARM
-  // (`onThrottleWedged`); the reaper duty-cycle + enqueue backoff rides the throttle
-  // out in place, and credit climbs on its own whenever load dips below the earn
-  // line. (An earlier FLOOR FAST-PATH — restart once credit sat < ~1000 for 15 min —
-  // was already removed 2026-07-03 for the same reason; this dropped the two
-  // survivors, the credit poller's downslope projection and the
-  // ThrottleStuckWatchdog 45-min wedge. Only the latter is left — the poller was a
-  // Fly reader and went with the platform.)
-  //
-  // `restartMachine` stays as the machine-restart primitive, but the throttle paths
-  // deliberately do NOT call it — WorkerWiringSpec guards that a wedge alarms instead
-  // of exiting. (The liveness/OOM path exits on its own with code 70, further down.)
-  private val restartFired = new AtomicBoolean(false)
-  protected[modules] def restartMachine(reason: String): Unit =
-    if (restartFired.compareAndSet(false, true)) {
-      logger.error(s"Worker restart triggered ($reason); exiting non-zero so the pod is rescheduled.")
-      sys.exit(1)
-    }
-
-  /** Response to a detected CPU-credit throttle wedge / fast drain: ALARM, don't
-   *  restart. A restart can't clear a structural credit deficit (see the note
-   *  above) — it just burns the boot re-grant and loops — so we log loudly and let
-   *  the reaper backoff ride it out. Overridable so a test can observe the wedge
-   *  response without a real process exit. */
-  protected[modules] def onThrottleWedged(reason: String): Unit =
-    logger.error(s"Worker CPU-credit throttle wedged ($reason) — NOT restarting; riding it out on the reaper " +
-      s"backoff. A restart can't clear a structural credit deficit (steady CPU sits just over the shared-cpu " +
-      s"earn rate), so the boot re-grant would only drain back to the floor. Credit recovers once load dips " +
-      s"below the earn line.")
-
-  // The throttle pushed in from OUTSIDE, over the worker's `/throttle` endpoint —
-  // now the only producer of the signal, and idle until something is wired to it.
-  lazy val externalThrottleGate = new services.tasks.ExternalThrottleGate
-  lazy val throttleSignal: services.tasks.ScrapeThrottleSignal = externalThrottleGate
-
-  def throttleStuckMinutes: Long  = Env.positiveLong("KINOWO_WORKER_THROTTLE_STUCK_MINUTES", 45L)
-  // No `creditBalance`: its only reader was the trend guard, and its only source was
-  // the Fly poller. The guard is disabled by the default `None`, which is the
-  // behaviour it always had wherever the Fly token was absent.
-  lazy val throttleStuckWatchdog = new services.tasks.ThrottleStuckWatchdog(
-    throttleSignal, stuckAfter = throttleStuckMinutes.minutes,
-    onStuck = () => onThrottleWedged("stuck watchdog"))
+  // A restart primitive went with it. A sustained credit floor used to exit non-zero
+  // so Fly rescheduled the machine; that was dropped 2026-07-03 when the floor turned
+  // out to be STRUCTURAL (steady CPU just over the earn rate), making the restart a
+  // self-inflicted ~45-min loop that PREVENTED the recovery it meant to force —
+  // measured 4 restarts/3h while the box was near-idle. After that both throttle paths
+  // only alarmed, and with the paths gone the primitive had no caller at all.
 
   // Cluster-wide occurrence claims gate the reapers' recurring ticks so each
   // scheduled occurrence runs on ONE machine (rotating), not on every machine.
@@ -971,13 +928,6 @@ class WorkerWiring(
   // that pinned the shared-CPU credit). Same lever as the scrape/rating reapers.
   lazy val detailEnqueuers: Seq[DetailTaskEnqueuer] =
     detailEnrichers.map(de => new DetailTaskEnqueuer(de, movieCache, taskQueue, freshnessStore))
-  // The trickle every NON-scrape reaper (detail, ratings, tmdb-retry) drops to
-  // while the worker is CPU-credit throttled. Backing off scrapes alone wasn't
-  // enough — ratings/detail kept the pool busy so it never idled to rebuild
-  // credit; quieting the WHOLE pipeline is what lets it recover (see
-  // ScrapeThrottleSignal.cap).
-  def throttledSecondaryEnqueuePerTick: Int =
-    Env.positiveInt("KINOWO_THROTTLED_ENQUEUE_PER_TICK", services.tasks.ScrapeCadence.ThrottledSecondaryEnqueuePerTick)
   def maxDetailEnqueuePerTick: Int = Env.positiveLong("KINOWO_DETAIL_MAX_ENQUEUE_PER_TICK", 50L).toInt
   // How often the detail reaper wakes to enqueue the now-due slice (the spread
   // granularity). Finer = flatter per-minute `EnrichDetails` trickle on the
@@ -987,7 +937,6 @@ class WorkerWiring(
     Env.positiveLong("KINOWO_DETAIL_TICK_INTERVAL_SECONDS", DetailReaper.DefaultTickInterval.toSeconds).seconds
   lazy val detailReaper = new DetailReaper(detailEnrichers, movieCache, taskQueue, freshnessStore, eventBus,
     dueWindow = detailDueWindow, tickInterval = detailTickInterval, maxEnqueuePerTick = maxDetailEnqueuePerTick,
-    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
 
   // The whole-corpus settle on its OWN periodic tick, decoupled from the cache
@@ -1112,7 +1061,6 @@ class WorkerWiring(
   lazy val enrichmentReaper = new EnrichmentReaper(movieCache, taskQueue, freshnessStore,
     dueWindow = ratingDueWindow, tickInterval = enrichmentTickInterval,
     maxEnqueuePerTick = maxEnrichmentEnqueuePerTick,
-    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore, enqueuer = Some(ratingEnqueuer))
 
   // Re-tries unresolved-TMDB rows once per 24h, phase-spread across the period —
@@ -1129,7 +1077,6 @@ class WorkerWiring(
     // synopsis / genres come back in this country's own.
     forceRetry = movieService.forceResolve, country = country,
     maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick,
-    throttledMaxEnqueuePerTick = throttledSecondaryEnqueuePerTick, throttle = throttleSignal,
     runStore = scheduledRunStore)
 
   // Operator-triggered handlers — ALWAYS registered (not gated by
@@ -1169,34 +1116,17 @@ class WorkerWiring(
   // pool size and a backlog can't peg the box. (Replaces the old single batch
   // poller that claimed up to 20 tasks per tick onto a shared-budget EC.)
   def workerPoolSize: Int = Env.positiveInt("KINOWO_WORKER_POOL_SIZE", 4)
-  // While CPU-credit throttled, each busy worker pauses this long before its next
-  // claim so the pool sheds load and the box idles enough to rebuild credit. The
-  // reaper enqueue-backoff (below) only trims NEW work; it can't drain a backlog
-  // that itself keeps the pool pegged at the throttle ceiling — the sustained
-  // spiral of 2026-06-23. Live-tunable via KINOWO_WORKER_THROTTLE_PAUSE_MILLIS.
-  def workerThrottlePauseMillis: Long = Env.positiveLong("KINOWO_WORKER_THROTTLE_PAUSE_MILLIS", 2000L)
   lazy val taskWorker = new TaskWorker(
     taskQueue, Seq(scrapeCinemaHandler, enrichDetailsHandler, scrapeChunkHandler, scrapeChunkReduceHandler) ++ ratingHandlers ++ operatorHandlers ++ stagingHandlers,
     poolSize = workerPoolSize,
     // The SAME composite credit-throttle signal the reapers read, so the pool
     // duty-cycles in lockstep with the enqueue-backoff under a credit crunch.
-    throttle = throttleSignal,
-    throttlePause = workerThrottlePauseMillis.millis,
     // Each completed task announces itself so StagingReaper can chain the next
     // staging step; non-staging completions are ignored by its subscriber.
     onCompleted = task => eventBus.publish(TaskFinished(task.taskType, task.dedupKey, task.payload)),
     // Report claims / outcomes / handler durations to the Prometheus metrics.
     observer = taskMetrics
   )
-  // While throttled the reaper enqueues at most this many newly-due cinemas per
-  // tick (vs the healthy `maxScrapeEnqueuePerTick`), so the backlog drains and the
-  // pool earns idle to rebuild credit. Sized in ScrapeCadence to still clear the
-  // whole catalogue within one freshness window (so a throttle episode keeps pace
-  // with the freshness setting rather than parking the corpus ~1.5h stale, the old
-  // cap=3 behaviour), while staying below the healthy cap so the pool still idles.
-  def throttledScrapeEnqueuePerTick: Int =
-    Env.positiveInt("KINOWO_SCRAPE_THROTTLED_MAX_ENQUEUE_PER_TICK",
-      services.tasks.ScrapeCadence.ThrottledMaxEnqueuePerTick)
   // Post-boot enqueue ramp window: after a restart, ramp the per-tick scrape cap up
   // over this long instead of enqueuing the full `maxScrapeEnqueuePerTick` from the
   // first tick, so the whole-corpus backlog drains gradually (pool idles → the just-
@@ -1224,7 +1154,6 @@ class WorkerWiring(
     new ScrapeReaper(cinemaScrapers, taskQueue, freshnessStore, dueWindow = scrapeDueWindow,
       initialDelay = initialScrapeDelaySeconds.seconds,
       maxEnqueuePerTick = maxScrapeEnqueuePerTick, bootRamp = scrapeBootRampMinutes.minutes,
-      throttledMaxEnqueuePerTick = throttledScrapeEnqueuePerTick, throttle = throttleSignal,
       maxOutstandingScrapeTasks = maxOutstandingScrapeTasks, tasksPerVenue = scrapeTasksPerVenue,
       chunkSpread = services.tasks.ScrapeCadence.ChunkEnqueueSpread,
       inFlight = chunkRunInFlight,
@@ -1325,7 +1254,6 @@ class WorkerWiring(
     // starves (the authoritative throttle signal; absent its token, the external
     // gate alone drives backoff).
     // Arm the last-resort restart backstop for a throttle spiral the backoff can't break.
-    throttleStuckWatchdog.start()
     // The task worker drains all queue work: scraping, deferred detail, and
     // queue-driven rating enrichment.
     taskWorker.start(); workerHeartbeat.start()
@@ -1382,7 +1310,6 @@ class WorkerWiring(
     omdbBackfillReaper.foreach(_.stop())
     livenessWatchdog.stop()
     workerHeartbeat.stop()
-    throttleStuckWatchdog.stop()
     taskWorker.stop()
     taskQueue.close()
     freshnessStore.close()

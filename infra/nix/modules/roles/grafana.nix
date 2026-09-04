@@ -49,9 +49,9 @@
 # this fleet's own Prometheus already scrapes, and were repointed at `local-prometheus`, where they
 # work. See the header of alerting/alert-rules.yaml, which carries the split rule by rule.
 #
-# THE QUARANTINE FOLDER THAT ROUND LEFT is now the only Fly-shaped thing here: dashboards/apps
-# still holds panels whose series no longer exist. They are empty rather than wrong, and the banner
-# panels say so.
+# NOTHING FLY-SHAPED IS LEFT after that round. The folder split it created survives on its own
+# merits (see below), the app dashboards read only `local-prometheus`, and no panel anywhere is
+# waiting on a series this fleet cannot produce.
 #
 # ------------------------------------------------------------------------------------------------
 # THE TWO GOTCHAS THAT MUST SURVIVE THIS PORT. BOTH ARE VERIFIED, BOTH COST A DEBUGGING SESSION.
@@ -76,24 +76,29 @@
 #     variable.
 #
 # ------------------------------------------------------------------------------------------------
-# WHAT IS STILL EMPTY HERE, NAMED SO NOBODY THINKS IT WAS FORGOTTEN
+# WHAT THIS FLEET CANNOT SEE, NAMED SO NOBODY THINKS IT WAS FORGOTTEN
 # ------------------------------------------------------------------------------------------------
 #
 # Every app is scraped over its NodePort by the Prometheus next door
-# (nix/files/monitoring/scrape-kinowo-apps.yaml), so the application dashboards read real series.
-# What is NOT covered is anything only a host agent could see about somebody else's platform --
-# CPU steal, shared-CPU credit, edge 5xx and edge latency. Those panels are on
-# dashboards/apps/application-health.json and are permanently empty, because the series behind them came
-# from Fly's host agent and this fleet has no counterpart. Their closest replacements are
-# rules/host-health.rules (the box) and rules/jvm-heap.rules (each JVM), which alert rather than
-# chart.
+# (nix/files/monitoring/scrape-kinowo-apps.yaml), so every panel on every dashboard here reads a
+# real series -- verified by infra/test/test_dashboards.py, which fails on a panel naming any
+# datasource other than the two provisioned below. THERE ARE NO QUARANTINED OR EMPTY PANELS. The
+# ones that used to read Fly's host agent were not left to sit blank; they were rewritten onto the
+# apps' own instrumentation during the 2026-08-29 audit, which is why several panel descriptions
+# still say what they replaced.
 #
-# THAT LEAVES A FOLDER WITH SOME EMPTY PANELS IN IT, and the answer is quarantine rather than
-# deletion: the app dashboards live in their own Grafana folder, each opening with a banner panel
-# that says which of its panels cannot have data and why. The fleet dashboard --
-# dashboards/fleet/kinowo-fleet.json, about the three Hetzner machines -- is in a folder of its own
-# so that "is the fleet healthy" is answerable without walking past pages of "No data". See the two
-# dashboard providers below.
+# WHAT GENUINELY HAS NO COUNTERPART, and no panel pretends otherwise: CPU steal, shared-CPU credit,
+# and edge 5xx / edge latency. The first two were properties of somebody else's scheduler and mean
+# nothing on a dedicated box; the last two were measured by a proxy this fleet does not have, and
+# the apps' own request instrumentation on dashboards/apps/kinowo-http.json is the closer reading
+# anyway -- it measures the work rather than the edge in front of it. For the machines,
+# rules/host-health.rules and rules/jvm-heap.rules alert rather than chart.
+#
+# THE FOLDER SPLIT SURVIVES THAT, for a different reason than it was created for. It was
+# quarantine: three Fly-fed dashboards full of "No data" kept away from the one that worked. Now it
+# is simply scope -- dashboards/fleet is "is the fleet healthy" (three Hetzner machines) and
+# dashboards/apps is "is the product healthy", and keeping them apart is what makes the first
+# answerable without reading the second. See the two dashboard providers below.
 #
 # Grafana's own SQLITE DATABASE DOES NOT COME ACROSS either. Alert state, silences and the
 # CI-posted deploy annotations start empty; every rule re-evaluates from Normal, so anything firing
@@ -462,9 +467,11 @@ in
             }
 
             {
-              # THE QUARANTINE. The folder NAME is the label -- it is what somebody sees in the
-              # dashboard list before they open anything, which is the only place the warning can
-              # arrive early enough to be useful.
+              # THE APPLICATION'S DASHBOARDS. This provider was a QUARANTINE once -- the folder name
+              # was the warning label, the only place it could arrive before somebody opened a page
+              # of "No data". It is not one now: every panel reads a live series, and the split is
+              # kept because "is the fleet healthy" and "is the product healthy" are different
+              # questions, not because one of the answers is broken.
               name = "kinowo-apps";
               orgId = 1;
               # RENAMED FROM "Fly (no data without a token)" ON 2026-08-29, because both halves of that

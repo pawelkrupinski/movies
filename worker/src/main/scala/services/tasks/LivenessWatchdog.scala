@@ -13,20 +13,21 @@ import scala.util.Try
  * Last-resort backstop against a WEDGED-but-alive JVM. The worker's
  * [[WorkerHeartbeat]] stamps a wall-clock pulse every minute from its own
  * scheduler thread; this watchdog watches that pulse and, if it goes stale past
- * `stalenessThreshold`, exits the process (non-zero) so Fly reschedules the
- * machine. A fresh boot re-establishes Mongo/HTTP and clears the heap — the same
- * recovery the manual restart gave on 2026-06-23.
+ * `stalenessThreshold`, exits the process (non-zero) so the pod is rescheduled. A
+ * fresh boot re-establishes Mongo/HTTP and clears the heap — the same recovery the
+ * manual restart gave on 2026-06-23.
  *
- * Why this exists ALONGSIDE [[ThrottleStuckWatchdog]]: that one fires only while
- * `throttle.isThrottled` is CONTINUOUSLY true, but the 2026-06-23 wedge was a
- * heap OOM, not a throttle spiral. When the heap blew, the OOM killed the
- * then-live CPU-credit poller's HTTP selector, so it failed OPEN to "healthy" —
- * `isThrottled` read false and the throttle watchdog never tripped, while the
- * process limped on for ~2h answering the (then-static) `/health` 200. A pulse
- * that stalls regardless of throttle state catches that: it keys off "is the
- * worker still TICKING", not "is it throttled" or "is it doing useful work" (the
- * heartbeat thread fires even when the reapers are intentionally throttled to a
- * trickle, so an idle-but-healthy worker never reads as wedged).
+ * IT KEYS OFF "IS THE WORKER STILL TICKING", not "is it doing useful work" — the
+ * heartbeat thread fires even when the reapers are deliberately idle, so a quiet
+ * worker never reads as wedged.
+ *
+ * A second watchdog used to sit beside it, firing while an external CPU-throttle
+ * signal stayed continuously on. It could not have caught the 2026-06-23 wedge,
+ * which was a heap OOM: the OOM killed the credit poller's HTTP selector, so the
+ * signal failed OPEN to "healthy" and the throttle watchdog never tripped while the
+ * process limped on for ~2h answering a then-static `/health` 200. That whole
+ * throttle path went with Fly; this one, which never depended on it, is what
+ * remains.
  *
  * `now` and `onWedged` are injectable so a test drives the decision without a
  * clock or a real `sys.exit`; `lastBeatMillis` is a supplier so the test feeds a

@@ -30,8 +30,8 @@ object TaskObserver {
   }
 
   /** Fan one worker's lifecycle callbacks out to several observers, so the
-   *  [[TaskWorker]] still takes a single observer while both the Prometheus sink
-   *  and the scrape-throttle monitor see every task. */
+   *  [[TaskWorker]] still takes a single observer while every sink sees every
+   *  task. */
   def composite(observers: TaskObserver*): TaskObserver = new TaskObserver {
     def onStarted(task: Task): Unit                                       = observers.foreach(_.onStarted(task))
     def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = observers.foreach(_.onFinished(task, outcome, handleMillis))
@@ -100,11 +100,10 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
 
 object WorkerTaskMetrics {
 
-  /** The per-country queue/staging/throttle sample [[Series.scrape]] folds into
-   *  the gauges for one country on each Fly scrape. `snapshot` is that country's
-   *  live queue monitor, `stagingByStep` its `StagingReaper.stepCounts()`,
-   *  `throttled` its `ScrapeThrottleSignal`. */
-  case class CountryQueueSample(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int], throttled: Boolean)
+  /** The per-country queue/staging sample [[Series.scrape]] folds into the gauges
+   *  for one country on each scrape. `snapshot` is that country's live queue
+   *  monitor, `stagingByStep` its `StagingReaper.stepCounts()`. */
+  case class CountryQueueSample(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int])
 
   /**
    * The registered-once metric objects, SHARED across every country's
@@ -175,17 +174,6 @@ object WorkerTaskMetrics {
     private val poolSizeGauge = Gauge.builder()
       .name("kinowo_worker_pool_size")
       .help("Configured worker pool size (shared across countries) — pair with queue_depth{state=\"worked_on\"} for utilization.")
-      .register(registry)
-
-    // 1 while a country's reapers are backing off (CPU-credit throttled — by the
-    // external Grafana credit gate OR the in-process scrape-duration backstop), 0
-    // otherwise. A Grafana alert on this drives the Telegram start/end
-    // notification, and it's a clean on/off panel. Set at scrape time from each
-    // country's live signal.
-    private val throttledGauge = Gauge.builder()
-      .name("kinowo_worker_throttled")
-      .help("1 = a country's reapers are backing off (CPU-credit throttled), 0 = full enqueue.")
-      .labelNames("country")
       .register(registry)
 
     private val stagingMovies = Gauge.builder()
@@ -300,7 +288,6 @@ object WorkerTaskMetrics {
         Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
         ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
         ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(c, k))
-        throttledGauge.labelValues(c).set(0.0) // materialize at 0 so Grafana draws a continuous on/off line
       }
       poolSizeGauge.set(poolSize.toDouble)
     }
@@ -369,7 +356,6 @@ object WorkerTaskMetrics {
       samples.foreach { s =>
         refreshQueueGauges(s.countryCode, s.snapshot, now)
         StagingStep.all.foreach(step => stagingMovies.labelValues(s.countryCode, step.label).set(s.stagingByStep.getOrElse(step, 0).toDouble))
-        throttledGauge.labelValues(s.countryCode).set(if (s.throttled) 1.0 else 0.0)
       }
       PrometheusExposition.render(registry)
     }

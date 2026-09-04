@@ -72,11 +72,6 @@ class EnrichmentReaper(
   // unaffected; the wiring sets a finite cap comfortably above the steady-state.
   // BY-NAME: read live each tick, so an `/admin/config` flip applies mid-flight.
   maxEnqueuePerTick: => Int = Int.MaxValue,
-  // While the worker is CPU-credit throttled, cap enqueue to this trickle. Ratings
-  // are the dominant non-scrape load, so backing this off is what actually lets the
-  // pool idle + rebuild credit (the scrape-only watchdog couldn't). Default unbounded.
-  throttledMaxEnqueuePerTick: => Int = Int.MaxValue,
-  throttle: ScrapeThrottleSignal = ScrapeThrottleSignal.AlwaysHealthy,
   runStore: ScheduledRunStore = AlwaysClaimScheduledRunStore,
   clock:    Clock = Clock.systemUTC(),
   // The per-row enqueue decision (eligible sources, tmdbId-keyed dedup, due gate),
@@ -125,7 +120,7 @@ class EnrichmentReaper(
   /** Enqueue every eligible, now-due `(row, source)`, up to `maxEnqueuePerTick`.
    *  Package-private, with an injectable `nowMillis`, so tests can drive time. */
   private[tasks] def tick(nowMillis: Long = clock.millis()): Int = {
-    val cap      = ScrapeThrottleSignal.cap(throttle, maxEnqueuePerTick, throttledMaxEnqueuePerTick)
+    val cap      = maxEnqueuePerTick
     val now      = Instant.ofEpochMilli(nowMillis)
     var enqueued = 0
     val rows = cache.entries.iterator

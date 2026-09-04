@@ -1,998 +1,998 @@
 {
- "uid": "kinowo-worker-diag",
- "title": "Kinowo worker \u2014 JVM & pipeline diagnostics (k3s)",
- "tags": [
-  "kinowo",
-  "worker",
-  "diagnostics",
-  "k3s"
- ],
- "timezone": "browser",
- "schemaVersion": 39,
- "version": 1,
- "refresh": "1m",
- "time": {
-  "from": "now-3h",
-  "to": "now"
- },
- "annotations": {
-  "list": [
-   {
-    "builtIn": 1,
-    "datasource": {
-     "type": "grafana",
-     "uid": "-- Grafana --"
-    },
-    "enable": true,
-    "hide": true,
-    "name": "Annotations & Alerts",
-    "type": "dashboard"
-   },
-   {
-    "datasource": {
-     "type": "grafana",
-     "uid": "-- Grafana --"
-    },
-    "enable": true,
-    "hide": false,
-    "iconColor": "purple",
-    "name": "Deploys",
-    "tags": [
-     "deploy"
-    ],
-    "type": "tags"
-   }
-  ]
- },
- "templating": {
-  "list": [
-   {
-    "name": "country",
-    "label": "Country",
-    "type": "query",
-    "datasource": {
-     "type": "prometheus",
-     "uid": "local-prometheus"
-    },
-    "definition": "label_values(kinowo_worker_throttled, country)",
-    "query": {
-     "query": "label_values(kinowo_worker_throttled, country)",
-     "refId": "country"
-    },
-    "current": {
-     "text": "pl",
-     "value": "pl",
-     "selected": true
-    },
-    "includeAll": true,
-    "multi": true,
-    "refresh": 2,
-    "sort": 1,
-    "hide": 0
-   }
-  ]
- },
- "panels": [
-  {
-   "id": 5,
-   "title": "Uptime (hours) \u2014 drops mark restarts",
-   "description": "(now \u2212 process_start_time)/3600. Every drop to ~0 is a restart of the worker process. A regular cadence is the tell for an OOM cycle rather than a deploy \u2014 deploys are irregular and carry a purple Deploy marker. The worker is a k3s pod now, so the reason lives in `kubectl -n <ns> describe pod` (look for OOMKilled) and `kubectl logs --previous`, not in `flyctl machine status`.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 0,
-    "y": 0
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "h",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "(time() - process_start_time_seconds{job=\"kinowo-worker\",country=~\"$country\"}) / 3600",
-     "legendFormat": "uptime h {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
+  "uid": "kinowo-worker-diag",
+  "title": "Kinowo worker — JVM & pipeline diagnostics (k3s)",
+  "tags": [
+    "kinowo",
+    "worker",
+    "diagnostics",
+    "k3s"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-3h",
+    "to": "now"
   },
-  {
-   "id": 3,
-   "title": "CPU breakdown \u2014 centi-cores (process / JIT / GC)",
-   "description": "The worker's own CPU, split three ways: total process, the slice spent JIT-compiling, and the slice spent in GC (100 = one full core). GC climbing toward the process line is the SerialGC full-GC thrash signature \u2014 heap pressure, not work. JIT should be a burst after every restart and near-zero afterwards; a JIT line that never settles means the process keeps restarting. There is no credit-breakeven line any more: that was a property of Fly's shared-cpu billing, and this worker now has a whole k3s node's cores available. Note the host's CPU on the fleet dashboard will always read higher than this \u2014 k3s itself runs there too.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 0
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (country) (rate(process_cpu_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
-     "legendFormat": "process cc {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    },
-    {
-     "refId": "B",
-     "expr": "sum by (country) (rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
-     "legendFormat": "JIT cc {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    },
-    {
-     "refId": "C",
-     "expr": "sum by (country) (rate(jvm_gc_collection_seconds_sum{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
-     "legendFormat": "GC cc {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 7,
-   "title": "Heap used against -Xmx",
-   "description": "Healthy is a sawtooth with a flat floor, comfortably under the cap. A floor that rises collection after collection is a heap leak; a sawtooth whose peaks graze the cap means the next reprojection will thrash SerialGC. The cap is plotted from jvm_memory_max_bytes rather than written into this text, so it stays right when -Xmx is retuned.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 0,
-    "y": 8
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "bytes",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     },
-     "min": 0
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"heap\"}",
-     "legendFormat": "heap used {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    },
-    {
-     "refId": "B",
-     "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\",pool=\"Tenured Gen\"}",
-     "legendFormat": "old gen {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    },
-    {
-     "refId": "C",
-     "expr": "jvm_memory_max_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"heap\"}",
-     "legendFormat": "heap cap {{country}} (-Xmx)",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 2,
-   "title": "Resident set size (RSS) against the pod cgroup limit",
-   "description": "Two readings of the same number: process_resident_memory_bytes (the JVM's process exporter) and kinowo_worker_process_rss_bytes (VmRSS, read from /proc/self/status by the vitals sampler that also computes the off-book gap below). They should lie on top of each other \u2014 drawn together so the gap panel's arithmetic is checkable rather than taken on faith. NO CEILING LINE ANY MORE: this used to carry the Fly machine's ~960MB cgroup limit, but the pod's memory limit on k3s is not exported (the kube-state-metrics target is down), so there is nothing honest to draw. Read the SLOPE, not the distance to a line \u2014 a steady climb that resets only at a restart is the native working set growing, and the uptime panel will show you the restarts it ends in.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 8
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "bytes",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "process_resident_memory_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
-     "legendFormat": "RSS {{country}} (process exporter)",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    },
-    {
-     "refId": "C",
-     "expr": "kinowo_worker_process_rss_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
-     "legendFormat": "VmRSS {{country}} (/proc/self/status)",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    },
-    {
-     "refId": "C",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     },
-     "expr": "max by (country) (label_replace(kube_pod_container_resource_limits{namespace=\"kinowo\",resource=\"memory\",pod=~\"worker-(${country:pipe})-.*\"}, \"country\", \"$1\", \"pod\", \"worker-([a-z]+)-.*\"))",
-     "legendFormat": "cgroup limit {{country}}"
-    }
-   ]
-  },
-  {
-   "id": 1,
-   "title": "Native memory by NMT category (committed)",
-   "description": "Native memory HotSpot admits to committing, by NMT category \u2014 the buckets jvm_memory_* cannot see. This is where a non-heap leak shows itself: one category climbing steadily while the others stay flat names the culprit. Flat everything while RSS climbs means the growth is off-book (see the gap panel below), which is a different diagnosis entirely. Requires the JVM to be started with -XX:NativeMemoryTracking=summary; if this panel is empty, that flag is missing rather than the memory being fine.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 9,
-    "w": 24,
-    "x": 0,
-    "y": 16
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "bytes",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 0,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "kinowo_worker_native_memory_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
-     "legendFormat": "{{country}} {{category}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 16,
-   "title": "Off-book native memory \u2014 RSS minus NMT-committed",
-   "description": "kinowo_worker_native_offbook_gap_bytes: RSS minus everything HotSpot admits to committing. Neither of the panels at the top of this dashboard can show it \u2014 jvm_memory_* covers the heap, the NMT panel covers the committed native categories, and this is the remainder. It is the primary signal for the ~5-6h non-heap OOM restarts: the 2026-07-09 probe found every NMT category flat across a whole 5h life while RSS climbed ~26MB/hr, which is glibc malloc retention/fragmentation in the C heap and appears here and nowhere else. READ THE SLOPE, NOT THE LEVEL \u2014 the level is normally NEGATIVE (around \u2212200 to \u2212320MB in steady state) because committed is not resident: pages can be committed and never touched. That is why this axis is deliberately not floored at zero. A gap climbing steadily toward and past zero, resetting only at a restart, is the pre-OOM signature; Pair it with the RSS panel above: that one shows the absolute number climbing, this one shows that the climb is NOT accounted for by anything the JVM reports.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 0,
-    "y": 25
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "bytes",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "kinowo_worker_native_offbook_gap_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
-     "legendFormat": "off-book gap {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 17,
-   "type": "timeseries",
-   "title": "Direct & mapped buffer pools",
-   "description": "NIO buffers the JVM allocates outside the heap \u2014 the HTTP client's read buffers live here. Sitting beside the NMT and off-book panels because it is the one native consumer with a named, per-pool reading: 'used' growing without bound while the NMT categories stay flat points at buffers never being released, typically a response body left unread. Steady state is a small, flat direct pool.",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 25
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "bytes",
-     "min": 0,
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "jvm_buffer_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
-     "legendFormat": "{{country}} {{pool}} used",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    },
-    {
-     "refId": "B",
-     "expr": "jvm_buffer_pool_capacity_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
-     "legendFormat": "{{country}} {{pool}} capacity",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 6,
-   "title": "JVM threads (current / peak)",
-   "description": "Live and peak JVM thread count. A count that climbs without bound ends in an 'unable to create native thread' OOM and is a thread leak; a stable count means the memory problem is somewhere else. Peak sitting far above current after a quiet period is normal \u2014 it is a high-water mark, not a live reading.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 0,
-    "y": 33
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "short",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "jvm_threads_current{job=\"kinowo-worker\",country=~\"$country\"}",
-     "legendFormat": "current {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    },
-    {
-     "refId": "B",
-     "expr": "jvm_threads_peak{job=\"kinowo-worker\",country=~\"$country\"}",
-     "legendFormat": "peak {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 8,
-   "title": "Read-model projection \u2014 avg duration (ms)",
-   "description": "Per-call cost of the read-model projection. A 3-5x inflation at a FLAT call rate = the daytime GC-thrash flare (projection is a victim of GC pauses, not the cause). \u00b7 READS ZERO, NOT BLANK, WHEN NOTHING PROJECTED. This is rate(sum)/rate(count), which is 0/0 = NaN in any window where the projector did not run -- and Grafana draws a NaN-only series as \"No data\", which is indistinguishable from the panel being broken. The `or (... * 0)` term makes an idle projector an explicit zero line. A FLAT ZERO IS NOT NORMAL -- it means the projector has not run at all. The _count sitting at exactly 1 on every worker is the SEED observation WorkerTaskMetrics makes at boot to materialize the series, not a projection: 1 is the reading for never-projected. This panel read flat zero for hours on 2026-08-29 while the Mongo migration had left every change stream dead (an invalidated resume token that nothing cleared and nothing reopened), and that flatness was the only visible symptom -- the read model was taking prune deletes and no upserts. Read a flat zero here against kinowo_worker_movie_change_events_total: zero events while the pipeline is plainly working means the STREAM is down, not that the projector is idle.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 33
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "ms",
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "1000*sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[$__rate_interval]))/ clamp_min(sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[$__rate_interval])), 1e-9)",
-     "legendFormat": "avg project ms {{country}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 11,
-   "title": "Resolution cache \u2014 hit rate % by source",
-   "description": "Share of identity resolutions (film \u2192 TMDB id / IMDb id / rating-site url) served from cache instead of running a live probe chain. A chain costs up to ~30 upstream GETs for RT/Metacritic and ~36 for Filmweb, so this is the cache's actual saving. Low here means the cache is doing little \u2014 the resolved url is persisted on the film record anyway, which is the competing gate.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 0,
-    "y": 41
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "percent",
-     "min": 0,
-     "max": 100,
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])) / clamp_min(sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[$__rate_interval])), 1e-9)",
-     "legendFormat": "{{country}} {{source}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 12,
-   "title": "Resolution chains RUN \u2014 by source and kind",
-   "description": "Probe chains actually executed, per second. `miss_resolved` mints a cached answer and should decay as the corpus resolves; `miss_unresolved` is a chain that found nothing and \u2014 because the cache is hits-only \u2014 was NOT cached, so the same film burns the same chain again next cycle. If miss_unresolved dominates, the fix is caching negative results, not deleting the cache.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 41
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "reqps",
-     "min": 0,
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "sum by (country, source, outcome) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"miss_.*\"}[$__rate_interval]))",
-     "legendFormat": "{{country}} {{source}} {{outcome}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 13,
-   "title": "Durable-store share of cache hits % by source",
-   "description": "Of the hits, how many came from the Mongo `resolve_*` collections rather than the in-process Caffeine layer. This is what the durable half buys over a plain in-memory cache \u2014 it is the only part that survives a worker restart. Near 0% across sources means the 5 collections + TTL-index reconciliation are carrying nothing and could be dropped.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 0,
-    "y": 49
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "percent",
-     "min": 0,
-     "max": 100,
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     }
-    },
-    "overrides": []
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[$__rate_interval])) / clamp_min(sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])), 1e-9)",
-     "legendFormat": "{{country}} {{source}}",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 18,
-   "type": "timeseries",
-   "title": "GC \u2014 collections per second by collector",
-   "description": "How often each collector runs, per country. Young ('Copy') climbing with a flat old-gen line is normal churn; 'MarkSweepCompact' climbing is the shape that precedes a heap-exhaustion death, and pairs with the GC centi-cores line on the CPU panel.",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 49
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     },
-     "expr": "sum by (country, gc) (rate(jvm_gc_collection_seconds_count{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval]))",
-     "legendFormat": "{{country}} {{gc}}"
-    }
-   ],
-   "fieldConfig": {
-    "defaults": {
-     "custom": {
-      "drawStyle": "line",
-      "lineWidth": 2,
-      "fillOpacity": 5,
-      "showPoints": "never"
-     },
-     "unit": "ops",
-     "min": 0
-    },
-    "overrides": []
-   },
-   "options": {
-    "legend": {
-     "displayMode": "list",
-     "placement": "bottom",
-     "showLegend": true
-    },
-    "tooltip": {
-     "mode": "multi",
-     "sort": "desc"
-    }
-   }
-  },
-  {
-   "id": 14,
-   "title": "Cinema-scrape HTTP outcomes \u2014 error share, scrape phase (per country)",
-   "description": "A failure-budget view scoped to phase=\"scrape\": ONLY the cinema-site HTTP \u2014 every listing scrape, chunk scrape and per-film detail fetch \u2014 with the third-party metadata/rating/resolution APIs (phase=\"enrich\") excluded; its companion enrich-phase panel below covers those. Each error band's thickness is that error's share of scrape attempts, stacked at the floor; the empty space above is the clean remainder. This isolates cinema-scrape health from the enrichment APIs' by-design 404 slug-probing and API 429s: here a rising http_403 (a cinema Cloudflare/datacentre-IP block) or http_5xx/timeout stands out instead of hiding under the enrichment 404 noise floor. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all \u2014 a completely different problem that an error-share panel alone would hide as 'no data'.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 24,
-    "x": 0,
-    "y": 57
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "percent",
-     "min": 0,
-     "max": 100,
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 25,
-      "spanNulls": 300000,
-      "stacking": {
-       "mode": "normal"
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      },
+      {
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": false,
+        "iconColor": "purple",
+        "name": "Deploys",
+        "tags": [
+          "deploy"
+        ],
+        "type": "tags"
       }
-     }
-    },
-    "overrides": [
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "requests/s (all outcomes)"
-      },
-      "properties": [
-       {
-        "id": "custom.axisPlacement",
-        "value": "right"
-       },
-       {
-        "id": "unit",
-        "value": "reqps"
-       },
-       {
-        "id": "custom.fillOpacity",
-        "value": 0
-       },
-       {
-        "id": "custom.lineWidth",
-        "value": 2
-       },
-       {
-        "id": "color",
-        "value": {
-         "mode": "fixed",
-         "fixedColor": "semi-dark-blue"
-        }
-       }
-      ]
-     }
     ]
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     },
-     "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\",outcome!=\"success\"}[$__rate_interval])) / scalar(sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\"}[$__rate_interval])))",
-     "legendFormat": "{{outcome}}"
-    },
-    {
-     "refId": "B",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     },
-     "expr": "sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\"}[$__rate_interval]))",
-     "legendFormat": "requests/s (all outcomes)"
-    }
-   ]
   },
-  {
-   "id": 15,
-   "title": "Enrichment HTTP outcomes \u2014 error share, enrich phase (per country)",
-   "description": "The scrape panel's companion, scoped to phase=\"enrich\": ONLY the third-party metadata/rating/resolution APIs (TMDB/IMDb/RT/Metacritic/Filmweb/Letterboxd/Wikidata/Cinemeta), with cinema-site scraping (phase=\"scrape\") excluded. Each error band's thickness is that error's share of enrich attempts, stacked at the floor; the empty space above is the clean remainder. Reading this side on its own: a large steady http_404 band is EXPECTED \u2014 the RT/Metacritic resolvers probe up to 4 candidate slugs per title and the wrong ones 404 by design \u2014 while http_401 (a bad/missing API key) or a rising http_429 (an API rate-limiting us) is the signal to watch. Improbable codes (409/422/451/\u2026) fold into the residual http_4xx; other categories: http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all \u2014 a completely different problem that an error-share panel alone would hide as 'no data'.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 24,
-    "x": 0,
-    "y": 65
-   },
-   "fieldConfig": {
-    "defaults": {
-     "unit": "percent",
-     "min": 0,
-     "max": 100,
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 25,
-      "spanNulls": 300000,
-      "stacking": {
-       "mode": "normal"
+  "templating": {
+    "list": [
+      {
+        "name": "country",
+        "label": "Country",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "local-prometheus"
+        },
+        "definition": "label_values(kinowo_worker_queue_depth, country)",
+        "query": {
+          "query": "label_values(kinowo_worker_queue_depth, country)",
+          "refId": "country"
+        },
+        "current": {
+          "text": "pl",
+          "value": "pl",
+          "selected": true
+        },
+        "includeAll": true,
+        "multi": true,
+        "refresh": 2,
+        "sort": 1,
+        "hide": 0
       }
-     }
-    },
-    "overrides": [
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "requests/s (all outcomes)"
+    ]
+  },
+  "panels": [
+    {
+      "id": 5,
+      "title": "Uptime (hours) — drops mark restarts",
+      "description": "(now − process_start_time)/3600. Every drop to ~0 is a restart of the worker process. A regular cadence is the tell for an OOM cycle rather than a deploy — deploys are irregular and carry a purple Deploy marker. The worker is a k3s pod now, so the reason lives in `kubectl -n <ns> describe pod` (look for OOMKilled) and `kubectl logs --previous`, not in `flyctl machine status`.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
       },
-      "properties": [
-       {
-        "id": "custom.axisPlacement",
-        "value": "right"
-       },
-       {
-        "id": "unit",
-        "value": "reqps"
-       },
-       {
-        "id": "custom.fillOpacity",
-        "value": 0
-       },
-       {
-        "id": "custom.lineWidth",
-        "value": 2
-       },
-       {
-        "id": "color",
-        "value": {
-         "mode": "fixed",
-         "fixedColor": "semi-dark-blue"
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - process_start_time_seconds{job=\"kinowo-worker\",country=~\"$country\"}) / 3600",
+          "legendFormat": "uptime h {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
-       }
       ]
-     }
-    ]
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     },
-     "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\",outcome!=\"success\"}[$__rate_interval])) / scalar(sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\"}[$__rate_interval])))",
-     "legendFormat": "{{outcome}}"
     },
     {
-     "refId": "B",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     },
-     "expr": "sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\"}[$__rate_interval]))",
-     "legendFormat": "requests/s (all outcomes)"
-    }
-   ]
-  },
-  {
-   "id": 19,
-   "title": "Intern pool \u2014 occupancy against its cap",
-   "description": "StringPool collapses the byte-identical SourceData strings a film repeats across its per-cinema slots (one 'action', not the 66,106 copies a worker-us heap dump found). It is BOUNDED, and that bound fails SILENTLY: past the cap Caffeine evicts, the next lookup of an evicted value allocates a fresh String, and interning degrades to a no-op that still costs a hash per call. No error, no log -- just a heap that grows. MEASURED 2026-09-03 the pool sits at 28,695 of 131,072 on the US corpus (22%) and the vocabulary SATURATES -- US has 3x the UK's slots and barely more distinct strings -- so a line here should rise to a plateau near a fifth of the cap and stay there. Pinned AT the cap would be new: that is the corpus outgrowing the pool, and then the cap is the thing to raise. The cap is plotted rather than written into this text so it stays right when it is retuned.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 0,
-    "y": 73
-   },
-   "fieldConfig": {
-    "defaults": {
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     },
-     "min": 0
-    },
-    "overrides": [
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "cap"
+      "id": 3,
+      "title": "CPU breakdown — centi-cores (process / JIT / GC)",
+      "description": "The worker's own CPU, split three ways: total process, the slice spent JIT-compiling, and the slice spent in GC (100 = one full core). GC climbing toward the process line is the SerialGC full-GC thrash signature — heap pressure, not work. JIT should be a burst after every restart and near-zero afterwards; a JIT line that never settles means the process keeps restarting. There is no credit-breakeven line any more: that was a property of Fly's shared-cpu billing, and this worker now has a whole k3s node's cores available. Note the host's CPU on the fleet dashboard will always read higher than this — k3s itself runs there too.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
       },
-      "properties": [
-       {
-        "id": "custom.fillOpacity",
-        "value": 0
-       },
-       {
-        "id": "custom.lineStyle",
-        "value": {
-         "fill": "dash",
-         "dash": [
-          10,
-          10
-         ]
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (country) (rate(process_cpu_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
+          "legendFormat": "process cc {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (country) (rate(jvm_compilation_time_seconds_total{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
+          "legendFormat": "JIT cc {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (country) (rate(jvm_gc_collection_seconds_sum{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval])) * 100",
+          "legendFormat": "GC cc {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
         }
-       }
       ]
-     }
-    ]
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "kinowo_worker_string_pool_entries",
-     "legendFormat": "entries held",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
     },
     {
-     "refId": "B",
-     "expr": "kinowo_worker_string_pool_max_entries",
-     "legendFormat": "cap",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
-    }
-   ]
-  },
-  {
-   "id": 20,
-   "title": "Intern pool \u2014 evictions and hit ratio",
-   "description": "The two halves of 'is the pool still paying for itself'. evictions_total flat at zero is a pool doing its job, and at 22% occupancy it should be exactly that -- any sustained climb is thrash, strings interned and immediately thrown away, so duplicates reach the heap anyway. hit_ratio is the share of lookups served an instance the pool already held: high is healthy, and a FALL alongside rising evictions is the degradation itself rather than a symptom of it. Note neither says anything about strings that never reach the pool -- interning happens only at MovieCache.buildCinemaSlot, so a rehydrate through MovieCodecs allocates fresh instances that these gauges will never see. Both are process-level (one pool per JVM, shared by every country's wiring), so neither carries a country label.",
-   "type": "timeseries",
-   "datasource": {
-    "type": "prometheus",
-    "uid": "local-prometheus"
-   },
-   "gridPos": {
-    "h": 8,
-    "w": 12,
-    "x": 12,
-    "y": 73
-   },
-   "fieldConfig": {
-    "defaults": {
-     "custom": {
-      "drawStyle": "line",
-      "fillOpacity": 12,
-      "spanNulls": 300000
-     },
-     "min": 0
-    },
-    "overrides": [
-     {
-      "matcher": {
-       "id": "byName",
-       "options": "hit ratio"
+      "id": 7,
+      "title": "Heap used against -Xmx",
+      "description": "Healthy is a sawtooth with a flat floor, comfortably under the cap. A floor that rises collection after collection is a heap leak; a sawtooth whose peaks graze the cap means the next reprojection will thrash SerialGC. The cap is plotted from jvm_memory_max_bytes rather than written into this text, so it stays right when -Xmx is retuned.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
       },
-      "properties": [
-       {
-        "id": "unit",
-        "value": "percentunit"
-       },
-       {
-        "id": "custom.axisPlacement",
-        "value": "right"
-       },
-       {
-        "id": "max",
-        "value": 1
-       }
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_memory_used_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"heap\"}",
+          "legendFormat": "heap used {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "jvm_memory_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\",pool=\"Tenured Gen\"}",
+          "legendFormat": "old gen {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "jvm_memory_max_bytes{job=\"kinowo-worker\",country=~\"$country\",area=\"heap\"}",
+          "legendFormat": "heap cap {{country}} (-Xmx)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
       ]
-     }
-    ]
-   },
-   "targets": [
-    {
-     "refId": "A",
-     "expr": "rate(kinowo_worker_string_pool_evictions_total[5m])",
-     "legendFormat": "evictions/sec",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
     },
     {
-     "refId": "B",
-     "expr": "kinowo_worker_string_pool_hit_ratio",
-     "legendFormat": "hit ratio",
-     "datasource": {
-      "type": "prometheus",
-      "uid": "local-prometheus"
-     }
+      "id": 2,
+      "title": "Resident set size (RSS) against the pod cgroup limit",
+      "description": "Two readings of the same number: process_resident_memory_bytes (the JVM's process exporter) and kinowo_worker_process_rss_bytes (VmRSS, read from /proc/self/status by the vitals sampler that also computes the off-book gap below). They should lie on top of each other — drawn together so the gap panel's arithmetic is checkable rather than taken on faith. NO CEILING LINE ANY MORE: this used to carry the Fly machine's ~960MB cgroup limit, but the pod's memory limit on k3s is not exported (the kube-state-metrics target is down), so there is nothing honest to draw. Read the SLOPE, not the distance to a line — a steady climb that resets only at a restart is the native working set growing, and the uptime panel will show you the restarts it ends in.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "process_resident_memory_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "RSS {{country}} (process exporter)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "kinowo_worker_process_rss_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "VmRSS {{country}} (/proc/self/status)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country) (label_replace(kube_pod_container_resource_limits{namespace=\"kinowo\",resource=\"memory\",pod=~\"worker-(${country:pipe})-.*\"}, \"country\", \"$1\", \"pod\", \"worker-([a-z]+)-.*\"))",
+          "legendFormat": "cgroup limit {{country}}"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "title": "Native memory by NMT category (committed)",
+      "description": "Native memory HotSpot admits to committing, by NMT category — the buckets jvm_memory_* cannot see. This is where a non-heap leak shows itself: one category climbing steadily while the others stay flat names the culprit. Flat everything while RSS climbs means the growth is off-book (see the gap panel below), which is a different diagnosis entirely. Requires the JVM to be started with -XX:NativeMemoryTracking=summary; if this panel is empty, that flag is missing rather than the memory being fine.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_native_memory_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "{{country}} {{category}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "title": "Off-book native memory — RSS minus NMT-committed",
+      "description": "kinowo_worker_native_offbook_gap_bytes: RSS minus everything HotSpot admits to committing. Neither of the panels at the top of this dashboard can show it — jvm_memory_* covers the heap, the NMT panel covers the committed native categories, and this is the remainder. It is the primary signal for the ~5-6h non-heap OOM restarts: the 2026-07-09 probe found every NMT category flat across a whole 5h life while RSS climbed ~26MB/hr, which is glibc malloc retention/fragmentation in the C heap and appears here and nowhere else. READ THE SLOPE, NOT THE LEVEL — the level is normally NEGATIVE (around −200 to −320MB in steady state) because committed is not resident: pages can be committed and never touched. That is why this axis is deliberately not floored at zero. A gap climbing steadily toward and past zero, resetting only at a restart, is the pre-OOM signature; Pair it with the RSS panel above: that one shows the absolute number climbing, this one shows that the climb is NOT accounted for by anything the JVM reports.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_native_offbook_gap_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "off-book gap {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "timeseries",
+      "title": "Direct & mapped buffer pools",
+      "description": "NIO buffers the JVM allocates outside the heap — the HTTP client's read buffers live here. Sitting beside the NMT and off-book panels because it is the one native consumer with a named, per-pool reading: 'used' growing without bound while the NMT categories stay flat points at buffers never being released, typically a response body left unread. Steady state is a small, flat direct pool.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 25
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_buffer_pool_used_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "{{country}} {{pool}} used",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "jvm_buffer_pool_capacity_bytes{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "{{country}} {{pool}} capacity",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "JVM threads (current / peak)",
+      "description": "Live and peak JVM thread count. A count that climbs without bound ends in an 'unable to create native thread' OOM and is a thread leak; a stable count means the memory problem is somewhere else. Peak sitting far above current after a quiet period is normal — it is a high-water mark, not a live reading.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "jvm_threads_current{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "current {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "jvm_threads_peak{job=\"kinowo-worker\",country=~\"$country\"}",
+          "legendFormat": "peak {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Read-model projection — avg duration (ms)",
+      "description": "Per-call cost of the read-model projection. A 3-5x inflation at a FLAT call rate = the daytime GC-thrash flare (projection is a victim of GC pauses, not the cause). · READS ZERO, NOT BLANK, WHEN NOTHING PROJECTED. This is rate(sum)/rate(count), which is 0/0 = NaN in any window where the projector did not run -- and Grafana draws a NaN-only series as \"No data\", which is indistinguishable from the panel being broken. The `or (... * 0)` term makes an idle projector an explicit zero line. A FLAT ZERO IS NOT NORMAL -- it means the projector has not run at all. The _count sitting at exactly 1 on every worker is the SEED observation WorkerTaskMetrics makes at boot to materialize the series, not a projection: 1 is the reading for never-projected. This panel read flat zero for hours on 2026-08-29 while the Mongo migration had left every change stream dead (an invalidated resume token that nothing cleared and nothing reopened), and that flatness was the only visible symptom -- the read model was taking prune deletes and no upserts. Read a flat zero here against kinowo_worker_movie_change_events_total: zero events while the pipeline is plainly working means the STREAM is down, not that the projector is idle.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 33
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "1000*sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_sum{country=~\"$country\"}[$__rate_interval]))/ clamp_min(sum by (country) (rate(kinowo_worker_readmodel_project_duration_seconds_count{country=~\"$country\"}[$__rate_interval])), 1e-9)",
+          "legendFormat": "avg project ms {{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Resolution cache — hit rate % by source",
+      "description": "Share of identity resolutions (film → TMDB id / IMDb id / rating-site url) served from cache instead of running a live probe chain. A chain costs up to ~30 upstream GETs for RT/Metacritic and ~36 for Filmweb, so this is the cache's actual saving. Low here means the cache is doing little — the resolved url is persisted on the film record anyway, which is the competing gate.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 41
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])) / clamp_min(sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\"}[$__rate_interval])), 1e-9)",
+          "legendFormat": "{{country}} {{source}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Resolution chains RUN — by source and kind",
+      "description": "Probe chains actually executed, per second. `miss_resolved` mints a cached answer and should decay as the corpus resolves; `miss_unresolved` is a chain that found nothing and — because the cache is hits-only — was NOT cached, so the same film burns the same chain again next cycle. If miss_unresolved dominates, the fix is caching negative results, not deleting the cache.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 41
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (country, source, outcome) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"miss_.*\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{source}} {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Durable-store share of cache hits % by source",
+      "description": "Of the hits, how many came from the Mongo `resolve_*` collections rather than the in-process Caffeine layer. This is what the durable half buys over a plain in-memory cache — it is the only part that survives a worker restart. Near 0% across sources means the 5 collections + TTL-index reconciliation are carrying nothing and could be dropped.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 49
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=\"hit_store\"}[$__rate_interval])) / clamp_min(sum by (country, source) (rate(kinowo_worker_resolution_total{country=~\"$country\",outcome=~\"hit_.*\"}[$__rate_interval])), 1e-9)",
+          "legendFormat": "{{country}} {{source}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "timeseries",
+      "title": "GC — collections per second by collector",
+      "description": "How often each collector runs, per country. Young ('Copy') climbing with a flat old-gen line is normal churn; 'MarkSweepCompact' climbing is the shape that precedes a heap-exhaustion death, and pairs with the GC centi-cores line on the CPU panel.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 49
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, gc) (rate(jvm_gc_collection_seconds_count{job=\"kinowo-worker\",country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{gc}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "showPoints": "never"
+          },
+          "unit": "ops",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 14,
+      "title": "Cinema-scrape HTTP outcomes — error share, scrape phase (per country)",
+      "description": "A failure-budget view scoped to phase=\"scrape\": ONLY the cinema-site HTTP — every listing scrape, chunk scrape and per-film detail fetch — with the third-party metadata/rating/resolution APIs (phase=\"enrich\") excluded; its companion enrich-phase panel below covers those. Each error band's thickness is that error's share of scrape attempts, stacked at the floor; the empty space above is the clean remainder. This isolates cinema-scrape health from the enrichment APIs' by-design 404 slug-probing and API 429s: here a rising http_403 (a cinema Cloudflare/datacentre-IP block) or http_5xx/timeout stands out instead of hiding under the enrichment 404 noise floor. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all — a completely different problem that an error-share panel alone would hide as 'no data'.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 57
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "spanNulls": 300000,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "requests/s (all outcomes)"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\",outcome!=\"success\"}[$__rate_interval])) / scalar(sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\"}[$__rate_interval])))",
+          "legendFormat": "{{outcome}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"scrape\"}[$__rate_interval]))",
+          "legendFormat": "requests/s (all outcomes)"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Enrichment HTTP outcomes — error share, enrich phase (per country)",
+      "description": "The scrape panel's companion, scoped to phase=\"enrich\": ONLY the third-party metadata/rating/resolution APIs (TMDB/IMDb/RT/Metacritic/Filmweb/Letterboxd/Wikidata/Cinemeta), with cinema-site scraping (phase=\"scrape\") excluded. Each error band's thickness is that error's share of enrich attempts, stacked at the floor; the empty space above is the clean remainder. Reading this side on its own: a large steady http_404 band is EXPECTED — the RT/Metacritic resolvers probe up to 4 candidate slugs per title and the wrong ones 404 by design — while http_401 (a bad/missing API key) or a rising http_429 (an API rate-limiting us) is the signal to watch. Improbable codes (409/422/451/…) fold into the residual http_4xx; other categories: http_5xx=server, timeout=connect/read, connection_error=refused/DNS/reset/TLS, other=unclassified. The 'requests/s' line on the right axis exists so an empty chart is never ambiguous: a healthy requests line with no error areas means the phase is running clean, whereas a flat zero requests line means the phase has stopped making calls at all — a completely different problem that an error-share panel alone would hide as 'no data'.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 65
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 25,
+            "spanNulls": 300000,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "requests/s (all outcomes)"
+            },
+            "properties": [
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "unit",
+                "value": "reqps"
+              },
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "semi-dark-blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "100 * sum by (outcome) (rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\",outcome!=\"success\"}[$__rate_interval])) / scalar(sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\"}[$__rate_interval])))",
+          "legendFormat": "{{outcome}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum(rate(kinowo_worker_http_total{country=~\"$country\",phase=\"enrich\"}[$__rate_interval]))",
+          "legendFormat": "requests/s (all outcomes)"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "title": "Intern pool — occupancy against its cap",
+      "description": "StringPool collapses the byte-identical SourceData strings a film repeats across its per-cinema slots (one 'action', not the 66,106 copies a worker-us heap dump found). It is BOUNDED, and that bound fails SILENTLY: past the cap Caffeine evicts, the next lookup of an evicted value allocates a fresh String, and interning degrades to a no-op that still costs a hash per call. No error, no log -- just a heap that grows. MEASURED 2026-09-03 the pool sits at 28,695 of 131,072 on the US corpus (22%) and the vocabulary SATURATES -- US has 3x the UK's slots and barely more distinct strings -- so a line here should rise to a plateau near a fifth of the cap and stay there. Pinned AT the cap would be new: that is the corpus outgrowing the pool, and then the cap is the thing to raise. The cap is plotted rather than written into this text so it stays right when it is retuned.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 73
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "cap"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_string_pool_entries",
+          "legendFormat": "entries held",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_worker_string_pool_max_entries",
+          "legendFormat": "cap",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "title": "Intern pool — evictions and hit ratio",
+      "description": "The two halves of 'is the pool still paying for itself'. evictions_total flat at zero is a pool doing its job, and at 22% occupancy it should be exactly that -- any sustained climb is thrash, strings interned and immediately thrown away, so duplicates reach the heap anyway. hit_ratio is the share of lookups served an instance the pool already held: high is healthy, and a FALL alongside rising evictions is the degradation itself rather than a symptom of it. Note neither says anything about strings that never reach the pool -- interning happens only at MovieCache.buildCinemaSlot, so a rehydrate through MovieCodecs allocates fresh instances that these gauges will never see. Both are process-level (one pool per JVM, shared by every country's wiring), so neither carries a country label.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 73
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "hit ratio"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "max",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "rate(kinowo_worker_string_pool_evictions_total[5m])",
+          "legendFormat": "evictions/sec",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_worker_string_pool_hit_ratio",
+          "legendFormat": "hit ratio",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
-   ]
-  }
- ],
- "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers \u2014 pl, uk, de, us and es, each its own k3s Deployment \u2014 so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. The Fly CPU-credit panel was deleted, not broken \u2014 see the note at the top. \u00b7 NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still \u2014 the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
- "links": [
-  {
-   "type": "dashboards",
-   "title": "Application health (both tiers)",
-   "tags": [
-    "application"
-   ],
-   "asDropdown": false,
-   "targetBlank": false,
-   "icon": "external link",
-   "includeVars": true,
-   "keepTime": true,
-   "tooltip": "The overview this dashboard explains: worker on k3s and web on Fly, side by side."
-  },
-  {
-   "type": "dashboards",
-   "title": "Host-level view of k3s-worker-1",
-   "tags": [
-    "fleet"
-   ],
-   "asDropdown": false,
-   "targetBlank": false,
-   "icon": "external link",
-   "includeVars": false,
-   "keepTime": true,
-   "tooltip": "Host CPU/memory/disk \u2014 includes the k3s agent, so always above the worker's own."
-  }
- ]
+  ],
+  "description": "Why a worker is misbehaving, once the application-health dashboard has told you that one is. There are FIVE workers — pl, uk, de, us and es, each its own k3s Deployment — so every panel is scoped by the Country variable and carries the country in its legend; pick one to isolate it, or All to compare. Memory (heap, NMT native categories, the off-book gap, buffers, and the pod's real cgroup limit from kube-state-metrics), CPU split by JIT and GC, GC frequency, restarts, resolution-cache hit rates, and the error shape of the outbound HTTP the scrape and enrichment phases depend on. All from each worker's own /metrics on k3s via local-prometheus. The Fly CPU-credit panel was deleted, not broken — see the note at the top. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
+  "links": [
+    {
+      "type": "dashboards",
+      "title": "Application health (both tiers)",
+      "tags": [
+        "application"
+      ],
+      "asDropdown": false,
+      "targetBlank": false,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tooltip": "The overview this dashboard explains: worker on k3s and web on Fly, side by side."
+    },
+    {
+      "type": "dashboards",
+      "title": "Host-level view of k3s-worker-1",
+      "tags": [
+        "fleet"
+      ],
+      "asDropdown": false,
+      "targetBlank": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tooltip": "Host CPU/memory/disk — includes the k3s agent, so always above the worker's own."
+    }
+  ]
 }
