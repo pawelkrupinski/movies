@@ -9,7 +9,7 @@ import { test, expect } from '@playwright/test';
 test.describe('anonymous nag toast', { tag: '@agnostic' }, () => {
 
   test('showAnonymousNag adds .open; closeAnonymousNag removes it', async ({ page }) => {
-    await page.goto('/poznan/');
+    await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
 
     // Pre-check the toast exists in the DOM (rendered by
     // `_loginModal.scala.html`).

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { pinDateFilterAnytime, firstVisibleSlug, firstVisibleTitle } from './helpers';
+import { firstVisibleCard, pinDateFilterAnytime } from './helpers';
 
 // Mobile portrait: the search field is a floating pill at the bottom of the
 // screen, so when its keyboard is up the cards sit right behind it. The first
@@ -21,12 +21,12 @@ test.describe('search-pill tap-away on mobile portrait', () => {
       !isFloatingPillProject(testInfo.project.name),
       'floating search pill is mobile-portrait only',
     );
-    await page.goto('/poznan/');
+    await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
     await pinDateFilterAnytime(page);
   });
 
   test('a tap on a card while search is focused only dismisses — no navigation', async ({ page }) => {
-    const title = await firstVisibleTitle(page);
+    const title = (await firstVisibleCard(page))?.title;
     expect(title).toBeTruthy();
 
     // Focus the search field, as a real finger-tap on the pill would.
@@ -47,11 +47,11 @@ test.describe('search-pill tap-away on mobile portrait', () => {
   });
 
   test('a tap on a card with search NOT focused still navigates to /movie', async ({ page }) => {
-    const title = await firstVisibleTitle(page);
-    expect(title).toBeTruthy();
-    // Captured before the tap — the film page has no cards to read it from.
-    const slug = await firstVisibleSlug(page);
-    expect(slug).toBeTruthy();
+    // Captured before the tap — the film page has no cards to read them from,
+    // and one read keeps the title and the slug on the SAME card.
+    const card = await firstVisibleCard(page);
+    expect(card).toBeTruthy();
+    const { title, slug } = card!;
 
     const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
     await expect(image).toBeVisible();

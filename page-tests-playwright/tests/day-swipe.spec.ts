@@ -18,7 +18,7 @@ test.describe('day-swipe', () => {
     // Force the animated slide path (not the reduced-motion instant commit) so
     // the in-flight `.day-track--armed` assertions are deterministic.
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.goto('/poznan/?date=anytime');   // anytime → cards present regardless of wall-clock
+    await page.goto('/poznan/?date=anytime', { waitUntil: 'domcontentloaded' });   // anytime → cards present regardless of wall-clock
     const coarse = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
     test.skip(!coarse, 'day-swipe is gated to coarse pointers (phones)');
     await waitForCards(page);

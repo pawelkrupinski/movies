@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForCards } from './helpers';
+import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // The four day presets render as a `.day-pill` row backed by a visually-hidden
 // `#date-filter` <select> (the state every filter/carousel helper reads).
@@ -7,8 +7,7 @@ import { waitForCards } from './helpers';
 // Runs on every engine — no touch/CDP needed.
 test.describe('day pills', { tag: '@agnostic' }, () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/poznan/?date=anytime');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/?date=anytime');
   });
 
   test('exactly one pill is active and it matches the hidden select', async ({ page }) => {

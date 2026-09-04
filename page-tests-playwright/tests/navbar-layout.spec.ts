@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { waitForCards, pinDateFilterAnytime, measureGridRatio } from './helpers';
+import { gotoAndWaitForCards, measureGridRatio, pinDateFilterAnytime, waitForCards } from './helpers';
 
 // Consolidated navbar layout spec — covers control-height uniformity,
 // orientation stability, compact-landscape constraints, and grid
@@ -93,8 +93,7 @@ function expectUniform(
 test.describe('navbar uniformity — desktop', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('text controls + inputs share a single font-size', async ({ page }) => {
@@ -117,8 +116,7 @@ test.describe('navbar uniformity — mobile portrait', () => {
     const name = testInfo.project.name;
     const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
     test.skip(!isPortraitMobile, 'mobile portrait only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('text controls + inputs share a single font-size', async ({ page }) => {
@@ -159,8 +157,7 @@ test.describe('mobile portrait — floating search pill', () => {
     const name = testInfo.project.name;
     const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
     test.skip(!isPortraitMobile, 'mobile portrait only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('the search box floats as a near-transparent, barely-blurred capsule low at the bottom', async ({ page }) => {
@@ -237,8 +234,7 @@ test.describe('mobile portrait — active day-pill highlight fills its rounded c
     const name = testInfo.project.name;
     const isPortraitMobile = !name.includes('desktop') && !name.includes('landscape');
     test.skip(!isPortraitMobile, 'mobile portrait only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('the active end day-pill does not jam the logo or Filtry and the row reads symmetric', async ({ page }) => {
@@ -337,8 +333,7 @@ test.describe('logged-in avatar pill height', () => {
   // desktop Safari too, so gating this to mobile-portrait (as it once was) let
   // the bug slip through on exactly the engine the user hit it on.
   test.beforeEach(async ({ page }) => {
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
     await injectAuthMenu(page);
   });
 
@@ -450,8 +445,7 @@ test.describe('avatar pill without Bootstrap CSS', () => {
   test.beforeEach(async ({ page }) => {
     // Drop the Bootstrap stylesheet on the floor — simulate it never applying.
     await page.route(/bootstrap.*\.css$/, (route) => route.abort());
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
     await injectAuthMenu(page);
   });
 
@@ -510,8 +504,7 @@ test.describe('avatar pill on a desktop browser narrowed to mobile width', () =>
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
     await page.setViewportSize({ width: 400, height: 800 });
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
     await injectAuthMenu(page);
   });
 
@@ -592,8 +585,7 @@ test.describe('tablet portrait — search focus does not reflow the date row (83
     // Desktop-class projects only — non-emulated browsers we can drive to
     // a tablet-portrait viewport that runs the desktop navbar layout.
     test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('the date stepper stays put when the search box is focused', async ({ page }) => {
@@ -632,8 +624,7 @@ test.describe('tablet portrait — search focus does not reflow the date row (83
 test.describe('navbar uniformity — mobile landscape', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('landscape'), 'landscape projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('text controls + inputs share a single font-size', async ({ page }) => {
@@ -658,8 +649,7 @@ test.describe('navbar orientation uniformity', () => {
       name.includes('landscape') || name.includes('desktop'),
       'rotates viewport itself — bare mobile portrait projects only',
     );
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('every control keeps its height after rotating to landscape', async ({ page }) => {
@@ -699,8 +689,7 @@ test.describe('narrow landscape (760×360)', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('navbar is compact — height ≤ 42px', async ({ page }) => {
@@ -756,8 +745,7 @@ test.describe('portrait filtry button (360×760)', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('Filtry button right edge stays inside viewport', async ({ page }) => {
@@ -782,8 +770,7 @@ test.describe('day pills (390×844)', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('all four day pills are visible, inside the navbar, and not clipped', async ({ page }) => {
@@ -827,8 +814,7 @@ test.describe('day pills spread to fill the bar (440×956)', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile-class projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('the day-pill row fills the gap between the logo and the Filtry button', async ({ page }) => {
@@ -881,8 +867,7 @@ test.describe('navbar order — search position vs the day pills', () => {
       // mobile-emulation projects' fixed viewports fighting `setViewportSize`.
       test.skip(!testInfo.project.name.includes('desktop'), 'desktop projects only');
       await page.setViewportSize(viewport);
-      await page.goto('/poznan/');
-      await waitForCards(page);
+      await gotoAndWaitForCards(page, '/poznan/');
 
       if (viewport.width <= 575) {
         // Portrait: search is the bottom-floating pill — not a row control. It
@@ -938,8 +923,7 @@ test.describe('orientation flip: portrait → landscape', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('navbar controls become uniform 28px and height ≤ 42px after rotating', async ({ page }) => {
@@ -983,8 +967,7 @@ test.describe('orientation flip: landscape → portrait', () => {
 
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(testInfo.project.name.includes('desktop'), 'mobile projects only');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   test('grid switches from 6 cols in landscape to 2 cols in portrait', async ({ page }) => {

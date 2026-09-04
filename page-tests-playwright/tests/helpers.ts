@@ -86,6 +86,25 @@ export async function gotoAndWaitForCards(page: Page, url: string): Promise<void
 }
 
 /**
+ * Reload the page, settling at DOMContentLoaded.
+ *
+ * `page.reload()` defaults to `waitUntil: 'load'`, which blocks until every
+ * poster image has loaded — the same stall `gotoAndWaitForCards` documents for
+ * `goto`, and it bites harder here because a reload re-requests the whole
+ * grid's posters at once. On a contended runner that ate the entire 30s test
+ * budget (seen on `firefox-galaxy-s10-zoomed` › filtry-cinemas), and the
+ * timeout points at the reload rather than at anything the test is asserting.
+ *
+ * Everything a spec reads after a reload — the cards, the navbar, the inline
+ * boot script that restores `localStorage` state — is server-rendered or runs
+ * during parse, so DCL is the honest settle point. Follow with `waitForCards`
+ * where the cards themselves are the subject.
+ */
+export async function reload(page: Page): Promise<void> {
+  await page.reload({ waitUntil: 'domcontentloaded' });
+}
+
+/**
  * Read a JSON value out of `localStorage`. Returns `null` if the key
  * is absent or holds invalid JSON. Generic so callers can narrow the
  * return type without an `as` cast at the call site.
@@ -148,38 +167,84 @@ export async function measureGridRatio(page: Page): Promise<number> {
   });
 }
 
-/** Display title of the first genuinely-visible card. */
-export async function firstVisibleTitle(page: Page): Promise<string | null> {
-  return firstVisibleCardField(page, 'title');
+/** One listing card's identity, as the page itself spells both halves. */
+export interface VisibleCard {
+  /** `data-title` — the film's display title. */
+  title: string;
+  /** `data-slug` — the server's own `Slugify` output, and the path segment of
+   *  the card's canonical `/{city}/movie/{slug}` address. Read from the DOM
+   *  rather than re-implementing the fold in TypeScript: the fold handles
+   *  Polish and German diacritics, ß, and Cyrillic, and a second copy of those
+   *  rules would drift from the Scala one. */
+  slug: string;
 }
 
 /**
- * The same card's `data-slug` — the server's own `Slugify` output, and the path
- * segment of its canonical `/{city}/movie/{slug}` address. Read from the DOM
- * rather than re-implementing the fold in TypeScript: the fold handles Polish
- * and German diacritics, ß, and Cyrillic, and a second copy of those rules
- * would drift from the Scala one.
+ * In-page pick of the first card worth targeting: inline `style.display` isn't
+ * `none`, and its `<img>` is still visible (i.e. the `onerror` fallback chain
+ * didn't `display:none` it). `applyFilters` re-appends visible cards after
+ * hidden ones, so `querySelector` lands on a hidden one — explicitly walking +
+ * checking is engine-agnostic.
+ *
+ * With `settled`, the poster must also have FINISHED loading — see
+ * `firstVisibleCard`.
  */
-export async function firstVisibleSlug(page: Page): Promise<string | null> {
-  return firstVisibleCardField(page, 'slug');
-}
+const firstVisibleCardIn = (settled: boolean): VisibleCard | null => {
+  for (const c of document.querySelectorAll<HTMLElement>('.col[data-title]')) {
+    if (c.style.display === 'none') continue;
+    const img = c.querySelector<HTMLImageElement>('.poster-wrap > a img');
+    if (!img || img.style.display === 'none') continue;
+    if (settled && !(img.complete && img.naturalWidth > 0)) continue;
+    const { title, slug } = c.dataset;
+    if (!title || !slug) continue;
+    return { title, slug };
+  }
+  return null;
+};
+
+/** How long to wait for SOME card's poster to finish loading, and how often to
+ *  look.
+ *
+ *  Both are deliberately modest. The budget is a small slice of the 30s test
+ *  timeout, so a runner with no route to the poster proxy still reaches the
+ *  caller's own assertion instead of tripping the timeout in here. And the
+ *  polling is on an INTERVAL rather than `waitForFunction`'s default `raf`:
+ *  the predicate walks every `.col[data-title]` on the page, of which a city
+ *  listing has ~1000, and re-running that on every animation frame is enough
+ *  CPU on a contended runner to starve the very page loads it is waiting for. */
+const PosterSettleTimeoutMs = 5_000;
+const PosterSettlePollMs = 250;
 
 /**
- * First card whose inline `style.display` isn't `none` AND whose
- * `<img>` is still visible (i.e. the `onerror` fallback chain didn't
- * `display:none` it). `applyFilters` re-appends visible cards after
- * hidden ones, so `querySelector` lands on a hidden one — explicitly
- * walking + checking is engine-agnostic.
+ * The first visible card, preferring one whose poster has SETTLED — finished
+ * loading, successfully (`complete && naturalWidth > 0`).
+ *
+ * Callers use the answer to build a `[data-title=…] … img` locator and `tap()`
+ * it, and a poster that is still in flight — or walking its `onerror` fallback
+ * chain through `data-fallbacks` — keeps re-laying-out. Playwright's tap
+ * actionability check wants "visible, enabled and stable", and a moving image
+ * never gives it two consecutive frames with the same box, so `tap()` spends the
+ * whole 30s test budget on an element `toBeVisible()` passed a line earlier.
+ * That is the CI flake seen as `webkit-iphone-13-zoomed` › search-tap-dismiss,
+ * on a weserv-proxied poster: the failure reads as a mystery timeout precisely
+ * because visibility was never the problem.
+ *
+ * BOTH halves of the identity come back from ONE evaluation, and that is
+ * load-bearing rather than a convenience: which card is "first settled" moves as
+ * posters land, so reading the title and the slug in two calls could name two
+ * different films — the test then taps one card and asserts the other's slug.
  */
-async function firstVisibleCardField(page: Page, field: 'title' | 'slug'): Promise<string | null> {
-  return page.evaluate((key) => {
-    const cols = [...document.querySelectorAll<HTMLElement>('.col[data-title]')];
-    for (const c of cols) {
-      if (c.style.display === 'none') continue;
-      const img = c.querySelector<HTMLImageElement>('.poster-wrap > a img');
-      if (!img || img.style.display === 'none') continue;
-      return c.dataset[key] ?? null;
-    }
-    return null;
-  }, field);
+export async function firstVisibleCard(page: Page): Promise<VisibleCard | null> {
+  const settled = await page
+    .waitForFunction(firstVisibleCardIn, true, {
+      timeout: PosterSettleTimeoutMs,
+      polling: PosterSettlePollMs,
+    })
+    .then((handle) => handle.jsonValue() as Promise<VisibleCard | null>)
+    .catch(() => null);
+  if (settled) return settled;
+  // The page can be gone by now — a test that blew its budget is torn down
+  // while this is in flight, and an "already closed" rejection here would
+  // replace the real timeout with a confusing one.
+  return page.evaluate(firstVisibleCardIn, false).catch(() => null);
 }

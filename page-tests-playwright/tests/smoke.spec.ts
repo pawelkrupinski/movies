@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleSlug, firstVisibleTitle, getVisibleTitles, setDateFilter, waitForCards } from './helpers';
+import { firstVisibleCard, getVisibleTitles, gotoAndWaitForCards, setDateFilter, waitForCards } from './helpers';
 
 // Broad-strokes liveness check against kinowo.net. The home page
 // 200s with at least one visible card, the date filter narrows the
@@ -14,7 +14,7 @@ const visibleCardCount = async (page: import('@playwright/test').Page) =>
 
 test.describe('kinowo.net smoke', { tag: '@agnostic' }, () => {
   test('home page renders at least one visible card', async ({ page }) => {
-    const resp = await page.goto('/poznan/');
+    const resp = await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
     expect(resp?.status()).toBe(200);
     await waitForCards(page);
     await setDateFilter(page, 'anytime');
@@ -22,8 +22,7 @@ test.describe('kinowo.net smoke', { tag: '@agnostic' }, () => {
   });
 
   test('date filter narrows the visible set', async ({ page }) => {
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
 
     await setDateFilter(page, 'anytime');
     const anytimeCount = await visibleCardCount(page);
@@ -39,22 +38,22 @@ test.describe('kinowo.net smoke', { tag: '@agnostic' }, () => {
   });
 
   test('film detail page renders title from home selection', async ({ page }) => {
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
     await setDateFilter(page, 'anytime');
-    const title = await firstVisibleTitle(page);
-    expect(title).toBeTruthy();
+    // One read, so the title asserted below and the slug navigated to are the
+    // SAME card — see `firstVisibleCard`.
+    const card = await firstVisibleCard(page);
+    expect(card).toBeTruthy();
+    const { title, slug } = card!;
 
     // `domcontentloaded`: the `/movie` page's `load` event waits on
     // poster-proxy images + the trailer iframe, which can stall the full
     // timeout on a contended runner. The status + server-rendered title we
     // assert on are present at DCL.
-    const slug = await firstVisibleSlug(page);
-    expect(slug).toBeTruthy();
     const resp = await page.goto(`/poznan/movie/${slug}`, { waitUntil: 'domcontentloaded' });
     expect(resp?.status()).toBe(200);
     // Don't pin to a specific element — view templates evolve. The
     // contract is just "the film's title shows up on its detail page".
-    await expect(page.locator('body')).toContainText(title!);
+    await expect(page.locator('body')).toContainText(title);
   });
 });

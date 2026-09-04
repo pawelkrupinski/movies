@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { setLocalStorageJson } from './helpers';
+import { reload, setLocalStorageJson } from './helpers';
 
 // Whether the hidden-films modal is currently open, read from the
 // `.open` class on `#hidden-modal-backdrop`. Returns `null` if the
@@ -19,15 +19,12 @@ const isModalOpen = (page: Page): Promise<boolean | null> =>
 test.describe('hidden films modal UI', { tag: '@agnostic' }, () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/poznan/');
+    await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
     await setLocalStorageJson(page, 'hiddenFilms', ['Avatar', 'Cars']);
-    // `reload()` defaults to waiting for `load` — that needs every poster
-    // (~190 cards, each routed through `images.weserv.nl`) to finish, which
-    // on the CI webkit-iphone-13 runner regularly blows past the 30s test
-    // timeout. We only need the page's `DOMContentLoaded`-bound init to
-    // run so `updateNavbar()` picks up the localStorage we just set —
-    // image fetches are irrelevant to anything this spec asserts.
-    await page.reload({ waitUntil: 'domcontentloaded' });
+    // Only the page's `DOMContentLoaded`-bound init has to run, so
+    // `updateNavbar()` picks up the localStorage we just set; the poster
+    // fetches a `load` wait would block on are irrelevant here. See `reload`.
+    await reload(page);
   });
 
   test('the Ukryte filmy row opens the modal + the count badge reflects the set size', async ({ page }) => {

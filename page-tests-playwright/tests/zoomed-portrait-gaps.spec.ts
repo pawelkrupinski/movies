@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForCards } from './helpers';
+import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // At 150% display zoom the CSS viewport shrinks to 240×507 (Galaxy S10).
 // The `--ms` scale variable clamps to its 0.85 floor, and Bootstrap's
@@ -19,8 +19,7 @@ test.describe('zoomed portrait card gaps', () => {
     // calendar advances past the fixture's last screenings it eventually shows
     // only one film in Poznań — too few for the "two cards on one row" pair this
     // spec measures the gap between. "anytime" always renders the full grid.
-    await page.goto('/poznan/?date=anytime');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/?date=anytime');
   });
 
   test('cards have visible horizontal gap, body padding, and column gutter', async ({ page }) => {

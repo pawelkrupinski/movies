@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForCards } from './helpers';
+import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // Locks landscape mobile to the one-row desktop layout. A previous
 // iteration hid the logo and reflowed the navbar into two rows; on
@@ -11,8 +11,7 @@ test.describe('mobile landscape layout', () => {
   test.beforeEach(async ({ page }, testInfo) => {
     test.skip(!testInfo.project.name.includes('landscape'),
       'landscape layout only applies to landscape projects');
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
   });
 
   // ── Navbar: same as portrait/desktop on one row ─────────────

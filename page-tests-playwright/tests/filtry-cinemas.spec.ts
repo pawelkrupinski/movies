@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { getLocalStorageJson, pinDateFilterAnytime } from './helpers';
+import { getLocalStorageJson, pinDateFilterAnytime, reload } from './helpers';
 
 // Filtry > Kina section: per-cinema checkboxes + the master
 // "Wszystkie kina" checkbox. Unchecking a cinema hides its
@@ -18,7 +18,7 @@ const visibleCinemaGroups = (page: import('@playwright/test').Page) =>
 test.describe('Filtry > Kina checkboxes', { tag: '@agnostic' }, () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/poznan/');
+    await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
     await pinDateFilterAnytime(page);
   });
 
@@ -102,6 +102,11 @@ test.describe('Filtry > Kina checkboxes', { tag: '@agnostic' }, () => {
   });
 
   test('Wszystkie kina master checkbox un-disables everything', async ({ page }) => {
+    // The only test here that RELOADS, and a city listing is ~2.3 MB of HTML:
+    // re-fetching and re-parsing it costs Firefox most of the default budget
+    // on its own, before this test has asserted anything. Genuinely slow rather
+    // than racy, so say so and take the tripled timeout.
+    test.slow();
     // Pre-seed every cinema as disabled. `ALL_CINEMAS` is a `const`
     // in `_sharedJsConfig`'s script — script-scoped, not on
     // `globalThis` — so string-form `evaluate` is the way to read it
@@ -109,7 +114,7 @@ test.describe('Filtry > Kina checkboxes', { tag: '@agnostic' }, () => {
     await page.evaluate<void>(
       `localStorage.setItem('disabledCinemas', JSON.stringify(ALL_CINEMAS))`,
     );
-    await page.reload();
+    await reload(page);
     await pinDateFilterAnytime(page);
 
     // With every cinema disabled, no .cinema-group is visible.

@@ -8,7 +8,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Filtry dropdown panel', { tag: '@agnostic' }, () => {
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/poznan/');
+    await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('#format-filter-btn', { state: 'visible' });
   });
 

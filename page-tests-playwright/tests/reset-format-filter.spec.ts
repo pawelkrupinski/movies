@@ -14,7 +14,7 @@ import { pinDateFilterAnytime } from './helpers';
 test.describe('Filtry > Wyczyść', { tag: '@agnostic' }, () => {
 
   test('resets every format axis and the from-hour pickers', async ({ page }) => {
-    await page.goto('/poznan/');
+    await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
     await pinDateFilterAnytime(page);
 
     // Pile on every active axis the panel exposes so the reset has

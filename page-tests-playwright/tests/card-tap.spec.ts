@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { firstVisibleSlug, firstVisibleTitle, pinDateFilterAnytime } from './helpers';
+import { firstVisibleCard, pinDateFilterAnytime } from './helpers';
 
 // Single-tap card navigation — tapping a poster or title link goes
 // straight to the /movie detail page on every browser. Icons (★, ✕)
@@ -16,7 +16,7 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
       !testInfo.project.name.startsWith('webkit') || !testInfo.project.use.hasTouch,
       'webkit projects with touch (iPhone emulation) only',
     );
-    await page.goto('/poznan/');
+    await page.goto('/poznan/', { waitUntil: 'domcontentloaded' });
     await pinDateFilterAnytime(page);
   });
 
@@ -34,13 +34,12 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
   // poster dimensions; tapping it dispatches a click event that
   // bubbles up to the `<a>` exactly as a real-finger tap would.
   test('tap on a card poster image navigates to /movie', async ({ page }) => {
-    const title = await firstVisibleTitle(page);
-    expect(title).toBeTruthy();
-    // Read the card's own `data-slug` (the server's `Slugify` output) while
-    // the listing is still on screen — after the tap there are no cards left
-    // to read it from. Beats re-deriving the fold in TypeScript.
-    const slug = await firstVisibleSlug(page);
-    expect(slug).toBeTruthy();
+    // Title AND slug in one read, while the listing is still on screen — after
+    // the tap there are no cards left to read them from, and two reads could
+    // name two different films (see `firstVisibleCard`).
+    const card = await firstVisibleCard(page);
+    expect(card).toBeTruthy();
+    const { title, slug } = card!;
 
     const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
     await expect(image).toBeVisible();
@@ -59,7 +58,7 @@ test.describe('card poster link on WebKit (iPhone emulation)', { tag: '@agnostic
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    const title = await firstVisibleTitle(page);
+    const title = (await firstVisibleCard(page))?.title;
     expect(title).toBeTruthy();
     const image = page.locator(`.col[data-title="${title}"] .card .poster-wrap > a img`);
     await expect(image).toBeVisible();

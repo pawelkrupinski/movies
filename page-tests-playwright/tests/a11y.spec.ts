@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { firstVisibleSlug, waitForCards } from './helpers';
+import { firstVisibleCard, gotoAndWaitForCards, waitForCards } from './helpers';
 
 // axe-core mechanical accessibility audit. Catches ~30-57% of WCAG
 // issues without manual review — colour contrast, missing alt text,
@@ -33,8 +33,7 @@ test.describe('axe-core WCAG audit', () => {
   });
 
   test('home page has no axe violations', async ({ page }) => {
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
     const result = await new AxeBuilder({ page })
       .withTags([...WCAG_TAGS])
       // Known-failing rule on the dark navbar / card-body chrome:
@@ -54,9 +53,8 @@ test.describe('axe-core WCAG audit', () => {
   });
 
   test('film detail page has no axe violations', async ({ page }) => {
-    await page.goto('/poznan/');
-    await waitForCards(page);
-    const slug = await firstVisibleSlug(page);
+    await gotoAndWaitForCards(page, '/poznan/');
+    const slug = (await firstVisibleCard(page))?.slug;
     expect(slug).toBeTruthy();
     // `domcontentloaded`: the axe scan runs against the server-rendered
     // DOM, which is complete at DCL — no need to block on the poster-proxy

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForCards } from './helpers';
+import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // The signed-out "Zaloguj" pill lives in the navbar on DESKTOP only. On
 // mobile — both portrait (≤575px) and phone-landscape (height ≤500px) —
@@ -20,8 +20,7 @@ function isMobileViewport(vw: number, vh: number): boolean {
 
 test.describe('navbar "Zaloguj" visibility', () => {
   test('hidden on mobile, shown on desktop', async ({ page }) => {
-    await page.goto('/poznan/');
-    await waitForCards(page);
+    await gotoAndWaitForCards(page, '/poznan/');
 
     const login = page.locator('.nav-tab-login');
     // Anonymous + provider-configured render always emits the button.
