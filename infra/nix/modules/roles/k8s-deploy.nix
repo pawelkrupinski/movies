@@ -1,10 +1,23 @@
-# HOW CI ROLLS A NEW IMAGE OUT, and the reason it is not simply "give CI a kubeconfig".
+# ⚠️ BREAK-GLASS ONLY. CI NO LONGER USES THIS.
 #
-# The problem is the same one nix/modules/fleet/deploy-staging.nix solves for closures: a GitHub
-# Actions runner has to be able to change production, and anything it holds is one leaked secret
-# away from being an attacker's. A kubeconfig for this cluster is cluster-admin -- k3s writes one
-# admin credential and no other -- so handing CI that would trade a rollout for the whole cluster,
-# including every Secret in it.
+# This was how CI rolled a new image out, and every word below about how it is bounded still holds.
+# What changed is that nothing calls it on a push any more: the running image is a fact in git,
+# image-automation writes the winning tag into infra/kubernetes/<tier>/base/all.yaml, and
+# kustomize-controller applies it. `K8sTierPathGatingSpec` asserts main.yml holds neither the key
+# nor this endpoint's address, because CI reaching for it again would fight Flux for the image
+# field -- CI writing the commit SHA tag, Flux writing the automation's, each reverting the other
+# every reconcile and rolling every pod in between.
+#
+# IT IS KEPT ON PURPOSE, for the case where Flux itself is what is broken and an image has to be
+# moved by hand. The key still exists as the `K8S_DEPLOY_SSH_KEY` secret; it is simply unused. If
+# that case stops being plausible, delete the role, the secret and the account together -- an
+# unused credential that still works is worse than either having it or not.
+#
+# WHY IT IS AN ssh FORCED COMMAND RATHER THAN "give CI a kubeconfig". The problem is the same one
+# nix/modules/fleet/deploy-staging.nix solves for closures: a GitHub Actions runner has to be able
+# to change production, and anything it holds is one leaked secret away from being an attacker's.
+# A kubeconfig for this cluster is cluster-admin -- k3s writes one admin credential and no other --
+# so handing CI that would trade a rollout for the whole cluster, including every Secret in it.
 #
 # So the same shape is used instead: an ssh key pinned to a FORCED COMMAND. The holder cannot get a
 # shell, cannot run kubectl, and cannot name a resource. It can send one string -- an image

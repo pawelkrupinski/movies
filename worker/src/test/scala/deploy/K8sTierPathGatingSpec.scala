@@ -162,20 +162,46 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "be recorded only by a deploy that actually rolled" in {
+  it should "be recorded only by a run whose build actually produced an image" in {
+    // ⚠️ WHAT THIS MARKER MEANS CHANGED WHEN CI STOPPED DEPLOYING. It used to be
+    // written after `rollout status` returned, so it recorded what was LIVE. CI no
+    // longer rolls anything — image-automation commits the winning tag and
+    // kustomize-controller applies it — so it now records that an image was BUILT
+    // AND PUSHED for this commit, which is exactly what the gate above asks.
+    //
+    // The load-bearing half survives the change unaltered: the marker must move
+    // only on success, and only from a job that needed the build. A marker moved
+    // regardless — `if: always()`, or in a job that did not need `build-$tier` —
+    // would advance the base past a commit no image exists for, and the next push
+    // would diff from it and skip work that was never shipped. That is the
+    // 2026-08-31 shape: merged, stale, and nothing red.
     Seq("web", "worker").foreach { tier =>
-      val deploy = job(s"deploy-$tier")
-      withClue(s"deploy-$tier never moves its marker, so the base can never advance: ")(
-        deploy should include(s"refs/tags/deployed-$tier"))
-      // The endpoint waits on `rollout status`, so a marker written in a LATER step
-      // than the roll is a record of what is live. One written before it — or in a
-      // step with `if: always()` — would record an attempt.
-      val rollAt   = deploy.indexOf("Roll the new image onto k3s")
-      val recordAt = deploy.indexOf(s"Record what the $tier tier is now running")
-      withClue(s"deploy-$tier records its marker before it rolls: ")(recordAt should be > rollAt)
-      withClue(s"deploy-$tier records its marker even when the roll failed: ")(
-        deploy.substring(recordAt) should not include "if: always()")
+      val record = job(s"record-$tier")
+      withClue(s"record-$tier never moves its marker, so the base can never advance: ")(
+        record should include(s"refs/tags/deployed-$tier"))
+      withClue(s"record-$tier moves its marker even when the build failed: ")(
+        record should not include "if: always()")
+      withClue(s"record-$tier would move its marker on a branch or a dispatch: ")(
+        record should include("github.ref == 'refs/heads/main' && github.event_name == 'push'"))
     }
+  }
+
+  /**
+   * AND CI MUST NOT DEPLOY. The ssh forced command that used to roll images is
+   * retired: the pin lives in git, image-automation writes it, and
+   * kustomize-controller applies it. If a roll ever reappears here it would fight
+   * Flux for the image field — CI writing the commit SHA tag, Flux writing the
+   * automation's tag, each reverting the other every reconcile and rolling every
+   * pod in between. The endpoint itself survives in k8s-deploy.nix as break-glass
+   * for when Flux is the thing that is broken; what must not come back is CI
+   * reaching for it on every push.
+   */
+  it should "not deploy at all — Flux does that now" in {
+    val workflow = RepoFile.read(".github/workflows/main.yml")
+    withClue("CI is holding the cluster deploy key again: ")(
+      workflow should not include "K8S_DEPLOY_SSH_KEY")
+    withClue("CI is rolling images again, which fights image-automation: ")(
+      workflow should not include "k8sdeploy@")
   }
 
   /**
@@ -192,48 +218,65 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * Building and DEPLOYING stay separate jobs: a failed build must not be able to
-   * roll an image out, and a failed deploy has to be distinguishable from a failed
-   * build in the run list — the two have completely different fixes. Both were
-   * called out explicitly in the workflows this replaced.
+   * Building and RECORDING stay separate jobs, and the reason outlived the deploy
+   * they were split for. `build-$tier` runs sbt and a Docker build — arbitrary
+   * project code — while `record-$tier` holds a `contents: write` token. Folding
+   * the marker step into the build would hand that token to the build, which is
+   * the difference between a build that could push to this repository and one
+   * that could not. The `needs:` also still means a failed build cannot advance
+   * the marker past a commit no image exists for.
    */
-  "each tier" should "deploy from a job that needs its build" in {
-    job("deploy-web") should include("needs: build-web")
-    job("deploy-worker") should include("needs: build-worker")
+  "each tier" should "record from a job that needs its build" in {
+    job("record-web") should include("needs: build-web")
+    job("record-worker") should include("needs: build-worker")
   }
 
   /**
-   * …and each deploy job reads ITS OWN tier's answer. Crossing these over is the
-   * other one-word edit that reinstates the bug.
+   * …and each job reads ITS OWN tier's answer. Crossing these over is the other
+   * one-word edit that reinstates the bug.
    */
-  it should "gate its deploy on its own tier's changed-paths answer" in {
-    job("deploy-web") should include("needs.build-web.outputs.changed == 'true'")
-    job("deploy-worker") should include("needs.build-worker.outputs.changed == 'true'")
+  it should "gate its marker on its own tier's changed-paths answer" in {
+    job("record-web") should include("needs.build-web.outputs.changed == 'true'")
+    job("record-worker") should include("needs.build-worker.outputs.changed == 'true'")
   }
 
   /**
-   * Separate concurrency groups, because the two tiers are independent rollouts:
-   * one group would make a web deploy queue behind a worker deploy for no reason,
-   * and GitHub keeps only one running plus one pending per group.
+   * Separate concurrency lanes, because the two tiers are independent: one group
+   * would make a web run queue behind a worker run for no reason, and GitHub keeps
+   * only one running plus one pending per group.
+   *
+   * The lanes matter for a second reason now that these jobs only move a tag.
+   * Concurrent writes to the same ref are last-write-wins, and the loser could be
+   * the NEWER commit — walking the marker backwards and re-shipping work already
+   * covered. `cancel-in-progress: false` on a lane of its own is what serialises
+   * them.
    */
-  it should "roll out on a concurrency lane of its own" in {
-    job("deploy-web") should include("group: deploy-web-k8s")
-    job("deploy-worker") should include("group: deploy-worker-k8s")
+  it should "move its marker on a concurrency lane of its own" in {
+    job("record-web") should include("group: record-web-marker")
+    job("record-worker") should include("group: record-worker-marker")
   }
 
   /**
-   * BOTH TAGS, ALWAYS. The SHA tag is what a deploy pins, so a restarted pod comes
-   * back on the exact build that was deployed; `latest` exists only so a
+   * THREE TAGS, ALWAYS, each with a different job — and it used to be two. The SHA
+   * tag is provenance, mapping a running pod back to a commit. The
+   * `main-<utc>-<sha7>` tag is the one that DEPLOYS, because image automation
+   * picks the newest by sorting and neither of the others sorts (that pairing is
+   * guarded end-to-end by FluxImageAutomationSpec). `latest` survives only so a
    * hand-applied manifest resolves to something.
+   *
+   * There is no longer a deploy job to assert against: what pins production is the
+   * `image:` line in the tier's base manifest, which image-automation writes.
    */
-  it should "push the SHA tag a deploy pins, alongside latest" in {
+  it should "push all three tags, so a build can be traced and deployed" in {
     Seq("web", "worker").foreach { tier =>
       val build = job(s"build-$tier")
       build should include(s"movies-$tier:$${{ github.sha }}")
       build should include(s"movies-$tier:latest")
-      job(s"deploy-$tier") should include(s"movies-$tier:$${{ github.sha }}")
-      withClue(s"deploy-$tier rolls out `latest`, which nothing records: ") {
-        job(s"deploy-$tier") should not include s"movies-$tier:latest"
+      withClue(s"build-$tier pushes no sortable tag, so nothing would ever deploy: ") {
+        build should include(s"movies-$tier:$${{ steps.tag.outputs.value }}")
+      }
+      withClue(s"$tier's manifest is pinned to a moving tag: ") {
+        RepoFile.read(s"infra/kubernetes/$tier/base/all.yaml") should not include ":latest"
       }
     }
   }

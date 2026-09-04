@@ -19,16 +19,17 @@ on:
 # account and a push wants all 20 (see the RUNNER BUDGET note in ci.yml),
 # so two overlapping pushes would otherwise halve each other.
 #
-# WHAT THAT COSTS NOW THAT THE k3s DEPLOYS LIVE HERE, stated rather than left to
-# be rediscovered: a superseding push cancels an in-flight `deploy-web` /
-# `deploy-worker` too, and no job-level `cancel-in-progress: false` can refuse a
-# workflow-level cancellation. It cancels the ssh call that is WATCHING the
-# rollout, not the rollout: the forced command on monitoring-1 has already run
-# `kubectl set image`, and the k8s controller finishes replacing the pods with
-# or without a watcher (infra/nix/modules/roles/k8s-deploy.nix). What is lost is
-# the "did it come up?" answer, and the newer run is on its way with a newer
-# image anyway. Do not trade the cancellation away to recover it — the runner
-# budget above depends on it.
+# WHAT THAT COSTS NOW THAT THE k3s DEPLOY NO LONGER HAPPENS HERE AT ALL, stated
+# rather than left to be rediscovered: a superseding push cancels an in-flight
+# `record-web` / `record-worker` too, and no job-level `cancel-in-progress: false`
+# can refuse a workflow-level cancellation. It used to cancel an ssh call that was
+# WATCHING a rollout; there is no rollout here any more, so what it cancels is the
+# marker write — and that is survivable precisely because the gate MEASURES FROM
+# the marker rather than from the push's parent: a cancelled run leaves its commit
+# inside the next push's interval instead of dropping it. The deploy is untouched
+# either way, because CI does not perform one: the image is in GHCR, and
+# image-automation ships it on its own schedule. Do not trade the cancellation
+# away — the runner budget above depends on it.
 #
 # The Fly deploy JOB has NO concurrency group of its own, deliberately: GitHub
 # keeps one running plus one pending per group, so a group covering a tier
@@ -43,8 +44,8 @@ concurrency:
 #
 #                                                             ┌─► deploy (6 Fly apps, all disabled)
 #   ci (reusable workflow — lint, test, integration,          ├─► kick-convergence
-#       ios/android local-server, page-tests) ─────────────── ─┼─► build-web ──► deploy-web
-#                                                             └─► build-worker ──► deploy-worker
+#       ios/android local-server, page-tests) ─────────────── ─┼─► build-web ──► record-web
+#                                                             └─► build-worker ──► record-worker
 #
 # ONE WORKFLOW, because there used to be three: this file plus
 # `build-web-image.yaml` and `build-worker-image.yaml`, which built the GHCR
@@ -188,8 +189,8 @@ jobs:
                     #
                     # THE WHOLE WEB TIER MOVED TO KUBERNETES 2026-08-29: the three sites run as pods
                     # on k3s (infra/kubernetes/web/) behind Caddy on k3s-worker-1, on domains this
-                    # project owns — kinowo.net, uk.showtimes.cc, de.showtimes.cc — built and rolled
-                    # by the `build-web` / `deploy-web` jobs at the bottom of this file. Flipping
+                    # project owns — kinowo.net and showtimes.cc, countries served as paths — built
+                    # by the `build-web` job at the bottom of this file and rolled out by Flux. Flipping
                     # `showtimes-uk` or `showtimes-de` back on would put a SECOND copy of those
                     # sites on Fly, serving the same databases from a host with none of the traffic.
                     #
@@ -236,7 +237,7 @@ jobs:
                     # MOVED TO KUBERNETES 2026-08-29, and this leg is disabled rather than deleted.
                     #
                     # The PL worker now runs as a pod on k3s (infra/kubernetes/worker/), deployed by
-                    # the `build-worker` / `deploy-worker` jobs at the bottom of this file. Its Fly
+                    # the `build-worker` job at the bottom of this file and rolled out by Flux. Its Fly
                     # machine is STOPPED, not
                     # destroyed, so `flyctl deploy` here would not merely be redundant -- it would
                     # START the machine again, and two workers would both hold change streams on
@@ -676,10 +677,12 @@ jobs:
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
-    deploy-web:
-        # SEPARATE JOB, `needs: build-web`, so a failed build cannot deploy and a failed deploy is
-        # distinguishable from a failed build in the run list — the two have completely different
-        # fixes.
+    record-web:
+        # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-web`, and the reason is the TOKEN.
+        # Moving the marker is a ref write; `build-web` runs sbt and a Docker build, which is
+        # arbitrary project code. Keeping the write-capable token in a job that does nothing but
+        # call `gh api` is the difference between a build that could push to this repository and
+        # one that could not.
         needs: build-web
         runs-on: ubuntu-latest
 
@@ -688,59 +691,36 @@ jobs:
             contents: write
 
         # The web tier's gate, at job level: `build-web` published the answer as an output, so a
-        # push that has changed nothing web-shaped SINCE THE LAST DEPLOY produces a skipped deploy
-        # rather than a rollout. Measured from the deploy marker, so a cancelled or skipped deploy
-        # leaves the change inside the interval and the next push ships it.
+        # push that changed nothing web-shaped since the last marker move skips this entirely. A
+        # cancelled or skipped run leaves the change inside the interval and the next push covers
+        # it — the property that keeps a superseding push from losing work it cancelled mid-flight.
         #
         # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image
-        # without putting it on production.
+        # without claiming one was published for production.
         if: needs.build-web.outputs.changed == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-        # ONE DEPLOY AT A TIME, AND DO NOT CANCEL A RUNNING ONE — within the limits of the
-        # workflow-level group, which can still supersede this (see the concurrency note at the top).
-        #
-        # A GROUP OF ITS OWN, separate from the worker's: the two tiers are independent rollouts and
-        # sharing a group would make a web deploy wait behind a worker deploy for no reason.
+        # ONE AT A TIME, AND DO NOT CANCEL A RUNNING ONE. Two runs moving the same tag concurrently
+        # is last-write-wins, and the loser could be the newer commit — which would walk the marker
+        # BACKWARDS and re-ship work already covered.
         concurrency:
-            group: deploy-web-k8s
+            group: record-web-marker
             cancel-in-progress: false
 
         steps:
-            - name: Roll the new image onto k3s
-              # NO kubectl, NO kubeconfig, NO cluster credential in CI AT ALL — one ssh command whose
-              # payload is an image reference, against a key pinned to a forced command on
-              # monitoring-1 (infra/nix/modules/roles/k8s-deploy.nix). That endpoint decides which
-              # Deployments an image belongs to FROM THE REPOSITORY NAME, so `movies-web` rolls
-              # web-pl/-de/-uk/-us/-es and nothing else; the same key cannot be talked into deploying
-              # anything not in its target list.
+            - name: Record that an image exists for this commit
+              # ⚠️ THIS MARKER NO LONGER MEANS "WHAT IS LIVE", AND THAT IS THE POINT OF THE CHANGE
+              # THAT RENAMED THIS JOB. It used to move only after `rollout status` returned, because
+              # CI did the rolling, over an ssh forced command carrying an image reference. CI does
+              # not deploy any more: image-automation commits the winning tag into
+              # infra/kubernetes/web/base/all.yaml and kustomize-controller applies it. What this
+              # records is "an image for this commit was built and pushed", which is exactly the
+              # question the path gate above asks and nothing more.
               #
-              # THIS IS A ROLLING UPDATE OF THE ONLY USER-FACING TIER. The Deployments carry
-              # maxUnavailable: 0 with a readiness probe, so the replacement pod serves before the
-              # old one is terminated and the site does not go dark mid-deploy.
-              env:
-                  DEPLOY_KEY: ${{ secrets.K8S_DEPLOY_SSH_KEY }}
-              run: |
-                  set -euo pipefail
-
-                  install -m 700 -d ~/.ssh
-                  printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/k8sdeploy
-                  chmod 600 ~/.ssh/k8sdeploy
-
-                  # accept-new, not `no`: the host key is pinned on first use within this ephemeral
-                  # runner and the connection is to a fixed address that terraform/primary_ips.tf
-                  # keeps stable.
-                  ssh -i ~/.ssh/k8sdeploy \
-                      -o BatchMode=yes \
-                      -o StrictHostKeyChecking=accept-new \
-                      -o ConnectTimeout=15 \
-                      k8sdeploy@128.140.49.167 \
-                      "ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}"
-
-            - name: Record what the web tier is now running
-              # AFTER the roll, and only on success — the endpoint waits on `rollout status`, so
-              # reaching here means the pods are actually serving this image. A marker moved before
-              # or regardless of that would be a record of what was attempted, and the next push
-              # would diff from a commit production never ran.
+              # WHAT IS LIVE IS NOW READ FROM GIT. The `image:` line in that manifest IS the
+              # deployed tag, and `git log` on the file is the deploy history. Whether the cluster
+              # has caught up is Flux's business, and it is ALERTED ON rather than inferred from a
+              # green CI run — nix/files/monitoring/rules/flux.rules, which exists precisely so
+              # that retiring this ssh step did not trade a loud failure for a silent one.
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
@@ -784,7 +764,7 @@ jobs:
                   base: ${{ steps.base.outputs.base }}
                   # THE WORKER TIER'S FILTER SET. `worker/**` where the web's says `web/**`, and that
                   # is the whole point: a web-only push must not reach this job's build, let alone
-                  # `deploy-worker`, because deploying a worker restarts it into a scrape storm.
+                  # its image, because a new worker image restarts it into a scrape storm.
                   patterns: |
                       worker/**
                       common/**
@@ -892,10 +872,10 @@ jobs:
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
-    deploy-worker:
-        # SEPARATE JOB, `needs: build-worker`, so a failed build cannot deploy and a failed deploy is
-        # distinguishable from a failed build in the run list — the two have completely different
-        # fixes.
+    record-worker:
+        # A JOB OF ITS OWN RATHER THAN A STEP INSIDE `build-worker`, for the token: `build-worker`
+        # runs sbt and a Docker build, and this holds a ref-write token. Keeping them apart is the
+        # difference between a build that could push to this repository and one that could not.
         needs: build-worker
         runs-on: ubuntu-latest
 
@@ -903,57 +883,30 @@ jobs:
         permissions:
             contents: write
 
-        # THE GATE THAT MATTERS. A restarted worker cold-boots into a scrape storm, so this job runs
-        # only when the worker's own inputs moved SINCE THE LAST WORKER DEPLOY — never because the
-        # web tier moved. Measuring from the deploy marker rather than the push's parent adds the
-        # other half: a worker change whose deploy was cancelled is still pending at the next push
-        # instead of being lost, and it takes exactly one restart when it finally lands.
+        # THE GATE THAT MATTERS, AND IT STILL MATTERS. A restarted worker cold-boots into a scrape
+        # storm, so the tier is rebuilt only when its own inputs moved — never because the web tier
+        # did. What changed is only what the marker MEANS: it is the last commit an image was built
+        # for, so a worker change whose run was cancelled is still inside the interval at the next
+        # push and takes exactly one restart when it lands.
         #
         # PUSHES TO main ONLY. A workflow_dispatch on a branch should be able to BUILD an image
-        # without putting it on production; separating that is the difference between "let me see if
-        # it compiles" and a deploy.
+        # without claiming one was published for production.
         if: needs.build-worker.outputs.changed == 'true' && github.ref == 'refs/heads/main' && github.event_name == 'push'
 
-        # ONE DEPLOY AT A TIME, AND DO NOT CANCEL A RUNNING ONE — within the limits of the
-        # workflow-level group, which can still supersede this (see the concurrency note at the top).
+        # ONE AT A TIME, AND DO NOT CANCEL A RUNNING ONE. Concurrent moves of the same tag are
+        # last-write-wins, and the loser could be the newer commit — walking the marker backwards
+        # and re-shipping work already covered.
         concurrency:
-            group: deploy-worker-k8s
+            group: record-worker-marker
             cancel-in-progress: false
 
         steps:
-            - name: Roll the new image onto k3s
-              # NO kubectl, NO kubeconfig, NO cluster credential in CI AT ALL. The whole interaction
-              # is one ssh command whose payload is an image reference, against a key pinned to a
-              # forced command on monitoring-1 (infra/nix/modules/roles/k8s-deploy.nix). That
-              # endpoint validates the reference against one allowed repository, patches one
-              # container in one Deployment, and waits for the rollout.
-              #
-              # The reason is that k3s writes exactly ONE credential and it is cluster-admin. Giving
-              # that to a GitHub runner would trade a worker rollout for every Secret in the cluster.
-              env:
-                  DEPLOY_KEY: ${{ secrets.K8S_DEPLOY_SSH_KEY }}
-              run: |
-                  set -euo pipefail
-
-                  install -m 700 -d ~/.ssh
-                  printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/k8sdeploy
-                  chmod 600 ~/.ssh/k8sdeploy
-
-                  # accept-new, not `no`: the host key is pinned on first use within this ephemeral
-                  # runner and the connection is to a fixed address that terraform/primary_ips.tf
-                  # keeps stable. A known_hosts file checked into the repo would be one more thing to
-                  # rotate by hand after every `convert-host`, which regenerates the host key.
-                  ssh -i ~/.ssh/k8sdeploy \
-                      -o BatchMode=yes \
-                      -o StrictHostKeyChecking=accept-new \
-                      -o ConnectTimeout=15 \
-                      k8sdeploy@128.140.49.167 \
-                      "ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}"
-
-            - name: Record what the worker tier is now running
-              # AFTER the roll, and only on success — the endpoint waits on `rollout status`, so
-              # reaching here means the pods are actually serving this image. A marker moved before
-              # or regardless of that would be a record of what was attempted, and the next push
+            - name: Record that an image exists for this commit
+              # ⚠️ THIS MARKER NO LONGER MEANS "WHAT IS LIVE" — see the note on `record-web`. CI no
+              # longer rolls anything: image-automation commits the winning tag into
+              # infra/kubernetes/worker/base/all.yaml and kustomize-controller applies it. Whether
+              # the cluster has caught up is Flux's business and is alerted on directly, rather
+              # than inferred from a green run here.
               # would diff from a commit production never ran.
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
