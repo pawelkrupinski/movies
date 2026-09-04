@@ -93,8 +93,10 @@ jobs:
                     # heap runs out first.
                     #
                     # `order`/`orderJob`/`orderSuite` split the whole-corpus
-                    # order-independence replay into a job of its own — the ONLY country
-                    # that does. The full leg boots this corpus in 167 minutes and the
+                    # order-independence replay out of the full leg — the ONLY country
+                    # that does. It runs as a second ROW of the leg's `convergence` job
+                    # rather than a job of its own, so the four countries that fold the
+                    # replay into their standard run render nothing at all for it. The full leg boots this corpus in 167 minutes and the
                     # three concurrent replays cost ~1.5x a boot again (the UK's measured
                     # ratio: 2,586s of replays against a 1,676s boot), so together they
                     # are 5.5 hours in a job GitHub cancels at 6. Every US leg before this

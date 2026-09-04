@@ -13,10 +13,11 @@ import org.scalatest.matchers.should.Matchers
  * UK's full legs, the UK's sample (slowest, largest corpus) held everyone's, and
  * one country's flap cost the day's answer for the other two.
  *
- * The fix is one reusable workflow holding a country's sample and the run(s) behind it
- * — `convergence` always, plus `order-independence` for a country whose corpus has
- * outgrown one job — called once per country. That is only correct while three things
- * hold, and none of them is visible at a glance in the YAML:
+ * The fix is one reusable workflow holding a country's sample and the run behind it,
+ * called once per country. That run is ONE job with a matrix the gate plans: a single
+ * row for a country that folds order-independence into its standard run, and a second
+ * row for the one whose corpus outgrew a single job. That is only correct while three
+ * things hold, and none of them is visible at a glance in the YAML:
  *
  *   - the pair is genuinely chained (`convergence` needs `sample`) inside the
  *     called file, where "the sample" can only mean this country's;
@@ -91,6 +92,18 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       .getOrElse(fail(s"no default declared for input `$input` in the leg workflow"))
       .group(1).toInt
 
+  /** The leg's job ids in file order — every one of which GitHub renders, for every
+   *  country that calls this file, whether or not it has anything to do. */
+  private lazy val legJobs: Seq[String] =
+    leg.linesIterator.dropWhile(_.trim != "jobs:")
+      .collect { case line if """^ {4}([\w-]+):\s*$""".r.matches(line) => line.trim.dropRight(1) }
+      .toSeq
+
+  /** The leg with its commentary stripped — for rules about what the workflow DOES, which
+   *  a comment explaining why it no longer does it would otherwise fail. */
+  private lazy val legDirectives: String =
+    leg.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
+
   /** Both jobs publish through the same composite action, so neither can drift from the
    *  other on what "publish the tree" means. */
   private val PublishAction = "uses: ./.github/actions/convergence-publish"
@@ -101,12 +114,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  the only way to read a leg while it is still running. */
   private val FindingsAction = "uses: ./.github/actions/convergence-findings"
 
-  /** The jobs that publish the tree. `order` is deliberately NOT one of them — see the
-   *  rule below that pins it. */
+  /** The jobs that publish the tree. The full run's replay ROW is deliberately not one
+   *  of them — see the rule below that pins it. */
   private val Jobs = Seq("sample", "convergence")
 
-  /** The countries that run their order-independence replay in a job of its own, as
-   *  country → that job's sbt alias. */
+  /** The countries that run their order-independence replay as a row of its own rather
+   *  than inside the full leg, as country → that row's sbt alias. */
   private lazy val splitOrder: Map[String, String] =
     rows.flatMap(fields => fields.get("order").map(fields("country") -> _)).toMap
 
@@ -335,7 +348,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * The United States' order-independence replay, split into a job of its own.
+   * The United States' order-independence replay, split out of the full leg.
    *
    * The full leg boots the corpus in 167 minutes; the three concurrent whole-corpus
    * replays cost ~1.5x a boot again (the UK's measured ratio — 2,586s of replays behind
@@ -377,24 +390,67 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       include("""Tag("services.movies.OrderIndependence")""")
   }
 
-  /** Side by side off the sample, not behind the full leg: chaining a 4-hour job to a
-   *  3-hour one is the 6-hour cancellation the split exists to escape. */
-  it should "gate the order leg on the sample rather than on the full leg" in {
-    val block = RepoFile.block(leg, "order")
+  /**
+   * The split costs the countries that DON'T split nothing at all.
+   *
+   * "A job that exists only sometimes" is not something GitHub can express: a job
+   * carrying `if: inputs.order-command != ''` is still a job, rendered and skipped in
+   * every run and posted as a skipped check-run on every commit. Four warm countries
+   * times every push was four `order-independence` entries that meant nothing, on the
+   * page where the ones that do mean something are read.
+   *
+   * So the second run is a matrix ROW the sample plans, not a job. A country that folds
+   * order-independence into its standard run expands to one row and renders nothing
+   * extra; the United States expands to two.
+   */
+  "the order-independence split" should "render nothing for a country that folds it into the standard run" in {
+    withClue("a third job would be rendered, skipped, for every country that doesn't split: ") {
+      legJobs shouldBe Seq("sample", "convergence")
+    }
+    legDirectives should not include "if: inputs.order-command"
+    RepoFile.block(leg, "convergence") should
+      include("include: ${{ fromJson(needs.sample.outputs.runs) }}")
+  }
+
+  /** Both rows carry their OWN budgets — the caller's `orderJob`/`orderSuite` — and a
+   *  row that fell back to the full leg's would be the 135/120 that cancelled the US
+   *  leg before its heap was raised. */
+  it should "plan the replay row with its own alias and its own budgets" in {
+    val plan = RepoFile.block(leg, "sample")
+    Seq("inputs.order-command", "inputs.order-job-timeout-minutes",
+        "inputs.order-suite-timeout-minutes").foreach { input =>
+      withClue(s"$input: ") { plan should include(input) }
+    }
+    withClue("the rows' ceilings must be the row's, not the job's one input: ") {
+      RepoFile.block(leg, "convergence") should include("timeout-minutes: ${{ matrix.job }}")
+      RepoFile.block(leg, "convergence") should include("timeout-minutes: ${{ matrix.suite }}")
+    }
+  }
+
+  /** Side by side off the sample, not behind the full leg: chaining a 4-hour row to a
+   *  3-hour one is the 6-hour cancellation the split exists to escape — and one row's
+   *  failure must not cancel the other's answer. */
+  it should "run its rows off the sample, independently of each other" in {
+    val block = RepoFile.block(leg, "convergence")
     block should include("needs: sample")
-    block should not include "needs: convergence"
+    block should include("fail-fast: false")
   }
 
   /** ONE writer to the rolling release per leg.
    *
-   *  `convergence` and `order` run concurrently and finish into the same
+   *  The full run's two rows run concurrently and finish into the same
    *  `enrichment-<code>.tar.gz`, and `gh release upload --clobber` is a last-writer-wins
    *  overwrite of a 428 MB asset — two in flight is how the next run restores a
-   *  truncated tree. The order leg has nothing to publish anyway: its replays share the
+   *  truncated tree. The replay row has nothing to publish anyway: its replays share the
    *  preloaded cache, and the leg that recorded that cache measured 4 live fills across
    *  the whole run. */
-  it should "leave the publish to the leg that is not racing another job for it" in {
-    RepoFile.block(leg, "order") should not include PublishAction
+  it should "leave the publish to the row that is not racing another for it" in {
+    RepoFile.block(leg, "convergence") should include(s"$PublishAction\n              if: always() && matrix.publish")
+    withClue("exactly one planned row may publish: ") {
+      val plan = RepoFile.block(leg, "sample")
+      plan should include("\"publish\":true")
+      plan should include("\"publish\":false")
+    }
   }
 
   /**
@@ -407,7 +463,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    * on the first step with a 403 that reads as a token problem rather than a config one.
    */
   it should "grant every job the contents read its checkout and fixture restore need" in {
-    Seq("sample", "convergence", "order").foreach { job =>
+    legJobs.foreach { job =>
       withClue(s"$job: ") {
         RepoFile.block(leg, job) should include regex """\bcontents:\s*(read|write)\b"""
       }
@@ -415,15 +471,13 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "render every suite job's findings through the one report" in {
-    Seq("convergence", "order").foreach { job =>
-      withClue(s"$job: ") { RepoFile.block(leg, job) should include(FindingsAction) }
-    }
+    RepoFile.block(leg, "convergence") should include(FindingsAction)
   }
 
-  /** A country that names an order job must name its budgets too, and vice versa — a
+  /** A country that names an order row must name its budgets too, and vice versa — a
    *  half-declared row inherits the warm countries' 135/120 for a job that needs hours,
    *  which is the exact shape that cancelled the US leg before its heap was raised. */
-  it should "declare a budget for every order leg, and an order leg for every budget" in {
+  it should "declare a budget for every order row, and an order row for every budget" in {
     rows.foreach { fields =>
       withClue(s"${fields("country")}: ") {
         fields.contains("order") shouldBe fields.contains("orderJob")

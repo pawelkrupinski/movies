@@ -1,9 +1,12 @@
 #
-# ONE country's convergence leg: the fast sample gate, the full run behind it, and —
-# for a country whose corpus has outgrown a single job — the order-independence replay
-# beside it. The third is absent unless the caller names an `order-command`; only the
-# United States does, and only because its boot and its replays are 5.5 hours together
-# in a job GitHub cancels at 6.
+# ONE country's convergence leg: the fast sample gate, and the full run behind it.
+#
+# TWO jobs, always — never three. Order-independence is part of the standard run and
+# belongs inside it; the one country whose corpus outgrew a single job (the United
+# States, whose boot and replays are 5.5 hours together in a job GitHub cancels at 6)
+# splits it into a second MATRIX ROW of the same job rather than a job of its own. A
+# conditional job would be rendered and skipped for the four countries that don't want
+# it, on every run and every commit. See the `plan` step in `sample`.
 #
 # A reusable workflow rather than two matrix jobs in `country-convergence.yml`,
 # because GitHub has no way to say "this matrix leg needs THAT matrix leg" —
@@ -94,19 +97,20 @@ on:
             # the same assertion runs, on the same corpus, in a job sized for it.
             order-command:
                 description: >-
-                    The sbt alias running this country's order-independence replay in a job of
-                    its own. Empty (the default) means the country runs it inside its full leg,
-                    which is where it belongs until the corpus outgrows the budget.
+                    The sbt alias running this country's order-independence replay as a
+                    second row of the `convergence` job. Empty (the default) means the country
+                    runs it inside its full leg, which is where it belongs until the corpus
+                    outgrows the budget — four of the five countries leave it empty.
                 required: false
                 type: string
                 default: ''
             order-job-timeout-minutes:
-                description: Ceiling for the whole order-independence job, including setup.
+                description: Ceiling for the whole order-independence row, including setup.
                 required: false
                 type: number
                 default: 135
             order-suite-timeout-minutes:
-                description: Ceiling for the order-independence suite step alone. MUST stay clear of the job's.
+                description: Ceiling for the order-independence suite step alone. MUST stay clear of the row's.
                 required: false
                 type: number
                 default: 120
@@ -167,6 +171,22 @@ jobs:
     sample:
         name: sample
         runs-on: ubuntu-latest
+        # WHAT RUNS BEHIND THIS GATE, planned here rather than declared as jobs below.
+        #
+        # A country either runs its order-independence replay inside its full leg (every
+        # country but one) or beside it in a second job — and "a job that exists only
+        # sometimes" is not something GitHub can express. A job carrying
+        # `if: inputs.order-command != ''` is still a JOB: it is rendered, skipped, in
+        # every run, and posts a skipped check-run on every commit. Four warm countries
+        # times every push is four `order-independence` entries that mean nothing and
+        # bury the ones that do.
+        #
+        # So the split is a matrix ROW instead. This step emits the rows the
+        # `convergence` job expands: one for the full leg, plus one for the replay if the
+        # caller named an `order-command`. A country that names none expands to a single
+        # row and there is nothing to skip.
+        outputs:
+            runs: ${{ steps.plan.outputs.runs }}
         # Thirty-two, against the full leg's 135 — and the twenty below is the number
         # that matters. Ten was measured on a WARM tree and quietly assumed the tree
         # would always be warm, which is only true while the full leg keeps running,
@@ -189,6 +209,21 @@ jobs:
             checks: write
             actions: read
         steps:
+            # First, and before the checkout — it reads only inputs, and the run behind
+            # the gate should not be waiting on anything this job does slowly.
+            - name: Plan the runs behind this gate
+              id: plan
+              shell: bash
+              run: |
+                  set -euo pipefail
+                  full='{"name":"convergence","command":"${{ inputs.command }}","job":${{ inputs.job-timeout-minutes }},"suite":${{ inputs.suite-timeout-minutes }},"publish":true}'
+                  order='{"name":"order-independence","command":"${{ inputs.order-command }}","job":${{ inputs.order-job-timeout-minutes }},"suite":${{ inputs.order-suite-timeout-minutes }},"publish":false}'
+                  if [ -n "${{ inputs.order-command }}" ]; then
+                      echo "runs=[$full,$order]" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "runs=[$full]" >> "$GITHUB_OUTPUT"
+                  fi
+
             - uses: actions/checkout@v5
             - uses: ./.github/actions/convergence-setup
               with:
@@ -228,9 +263,31 @@ jobs:
                   code:  ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
 
+    # THE RUN(S) BEHIND THE GATE — one row for every country, two for the one whose
+    # corpus no longer fits in a single job.
+    #
+    # The second row is the whole-corpus order-independence replay, and it is a ROW
+    # rather than a job of its own for the reason the `plan` step above spells out: a
+    # conditional job is rendered and skipped for the countries that don't want it.
+    # Only the United States names an `order-command`; see that input for why its
+    # replay had to leave the full leg at all.
+    #
+    # `fail-fast: false` because the two rows are independent claims about the same
+    # country — a divergent replay must not cancel the boot that would have said where,
+    # and vice versa.
+    #
+    # The rows are side by side, NOT chained. The replay seeds its own archive and never
+    # touches the booted corpus, so `needs: convergence` would only put a 4-hour job
+    # behind a 3-hour one — the 6-hour cancellation the split exists to escape. Both
+    # hang off the sample, so the leg costs one more concurrent runner while it is in
+    # flight rather than one more afternoon.
     convergence:
-        name: convergence
+        name: ${{ matrix.name }}
         needs: sample
+        strategy:
+            fail-fast: false
+            matrix:
+                include: ${{ fromJson(needs.sample.outputs.runs) }}
         runs-on: ubuntu-latest
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -240,10 +297,13 @@ jobs:
         # so the ceiling now sits well clear of the expected run rather than just
         # above it. A leg that approaches this is a signal to re-measure the shape,
         # not to raise the number again.
-        timeout-minutes: ${{ inputs.job-timeout-minutes }}
+        timeout-minutes: ${{ matrix.job }}
         permissions:
             # `contents: write` for the rolling release the fixture trees live in —
-            # see "Publish" below for why that, rather than an artifact.
+            # see "Publish" below for why that, rather than an artifact. The replay row
+            # never writes it (its publish step is gated on `matrix.publish`), and
+            # `permissions:` takes no expression, so it is granted a scope it does not
+            # use rather than the two rows being two jobs again.
             contents: write
             checks: write
             # `gh run download` still reads artifacts, for the one-off bootstrap when
@@ -279,13 +339,13 @@ jobs:
             # explicitly, because the default shell is `bash -e` without it and the
             # pipeline would otherwise report `tee`'s exit status and pass a failing
             # suite.
-            - name: Run the convergence suite
+            - name: Run the ${{ inputs.country }} ${{ matrix.name }} suite
               id: suite
               shell: bash
-              timeout-minutes: ${{ inputs.suite-timeout-minutes }}
+              timeout-minutes: ${{ matrix.suite }}
               run: |
                   set -o pipefail
-                  sbt -J-Xmx${{ inputs.heap }} ${{ inputs.command }} 2>&1 | tee convergence.log
+                  sbt -J-Xmx${{ inputs.heap }} ${{ matrix.command }} 2>&1 | tee convergence.log
               env:
                   # The spec installs this country's TitleRuleSet itself; naming the
                   # country here too means anything that reads the environment
@@ -349,7 +409,7 @@ jobs:
               uses: mikepenz/action-junit-report@v5
               with:
                   report_paths: 'target/test-reports/unit/**/*.xml'
-                  check_name: convergence (${{ inputs.country }})
+                  check_name: ${{ matrix.name }} (${{ inputs.country }})
                   detailed_summary: true
                   include_passed: true
                   # A leg that wrote no XML has to say so. The directory is emptied by
@@ -365,89 +425,20 @@ jobs:
             - uses: ./.github/actions/convergence-findings
               if: always()
               with:
-                  title: convergence (${{ inputs.country }})
+                  title: ${{ matrix.name }} (${{ inputs.country }})
 
             # The capture this leg just spent an hour building, back to the release it
             # was restored from. Shared with the sample gate above — the two must agree
             # on what publishing means, and a drifted copy would be silent.
+            #
+            # ONE writing row, and `matrix.publish` is what makes it one. Both rows finish
+            # into the same `enrichment-<code>.tar.gz`, and `gh release upload --clobber`
+            # is a last-writer-wins overwrite of a 428 MB asset — two in flight is how the
+            # next run restores a truncated tree. The replay row has nothing to publish
+            # anyway: its replays share the preloaded cache, and the leg that recorded that
+            # cache measured 4 live fills across the whole run.
             - uses: ./.github/actions/convergence-publish
-              if: always()
+              if: always() && matrix.publish
               with:
                   code:  ${{ inputs.code }}
                   token: ${{ secrets.GITHUB_TOKEN }}
-
-    # THE ORDER-INDEPENDENCE REPLAY, in a job of its own — for the one country whose
-    # corpus no longer fits beside its boot. Absent unless the caller names an
-    # `order-command`; see that input for the measurements.
-    #
-    # Deliberately NOT `needs: convergence`. The two are independent — the replay seeds
-    # its own archive and never touches the booted corpus — and chaining them would put
-    # a 4-hour job behind a 3-hour one, which is the 6-hour cancellation this split
-    # exists to escape. They run side by side off the same sample gate, so the leg
-    # costs one more concurrent runner while it is in flight rather than one more
-    # afternoon.
-    #
-    # The steps are the full leg's, minus one. See the `convergence` job above for why
-    # each ceiling, each `env` entry and each `always()` sits where it does; the reasons
-    # are identical and are not repeated here.
-    order:
-        name: order-independence
-        needs: sample
-        if: inputs.order-command != ''
-        runs-on: ubuntu-latest
-        timeout-minutes: ${{ inputs.order-job-timeout-minutes }}
-        permissions:
-            # `read`, not the other two jobs' `write`: this job restores the fixture tree
-            # from the rolling release and never writes it back (see the missing publish
-            # at the bottom). Naming a `permissions:` block at all sets every scope it
-            # omits to `none`, so leaving `contents` out does not inherit read — it
-            # revokes it, and the checkout is the first thing that fails.
-            contents: read
-            checks: write
-            # `gh run download` still reads artifacts, for the one-off bootstrap when the
-            # release doesn't exist yet.
-            actions: read
-        steps:
-            - uses: actions/checkout@v5
-            - uses: ./.github/actions/convergence-setup
-              with:
-                  code:  ${{ inputs.code }}
-                  token: ${{ secrets.GITHUB_TOKEN }}
-
-            - name: Run the ${{ inputs.country }} order-independence replay
-              id: suite
-              shell: bash
-              timeout-minutes: ${{ inputs.order-suite-timeout-minutes }}
-              run: |
-                  set -o pipefail
-                  sbt -J-Xmx${{ inputs.heap }} ${{ inputs.order-command }} 2>&1 | tee convergence.log
-              env:
-                  KINOWO_COUNTRY:   ${{ inputs.code }}
-                  KINOWO_COUNTRIES: ${{ inputs.code }}
-                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
-                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
-                  OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
-                  MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
-
-            - name: Publish order-independence test report
-              if: always()
-              uses: mikepenz/action-junit-report@v5
-              with:
-                  report_paths: 'target/test-reports/unit/**/*.xml'
-                  check_name: order-independence (${{ inputs.country }})
-                  detailed_summary: true
-                  include_passed: true
-                  require_tests: true
-
-            - uses: ./.github/actions/convergence-findings
-              if: always()
-              with:
-                  title: order-independence (${{ inputs.country }})
-
-            # NO `convergence-publish`, and that is the one deliberate difference from the
-            # full leg. Both jobs run off the same sample gate and would finish into the
-            # same rolling-release asset, and `gh release upload --clobber` is a
-            # last-writer-wins overwrite of a 428 MB tarball — two of them in flight is how
-            # the next run restores a truncated tree. This job has nothing to publish
-            # anyway: its replays share the preloaded cache and the leg that recorded it
-            # measured 4 live fills across the whole run.
