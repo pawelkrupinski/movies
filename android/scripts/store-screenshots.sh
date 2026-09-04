@@ -512,7 +512,13 @@ cmd_capture() { # $1 locale, $2 search term, $3 optional outdir, $4 optional fir
     # settles here, and wait_frame only for blank→rendered (gate, list population).
     tap "$X_FILM" "$Y_FILM"; naps 5                       # open detail
     snap "$stage/2.png"                                   # detail
+    # The detail screen's SHARE icon sits where the listing's FILTERS icon does,
+    # so a tap that arrives before `back` has finished opens the share sheet
+    # instead — and screen 3 ends up being Android's share dialog over the grid.
+    # Wait for the listing's own search placeholder to come back before tapping.
     back; naps 2; [ -n "${CLEAN_FILM:-}" ] && { back; naps 1; }
+    wait_text "$(search_placeholder "$country")" 20 >/dev/null ||
+      warn "$term: the listing did not come back after the detail — screen 3 may be wrong"
     tap "$X_FILTERS" "$Y_PILLS"; naps 4                   # Filtry sheet slides up
     snap "$stage/3.png"                                   # filters
     tap "$X_CINEMA" "$Y_CINEMA"; naps 3                   # expand cinema section

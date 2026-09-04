@@ -82,6 +82,9 @@ country_base()   { case "$1" in pl) echo "https://kinowo.net";; uk) echo "https:
 # The gate's "Country" header, which IS localized — seeing it is proof the
 # country switch landed.
 country_header() { case "$1" in pl) echo Kraj;; uk) echo Country;; de) echo Land;; us) echo Country;; es) echo "País";; esac; }
+# The listing's film-search placeholder — proof the LISTING is on screen rather
+# than a film's detail. Mirrors R.string.search_films in each values-<lang>/.
+search_placeholder() { case "$1" in pl) echo "Szukaj filmu";; uk) echo "Search films";; de) echo "Filme suchen";; us) echo "Search films";; es) echo "Buscar películas";; esac; }
 # The area picker's confirm button, shown only by SPLIT cities.
 showlist_label() { case "$1" in pl) echo "Pokaż repertuar";; uk) echo "Show listings";; de) echo "Programm anzeigen";; us) echo "Show listings";; es) echo "Ver la cartelera";; esac; }
 
