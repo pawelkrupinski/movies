@@ -425,6 +425,27 @@ object MetacriticClient {
       case _                  => true
     }
 
+  /** The stricter twin of [[yearsCompatible]]: the candidate must POSITIVELY
+   *  agree, so a candidate that declines to name a year is rejected rather than
+   *  waved through whenever the film's own year is known.
+   *
+   *  Abstaining is right for a slug PROBE — the ladder tried the year-suffixed
+   *  form first, a bare page serving `datePublished: "0000-00-00"` is a known
+   *  shape, and rejecting what we cannot disprove would lose real matches. It is
+   *  wrong for a SEARCH hit on Rotten Tomatoes, whose picker is reached precisely
+   *  because the year-guarded slugs were rejected, and whose pages routinely
+   *  publish no release year at all — so an unverifiable hit accepted here is
+   *  never caught downstream either. `/m/lalka_1969` (Wojciech Has's 1968 film,
+   *  undated on RT and in RT's search results) is how Maciej Kawalski's 2026
+   *  "Lalka" came to serve a Tomatometer belonging to a film 58 years older.
+   *
+   *  Metacritic deliberately keeps the LENIENT [[yearsCompatible]] on its own
+   *  search path: its search page dates essentially every hit, so an undated one
+   *  is an oddity rather than the norm, and rejecting it would lose a real match
+   *  for no gain ("keep an undated hit" in `MetacriticClientSpec`). */
+  def yearConfirms(filmYear: Option[Int], candidateYear: Option[Int]): Boolean =
+    filmYear.isEmpty || candidateYear.exists(c => math.abs(c - filmYear.get) <= YearMatchTolerance)
+
   /** True when `title` starts with `query` and the *next* non-space character
    *  is punctuation — indicating a modifier suffix like " - Re-Release",
    *  ": Restored", " (Anniversary Edition)". False for "Deaf President Now!"

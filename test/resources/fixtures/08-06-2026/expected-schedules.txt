@@ -1172,7 +1172,7 @@ metascore:         —
 rottenTomatoes:    —
 filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/my-tennis-maestro
-rottenTomatoesUrl: https://www.rottentomatoes.com/m/il_maestro_2014
+rottenTomatoesUrl: —
 filmwebUrl:        —
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14627-cinema-italia-oggi-trener-tenisa/

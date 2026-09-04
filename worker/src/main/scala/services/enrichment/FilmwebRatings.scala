@@ -133,6 +133,21 @@ class FilmwebRatings(
   // Returns the new displayed rating (badge text) if it changed, else None.
   private def refreshRatingFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] = {
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
+    // A Filmweb URL names its film's year in the path, and when that positively
+    // contradicts the row's own year the URL is a DIFFERENT film's — drop it (and
+    // the rating that came off it) so the next tick re-resolves. Re-resolution
+    // alone never fixes this: `resolveAndPersistUrl` writes only when it finds a
+    // page, so a row with no Filmweb page of its own kept serving the namesake's
+    // rating forever — Wanda Jakubowska's "Zaproszenie" (1986) carried
+    // /film/Zaproszenie-2026-10109168. The MC and RT refreshers make the same
+    // check against the year their PAGE publishes; only Filmweb can read it off
+    // the URL. An undated URL is not evidence and is left alone.
+    if (!MetacriticClient.yearsCompatible(key.year, FilmwebClient.yearInUrl(url))) {
+      logger.info(s"Filmweb: $label $url → URL names ${FilmwebClient.yearInUrl(url).getOrElse("?")}, " +
+        "not this film — dropping the URL")
+      cache.putIfPresent(key, _.copy(filmwebUrl = None, filmwebRating = None))
+      return None
+    }
     val change = filmweb.ratingFor(url) match {
       case Some(rating) =>
         // Store at the precision the badge shows (`%.1f`): a sub-decimal vote

@@ -93,7 +93,21 @@ class RottenTomatoesRatings(
 
   private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] = {
     val label = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    rt.scoreFor(url) match {
+    val fetched = rt.scoreAndYearFor(url)
+    // The page we just fetched says which film it is about. When it names a year
+    // the row's own year positively contradicts, this url is a DIFFERENT film's —
+    // drop it (and the score that came off it) so the next tick re-resolves.
+    // Re-resolution alone never fixes this: `resolveAndPersistUrl` writes only
+    // when it finds a page, so a row with no RT page of its own kept scoring the
+    // namesake's forever — Wanda Jakubowska's "Zaproszenie" (1986) served the
+    // Tomatometer of Olivia Wilde's 2026 film. Only a POSITIVE conflict counts;
+    // an undated page is not evidence and is left alone.
+    if (fetched.exists { case (_, pageYear) => !MetacriticClient.yearsCompatible(key.year, pageYear) }) {
+      logger.info(s"RT: $label $url → page names ${fetched.flatMap(_._2).getOrElse("?")}, not this film — dropping the URL")
+      cache.putIfPresent(key, _.copy(rottenTomatoesUrl = None, rottenTomatoes = None))
+      return None
+    }
+    fetched.flatMap(_._1) match {
       case Some(score) =>
         val commit = !e.rottenTomatoes.contains(score)
         logger.info(s"RT: $label $url → Tomatometer $score" +

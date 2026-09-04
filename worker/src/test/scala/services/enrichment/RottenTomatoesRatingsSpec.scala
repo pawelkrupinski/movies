@@ -27,6 +27,14 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
        |<script type="application/ld+json">{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":"$score"}}</script>
        |</head><body></body></html>""".stripMargin
 
+  /** The same page, plus the `releaseYear` RT embeds in its `__NEXT_DATA__` —
+   *  the field `parseReleaseYear` reads. */
+  private def pageWithScoreAndYear(score: Int, year: Int): String =
+    s"""<!doctype html><html><head>
+       |<script type="application/ld+json">{"@type":"Movie","aggregateRating":{"@type":"AggregateRating","ratingValue":"$score"}}</script>
+       |<script id="__NEXT_DATA__" type="application/json">{"releaseYear":"$year"}</script>
+       |</head><body></body></html>""".stripMargin
+
   /** Stub HttpFetch that returns canned HTML keyed by URL. Throws for unknown
    *  URLs so a misrouted fetch surfaces loudly in tests. */
   private def httpStub(pages: Map[String, String]): HttpFetch = new GetOnlyHttpFetch {
@@ -46,6 +54,53 @@ class RottenTomatoesRatingsSpec extends AnyFlatSpec with Matchers {
     )
 
   // ── refreshOneSync ──────────────────────────────────────────────────────────
+
+  // The prod leak that outlived every other fix. `zaproszenie|1986` — Wanda
+  // Jakubowska's war drama — carried rottentomatoes.com/m/the_invite, Olivia
+  // Wilde's 2026 film. Re-resolution can't dislodge it: `resolveAndPersistUrl`
+  // writes only on SUCCESS, and there is no RT page for the 1986 film to find,
+  // so the wrong URL is scored again every tick, forever. The refresh already
+  // fetches that page — reading the year it publishes costs nothing and is the
+  // one moment we can tell the URL is not this film's.
+  "a stored URL whose page names a different film's year" should "be dropped rather than scored" in {
+    val url = "https://www.rottentomatoes.com/m/the_invite"
+    val repository = new InMemoryMovieRepository(Seq(("Zaproszenie", Some(1986), mkEnrichment(Some(url), score = Some(96)))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      rtClient(Map(url -> pageWithScoreAndYear(96, 2026))))
+
+    ratings.refreshOneSync(cache.keyOf("Zaproszenie", Some(1986)))
+
+    val row = cache.get(cache.keyOf("Zaproszenie", Some(1986)))
+    row.flatMap(_.rottenTomatoesUrl) shouldBe None
+    withClue("the score belonged to the other film too: ")(row.flatMap(_.rottenTomatoes) shouldBe None)
+  }
+
+  it should "be kept when the page's year agrees with the film's" in {
+    val url = "https://www.rottentomatoes.com/m/the_invite"
+    val repository = new InMemoryMovieRepository(Seq(("Zaproszenie", Some(2026), mkEnrichment(Some(url), score = Some(50)))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      rtClient(Map(url -> pageWithScoreAndYear(96, 2026))))
+
+    ratings.refreshOneSync(cache.keyOf("Zaproszenie", Some(2026)))
+
+    val row = cache.get(cache.keyOf("Zaproszenie", Some(2026)))
+    row.flatMap(_.rottenTomatoesUrl) shouldBe Some(url)
+    row.flatMap(_.rottenTomatoes)    shouldBe Some(96)
+  }
+
+  it should "be kept when the page names no year at all — silence is not a contradiction" in {
+    val url = "https://www.rottentomatoes.com/m/lalka_1969"
+    val repository = new InMemoryMovieRepository(Seq(("Lalka", Some(1968), mkEnrichment(Some(url), score = Some(50)))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val ratings = new RottenTomatoesRatings(cache, new TmdbClient(new RealHttpFetch, apiKey = None),
+      rtClient(Map(url -> pageWithScore(83))))
+
+    ratings.refreshOneSync(cache.keyOf("Lalka", Some(1968)))
+
+    cache.get(cache.keyOf("Lalka", Some(1968))).flatMap(_.rottenTomatoesUrl) shouldBe Some(url)
+  }
 
   "refreshOneSync" should "fetch the score and write it back when it differs from the cached value" in {
     val url = "https://www.rottentomatoes.com/m/the_dark_knight"

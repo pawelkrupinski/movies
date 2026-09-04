@@ -224,6 +224,31 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.pickBestSearchHit(hits, "Top Gun", Some(2024)).map(_.slug) shouldBe Some("top_gun_re_release")
   }
 
+  // The prod leak: `lalka|2026` (Maciej Kawalski's new film) stored
+  // rottentomatoes.com/m/lalka_1969 — Wojciech Has's 1968 picture. The slug
+  // ladder rejected nothing because it never reached that slug; the SEARCH
+  // fallback did, on an exact title match, and this picker had no year guard at
+  // all. A hit that declines to say WHEN is not evidence that it is the right
+  // film — and /m/lalka_1969 publishes no releaseYear on the page either, so
+  // nothing downstream caught it either.
+  it should "REJECT an exact-title hit that names no year when the film's year is known" in {
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    val hits = Seq(RottenTomatoesClient.SearchHit("lalka_1969", "Lalka", None, None))
+    c.pickBestSearchHit(hits, "Lalka", Some(2026)) shouldBe None
+  }
+
+  it should "REJECT an exact-title hit a different film's distance away" in {
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    val hits = Seq(RottenTomatoesClient.SearchHit("lalka_1969", "Lalka", Some(1969), None))
+    c.pickBestSearchHit(hits, "Lalka", Some(2026)) shouldBe None
+  }
+
+  it should "still take a yearless hit when the film's own year is unknown" in {
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    val hits = Seq(RottenTomatoesClient.SearchHit("lalka_1969", "Lalka", None, None))
+    c.pickBestSearchHit(hits, "Lalka", None).map(_.slug) shouldBe Some("lalka_1969")
+  }
+
   it should "return None for an empty hit list" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
     c.pickBestSearchHit(Seq.empty, "anything", None) shouldBe None

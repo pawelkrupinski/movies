@@ -429,6 +429,16 @@ object FilmwebClient {
     s"https://www.filmweb.pl/$kind/$slug-$y-$id"
   }
 
+  /** The year a canonical Filmweb URL names, when it carries one:
+   *  `/film/Zaproszenie-2026-10109168` → 2026, `/film/Lalka-1174` → None.
+   *  Filmweb writes the film's own year into the path, so a STORED url can be
+   *  checked against the row it sits on without fetching anything — see
+   *  `FilmwebRatings`. */
+  def yearInUrl(url: String): Option[Int] =
+    UrlYearPat.findFirstMatchIn(url).map(_.group(1).toInt)
+
+  private val UrlYearPat = """-(\d{4})-\d+/?$""".r
+
   private def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 
   /** Lower-case + trim + fold every dash variant to '-', for title-equality

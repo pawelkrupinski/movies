@@ -130,6 +130,13 @@ class MetascoreRatings(
       case None        => cache.get(key).flatMap(refreshScoreFromUrl(key, _, resolved.url))
     }
 
+  // Deliberately NOT year-checked against the page, unlike the RT and Filmweb
+  // refreshers. Metacritic's `datePublished` is a US RELEASE date, so a
+  // restoration carries the modern one — /movie/angels-egg-1985 is Oshii's 1985
+  // film and publishes 2025 — and treating that as "a different film" drops a
+  // correct URL. The slug ladder already year-guards what it probes; a URL that
+  // reached here from the search fallback was accepted on the SERP's year, which
+  // is the better evidence of the two.
   private def refreshScoreFromUrl(key: CacheKey, e: models.MovieRecord, url: String): Option[String] =
     metacritic.metascoreFor(url) match {
       case Some(score) => applyScore(key, e, url, score)

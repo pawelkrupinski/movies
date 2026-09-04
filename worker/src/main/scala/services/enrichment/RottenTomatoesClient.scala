@@ -183,7 +183,15 @@ class RottenTomatoesClient(http: HttpFetch) {
     val normalizedQuery = MetacriticClient.foldDashes(query.toLowerCase.trim)
     if (hits.isEmpty || normalizedQuery.isEmpty) None
     else {
-      val exact = hits.filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
+      // Year-guard the EXACT matches, and require the hit to POSITIVELY agree —
+      // see `MetacriticClient.yearConfirms`. This picker had no year guard at
+      // all, so an exact same-title hit won on its title alone: that is how the
+      // 2026 "Lalka" ended up on /m/lalka_1969, Has's 1968 film. A MODIFIER-suffix
+      // hit ("<title> - Re-Release") stays unguarded on purpose — it is explicitly
+      // the same film re-issued, so a large gap is expected and correct.
+      val exact = hits
+        .filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
+        .filter(h => MetacriticClient.yearConfirms(year, h.year))
       val modifier = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
       val candidates =
         if (exact.nonEmpty) exact
@@ -199,9 +207,15 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  fetch failure / non-canonical URL. Refuses search URLs explicitly —
    *  scoring a search-result page makes no sense and would silently return
    *  nonsense if RT ever started embedding aggregate ratings there. */
-  def scoreFor(url: String): Option[Int] = {
+  def scoreFor(url: String): Option[Int] = scoreAndYearFor(url).flatMap(_._1)
+
+  /** The Tomatometer AND the year the page claims, off ONE fetch. The year is
+   *  what tells a caller that a STORED url isn't this film's after all —
+   *  re-resolution can't say so, because it writes only when it finds something
+   *  and a wrong url therefore just survives. See `RottenTomatoesRatings`. */
+  def scoreAndYearFor(url: String): Option[(Option[Int], Option[Int])] = {
     if (!url.contains("/m/")) None
-    else Try(http.get(url)).toOption.flatMap(parseScore)
+    else Try(http.get(url)).toOption.map(body => (parseScore(body), RottenTomatoesClient.parseReleaseYear(body)))
   }
 
   /** Extract the Tomatometer percentage off an RT movie page.

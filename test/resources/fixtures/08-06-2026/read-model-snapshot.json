@@ -186,7 +186,7 @@
       "imdbUrl" : "https://www.imdb.com/title/tt33394780/",
       "metacriticUrl" : "https://www.metacritic.com/search/444/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=444",
-      "filmwebUrl" : "https://www.filmweb.pl/film/444-2021-10116366"
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=444"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -2561,7 +2561,7 @@
       "imdb" : 6.7,
       "imdbUrl" : "https://www.imdb.com/title/tt5179884/",
       "metacriticUrl" : "https://www.metacritic.com/movie/my-tennis-maestro",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/il_maestro_2014",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Il+maestro",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Il+maestro"
     },
     "weightedRating" : 6.7,

@@ -47,6 +47,58 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
 
   // ── refreshOneSync: existing URL → rating-only refresh ─────────────────────
 
+  // The third face of the same prod leak (see `RottenTomatoesRatingsSpec` /
+  // `MetascoreRatingsSpec`): `zaproszenie|1986` — Wanda Jakubowska's war drama —
+  // stored filmweb.pl/film/Zaproszenie-2026-10109168, Olivia Wilde's film. A
+  // Filmweb URL carries its film's year in the path, so the contradiction is
+  // readable without fetching anything; re-resolution can never clear it,
+  // because it writes only when it finds a page and there is none to find.
+  "a stored URL naming a different film's year" should "be dropped rather than refreshed" in {
+    val url = "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Zaproszenie", Some(1986), mkEnrichment("tt0092281", filmwebUrl = Some(url), filmwebRating = Some(7.4)))
+    ))
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val filmweb = new FilmwebClient(filmwebSite(Map("/film/10109168/rating" -> """{"rate":7.4,"count":1000}""")))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    ratings.refreshOneSync(cache.keyOf("Zaproszenie", Some(1986)))
+
+    val row = cache.get(cache.keyOf("Zaproszenie", Some(1986)))
+    row.flatMap(_.filmwebUrl)    shouldBe None
+    row.flatMap(_.filmwebRating) shouldBe None
+  }
+
+  it should "be kept when the URL's year agrees with the film's" in {
+    val url = "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Zaproszenie", Some(2026), mkEnrichment("tt14173636", filmwebUrl = Some(url), filmwebRating = Some(6.0)))
+    ))
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val filmweb = new FilmwebClient(filmwebSite(Map("/film/10109168/rating" -> """{"rate":7.4,"count":1000}""")))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    ratings.refreshOneSync(cache.keyOf("Zaproszenie", Some(2026)))
+
+    val row = cache.get(cache.keyOf("Zaproszenie", Some(2026)))
+    row.flatMap(_.filmwebUrl)    shouldBe Some(url)
+    row.flatMap(_.filmwebRating) shouldBe Some(7.4)
+  }
+
+  it should "be kept when the URL carries no year — silence is not a contradiction" in {
+    val url = "https://www.filmweb.pl/film/Lalka-1174"
+    val repository = new InMemoryMovieRepository(Seq(
+      ("Lalka", Some(1968), mkEnrichment("tt0064570", filmwebUrl = Some(url), filmwebRating = Some(6.0)))
+    ))
+    val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val filmweb = new FilmwebClient(filmwebSite(Map("/film/1174/rating" -> """{"rate":6.6,"count":1000}""")))
+    val ratings = new FilmwebRatings(cache, disabledTmdb, filmweb)
+
+    ratings.refreshOneSync(cache.keyOf("Lalka", Some(1968)))
+
+    cache.get(cache.keyOf("Lalka", Some(1968))).flatMap(_.filmwebUrl) shouldBe Some(url)
+  }
+
   "refreshOneSync" should "fetch the rating via the stored URL's id and write it back when it changes" in {
     val url = "https://www.filmweb.pl/film/Mortal+Kombat+II-2026-10007434"
     val repository = new InMemoryMovieRepository(Seq(
