@@ -78,7 +78,7 @@ object KinoCentrumCswClient {
   val RepertoireUrl = s"$BaseUrl/repertuar/"
 
   // "7 czerwca, niedziela" — day + genitive month + optional weekday suffix
-  private val DayMonthPat = """(\d{1,2})\s+([\p{L}]+)""".r
+  private val DayMonthPat = ScraperParse.DayMonthPat
 
   private[cinemas] case class RawSlot(
     title:    String,

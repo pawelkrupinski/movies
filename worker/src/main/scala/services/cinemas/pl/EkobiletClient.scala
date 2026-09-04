@@ -126,7 +126,7 @@ object EkobiletClient {
   private val KeySep = '\u001F'
 
   // "10 cze" — day + abbreviated Polish month (shared map with the MSI scraper).
-  private val RowDate = """(\d{1,2})\s+(\p{L}+)""".r
+  private val RowDate = ScraperParse.DayMonthPat
 
   // "DD.MM.YYYY" — the date strip's `data-date` attribute.
   private val PickerDate = """(\d{2})\.(\d{2})\.(\d{4})""".r

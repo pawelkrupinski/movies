@@ -90,8 +90,8 @@ object OkfIluzjaClient {
    *  The h2 date header uses the same genitive form ("7 czerwca 2026"). */
   private val PolishMonths: Map[String, Int] = ScraperParse.PolishMonths
 
-  // "7 czerwca 2026" — day, genitive month, year (all with optional surrounding whitespace)
-  private val DatePat = """(\d{1,2})\s+(\w+)\s+(\d{4})""".r
+  // "7 czerwca 2026" — day, genitive month, year
+  private val DatePat = ScraperParse.DayMonthYearPat
 
   private[cinemas] case class RawSlot(
     title:    String,

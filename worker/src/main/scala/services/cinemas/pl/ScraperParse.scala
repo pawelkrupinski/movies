@@ -37,6 +37,22 @@ private[cinemas] object ScraperParse {
     * lower-case the token before lookup. */
   val PolishMonthsAnyCase: Map[String, Int] = PolishMonths ++ PolishMonthsNominative
 
+  /** A day header's "<day> <Polish month name>" opening, with [[DayMonthYearPat]]
+    * the same shape closed by an explicit 4-digit year ("4 września 2026"). The
+    * month group feeds [[PolishMonths]] / [[PolishMonthsAnyCase]].
+    *
+    * The month is matched with `\p{L}`, NOT `\w`, and that is the whole point of
+    * sharing these two: Java's `\w` is ASCII-only unless the pattern is compiled
+    * with UNICODE_CHARACTER_CLASS, so it stops dead at the first diacritic. Of the
+    * twelve genitive month names exactly two carry one — "września" and
+    * "października" — so a `\w`-spelled copy reads every date for ten months of
+    * the year and none at all in September and October. Four hand-rolled scrapers
+    * had drifted to that spelling and lost their whole autumn programme on
+    * 1 September 2026 (see `clients.cinemas.DiacriticMonthNameSpec`); one shared
+    * pattern is how the fifth copy doesn't repeat it. */
+  val DayMonthPat     = """(\d{1,2})\s+(\p{L}+)""".r
+  val DayMonthYearPat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})""".r
+
   /** Polish three-letter month abbreviations as several cinema pages spell them
     * ("10 Cze 2026", "5 paź"). Keyed lower-case; [[polishMonthAbbrev]] folds case
     * so a page can capitalise them ("Cze") or not ("cze"). Shared so the

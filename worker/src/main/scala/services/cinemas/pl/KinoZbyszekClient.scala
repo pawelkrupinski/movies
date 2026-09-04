@@ -52,7 +52,7 @@ object KinoZbyszekClient {
 
   // The day-cell anchor carries the date as "26 Czerwiec 2026" — day, Polish
   // NOMINATIVE month name (capitalised), year.
-  private val DatePat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})""".r
+  private val DatePat = ScraperParse.DayMonthYearPat
 
   private case class RawSlot(
     title:     String,

@@ -513,7 +513,7 @@ showings:
 
 === Bez znieczulenia ===
 displayTitle:      Bez znieczulenia
-cinemaTitles:      Bez znieczulenia
+cinemaTitles:      Bez znieczulenia | Bez znieczulenia (Rough Treatment)
 runtimeMinutes:    125
 releaseYear:       1978
 countries:         Polska, Francja
@@ -535,6 +535,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/bez-znieczulenia/
 cinemaScrapes:
   Kino Muza / Bez znieczulenia / 1978
+  Kino Pod Baranami / Bez znieczulenia (Rough Treatment) / —
   Kino za Rogiem Cafe / Bez znieczulenia / —
 showings:
   2026-10-06  Kino Muza                     20:00 Sala 1
@@ -4283,7 +4284,7 @@ showings:
 
 === Krajobraz po bitwie ===
 displayTitle:      Krajobraz po bitwie
-cinemaTitles:      Krajobraz po bitwie
+cinemaTitles:      Krajobraz po bitwie | Krajobraz po bitwie (Landscape After the Battle)
 runtimeMinutes:    101
 releaseYear:       1970
 countries:         Polska
@@ -4305,6 +4306,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/krajobraz-po-bitwie/
 cinemaScrapes:
   Kino Muza / Krajobraz po bitwie / 1970
+  Kino Pod Baranami / Krajobraz po bitwie (Landscape After the Battle) / —
   Kino za Rogiem Cafe / Krajobraz po bitwie / —
 showings:
   2026-09-01  Kino Muza                     20:30 Sala 1

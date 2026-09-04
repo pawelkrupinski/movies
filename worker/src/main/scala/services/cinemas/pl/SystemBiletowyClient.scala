@@ -46,7 +46,7 @@ class SystemBiletowyClient(http: HttpFetch, baseUrl: String, override val cinema
 object SystemBiletowyClient {
 
   // "12 czerwca 2026" — day, Polish genitive month, year (all present).
-  private val DatePat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})""".r
+  private val DatePat = ScraperParse.DayMonthYearPat
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], format: List[String])
 

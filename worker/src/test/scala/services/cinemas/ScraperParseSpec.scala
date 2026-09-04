@@ -29,6 +29,22 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.parseHHmm("25:99") shouldBe None
   }
 
+  "DayMonthYearPat" should "capture a month name that carries a diacritic" in {
+    // `\w` is ASCII-only in Java, so it stops at the "ś"/"ź" and these two —
+    // the only genitive month names with a diacritic — silently stop matching.
+    Seq("4 września 2026" -> "września", "4 października 2026" -> "października",
+        "4 grudnia 2026" -> "grudnia").foreach { case (text, month) =>
+      ScraperParse.DayMonthYearPat.findFirstMatchIn(text).map(_.group(2)) shouldBe Some(month)
+    }
+  }
+
+  "DayMonthPat" should "capture a month name that carries a diacritic" in {
+    Seq("4 września" -> "września", "4 października" -> "października",
+        "7 czerwca" -> "czerwca").foreach { case (text, month) =>
+      ScraperParse.DayMonthPat.findFirstMatchIn(text).map(_.group(2)) shouldBe Some(month)
+    }
+  }
+
   "cssUrl" should "unwrap a plain url()" in {
     ScraperParse.cssUrl("background-image: url(/img/a.jpg)") shouldBe Some("/img/a.jpg")
   }

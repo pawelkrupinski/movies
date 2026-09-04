@@ -104,7 +104,7 @@ object KinoPodBaranamiClient {
   val RepertoireUrl = s"$BaseUrl/repertuar.php"
 
   // "7 czerwca" or "10 maja" — day + Polish genitive month name
-  private val DayMonthPat = """(\d{1,2})\s+(\w+)""".r
+  private val DayMonthPat = ScraperParse.DayMonthPat
 
   // "(SMAK)" is Kino Pod Baranami's discussion-club programme tag ("Seans z
   // dyskusją"), appended to the film title for those screenings. It is not part

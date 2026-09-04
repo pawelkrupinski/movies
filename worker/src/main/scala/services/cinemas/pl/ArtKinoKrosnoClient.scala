@@ -45,7 +45,7 @@ object ArtKinoKrosnoClient {
   val RepertoireUrl = s"$BaseUrl/strona-375-repertuar.html"
 
   // "26 czerwca" → day + Polish genitive month (the weekday in parens is ignored).
-  private val DatePat = """(\d{1,2})\s+(\p{L}+)""".r
+  private val DatePat = ScraperParse.DayMonthPat
 
   private case class RawSlot(title: String, dateTime: LocalDateTime, filmUrl: Option[String])
 

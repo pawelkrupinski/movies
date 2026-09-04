@@ -72,7 +72,7 @@ object KinoAgrafkaClient {
   val RepertoireUrl  = s"$BaseUrl/rep.php"
 
   // Matches "7 czerwca 2026 /niedziela/" — day, Polish genitive month, 4-digit year
-  private val DatePat = """(\d{1,2})\s+(\w+)\s+(\d{4})""".r
+  private val DatePat = ScraperParse.DayMonthYearPat
 
   // A production year inside the country/year block ("Kanada/Belgia/Francja 2024").
   private val YearPat = """\b(?:19|20)\d{2}\b""".r

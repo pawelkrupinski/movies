@@ -22,7 +22,7 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
   private val TrailerIframePat =
     """<iframe[^>]+src="(https?://(?:www\.)?(?:youtube\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/[^"]+)"""".r
 
-  private val DatePat = """(\d+)\s+(\w+)""".r
+  private val DatePat = ScraperParse.DayMonthPat
 
   private def normalizeTitle(raw: String): String = KinoBulgarskaClient.normalizeTitle(raw)
 
