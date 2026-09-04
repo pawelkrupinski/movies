@@ -1,0 +1,11 @@
+# TEMPORARY probe: how does GitHub name a matrix job inside a CALLED workflow?
+# Dispatched by hand, deleted in the next commit.
+name: Probe job naming
+on:
+    workflow_dispatch:
+jobs:
+    leg:
+        name: probe
+        uses: ./.github/workflows/probe-job-naming-leg.yml
+        with:
+            phases: '["one","two"]'

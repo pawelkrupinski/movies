@@ -1,0 +1,31 @@
+name: Probe job naming leg
+on:
+    workflow_call:
+        inputs:
+            phases:
+                required: true
+                type: string
+jobs:
+    named:
+        name: ${{ matrix.phase }}
+        strategy:
+            matrix:
+                phase: ${{ fromJson(inputs.phases) }}
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "named ${{ matrix.phase }}"
+    autonamed:
+        strategy:
+            matrix:
+                phase: ${{ fromJson(inputs.phases) }}
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "auto ${{ matrix.phase }}"
+    prefixed:
+        name: run ${{ matrix.phase }}
+        strategy:
+            matrix:
+                phase: ${{ fromJson(inputs.phases) }}
+        runs-on: ubuntu-latest
+        steps:
+            - run: echo "prefixed ${{ matrix.phase }}"
