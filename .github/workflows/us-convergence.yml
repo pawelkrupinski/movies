@@ -96,12 +96,14 @@ jobs:
                     # order-independence replay out of the full leg — the ONLY country
                     # that does. It runs as a second ROW of the leg's `convergence` job
                     # rather than a job of its own, so the four countries that fold the
-                    # replay into their standard run render nothing at all for it. The full leg boots this corpus in 167 minutes and the
-                    # three concurrent replays cost ~1.5x a boot again (the UK's measured
-                    # ratio: 2,586s of replays against a 1,676s boot), so together they
-                    # are 5.5 hours in a job GitHub cancels at 6. Every US leg before this
-                    # died on the replays' own 75-minute guard having diverged on nothing.
-                    # The two jobs run side by side off the same sample gate.
+                    # replay into their standard run render nothing at all for it.
+                    #
+                    # The full leg boots this corpus in 167 minutes and the three
+                    # concurrent replays cost ~1.5x a boot again (the UK's measured ratio:
+                    # 2,586s of replays against a 1,676s boot), so together they are 5.5
+                    # hours in a job GitHub cancels at 6. Every US leg before this died on
+                    # the replays' own 75-minute guard having diverged on nothing. The two
+                    # rows run side by side off the same sample gate.
                     - { country: united-states, code: us, cmd: convergenceUs, sample: convergenceUsSample, job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 8g, order: convergenceUsOrder, orderJob: 330, orderSuite: 315 }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:

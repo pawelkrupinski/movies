@@ -88,8 +88,9 @@ on:
                 default: 20
             # THE SECOND FULL RUN, for a country whose corpus no longer fits in one job.
             #
-            # Empty for every country but the United States, and the `order` job below
-            # does not exist for the ones that leave it empty. The US full leg boots the
+            # Empty for every country but the United States, and a country that leaves it
+            # empty expands the `convergence` job below to a single row — there is no
+            # second job, and nothing skipped where one would have been. The US full leg boots the
             # corpus in 167 minutes and the whole-corpus order-independence replay costs
             # ~1.5x a boot again (measured on the UK: 2,586s of replays against a 1,676s
             # boot) — 5.5 hours in a job GitHub cancels at 6, which is why no US leg had
