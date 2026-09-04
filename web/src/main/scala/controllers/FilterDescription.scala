@@ -88,29 +88,40 @@ object FilterDescription {
    *  naming the query-shaped phrases (godziny seansów, na dziś / today's
    *  showtimes) plus the four rating sources. */
   def defaultDescription(city: City): String = {
+    val towns = namedPlaces(city)
+    // Name as many towns as the budget actually fits, not a fixed number.
+    // `truncate` cuts at MaxDescription, so a town too many does not just cost
+    // the last town — it cuts one in half and eats everything behind it,
+    // which is the rating sources. Poland found this in production: Tarnów's
+    // six towns ended the sentence on "Metacritic i Rotten…".
+    towns.indices.reverse.map(n => describe(city, towns.take(n + 1)))
+      .find(_.length <= MaxDescription)
+      .getOrElse(truncate(describe(city, Nil), MaxDescription))
+  }
+
+  /** The default description naming exactly these towns, at whatever length that
+   *  comes to. [[defaultDescription]] picks how many actually fit. */
+  private def describe(city: City, towns: Seq[String]): String = {
     val genitiveLabel = city.genitivePluralLabel
     val locative      = city.locativePhrase
-    val towns         = namedPlaces(city)
     // A multi-town page names its towns INSTEAD of closing with the "what's on
-    // today" sentence: both together run past MaxDescription, where `truncate`
-    // would cut the list off mid-name — and of the two it is the towns that a
-    // search for "kino Sopot" can actually match. A one-town city (almost all
-    // of them) has no towns to name and keeps the sentence, byte for byte.
+    // today" sentence: both together run past MaxDescription, and of the two it
+    // is the towns that a search for "kino Sopot" can actually match. A one-town
+    // city (almost all of them) has no towns to name and keeps the sentence,
+    // byte for byte.
     val places = if (towns.isEmpty) "" else towns.mkString(" (", ", ", ")")
-    val s =
-      if (city.country.language.getLanguage == "pl")
-        s"Repertuar wszystkich $genitiveLabel kin$places – godziny seansów na dziś, " +
-          s"oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes." +
-          (if (towns.isEmpty) s" Sprawdź, co dziś grają w kinie $locative." else "")
-      else if (city.country.language.getLanguage == "es")
-        s"La cartelera de todos los cines de $genitiveLabel$places – sesiones de hoy, " +
-          s"valoraciones de IMDb, Metacritic y Rotten Tomatoes." +
-          (if (towns.isEmpty) s" Mira qué ponen hoy en el cine $locative." else "")
-      else
-        s"All $genitiveLabel cinema listings$places – today's showtimes, " +
-          s"IMDb, Filmweb, Metacritic and Rotten Tomatoes ratings." +
-          (if (towns.isEmpty) s" See what's on today $locative." else "")
-    truncate(s, MaxDescription)
+    if (city.country.language.getLanguage == "pl")
+      s"Repertuar wszystkich $genitiveLabel kin$places – godziny seansów na dziś, " +
+        s"oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes." +
+        (if (towns.isEmpty) s" Sprawdź, co dziś grają w kinie $locative." else "")
+    else if (city.country.language.getLanguage == "es")
+      s"La cartelera de todos los cines de $genitiveLabel$places – sesiones de hoy, " +
+        s"valoraciones de IMDb, Metacritic y Rotten Tomatoes." +
+        (if (towns.isEmpty) s" Mira qué ponen hoy en el cine $locative." else "")
+    else
+      s"All $genitiveLabel cinema listings$places – today's showtimes, " +
+        s"IMDb, Filmweb, Metacritic and Rotten Tomatoes ratings." +
+        (if (towns.isEmpty) s" See what's on today $locative." else "")
   }
 
   /** The page's `<h1>` — the city heading, plus the towns a multi-town listing
@@ -130,9 +141,9 @@ object FilterDescription {
    *  keeps the ones worth naming. */
   private def namedPlaces(city: City): Seq[String] = city.otherCoveredPlaces.take(MaxNamedPlaces)
 
-  /** How many covered towns [[pageHeading]] / [[defaultDescription]] name. Six
-   *  fits the longest realistic town names inside [[MaxDescription]] alongside
-   *  the rest of the sentence. */
+  /** The most covered towns either the heading or the description will name. A
+   *  ceiling, not a target: the description then keeps only as many as fit
+   *  [[MaxDescription]], which for long Polish names is fewer. */
   val MaxNamedPlaces = 6
 
   val MaxTitle       = 65

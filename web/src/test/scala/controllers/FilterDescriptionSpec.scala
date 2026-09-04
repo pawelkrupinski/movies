@@ -65,6 +65,26 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     d.length    should be <= FilterDescription.MaxDescription
   }
 
+  // Found in production: Tarnów's six towns pushed the sentence past
+  // MaxDescription, and `truncate` cut it at "…Metacritic i Rotten…" — a town
+  // too many costs the rating sources, not just the last town.
+  it should "name only as many towns as fit, never truncating the sentence" in {
+    val crowded = City.all
+      .filter(_.otherCoveredPlaces.sizeIs >= FilterDescription.MaxNamedPlaces)
+      .map(FilterDescription.defaultDescription)
+    crowded should not be empty
+    every(crowded) should endWith(".")            // a whole sentence, not a cut one
+    every(crowded.map(_.length)) should be <= FilterDescription.MaxDescription
+    crowded.foreach(_ should not include "…")
+  }
+
+  it should "still name the towns it drops the rest for" in {
+    val d = FilterDescription.defaultDescription(Tarnow)
+    d           should include("Repertuar wszystkich tarnowskich kin (Biecz")
+    d           should include("Rotten Tomatoes.")   // the sources survive
+    d.length    should be <= FilterDescription.MaxDescription
+  }
+
   "pageHeading" should "carry the covered towns, and the bare heading when there are none" in {
     FilterDescription.pageHeading(Poznan)     shouldBe "Repertuar kin w Poznaniu"
     FilterDescription.pageHeading(Trojmiasto) shouldBe "Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot, Rumia"
