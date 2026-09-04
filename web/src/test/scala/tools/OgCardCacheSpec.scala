@@ -18,6 +18,13 @@ import org.scalatest.matchers.should.Matchers
  */
 class OgCardCacheSpec extends AnyFlatSpec with Matchers {
 
+  /** Caffeine defers eviction to an executor, and `cleanUp()` skips the work it
+   *  cannot take the lock for — so under a full parallel `testUnit` run the
+   *  bound below was asserted before anything had been evicted, and only then.
+   *  Running maintenance on the calling thread makes `cleanUp()` mean what every
+   *  assertion here reads it as. */
+  private def cacheOf(maxBytes: Long) = new OgCardCache(maxBytes, (r: Runnable) => r.run())
+
   private val OneMiB = 1024 * 1024
 
   private def card(n: Int): Array[Byte] = Array.fill(OneMiB)(n.toByte)
@@ -26,14 +33,14 @@ class OgCardCacheSpec extends AnyFlatSpec with Matchers {
     (0 until count).foreach { i => cache.getOrRender(s"film-$i")((card(i), true)) }
 
   "OgCardCache" should "hold no more than its byte bound however many cards it is given" in {
-    val cache = new OgCardCache(8L * OneMiB)
+    val cache = cacheOf(8L * OneMiB)
     fill(cache, 40)
     cache.cleanUp()
     cache.weight should be <= (8L * OneMiB)
   }
 
   it should "evict the cards it took in first, so a sweep cannot pin the tier's heap" in {
-    val cache = new OgCardCache(4L * OneMiB)
+    val cache = cacheOf(4L * OneMiB)
     fill(cache, 40)
     cache.cleanUp()
     // The earliest card is gone; asking for it renders again rather than hitting.
@@ -43,7 +50,7 @@ class OgCardCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still serve a card it is holding without re-rendering it" in {
-    val cache = new OgCardCache(64L * OneMiB)
+    val cache = cacheOf(64L * OneMiB)
     cache.getOrRender("film")((card(1), true))
     var rendered = false
     cache.getOrRender("film") { rendered = true; (card(2), true) }
@@ -51,7 +58,7 @@ class OgCardCacheSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not freeze an incomplete card, so the next share retries the poster" in {
-    val cache = new OgCardCache(64L * OneMiB)
+    val cache = cacheOf(64L * OneMiB)
     cache.getOrRender("film")((card(1), false))
     var rendered = false
     cache.getOrRender("film") { rendered = true; (card(1), true) }

@@ -2,7 +2,7 @@ package tools
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Weigher}
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{Executor, ForkJoinPool, TimeUnit}
 
 /**
  * Shared memoisation for the rendered Open Graph cards (the film card and the
@@ -20,12 +20,21 @@ import java.util.concurrent.TimeUnit
  * on a JVM that had OOMed the day before. A weight in bytes is the only bound
  * that means the same thing on every card.
  */
-private[tools] class OgCardCache(maxBytes: Long) {
+private[tools] class OgCardCache(maxBytes: Long, maintenance: Executor = ForkJoinPool.commonPool()) {
   private val cache: Cache[String, Array[Byte]] =
     Caffeine.newBuilder()
       .maximumWeight(maxBytes)
       .weigher((_: String, card: Array[Byte]) => card.length: Int)
       .expireAfterWrite(12, TimeUnit.HOURS)
+      // WHERE EVICTION RUNS, and the only reason it is a parameter. Caffeine
+      // defers maintenance to this executor and `cleanUp()` only does the work
+      // itself if it can take the eviction lock -- so on a machine whose common
+      // pool is saturated (every spec in `testUnit` running at once) the pending
+      // eviction is neither done by then nor done yet, and a test that asserts on
+      // the bound fails on load rather than on behaviour. Production keeps the
+      // common pool; the specs pass a same-thread executor and get a cache that
+      // has finished evicting when `cleanUp()` returns.
+      .executor(maintenance)
       .build()
 
   /** Return the cached card for `key`, or run `render`. `render` yields the
