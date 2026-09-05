@@ -408,12 +408,16 @@ class MovieController( cc: ControllerComponents,
    *  the browser caches the page yet always re-validates before re-use — the
    *  pages change when showtimes do, so we never want a stale copy served
    *  without a check. */
-  private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String, revalidate: Boolean)(body: => String): Result = {
+  private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String,
+                                 revalidate: Boolean, shared: Boolean = false)(body: => String): Result = {
     val lastMod  = readModel.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
       .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
-    val validators: Seq[(String, String)] =
-      ("Last-Modified" -> httpDate) +: (if (revalidate) Seq("Cache-Control" -> "private, no-cache") else Nil)
+    val cacheControl: Seq[(String, String)] =
+      if (revalidate) Seq("Cache-Control" -> "private, no-cache")
+      else if (shared) Seq("Cache-Control" -> s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}")
+      else Nil
+    val validators: Seq[(String, String)] = ("Last-Modified" -> httpDate) +: cacheControl
 
     if (ifModifiedSinceCurrent(request, lastMod))
       NotModified.withHeaders(validators*)
@@ -611,7 +615,7 @@ class MovieController( cc: ControllerComponents,
    *  off. Both the listing and the details payload track the same cache mtime,
    *  so a 304 on one is a 304 on the other. */
   private def conditionalJson(request: Request[AnyContent])(body: => play.api.libs.json.JsValue): Result =
-    conditionalGzipped(request, "application/json", vary = "Accept-Encoding", revalidate = false)(
+    conditionalGzipped(request, "application/json", vary = "Accept-Encoding", revalidate = false, shared = true)(
       play.api.libs.json.Json.stringify(body)
     )
 
@@ -986,6 +990,33 @@ class MovieController( cc: ControllerComponents,
 }
 
 object MovieController {
+
+  /** How long a SHARED cache (Cloudflare) may serve one of the public JSON
+   *  payloads before it must re-check with us.
+   *
+   *  SIXTY SECONDS, AND THE NUMBER IS MEASURED RATHER THAN PICKED. The
+   *  validator these responses carry is `WebReadModel.lastModified`, which bumps
+   *  on every applied change; sampled against production on 2026-09-05 it moved
+   *  every couple of minutes, and each time it moved the body genuinely differed
+   *  (byte-identical bodies kept the same timestamp). So a minute is inside the
+   *  interval the content actually changes on -- an edge copy cannot outlive the
+   *  data it was made from by more than one tick.
+   *
+   *  `max-age=0` ALONGSIDE IT IS THE POINT, not an oversight: browsers and the
+   *  mobile apps keep revalidating on every request exactly as they did before
+   *  this existed, so `If-Modified-Since` and the 304s behave identically. Only
+   *  the SHARED cache is allowed to answer without asking, and only for a minute.
+   *  What changes is WHO answers the conditional request: with an edge copy
+   *  present Cloudflare returns the 304 itself instead of waking the JVM for a
+   *  payload it will not send. Verified against the live edge: the origin's
+   *  strong ETag survives the proxy unweakened and both `If-None-Match` and
+   *  `If-Modified-Since` already round-trip to a 0-byte 304.
+   *
+   *  ⚠️ ONLY FOR RESPONSES THAT ARE BYTE-IDENTICAL FOR EVERY CLIENT. The HTML
+   *  pages are personalised (`PersonalisedPage`) and keep `private, no-cache`;
+   *  `/api/me` and `/api/me/state` are per-user and never go through here. A
+   *  shared cache in front of either would serve one visitor's state to another. */
+  val SharedMaxAgeSeconds: Int = 60
 
   /** What the faceted browse pages tell a crawler about themselves.
    *

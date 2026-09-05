@@ -2,6 +2,7 @@ package controllers
 
 import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.OptionValues._
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
@@ -168,4 +169,56 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     header("Content-Encoding", result) shouldBe Some("gzip")
     gunzip(contentAsBytes(result)) should include ("A test synopsis.")
   }
+
+  // ── SHARED-CACHE (Cloudflare) HEADERS ────────────────────────────────────────
+  //
+  // The mobile apps reach these endpoints through Cloudflare now. Measured on the
+  // live edge 2026-09-05, every one of them answered `cf-cache-status: DYNAMIC`:
+  // the proxy cached nothing, so each conditional request from each app install
+  // still woke the JVM to compute a 304 it would then send as 0 bytes.
+  //
+  // `s-maxage` is what lets the edge answer instead. `max-age=0` beside it keeps
+  // every CLIENT revalidating exactly as before, so If-Modified-Since and the
+  // 304s are unchanged from the app's point of view -- only who answers moves.
+
+  it should "let a shared cache hold the lean listing briefly, while clients still revalidate" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.apiRepertoire("poznan")(FakeRequest())
+    status(result) shouldBe OK
+    val cc = header("Cache-Control", result).value
+    cc should include ("public")
+    cc should include ("max-age=0")                 // clients revalidate, as before
+    cc should include ("s-maxage=60")               // only the shared cache may answer
+    header("Last-Modified", result) shouldBe defined
+  }
+
+  it should "still answer a current If-Modified-Since with a bodiless 304" in {
+    // The whole point is that this behaviour does NOT change: adding s-maxage
+    // must not cost the conditional request that mobile already relies on.
+    val (ctrl, readModel) = buildController()
+    val lastMod = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
+      readModel.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
+        .atOffset(java.time.ZoneOffset.UTC))
+    val result = ctrl.apiRepertoire("poznan")(FakeRequest().withHeaders("If-Modified-Since" -> lastMod))
+    status(result) shouldBe NOT_MODIFIED
+    contentAsBytes(result).length shouldBe 0
+  }
+
+  it should "NEVER mark an HTML page shareable, however it was rendered" in {
+    // The safety property, and it is asserted on the ABSENCE of the shared
+    // directives rather than the presence of a particular one, because the page
+    // has two legitimate spellings: `private, no-store` once somebody is signed
+    // in (PersonalisedPage), and no Cache-Control at all for an anonymous render
+    // that also carries a Set-Cookie -- which no shared cache will store anyway.
+    // What must never appear on either is `public`/`s-maxage`: that would let
+    // Cloudflare hand one visitor's page, cookie and navbar to the next person
+    // through the same PoP.
+    val (ctrl, _) = buildController()
+    val cc = header("Cache-Control", ctrl.index("poznan")(FakeRequest())).getOrElse("")
+    cc should not include ("public")
+    cc should not include ("s-maxage")
+    // And the signed-in spelling is the strict one.
+    PersonalisedPage.CacheControl shouldBe "private, no-store"
+  }
+
 }
