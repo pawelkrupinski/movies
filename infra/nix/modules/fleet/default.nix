@@ -31,6 +31,7 @@
     ./accounts.nix
     ./firewall.nix
     ./nix-gc.nix
+    ./container-image-gc.nix
     ./observability.nix
     ./deploy-staging.nix
     ./auto-apply.nix

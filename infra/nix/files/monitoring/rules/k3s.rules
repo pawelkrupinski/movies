@@ -112,6 +112,67 @@ groups:
             systemd collector being off, or both k3s hosts having dropped out of scrape.
             IT DOES NOT MEAN K3S IS RUNNING.
 
+      # -----------------------------------------------------------------------------------------
+      # THE IMAGE STORE, WHICH IS A DISK PROBLEM THAT ONLY k3s HOSTS HAVE. Every image Flux rolls
+      # out stays in containerd until something deletes it, and nothing in k3s does: the kubelet's
+      # own image GC is a level that does not act until the image filesystem is 85% full, which on
+      # these nodes is the root disk and is the exact point `FilesystemSpaceLow` fires. So the
+      # collection is ours (modules/fleet/container-image-gc.nix) and these two rules are what
+      # notice it stopping.
+      #
+      # WHY NOT JUST LET `FilesystemWillFillWithin7Days` CATCH IT, since it did once already. It
+      # catches the CONSEQUENCE, weeks later, after the images have accumulated -- and it says
+      # "/ is filling", which is a sentence about a disk and sends the reader to `du`. These say
+      # the collector stopped, on the day it stopped, which is the fact that actually needs acting
+      # on. The capacity alert stays as the backstop for everything that is not images.
+      # -----------------------------------------------------------------------------------------
+      - alert: ContainerImageGarbageCollectionStale
+        expr: time() - fleet_container_image_gc_last_success_timestamp_seconds > 3 * 86400
+        # THREE DAYS against a daily timer with `Persistent = true`, matching
+        # `NixGarbageCollectionStale` deliberately: the two collectors have the same cadence, the
+        # same catch-up-on-boot behaviour and the same consequence, so a reader who has learnt one
+        # threshold has learnt both. Nothing bad happens on day three -- roughly 5 GB of images
+        # arrive per busy day against a disk with over 100G free -- and the alert is early on
+        # purpose, because this is a trend that takes weeks to become an outage and a week to be
+        # noticed.
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has not collected its container images for over 3 days"
+          description: >-
+            Left alone this ends as a full root filesystem: the images are one per merge and
+            nothing else deletes them, which is what put k3s-worker-1 at 84G of 150G with 200
+            unused images on 2026-09-05. `systemctl status fleet-container-image-gc` and its timer.
+            `fleet_container_image_gc_images` says how many images are currently held -- compare it
+            against the number of distinct images actually running (`k3s crictl ps`), which on this
+            cluster is single digits. THE REPAIR IS `k3s crictl rmi --prune`, which is what the
+            timer runs.
+
+      - alert: ContainerImageGarbageCollectionMetricAbsent
+        # THE JOIN IS AGAINST THE k3s UNIT, NOT AGAINST `machine`, and that is the whole difference
+        # from `NixGarbageCollectionMetricAbsent`. Every host has a Nix store, so that rule can ask
+        # "scraped but never collected" of the whole fleet; only k3s hosts have an image store, and
+        # asking it of mongo-1 would fire for ever about a collector that is correctly absent
+        # there. `node_systemd_unit_state{name="k3s.service"}` is present for exactly the hosts
+        # that run k3s and for no others, which is the same set `fleet.containerImageGc.enable`
+        # defaults from.
+        expr: >-
+          node_systemd_unit_state{name="k3s.service",state="active"} == 1
+            unless on (host) fleet_container_image_gc_last_success_timestamp_seconds
+        # TWO DAYS, matching the Nix collector's companion: longer than the daily timer's first run
+        # plus its randomised delay, so a node built yesterday does not page on its first morning.
+        for: 2d
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.host }} has never reported a successful container image collection"
+          description: >-
+            `ContainerImageGarbageCollectionStale` is a comparison and cannot fire without this
+            series, so this node's image store is unwatched and will grow by one image per merge
+            until the root filesystem alerts. Either the collection has never succeeded here or
+            `fleet.containerImageGc.enable` is false on it. AN ABSENT SERIES IS NOT A COLLECTED
+            IMAGE STORE.
+
   # ------------------------------------------------------------------------------------------------
   # THE OBJECT-STATE GROUP. Everything here needs kube-state-metrics to be running IN the cluster
   # and reachable on its NodePort; see movies-gitops/kube-state-metrics/deployment.yaml for the

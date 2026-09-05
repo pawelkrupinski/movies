@@ -1,0 +1,135 @@
+# UNIT TESTS FOR THE CONTAINER IMAGE COLLECTOR'S ALERTS.
+#
+# These two rules exist because `FilesystemWillFillWithin7Days` fired on k3s-worker-1 on
+# 2026-09-05 with 73G of the root disk held by 209 containerd images, nine of which were in use.
+# The collection that prevents a repeat is modules/fleet/container-image-gc.nix; these rules are
+# what notice it stopping, and a rule that notices nothing is exactly as silent as no rule at all.
+#
+# ⚠️ THE LOAD-BEARING TEST IS THE THIRD ONE, and it is about the JOIN rather than the threshold.
+#    `NixGarbageCollectionMetricAbsent` next door asks "scraped, but never collected" of the whole
+#    fleet via `machine == 1`, which is right for a Nix store because every host has one. Copying
+#    that shape here would fire for ever about mongo-1, which has no container runtime and no
+#    collector by design -- an alert nobody can act on, which is how a group of alerts stops being
+#    read. Joining on the k3s unit instead makes the rule cover exactly the hosts that have an
+#    image store, and this file is where that claim is checked rather than merely asserted in a
+#    comment.
+#
+# The staleness rule's threshold is a `time()` comparison, so every test below pins its readings
+# to absolute values and evaluates at an absolute `eval_time`; a series that merely "looks old"
+# relative to nothing would pass whatever the threshold said.
+rule_files:
+  - ../../nix/files/monitoring/rules/k3s.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A NODE COLLECTING NORMALLY. The timer ran ten minutes ago and holds nine images -- the steady
+  # state of this cluster, where the number of images tracks the number of running pods rather
+  # than the number of merges. Neither rule may fire.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_systemd_unit_state{name="k3s.service",state="active",host="k3s-worker-1"}'
+        values: '1+0x300'
+      - series: 'fleet_container_image_gc_last_success_timestamp_seconds{host="k3s-worker-1"}'
+        values: '3000+0x300'
+      - series: 'fleet_container_image_gc_images{host="k3s-worker-1"}'
+        values: '9+0x300'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: ContainerImageGarbageCollectionStale
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: ContainerImageGarbageCollectionMetricAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE COLLECTOR STOPPED, WHICH IS THE WHOLE POINT. The textfile is still there and node_exporter
+  # still reports it -- a textfile is not a heartbeat, it is served as current for ever -- so the
+  # only thing that says anything is wrong is the timestamp inside it going old. Frozen at epoch 0
+  # and read four days later: past the three-day threshold, silent before it.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_systemd_unit_state{name="k3s.service",state="active",host="k3s-worker-1"}'
+        values: '1+0x8000'
+      - series: 'fleet_container_image_gc_last_success_timestamp_seconds{host="k3s-worker-1"}'
+        values: '0+0x8000'
+    alert_rule_test:
+      # Two days in, one missed run: deliberately still quiet.
+      - eval_time: 2d
+        alertname: ContainerImageGarbageCollectionStale
+        exp_alerts: []
+      - eval_time: 4d
+        alertname: ContainerImageGarbageCollectionStale
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+            exp_annotations:
+              summary: "k3s-worker-1 has not collected its container images for over 3 days"
+              description: >-
+                Left alone this ends as a full root filesystem: the images are one per merge and
+                nothing else deletes them, which is what put k3s-worker-1 at 84G of 150G with 200
+                unused images on 2026-09-05. `systemctl status fleet-container-image-gc` and its
+                timer. `fleet_container_image_gc_images` says how many images are currently held --
+                compare it against the number of distinct images actually running (`k3s crictl
+                ps`), which on this cluster is single digits. THE REPAIR IS `k3s crictl rmi
+                --prune`, which is what the timer runs.
+      # The comparison cannot fire without the series, so the companion must stay quiet here: this
+      # host IS publishing, it is publishing something old.
+      - eval_time: 4d
+        alertname: ContainerImageGarbageCollectionMetricAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ⚠️ THE JOIN. Two hosts, neither publishing a collection timestamp, and only ONE of them is
+  # wrong: k3s-worker-1 runs k3s and has an image store nobody is collecting; mongo-1 runs no
+  # container runtime at all and correctly has no collector. A `machine == 1` join -- the shape
+  # the Nix collector's companion uses, and the obvious thing to copy -- would report both.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_systemd_unit_state{name="k3s.service",state="active",host="k3s-worker-1"}'
+        values: '1+0x5000'
+      - series: 'machine{host="k3s-worker-1",role="k3s-worker",env="prod"}'
+        values: '1+0x5000'
+      - series: 'machine{host="mongo-1",role="mongodb",env="prod"}'
+        values: '1+0x5000'
+    alert_rule_test:
+      - eval_time: 1d
+        alertname: ContainerImageGarbageCollectionMetricAbsent
+        exp_alerts: []
+      - eval_time: 3d
+        alertname: ContainerImageGarbageCollectionMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: k3s-worker-1
+              name: k3s.service
+              state: active
+            exp_annotations:
+              summary: "k3s-worker-1 has never reported a successful container image collection"
+              description: >-
+                `ContainerImageGarbageCollectionStale` is a comparison and cannot fire without this
+                series, so this node's image store is unwatched and will grow by one image per
+                merge until the root filesystem alerts. Either the collection has never succeeded
+                here or `fleet.containerImageGc.enable` is false on it. AN ABSENT SERIES IS NOT A
+                COLLECTED IMAGE STORE.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE `== 1`, WHICH IS THE SAME TRAP `MongodNoPrimary` FELL INTO. node_exporter publishes one
+  # series per unit STATE and moves the value between 0 and 1, so `state="active"` exists and sits
+  # at 0 on a node whose k3s is stopped. Without the comparison this rule would report a node that
+  # has no running runtime to collect from -- and would go on doing it while k3s was down, which
+  # is when there is least to say about images.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_systemd_unit_state{name="k3s.service",state="active",host="k3s-worker-1"}'
+        values: '0+0x5000'
+    alert_rule_test:
+      - eval_time: 3d
+        alertname: ContainerImageGarbageCollectionMetricAbsent
+        exp_alerts: []
