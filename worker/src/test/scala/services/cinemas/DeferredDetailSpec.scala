@@ -48,4 +48,48 @@ class DeferredDetailSpec extends AnyFlatSpec with Matchers {
       refs.flatMap(client.fetchFilmDetail).headOption should be(defined)
     }
   }
+
+  /** Every `DetailEnricher` that opts OUT of deferral, with the fixture its
+   *  listing and detail pages are recorded under. */
+  private val optOutOfDeferral: Seq[(String, CinemaScraper & DetailEnricher)] = Seq(
+    ("Alternatywy",       new AlternatywyClient(new FakeHttpFetch("alternatywy"),
+                            today = LocalDate.of(2026, 6, 7), titles = titleNormalizer)),
+    ("Ekobilet",          new EkobiletClient(new FakeHttpFetch("kino-meduza"), "opolskielamy",
+                            models.KinoMeduza, today = LocalDate.of(2026, 6, 8))),
+    ("Kino Pod Baranami", new KinoPodBaranamiClient(new FakeHttpFetch("kino-pod-baranami"),
+                            models.KinoPodBaranami, LocalDate.of(2026, 6, 7))),
+    ("Kino Paradox",      new KinoParadoxClient(new FakeHttpFetch("kino-paradox"), models.KinoParadox)),
+    ("Kino Muza",         new KinoMuzaClient(new FakeHttpFetch("kino-muza"), titles = titleNormalizer))
+  )
+
+  // `defersTmdbResolution = false` says "resolve this row from its listing, don't
+  // wait for the detail page". That is only safe when waiting would GAIN nothing:
+  // either the listing already carries a TMDB-identity hint, or the detail carries
+  // none. Get it wrong and the row resolves on its title alone while the director
+  // and year that would have disambiguated it sit on a page fetched moments later —
+  // and by then `settleResolved` has stamped the guess's year into the row's key,
+  // which is what made prod's five mis-resolved films permanent.
+  //
+  // Alternatywy was exactly that: its own comment read "the listing carries only
+  // the title + poster … the detail page adds synopsis, director, and production
+  // countries + year", and it opted out anyway.
+  optOutOfDeferral.foreach { case (name, client) =>
+    s"$name" should "only skip TMDB deferral when waiting for its detail would gain nothing" in {
+      withClue(s"$name sets defersTmdbResolution = false: ") { client.defersTmdbResolution shouldBe false }
+      val movies = client.fetch()
+      movies should not be empty
+      // What `resolveTmdbId` can actually search on: an original title, a director,
+      // or a year. Kino Pod Baranami publishes only the first of those on its
+      // listing and that is enough — the search candidates include it.
+      val listingHint = movies.exists(m =>
+        m.director.nonEmpty || m.movie.releaseYear.isDefined || m.movie.originalTitle.nonEmpty)
+      val detailHint  = movies.flatMap(_.filmUrl).flatMap(client.fetchFilmDetail)
+        .exists(d => d.director.nonEmpty || d.releaseYear.isDefined || d.originalTitle.nonEmpty)
+      info(s"$name listing hints: director/year/originalTitle present = $listingHint; detail hints = $detailHint")
+      withClue(s"$name resolves from its listing, but only its DETAIL carries a director/year — " +
+               "it should defer TMDB resolution until that detail lands: ") {
+        (listingHint || !detailHint) shouldBe true
+      }
+    }
+  }
 }
