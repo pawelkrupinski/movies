@@ -34,11 +34,18 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   // than scanned on every request.
   private val byCity = new ConcurrentHashMap[String, ConcurrentHashMap[String, CityScreening]]()
 
-  @volatile private var _lastModified: java.time.Instant = java.time.Instant.now()
+  // ATOMIC, NOT @volatile. Advancing a stamp is a read-modify-write, and the two
+  // change streams deliver on different threads (the backstop scheduler and
+  // /rehydrate touch the model too). @volatile would publish the write but not
+  // make the update atomic, so an interleaving could LOSE one and move the stamp
+  // backwards — after which a later advance can re-issue a value a client
+  // already holds, which is a 304 for changed bytes. `advance` is a pure
+  // function of its argument, so it is safe to re-apply on a CAS retry.
+  private val _lastModified = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](java.time.Instant.now())
   /** Model-wide change stamp — moves when ANYTHING in the corpus changes. The
    *  sitemap's `<lastmod>`, the `filmSlugs` memo and `/debug/readmodel` all want
    *  exactly this. A conditional GET does not: see [[lastModifiedFor]]. */
-  def lastModified: java.time.Instant = _lastModified
+  def lastModified: java.time.Instant = _lastModified.get()
 
   // ── Per-city cache validators ───────────────────────────────────────────────
   //
@@ -66,14 +73,14 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   // slug off a film playing in a different city and silently change that city's
   // rendered links. So any change to the `(id, title, releaseYear)` projection
   // `FilmSlugs` is a pure function of moves EVERY city, and nothing else does.
-  @volatile private var _globalFloor: java.time.Instant = _lastModified
+  private val _globalFloor = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](_lastModified.get())
 
   /** The conditional-GET validator for one city: the latest of the model-wide
    *  floor, the city's own stamp, and the stamps of any slug it formerly used
    *  (`screeningsForCity` still serves rows filed under those, so they are part
    *  of what the city renders). */
   def lastModifiedFor(citySlug: String): java.time.Instant = {
-    var latest = _globalFloor
+    var latest = _globalFloor.get()
     latest = laterOf(latest, cityStamps.get(citySlug))
     City.formerSlugs(citySlug).foreach(former => latest = laterOf(latest, cityStamps.get(former)))
     latest
@@ -90,7 +97,7 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
     if (now.isAfter(previous)) now else previous.plusNanos(1)
   }
 
-  private def touch(): Unit = { _lastModified = advance(_lastModified) }
+  private def touch(): Unit = { _lastModified.updateAndGet(previous => advance(previous)); () }
 
   /** Bump one city's validator (and the model-wide stamp with it). */
   private def touchCity(citySlug: String): Unit = {
@@ -102,7 +109,8 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   /** Bump the floor, and with it every city. */
   private def touchEveryCity(): Unit = {
     touch()
-    _globalFloor = advance(_globalFloor)
+    _globalFloor.updateAndGet(previous => advance(previous))
+    ()
   }
 
   /** The projection `FilmSlugs` is a pure function of. Two movie documents with
@@ -127,7 +135,7 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
    *  redo that work on every request. `lastModified` is the same stamp the
    *  change streams already bump, so a stale map can't outlive an upsert. */
   def filmSlugs: FilmSlugs = {
-    val stamp = _lastModified
+    val stamp = _lastModified.get()
     val cached = _filmSlugs
     if (cached != null && cached._1 == stamp) cached._2
     else {

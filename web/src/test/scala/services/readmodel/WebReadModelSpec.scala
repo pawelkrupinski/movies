@@ -421,4 +421,60 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.lastModifiedFor("warszawa") should be > before
     rm.stop()
   }
+
+  // ── The stamp must not go backwards under concurrent appliers ───────────────
+  //
+  // The two change streams deliver on DIFFERENT threads, and the backstop
+  // scheduler and /rehydrate touch the model too. A stamp advanced with
+  // `x = advance(x)` is a read-modify-write, and @volatile buys visibility, not
+  // atomicity — so an interleaving can lose an update and move the stamp
+  // BACKWARDS. That is not cosmetic: once it regresses, a later advance can
+  // re-issue a value some client already holds, which is a 304 for changed
+  // bytes. This drives the appliers from many threads at once and fails on the
+  // first observed decrease.
+
+  it should "never let the validator go backwards while both streams apply concurrently" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)))
+    repository.upsertScreening(screening("s0", "belle|2021", "warszawa"))
+    val rm = started(repository)
+
+    val threads = 8
+    val perThread = 400
+    val regressions = new java.util.concurrent.atomic.AtomicInteger(0)
+    val stop = new java.util.concurrent.atomic.AtomicBoolean(false)
+
+    // A sampler is the cleanest detector: it only ever reads, so any decrease it
+    // sees is the model's own doing.
+    val sampler = new Thread(() => {
+      var previous = rm.lastModified
+      while (!stop.get()) {
+        val now = rm.lastModified
+        if (now.isBefore(previous)) regressions.incrementAndGet()
+        previous = now
+      }
+    })
+    sampler.start()
+
+    val workers = (1 to threads).map { t =>
+      val th = new Thread(() => {
+        var i = 0
+        while (i < perThread) {
+          // Alternate the two streams and mix floor-bumping with city-scoped
+          // changes, so both mutated fields are contended.
+          if ((i + t) % 2 == 0)
+            repository.upsertMovie(titled(s"film-$t-$i|2021", s"Film $t $i", Some(2021)))
+          else
+            repository.upsertScreening(screening(s"s-$t-$i", "belle|2021", "warszawa"))
+          i += 1
+        }
+      })
+      th.start(); th
+    }
+    workers.foreach(_.join())
+    stop.set(true); sampler.join()
+
+    regressions.get() shouldBe 0
+    rm.stop()
+  }
 }
