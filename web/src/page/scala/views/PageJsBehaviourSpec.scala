@@ -350,8 +350,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("localStorage.removeItem('serverStateSynced')")
       page.eval("_lsSet('hiddenFilms', ['Local Z'])")
       page.reload()
+      // WAIT FOR BOTH HALVES OF THE UNION, not just the local one. The old
+      // condition asked for the synced flag and `Local Z` — the value this
+      // device already had, true the instant the page reloads — and then
+      // asserted on `Film A`, which arrives with the server fetch. So the wait
+      // could fall through before the half being asserted existed, and CI read
+      // `["Local Z"]` on a boot that was merely unfinished. The sibling test
+      // above has always waited on its server-side value; this one did not.
       page.waitFor(
-        "localStorage.getItem('serverStateSynced') === '1' && getHidden().indexOf('Local Z') !== -1")
+        "localStorage.getItem('serverStateSynced') === '1' && " +
+          "getHidden().indexOf('Local Z') !== -1 && getHidden().indexOf('Film A') !== -1")
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")  // pulled from the server
       hidden should include ("Local Z") // migrated up from this device
