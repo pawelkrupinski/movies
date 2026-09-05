@@ -1,7 +1,7 @@
-@(allCinemas: Seq[String], cinemaPills: Map[String, String], currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
+@(allCinemas: Seq[String], cinemaPills: Map[String, String], oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Inline-`<script>` block that emits the page-bound JS constants
-   the externalized `shared.js` reads at top level: IS_LOGGED_IN,
+   the externalized `shared.js` reads at top level:
    HAS_OAUTH_PROVIDERS, ALL_CINEMAS, CINEMA_PILLS. Everything else
    in the shared JS moved to `public/js/shared.js` so iOS Safari
    (and every other engine with a URL-keyed script cache) can parse
@@ -12,9 +12,14 @@
    shared "script global lexical environment", so the constants
    declared here are visible to the subsequent
    `<script src="…/shared.js">` block.
+
+   NOTHING HERE MAY DEPEND ON WHO IS ASKING. `IS_LOGGED_IN` used to, and it was
+   the last user-specific byte in the listing page after the avatar moved out of
+   `_authMenu`; one flag saying `true` is all it takes to make a response
+   un-shareable. shared.js now reads its own DOM for that answer, which is right
+   both before hydration (nobody) and after it (whoever `/api/me` named).
 *@
 <script>
-  const IS_LOGGED_IN        = @currentUser.isDefined;
   const HAS_OAUTH_PROVIDERS = @oauthProviders.nonEmpty;
   const ALL_CINEMAS         = @Html(play.api.libs.json.Json.toJson(allCinemas).toString);
   const CINEMA_PILLS        = @Html(play.api.libs.json.Json.toJson(cinemaPills).toString);

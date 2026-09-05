@@ -8,7 +8,7 @@
 // Twirl renders the inline block BEFORE the `<script src=
 // "/assets/js/shared.js">` tag, so:
 //
-//  - constants from `_sharedJsConfig` (IS_LOGGED_IN, ALL_CINEMAS, …)
+//  - constants from `_sharedJsConfig` (ALL_CINEMAS, CINEMA_PILLS, …)
 //    are in scope for shared.js at runtime
 //  - shared.js exports functions (`applyFilters`, `buildIndex`, …)
 //    that the inline `<script>` block calls back into
@@ -32,7 +32,6 @@ module.exports = [
         ...globals.browser,
 
         // From `_sharedJsConfig.scala.html`.
-        IS_LOGGED_IN: 'readonly',
         HAS_OAUTH_PROVIDERS: 'readonly',
         ALL_CINEMAS: 'readonly',
         CINEMA_PILLS: 'readonly',

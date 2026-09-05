@@ -18,7 +18,7 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
 
   private def render(devMode: Boolean): String =
     views.html._navbar(devMode = devMode,
-      currentUser = None, oauthProviders = Set.empty).body
+      oauthProviders = Set.empty).body
 
   "navbar partial" should "not render a Filmy nav link" in {
     // The Filmy pill was dropped from the navbar. The logo stays, but

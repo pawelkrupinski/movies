@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
 @import services.movies.TrailerEmbed
-@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", devMode: Boolean = false, currentUser: Option[models.User] = None, oauthProviders: Set[String] = Set.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", devMode: Boolean = false, oauthProviders: Set[String] = Set.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -58,7 +58,7 @@
 </head>
 <body>
 
-@_sharedJsConfig(Seq.empty, Map.empty[String, String], currentUser, oauthProviders)
+@_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
@@ -71,7 +71,7 @@
      `?cinema=Multikino`, etc.) survives the round-trip. *@
   <a id="back-link" href="@routes.MovieController.index(city.slug)" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">@messages("back.films")</span></a>
   <div>
-    @_authMenu(currentUser, oauthProviders, "auth.loginLong")
+    @_authMenu(oauthProviders, "auth.loginLong")
   </div>
 </nav>
 @_loginModal(oauthProviders)

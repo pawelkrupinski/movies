@@ -343,7 +343,13 @@ class MovieController( cc: ControllerComponents,
                        // country's db it shows via `?country=xx` same-origin instead of
                        // hopping to the other country's prod host (which 404s /debug).
                        debugCountries: DebugCountries,
-                       userRepository: services.users.UserRepository,
+                       // NO `UserRepository` — deliberately, and it is the strongest
+                       // form of the promise `SharedMaxAgeSeconds` needs. This
+                       // controller renders every page it serves without the means to
+                       // find out who asked for it, so no response of its can vary by
+                       // session and `s-maxage` on the listing cannot leak anybody.
+                       // Who is signed in is `AuthController`'s question, answered
+                       // per client at `/api/me`.
                        // Gate for the state-mutating /…/debug/rehydrate trigger
                        // (the other /debug pages are dev-only; rehydrate runs in
                        // every mode, so it needs the admin gate instead).
@@ -370,24 +376,31 @@ class MovieController( cc: ControllerComponents,
   // so /debug orders staging rows by the same anchor the worker wrote.
   private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
 
-  // Who this page is being rendered for. `SignedInUser` owns the rule —
-  // including why an anonymous browser and a session whose row has since been
-  // deleted are the same answer, and why the session says WHEN it was issued.
-  private def currentUser(request: RequestHeader): Option[models.User] =
-    SignedInUser(request, userRepository)
-
   private def acceptsGzip(request: RequestHeader): Boolean =
     request.headers.get("Accept-Encoding").exists(_.toLowerCase.contains("gzip"))
 
   // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for
-  // every anonymous visitor at a given cache version, so we serve a
-  // pre-rendered, pre-gzipped blob keyed on the request path (which fully
-  // determines the output: city and page type). Logged-in users (personalised
-  // navbar) and filter queries (OG meta) must NOT hit the shared blob — they
-  // render fresh. Non-gzip clients also bypass it, since the cache stores
-  // compressed bytes.
-  private def cacheablePlainPage(request: RequestHeader, user: Option[models.User]): Boolean =
-    user.isEmpty && request.queryString.isEmpty && acceptsGzip(request)
+  // EVERY visitor at a given cache version — signed in or not, which is the whole
+  // point of `_authMenu` no longer knowing — so we serve a pre-rendered,
+  // pre-gzipped blob keyed on the request path (which fully determines the
+  // output: city and page type).
+  //
+  // THE PREDICATE USED TO ASK `user.isEmpty`, AND THAT WAS THE CEILING. It meant
+  // a signed-in visitor rendered fresh and uncacheably, but far more expensively
+  // it meant the response could never be offered to a shared cache at all: the
+  // page differed per visitor, so Cloudflare had to be told `private, no-cache`
+  // and the edge held nothing but the JSON. Nobody's name reaches this render any
+  // more, so the only things left that change the bytes are the ones below.
+  //
+  // Filter queries are the only thing left that bypasses it: they move the OG
+  // meta, and `request.path` — the blob's key — drops the query string. A client
+  // that cannot take gzip no longer bypasses it either, because it never needed
+  // to: `conditionalGzipped` serves that client the uncompressed body with the
+  // same validators, and the `Vary: Accept-Encoding` both branches carry is what
+  // keeps the two spellings apart in a shared cache. `/api/repertoire` has been
+  // shared-cacheable on exactly those terms since it got `s-maxage`.
+  private def cacheablePlainPage(request: RequestHeader): Boolean =
+    request.queryString.isEmpty
 
   private def ifModifiedSinceCurrent(request: RequestHeader, lastMod: java.time.Instant): Boolean =
     request.headers.get("If-Modified-Since").exists { ims =>
@@ -499,27 +512,40 @@ class MovieController( cc: ControllerComponents,
   private def cityCookie(city: City): Cookie =
     Cookie("city", city.slug, maxAge = Some(60 * 60 * 24 * 365), path = city.country.mountPath, httpOnly = false)
 
-  // Render the main "Filmy" listing — repertoire view, full corpus,
-  // OG meta derived from `?…` filter parameters. Shared between `/` and
-  // `/movies` (no parameters) so both URLs are interchangeable; `/movies`
-  // with one of the browse-axis parameters still routes through `browse`
-  // below to the per-director / per-cast / per-country page.
+  /** The main "Filmy" listing — repertoire view, full corpus, OG meta derived
+   *  from `?…` filter parameters. Shared between `/` and `/movies` (no
+   *  parameters) so both URLs are interchangeable; `/movies` with one of the
+   *  browse-axis parameters still routes through `browse` below to the
+   *  per-director / per-cast / per-country page.
+   *
+   *  RENDERED FOR NOBODY — AND THEREFORE OFFERED TO THE EDGE. This handler
+   *  cannot ask who is making the request, and that is the safety argument
+   *  rather than a side effect of it: the controller holds no `UserRepository`,
+   *  `views.html.repertoire` has no parameter to take a `models.User`, and
+   *  `_authMenu` has nothing to draw. So the bytes cannot depend on the session
+   *  cookie, and `s-maxage` cannot hand one visitor's page to another — the rule
+   *  `SharedMaxAgeSeconds` states, met structurally instead of by inspection.
+   *  Whoever is signed in is layered on after first paint, by `shared.js` off
+   *  `/api/me` (which is `no-store`, so it cannot be shared either).
+   *
+   *  `?filter=` variants keep `private, no-cache`: still client-independent, but
+   *  combinatorially many and not worth an edge entry each. */
   private def renderIndex(city: City, request: RequestHeader): Result = {
     implicit val c: City = city
-    val user = currentUser(request)
-    if (cacheablePlainPage(request, user)) {
+    if (cacheablePlainPage(request)) {
       // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
       // (and its data-prep) never runs either.
-      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true,
-                         city = Some(city))(renderIndexHtml(city, request, user).body)
+      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = false, shared = true,
+                         city = Some(city))(renderIndexHtml(city, request).body)
         .withCookies(cityCookie(city))
     } else {
-      PersonalisedPage(user)(Ok(renderIndexHtml(city, request, user)).withCookies(cityCookie(city)))
+      Ok(renderIndexHtml(city, request))
+        .withHeaders("Cache-Control" -> "private, no-cache")
+        .withCookies(cityCookie(city))
     }
   }
 
-  private def renderIndexHtml(city: City, request: RequestHeader,
-                              user: Option[models.User])(implicit c: City): play.twirl.api.Html = {
+  private def renderIndexHtml(city: City, request: RequestHeader)(implicit c: City): play.twirl.api.Html = {
     // One clock for both the filtering and the page's own expiry countdown —
     // `_repertoireView` counts forward from `renderedAt`, so it has to be the
     // instant the schedules were actually pruned at.
@@ -530,7 +556,7 @@ class MovieController( cc: ControllerComponents,
       schedules,
       city.cinemaDisplayNames,
       city.cinemaPillMap,
-      devMode, user, oauthProviders, renderedAt = now,
+      devMode, oauthProviders, renderedAt = now,
       pageTitle       = meta.title,
       pageDescription = meta.description,
       pageUrl         = PageMeta.canonicalUrl(request),
@@ -546,9 +572,10 @@ class MovieController( cc: ControllerComponents,
 
   private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     implicit val c: City = city
-    val user = currentUser(request)
-    PersonalisedPage(user)(Ok(views.html.browse(
-      films, heading, devMode, user, oauthProviders,
+    // Client-independent like the listing (nobody is rendered into it), but a
+    // facet URL is one of combinatorially many and earns no edge entry.
+    Ok(views.html.browse(
+      films, heading, devMode, oauthProviders,
       pageUrl = PageMeta.canonicalUrl(request),
       fbAppId = PageMeta.fbAppId,
       // A FACET IS UI STATE, NOT A PAGE. `?cast=` alone is one URL per cast
@@ -563,7 +590,7 @@ class MovieController( cc: ControllerComponents,
       // the crawlers that ignore it — see the note on `_ogTagsApp`.
       canonicalUrl = PageMeta.origin(request) + CityPath(city) + "/",
       robots = MovieController.FacetRobots,
-    )).withCookies(cityCookie(city)))
+    )).withHeaders("Cache-Control" -> "private, no-cache").withCookies(cityCookie(city))
   }
 
   /** The four legacy Polish param names (`kraj`/`rezyser`/`aktor`/`gatunek`) are still
@@ -954,10 +981,13 @@ class MovieController( cc: ControllerComponents,
     // setup) is in one place.
     val canonicalUrl = PageMeta.origin(request) + FilmHref.forSlug(schedule.slug, schedule.movie.title)
     val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
-    val user = currentUser(request)
-    PersonalisedPage(user)(
-      Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, user, oauthProviders))
-        .withCookies(cityCookie(c)))
+    // Nobody is rendered into this page either, so `no-cache` (revalidate, keep
+    // the browser copy, bfcache works) replaces the `no-store` a signed-in render
+    // used to need. It stops short of `s-maxage` only because a per-film edge
+    // entry wants its own validator analysis, not because the bytes are anyone's.
+    Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, oauthProviders))
+      .withHeaders("Cache-Control" -> "private, no-cache")
+      .withCookies(cityCookie(c))
   }
 
   /** The 1200×630 Open Graph share card (PNG) for a film — what `og:image` /
@@ -1052,10 +1082,16 @@ object MovieController {
    *  strong ETag survives the proxy unweakened and both `If-None-Match` and
    *  `If-Modified-Since` already round-trip to a 0-byte 304.
    *
-   *  ⚠️ ONLY FOR RESPONSES THAT ARE BYTE-IDENTICAL FOR EVERY CLIENT. The HTML
-   *  pages are personalised (`PersonalisedPage`) and keep `private, no-cache`;
-   *  `/api/me` and `/api/me/state` are per-user and never go through here. A
-   *  shared cache in front of either would serve one visitor's state to another. */
+   *  ⚠️ ONLY FOR RESPONSES THAT ARE BYTE-IDENTICAL FOR EVERY CLIENT. The bare
+   *  city listing now qualifies and takes it: no template it reaches accepts a
+   *  `models.User`, so no session cookie can move a byte of it (see
+   *  `renderIndex`). What is per-user went the other way instead — `/api/me` and
+   *  `/api/me/state` answer about one person and say `private, no-store`
+   *  (`PerUserResponse`), and `shared.js` layers their answer onto the cached
+   *  page after first paint. Filtered listings, facet pages and film pages stay
+   *  `private, no-cache`: client-independent too, but not worth an edge entry
+   *  each without their own validator analysis. A shared cache in front of
+   *  anything per-user would serve one visitor's state to another. */
   val SharedMaxAgeSeconds: Int = 60
 
   /** How many days from today a listing request wants, or `None` for everything.

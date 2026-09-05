@@ -23,17 +23,21 @@ class UserStateController(
 ) extends AbstractController(cc) {
   import UserStateController._
 
+  // Every action here answers about ONE person, so every answer says so — see
+  // `PerUserResponse`. Since the HTML pages stopped carrying a signed-in visitor
+  // at all, these endpoints and `/api/me` are the ENTIRE per-user surface, and a
+  // cached copy of one is the whole privacy failure the split was meant to end.
   def get(): Action[AnyContent] = Action { request =>
-    request.session.get("userId") match {
+    PerUserResponse(request.session.get("userId") match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         val state = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
         Ok(toJson(state))
-    }
+    })
   }
 
   def put(): Action[JsValue] = Action(parse.json) { request =>
-    request.session.get("userId") match {
+    PerUserResponse(request.session.get("userId") match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         // PUT is a partial update over the stored row (see fromJson): fields
@@ -46,7 +50,7 @@ class UserStateController(
             userStateRepository.upsert(state)
             Ok(toJson(state))
         }
-    }
+    })
   }
 
   /** Hard-delete the user's row + state row, drop their session.
@@ -60,12 +64,12 @@ class UserStateController(
    *  with the session cleared. The response carries no body so a fetch
    *  call doesn't need a parser. */
   def deleteAccount(): Action[AnyContent] = Action { request =>
-    request.session.get("userId") match {
+    PerUserResponse(request.session.get("userId") match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         accountDeletion.delete(userId)
         NoContent.withNewSession
-    }
+    })
   }
 }
 

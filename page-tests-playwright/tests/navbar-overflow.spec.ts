@@ -114,10 +114,12 @@ async function stressNavbar(page: Page): Promise<void> {
       localStorage.setItem('disabledCinemas', JSON.stringify(all.slice(1)));
     }
 
-    // Long-name logged-in pill. Mirrors the DOM `_navbar.scala.html`
-    // emits for the `Some(user)` branch — auth-menu wrapper with an
-    // avatar fallback span and the auth-name span. 30 chars covers
-    // the realistic worst case (compound Polish surnames).
+    // Long-name logged-in pill. Mirrors the DOM `buildAuthMenu` (shared.js)
+    // hydrates into the slot once `/api/me` names somebody — auth-menu wrapper
+    // with an avatar fallback span and the auth-name span. No server render puts
+    // it there any more: the page is the same bytes for everyone so a shared
+    // cache may hold it. 30 chars covers the realistic worst case (compound
+    // Polish surnames).
     const auth = document.querySelector('.navbar-auth');
     if (auth) {
       auth.innerHTML = `

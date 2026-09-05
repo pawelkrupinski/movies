@@ -533,4 +533,38 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     (contentAsJson(onSibling) \ "avatarUrl").as[String] shouldBe "https://platform-lookaside.fbsbx.com/alice"
   }
 
+  // ── /api/me is now the only thing that names anybody ──────────────────────
+  //
+  // The listing page stopped rendering the avatar so Cloudflare could hold it
+  // (`MovieController.SharedMaxAgeSeconds`), and the whole per-user surface moved
+  // here. Which inverts the cache requirement: the page may be stored by anyone,
+  // this must be stored by no one. It used to carry no `Cache-Control` at all,
+  // and a response with none is HEURISTICALLY cacheable — so a browser could have
+  // replayed a 200 after a sign-out and rebuilt an avatar for a session that was
+  // already gone.
+
+  "GET /api/me" should "forbid anything keeping a copy of the answer" in {
+    val (ctl, repository, _) = fixture()
+    repository.upsert(models.User(
+      id = "alice@example.com", provider = "google", providerSub = "G-9",
+      email = Some("alice@example.com"), displayName = Some("Alice"), avatarUrl = None,
+      createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
+    val result = ctl.me()(
+      FakeRequest("GET", "/api/me").withSession("userId" -> "alice@example.com"))
+
+    status(result) shouldBe OK
+    header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
+  }
+
+  // Including the 401. It is a smaller answer but the same kind of answer — "not
+  // you" is still about the asker — and a stored 401 would keep a page insisting
+  // a signed-in visitor is anonymous.
+  it should "say the same about a 401" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.me()(FakeRequest("GET", "/api/me"))
+
+    status(result) shouldBe UNAUTHORIZED
+    header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
+  }
+
 }

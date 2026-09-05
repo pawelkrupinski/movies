@@ -81,12 +81,19 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
   // ── Browser conditional-GET (304 on refresh) ───────────────────────────────
 
+  // `max-age=0` is what keeps this test's name true: the browser stores the page
+  // and revalidates before every re-use, exactly as `private, no-cache` made it.
+  // What changed is who may ANSWER that revalidation — the `s-maxage` lets
+  // Cloudflare hold a copy for a minute and 304 the client itself instead of
+  // waking the JVM, which only became safe once the page stopped naming the
+  // visitor (see `SharedCacheableListingSpec`).
   "a cacheable page" should "carry Last-Modified + Cache-Control so the browser revalidates" in {
     val (ctrl, _) = buildController()
     val result = ctrl.index("poznan")(gzipRequest("/poznan/"))
 
     header("Last-Modified", result) shouldBe defined
-    header("Cache-Control", result) shouldBe Some("private, no-cache")
+    header("Cache-Control", result) shouldBe
+      Some(s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}")
   }
 
   it should "304 a refresh whose If-Modified-Since is current, with no body" in {

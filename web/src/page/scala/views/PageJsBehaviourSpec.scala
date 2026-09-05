@@ -14,7 +14,7 @@ import services.staging.StagingRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
 
 import java.net.URLDecoder
-import java.time.{Instant, LocalDateTime}
+import java.time.LocalDateTime
 
 /**
  * JavaScript-behaviour regression for the rendered pages. Spins up a
@@ -72,7 +72,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       wiring.bootFromSnapshotOrPipeline()
       // Web read transform over the worker-projected read model (the shared seam).
       val service     = new controllers.MovieControllerService(wiring.webReadModel)
-      val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
       val cinemas = city.cinemaDisplayNames
       val schedules       = service.toSchedules(city, now)
@@ -93,7 +92,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
-        currentUser = anon, oauthProviders = noOauth, renderedAt = now
+        oauthProviders = noOauth, renderedAt = now
       ).body
 
       // `/movie/{slug}` mirrors the `MovieController.filmBySlug` action: re-slug
@@ -115,27 +114,23 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val manyCinemasHtml: String = views.html.film(
         tools.ManyCinemaFilm(schedules.head), "http://test.local/movie-many",
         ogDescription = "", devMode = false).body
-      // Logged-in render of the index so the inline config sets
-      // `IS_LOGGED_IN = true` and shared.js runs its server-sync boot path.
-      // Served at `/li`; the `/api/me/state` route below stands in for the
-      // real UserStateController. Lets the boot reconcile (first-login union
-      // vs. server-authoritative replace) be driven over CDP.
-      val testUser = models.User(
-        id = "tester@example.com", provider = "google", providerSub = "sub-1",
-        email = Some("tester@example.com"), displayName = Some("Tester"),
-        avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH
-      )
+      // The signed-in index — WHICH IS THE SAME HTML AS THE SIGNED-OUT ONE.
+      // Nothing server-rendered names a visitor any more (that is what lets the
+      // real listing carry an `s-maxage`), so "logged in" is not a render at all:
+      // it is this page plus an `/api/me` that answers, which `hydrateAuth` turns
+      // into the avatar menu. Served at `/li`, with a provider configured because
+      // a deployment with none has nothing to sign in to and never asks — which
+      // is also what keeps every OTHER fixture page here signed out.
+      //
+      // `/api/me` and `/api/me/state` below stand in for AuthController and
+      // UserStateController, and let the boot reconcile (first-login union vs.
+      // server-authoritative replace) be driven over CDP.
       val loggedInHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
-        currentUser = Some(testUser), oauthProviders = noOauth, renderedAt = now
+        oauthProviders = Set("google"), renderedAt = now
       ).body
-      // The same render with a provider configured, so the navbar carries the
-      // hidden login pill the sign-out swap puts back. Kept apart from `/li` so
-      // the server-sync specs above keep booting with HAS_OAUTH_PROVIDERS false.
-      val loggedInOauthHtml: String = views.html.repertoire(
-        schedules, cinemas, pills, devMode = false,
-        currentUser = Some(testUser), oauthProviders = Set("google"), renderedAt = now
-      ).body
+      val meJson =
+        """{"displayName":"Tester","email":"tester@example.com","avatarUrl":null,"provider":"google"}"""
       // Static server-side state: one hidden film. response.json() parses the body
       // regardless of content-type, so serving it via the HTML route map is fine.
       val userStateJson =
@@ -213,7 +208,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if sub(p).startsWith("/movie/") =>
             renderFilm(sub(p).stripPrefix("/movie/"))
           case p if sub(p) == "/li"           => loggedInHtml
-          case p if sub(p) == "/li-oauth"     => loggedInOauthHtml
+          case p if p == "/api/me"            => meJson
           case p if p == "/api/me/state"      => userStateJson
           // The dev-only visual-tuning page — rendered with real fixture films
           // so its slider panel (and the ± step buttons) can be driven over CDP.
@@ -291,19 +286,22 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
-  /** Open the logged-in index (`IS_LOGGED_IN = true`) in a fresh tab so the
-   *  shared.js server-sync boot path runs. */
+  /** Open the index as a signed-in visitor and WAIT FOR THE AVATAR TO ARRIVE.
+   *
+   *  The document itself is the anonymous one — it has to be, or no shared cache
+   *  could hold it — so "signed in" only becomes true once `hydrateAuth` has been
+   *  told so by `/api/me`. Every spec below that reaches for `#auth-menu`, the
+   *  sign-out form or the server-state reconcile depends on that having landed,
+   *  so the wait lives here rather than in each of them.
+   *
+   *  This is also the page that carries the hidden login pill the sign-out swap
+   *  puts back, since hydration is what hid it. */
   private def onLoggedInIndex(body: CdpPage => Any): Unit =
     chrome match {
-      case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/li")(body(_))
-      case None    => cancel("Chrome not installed — skipping JS behaviour test")
-    }
-
-  /** Open the logged-in index that also has an OAuth provider, so both halves of
-   *  the auth slot — the avatar menu and the hidden login pill — are on the page. */
-  private def onLoggedInWithLoginPill(body: CdpPage => Any): Unit =
-    chrome match {
-      case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/li-oauth")(body(_))
+      case Some(c) => c.openPage(server.baseUrl + cityPrefix + "/li") { page =>
+        page.waitFor("!!document.getElementById('auth-menu')", timeoutMs = 5000)
+        body(page)
+      }
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -970,8 +968,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // position that doesn't reflect production. On mobile the only auth
       // control the navbar shows is the LOGGED-IN avatar pill — the
       // signed-out "Zaloguj" button is hidden below 576 px (it lives in the
-      // navbar on desktop only). So inject the avatar pill (mirroring the
-      // `Some(user)` branch of `_navbar`) to exercise the realistic
+      // navbar on desktop only). So inject the avatar pill (mirroring what
+      // `buildAuthMenu` hydrates in) to exercise the realistic
       // logged-in mobile navbar; `.auth-name` hides at this width but the
       // `.auth-menu` pill itself stays visible.
       page.eval(
@@ -4729,14 +4727,59 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
 
+  // ── Who is looking, fetched rather than rendered ─────────────────────────
+  //
+  // The listing is handed to Cloudflare with an `s-maxage`, and a shared cache
+  // may only hold a response that is byte-identical for every client. So the
+  // document names nobody — not the avatar, not the display name, not a
+  // logged-in flag — and `hydrateAuth` asks `/api/me` after first paint. These
+  // assert both halves: the bytes on the wire carry no visitor, and the visitor
+  // still ends up on screen.
+
+  "The listing document" should "reach the browser naming nobody" in {
+    onLoggedInIndex { page =>
+      // The page as SERVED, re-fetched from inside the tab — the live DOM has the
+      // avatar in it by now precisely because JS put it there.
+      page.eval(
+        "window.__servedAvatar = null;" +
+        "fetch(location.href).then(r => r.text()).then(t => {" +
+        "  window.__servedAvatar = t.indexOf('id=\"auth-menu\"') >= 0" +
+        "                       || t.indexOf('IS_LOGGED_IN') >= 0; })")
+      page.waitFor("window.__servedAvatar !== null", timeoutMs = 5000)
+      page.evalBool("window.__servedAvatar") shouldBe false
+    }
+  }
+
+  it should "grow the avatar back from /api/me" in {
+    onLoggedInIndex { page =>
+      // "Tester" exists only in the `/api/me` payload — it is in no template and
+      // in no fixture HTML — so finding it on screen is proof of the round trip.
+      page.evalString("document.querySelector('.auth-name').textContent") shouldBe "Tester"
+      page.evalBool("window.isLoggedIn()") shouldBe true
+      // A real control, wired to this deployment's mount point, not a lookalike.
+      page.evalString("document.querySelector('.auth-logout-form').action") should endWith ("/auth/logout")
+      // And the pill it replaced is hidden rather than gone, so the sign-out swap
+      // has something to put back.
+      page.evalString("document.getElementById('auth-login').style.display") shouldBe "none"
+    }
+  }
+
+  "A page with no OAuth provider configured" should "never ask who is looking" in {
+    onPath("/") { page =>
+      page.evalBool("window.isLoggedIn()") shouldBe false
+      page.evalBool("!document.getElementById('auth-menu')") shouldBe true
+    }
+  }
+
+
   // ── Signing out ──────────────────────────────────────────────────────────
   //
   // The sign-out POST walks a redirect chain across two domains and lands on a
-  // freshly rendered anonymous page — but the browser is free to answer that
-  // landing from its own cache, and an entry stored before personalised renders
-  // started saying `no-store` is still on disk. So the avatar stayed put while
-  // the visitor was already signed out. Two halves, both asserted here: empty
-  // the section on submit, and re-fetch a page that comes back signed in.
+  // freshly rendered anonymous page. The HTML is the same bytes signed in or out
+  // now, so the landing itself cannot be stale — but the avatar the visitor is
+  // looking at was built from `/api/me`, and the round trip takes a moment. Two
+  // halves, both asserted here: empty the section on submit, and re-fetch a page
+  // that comes back signed in anyway.
 
   "Submitting the sign-out form" should "take the avatar down and mark the browser" in {
     onLoggedInIndex { page =>
@@ -4758,7 +4801,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // IN for the second or two the two-domain redirect chain takes, or signing out
   // reads as the login button disappearing too.
   it should "put the login pill back in the avatar's place" in {
-    onLoggedInWithLoginPill { page =>
+    onLoggedInIndex { page =>
       page.setDesktopViewport(1280, 900)   // the pill is a desktop-only navbar control
       page.evalString("getComputedStyle(document.getElementById('auth-login')).display") shouldBe "none"
 

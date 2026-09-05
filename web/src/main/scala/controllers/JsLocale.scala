@@ -76,6 +76,13 @@ object JsLocale {
         "all"      -> messages("areaPicker.all"),
         "confirm"  -> messages("areaPicker.confirm"),
       ),
+      // The auth-menu copy. shared.js builds that menu itself now (the server
+      // cannot: a page that names the visitor is a page no shared cache may
+      // hold), so the strings it needs have to travel with the page.
+      "auth"            -> Json.obj(
+        "logout"  -> messages("auth.logout"),
+        "account" -> messages("auth.account"),
+      ),
       "plural"          -> pluralRule,
       "showtime"        -> forms,
     ))

@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @* `renderedAt` must be the clock `films` was filtered by — see `_repertoireView`. *@
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -25,11 +25,11 @@
 </head>
 <body>
 
-@_navbar(devMode, currentUser, oauthProviders)
+@_navbar(devMode, oauthProviders)
 @_loginModal(oauthProviders)
 @_hiddenModal()
 
-@_sharedJsConfig(allCinemas, cinemaPills, currentUser, oauthProviders)
+@_sharedJsConfig(allCinemas, cinemaPills, oauthProviders)
 <script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 
 @* The listing's only heading. Visually hidden because the design opens straight

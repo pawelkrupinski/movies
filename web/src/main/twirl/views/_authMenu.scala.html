@@ -1,44 +1,33 @@
-@(currentUser: Option[models.User], oauthProviders: Set[String], loginLabel: String)(implicit messages: play.api.i18n.Messages)
+@(oauthProviders: Set[String], loginLabel: String)(implicit messages: play.api.i18n.Messages)
 @*
-   The avatar dropdown, or the pill that opens the login modal — the same slot
-   on the repertoire navbar, the film page and the browse page, which is why it
-   lives here rather than three times over.
+   The auth slot: the pill that opens the login modal, on the repertoire navbar,
+   the film page and the browse page — which is why it lives here rather than
+   three times over.
 
    `loginLabel` is the only thing that differs: the repertoire navbar competes
    for width with the day pills and the search box, so it says the short form.
 
-   The login pill is rendered EVEN WHEN SIGNED IN, hidden. Signing out is a
-   redirect chain across two domains, and for as long as it runs the visitor is
-   still looking at this page — so shared.js swaps the two on submit rather than
-   taking the avatar down and leaving a hole where the way back in should be.
-   Hidden inline rather than with `hidden`, because `.nav-tab-login` sets a
-   `display` of its own and would win over the attribute; hiding it inline means
-   showing it again is `display = ''`, which hands the slot back to the
-   stylesheet — including the mobile rule that keeps the pill out of the navbar
-   entirely.
+   THE AVATAR IS NOT RENDERED HERE ANY MORE, and that is the whole point. A page
+   that draws somebody's avatar, name and account menu is a page that differs per
+   visitor, and a response that differs per visitor can never be handed to a
+   shared cache — see `MovieController.SharedMaxAgeSeconds`, which spells out
+   that only byte-identical responses may carry `s-maxage`. So the server renders
+   the SIGNED-OUT slot for everyone and `shared.js` asks `/api/me` who is looking,
+   building the avatar menu into this slot after first paint (`hydrateAuth`).
+
+   The pill is rendered even for a visitor who turns out to be signed in, hidden
+   by that hydration rather than absent — signing out is a redirect chain across
+   two domains, and for as long as it runs the visitor is still looking at this
+   page, so shared.js swaps the two rather than leaving a hole where the way back
+   in should be. Hidden via `style.display` rather than the `hidden` attribute,
+   because `.nav-tab-login` sets a `display` of its own and would win over the
+   attribute; hiding it inline means showing it again is `display = ''`, which
+   hands the slot back to the stylesheet — including the mobile rule that keeps
+   the pill out of the navbar entirely.
+
+   No providers configured (local dev with no secrets) means nothing to sign in
+   to, so the slot is empty and hydration never runs.
 *@
 @if(oauthProviders.nonEmpty) {
-  <button type="button" id="auth-login" class="nav-tab nav-tab-login" onclick="openLoginModal()"@if(currentUser.isDefined){ style="display:none"}>@messages(loginLabel)</button>
-}
-@currentUser.map { user =>
-  <div class="auth-menu" id="auth-menu" onclick="toggleAuthMenu(event)">
-    @user.avatarUrl match {
-      case Some(url) => { <img src="@url" class="auth-avatar" alt=""> }
-      case None      => { <span class="auth-avatar-fallback">@user.displayName.flatMap(_.headOption).map(_.toUpper).getOrElse('?')</span> }
-    }
-    <span class="auth-name">@user.displayName.getOrElse(user.email.getOrElse(messages("auth.account"))).split("[ @@]").head</span>
-    <div class="auth-dropdown" id="auth-dropdown">
-      @* Logout route is `+ nocsrf` (form post from a third-party page can only
-         log a user OUT, not in — same-origin policy protects against state
-         changes any further than that).
-
-         A plain form post, so the sign-out redirect chain runs in the browser
-         and clears the sibling domain's cookie on the way. shared.js hangs
-         `onsubmit` off the class to swap the slot at once, and to re-fetch the
-         page if a cached signed-in copy comes back. *@
-      <form method="post" action="@routes.AuthController.logout()" class="auth-logout-form">
-        <button type="submit" class="auth-logout-btn">@messages("auth.logout")</button>
-      </form>
-    </div>
-  </div>
+  <button type="button" id="auth-login" class="nav-tab nav-tab-login" onclick="openLoginModal()">@messages(loginLabel)</button>
 }

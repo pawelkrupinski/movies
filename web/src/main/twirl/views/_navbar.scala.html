@@ -1,11 +1,12 @@
-@(devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
+@(devMode: Boolean, oauthProviders: Set[String])(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    Navbar layout:
      - Logo + tab links (Debug, dev-only)                       — left
      - Date + search                                            — right cluster
      - Hidden-films flyout button (auto-shown when set)        — right cluster
      - Filtry dropdown (includes the cinema picker)            — right cluster
-     - Login pill / avatar dropdown                             — far right (desktop)
+     - Login pill (shared.js swaps in the avatar menu once
+       `/api/me` answers — see `_authMenu`)                     — far right (desktop)
                                                                  row-1 right (mobile)
 
    The cinema picker lives inside the Filtry panel — one source of truth for
@@ -257,6 +258,6 @@
      to the row-1 right on mobile (replacing the spot the old Kina
      dropdown used to occupy). *@
   <div class="navbar-auth">
-    @_authMenu(currentUser, oauthProviders, "auth.login")
+    @_authMenu(oauthProviders, "auth.login")
   </div>
 </nav>

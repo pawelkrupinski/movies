@@ -38,10 +38,6 @@ object TestMovieController {
     // host passes that country's `Lang` so the copy it asserts on is the copy
     // that host actually serves.
     messages: play.api.i18n.Messages = testsupport.TestMessages.deployment,
-    // Who the controller can resolve a session's `userId` to. Defaults to an
-    // empty store, so every request is anonymous; a spec asserting what a
-    // SIGNED-IN render does passes one holding that person.
-    userRepository: services.users.UserRepository = new services.users.InMemoryUserRepository,
     // A read model the caller built itself — and therefore still holds the
     // backing store for, so a spec can push INCREMENTAL change-stream events
     // (one city's showtime moving) rather than only a whole-corpus `reload()`.
@@ -61,7 +57,6 @@ object TestMovieController {
         readModelMovies       = () => readModel_.allMovies(),
         readModelScreenings   = () => readModel_.allScreenings(),
         readModelLastModified = () => readModel_.lastModified))),
-      userRepository               = userRepository,
       adminAction            = adminAction,
       oauthProviders         = Set.empty,
       environment            = mode,

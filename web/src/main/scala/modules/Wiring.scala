@@ -311,7 +311,7 @@ trait Wiring {
       debugExtraStacks.map { case (country, _, stack) => country -> stack }.toMap,
       devMode = environmentMode != Mode.Prod)
 
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, debugCountries, userRepository, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, debugCountries, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.

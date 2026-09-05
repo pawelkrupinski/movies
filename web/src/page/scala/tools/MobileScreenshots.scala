@@ -57,13 +57,12 @@ object MobileScreenshots {
       implicit val city: models.City = Poznan
       val cinemas  = city.cinemaDisplayNames
       val schedules       = service.toSchedules(city, now)
-      val anon    = Option.empty[models.User]
       val noOauth = Set.empty[String]
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
-        currentUser    = anon, oauthProviders = noOauth, renderedAt = now
+        oauthProviders = noOauth, renderedAt = now
       ).body
 
       // Pick a well-populated film from the fixture corpus — Diabeł ubiera

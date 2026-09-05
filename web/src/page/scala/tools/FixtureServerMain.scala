@@ -79,14 +79,13 @@ object FixtureServerMain {
     // projected (the seam the two apps share in production).
     val service = new controllers.MovieControllerService(wiring.webReadModel)
 
-    val anon    = Option.empty[models.User]
     // Render with a non-empty oauthProviders set so the Twirl
     // `@if(oauthProviders.nonEmpty)` branches surface the anon-nag
     // toast + Zaloguj się pill in the navbar. The Scala spec uses an
     // empty set + injects the Zaloguj się pill manually; Playwright
     // tests get the production-shaped DOM directly so flows like the
     // anonymous-nag toast lifecycle can be tested end-to-end.
-    val noOauth = Set("google")
+    val oauthConfigured = Set("google")
 
     // Every page is served city-scoped under `/{city}/…`, mirroring
     // production's hard-cut routing. The fixture corpus is Poznań's; the other
@@ -99,11 +98,11 @@ object FixtureServerMain {
     def indexPageFor(c: City): String = {
       implicit val ci: City = c
       views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
-        currentUser = anon, oauthProviders = noOauth, renderedAt = now).body
+        oauthProviders = oauthConfigured, renderedAt = now).body
     }
     def browsePageFor(c: City): String = {
       implicit val ci: City = c
-      views.html.browse(schedulesFor(c), "Filmy", devMode = false, currentUser = anon, oauthProviders = noOauth).body
+      views.html.browse(schedulesFor(c), "Filmy", devMode = false, oauthProviders = oauthConfigured).body
     }
     // Mirrors `MovieController.filmBySlug`: re-slug the corpus's titles and
     // match, since the slug fold is lossy and can't be reversed.

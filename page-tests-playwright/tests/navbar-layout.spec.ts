@@ -288,11 +288,13 @@ test.describe('mobile portrait — active day-pill highlight fills its rounded c
 
 // ── Logged-in avatar pill: matches navbar control height ──────────
 //
-// The live/fixture server renders the navbar logged-OUT (a "Zaloguj"
-// button), so the `.auth-menu` avatar pill never appears in the other
-// uniformity specs above — they list `.auth-name`, which is
-// `display:none` on mobile anyway. The pill's height is pure CSS, so
-// we inject the real logged-in markup and measure it. Regression for
+// EVERY server render is logged-OUT now (a "Zaloguj" button) — the page has to
+// be the same bytes for everyone or no shared cache could hold it, so the
+// `.auth-menu` avatar pill only ever arrives from `shared.js`'s `/api/me`
+// hydration. It therefore never appears in the other uniformity specs above —
+// they list `.auth-name`, which is `display:none` on mobile anyway. The pill's
+// height is pure CSS, so we inject the hydrated markup and measure it. The
+// injection below mirrors `buildAuthMenu`. Regression for
 // the pill keeping `min-height:35px` on mobile while every other
 // control was pinned to 28px (the mobile blocks pinned `.auth-name`,
 // the hidden inner span, instead of the `.auth-menu` container).

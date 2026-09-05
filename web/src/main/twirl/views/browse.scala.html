@@ -1,5 +1,5 @@
 @import controllers.FilmSchedule
-@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, currentUser: Option[models.User], oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "", robots: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], heading: String, devMode: Boolean, oauthProviders: Set[String], pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "", robots: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -38,13 +38,13 @@
     <a href="@routes.MovieController.index(city.slug)" class="back-link" style="font-size:.9rem; color:#aad4ff; text-decoration:none; display:inline-flex; align-items:center; gap:.3em;"><svg style="width:.7em; height:.7em; flex-shrink:0;" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg>@messages("back.repertoire")</a>
   </div>
   <div class="navbar-auth">
-    @_authMenu(currentUser, oauthProviders, "auth.loginLong")
+    @_authMenu(oauthProviders, "auth.loginLong")
   </div>
 </nav>
 
 @_loginModal(oauthProviders)
 
-@_sharedJsConfig(Seq.empty, Map.empty[String, String], currentUser, oauthProviders)
+@_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders)
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <div class="container-fluid py-4 px-4">

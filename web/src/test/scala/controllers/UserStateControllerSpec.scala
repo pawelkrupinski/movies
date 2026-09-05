@@ -29,6 +29,19 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe UNAUTHORIZED
   }
 
+  // This endpoint holds one person's hidden films and disabled cinemas, and it
+  // used to carry no `Cache-Control` at all — a response with none is
+  // HEURISTICALLY cacheable, so nothing but luck kept a copy out of a browser or
+  // a proxy. It matters more now than it did: the HTML pages stopped rendering
+  // anybody, which makes these endpoints the entire per-user surface.
+  it should "forbid anything keeping a copy of one person's state" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.get()(FakeRequest("GET", "/api/me/state").withSession("userId" -> "alice"))
+
+    status(result) shouldBe OK
+    header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
+  }
+
   it should "return an empty state for a user with no stored row" in {
     val (ctl, _, _) = fixture()
     val request  = FakeRequest("GET", "/api/me/state").withSession("userId" -> "newbie")

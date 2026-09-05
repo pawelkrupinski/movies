@@ -240,8 +240,7 @@ class AuthController(
    *  These responses hand out or tear down a session, so a cached one is either
    *  a stale sign-in or a logout that appears not to have happened. Cheap
    *  insurance: they are redirects nobody benefits from re-using. */
-  private def uncacheable(result: Result): Result =
-    result.withHeaders("Cache-Control" -> PersonalisedPage.CacheControl)
+  private def uncacheable(result: Result): Result = PerUserResponse(result)
 
   /** A sign-out, plus an instruction to forget what this origin looked like
    *  while signed in.
@@ -320,8 +319,16 @@ class AuthController(
     }
   }
 
+  /** Who is looking — the ONLY place this application names a visitor now.
+   *
+   *  The HTML pages stopped rendering the avatar so that a shared cache could
+   *  hold them (`MovieController.SharedMaxAgeSeconds`), which moved the whole
+   *  per-user surface here: `shared.js` calls this on every page load and builds
+   *  the account menu from the answer. So this response, and only this response,
+   *  is the one nothing may keep a copy of — a stored 200 is an avatar rebuilt
+   *  after a sign-out, or on a device the answer was never for. */
   def me(): Action[AnyContent] = Action { request =>
-    SignedInUser(request, userRepository) match {
+    PerUserResponse(SignedInUser(request, userRepository) match {
       case None => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(user) => Ok(Json.obj(
         "displayName" -> user.displayName,
@@ -329,7 +336,7 @@ class AuthController(
         "avatarUrl"   -> user.avatarUrl,
         "provider"    -> user.provider
       ))
-    }
+    })
   }
 
   /** Sign out — HERE, and on the other domain too.

@@ -958,6 +958,100 @@
   window.openLoginModal = openLoginModal;
   window.closeLoginModal = closeLoginModal;
 
+  // ── Who is looking at this page ──────────────────────────────────────────
+  //
+  // The server does not know, and deliberately does not ask. The listing page is
+  // handed to Cloudflare with an `s-maxage`, and a shared cache may only ever
+  // hold a response that is byte-identical for every client — so the moment the
+  // HTML carried an avatar, a display name or an `IS_LOGGED_IN = true`, one
+  // visitor's copy could be served to the next. `_authMenu` therefore renders the
+  // signed-out slot for everybody and the answer is fetched here, per client,
+  // from `/api/me` — which is `no-store` precisely so this cannot be cached back
+  // into the same problem.
+  //
+  // Which makes the DOM the single source of truth for "am I signed in": the
+  // avatar menu is present exactly when somebody is. `signedOutPageIsStale` and
+  // `sessionVerifyUrl` already decided that way; the server-sync and nag paths
+  // used to read a page constant instead, and now agree with them.
+  function isLoggedIn() { return !!document.getElementById('auth-menu'); }
+
+  // The avatar dropdown, built where `_authMenu` used to render it: alongside the
+  // login pill, which is hidden rather than removed because the sign-out chain
+  // puts it straight back (see `beginSignOut`).
+  //
+  // `textContent` throughout — the name and e-mail come from an OAuth provider's
+  // profile, which is somebody else's text, and this is the one place it reaches
+  // the page without Twirl's escaping in front of it.
+  function buildAuthMenu(me) {
+    const login = document.getElementById('auth-login');
+    if (!login || document.getElementById('auth-menu')) return;
+
+    const menu = document.createElement('div');
+    menu.className = 'auth-menu';
+    menu.id        = 'auth-menu';
+    menu.addEventListener('click', toggleAuthMenu);
+
+    if (me.avatarUrl) {
+      const img = document.createElement('img');
+      img.src = me.avatarUrl; img.className = 'auth-avatar'; img.alt = '';
+      menu.appendChild(img);
+    } else {
+      const initial = document.createElement('span');
+      initial.className   = 'auth-avatar-fallback';
+      initial.textContent = (me.displayName || '').charAt(0).toUpperCase() || '?';
+      menu.appendChild(initial);
+    }
+
+    const name = document.createElement('span');
+    name.className   = 'auth-name';
+    name.textContent = String(me.displayName || me.email || KINOWO_LOCALE.auth.account)
+      .split(/[ @]/)[0];
+    menu.appendChild(name);
+
+    // The logout route is `+ nocsrf`: a form post from a third-party page can
+    // only log a visitor OUT, not in. A plain form post, so the sign-out redirect
+    // chain runs in the browser and clears the sibling domain's cookie on the
+    // way; the delegated `submit` listener below swaps the slot at once.
+    const form = document.createElement('form');
+    form.method    = 'post';
+    form.action    = mountPrefix() + '/auth/logout';
+    form.className = 'auth-logout-form';
+    const out = document.createElement('button');
+    out.type        = 'submit';
+    out.className   = 'auth-logout-btn';
+    out.textContent = KINOWO_LOCALE.auth.logout;
+    form.appendChild(out);
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'auth-dropdown';
+    dropdown.id        = 'auth-dropdown';
+    dropdown.appendChild(form);
+    menu.appendChild(dropdown);
+
+    login.style.display = 'none';
+    login.parentNode.appendChild(menu);
+  }
+
+  // Ask once per document, and hand every caller the same promise so the boot
+  // order is "hydrate, then everything that depends on knowing".
+  let _authHydration = null;
+  function hydrateAuth() {
+    if (_authHydration) return _authHydration;
+    // Nothing to sign in to (a deployment with no OAuth secrets), or a page that
+    // already carries the menu: either way there is nothing to ask.
+    if (!HAS_OAUTH_PROVIDERS || isLoggedIn()) return (_authHydration = Promise.resolve());
+    _authHydration = fetch(mountPrefix() + '/api/me', { credentials: 'same-origin' })
+      .then(response => (response.ok ? response.json() : null))
+      .then(me => { if (me) buildAuthMenu(me); })
+      // Offline, or the request failed: the page stays signed out, which is the
+      // safe way to be wrong — it offers the way back in rather than an avatar
+      // for a session we could not confirm.
+      .catch(() => {});
+    return _authHydration;
+  }
+  window.isLoggedIn  = isLoggedIn;
+  window.hydrateAuth = hydrateAuth;
+
   // ── Signing out ───────────────────────────────────────────────────────────
   //
   // The sign-out is a plain form POST that walks a redirect chain — this
@@ -968,10 +1062,10 @@
   //   • The chain is a round trip across two domains. Until it lands, the page
   //     the visitor pressed the button on is the signed-in one they were
   //     already looking at, avatar and all.
-  //   • The browser may answer that landing out of its OWN cache. Personalised
-  //     renders say `no-store` now, but an entry stored before that shipped is
-  //     still on disk and still served without asking — a response header stops
-  //     the next poisoning, it cannot heal the one already there.
+  //   • The browser may answer that landing out of its OWN cache. The HTML is
+  //     the same bytes signed in or out now, so it cannot itself be stale — but
+  //     an entry stored before that shipped still carries an avatar, and a cached
+  //     `/api/me` would rebuild one (which is why that endpoint is `no-store`).
   //
   // So the section empties the moment the form is submitted, and on arrival, a
   // page that still renders signed in is fetched again for real. The mark is
@@ -991,8 +1085,8 @@
     } catch (e) { /* no storage → no self-heal, but the sign-out itself still runs */ }
   }
 
-  // Swap the avatar for the login pill, which the page renders hidden alongside
-  // it precisely so this needs no markup and no label of its own.
+  // Swap the avatar for the login pill, which the page renders and `hydrateAuth`
+  // hid precisely so this needs no markup and no label of its own.
   //
   // Hidden rather than removed: the form being submitted is INSIDE the menu, and
   // a form detached from the document has its submission aborted outright.
@@ -1036,9 +1130,9 @@
   // in, it checks whether it still is, and reloads if it was wrong. Cheap, and
   // only for signed-in pages: an anonymous one has nothing to be wrong about.
   //
-  // The URL comes off the sign-out form, which the server rendered with this
-  // deployment's mount point already in it (`/uk/auth/logout`) — so no path
-  // parsing, and nothing new in the markup for a page snapshot to notice.
+  // The URL comes off the sign-out form, which `buildAuthMenu` gave this
+  // deployment's mount point (`/uk/auth/logout`) — so no second path derivation,
+  // and the absence of the form is itself the "not signed in" answer.
   function sessionVerifyUrl() {
     var form = document.querySelector('.auth-logout-form');
     if (!form) return null;                       // signed out: nothing to verify
@@ -2013,7 +2107,7 @@
 
   let _serverSyncTimer = 0;
   function scheduleServerSync() {
-    if (!IS_LOGGED_IN) return;
+    if (!isLoggedIn()) return;
     clearTimeout(_serverSyncTimer);
     // 400ms — long enough to batch a burst of toggles (clicking through
     // 5 stars rapidly produces one PUT), short enough that closing the
@@ -2043,7 +2137,7 @@
   // remote state. Runs on pagehide and on tab-hide (the reliable signals;
   // beforeunload is unreliable on mobile).
   function flushServerSync() {
-    if (!IS_LOGGED_IN || !_serverSyncTimer) return;
+    if (!isLoggedIn() || !_serverSyncTimer) return;
     clearTimeout(_serverSyncTimer);
     pushStateToServer({ keepalive: true });
   }
@@ -2053,7 +2147,7 @@
   });
 
   async function bootMergeFromServer() {
-    if (!IS_LOGGED_IN) {
+    if (!isLoggedIn()) {
       // Anonymous (incl. just-logged-out): re-arm migration so the next
       // login carries this device's current local picks up exactly once.
       try { localStorage.removeItem(SERVER_SYNCED_KEY); } catch {}
@@ -2092,7 +2186,7 @@
   // to log into).
 
   function maybeShowAnonymousNag() {
-    if (IS_LOGGED_IN || !HAS_OAUTH_PROVIDERS) return;
+    if (isLoggedIn() || !HAS_OAUTH_PROVIDERS) return;
     const lastAt = parseInt(localStorage.getItem('lastAnonymousNagAt') || '0', 10);
     const dayMs  = 24 * 60 * 60 * 1000;
     if (Date.now() - lastAt < dayMs) return;
@@ -2654,14 +2748,20 @@
   document.addEventListener('pointercancel', endDrag, { passive: true });
 
   document.addEventListener('DOMContentLoaded', () => {
-    settleSignOut();        // re-fetch if a cached signed-in page came back
     // One-time shell init — navbar chrome (day pills, hidden-films badge) — then
-    // the grid-dependent boot.
+    // the grid-dependent boot. None of it depends on who is looking.
     syncDayPills();
     updateNavbar();
     bootView();
-    bootMergeFromServer();
     maybeShowSwipeHint();   // once-a-day phone nudge, retired on first swipe
+    // AFTER the page knows who is looking, and only then: the server-state
+    // reconcile is a no-op for an anonymous visitor and the sign-out self-heal
+    // looks for the avatar menu, so both would read "signed out" off every page
+    // if they ran before `/api/me` answered.
+    hydrateAuth().then(() => {
+      settleSignOut();      // re-fetch if the page came back signed in
+      bootMergeFromServer();
+    });
   });
 
   // ── Image-fetch uptime tracker ────────────────────────────────────────────

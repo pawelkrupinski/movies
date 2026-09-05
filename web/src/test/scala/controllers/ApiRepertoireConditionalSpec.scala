@@ -204,21 +204,28 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     contentAsBytes(result).length shouldBe 0
   }
 
-  it should "NEVER mark an HTML page shareable, however it was rendered" in {
-    // The safety property, and it is asserted on the ABSENCE of the shared
-    // directives rather than the presence of a particular one, because the page
-    // has two legitimate spellings: `private, no-store` once somebody is signed
-    // in (PersonalisedPage), and no Cache-Control at all for an anonymous render
-    // that also carries a Set-Cookie -- which no shared cache will store anyway.
-    // What must never appear on either is `public`/`s-maxage`: that would let
-    // Cloudflare hand one visitor's page, cookie and navbar to the next person
-    // through the same PoP.
+  // THE SAFETY PROPERTY MOVED RATHER THAN LAPSED. This used to read "never mark
+  // an HTML page shareable, however it was rendered", which was the right rule
+  // while the navbar drew whoever was signed in: a `public`/`s-maxage` on that
+  // page would have let Cloudflare hand one visitor's avatar to the next through
+  // the same PoP. The listing stopped rendering anybody (see
+  // `SharedCacheableListingSpec`), so it is now shareable BECAUSE it names no
+  // one — and the rule bites on what still does name someone instead.
+  it should "never mark a response that names a visitor shareable" in {
+    PerUserResponse.CacheControl should not include ("public")
+    PerUserResponse.CacheControl should not include ("s-maxage")
+    PerUserResponse.CacheControl shouldBe "private, no-store"
+  }
+
+  // The facet pages carry the same bytes for everyone too, but a `?cast=` URL is
+  // one of combinatorially many near-duplicates of the listing, so they are kept
+  // out of the edge deliberately rather than by accident.
+  it should "keep the facet pages out of the shared cache" in {
     val (ctrl, _) = buildController()
-    val cc = header("Cache-Control", ctrl.index("poznan")(FakeRequest())).getOrElse("")
+    val cc = header("Cache-Control",
+      ctrl.browse("poznan", None, Some("Nolan"), None, None)(FakeRequest())).getOrElse("")
     cc should not include ("public")
     cc should not include ("s-maxage")
-    // And the signed-in spelling is the strict one.
-    PersonalisedPage.CacheControl shouldBe "private, no-store"
   }
 
 
