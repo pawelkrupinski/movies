@@ -321,6 +321,36 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.serviceTagsSnapshot()("Kino Rialto") shouldBe Set.empty
   }
 
+  // THE WRITE THIS SKIPS WAS THE DATABASE'S LARGEST SINGLE COST. `tagService` is called
+  // once per cinema per scrape cycle with tags that are static config, so ~8,300 upserts
+  // per country per cycle re-asserted values that were already there — 35,882 of 35,883
+  // slow tag updates in a two-day window reported `nModified: 0`, and every one of them
+  // had to scan the whole collection to find the row it then did not change.
+  //
+  // Asserted through the RETURN VALUE rather than by counting Mongo writes: the decision
+  // is made from the in-memory map, so it is testable without a database, and that is the
+  // whole point — the guard needs no read.
+  "tagService" should "write only when the tags actually changed" in {
+    val monitor = new UptimeMonitor(surfaceExternalWrites = false)
+    withClue("a service this process has never tagged must be written — that first write " +
+             "is what reconciles a tag changed while the process was down: ") {
+      monitor.tagService("Kino Nowe", Set("custom:NoweClient")) shouldBe true
+    }
+    withClue("re-asserting the same tags is the once-per-scrape-cycle no-op: ") {
+      monitor.tagService("Kino Nowe", Set("custom:NoweClient")) shouldBe false
+      monitor.tagService("Kino Nowe", Set("custom:NoweClient")) shouldBe false
+    }
+    withClue("a genuine retag must still write: ") {
+      monitor.tagService("Kino Nowe", Set("shared:HeliosClient")) shouldBe true
+    }
+    withClue("clearing the tags is a change like any other: ") {
+      monitor.tagService("Kino Nowe", Set.empty) shouldBe true
+      monitor.tagService("Kino Nowe", Set.empty) shouldBe false
+    }
+    // …and the skip must not desync the in-memory view the page renders from.
+    monitor.serviceTagsSnapshot()("Kino Nowe") shouldBe Set.empty
+  }
+
   // `loadTags` is an UNFILTERED read of the whole uptimeServiceTags collection —
   // 2,687 documents for Poland alone (measured 2026-07-18). Riding the 10s bucket
   // poll made that ~8,640 reloads/day × 2,687 documents on each of the 4 web

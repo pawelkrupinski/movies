@@ -174,7 +174,7 @@ class InMemoryMovieRepository(
       val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
         oldId, newId,
         read       = sl.findForFilmChecked,
-        replace    = sl.replaceFilm,
+        replace    = (id, rows) => sl.replaceFilm(id, rows),
         deleteFilm = sl.deleteFilm))
       screeningsMoved && slotsMoved
     }

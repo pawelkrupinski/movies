@@ -96,7 +96,8 @@ trait SlotsRepository {
    *  whether it may drop the embedded copy from the `movies` document: dropping it
    *  after a FAILED slot write would leave the film with no cinemas anywhere. A
    *  store that cannot fail (in-memory) always reports true. */
-  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean
+  def replaceFilm(filmId: String, slots: Map[String, SourceData],
+                  stored: Option[Map[String, SourceData]] = None): Boolean
 
   /** Upsert one slot — the per-slot patch write path. */
   def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit
@@ -135,7 +136,10 @@ class InMemorySlotsRepository extends SlotsRepository {
   def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) =
     (lock.synchronized(byFilm.toMap), true)   // an in-memory scan cannot fail
 
-  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean = {
+  // `stored` is ignored: this store's rows are already in memory, so re-reading them is
+  // free and the parameter exists only to honour the trait (see the screenings twin).
+  def replaceFilm(filmId: String, slots: Map[String, SourceData],
+                  stored: Option[Map[String, SourceData]] = None): Boolean = {
     lock.synchronized { if (slots.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, slots) }
     true   // an in-memory store cannot fail to write
   }
@@ -308,7 +312,8 @@ class MongoSlotsRepository(
    *  whatever `slots` no longer names — the same shape as
    *  [[MongoScreeningsRepository.replaceFilm]], including the `$nin: []` edge case where
    *  an EMPTY `slots` clears every slot of the film. */
-  def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean = coll.fold(false) { c =>
+  def replaceFilm(filmId: String, slots: Map[String, SourceData],
+                  stored: Option[Map[String, SourceData]] = None): Boolean = coll.fold(false) { c =>
     Try {
       val now     = Instant.now()
       // Rewrite only the rows that MOVED — the same guard `MongoScreeningsRepository.replaceFilm`
@@ -320,8 +325,11 @@ class MongoSlotsRepository(
       //
       // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film should
       // end up with), never from the subset being written.
-      val (stored, readComplete) = findForFilmChecked(filmId)
-      val upserts = SlotKeyed.changedRows(stored, readComplete, slots).toSeq.map { case (k, sd) =>
+      // The caller's read when it has one — `MovieRepository.upsert` reads these rows to
+      // decide whether to write at all, so making this read them again was a duplicated
+      // full-film read on the hottest write path in the system.
+      val (current, readComplete) = stored.map(_ -> true).getOrElse(findForFilmChecked(filmId))
+      val upserts = SlotKeyed.changedRows(current, readComplete, slots).toSeq.map { case (k, sd) =>
         val dto = StoredSlotDto(idOf(filmId, k), filmId, k, sd, now)
         ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
       }

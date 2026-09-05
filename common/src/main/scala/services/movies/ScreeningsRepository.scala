@@ -72,8 +72,15 @@ trait ScreeningsRepository {
   def findAll(): Map[String, Map[String, Seq[Showtime]]]
 
   /** Set a film's screenings to EXACTLY `slots` — upsert those present, delete any
-   *  no longer present. The whole-record write path (`MovieRepository.upsert`). */
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit
+   *  no longer present. The whole-record write path (`MovieRepository.upsert`).
+   *
+   *  `stored` is the film's rows AS THEY ARE NOW, when the caller has already read them.
+   *  The write only rewrites the rows that actually moved, so it needs that map — and
+   *  `MovieRepository.upsert` has it in hand from the re-stitch, on the hottest write path
+   *  in the system. `None` means "read it yourself"; passing a map from a read that FAILED
+   *  would have every row look new and be trusted, so a failed read must pass `None`. */
+  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
+                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit
 
   /** Upsert one slot's showtimes — the per-slot patch write path
    *  (`MovieRepository.updateIfPresent`). */
@@ -119,7 +126,10 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
   def findAll(): Map[String, Map[String, Seq[Showtime]]] =
     lock.synchronized(byFilm.toMap)
 
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = {
+  // `stored` is ignored: this store's rows are already in memory, so re-reading them is free
+  // and the parameter exists only to honour the trait.
+  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
+                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit = {
     val changed = lock.synchronized {
       if (byFilm.getOrElse(filmId, Map.empty) == slots) false
       else { if (slots.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, slots); true }
@@ -411,7 +421,8 @@ class MongoScreeningsRepository(
    *  can never race ahead of a slot this same call is re-writing. The request list is
    *  never empty (the delete is always present), so the driver's empty-`bulkWrite`
    *  rejection is unreachable. */
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = coll.foreach { c =>
+  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
+                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit = coll.foreach { c =>
     Try {
       val now     = Instant.now()
       // Rewrite only the rows that MOVED. One indexed read on `filmId` — the same read the
@@ -423,8 +434,8 @@ class MongoScreeningsRepository(
       // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film
       // should end up with), never from the subset being written, so a row that is correct and
       // therefore skipped is still a row this call keeps.
-      val (stored, readComplete) = findForFilmChecked(filmId)
-      val changed = ScreeningsRepository.changedSlots(stored, readComplete, slots)
+      val (current, readComplete) = stored.map(_ -> true).getOrElse(findForFilmChecked(filmId))
+      val changed = ScreeningsRepository.changedSlots(current, readComplete, slots)
       metrics.recordWrite(ScreeningsMetrics.Outcome.Written,   changed.size)
       metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, slots.size - changed.size)
       val upserts = changed.toSeq.map { case (k, st) =>

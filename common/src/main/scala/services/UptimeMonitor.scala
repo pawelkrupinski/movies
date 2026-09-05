@@ -73,6 +73,7 @@ class UptimeMonitor(
   coll.foreach { c =>
     val thread = new Thread(() => {
       ensureIndexes(c)
+      tagColl.foreach(ensureTagIndex)
       hydrate(c)
       tagColl.foreach(loadTags)
       // Schedule background work only AFTER hydrate: flushing absolute cumulative
@@ -121,6 +122,26 @@ class UptimeMonitor(
       ).toFuture(), 10.seconds)
     }.recover { case exception => logger.warn(s"Uptime compound index creation failed: ${exception.getMessage}") }
   }
+
+  /** `uptimeServiceTags` is keyed by `service` and queried by NOTHING ELSE — the upsert in
+   *  `tagService` and the whole-collection `loadTags` are its only readers. It had no index
+   *  on it at all, because `ensureIndexes` above is only ever handed `uptimeBuckets`.
+   *
+   *  The cost of that omission was the single largest source of work on the database. Every
+   *  one of the ~8,300 upserts per scrape cycle, per country, was a COLLSCAN of the ~8,300
+   *  documents already there: 244,569,244 documents examined and 85 minutes of query time in
+   *  one two-day window, ~93% of ALL document scanning on the server. Measured again after
+   *  the fact — `explain` on `find({service})` reported COLLSCAN, `docsExamined: 8315`,
+   *  `keysExamined: 0`, in all five databases.
+   *
+   *  UNIQUE, because `service` IS the key: there are no duplicates today, and the constraint
+   *  also closes the upsert-under-concurrency race that could create one. Isolated in its own
+   *  `Try` like the others — an existing non-unique index would make this throw, and a
+   *  collection that cannot be indexed must not stop the monitor from running. */
+  private def ensureTagIndex(c: MongoCollection[Document]): Unit =
+    Try {
+      Await.result(c.createIndex(Indexes.ascending("service"), new JIndexOptions().unique(true)).toFuture(), 10.seconds)
+    }.recover { case exception => logger.warn(s"Uptime tag index creation failed: ${exception.getMessage}") }
 
   /** The recurring background work this monitor runs once hydrate lands, as data
    *  so the CADENCES are assertable without a scheduler or a Mongo round-trip.
@@ -309,13 +330,24 @@ class UptimeMonitor(
 
   // ── Per-service tags (generic per-row labels) ────────────────────────────────
 
-  /** Attach `tags` to `service`, replacing any existing set. Updates the
-   *  in-memory map and best-effort upserts the one tag document for the service so
-   *  other processes (the serving app) pick it up. A no-op set is still written
-   *  (idempotent `$set`). Caller-supplied empty `tags` clears the row's tags. */
-  def tagService(service: String, tags: Set[String]): Unit = {
-    serviceTags.put(service, tags)
-    tagColl.foreach { c =>
+  /** Attach `tags` to `service`, replacing any existing set. Updates the in-memory map and,
+   *  WHEN THE VALUE ACTUALLY CHANGED, best-effort upserts the one tag document for the
+   *  service so other processes (the serving app) pick it up. Caller-supplied empty `tags`
+   *  clears the row's tags. Returns whether a write was made — the only reason it returns
+   *  anything is that the skip is worth being able to assert on.
+   *
+   *  It used to write unconditionally, and the comment here used to say so ("a no-op set is
+   *  still written (idempotent `$set`)"), which was true and expensive. Tags are static
+   *  config re-asserted once per cinema per scrape cycle: of 35,883 slow tag updates in one
+   *  two-day window, 35,882 reported `nModified: 0`. Mongo does not collapse those for us —
+   *  each still had to FIND the row it then did not change, and until `ensureTagIndex` that
+   *  was a full scan of the collection. */
+  def tagService(service: String, tags: Set[String]): Boolean = {
+    // `put` RETURNS the value it replaced, so the guard costs neither a read nor extra state.
+    // A first call in a fresh process has no previous value and writes once, which is what
+    // reconciles a tag that changed while this process was not running.
+    val changed = !Option(serviceTags.put(service, tags)).contains(tags)
+    if (changed) tagColl.foreach { c =>
       Try {
         c.updateOne(
           Filters.eq("service", service),
@@ -327,6 +359,7 @@ class UptimeMonitor(
         )
       }.recover { case exception => logger.debug(s"Uptime tag write failed: ${exception.getMessage}") }.getOrElse(())
     }
+    changed
   }
 
   /** Current per-service tags, for the page render. Returns the in-memory view,

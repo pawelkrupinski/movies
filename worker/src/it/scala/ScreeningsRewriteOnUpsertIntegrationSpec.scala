@@ -6,8 +6,8 @@ import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData
 import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ChangeStreamDemand, MongoMovieRepository, MongoScreeningsRepository,
-                        MongoSlotsRepository, ScreeningsRepository, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository,
+                        MongoSlotsRepository, StoredMovieRecord}
 import tools.Env
 
 /**
@@ -40,33 +40,6 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  /** Counts whole-film rewrites; every other call goes straight through to the real store.
-   *  Delegates `findForFilmsChecked` and `watch` explicitly rather than inheriting the
-   *  trait defaults — the defaults are the un-batched / un-pushed fallbacks, and silently
-   *  swapping the Mongo store's batch read for a per-id loop would make this decorator a
-   *  different repository from the one under test. */
-  private class CountingScreeningsRepository(underlying: ScreeningsRepository) extends ScreeningsRepository {
-    var replaceFilmCalls = 0
-
-    def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit = {
-      replaceFilmCalls += 1
-      underlying.replaceFilm(filmId, slots)
-    }
-
-    def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) =
-      underlying.findForFilmChecked(filmId)
-    override def findForFilmsChecked(filmIds: Set[String]): (Map[String, Map[String, Seq[Showtime]]], Boolean) =
-      underlying.findForFilmsChecked(filmIds)
-    def findAll(): Map[String, Map[String, Seq[Showtime]]] = underlying.findAll()
-    def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit =
-      underlying.upsertSlot(filmId, slotKey, showtimes)
-    def deleteSlot(filmId: String, slotKey: String): Unit = underlying.deleteSlot(filmId, slotKey)
-    def deleteFilm(filmId: String): Unit = underlying.deleteFilm(filmId)
-    override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
-      underlying.watch(onChange, demand)
-    override def close(): Unit = underlying.close()
-  }
-
   private val uri    = Env.get("MONGODB_URI").get
   private val dbName = tools.IntegrationCorpusDatabase.named("screenings-rewrite")
   private val title  = "__screenings-rewrite-sentinel__"
@@ -94,7 +67,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       // The rows do not exist yet, so this one has to write them.
       repository.upsert(title, year, record)
       withClue("the first write must actually create the film's screening rows: ") {
-        counting.replaceFilmCalls shouldBe 1
+        counting.replaceFilmCalls.get() shouldBe 1
       }
       counting.findForFilm(id).values.flatten should have size 2
 
@@ -104,7 +77,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       withClue("an upsert that leaves every showtime where it was must not rewrite the " +
                "film's screening rows — that write is what makes a tick O(venues^2) in a " +
                "film's venue count: ") {
-        counting.replaceFilmCalls shouldBe 1
+        counting.replaceFilmCalls.get() shouldBe 1
       }
 
       // …and the guard must not over-skip. A showtime that genuinely moved still writes,
@@ -113,7 +86,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       val moved = recordShowing(when.plusDays(1))
       repository.upsert(title, year, moved)
       withClue("a real showtime change must still be written: ") {
-        counting.replaceFilmCalls shouldBe 2
+        counting.replaceFilmCalls.get() shouldBe 2
       }
       counting.findForFilm(id).values.flatten.map(_.dateTime).toSet shouldBe
         Set(when.plusDays(1), when.plusDays(1).plusHours(2))
@@ -122,5 +95,46 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       counting.deleteFilm(id)
       client.close()
     }
+  }
+
+  // THE ORPHAN PRUNE MUST NOT READ SHOWTIMES. It runs every 30 minutes per country and its
+  // whole job is a set difference of ids — but through `foreachRecord` it pulled the entire
+  // `screenings` collection through WiredTiger to do it: 177,676 rows and 129 MB across the
+  // five countries (2026-09-05), against a 1.07 GB cache, twice an hour, every byte discarded.
+  //
+  // It still needs the SLOTS: `ReadModelProjection.filmIds` derives a film's display-title
+  // variants from its cinemas, so a scan that dropped those too would compute FEWER live ids
+  // than the read model holds and delete live cards — which is why the cheap
+  // `foreachRecordWithoutShowtimes` is the wrong tool and this asserts the slots are read.
+  it should "prune the read model without reading a single showtime" in {
+    val client     = MongoClient(uri)
+    val db         = client.getDatabase(dbName)
+    val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
+    val countSlots = new CountingSlotsRepository(new MongoSlotsRepository(Some(db)))
+    val repository = new MongoMovieRepository(Some(db),
+      screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer)
+    val readModel  = new services.readmodel.MongoReadModelRepository(Some(db))
+    val projector  = new services.readmodel.ReadModelProjector(repository, readModel, readModel)
+    try {
+      repository.upsert(title, year, recordShowing(when))
+      counting.reset(); countSlots.reset()
+
+      projector.pruneOrphans()
+
+      withClue("the prune read the screenings collection, which it never looks at: ") {
+        counting.batchReadCalls.get() shouldBe 0
+      }
+      withClue("the prune must still read the SLOTS — `filmIds` derives a film's cards from " +
+               "its cinemas, and a prune computing too few live ids deletes live cards: ") {
+        countSlots.batchReadCalls.get() should be > 0
+      }
+
+      // …and the expensive sweep, which really does re-project, still gets its showtimes.
+      counting.reset()
+      projector.reconcile()
+      withClue("the full reproject writes showtimes, so it must read them: ") {
+        counting.batchReadCalls.get() should be > 0
+      }
+    } finally { repository.delete(title, year); repository.close(); client.close() }
   }
 }

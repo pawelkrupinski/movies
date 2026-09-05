@@ -29,7 +29,8 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   extends ScreeningsRepository {
   def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = (Map.empty, false)
   def findAll(): Map[String, Map[String, Seq[Showtime]]]                        = store.findAll()
-  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]]): Unit      = store.replaceFilm(filmId, slots)
+  def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
+                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit      = store.replaceFilm(filmId, slots, stored)
   def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = store.upsertSlot(filmId, slotKey, showtimes)
   def deleteSlot(filmId: String, slotKey: String): Unit                         = store.deleteSlot(filmId, slotKey)
   def deleteFilm(filmId: String): Unit                                          = store.deleteFilm(filmId)
@@ -39,7 +40,8 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
  *  only drop a film's embedded copy once its slots have actually landed, so a store that
  *  reports every write as failed is what proves the embedded copy is kept. */
 class UnwritableSlotsRepository extends InMemorySlotsRepository {
-  override def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean = false
+  override def replaceFilm(filmId: String, slots: Map[String, SourceData],
+                           stored: Option[Map[String, SourceData]] = None): Boolean = false
   override def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit   = ()
   override def deleteSlot(filmId: String, slotKey: String): Unit                     = ()
 }
@@ -62,7 +64,8 @@ class UnwritableScreeningsRepository extends InMemoryScreeningsRepository {
    *  failed copy is supposed to preserve. */
   def seed(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit =
     super.replaceFilm(filmId, slots)
-  override def replaceFilm(filmId: String, slots: Map[String, Seq[models.Showtime]]): Unit = ()
+  override def replaceFilm(filmId: String, slots: Map[String, Seq[models.Showtime]],
+                           stored: Option[Map[String, Seq[models.Showtime]]] = None): Unit = ()
   override def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[models.Showtime]): Unit = ()
 }
 

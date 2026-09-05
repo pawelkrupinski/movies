@@ -98,7 +98,7 @@ class SideCollectionMoveSpec extends AnyFlatSpec with Matchers {
     slots.upsertSlot("old|", "Kino A", SourceData(title = Some("A")))
 
     SideCollectionMove.move[SourceData]("old|", "new|2026",
-      slots.findForFilmChecked, slots.replaceFilm, slots.deleteFilm) shouldBe true
+      slots.findForFilmChecked, (id, rows) => slots.replaceFilm(id, rows), slots.deleteFilm) shouldBe true
 
     slots.findForFilm("new|2026").keySet shouldBe Set("Kino A")
     slots.findForFilm("old|")            shouldBe empty

@@ -203,14 +203,36 @@ trait MovieRepository {
    *  in-memory store never fails, so the default reports `true`. */
   def foreachRecord(f: StoredMovieRecord => Unit): Boolean = { findAll().foreach(f); true }
 
-  /** Like [[foreachRecord]] but WITHOUT re-injecting showtimes from `screenings` —
-   *  so under the split each row's showtimes are EMPTY. For count-only callers that
-   *  never read showtimes (`WorkerCorpusMetrics`, ad-hoc rating/audit scripts): it
-   *  skips the full-collection `screenings` load [[foreachRecord]] pays on every
-   *  scan, which on a 5-min metrics timer is a wasteful repeated read. Any caller
-   *  that reads `.showtimes` MUST use [[foreachRecord]] instead — the name here is
-   *  the guard. Default delegates to the (stitched, safe) [[foreachRecord]]. */
+  /** Like [[foreachRecord]] but stitching NEITHER side collection — so under the split
+   *  each row has empty showtimes AND NO CINEMA SLOTS AT ALL. The name undersells that:
+   *  `sourceData` moved to `movie_slots`, so a row from here carries only what `movies`
+   *  itself stores (ids, ratings, resolution state). For callers that read exactly those
+   *  (`WorkerCorpusMetrics`, ad-hoc rating/audit scripts) it is the cheapest scan there is.
+   *
+   *  A caller that reads `.showtimes` must use [[foreachRecord]]; one that reads `.data` /
+   *  `cinemaSlots` — or ANYTHING derived from them, `ReadModelProjection.filmIds` and the
+   *  display-title variants included — must use [[foreachRecordWithSlots]], or it will
+   *  compute its answer from a film that appears to screen nowhere. Default delegates to
+   *  the (fully stitched, safe) [[foreachRecord]]. */
   def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
+
+  /** Like [[foreachRecord]] but WITHOUT re-injecting showtimes from `screenings` — the
+   *  cinema slots ARE stitched, so `.data` is complete and everything derived from it is
+   *  correct; only `.showtimes` is empty.
+   *
+   *  For callers that need to know WHICH FILMS AND CARDS EXIST but never look at a
+   *  showtime — the read-model orphan prune is the one that matters. That sweep runs every
+   *  30 minutes per country and, through [[foreachRecord]], pulled the entire `screenings`
+   *  collection through WiredTiger to compute a set of ids: 177,676 rows / 129 MB across
+   *  the five countries as of 2026-09-05, against a 1.07 GB cache, twice an hour, every
+   *  byte of it discarded.
+   *
+   *  NOT a cheaper [[foreachRecordWithoutShowtimes]]: the slots are what
+   *  `ReadModelProjection.filmIds` derives display-title variants from, so dropping them
+   *  too would have the prune compute FEWER live ids than the read model holds and delete
+   *  live cards — the shape that has already cost this repository a 129-film outage.
+   *  Default delegates to the (fully stitched, safe) [[foreachRecord]]. */
+  def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
 
   /** Remove every record matching the given (title, year). Best-effort —
    *  failures are logged, never thrown. */
@@ -545,7 +567,7 @@ class MongoMovieRepository(
    *  caller wipe the read model — so bail as "incomplete" (`false`), exactly like a
    *  failed movies batch. The movies pages stay keyset-bounded; only the screenings
    *  map (separate small docs) is held. */
-  private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit): Boolean = {
+  private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit, withShowtimes: Boolean = true): Boolean = {
     // Side rows are fetched PER PAGE, for exactly the films that page holds, rather than
     // preloaded whole. Both are one indexed `filmId $in [...]` query.
     //
@@ -561,8 +583,11 @@ class MongoMovieRepository(
     var sideReadsComplete = true
     val moviesComplete = scanByKeyset { batch =>
       val ids = batch.map(_._id).toSet
-      val (pageScr, scrOk) = screenings.map(_.findForFilmsChecked(ids))
-        .getOrElse((Map.empty[String, Map[String, Seq[Showtime]]], true))
+      // `withShowtimes = false` skips this read entirely rather than discarding its result:
+      // the caller has said it never looks at a showtime, and this is the expensive half.
+      val (pageScr, scrOk) = if (!withShowtimes) (Map.empty[String, Map[String, Seq[Showtime]]], true)
+        else screenings.map(_.findForFilmsChecked(ids))
+          .getOrElse((Map.empty[String, Map[String, Seq[Showtime]]], true))
       val (pageSlots, slotsOk) = slots.map(_.findForFilmsChecked(ids))
         .getOrElse((Map.empty[String, Map[String, SourceData]], true))
       if (!scrOk || !slotsOk) {
@@ -707,6 +732,9 @@ class MongoMovieRepository(
   override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean =
     scanByKeyset(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
 
+  override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean =
+    scanStitched(_.foreach(f), withShowtimes = false)
+
   /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
    *  `year` fields. Current documents no longer persist `title`/`year` (the `_id`
    *  encodes both — see `StoredMovieDto`), so they're caught by the `_id`
@@ -765,7 +793,7 @@ class MongoMovieRepository(
     val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
       oldId, newId,
       read       = sl.findForFilmChecked,
-      replace    = sl.replaceFilm,
+      replace    = (id, rows) => sl.replaceFilm(id, rows),
       deleteFilm = sl.deleteFilm,
       onSkip     = message => logger.warn(s"re-key $oldId -> $newId (slots): $message.")))
     screeningsMoved && slotsMoved
@@ -801,7 +829,15 @@ class MongoMovieRepository(
     // writes — the safe direction.
     val slotPayload = SlotsRepository.slotsOf(restitched)
     val slotsLanded = slots.exists { s =>
-      if (s.findForFilm(id) == slotPayload) true else s.replaceFilm(id, slotPayload)
+      // ONE read, used twice. It answers "is anything different at all" (skip the write
+      // entirely) and, handed on, "which rows are different" (write only those) — which
+      // `replaceFilm` would otherwise have to go and ask again, on the hottest write path
+      // in the system. A read that FAILED is passed as None, not as an empty map: empty
+      // would read as "every row is new" and be trusted, where None makes `replaceFilm`
+      // read for itself.
+      val (current, readOk) = s.findForFilmChecked(id)
+      if (readOk && current == slotPayload) true
+      else s.replaceFilm(id, slotPayload, if (readOk) Some(current) else None)
     }
     // Under the read-split `movies` carries no showtimes (they go to `screenings`), and
     // once the slots have landed it carries no sourceData either — which is what shrinks
@@ -863,7 +899,9 @@ class MongoMovieRepository(
         // would write, there is no slot for `replaceFilm` to prune. A differing read —
         // including an empty one — writes, which is the safe direction.
         if (!stitch.complete) showtimes.foreach { case (slotKey, st) => s.upsertSlot(id, slotKey, st) }
-        else if (showtimes != stitch.stored) s.replaceFilm(id, showtimes)
+        // `stitch.stored` is this film's rows as they are NOW, already read above — so hand
+        // it on rather than making `replaceFilm` read them a second time.
+        else if (showtimes != stitch.stored) s.replaceFilm(id, showtimes, Some(stitch.stored))
       }
       ()
     }.recover {

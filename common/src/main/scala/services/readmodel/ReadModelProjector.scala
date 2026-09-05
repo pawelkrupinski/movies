@@ -251,7 +251,14 @@ class ReadModelProjector(
     // The source-row keys behind those cards — what `lastMetadata` is keyed by.
     val liveRowKeys = scala.collection.mutable.Set.empty[String]
     var reprojected = 0
-    val scanComplete = movieRepository.foreachRecord { row =>
+    // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
+    // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
+    // scan still stitches. So the frequent, scheduled sweep no longer pulls the whole
+    // `screenings` collection through WiredTiger twice an hour to throw it away — 177,676
+    // rows and 129 MB across the five countries (2026-09-05) against a 1.07 GB cache.
+    val scan: (StoredMovieRecord => Unit) => Boolean =
+      if (reproject) movieRepository.foreachRecord else movieRepository.foreachRecordWithSlots
+    val scanComplete = scan { row =>
       if (row.record.readyToProject) {
         liveIds ++= ReadModelProjection.filmIds(row, normalizer)
         liveRowKeys += StoredMovieRecord.idOf(row, normalizer)

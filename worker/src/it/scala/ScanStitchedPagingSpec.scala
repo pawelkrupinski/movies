@@ -1,5 +1,6 @@
 package services.movies
 
+import integration.CountingSlotsRepository
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.MongoClient
 import org.mongodb.scala.model.Filters
@@ -8,7 +9,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.Env
 
-import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -31,28 +31,14 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
 
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(18).withMinute(0).withSecond(0).withNano(0)
 
-  /** Counts which read shape the scan reaches for. */
-  private class CountingSlots(inner: SlotsRepository, all: AtomicInteger, batched: AtomicInteger)
-    extends SlotsRepository {
-    def findForFilmChecked(id: String) = inner.findForFilmChecked(id)
-    override def findForFilmsChecked(ids: Set[String]) = { batched.incrementAndGet(); inner.findForFilmsChecked(ids) }
-    def findAllChecked() = { all.incrementAndGet(); inner.findAllChecked() }
-    def replaceFilm(id: String, s: Map[String, SourceData]) = inner.replaceFilm(id, s)
-    def upsertSlot(id: String, k: String, s: SourceData) = inner.upsertSlot(id, k, s)
-    def deleteSlot(id: String, k: String) = inner.deleteSlot(id, k)
-    def deleteFilm(id: String) = inner.deleteFilm(id)
-  }
-
   it should "page the side-collection reads instead of preloading them whole" in {
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
     val prefix = "__scanpaging"
-    val allReads     = new AtomicInteger(0)
-    val batchedReads = new AtomicInteger(0)
     try {
       val screenings = new MongoScreeningsRepository(Some(db))
       val realSlots  = new MongoSlotsRepository(Some(db))
-      val slots      = new CountingSlots(realSlots, allReads, batchedReads)
+      val slots      = new CountingSlotsRepository(realSlots)
       // batchSize 2 so a handful of sentinels spans several pages
       val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings),
         slots = Some(slots), findAllBatchSize = 2, normalizer = titleNormalizer)
@@ -63,7 +49,7 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
             title = Some(s"scan $n"), showtimes = Seq(Showtime(when, None))))))
       }
 
-      allReads.set(0); batchedReads.set(0)
+      slots.reset()
       var seen = 0
       // Recognise the sentinels by tmdbId, not by the derived title: the title comes from
       // the stitched slot ("Scan 1"), not from the `_id` prefix, and tying the count to
@@ -71,9 +57,9 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
       val complete = repository.foreachRecord(r => if (r.record.tmdbId.exists(t => t > 6000 && t <= 6005)) seen += 1)
 
       complete shouldBe true
-      withClue("the scan preloaded a whole side collection: ")(allReads.get() shouldBe 0)
-      withClue("the scan never used the batched per-page read: ")(batchedReads.get() should be > 1)
-      withClue(s"batched reads=${batchedReads.get()} for a 2-row page size: ")(seen should be >= 5)
+      withClue("the scan preloaded a whole side collection: ")(slots.findAllCalls.get() shouldBe 0)
+      withClue("the scan never used the batched per-page read: ")(slots.batchReadCalls.get() should be > 1)
+      withClue(s"batched reads=${slots.batchReadCalls.get()} for a 2-row page size: ")(seen should be >= 5)
     } finally {
       Await.ready(db.getCollection("movies")
         .deleteMany(Filters.regex("_id", s"^scanpaging")).toFuture(), 10.seconds)
