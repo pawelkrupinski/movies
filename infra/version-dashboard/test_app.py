@@ -307,10 +307,13 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
     that fails is neither retried on the next build nor allowed to empty the table."""
 
     CLEAN = {"fingerprint": None, "machines": None, "evaluated_at": 0.0,
-             "error": None, "failed_at": 0.0}
+             "error": None, "failed_at": 0.0, "recalled": True}
 
     def setUp(self):
         self.reads = []
+        self.store = tempfile.TemporaryDirectory()
+        self._cache_path = app.ROSTER_CACHE
+        app.ROSTER_CACHE = os.path.join(self.store.name, "roster.json")
         self.answer = ({"mongo-1": {"hostName": "mongo-1", "privateAddress": "10.20.0.13"}}, None)
         self.fingerprint = "flake-as-committed"
         self._machines, self._stamp = app.flake_machines, app.flake_fingerprint
@@ -320,6 +323,8 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
 
     def tearDown(self):
         app.flake_machines, app.flake_fingerprint = self._machines, self._stamp
+        app.ROSTER_CACHE = self._cache_path
+        self.store.cleanup()
         app._roster.update(self.CLEAN)
 
     def _read(self):
@@ -369,6 +374,32 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
         machines, err = app.roster()
         self.assertEqual(machines, {})
         self.assertEqual(err, "nix eval failed: timed out after 240s")
+
+    def test_the_roster_outlives_the_process_that_read_it(self):
+        # The restart case, which is most of them: launchd's KeepAlive, a laptop rebooting, an edit
+        # to this file. A restarted process that has to evaluate before it can show anything is a
+        # page with no machines on it for 86 seconds -- and for the whole retry floor if that one
+        # evaluation times out, which is exactly what a busy laptop does to it.
+        app.roster()
+        app._roster.update(self.CLEAN)  # as if this were a new process
+        app._roster["recalled"] = False
+        machines, err = app.roster()
+        self.assertEqual((list(machines), err, len(self.reads)), (["mongo-1"], None, 1))
+
+    def test_a_remembered_roster_is_re_read_when_the_flake_has_moved_on_since(self):
+        app.roster()
+        app._roster.update(self.CLEAN)
+        app._roster["recalled"] = False
+        self.fingerprint = "edited-while-the-dashboard-was-down"
+        app.roster()
+        self.assertEqual(len(self.reads), 2)
+
+    def test_an_unreadable_cache_file_is_not_an_error(self):
+        with open(app.ROSTER_CACHE, "w") as fh:
+            fh.write("{not json")
+        app._roster["recalled"] = False
+        machines, err = app.roster()
+        self.assertEqual((list(machines), err), (["mongo-1"], None))
 
 
 class FlakeFingerprint(unittest.TestCase):

@@ -182,6 +182,12 @@ def flake_machines():
 # application commit, which is most commits.
 ROSTER_INPUTS = ("flake.nix", "flake.lock", "nix")
 
+# WHERE THE LAST ROSTER SURVIVES A RESTART. Outside the repository on purpose: a state file inside
+# it would show up as an uncommitted change, which this page reports on its own header ("the infra
+# checkout has uncommitted changes") and which makes every `nix eval` here copy a dirty tree.
+ROSTER_CACHE = os.environ.get("KINOWO_ROSTER_CACHE") or os.path.join(
+    os.path.expanduser("~"), ".cache", "kinowo-nixos-dashboard", "roster.json")
+
 
 def _input_files(path):
     if os.path.isdir(path):
@@ -215,7 +221,39 @@ def flake_fingerprint(root=None):
 
 _roster_lock = threading.Lock()
 _roster = {"fingerprint": None, "machines": None, "evaluated_at": 0.0,
-           "error": None, "failed_at": 0.0}
+           "error": None, "failed_at": 0.0, "recalled": False}
+
+
+def _remember_roster(fingerprint, machines, evaluated_at):
+    """Write the roster down so a restart does not start from nothing.
+
+    THE PROCESS RESTARTS MORE OFTEN THAN THE FLEET CHANGES -- launchd's KeepAlive, a laptop
+    rebooting, an edit to this file. Without this, every one of those is a page with no machines on
+    it until an 86-second evaluation finishes, and if that one evaluation times out (which is what
+    happens when the laptop is busy, which is when it is restarted) the page has nothing to show for
+    as long as the retry floor lasts. The roster it read yesterday is a far better answer than none.
+    """
+    try:
+        os.makedirs(os.path.dirname(ROSTER_CACHE), exist_ok=True)
+        with open(ROSTER_CACHE + ".tmp", "w") as fh:
+            json.dump({"fingerprint": fingerprint, "machines": machines,
+                       "evaluated_at": evaluated_at}, fh)
+        os.replace(ROSTER_CACHE + ".tmp", ROSTER_CACHE)
+    except OSError:
+        pass  # a dashboard that cannot write its cache is still a dashboard
+
+
+def _recall_roster():
+    """The roster this process was left with, or nothing at all if that cannot be read."""
+    try:
+        with open(ROSTER_CACHE) as fh:
+            saved = json.load(fh)
+        machines = saved["machines"]
+        if isinstance(machines, dict) and machines:
+            return saved.get("fingerprint"), machines, float(saved.get("evaluated_at") or 0.0)
+    except (OSError, ValueError, KeyError, TypeError):
+        pass  # absent, truncated, or written by a version that meant something else by it
+    return None, None, 0.0
 
 
 def _last_roster(machines, error, evaluated_at):
@@ -248,11 +286,18 @@ def roster():
     THE ROSTER IS A DECLARATION, NOT A READING. It changes when somebody edits infra/nix, not when a
     machine does something -- so it is read then, and the running state the page exists to watch
     keeps its 30-second cadence. A failure is not retried on every build either, for the same
-    reason: continuous retries were the fault, not the diagnosis.
+    reason: continuous retries were the fault, not the diagnosis. And the answer outlives the
+    process that read it (`_remember_roster`), so a restart is not a fleet with no machines in it.
     """
     fingerprint = flake_fingerprint()
     now = time.time()
     with _roster_lock:
+        if not _roster["recalled"]:
+            _roster["recalled"] = True
+            remembered, machines, evaluated_at = _recall_roster()
+            if machines is not None:
+                _roster.update(fingerprint=remembered, machines=machines,
+                               evaluated_at=evaluated_at)
         machines, error = _roster["machines"], _roster["error"]
         evaluated_at = _roster["evaluated_at"]
         if machines is not None and _roster["fingerprint"] == fingerprint:
@@ -267,7 +312,8 @@ def roster():
             _roster["failed_at"] = time.time()
             return _last_roster(_roster["machines"], error, _roster["evaluated_at"])
         _roster.update(fingerprint=fingerprint, machines=evaluated, evaluated_at=time.time())
-        return evaluated, None
+    _remember_roster(fingerprint, evaluated, _roster["evaluated_at"])
+    return evaluated, None
 
 
 def git_head():
