@@ -402,6 +402,41 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.pickBest(hits, "Mawka. Prawdziwy mit", Some(2026), Set("Katya Tsarik")) shouldBe None
   }
 
+  /**
+   * Two films by the SAME director in the SAME year defeat "both signals are
+   * required": director+year alone is then not a fact about which of them this is.
+   *
+   * Poland's "Mistyczka" is the worked example. Jan Sobierajski released it in
+   * 2026 alongside "Maryja. Matka Papieża", so the override handed the row the
+   * other film's Filmweb entry — and, through the Filmweb slot's `originalTitle`,
+   * its original title and IMDb id too. The title still has to corroborate the
+   * pair, loosely enough to survive a romanisation (Mavka above) but not so
+   * loosely that two unrelated Polish titles tie.
+   */
+  it should "NOT override a title-mismatched candidate on director+year when the titles share no distinctive word" in {
+    val hits = Seq(candidate(
+      id = 1, title = "Maryja. Matka Papieża", year = Some(2026),
+      directors = Set("Jan Sobierajski")
+    ))
+    client.pickBest(hits, "Mistyczka", Some(2026), Set("Jan Sobierajski")) shouldBe None
+  }
+
+  // …but the corroborating word may come from any name the row is known by, not
+  // just the query being searched. Poland's "Cinema Italia Oggi: Miasta na
+  // równinie" is filed on Filmweb under the Italian original; the Polish query
+  // shares nothing with it, and the row's own TMDB originalTitle — one of the
+  // queries `lookup` will try, so one of the aliases — names it exactly.
+  it should "corroborate the director+year override against the row's other known titles" in {
+    val hits = Seq(candidate(
+      id = 1, title = "Le città di pianura", year = Some(2025),
+      directors = Set("Francesco Sossai")
+    ))
+    client.pickBest(
+      hits, "Miasta na równinie", Some(2025), Set("Francesco Sossai"),
+      aliases = Seq("Cinema Italia Oggi: Miasta na równinie", "Le città di pianura")
+    ).map(_.id) shouldBe Some(1)
+  }
+
   it should "NOT override a title-mismatched candidate whose director differs (precision)" in {
     val hits = Seq(candidate(
       id = 1, title = "Mavka. Spravzhnij mif", year = Some(2026),

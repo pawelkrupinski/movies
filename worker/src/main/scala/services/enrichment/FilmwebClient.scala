@@ -1,6 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
+import services.resolution.TitleCorroboration
 import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder
@@ -68,7 +69,12 @@ class FilmwebClient(http: HttpFetch) {
     // plus, when directors are being verified, a `/preview`. Without the memo
     // each shared candidate is fetched once per variant.
     val attempt = new FilmwebClient(new MemoizedHttpFetch(http))
-    queries.view.flatMap(q => attempt.lookupWithQuery(q, year, directors, referenceSynopsis)).headOption
+    // Every query is also an ALIAS the row is known by, and the director+year
+    // override corroborates against all of them, not just the one being searched.
+    // "Cinema Italia Oggi: Miasta na równinie" is filed on Filmweb under the Italian
+    // "Le città di pianura" — nothing in the Polish query shares a word with that, but
+    // the row's own originalTitle (already in `queries` as the fallback) does.
+    queries.view.flatMap(q => attempt.lookupWithQuery(q, year, directors, referenceSynopsis, queries)).headOption
   }
 
   // No blanket `Try` around this body: a failed read is not an answer of "Filmweb
@@ -77,7 +83,7 @@ class FilmwebClient(http: HttpFetch) {
   // throttle or 5xx propagates so the caller retries instead of persisting the
   // miss (these link caches use UnresolvedPolicy.Remember, which would otherwise
   // store "no page for this film" for 24h off the back of an outage).
-  private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String]): Option[FilmwebInfo] = {
+  private def lookupWithQuery(query: String, year: Option[Int], directors: Set[String], referenceSynopsis: Option[String], aliases: Seq[String] = Nil): Option[FilmwebInfo] = {
       val hits = search(query).take(MaxCandidates)
       // Step 1 (cheap): /info per candidate → title acceptance bar.
       val infoCandidates = hits.flatMap(h =>
@@ -100,7 +106,7 @@ class FilmwebClient(http: HttpFetch) {
             case None    => c
           }
         }
-      pickBest(candidates, query, year, directors, referenceSynopsis).map { c =>
+      pickBest(candidates, query, year, directors, referenceSynopsis, aliases).map { c =>
         val url = canonicalUrl(c.id, c.kind, c.title, c.year)
         // Fall back to a winner-only /preview when director verification was
         // skipped (caller didn't supply directors) so the Filmweb slot carries
@@ -243,11 +249,14 @@ class FilmwebClient(http: HttpFetch) {
    *  hits "Małgorzata Szumowska".
    *
    *  Director+year override: a candidate whose title does NOT match is still
-   *  accepted when its director overlaps the caller's AND its year is within
-   *  ±1 of the caller's. This recovers films Filmweb files under a
-   *  transliterated/original title the cinema doesn't report ("Mavka.
-   *  Spravzhnij mif" for "Mawka. Prawdziwy mit"). Both signals are required —
-   *  never override on director alone — to keep precision.
+   *  accepted when its director overlaps the caller's, its year is within ±1 of
+   *  the caller's, and its title shares a distinctive word with SOME name the row
+   *  is known by (`query` plus `aliases` — every query `lookup` will try, which
+   *  includes the row's own original / English title). This recovers
+   *  films Filmweb files under a transliterated/original title the cinema doesn't
+   *  report ("Mavka. Spravzhnij mif" for "Mawka. Prawdziwy mit") without letting
+   *  a director's SECOND film of the same year answer for the first — see
+   *  [[matchesByDirectorAndYear]].
    *
    *  Year breaks ties among accepted candidates; a `referenceSynopsis` (the
    *  row's TMDB Polish blurb) breaks a remaining tie on plot closeness. When a tie
@@ -260,12 +269,14 @@ class FilmwebClient(http: HttpFetch) {
     query:             String,
     year:              Option[Int],
     directors:         Set[String],
-    referenceSynopsis: Option[String] = None
+    referenceSynopsis: Option[String] = None,
+    aliases:           Seq[String]    = Nil
   ): Option[Candidate] = {
     if (candidates.isEmpty || query.trim.isEmpty) return None
+    val knownAs = (query +: aliases).filter(_.trim.nonEmpty).distinct
     val directorAccepted = candidates.filter { c =>
       (matchesByTitle(c, query) && matchesByDirector(c, directors) && yearGateOk(c, query, year, directors)) ||
-        matchesByDirectorAndYear(c, year, directors)
+        matchesByDirectorAndYear(c, knownAs, year, directors)
     }
     // Prefer a `film` over a same-title `serial` BEFORE year-distance: a real
     // film and a TV series share many titles ("Ziemia obiecana" — Wajda's 1974
@@ -342,13 +353,27 @@ class FilmwebClient(http: HttpFetch) {
 
   /** Strict director+year override: accepts a candidate even when its title
    *  doesn't match, provided the caller supplied directors AND a year, the
-   *  candidate carries directors that overlap, AND its year is within ±1 of
-   *  the caller's. Both signals are mandatory — director alone never overrides
-   *  (multiple unrelated films can share a director across years). */
-  private[enrichment] def matchesByDirectorAndYear(c: Candidate, year: Option[Int], directors: Set[String]): Boolean =
+   *  candidate carries directors that overlap, its year is within ±1 of the
+   *  caller's, AND the two titles still share a distinctive word.
+   *
+   *  Director+year used to be the whole test, on the reasoning that both signals
+   *  together are precise. They aren't when a director releases TWICE in a year:
+   *  Jan Sobierajski's "Mistyczka" (2026) took his "Maryja. Matka Papieża" (2026),
+   *  and the row then served that film's original title, ratings and IMDb id.
+   *  Year and director pick the candidate; the title has to corroborate it —
+   *  loosely, since the override exists for titles Filmweb romanises
+   *  ("Mavka. Spravzhnij mif" for "Mawka. Prawdziwy mit"), so one character of
+   *  disagreement inside a word still counts. And against every name the row is
+   *  known by, not just the query being searched: "Cinema Italia Oggi: Miasta na
+   *  równinie" is filed under "Le città di pianura", which its own TMDB original
+   *  title — already among the queries — names exactly. See [[TitleCorroboration]], which
+   *  answers the same question for TMDB's director-walk. */
+  private[enrichment] def matchesByDirectorAndYear(c: Candidate, knownAs: Seq[String], year: Option[Int], directors: Set[String]): Boolean =
     directors.nonEmpty && c.directors.nonEmpty &&
       year.exists(y => c.year.exists(cy => math.abs(cy - y) <= 1)) &&
-      directorsOverlap(c.directors, directors)
+      directorsOverlap(c.directors, directors) &&
+      TitleCorroboration.sharesDistinctiveToken(
+        knownAs, c.title +: c.originalTitle.toSeq, deburr, maxTokenEdits = 1)
 
   /** Diacritic-stripped, case-folded director-name overlap; substring match in
    *  either direction passes so "M. Szumowska" hits "Małgorzata Szumowska". */
