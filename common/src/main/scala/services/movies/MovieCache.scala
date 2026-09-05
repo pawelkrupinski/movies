@@ -1611,24 +1611,9 @@ class CaffeineMovieCache(
           // out-of-band edits); first-time scrapes `put` (keeps the tmdbId
           // identity gate live).
           val slotKey = cinemaSlotKey(cinema, displayTitle)
-          // Whether the slot actually LANDED on `key`. The move below is only safe
-          // once it has: a skipped write that still dropped the slot from the row
-          // holding it would delete this venue's showtimes and put them nowhere,
-          // which is the very loss the unreadable-row skip exists to prevent.
-          //
-          // NOT COVERED BY A FAILING TEST, unlike the rest of this file, and worth
-          // knowing before touching it. The state needs a key that `concludedKeyFor` /
-          // `redirectToExistingVariant` picks from the corpus INDEX while Caffeine has
-          // evicted it AND its Mongo read fails — cold cache plus a degraded Mongo, the
-          // 2026-07-27 shape. Every path a spec can drive routes the scrape to the row
-          // already holding the slot, so `keysForCinemaSlot - key` is empty there and
-          // the drop cannot fire either way. `UnreadableRowScrapeSpec` pins the
-          // reachable half (a skipped write leaves the holder intact); this guard is
-          // the unreachable half, kept because it can only ever refrain from deleting.
-          val landed = existingOpt match {
+          existingOpt match {
             case Some(_) =>
               putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
-              true
             case None =>
               // A cache MISS is not proof of first-time: a restart/eviction/re-key
               // can leave a fully-rated Mongo row unseen by Caffeine. Build the
@@ -1658,11 +1643,9 @@ class CaffeineMovieCache(
                     s"${cinema.displayName}: its stored row could not be READ, and rebuilding it from " +
                     "this scrape alone would prune every other cinema's showtimes.")
                   skippedUnreadable.incrementAndGet()
-                  false
                 case (row, true) =>
                   val base = row.getOrElse(MovieRecord())
                   put(key, base.copy(data = base.data + (slotKey -> slot)))
-                  true
               }
           }
           // This tick just decided which film this (cinema, title) belongs to, so
@@ -1681,8 +1664,17 @@ class CaffeineMovieCache(
           // different Source spelling (a bare `Cinema` from an older write, a
           // `CinemaShowing` for a decorated edition), and dropping only `slotKey`
           // would miss exactly the stranded copies this is here to clear.
-          // Gated on the write above: see `landed`.
-          if (landed) (corpusIndex.keysForCinemaSlot(cinema, norm) - key).foreach { other =>
+          // SAFE EVEN WHEN THE WRITE ABOVE WAS SKIPPED, and not by luck. The skip
+          // happens only on a Caffeine MISS, and every key this loop can be standing on
+          // when another row holds the slot came from `corpusIndex` — `concludedKeyFor`
+          // and `redirectToExistingVariant` are both index lookups, and the remaining
+          // arm is `keyHoldingCinemaSlot` itself. The index shadows `positive`, which is
+          // UNBOUNDED (no maximumSize, no expiry), so an indexed key is a cached key: a
+          // miss here means no row held this venue's slot, which makes the set below
+          // empty. Bound that cache and the two stop implying each other — the drop
+          // would then have to be gated on the write having landed, or a skipped write
+          // would delete this venue's showtimes and put them nowhere.
+          (corpusIndex.keysForCinemaSlot(cinema, norm) - key).foreach { other =>
             dropCinemaSlots(other, _.data.collect {
               case (src, sd) if Source.cinemaOf(src).contains(cinema) &&
                                 sd.title.exists(t => normalizer.sanitize(t) == norm) => src

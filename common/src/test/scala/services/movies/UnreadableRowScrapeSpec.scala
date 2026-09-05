@@ -75,10 +75,13 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     cache.skippedUnreadable.get() should be > 0L
   }
 
-  // The slot MOVE is the other write this branch guards. Deciding which film a
-  // (cinema, title) belongs to drops the slot from every OTHER row holding it — correct
-  // once the slot has landed, but on an unreadable row nothing lands, so an unguarded
-  // drop deletes the venue's showtimes and puts them nowhere.
+  // Pins the INVARIANT that makes the slot move safe next to this skip, rather than a
+  // branch: deciding which film a (cinema, title) belongs to drops the slot from every
+  // OTHER row holding it, and on an unreadable row nothing lands to replace it. That is
+  // harmless today only because a skip implies a Caffeine miss, every key the move can
+  // stand on came from the index, and the index shadows an UNBOUNDED cache — so a miss
+  // means nothing held the slot. This asserts the end of that chain. Bound the cache
+  // and the chain breaks; this test is what should start failing when it does.
   it should "not strip the venue's slot off the row that still holds it" in {
     val repo  = new Repo(Seq(stored), readable = true)
     val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
