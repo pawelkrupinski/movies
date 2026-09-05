@@ -70,10 +70,18 @@ class QueueEnrichmentRetrigger(
         queue.enqueue(
           TaskType.ResolveTmdb,
           EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year),
-          // `cinemaDirector`, not `director`: the latter falls back to the derived
-          // Tmdb/Imdb/Filmweb slots, which would hand the re-resolve the previous
-          // resolution's own director as evidence (see `MovieRecord.cinemaDirector`).
-          EnrichTaskKeys.resolveTmdbPayload(key.cleanTitle, key.year, record.cinemaDirector.headOption, record.originalTitle))
+          // `cinemaDirector` / `cinemaOriginalTitle`, not `director` / `originalTitle`:
+          // both of the latter read the derived Tmdb/Imdb/Filmweb slots, which would
+          // hand the re-resolve the previous resolution's own answer back as evidence
+          // — and `resolveTmdbId` now RANKS a cinema-reported title above a derived
+          // one, so a derived title arriving through this hint would be ranked as
+          // though a venue had published it. They are one pair; both halves are
+          // cinema-only (see `MovieRecord.cinemaOriginalTitle`).
+          //
+          // A derived original title still reaches the resolver — `resolveTmdbId`
+          // mines every slot's `originalTitle` into its candidate set, which is what
+          // lets a Filmweb-supplied original crack a film TMDB missed.
+          EnrichTaskKeys.resolveTmdbPayload(key.cleanTitle, key.year, record.cinemaDirector.headOption, record.cinemaOriginalTitle))
       case RetriggerKind.ResolveImdbId =>
         queue.enqueue(
           TaskType.ResolveImdbId,

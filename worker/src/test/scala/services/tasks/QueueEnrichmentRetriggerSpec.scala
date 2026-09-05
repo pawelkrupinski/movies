@@ -2,7 +2,7 @@ package services.tasks
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import models.{Country, MovieRecord, Source, SourceData, Tmdb}
+import models.{Country, Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
@@ -64,15 +64,35 @@ class QueueEnrichmentRetriggerSpec extends AnyFlatSpec with Matchers {
     drain(queue).map(_.dedupKey) should contain (dedup)       // enqueued under the same filmKey
   }
 
-  it should "enqueue a ResolveTmdb task carrying the title/year + originalTitle hint" in {
+  // The hint pair is cinema-only, BOTH halves of it. The director half already was
+  // (see the comment at the call site); the original-title half was still reading
+  // `record.originalTitle`, which is the Tmdb slot verbatim — so a re-resolve was
+  // handed the PREVIOUS resolution's own original title as if a cinema had
+  // published it, and then ranked it as cinema evidence. That is the leak
+  // `MovieRecord.cinemaOriginalTitle` exists to close, and how "Mistyczka" kept
+  // re-confirming another film's identity.
+  //
+  // A derived original title still REACHES the resolver — `resolveTmdbId` mines
+  // every slot's `originalTitle` into its candidate set, which is what lets a
+  // Filmweb-supplied original crack a film TMDB missed. It just no longer arrives
+  // wearing a cinema's clothes.
+  it should "enqueue a ResolveTmdb task hinting the CINEMA original title, not the Tmdb slot's" in {
     val (queue, _, trigger) = fixture
-    trigger.retrigger(filmKey, resolved, Set(RetriggerKind.ResolveTmdb))
+    val withCinema = resolved.copy(data = resolved.data +
+      (Helios -> SourceData(title = Some("Ojczyzna"), originalTitle = Some("Ojczyzna (oryg.)"))))
+    trigger.retrigger(filmKey, withCinema, Set(RetriggerKind.ResolveTmdb))
     val tasks = drain(queue)
     tasks should have size 1
     val task = tasks.head
     task.taskType shouldBe TaskType.ResolveTmdb
     task.dedupKey shouldBe EnrichTaskKeys.resolveTmdbDedup(filmKey.cleanTitle, filmKey.year)
-    EnrichTaskKeys.originalTitleOf(task.payload) shouldBe Some("Fatherland")
+    EnrichTaskKeys.originalTitleOf(task.payload) shouldBe Some("Ojczyzna (oryg.)")
+  }
+
+  it should "hint NO original title when only the derived slots carry one" in {
+    val (queue, _, trigger) = fixture
+    trigger.retrigger(filmKey, resolved, Set(RetriggerKind.ResolveTmdb))
+    EnrichTaskKeys.originalTitleOf(drain(queue).head.payload) shouldBe None
   }
 
   it should "enqueue a ResolveImdbId task with a search title" in {
