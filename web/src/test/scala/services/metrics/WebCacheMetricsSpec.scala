@@ -30,11 +30,7 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
   private def register(registry: PrometheusRegistry, caches: (String, () => CacheOccupancy)*): Unit =
     new WebCacheMetrics(registry, country = "us", caches = caches.toSeq)
 
-  private def sample(text: String, name: String, cache: String): Option[Double] =
-    text.linesIterator
-      .filterNot(_.startsWith("#"))
-      .find(line => line.startsWith(s"$name{") && line.contains(s"""cache="$cache""""))
-      .map(_.trim.split("\\s+").last.toDouble)
+  import CacheMetricSamples.sample
 
   "the response-cache gauges" should "report what the cache holds at scrape time, not at registration" in {
     val cache    = new GzippedResponseCache()

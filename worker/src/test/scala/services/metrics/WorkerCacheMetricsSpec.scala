@@ -25,13 +25,7 @@ class WorkerCacheMetricsSpec extends AnyFlatSpec with Matchers {
     PrometheusExposition.render(registry)
   }
 
-  /** The shared helper matches a label string exactly; this family carries two
-   *  labels, so pick the line by name plus the `cache` label wherever it sits. */
-  private def sample(exposition: String, metric: String, cache: String): Option[Double] =
-    exposition.linesIterator
-      .filterNot(_.startsWith("#"))
-      .find(line => line.startsWith(s"$metric{") && line.contains(s"""cache="$cache""""))
-      .map(_.trim.split("\\s+").last.toDouble)
+  import CacheMetricSamples.sample
 
   /** [[CacheOccupancy]] still MODELS a byte-bounded cache even though no worker
    *  cache is weighed in bytes today (the venue detail cache was, and was deleted

@@ -1,6 +1,5 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 
 /**
@@ -41,38 +40,28 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  */
 object WorkerCacheMetrics {
 
-  /** One registered cache: which country's wiring owns it, what to call it, and
-   *  how to read it. The reader is called on every scrape, so it must stay cheap
-   *  and must not throw. */
-  final case class Registration(country: String, cache: String, read: () => CacheOccupancy)
+  /** The registration shape, re-exported so callers keep naming it through this
+   *  object rather than reaching for the shared one. */
+  type Registration = CacheGauge.Registration
+  val Registration: CacheGauge.Registration.type = CacheGauge.Registration
 
   def register(registry: PrometheusRegistry, registrations: () => Seq[Registration]): Unit = {
-    gauge(registry, "kinowo_worker_cache_entries",
+    CacheGauge.register(registry, "kinowo_worker_cache_entries",
       "Entries a cache is holding, against `max_entries` where the cache is bounded by count. " +
         "For an unbounded one the SHAPE is the signal: a count that tracks its corpus is healthy, " +
         "one that climbs past it has stopped evicting.")(o => Some(o.entries.toDouble), registrations)
 
-    gauge(registry, "kinowo_worker_cache_max_entries",
+    CacheGauge.register(registry, "kinowo_worker_cache_max_entries",
       "A count-bounded cache's maximum entries. Absent for byte-bounded and unbounded caches, " +
         "which have no entry ceiling to report.")(_.maxEntries.map(_.toDouble), registrations)
 
-    gauge(registry, "kinowo_worker_cache_evictions_total",
+    CacheGauge.register(registry, "kinowo_worker_cache_evictions_total",
       "Entries evicted since boot. A cache evicting steadily is one whose working set no longer " +
         "fits its budget; whether that matters depends on what a miss costs it.")(_.evictions.map(_.toDouble), registrations)
 
-    gauge(registry, "kinowo_worker_cache_hit_ratio",
+    CacheGauge.register(registry, "kinowo_worker_cache_hit_ratio",
       "Share of lookups served from the cache. Read it against what each cache is FOR: on " +
         "`task_dedup` a high ratio is the point, since every hit is a Mongo enqueue round-trip " +
         "not made, and a fall means the dedup is being evicted.")(_.hitRatio, registrations)
   }
-
-  private def gauge(registry: PrometheusRegistry, name: String, help: String)
-                   (read: CacheOccupancy => Option[Double], registrations: () => Seq[Registration]): Unit =
-    GaugeWithCallback.builder().name(name).help(help).labelNames("country", "cache")
-      .callback { callback =>
-        registrations().foreach { registration =>
-          read(registration.read()).foreach(value => callback.call(value, registration.country, registration.cache))
-        }
-      }
-      .register(registry)
 }

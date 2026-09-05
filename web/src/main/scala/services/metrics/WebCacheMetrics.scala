@@ -1,6 +1,5 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
 
@@ -36,18 +35,14 @@ import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
 class WebCacheMetrics(registry: PrometheusRegistry, country: String,
                       caches: Seq[(String, () => CacheOccupancy)]) {
 
+  // This tier runs one country per process, so every registration carries the same
+  // one; the worker's runs a wiring per country and varies it.
+  private val registrations: () => Seq[CacheGauge.Registration] =
+    () => caches.map { case (cache, read) => CacheGauge.Registration(country, cache, read) }
+
   private def gauge(name: String, help: String, unit: Option[PrometheusUnit])
-                   (read: CacheOccupancy => Option[Double]): Unit = {
-    val builder = GaugeWithCallback.builder().name(name).help(help).labelNames("country", "cache")
-    unit.foreach(builder.unit)
-    builder
-      .callback { callback =>
-        caches.foreach { case (cache, occupancy) =>
-          read(occupancy()).foreach(value => callback.call(value, country, cache))
-        }
-      }
-      .register(registry)
-  }
+                   (field: CacheOccupancy => Option[Double]): Unit =
+    CacheGauge.register(registry, name, help, unit)(field, registrations)
 
   gauge("kinowo_web_cache_held_bytes",
     "Bytes a cache is holding, as its own weigher charges them. Against `max_bytes` this is what " +
