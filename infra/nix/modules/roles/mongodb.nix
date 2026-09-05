@@ -644,32 +644,30 @@ in
     # (rs.initiate during the migration).
     environment.systemPackages = [ cfg.package cfg.toolsPackage pkgs.mongosh ];
 
-    # ROTATE mongod.log. `systemLog.logRotate = "reopen"` above is only half of a rotation: it
-    # tells mongod what to do when it is SIGNALLED, and nothing was signalling it. The log had
-    # therefore never rotated since the host was built -- 1,046,210,345 bytes on 2026-09-05,
-    # four days' worth, growing about 260 MB/day on a 38 GB root with 30 GB free.
+    # mongod.log IS NOT ROTATED, AND WIRING IT UP IS NOT A CODE CHANGE. It had grown to
+    # 1,046,210,345 bytes by 2026-09-05 — four days, ~260 MB/day on a 38 GB root with 30 GB
+    # free. `systemLog.logRotate = "reopen"` above is only half a rotation: it says what mongod
+    # does when SIGNALLED, and nothing signals it.
     #
-    # It is not an outage in waiting so much as a diagnosis in waiting: this file is the ONLY
-    # place mongod explains itself (`destination: file`, see the tmpfiles comment below), and
-    # the slow-query lines in it are what named the `uptimeServiceTags` collection scan that
-    # was 93% of the database's document scanning. A gigabyte of it is a file nobody greps.
+    # THE OBVIOUS FIX IS REFUSED BY THIS FLEET'S OWN GATE, which is why it is written down here
+    # instead of applied. `services.logrotate.settings` renders its config to a STORE PATH that
+    # `logrotate.service` and `logrotate-checkconf.service` name in their `ExecStart` (verified
+    # on the box), so changing it changes both units. `fleet.autoApply` is default-deny on unit
+    # disturbance and refuses the ENTIRE switch when any one unit would move — and a refused
+    # closure strands every LATER staged change for this host, silently, until a person applies
+    # by hand. Trading a rotated log for an unnoticed frozen deploy queue is a bad trade.
     #
-    # `create` + SIGUSR1, NOT `copytruncate`. copytruncate races an appending writer and loses
-    # whatever is written between the copy and the truncate; `reopen` exists precisely so the
-    # file can be moved out from under mongod and reopened at the new path, and mongod holds no
-    # other state that a signal disturbs. `su` because the file is 0600 mongodb:mongodb.
-    services.logrotate.settings.mongod = {
-      files = cfg.logPath;
-      frequency = "daily";
-      rotate = 14;                # two weeks, ~3.6 GB uncompressed, far less once compressed
-      compress = true;
-      delaycompress = true;       # yesterday's file stays greppable without zcat
-      missingok = true;           # a host that has not started mongod yet is not an error
-      notifempty = true;
-      create = "0600 mongodb mongodb";
-      su = "mongodb mongodb";
-      postrotate = "${pkgs.procps}/bin/pkill -SIGUSR1 --exact mongod || true";
-    };
+    # LANDING IT NEEDS A HAND-APPLY, in the shape `container-image-gc.nix` documents: add
+    # "logrotate.service" and "logrotate-checkconf.service" to `fleet.autoApply.restartableUnits`
+    # AND the settings in one switch, then `colmena apply --on @mongo` once, because the applier
+    # reads its allow-list from the closure it is RUNNING and not the one it is judging. Every
+    # edit after that is covered.
+    #
+    # Until then this is a disk to keep an eye on rather than an incident: 30 GB free is about
+    # 115 days. The reason to care is not space — it is that this file is the only place mongod
+    # explains itself, and its slow-query lines are what named the `uptimeServiceTags` collection
+    # scan that was 93% of the database's document scanning. A gigabyte of it is a file nobody
+    # greps.
 
     systemd.tmpfiles.rules = [
       "d ${builtins.dirOf cfg.logPath} 0750 mongodb mongodb -"
