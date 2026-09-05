@@ -140,40 +140,50 @@ object CinemaCorroboration {
    *    - a ONE-LETTER misspelling — "Paul Verhoven" for Verhoeven, from six
    *      unrelated UK venues, so a feed's error rather than a venue's.
    *
-   *  Both tolerances need length to earn them: a prefix must be 5+ characters and a
-   *  near-miss 6+, so "Bong Joon Ho" and "Bong Joon Il" stay two people. The whole
-   *  point of this comparison is to abstain unless the names genuinely differ. */
+   *  Every tolerance needs length to earn it — a prefix 5+, a one-letter miss 5+,
+   *  two edits 7+ — so "Bong Joon Ho" and "Bong Joon Il" stay two people. Erring
+   *  loose is deliberate: a missed contradiction costs one uncorrected row, while a
+   *  false one force-re-resolves a film that was already right. */
   private def sameToken(a: String, b: String): Boolean =
     a == b ||
       (a.length == 1 && b.startsWith(a)) || (b.length == 1 && a.startsWith(b)) ||
       (a.length >= 5 && b.startsWith(a)) || (b.length >= 5 && a.startsWith(b)) ||
-      (a.length >= 6 && b.length >= 6 && withinOneEdit(a, b)) ||
+      (a.length >= 5 && b.length >= 5 && withinOneEdit(a, b)) ||
       // Two transliterations of one long surname ("Tarkowski" / "Tarkovsky") sit two
       // edits apart, and two DIFFERENT surnames that long rarely do.
-      (a.length >= 8 && b.length >= 8 && withinEdits(a, b, 2))
+      (a.length >= 7 && b.length >= 7 && withinEdits(a, b, 2))
 
   /** True when `a` and `b` are at most one insertion, deletion or substitution
    *  apart. Bounded and allocation-free: the only distance that matters here is
    *  "one", so a longer walk is abandoned as soon as a second difference shows. */
   private def withinOneEdit(a: String, b: String): Boolean = withinEdits(a, b, 1)
 
-  /** True when `a` and `b` are at most `max` edits apart. Bounded: the walk is
-   *  abandoned as soon as the budget is spent. */
+  /** True when `a` and `b` are at most `max` insertions, deletions or
+   *  substitutions apart — a real Levenshtein, not a single greedy walk. The
+   *  greedy version this replaces mis-scored a substitution that followed a
+   *  deletion, which is exactly the shape two transliterations take ("Sokourov"
+   *  against "Sokurow"). Names are short, so the full row-by-row table is cheaper
+   *  than reasoning about when a shortcut is safe. */
   private def withinEdits(a: String, b: String, max: Int): Boolean = {
     if (math.abs(a.length - b.length) > max) return false
-    var i = 0
-    var j = 0
-    var edits = 0
-    while (i < a.length && j < b.length) {
-      if (a.charAt(i) == b.charAt(j)) { i += 1; j += 1 }
-      else {
-        edits += 1
-        if (edits > max) return false
-        if (a.length == b.length) { i += 1; j += 1 }        // substitution
-        else if (a.length > b.length) i += 1                 // deletion from a
-        else j += 1                                          // insertion into a
+    var previous = Array.tabulate(b.length + 1)(identity)
+    var row      = new Array[Int](b.length + 1)
+    var i = 1
+    while (i <= a.length) {
+      row(0) = i
+      var best = row(0)
+      var j = 1
+      while (j <= b.length) {
+        val substitution = previous(j - 1) + (if (a.charAt(i - 1) == b.charAt(j - 1)) 0 else 1)
+        row(j) = math.min(math.min(row(j - 1) + 1, previous(j) + 1), substitution)
+        best   = math.min(best, row(j))
+        j += 1
       }
+      // Every distance from here on is at least `best`, so a spent budget ends it.
+      if (best > max) return false
+      val swap = previous; previous = row; row = swap
+      i += 1
     }
-    edits + (a.length - i) + (b.length - j) <= max
+    previous(b.length) <= max
   }
 }

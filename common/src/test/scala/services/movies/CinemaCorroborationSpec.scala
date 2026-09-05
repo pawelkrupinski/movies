@@ -95,6 +95,19 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
     CinemaCorroboration.contradicts(row(Seq("Amrou Al-Kadhi"), Seq("Amrou Alkadhi"))) shouldBe false
   }
 
+  // Two more shapes the thresholds were just too tight for: a five-letter surname
+  // one edit apart ("Mitić" / "Mitik") and a seven-letter one transliterated
+  // through two different languages ("Sokurow" from German, "Sokourov" from
+  // French). Both keep their first name, which is what makes the looser bound safe.
+  it should "not read a short surname's single-letter variant as a different director" in {
+    CinemaCorroboration.contradicts(row(Seq("Kosara Mitik"), Seq("Kosara Mitić"))) shouldBe false
+  }
+
+  it should "not read a doubly-transliterated surname as a different director" in {
+    CinemaCorroboration.contradicts(
+      row(Seq("Alexander Nikolajewitsch Sokurow"), Seq("Alexandre Sokourov"))) shouldBe false
+  }
+
   it should "keep a shared first name from merging two directors" in {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Andrzej Żuławski"))) shouldBe true
   }
