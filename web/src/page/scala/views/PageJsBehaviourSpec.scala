@@ -334,13 +334,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     "drop a local-only hidden film once synced (server is authoritative)" in {
     onLoggedInIndex { page =>
       // First boot migrated from server = ["Film A"] and set the synced flag.
-      page.waitFor("localStorage.getItem('serverStateSynced') === '1'")
+      // 5s like the union wait below and for the same reason: the flag is set at
+      // the END of a reconcile that begins with a network fetch, so this spans a
+      // round-trip, not a local read.
+      page.waitFor("localStorage.getItem('serverStateSynced') === '1'", timeoutMs = 5000)
       // Mimic a device still carrying a stale local-only entry the server never
       // had, with the sync flag already set. A blind union would keep "Film B"
       // forever; an authoritative reconcile must drop it on the next load.
       page.eval("_lsSet('hiddenFilms', ['Film A','Film B'])")
       page.reload()
-      page.waitFor("getHidden().indexOf('Film B') === -1 && getHidden().indexOf('Film A') !== -1")
+      // `Film A` comes from the server, so this is the same round-trip again.
+      page.waitFor("getHidden().indexOf('Film B') === -1 && getHidden().indexOf('Film A') !== -1",
+                   timeoutMs = 5000)
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")
       hidden should not include "Film B"
@@ -349,7 +354,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "union local picks with the server on the first reconcile after login" in {
     onLoggedInIndex { page =>
-      page.waitFor("localStorage.getItem('serverStateSynced') === '1'")
+      page.waitFor("localStorage.getItem('serverStateSynced') === '1'", timeoutMs = 5000)
       // Re-arm migration as a fresh login would, plus an anonymous local pick.
       page.eval("localStorage.removeItem('serverStateSynced')")
       page.eval("_lsSet('hiddenFilms', ['Local Z'])")
