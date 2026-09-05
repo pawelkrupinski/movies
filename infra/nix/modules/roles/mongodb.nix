@@ -644,30 +644,53 @@ in
     # (rs.initiate during the migration).
     environment.systemPackages = [ cfg.package cfg.toolsPackage pkgs.mongosh ];
 
-    # mongod.log IS NOT ROTATED, AND WIRING IT UP IS NOT A CODE CHANGE. It had grown to
-    # 1,046,210,345 bytes by 2026-09-05 — four days, ~260 MB/day on a 38 GB root with 30 GB
-    # free. `systemLog.logRotate = "reopen"` above is only half a rotation: it says what mongod
-    # does when SIGNALLED, and nothing signals it.
+    # ROTATE mongod.log. `systemLog.logRotate = "reopen"` below is only half a rotation: it says
+    # what mongod does when SIGNALLED, and until now nothing signalled it. The log had never
+    # rotated since the host was built -- 1,046,210,345 bytes on 2026-09-05, four days, about
+    # 260 MB/day on a 38 GB root.
     #
-    # THE OBVIOUS FIX IS REFUSED BY THIS FLEET'S OWN GATE, which is why it is written down here
-    # instead of applied. `services.logrotate.settings` renders its config to a STORE PATH that
-    # `logrotate.service` and `logrotate-checkconf.service` name in their `ExecStart` (verified
-    # on the box), so changing it changes both units. `fleet.autoApply` is default-deny on unit
-    # disturbance and refuses the ENTIRE switch when any one unit would move — and a refused
-    # closure strands every LATER staged change for this host, silently, until a person applies
-    # by hand. Trading a rotated log for an unnoticed frozen deploy queue is a bad trade.
+    # THE COST IS NOT DISK, IT IS THE FILE BEING UNREADABLE. `destination: file` means this is the
+    # only place mongod explains itself, and its slow-query lines are what named the
+    # `uptimeServiceTags` collection scan that turned out to be ~93% of the database's document
+    # scanning. A gigabyte of it is a file nobody greps.
     #
-    # LANDING IT NEEDS A HAND-APPLY, in the shape `container-image-gc.nix` documents: add
-    # "logrotate.service" and "logrotate-checkconf.service" to `fleet.autoApply.restartableUnits`
-    # AND the settings in one switch, then `colmena apply --on @mongo` once, because the applier
-    # reads its allow-list from the closure it is RUNNING and not the one it is judging. Every
-    # edit after that is covered.
+    # `create` + SIGUSR1, NOT `copytruncate`, which races an appending writer and loses whatever
+    # falls between the copy and the truncate. `reopen` exists precisely so the file can be moved
+    # out from under mongod and reopened at the new path. `su` because the file is 0600
+    # mongodb:mongodb.
+    services.logrotate.settings.mongod = {
+      files = cfg.logPath;
+      frequency = "daily";
+      rotate = 14;                # two weeks, and far less than 14x on disk once compressed
+      compress = true;
+      delaycompress = true;       # yesterday's file stays greppable without zcat
+      missingok = true;           # a host that has not started mongod yet is not an error
+      notifempty = true;
+      create = "0600 mongodb mongodb";
+      su = "mongodb mongodb";
+      postrotate = "${pkgs.procps}/bin/pkill -SIGUSR1 --exact mongod || true";
+    };
+
+    # WITHOUT THIS THE ROTATION ABOVE CANNOT BE DEPLOYED, and the first attempt at it was backed
+    # out for exactly that reason. `services.logrotate.settings` renders its config to a STORE PATH
+    # that `logrotate.service` and `logrotate-checkconf.service` both name in their `ExecStart`
+    # (verified with `systemctl cat` on the box, where checkconf is active(exited)) -- so changing
+    # a setting changes both units. `fleet.autoApply` is default-deny on unit disturbance and
+    # refuses the WHOLE switch when any one unit would move, which would hold back every later
+    # merge staged onto this host until a person applied it.
     #
-    # Until then this is a disk to keep an eye on rather than an incident: 30 GB free is about
-    # 115 days. The reason to care is not space — it is that this file is the only place mongod
-    # explains itself, and its slow-query lines are what named the `uptimeServiceTags` collection
-    # scan that was 93% of the database's document scanning. A gigabyte of it is a file nobody
-    # greps.
+    # BOUNCING A LOG ROTATOR IS AS CHEAP AS A DISTURBANCE GETS: `logrotate.service` is a oneshot
+    # the timer runs hourly, and restarting it at an arbitrary moment either rotates a log slightly
+    # early or does nothing at all. Nothing outside this fleet can see it, and the
+    # neverDisturbUnits floor (sshd, mongodb, k3s) is checked first and still protects mongod
+    # itself.
+    #
+    # IT DOES NOT COVER ITS OWN INTRODUCTION. `nixos-auto-apply` reads this list from the closure
+    # it is RUNNING, not the one it is judging, so the switch that first adds these names is
+    # weighed without them -- the caveat container-image-gc.nix documents. This one wants a hand
+    # apply; every edit after it is covered, and `AutoApplyBlocked` says so within a day if it is
+    # forgotten.
+    fleet.autoApply.restartableUnits = [ "logrotate.service" "logrotate-checkconf.service" ];
 
     systemd.tmpfiles.rules = [
       "d ${builtins.dirOf cfg.logPath} 0750 mongodb mongodb -"
