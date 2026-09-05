@@ -161,20 +161,31 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer,
    *  retried by the next scrape rather than recording an empty result as fresh.
    *
    *  A durable 404/410 escapes rather than folding into None, so a page that is
-   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]].
+   *
+   *  A page that LOADED is a detail even when it carries no fields. Filtering the
+   *  empty ones out folded them into `Failed`, which is never stamped — so
+   *  `DueWindow.isDue` stayed true and `DetailReaper` re-enqueued the film every
+   *  tick, forever (Kino Bulgarska: 1,438 failures to 56 successes in 24h on one
+   *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
+   *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).flatMap(parseFilmMeta).map { meta =>
-      FilmDetail(
-        synopsis       = None,
-        cast           = Seq.empty,
-        director       = meta.director,
-        runtimeMinutes = meta.runtime,
-        releaseYear    = meta.releaseYear,
-        countries      = meta.countries,
-        genres         = meta.genres,
-        posterUrl      = None,
-        trailerUrl     = meta.trailerUrl
-      )
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
+      // A page with no parseable meta block still LOADED, so it is an empty
+      // detail rather than a failure — see the note above.
+      parseFilmMeta(html).fold(FilmDetail()) { meta =>
+        FilmDetail(
+          synopsis       = None,
+          cast           = Seq.empty,
+          director       = meta.director,
+          runtimeMinutes = meta.runtime,
+          releaseYear    = meta.releaseYear,
+          countries      = meta.countries,
+          genres         = meta.genres,
+          posterUrl      = None,
+          trailerUrl     = meta.trailerUrl
+        )
+      }
     }
 
   private def fetchAllEntries(): Seq[ScreeningEntry] = {

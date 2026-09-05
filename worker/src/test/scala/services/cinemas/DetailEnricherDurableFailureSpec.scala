@@ -25,6 +25,16 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
 
+  /** Serves a page that LOADS and parses cleanly but carries none of the fields a
+   *  detail page is read for. Jsoup accepts it, so nothing throws: the only thing
+   *  deciding the outcome is whether the client treats "no fields" as a failure. */
+  private class AlwaysEmptyPage extends HttpFetch {
+    private val page = "<!doctype html><html><head><title>x</title></head><body></body></html>"
+    override def get(url: String): String = page
+    override def getBytes(url: String): Array[Byte] = page.getBytes("ISO-8859-2")
+    override def post(url: String, body: String, contentType: String): String = page
+  }
+
   /** Fails every fetch with `status`, so only the client's own error handling —
    *  not its parser — decides the outcome. */
   private class AlwaysFails(status: Int) extends HttpFetch {
@@ -88,6 +98,31 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
     }
     withClue(s"these clients wrongly treat a transient failure as permanent: ${wrong.mkString(", ")} — ") {
       wrong shouldBe empty
+    }
+  }
+
+  /** A PAGE THAT LOADED IS A DETAIL, even an empty one — the third outcome this
+   *  family kept getting wrong. `DetailFetchOutcome.Failed` is never stamped, so
+   *  `DueWindow.isDue` stays unconditionally true and `DetailReaper` re-enqueues
+   *  the film EVERY TICK, about once a minute, forever. That is right for a
+   *  timeout and wrong for a page that answered 200 and simply has nothing on it:
+   *  Kino Bulgarska logged 1,438 failures to 56 successes in 24h on one repertory
+   *  film whose page carries no trailer iframe, holding that cinema's enrichment
+   *  row at ~96% failures and — a bucket keeps only 10 error strings — hiding
+   *  every other failure it had.
+   *
+   *  An empty `FilmDetail` merges as a no-op (every field defaults to
+   *  None/empty and the merge is fill-only), so reporting `Fetched` costs nothing
+   *  and stamps the film back onto the normal refresh window. Reserve `Failed`
+   *  for the fetch actually failing — a throw, a status, an unreadable body. */
+  it should "report a page that loaded but carries no fields as Fetched, not Failed" in {
+    val livelocking = enrichers(new AlwaysEmptyPage).collect {
+      case (name, e) if e.fetchDetail("https://example.test/film") == DetailFetchOutcome.Failed => name
+    }
+    withClue(
+      "these clients fold a loaded-but-empty page into Failed, which is never stamped — so " +
+        s"DetailReaper re-enqueues the film every tick forever: ${livelocking.mkString(", ")} — ") {
+      livelocking shouldBe empty
     }
   }
 

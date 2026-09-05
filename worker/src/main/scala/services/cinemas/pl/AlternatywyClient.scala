@@ -59,10 +59,16 @@ class AlternatywyClient(
    *  parsed, so the task stays stale and retries.
    *
    *  A durable 404/410 escapes rather than folding into None, so a page that is
-   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
+   *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]].
+   *
+   *  A page that LOADED is a detail even when it carries no fields. Filtering the
+   *  empty ones out folded them into `Failed`, which is never stamped — so
+   *  `DueWindow.isDue` stayed true and `DetailReaper` re-enqueued the film every
+   *  tick, forever (Kino Bulgarska: 1,438 failures to 56 successes in 24h on one
+   *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
+   *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     DetailFetchOutcome.transientToNone(http.get(ref)).map(parseDetail)
-      .filter(d => d.synopsis.nonEmpty || d.director.nonEmpty)
 
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
     SlotsToMovies.fold(
