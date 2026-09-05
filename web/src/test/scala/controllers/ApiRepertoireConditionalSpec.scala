@@ -78,6 +78,17 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     (film \ "originalTitle").toOption shouldBe None
   }
 
+  // The `slug` field is the apps' whole deep-link path — `/{city}/movie/{slug}` — and
+  // it is SERVED rather than folded client-side so a Swift copy and a Kotlin copy
+  // cannot drift from `tools.Slugify`. Nothing asserted it, so an empty or wrong slug
+  // would ship a broken share link to both stores with every test still green.
+  it should "serve each film's assigned slug for the apps' deep links" in {
+    val (ctrl, _) = buildController()
+    val film = play.api.libs.json.Json.parse(contentAsString(ctrl.apiRepertoire("poznan")(FakeRequest())))
+      .as[Seq[play.api.libs.json.JsValue]].head
+    (film \ "slug").as[String] shouldBe "test-film"
+  }
+
   it should "omit films with neither synopsis nor trailers" in {
     val (ctrl, _) = buildController()
     // The single fixture film has both, so it is present; a film with neither

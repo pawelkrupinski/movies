@@ -21,7 +21,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     go(0, 0)
   }
 
-  private def film(title: String, cinema: Cinema): FilmSchedule = FilmSchedule(
+  private def film(title: String, cinema: Cinema, slugOverride: Option[String] = None): FilmSchedule = FilmSchedule(
     movie          = Movie(title = title),
     posterUrl      = None,
     synopsis       = None,
@@ -34,7 +34,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
       )))
     ),
     resolved       = TestReadModel.resolved(title, None, MovieRecord()),
-    slug           = FilmHref.slugOf(title)
+    slug           = slugOverride.orElse(FilmHref.slugOf(title))
   )
 
   private val entries: Seq[(City, Seq[FilmSchedule])] = Seq(
@@ -118,6 +118,20 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     count(xml, s"<loc>$Origin/poznan/movie/zorro</loc>") shouldBe 1
     // …and Amelia sorts before Zorro (stable output across read-model orderings).
     xml.indexOf("/movie/amelia") should be < xml.indexOf("/movie/zorro")
+  }
+
+  // The case the slug-keyed `distinct` exists for, which the title-keyed one silently
+  // failed: two DIFFERENT films sharing a title have different slugs and are two
+  // crawlable URLs. De-duplicating on the title dropped one of them from the index
+  // entirely — and the test above cannot see it, because both its "Zorro" rows fold to
+  // the same slug and so collapse correctly either way.
+  it should "keep both of two same-titled films, which have different slugs" in {
+    val contested = Seq(Poznan -> Seq(
+      film("Zaproszenie", Multikino, slugOverride = Some("zaproszenie")),
+      film("Zaproszenie", Helios,    slugOverride = Some("zaproszenie-1986"))))
+    val xml = SitemapBuilder.build(Origin, Country.Poland, contested)
+    count(xml, s"<loc>$Origin/poznan/movie/zaproszenie</loc>")      shouldBe 1
+    count(xml, s"<loc>$Origin/poznan/movie/zaproszenie-1986</loc>") shouldBe 1
   }
 
   it should "stamp the read-model-derived URLs with lastmod when supplied" in {

@@ -137,6 +137,36 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
     CinemaCorroboration.contradicts(row(Seq("Lau Kar-leung"), Seq("Liu Chia-Liang"))) shouldBe false
   }
 
+  // The remaining three entries. Each is a fact about one director, so each needs its
+  // own assertion — a typo in a set nothing reads is invisible, and the whole point of
+  // the list is that no comparison of the strings can recover the pairing.
+  it should "carry every listed pseudonym, not only the first two" in {
+    CinemaCorroboration.contradicts(row(Seq("Kukla"), Seq("Katarina Rešek"))) shouldBe false
+    CinemaCorroboration.contradicts(row(Seq("DK Welchman"), Seq("Dorota Kobiela"))) shouldBe false
+    CinemaCorroboration.contradicts(row(Seq("Bruce Le"), Seq("Huang Kin-Lung"))) shouldBe false
+  }
+
+  it should "not make two DIFFERENT listed people one person" in {
+    // Both names are in the list, in different groups. Membership alone must not
+    // match, or the list would fold every pseudonym onto every other.
+    CinemaCorroboration.contradicts(row(Seq("Loriot"), Seq("Bruce Le"))) shouldBe true
+  }
+
+  // `deburr` leaves these alone — they are distinct letters, not accented bases — so
+  // the ASCII split would DELETE them and read one name as another. Only the Turkish
+  // dotless i was asserted before.
+  //
+  // Measured which of these the fold actually carries: removing the `đ` fold breaks
+  // this test, removing `ø` or `ß` does NOT. Those two survive on the token matcher's
+  // own tolerances — a one-letter token matches by prefix, so "s"+"ren" is still
+  // covered by "soren". The assertions stay because the OUTCOME is what matters and
+  // must hold however it is reached, but the fold is only load-bearing for `đ`.
+  it should "fold the letters NFD does not decompose" in {
+    CinemaCorroboration.contradicts(row(Seq("Søren Kragh-Jacobsen"), Seq("Soren Kragh-Jacobsen"))) shouldBe false
+    CinemaCorroboration.contradicts(row(Seq("Đorđe Kadijević"), Seq("Dorde Kadijevic"))) shouldBe false
+    CinemaCorroboration.contradicts(row(Seq("Rainer Weiß"), Seq("Rainer Weiss"))) shouldBe false
+  }
+
   it should "still catch two genuinely different directors" in {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Louisa Proske"))) shouldBe true
   }

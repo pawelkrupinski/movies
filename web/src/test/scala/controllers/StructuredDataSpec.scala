@@ -116,6 +116,10 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
                      slugOverride = Some("zaproszenie"))
 
     listing(Seq(early, late)) shouldBe listing(Seq(late, early))
+    // Both must be PRESENT, not merely consistently ordered: the entries are
+    // de-duplicated on the assigned slug, and a title-keyed `distinct` would collapse
+    // these two into one crawlable URL while still passing the equality above.
+    listing(Seq(early, late)) should have size 2
   }
 
   it should "name the ItemList in the deployment's language (English for a UK city)" in {

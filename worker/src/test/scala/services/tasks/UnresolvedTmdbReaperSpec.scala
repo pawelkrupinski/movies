@@ -132,6 +132,24 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     forced should have size 1
   }
 
+  // The other half of the same predicate. A venue's YEAR is evidence a title-only
+  // guess did not have either — it is what corrects `homosapiens|1960`, a row keyed
+  // 1960 by a guess while twelve venues published 2025 — and only the director half
+  // was covered, so dropping the `cinemaYears` disjunct broke nothing.
+  it should "force a re-resolve when a title-only guess now has a venue YEAR to check" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Homo sapiens") { r =>
+      r.copy(tmdbId = Some(891655), tmdbBasis = Some(TmdbBasis.TitleOnly.toString),
+        data = r.data
+          + ((Tmdb: Source) -> SourceData(title = Some("Homo sapiens"), runtimeMinutes = Some(95)))
+          // No director anywhere — only the year the venue published.
+          + ((KinoApollo: Source) -> SourceData(title = Some("Homo sapiens"), runtimeMinutes = Some(95),
+               releaseYear = Some(2025))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 1
+    forced should have size 1
+  }
+
   it should "leave a title-only guess alone while nothing better has arrived" in {
     val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
     seedRow(cache, "Still Bare") { r =>
