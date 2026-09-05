@@ -1857,7 +1857,46 @@
     }
   }
 
+  // Put every filter control the markup ships back to its default.
+  //
+  // WHY: browsers restore form state across a history navigation, and they
+  // match the saved values POSITIONALLY against the document as re-parsed --
+  // which no longer contains the cinema/genre/room checkboxes this page builds
+  // at runtime. Coming back from a film page therefore replays somebody else's
+  // "checked" onto the static Filtry controls. Observed in WebKit on
+  // /uk/manchester/?date=tomorrow: `#format-imax` came back checked on a page
+  // nobody had touched, `readFilters` reported an IMAX filter, and the badge
+  // loop hid every non-IMAX showtime. That loop only visits the SELECTED day's
+  // groups, so the day the visitor was actually on rendered empty while every
+  // other day still looked untouched -- "only tomorrow is blank".
+  //
+  // Only the day rides the URL in real time (see `syncDateToURL`); every other
+  // filter is session-local and a fresh document starts clear unless the URL
+  // says otherwise. So boot SETS these rather than inheriting them, and
+  // `applyFiltersFromURL` below then layers any params on top.
+  //
+  // The lazily-built submenu panels need no reset: they do not exist at parse
+  // time, so there is nothing for the engine to restore into -- being absent is
+  // exactly why the saved state lands on the static controls instead.
+  function resetFilterControls() {
+    for (const radio of document.querySelectorAll('input[name="format-dim"], input[name="format-lang"]'))
+      radio.checked = radio.value === '';
+    const imax = document.getElementById('format-imax');
+    if (imax) imax.checked = false;
+    const search = document.getElementById('search-input');
+    if (search) search.value = '';
+    const date = document.getElementById('date-filter');
+    if (date) date.value = 'today';
+    // The remaining selects all carry their default FIRST -- "Any" hour, :00,
+    // sort by next showtime -- so the markup stays the single definition of it.
+    for (const id of ['from-hour', 'from-minute', 'sort-by']) {
+      const sel = document.getElementById(id);
+      if (sel && sel.options.length > 0) sel.value = sel.options[0].value;
+    }
+  }
+
   function applyFiltersFromURL() {
+    resetFilterControls();
     const searchParams = new URLSearchParams(window.location.search);
 
     const dateSel = document.getElementById('date-filter');

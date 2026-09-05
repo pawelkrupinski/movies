@@ -50,7 +50,7 @@
          equal-weight average of every rating a film has (highest first).
          `onSortChange` no-ops when the page has no `applyFilters`. *@
       <div class="panel-section-label">@messages("nav.sort")</div>
-      <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
+      <select id="sort-by" autocomplete="off" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
         <option value="earliest">@messages("sort.earliest")</option>
         <option value="rating">@messages("sort.rating")</option>
       </select>
@@ -122,10 +122,17 @@
       <div id="room-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
+      @* Every filter control here carries `autocomplete="off"`: a history
+         navigation otherwise has the engine replay saved form state onto
+         controls it matches POSITIONALLY, against a document that no longer
+         holds the checkboxes the panel builds at runtime. That put a phantom
+         IMAX filter on a page nobody had touched and blanked the selected day.
+         `resetFilterControls` in shared.js is the belt to this braces -- the
+         attribute is honoured unevenly, boot normalising them is not. *@
       <div class="panel-section-label">@messages("nav.dimension")</div>
-      <label class="panel-label"><input type="radio" name="format-dim"  value=""   checked onchange="onFormatChange()"> @messages("nav.all")</label>
-      <label class="panel-label"><input type="radio" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
-      <label class="panel-label"><input type="radio" name="format-dim"  value="3D"         onchange="onFormatChange()"> 3D</label>
+      <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value=""   checked onchange="onFormatChange()"> @messages("nav.all")</label>
+      <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
+      <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value="3D"         onchange="onFormatChange()"> 3D</label>
       <div class="panel-divider"></div>
       @* The version radios filter on a LITERAL format token, and the token a
          subtitled/dubbed screening carries is the country's own (`NAP`/`DUB` in
@@ -134,21 +141,21 @@
          all rather than two radios that can only match nothing. *@
       @city.country.versionTokens.map { tokens =>
         <div class="panel-section-label">@messages("nav.version")</div>
-        <label class="panel-label"><input type="radio" name="format-lang" value="" checked onchange="onFormatChange()"> @messages("nav.all")</label>
-        <label class="panel-label"><input type="radio" name="format-lang" value="@tokens.subtitled" onchange="onFormatChange()"> @messages("nav.subtitles")</label>
-        <label class="panel-label"><input type="radio" name="format-lang" value="@tokens.dubbed" onchange="onFormatChange()"> @messages("nav.dubbing")</label>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="" checked onchange="onFormatChange()"> @messages("nav.all")</label>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="@tokens.subtitled" onchange="onFormatChange()"> @messages("nav.subtitles")</label>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="@tokens.dubbed" onchange="onFormatChange()"> @messages("nav.dubbing")</label>
         <div class="panel-divider"></div>
       }
-      <label class="panel-label"><input type="checkbox" id="format-imax"           onchange="onFormatChange()"> @messages("nav.imaxOnly")</label>
+      <label class="panel-label"><input type="checkbox" autocomplete="off" id="format-imax"           onchange="onFormatChange()"> @messages("nav.imaxOnly")</label>
       <div class="panel-divider"></div>
       <div class="panel-section-label">@messages("nav.fromHour")</div>
       <div class="d-flex gap-1 align-items-center" style="margin-bottom:.4rem">
-        <select id="from-hour" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
+        <select id="from-hour" autocomplete="off" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
           <option value="">@messages("nav.any")</option>
           @for(h <- 0 to 23) { <option value="@h">@{f"$h%02d"}</option> }
         </select>
         <span>:</span>
-        <select id="from-minute" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
+        <select id="from-minute" autocomplete="off" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
           <option value="0">00</option>
           <option value="15">15</option>
           <option value="30">30</option>
@@ -231,7 +238,7 @@
         <button class="day-pill" type="button" role="tab" data-day="week"     onclick="pickDay('week')">@messages("day.week")</button>
         <button class="day-pill" type="button" role="tab" data-day="anytime"  onclick="pickDay('anytime')">@messages("day.all")</button>
       </div>
-      <select id="date-filter" class="visually-hidden" aria-hidden="true" tabindex="-1" onchange="onDateSelect()">
+      <select id="date-filter" autocomplete="off" class="visually-hidden" aria-hidden="true" tabindex="-1" onchange="onDateSelect()">
         <option value="today">@messages("day.today")</option>
         <option value="tomorrow">@messages("day.tomorrow")</option>
         <option value="week">@messages("day.week")</option>
@@ -243,7 +250,7 @@
          on desktop via `.search-icon { display:none }`), mirroring the iOS/Android
          search pill. *@
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input id="search-input" class="search-input" type="search" placeholder="@messages("nav.search")" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
+      <input id="search-input" autocomplete="off" class="search-input" type="search" placeholder="@messages("nav.search")" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
 
   @* Auth: own slot so CSS can pin it to the far right on desktop and

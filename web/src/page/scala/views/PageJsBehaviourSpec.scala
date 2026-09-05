@@ -2787,8 +2787,11 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onPath("/") { page =>
       // The pill highlight moves eagerly, but the URL only updates once the
       // slide commits — wait on the committed `?date=` as the settle signal.
+      // The budget is generous because the signal is an ANIMATION finishing: 2s
+      // was enough locally and timed out once in a full-suite run, where the
+      // slide shares a machine with every other spec.
       page.eval("pickDay('anytime')")
-      page.waitFor("new URL(location.href).searchParams.get('date') === 'anytime'", timeoutMs = 2000)
+      page.waitFor("new URL(location.href).searchParams.get('date') === 'anytime'", timeoutMs = 8000)
 
       // The matching pill is the only `.active`, and carries aria-selected.
       page.evalString("document.querySelector('.day-pill.active').dataset.day") shouldBe "anytime"
@@ -3683,6 +3686,70 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.evalString("document.getElementById('no-films').style.display") shouldBe "none"
     }
   }
+  /* ── Restored form state ────────────────────────────────────────────────
+   *
+   * Reported from prod: "/uk/manchester/?date=tomorrow occasionally renders
+   * empty on iPhone Safari -- and only tomorrow."
+   *
+   * A history navigation (tap a film, press Back -- the site's commonest
+   * gesture on a phone) has the engine replay saved form state onto the
+   * re-parsed document. It matches controls POSITIONALLY, and by the time the
+   * state was saved the page had grown the cinema/genre/room checkboxes the
+   * Filtry panel builds at runtime; the fresh parse has none of them, so the
+   * saved "checked" values land on the STATIC controls instead. Measured in
+   * WebKit against prod: `#format-imax` came back checked -- no `checked`
+   * attribute, no script touching it -- on a page nobody had filtered, and 636
+   * of tomorrow's 647 showtime badges went `display:none`, leaving 2 cards.
+   *
+   * That it reads as "only tomorrow" is the badge loop: `applyFilters` visits
+   * badges ONLY inside date-groups that pass the day predicate, so a phantom
+   * badge filter empties the day being looked at and leaves every other day's
+   * badges untouched -- which is exactly what makes the day pills look fine.
+   *
+   * These drive the engine's move directly: set the control WITHOUT firing
+   * `change` (a restore does not), then boot.
+   */
+
+  "a filter control the engine restored" should "not survive boot as a phantom filter" in {
+    onPath("/?date=tomorrow") { page =>
+      val before = visibleCardCount(page)
+      withClue("fixture has no films tomorrow, so this proves nothing: ") { before should be > 0 }
+
+      page.eval("document.getElementById('format-imax').checked = true; bootView()")
+
+      page.evalBool("document.getElementById('format-imax').checked") shouldBe false
+      visibleCardCount(page) shouldBe before
+      page.evalString("document.getElementById('no-films').style.display") shouldBe "none"
+    }
+  }
+
+  it should "not leave a restored search box, day, or from-time filtering the page either" in {
+    onPath("/?date=tomorrow") { page =>
+      val before = visibleCardCount(page)
+      page.eval(
+        "(() => {" +
+        "  document.getElementById('search-input').value = 'zzzzz_no_match';" +
+        "  document.getElementById('from-hour').value = '23';" +
+        "  document.getElementById('date-filter').value = 'anytime';" +
+        "  document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').checked = true;" +
+        "  bootView();" +
+        "})()")
+
+      page.evalString("document.getElementById('search-input').value") shouldBe ""
+      page.evalString("document.getElementById('from-hour').value") shouldBe ""
+      page.evalBool("document.querySelector('input[name=\"format-dim\"][value=\"\"]').checked") shouldBe true
+      // The URL still names the day, so that one is re-applied rather than lost.
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
+      visibleCardCount(page) shouldBe before
+    }
+  }
+
+  it should "still let the URL set a filter on top of the reset" in {
+    onPath("/?date=tomorrow&imax=1") { page =>
+      page.evalBool("document.getElementById('format-imax').checked") shouldBe true
+    }
+  }
+
 
   // ── Hide-film flow ─────────────────────────────────────────────────────────
 

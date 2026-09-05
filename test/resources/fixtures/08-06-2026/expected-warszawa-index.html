@@ -80,7 +80,7 @@
 
       
       <div class="panel-section-label">Sortuj</div>
-      <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
+      <select id="sort-by" autocomplete="off" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
         <option value="earliest">Najbliższy seans</option>
         <option value="rating">Ocena</option>
       </select>
@@ -147,29 +147,30 @@
       <div id="room-list" class="submenu-list" style="display:none"></div>
       <div class="panel-divider"></div>
 
+      
       <div class="panel-section-label">Wymiar</div>
-      <label class="panel-label"><input type="radio" name="format-dim"  value=""   checked onchange="onFormatChange()"> Wszystkie</label>
-      <label class="panel-label"><input type="radio" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
-      <label class="panel-label"><input type="radio" name="format-dim"  value="3D"         onchange="onFormatChange()"> 3D</label>
+      <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value=""   checked onchange="onFormatChange()"> Wszystkie</label>
+      <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
+      <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value="3D"         onchange="onFormatChange()"> 3D</label>
       <div class="panel-divider"></div>
       
       
         <div class="panel-section-label">Wersja</div>
-        <label class="panel-label"><input type="radio" name="format-lang" value="" checked onchange="onFormatChange()"> Wszystkie</label>
-        <label class="panel-label"><input type="radio" name="format-lang" value="NAP" onchange="onFormatChange()"> Napisy</label>
-        <label class="panel-label"><input type="radio" name="format-lang" value="DUB" onchange="onFormatChange()"> Dubbing</label>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="" checked onchange="onFormatChange()"> Wszystkie</label>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="NAP" onchange="onFormatChange()"> Napisy</label>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="DUB" onchange="onFormatChange()"> Dubbing</label>
         <div class="panel-divider"></div>
       
-      <label class="panel-label"><input type="checkbox" id="format-imax"           onchange="onFormatChange()"> Tylko IMAX</label>
+      <label class="panel-label"><input type="checkbox" autocomplete="off" id="format-imax"           onchange="onFormatChange()"> Tylko IMAX</label>
       <div class="panel-divider"></div>
       <div class="panel-section-label">Od godziny</div>
       <div class="d-flex gap-1 align-items-center" style="margin-bottom:.4rem">
-        <select id="from-hour" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
+        <select id="from-hour" autocomplete="off" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
           <option value="">Dowolna</option>
            <option value="0">00</option>  <option value="1">01</option>  <option value="2">02</option>  <option value="3">03</option>  <option value="4">04</option>  <option value="5">05</option>  <option value="6">06</option>  <option value="7">07</option>  <option value="8">08</option>  <option value="9">09</option>  <option value="10">10</option>  <option value="11">11</option>  <option value="12">12</option>  <option value="13">13</option>  <option value="14">14</option>  <option value="15">15</option>  <option value="16">16</option>  <option value="17">17</option>  <option value="18">18</option>  <option value="19">19</option>  <option value="20">20</option>  <option value="21">21</option>  <option value="22">22</option>  <option value="23">23</option> 
         </select>
         <span>:</span>
-        <select id="from-minute" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
+        <select id="from-minute" autocomplete="off" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
           <option value="0">00</option>
           <option value="15">15</option>
           <option value="30">30</option>
@@ -302,7 +303,7 @@
         <button class="day-pill" type="button" role="tab" data-day="week"     onclick="pickDay('week')">7 dni</button>
         <button class="day-pill" type="button" role="tab" data-day="anytime"  onclick="pickDay('anytime')">Wszystkie</button>
       </div>
-      <select id="date-filter" class="visually-hidden" aria-hidden="true" tabindex="-1" onchange="onDateSelect()">
+      <select id="date-filter" autocomplete="off" class="visually-hidden" aria-hidden="true" tabindex="-1" onchange="onDateSelect()">
         <option value="today">Dziś</option>
         <option value="tomorrow">Jutro</option>
         <option value="week">7 dni</option>
@@ -312,7 +313,7 @@
     <div class="navbar-search">
       
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input id="search-input" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
+      <input id="search-input" autocomplete="off" class="search-input" type="search" placeholder="Szukaj…" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
 
   
