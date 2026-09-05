@@ -1036,7 +1036,11 @@ class MongoMovieRepository(
   // reaches here with an empty patch precisely so the write fires a change event on the
   // channel the projector listens to. `updateIfPresent` still skips a patch that is empty
   // with nothing else to announce.
-  private def patchToUpdate(p: MovieRecordPatch): Bson = {
+  /** `private[movies]` so `MovieRecordFieldWiringSpec` can assert that every field the
+   *  patch carries actually reaches the WIRE. A field present in `MovieRecordPatch` but
+   *  missing here passes `applyTo` — and therefore every in-memory-repository test —
+   *  while Mongo never receives it. */
+  private[movies] def patchToUpdate(p: MovieRecordPatch): Bson = {
     val atoms = scala.collection.mutable.ListBuffer.empty[Bson]
     def scalar[A](field: String, u: FieldUpdate[A], toBson: A => org.bson.BsonValue): Unit = u match {
       case FieldUpdate.NoChange => ()

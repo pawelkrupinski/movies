@@ -3,6 +3,9 @@ package services.movies
 import models.{Helios, MovieRecord, Source, SourceData, Tmdb}
 import org.bson.codecs.{Codec, DecoderContext, EncoderContext}
 import org.bson.{BsonDocument, BsonDocumentReader, BsonDocumentWriter}
+import org.mongodb.scala.MongoClient
+
+import scala.jdk.CollectionConverters._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -63,6 +66,13 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     retainedSynopses  = Map[Source, String](Helios -> "the longest synopsis this source ever published")
   )
 
+  /** Every field the storage document holds, derived from the DTO so a new one is
+   *  covered the moment it is declared. `_id` and `updatedAt` are the document's own
+   *  metadata, not a film field. */
+  private def persistedFields: Seq[String] = StoredMovieDto
+    .fromDomain("test|1900", everyFieldSet, Instant.now())
+    .productElementNames.toSeq.filterNot(Set("_id", "updatedAt"))
+
   private def unsetFieldsOf(record: MovieRecord): Seq[String] =
     record.productElementNames.zip(record.productIterator).collect {
       case (name, None)                       => name
@@ -103,15 +113,33 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "ChangeStreamMetrics" should "classify every field the storage document persists" in {
-    // Derived from the DTO, so a new persisted field is covered the moment it exists.
-    // `_id` and `updatedAt` are the document's own metadata, not a film field.
-    val structural = Set("_id", "updatedAt")
-    val persisted  = StoredMovieDto
-      .fromDomain("test|1900", everyFieldSet, Instant.now())
-      .productElementNames.toSeq.filterNot(structural)
+  "patchToUpdate" should "put every field the patch carries onto the wire" in {
+    // The fourth place, and the one the other guards cannot see: a field present in
+    // `MovieRecordPatch` but missing here satisfies `applyTo` — so every test backed by
+    // `InMemoryMovieRepository` passes — while Mongo never receives it. Asserted against
+    // the field names the update document actually emits.
+    val repository = new MongoMovieRepository(
+      sharedDb   = Some(MongoClient("mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200").getDatabase("test")),
+      normalizer = titleNormalizer)
+    val update = repository.patchToUpdate(MovieRecordPatch.diff(MovieRecord(), everyFieldSet))
+      .toBsonDocument(classOf[BsonDocument], MovieCodecs.registry)
 
-    val unclassified = persisted.filter { field =>
+    // `{ $set: { a: …, b.c: … }, $unset: { d: … } }` — collect every field path either
+    // operator names, then reduce a dotted path to its top-level field.
+    val emitted = update.values.asScala
+      .flatMap(op => op.asDocument().keySet.asScala)
+      .map(_.takeWhile(_ != '.')).toSet
+
+    // `slotsUpdatedAt` is stamped by the slot write itself, not by the patch, and `_id`
+    // is the document's own key — everything else the storage shape holds must be here.
+    val notOnTheWire = persistedFields.filterNot(Set("slotsUpdatedAt")) diff emitted.toSeq
+    withClue(s"a field is in MovieRecordPatch but never reaches Mongo (emitted: $emitted): ") {
+      notOnTheWire shouldBe empty
+    }
+  }
+
+  "ChangeStreamMetrics" should "classify every field the storage document persists" in {
+    val unclassified = persistedFields.filter { field =>
       ChangeStreamMetrics.updateKinds(Set(field, "updatedAt")) == Set(ChangeStreamMetrics.Kind.Other)
     }
     withClue("a persisted field is not classified, so a change to it reads as `other` " +
