@@ -12,10 +12,13 @@ import java.io.File
  * (repertoire, details). Mirrors iOS `RepertoireCache`, generalised since there
  * are now two payloads to cache.
  *
- * The cached `Last-Modified` is bound to the city it was fetched for: the
- * server stamps a single *global* timestamp regardless of city, so replaying
- * one city's value as `If-Modified-Since` for another city would draw a 304 and
- * strand the grid on the old city's films. [lastModifiedFor] therefore only
+ * The cached `Last-Modified` is bound to the city it was fetched for, and that
+ * binding carries MORE weight than it used to, not less. The server once
+ * stamped a single global timestamp; it now stamps one PER CITY, so two cities'
+ * values genuinely differ and are freely ordered against each other. Replaying
+ * one city's value as `If-Modified-Since` for another draws a 304 whenever it
+ * happens to be the later of the two, stranding the grid on the old city's
+ * films. [lastModifiedFor] therefore only
  * hands the timestamp back for the city that produced it — a switch sends no
  * conditional header and always gets a fresh 200.
  */

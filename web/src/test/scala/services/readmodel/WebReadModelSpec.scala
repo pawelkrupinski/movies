@@ -17,6 +17,9 @@ import org.scalatest.matchers.should.Matchers
  */
 class WebReadModelSpec extends AnyFlatSpec with Matchers {
 
+  // `be >` / `sorted` on the validator stamps.
+  private implicit val instantOrdering: Ordering[java.time.Instant] = _.compareTo(_)
+
   private def ratings = ResolvedRatings(None, None, None, "", None, "", None, "")
   private def movie(id: String) =
     ResolvedMovie(id, id, None, None, Nil, None, None, Nil, Nil, Nil, Nil, None, Nil, ratings, 0.0)
@@ -210,6 +213,151 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.coldRetryTick()
 
     repository.findAllMoviesCalls.get().shouldBe(0)
+    rm.stop()
+  }
+
+  // ── Per-city cache validators ───────────────────────────────────────────────
+  //
+  // `lastModified` is the MODEL-wide stamp: it moves when anything anywhere
+  // changes. Used as the conditional-GET validator it meant a Warsaw showtime
+  // invalidated London's ETag, so every city's payload appeared to change every
+  // couple of minutes and no 304 -- client or edge -- survived long.
+  // `lastModifiedFor(city)` is the narrower question the conditional actually
+  // asks: did the bytes THAT CITY renders change?
+  //
+  // The one thing that stops this being a plain per-city bucket stamp is
+  // `FilmSlugs`: film addresses are assigned over the WHOLE corpus, so a film
+  // appearing in Warsaw can take the bare slug off a film playing in London and
+  // change London's rendered links. Those changes -- and only those -- have to
+  // move every city, which is what the "slug corpus" cases below pin.
+
+  private def titled(id: String, title: String, year: Option[Int] = None) =
+    ResolvedMovie(id, title, None, None, Nil, None, year, Nil, Nil, Nil, Nil, None, Nil, ratings, 0.0)
+
+  private def twoCityModel(): (InMemoryReadModelRepository, WebReadModel) = {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)))
+    repository.upsertMovie(titled("dune|2021", "Dune", Some(2021)))
+    repository.upsertScreening(screening("s-waw", "belle|2021", "warszawa"))
+    repository.upsertScreening(screening("s-lon", "dune|2021", "london"))
+    (repository, started(repository))
+  }
+
+  "lastModifiedFor" should "leave one city's validator alone when another city's showtimes change" in {
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+
+    repository.upsertScreening(CityScreening("s-waw-2", "belle|2021", "warszawa", "Muranow", None, Nil))
+
+    rm.lastModifiedFor("warszawa") should be > londonBefore
+    rm.lastModifiedFor("london") shouldBe londonBefore
+    // The model-wide stamp still moves -- the sitemap and the filmSlugs memo want it.
+    rm.lastModified should be > londonBefore
+    rm.stop()
+  }
+
+  it should "move a city's validator when a screening is deleted from it, and no other city's" in {
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+
+    repository.deleteScreening("s-waw")
+
+    rm.lastModifiedFor("warszawa") should be > londonBefore
+    rm.lastModifiedFor("london") shouldBe londonBefore
+    rm.stop()
+  }
+
+  it should "move only the cities screening a film when that film's metadata changes" in {
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+    val warsawBefore = rm.lastModifiedFor("warszawa")
+
+    // A rating refresh on the film only Warsaw is screening: same title, same
+    // year, so film addresses are untouched and London's bytes cannot have moved.
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)).copy(weightedRating = 7.5))
+
+    rm.lastModifiedFor("warszawa") should be > warsawBefore
+    rm.lastModifiedFor("london") shouldBe londonBefore
+    rm.stop()
+  }
+
+  it should "move EVERY city when a title change reshuffles the corpus-wide film addresses" in {
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+
+    // Warsaw's film is retitled. `FilmSlugs` assigns addresses over the whole
+    // corpus, so this can take a bare slug off London's film -- London's links
+    // may now differ and its validator MUST move.
+    repository.upsertMovie(titled("belle|2021", "Belle Renamed", Some(2021)))
+
+    rm.lastModifiedFor("london") should be > londonBefore
+    rm.stop()
+  }
+
+  it should "move EVERY city when a film enters the corpus" in {
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+
+    repository.upsertMovie(titled("dune|1984", "Dune", Some(1984)))
+
+    rm.lastModifiedFor("london") should be > londonBefore
+    rm.stop()
+  }
+
+  it should "move EVERY city when a film leaves the corpus" in {
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+
+    repository.deleteMovie("belle|2021")
+
+    rm.lastModifiedFor("london") should be > londonBefore
+    rm.stop()
+  }
+
+  it should "move every city on a full reload" in {
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+
+    rm.reload()
+
+    rm.lastModifiedFor("london") should be > londonBefore
+    rm.stop()
+  }
+
+  it should "answer for a city that has never been touched" in {
+    val (_, rm) = twoCityModel()
+    // No screenings, no stamp of its own -- it still needs a usable validator,
+    // and the model-wide floor is the honest one.
+    rm.lastModifiedFor("poznan") shouldBe rm.lastModifiedFor("krakow")
+    rm.stop()
+  }
+
+  it should "move a renamed city's validator when a row lands under its former slug" in {
+    // Mid-catch-up the projector still writes rows under the OLD slug, and
+    // `screeningsForCity` serves them. A validator that ignored the former slug
+    // would hand out a 304 for a page whose contents had just changed.
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("dune|2021", "Dune", Some(2021)))
+    val rm = started(repository)
+    val before = rm.lastModifiedFor("san-francisco-bay-area")
+
+    repository.upsertScreening(screening("s1", "dune|2021", "san-francisco"))
+
+    rm.lastModifiedFor("san-francisco-bay-area") should be > before
+    rm.stop()
+  }
+
+  it should "advance strictly, so two changes inside one clock tick are still distinguishable" in {
+    // The stamp is a wall clock, and a coarse one can hand out the same Instant
+    // twice. A validator that repeated would serve a 304 for changed bytes, so
+    // the stamp is monotonic by construction rather than by luck.
+    val (repository, rm) = twoCityModel()
+    val stamps = (1 to 50).map { n =>
+      repository.upsertScreening(CityScreening(s"s-waw-$n", "belle|2021", "warszawa", s"Kino $n", None, Nil))
+      rm.lastModifiedFor("warszawa")
+    }
+    stamps shouldBe stamps.sorted
+    stamps.distinct.size shouldBe stamps.size
     rm.stop()
   }
 }

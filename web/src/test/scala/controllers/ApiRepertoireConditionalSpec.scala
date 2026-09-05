@@ -341,4 +341,82 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     after should not be before
   }
 
+
+  // ── The validator is scoped to the city being served ────────────────────────
+  //
+  // `WebReadModel.lastModified` moves whenever anything in the corpus changes,
+  // so using it as the conditional-GET validator meant a Warsaw showtime expired
+  // Poznan's ETag. Every city's payload then looked like it changed every couple
+  // of minutes and neither the client 304s nor the new edge cache could hold a
+  // copy for long. These pin the scoping at the HTTP layer, which is where the
+  // benefit actually lands.
+
+  private def resolved(id: String, title: String) =
+    models.ResolvedMovie(id, title, None, None, Nil, None, Some(2021), Nil, Nil, Nil, Nil, None, Nil,
+      models.ResolvedRatings(None, None, None, "", None, "", None, ""), 0.0)
+
+  /** Two Polish cities screening the same film, wired straight to the store so
+   *  the spec can push single change-stream events at one city. */
+  private def twoCities(): (MovieController, services.readmodel.InMemoryReadModelRepository, WebReadModel) = {
+    val store = new services.readmodel.InMemoryReadModelRepository
+    store.upsertMovie(resolved("belle|2021", "Belle"))
+    store.upsertScreening(models.CityScreening("s-waw", "belle|2021", "warszawa", "Muranow", None, Nil))
+    store.upsertScreening(models.CityScreening("s-poz", "belle|2021", "poznan", "Malta", None, Nil))
+    val readModel = new WebReadModel(store)
+    readModel.start()
+    val (ctrl, _) = TestMovieController.build(Seq.empty, readModel = Some(readModel))
+    (ctrl, store, readModel)
+  }
+
+  "A conditional GET for one city" should "still be answered 304 after ANOTHER city's showtimes change" in {
+    val (ctrl, store, readModel) = twoCities()
+    val warsawEtag = header(ETAG, ctrl.apiRepertoire("warszawa")(FakeRequest())).value
+
+    // Poznan gains a venue. Warsaw's bytes are untouched, so its cached copy —
+    // in the browser, the phone, or Cloudflare — must remain valid.
+    //
+    // ⚠️ THE SLEEP IS WHAT GIVES THIS CASE ITS TEETH. The validator is truncated
+    // to whole seconds, so a Poznan change in the SAME second as Warsaw's
+    // response leaves even a model-wide stamp's ETag unchanged — the case would
+    // then pass against the very bug it exists to catch. Crossing the boundary
+    // first makes the old behaviour genuinely produce a different ETag, so a 304
+    // here can only mean the validator is scoped to the city.
+    Thread.sleep(1100)
+    store.upsertScreening(models.CityScreening("s-poz-2", "belle|2021", "poznan", "Palacowe", None, Nil))
+
+    val revalidated = ctrl.apiRepertoire("warszawa")(FakeRequest().withHeaders(IF_NONE_MATCH -> warsawEtag))
+    status(revalidated) shouldBe NOT_MODIFIED
+    readModel.stop()
+  }
+
+  it should "be answered 200 once THAT city's own showtimes change" in {
+    val (ctrl, store, readModel) = twoCities()
+    val warsawEtag = header(ETAG, ctrl.apiRepertoire("warszawa")(FakeRequest())).value
+
+    // The validator is truncated to whole seconds (an HTTP date has no finer
+    // resolution), so a change landing in the same second as the response it
+    // must invalidate is genuinely invisible. Cross the boundary deliberately
+    // rather than race it — the point of the case is the scoping, not the clock.
+    Thread.sleep(1100)
+    store.upsertScreening(models.CityScreening("s-waw-2", "belle|2021", "warszawa", "Atlantic", None, Nil))
+
+    val revalidated = ctrl.apiRepertoire("warszawa")(FakeRequest().withHeaders(IF_NONE_MATCH -> warsawEtag))
+    status(revalidated) shouldBe OK
+    readModel.stop()
+  }
+
+  it should "be answered 200 after a film's TITLE changes, which re-addresses the whole corpus" in {
+    // `FilmSlugs` assigns /{city}/movie/{slug} over the whole corpus, so a
+    // retitle in one city can change another city's links. Scoping must not
+    // suppress that.
+    val (ctrl, store, readModel) = twoCities()
+    val warsawEtag = header(ETAG, ctrl.apiRepertoire("warszawa")(FakeRequest())).value
+
+    Thread.sleep(1100)
+    store.upsertMovie(resolved("dune|2021", "Dune"))
+
+    val revalidated = ctrl.apiRepertoire("warszawa")(FakeRequest().withHeaders(IF_NONE_MATCH -> warsawEtag))
+    status(revalidated) shouldBe OK
+    readModel.stop()
+  }
 }

@@ -16,9 +16,13 @@ import java.util.zip.GZIPOutputStream
  *  Caching the
  *  compressed bytes (not just the body string) is what captures that share.
  *
- *  The cache is keyed by request path and versioned by the [[MovieCache]]
- *  mtime: a showtime update advances the version and every stale entry is
- *  transparently rebuilt on next read. Only requests whose output is
+ *  The cache is keyed by request path and versioned by
+ *  `WebReadModel.lastModifiedFor(city)` — the same per-city validator the
+ *  response's ETag carries. A showtime update advances the version for THAT
+ *  city and its entries are transparently rebuilt on next read; the other
+ *  cities' blobs stay hot. (While the version was model-wide, one Warsaw
+ *  showtime discarded every city's compressed body, so the cache was rebuilding
+ *  the whole roster every couple of minutes.) Only requests whose output is
  *  client-independent reach it — see `MovieController` (anonymous, no query,
  *  non-swap, gzip-accepting), so one blob per path is valid for everyone.
  *

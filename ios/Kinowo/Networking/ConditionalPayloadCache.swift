@@ -5,9 +5,12 @@ import Foundation
 /// start paints instantly off disk, and a warm reload of the same
 /// deployment+city issues a conditional GET.
 ///
-/// The cached `Last-Modified` is bound to BOTH halves of its origin, because
-/// each server stamps a single *global* timestamp that says nothing about which
-/// city — or which country's deployment — was asked:
+/// The cached `Last-Modified` is bound to BOTH halves of its origin. The server
+/// now stamps one timestamp PER CITY rather than a single global one, which
+/// makes this binding more load-bearing rather than less: two cities' stamps
+/// genuinely differ and are freely ordered against each other, so a replayed
+/// one draws a 304 whenever it happens to be the later of the two. Neither
+/// stamp says anything about which deployment answered:
 ///
 /// - **City.** Replaying poznań's timestamp while fetching warszawa draws a 304
 ///   and strands the grid on the old city's films.

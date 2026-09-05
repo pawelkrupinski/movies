@@ -42,20 +42,25 @@ object TestMovieController {
     // empty store, so every request is anonymous; a spec asserting what a
     // SIGNED-IN render does passes one holding that person.
     userRepository: services.users.UserRepository = new services.users.InMemoryUserRepository,
+    // A read model the caller built itself — and therefore still holds the
+    // backing store for, so a spec can push INCREMENTAL change-stream events
+    // (one city's showtime moving) rather than only a whole-corpus `reload()`.
+    // Defaults to projecting `records`, which is what most specs want.
+    readModel: Option[WebReadModel] = None,
   ): (MovieController, WebReadModel) = {
     given play.api.i18n.Messages = messages
-    val readModel = TestReadModel.fromRecords(records)
+    val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
     val ctrl  = new MovieController(
       cc                     = Helpers.stubControllerComponents(),
-      movieControllerService = new MovieControllerService(readModel),
-      readModel              = readModel,
+      movieControllerService = new MovieControllerService(readModel_),
+      readModel              = readModel_,
       debugCountries         = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
         models.Country.default,
         movieRepository.getOrElse(new InMemoryMovieRepository(records)),
         stagingRepository, taskQueue, ratingCadenceReader, attemptReader,
-        readModelMovies       = () => readModel.allMovies(),
-        readModelScreenings   = () => readModel.allScreenings(),
-        readModelLastModified = () => readModel.lastModified))),
+        readModelMovies       = () => readModel_.allMovies(),
+        readModelScreenings   = () => readModel_.allScreenings(),
+        readModelLastModified = () => readModel_.lastModified))),
       userRepository               = userRepository,
       adminAction            = adminAction,
       oauthProviders         = Set.empty,
@@ -69,6 +74,6 @@ object TestMovieController {
       cinemaSourceUrls       = () => cinemaSourceUrls,
       servingCountry         = servingCountry,
     )
-    (ctrl, readModel)
+    (ctrl, readModel_)
   }
 }

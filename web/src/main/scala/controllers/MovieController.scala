@@ -410,8 +410,17 @@ class MovieController( cc: ControllerComponents,
    *  without a check. */
   private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String,
                                  revalidate: Boolean, shared: Boolean = false,
-                                 cacheKey: String = "")(body: => String): Result = {
-    val lastMod  = readModel.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
+                                 cacheKey: String = "", city: Option[City] = None)(body: => String): Result = {
+    // THE VALIDATOR IS PER CITY, not model-wide. `readModel.lastModified` moves
+    // when anything anywhere changes, so validating London's payload with it
+    // meant a Warsaw showtime expired London's ETag: every city looked like it
+    // changed every couple of minutes, and the client 304s and the edge cache
+    // both lost most of their value. `lastModifiedFor` moves only when the bytes
+    // THIS city renders can have changed -- including the corpus-wide film-address
+    // reshuffles that genuinely do reach every city. `None` means a payload that
+    // really is model-wide.
+    val lastMod  = city.fold(readModel.lastModified)(c => readModel.lastModifiedFor(c.slug))
+      .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
       .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
     val cacheControl: Seq[(String, String)] =
@@ -501,7 +510,8 @@ class MovieController( cc: ControllerComponents,
     if (cacheablePlainPage(request, user)) {
       // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
       // (and its data-prep) never runs either.
-      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true)(renderIndexHtml(city, request, user).body)
+      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true,
+                         city = Some(city))(renderIndexHtml(city, request, user).body)
         .withCookies(cityCookie(city))
     } else {
       PersonalisedPage(user)(Ok(renderIndexHtml(city, request, user)).withCookies(cityCookie(city)))
@@ -551,7 +561,7 @@ class MovieController( cc: ControllerComponents,
       implicit val cc: City = c
       val window = MovieController.dayWindow(days)
       conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = false, shared = true,
-                         cacheKey = MovieController.windowCacheKey(window)) {
+                         cacheKey = MovieController.windowCacheKey(window), city = Some(c)) {
         val now = LocalDateTime.now(c.zoneId)
         views.html._filmCards(
           MovieController.withinWindow(movieControllerService.toSchedules(c, now), now.toLocalDate, window)
@@ -661,11 +671,11 @@ class MovieController( cc: ControllerComponents,
    *  yields a bodiless 304 (what warm mobile clients hit), otherwise the payload
    *  is served from the shared gzip cache. The endpoints don't set
    *  `Cache-Control` (mobile manages its own revalidation), so `revalidate` is
-   *  off. Both the listing and the details payload track the same cache mtime,
-   *  so a 304 on one is a 304 on the other. */
-  private def conditionalJson(request: Request[AnyContent], cacheKey: String = "")(body: => play.api.libs.json.JsValue): Result =
+   *  off. Both the listing and the details payload track the same city's cache
+   *  mtime, so a 304 on one is a 304 on the other. */
+  private def conditionalJson(request: Request[AnyContent], city: City, cacheKey: String = "")(body: => play.api.libs.json.JsValue): Result =
     conditionalGzipped(request, "application/json", vary = "Accept-Encoding", revalidate = false,
-                       shared = true, cacheKey = cacheKey)(
+                       shared = true, cacheKey = cacheKey, city = Some(city))(
       play.api.libs.json.Json.stringify(body)
     )
 
@@ -674,7 +684,7 @@ class MovieController( cc: ControllerComponents,
   def apiRepertoire(city: String, days: Option[Int] = None): Action[AnyContent] = Action { request =>
     withCity(city) { c =>
       val window = MovieController.dayWindow(days)
-      conditionalJson(request, cacheKey = MovieController.windowCacheKey(window)) {
+      conditionalJson(request, c, cacheKey = MovieController.windowCacheKey(window)) {
         val today     = java.time.LocalDate.now(c.zoneId)
         val schedules = movieControllerService.toSchedules(c)
         Json.toJson(MovieController.withinWindow(schedules, today, window).map(ApiFilm.from))
@@ -687,7 +697,7 @@ class MovieController( cc: ControllerComponents,
    *  `/{city}/api/repertoire` halves the listing's gzip size. */
   def apiDetails(city: String): Action[AnyContent] = Action { request =>
     withCity(city) { c =>
-      conditionalJson(request) {
+      conditionalJson(request, c) {
         val details = movieControllerService.toSchedules(c)
           .map(ApiFilmDetails.from)
           .filter(ApiFilmDetails.hasContent)
@@ -700,7 +710,7 @@ class MovieController( cc: ControllerComponents,
    *  once per city to render the collapsible, per-area cinema filter — the
    *  counterpart of the server-side `CINEMA_AREAS` the web page is handed. */
   def apiCinemas(city: String): Action[AnyContent] = Action { request =>
-    withCity(city)(c => conditionalJson(request)(Json.toJson(ApiCityCinemas.from(c))))
+    withCity(city)(c => conditionalJson(request, c)(Json.toJson(ApiCityCinemas.from(c))))
   }
 
   def debug(): Action[AnyContent] = Action { request =>
@@ -1052,12 +1062,13 @@ object MovieController {
    *  payloads before it must re-check with us.
    *
    *  SIXTY SECONDS, AND THE NUMBER IS MEASURED RATHER THAN PICKED. The
-   *  validator these responses carry is `WebReadModel.lastModified`, which bumps
-   *  on every applied change; sampled against production on 2026-09-05 it moved
-   *  every couple of minutes, and each time it moved the body genuinely differed
-   *  (byte-identical bodies kept the same timestamp). So a minute is inside the
-   *  interval the content actually changes on -- an edge copy cannot outlive the
-   *  data it was made from by more than one tick.
+   *  validator these responses carry is `WebReadModel.lastModifiedFor(city)`,
+   *  which bumps when the bytes THAT CITY renders can have changed. Sampled
+   *  against production on 2026-09-05 the model-wide stamp it replaced moved
+   *  every couple of minutes -- but most of those moves were some other city's
+   *  showtimes, which is exactly why the validator is now per city. A minute
+   *  remains inside the interval a single city's content changes on, so an edge
+   *  copy cannot outlive the data it was made from by more than one tick.
    *
    *  `max-age=0` ALONGSIDE IT IS THE POINT, not an oversight: browsers and the
    *  mobile apps keep revalidating on every request exactly as they did before

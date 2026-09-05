@@ -35,8 +35,86 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   private val byCity = new ConcurrentHashMap[String, ConcurrentHashMap[String, CityScreening]]()
 
   @volatile private var _lastModified: java.time.Instant = java.time.Instant.now()
+  /** Model-wide change stamp — moves when ANYTHING in the corpus changes. The
+   *  sitemap's `<lastmod>`, the `filmSlugs` memo and `/debug/readmodel` all want
+   *  exactly this. A conditional GET does not: see [[lastModifiedFor]]. */
   def lastModified: java.time.Instant = _lastModified
-  private def touch(): Unit = { _lastModified = java.time.Instant.now() }
+
+  // ── Per-city cache validators ───────────────────────────────────────────────
+  //
+  // A conditional GET for one city asks a narrower question than `lastModified`
+  // answers: did the bytes THAT CITY renders change? Answering it with the
+  // model-wide stamp meant a Warsaw showtime invalidated London's ETag, so every
+  // city's payload looked like it changed every couple of minutes and no 304 --
+  // browser, mobile app or Cloudflare -- survived long enough to be worth much.
+  //
+  // Stamps are only ever allowed to run FAST, never slow: an over-eager bump
+  // costs one revalidation, a missed one serves stale showtimes behind a 304.
+  private val cityStamps = new ConcurrentHashMap[String, java.time.Instant]()
+
+  // filmId -> the cities screening it, so a movie document's change bumps only
+  // those. Deliberately allowed to be a SUPERSET: a screening delete cannot tell
+  // whether the city still shows the film at another venue, so entries are added
+  // but never removed incrementally, and the index is rebuilt exactly on every
+  // `reload()`. Drift therefore only ever over-invalidates.
+  private val filmCities = new ConcurrentHashMap[String, java.util.Set[String]]()
+
+  // The floor under every city's stamp: changes no per-city bump can scope.
+  //
+  // ⚠️ THE SLUG CORPUS IS WHY THIS EXISTS. `FilmSlugs` assigns `/{city}/movie/{slug}`
+  // addresses over the WHOLE corpus -- a film appearing anywhere can take the bare
+  // slug off a film playing in a different city and silently change that city's
+  // rendered links. So any change to the `(id, title, releaseYear)` projection
+  // `FilmSlugs` is a pure function of moves EVERY city, and nothing else does.
+  @volatile private var _globalFloor: java.time.Instant = _lastModified
+
+  /** The conditional-GET validator for one city: the latest of the model-wide
+   *  floor, the city's own stamp, and the stamps of any slug it formerly used
+   *  (`screeningsForCity` still serves rows filed under those, so they are part
+   *  of what the city renders). */
+  def lastModifiedFor(citySlug: String): java.time.Instant = {
+    var latest = _globalFloor
+    latest = laterOf(latest, cityStamps.get(citySlug))
+    City.formerSlugs(citySlug).foreach(former => latest = laterOf(latest, cityStamps.get(former)))
+    latest
+  }
+
+  private def laterOf(current: java.time.Instant, candidate: java.time.Instant): java.time.Instant =
+    if (candidate != null && candidate.isAfter(current)) candidate else current
+
+  /** Strictly monotonic. The stamp is a wall clock and a coarse one hands out the
+   *  same `Instant` twice; a repeated validator is a 304 for changed bytes. A
+   *  clock that steps backwards must not stall invalidation either. */
+  private def advance(previous: java.time.Instant): java.time.Instant = {
+    val now = java.time.Instant.now()
+    if (now.isAfter(previous)) now else previous.plusNanos(1)
+  }
+
+  private def touch(): Unit = { _lastModified = advance(_lastModified) }
+
+  /** Bump one city's validator (and the model-wide stamp with it). */
+  private def touchCity(citySlug: String): Unit = {
+    touch()
+    cityStamps.compute(citySlug, (_, previous) =>
+      if (previous == null) java.time.Instant.now() else advance(previous))
+  }
+
+  /** Bump the floor, and with it every city. */
+  private def touchEveryCity(): Unit = {
+    touch()
+    _globalFloor = advance(_globalFloor)
+  }
+
+  /** The projection `FilmSlugs` is a pure function of. Two movie documents with
+   *  equal keys assign identical addresses, so a change between them is
+   *  city-scopable; a change to one is not. */
+  private def slugKey(m: ResolvedMovie): (String, Option[Int]) = (m.title, m.releaseYear)
+
+  private def citiesScreening(filmId: String): Seq[String] =
+    Option(filmCities.get(filmId)).map(_.asScala.toSeq).getOrElse(Nil)
+
+  private def indexFilmCity(filmId: String, citySlug: String): Unit =
+    filmCities.computeIfAbsent(filmId, _ => ConcurrentHashMap.newKeySet[String]()).add(citySlug)
 
   // ── Read surface (controllers) ──────────────────────────────────────────────
 
@@ -92,18 +170,37 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
 
   // ── Change-stream appliers ──────────────────────────────────────────────────
 
-  private def applyMovieUpsert(m: ResolvedMovie): Unit = { movies.put(m._id, m); touch() }
-  private def applyMovieDelete(id: String): Unit       = { movies.remove(id); touch() }
+  private def applyMovieUpsert(m: ResolvedMovie): Unit = {
+    val previous = Option(movies.put(m._id, m))
+    // A film ENTERING the corpus, or changing title/year, reshuffles addresses
+    // corpus-wide (see `_globalFloor`). Anything else -- a rating refresh, a new
+    // poster, a synopsis -- only changes the bytes of the cities screening it.
+    if (!previous.exists(slugKey(_) == slugKey(m))) touchEveryCity()
+    else citiesScreening(m._id).foreach(touchCity)
+  }
+
+  private def applyMovieDelete(id: String): Unit = {
+    movies.remove(id)
+    // A departing film frees its slug for a namesake in another city.
+    touchEveryCity()
+  }
 
   private def applyScreeningUpsert(s: CityScreening): Unit = {
     byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]()).put(s._id, s)
-    touch()
+    indexFilmCity(s.filmId, s.city)
+    touchCity(s.city)
   }
   private def applyScreeningDelete(id: String): Unit = {
     // The delete event carries only the id; it's globally unique, so drop it
-    // from whichever city bucket holds it.
-    byCity.values.asScala.foreach(_.remove(id))
-    touch()
+    // from whichever city bucket holds it -- and bump only the cities that
+    // actually held it.
+    var found = false
+    byCity.forEach { (city, bucket) =>
+      if (bucket.remove(id) != null) { found = true; touchCity(city) }
+    }
+    // A delete for a row we never held still moves the model-wide stamp, as it
+    // always did; no city's bytes changed, so no city stamp does.
+    if (!found) touch()
   }
 
   /** Full reload from the derived collections — boot hydrate, periodic backstop,
@@ -133,7 +230,14 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
       bucket.keySet().asScala.toSeq.filterNot(liveIds).foreach(bucket.remove)
     }
     byCity.keySet().asScala.toSeq.filterNot(nextByCity.keySet).foreach(byCity.remove)
-    touch()
+    // Rebuild the film->cities index exactly; this is the point at which the
+    // incrementally-grown superset is made true again.
+    filmCities.clear()
+    ss.foreach(s => indexFilmCity(s.filmId, s.city))
+    // Every city is re-derived, so no per-city stamp survives as evidence of
+    // anything; the floor alone answers for all of them.
+    cityStamps.clear()
+    touchEveryCity()
     ms.size
   }
 
