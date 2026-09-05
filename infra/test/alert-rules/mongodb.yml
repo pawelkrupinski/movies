@@ -130,3 +130,84 @@ tests:
           - exp_labels:
               severity: critical
             exp_annotations: *no_primary_annotations
+
+  # ---------------------------------------------------------------------------------------------
+  # ASSERTS. These two rules replaced ONE that summed every assert class together, and this block
+  # is the reason: on 2026-09-05 that rule fired at 1.5/s and every assert in it was `user` --
+  # connection churn from a five-worker `Recreate` rollout, against a mongod whose internal
+  # counters were flat zero. The interesting assertions below are the ones about SILENCE.
+  #
+  # `mongodb_ss_asserts` is a COUNTER, so every series feeds a rising ramp: `1+Nx15` steps by N
+  # each minute, which `rate(...[15m])` reads as N/60 per second.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: a rollout's user-assert burst is silent
+    input_series:
+      # 90/min = 1.5/s, the measured peak of the 2026-09-05 rollout. Below the > 4 floor.
+      - series: 'mongodb_ss_asserts{assert_type="user",host="mongo-1",instance="10.20.0.13:9216",job="mongodb"}'
+        values: "1+90x40"
+      - series: 'mongodb_ss_asserts{assert_type="regular",host="mongo-1",instance="10.20.0.13:9216",job="mongodb"}'
+        values: "1+0x40"
+      - series: 'mongodb_ss_asserts{assert_type="msg",host="mongo-1",instance="10.20.0.13:9216",job="mongodb"}'
+        values: "1+0x40"
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: MongodUserAssertionsRising
+        exp_alerts: []
+      # THE POINT OF THE SPLIT: a healthy server's internal counters are not dragged over the line
+      # by its clients' rejected operations. The old single rule fired here.
+      - eval_time: 35m
+        alertname: MongodInternalAssertionsRising
+        exp_alerts: []
+
+  # ---------------------------------------------------------------------------------------------
+  # A CLIENT SENDING REJECTED OPERATIONS CONSTANTLY -- the shape the user rule is actually for,
+  # e.g. a deploy that changed a credential. Well clear of any rollout's churn.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: a sustained flood of rejected client operations fires
+    input_series:
+      # 600/min = 10/s.
+      - series: 'mongodb_ss_asserts{assert_type="user",host="mongo-1",instance="10.20.0.13:9216",job="mongodb"}'
+        values: "1+600x40"
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: MongodUserAssertionsRising
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              severity: warning
+            exp_annotations:
+              summary: "mongod on mongo-1 is rejecting 10.00 client operations/s"
+              description: "CLIENTS ARE SENDING OPERATIONS MONGOD REJECTS -- a bad query, a failed authentication, an unauthorised command. Often a deploy that changed a credential. FIRST check whether this is just churn: `rate(mongodb_ss_connections{conn_type=\"totalCreated\"}[5m])` rising alongside it means pods are cycling and each new connection is paying its usual probe cost, which is not a fault. Then name the actual commands -- `grep -a '\"id\":20436' /var/log/mongodb/mongod.log` on mongo-1 gives the errmsg with the command and the database in it, and `\"id\":5286307` is a failed authentication. WRITE CONFLICTS ARE A RED HERRING HERE: `rate(mongodb_ss_metrics_operation_writeConflicts)` runs a flat ~1.7/s all day against the task queues, it is the loudest thing in the log, and it does not move this counter."
+      - eval_time: 35m
+        alertname: MongodInternalAssertionsRising
+        exp_alerts: []
+
+  # ---------------------------------------------------------------------------------------------
+  # THE SERVER ITSELF UNHAPPY. `regular` at a trickle no client-side rule would notice -- 12/min
+  # is 0.2/s, which the retired combined rule (> 1) would have sat silently through while a failed
+  # internal invariant repeated every five seconds. `rollovers` is loud beside it and must be
+  # ignored by BOTH rules: it counts the assert counters wrapping, not a fault.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: a trickle of internal assertions fires while rollovers are ignored
+    input_series:
+      - series: 'mongodb_ss_asserts{assert_type="regular",host="mongo-1",instance="10.20.0.13:9216",job="mongodb"}'
+        values: "1+12x40"
+      - series: 'mongodb_ss_asserts{assert_type="rollovers",host="mongo-1",instance="10.20.0.13:9216",job="mongodb"}'
+        values: "1+6000x40"
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: MongodInternalAssertionsRising
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              severity: warning
+            exp_annotations:
+              summary: "mongod on mongo-1 is raising 0.20 internal assertions/s"
+              description: "ASSERTIONS ARE A LEADING INDICATOR, NOT AN OUTAGE, which is why this is a warning -- but these are the ones that suggest the SERVER is unhappy rather than its clients, and they normally sit at exactly zero. Read /var/log/mongodb/mongod.log: `warning` and `msg` are mongod explaining itself in prose, and a sustained `regular` count means a failed internal invariant. Check WiredTiger and the replica-set state next (`MongodNotPrimary`, the oplog rules above)."
+      # 100/s of rollovers, and neither rule may see any of it.
+      - eval_time: 35m
+        alertname: MongodUserAssertionsRising
+        exp_alerts: []

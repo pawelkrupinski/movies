@@ -380,26 +380,73 @@ groups:
             clients. A pool that grows without bound is a client bug, and raising the ceiling for it
             postpones the same failure at greater cost.
 
-      - alert: MongodAssertionsRising
-        # `rollovers` EXCLUDED DELIBERATELY: it counts the assert counters wrapping, not a fault.
-        expr: sum by (host) (rate(mongodb_ss_asserts{assert_type!="rollovers"}[15m])) > 1
-        # ONE PER SECOND, SUSTAINED FOR FIFTEEN MINUTES, IS A GUESS -- and, like `MemoryStallHigh` in
-        # host-health.rules, it is a floor above the noise rather than a tuned number. A healthy
-        # mongod sits at approximately zero here; `user` asserts are individual malformed or
-        # unauthorised operations and a handful is ordinary, so the threshold is set where "a
-        # handful" becomes "something is doing this constantly".
+      # ONE RULE PER ASSERT CLASS, because the two classes carry opposite meanings and the single
+      # rule that summed them alerted on the wrong one. It fired on 2026-09-05 at 1.5/s and every
+      # assert in it was `user`: mongod was healthy, and what had changed was CONNECTION CHURN from
+      # a five-worker `Recreate` rollout. The assert rate is a near-linear function of it --
+      # `rate(mongodb_ss_connections{conn_type="totalCreated"}[5m])` went 0.10-0.35/s to 1.12/s over
+      # the same minutes -- because each fresh connection costs a small FIXED number of
+      # `Unauthorized` asserts from clients probing what they may do: mongosh's startup
+      # `getParameter`/`aggregate` on admin (170 of 266 in a 20-minute sample), the exporter's
+      # shard-identity `find` on admin.system.version (40), and the application's TTL `collMod`
+      # (55, now gone -- see services.MongoTtlIndex). None of that is a fault, and a rule that
+      # cannot tell it from a sick server is a rule that gets ignored.
+      #
+      # DO NOT EXPECT THE LOG TO ADD UP TO THE COUNTER. That same window counted 1,642 user asserts
+      # and logged 266 of them: a duplicate key, an expired cursor, a rejected write all increment
+      # it without a line unless they are also slow. The log names the REPEATING sources, which is
+      # what triage needs; it is not an inventory. (Nor is every rejected-looking log line an
+      # assert: 347 "Connection not authenticating" lines in the window were SDAM heartbeat sockets
+      # that issue no command and produce no assert at all.)
+      #
+      # `rollovers` EXCLUDED DELIBERATELY from both: it counts the assert counters wrapping.
+      - alert: MongodInternalAssertionsRising
+        # THE ONES THAT MEAN THE SERVER ITSELF IS UNHAPPY. `regular` is a failed internal
+        # invariant, `msg` and `warning` are mongod complaining about its own state, and
+        # `tripwire` is a deliberate crash-on-corruption check. Measured over 24h on 2026-09-05:
+        # all four flat ZERO while `user` totalled 46,295. So the threshold here is not a floor
+        # above noise -- there is no noise. Anything sustained is real.
+        expr: sum by (host) (rate(mongodb_ss_asserts{assert_type=~"regular|msg|warning|tripwire"}[15m])) > 0.1
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "mongod on {{ $labels.host }} is raising {{ $value }} assertions/s"
+          # FORMATTED, because a raw rate reaches Telegram as "0.19999999999999998 internal
+          # assertions/s". The rule this replaced paged with "1.5057471264367817 assertions/s".
+          summary: "mongod on {{ $labels.host }} is raising {{ $value | printf \"%.2f\" }} internal assertions/s"
           description: >-
-            ASSERTIONS ARE A LEADING INDICATOR, NOT AN OUTAGE, which is why this is a warning. Check
-            `assert_type` on the series before deciding anything: `user` means clients are sending
-            operations mongod rejects (a bad query, a failed authentication -- often a deploy that
-            changed a credential), `warning` and `msg` are internal and are worth reading
-            /var/log/mongodb/mongod.log for, and a sustained `regular` count is the one that
-            suggests the server itself is unhappy.
+            ASSERTIONS ARE A LEADING INDICATOR, NOT AN OUTAGE, which is why this is a warning -- but
+            these are the ones that suggest the SERVER is unhappy rather than its clients, and they
+            normally sit at exactly zero. Read /var/log/mongodb/mongod.log: `warning` and `msg` are
+            mongod explaining itself in prose, and a sustained `regular` count means a failed
+            internal invariant. Check WiredTiger and the replica-set state next
+            (`MongodNotPrimary`, the oplog rules above).
+
+      - alert: MongodUserAssertionsRising
+        # FOUR PER SECOND, because ONE is inside the noise. The floor is set from a measured
+        # rollout, not a guess: baseline is ~0.2/s (a constant trickle of client capability
+        # probes), and the worst churn observed -- five workers recreated inside ten minutes,
+        # which is the loudest thing that happens here -- reached 1.51/s on this same 15m rate
+        # (1.7/s on a 5m one). Four leaves room for a rollout of twice that size and still catches
+        # the shape this is FOR: a client sending rejected operations constantly, which after a
+        # deploy usually means a changed credential.
+        expr: sum by (host) (rate(mongodb_ss_asserts{assert_type="user"}[15m])) > 4
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "mongod on {{ $labels.host }} is rejecting {{ $value | printf \"%.2f\" }} client operations/s"
+          description: >-
+            CLIENTS ARE SENDING OPERATIONS MONGOD REJECTS -- a bad query, a failed authentication,
+            an unauthorised command. Often a deploy that changed a credential. FIRST check whether
+            this is just churn: `rate(mongodb_ss_connections{conn_type="totalCreated"}[5m])` rising
+            alongside it means pods are cycling and each new connection is paying its usual probe
+            cost, which is not a fault. Then name the actual commands --
+            `grep -a '"id":20436' /var/log/mongodb/mongod.log` on mongo-1 gives the errmsg with the
+            command and the database in it, and `"id":5286307` is a failed authentication. WRITE
+            CONFLICTS ARE A RED HERRING HERE: `rate(mongodb_ss_metrics_operation_writeConflicts)`
+            runs a flat ~1.7/s all day against the task queues, it is the loudest thing in the log,
+            and it does not move this counter.
 
       - alert: MongodServerStatusSeriesAbsent
         expr: absent(mongodb_ss_connections)
@@ -409,8 +456,8 @@ groups:
         annotations:
           summary: "Nothing is reporting mongod's serverStatus counters"
           description: >-
-            `MongodConnectionsSaturated` and `MongodAssertionsRising` are both comparisons against
-            this collector's output and neither can fire without it. This one series stands in for
+            `MongodConnectionsSaturated` and both `Mongod*AssertionsRising` rules are comparisons
+            against this collector's output and none of them can fire without it. This one series stands in for
             the whole `diagnosticdata` collector: if it is absent, `--collector.diagnosticdata` has
             been dropped from the exporter's ExecStart, the metric names have moved, or the
             `kinowo_monitor` user lost the role that lets it run `serverStatus`. IT DOES NOT MEAN

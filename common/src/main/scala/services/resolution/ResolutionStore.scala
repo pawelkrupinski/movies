@@ -1,13 +1,12 @@
 package services.resolution
 
-import com.mongodb.client.model.{IndexOptions => JIndexOptions, ReplaceOptions}
+import com.mongodb.client.model.ReplaceOptions
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Indexes, Projections}
+import org.mongodb.scala.model.{Filters, Projections}
 import play.api.Logging
 
 import java.time.{Clock, Instant}
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -186,25 +185,10 @@ class MongoResolutionStore(
     }.getOrElse(0)
   }
 
-  /** Create the TTL index on `at`, and bring an existing one's expiry in line
-   *  with `Ttl` via `collMod` (createIndex can create but never ALTER a TTL).
-   *  Best-effort, mirroring `UptimeMonitor.ensureIndexes`. */
-  private def ensureTtlIndex(c: MongoCollection[Document]): Unit = {
-    val ttlSeconds = ResolutionStore.Ttl.toSeconds
-    Try {
-      Await.result(c.createIndex(
-        Indexes.ascending("at"),
-        new JIndexOptions().expireAfter(ttlSeconds, TimeUnit.SECONDS)
-      ).toFuture(), 10.seconds)
-    }.recover { case exception => logger.debug(s"$collectionName TTL index not (re)created — collMod will reconcile: ${exception.getMessage}") }
-
-    db.foreach { database =>
-      Try {
-        val collMod = new org.bson.Document("collMod", collectionName)
-          .append("index", new org.bson.Document("keyPattern", new org.bson.Document("at", 1))
-            .append("expireAfterSeconds", ttlSeconds))
-        Await.result(database.runCommand(collMod).toFuture(), 10.seconds)
-      }.recover { case exception => logger.debug(s"$collectionName TTL collMod skipped: ${exception.getMessage}") }
-    }
-  }
+  /** Bring the TTL index on `at` in line with `Ttl`, creating it when absent.
+   *  [[services.MongoTtlIndex.reconcile]] reads the existing expiry back first —
+   *  the same call `UptimeMonitor.ensureIndexes` makes, and its comment explains
+   *  why the `collMod` this used to fire unconditionally never worked. */
+  private def ensureTtlIndex(c: MongoCollection[Document]): Unit =
+    db.foreach(services.MongoTtlIndex.reconcile(_, c, "at", ResolutionStore.Ttl.toSeconds, collectionName))
 }

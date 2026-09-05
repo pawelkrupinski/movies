@@ -103,7 +103,8 @@ in
       type = lib.types.str;
       default = "kinowo_monitor";
       description = ''
-        The exporter's own Mongo user, which should hold `clusterMonitor` on admin AND NOTHING ELSE.
+        The exporter's own Mongo user, which should hold `clusterMonitor` on admin plus ONE extra
+        privilege -- `find` on `admin.system.version`, and nothing beyond that pair.
 
         A SEPARATE USER FROM BOTH THE APPLICATION'S AND THE BACKUP'S, deliberately. The application
         can write and the backup can read every document in every database; a metrics scraper needs
@@ -125,6 +126,29 @@ in
               pwd: "<a long random password, no @ : / ? # [ ] characters>",
               roles: [ { role: "clusterMonitor", db: "admin" } ]
             })
+
+        THE SECOND PRIVILEGE IS THE SHARD-IDENTITY PROBE. Percona's exporter decides what kind of
+        node it is talking to by reading one document -- `find admin.system.version { _id:
+        "shardIdentity" }` -- and `clusterMonitor` does not grant it. Measured on 2026-09-05: 40
+        `Unauthorized` (13) rejections in a twenty-minute window, one per fresh connection, each
+        counted by mongod as a USER ASSERT. That is a standing contribution to the counter
+        `MongodUserAssertionsRising` watches, from the very component whose job is to measure the
+        database honestly. Grant exactly the one document, not `read` on admin:
+
+            use admin
+            db.createRole({
+              role: "shardIdentityReader",
+              privileges: [ { resource: { db: "admin", collection: "system.version" },
+                              actions: [ "find" ] } ],
+              roles: []
+            })
+            db.grantRolesToUser("kinowo_monitor", [ { role: "shardIdentityReader", db: "admin" } ])
+
+        `admin.system.version` holds the feature-compatibility version and the shard identity and
+        nothing else -- no credentials, which live in `admin.system.users` and stay unreadable. A
+        blanket `read` on admin would also be wrong for a reason that outlives this probe: it is a
+        role whose contents grow with the server, and this user's whole design is that it holds the
+        least useful credential on the box.
 
         THE PASSWORD CHARACTER RESTRICTION IS NOT FUSSINESS. The credential reaches the exporter
         inside a MongoDB connection URI (see `environmentFile`), and a URI is parsed before it is

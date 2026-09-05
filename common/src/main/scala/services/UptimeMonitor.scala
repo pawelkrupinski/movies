@@ -93,28 +93,14 @@ class UptimeMonitor(
     thread.start()
   }
 
-  /** Create the TTL + compound indexes, and bring an EXISTING bucket-TTL index's
-   *  expiry in line with `BucketTtlSeconds`. Each step is isolated: a TTL change
-   *  makes `createIndex` throw `IndexOptionsConflict` (it can create but never
-   *  ALTER), so that step is expected to fail on an already-indexed collection —
-   *  the `collMod` is what actually applies the new expiry there. Keeping the
-   *  compound index in its own `Try` means the TTL conflict can't skip it. */
+  /** Create the compound index, and bring the bucket TTL index in line with
+   *  `BucketTtlSeconds`. The TTL half is [[MongoTtlIndex.reconcile]], which reads
+   *  the existing expiry back before touching anything — see its comment for why
+   *  the `collMod` this used to fire unconditionally was both unauthorised and a
+   *  no-op. The compound index keeps its own `Try` so a TTL that cannot be
+   *  reconciled can't skip it. */
   private def ensureIndexes(c: MongoCollection[Document]): Unit = {
-    Try {
-      Await.result(c.createIndex(
-        Indexes.ascending("bucket"),
-        new JIndexOptions().expireAfter(BucketTtlSeconds, TimeUnit.SECONDS)
-      ).toFuture(), 10.seconds)
-    }.recover { case exception => logger.debug(s"Uptime TTL index not (re)created — collMod will reconcile: ${exception.getMessage}") }
-
-    db.foreach { database =>
-      Try {
-        val collMod = new org.bson.Document("collMod", c.namespace.getCollectionName)
-          .append("index", new org.bson.Document("keyPattern", new org.bson.Document("bucket", 1))
-            .append("expireAfterSeconds", BucketTtlSeconds))
-        Await.result(database.runCommand(collMod).toFuture(), 10.seconds)
-      }.recover { case exception => logger.debug(s"Uptime TTL collMod skipped: ${exception.getMessage}") }
-    }
+    db.foreach(MongoTtlIndex.reconcile(_, c, "bucket", BucketTtlSeconds, "UptimeMonitor"))
 
     Try {
       Await.result(c.createIndex(
