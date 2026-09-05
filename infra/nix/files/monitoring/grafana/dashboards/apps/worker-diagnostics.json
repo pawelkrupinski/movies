@@ -966,91 +966,9 @@
       ]
     },
     {
-      "id": 21,
-      "title": "Caches \u2014 bytes held against budget",
-      "description": "The reading that was missing on 2026-09-05, when worker-pl paged JvmOldGenNearCap at 99.69% of a 313 MiB old gen and naming the cache took a hand-rolled JVM attach against a JRE image. The detail cache held 1,015 whole HTML pages worth 228 MiB behind a bound that counted ENTRIES, so it sat nine thousand entries short of engaging while filling 73% of the heap. Byte-bounded caches only: the budget is plotted rather than written here so it stays right when it is retuned. A line riding its budget is a cache evicting continuously \u2014 whether that matters depends on what a miss costs it, which the hit-ratio panel answers.",
-      "type": "timeseries",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "local-prometheus"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 81
-      },
-      "fieldConfig": {
-        "defaults": {
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 12,
-            "spanNulls": 300000
-          },
-          "min": 0
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*budget.*"
-            },
-            "properties": [
-              {
-                "id": "custom.fillOpacity",
-                "value": 0
-              },
-              {
-                "id": "custom.lineStyle",
-                "value": {
-                  "fill": "dash",
-                  "dash": [
-                    10,
-                    10
-                  ]
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byType",
-              "options": "number"
-            },
-            "properties": [
-              {
-                "id": "unit",
-                "value": "bytes"
-              }
-            ]
-          }
-        ]
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "kinowo_worker_cache_held_bytes{country=~\"$country\"}",
-          "legendFormat": "{{country}} {{cache}} held",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          }
-        },
-        {
-          "refId": "B",
-          "expr": "kinowo_worker_cache_max_bytes{country=~\"$country\"}",
-          "legendFormat": "{{country}} {{cache}} budget",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "local-prometheus"
-          }
-        }
-      ]
-    },
-    {
       "id": 22,
       "title": "Caches \u2014 entries, and the count bound where there is one",
-      "description": "Entry counts for every registered cache, and the maximum for the ones actually bounded by count (`task_dedup`). Two caches here have NO maximum and that is deliberate: `movie_corpus` is the hydrated corpus rather than a working set, and a byte-bounded cache's ceiling is bytes, not entries \u2014 publishing a zero maximum for either would render as '100% full' and invent an alarm. For `movie_corpus` the shape is the signal: a count that tracks the country's corpus is healthy, one that climbs past it is a cache that has stopped evicting anything.",
+      "description": "Entry counts for every registered cache, and the maximum for the one actually bounded by count (`task_dedup`). `movie_corpus` has NO maximum and that is deliberate: it is the hydrated corpus rather than a working set, and publishing a zero maximum would render as '100% full' on any ratio and invent an alarm. For it the shape is the signal \u2014 a count that tracks the country's corpus is healthy, one that climbs past it has stopped evicting. There are no byte series here because no cache in this JVM is weighed in bytes: the venue detail cache was, and was deleted once nothing read it (the TTL now expires inside the DetailEnrich refresh window, so a scheduled refresh can never be served from cache).",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1058,8 +976,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 12,
-        "x": 12,
+        "w": 24,
+        "x": 0,
         "y": 81
       },
       "fieldConfig": {
@@ -1120,7 +1038,7 @@
     {
       "id": 23,
       "title": "Caches \u2014 hit ratio and evictions",
-      "description": "Read the hit ratio against what each cache is FOR, because the healthy value differs per cache. `venue_detail` expires well inside the DetailEnrich refresh window on purpose, so a scheduled refresh MUST miss and a near-zero ratio is correct; a HIGH ratio there means the same URL is being asked for repeatedly within the hour, which is the DetailFetchOutcome.Failed livelock \u2014 an unstamped film re-enqueued by DetailReaper every tick (Kino Bulgarska: 1,438 failures to 56 successes in 24h on one trailer-less film) \u2014 being absorbed here instead of fixed at the client. `task_dedup` is the opposite: a high ratio is the point, since each hit is a Mongo round-trip not made, and a fall means the dedup is being evicted.",
+      "description": "The two halves of 'is this cache paying for itself'. On `task_dedup` a high hit ratio is the point: every hit is a Mongo enqueue round-trip not made, so a FALL alongside rising evictions is the dedup being evicted and those round-trips coming back. On `movie_corpus` a hit is a Mongo read not made; it is unbounded, so its eviction line sits at zero by construction rather than by luck, and a climb there would mean something has started bounding it. Both are per-country \u2014 one wiring per country in the one JVM.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

@@ -32,8 +32,12 @@ class CachingTaskQueue(
 ) extends TaskQueue {
 
   // dedupKey -> present iff this instance enqueued it and hasn't seen it complete.
+  // `recordStats` because the hit ratio IS the value of this cache: every hit is a
+  // Mongo enqueue round-trip not made. Published as `kinowo_worker_cache_hit_ratio`,
+  // where a fall means the dedup is being evicted and those round-trips are back.
   private val active: Cache[String, java.lang.Boolean] =
-    Caffeine.newBuilder().expireAfterWrite(ttl.toMillis, TimeUnit.MILLISECONDS).maximumSize(maxKeys).build()
+    Caffeine.newBuilder().expireAfterWrite(ttl.toMillis, TimeUnit.MILLISECONDS)
+      .maximumSize(maxKeys).recordStats().build()
   // taskId -> dedupKey, so complete(id) can evict the right `active` entry. Expires
   // on a lease-length scale so an id whose completion we never observe (reaped, or
   // finished on another instance) doesn't leak.

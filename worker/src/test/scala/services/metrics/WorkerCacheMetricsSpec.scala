@@ -33,18 +33,25 @@ class WorkerCacheMetricsSpec extends AnyFlatSpec with Matchers {
       .find(line => line.startsWith(s"$metric{") && line.contains(s"""cache="$cache""""))
       .map(_.trim.split("\\s+").last.toDouble)
 
-  "A byte-bounded cache" should "publish bytes held against its budget" in {
+  /** [[CacheOccupancy]] still MODELS a byte-bounded cache even though no worker
+   *  cache is weighed in bytes today (the venue detail cache was, and was deleted
+   *  once nothing read it). Kept because it is the general shape of "held against
+   *  its bound", and because the web tier's byte-bounded `OgCardCache` is the
+   *  obvious next thing to measure. */
+  "A byte-bounded cache" should "report bytes held against its budget" in {
     val weighted: Cache[String, String] =
       Caffeine.newBuilder().maximumWeight(1024L).weigher((_: String, v: String) => v.length).build()
     weighted.put("a", "x" * 100)
     weighted.cleanUp()
 
-    val exposition = registryWith("venue_detail" -> CacheOccupancy.of(weighted, weighted = true))
-    sample(exposition, "kinowo_worker_cache_held_bytes", "venue_detail") shouldBe Some(100.0)
-    sample(exposition, "kinowo_worker_cache_max_bytes", "venue_detail")  shouldBe Some(1024.0)
-    sample(exposition, "kinowo_worker_cache_entries", "venue_detail")    shouldBe Some(1.0)
-    // Its ceiling is bytes; an entry maximum would be a different unit in the same gauge.
-    sample(exposition, "kinowo_worker_cache_max_entries", "venue_detail") shouldBe None
+    // Asserted on the MODEL, not through the exporter: `WorkerCacheMetrics`
+    // publishes no byte series while no worker cache is weighed in bytes.
+    val occupancy = CacheOccupancy.of(weighted, weighted = true)
+    occupancy.heldBytes  shouldBe Some(100L)
+    occupancy.maxBytes   shouldBe Some(1024L)
+    occupancy.entries    shouldBe 1L
+    // Its ceiling is bytes; an entry maximum would be a different unit in the same field.
+    occupancy.maxEntries shouldBe None
   }
 
   "A count-bounded cache" should "publish its entry maximum and no byte weight" in {
@@ -99,9 +106,9 @@ class WorkerCacheMetricsSpec extends AnyFlatSpec with Matchers {
     a.put("k", "v"); a.cleanUp(); b.cleanUp()
 
     val exposition = registryWith(
-      "venue_detail" -> CacheOccupancy.of(a, weighted = false),
+      "weighed_cache" -> CacheOccupancy.of(a, weighted = false),
       "task_dedup"   -> CacheOccupancy.of(b, weighted = false))
-    sample(exposition, "kinowo_worker_cache_max_entries", "venue_detail") shouldBe Some(10.0)
+    sample(exposition, "kinowo_worker_cache_max_entries", "weighed_cache") shouldBe Some(10.0)
     sample(exposition, "kinowo_worker_cache_max_entries", "task_dedup")   shouldBe Some(20.0)
   }
 }

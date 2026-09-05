@@ -270,7 +270,10 @@ class CaffeineMovieCache(
   // an unreadable corpus, which is the state that used to silently prune boards.
   private[services] val skippedUnreadable = new java.util.concurrent.atomic.AtomicLong(0)
 
-  private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().build()
+  // `recordStats` so the resident corpus can report its hit ratio — a read served
+  // here is a Mongo read not made. Unbounded, so its eviction count stays 0 by
+  // construction rather than by luck.
+  private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().recordStats().build()
 
   /** The derived views of `positive` that `recordCinemaScrape` needs, kept current as
    *  rows are written rather than rebuilt per venue — see [[CorpusIndex]] for the
