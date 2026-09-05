@@ -436,6 +436,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // schedulePosterRetry, applyFilters, applyFiltersDebounced). If shared.js
   // fails to load — stale cache, broken fingerprinting, wrong load order —
   // every page interaction breaks with a ReferenceError.
+  // The harness contract every reload-driven test rests on. `reload()` used to
+  // wait for `document.readyState === 'complete'`, which the OUTGOING document
+  // already satisfies, so it could return before the swap and leave the caller
+  // waiting for the page load inside its own budget — CI, 2026-09-05, the
+  // server-state reconcile timed out after 2000ms while passing locally every run.
+  // A stamp set on the old document is the observable proof the swap happened.
+  "reload" should "return only once the NEW document is live" in {
+    onPath("/") { page =>
+      page.eval("window.__reloadProbe = 1")
+      page.evalBool("window.__reloadProbe === 1") shouldBe true
+      page.reload()
+      page.evalBool("typeof window.__reloadProbe === 'undefined'") shouldBe true
+    }
+  }
+
   "shared.js globals" should "be defined on / before any user interaction" in {
     onPath("/") { page =>
       page.evalBool("typeof undoTruncation === 'function'") shouldBe true

@@ -276,10 +276,23 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     throw new RuntimeException(s"Timed out after ${timeoutMs}ms waiting for: $js")
   }
 
+  /** Reload and wait for the NEW document, not merely for A document.
+   *
+   *  Waiting on `document.readyState === 'complete'` alone is satisfied by the
+   *  document being replaced — it is 'complete' too — so a reload that had not yet
+   *  swapped returned immediately and handed the caller a page still running the
+   *  OLD load. Whatever the caller then waited for was really waiting for the
+   *  reload as well, and on a loaded runner the page load ate the budget: CI,
+   *  2026-09-05, `PageJsBehaviourSpec` timed out after 2000ms on the
+   *  server-state reconcile while the same test passed locally every time.
+   *
+   *  Stamping the outgoing document and waiting for the stamp to be GONE is
+   *  positive evidence of the swap, so no sleep has to guess at it. */
   def reload(): Unit = {
+    eval("window.__cdpReloadStamp = 1")
     send("Page.reload")
-    Thread.sleep(150) // give the reload a beat before waitFor polls
-    waitFor("document.readyState === 'complete'", timeoutMs = 5000)
+    waitFor("typeof window.__cdpReloadStamp === 'undefined' && document.readyState === 'complete'",
+            timeoutMs = 10000)
   }
 
   /** Capture the current viewport as PNG bytes returned Base64-encoded.
