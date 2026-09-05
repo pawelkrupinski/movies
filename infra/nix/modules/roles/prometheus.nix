@@ -343,23 +343,19 @@ in
 
     alertEmailFrom = lib.mkOption {
       type = lib.types.str;
-      default = "onboarding@resend.dev";
+      default = "alerts@kinowo.net";
       description = ''
-        Envelope sender. IT MUST BE AT A DOMAIN THE RELAY HAS VERIFIED, and this account has
-        verified none -- MEASURED, not assumed: submitting as `alerts@kinowo.net` over the real
-        SMTP path returns `550 The kinowo.net domain is not verified`, while
-        `onboarding@resend.dev` is accepted and the Resend API reports the message `delivered`.
+        Envelope sender. IT MUST BE AT A DOMAIN THE RELAY HAS VERIFIED, and kinowo.net now is
+        (2026-09-05): DKIM at `resend._domainkey`, SPF and a bounce MX at `send`, all on
+        SUBDOMAINS -- the apex MX still points at OVH and was never touched, which is the one
+        thing a mail change here must not disturb.
 
-        `onboarding@resend.dev` IS RESEND'S SHARED SANDBOX SENDER AND IT HAS ONE LIMIT THAT
-        MATTERS HERE: it can only deliver to the address that owns the Resend account. That is
-        exactly the one recipient this fleet has, so it costs nothing today — but adding a second
-        recipient later will silently fail until a domain is verified, which is the trap worth
-        knowing about before somebody adds one.
-
-        THE UPGRADE IS A DNS RECORD, NOT A PROJECT: verify kinowo.net (it is already on
-        Cloudflare) at https://resend.com/domains, then set this to `alerts@kinowo.net`. Worth
-        doing before the mailbox matters — a sandbox sender is also the first thing a provider
-        rate-limits.
+        IT WAS `onboarding@resend.dev` FOR AN AFTERNOON, and the reason is worth keeping: Resend's
+        shared sandbox sender delivers ONLY to the address that owns the account. That was fine
+        with one recipient and would have failed silently on the second, which is the worst way for
+        an alerting path to break. Measured both ways rather than assumed -- before verification
+        `alerts@kinowo.net` returned `550 The kinowo.net domain is not verified`; after it, the
+        same SMTP submission is accepted and Resend reports the message `delivered`.
       '';
     };
 
