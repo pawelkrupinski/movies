@@ -67,7 +67,23 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
     j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl"}""")
-    j should include("""{"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk"}""")
+    j should include("""{"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","region":"England"}""")
+  }
+
+  it should "name the group a GROUPED country finds a city through, and only there" in {
+    val j = Catalog.json
+    def cityEntry(slug: String) =
+      j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
+    // The apps offer the same two-step pick the web does, so they need the same
+    // headings: the US by state, the UK by nation.
+    cityEntry("los-angeles") should include(""""region":"California"""")
+    cityEntry("glasgow")     should include(""""region":"Scotland"""")
+    cityEntry("cardiff")     should include(""""region":"Wales"""")
+    // A flat country sends nothing — a name is all its visitor needs, and the
+    // field costs bytes on every city where it would say nothing.
+    cityEntry("poznan") should not include "region"
+    cityEntry("berlin") should not include "region"
+    cityEntry("madrid") should not include "region"
   }
 
   it should "contain exactly the switchable countries' cities" in {

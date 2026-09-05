@@ -97,9 +97,8 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5031
   }
 
-  "Country.cityGroups" should "group the US by state and leave every other country flat" in {
+  "Country.cityGroups" should "group the US by state and leave the flat countries flat" in {
     Country.Poland.cityGroups shouldBe empty
-    Country.UnitedKingdom.cityGroups shouldBe empty
     Country.Germany.cityGroups shouldBe empty
     Country.UnitedStates.cityGroups should have size 55
     // The groups partition the country's cities — a metro reachable from no
@@ -109,6 +108,53 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedStates.cityGroups.map(_.label) should contain allOf ("California", "Texas", "Alaska")
     Country.UnitedStates.cityGroups.find(_.label == "California").get
       .cities.map(_.labels.nominative) should contain ("Los Angeles")
+  }
+
+  it should "group the UK by nation, over the counties the roster is already cut into" in {
+    // A level UP rather than one down: a Flicks region already is the county, so
+    // 79 of them wanted a heading above, not metros below.
+    Country.UnitedKingdom.cityGroups.map(_.label) shouldBe
+      Seq("England", "Scotland", "Wales", "Northern Ireland", "Crown Dependencies")
+    // The same partition invariant the US groups hold: every live UK city is
+    // reachable from exactly one nation, and no nation names a city twice.
+    Country.UnitedKingdom.cityGroups.flatMap(_.cities) should contain theSameElementsAs
+      Country.UnitedKingdom.cities
+    Country.UnitedKingdom.cityGroups.flatMap(_.cities).distinct should have size
+      Country.UnitedKingdom.cities.size
+
+    def nation(label: String): Seq[String] =
+      Country.UnitedKingdom.cityGroups.find(_.label == label).get.cities.map(_.slug)
+
+    nation("England")           should contain allOf ("london", "cheshire", "liverpool", "kent")
+    nation("Scotland")          should contain allOf ("glasgow", "fife", "highlands-and-islands")
+    nation("Wales")             should contain allOf ("cardiff", "gwynedd", "powys")
+    nation("Northern Ireland")  should contain allOf ("belfast", "antrim", "tyrone")
+    nation("Crown Dependencies") should contain theSameElementsAs Seq("guernsey", "isle-of-man", "jersey")
+    // A nation is a heading, not a page: `/scotland/` is nothing, the same way
+    // `/california/` is.
+    Country.UnitedKingdom.cityGroups.map(_.slug).flatMap(Country.UnitedKingdom.bySlug.get) shouldBe empty
+  }
+
+  "CityGroup.soleCity" should "collapse a group that stands exactly where its one city stands" in {
+    def group(country: Country, slug: String): CityGroup =
+      country.cityGroups.find(_.slug == slug).getOrElse(fail(s"no group $slug"))
+
+    // Delaware is too small to cut into metros, so the state's own venue list IS
+    // `/delaware/`: the picker links straight there rather than offering a
+    // heading you open to find one row repeating it.
+    group(Country.UnitedStates, "delaware").soleCity.map(_.slug) shouldBe Some("delaware")
+    group(Country.UnitedStates, "vermont").soleCity.map(_.slug) shouldBe Some("vermont")
+
+    // California is a way to FIND a place, never a place — even though one of
+    // its metros could have carried its name, it holds many.
+    group(Country.UnitedStates, "california").soleCity shouldBe None
+    // New York holds a metro of its own name, and Buffalo and Rochester besides:
+    // linking the heading straight through would bury them.
+    group(Country.UnitedStates, "new-york").cities.map(_.slug) should contain ("new-york")
+    group(Country.UnitedStates, "new-york").soleCity shouldBe None
+
+    // No UK nation is a place either, however few counties are live in it.
+    Country.UnitedKingdom.cityGroups.flatMap(_.soleCity) shouldBe empty
   }
 
   "Country.Spain" should "be a Spanish, Filmweb-free deployment (SensaCine-sourced) on its own database" in {

@@ -12,10 +12,13 @@
    keeps the "nothing reads a global current country" rule this template used to
    break four times over with `Country.fromEnv`.
 
-   Most countries are one flat A-to-Z. The US is grouped, one section per state
-   over the metros cut out of it (`Country.cityGroups`), because "Los Angeles" is
-   found under "California" and 457 metros in one alphabetical run is not a list
-   anybody reads.
+   Poland, Germany and Spain are one flat A-to-Z. The US and the UK are GROUPED
+   (`Country.cityGroups`) — one collapsed section per US state over the metros
+   cut out of it, per UK nation over its counties — because "Los Angeles" is
+   found under "California", and neither 457 metros nor 79 counties in one
+   alphabetical run is a list anybody reads. A group that stands exactly where
+   its one city stands (Delaware, Vermont, DC) is a plain link to that city
+   instead of a heading you open to find it repeated; see `CityGroup.soleCity`.
 
    `places` IS NONE IN EVERY DEPLOYMENT, meaning "the country's own list" — a
    visitor to the Polish site is offered Polish cities and nothing else, and no
@@ -71,12 +74,33 @@
       transition: background .15s, border-color .15s;
     }
     .city-list a:hover { background: #25254e; border-color: #3a3a7e; }
-    .city-group { display: flex; flex-direction: column; gap: .6rem; }
+    /* No `display` of its own — a <details> laid out as anything but a block
+       (flex especially) is how several engines end up showing a shut group's
+       contents anyway. Its summary and its list stack on their own. */
+    /* The group heading is the control that opens the group, so it is styled as
+       a row like the cities under it rather than as a caption over them: a
+       heading you have to guess is tappable is one nobody taps. */
     .city-group-label {
-      color: #9a9ac0; font-size: .8rem; font-weight: 600; letter-spacing: .06em;
-      text-transform: uppercase; text-align: left; margin-top: .4rem;
+      display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+      cursor: pointer; list-style: none;
+      color: #e7e7f5; background: #1a1a3a; border: 1px solid #2a2a5e; border-radius: 10px;
+      padding: .9rem 1.1rem; font-size: 1.05rem; font-weight: 600; text-align: left;
+      transition: background .15s, border-color .15s;
     }
-    .city-group-cities { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    /* Safari draws its own disclosure triangle on a <summary> and ignores
+       `list-style` to hide it. */
+    .city-group-label::-webkit-details-marker { display: none; }
+    .city-group-label:hover { background: #25254e; border-color: #3a3a7e; }
+    .city-group-label::after {
+      content: ''; flex: none; width: .45rem; height: .45rem; margin-right: .15rem;
+      border-right: 2px solid #9a9ac0; border-bottom: 2px solid #9a9ac0;
+      transform: rotate(45deg); transform-origin: 60% 60%; transition: transform .15s;
+    }
+    .city-group[open] > .city-group-label::after { transform: rotate(-135deg); }
+    .city-group-cities {
+      list-style: none; display: flex; flex-direction: column; gap: .6rem;
+      margin: .6rem 0 0 .9rem;
+    }
     .locating { color: #9a9ac0; font-size: .9rem; margin-top: 1.25rem; min-height: 1.2em; }
   </style>
 </head>
@@ -95,14 +119,26 @@
       }
       } else {
       @for(g <- country.cityGroups) {
-        <li class="city-group">
-          <p class="city-group-label">@g.label</p>
-          <ul class="city-group-cities">
-          @for(c <- g.cities) {
-            <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+        @g.soleCity match {
+          case Some(c) => {
+        <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
           }
-          </ul>
+          case None => {
+        <li>
+          @* A <details> rather than a button and a class: the open/closed state,
+             the keyboard handling and the ARIA a disclosure owes are all native
+             here, and the group still opens on a page whose script never ran. *@
+          <details class="city-group">
+            <summary class="city-group-label">@g.label</summary>
+            <ul class="city-group-cities">
+            @for(c <- g.cities) {
+              <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+            }
+            </ul>
+          </details>
         </li>
+          }
+        }
       }
       }
     </ul>
@@ -126,29 +162,53 @@
         .replace(/ź/g, 'z').replace(/ż/g, 'z');
     }
 
-    // Client-side filter of the place list (41 Polish cities, 457 US metros, …):
-    // typing narrows the visible rows by folded substring match; an empty box
-    // shows everything. A group whose every row is hidden goes with them, so the
-    // US list never leaves a state heading standing over nothing.
+    // Client-side filter of the place list (41 Polish cities, 457 US metros, 79
+    // UK counties, …): typing narrows the visible rows by folded substring
+    // match; an empty box shows everything.
+    //
+    // Two things the grouped countries need on top of that. A row matches on its
+    // GROUP's name as well as its own, so "california" finds Los Angeles and
+    // "scotland" finds Fife — the grouping is how a visitor knows the place is
+    // there, and a search that ignores it answers nothing for the term they are
+    // most likely to type. And a group holding a match OPENS, because a hit
+    // behind a closed heading is a hit the searcher cannot see; clearing the box
+    // shuts them all again, back to the list they arrived on.
     (function () {
+      var list = document.getElementById('city-list');
       var input = document.getElementById('city-search');
-      if (!input) return;
-      var rows   = Array.prototype.slice.call(document.querySelectorAll('#city-list li a'))
-                     .map(function (a) { return a.parentNode; });
-      var groups = Array.prototype.slice.call(document.querySelectorAll('#city-list > li.city-group'));
+      if (!list || !input) return;
       var empty  = document.getElementById('city-empty');
+      var groups = Array.prototype.slice.call(list.querySelectorAll('details.city-group'));
+      // Each linked row with the text it answers to: its own, plus the heading
+      // it sits under where it has one. Folded once here rather than per
+      // keystroke — 457 metros × every character typed is work worth not doing.
+      var rows = Array.prototype.slice.call(list.querySelectorAll('li'))
+        .filter(function (li) {
+          return Array.prototype.some.call(li.children, function (n) { return n.tagName === 'A'; });
+        })
+        .map(function (li) {
+          var group = li.closest ? li.closest('details.city-group') : null;
+          var label = group ? group.querySelector('.city-group-label').textContent : '';
+          return { li: li, group: group, text: foldPl(li.textContent + ' ' + label) };
+        });
       var apply = function () {
         var q = foldPl(input.value.trim());
         var shown = 0;
-        rows.forEach(function (li) {
-          var match = q === '' || foldPl(li.textContent).indexOf(q) !== -1;
-          li.style.display = match ? '' : 'none';
-          if (match) shown++;
+        var hit = [];
+        rows.forEach(function (row) {
+          var match = q === '' || row.text.indexOf(q) !== -1;
+          row.li.style.display = match ? '' : 'none';
+          if (match) {
+            shown++;
+            if (row.group && hit.indexOf(row.group) === -1) hit.push(row.group);
+          }
         });
         groups.forEach(function (g) {
-          var any = Array.prototype.slice.call(g.querySelectorAll('li'))
-                      .some(function (li) { return li.style.display !== 'none'; });
-          g.style.display = any ? '' : 'none';
+          var any = hit.indexOf(g) !== -1;
+          // A group whose every row filtered out goes with them, so the list
+          // never leaves a heading standing over nothing.
+          g.parentNode.style.display = (q === '' || any) ? '' : 'none';
+          g.open = q !== '' && any;
         });
         if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
       };

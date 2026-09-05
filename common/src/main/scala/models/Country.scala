@@ -72,10 +72,11 @@ sealed abstract class Country(
   def servesApex(host: String): Boolean = pathPrefix.isEmpty && Country.isApexHost(host)
 
   /** How the picker at `/` ARRANGES [[cities]]: empty for a flat list (Poland's
-   *  41, the UK's 79, Germany's 158 — a name is all a visitor needs), one group
-   *  per US state, because "Los Angeles" is found under "California" and a bare
-   *  A-to-Z of 457 metros is not a list anybody reads. Where it is non-empty the
-   *  groups PARTITION [[cities]] — `CountrySpec` holds that. */
+   *  41, Germany's 158, Spain's 52 — a name is all a visitor needs), one group
+   *  per US state or per UK nation, because "Los Angeles" is found under
+   *  "California" and neither 457 metros nor 79 counties is a list anybody reads
+   *  straight through. Where it is non-empty the groups PARTITION [[cities]] —
+   *  `CountrySpec` holds that. */
   def cityGroups: Seq[CityGroup] = Nil
 
   /** The two [[Showtime.format]] tokens THIS country's sources mark a subtitled
@@ -178,6 +179,9 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.ukCities
+    /** The four nations plus the Crown Dependencies, each over the counties and
+     *  cities inside it — 79 places is not an A-to-Z anybody reads. */
+    override val cityGroups: Seq[CityGroup] = City.ukNations
     // Britain subtitles rather than dubs: `SUB` (captions, 4,000 screenings on
     // 2026-09-02) is the one a visitor filters for, `DUB` the rare foreign-language
     // print. Both are what the chains' own labels normalise to.

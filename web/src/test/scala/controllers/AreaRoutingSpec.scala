@@ -62,6 +62,14 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     messages       = testsupport.TestMessages.forLang("en"),
   )._1
 
+  private def ukController(): MovieController = TestMovieController.build(
+    Seq(
+      (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
+    ),
+    servingCountry = Country.UnitedKingdom,
+    messages       = testsupport.TestMessages.forLang("en"),
+  )._1
+
   private def req(path: String) =
     FakeRequest(GET, path).withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
 
@@ -107,6 +115,19 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     // two identical options, which is why the US switcher is grouped at all.
     html should include ("""<optgroup label="Pennsylvania">""")
     html should include ("""<optgroup label="New Jersey">""")
+  }
+
+  "A UK page's city switcher" should "group its counties by nation, the same arrangement its picker uses" in {
+    // The switcher reads `Country.cityGroups` — the same grouping the landing
+    // picker does — so giving the UK nations arranges BOTH. 79 options in one
+    // run is the same unreadable list on a `<select>` as on a page.
+    val html = contentAsString(ukController().index("london")(req("/london/")))
+    html should include ("""<optgroup label="England">""")
+    html should include ("""<optgroup label="Scotland">""")
+    html should include ("""<optgroup label="Crown Dependencies">""")
+    html should include ("""<option value="glasgow">Glasgow</option>""")
+    // A nation is a heading, never an option: `/scotland/` is not a page.
+    html should not include """<option value="scotland">"""
   }
 
   "A small metro" should "leave its cinema list flat rather than wrapping it in one group" in {

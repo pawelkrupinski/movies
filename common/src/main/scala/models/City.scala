@@ -981,13 +981,36 @@ final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: 
 }
 
 /** A named group of [[City]]s in a picker — a US STATE over its metros
- *  ("California → Los Angeles", the way a visitor finds one). The state is not
- *  a place you can open: `/california/` is nothing, and its films live at
+ *  ("California → Los Angeles", the way a visitor finds one), or a UK NATION
+ *  over its counties ("Scotland → Fife"). Ordinarily the group is not a place
+ *  you can open: `/california/` is nothing, and its films live at
  *  `/los-angeles/`. It is how the list of them is arranged, and nothing else.
  *
- *  Every other country's picker is one flat list, so `Country.cityGroups` is
- *  empty there rather than one group per city. */
-final case class CityGroup(label: String, slug: String, cities: Seq[City])
+ *  The exception is [[soleCity]] — see there.
+ *
+ *  A country whose picker is one flat list (Poland, Germany, Spain) leaves
+ *  `Country.cityGroups` empty rather than declaring one group per city. */
+final case class CityGroup(label: String, slug: String, cities: Seq[City]) {
+
+  /** The city this group IS, where the grouping level and the place are the same
+   *  thing — and `None` for a group that only arranges other places.
+   *
+   *  Seven US states and territories are too small to cut into metros (Delaware,
+   *  Vermont, DC, Guam, …), so the state's own venue list IS its page and
+   *  `UsRoster.places` emits it as a place under its own state slug. The picker
+   *  then held a heading you had to open to reveal a single row repeating it.
+   *  Such a group is offered as a plain link straight to that page instead.
+   *
+   *  Keyed on the SLUG rather than on `cities.sizeIs == 1`: a one-city group
+   *  whose city is addressed elsewhere (the District of Columbia, whose single
+   *  metro is `/washington/`) is still a grouping — its own name is not
+   *  reachable any other way, and dropping the heading would lose it. Only a
+   *  group standing exactly where its city stands can collapse into it. */
+  def soleCity: Option[City] = cities match {
+    case Seq(only) if only.slug == slug => Some(only)
+    case _                              => None
+  }
+}
 
 object City {
 
@@ -1022,6 +1045,53 @@ object City {
   /** The authoritative UK list for [[Country.UnitedKingdom]] — the live subset
    *  of [[allUkCities]], kept in that list's declared order. */
   private[models] val ukCities: Seq[City] = allUkCities.filter(activeUkCities)
+
+  /** The UK picker's grouping: one entry per NATION, over the counties and
+   *  cities inside it.
+   *
+   *  79 places is past what anyone reads as one A-to-Z — the same problem the US
+   *  has at 457 — but the UK's answer is a level UP rather than one down. A
+   *  Flicks region already IS the county ("Cheshire", "Cornwall", "Kent"), with
+   *  a handful of cities big enough to be regions in their own right (London,
+   *  Birmingham, Glasgow); there is nothing to cut them into, so what the list
+   *  wants is the nation above them.
+   *
+   *  Declared as a table rather than derived, because nothing in a `UkCity`
+   *  knows its nation: the roster is hand-authored `case object`s carrying a
+   *  slug, a label and a fix, and a county's nation is not a fact any of those
+   *  imply. Ordered by size, not alphabetically — England first is the order a
+   *  visitor scans, and `Country.cityGroups` is a picker's arrangement.
+   *
+   *  Every LIVE city appears exactly once (`CountrySpec` holds that, the same
+   *  partition it holds over the US states — a county reachable from no nation
+   *  is a county nobody can find), so narrowing
+   *  [[activeUkCities]] drops rows here without leaving an empty nation
+   *  standing; a nation nobody is live in falls out entirely. */
+  private[models] val ukNations: Seq[CityGroup] = Seq(
+    ("England",   "england", Seq[City](
+      Bedfordshire, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cheshire, Cornwall,
+      CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Dudley, EastSussex, EastYorkshire, Essex,
+      Gloucestershire, Hampshire, Herefordshire, Hertfordshire, IsleOfWight, Kent, Lancashire, Leicestershire,
+      Lincolnshire, Liverpool, London, Manchester, NorthYorkshire, Northamptonshire, Northumberland,
+      Norwich, Nottinghamshire, Oxfordshire, Sandwell, Shropshire, Somerset, SouthYorkshire, Staffordshire,
+      Suffolk, Surrey, TyneAndWear, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire,
+      Yorkshire,
+    )),
+    ("Scotland",  "scotland", Seq[City](
+      Aberdeenshire, AyrshireAndArran, CentralScotland, DumfriesAndGalloway, DunbartonshireArgyllBute,
+      EdinburghAndLothians, Fife, Glasgow, HighlandsAndIslands, Lanarkshire, Renfrewshire,
+      RoxburghEttrickAndLauderdale, Tayside,
+    )),
+    ("Wales",     "wales", Seq[City](Cardiff, Clwyd, Dyfed, Glamorgan, Gwent, Gwynedd, Powys)),
+    ("Northern Ireland", "northern-ireland", Seq[City](
+      Antrim, Armagh, Belfast, Down, Fermanagh, Londonderry, Tyrone,
+    )),
+    // Not part of the UK, but served by the same Flicks market and reached from
+    // the same picker, so they need a heading rather than a nation to be filed
+    // under wrongly.
+    ("Crown Dependencies", "crown-dependencies", Seq[City](Guernsey, IsleOfMan, Jersey)),
+  ).map { case (label, slug, cities) => CityGroup(label, slug, cities.filter(activeUkCities)) }
+    .filter(_.cities.nonEmpty)
 
   /** Germany's cities — the authoritative list for [[Country.Germany]]. The full
    *  158-region roster, materialised data-driven from `GermanRosterData` (see

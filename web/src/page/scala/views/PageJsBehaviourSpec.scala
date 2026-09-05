@@ -82,6 +82,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // inline city-search filter. City-independent, so served off-prefix.
       val landingHtml: String = views.html.landing(models.Country.default).body
 
+      // The GROUPED landing — the same page for a country whose places are found
+      // through a heading (`Country.cityGroups`). Poland's is one flat list, so
+      // nothing above reaches the disclosure the US and the UK render instead:
+      // 55 collapsed states over 468 metros, and the seven that are a state and a
+      // place at once. Rendered under the English bundle that host serves.
+      val groupedLandingHtml: String =
+        views.html.landing(models.Country.UnitedStates)(using testsupport.TestMessages.forLang("en")).body
+
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
@@ -215,6 +223,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if sub(p) == "/movie-many" => manyCinemasHtml
           // The city-selection landing (no city prefix — there's no city yet).
           case "/landing" => landingHtml
+          // Its grouped variant — same template, a country with `cityGroups`.
+          case "/landing-grouped" => groupedLandingHtml
           // The global-corpus /debug page (no city prefix).
           case "/debug" => debugHtml
           // Isolated single-row /debug variant for the Cinemas-cell layout test.
@@ -254,6 +264,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onLanding(body: CdpPage => Any): Unit =
     chrome match {
       case Some(c) => c.openPage(server.baseUrl + "/landing")(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  /** Open the GROUPED city-selection landing — the US one, whose metros sit
+   *  behind a state heading. */
+  private def onGroupedLanding(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + "/landing-grouped")(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -381,6 +399,130 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLanding { page =>
       typeCitySearch(page, "zzzzz")
       visibleCities(page) shouldBe "[]"
+      page.evalBool(
+        "getComputedStyle(document.getElementById('city-empty')).display !== 'none'"
+      ) shouldBe true
+    }
+  }
+
+  // ── grouped landing: the state/nation disclosures ────────────────────────
+  //
+  // A country with 468 metros or 79 counties does not get one A-to-Z. Its places
+  // sit behind a heading you open — a native `<details>`, so it works before the
+  // script does — and the search has to reach through those headings, because a
+  // match nobody can see is a match that did not happen.
+
+  /** The elements matching `sel` that a reader can actually see, as a JS
+   *  expression yielding an Array.
+   *
+   *  `checkVisibility` rather than `display` or `getClientRects()`, because the
+   *  two mechanisms this list hides rows by answer differently to everything
+   *  else. The filter sets `display:none`; a shut `<details>` skips its content
+   *  instead (`content-visibility`), which leaves the rows' computed display
+   *  untouched AND — measured on Chrome 152 — still laying out, one client rect
+   *  each. `checkVisibility` is the one question both answer honestly. */
+  private def renderedIn(sel: String): String =
+    "Array.prototype.filter.call(" +
+    s"document.querySelectorAll('$sel')," +
+    "function(el){return el.checkVisibility({checkVisibilityCSS:true});})"
+
+  /** JSON array of the trimmed text of every element matching `sel` a reader
+   *  can see. */
+  private def renderedTexts(page: CdpPage, sel: String): String =
+    page.evalString(
+      s"JSON.stringify(${renderedIn(sel)}.map(function(el){return el.textContent.trim();}))")
+
+  /** How many elements matching `sel` a reader can see. */
+  private def renderedCount(page: CdpPage, sel: String): Int =
+    page.evalInt(s"${renderedIn(sel)}.length")
+
+  /** Click the group heading whose label is exactly `label`. */
+  private def clickGroup(page: CdpPage, label: String): Unit =
+    page.eval(
+      "Array.prototype.filter.call(document.querySelectorAll('#city-list summary')," +
+      s"""function(s){return s.textContent.trim()==="$label";})[0].click()""")
+
+  private val AnyGroupedCity = "#city-list details.city-group a"
+
+  "the grouped city-selection landing" should
+    "start with every group shut, so the list is its headings and nothing else" in {
+    onGroupedLanding { page =>
+      // 55 states and territories — the whole list a visitor first sees, minus
+      // the seven that are a place in their own right and link straight through.
+      val headings = renderedCount(page, "#city-list summary")
+      val direct   = renderedCount(page, "#city-list > li > a")
+      headings + direct shouldBe models.Country.UnitedStates.cityGroups.size
+      headings should be > 40
+      // Not one of the 468 metros is on screen yet.
+      renderedCount(page, AnyGroupedCity) shouldBe 0
+      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 0
+    }
+  }
+
+  it should "reveal a state's metros when its heading is clicked, and hide them again" in {
+    onGroupedLanding { page =>
+      clickGroup(page, "California")
+      renderedTexts(page, AnyGroupedCity) should include ("Los Angeles")
+      // Only that state opened — its neighbour's metros stay put away.
+      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 1
+      renderedTexts(page, AnyGroupedCity) should not include "Houston"
+
+      clickGroup(page, "California")
+      renderedCount(page, AnyGroupedCity) shouldBe 0
+    }
+  }
+
+  it should "link a state that IS a place straight to it, with no heading to open" in {
+    onGroupedLanding { page =>
+      // Delaware is too small to cut into metros, so `/delaware/` is the page —
+      // a heading you open to find one row repeating its own name is a step that
+      // buys nothing. See `CityGroup.soleCity`.
+      renderedTexts(page, """#city-list > li > a[href="/delaware/"]""") shouldBe """["Delaware"]"""
+      renderedTexts(page, "#city-list summary") should not include "Delaware"
+      // California is the other half of that rule: many metros, so a heading.
+      renderedTexts(page, "#city-list summary") should include ("California")
+    }
+  }
+
+  it should "open the group a search hit is in — a match behind a shut heading is invisible" in {
+    onGroupedLanding { page =>
+      typeCitySearch(page, "los angeles")
+      renderedTexts(page, AnyGroupedCity) shouldBe """["Los Angeles"]"""
+      renderedTexts(page, "#city-list summary") shouldBe """["California"]"""
+      // The direct-link states filter out with everyone else.
+      renderedCount(page, """#city-list > li > a[href="/delaware/"]""") shouldBe 0
+    }
+  }
+
+  it should "match a metro on its STATE's name, which is how a visitor looks for it" in {
+    onGroupedLanding { page =>
+      // Nobody types "Los Angeles" to find out what California has. The heading
+      // is the term the list taught them, so it has to be a term the box takes.
+      typeCitySearch(page, "california")
+      renderedTexts(page, "#city-list summary") shouldBe """["California"]"""
+      val shown = renderedCount(page, AnyGroupedCity)
+      shown shouldBe models.Country.UnitedStates.cityGroups.find(_.label == "California").get.cities.size
+      shown should be > 1
+    }
+  }
+
+  it should "shut every group again when the query is cleared" in {
+    onGroupedLanding { page =>
+      typeCitySearch(page, "los angeles")
+      typeCitySearch(page, "")
+      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 0
+      renderedCount(page, AnyGroupedCity) shouldBe 0
+      // …and every heading is back, including the ones the query filtered out.
+      renderedCount(page, "#city-list summary") +
+        renderedCount(page, "#city-list > li > a") shouldBe models.Country.UnitedStates.cityGroups.size
+    }
+  }
+
+  it should "show the empty-state when nothing matches, headings included" in {
+    onGroupedLanding { page =>
+      typeCitySearch(page, "zzzzz")
+      renderedCount(page, "#city-list summary") shouldBe 0
+      renderedCount(page, AnyGroupedCity) shouldBe 0
       page.evalBool(
         "getComputedStyle(document.getElementById('city-empty')).display !== 'none'"
       ) shouldBe true
