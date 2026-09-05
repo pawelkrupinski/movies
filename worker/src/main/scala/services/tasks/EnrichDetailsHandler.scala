@@ -39,6 +39,13 @@ object EnrichDetailsTasks {
    *  [[enqueueIfDue]] instead — it must gate on the same [[DueWindow]] the handler
    *  re-gates on, or it churns the queue. (`!isFresh ⟹ isDue`, so a task these
    *  one-shot paths enqueue is always still due at the handler — never churned.) */
+  /** The freshness key marking that this detail page was READ, as opposed to merely
+   *  asked for. Distinct from the task's own dedup key because the `Gone` branch
+   *  stamps that one to stop a 404 re-enqueueing every tick — so it answers "we asked
+   *  recently", never "we have data". The handler reads this one to decide whether a
+   *  fetch is a RE-read, and therefore authoritative over the listing. */
+  def readMarker(dedupKey: String): String = s"$dedupKey|read"
+
   def enqueueIfStale(queue: TaskQueue, freshness: FreshnessStore, enricher: DetailEnricher, key: CacheKey, ref: String): Boolean = {
     val dk = dedupKey(enricher.detailGroup, key)
     !freshness.isFresh(dk, FreshnessKind.DetailEnrich) &&
@@ -185,7 +192,12 @@ class EnrichDetailsHandler(
             // runtime for ever, because the fill-only merge has nothing to fill.
             // The FIRST read stays fill-only, so the listing keeps out-ranking the
             // detail page exactly as before wherever both speak.
-            val isRefresh = freshness.lastFetchedAt(key).isDefined
+            // Not `lastFetchedAt(key)`: the `Gone` branch above stamps that same key to
+            // stop the re-enqueue livelock, so a page that 404s once and later returns
+            // would read as "seen before" and make its FIRST real read authoritative —
+            // letting the detail page overwrite the listing's year and re-key the row.
+            // A 404 is not a read. Only a successful one stamps this marker.
+            val isRefresh = freshness.lastFetchedAt(EnrichDetailsTasks.readMarker(key)).isDefined
             // Merge into the target slot(s), creating one if absent: a chain's network
             // source has no slot from a listing scrape, so it must be added here;
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
@@ -201,6 +213,7 @@ class EnrichDetailsHandler(
                                   })),
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
+            freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich)
             uptime.recordSuccess(service)
             // The detail just landed → enrich the film now, with the better hints.
             if (wasPending) bus.publish(MovieDetailsComplete.forRow(title, year, cache.get(rowKey)))

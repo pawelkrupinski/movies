@@ -34,17 +34,18 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
 
   /** A cache pre-seeded with one (KinoApollo, title) row whose slot carries
    *  showtimes but no detail — exactly what a bare scrape leaves behind. */
-  private def seededCache(title: String) = {
+  private def seededCache(title: String, listedYear: Option[Int] = None) = {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), new InProcessEventBus(), normalizer = titleNormalizer)
-    val bare = CinemaMovie(Movie(title), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
+    val bare = CinemaMovie(Movie(title, releaseYear = listedYear), KinoApollo, posterUrl = None, filmUrl = Some("http://ref"),
       synopsis = None, cast = Seq.empty, director = Seq.empty,
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 7, 18, 0), Some("https://book"))))
     cache.recordCinemaScrape(KinoApollo, Seq(bare))
     cache
   }
 
-  private def taskFor(group: String, cache: CaffeineMovieCache, title: String, enricher: DetailEnricher) = {
-    val key = cache.keyOf(title, None)
+  private def taskFor(group: String, cache: CaffeineMovieCache, title: String, enricher: DetailEnricher,
+                      year: Option[Int] = None) = {
+    val key = cache.keyOf(title, year)
     Task("id", TaskType.EnrichDetails, EnrichDetailsTasks.dedupKey(group, key),
       EnrichDetailsTasks.payload(enricher, key, "http://ref"), attempts = 1)
   }
@@ -303,5 +304,35 @@ class EnrichDetailsHandlerSpec extends AnyFlatSpec with Matchers {
     slot.flatMap(_.runtimeMinutes) shouldBe Some(162)
     slot.map(_.director)           shouldBe Some(Seq("Maciej Kawalski"))
     withClue("the listing's showtimes must survive a refresh: ")(slot.map(_.showtimes.size) shouldBe Some(1))
+  }
+
+  // A 404 is not a read. The `Gone` branch stamps the task's own freshness key to stop
+  // the re-enqueue livelock, and reading that back as "we have seen this page" made a
+  // recovered page's FIRST real read authoritative — so the detail page could overwrite
+  // the listing's year and re-key the row, which is exactly what the fill-only first
+  // read exists to prevent.
+  it should "treat the first successful read as a first read even after the page 404ed" in {
+    // The LISTING already states 2026. A first read must not be able to overrule it.
+    val cache = seededCache("Lalka", listedYear = Some(2026))
+    val fresh = new InMemoryFreshnessStore
+    val gone  = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      failure = Some(new HttpStatusException(404, "GET", "http://ref", None)))
+    val task  = taskFor("kino-apollo", cache, "Lalka", gone, year = Some(2026))
+
+    new EnrichDetailsHandler(Map("kino-apollo" -> gone), cache, fresh, new UptimeMonitor(), noBus, dueWindow)
+      .handle(task) shouldBe Done
+
+    // Days later the page comes back. Age the 404's own stamp so the due gate lets
+    // this through — that stamp is the livelock guard, not evidence of a read.
+    fresh.markFresh(task.dedupKey, FreshnessKind.DetailEnrich, Instant.now().minus(2, ChronoUnit.DAYS))
+    // This is the page's FIRST read, so it must FILL, not overwrite — the listing's
+    // own year has to survive.
+    val back = new FakeDetailEnricher(KinoApollo, "kino-apollo",
+      Some(FilmDetail(releaseYear = Some(1968), runtimeMinutes = Some(151), director = Seq("Wojciech Has"))))
+    new EnrichDetailsHandler(Map("kino-apollo" -> back), cache, fresh, new UptimeMonitor(), noBus, dueWindow)
+      .handle(task) shouldBe Done
+
+    val slot = cache.get(cache.keyOf("Lalka", Some(2026))).flatMap(_.cinemaData.get(KinoApollo))
+    withClue(s"slot=$slot: ")(slot.flatMap(_.releaseYear) shouldBe Some(2026))
   }
 }

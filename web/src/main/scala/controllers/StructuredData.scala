@@ -76,7 +76,12 @@ object StructuredData {
     // Distinct on the ASSIGNED slug rather than the title: same-titled films
     // are separate entries with separate URLs, and collapsing them by title
     // hid one of the two from the crawlable index.
-    val entries = films.map(f => (f.slug, f.movie.title)).distinct.sortBy(_._2)
+    // Sorted on (title, SLUG), not title alone: same-titled films are exactly what the
+    // assigned slug exists to tell apart, and a title-only sort leaves them tied — the
+    // stable sort then falls back to `films` order, which is by earliest showtime and
+    // shifts through the day, so their `position` values swapped between renders of the
+    // same page. The slug is unique and stable, which is why `SitemapBuilder` sorts on it.
+    val entries = films.map(f => (f.slug, f.movie.title)).distinct.sortBy(e => (e._2, e._1.getOrElse("")))
     val items = entries.zipWithIndex.map { case ((slug, title), i) =>
       Json.obj(
         "@type" -> "ListItem", "position" -> (i + 1),

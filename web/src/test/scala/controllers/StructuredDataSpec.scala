@@ -35,6 +35,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     r: ResolvedRatings = ratings(imdb = Some(8.5)),
     posterUrl: Option[String] = Some("https://img.example/poster.jpg"),
     synopsis: Option[String] = Some("Paul Atryda jednoczy plemiona Fremenów."),
+    slugOverride: Option[String] = None,
   ): FilmSchedule = {
     val byDate = showtimes.groupBy(_._2.toLocalDate).toSeq.sortBy(_._1).map { case (d, slots) =>
       val perCinema = slots.groupBy(_._1).toSeq.map { case (cinema, ss) =>
@@ -47,7 +48,8 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
         countries = Seq("USA"), genres = Seq("Sci-Fi", "Dramat")),
       posterUrl = posterUrl, synopsis = synopsis,
       cast = Seq("Timothée Chalamet", "Zendaya"), director = Seq("Denis Villeneuve"),
-      cinemaFilmUrls = Nil, showings = byDate, resolved = resolved(title, r), slug = FilmHref.slugOf(title),
+      cinemaFilmUrls = Nil, showings = byDate, resolved = resolved(title, r),
+      slug = slugOverride.orElse(FilmHref.slugOf(title)),
     )
   }
 
@@ -97,6 +99,23 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     (items.head \ "url").as[String]         shouldBe "https://kinowo.net/poznan/movie/amelia"
     (list \ "numberOfItems").as[Int]        shouldBe 2
     (list \ "name").as[String]              shouldBe "Repertuar kin w Poznaniu"
+  }
+
+  // Same-titled films are the whole reason entries carry an assigned SLUG, and a
+  // title-only sort leaves them tied — so the stable sort falls back to the order
+  // `films` arrives in, which is by earliest showtime and shifts through the day.
+  // Their `position` values then swap between renders of the same page.
+  it should "order same-titled films stably rather than by whichever screens first" in {
+    def listing(films: Seq[FilmSchedule]) =
+      (byType(parseArray(StructuredData.cityPage("https://kinowo.net/poznan/", Poznan, films)), "ItemList").head
+        \ "itemListElement").as[JsArray].value.map(i => (i \ "url").as[String])
+
+    val early = film("Zaproszenie", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None)),
+                     slugOverride = Some("zaproszenie-2026"))
+    val late  = film("Zaproszenie", Seq((Helios, LocalDateTime.of(2026, 5, 17, 22, 0), None)),
+                     slugOverride = Some("zaproszenie"))
+
+    listing(Seq(early, late)) shouldBe listing(Seq(late, early))
   }
 
   it should "name the ItemList in the deployment's language (English for a UK city)" in {
