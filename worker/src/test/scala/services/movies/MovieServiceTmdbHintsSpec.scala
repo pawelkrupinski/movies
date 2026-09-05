@@ -340,4 +340,58 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
 
     resolved.flatMap(_.tmdbId) shouldBe Some(118257)
   }
+
+  /**
+   * A title a PREVIOUS resolution wrote must never outrank the title the CINEMAS
+   * published — the original-title half of the hint leak the director test above
+   * closes.
+   *
+   * `resolveTmdbId` deliberately folds every slot's `originalTitle` into the
+   * director-walk's candidate set, derived Tmdb/Imdb/Filmweb slots included: that
+   * is how a film TMDB doesn't index under its Polish title gets found once
+   * Filmweb supplies the original (`MovieRecord.resolverOriginalTitles`). But the
+   * walk treated all candidates as one flat set and broke ties by LOWEST TMDB ID,
+   * so a mis-resolution's own original title competed with the cinemas' title on
+   * equal terms — and won whenever the wrong film happened to carry the lower id.
+   *
+   * Poland's "Mistyczka" is the worked example. Every cinema calls it "Mistyczka"
+   * (Jan Sobierajski, 2026); the row had drifted onto Sobierajski's OTHER 2026
+   * film, "Maryja. Matka papieża" (tmdb 1646379), so the Filmweb and IMDb slots
+   * both said "Maryja. Matka Papieża". Once TMDB listed the real film
+   * (tmdb 1731866) both credits matched a candidate exactly — and 1646379 < 1731866,
+   * so the row re-confirmed the wrong film every cycle and served its original
+   * title, ratings and Filmweb URL.
+   *
+   * The fix ranks a credit matching a CINEMA-reported title above one matching a
+   * derived title; the derived titles still resolve when no cinema title matches
+   * any credit, which is the case they were added for.
+   */
+  it should "prefer a credit matching a CINEMA title over one matching a derived slot's original title" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"              -> """{"results":[]}""",
+      "query=Jan+Sobierajski"      -> """{"results":[{"id":9001,"name":"Jan Sobierajski","known_for_department":"Directing"}]}""",
+      "/person/9001/movie_credits" -> """{"crew":[
+        |{"id":1646379,"title":"Maryja. Matka papieża","original_title":"Maryja. Matka papieża",
+        | "release_date":"2026-04-17","department":"Directing","popularity":2.0},
+        |{"id":1731866,"title":"Mistyczka","original_title":"Mistyczka",
+        | "release_date":"2026-09-11","department":"Directing","popularity":1.0}
+        |]}""".stripMargin,
+      "/movie/1646379/external_ids" -> """{"id":1646379,"imdb_id":"tt42003610"}""",
+      "/movie/1731866/external_ids" -> """{"id":1731866,"imdb_id":null}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // Production's row shape: the cinemas report only "Mistyczka"; the derived
+    // slots carry the previous (wrong) resolution's original title.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios  -> SourceData(title = Some("Mistyczka"), director = Seq("Jan Sobierajski")),
+      Imdb    -> SourceData(originalTitle = Some("Maryja. Matka Papieza")),
+      Filmweb -> SourceData(originalTitle = Some("Maryja. Matka Papieża"))
+    ))
+    val resolved = service.resolveStagingRecord("Mistyczka", Some(2026), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(1731866)
+  }
 }

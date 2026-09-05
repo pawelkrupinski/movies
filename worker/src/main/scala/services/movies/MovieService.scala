@@ -7,7 +7,7 @@ import services.cinemas.CountryNames
 import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
-import services.resolution.{ResolutionCache, ResolutionKeys, TmdbBasis}
+import services.resolution.{ResolutionCache, ResolutionKeys, TitleCorroboration, TmdbBasis}
 import services.tasks.RatingTasks
 import tools.{DaemonExecutors, HttpStatusException}
 
@@ -949,10 +949,17 @@ class MovieService(
     // resolves via the raw query — and TMDB is case-insensitive, so trying both
     // costs nothing but covers every spelling. Order is deterministic
     // (`searchTitleCandidates` is pre-sorted), so resolution is order-independent.
-    val candidates = MovieService
-      .searchTitleCandidates(title, originalTitle, extraTitles)
+    def queryForms(titles: Iterable[String]): Seq[String] = MovieService
+      .searchTitleCandidates(title, originalTitle, titles)
       .flatMap(t => Seq(cache.normalizer.apiQuery(t), cache.normalizer.searchQuery(t)))
       .filter(_.nonEmpty).distinct
+    val candidates = queryForms(extraTitles)
+    // The same set restricted to what the CINEMAS published — `title` and
+    // `originalTitle` are already cinema-side (`tmdbHints` reads
+    // `cinemaOriginalTitle`), so only `slotOriginals` is dropped. The walk below
+    // ranks a credit matching one of these ABOVE a credit matching a derived
+    // title, so a row's own previous resolution can never outbid the cinemas.
+    val cinemaCandidates = queryForms(cinemaTitles.toSeq.sorted)
     // Director hints drawn from EVERY cinema slot on the merged row, not just the
     // one cinema event that happened to trigger this stage. Every cinema fires its
     // own `MovieDetailsComplete`, so the triggering event's director varied with
@@ -1079,7 +1086,7 @@ class MovieService(
           // title. CINEMA-only, like every other hint here — reading the merged
           // fields would hand the check the previous resolution's own numbers.
           rowDirectors.iterator
-            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, row.cinemaRuntimesMinutes, row.cinemaCast))
+            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, row.cinemaRuntimesMinutes, row.cinemaCast, cinemaCandidates))
             .nextOption()
             .map(hit => { searchBasis = TmdbBasis.DirectorWalk; hit })
         }
@@ -1210,11 +1217,12 @@ class MovieService(
    *       2026) can't be disambiguated by year, so the walk abstains rather than
    *       guess the first — better no ratings than another film's ratings. */
   private def directorWalk(
-    director:       Option[String],
-    year:           Option[Int],
-    candidates:     Seq[String] = Nil,
-    cinemaRuntimes: Seq[Int] = Nil,
-    cinemaCast:     Seq[String] = Nil
+    director:         Option[String],
+    year:             Option[Int],
+    candidates:       Seq[String] = Nil,
+    cinemaRuntimes:   Seq[Int] = Nil,
+    cinemaCast:       Seq[String] = Nil,
+    cinemaCandidates: Seq[String] = Nil
   ): Option[TmdbClient.SearchResult] = {
     director.flatMap { directory =>
       // Try each person the name could mean, in turn — TMDB's top hit is wrong
@@ -1232,7 +1240,10 @@ class MovieService(
         // be FOUND does not widen what counts as a match.
         val directed = tmdb.personDirectorCredits(personId)
         val credits  = if (directed.nonEmpty) directed else tmdb.personWriterCredits(personId)
-        val wanted  = candidates.iterator.map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
+        def sanitizedSet(titles: Seq[String]): Set[String] =
+          titles.iterator.map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
+        val wanted       = sanitizedSet(candidates)
+        val wantedCinema = sanitizedSet(cinemaCandidates)
         def titleOf(f: TmdbClient.SearchResult): Set[String] =
           (Seq(f.title) ++ f.originalTitle.toSeq).map(cache.normalizer.sanitize).filter(_.nonEmpty).toSet
         // Fuzzy title match, scoped to THIS director's filmography (a small, trusted
@@ -1242,9 +1253,9 @@ class MovieService(
         // (cinema-disagreed, merge-order-dependent) year — "Dalloway" 2025 vs "Gourou"
         // 2026, the SAME-director cross-film flip. A tight edit-distance match (≤2 and
         // ≤1/3 of the longer title) ties "guru"→"gourou" but never "guru"→"dalloway".
-        def titleClose(f: TmdbClient.SearchResult): Boolean =
-          titleOf(f).exists(t => wanted.exists { w =>
-            val d = MovieService.editDistance(w, t)
+        def titleClose(f: TmdbClient.SearchResult, want: Set[String] = wanted): Boolean =
+          titleOf(f).exists(t => want.exists { w =>
+            val d = TitleCorroboration.editDistance(w, t)
             d <= 2 && d * 3 <= math.max(w.length, t.length)
           })
         // Title match first (±1-year-tolerant); fall back to an exact-year match,
@@ -1275,8 +1286,23 @@ class MovieService(
         val eligible = if (wanted.isEmpty) Seq.empty else credits.filter { f =>
           titleClose(f) && year.forall(y => f.releaseYear.forall(fy => math.abs(fy - y) <= 1))
         }
-        val exactTitle = eligible.filter(f => titleOf(f).exists(wanted.contains))
-        val byTitle    = (if (exactTitle.nonEmpty) exactTitle else eligible).minByOption(_.id)
+        // A CINEMA-reported title outranks a title this row's own earlier resolution
+        // wrote. The candidate set deliberately includes the derived Tmdb/Imdb/Filmweb
+        // slots' `originalTitle` — that is how a film TMDB doesn't index under its
+        // Polish title resolves once Filmweb supplies the original — but as one flat
+        // set they competed on equal terms and the lowest-id tie-break decided.
+        // "Mistyczka" (Jan Sobierajski, 2026) had drifted onto his OTHER 2026 film
+        // "Maryja. Matka papieża"; once TMDB listed the real film both credits matched
+        // a candidate exactly and 1646379 < 1731866, so the wrong film re-won every
+        // cycle (`MovieServiceTmdbHintsSpec`). Four tiers, cinema-exact first, each
+        // still tie-broken by lowest id; derived titles resolve only when no cinema
+        // title reaches a credit, which is the case they were added for.
+        val byTitle = Seq(
+          eligible.filter(f => titleOf(f).exists(wantedCinema.contains)),
+          eligible.filter(f => titleClose(f, wantedCinema)),
+          eligible.filter(f => titleOf(f).exists(wanted.contains)),
+          eligible
+        ).find(_.nonEmpty).flatMap(_.minByOption(_.id))
         // The year-pinned branch below exists for films whose Polish title has no
         // TMDB entry at all: pl-PL credits fall back to the ORIGINAL title, so
         // "Giulietta i duchy" faces "Giulietta degli spiriti" and `titleClose`
@@ -1290,21 +1316,11 @@ class MovieService(
         // it, just loosely enough to survive translation: the two must share a
         // distinctive word. Titles of the same film keep a proper noun across
         // languages ("Giulietta", "Munch", "Mavka"); unrelated films share nothing.
-        // Short tokens are excluded because articles and particles ("i", "de",
-        // "la", "the") coincide constantly and would wave anything through.
-        // Transliterate before folding: `sanitize` keeps only a-z0-9, so a
-        // Cyrillic word reduces to nothing and "Mavka. Prawdziwy mit" looks
-        // unrelated to TMDB's "Мавка. Справжній міф" — the SAME proper noun, just
-        // in another alphabet. Ukrainian releases and dubs are a standing part of
-        // the Polish corpus, so the shared word has to survive the script.
-        def tokens(s: String): Set[String] =
-          MovieService.latinise(s).split("[^\\p{L}\\p{N}]+").iterator
-            .map(cache.normalizer.sanitize).filter(_.length >= MovieService.DistinctiveTitleToken).toSet
-
-        def corroboratedByTitle(f: TmdbClient.SearchResult): Boolean = {
-          val creditTokens = (Seq(f.title) ++ f.originalTitle.toSeq).flatMap(tokens).toSet
-          candidates.iterator.map(tokens).exists(w => w.intersect(creditTokens).nonEmpty)
-        }
+        // `TitleCorroboration` owns which words count and how they are folded —
+        // Filmweb's director+year override answers the same question.
+        def corroboratedByTitle(f: TmdbClient.SearchResult): Boolean =
+          TitleCorroboration.sharesDistinctiveToken(
+            candidates, Seq(f.title) ++ f.originalTitle.toSeq, cache.normalizer.sanitize)
 
         // When the title is FULLY translated it keeps nothing to share — "Trener
         // Tenisa" against "Il Maestro", "Kochanie" against "Gioia mia" — and the
@@ -1386,40 +1402,11 @@ class MovieService(
 }
 
 object MovieService {
-  /** Shortest word length that counts as EVIDENCE two titles are the same film.
-   *  Four keeps the proper nouns a translation preserves ("Munch", "Mavka",
-   *  "Giulietta") while dropping the articles and particles that coincide between
-   *  unrelated titles in every language ("i", "de", "la", "the", "und"). */
-  private[movies] val DistinctiveTitleToken = 4
-
   /** How far a cinema's published runtime may sit from TMDB's and still count as
    *  the same film. Two minutes is what the corpus shows genuine pairs differing
    *  by (rounding, and whether the credits roll is counted); the wrong matches it
    *  has to exclude are out by tens of minutes, so there is no need to stretch it. */
   private[movies] val RuntimeAgreementMinutes = 2
-
-  /** Cyrillic → Latin, for comparing a title against one written in another
-   *  alphabet. Scoped deliberately to the director-walk's corroboration check —
-   *  cache keys and display titles are NOT run through it, so nothing about how a
-   *  film is stored or shown changes. Ukrainian and Russian letters only, which is
-   *  what the Polish corpus actually carries (Ukrainian releases and dubs).
-   *
-   *  Digraphs first, so `щ`→"shch" isn't clipped by the `ш`→"sh" rule. Soft and
-   *  hard signs vanish, as they do in every romanisation. */
-  private val CyrillicToLatin: Seq[(String, String)] = Seq(
-    "щ" -> "shch", "ж" -> "zh", "ч" -> "ch", "ш" -> "sh", "ц" -> "ts", "х" -> "kh",
-    "ю" -> "iu", "я" -> "ia", "є" -> "ie", "ї" -> "i", "й" -> "i",
-    "а" -> "a", "б" -> "b", "в" -> "v", "г" -> "h", "ґ" -> "g", "д" -> "d",
-    "е" -> "e", "з" -> "z", "и" -> "y", "і" -> "i", "к" -> "k", "л" -> "l",
-    "м" -> "m", "н" -> "n", "о" -> "o", "п" -> "p", "р" -> "r", "с" -> "s",
-    "т" -> "t", "у" -> "u", "ф" -> "f", "ы" -> "y", "э" -> "e", "ё" -> "e",
-    "ь" -> "", "ъ" -> ""
-  )
-
-  /** Rewrite any Cyrillic in `s` as Latin, leaving everything else untouched. */
-  private[movies] def latinise(s: String): String =
-    if (!s.exists(c => Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CYRILLIC)) s
-    else CyrillicToLatin.foldLeft(s.toLowerCase) { case (acc, (from, to)) => acc.replace(from, to) }
 
   /** What a completed resolution reports back to its callers: the row as re-read
    *  from the cache (`cached`), backfilled from the record we just persisted
@@ -1451,27 +1438,6 @@ object MovieService {
   // Corpus-independent — the same title always produces the same key, so
   // cache lookups + Mongo upserts are stable across refresh ticks regardless
   // of which other films happen to be in the cache at the moment.
-
-  /** Levenshtein edit distance — used to fuzzy-match a cinema's spelling of a
-   *  foreign title against a director's filmography ("guru" ↔ "gourou"). Plain
-   *  two-row DP, O(a·b); titles are short so it's cheap. A pure function. */
-  private[movies] def editDistance(a: String, b: String): Int = {
-    if (a.isEmpty) b.length
-    else if (b.isEmpty) a.length
-    else {
-      var prev = (0 to b.length).toArray
-      for (i <- 1 to a.length) {
-        val curr = new Array[Int](b.length + 1)
-        curr(0) = i
-        for (j <- 1 to b.length) {
-          val cost = if (a(i - 1) == b(j - 1)) 0 else 1
-          curr(j) = math.min(math.min(prev(j) + 1, curr(j - 1) + 1), prev(j - 1) + cost)
-        }
-        prev = curr
-      }
-      prev(b.length)
-    }
-  }
 
   /** Does a cinema-reported director name refer to the same person as a
    *  TMDB-credited one? Two independent signals, EITHER suffices:
