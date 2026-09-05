@@ -178,6 +178,31 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     header("Content-Encoding", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))) shouldBe None
   }
 
+  // One deployment answers on two hosts — a country's own domain and the shared
+  // brand apex — and `og:url`, the canonical link and the JSON-LD are all built
+  // from the request's own origin. The gzip blob has been keyed on the host
+  // since a page was served advertising the other one's canonical URL; the
+  // validator has to name the same thing, or the two hosts' pages share one.
+  "the validator" should "distinguish the two hosts one deployment answers on" in {
+    val (ctrl, _) = buildController()
+    val own   = ctrl.index("poznan")(gzipRequest("/poznan/").withHeaders("Host" -> "kinowo.net"))
+    val apex  = ctrl.index("poznan")(gzipRequest("/poznan/").withHeaders("Host" -> "showtimes.cc"))
+
+    header("ETag", own) shouldBe defined
+    header("ETag", own) should not be header("ETag", apex)
+  }
+
+  it should "distinguish them on a filtered page too, which keeps no blob at all" in {
+    val (ctrl, _) = buildController()
+    val own  = ctrl.index("poznan")(
+      gzipRequest("/poznan/?date=tomorrow").withHeaders("Host" -> "kinowo.net"))
+    val apex = ctrl.index("poznan")(
+      gzipRequest("/poznan/?date=tomorrow").withHeaders("Host" -> "showtimes.cc"))
+
+    header("ETag", own) shouldBe defined
+    header("ETag", own) should not be header("ETag", apex)
+  }
+
   // ── The day the payload was cut for ────────────────────────────────────────
 
   "a zoned payload's validator" should "advance to the new day even when the model has not moved" in {

@@ -458,6 +458,24 @@ class MovieController( cc: ControllerComponents,
       case CachePolicy.EdgeTtl             => Seq("Cache-Control" -> s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}")
       case CachePolicy.Unset               => Nil
     }
+    // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
+    // does not.
+    //
+    // It drops the query string: `?days=7` and the full payload are the same
+    // path, so keying on it alone would serve one client's window to another --
+    // silently, with a 200 and a plausible body. `cacheKey` is the normalised,
+    // parsed parameter rather than the raw query wherever a blob is kept, so a
+    // crawler appending `?foo=1` cannot mint unbounded entries.
+    //
+    // It also drops the HOST, and one deployment serves two of them -- a
+    // country's own domain and the shared brand apex (`Country.servesApex`).
+    // `og:url`, `<link rel=canonical>` and the JSON-LD are all built from
+    // `PageMeta.origin`, so a blob rendered for the first host was handed to
+    // the second advertising the wrong canonical URL for the page. A SHARED
+    // cache keys on host itself and never saw this; it was ours getting it
+    // wrong.
+    val bodyKey = PageMeta.host(request) + request.path + cacheKey
+
     // AN ETAG AS WELL AS Last-Modified, BECAUSE A SHARED CACHE NEEDS ONE.
     //
     // Measured against the live edge on 2026-09-05: once Cloudflare holds a copy,
@@ -467,34 +485,21 @@ class MovieController( cc: ControllerComponents,
     // 304s for ~750 KB payloads: better for the origin, worse for the phone.
     // `/api/catalog` never had the problem precisely because it carries one.
     //
-    // Derived from the read-model version and the cache key rather than hashing
-    // the body: the body is the expensive thing here (it is why the gzip cache
-    // exists) and the version already changes exactly when the body does. The
-    // key is in it so two windows of the same path cannot share a validator.
-    val etag = "\"" + Integer.toHexString((request.path + cacheKey).hashCode) + "-" + lastMod.getEpochSecond.toHexString + "\""
+    // Derived from the read-model version and `bodyKey` rather than hashing the
+    // body: the body is the expensive thing here (it is why the gzip cache
+    // exists) and the version already changes exactly when the body does. ONE
+    // key answers both "which body is this" questions -- which blob to reuse,
+    // and which validator to stamp -- so the two cannot disagree about what
+    // counts as a different page. They used to: the blob learned about the host
+    // (below) and the ETag did not, leaving both hosts' pages sharing a
+    // validator that named only the path.
+    val etag = "\"" + Integer.toHexString(bodyKey.hashCode) + "-" + lastMod.getEpochSecond.toHexString + "\""
     val validators: Seq[(String, String)] = ("Last-Modified" -> httpDate) +: ("ETag" -> etag) +: cacheControl
 
     if (request.headers.get("If-None-Match").contains(etag) || ifModifiedSinceCurrent(request, lastMod))
       NotModified.withHeaders(validators*)
     else if (acceptsGzip(request) && cacheBody) {
-      // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
-      // does not.
-      //
-      // It drops the query string: `?days=7` and the full payload are the same
-      // path, so keying on it alone would serve one client's window to another --
-      // silently, with a 200 and a plausible body. `cacheKey` is the normalised,
-      // parsed parameter rather than the raw query, so a crawler appending
-      // `?foo=1` cannot mint unbounded entries.
-      //
-      // It also drops the HOST, and one deployment serves two of them -- a
-      // country's own domain and the shared brand apex (`Country.servesApex`).
-      // `og:url`, `<link rel=canonical>` and the JSON-LD are all built from
-      // `PageMeta.origin`, so a blob rendered for the first host was handed to
-      // the second advertising the wrong canonical URL for the page. A SHARED
-      // cache keys on host itself and never saw this; it was ours getting it
-      // wrong.
-      val bytes = responseCache.gzippedBody(
-        PageMeta.host(request) + request.path + cacheKey, lastMod)(body)
+      val bytes = responseCache.gzippedBody(bodyKey, lastMod)(body)
       Ok(bytes).as(contentType)
         .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> vary) ++ validators)*)
     } else
@@ -598,6 +603,18 @@ class MovieController( cc: ControllerComponents,
       // the same thing really do render different bytes and must not share a
       // validator. Nothing is stored per key, so an appended `?foo=1` costs a
       // hash and nothing else.
+      //
+      // WHAT THE ETAG PROMISES, PRECISELY: the read-model version this page was
+      // cut from, not a hash of the bytes. With no blob pinning them, a body
+      // re-rendered a few minutes later differs in the showtimes that have since
+      // started -- under the same validator, so a client holding the earlier
+      // copy keeps it until the city's stamp moves or its midnight arrives. That
+      // is the same age the branch above serves from its blob between two stamps,
+      // and the page is built for it: `data-expires` prunes the lapsed showtimes
+      // client-side and `data-next-day` retires the document at midnight. What
+      // it costs that the blob branch does not is byte-identity between two
+      // clients holding one validator, which only a SHARED cache could observe
+      // -- and `private, no-cache` is exactly the instruction that none may.
       conditionalGzipped(request, HtmlContentType, HtmlVary, CachePolicy.BrowserOnly,
                          cacheKey = "|q=" + request.rawQueryString, city = Some(city),
                          cacheBody = false)(renderIndexHtml(city, request).body)
