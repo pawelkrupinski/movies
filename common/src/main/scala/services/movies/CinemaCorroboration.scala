@@ -94,6 +94,12 @@ object CinemaCorroboration {
       .replace('đ', 'd').replace('Đ', 'd')
       .replace("ß", "ss")
 
+  /** One written-out credit standing for the other. Containment rather than
+   *  equality catches a name the venue joins and prefixes, and the length floor
+   *  keeps a short token from being swallowed by an unrelated longer one. */
+  private def joinedMatch(a: String, b: String): Boolean =
+    a == b || (a.length >= 8 && b.contains(a)) || (b.length >= 8 && a.contains(b))
+
   /** Honorific suffixes, dropped before a credit is compared so they cannot pose
    *  as the surname. */
   private val Suffixes = Set("jr", "sr", "ii", "iii", "iv")
@@ -122,10 +128,11 @@ object CinemaCorroboration {
    *  token must still be accounted for — so "A. Wajda" cannot become "Louisa
    *  Proske" on the strength of a shared letter. */
   private def samePerson(a: Seq[String], b: Seq[String]): Boolean =
-    // Whole-string first: the two sides may split a hyphenated surname differently
-    // ("Amrou Al-Kadhi" / "Amrou Alkadhi"), which token-wise looks like an extra
-    // word and written out is the same name.
-    a.mkString == b.mkString || covers(a, b) || covers(b, a) || sameFamiliarForm(a, b)
+    // Whole-string first: the two sides may split a name differently — a hyphenated
+    // surname ("Amrou Al-Kadhi" / "Amrou Alkadhi"), or a Tamil name written as one
+    // word with a given name TMDB omits ("Mathi Maran" / "Pugazhendhi Mathimaran").
+    // Token-wise both look like an extra word; written out one contains the other.
+    joinedMatch(a.mkString, b.mkString) || covers(a, b) || covers(b, a) || sameFamiliarForm(a, b)
 
   /** Every token of `narrow` accounted for by some token of `wide`. */
   private def covers(narrow: Seq[String], wide: Seq[String]): Boolean =
@@ -148,7 +155,7 @@ object CinemaCorroboration {
     a == b ||
       (a.length == 1 && b.startsWith(a)) || (b.length == 1 && a.startsWith(b)) ||
       (a.length >= 5 && b.startsWith(a)) || (b.length >= 5 && a.startsWith(b)) ||
-      (a.length >= 5 && b.length >= 5 && withinOneEdit(a, b)) ||
+      (a.length >= 4 && b.length >= 4 && withinOneEdit(a, b)) ||
       // Two transliterations of one long surname ("Tarkowski" / "Tarkovsky") sit two
       // edits apart, and two DIFFERENT surnames that long rarely do.
       (a.length >= 7 && b.length >= 7 && withinEdits(a, b, 2))

@@ -108,6 +108,17 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
       row(Seq("Alexander Nikolajewitsch Sokurow"), Seq("Alexandre Sokourov"))) shouldBe false
   }
 
+  it should "not read a four-letter surname's single-letter variant as different" in {
+    CinemaCorroboration.contradicts(row(Seq("Christian Nyby"), Seq("Christian Niby"))) shouldBe false
+  }
+
+  // The venue spells a Tamil name as one word and adds a given name TMDB omits:
+  // "Mathi Maran" against "Pugazhendhi Mathimaran". Written out, one name contains
+  // the other.
+  it should "not read a joined name carrying an extra given name as different" in {
+    CinemaCorroboration.contradicts(row(Seq("Mathi Maran"), Seq("Pugazhendhi Mathimaran"))) shouldBe false
+  }
+
   it should "keep a shared first name from merging two directors" in {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Andrzej Żuławski"))) shouldBe true
   }
