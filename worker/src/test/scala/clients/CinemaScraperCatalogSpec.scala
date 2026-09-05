@@ -12,6 +12,7 @@ import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.cinemas.uk.CineworldClient
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
+import services.freshness.{Freshness, FreshnessKind}
 
 import java.time.LocalDate
 import scala.concurrent.duration._
@@ -378,13 +379,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
-  // Helios detail (`/api/movie/{id}`) is identical across all Helios venues and
-  // shared through one chain cache; it refreshes more eagerly than Cinema City's
-  // film page so ratings/runtime changes surface within 2h, not 6h.
-  it should "cache Helios chain detail for 2h and Cinema City for 6h" in {
+  // Both chain detail caches refresh on the same 2h beat, and the number is not
+  // arbitrary: it has to expire INSIDE the DetailEnrich window (see the invariant
+  // below). Cinema City was 6h — exactly the window — so whether a scheduled
+  // refresh did any work depended on which timer won.
+  it should "cache both chains' detail for 2h" in {
     val built = catalog(biletyna = "kino-kameralne")
     built.heliosDetailTtl shouldBe 2.hours
-    built.cinemaCityDetailTtl shouldBe 6.hours
+    built.cinemaCityDetailTtl shouldBe 2.hours
   }
 
   it should "expose only bare lower-case hosts (no scheme, port or path)" in {
@@ -397,12 +399,41 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
-  /** Each chain's detail cache carries its own TTL (Helios 2h, Cinema City 6h), and under
+  /** Each chain's detail cache carries its own TTL, and under
    *  the worker that cache is a Mongo collection whose TTL index is named for the
    *  collection. Two chains asking for one store therefore means one expiry silently
    *  loses — Mongo rejects the second `createIndex` with `IndexOptionsConflict` and
    *  `MongoCachingDetailFetch` logs it and carries on. Whatever the chains are, distinct
    *  TTLs must come with distinct cache names. */
+  /** EVERY chain detail TTL must expire before the refresh window it sits in
+   *  front of. Detail is re-fetched once per `FreshnessKind.DetailEnrich` window;
+   *  a cache that outlives that window answers the refresh from its own copy, so
+   *  the fetch re-parses bytes it already had, produces the identical detail, and
+   *  stamps `lastFetchedAt = now` — a refresh that cannot observe a change,
+   *  recorded as though it had.
+   *
+   *  `CachingDetailFetch.DefaultTtl` is pinned this way in its own spec (12h over
+   *  a 6h window was exactly that bug). The CHAIN TTLs are set here instead, and
+   *  were never covered: Cinema City sat at 6h, EQUAL to the window, which is the
+   *  same defect decided by a race rather than by arithmetic. */
+  it should "give every chain a detail TTL that expires inside the refresh window" in {
+    val window = Freshness.ttlFor(FreshnessKind.DetailEnrich)
+      .getOrElse(fail("DetailEnrich lost its TTL; the chain detail TTLs are defined against it"))
+    val requested = scala.collection.mutable.ListBuffer.empty[(String, FiniteDuration)]
+    new CinemaScraperCatalog(
+      http, mkFetch = http, bnFetch = http, today = LocalDate.of(2026, 6, 6),
+      chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) },
+      zyteFetch = http, flicksFetch = http, vueFetch = http, odeonFetch = http,
+      odeonAuthToken = () => None, titles = titleNormalizer)
+
+    requested should not be empty
+    val tooLong = requested.filter { case (_, ttl) => ttl >= window }
+    withClue(s"these chain detail caches outlive the $window refresh window, so a scheduled " +
+      s"refresh is answered from cache: ${tooLong.mkString(", ")} — ") {
+      tooLong shouldBe empty
+    }
+  }
+
   it should "never let two chains with different detail TTLs share one cache" in {
     val requested = scala.collection.mutable.ListBuffer.empty[(String, FiniteDuration)]
     new CinemaScraperCatalog(
