@@ -203,6 +203,25 @@ for host in "${hosts[@]}"; do
   fi
 done
 
+step "auto-apply classifier"
+# IT DECIDES EVERY DEPLOY ON THIS FLEET BY MATCHING TEXT that a program nobody here controls
+# prints. nixpkgs is free to reword a line, pluralise it, or add one, and every such change lands
+# as a pattern that silently stops matching -- into "nothing would happen", which this file's own
+# header names as its failure mode. `classify_output` was split out so a prover could drive it with
+# recorded output; the prover was never ported, so nothing did until monitoring-1 refused a closure
+# over a missing "s". See test_auto_apply_classify.py.
+if [ -f test/test_auto_apply_classify.py ]; then
+  if out="$(python3 test/test_auto_apply_classify.py 2>&1)"; then
+    echo "  [spec] $(printf '%s' "$out" | grep -cE '\.\.\. ok$') cases pass"
+  else
+    echo "$out"
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_auto_apply_classify.py is missing"
+  failed=1
+fi
+
 step "reboot-required decision"
 # THE ONE PIECE OF FLEET LOGIC WHOSE OTHER TEST IS "REBOOT A MACHINE AND LOOK". It decides
 # `nixos_reboot_required`, which is what the dashboard turns into "reboot owed" -- and it was wrong

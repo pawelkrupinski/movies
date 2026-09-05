@@ -160,7 +160,15 @@ BENIGN_LINES = (
     # deliberately NOT covered by a lookalike rule here -- an existing secret disappearing or
     # changing value out from under a process that already read it is the "changed-but-skipped"
     # shape, not the "arrived from nothing" shape, and stays a person's decision.
-    re.compile(r"^would add secrets: (.+)$"),
+    #
+    # `secrets?` SINCE 2026-09-05, AND THE MISSING "s" COST A BLOCKED HOST. sops-nix pluralises
+    # this line against the NUMBER OF SECRETS IT IS ADDING, and the 2026-08-27 observation happened
+    # to be of a switch adding more than one. monitoring-1 then added exactly one --
+    # `alertmanager/smtp-password`, for the alerting email path -- printed `would add secret:` in
+    # the singular, matched nothing here, and refused the whole closure as `unrecognised_output`.
+    # Recorded verbatim as a case in test/test_auto_apply_classify.py so the singular cannot go
+    # missing again.
+    re.compile(r"^would add secrets?: (.+)$"),
 )
 
 # Lines that name units. `kind` is what would happen; `reload` is the only one an allow-list can
