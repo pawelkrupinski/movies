@@ -20,14 +20,34 @@ package tools
  */
 object PhaseTimer {
 
-  /** Announce `label`, run it, and report the elapsed seconds. */
+  /** Announce `label`, run it, and report the elapsed seconds and the heap it left
+   *  behind. */
   def timed[A](scope: String, label: String)(body: => A): A = {
     val started = System.nanoTime()
     println(s"[$scope] $label …")
     val result = body
-    println(f"[$scope] $label done in ${elapsedSeconds(started)}%.1fs")
+    println(f"[$scope] $label done in ${elapsedSeconds(started)}%.1fs${heapNote()}")
     result
   }
+
+  /** What the phase left resident, in sbt's own `[Heap: … of …]` units so the two
+   *  can be read against each other.
+   *
+   *  Timing alone was not enough. On 2026-09-05 the US order-independence leg exited
+   *  on `-XX:+ExitOnOutOfMemoryError` and every phase in the log reported a healthy
+   *  duration; where the 8 GB had gone had to be reconstructed afterwards from sbt's
+   *  four GC warnings and the shape of the code. A phase that names its heap says it
+   *  at the time, on every run, for the cost of three `Runtime` calls — and it is the
+   *  before/after number for any change that claims to have made a leg fit. */
+  def heapNote(): String = {
+    val runtime = Runtime.getRuntime
+    heapNote(runtime.totalMemory() - runtime.freeMemory(), runtime.maxMemory())
+  }
+
+  private[tools] def heapNote(usedBytes: Long, maxBytes: Long): String =
+    f", heap ${usedBytes.toDouble / Gigabyte}%.2f of ${maxBytes.toDouble / Gigabyte}%.2fGB"
+
+  private val Gigabyte = 1024.0 * 1024.0 * 1024.0
 
   /** A mid-phase heartbeat: `[pl] scrape 150/281 venues in 42.3s`. Long phases without
    *  one are indistinguishable from hung ones. */
