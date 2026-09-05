@@ -327,11 +327,23 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
         app._roster.update(self.CLEAN)
 
     def tearDown(self):
+        # WAIT FOR THE ONE TEST THAT USES A REAL THREAD BEFORE PUTTING ANYTHING BACK. A refresh
+        # still running when `ROSTER_CACHE` is restored writes its fixture -- a fleet of one
+        # invented host -- straight into the operator's own cache file, and the dashboard reads that
+        # at its next start. That is not hypothetical: it happened, and the live page came back
+        # reading "1 declared host(s)" until the next evaluation replaced it.
+        self._settle()
         app.flake_machines, app.flake_fingerprint = self._machines, self._stamp
         app._refresh_in_background = self._refresh
         app.ROSTER_CACHE = self._cache_path
         self.store.cleanup()
         app._roster.update(self.CLEAN)
+
+    @staticmethod
+    def _settle(seconds=5):
+        deadline = time.time() + seconds
+        while app._roster["evaluating"] and time.time() < deadline:
+            time.sleep(0.01)
 
     def _read(self):
         self.reads.append(self.fingerprint)
@@ -433,6 +445,8 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
         self.assertEqual(list(machines), ["mongo-1"])
         self.assertIn("pending", err)
         release.set()
+        self._settle()
+        self.assertEqual(app._roster["fingerprint"], "edited", "the re-read never landed")
 
     def test_only_one_re_read_runs_at_a_time(self):
         app.roster()
