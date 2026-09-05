@@ -36,6 +36,17 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
     CinemaCorroboration.contradicts(row(Seq("Jason Hand", "Dana Ledoux Miller"), Seq("Jason Hand"))) shouldBe false
   }
 
+  // An initial standing in for the full name is the same person: TMDB credits
+  // "Alejandro G. Iñárritu" where the venue writes "Alejandro González Iñárritu".
+  it should "match an initial against the name it abbreviates" in {
+    CinemaCorroboration.contradicts(
+      row(Seq("Alejandro G. Iñárritu"), Seq("Alejandro González Iñárritu"))) shouldBe false
+  }
+
+  it should "not let a bare initial match an unrelated name" in {
+    CinemaCorroboration.contradicts(row(Seq("A. Wajda"), Seq("Louisa Proske"))) shouldBe true
+  }
+
   it should "still catch two genuinely different directors" in {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Louisa Proske"))) shouldBe true
   }

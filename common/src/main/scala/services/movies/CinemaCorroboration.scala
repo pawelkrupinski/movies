@@ -84,7 +84,18 @@ object CinemaCorroboration {
 
   /** One credit naming the same person as the other. Subset rather than equality
    *  so a middle name present on one side only ("Neele Leana Vollmar" against
-   *  TMDB's "Neele Vollmar") is not a different director. */
+   *  TMDB's "Neele Vollmar") is not a different director, and a single-letter token
+   *  matches the name it abbreviates so "Alejandro G. Iñárritu" and "Alejandro
+   *  González Iñárritu" are one person.
+   *
+   *  An initial only ever matches ALONGSIDE the rest of the credit — every other
+   *  token must still be accounted for — so "A. Wajda" cannot become "Louisa
+   *  Proske" on the strength of a shared letter. */
   private def samePerson(a: Set[String], b: Set[String]): Boolean =
-    a.subsetOf(b) || b.subsetOf(a)
+    covers(a, b) || covers(b, a)
+
+  /** Every token of `narrow` accounted for in `wide`, letting a single letter stand
+   *  for a `wide` token that begins with it. */
+  private def covers(narrow: Set[String], wide: Set[String]): Boolean =
+    narrow.forall(t => wide.contains(t) || (t.length == 1 && wide.exists(_.startsWith(t))))
 }
