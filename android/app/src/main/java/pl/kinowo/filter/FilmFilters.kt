@@ -283,15 +283,17 @@ fun List<Film>.groupedByCinema(): List<CinemaSection> {
  *
  * Dropping what every slot shares is what keeps a chip narrow enough for
  * two-per-row (`ShowtimeChipFitTest`) — six chips all saying "2D" tell you
- * nothing. But it was silently swallowing the LANGUAGE VERSION too: a film a
- * cinema screens only dubbed has every slot tagged `2D DUB`, the intersection
- * ate `DUB`, and the card could no longer tell napisy from dubbing. The version
- * now never leaves the chip. Same rule as the web's `CinemaFormat` and iOS's
- * `FormatTokenFilter`.
+ * nothing, and neither do six all saying "NAP" when the cinema screens the film
+ * no other way. What survives is what actually distinguishes one slot from the
+ * next. Same rule as the web's `CinemaFormat` and iOS's `FormatTokenFilter`.
  */
 object FormatTokenFilter {
-    /** The tokens EVERY showtime at [cinema] carries. */
-    fun commonTokens(cinema: CinemaShowings): Set<String> {
+    /** What a chip at [cinema] may drop: the tokens EVERY showtime there
+     *  carries, whatever they name. One that is on every chip separates no slot
+     *  from any other, so a language version goes the same way a screen format
+     *  does — the chips that keep a tag are the ones a visitor is choosing
+     *  between. */
+    fun tokensToStrip(cinema: CinemaShowings): Set<String> {
         val tokenSets = cinema.showtimes
             .map { it.format.split(" ").filter(String::isNotEmpty).toSet() }
             .filter { it.isNotEmpty() }
@@ -299,41 +301,8 @@ object FormatTokenFilter {
         return tokenSets.drop(1).fold(first) { acc, s -> acc.intersect(s) }
     }
 
-    /**
-     * What a chip at [cinema] may drop: everything common to the cinema EXCEPT
-     * the language version, which every chip keeps however uniform the cinema
-     * is. A chip that keeps it is the "2D DUB" shape `ShowtimeChipFitTest` holds
-     * two-per-row against, so this never widens past the guarantee.
-     */
-    fun tokensToStrip(cinema: CinemaShowings): Set<String> =
-        commonTokens(cinema).filterNot(::isLanguageVersion).toSet()
-
     fun filter(format: String, common: Set<String>): String {
         if (common.isEmpty()) return format
         return format.split(" ").filter { it.isNotEmpty() && it !in common }.joinToString(" ")
     }
-
-    /**
-     * Does [token] name a language version — what you will hear and read —
-     * rather than a screen format or an accessibility feature?
-     *
-     * Decided by EXCLUSION, because the version half of the vocabulary is the
-     * open one: it carries every market's own spelling (NAP/DUB/LEK/ORG,
-     * SUB/LEC, VO/VOSE/VOSI/DOB/CAT, OV/OmU/OmeU/DF) AND the audio language
-     * itself wherever a source names one — at a UK multiplex "Hindi" is the
-     * whole difference between two screenings of the same film, and no fixed
-     * list keeps up with that. The screen-format and accessibility halves are
-     * closed, so naming those and taking the complement stays in step with the
-     * server's `ScreeningTokens`, whose three categories partition the same
-     * vocabulary.
-     */
-    fun isLanguageVersion(token: String): Boolean = token.uppercase() !in NonVersionTokens
-
-    /** Screen format + per-screening accessibility — the closed categories. */
-    private val NonVersionTokens = setOf(
-        "2D", "3D", "IMAX", "4DX", "4DE", "SCREENX", "ISENSE", "PLF", "EPIC",
-        "INFINITY", "DBOX", "LASER", "HDR", "ATMOS", "DOLBY", "4K",
-        "70MM", "35MM", "16MM", "VIP", "PREMIUM",
-        "AD", "OC",
-    )
 }

@@ -69,32 +69,32 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
     html should not include "badge-fmt"
   }
 
-  // ── the version never leaves the showtime ─────────────────────────────────
+  // ── a token the whole cinema shares is dropped, version or not ────────────
   //
-  // Stripping tokens common to a cinema keeps a pill narrow, but a LANGUAGE
-  // version is the one thing a visitor is choosing between and it belongs on
-  // the showtime they are about to tap — so it survives the strip however
-  // uniform the cinema is.
+  // Stripping tokens common to a cinema keeps a pill narrow, and a token on
+  // every pill of the group separates no slot from any other — a LANGUAGE
+  // version included. The version earns its place on a pill exactly when the
+  // cinema screens the film more than one way.
 
-  it should "keep a version token on every pill even when the whole cinema shares it" in {
+  it should "drop a version token the whole cinema shares, like any other common token" in {
     val showtimes = Seq(
       Showtime(baseTime,              Some("https://example.com/a"), Some("Sala 1"), List("2D", "DUB")),
       Showtime(baseTime.plusHours(2), Some("https://example.com/b"), Some("Sala 2"), List("2D", "DUB")),
     )
     val html = views.html._filmCards(Seq(schedule(showtimes))).body
-    // Both pills say DUB; the shared "2D" is still dropped.
-    html.split("""<span class="badge-fmt">DUB</span>""").length shouldBe 3
-    html should not include ("""<span class="badge-fmt">2D DUB</span>""")
-    html should not include "cinema-fmt"
+    // Nothing separates the two slots, so neither carries a badge at all.
+    html should not include "badge-fmt"
+    // The full list still reaches the format filter through data-format.
+    html should include ("""data-format="2D DUB"""")
   }
 
-  it should "keep the country's own voice-over token too" in {
+  it should "drop the country's own voice-over token too when it is shared" in {
     val showtimes = Seq(
       Showtime(baseTime,              Some("https://example.com/a"), Some("Sala 1"), List("2D", "LEK")),
       Showtime(baseTime.plusHours(2), Some("https://example.com/b"), Some("Sala 2"), List("2D", "LEK")),
     )
     val html = views.html._filmCards(Seq(schedule(showtimes))).body
-    html should include ("""<span class="badge-fmt">LEK</span>""")
+    html should not include "badge-fmt"
   }
 
   it should "keep a version that differs between slots on each pill" in {
@@ -110,11 +110,11 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
   it should "still drop a screen format the whole cinema shares" in {
     val showtimes = Seq(
       Showtime(baseTime,              Some("https://example.com/a"), Some("Sala 1"), List("IMAX", "NAP")),
-      Showtime(baseTime.plusHours(2), Some("https://example.com/b"), Some("Sala 2"), List("IMAX", "NAP")),
+      Showtime(baseTime.plusHours(2), Some("https://example.com/b"), Some("Sala 2"), List("IMAX", "3D", "NAP")),
     )
     val html = views.html._filmCards(Seq(schedule(showtimes))).body
-    // IMAX on both pills is the noise the stripping exists to remove; NAP is not.
-    html should include ("""<span class="badge-fmt">NAP</span>""")
+    // IMAX and NAP are on both slots; only the 3D that separates them is said.
+    html should include ("""<span class="badge-fmt">3D</span>""")
     html should include ("""data-format="IMAX NAP"""")
     html should not include ("""<span class="badge-fmt">IMAX NAP</span>""")
   }

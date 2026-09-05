@@ -1,8 +1,6 @@
 package pl.kinowo
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.kinowo.TestData.cinema
 import pl.kinowo.TestData.slot
@@ -11,22 +9,22 @@ import pl.kinowo.filter.FormatTokenFilter
 class FormatTokenFilterTest {
 
     @Test
-    fun commonTokensIsTheIntersectionAcrossShowtimes() {
+    fun tokensToStripIsTheIntersectionAcrossShowtimes() {
         // Every slot is 2D, but language differs → only "2D" is common.
         val cg = cinema("X", listOf(slot("10:00", "2D NAP"), slot("12:00", "2D DUB"), slot("20:00", "2D NAP")))
-        assertEquals(setOf("2D"), FormatTokenFilter.commonTokens(cg))
+        assertEquals(setOf("2D"), FormatTokenFilter.tokensToStrip(cg))
     }
 
     @Test
-    fun commonTokensKeepsAllWhenEveryShowtimeMatches() {
+    fun tokensToStripKeepsAllWhenEveryShowtimeMatches() {
         val cg = cinema("X", listOf(slot("10:00", "2D NAP"), slot("12:00", "2D NAP")))
-        assertEquals(setOf("2D", "NAP"), FormatTokenFilter.commonTokens(cg))
+        assertEquals(setOf("2D", "NAP"), FormatTokenFilter.tokensToStrip(cg))
     }
 
     @Test
-    fun commonTokensEmptyWhenNoSharedToken() {
+    fun tokensToStripEmptyWhenNoSharedToken() {
         val cg = cinema("X", listOf(slot("10:00", "2D NAP"), slot("12:00", "3D DUB")))
-        assertEquals(emptySet<String>(), FormatTokenFilter.commonTokens(cg))
+        assertEquals(emptySet<String>(), FormatTokenFilter.tokensToStrip(cg))
     }
 
     @Test
@@ -40,53 +38,34 @@ class FormatTokenFilterTest {
     fun filterIsANoOpWhenNothingIsCommon() {
         assertEquals("2D NAP", FormatTokenFilter.filter("2D NAP", emptySet()))
     }
-    // ── tokensToStrip ────────────────────────────────────────────────────
+    // ── what a chip is left showing ──────────────────────────────────────
     //
     // The whole rendering decision: what a chip drops, and therefore what is
-    // left to read. `CinemaVersionChipTest` renders it; these pin the rule.
+    // left to read. `UniformFormatChipTest` renders it; these pin the rule.
 
     @Test
-    fun theSharedVersionStaysOnTheChip() {
+    fun aVersionEverySlotSharesIsDroppedLikeAnyOtherToken() {
         val cg = cinema("Multikino", listOf(slot("14:30", "2D DUB"), slot("17:00", "2D DUB")))
-        val strip = FormatTokenFilter.tokensToStrip(cg)
-        assertEquals(setOf("2D"), strip)
-        assertEquals("DUB", FormatTokenFilter.filter("2D DUB", strip))
+        val common = FormatTokenFilter.tokensToStrip(cg)
+        assertEquals(setOf("2D", "DUB"), common)
+        // Six chips all saying DUB tell a visitor as little as six all saying
+        // 2D — the cinema screens the film no other way.
+        assertEquals("", FormatTokenFilter.filter("2D DUB", common))
     }
 
     @Test
-    fun aSharedScreenFormatIsStillDropped() {
-        val cg = cinema("X", listOf(slot("14:30", "IMAX NAP"), slot("17:00", "IMAX NAP")))
-        assertEquals(setOf("IMAX"), FormatTokenFilter.tokensToStrip(cg))
-        assertEquals("NAP", FormatTokenFilter.filter("IMAX NAP", setOf("IMAX")))
+    fun aSharedScreenFormatIsDropped() {
+        val cg = cinema("X", listOf(slot("14:30", "IMAX NAP"), slot("17:00", "IMAX 3D NAP")))
+        assertEquals(setOf("IMAX", "NAP"), FormatTokenFilter.tokensToStrip(cg))
+        assertEquals("3D", FormatTokenFilter.filter("IMAX 3D NAP", setOf("IMAX", "NAP")))
     }
 
     @Test
     fun aVersionThatDiffersBetweenSlotsStaysOnEveryChip() {
         val cg = cinema("Multikino", listOf(slot("14:30", "2D NAP"), slot("17:00", "2D DUB")))
-        val strip = FormatTokenFilter.tokensToStrip(cg)
-        assertEquals("NAP", FormatTokenFilter.filter("2D NAP", strip))
-        assertEquals("DUB", FormatTokenFilter.filter("2D DUB", strip))
-    }
-
-    // ── isLanguageVersion ────────────────────────────────────────────────
-
-    @Test
-    fun everyMarketsVersionSpellingCountsAsAVersion() {
-        for (token in listOf("NAP", "DUB", "LEK", "LEC", "ORG", "SUB",
-                             "VO", "VOSE", "VOSI", "DOB", "CAT", "OV", "OmU", "OmeU", "DF")) {
-            assertTrue("$token is a version", FormatTokenFilter.isLanguageVersion(token))
-        }
-        // An audio language a source names is a version too — at a UK multiplex
-        // "Hindi" is the whole difference between two screenings of one film.
-        assertTrue(FormatTokenFilter.isLanguageVersion("HINDI"))
-    }
-
-    @Test
-    fun screenFormatAndAccessibilityAreNotVersions() {
-        for (token in listOf("2D", "3D", "IMAX", "4DX", "SCREENX", "ATMOS", "DOLBY",
-                             "LASER", "70MM", "VIP", "PREMIUM", "AD", "OC")) {
-            assertFalse("$token is not a version", FormatTokenFilter.isLanguageVersion(token))
-        }
+        val common = FormatTokenFilter.tokensToStrip(cg)
+        assertEquals("NAP", FormatTokenFilter.filter("2D NAP", common))
+        assertEquals("DUB", FormatTokenFilter.filter("2D DUB", common))
     }
 
 }

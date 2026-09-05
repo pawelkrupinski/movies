@@ -79,18 +79,6 @@ class ScreeningTokens(
    *  unrecognised ones dropped, duplicates collapsed, source order kept. */
   def normalize(tokens: Seq[String]): List[String] =
     tokens.iterator.flatMap(canonical).distinct.toList
-
-  /** Does `token` name a LANGUAGE VERSION — the class doc's second category,
-   *  what you will hear and read — rather than a screen format or an
-   *  accessibility feature?
-   *
-   *  The web listing strips the tokens every slot at a cinema shares so a
-   *  showtime pill stays narrow enough to keep two per row. A version is the one
-   *  class that must not simply vanish when it does: a film screened only dubbed
-   *  is exactly what a visitor is choosing between, so `_filmShowings` hoists it
-   *  into the cinema label instead of dropping it. */
-  def isLanguageVersion(token: String): Boolean =
-    token == voiceover || LanguageVersionTokens.contains(token)
 }
 
 object ScreeningTokens extends Logging {
@@ -109,8 +97,16 @@ object ScreeningTokens extends Logging {
    *  Poland's four versions the other three leave unnamed. */
   private val VoiceoverLabels: Set[String] = Set("lek", "lekt", "lektor", "lec")
 
-  /** See the class doc's first category: what the projector and the room do. */
-  private val CanonicalScreenFormat: Map[String, List[String]] = Map(
+  /** Source spelling (see [[key]]) → the token(s) it means. The keys are the
+   *  real labels measured in the five production databases, plus the ones the
+   *  chain clients emit that no country is currently scraping (AMC's, read off
+   *  its recorded fixture); the values are the vocabulary.
+   *
+   *  A LIST because one label can name two things — AMC sells "IMAX with Laser
+   *  at AMC" as a single attribute, and SensaCine spells a 4D screening in 3D
+   *  `Format.Projection.4DE3D`. */
+  private val Canonical: Map[String, List[String]] = Map(
+    // ── Screen format ──────────────────────────────────────────────────────
     "2d" -> List("2D"), "3d" -> List("3D"),
     "imax" -> List("IMAX"), "imaxexperience" -> List("IMAX"),
     "4dx" -> List("4DX"), "4de" -> List("4DE"), "4de3d" -> List("4DE", "3D"),
@@ -127,13 +123,8 @@ object ScreeningTokens extends Logging {
     "imaxatamc" -> List("IMAX"), "imaxwithlaseratamc" -> List("IMAX", "LASER"),
     "laseratamc" -> List("LASER"), "dolbycinemaatamc" -> List("DOLBY"),
     "reald3d" -> List("3D"),
-  )
 
-  /** See the class doc's second category: what you will HEAR and READ. Its own
-   *  map rather than a section of one because [[LanguageVersionTokens]] is
-   *  derived from it — a token added here is a version everywhere, with no
-   *  second list to keep in step. */
-  private val CanonicalLanguageVersion: Map[String, List[String]] = Map(
+    // ── Language version ───────────────────────────────────────────────────
     // Poland's own words arrive both spelled out and abbreviated.
     "nap" -> List("NAP"), "napisy" -> List("NAP"), "napisypl" -> List("NAP"),
     "dub" -> List("DUB"), "dubb" -> List("DUB"), "dubbing" -> List("DUB"), "dubbingpl" -> List("DUB"), "dubbed" -> List("DUB"),
@@ -145,24 +136,11 @@ object ScreeningTokens extends Logging {
     // the spelling that country's cinemagoers read.
     "vo" -> List("VO"), "vose" -> List("VOSE"), "vosi" -> List("VOSI"), "dob" -> List("DOB"), "cat" -> List("CAT"),
     "ov" -> List("OV"), "omu" -> List("OmU"), "omeu" -> List("OmeU"), "df" -> List("DF"),
-  )
 
-  private val CanonicalAccessibility: Map[String, List[String]] = Map(
+    // ── Per-screening accessibility ────────────────────────────────────────
     "ad" -> List("AD"), "audiodescribed" -> List("AD"), "audiodescription" -> List("AD"),
     "oc" -> List("OC"), "opencaps" -> List("OC"), "opencaptions" -> List("OC"), "opencaptioned" -> List("OC"),
   )
-
-  /** Source spelling (see [[key]]) → the token(s) it means: the three categories
-   *  the class doc names, as one lookup. The keys are the real labels measured in
-   *  the five production databases, plus the ones the chain clients emit that no
-   *  country is currently scraping (AMC's, read off its recorded fixture); the
-   *  values are the vocabulary.
-   *
-   *  A LIST because one label can name two things — AMC sells "IMAX with Laser
-   *  at AMC" as a single attribute, and SensaCine spells a 4D screening in 3D
-   *  `Format.Projection.4DE3D`. */
-  private val Canonical: Map[String, List[String]] =
-    CanonicalScreenFormat ++ CanonicalLanguageVersion ++ CanonicalAccessibility
 
   /** Labels seen in production that are deliberately NOT badges — a venue
    *  property, a seat, or a special-audience/pricing event. Listed rather than
@@ -190,13 +168,6 @@ object ScreeningTokens extends Logging {
       val name = Locale.forLanguageTag(code).getDisplayLanguage(Locale.ENGLISH)
       Option.when(name.nonEmpty && name != code)(key(name) -> List(name.toUpperCase(Locale.ROOT)))
     }.toMap
-
-  /** Every token that names a LANGUAGE VERSION — the country-neutral ones, so the
-   *  per-country voice-over token is added by [[ScreeningTokens.isLanguageVersion]]
-   *  rather than listed here. Derived from the two maps that produce them so a
-   *  spelling added to either is a version without a second list to update. */
-  private val LanguageVersionTokens: Set[String] =
-    CanonicalLanguageVersion.values.flatten.toSet ++ LanguageNames.values.flatten
 
   /** Distinct labels already reported, so an unrecognised one is logged once per
    *  process rather than once per screening. */

@@ -135,31 +135,4 @@ class ScreeningTokensSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  // ── isLanguageVersion ─────────────────────────────────────────────────────
-  //
-  // The web listing strips tokens every slot at a cinema shares, so a pill stays
-  // narrow. A LANGUAGE version is the one class of token that must survive that
-  // — see `_filmShowings`, which hoists it into the cinema label instead.
-
-  "isLanguageVersion" should "hold for what you hear and read, in every country's spelling" in {
-    for (token <- Seq("NAP", "DUB", "ORG", "SUB", "VO", "VOSE", "VOSI", "DOB", "CAT",
-                      "OV", "OmU", "OmeU", "DF"))
-      withClue(s"$token: ") { poland.isLanguageVersion(token) shouldBe true }
-    // An audio language a source names IS a version — at a UK multiplex "Hindi"
-    // is the whole difference between two screenings of the same film.
-    britain.isLanguageVersion("HINDI") shouldBe true
-  }
-
-  it should "hold for the voice-over token THIS country spells, and not another's" in {
-    poland.isLanguageVersion("LEK")  shouldBe true
-    britain.isLanguageVersion("LEC") shouldBe true
-    poland.isLanguageVersion("LEC")  shouldBe false
-  }
-
-  it should "not hold for a screen format or an accessibility feature" in {
-    for (token <- Seq("2D", "3D", "IMAX", "4DX", "SCREENX", "ATMOS", "DOLBY", "LASER",
-                      "70MM", "VIP", "PREMIUM", "AD", "OC"))
-      withClue(s"$token: ") { poland.isLanguageVersion(token) shouldBe false }
-  }
-
 }

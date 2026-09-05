@@ -9,9 +9,9 @@
    slot's badge. The label is always shown on the listing — even when the
    cinema filter is narrowed to one cinema.
 
-   A LANGUAGE version is never stripped, however uniform the cinema is: it says
-   what you will hear and read, so it stays on the showtime you are about to
-   tap. See `CinemaFormat`, which draws that line.
+   A token every slot at the cinema carries is dropped whatever it names — a
+   screen format or a language version alike — because it separates no slot from
+   any other. See `CinemaFormat`.
 
    Both outbound shapes here — the cinema's page for the film, and each slot's
    booking deep-link — carry `rel="nofollow noopener"`. A city listing renders
@@ -25,7 +25,7 @@
    this partial stays a plain render of the whole tree and neither host has to
    agree with the other about what a cap should be.
 *@
-@defining(CinemaFormat.byCinema(film, services.movies.ScreeningTokens.of(city.country))) { commonByCinema =>
+@defining(CinemaFormat.byCinema(film)) { commonByCinema =>
 @for((date, cinemaShowtimesList) <- film.showings) {
   <div class="date-group" data-date="@date">
     <div class="date-label">@CardFormat.date(date)</div>
