@@ -1983,7 +1983,13 @@
   //
   // The lazily-built submenu panels need no reset: they do not exist at parse
   // time, so there is nothing for the engine to restore into -- being absent is
-  // exactly why the saved state lands on the static controls instead.
+  // exactly why the saved state lands on the static controls instead. Neither
+  // does `#cinema-all`, the one static checkbox not listed here: the cinema
+  // filter is read from localStorage, and `buildCinemaPanel` re-derives that box
+  // from it earlier in `bootView`. It carries `autocomplete="off"` all the same,
+  // because "harmless" there rests on running order rather than on anything the
+  // markup says, and the next static checkbox added to that panel would inherit
+  // the restore slot rather than the reasoning.
   function resetFilterControls() {
     for (const radio of document.querySelectorAll('input[name="format-dim"], input[name="format-lang"]'))
       radio.checked = radio.value === '';
