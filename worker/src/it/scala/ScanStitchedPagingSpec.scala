@@ -2,7 +2,7 @@ package services.movies
 
 import integration.CountingSlotsRepository
 import models.{Multikino, MovieRecord, Showtime, Source, SourceData}
-import org.mongodb.scala.MongoClient
+import org.mongodb.scala.{MongoClient, MongoDatabase}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{SingleObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
@@ -31,22 +31,24 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
 
   private val when = java.time.LocalDateTime.now().plusDays(2).withHour(18).withMinute(0).withSecond(0).withNano(0)
 
+  /** The sentinels, as (title, year) — the pair both `upsert` and `delete` are addressed
+   *  by, so the teardown cannot drift from what the setup wrote. */
+  private val sentinels: Seq[(String, Option[Int])] = (1 to 5).map(n => (s"__scanpaging-$n", Some(1900 + n)))
+
   it should "page the side-collection reads instead of preloading them whole" in {
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
-    val prefix = "__scanpaging"
+    val screenings = new MongoScreeningsRepository(Some(db))
+    val realSlots  = new MongoSlotsRepository(Some(db))
+    val slots      = new CountingSlotsRepository(realSlots)
+    // batchSize 2 so a handful of sentinels spans several pages
+    val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings),
+      slots = Some(slots), findAllBatchSize = 2, normalizer = titleNormalizer)
     try {
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val realSlots  = new MongoSlotsRepository(Some(db))
-      val slots      = new CountingSlotsRepository(realSlots)
-      // batchSize 2 so a handful of sentinels spans several pages
-      val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings),
-        slots = Some(slots), findAllBatchSize = 2, normalizer = titleNormalizer)
-
-      (1 to 5).foreach { n =>
-        repository.upsert(s"${prefix}-$n", Some(1900 + n), MovieRecord(tmdbId = Some(6000 + n),
+      sentinels.zipWithIndex.foreach { case ((title, year), index) =>
+        repository.upsert(title, year, MovieRecord(tmdbId = Some(6001 + index),
           data = Map[Source, SourceData](Multikino -> SourceData(
-            title = Some(s"scan $n"), showtimes = Seq(Showtime(when, None))))))
+            title = Some(s"scan ${index + 1}"), showtimes = Seq(Showtime(when, None))))))
       }
 
       slots.reset()
@@ -60,10 +62,31 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers {
       withClue("the scan preloaded a whole side collection: ")(slots.findAllCalls.get() shouldBe 0)
       withClue("the scan never used the batched per-page read: ")(slots.batchReadCalls.get() should be > 1)
       withClue(s"batched reads=${slots.batchReadCalls.get()} for a 2-row page size: ")(seen should be >= 5)
+
+      // THE TEARDOWN IS PART OF THE TEST. This spec used to clear up with a raw
+      // `deleteMany` on `movies` alone, which cannot reach the side collections — so every
+      // run stranded five `screenings` rows and five `movie_slots` rows keyed to films that
+      // no longer existed. An orphaned side row is a film the next scan's UNION invents,
+      // which is the shape of the read-model incidents this corpus has already had. The
+      // repository's own `delete` cascades (`screenings.deleteFilm` + `slots.deleteFilm`);
+      // asserting on it here is what stops the teardown silently regressing again.
+      removeSentinels(repository)
+      withClue("the spec stranded screenings orphans: ")(sentinelRows(db, "screenings") shouldBe 0)
+      withClue("the spec stranded movie_slots orphans: ")(sentinelRows(db, "movie_slots") shouldBe 0)
+      withClue("the spec stranded movies rows: ")(sentinelRows(db, "movies") shouldBe 0)
     } finally {
-      Await.ready(db.getCollection("movies")
-        .deleteMany(Filters.regex("_id", s"^scanpaging")).toFuture(), 10.seconds)
+      // A net for the failure path only — the happy path removed them above and asserted it.
+      removeSentinels(repository)
       client.close()
     }
   }
+
+  private def removeSentinels(repository: MongoMovieRepository): Unit =
+    sentinels.foreach { case (title, year) => repository.delete(title, year) }
+
+  /** Rows this spec is responsible for, in any of the three collections. The side rows key
+   *  on `<filmId>\u001f<cinema>`, so the film id is a PREFIX of their `_id` rather than the
+   *  whole of it — one `^scanpaging` match covers all three. */
+  private def sentinelRows(db: MongoDatabase, collection: String): Long =
+    Await.result(db.getCollection(collection).countDocuments(Filters.regex("_id", "^scanpaging")).toFuture(), 10.seconds)
 }
