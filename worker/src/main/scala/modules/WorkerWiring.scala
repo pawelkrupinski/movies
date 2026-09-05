@@ -920,10 +920,18 @@ class WorkerWiring(
     // merely failing or has 404'd for over a day.
     scrapeArchive = scrapeArchive
   )
-  // Shared detail refresh schedule. Its period is the DetailEnrich TTL (6h,
-  // `Freshness.ttlFor`); the SAME instance backs the reaper (enqueue gate) and the
-  // handler (pickup gate) so they agree on "due" — see [[services.tasks.DueWindow]].
-  val detailDueWindow = new services.tasks.DueWindow(6L.hours)
+  // Shared detail refresh schedule. Its period IS the DetailEnrich TTL, read from
+  // `Freshness.ttlFor` rather than repeated as a literal here: `CachingDetailFetch`'s
+  // own TTL is defined as "shorter than this window" and pinned by a spec against
+  // that same function, so a second copy of the number is a way for the window to
+  // move while the guard keeps passing. The SAME instance backs the reaper (enqueue
+  // gate) and the handler (pickup gate) so they agree on "due" — see
+  // [[services.tasks.DueWindow]].
+  val detailDueWindow = new services.tasks.DueWindow(
+    services.freshness.Freshness.ttlFor(services.freshness.FreshnessKind.DetailEnrich)
+      .getOrElse(throw new IllegalStateException(
+        "DetailEnrich must carry a TTL: it is the detail refresh window the reaper, the handler " +
+          "and CachingDetailFetch's TTL are all defined against.")))
   lazy val enrichDetailsHandler = new EnrichDetailsHandler(
     detailEnrichers.map(de => de.detailGroup -> de).toMap, movieCache,
     freshnessStore, uptimeMonitor, eventBus, detailDueWindow,

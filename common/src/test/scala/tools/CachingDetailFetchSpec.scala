@@ -1,6 +1,7 @@
 package tools
 
 import com.github.benmanes.caffeine.cache.Ticker
+import services.freshness.{Freshness, FreshnessKind}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -89,6 +90,27 @@ class CachingDetailFetchSpec extends AnyFlatSpec with Matchers {
     a [HttpStatusException] should be thrownBy c.get("flaky")
     a [HttpStatusException] should be thrownBy c.get("flaky")
     under.calls shouldBe 2
+  }
+
+  /** THE CACHE MUST EXPIRE BEFORE THE REFRESH COMES ROUND, and for three months it
+   *  did not. This cache was added 2026-06-06 to stop the slow scrapers re-fetching
+   *  every detail page on every minutes-apart pass, when `fetch()` itself pulled
+   *  detail inline. Within 48 hours every one of those clients was converted to
+   *  deferred queue detail (7443df050, 620ea5c2b, a6c076699), and detail became a
+   *  reaper-driven task refreshed once per `FreshnessKind.DetailEnrich` window. The
+   *  TTL was never revisited.
+   *
+   *  With a 12h TTL over a 6h refresh window, every SECOND scheduled refresh was
+   *  answered from cache: identical bytes, re-parsed to an identical detail, then
+   *  stamped `lastFetchedAt = now`. It could not observe a change, so the corpus
+   *  carried 12h-old detail while the freshness stamp claimed 6h. The cache has to
+   *  expire first, or the refresh it sits in front of is not a refresh. */
+  it should "expire before the detail refresh window, so a scheduled refresh is a real fetch" in {
+    val refreshWindow = Freshness.ttlFor(FreshnessKind.DetailEnrich)
+      .getOrElse(fail("DetailEnrich lost its TTL; this cache's TTL is defined against it"))
+    withClue(s"cache TTL ${CachingDetailFetch.DefaultTtl} vs detail refresh window $refreshWindow — ") {
+      CachingDetailFetch.DefaultTtl should be < refreshWindow
+    }
   }
 
   /** THE BOUND IS BYTES, NOT ENTRIES. `maximumSize(10000)` counted entries whose

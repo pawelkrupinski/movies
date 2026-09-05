@@ -7,9 +7,9 @@ import services.events.{DomainEvent, EventBus, InProcessEventBus, MovieDetailsCo
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
-import services.freshness.{FreshnessKind, InMemoryFreshnessStore}
+import services.freshness.{Freshness, FreshnessKind, InMemoryFreshnessStore}
 import services.cinemas.pl.FilmwebShowtimesClient
-import tools.HttpStatusException
+import tools.{CachingDetailFetch, HttpStatusException}
 
 import java.time.{Instant, LocalDateTime}
 import scala.concurrent.duration._
@@ -341,5 +341,28 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     r.reapStuckPending() shouldBe 1
     cache.get(cache.keyOf("Dune", None)).map(_.detailPending) shouldBe Some(false)
     bus.published.collect { case e: MovieDetailsComplete => e.title } shouldBe List("Dune")
+  }
+
+  /** WHY THE DETAIL CACHE STILL EXISTS, expressed as the two numbers it lives
+   *  between. The reaper re-enqueues an UNSTAMPED film every tick — and
+   *  `DetailFetchOutcome.Failed` never stamps, including for a page that returns
+   *  200 and parses to nothing (Kino Bulgarska: 1,438 failures to 56 successes in
+   *  24h on one trailer-less film). `CachingDetailFetch` is what stops that
+   *  once-a-minute retry becoming once-a-minute HTTP at a small cinema's site, so
+   *  its TTL has to be many ticks long.
+   *
+   *  It must also expire well inside the refresh window, or the scheduled refresh
+   *  is served from cache and cannot see a change — `CachingDetailFetchSpec` owns
+   *  that half. Together the two say the TTL belongs strictly between the tick and
+   *  the window, which is the thing to re-check if either is retuned. */
+  it should "keep a detail cache TTL that absorbs the every-tick retry yet expires inside the refresh window" in {
+    val tick   = DetailReaper.DefaultTickInterval
+    val window = Freshness.ttlFor(FreshnessKind.DetailEnrich).getOrElse(fail("DetailEnrich lost its TTL"))
+    val ttl    = CachingDetailFetch.DefaultTtl
+
+    withClue(s"tick $tick, cache TTL $ttl, refresh window $window — ") {
+      ttl should be > (tick * 10)   // a retry storm is absorbed, not passed through
+      ttl should be < window        // a scheduled refresh is a real fetch
+    }
   }
 }

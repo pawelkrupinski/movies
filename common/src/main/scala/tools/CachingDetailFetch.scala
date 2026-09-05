@@ -97,9 +97,35 @@ object CachingDetailFetch {
   private[tools] final case class Body(body: String) extends Outcome
   private[tools] final case class Gone(code: Int)    extends Outcome
 
-  /** Detail metadata is effectively static per film; refreshing twice a day is
-   *  plenty fresh while cutting ~all of the redundant per-pass detail fetches. */
-  val DefaultTtl: FiniteDuration = 12.hours
+  /**
+   * SHORTER THAN THE DETAIL REFRESH WINDOW, and that relationship is the whole
+   * setting — `CachingDetailFetchSpec` pins it against
+   * `Freshness.ttlFor(DetailEnrich)`.
+   *
+   * This started at 12h, for a world that lasted two days. The cache was added
+   * 2026-06-06 because the slow scrapers (Kinoteka ~57s, DCF, Pałacowe, Muranów,
+   * Apollo, Cytadela) pulled every film's detail page inline in `fetch()`, on
+   * every minutes-apart pass. By 2026-06-08 all of them had been converted to
+   * deferred queue detail, and a film's detail became one reaper task per
+   * `DetailEnrich` window. Nothing re-reads a detail URL inside a pass any more,
+   * so the redundancy this TTL was sized for does not exist.
+   *
+   * What a TTL LONGER than the refresh window bought instead was a refresh that
+   * is not one: at 12h over a 6h window, every second scheduled refresh was
+   * served the cached body, re-parsed to the identical detail, and then stamped
+   * `lastFetchedAt = now`. It could not see a change by construction, so detail
+   * ran 12h stale while the stamp claimed 6h.
+   *
+   * An hour keeps the one job the cache still does. `DetailFetchOutcome.Failed`
+   * is deliberately NOT stamped, so a film whose detail fetch fails — INCLUDING a
+   * page that returns 200 and parses to nothing — is re-enqueued by `DetailReaper`
+   * every tick, about once a minute, indefinitely (Kino Bulgarska: 1,438 failures
+   * to 56 successes in 24h on one trailer-less film). An hour absorbs ~60 of those
+   * retries per real fetch while still expiring six times over before the refresh
+   * window comes round. Shrink it further only alongside fixing that livelock at
+   * the clients that still fold a loaded-but-empty page into `Failed`.
+   */
+  val DefaultTtl: FiniteDuration = 1.hour
 
   /**
    * What one cache may retain, in bytes of body.
