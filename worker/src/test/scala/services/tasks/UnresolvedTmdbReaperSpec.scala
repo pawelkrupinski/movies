@@ -76,6 +76,9 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     forced.map(_.cleanTitle) should contain(cache.keyOf("Vivaldi i ja", None).cleanTitle)
   }
 
+  // Passes the UNCONFIRMED string check explicitly, because that is what this case is
+  // about. Production wires `CrewConfirmation.confirmed` instead, and the constructor
+  // default acts on runtime disagreements only — see the next test.
   it should "force a re-resolve when no venue names any of the resolved film's directors" in {
     val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
     seedRow(cache, "Das Phantom der Oper") { r =>
@@ -86,7 +89,8 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
           + ((KinoApollo: Source) -> SourceData(title = Some("Das Phantom der Oper"), runtimeMinutes = Some(140),
                director = Seq("Joel Schumacher"))))
     }
-    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 1
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry,
+      confirmContradiction = services.movies.CinemaCorroboration.contradicts)).sum shouldBe 1
     forced should have size 1
   }
 
@@ -95,6 +99,25 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
   // look again — `needsTmdbResolution` re-verifies only when the triggering event
   // carries a director, and a later detail refresh publishes none. So the row keeps
   // a guess it could now improve on, which is every one of the five prod films.
+
+  // The footgun this default exists to close. A construction site that forgets to wire
+  // `CrewConfirmation` must degrade to doing LESS, never to force-re-resolving every
+  // name disagreement unconfirmed — the behaviour six rounds of name folding and an
+  // alias list narrowed from 202 flagged rows to ~60, and which nothing would catch,
+  // because the sweep keeps running and only its verdicts change.
+  it should "not act on a NAME disagreement when no confirmation is wired" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Das Phantom der Oper") { r =>
+      r.copy(tmdbId = Some(964),
+        data = r.data
+          + ((Tmdb: Source) -> SourceData(title = Some("Das Phantom der Oper"), runtimeMinutes = Some(93),
+               director = Seq("Rupert Julian")))
+          + ((KinoApollo: Source) -> SourceData(title = Some("Das Phantom der Oper"), runtimeMinutes = Some(140),
+               director = Seq("Joel Schumacher"))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 0
+    forced shouldBe empty
+  }
   it should "force a re-resolve when a title-only guess now has a director to check" in {
     val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
     seedRow(cache, "Homo sapiens") { r =>

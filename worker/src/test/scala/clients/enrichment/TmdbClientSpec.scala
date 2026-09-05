@@ -3,7 +3,7 @@ package clients.enrichment
 import clients.TmdbClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.RealHttpFetch
+import tools.{GetOnlyHttpFetch, RealHttpFetch}
 
 class TmdbClientSpec extends AnyFlatSpec with Matchers {
 
@@ -413,5 +413,37 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   it should "preserve diacritics — punctuation-blind is not diacritic-blind" in {
     TmdbClient.isExactTitleMatch(
       TmdbClient.SearchResult(1, "Pokłosie", Some("Aftermath"), Some(2012), 1.0), "Poklosie") shouldBe false
+  }
+
+  /** Replays a captured payload for any URL — `crewIds` reaches the network, so the
+   *  parser cannot be reached without one. */
+  private class StubFetch(body: String) extends GetOnlyHttpFetch {
+    var lastUrl: String = ""
+    override def get(url: String): String = { lastUrl = url; body }
+  }
+
+  // `crewIds` is what the whole DIRECTOR half of the mis-resolution sweep rests on:
+  // an empty set reads as "TMDB could not answer", so a wrong JSON path here does not
+  // fail loudly — it silently stops the sweep confirming anything, for ever. Replayed
+  // from a real captured `/movie/365398/credits`, not hand-written JSON, so a change
+  // in TMDB's shape is what breaks it.
+  "crewIds" should "read every crew member's person id from a real credits payload" in {
+    val body  = scala.io.Source.fromFile(
+      "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0").mkString
+    val fetch = new StubFetch(body)
+    val ids   = new TmdbClient(fetch, apiKey = Some("stub")).crewIds(365398)
+
+    withClue(s"fetched ${fetch.lastUrl}: ")(fetch.lastUrl should include ("/movie/365398/credits"))
+    // The whole crew, not only the Director: a venue crediting the film's OTHER
+    // director or someone TMDB files under a different job is why this exists.
+    ids should contain allOf (1490115, 1527343, 2619643)
+    ids should have size 3
+  }
+
+  it should "return an empty set when the call fails, so the caller reads it as no answer" in {
+    val fetch = new GetOnlyHttpFetch {
+      override def get(url: String): String = throw new RuntimeException("TMDB down")
+    }
+    new TmdbClient(fetch, apiKey = Some("stub")).crewIds(365398) shouldBe empty
   }
 }

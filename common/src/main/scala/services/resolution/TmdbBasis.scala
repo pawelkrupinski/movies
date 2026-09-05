@@ -40,10 +40,4 @@ object TmdbBasis {
   /** Parse a stored value, tolerating anything unrecognised (including the absent
    *  field on every row written before this existed) as "we don't know". */
   def parse(name: String): Option[TmdbBasis] = TmdbBasis.values.find(_.toString == name)
-
-  /** May `candidate` replace a conclusion already reached on `existing`? An
-   *  unknown existing basis is treated as the weakest thing it could have been,
-   *  so a legacy row is correctable rather than frozen. */
-  def supersedes(candidate: TmdbBasis, existing: Option[TmdbBasis]): Boolean =
-    candidate.rank >= existing.map(_.rank).getOrElse(TitleOnly.rank)
 }

@@ -50,13 +50,9 @@ final class FilmSlugs private(private val idToSlug: Map[String, String],
    *  to their own resolution (re-slugging what a city is showing) so a film the
    *  read model has dropped mid-reprojection still resolves. */
   def idFor(slug: String): Option[String] = slugToId.get(slug)
-
-  def size: Int = idToSlug.size
 }
 
 object FilmSlugs {
-
-  val empty: FilmSlugs = new FilmSlugs(Map.empty, Map.empty)
 
   def apply(movies: Seq[ResolvedMovie]): FilmSlugs = {
     // Bare fold per film, dropping those with no addressable slug at all.

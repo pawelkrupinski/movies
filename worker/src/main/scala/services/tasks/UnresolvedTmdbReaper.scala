@@ -65,9 +65,18 @@ class UnresolvedTmdbReaper(
   // legacy slot's language, so a defaulted reaper never reaches this seam anyway.
   forceRetry: CacheKey => Unit = _ => (),
   // Does a cinema-vs-resolution disagreement survive asking TMDB who made the film?
-  // Wired to `CrewConfirmation.confirmed`; the default confirms every disagreement,
-  // which is what the pure string check did on its own.
-  confirmContradiction: MovieRecord => Boolean = CinemaCorroboration.contradicts,
+  // Wired to `CrewConfirmation.confirmed`.
+  //
+  // The default acts on RUNTIME disagreements only — the arm that compares numbers
+  // and needs no confirming. It deliberately does NOT default to the pure string
+  // check: a construction site that forgets the wiring would then force-re-resolve
+  // every NAME disagreement unconfirmed, which is the behaviour six rounds of folding
+  // and an alias list narrowed from 202 flagged rows to ~60, and which no test would
+  // catch because the sweep still runs. Degrade to doing less, not to doing the thing
+  // the confirmation exists to prevent. A caller that genuinely wants the unconfirmed
+  // check passes `CinemaCorroboration.contradicts` and says so.
+  confirmContradiction: MovieRecord => Boolean =
+    CinemaCorroboration.contradiction(_).contains(CinemaCorroboration.Contradiction.Runtime),
   // This deployment's country — its `language` is the tag every `Tmdb` slot is
   // expected to carry. Poland by default, matching the historical enrichment
   // language, so a defaulted construction sweeps nothing extra.
@@ -149,20 +158,6 @@ class UnresolvedTmdbReaper(
    *  Gated on a slot that actually carries localized text: a slot the details
    *  fetch never filled has nothing stale to correct, and forcing it would just
    *  re-run a search that already concluded. */
-  /** True when the row is resolved to a film its OWN cinemas contradict — the
-   *  third kind, and the one that was permanent. See [[CinemaCorroboration]] for
-   *  why these rows arise and why both its signals abstain unless the venues
-   *  positively disagree.
-   *
-   *  A DIRECTOR disagreement is only a name disagreement until TMDB says otherwise,
-   *  so it is confirmed against the film's crew before this sweep spends a forced
-   *  re-resolution on it (see [[CrewConfirmation]]) — the venue crediting a film's
-   *  other director, or the person behind a pseudonym, is not a wrong film. The
-   *  default confirms everything, so a construction site that wires no TMDB (specs,
-   *  scripts) behaves exactly as the pure check did. */
-  private[tasks] def contradictedByCinemas(record: MovieRecord): Boolean =
-    CinemaCorroboration.contradicts(record)
-
   private[tasks] def staleLanguage(record: MovieRecord): Boolean =
     record.data.get(Tmdb).exists { slot =>
       val carriesLocalizedText =
