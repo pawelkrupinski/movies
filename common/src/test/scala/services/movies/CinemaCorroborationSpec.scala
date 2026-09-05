@@ -88,6 +88,13 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
     CinemaCorroboration.contradicts(row(Seq("David G. Derrick Jr."),    Seq("Dave Derrick Jr."))) shouldBe false
   }
 
+  // A hyphenated surname split one way by TMDB and another by the venue —
+  // "Amrou Al-Kadhi" against "Amrou Alkadhi" — is one name written two ways, and
+  // token-wise it looks like an extra word. Compared whole, it is identical.
+  it should "not read a differently-hyphenated surname as a different director" in {
+    CinemaCorroboration.contradicts(row(Seq("Amrou Al-Kadhi"), Seq("Amrou Alkadhi"))) shouldBe false
+  }
+
   it should "keep a shared first name from merging two directors" in {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Andrzej Żuławski"))) shouldBe true
   }

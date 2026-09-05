@@ -122,7 +122,10 @@ object CinemaCorroboration {
    *  token must still be accounted for — so "A. Wajda" cannot become "Louisa
    *  Proske" on the strength of a shared letter. */
   private def samePerson(a: Seq[String], b: Seq[String]): Boolean =
-    covers(a, b) || covers(b, a) || sameFamiliarForm(a, b)
+    // Whole-string first: the two sides may split a hyphenated surname differently
+    // ("Amrou Al-Kadhi" / "Amrou Alkadhi"), which token-wise looks like an extra
+    // word and written out is the same name.
+    a.mkString == b.mkString || covers(a, b) || covers(b, a) || sameFamiliarForm(a, b)
 
   /** Every token of `narrow` accounted for by some token of `wide`. */
   private def covers(narrow: Seq[String], wide: Seq[String]): Boolean =
