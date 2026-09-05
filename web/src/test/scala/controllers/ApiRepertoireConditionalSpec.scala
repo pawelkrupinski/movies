@@ -221,4 +221,79 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     PersonalisedPage.CacheControl shouldBe "private, no-store"
   }
 
+
+  // ── ?days=N WINDOW ───────────────────────────────────────────────────────────
+  //
+  // The listing renders the whole corpus: London's payload carried 187 distinct
+  // dates out to 2027-07-03, and only 119 of its 784 films played on the day it
+  // was measured. `days` is what lets a client ask for the part it will show.
+
+  private def windowController() = {
+    val today = LocalDateTime.now()
+    def rec(title: String, when: LocalDateTime) = MovieRecord(
+      imdbId = Some("tt" + title.hashCode.abs),
+      data = Map[Source, SourceData](Helios -> SourceData(
+        title = Some(title), releaseYear = Some(2024),
+        showtimes = Seq(models.Showtime(when, None, None, Nil)))))
+    TestMovieController.build(Seq(
+      ("Today Film",  Some(2024), rec("Today Film",  today.plusHours(2))),
+      ("Soon Film",   Some(2024), rec("Soon Film",   today.plusDays(3))),
+      ("Distant Film",Some(2024), rec("Distant Film",today.plusDays(90))),
+    ))
+  }
+
+  private def titlesFrom(result: scala.concurrent.Future[play.api.mvc.Result]): Seq[String] =
+    play.api.libs.json.Json.parse(contentAsString(result))
+      .as[Seq[play.api.libs.json.JsValue]].map(j => (j \ "title").as[String])
+
+  it should "return the whole corpus when no window is asked for" in {
+    val (ctrl, _) = windowController()
+    titlesFrom(ctrl.apiRepertoire("poznan")(FakeRequest())) should contain allOf
+      ("Today Film", "Soon Film", "Distant Film")
+  }
+
+  it should "keep only films showing inside the window, and drop the rest entirely" in {
+    val (ctrl, _) = windowController()
+    val titles = titlesFrom(ctrl.apiRepertoire("poznan", Some(7))(FakeRequest("GET","/poznan/api/repertoire?days=7")))
+    titles should contain ("Today Film")
+    titles should contain ("Soon Film")
+    // A film 90 days out must NOT ride along just because it is next on its own
+    // list -- the window is calendar days from today, not "the first N dates
+    // this film happens to have".
+    titles should not contain ("Distant Film")
+  }
+
+  it should "clamp a hostile or nonsensical window rather than trusting the URL" in {
+    val (ctrl, _) = windowController()
+    MovieController.dayWindow(Some(0))        shouldBe Some(1)
+    MovieController.dayWindow(Some(-5))       shouldBe Some(1)
+    MovieController.dayWindow(Some(99999))    shouldBe Some(MovieController.MaxDayWindow)
+    MovieController.dayWindow(None)           shouldBe None
+  }
+
+  it should "NOT serve one window's body to a client asking for another" in {
+    // The gzip cache is keyed on request.path, which drops the query string, so
+    // without the window in the key `?days=7` and the full payload share one
+    // entry -- and whichever rendered first wins, silently, with a 200 and a
+    // plausible body. Exercised through the GZIP path on purpose: that is the
+    // only path the cache is on.
+    val (ctrl, _) = windowController()
+    def titles(r: scala.concurrent.Future[play.api.mvc.Result]) =
+      play.api.libs.json.Json.parse(gunzip(contentAsBytes(r)))
+        .as[Seq[play.api.libs.json.JsValue]].map(j => (j \ "title").as[String])
+
+    val narrow = titles(ctrl.apiRepertoire("poznan", Some(7))(gzipRequest("/poznan/api/repertoire?days=7")))
+    val wide   = titles(ctrl.apiRepertoire("poznan", None)(gzipRequest("/poznan/api/repertoire")))
+    narrow should not contain ("Distant Film")
+    wide    should contain    ("Distant Film")
+
+    // And in the other order, so neither can be the one that merely happened to
+    // render first.
+    val (ctrl2, _) = windowController()
+    val wideFirst   = titles(ctrl2.apiRepertoire("poznan", None)(gzipRequest("/poznan/api/repertoire")))
+    val narrowAfter = titles(ctrl2.apiRepertoire("poznan", Some(7))(gzipRequest("/poznan/api/repertoire?days=7")))
+    wideFirst   should contain    ("Distant Film")
+    narrowAfter should not contain ("Distant Film")
+  }
+
 }

@@ -409,7 +409,8 @@ class MovieController( cc: ControllerComponents,
    *  pages change when showtimes do, so we never want a stale copy served
    *  without a check. */
   private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String,
-                                 revalidate: Boolean, shared: Boolean = false)(body: => String): Result = {
+                                 revalidate: Boolean, shared: Boolean = false,
+                                 cacheKey: String = "")(body: => String): Result = {
     val lastMod  = readModel.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
       .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
@@ -422,7 +423,13 @@ class MovieController( cc: ControllerComponents,
     if (ifModifiedSinceCurrent(request, lastMod))
       NotModified.withHeaders(validators*)
     else if (acceptsGzip(request)) {
-      val bytes = responseCache.gzippedBody(request.path, lastMod)(body)
+      // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
+      // does not: it drops the query string. `?days=7` and the full payload are
+      // the same path, so keying on it alone would serve one client's window to
+      // another -- silently, with a 200 and a plausible body. `cacheKey` is the
+      // normalised, parsed parameter rather than the raw query, so a crawler
+      // appending `?foo=1` cannot mint unbounded entries.
+      val bytes = responseCache.gzippedBody(request.path + cacheKey, lastMod)(body)
       Ok(bytes).as(contentType)
         .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> vary) ++ validators)*)
     } else
@@ -614,15 +621,23 @@ class MovieController( cc: ControllerComponents,
    *  `Cache-Control` (mobile manages its own revalidation), so `revalidate` is
    *  off. Both the listing and the details payload track the same cache mtime,
    *  so a 304 on one is a 304 on the other. */
-  private def conditionalJson(request: Request[AnyContent])(body: => play.api.libs.json.JsValue): Result =
-    conditionalGzipped(request, "application/json", vary = "Accept-Encoding", revalidate = false, shared = true)(
+  private def conditionalJson(request: Request[AnyContent], cacheKey: String = "")(body: => play.api.libs.json.JsValue): Result =
+    conditionalGzipped(request, "application/json", vary = "Accept-Encoding", revalidate = false,
+                       shared = true, cacheKey = cacheKey)(
       play.api.libs.json.Json.stringify(body)
     )
 
   /** Lean listing — everything the grid + filters need, no heavy detail text.
    *  Latency-sensitive; clients hit this on the critical path. */
-  def apiRepertoire(city: String): Action[AnyContent] = Action { request =>
-    withCity(city)(c => conditionalJson(request)(Json.toJson(movieControllerService.toSchedules(c).map(ApiFilm.from))))
+  def apiRepertoire(city: String, days: Option[Int] = None): Action[AnyContent] = Action { request =>
+    withCity(city) { c =>
+      val window = MovieController.dayWindow(days)
+      conditionalJson(request, cacheKey = MovieController.windowCacheKey(window)) {
+        val today     = java.time.LocalDate.now(c.zoneId)
+        val schedules = movieControllerService.toSchedules(c)
+        Json.toJson(MovieController.withinWindow(schedules, today, window).map(ApiFilm.from))
+      }
+    }
   }
 
   /** Detail-only payload (synopsis + trailers), keyed by title. Clients fetch
@@ -1017,6 +1032,45 @@ object MovieController {
    *  `/api/me` and `/api/me/state` are per-user and never go through here. A
    *  shared cache in front of either would serve one visitor's state to another. */
   val SharedMaxAgeSeconds: Int = 60
+
+  /** How many days from today a listing request wants, or `None` for everything.
+   *
+   *  Clamped rather than trusted: the parameter reaches us from a URL, and an
+   *  unbounded one is a way to ask for arbitrary work. `<= 0` is meaningless, so
+   *  it reads as "no window" only when the parameter is absent -- an explicit
+   *  `days=0` is clamped to one day rather than silently returning everything,
+   *  because an empty answer is easier to notice than a 700 KB one. */
+  def dayWindow(days: Option[Int]): Option[Int] = days.map(n => math.max(1, math.min(n, MaxDayWindow)))
+
+  /** The ceiling on `?days=`. The corpus reaches ~10 months ahead (London's last
+   *  date was 2027-07-03 when this was written), so anything past a year is the
+   *  whole payload by another name. */
+  val MaxDayWindow: Int = 400
+
+  /** Part of the gzip cache key, so two windows cannot share one entry. Spelled
+   *  out rather than derived from the raw query so `?days=07` and `?days=7` land
+   *  on the same entry instead of two identical ones. */
+  def windowCacheKey(window: Option[Int]): String = window.fold("")(n => s"|days=$n")
+
+  /** Films that have at least one showing inside the window, carrying only the
+   *  showings inside it.
+   *
+   *  CALENDAR DAYS FROM TODAY, not "the first N dates that have showings": a film
+   *  whose only screening is in December must not appear in `days=7` just because
+   *  it happens to be the next date on its own list. A film left with nothing in
+   *  the window is dropped entirely rather than emitted with an empty
+   *  `showings` -- an empty film is a card the client would have to render and
+   *  then hide. */
+  def withinWindow(schedules: Seq[FilmSchedule], today: java.time.LocalDate,
+                   window: Option[Int]): Seq[FilmSchedule] = window match {
+    case None => schedules
+    case Some(n) =>
+      val limit = today.plusDays(n.toLong)
+      schedules.flatMap { fs =>
+        val kept = fs.showings.filter { case (date, _) => !date.isBefore(today) && date.isBefore(limit) }
+        if (kept.isEmpty) None else Some(fs.copy(showings = kept))
+      }
+  }
 
   /** What the faceted browse pages tell a crawler about themselves.
    *

@@ -34,7 +34,7 @@ GET     /:city/film/*rest           controllers.MovieController.filmSubPathLegac
 GET     /:city/filmy                controllers.MovieController.browseLegacy(city: String)
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────
-GET     /:city/api/repertoire       controllers.MovieController.apiRepertoire(city: String)
+GET     /:city/api/repertoire       controllers.MovieController.apiRepertoire(city: String, days: Option[Int])
 # Detail-only payload (synopsis + trailers), fetched in parallel with the
 # listing and merged client-side by title. Kept off the listing so the latency-
 # sensitive /:city/api/repertoire stays lean.
