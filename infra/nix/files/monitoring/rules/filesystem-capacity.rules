@@ -21,6 +21,10 @@
 # machines in trouble rather than one. Worth re-checking on this fleet the first time one of these
 # fires; the exclusion costs nothing if the bind mount is ever gone.
 #
+# THRESHOLDS: inodes warn at 20% and page at 8%; bytes warn at 20% and page at 7%. The two
+# warnings match deliberately — "a fifth left" is one number to remember for both axes, and the
+# bytes one was 15% until 2026-09-05 for no reason that had been written down.
+#
 # WHY PROPORTIONS AND NOT FLOORS. A gigabyte free is roomy on a 40G root and nearly nothing on the
 # Mongo volume, so a byte floor is either noise on the small disks or blindness on the big ones.
 #
@@ -92,12 +96,23 @@ groups:
       - alert: FilesystemSpaceLow
         expr: >-
           node_filesystem_avail_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"}
-            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"} < 0.15
+            / node_filesystem_size_bytes{fstype!~"tmpfs|ramfs",mountpoint!="/nix/store"} < 0.20
+        # 20%, RAISED FROM 15% ON 2026-09-05, and matching the inode warning above rather than
+        # sitting five points under it for no reason anybody could state. The whole fleet had
+        # room when it changed — the tightest filesystem was mongo-1's data volume at 73.5% free
+        # — so nothing fired on the way in, which is the only moment a threshold can be moved
+        # without arguing about a live alert.
+        #
+        # PER FILESYSTEM, NOT PER MACHINE. The series carry `host` and `mountpoint`, so a host
+        # with a full data volume and a roomy root pages once, naming the mount that is full;
+        # a machine-level rule would have to pick one filesystem to be wrong about. mongo-1's
+        # /var/lib/mongodb is 10.5 GB, so 20% there is ~2 GB — small in bytes, and the right
+        # shape anyway, because a database volume is grown deliberately rather than cleaned up.
         for: 30m
         labels:
           severity: warning
         annotations:
-          summary: "Less than 15% of {{ $labels.mountpoint }} ({{ $labels.host }}) is free"
+          summary: "Less than 20% of {{ $labels.mountpoint }} ({{ $labels.host }}) is free"
           description: >-
             Note WHICH mountpoint. On `/` the usual cause is the nix store or an unrotated log. On
             /var/lib/mongodb it is the data itself, which grows monotonically and cannot be
@@ -152,8 +167,9 @@ groups:
         # inside a week -- 500MB written onto a 40G root over six hours projects out to 14G, which
         # "fills" a disk that has 38G free. Requiring the filesystem to be under 60% used as well
         # means the projection is only consulted once there is something to project INTO.
-        # 40% free is a guess, chosen to sit comfortably above `FilesystemSpaceLow`'s 15% so the
-        # two alerts arrive in the right order rather than together.
+        # 40% free is a guess, chosen to sit comfortably above `FilesystemSpaceLow`'s threshold
+        # (15% when this was written, 20% since 2026-09-05) so the two alerts arrive in the right
+        # order rather than together.
         for: 2h
         labels:
           severity: warning

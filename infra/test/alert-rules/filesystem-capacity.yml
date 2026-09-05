@@ -1,0 +1,146 @@
+# UNIT TESTS FOR THE DISK AND INODE CAPACITY ALERTS.
+#
+# Written when the bytes warning moved from 15% to 20% free. A threshold nothing asserts is a
+# threshold that drifts back, and this file's rules are proportions of two series each — the kind
+# of expression that reads correctly and can still be inverted, or silently matched against the
+# wrong label set, without anything going red.
+#
+# The load-bearing cases are the two EXCLUSIONS. `tmpfs` mounts sit permanently at 0% free by
+# construction (systemd's 1MB `/run/credentials/*` are full the moment they exist) and
+# `/nix/store` is a bind mount of `/` reporting identical values — so a rule that forgot either
+# filter would page constantly, or page twice for one filesystem and read as two machines in
+# trouble. Neither mistake is visible by reading the expression.
+rule_files:
+  - ../../nix/files/monitoring/rules/filesystem-capacity.rules
+
+evaluation_interval: 1m
+
+tests:
+  # THE THRESHOLD ITSELF: 18% free is under the new 20% and over the old 15%, so this case fails
+  # against the rule as it was written before 2026-09-05 and passes after. It is the whole reason
+  # this file exists.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="mongo-1",mountpoint="/var/lib/mongodb",fstype="ext4",device="/dev/sdb",instance="10.20.0.13:9100",job="node"}'
+        values: '1890000000x60'
+      - series: 'node_filesystem_size_bytes{host="mongo-1",mountpoint="/var/lib/mongodb",fstype="ext4",device="/dev/sdb",instance="10.20.0.13:9100",job="node"}'
+        values: '10500000000x60'
+    alert_rule_test:
+      # `for: 30m` — a build that fills and frees a tree must not page.
+      - eval_time: 20m
+        alertname: FilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: FilesystemSpaceLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: mongo-1
+              mountpoint: /var/lib/mongodb
+              fstype: ext4
+              device: /dev/sdb
+              instance: 10.20.0.13:9100
+              job: node
+            exp_annotations:
+              summary: "Less than 20% of /var/lib/mongodb (mongo-1) is free"
+              description: "Note WHICH mountpoint. On `/` the usual cause is the nix store or an unrotated log. On /var/lib/mongodb it is the data itself, which grows monotonically and cannot be collected -- that one is a capacity decision (grow the volume) rather than a cleanup, and it wants planning before the critical alert rather than after. On /var/lib/mongodb-backups, check whether rotation is still working: the dump keeps the most recent N by count, so a growing directory means dumps are landing and none are being pruned. `du -xh --max-depth=2 <mount> | sort -h | tail -20` names the consumer."
+      # …and 18% is NOT critical. The two levels must not collapse into one.
+      - eval_time: 45m
+        alertname: FilesystemSpaceCritical
+        exp_alerts: []
+
+  # ROOM TO SPARE. 25% free — above the new threshold — stays silent, so the raise did not simply
+  # move the rule to "always firing".
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '40000000000x60'
+      - series: 'node_filesystem_size_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '160000000000x60'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FilesystemSpaceLow
+        exp_alerts: []
+
+  # THE EXCLUSIONS, and they are the cases a human review misses. A tmpfs at 0% free is normal and
+  # must never page; /nix/store reports the same numbers as / and must not page a SECOND time for
+  # the same filesystem. Both are given values deep under every threshold in the file.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="mongo-1",mountpoint="/run/credentials/getty@tty1.service",fstype="tmpfs",device="tmpfs",instance="10.20.0.13:9100",job="node"}'
+        values: '0x60'
+      - series: 'node_filesystem_size_bytes{host="mongo-1",mountpoint="/run/credentials/getty@tty1.service",fstype="tmpfs",device="tmpfs",instance="10.20.0.13:9100",job="node"}'
+        values: '1048576x60'
+      - series: 'node_filesystem_files_free{host="mongo-1",mountpoint="/run/credentials/getty@tty1.service",fstype="tmpfs",device="tmpfs",instance="10.20.0.13:9100",job="node"}'
+        values: '0x60'
+      - series: 'node_filesystem_files{host="mongo-1",mountpoint="/run/credentials/getty@tty1.service",fstype="tmpfs",device="tmpfs",instance="10.20.0.13:9100",job="node"}'
+        values: '1024x60'
+      - series: 'node_filesystem_avail_bytes{host="mongo-1",mountpoint="/nix/store",fstype="ext4",device="/dev/sda2",instance="10.20.0.13:9100",job="node"}'
+        values: '400000000x60'
+      - series: 'node_filesystem_size_bytes{host="mongo-1",mountpoint="/nix/store",fstype="ext4",device="/dev/sda2",instance="10.20.0.13:9100",job="node"}'
+        values: '40000000000x60'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FilesystemSpaceLow
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: FilesystemSpaceCritical
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: FilesystemInodesLow
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: FilesystemInodesCritical
+        exp_alerts: []
+
+  # INODES, THE AXIS THAT ACTUALLY BIT THE FLEET THIS WAS PORTED FROM: 19G of bytes free and no
+  # inodes left. Bytes are deliberately given plenty of room here, so only the inode rules may
+  # speak — a bytes rule that fired on this input would mean the two axes had been crossed.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_files_free{host="monitoring-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.11:9100",job="node"}'
+        values: '150000x60'
+      - series: 'node_filesystem_files{host="monitoring-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.11:9100",job="node"}'
+        values: '2500000x60'
+      - series: 'node_filesystem_avail_bytes{host="monitoring-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.11:9100",job="node"}'
+        values: '19000000000x60'
+      - series: 'node_filesystem_size_bytes{host="monitoring-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.11:9100",job="node"}'
+        values: '40000000000x60'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: FilesystemInodesCritical
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              host: monitoring-1
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda2
+              instance: 10.20.0.11:9100
+              job: node
+            exp_annotations:
+              summary: "Fewer than 8% of the inodes on / (monitoring-1) are free"
+              description: "ACT NOW. Past zero the host serves traffic while nothing on it can create a file, and `nix-collect-garbage` cannot even take its own lock (\"opening lock file ... No space left on device\") -- so the ordinary fix stops working at exactly the moment it is needed. Break that deadlock by removing old generation SYMLINKS first, which needs no lock: keep the ten most recent /nix/var/nix/profiles/system-*-link, clear the dangling /nix/var/nix/gcroots/auto entries, then run nix-collect-garbage."
+      - eval_time: 45m
+        alertname: FilesystemSpaceLow
+        exp_alerts: []
+
+  # THE TRIPWIRE. Every rule in the file is a comparison, and a comparison cannot fire when its
+  # series is gone — so the absence has to have its own alert, or a dead node_exporter reads
+  # exactly like a fleet with room to spare.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node",instance="10.20.0.13:9100"}'
+        values: '1x200'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: FilesystemMetricsAbsent
+        exp_alerts: []
+      - eval_time: 3h
+        alertname: FilesystemMetricsAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No host is publishing filesystem metrics"
+              description: "None of the four capacity alerts can fire, so nothing is watching any disk or inode table on this fleet. Either node_exporter's filesystem collector is disabled everywhere or Prometheus has stopped scraping it. IT DOES NOT MEAN EVERY FILESYSTEM HAS ROOM."
