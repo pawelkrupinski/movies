@@ -41,7 +41,7 @@ object ChangeStreamMetrics {
 
   // Stored field names as `patchToUpdate` emits them (NOT the domain names).
   private val RatingFields   = Set("imdbRating", "metascore", "filmwebRating", "rottenTomatoes", "filmwebUrl", "metacriticUrl", "rottenTomatoesUrl")
-  private val IdentityFields = Set("imdbId", "tmdbId", "tmdbBasis", "searchTitle", "tmdbNoMatch", "detailPending")
+  private val IdentityFields = Set("imdbId", "tmdbId", "tmdbBasis", "wikidataId", "searchTitle", "tmdbNoMatch", "detailPending")
 
   /** Collapse any mongo op string to the fixed label set, so an unexpected op
    *  (invalidate / drop / rename) doesn't spawn a new series. */
@@ -70,7 +70,11 @@ object ChangeStreamMetrics {
       // KIND of change as a `sourceData` write, just stored elsewhere. Classifying it
       // here is what stops the split turning every scrape into `updated_at_only` and
       // retiring the redundant-write canary by drowning it.
-      if (topLevel.contains("sourceData") || topLevel.contains("slotsUpdatedAt")) kinds += Kind.SourceData
+      // `retainedSynopses` is slot CONTENT kept after a slot was pruned — the same kind
+      // of change as a `sourceData` write, and it reaches the wire the same way now that
+      // `MovieRecordPatch` carries it.
+      if (topLevel.contains("sourceData") || topLevel.contains("slotsUpdatedAt") ||
+          topLevel.contains("retainedSynopses")) kinds += Kind.SourceData
       if (topLevel.exists(RatingFields))   kinds += Kind.Rating
       if (topLevel.exists(IdentityFields)) kinds += Kind.Identity
       val result = kinds.result()

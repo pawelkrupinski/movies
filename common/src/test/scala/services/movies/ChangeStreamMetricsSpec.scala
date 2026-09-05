@@ -18,6 +18,11 @@ class ChangeStreamMetricsSpec extends AnyFlatSpec with Matchers {
   it should "classify resolution-lifecycle fields as identity" in {
     ChangeStreamMetrics.updateKinds(Set("tmdbId", "updatedAt"))        shouldBe Set(Kind.Identity)
     ChangeStreamMetrics.updateKinds(Set("detailPending", "updatedAt")) shouldBe Set(Kind.Identity)
+    // `wikidataId` is an external identifier like the two above, and it reaches the
+    // change stream the same way now that `MovieRecordPatch` carries it — before that
+    // it could only ride a whole-document replace. An unclassified field falls to the
+    // `other` catch-all, which is where a real identity change would have gone.
+    ChangeStreamMetrics.updateKinds(Set("wikidataId", "updatedAt"))     shouldBe Set(Kind.Identity)
   }
 
   it should "flag an updatedAt-only write as the no-op canary" in {
