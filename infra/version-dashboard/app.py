@@ -83,7 +83,12 @@ SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKe
 CACHE_TTL = 30.0        # how long a built page is served without rebuilding
 ROSTER_RETRY = 300.0    # after a FAILED roster evaluation, the floor before another is tried
 STALE_GRACE = 300.0     # past this, the page says out loud that it is stale rather than looking fresh
-NIX_TIMEOUT = 240
+# GENEROUS BECAUSE IT IS PAID RARELY, and because the alternative to waiting is worse. The
+# evaluation runs off the page's critical path (see `roster`) and, once it lands, not again until
+# the flake changes -- so the only thing a tight cap buys is a failed read. It was 240s, and this
+# laptop routinely runs test suites that push its load average into the hundreds; every evaluation
+# that started during one of those was killed at 240s, and the page then had nothing to show.
+NIX_TIMEOUT = 900
 SSH_TIMEOUT = 30
 GIT_TIMEOUT = 30
 
@@ -221,7 +226,7 @@ def flake_fingerprint(root=None):
 
 _roster_lock = threading.Lock()
 _roster = {"fingerprint": None, "machines": None, "evaluated_at": 0.0,
-           "error": None, "failed_at": 0.0, "recalled": False}
+           "error": None, "failed_at": 0.0, "recalled": False, "evaluating": False}
 
 
 def _remember_roster(fingerprint, machines, evaluated_at):
@@ -270,6 +275,29 @@ def _last_roster(machines, error, evaluated_at):
                       f"roster read {fmt_age(evaluated_at)}, which is the last one that evaluated")
 
 
+def _evaluate_roster(fingerprint):
+    """Read the roster and adopt the answer, whatever it turns out to be."""
+    try:
+        machines, error = flake_machines()
+        with _roster_lock:
+            _roster["error"] = error
+            if error:
+                _roster["failed_at"] = time.time()
+                return
+            _roster.update(fingerprint=fingerprint, machines=machines, evaluated_at=time.time())
+            evaluated_at = _roster["evaluated_at"]
+        _remember_roster(fingerprint, machines, evaluated_at)
+    finally:
+        with _roster_lock:
+            _roster["evaluating"] = False
+
+
+def _refresh_in_background(fingerprint):
+    """The seam. A thread in production; called straight through in the tests, where a real one
+    would only make the assertions race."""
+    threading.Thread(target=_evaluate_roster, args=(fingerprint,), daemon=True).start()
+
+
 def roster():
     """The declared fleet, evaluated only when the flake declaring it has actually changed.
 
@@ -288,32 +316,42 @@ def roster():
     keeps its 30-second cadence. A failure is not retried on every build either, for the same
     reason: continuous retries were the fault, not the diagnosis. And the answer outlives the
     process that read it (`_remember_roster`), so a restart is not a fleet with no machines in it.
+
+    AN EVALUATION THAT DOES HAVE TO RUN RUNS BEHIND THE PAGE, not in front of it -- once there is
+    any roster to show, a re-read happens on its own thread and the build carries on with the one it
+    has. The page's own subject, what the machines are doing right now, keeps arriving every 30
+    seconds while nix takes as long as it takes. The single exception is the first read of all,
+    which is waited for, because the alternative to waiting is a page with no fleet on it.
     """
     fingerprint = flake_fingerprint()
     now = time.time()
     with _roster_lock:
         if not _roster["recalled"]:
             _roster["recalled"] = True
-            remembered, machines, evaluated_at = _recall_roster()
-            if machines is not None:
-                _roster.update(fingerprint=remembered, machines=machines,
+            remembered, recalled, evaluated_at = _recall_roster()
+            if recalled is not None:
+                _roster.update(fingerprint=remembered, machines=recalled,
                                evaluated_at=evaluated_at)
         machines, error = _roster["machines"], _roster["error"]
         evaluated_at = _roster["evaluated_at"]
         if machines is not None and _roster["fingerprint"] == fingerprint:
             return machines, None
-        if error and now - _roster["failed_at"] < ROSTER_RETRY:
-            return _last_roster(machines, error, evaluated_at)
+        due = not _roster["evaluating"] and (
+            not error or now - _roster["failed_at"] >= ROSTER_RETRY)
+        if due:
+            _roster["evaluating"] = True
 
-    evaluated, error = flake_machines()
+    if not due:
+        return _last_roster(machines, error, evaluated_at)
+    if machines is not None:
+        _refresh_in_background(fingerprint)
+        return _last_roster(machines, error, evaluated_at)
+
+    # NOTHING TO SHOW, so this one is worth waiting for: the alternative is a page with no fleet on
+    # it. Every later evaluation has last time's answer to fall back on and runs behind the page.
+    _evaluate_roster(fingerprint)
     with _roster_lock:
-        _roster["error"] = error
-        if error:
-            _roster["failed_at"] = time.time()
-            return _last_roster(_roster["machines"], error, _roster["evaluated_at"])
-        _roster.update(fingerprint=fingerprint, machines=evaluated, evaluated_at=time.time())
-    _remember_roster(fingerprint, evaluated, _roster["evaluated_at"])
-    return evaluated, None
+        return (_roster["machines"] or {}), _roster["error"]
 
 
 def git_head():

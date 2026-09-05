@@ -14,6 +14,7 @@ import pathlib
 import re
 import sys
 import tempfile
+import threading
 import time
 import unittest
 
@@ -307,7 +308,7 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
     that fails is neither retried on the next build nor allowed to empty the table."""
 
     CLEAN = {"fingerprint": None, "machines": None, "evaluated_at": 0.0,
-             "error": None, "failed_at": 0.0, "recalled": True}
+             "error": None, "failed_at": 0.0, "recalled": True, "evaluating": False}
 
     def setUp(self):
         self.reads = []
@@ -317,12 +318,17 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
         self.answer = ({"mongo-1": {"hostName": "mongo-1", "privateAddress": "10.20.0.13"}}, None)
         self.fingerprint = "flake-as-committed"
         self._machines, self._stamp = app.flake_machines, app.flake_fingerprint
+        self._refresh = app._refresh_in_background
         app.flake_machines = self._read
         app.flake_fingerprint = lambda *a, **k: self.fingerprint
+        # A re-read runs on its own thread in production. Run it straight through here, so that what
+        # is being asserted is WHETHER one happened, not whether it happened in time.
+        app._refresh_in_background = app._evaluate_roster
         app._roster.update(self.CLEAN)
 
     def tearDown(self):
         app.flake_machines, app.flake_fingerprint = self._machines, self._stamp
+        app._refresh_in_background = self._refresh
         app.ROSTER_CACHE = self._cache_path
         self.store.cleanup()
         app._roster.update(self.CLEAN)
@@ -346,10 +352,11 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
 
     def test_a_failed_read_keeps_the_machines_the_last_one_returned(self):
         app.roster()
-        self.fingerprint, self.answer = "edited", ({}, "nix eval failed: timed out after 240s")
-        machines, err = app.roster()
+        self.fingerprint, self.answer = "edited", ({}, "nix eval failed: timed out after 900s")
+        app.roster()                       # starts the re-read, which fails
+        machines, err = app.roster()       # the next build, once it has
         self.assertEqual(list(machines), ["mongo-1"])
-        self.assertIn("timed out after 240s", err)
+        self.assertIn("timed out after 900s", err)
         self.assertIn("last one that evaluated", err)
 
     def test_a_failed_read_is_not_repeated_on_the_next_build(self):
@@ -400,6 +407,40 @@ class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
         app._roster["recalled"] = False
         machines, err = app.roster()
         self.assertEqual((list(machines), err), (["mongo-1"], None))
+
+    def test_a_re_read_does_not_hold_up_the_page(self):
+        # The freeze this is here to prevent: the roster evaluation used to run inside the build, so
+        # a slow one stopped the Prometheus half from being refreshed too -- the page went stale as
+        # a whole and said so ("the last rebuild did not finish") while nothing was wrong with the
+        # fleet. Only the first read of all is worth waiting for.
+        app._refresh_in_background = self._refresh  # a real thread, as in production
+        app.roster()
+        started = threading.Event()
+        release = threading.Event()
+
+        def slow():
+            started.set()
+            release.wait(5)
+            return self.answer
+
+        app.flake_machines = slow
+        self.fingerprint = "edited"
+        began = time.time()
+        machines, err = app.roster()
+        took = time.time() - began
+        self.assertTrue(started.wait(5), "the re-read never started")
+        self.assertLess(took, 1.0, f"the caller waited {took:.1f}s for a re-read")
+        self.assertEqual(list(machines), ["mongo-1"])
+        self.assertIn("pending", err)
+        release.set()
+
+    def test_only_one_re_read_runs_at_a_time(self):
+        app.roster()
+        self.fingerprint = "edited"
+        app._refresh_in_background = lambda fingerprint: None  # as if a thread were still running
+        app.roster()
+        app.roster()
+        self.assertEqual(len(self.reads), 1)
 
 
 class FlakeFingerprint(unittest.TestCase):
