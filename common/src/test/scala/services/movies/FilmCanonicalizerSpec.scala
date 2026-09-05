@@ -456,6 +456,39 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2
   }
 
+  it should "keep two rows sharing ONE tmdbId apart when their cinemas published different films" in {
+    // The same refusal one rung down. A shared tmdbId is not permission to merge either:
+    // a row can be holding an id that is not its film's, and merging a second row onto it
+    // buries the disagreement inside one record — prod's "Mistyczka" absorbed Kino Klaps's
+    // listing of a different 2026 film that way, and the merged row then had a venue naming
+    // each film. The evidence is `MixedFilmDetector`'s, so a Polish title beside a foreign
+    // original (73 of 572 PL films) still merges; only a CORROBORATED contradiction splits.
+    def published(title: String, cinema: Source, originalTitle: String, runtime: Int): (CacheKey, MovieRecord) =
+      key(title, Some(2026)) -> MovieRecord(
+        tmdbId = Some(1646379),
+        data = Map[Source, SourceData](
+          Tmdb   -> SourceData(releaseYear = Some(2026)),
+          cinema -> SourceData(title = Some(title), releaseYear = Some(2026),
+                               originalTitle = Some(originalTitle), runtimeMinutes = Some(runtime))))
+
+    val components = FilmCanonicalizer.groupByFilm(Seq(
+      published("Mistyczka",                    KinoMuza,         "Mistyczka",             87),
+      published("DOBRE Kino - Maryja. Matka Papieża", KinoMuzeumGdansk, "Maryja. Matka Papieża", 62)
+    ), titleNormalizer)
+    components should have size 1                                  // the shared tmdbId links them
+    FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2
+  }
+
+  it should "still merge two rows sharing a tmdbId when nothing their cinemas published contradicts it" in {
+    // The ordinary case the rule above must not touch: one film, two spellings.
+    val components = FilmCanonicalizer.groupByFilm(Seq(
+      resolved("Zaplątani", tmdbId = 38757, tmdbYear = 2010, cinema = KinoMuza),
+      resolved("Tangled",   tmdbId = 38757, tmdbYear = 2010, cinema = KinoMuzeumGdansk)
+    ), titleNormalizer)
+    components should have size 1
+    FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 1
+  }
+
   it should "key a cross-language cluster on the dominant cinema title, not the alphabetical min" in {
     // The churn guard: keying on the alphabetical min ("tangled") would leave an
     // _id no cinema reports, so every "Zaplątani" scrape would re-spawn the row.

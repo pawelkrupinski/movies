@@ -79,8 +79,35 @@ object FilmCanonicalizer {
 
     // (1) Resolved rows → one cluster per distinct tmdbId. Sort the ids so the
     // cluster sequence is order-independent.
+    //
+    // A SHARED id is not on its own permission to merge. The imdbId fold below is
+    // guarded by the cinemas' own published evidence — "if two rows' venues describe
+    // different films, no id agreement may merge them" — and the same has to hold one
+    // rung down, for the reason that guard exists: a row can be holding an id that is
+    // not its film's, and merging a second row onto it buries the disagreement inside
+    // one record where nothing can see it again. Prod's "Mistyczka" absorbed Kino
+    // Klaps's listing of a DIFFERENT 2026 film that way, and the merged row then had a
+    // venue naming each film, so even the resolution could no longer tell them apart.
+    //
+    // The test is `MixedFilmDetector`'s, not a new one: a differing cinema-published
+    // ORIGINAL title corroborated by runtime or year, vetoed by an agreeing director.
+    // A title difference alone is deliberately NOT enough — measured over the PL
+    // corpus, 73 of 572 films have a venue whose title shares no distinctive word with
+    // TMDB's, and almost every one is a Polish title beside a foreign original
+    // ("Rozważna i romantyczna" / "Sense and Sensibility"). Splitting on that would
+    // break one film in eight.
+    //
+    // Keep the row the corpus would canonicalise onto and split off only what
+    // contradicts it, so the partition is a pure function of the row set.
     val resolved = group.filter(_._2.tmdbId.isDefined)
-    val byTmdbId: Seq[Seq[Row]] = resolved.groupBy(_._2.tmdbId.get).toSeq.sortBy(_._1).map(_._2)
+    val byTmdbId: Seq[Seq[Row]] = resolved.groupBy(_._2.tmdbId.get).toSeq.sortBy(_._1)
+      .flatMap { case (_, rows) =>
+        val ordered = rows.sortBy(rank)
+        val main    = ordered.head
+        val (different, same) = ordered.tail.partition(r =>
+          MixedFilmDetector.describeDifferentFilms(main._2, r._2, normalizer))
+        (main +: same) +: different.map(Seq(_))
+      }
     // …then fold together the tmdbId groups that share an IMDb id. One film can carry
     // two tmdbIds: TMDB sometimes holds two records for the same picture (a re-release,
     // an extended cut catalogued separately), and both resolve to the SAME IMDb id.
