@@ -691,6 +691,18 @@ class CaffeineMovieCache(
     before: MovieRecord, beforeKey: CacheKey, after: MovieRecord, afterKey: CacheKey
   ): Unit = {
     val kinds = MergeRetrigger.changedEnrichments(before, beforeKey, after, afterKey)
+    // A queued re-resolve must not be short-circuited by the very marker it was
+    // queued to overcome. `MovieService.needsTmdbResolution` refuses a negative-cached
+    // key unless the event carries a CINEMA hint, and the input that most often earns
+    // a ResolveTmdb here is a Filmweb-discovered `originalTitle` — not a cinema hint,
+    // so the task ran and did nothing while the new evidence waited out the 24h TTL.
+    //
+    // Safe to clear HERE and nowhere else because this decision is EDGE-triggered: it
+    // fires only when an input actually changed, so it cannot re-arm every tick the way
+    // a "bypass whenever a derived title exists" rule inside `needsTmdbResolution`
+    // would — that level-triggered shape is the re-divert churn this codebase has
+    // already paid for once.
+    if (kinds.contains(RetriggerKind.ResolveTmdb)) clearNegative(afterKey)
     if (kinds.nonEmpty) retrigger.retrigger(afterKey, after, kinds)
   }
 
