@@ -1057,6 +1057,11 @@ class MongoMovieRepository(
     scalar("searchTitle",       p.searchTitle,       (s: String) => new org.mongodb.scala.bson.BsonString(s))
     scalar("tmdbNoMatch",       p.tmdbNoMatch,       (b: Boolean) => new org.mongodb.scala.bson.BsonBoolean(b))
     scalar("detailPending",     p.detailPending,     (b: Boolean) => new org.mongodb.scala.bson.BsonBoolean(b))
+    scalar("retainedSynopses", p.retainedSynopses, (m: Map[Source, String]) => {
+      val doc = new org.bson.BsonDocument()
+      m.foreach { case (source, synopsis) => doc.put(source.displayName, new org.mongodb.scala.bson.BsonString(synopsis)) }
+      doc
+    })
     p.data.foreach {
       case (source, FieldUpdate.SetTo(sd)) => atoms += Updates.set(s"sourceData.${source.displayName}", sd)
       case (source, FieldUpdate.Unset)     => atoms += Updates.unset(s"sourceData.${source.displayName}")

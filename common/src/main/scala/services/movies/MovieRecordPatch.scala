@@ -36,6 +36,12 @@ final case class MovieRecordPatch(
   searchTitle:       FieldUpdate[String]                    = FieldUpdate.NoChange,
   tmdbNoMatch:       FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
   detailPending:     FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
+  // Whole-map, unlike `data`'s per-key diff: the per-cinema split exists because
+  // different venues' scrapes write different slots concurrently, while the retained
+  // synopses are rewritten as a set by the prune that owns them. A whole-map update
+  // also keeps the field off the dotted `$set` path, which a `Source.displayName`
+  // containing '.' ("Helios Ostrów Wlkp.") cannot use — see `dottedReplaceRecord`.
+  retainedSynopses:  FieldUpdate[Map[Source, String]]        = FieldUpdate.NoChange,
   data:              Map[Source, FieldUpdate[SourceData]]   = Map.empty
 ) {
   /** No effective change — caller can skip the write entirely. */
@@ -48,6 +54,7 @@ final case class MovieRecordPatch(
     metacriticUrl == FieldUpdate.NoChange &&
     rottenTomatoesUrl == FieldUpdate.NoChange && searchTitle == FieldUpdate.NoChange &&
     tmdbNoMatch == FieldUpdate.NoChange && detailPending == FieldUpdate.NoChange &&
+    retainedSynopses == FieldUpdate.NoChange &&
     data.isEmpty
 
   /** Apply the patch to `current`, returning a new `MovieRecord` with the
@@ -85,6 +92,11 @@ final case class MovieRecordPatch(
       searchTitle       = merge(searchTitle,       current.searchTitle),
       tmdbNoMatch       = mergeFlag(tmdbNoMatch,   current.tmdbNoMatch),
       detailPending     = mergeFlag(detailPending, current.detailPending),
+      retainedSynopses  = retainedSynopses match {
+                            case FieldUpdate.SetTo(v) => v
+                            case FieldUpdate.Unset    => Map.empty
+                            case FieldUpdate.NoChange => current.retainedSynopses
+                          },
       data              = mergedData
     )
   }
@@ -109,8 +121,16 @@ object MovieRecordPatch {
       searchTitle       = diffOpt(before.searchTitle,       after.searchTitle),
       tmdbNoMatch       = diffFlag(before.tmdbNoMatch,       after.tmdbNoMatch),
       detailPending     = diffFlag(before.detailPending,     after.detailPending),
+      retainedSynopses  = diffMap(before.retainedSynopses,  after.retainedSynopses),
       data              = diffData(before.data, after.data)
     )
+
+  /** An empty map is the field's ABSENCE (`fromDomain` omits it), so clearing it is an
+   *  `$unset` rather than a `$set {}` — the same shape a whole-document write leaves. */
+  private def diffMap(before: Map[Source, String], after: Map[Source, String]): FieldUpdate[Map[Source, String]] =
+    if (before == after) FieldUpdate.NoChange
+    else if (after.isEmpty) FieldUpdate.Unset
+    else FieldUpdate.SetTo(after)
 
   private def diffFlag(before: Boolean, after: Boolean): FieldUpdate[Boolean] =
     if (before == after) FieldUpdate.NoChange else FieldUpdate.SetTo(after)
