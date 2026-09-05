@@ -38,11 +38,19 @@ import services.tasks.MongoTaskQueue
  * named list instead of one row — see [[ForceResolveEnqueue]] for why `force` is what
  * gets a self-locked row moving.
  *
+ * The recorded list below is the default, but the same unlock is wanted again every
+ * time a row is found pinned to a film it is not — "Mistyczka" (2026) sat on Jan
+ * Sobierajski's OTHER 2026 film for exactly this reason. Name such a row on the
+ * command line as `<_id>=<wrong tmdbId>` and it is used INSTEAD of the recorded
+ * list; the id is still the safety mechanism, so a row that has since moved on is
+ * skipped either way.
+ *
  * Dry run by DEFAULT — pass `--apply` to enqueue.
  *
- *   ssh -N -L 27017:127.0.0.1:27017 root@2.28.56.140            # separate shell
+ *   ssh -N -L 27017:127.0.0.1:27017 root@178.105.221.61          # separate shell
  *   MONGODB_DB=kinowo sbt "worker/Test/runMain scripts.ReresolveSelfLockedRows"
  *   MONGODB_DB=kinowo sbt "worker/Test/runMain scripts.ReresolveSelfLockedRows --apply"
+ *   MONGODB_DB=kinowo sbt "worker/Test/runMain scripts.ReresolveSelfLockedRows mistyczka|2026=1646379 --apply"
  */
 object ReresolveSelfLockedRows {
 
@@ -104,8 +112,22 @@ object ReresolveSelfLockedRows {
     })
   }
 
+  /** The rows to act on: the ones named on the command line as `<_id>=<tmdbId>`,
+   *  or — when none are — the list recorded above. Parsed rather than merged, so a
+   *  run aimed at one row cannot quietly re-force the other twelve. */
+  def targets(args: Seq[String], recorded: Map[String, Int]): Map[String, Int] = {
+    val named = args.filterNot(_.startsWith("--")).flatMap { a =>
+      a.split("=", 2) match {
+        case Array(id, tmdbId) if id.nonEmpty => tmdbId.toIntOption.map(id -> _)
+        case _                                => None
+      }
+    }.toMap
+    if (named.nonEmpty) named else recorded
+  }
+
   def main(args: Array[String]): Unit = {
     val apply = args.contains("--apply")
+    val wanted = targets(args.toSeq, lockedTo)
     val conn  = MongoConnection.fromEnvForDb(Env.get("MONGODB_DB").getOrElse("kinowo"), required = true)
     val db = conn.database.getOrElse {
       println("Could not open the database — is the Mongo tunnel up and MONGODB_URI set?")
@@ -124,10 +146,10 @@ object ReresolveSelfLockedRows {
       slots      = Some(new MongoSlotsRepository(Some(db))),
       normalizer = titleNormalizer)
 
-    val found = lockedTo.keys.toSeq.sorted.map(id => id -> repo.findById(id))
-    val (locked, skipped) = stillLocked(found, lockedTo)
+    val found = wanted.keys.toSeq.sorted.map(id => id -> repo.findById(id))
+    val (locked, skipped) = stillLocked(found, wanted)
 
-    println(s"${locked.size} of ${lockedTo.size} row(s) still locked to the wrong film:")
+    println(s"${locked.size} of ${wanted.size} row(s) still locked to the wrong film:")
     locked.foreach(r => println(f"  ${r.record.tmdbId.getOrElse(0)}%-9s '${r.title}' (${r.year.getOrElse("?")})"))
     if (skipped.nonEmpty) println(s"skipping ${skipped.size}:\n${skipped.map("  " + _).mkString("\n")}")
 

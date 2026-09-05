@@ -76,6 +76,25 @@ class ReresolveSelfLockedRowsSpec extends AnyFlatSpec with Matchers {
     skipped.head should include("row is gone")
   }
 
+  "a row named on the command line" should "replace the recorded list, not extend it" in {
+    // Aimed at one row — "Mistyczka" pinned to Jan Sobierajski's other 2026 film —
+    // the run must not also re-force the twelve rows recorded here for another day.
+    ReresolveSelfLockedRows.targets(Seq("mistyczka|2026=1646379", "--apply"), expected) shouldBe
+      Map("mistyczka|2026" -> 1646379)
+  }
+
+  "no row named on the command line" should "fall back to the recorded list" in {
+    ReresolveSelfLockedRows.targets(Seq("--apply"), expected) shouldBe expected
+    ReresolveSelfLockedRows.targets(Nil, expected)             shouldBe expected
+  }
+
+  "an argument that is not an id=tmdbId pair" should "be ignored rather than forced blind" in {
+    // Without the id there is nothing to check the row against, and `stillLocked`
+    // would have no evidence the row is still wrong.
+    ReresolveSelfLockedRows.targets(Seq("mistyczka|2026"), expected)      shouldBe expected
+    ReresolveSelfLockedRows.targets(Seq("mistyczka|2026=abc"), expected)  shouldBe expected
+  }
+
   "every id this script carries" should "name the wrong film it is locked to" in {
     // The id is the whole safety mechanism — an entry without one would be forced
     // unconditionally. Also guards against a copy-paste that drops the mapping.
