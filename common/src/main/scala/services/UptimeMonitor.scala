@@ -332,7 +332,8 @@ class UptimeMonitor(
     // `put` RETURNS the value it replaced, so the guard costs neither a read nor extra state.
     // A first call in a fresh process has no previous value and writes once, which is what
     // reconciles a tag that changed while this process was not running.
-    val changed = !Option(serviceTags.put(service, tags)).contains(tags)
+    val previous = Option(serviceTags.put(service, tags))
+    val changed  = !previous.contains(tags)
     if (changed) tagColl.foreach { c =>
       Try {
         c.updateOne(
@@ -341,11 +342,29 @@ class UptimeMonitor(
           new UpdateOptions().upsert(true)
         ).subscribe(
           (_: org.mongodb.scala.result.UpdateResult) => (),
-          (exception: Throwable) => logger.debug(s"Uptime tag write failed: ${exception.getMessage}")
+          (exception: Throwable) => tagWriteFailed(service, tags, previous, exception)
         )
-      }.recover { case exception => logger.debug(s"Uptime tag write failed: ${exception.getMessage}") }.getOrElse(())
+      }.recover { case exception => tagWriteFailed(service, tags, previous, exception) }.getOrElse(())
     }
     changed
+  }
+
+  /** Undo the optimistic in-memory `put` when its Mongo write did not land.
+   *
+   *  The skip-if-unchanged guard reads the in-memory map, so leaving the new value there
+   *  after a failed write would make every later call report "unchanged" and never retry —
+   *  Mongo would stay on the old tags until the process restarted. The unconditional write
+   *  this guard replaced healed that on the next scrape cycle; rolling back keeps it doing so.
+   *
+   *  Both rollbacks are CONDITIONAL on the value still being the one we wrote, because the
+   *  failure arrives asynchronously and a newer `tagService` may already have overwritten it —
+   *  that newer value is the one Mongo will be asked for next, so it must not be clobbered. */
+  private def tagWriteFailed(service: String, tags: Set[String], previous: Option[Set[String]], exception: Throwable): Unit = {
+    previous match {
+      case Some(value) => serviceTags.replace(service, tags, value)
+      case None        => serviceTags.remove(service, tags)
+    }
+    logger.debug(s"Uptime tag write failed: ${exception.getMessage}")
   }
 
   /** Current per-service tags, for the page render. Returns the in-memory view,
