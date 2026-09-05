@@ -271,13 +271,12 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "90urodzinypavarottiegokinotekakulturyisztuki|2026",
+    "_id" : "90urodzinypavarottiegokinotekakulturyisztuki|",
     "title" : "90. urodziny Pavarottiego | Kinoteka Kultury i Sztuki",
     "originalTitle" : "Luciano Pavarotti – The man who moved the world",
     "posterUrl" : "https://medstore.kinoteka.pl/KINOMAESTROPLPavarottiPlakatB1ogolny(1).jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 95,
-    "releaseYear" : 2026,
     "genres" : [ "Koncert" ],
     "countries" : [ "Włochy" ],
     "directors" : [ ],
@@ -7987,24 +7986,27 @@
     "weightedRating" : 7.266666666666666,
     "synopsisByCity" : { }
   }, {
-    "_id" : "kolorpurpurykinotekajestkobietaportretwkostiumie|2026",
+    "_id" : "kolorpurpurykinotekajestkobietaportretwkostiumie|1985",
     "title" : "Kolor purpury | Kinoteka jest Kobietą. Portret w kostiumie",
     "originalTitle" : "The Color Purple",
     "posterUrl" : "https://medstore.kinoteka.pl/kolor2.jpg",
     "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 154,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Kostiumowy", "Obyczajowy" ],
+    "releaseYear" : 1985,
+    "genres" : [ "Dramat obyczajowy" ],
     "countries" : [ "USA" ],
     "directors" : [ "Steven Spielberg" ],
     "cast" : [ "Danny Glover", "Whoopi Goldberg", "Oprah Winfrey", "Will" ],
+    "synopsis" : "Historia życia czarnoskórej kobiety, która w młodości była wielokrotnie gwałcona przez ojca, a potem maltretowana przez męża.",
     "trailerUrls" : [ "https://www.youtube.com/embed/_h-efLS7VV4" ],
     "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kolor+purpury+%7C+Kinoteka+jest+Kobiet%C4%85.+Portret+w+kostiumie/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kolor+purpury+%7C+Kinoteka+jest+Kobiet%C4%85.+Portret+w+kostiumie",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kolor+purpury+%7C+Kinoteka+jest+Kobiet%C4%85.+Portret+w+kostiumie"
+      "imdbUrl" : "https://www.imdb.com/title/tt0088939/",
+      "metacriticUrl" : "https://www.metacritic.com/search/The+Color+Purple/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=The+Color+Purple",
+      "filmweb" : 7.8,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Kolor+purpury-1985-1218"
     },
-    "weightedRating" : 0,
+    "weightedRating" : 7.8,
     "synopsisByCity" : {
       "warszawa" : "Maltretowana przez męża i pomiatana przez czwórkę jego dzieci z pierwszego małżeństwa, Celie z całych sił stara się posłusznie wykonywać obowiązki przykładnej żony. Do jej domu przybywa siostra Nettie szukając schronienia przed okrutnym ojcem. Mąż Cellie, Albert, wyrzuca kobietę, gdy ta odrzuca jego zaloty.\n\nKolor purpury, na podstawie nagrodzonej Pulitzerem powieści Alice Walker, której akcja toczy się w wiejskich realiach Południa Stanów, jest triumfalnym debiutem Whoopi Goldberg, nominowanej do Oscara za pierwszoplanową rolę promiennej nieustraszonej Celie. Jest to także pierwszy film Spielberga poruszający problemy rasizmu i mniejszości etnicznych. Roger Ebert uznał go film roku i wpisał na listę Great Films Archive. Film otrzymał 11 nominacji do Oscara, w tym za najlepszy film roku."
     }
@@ -21828,8 +21830,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "90urodzinypavarottiegokinotekakulturyisztuki|2026|warszawa|Kinoteka",
-    "filmId" : "90urodzinypavarottiegokinotekakulturyisztuki|2026",
+    "_id" : "90urodzinypavarottiegokinotekakulturyisztuki||warszawa|Kinoteka",
+    "filmId" : "90urodzinypavarottiegokinotekakulturyisztuki|",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/90-urodziny-pavarottiego-kinoteka-kultury-i-sztuki/",
@@ -62139,8 +62141,8 @@
       "format" : [ "2D", "NAP" ]
     } ]
   }, {
-    "_id" : "kolorpurpurykinotekajestkobietaportretwkostiumie|2026|warszawa|Kinoteka",
-    "filmId" : "kolorpurpurykinotekajestkobietaportretwkostiumie|2026",
+    "_id" : "kolorpurpurykinotekajestkobietaportretwkostiumie|1985|warszawa|Kinoteka",
+    "filmId" : "kolorpurpurykinotekajestkobietaportretwkostiumie|1985",
     "city" : "warszawa",
     "cinema" : "Kinoteka",
     "filmUrl" : "https://kinoteka.pl/film/kolor-purpury-kinoteka-jest-kobieta-portret-w-kostiumie/",

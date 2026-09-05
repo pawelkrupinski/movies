@@ -384,6 +384,24 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // The generic keyword-guarded pipe SUFFIX (banner follows the pipe).
     "Persona | Cykl Bergmana"                              -> "Persona",
     "Stalker | Przegląd Tarkowskiego"                      -> "Stalker",
+    // 2026-09-05 audit of the PL corpus: 56 films were known ONLY by a
+    // pipe-suffixed strand title and 32 of them (57%, against a ~26% corpus
+    // baseline) had no TMDB id, because the strand went into the search query.
+    // These are the strands by film count, none of which was a recognised
+    // keyword — "Młode Horyzonty" alone carried 52 of them.
+    "Billy Elliot | Młode Horyzonty"                       -> "Billy Elliot",
+    "Dancing Queen | Młode Horyzonty"                      -> "Dancing Queen",
+    "Persona | Kinoteka jest Kobietą. W blasku musicali"   -> "Persona",
+    "Rejs | TYLKO SZTUKA CIĘ NIE OSZUKA"                   -> "Rejs",
+    "Stalker | 10/10 Klasyka filmowa"                      -> "Stalker",
+    "Casablanca | POKAZ PRZEDPREMIEROWY"                   -> "Casablanca",
+    "Amelia | przedpremiera"                               -> "Amelia",
+    "Volver | Kino przy herbatce"                          -> "Volver",
+    "Rejs | Kino dyskomfortu"                              -> "Rejs",
+    "Persona | Filmowy Wałbrzych"                          -> "Persona",
+    "Stalker | KLASYCZNE ŚRODY"                            -> "Stalker",
+    "Volver | FKS"                                         -> "Volver",
+    "Amelia | EKO-KINO"                                    -> "Amelia",
     // Sixteenth-wave (2026-07-06) TMDB-no-match audit: authorship suffix with a
     // leading comma, the '(YYYY) 4K' restoration tag, and the Helios RePlay strand.
     "Przekleństwa niewinności, reż. Sofia Coppola (2021)"  -> "Przekleństwa niewinności",
@@ -487,6 +505,13 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // And it DOES fire when a cycle word is the first token after the pipe.
     withClue("cycle suffix stripped: ")(
       withExtras.search("Persona | Cykl Bergmana") shouldBe "Persona")
+    // The guard still holds against the 2026-09 strand keywords. Kino Nowe
+    // Horyzonty publishes BOTH shapes, and the same corpus that supplied
+    // "<film> | Młode Horyzonty" also supplies a Fellini banner whose FILM
+    // follows the pipe — "GŁOS Z KSIĘŻYCA" is La voce della luna, not a strand.
+    withClue("film after pipe still kept alongside the new keywords: ")(
+      withExtras.search("FEDERICO FELLINI: ciao a tutti! | GŁOS Z KSIĘŻYCA")
+        should endWith ("GŁOS Z KSIĘŻYCA"))
   }
 
   // Real corpus strings the SEED already partially strips (so they can't go in the
