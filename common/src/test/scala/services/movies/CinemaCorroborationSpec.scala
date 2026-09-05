@@ -149,6 +149,22 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
 
   it should "still catch a runtime a category apart" in {
     CinemaCorroboration.contradicts(
-      row(Seq("Same Person"), Seq("Same Person"), filmRuntime = Some(15), cinemaRuntime = Some(180))) shouldBe true
+      row(Seq("Someone Else"), Seq("Another Person"), filmRuntime = Some(15), cinemaRuntime = Some(180))) shouldBe true
+  }
+
+  it should "not read a short film in a longer slot as the wrong film" in {
+    // Prod, 2026-09-05: seven of the nine runtime contradictions had the SAME
+    // director on both sides. Almodovar's 30-minute "The Human Voice" advertised
+    // at 90 with a Q&A; a Chaplin/Keaton shorts programme against one Keaton
+    // short. The film is right and the slot is longer than it.
+    CinemaCorroboration.contradicts(
+      row(Seq("Pedro Almodovar"), Seq("Pedro Almodovar"), filmRuntime = Some(30), cinemaRuntime = Some(90))) shouldBe false
+  }
+
+  it should "keep the runtime signal when only one side names a director" in {
+    // An agreement needs two names. A film no venue credits has not agreed with
+    // anything, so the runtime still speaks.
+    CinemaCorroboration.contradicts(
+      row(Seq("Tadeusz Makarczynski"), Seq.empty, filmRuntime = Some(15), cinemaRuntime = Some(180))) shouldBe true
   }
 }

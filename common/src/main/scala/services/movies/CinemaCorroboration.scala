@@ -58,7 +58,8 @@ object CinemaCorroboration {
   def contradiction(record: MovieRecord): Option[Contradiction] =
     if (record.tmdbId.isEmpty) None
     else record.data.get(Tmdb).flatMap { film =>
-      if (runtimeDenies(record, film.runtimeMinutes))     Some(Contradiction.Runtime)
+      if (directorAffirms(record, film.director))         None
+      else if (runtimeDenies(record, film.runtimeMinutes)) Some(Contradiction.Runtime)
       else if (directorDenies(record, film.director))     Some(Contradiction.Director)
       else                                                None
     }
@@ -67,6 +68,27 @@ object CinemaCorroboration {
    *  The cheap, PURE form — a corpus-scan metric uses it as-is; a caller about to
    *  act on it should go through [[contradiction]] and confirm a director. */
   def contradicts(record: MovieRecord): Boolean = contradiction(record).isDefined
+
+  /** Both sides naming the SAME person, which settles the row on the strongest
+   *  evidence either carries and leaves the runtime nothing to decide.
+   *
+   *  Prod, 2026-09-05: seven of the nine runtime contradictions had a director
+   *  agreeing across them. Almodovar's 30-minute "The Human Voice" advertised at
+   *  90 because the slot included a Q&A; a Chaplin/Keaton shorts PROGRAMME
+   *  measured against the one Keaton short it resolved to; "Klimt & Schiele"
+   *  likewise. In every one the film is right and the cinema's number describes
+   *  the event around it, not the film.
+   *
+   *  It gives up the reverse case — a director's OTHER film of the same name, the
+   *  8-minute "Shiva Baby" short standing in for the 2020 feature. That is the
+   *  cheaper mistake to make: a missed contradiction leaves one row uncorrected,
+   *  while acting on a false one force-re-resolves a film that was already right
+   *  and can lose its resolution outright. */
+  private def directorAffirms(record: MovieRecord, filmDirectors: Seq[String]): Boolean = {
+    val cinemaNames = record.cinemaDirector.map(nameTokens).filter(_.nonEmpty)
+    val filmNames   = filmDirectors.map(nameTokens).filter(_.nonEmpty)
+    cinemaNames.exists(c => filmNames.exists(f => samePerson(c, f)))
+  }
 
   /** The runtime band is deliberately wide (see [[RuntimeCorroboration.plausible]]):
    *  cinemas pad, round and shave, and Multikino advertises the 162-minute "Lalka"
