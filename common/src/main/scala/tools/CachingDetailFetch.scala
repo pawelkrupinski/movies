@@ -116,14 +116,20 @@ object CachingDetailFetch {
    * `lastFetchedAt = now`. It could not see a change by construction, so detail
    * ran 12h stale while the stamp claimed 6h.
    *
-   * An hour keeps the one job the cache still does. `DetailFetchOutcome.Failed`
-   * is deliberately NOT stamped, so a film whose detail fetch fails — INCLUDING a
-   * page that returns 200 and parses to nothing — is re-enqueued by `DetailReaper`
-   * every tick, about once a minute, indefinitely (Kino Bulgarska: 1,438 failures
-   * to 56 successes in 24h on one trailer-less film). An hour absorbs ~60 of those
-   * retries per real fetch while still expiring six times over before the refresh
-   * window comes round. Shrink it further only alongside fixing that livelock at
-   * the clients that still fold a loaded-but-empty page into `Failed`.
+   * An hour was chosen while this cache was still absorbing a livelock: a page
+   * that returned 200 and parsed to nothing became `DetailFetchOutcome.Failed`,
+   * which never stamps, so `DetailReaper` re-enqueued that film every tick
+   * indefinitely (Kino Bulgarska: 1,438 failures to 56 successes in 24h on one
+   * trailer-less film) and the cache was what kept those retries off a small
+   * cinema's site. That is fixed at the clients now — a page that LOADED is a
+   * detail, `DetailEnricherDurableFailureSpec` holds every one of them to it — and
+   * the venue caches this defended were deleted once nothing read them.
+   *
+   * So an hour is now just a sane default for whoever inherits it: the two
+   * production chains set their own (2h each, on the Mongo-backed cache), and
+   * this is what a NEW chain or a diagnostic gets. Keep it well inside the refresh
+   * window, and well above the reaper's tick — a cache that expires faster than
+   * the work arrives is not one.
    */
   val DefaultTtl: FiniteDuration = 1.hour
 

@@ -343,25 +343,28 @@ class DetailReaperSpec extends AnyFlatSpec with Matchers {
     bus.published.collect { case e: MovieDetailsComplete => e.title } shouldBe List("Dune")
   }
 
-  /** WHY THE DETAIL CACHE STILL EXISTS, expressed as the two numbers it lives
-   *  between. The reaper re-enqueues an UNSTAMPED film every tick — and
-   *  `DetailFetchOutcome.Failed` never stamps, including for a page that returns
-   *  200 and parses to nothing (Kino Bulgarska: 1,438 failures to 56 successes in
-   *  24h on one trailer-less film). `CachingDetailFetch` is what stops that
-   *  once-a-minute retry becoming once-a-minute HTTP at a small cinema's site, so
-   *  its TTL has to be many ticks long.
+  /** THE DETAIL CACHE'S TTL LIVES BETWEEN TWO NUMBERS, and this is the lower one.
    *
-   *  It must also expire well inside the refresh window, or the scheduled refresh
-   *  is served from cache and cannot see a change — `CachingDetailFetchSpec` owns
-   *  that half. Together the two say the TTL belongs strictly between the tick and
-   *  the window, which is the thing to re-check if either is retuned. */
+   *  It has to expire well inside the refresh window or a scheduled refresh is
+   *  served from cache and cannot see a change — `CachingDetailFetchSpec` owns
+   *  that half. It also has to outlive many reaper ticks, because the reaper
+   *  re-enqueues an UNSTAMPED film every tick and a cache that expires faster than
+   *  the work arrives is not a cache at all.
+   *
+   *  The sharpest case for that floor is gone rather than hypothetical: a page
+   *  returning 200 and parsing to nothing used to become `Failed`, which never
+   *  stamps, so one trailer-less film cost Kino Bulgarska 1,438 failures to 56
+   *  successes in 24h, and this cache was what kept the retries off the venue.
+   *  `DetailEnricherDurableFailureSpec` now holds every client to treating a page
+   *  that LOADED as a detail, so the floor guards a regression rather than a live
+   *  wound — which is the reason to keep it, not to drop it. */
   it should "keep a detail cache TTL that absorbs the every-tick retry yet expires inside the refresh window" in {
     val tick   = DetailReaper.DefaultTickInterval
     val window = Freshness.ttlFor(FreshnessKind.DetailEnrich).getOrElse(fail("DetailEnrich lost its TTL"))
     val ttl    = CachingDetailFetch.DefaultTtl
 
     withClue(s"tick $tick, cache TTL $ttl, refresh window $window — ") {
-      ttl should be > (tick * 10)   // a retry storm is absorbed, not passed through
+      ttl should be > (tick * 10)   // outlives the work arriving at it
       ttl should be < window        // a scheduled refresh is a real fetch
     }
   }

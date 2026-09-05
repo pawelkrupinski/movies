@@ -31,8 +31,9 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  * sample is a panel nobody can read. [[CacheOccupancy]] still MODELS both — it is
  * the general shape of "what a cache holds against its bound" — so restoring them
  * is this method plus a panel, the day something here is weighed in bytes again.
- * The web tier's `OgCardCache` IS byte-bounded and still unmeasured; it belongs on
- * a `kinowo_web_cache_*` family, not this one.
+ * The web tier's byte-bounded caches are measured, on their own
+ * `kinowo_web_cache_*` family — [[WebCacheMetrics]] over there, sharing
+ * [[CacheGauge]] and [[CacheOccupancy]] with this.
  *
  * Read at scrape time through callback gauges: Caffeine keeps these counters
  * itself, so a sample is a few field reads and there is no staleness window and
