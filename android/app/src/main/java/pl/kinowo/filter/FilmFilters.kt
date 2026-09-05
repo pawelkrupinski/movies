@@ -1,6 +1,5 @@
 package pl.kinowo.filter
 
-import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import java.time.Instant
@@ -279,22 +278,27 @@ fun List<Film>.groupedByCinema(): List<CinemaSection> {
 }
 
 /**
- * Which of a cinema-group's showtime-format tokens a chip may drop.
+ * Which of a card's showtime-format tokens a chip may drop.
  *
  * Dropping what every slot shares is what keeps a chip narrow enough for
  * two-per-row (`ShowtimeChipFitTest`) — six chips all saying "2D" tell you
- * nothing, and neither do six all saying "NAP" when the cinema screens the film
- * no other way. What survives is what actually distinguishes one slot from the
- * next. Same rule as the web's `CinemaFormat` and iOS's `FormatTokenFilter`.
+ * nothing, and neither do six all saying "NAP" when the film screens no other
+ * way. What survives is what actually separates one slot from the next.
+ *
+ * The comparison spans the WHOLE card — every cinema, every day — because that
+ * is the span a reader compares across. A film Multikino screens dubbed and
+ * Helios subtitled is mixed even though neither cinema is, and both keep their
+ * tag; a film that is dubbed everywhere shows bare times. On the Kina tab each
+ * card already holds one cinema, so the same rule reads as per-cinema there.
+ * Same rule as the web's `FilmFormat` and iOS's `FormatTokenFilter`.
  */
 object FormatTokenFilter {
-    /** What a chip at [cinema] may drop: the tokens EVERY showtime there
-     *  carries, whatever they name. One that is on every chip separates no slot
-     *  from any other, so a language version goes the same way a screen format
-     *  does — the chips that keep a tag are the ones a visitor is choosing
-     *  between. */
-    fun tokensToStrip(cinema: CinemaShowings): Set<String> {
-        val tokenSets = cinema.showtimes
+    /** What a chip on this card may drop: the tokens EVERY showtime across
+     *  [days] carries, whatever they name. */
+    fun tokensToStrip(days: List<DayShowings>): Set<String> {
+        val tokenSets = days
+            .flatMap { it.cinemas }
+            .flatMap { it.showtimes }
             .map { it.format.split(" ").filter(String::isNotEmpty).toSet() }
             .filter { it.isNotEmpty() }
         val first = tokenSets.firstOrNull() ?: return emptySet()

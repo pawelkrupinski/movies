@@ -24,7 +24,10 @@ struct ShowingsView: View {
 
     var body: some View {
         let allDays = film.showings
-        let (visibleDays, hiddenShowtimes) = truncated(allDays)
+        // One strip set for the whole card: a token every slot on it carries
+        // separates no slot from any other, whichever cinema or day it sits in.
+        let strippedTokens = FormatTokenFilter.tokensToStrip(allDays)
+        let (visibleDays, hiddenShowtimes) = truncated(allDays, commonTokens: strippedTokens)
         let shouldTruncate = truncatable && hiddenShowtimes > 0
         let days = shouldTruncate ? visibleDays : allDays
 
@@ -42,7 +45,6 @@ struct ShowingsView: View {
                         .padding(.top, spacing.dayLabelTop)
                     VStack(alignment: .leading, spacing: spacing.showingsBlock) {
                         ForEach(day.cinemas, id: \.cinema) { cinema in
-                            let strippedTokens = FormatTokenFilter.tokensToStrip(cinema)
                             VStack(alignment: .leading, spacing: spacing.cinemaToPills) {
                                 if showCinemaHeaders {
                                     cinemaLabel(cinema)
@@ -72,7 +74,7 @@ struct ShowingsView: View {
         .coordinateSpace(name: ShowtimeBadge.cardCoordinateSpace)
     }
 
-    private func truncated(_ allDays: [DayShowings]) -> (visible: [DayShowings], hidden: Int) {
+    private func truncated(_ allDays: [DayShowings], commonTokens: Set<String>) -> (visible: [DayShowings], hidden: Int) {
         var lineCount = 0
         var visibleDays: [DayShowings] = []
         var hidden = 0
@@ -83,8 +85,7 @@ struct ShowingsView: View {
             var dayLines = 1
             for cinema in day.cinemas {
                 let pillRows = Self.pillRowCount(
-                    cinema.showtimes, commonTokens: FormatTokenFilter.tokensToStrip(cinema),
-                    contentWidth: contentWidth)
+                    cinema.showtimes, commonTokens: commonTokens, contentWidth: contentWidth)
                 let cinemaLines = 1 + pillRows
                 if lineCount + dayLines + cinemaLines <= maxVisibleLines {
                     keptCinemas.append(cinema)

@@ -249,56 +249,60 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     // surface in `errors`.
     expect(errors).toEqual([]);
   });
-  // A showtime tag says only what separates that slot from the others at the
-  // same cinema — a screen format and a language version alike. Six pills all
-  // saying `2D DUB` distinguish nothing, so a cinema that screens a film only
-  // dubbed shows bare times; the moment two slots differ, the version is what
-  // tells them apart and stays on each pill.
-  test('a showtime tag says only what separates it from the rest of its cinema', async ({ page }) => {
+  // A showtime tag says only what separates that slot from the rest of the
+  // film's card — a screen format and a language version alike. Six pills all
+  // saying `2D DUB` distinguish nothing, so a film shown only dubbed here has
+  // bare times; the moment two slots differ — two times, two cinemas or two
+  // days — the version is what tells them apart and stays on every pill.
+  test('a showtime tag says only what separates it from the rest of its card', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
 
-    const { wrong, versionsDropped, versionsShown } = await page.evaluate(() => {
+    const { wrong, versionsDropped, versionsShown, mixedFilms } = await page.evaluate(() => {
       const VERSIONS = new Set(['NAP', 'DUB', 'LEK', 'ORG']);
       const wrong: string[] = [];
       let versionsDropped = 0;
       let versionsShown = 0;
+      let mixedFilms = 0;
       for (const card of document.querySelectorAll<HTMLElement>('.col[data-title]')) {
-        // One bucket per CINEMA of this film, spanning every date on the card —
-        // the same grouping `CinemaFormat.byCinema` strips against.
-        const byCinema = new Map<string, HTMLElement[]>();
-        for (const group of card.querySelectorAll<HTMLElement>('.cinema-group')) {
-          const cinema = group.getAttribute('data-cinema') || '';
-          const badges = [...group.querySelectorAll<HTMLElement>('.badge-time')];
-          byCinema.set(cinema, (byCinema.get(cinema) || []).concat(badges));
-        }
-        for (const [cinema, badges] of byCinema) {
-          const formats = badges
-            .map((b) => (b.getAttribute('data-format') || '').split(' ').filter(Boolean))
-            .filter((f) => f.length > 0);
-          if (formats.length === 0) continue;
-          // The tokens EVERY slot at this cinema carries — what a pill may drop.
-          const common = formats.reduce((acc, f) => acc.filter((t) => f.includes(t)));
-          for (const badge of badges) {
-            const format = (badge.getAttribute('data-format') || '').split(' ').filter(Boolean);
-            const shown = (badge.querySelector('.badge-fmt')?.textContent || '').split(' ').filter(Boolean);
-            const expected = format.filter((t) => !common.includes(t));
-            if (shown.join(' ') !== expected.join(' ')) {
-              wrong.push(`${cinema} ${badge.getAttribute('data-time')}: shown "${shown.join(' ')}" want "${expected.join(' ')}"`);
-            }
-            versionsShown += shown.filter((t) => VERSIONS.has(t)).length;
+        const badges = [...card.querySelectorAll<HTMLElement>('.badge-time')];
+        const formats = badges
+          .map((b) => (b.getAttribute('data-format') || '').split(' ').filter(Boolean))
+          .filter((f) => f.length > 0);
+        if (formats.length === 0) continue;
+        // The tokens EVERY slot of this film carries — what a pill may drop.
+        const common = formats.reduce((acc, f) => acc.filter((t) => f.includes(t)));
+        const filmVersions = new Set(formats.flatMap((f) => f.filter((t) => VERSIONS.has(t))));
+        if (filmVersions.size > 1) mixedFilms++;
+        for (const badge of badges) {
+          const format = (badge.getAttribute('data-format') || '').split(' ').filter(Boolean);
+          const shown = (badge.querySelector('.badge-fmt')?.textContent || '').split(' ').filter(Boolean);
+          const expected = format.filter((t) => !common.includes(t));
+          if (shown.join(' ') !== expected.join(' ')) {
+            wrong.push(`${card.getAttribute('data-title')} ${badge.getAttribute('data-time')}: shown "${shown.join(' ')}" want "${expected.join(' ')}"`);
           }
-          versionsDropped += common.filter((t) => VERSIONS.has(t)).length;
+          // A film screened more than one way must say so on every pill that
+          // carries a version — that is the whole point of keeping the tag.
+          if (filmVersions.size > 1) {
+            for (const t of format) {
+              if (VERSIONS.has(t) && !shown.includes(t)) {
+                wrong.push(`${card.getAttribute('data-title')} ${badge.getAttribute('data-time')}: lost ${t} on a mixed film`);
+              }
+            }
+          }
+          versionsShown += shown.filter((t) => VERSIONS.has(t)).length;
         }
+        versionsDropped += common.filter((t) => VERSIONS.has(t)).length;
       }
-      return { wrong: wrong.slice(0, 10), versionsDropped, versionsShown };
+      return { wrong: wrong.slice(0, 10), versionsDropped, versionsShown, mixedFilms };
     });
     expect(wrong).toEqual([]);
 
     // The check above is only worth anything if the page exercises both halves
-    // of the rule: cinemas uniform in their version, and cinemas that are not.
+    // of the rule: films uniform in their version, and films that are not.
     expect(versionsDropped).toBeGreaterThan(10);
     expect(versionsShown).toBeGreaterThan(10);
+    expect(mixedFilms).toBeGreaterThan(0);
   });
 
 });

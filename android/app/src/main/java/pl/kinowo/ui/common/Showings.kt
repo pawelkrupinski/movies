@@ -132,6 +132,9 @@ fun Showings(
     val showingsBlock = cardSpacing.showingsBlock * scale
     val dayToCinema = cardSpacing.dayToCinema * scale
     val total = film.showings.sumOf { d -> d.cinemas.sumOf { it.showtimes.size } }
+    // One strip set for the whole card: a token every slot on it carries
+    // separates no slot from any other, whichever cinema or day it sits in.
+    val common = FormatTokenFilter.tokensToStrip(film.showings)
     var budget = maxChips ?: Int.MAX_VALUE
     var shown = 0
 
@@ -167,7 +170,6 @@ fun Showings(
                                 } else Modifier,
                             )
                         }
-                        val common = FormatTokenFilter.tokensToStrip(cg)
                         val slots = cg.showtimes.take(budget)
                         budget -= slots.size
                         shown += slots.size

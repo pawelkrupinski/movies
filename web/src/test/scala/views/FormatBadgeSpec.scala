@@ -3,7 +3,7 @@ package views
 import testsupport.TestMessages.given
 
 import controllers.{CinemaShowtimes, FilmSchedule}
-import models.{Helios, Movie, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import models.{Cinema, Helios, Multikino, Movie, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import services.readmodel.TestReadModel
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -33,6 +33,13 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
       resolved       = TestReadModel.resolved("Test movie", None, record),
       slug           = controllers.FilmHref.slugOf("Test movie")
     )
+  }
+
+  /** One film screened at two cinemas on the same day. */
+  private def twoCinemas(first: (Cinema, Seq[Showtime]), second: (Cinema, Seq[Showtime])): FilmSchedule = {
+    val base = schedule(Seq.empty)
+    base.copy(showings = Seq(LocalDate.of(2026, 5, 13) -> Seq(
+      CinemaShowtimes(first._1, first._2), CinemaShowtimes(second._1, second._2))))
   }
 
   private val baseTime = LocalDateTime.of(2026, 5, 13, 18, 0)
@@ -69,14 +76,15 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
     html should not include "badge-fmt"
   }
 
-  // ── a token the whole cinema shares is dropped, version or not ────────────
+  // ── a token the whole CARD shares is dropped, version or not ──────────────
   //
-  // Stripping tokens common to a cinema keeps a pill narrow, and a token on
-  // every pill of the group separates no slot from any other — a LANGUAGE
-  // version included. The version earns its place on a pill exactly when the
-  // cinema screens the film more than one way.
+  // Stripping tokens common to the film keeps a pill narrow, and a token on
+  // every pill of the card separates no slot from any other — a LANGUAGE
+  // version included. The version earns its place exactly when the film is
+  // screened more than one way here, whether that difference sits inside one
+  // cinema or between two.
 
-  it should "drop a version token the whole cinema shares, like any other common token" in {
+  it should "drop a version token the whole card shares, like any other common token" in {
     val showtimes = Seq(
       Showtime(baseTime,              Some("https://example.com/a"), Some("Sala 1"), List("2D", "DUB")),
       Showtime(baseTime.plusHours(2), Some("https://example.com/b"), Some("Sala 2"), List("2D", "DUB")),
@@ -107,7 +115,26 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
     html should include ("""<span class="badge-fmt">DUB</span>""")
   }
 
-  it should "still drop a screen format the whole cinema shares" in {
+  it should "keep the version on BOTH cinemas when neither is mixed but the film is" in {
+    // Multikino screens it only dubbed, Helios only subtitled. Each cinema on
+    // its own says nothing; the card is exactly what a visitor is choosing
+    // between, so every pill keeps its version.
+    val dubbed = Seq(
+      Showtime(baseTime,              Some("https://example.com/a"), Some("Sala 1"), List("2D", "DUB")),
+      Showtime(baseTime.plusHours(2), Some("https://example.com/b"), Some("Sala 2"), List("2D", "DUB")),
+    )
+    val subtitled = Seq(
+      Showtime(baseTime.plusHours(1), Some("https://example.com/c"), Some("Sala 3"), List("2D", "NAP")),
+      Showtime(baseTime.plusHours(3), Some("https://example.com/d"), Some("Sala 4"), List("2D", "NAP")),
+    )
+    val html = views.html._filmCards(Seq(twoCinemas(Multikino -> dubbed, Helios -> subtitled))).body
+    html.split("""<span class="badge-fmt">DUB</span>""").length shouldBe 3
+    html.split("""<span class="badge-fmt">NAP</span>""").length shouldBe 3
+    // The 2D every slot of the film carries is still dropped.
+    html should not include ("""<span class="badge-fmt">2D DUB</span>""")
+  }
+
+  it should "still drop a screen format the whole card shares" in {
     val showtimes = Seq(
       Showtime(baseTime,              Some("https://example.com/a"), Some("Sala 1"), List("IMAX", "NAP")),
       Showtime(baseTime.plusHours(2), Some("https://example.com/b"), Some("Sala 2"), List("IMAX", "3D", "NAP")),

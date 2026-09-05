@@ -1,17 +1,18 @@
-@import controllers.{CinemaFormat, FilmSchedule, CardFormat, FilmHref}
+@import controllers.{FilmFormat, FilmSchedule, CardFormat, FilmHref}
 @(film: FilmSchedule)(implicit city: models.City)
 @*
    One film's showings, grouped by date → cinema → time slots. Used by
    `_filmCards` (the listing) and `_filmDetailContent` (the per-film page).
 
    The cinema sub-header names each cinema (and links to its page for the film
-   when available); per-cinema common format tokens are stripped from each
-   slot's badge. The label is always shown on the listing — even when the
+   when available); the format tokens the whole card shares are stripped from
+   each slot's badge. The label is always shown on the listing — even when the
    cinema filter is narrowed to one cinema.
 
-   A token every slot at the cinema carries is dropped whatever it names — a
+   A token every slot of the film carries is dropped whatever it names — a
    screen format or a language version alike — because it separates no slot from
-   any other. See `CinemaFormat`.
+   any other. Two cinemas that disagree make the film mixed even though neither
+   cinema is, and then every pill keeps its version. See `FilmFormat`.
 
    Both outbound shapes here — the cinema's page for the film, and each slot's
    booking deep-link — carry `rel="nofollow noopener"`. A city listing renders
@@ -25,12 +26,11 @@
    this partial stays a plain render of the whole tree and neither host has to
    agree with the other about what a cap should be.
 *@
-@defining(CinemaFormat.byCinema(film)) { commonByCinema =>
+@defining(FilmFormat.tokensToStrip(film)) { commonToks =>
 @for((date, cinemaShowtimesList) <- film.showings) {
   <div class="date-group" data-date="@date">
     <div class="date-label">@CardFormat.date(date)</div>
     @for(cinemaShowtimes <- cinemaShowtimesList) {
-      @defining(commonByCinema.getOrElse(cinemaShowtimes.cinema, Set.empty[String])) { commonToks =>
       <div class="cinema-group" data-cinema="@cinemaShowtimes.cinema.displayName">
         <div class="cinema-label">
           @film.cinemaFilmUrls.find(_._1 == cinemaShowtimes.cinema) match {
@@ -69,7 +69,6 @@
           }
         </div>
       </div>
-      }
     }
   </div>
 }

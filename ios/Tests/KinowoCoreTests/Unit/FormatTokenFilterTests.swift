@@ -3,54 +3,46 @@ import XCTest
 
 final class FormatTokenFilterTests: XCTestCase {
 
-    // MARK: – tokensToStrip
-
-    func testAllShowtimesSameFormatReturnsFullSet() {
-        let cinema = CinemaShowings(cinema: "Kino A", cinemaURL: nil, showtimes: [
-            Showtime(time: "18:00", format: "2D NAP", room: nil, bookingURL: nil),
-            Showtime(time: "20:00", format: "2D NAP", room: nil, bookingURL: nil),
-        ])
-        XCTAssertEqual(FormatTokenFilter.tokensToStrip(cinema), ["2D", "NAP"])
+    private func day(_ date: String, _ cinemas: [CinemaShowings]) -> DayShowings {
+        DayShowings(date: date, label: date, cinemas: cinemas)
     }
 
-    func testDifferentFormatsReturnOnlySharedTokens() {
-        let cinema = CinemaShowings(cinema: "Kino A", cinemaURL: nil, showtimes: [
-            Showtime(time: "18:00", format: "2D NAP", room: nil, bookingURL: nil),
-            Showtime(time: "20:00", format: "IMAX 3D NAP", room: nil, bookingURL: nil),
-        ])
-        XCTAssertEqual(FormatTokenFilter.tokensToStrip(cinema), ["NAP"])
+    private func cinema(_ name: String, _ formats: [String]) -> CinemaShowings {
+        CinemaShowings(cinema: name, cinemaURL: nil, showtimes: formats.enumerated().map { i, f in
+            Showtime(time: "1\(i):00", format: f, room: nil, bookingURL: nil)
+        })
+    }
+
+    // MARK: – tokensToStrip
+
+    func testEverySlotSharingAFormatMakesItStrippable() {
+        let days = [day("2026-09-05", [cinema("Kino A", ["2D NAP", "2D NAP"])])]
+        XCTAssertEqual(FormatTokenFilter.tokensToStrip(days), ["2D", "NAP"])
+    }
+
+    func testDifferentFormatsLeaveOnlySharedTokens() {
+        let days = [day("2026-09-05", [cinema("Kino A", ["2D NAP", "IMAX 3D NAP"])])]
+        XCTAssertEqual(FormatTokenFilter.tokensToStrip(days), ["NAP"])
     }
 
     func testNoCommonTokensReturnsEmpty() {
-        let cinema = CinemaShowings(cinema: "Kino A", cinemaURL: nil, showtimes: [
-            Showtime(time: "18:00", format: "2D", room: nil, bookingURL: nil),
-            Showtime(time: "20:00", format: "IMAX 3D", room: nil, bookingURL: nil),
-        ])
-        XCTAssertEqual(FormatTokenFilter.tokensToStrip(cinema), [])
+        let days = [day("2026-09-05", [cinema("Kino A", ["2D", "IMAX 3D"])])]
+        XCTAssertEqual(FormatTokenFilter.tokensToStrip(days), [])
     }
 
     func testSingleShowtimeFormatsAreAllCommon() {
-        let cinema = CinemaShowings(cinema: "Kino A", cinemaURL: nil, showtimes: [
-            Showtime(time: "18:00", format: "2D NAP", room: nil, bookingURL: nil),
-        ])
-        XCTAssertEqual(FormatTokenFilter.tokensToStrip(cinema), ["2D", "NAP"])
+        let days = [day("2026-09-05", [cinema("Kino A", ["2D NAP"])])]
+        XCTAssertEqual(FormatTokenFilter.tokensToStrip(days), ["2D", "NAP"])
     }
 
     func testEmptyFormatShowtimesAreIgnored() {
-        let cinema = CinemaShowings(cinema: "Kino A", cinemaURL: nil, showtimes: [
-            Showtime(time: "18:00", format: "2D NAP", room: nil, bookingURL: nil),
-            Showtime(time: "20:00", format: "", room: nil, bookingURL: nil),
-            Showtime(time: "22:00", format: "2D NAP", room: nil, bookingURL: nil),
-        ])
-        XCTAssertEqual(FormatTokenFilter.tokensToStrip(cinema), ["2D", "NAP"])
+        let days = [day("2026-09-05", [cinema("Kino A", ["2D NAP", "", "2D NAP"])])]
+        XCTAssertEqual(FormatTokenFilter.tokensToStrip(days), ["2D", "NAP"])
     }
 
     func testAllFormatsEmptyReturnsEmpty() {
-        let cinema = CinemaShowings(cinema: "Kino A", cinemaURL: nil, showtimes: [
-            Showtime(time: "18:00", format: "", room: nil, bookingURL: nil),
-            Showtime(time: "20:00", format: "", room: nil, bookingURL: nil),
-        ])
-        XCTAssertEqual(FormatTokenFilter.tokensToStrip(cinema), [])
+        let days = [day("2026-09-05", [cinema("Kino A", ["", ""])])]
+        XCTAssertEqual(FormatTokenFilter.tokensToStrip(days), [])
     }
 
     // MARK: – what a pill is left showing
@@ -60,64 +52,69 @@ final class FormatTokenFilterTests: XCTestCase {
     // target, so this is the closest reachable mechanism to the pill itself —
     // the view does nothing with the answer but hand it to `filter`.
 
-    func testAVersionEverySlotSharesIsDroppedLikeAnyOtherToken() {
-        let cinema = CinemaShowings(cinema: "Multikino", cinemaURL: nil, showtimes: [
-            Showtime(time: "14:30", format: "2D DUB", room: nil, bookingURL: nil),
-            Showtime(time: "17:00", format: "2D DUB", room: nil, bookingURL: nil),
-        ])
-        let common = FormatTokenFilter.tokensToStrip(cinema)
-        XCTAssertEqual(common, ["2D", "DUB"])
+    func testAVersionTheWHOLECardSharesIsDroppedLikeAnyOtherToken() {
+        let days = [day("2026-09-05", [cinema("Multikino", ["2D DUB", "2D DUB"])])]
+        let strip = FormatTokenFilter.tokensToStrip(days)
+        XCTAssertEqual(strip, ["2D", "DUB"])
         // Six pills all saying DUB tell a visitor as little as six all saying
-        // 2D — the cinema screens the film no other way.
-        XCTAssertEqual(FormatTokenFilter.filter("2D DUB", removing: common), "")
+        // 2D — the film screens no other way here.
+        XCTAssertEqual(FormatTokenFilter.filter("2D DUB", removing: strip), "")
+    }
+
+    func testTwoCINEMASThatDisagreeKeepTheVersionOnBOTH() {
+        // Neither cinema is mixed on its own; the FILM is. That difference is
+        // the whole reason a visitor reads the tag, so it stays on every pill.
+        let days = [day("2026-09-05", [
+            cinema("Multikino", ["2D DUB", "2D DUB"]),
+            cinema("Helios",    ["2D NAP", "2D NAP"]),
+        ])]
+        let strip = FormatTokenFilter.tokensToStrip(days)
+        XCTAssertEqual(strip, ["2D"])
+        XCTAssertEqual(FormatTokenFilter.filter("2D DUB", removing: strip), "DUB")
+        XCTAssertEqual(FormatTokenFilter.filter("2D NAP", removing: strip), "NAP")
+    }
+
+    func testTwoDAYSThatDisagreeKeepTheVersionOnBOTH() {
+        // Same cinema, subtitled today and dubbed tomorrow: uniform within each
+        // day, mixed across the card.
+        let days = [
+            day("2026-09-05", [cinema("Multikino", ["2D NAP", "2D NAP"])]),
+            day("2026-09-06", [cinema("Multikino", ["2D DUB", "2D DUB"])]),
+        ]
+        let strip = FormatTokenFilter.tokensToStrip(days)
+        XCTAssertEqual(strip, ["2D"])
+        XCTAssertEqual(FormatTokenFilter.filter("2D NAP", removing: strip), "NAP")
+        XCTAssertEqual(FormatTokenFilter.filter("2D DUB", removing: strip), "DUB")
     }
 
     func testASharedScreenFormatIsDropped() {
-        let cinema = CinemaShowings(cinema: "Kino A", cinemaURL: nil, showtimes: [
-            Showtime(time: "14:30", format: "IMAX NAP", room: nil, bookingURL: nil),
-            Showtime(time: "17:00", format: "IMAX 3D NAP", room: nil, bookingURL: nil),
-        ])
-        XCTAssertEqual(FormatTokenFilter.tokensToStrip(cinema), ["IMAX", "NAP"])
+        let days = [day("2026-09-05", [cinema("Kino A", ["IMAX NAP", "IMAX 3D NAP"])])]
+        XCTAssertEqual(FormatTokenFilter.tokensToStrip(days), ["IMAX", "NAP"])
         XCTAssertEqual(FormatTokenFilter.filter("IMAX 3D NAP", removing: ["IMAX", "NAP"]), "3D")
     }
 
     func testAVersionThatDiffersBetweenSlotsStaysOnEveryPill() {
-        let cinema = CinemaShowings(cinema: "Multikino", cinemaURL: nil, showtimes: [
-            Showtime(time: "14:30", format: "2D NAP", room: nil, bookingURL: nil),
-            Showtime(time: "17:00", format: "2D DUB", room: nil, bookingURL: nil),
-        ])
-        let common = FormatTokenFilter.tokensToStrip(cinema)
-        XCTAssertEqual(FormatTokenFilter.filter("2D NAP", removing: common), "NAP")
-        XCTAssertEqual(FormatTokenFilter.filter("2D DUB", removing: common), "DUB")
-    }
-
-    func testNothingIsStrippedWhenNothingIsCommon() {
-        let cinema = CinemaShowings(cinema: "Kino A", cinemaURL: nil, showtimes: [
-            Showtime(time: "18:00", format: "2D", room: nil, bookingURL: nil),
-            Showtime(time: "20:00", format: "IMAX 3D", room: nil, bookingURL: nil),
-        ])
-        XCTAssertEqual(FormatTokenFilter.tokensToStrip(cinema), [])
+        let days = [day("2026-09-05", [cinema("Multikino", ["2D NAP", "2D DUB"])])]
+        let strip = FormatTokenFilter.tokensToStrip(days)
+        XCTAssertEqual(FormatTokenFilter.filter("2D NAP", removing: strip), "NAP")
+        XCTAssertEqual(FormatTokenFilter.filter("2D DUB", removing: strip), "DUB")
     }
 
     // MARK: – filter
 
     func testFilterRemovesCommonTokens() {
-        let result = FormatTokenFilter.filter("IMAX 3D NAP", removing: ["NAP"])
-        XCTAssertEqual(result, "IMAX 3D")
+        XCTAssertEqual(FormatTokenFilter.filter("IMAX 3D NAP", removing: ["NAP"]), "IMAX 3D")
     }
 
     func testFilterRemovesAllTokensLeavingEmpty() {
-        let result = FormatTokenFilter.filter("2D NAP", removing: ["2D", "NAP"])
-        XCTAssertEqual(result, "")
+        XCTAssertEqual(FormatTokenFilter.filter("2D NAP", removing: ["2D", "NAP"]), "")
     }
 
     func testFilterWithEmptyCommonSetReturnsOriginal() {
-        let result = FormatTokenFilter.filter("IMAX 3D", removing: [])
-        XCTAssertEqual(result, "IMAX 3D")
+        XCTAssertEqual(FormatTokenFilter.filter("IMAX 3D", removing: []), "IMAX 3D")
     }
 
     func testFilterOnEmptyFormatReturnsEmpty() {
-        let result = FormatTokenFilter.filter("", removing: ["2D"])
-        XCTAssertEqual(result, "")
+        XCTAssertEqual(FormatTokenFilter.filter("", removing: ["2D"]), "")
     }
 }
