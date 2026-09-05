@@ -1001,11 +1001,12 @@ final case class CityGroup(label: String, slug: String, cities: Seq[City]) {
    *  then held a heading you had to open to reveal a single row repeating it.
    *  Such a group is offered as a plain link straight to that page instead.
    *
-   *  Keyed on the SLUG rather than on `cities.sizeIs == 1`: a one-city group
-   *  whose city is addressed elsewhere (the District of Columbia, whose single
-   *  metro is `/washington/`) is still a grouping — its own name is not
-   *  reachable any other way, and dropping the heading would lose it. Only a
-   *  group standing exactly where its city stands can collapse into it. */
+   *  Keyed on the SLUG rather than on `cities.sizeIs == 1`, which today selects
+   *  the same seven. The slug is what "the group IS the place" actually means: a
+   *  group holding one city addressed at some OTHER slug is still a grouping —
+   *  its own name is then reachable nowhere else, and collapsing it into a link
+   *  labelled something different would lose that name. The count is a
+   *  coincidence of the current roster; this is the condition. */
   def soleCity: Option[City] = cities match {
     case Seq(only) if only.slug == slug => Some(only)
     case _                              => None

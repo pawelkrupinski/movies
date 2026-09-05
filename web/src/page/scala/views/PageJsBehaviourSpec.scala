@@ -450,7 +450,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // 55 states and territories — the whole list a visitor first sees, minus
       // the seven that are a place in their own right and link straight through.
       val headings = renderedCount(page, "#city-list summary")
-      val direct   = renderedCount(page, "#city-list > li > a")
+      val direct   = renderedCount(page, "#city-list > li.city-direct > a")
       headings + direct shouldBe models.Country.UnitedStates.cityGroups.size
       headings should be > 40
       // Not one of the 468 metros is on screen yet.
@@ -477,7 +477,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Delaware is too small to cut into metros, so `/delaware/` is the page —
       // a heading you open to find one row repeating its own name is a step that
       // buys nothing. See `CityGroup.soleCity`.
-      renderedTexts(page, """#city-list > li > a[href="/delaware/"]""") shouldBe """["Delaware"]"""
+      renderedTexts(page, """#city-list > li.city-direct > a[href="/delaware/"]""") shouldBe """["Delaware"]"""
       renderedTexts(page, "#city-list summary") should not include "Delaware"
       // California is the other half of that rule: many metros, so a heading.
       renderedTexts(page, "#city-list summary") should include ("California")
@@ -490,7 +490,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       renderedTexts(page, AnyGroupedCity) shouldBe """["Los Angeles"]"""
       renderedTexts(page, "#city-list summary") shouldBe """["California"]"""
       // The direct-link states filter out with everyone else.
-      renderedCount(page, """#city-list > li > a[href="/delaware/"]""") shouldBe 0
+      renderedCount(page, """#city-list > li.city-direct > a[href="/delaware/"]""") shouldBe 0
     }
   }
 
@@ -514,7 +514,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       renderedCount(page, AnyGroupedCity) shouldBe 0
       // …and every heading is back, including the ones the query filtered out.
       renderedCount(page, "#city-list summary") +
-        renderedCount(page, "#city-list > li > a") shouldBe models.Country.UnitedStates.cityGroups.size
+        renderedCount(page, "#city-list > li.city-direct > a") shouldBe models.Country.UnitedStates.cityGroups.size
     }
   }
 

@@ -101,6 +101,13 @@
       list-style: none; display: flex; flex-direction: column; gap: .6rem;
       margin: .6rem 0 0 .9rem;
     }
+    /* A grouped list reads down one edge: the heading is left-aligned because it
+       carries a chevron on the other side, so the rows under it — and the groups
+       that collapsed into a single row — line up with it rather than floating in
+       the middle of a column they are supposed to belong to. The flat countries
+       keep the centred rows they have always had; there is no heading there for
+       anything to line up with. */
+    .city-group-cities a, .city-direct a { text-align: left; }
     .locating { color: #9a9ac0; font-size: .9rem; margin-top: 1.25rem; min-height: 1.2em; }
   </style>
 </head>
@@ -121,7 +128,7 @@
       @for(g <- country.cityGroups) {
         @g.soleCity match {
           case Some(c) => {
-        <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+        <li class="city-direct"><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
           }
           case None => {
         <li>

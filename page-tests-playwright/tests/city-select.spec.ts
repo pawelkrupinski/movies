@@ -48,8 +48,8 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
     await expect(page.locator('.city-list a')).toHaveCount(468);
     const groups = page.locator('details.city-group');
     await expect(groups).toHaveCount(48);
-    await expect(page.locator('#city-list > li > a')).toHaveCount(7);
-    await expect(page.locator('#city-list > li > a[href="/delaware/"]')).toHaveText('Delaware');
+    await expect(page.locator('#city-list > li.city-direct > a')).toHaveCount(7);
+    await expect(page.locator('#city-list > li.city-direct > a[href="/delaware/"]')).toHaveText('Delaware');
     // Every heading SHUT. The grouping only earns its keep closed: rendered open
     // this is the 468-row A-to-Z the states were introduced to break up, with 55
     // headings added to it.
@@ -129,7 +129,7 @@ test.describe('grouped city landing (the UK)', { tag: '@agnostic' }, () => {
     await expect(page.locator('.city-list a[href="/england/"]')).toHaveCount(0);
     // Every UK place is behind a heading — the UK has no county that is also its
     // own nation, so nothing links straight through here.
-    await expect(page.locator('#city-list > li > a')).toHaveCount(0);
+    await expect(page.locator('#city-list > li.city-direct > a')).toHaveCount(0);
 
     const scotland = page.locator('details.city-group', { hasText: 'Scotland' }).first();
     await scotland.locator('summary').click();

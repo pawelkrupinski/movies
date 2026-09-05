@@ -73,7 +73,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   it should "link a state that IS a place straight through, rather than heading a list of one" in {
     // Seven states and territories are too small to cut into metros, so the
     // state's own venue list is its page. See `CityGroup.soleCity`.
-    usHtml should include ("""<li><a href="/delaware/">Delaware</a></li>""")
+    usHtml should include ("""<li class="city-direct"><a href="/delaware/">Delaware</a></li>""")
     usHtml should not include """<summary class="city-group-label">Delaware</summary>"""
   }
 
