@@ -330,14 +330,41 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // were resurrected from the server's stale copy. The fix makes the server
   // authoritative after the one-time first-login migration.
 
+  /** Put the device back to "never synced" and wait for THIS document's boot to
+   *  have reconciled — returning only once the write that boot makes is visible.
+   *
+   *  Both reconcile tests used to open by waiting for `serverStateSynced` to be
+   *  '1', meaning "this document has reconciled". `localStorage` is per ORIGIN,
+   *  not per tab, so it meant no such thing: measured at entry, the flag is
+   *  ALREADY '1' in both — set by an earlier spec on the same origin, before
+   *  either test's own `bootMergeFromServer` has run. The guard returned at once
+   *  and the test went on against a boot still in flight, whose own
+   *  `_lsSet('hiddenFilms', …)` was then free to land on top of the write the
+   *  test made next.
+   *
+   *  Wiping first makes both halves this document's own work: after the clear,
+   *  "Film A" can only be in `hiddenFilms` because THIS boot fetched it.
+   *
+   *  Not claimed to be what CI tripped on — that was a timeout, addressed by the
+   *  budgets these waits now carry, and neither 3x-core CPU load nor a 300ms
+   *  delay injected into `/api/me/state` reproduced it locally. This closes the
+   *  separate hole of a guard that did not wait for what it said it did.
+   *
+   *  5s for the same reason the other waits here carry one: it spans a fresh
+   *  document plus the chained fetches its boot makes. */
+  private def awaitOwnReconcile(page: CdpPage): Unit = {
+    clearLocalStorage(page)
+    page.reload()
+    page.waitFor("localStorage.getItem('serverStateSynced') === '1' && " +
+                 "getHidden().indexOf('Film A') !== -1",
+                 timeoutMs = 5000)
+  }
+
   "server-state reconcile" should
     "drop a local-only hidden film once synced (server is authoritative)" in {
     onLoggedInIndex { page =>
       // First boot migrated from server = ["Film A"] and set the synced flag.
-      // 5s like the union wait below and for the same reason: the flag is set at
-      // the END of a reconcile that begins with a network fetch, so this spans a
-      // round-trip, not a local read.
-      page.waitFor("localStorage.getItem('serverStateSynced') === '1'", timeoutMs = 5000)
+      awaitOwnReconcile(page)
       // Mimic a device still carrying a stale local-only entry the server never
       // had, with the sync flag already set. A blind union would keep "Film B"
       // forever; an authoritative reconcile must drop it on the next load.
@@ -354,7 +381,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "union local picks with the server on the first reconcile after login" in {
     onLoggedInIndex { page =>
-      page.waitFor("localStorage.getItem('serverStateSynced') === '1'", timeoutMs = 5000)
+      awaitOwnReconcile(page)
       // Re-arm migration as a fresh login would, plus an anonymous local pick.
       page.eval("localStorage.removeItem('serverStateSynced')")
       page.eval("_lsSet('hiddenFilms', ['Local Z'])")
