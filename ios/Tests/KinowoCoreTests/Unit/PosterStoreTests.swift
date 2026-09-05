@@ -33,12 +33,20 @@ final class PosterStoreTests: XCTestCase {
 
     // MARK: - Disk-first caching
 
+    /// The caching specs below store stand-in byte strings rather than real
+    /// artwork, so they say "this is a poster" explicitly instead of leaning
+    /// on `decodesAsImage`'s non-UIKit `!data.isEmpty` fallback — which is
+    /// what the macOS/Linux toolchain `swift test` runs on today, but would
+    /// silently fail every one of them the moment these run against an iOS
+    /// destination.
+    private let anyBytesAreArtwork: (Data) -> Bool = { !$0.isEmpty }
+
     func testDownloadsOnceThenServesFromDisk() async {
         let counter = CallCounter()
         let store = PosterStore(directory: directory, fetch: { _ in
             await counter.bump()
             return Data("poster-bytes".utf8)
-        })
+        }, isImage: anyBytesAreArtwork)
         let first = await store.data(for: url("https://img/a.jpg"))
         let second = await store.data(for: url("https://img/a.jpg"))
         XCTAssertEqual(first, Data("poster-bytes".utf8))
@@ -56,7 +64,7 @@ final class PosterStoreTests: XCTestCase {
         let store = PosterStore(directory: directory, fetch: { _ in
             await counter.bump()
             return nil // the seeded URL must never be fetched
-        })
+        }, isImage: anyBytesAreArtwork)
         let seeded = url("https://poster.invalid/fixture-poster.png")
         store.seed(Data("seeded-bytes".utf8), for: seeded)
 
@@ -140,7 +148,11 @@ final class PosterStoreTests: XCTestCase {
     // MARK: - Daily purge
 
     func testReconcileDeletesDepartedFilmsAndKeepsCurrentOnes() async {
-        let store = PosterStore(directory: directory, fetch: { _ in Data("x".utf8) })
+        let store = PosterStore(
+            directory: directory,
+            fetch: { _ in Data("x".utf8) },
+            isImage: anyBytesAreArtwork
+        )
         let keep = url("https://img/keep.jpg")
         let drop = url("https://img/drop.jpg")
         _ = await store.data(for: keep)

@@ -20,10 +20,15 @@ import FoundationNetworking
 /// screening) and deletes the rest, so the cache can't grow without bound
 /// as films finish their run.
 ///
-/// Foundation-only — it deals in raw `Data`, never `UIImage` — so it
-/// builds in the `KinowoCore` SPM target and is unit-tested without a
-/// simulator. The SwiftUI glue that decodes the bytes into an `Image`
-/// lives in `CachedAsyncImage`.
+/// It stores and returns raw `Data`; the only place it looks at pixels is
+/// the `isImage` predicate that keeps a non-artwork body (a Cloudflare
+/// challenge page) out of the cache, and that touches UIKit only behind
+/// `#if canImport(UIKit)`. So it still builds and is unit-tested in the
+/// `KinowoCore` SPM target without a simulator — note that on the macOS /
+/// Linux toolchain `swift test` runs against, the default predicate is the
+/// `!data.isEmpty` fallback, so specs that mean to exercise the real
+/// decode have to inject their own. The SwiftUI glue that turns the bytes
+/// into an `Image` lives in `CachedAsyncImage`.
 final class PosterStore: @unchecked Sendable {
     /// Production singleton — caches under the app's Caches directory and
     /// downloads through a cache-bypassing `URLSession`.

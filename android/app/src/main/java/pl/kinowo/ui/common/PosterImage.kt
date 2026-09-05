@@ -29,7 +29,7 @@ import pl.kinowo.ui.theme.TextSecondary
 /**
  * Poster that walks a fallback chain: when one URL fails to load, it advances
  * to the next (cinema CDNs intermittently 403/404 on the bytes). Mirrors iOS
- * `FilmCardView.PosterImage`. Shows a film-strip placeholder while loading
+ * `PosterChainImage`. Shows a film-strip placeholder while loading
  * and after the whole chain is exhausted.
  */
 @Composable
