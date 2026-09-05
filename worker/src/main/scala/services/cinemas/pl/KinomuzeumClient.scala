@@ -17,15 +17,9 @@ import scala.util.Try
  * booking). Per-film detail pages add year / countries / director / synopsis.
  * Section headers omit the year, so `today` supplies it.
  */
-class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with DetailEnricher with OnlyMovieEventsFilter {
 
-  // Static detail pages routed to the shared detail cache; the listing keeps the live `http`
-  // since its showtimes change every pass.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = Kinomuzeum
 
@@ -83,7 +77,7 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
    *  recording an empty result as fresh; a 404/410 escapes so a withdrawn event
    *  page is stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
       val detail = KinomuzeumClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

@@ -10,15 +10,9 @@ import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
-class RialtoClient(http: HttpFetch,
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+class RialtoClient(http: HttpFetch
 ) extends CinemaScraper with DetailEnricher {
 
-  // Static event/detail pages routed to the shared detail cache; the repertoire listing keeps
-  // the live `http` since its showtimes change every pass.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = Rialto
   private val RepertoireUrl = "https://www.kinorialto.poznan.pl/repertuar/"
@@ -110,7 +104,7 @@ class RialtoClient(http: HttpFetch,
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
       val document    = Jsoup.parse(html)
       val genres = parseGenres(html)
       val synopsisOpt = Option(document.selectFirst("span.text")).flatMap { span =>

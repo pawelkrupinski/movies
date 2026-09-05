@@ -43,17 +43,12 @@ import scala.util.Try
  * dump with the prose, so a clean cut isn't reliable except where the page puts
  * the synopsis in its own `<p>`.)
  */
-class PionierClient(http: HttpFetch, override val cinema: Cinema = KinoPionier,
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+class PionierClient(http: HttpFetch, override val cinema: Cinema = KinoPionier
 )
     extends CinemaScraper with DetailEnricher {
 
   import PionierClient._
 
-  // Event pages are static across passes for a live film, so they go to the shared detail cache.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(PageUrl)
@@ -68,7 +63,7 @@ class PionierClient(http: HttpFetch, override val cinema: Cinema = KinoPionier,
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] = {
     val document = Jsoup.parse(http.get(PageUrl))

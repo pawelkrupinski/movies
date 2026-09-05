@@ -7,26 +7,42 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 import scala.jdk.CollectionConverters._
 
-/** Regression guard for "the bound that multiplies": a cinema client must take
- *  its detail cache from the composition root, never build its own.
+/**
+ * Regression guard: a venue client does not cache its detail pages, and none of
+ * them may start again by building a cache of its own.
  *
- *  `CachingDetailFetch` is bounded per instance, so a cache constructed inside a
- *  client is a budget per VENUE — and the catalog builds 59 of these clients
- *  (36 Bilety24 organisers, 5 Ekobilet venues, 3 NoveKino, and one apiece for
- *  the rest). On 2026-09-05 worker-pl paged `JvmOldGenNearCap` at 99.69% with
- *  1,015 cached detail bodies holding 228 MiB — 73% of its 313 MiB old gen. The
- *  byte bound that followed (@ed06b001c) fixed the UNIT of the bound but not its
- *  multiplicity: 59 clients x 8 MiB is a 472 MiB ceiling on a 313 MiB space,
- *  which is no bound at all. One shared cache is what makes the ceiling a number
- *  that does not grow when Poland gains a venue.
+ * BOTH HALVES OF THIS WERE LEARNED THE EXPENSIVE WAY. `CachingDetailFetch` was
+ * added 2026-06-06 because the slow scrapers pulled every film's detail page
+ * inline in `fetch()`, on minutes-apart passes — a real problem, correctly
+ * solved. Within 48 hours every one of those clients moved to deferred queue
+ * detail and nothing re-read a detail URL inside a pass again, but each client
+ * kept its own cache. Three months later that was 59 instances (36 Bilety24
+ * organisers alone), bounded by ENTRY COUNT over whole HTML pages, holding
+ * 1,015 bodies worth 228 MiB — 73% of worker-pl's old generation, and the
+ * JvmOldGenNearCap page of 2026-09-05.
  *
- *  The catalog is the composition root for these and is where the one instance
- *  is allowed to be built. */
+ * What finally removed it was arithmetic rather than tuning. Detail is fetched
+ * once per film per `FreshnessKind.DetailEnrich` window (6h) and the cache TTL
+ * expires an hour in, so a scheduled refresh can never be served from it; a
+ * durably-gone page is stamped and backs off to the same window; a transient
+ * failure was never cached at all. The one population left was a film stuck in
+ * the `DetailFetchOutcome.Failed` livelock, re-enqueued every reaper tick
+ * forever — and that is fixed at the clients now
+ * ([[DetailEnricherDurableFailureSpec]]), not absorbed here. Nothing reads a
+ * venue detail cache, so there is none.
+ *
+ * The chains are the exception and keep theirs: `HeliosClient` fetches its movie
+ * and screen bodies from `fetchRestData()`, INSIDE the scrape pass, for every id
+ * in the listing — the original per-pass redundancy, still real. That cache is
+ * injected through `CinemaScraperCatalog`'s `chainDetailCache` seam and is
+ * Mongo-backed in production.
+ */
 class SharedDetailCacheSpec extends AnyFlatSpec with Matchers {
 
   private val CinemasDirectory: Path = Paths.get("worker/src/main/scala/services/cinemas")
 
-  /** Where the single shared instance is allowed to be constructed. */
+  /** The composition root: the only place allowed to name a detail cache at all,
+   *  and there only as the `chainDetailCache` seam's diagnostic default. */
   private val CompositionRoot = "CinemaScraperCatalog.scala"
 
   private def scalaSourcesUnder(root: Path): Seq[Path] =
@@ -34,7 +50,7 @@ class SharedDetailCacheSpec extends AnyFlatSpec with Matchers {
       .filter(p => Files.isRegularFile(p) && p.getFileName.toString.endsWith(".scala"))
       .sortBy(_.toString)
 
-  "A cinema scraper client" should "take its detail cache, never construct one per venue" in {
+  "A cinema scraper client" should "never construct a detail cache of its own" in {
     Files.exists(CinemasDirectory) shouldBe true
 
     val offenders: Seq[String] =
@@ -48,35 +64,33 @@ class SharedDetailCacheSpec extends AnyFlatSpec with Matchers {
         }
 
     withClue(
-      "These clients build their own detail cache, so the in-heap budget multiplies by venue " +
-        s"instead of being one shared bound handed down from $CompositionRoot:\n" +
+      "These clients build their own detail cache. A per-client cache is a heap budget per VENUE, " +
+        "and the catalog builds 59 of them — which is how worker-pl came to hold 228 MiB of HTML. " +
+        s"A chain that genuinely needs one takes it from $CompositionRoot's chainDetailCache seam:\n" +
         offenders.mkString("\n") + "\n"
     ) {
       offenders shouldBe empty
     }
   }
 
-  /** The point is ONE cache, so the composition root may build one — the chain
-   *  caches come from the injected `chainDetailCache` seam, not from here. A
-   *  second literal construction is the multiplicity creeping back in at the
-   *  only place this spec still permits it. */
-  it should "leave the composition root building a single shared cache" in {
+  /** The venue cache was a `val` on the catalog; the chain seam's default is a
+   *  lambda. So "no detail cache is bound to a name here" is exactly the
+   *  statement that the venue-wide cache has not come back. */
+  it should "leave the composition root holding no detail cache of its own" in {
     val catalog = CinemasDirectory.resolve(CompositionRoot)
     Files.exists(catalog) shouldBe true
 
-    // The venue cache is the one BOUND TO A VAL. The other permitted construction
-    // is the `chainDetailCache` seam's diagnostic default, which is a lambda —
-    // it builds per chain (two chains, distinct TTLs) and production overrides it
-    // with the Mongo-backed cache, so it never holds venue bodies on this heap.
     val BoundToAVal = """\bval\s+\w+\s*(?::[^=]+)?=\s*new CachingDetailFetch\(""".r
-
-    val constructions: Seq[String] =
+    val bound: Seq[String] =
       Files.readAllLines(catalog, StandardCharsets.UTF_8).asScala.zipWithIndex.collect {
         case (line, index) if BoundToAVal.findFirstIn(line).isDefined => s"  ${index + 1}: ${line.trim}"
       }.toSeq
 
-    withClue(s"Expected exactly one shared venue cache in $CompositionRoot, found:\n${constructions.mkString("\n")}\n") {
-      constructions should have size 1
+    withClue(
+      "A detail cache is held on the catalog again. Nothing reads one: detail is fetched once per " +
+        s"DetailEnrich window and any TTL short enough to be correct expires first.\n${bound.mkString("\n")}\n"
+    ) {
+      bound shouldBe empty
     }
   }
 }

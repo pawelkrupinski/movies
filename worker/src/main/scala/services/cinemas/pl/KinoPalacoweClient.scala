@@ -11,17 +11,11 @@ import scala.util.Try
 import services.cinemas.CountryNames
 import services.movies.TitleNormalizer
 
-class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer,
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer
 ) extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoPalacowe
   private val BaseUrl = "https://kinopalacowe.pl"
-  // Static film pages routed to the shared detail cache; the paginated calendar API keeps the
-  // live `http` since its screenings change every pass.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
   private val ApiBase = s"$BaseUrl/public/api/calendar/?widgetHash=widget_17943"
 
   // Each film page carries a single one-liner like
@@ -170,7 +164,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer,
    *  film). An empty `FilmDetail` merges as a no-op, so keeping it costs nothing
    *  and stamps the film back onto the normal refresh window. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
       // A page with no parseable meta block still LOADED, so it is an empty
       // detail rather than a failure — see the note above.
       parseFilmMeta(html).fold(FilmDetail()) { meta =>

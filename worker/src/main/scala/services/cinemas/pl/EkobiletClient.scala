@@ -47,16 +47,11 @@ class EkobiletClient(
   http:   HttpFetch,
   slug:   String,
   override val cinema: Cinema,
-  today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+  today:  LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends ChunkedCinemaScraper with DetailEnricher {
 
   import EkobiletClient._
 
-  // Detail pages are static across passes for a live film, so they go to the shared detail cache.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   // The venue's public landing page — the same URL fetch() reads its listing from.
@@ -78,7 +73,7 @@ class EkobiletClient(
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
 
   // Two-level scrape: the listing (landing + dated pages) discovers the films and
   // their detail-page URLs (the PLAN), then each film's detail page yields its

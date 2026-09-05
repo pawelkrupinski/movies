@@ -241,13 +241,10 @@ class WorkerWiring(
   // IP-reputation block that the proxy clears, so paying Zyte per request across
   // 843 venues would buy nothing the proxy doesn't already give.
   lazy val flicksFetch: HttpFetch = proxyPrimary(httoFetch)
-  // Publish the venue detail cache's occupancy under `kinowo_worker_cache_*`. Tied
-  // to the catalog rather than registered eagerly: the catalog is `lazy`, and a
-  // wiring that never builds one (a diagnostic) should not publish an empty cache.
+  // Publish this wiring's cache occupancy under `kinowo_worker_cache_*`.
   def registerCacheMetrics(): Unit = {
-    workerMetrics.registerCache(country.code, "venue_detail", () => cinemaScraperCatalog.venueDetailCache.occupancy)
     // The resident corpus (unbounded — entries only) and the task dedup cache
-    // (count-bounded), so the panels cover every shape a cache here can take.
+    // (count-bounded).
     workerMetrics.registerCache(country.code, "movie_corpus", () => movieCache.occupancy)
     workerMetrics.registerCache(country.code, "task_dedup", () => taskDedupCache.occupancy)
   }

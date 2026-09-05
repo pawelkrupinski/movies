@@ -19,15 +19,9 @@ import scala.util.Try
  * per film for runtime / genres / director / country / year / synopsis. A
  * missing or slow detail fetch degrades to listing-only data for that film.
  */
-class DcfClient(http: HttpFetch,
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+class DcfClient(http: HttpFetch
 ) extends CinemaScraper with DetailEnricher {
 
-  // Static event detail pages routed to the shared detail cache; the repertoire listing keeps
-  // the live `http` since its showtimes change every pass.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = DolnoslaskieCentrumFilmowe
 
@@ -93,7 +87,7 @@ class DcfClient(http: HttpFetch,
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
       val detail = DcfClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

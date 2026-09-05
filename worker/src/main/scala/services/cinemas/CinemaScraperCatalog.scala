@@ -123,37 +123,15 @@ class CinemaScraperCatalog(
   private def helios(config: HeliosCinema): HeliosClient =
     new HeliosClient(http, config, today, Some(heliosDetailHttp), titles = titles)
 
-  // ── The bespoke venues' detail cache ──────────────────────────────────────
-  //
-  // ONE cache for all of them, and the count is the whole point. The bespoke
-  // clients used to build their own, which reads like a bound and is not one:
-  // `CachingDetailFetch` is bounded per instance and this catalog constructs 59
-  // of these clients (36 Bilety24 organisers alone), so the ceiling was the
-  // budget times the roster and grew every time Poland gained a venue. On
-  // 2026-09-05 worker-pl paged `JvmOldGenNearCap` at 99.69% holding 1,015 detail
-  // bodies worth 228 MiB of a 313 MiB old gen. Shared, the ceiling is one number.
-  //
-  // In-heap rather than through `chainDetailCache`: that seam is Mongo-backed in
-  // production, which is right for a chain whose detail is identical across
-  // locations and several worker processes, and wrong here — one process scrapes
-  // Poland, so a shared store buys no dedup and would put ~228 MiB of HTML
-  // through Mongo for it.
-  // Not `private`, and typed as the concrete cache rather than `HttpFetch`, so the
-  // composition root can publish its occupancy — see `WorkerCacheMetrics`. The
-  // clients below still receive it as an `HttpFetch`; nothing downstream knows it
-  // is a cache.
-  val venueDetailCache: CachingDetailFetch = new CachingDetailFetch(http)
-  private val venueDetailHttp: HttpFetch = venueDetailCache
-
   // The three venue clients this catalog builds MANY of — 36 Bilety24 organisers,
   // 5 Ekobilet venues, 3 NoveKino — bind their shared arguments here rather than
   // repeating them at every site, the way `multikino` and `helios` already do.
   private def bilety24(organizerUrl: String, cinema: Cinema): Bilety24OrganizerClient =
-    new Bilety24OrganizerClient(http, organizerUrl, cinema, titles = titles, detailHttp = Some(venueDetailHttp))
+    new Bilety24OrganizerClient(http, organizerUrl, cinema, titles = titles)
   private def ekobilet(slug: String, cinema: Cinema): EkobiletClient =
-    new EkobiletClient(http, slug, cinema, today, detailHttp = Some(venueDetailHttp))
+    new EkobiletClient(http, slug, cinema, today)
   private def noveKino(slug: String, cinema: Cinema): NoveKinoClient =
-    new NoveKinoClient(http, slug, cinema, detailHttp = Some(venueDetailHttp))
+    new NoveKinoClient(http, slug, cinema)
 
   // Shared per-source helper clients the scrapers below reuse.
   val cinemaCityClient: CinemaCityClient = new CinemaCityClient(http, Some(cinemaCityDetailHttp), titles = titles)
@@ -171,14 +149,14 @@ class CinemaScraperCatalog(
   private val poznanScrapers: Seq[CinemaScraper] = Seq(
     multikino(),
     new CharlieMonroeClient(http),
-    new KinoPalacoweClient(http, titles = titles, detailHttp = Some(venueDetailHttp)),
+    new KinoPalacoweClient(http, titles = titles),
     helios(HeliosNuxt.Poznan),
     cinemaCity("1078", CinemaCityPoznanPlaza),
     cinemaCity("1081", CinemaCityKinepolis),
     kinoMuzaClient,
     new KinoBulgarskaClient(http, today),
-    new KinoApolloClient(http, titles = titles, detailHttp = Some(venueDetailHttp)),
-    new RialtoClient(http, detailHttp = Some(venueDetailHttp)),
+    new KinoApolloClient(http, titles = titles),
+    new RialtoClient(http),
   )
 
   private val wroclawScrapers: Seq[CinemaScraper] = Seq(
@@ -187,8 +165,8 @@ class CinemaScraperCatalog(
     multikino("0010", MultikinoPasazGrunwaldzki),
     helios(HeliosNuxt.Magnolia),
     helios(HeliosNuxt.AlejaBielany),
-    new NoweHoryzontyClient(http, today, detailHttp = Some(venueDetailHttp)),
-    new DcfClient(http, detailHttp = Some(venueDetailHttp)),
+    new NoweHoryzontyClient(http, today),
+    new DcfClient(http),
   )
 
   private val warszawaScrapers: Seq[CinemaScraper] = Seq(
@@ -205,24 +183,24 @@ class CinemaScraperCatalog(
     multikino("0024", MultikinoTargowek),
     multikino("0025", MultikinoWolaPark),
     helios(HeliosNuxt.BlueCity),
-    new MuranowClient(http, today, detailHttp = Some(venueDetailHttp)),
+    new MuranowClient(http, today),
     new Bilety24Client(http, "https://kinoluna.bilety24.pl", KinoLuna, titles = titles),
     bilety24("https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik),
-    new IluzjonClient(http, today, detailHttp = Some(venueDetailHttp)),
+    new IluzjonClient(http, today),
     new KinoGramClient(http),
     new KinoKulturaClient(http),
-    new AmondoClient(http, detailHttp = Some(venueDetailHttp)),
+    new AmondoClient(http),
     new BokClient(http, "kino-na-boku", KinoNaBoku, today, titles = titles),
     new BokClient(http, "kino-glebocka-66", KinoGlebocka66, today, titles = titles),
-    new KinomuzeumClient(http, today, detailHttp = Some(venueDetailHttp)),
+    new KinomuzeumClient(http, today),
     new SwitClient(http),
     new PromKepaClient(http),
-    new FalenicaClient(http, detailHttp = Some(venueDetailHttp)),
+    new FalenicaClient(http),
     new SdkClient(http),
     noveKino("atlantic", KinoAtlantic),
-    new KinotekaClient(http, titles, detailHttp = Some(venueDetailHttp)),
-    new UjazdowskiClient(http, today, detailHttp = Some(venueDetailHttp)),
-    new CytadelaClient(http, detailHttp = Some(venueDetailHttp)),
+    new KinotekaClient(http, titles),
+    new UjazdowskiClient(http, today),
+    new CytadelaClient(http),
     noveKino("wisla", KinoWisla),
     // biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so route
     // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
@@ -238,7 +216,7 @@ class CinemaScraperCatalog(
     multikino("0005", MultikinoKrakow),
     new KinoMikroClient(http, "Kino Mikro", KinoMikro, today),
     new KinoMikroClient(http, "Mikro Bronowice", MikroBronowice, today),
-    new KinoSfinksClient(http, KinoSfinks, detailHttp = Some(venueDetailHttp)),
+    new KinoSfinksClient(http, KinoSfinks),
     new KinoPodBaranamiClient(http, KinoPodBaranami, today),
     new KinoKijowClient(http, KinoKijow, today, titles = titles),
     new KinoKikaClient(http, KinoKika),
@@ -271,7 +249,7 @@ class CinemaScraperCatalog(
   private val szczecinScrapers: Seq[CinemaScraper] = Seq(
     helios(HeliosNuxt.Szczecin),
     multikino("0007", MultikinoSzczecin),
-    new PionierClient(http, KinoPionier, detailHttp = Some(venueDetailHttp)),
+    new PionierClient(http, KinoPionier),
     helios(HeliosNuxt.SzczecinOutletPark),
     new KinoZamekClient(http, KinoZamekSzczecin, today),
   )

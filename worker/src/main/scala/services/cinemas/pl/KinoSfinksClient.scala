@@ -56,17 +56,12 @@ import scala.util.Try
  * detail pages are per-screening and short-lived (past screenings 404), so a
  * blocking dependency would strand rows whenever a page expired.
  */
-class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema,
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema
 )
     extends CinemaScraper with DetailEnricher {
 
   import KinoSfinksClient._
 
-  // Detail pages are static across passes for a live screening, so they go to the shared detail cache.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(PageUrl)
@@ -83,7 +78,7 @@ class KinoSfinksClient(http: HttpFetch, override val cinema: Cinema,
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(http.get(ref)).map(html => parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] = {
     val firstHtml = http.get(PageUrl)

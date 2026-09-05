@@ -23,15 +23,9 @@ import scala.util.Try
  * The detail page is then fetched per unique film for the metadata the listing
  * doesn't expose — runtime, director, countries, synopsis, original title.
  */
-class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends CinemaScraper with DetailEnricher {
 
-  // Static film detail pages routed to the shared detail cache; the repertoire listing keeps
-  // the live `http` since its showtimes change every pass.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = KinoIluzjon
 
@@ -88,7 +82,7 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
       val detail = IluzjonClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

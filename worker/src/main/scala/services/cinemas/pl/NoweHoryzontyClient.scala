@@ -28,14 +28,9 @@ import scala.util.Try
  * countries / genres / director / synopsis. `today` is injected so the day
  * window (and thus the fixture replay) is deterministic.
  */
-class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
-  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
-  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
-  detailHttp: Option[HttpFetch] = None
+class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
 ) extends ChunkedCinemaScraper with DetailEnricher {
 
-  // Static op.s detail pages routed to the shared detail cache; day blobs keep the live http.
-  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = KinoNoweHoryzonty
   override val detailGroup: String = "nowe-horyzonty"
@@ -118,7 +113,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
       val detail = NoweHoryzontyClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,
