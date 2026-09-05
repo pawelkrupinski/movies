@@ -437,4 +437,44 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
 
     resolved.flatMap(_.tmdbId) shouldBe Some(1731866)
   }
+
+  /**
+   * The venue that names the film through an ACCESSIBILITY-decorated listing still
+   * counts as naming it.
+   *
+   * `cinemaCandidates` is built with `apiQuery`, which strips that decoration
+   * ("Kino bez barier: Freak Show (AD + CC + PJM)" → "Freak Show"); the weight map
+   * was built without it, so such a venue put its credit in the cinema tier and then
+   * scored ZERO — and on a row holding two films the other film's single venue could
+   * outvote it. Both sides read the same query forms now.
+   */
+  it should "count a venue that names the film only through its accessibility-decorated title" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"              -> """{"results":[]}""",
+      "query=Ada+Reg"              -> """{"results":[{"id":7100,"name":"Ada Reg","known_for_department":"Directing"}]}""",
+      "/person/7100/movie_credits" -> """{"crew":[
+        |{"id":100,"title":"Freak Show","original_title":"Freak Show",
+        | "release_date":"2026-03-01","department":"Directing","popularity":1.0},
+        |{"id":900,"title":"Inna rzecz","original_title":"Inna rzecz",
+        | "release_date":"2026-05-01","department":"Directing","popularity":9.0}
+        |]}""".stripMargin,
+      "/movie/100/external_ids" -> """{"id":100,"imdb_id":null}""",
+      "/movie/900/external_ids" -> """{"id":900,"imdb_id":null}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // Two venues name "Freak Show", both only through the accessibility banner; one
+    // names the director's other film outright. Lowest id already favours 100, so the
+    // WEIGHT is what this pins — make the wrong film the lower id.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios    -> SourceData(title = Some("Kino bez barier: Freak Show (AD + CC + PJM)"), director = Seq("Ada Reg")),
+      Multikino -> SourceData(title = Some("Kino bez barier: Freak Show (AD + CC + PJM)")),
+      KinoMuza  -> SourceData(title = Some("Inna rzecz"))
+    ))
+    val resolved = service.resolveStagingRecord("Freak Show", Some(2026), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(100)
+  }
 }

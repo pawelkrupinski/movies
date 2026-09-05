@@ -971,8 +971,17 @@ class MovieService(
     // "Mistyczka" counts as often as it is published.
     val cinemaTitleWeight: Map[String, Int] = row.cinemaSlots.iterator
       .flatMap { case (_, sd) => sd.title.toSeq }
-      .flatMap(t => MovieService.searchTitleCandidates(t, None).map(cache.normalizer.sanitize))
-      .filter(_.nonEmpty)
+      .flatMap { t =>
+        // The SAME forms `cinemaCandidates` is built from, or a credit could sit in
+        // the cinema tier and still score zero: `apiQuery` strips the accessibility
+        // decoration ("Kino bez barier: Freak Show (AD)" → "Freak Show") that
+        // `searchTitleCandidates` leaves alone, so the venue naming the film that way
+        // would not be counted as naming it. `.distinct` per slot because the two
+        // query forms usually sanitize to the same string — one venue, one vote.
+        MovieService.searchTitleCandidates(t, None)
+          .flatMap(f => Seq(cache.normalizer.apiQuery(f), cache.normalizer.searchQuery(f)))
+          .map(cache.normalizer.sanitize).filter(_.nonEmpty).distinct
+      }
       .toSeq.groupBy(identity).view.mapValues(_.size).toMap
     // Director hints drawn from EVERY cinema slot on the merged row, not just the
     // one cinema event that happened to trigger this stage. Every cinema fires its
