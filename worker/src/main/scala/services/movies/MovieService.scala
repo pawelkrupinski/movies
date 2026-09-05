@@ -615,7 +615,7 @@ class MovieService(
     row:               MovieRecord,
     originalTitleHint: Option[String],
     directorHint:      Option[String]
-  ): Option[(Int, Option[TmdbClient.SearchResult], TmdbClient.ExternalIds, Option[TmdbClient.FullDetails], TmdbBasis)] =
+  ): Option[(Int, Option[TmdbClient.SearchResult], TmdbClient.ExternalIds, Option[TmdbClient.FullDetails], Option[TmdbBasis])] =
     resolveTmdbId(cleanTitle, year, row, originalTitleHint, directorHint).flatMap { case (tmdbId, hit, basis) =>
       externalIdsOfLiveMovie(tmdbId, cleanTitle).map(ids => (tmdbId, hit, ids, tmdb.fullDetails(tmdbId), basis))
     }
@@ -656,7 +656,10 @@ class MovieService(
     externalIds: TmdbClient.ExternalIds,
     detailsOpt:  Option[TmdbClient.FullDetails],
     existing:    MovieRecord,
-    basis:       TmdbBasis
+    // None when the resolution came off the id cache, so the conclusion's real basis
+    // is unknown here; the row then KEEPS the basis it already recorded rather than
+    // being downgraded to the weakest one. See `resolveTmdbId`.
+    basis:       Option[TmdbBasis]
   ): MovieRecord = {
     // Preserve the previously-known `imdbId`/`wikidataId` when TMDB resolved the
     // same film (same `tmdbId`) but momentarily dropped a cross-reference —
@@ -756,7 +759,7 @@ class MovieService(
       // title is indistinguishable ever after from an answer a director's
       // filmography confirmed — which is how five wrong resolutions survived weeks
       // in prod on rows that had since acquired the hints to correct them.
-      tmdbBasis         = Some(basis.toString),
+      tmdbBasis         = basis.map(_.toString).orElse(existing.tmdbBasis),
       wikidataId        = resolvedWikidata,
       metacriticUrl     = ifSameFilm(existing.metacriticUrl),
       rottenTomatoesUrl = ifSameFilm(existing.rottenTomatoesUrl),
@@ -919,7 +922,7 @@ class MovieService(
     row:           MovieRecord,
     originalTitle: Option[String] = None,
     director:      Option[String] = None
-  ): Option[(Int, Option[TmdbClient.SearchResult], TmdbBasis)] = {
+  ): Option[(Int, Option[TmdbClient.SearchResult], Option[TmdbBasis])] = {
     // Resolve from the row's OWN reported titles. A decorated festival/preview
     // row whose own title doesn't match TMDB ("Opętanie | ŻUŁAWSKI. KINO
     // EKSTAZY", "Ojczyzna (pokaz przedpremierowy)") must still resolve on its
@@ -1086,7 +1089,13 @@ class MovieService(
     // director-bearing row keeps the richer director-walk path below, which can
     // disambiguate. This is the generalised "Zaproszenie" guard (a bare title with two
     // same-title TMDB entries) — see StagingOrderDeterminismSpec.
-    var searchBasis: TmdbBasis = TmdbBasis.TitleOnly
+    // None until the loader below actually runs. A resolution-cache HIT skips it, and
+    // the basis of that cached id is not knowable here — claiming `TitleOnly` for it
+    // would overwrite a stored `DirectorWalk`/`YearScoped` with the weakest value,
+    // which `resolvedOnWeakerEvidenceThanAvailable` then reads as "re-resolve me". The
+    // re-resolve hits the same cache, records `TitleOnly` again, and the row churns
+    // once every sweep for ever. An unknown basis must stay unknown.
+    var searchBasis: Option[TmdbBasis] = None
     var freshHit: Option[TmdbClient.SearchResult] = None
     val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
       val hit =
@@ -1099,7 +1108,7 @@ class MovieService(
           // yearless rows are untouched (searchYearExactTop is a no-op without a year).
           candidates.iterator.flatMap(q => tmdb.searchUnique(q, effectiveYear)).nextOption()
             .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, effectiveYear)).nextOption())
-            .map(hit => { searchBasis = if (effectiveYear.isDefined) TmdbBasis.YearScoped else TmdbBasis.TitleOnly; hit })
+            .map(hit => { searchBasis = Some(if (effectiveYear.isDefined) TmdbBasis.YearScoped else TmdbBasis.TitleOnly); hit })
         else {
           // Resolve from this row's own titles only — no sister-row shortcut. Copying
           // a tmdbId from an already-resolved relative was order-dependent (it could
@@ -1131,7 +1140,7 @@ class MovieService(
           rowDirectors.iterator
             .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, row.cinemaRuntimesMinutes, row.cinemaCast, cinemaCandidates, cinemaTitleWeight))
             .nextOption()
-            .map(hit => { searchBasis = TmdbBasis.DirectorWalk; hit })
+            .map(hit => { searchBasis = Some(TmdbBasis.DirectorWalk); hit })
         }
       freshHit = hit
       hit.map(_.id.toString)
@@ -1203,9 +1212,9 @@ class MovieService(
               rowYear  <- effectiveYear
               if tmdb.fullDetails(tmdbId).flatMap(_.releaseYear).contains(rowYear)
             } yield tmdbId
-          row.imdbId.flatMap(tmdb.findByImdbId).map(hit => (hit.id, Some(hit), TmdbBasis.ExternalId))
-            .orElse(viaLetterboxd.map((_, Option.empty[TmdbClient.SearchResult], TmdbBasis.ExternalId)))
-            .orElse(viaFilmwebWikidata.map((_, Option.empty[TmdbClient.SearchResult], TmdbBasis.ExternalId)))
+          row.imdbId.flatMap(tmdb.findByImdbId).map(hit => (hit.id, Some(hit), Some(TmdbBasis.ExternalId)))
+            .orElse(viaLetterboxd.map((_, Option.empty[TmdbClient.SearchResult], Some(TmdbBasis.ExternalId))))
+            .orElse(viaFilmwebWikidata.map((_, Option.empty[TmdbClient.SearchResult], Some(TmdbBasis.ExternalId))))
         } else None
       }
   }

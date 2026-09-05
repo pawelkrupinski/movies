@@ -190,6 +190,55 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     row.flatMap(_.tmdbBasis) shouldBe Some(services.resolution.TmdbBasis.DirectorWalk.toString)
   }
 
+  // The resolution-ID CACHE skips the search entirely on a hit, so the basis of the
+  // id it hands back is not knowable at that point. Claiming the weakest one there
+  // overwrites a recorded DirectorWalk with TitleOnly — which
+  // `resolvedOnWeakerEvidenceThanAvailable` reads as "re-resolve me", and the
+  // re-resolve hits the same cache and records TitleOnly again. That is a row
+  // churning once per sweep for ever, so an unknown basis must stay unknown.
+  /** Memoises like the production `WriteThroughResolutionCache`: a second call on the
+   *  same hint key returns the stored id WITHOUT running the loader. The default
+   *  `ResolutionCache.passthrough` resolves live every time, so a spec using it can
+   *  never reach the branch that reads the basis of an id nothing just searched for. */
+  private class MemoisingResolutionCache extends services.resolution.ResolutionCache {
+    private val memo = scala.collection.mutable.Map.empty[String, Option[String]]
+    var loaderRuns = 0
+    def getOrResolve(hintKey: String)(resolve: => Option[String]): Option[String] =
+      memo.getOrElseUpdate(hintKey, { loaderRuns += 1; resolve })
+  }
+
+  it should "not downgrade a recorded basis when the id comes back off the cache" in {
+    // Production wires a memoising resolution cache, so a hint key resolved once is
+    // answered from memory ever after — the loader does not run, and the basis of that
+    // id is not knowable at the point the row is written. Claiming the weakest one
+    // there overwrites the DirectorWalk this row earned with TitleOnly, which
+    // `resolvedOnWeakerEvidenceThanAvailable` reads as "re-resolve me"; the re-resolve
+    // is answered from the same memory and records TitleOnly again, so the row churns
+    // once per sweep for ever.
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some(Title), director = Seq(Director))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Year, seed))), normalizer = titleNormalizer)
+    val ids = new MemoisingResolutionCache
+    val service = new MovieService(cache, new InProcessEventBus(), visitorTmdb(), tmdbIdCache = ids)
+
+    service.reEnrichSync(Title, Year)
+    cache.get(cache.keyOf(Title, Year)).flatMap(_.tmdbBasis) shouldBe
+      Some(services.resolution.TmdbBasis.DirectorWalk.toString)
+
+    // Strip the resolution, as a repair script does. That restores the original hint
+    // key, so the re-resolve is answered from memory without searching.
+    cache.putIfPresent(cache.keyOf(Title, Year), r =>
+      r.copy(tmdbId = None, data = r.data.filterNot { case (src, _) => src == models.Tmdb }))
+    service.reEnrichSync(Title, Year)
+
+    val row = cache.get(cache.keyOf(Title, Year))
+    withClue(s"loaderRuns=${ids.loaderRuns} (must be 1 — the second pass is a HIT): ")(
+      ids.loaderRuns shouldBe 1)
+    row.flatMap(_.tmdbId) shouldBe Some(Correct)
+    withClue(s"basis=${row.flatMap(_.tmdbBasis)}: ")(
+      row.flatMap(_.tmdbBasis) shouldBe Some(services.resolution.TmdbBasis.DirectorWalk.toString))
+  }
+
   // S1': a key year stamped from a TitleOnly guess is not evidence — it IS the
   // guess, handed back to the next resolution as if it were a fact. That loop is
   // what made prod's mis-resolutions self-confirming: `homosapiens|1960` was keyed
