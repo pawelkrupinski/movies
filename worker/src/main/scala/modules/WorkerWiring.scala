@@ -14,7 +14,7 @@ import services.schedule.{AlwaysClaimScheduledRunStore, MongoScheduledRunStore, 
 import clients.TmdbClient
 import services.{Drainable, MongoCachingDetailFetch, MongoConnection, UptimeMonitor}
 import services.fallback.{FallbackEvent, FallbackState, FallbackStore, MongoFallbackStore}
-import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
+import services.tasks.{BulkRefreshHandler, CachingTaskQueue, ChunkScrapeCoordinator, ChunkScrapePlanner, ChunkScrapeReaper, ChunkScrapeStore, CrewConfirmation, DetailReaper, DetailTaskEnqueuer, EnrichDetailsHandler, EnrichmentReaper, MongoChunkScrapeStore, BulkCadenceRecorder, MongoTaskQueue, QueueEnrichmentRetrigger, RatingHandler, ResolveImdbIdHandler, ResolveTmdbHandler, ScrapeChunkHandler, ScrapeChunkReduceHandler, ScrapeCinemaHandler, ScrapeInFlight, ScrapeReaper, SettleReaper, OmdbBackfillReaper, TaskQueue, TaskType, TaskWorker, UnresolvedTmdbReaper, WorkerHeartbeat}
 import services.resolution.{MongoResolutionStore, ResolutionCache, ResolutionOutcome, UnresolvedPolicy, WriteThroughResolutionCache}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 import services.cinemas._
@@ -1103,8 +1103,19 @@ class WorkerWiring(
     // was fetched in another deployment's language gets re-resolved so its title /
     // synopsis / genres come back in this country's own.
     forceRetry = movieService.forceResolve, country = country,
+    // A cinema-vs-resolution DIRECTOR disagreement is confirmed against the film's
+    // TMDB crew before the sweep acts: the venue crediting a film's other director,
+    // or the person behind a pseudonym, is not a wrong film, and re-resolving a
+    // correct row can lose its resolution. Runtime disagreements pass straight
+    // through — they compare numbers, not names.
+    confirmContradiction = crewConfirmation.confirmed,
     maxEnqueuePerTick = maxTmdbRetryEnqueuePerTick,
     runStore = scheduledRunStore)
+
+  lazy val crewConfirmation: CrewConfirmation = new CrewConfirmation(new CrewConfirmation.Credits {
+    def personIds(name: String): Seq[Int] = tmdbClient.findPersonCandidates(name)
+    def crewIds(tmdbId: Int): Set[Int]    = tmdbClient.crewIds(tmdbId)
+  })
 
   // Operator-triggered handlers — ALWAYS registered (not gated by
   // queueEnrichment): the web `/tasks` buttons enqueue a corpus-wide refresh and

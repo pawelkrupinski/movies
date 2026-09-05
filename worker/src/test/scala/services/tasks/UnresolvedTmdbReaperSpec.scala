@@ -131,6 +131,25 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     forced shouldBe empty
   }
 
+  // The sweep must not act on a name disagreement TMDB dismisses. Acting is not
+  // free: force-re-resolving a correct row can lose its resolution, because a
+  // director walk on a name TMDB does not credit finds nothing at all.
+  it should "not act on a director disagreement the confirmation dismisses" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "O Brother, Where Art Thou?") { r =>
+      r.copy(tmdbId = Some(1225),
+        data = r.data
+          + ((Tmdb: Source) -> SourceData(title = Some("O Brother"), runtimeMinutes = Some(107),
+               director = Seq("Joel Coen")))
+          + ((KinoApollo: Source) -> SourceData(title = Some("O Brother"), runtimeMinutes = Some(107),
+               director = Seq("Ethan Coen"))))
+    }
+    val reaper = new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry,
+      confirmContradiction = _ => false)   // TMDB: Ethan is on the crew
+    runOnePeriod(reaper).sum shouldBe 0
+    forced shouldBe empty
+  }
+
   it should "leave a row alone when the venues corroborate it" in {
     val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
     seedRow(cache, "Lalka") { r =>

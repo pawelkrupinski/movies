@@ -202,6 +202,22 @@ class TmdbClient(
       }
   }
 
+  /** Every person id credited anywhere on a movie's crew — not only the Director
+   *  job. A cinema routinely credits the film's OTHER director (Ethan for a film
+   *  TMDB credits to Joel Coen) or someone TMDB files under a different job (Karl
+   *  Freund shot the 1931 "Dracula" and is widely credited as co-directing it), and
+   *  by ID rather than name so a pseudonym resolves to the same person. Empty when
+   *  TMDB has no credits or the call fails — the caller must read empty as "no
+   *  answer", never as "nobody". */
+  def crewIds(tmdbId: Int): Set[Int] = authHeader.map { auth =>
+    Try {
+      val body = httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth)
+      (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+        .flatMap(c => (c \ "id").asOpt[Int])
+        .toSet
+    }.getOrElse(Set.empty)
+  }.getOrElse(Set.empty)
+
   /** Director name(s) credited on a TMDB movie. Empty when TMDB has no
    *  credits or the call fails. Used to verify a title-search candidate
    *  against the cinema-reported director — when a film's title and a

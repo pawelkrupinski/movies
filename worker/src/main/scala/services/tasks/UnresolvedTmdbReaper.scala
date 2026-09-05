@@ -64,6 +64,10 @@ class UnresolvedTmdbReaper(
   // scripts) unchanged — paired with the `Country.default` below, which matches every
   // legacy slot's language, so a defaulted reaper never reaches this seam anyway.
   forceRetry: CacheKey => Unit = _ => (),
+  // Does a cinema-vs-resolution disagreement survive asking TMDB who made the film?
+  // Wired to `CrewConfirmation.confirmed`; the default confirms every disagreement,
+  // which is what the pure string check did on its own.
+  confirmContradiction: MovieRecord => Boolean = CinemaCorroboration.contradicts,
   // This deployment's country — its `language` is the tag every `Tmdb` slot is
   // expected to carry. Poland by default, matching the historical enrichment
   // language, so a defaulted construction sweeps nothing extra.
@@ -117,7 +121,7 @@ class UnresolvedTmdbReaper(
       val (key, record) = rows.next()
       val unresolved = record.tmdbId.isEmpty && !record.detailPending
       val staleLang  = staleLanguage(record)
-      val misresolved = contradictedByCinemas(record) ||
+      val misresolved = confirmContradiction(record) ||
                         CinemaCorroboration.resolvedOnWeakerEvidenceThanAvailable(record)
       if ((unresolved || staleLang || misresolved) &&
           dueWindow.isDue(EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year), Some(since), now)) {
@@ -148,7 +152,14 @@ class UnresolvedTmdbReaper(
   /** True when the row is resolved to a film its OWN cinemas contradict — the
    *  third kind, and the one that was permanent. See [[CinemaCorroboration]] for
    *  why these rows arise and why both its signals abstain unless the venues
-   *  positively disagree. */
+   *  positively disagree.
+   *
+   *  A DIRECTOR disagreement is only a name disagreement until TMDB says otherwise,
+   *  so it is confirmed against the film's crew before this sweep spends a forced
+   *  re-resolution on it (see [[CrewConfirmation]]) — the venue crediting a film's
+   *  other director, or the person behind a pseudonym, is not a wrong film. The
+   *  default confirms everything, so a construction site that wires no TMDB (specs,
+   *  scripts) behaves exactly as the pure check did. */
   private[tasks] def contradictedByCinemas(record: MovieRecord): Boolean =
     CinemaCorroboration.contradicts(record)
 

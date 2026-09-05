@@ -27,6 +27,9 @@ import tools.TextNormalization
  */
 object CinemaCorroboration {
 
+  /** What the cinemas disagree with the resolution about. */
+  enum Contradiction { case Runtime, Director }
+
   /** True when the row's conclusion is weaker than the evidence it now holds — a
    *  bare-title guess on a row that has SINCE acquired a director or a year.
    *
@@ -45,11 +48,25 @@ object CinemaCorroboration {
       record.tmdbBasis.flatMap(TmdbBasis.parse).contains(TmdbBasis.TitleOnly) &&
       (record.cinemaDirector.nonEmpty || record.cinemaYears.nonEmpty)
 
-  /** True when the cinemas positively contradict the film this row resolved to. */
-  def contradicts(record: MovieRecord): Boolean =
-    record.tmdbId.isDefined && record.data.get(Tmdb).exists { film =>
-      runtimeDenies(record, film.runtimeMinutes) || directorDenies(record, film.director)
+  /** Which signal contradicts, if either. The two are not equally trustworthy, so
+   *  the caller needs to know which fired: a runtime is a NUMBER the cinemas
+   *  published and needs no confirming, while a director is a NAME, and a name can
+   *  disagree for a dozen reasons that are not a different film — the venue crediting
+   *  the film's other director, a pseudonym, a romanisation. A caller about to spend
+   *  a re-resolution on the director signal should confirm it first (see
+   *  `services.tasks.CrewConfirmation`). */
+  def contradiction(record: MovieRecord): Option[Contradiction] =
+    if (record.tmdbId.isEmpty) None
+    else record.data.get(Tmdb).flatMap { film =>
+      if (runtimeDenies(record, film.runtimeMinutes))     Some(Contradiction.Runtime)
+      else if (directorDenies(record, film.director))     Some(Contradiction.Director)
+      else                                                None
     }
+
+  /** True when the cinemas positively contradict the film this row resolved to.
+   *  The cheap, PURE form — a corpus-scan metric uses it as-is; a caller about to
+   *  act on it should go through [[contradiction]] and confirm a director. */
+  def contradicts(record: MovieRecord): Boolean = contradiction(record).isDefined
 
   /** The runtime band is deliberately wide (see [[RuntimeCorroboration.plausible]]):
    *  cinemas pad, round and shave, and Multikino advertises the 162-minute "Lalka"
