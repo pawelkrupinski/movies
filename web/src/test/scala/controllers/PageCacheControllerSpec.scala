@@ -92,8 +92,9 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val result = ctrl.index("poznan")(gzipRequest("/poznan/"))
 
     header("Last-Modified", result) shouldBe defined
-    header("Cache-Control", result) shouldBe
-      Some(s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}")
+    // No TTL: the per-city ETag is exact, so the edge revalidates rather than
+    // trusting a clock for N seconds.
+    header("Cache-Control", result) shouldBe Some("public, max-age=0, must-revalidate")
   }
 
   it should "304 a refresh whose If-Modified-Since is current, with no body" in {

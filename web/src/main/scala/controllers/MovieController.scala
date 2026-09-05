@@ -424,8 +424,8 @@ class MovieController( cc: ControllerComponents,
    *  pages change when showtimes do, so we never want a stale copy served
    *  without a check. */
   private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String,
-                                 revalidate: Boolean, shared: Boolean = false,
-                                 cacheKey: String = "", city: Option[City] = None,
+                                 policy: CachePolicy, cacheKey: String = "",
+                                 city: Option[City] = None,
                                  cacheBody: Boolean = true)(body: => String): Result = {
     // THE VALIDATOR IS PER CITY, not model-wide. `readModel.lastModified` moves
     // when anything anywhere changes, so validating London's payload with it
@@ -452,10 +452,12 @@ class MovieController( cc: ControllerComponents,
       .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
       .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
-    val cacheControl: Seq[(String, String)] =
-      if (revalidate) Seq("Cache-Control" -> "private, no-cache")
-      else if (shared) Seq("Cache-Control" -> s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}")
-      else Nil
+    val cacheControl: Seq[(String, String)] = policy match {
+      case CachePolicy.BrowserOnly         => Seq("Cache-Control" -> "private, no-cache")
+      case CachePolicy.RevalidatedAnywhere => Seq("Cache-Control" -> "public, max-age=0, must-revalidate")
+      case CachePolicy.EdgeTtl             => Seq("Cache-Control" -> s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}")
+      case CachePolicy.Unset               => Nil
+    }
     // AN ETAG AS WELL AS Last-Modified, BECAUSE A SHARED CACHE NEEDS ONE.
     //
     // Measured against the live edge on 2026-09-05: once Cloudflare holds a copy,
@@ -476,12 +478,23 @@ class MovieController( cc: ControllerComponents,
       NotModified.withHeaders(validators*)
     else if (acceptsGzip(request) && cacheBody) {
       // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
-      // does not: it drops the query string. `?days=7` and the full payload are
-      // the same path, so keying on it alone would serve one client's window to
-      // another -- silently, with a 200 and a plausible body. `cacheKey` is the
-      // normalised, parsed parameter rather than the raw query, so a crawler
-      // appending `?foo=1` cannot mint unbounded entries.
-      val bytes = responseCache.gzippedBody(request.path + cacheKey, lastMod)(body)
+      // does not.
+      //
+      // It drops the query string: `?days=7` and the full payload are the same
+      // path, so keying on it alone would serve one client's window to another --
+      // silently, with a 200 and a plausible body. `cacheKey` is the normalised,
+      // parsed parameter rather than the raw query, so a crawler appending
+      // `?foo=1` cannot mint unbounded entries.
+      //
+      // It also drops the HOST, and one deployment serves two of them -- a
+      // country's own domain and the shared brand apex (`Country.servesApex`).
+      // `og:url`, `<link rel=canonical>` and the JSON-LD are all built from
+      // `PageMeta.origin`, so a blob rendered for the first host was handed to
+      // the second advertising the wrong canonical URL for the page. A SHARED
+      // cache keys on host itself and never saw this; it was ours getting it
+      // wrong.
+      val bytes = responseCache.gzippedBody(
+        PageMeta.host(request) + request.path + cacheKey, lastMod)(body)
       Ok(bytes).as(contentType)
         .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> vary) ++ validators)*)
     } else
@@ -553,7 +566,7 @@ class MovieController( cc: ControllerComponents,
     if (cacheablePlainPage(request)) {
       // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
       // (and its data-prep) never runs either.
-      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = false, shared = true,
+      conditionalGzipped(request, HtmlContentType, HtmlVary, CachePolicy.RevalidatedAnywhere,
                          city = Some(city))(renderIndexHtml(city, request).body)
         .withCookies(cityCookie(city))
     } else {
@@ -577,7 +590,7 @@ class MovieController( cc: ControllerComponents,
       // the same thing really do render different bytes and must not share a
       // validator. Nothing is stored per key, so an appended `?foo=1` costs a
       // hash and nothing else.
-      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true,
+      conditionalGzipped(request, HtmlContentType, HtmlVary, CachePolicy.BrowserOnly,
                          cacheKey = "|q=" + request.rawQueryString, city = Some(city),
                          cacheBody = false)(renderIndexHtml(city, request).body)
         .withCookies(cityCookie(city))
@@ -712,8 +725,8 @@ class MovieController( cc: ControllerComponents,
    *  off. Both the listing and the details payload track the same city's cache
    *  mtime, so a 304 on one is a 304 on the other. */
   private def conditionalJson(request: Request[AnyContent], city: City, cacheKey: String = "")(body: => play.api.libs.json.JsValue): Result =
-    conditionalGzipped(request, "application/json", vary = "Accept-Encoding", revalidate = false,
-                       shared = true, cacheKey = cacheKey, city = Some(city))(
+    conditionalGzipped(request, "application/json", vary = "Accept-Encoding",
+                       CachePolicy.EdgeTtl, cacheKey = cacheKey, city = Some(city))(
       play.api.libs.json.Json.stringify(body)
     )
 

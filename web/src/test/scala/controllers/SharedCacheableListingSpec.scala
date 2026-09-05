@@ -43,8 +43,10 @@ class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
   private def signedInRequest(path: String = "/poznan/") =
     FakeRequest("GET", path).withSession("userId" -> "alice@example.com")
 
-  private val SharedCacheControl =
-    s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}"
+  // NO TTL. The listing carries a strong per-city ETag, so the edge revalidates
+  // against the validator instead of trusting a clock — `s-maxage` would only
+  // add a window in which a changed city page is served stale.
+  private val SharedCacheControl = "public, max-age=0, must-revalidate"
 
   "The listing rendered for a request carrying a session" should "name nobody" in {
     val body = contentAsString(controller().index("poznan")(signedInRequest()))
@@ -106,5 +108,56 @@ class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
   // whoever asks next, which is the failure the split exists to prevent.
   "The endpoint that names the visitor" should "forbid storing the answer" in {
     PerUserResponse.CacheControl shouldBe "private, no-store"
+  }
+
+  // The point of the policy, stated as its own case: an edge copy of a city
+  // listing is only ever reused after asking us, so it cannot go stale.
+  "The listing offered to the edge" should "carry no TTL for a shared cache to trust" in {
+    val cc = header("Cache-Control", controller().index("poznan")(
+      FakeRequest("GET", "/poznan/"))).value
+
+    cc should include ("must-revalidate")
+    cc should not include ("s-maxage")
+    cc should not include ("max-age=6")   // any non-zero freshness lifetime
+  }
+
+  // And it still has the validator that makes revalidation cheap — without an
+  // ETag a shared cache answers a conditional with the whole body.
+  it should "carry the strong ETag that revalidation depends on" in {
+    val etag = header("ETag", controller().index("poznan")(FakeRequest("GET", "/poznan/"))).value
+    etag should startWith ("\"")   // strong, not W/
+  }
+
+  // ── The gzip cache must key on the HOST too ────────────────────────────────
+  //
+  // `og:url`, `<link rel=canonical>` and the JSON-LD are built from the request
+  // host (`PageMeta.origin`), and one deployment can serve two hostnames — a
+  // country's own domain and the shared brand apex. Keyed on path alone, the
+  // blob rendered for the first host is handed to the second, advertising the
+  // wrong canonical URL for the page. A shared cache keys on host itself, so
+  // this is the ORIGIN's own cache getting it wrong.
+  "The gzipped listing" should "not be reused across hostnames" in {
+    val ctrl = controller()
+    def render(host: String): String = {
+      val result = ctrl.index("poznan")(FakeRequest("GET", "/poznan/")
+        .withHeaders("Accept-Encoding" -> "gzip", "X-Forwarded-Host" -> host))
+      // ⚠️ GUNZIP FIRST. The body is pre-compressed, so a substring assertion
+      // against `contentAsString` matches nothing whatever the page says and
+      // the case passes without testing anything.
+      val raw = contentAsBytes(result).toArray
+      val in  = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(raw))
+      try new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8) finally in.close()
+    }
+
+    val first  = render("kinowo.net")
+    first should include ("<link rel=\"canonical\" href=\"http://kinowo.net/poznan/\">")
+    val second = render("showtimes.cc")
+
+    // The canonical and og:url are the host-derived bits. (`og:image` is an
+    // absolute asset URL on the brand host by design, so the page naming
+    // kinowo.net there is not this bug.)
+    second should include ("<link rel=\"canonical\" href=\"http://showtimes.cc/poznan/\">")
+    second should not include ("<link rel=\"canonical\" href=\"http://kinowo.net")
+    second should not include ("og:url\"         content=\"http://kinowo.net")
   }
 }
