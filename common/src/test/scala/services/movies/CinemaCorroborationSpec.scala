@@ -66,6 +66,32 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
     CinemaCorroboration.contradicts(row(Seq("Bong Joon Ho"), Seq("Bong Joon Il"))) shouldBe true
   }
 
+  // Letters NFD leaves alone because they are distinct letters, not accented
+  // bases: an ASCII filter then simply deletes them. "Fatih Akın" folded to
+  // "fatih ak" and read as a different person from "Fatih Akin".
+  it should "fold letters NFD does not decompose" in {
+    CinemaCorroboration.contradicts(row(Seq("Fatih Akin"),      Seq("Fatih Akın")))      shouldBe false
+    CinemaCorroboration.contradicts(row(Seq("Joachim Trier"),   Seq("Joachim Trıer")))   shouldBe false
+  }
+
+  // Transliteration: one long surname spelled two ways ("Tarkowski" / "Tarkovsky")
+  // is the same director, and two long surnames two edits apart are hardly ever
+  // different people. Short tokens keep the tighter bound.
+  it should "not read a transliterated surname as a different director" in {
+    CinemaCorroboration.contradicts(row(Seq("Andrei Tarkowski"), Seq("Andreï Tarkovsky"))) shouldBe false
+  }
+
+  // A familiar form with the same surname and initial is the same credit:
+  // "Tom Donnelly" for "Thomas Michael Donnelly", "Dave" for "David G.".
+  it should "not read a familiar first name as a different director" in {
+    CinemaCorroboration.contradicts(row(Seq("Thomas Michael Donnelly"), Seq("Tom Donnelly"))) shouldBe false
+    CinemaCorroboration.contradicts(row(Seq("David G. Derrick Jr."),    Seq("Dave Derrick Jr."))) shouldBe false
+  }
+
+  it should "keep a shared first name from merging two directors" in {
+    CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Andrzej Żuławski"))) shouldBe true
+  }
+
   it should "still catch two genuinely different directors" in {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Louisa Proske"))) shouldBe true
   }

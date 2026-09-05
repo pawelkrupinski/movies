@@ -34,6 +34,11 @@ object TextNormalization {
    * (NFD doesn't decompose `ł` so a separate replace is required). Case is
    * preserved — callers that want lowercase append `.toLowerCase` themselves
    * so this helper is reusable in display-side paths too.
+   *
+   * FROZEN. `TitleRuleKey` derives stored title-rule keys from this fold, so a
+   * new letter mapping here silently re-keys every rule in prod — adding `ß` →
+   * `ss` turned `kino-wei-haus` into `kino-weisshaus`. A caller needing a wider
+   * fold does it locally (see `CinemaCorroboration.nameTokens`).
    */
   def deburr(s: String): String =
     CombiningMarks.matcher(Normalizer.normalize(s, Normalizer.Form.NFD)).replaceAll("")

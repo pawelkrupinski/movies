@@ -79,8 +79,38 @@ object CinemaCorroboration {
    *  Empty for a name that folds away entirely, which is how a CJK credit behaves:
    *  "王家衛" and "Wong Kar Wai" are the same person and nothing here can know it,
    *  so that comparison must abstain rather than guess. */
-  private def nameTokens(name: String): Set[String] =
-    TextNormalization.deburr(name).toLowerCase.split("[^a-z0-9]+").filter(_.nonEmpty).toSet
+  private def nameTokens(name: String): Seq[String] =
+    foldUndecomposed(TextNormalization.deburr(name)).toLowerCase.split("[^a-z0-9]+").filter(_.nonEmpty).toSeq
+
+  /** Letters NFD leaves alone because they are distinct letters rather than an
+   *  accented base, so `deburr` passes them through and the ASCII split below
+   *  simply DELETES them: "Fatih Akın" became "fatih ak" and read as a different
+   *  person from "Fatih Akin". Folded here rather than in `deburr`, which is
+   *  frozen — `TitleRuleKey` derives stored rule keys from it, and widening it
+   *  re-keys every title rule in prod. */
+  private def foldUndecomposed(s: String): String =
+    s.replace('ı', 'i').replace('İ', 'i')
+      .replace('ø', 'o').replace('Ø', 'o')
+      .replace('đ', 'd').replace('Đ', 'd')
+      .replace("ß", "ss")
+
+  /** Honorific suffixes, dropped before a credit is compared so they cannot pose
+   *  as the surname. */
+  private val Suffixes = Set("jr", "sr", "ii", "iii", "iv")
+
+  /** Same SURNAME and a compatible first initial — the shape a familiar form
+   *  takes: "Tom Donnelly" for "Thomas Michael Donnelly", "Dave Derrick Jr." for
+   *  "David G. Derrick Jr.". Nicknames are not derivable from the formal name, so
+   *  no amount of prefix or edit distance reaches them; the surname carries the
+   *  identity and the initial guards it. "Andrzej Wajda" and "Andrzej Żuławski"
+   *  share a first name and NOT a surname, so they stay two people. */
+  private def sameFamiliarForm(a: Seq[String], b: Seq[String]): Boolean = {
+    val an = a.filterNot(Suffixes.contains)
+    val bn = b.filterNot(Suffixes.contains)
+    an.length >= 2 && bn.length >= 2 &&
+      sameToken(an.last, bn.last) &&
+      an.head.headOption == bn.head.headOption
+  }
 
   /** One credit naming the same person as the other. Subset rather than equality
    *  so a middle name present on one side only ("Neele Leana Vollmar" against
@@ -91,11 +121,11 @@ object CinemaCorroboration {
    *  An initial only ever matches ALONGSIDE the rest of the credit — every other
    *  token must still be accounted for — so "A. Wajda" cannot become "Louisa
    *  Proske" on the strength of a shared letter. */
-  private def samePerson(a: Set[String], b: Set[String]): Boolean =
-    covers(a, b) || covers(b, a)
+  private def samePerson(a: Seq[String], b: Seq[String]): Boolean =
+    covers(a, b) || covers(b, a) || sameFamiliarForm(a, b)
 
   /** Every token of `narrow` accounted for by some token of `wide`. */
-  private def covers(narrow: Set[String], wide: Set[String]): Boolean =
+  private def covers(narrow: Seq[String], wide: Seq[String]): Boolean =
     narrow.forall(t => wide.exists(sameToken(t, _)))
 
   /** One name token standing for another. Beyond equality this forgives the three
@@ -114,13 +144,20 @@ object CinemaCorroboration {
     a == b ||
       (a.length == 1 && b.startsWith(a)) || (b.length == 1 && a.startsWith(b)) ||
       (a.length >= 5 && b.startsWith(a)) || (b.length >= 5 && a.startsWith(b)) ||
-      (a.length >= 6 && b.length >= 6 && withinOneEdit(a, b))
+      (a.length >= 6 && b.length >= 6 && withinOneEdit(a, b)) ||
+      // Two transliterations of one long surname ("Tarkowski" / "Tarkovsky") sit two
+      // edits apart, and two DIFFERENT surnames that long rarely do.
+      (a.length >= 8 && b.length >= 8 && withinEdits(a, b, 2))
 
   /** True when `a` and `b` are at most one insertion, deletion or substitution
    *  apart. Bounded and allocation-free: the only distance that matters here is
    *  "one", so a longer walk is abandoned as soon as a second difference shows. */
-  private def withinOneEdit(a: String, b: String): Boolean = {
-    if (math.abs(a.length - b.length) > 1) return false
+  private def withinOneEdit(a: String, b: String): Boolean = withinEdits(a, b, 1)
+
+  /** True when `a` and `b` are at most `max` edits apart. Bounded: the walk is
+   *  abandoned as soon as the budget is spent. */
+  private def withinEdits(a: String, b: String, max: Int): Boolean = {
+    if (math.abs(a.length - b.length) > max) return false
     var i = 0
     var j = 0
     var edits = 0
@@ -128,12 +165,12 @@ object CinemaCorroboration {
       if (a.charAt(i) == b.charAt(j)) { i += 1; j += 1 }
       else {
         edits += 1
-        if (edits > 1) return false
+        if (edits > max) return false
         if (a.length == b.length) { i += 1; j += 1 }        // substitution
         else if (a.length > b.length) i += 1                 // deletion from a
         else j += 1                                          // insertion into a
       }
     }
-    edits + (a.length - i) + (b.length - j) <= 1
+    edits + (a.length - i) + (b.length - j) <= max
   }
 }
