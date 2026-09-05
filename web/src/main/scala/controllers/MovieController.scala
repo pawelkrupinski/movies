@@ -566,9 +566,17 @@ class MovieController( cc: ControllerComponents,
     if (cacheablePlainPage(request)) {
       // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
       // (and its data-prep) never runs either.
+      // NO `Set-Cookie` HERE, AND THAT IS THE WHOLE POINT OF THE BRANCH.
+      // Cloudflare bypasses any response carrying one: measured, this page went
+      // `DYNAMIC` -> `BYPASS` the moment a Cache Rule made it eligible, with the
+      // `city=` cookie the only thing left on it. The cookie exists so the bare
+      // `/` landing can bounce a returning visitor to their city; it is
+      // `httpOnly = false` precisely so the client owns it, and `shared.js`
+      // writes it on load with the same name, path and lifetime. The filtered
+      // branch below is `private, no-cache`, so it keeps setting it server-side
+      // and a visitor with no JS is still remembered.
       conditionalGzipped(request, HtmlContentType, HtmlVary, CachePolicy.RevalidatedAnywhere,
                          city = Some(city))(renderIndexHtml(city, request).body)
-        .withCookies(cityCookie(city))
     } else {
       // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
       //

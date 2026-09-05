@@ -654,6 +654,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // are only reachable if explicitly hung off `window`. Regression for the
   // Sentry `ReferenceError: toggleAuthMenu is not defined` fired on every
   // auth-menu tap (the IIFE-local definitions weren't exported).
+  // THE CITY COOKIE IS THE CLIENT'S JOB NOW. The listing must reach Cloudflare
+  // with no `Set-Cookie` or the edge bypasses the cache for it — measured, the
+  // page went DYNAMIC -> BYPASS with that header the only thing left on it. So
+  // the server stopped sending it and `shared.js` writes it on load instead;
+  // without this the bare `/` landing would stop remembering anyone who arrived
+  // straight from search, which is the common case.
+  it should "write the city cookie on load, now that the server does not" in {
+    onPath("/") { page =>
+      // The VALUE matters, not just the presence: the bare `/` landing bounces to
+      // whatever this says, and a US metro page has to remember the metro.
+      page.evalString("document.cookie.match(/(?:^|; )city=([^;]*)/)[1]") shouldBe
+        page.evalString("CURRENT_CITY")
+    }
+  }
+
   it should "expose the auth-menu / login-modal handlers as globals" in {
     onPath("/") { page =>
       page.evalBool("typeof toggleAuthMenu === 'function'") shouldBe true

@@ -102,9 +102,17 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     html should include("""<link rel="canonical" href="https://showtimes.cc/us/los-angeles/"""")
   }
 
+  // The metro is still what gets remembered — but the CLIENT writes the cookie
+  // now, not the response. The listing has to reach Cloudflare with no
+  // `Set-Cookie` or the edge bypasses the cache for it (measured: DYNAMIC ->
+  // BYPASS with that header the only thing left on the response), so `shared.js`
+  // writes `city=` on load from `CURRENT_CITY`. What this page owes is therefore
+  // the right slug in that constant; that the cookie is then written is asserted
+  // in a real browser by `PageJsBehaviourSpec`.
   it should "remember the metro as the city, so the bare / bounces back to it" in {
-    val res = usController().index("los-angeles")(req("/los-angeles/"))
-    cookies(res).get("city").map(_.value) shouldBe Some("los-angeles")
+    val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
+    html should include ("CURRENT_CITY")
+    html should include ("\"los-angeles\";")
   }
 
   it should "offer the other metros grouped by their state in the city switcher" in {

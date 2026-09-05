@@ -160,4 +160,34 @@ class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
     second should not include ("<link rel=\"canonical\" href=\"http://kinowo.net")
     second should not include ("og:url\"         content=\"http://kinowo.net")
   }
+
+  // ── No Set-Cookie on the response the edge is meant to hold ────────────────
+  //
+  // MEASURED, not guessed: with the Cache Rule in place the listing went from
+  // `cf-cache-status: DYNAMIC` (not even eligible) to `BYPASS` — eligible, and
+  // then skipped. Cloudflare bypasses a response carrying `Set-Cookie`, so the
+  // `city=` cookie was the last thing standing between us and an edge copy.
+  //
+  // The cookie itself is not lost: it exists so the bare `/` landing can bounce
+  // a returning visitor to their city, it is `httpOnly=false` precisely so the
+  // client can work with it, and `shared.js` now writes it on load with the
+  // same name, path and lifetime.
+
+  "The listing offered to the edge" should "carry no Set-Cookie for Cloudflare to bypass on" in {
+    val result = controller().index("poznan")(FakeRequest("GET", "/poznan/"))
+
+    header("Cache-Control", result).value should include ("public")
+    // ⚠️ `header("Set-Cookie", …)` is ALWAYS None on a Result — Play keeps
+    // cookies aside until the response is serialised, so asserting on the
+    // header tests nothing at all. `cookies(…)` is the real question.
+    cookies(result).get("city") shouldBe None
+  }
+
+  // The filtered variants are `private, no-cache` — no shared cache may hold
+  // them, so a cookie there costs nothing and still serves a no-JS visitor.
+  "A filtered listing" should "still set the city cookie server-side" in {
+    val result = controller().index("poznan")(FakeRequest("GET", "/poznan/?cinema=Helios"))
+
+    cookies(result).get("city").map(_.value) shouldBe Some("poznan")
+  }
 }

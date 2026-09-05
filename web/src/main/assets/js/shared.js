@@ -86,11 +86,23 @@
   // `/` landing bounces here next time, then navigate to the chosen city's
   // repertoire root. A full navigation (not a view-swap) because the whole
   // corpus changes. No-op when the value is the current city.
-  function onCityChange(slug) {
-    if (!slug || slug === CURRENT_CITY) return;
+  // Remember the city so the bare `/` landing bounces here next time.
+  //
+  // THE CLIENT OWNS THIS COOKIE NOW. The listing used to arrive with a
+  // `Set-Cookie`, and Cloudflare bypasses the cache for any response carrying
+  // one — measured: the page went DYNAMIC -> BYPASS with this as the only
+  // thing left on it. Same name, path and lifetime as the header it replaces,
+  // so the landing bounce behaves exactly as before.
+  function rememberCity(slug) {
     var prefix = mountPrefix();
     document.cookie = 'city=' + slug + ';path=' + (prefix || '') + '/;max-age=' + (60 * 60 * 24 * 365);
-    window.location.href = prefix + '/' + slug + '/';
+  }
+  window.rememberCity = rememberCity;
+
+  function onCityChange(slug) {
+    if (!slug || slug === CURRENT_CITY) return;
+    rememberCity(slug);
+    window.location.href = mountPrefix() + '/' + slug + '/';
   }
   window.onCityChange = onCityChange;
 
@@ -2750,6 +2762,12 @@
   document.addEventListener('DOMContentLoaded', () => {
     // One-time shell init — navbar chrome (day pills, hidden-films badge) — then
     // the grid-dependent boot. None of it depends on who is looking.
+    //
+    // The city cookie is written HERE rather than sent by the server: the
+    // listing has to reach Cloudflare with no `Set-Cookie`, or the edge
+    // bypasses it (see `rememberCity`). Landing directly on a city page from
+    // search is the common case, so it cannot wait for a city switch.
+    rememberCity(CURRENT_CITY);
     syncDayPills();
     updateNavbar();
     bootView();
