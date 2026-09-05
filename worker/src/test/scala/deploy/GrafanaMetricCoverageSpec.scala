@@ -80,6 +80,16 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_host_memory_total_bytes",
     "kinowo_web_host_disk_free_bytes",
     "kinowo_web_host_disk_total_bytes",
+    // The web tier's in-heap caches, one family with a `cache` label. Its
+    // predecessor `kinowo_web_response_cache_*` was exported and charted NOWHERE
+    // for as long as it existed, and this list is why nobody noticed: it is
+    // hand-maintained, so a family left off it is invisible to the guard rather
+    // than caught by it.
+    "kinowo_web_cache_held_bytes",
+    "kinowo_web_cache_max_bytes",
+    "kinowo_web_cache_entries",
+    "kinowo_web_cache_hit_ratio",
+    "kinowo_web_cache_evictions_total",
     "kinowo_uptime_recent_successes",
     "kinowo_uptime_recent_failures",
     "kinowo_uptime_recent_zeroes"

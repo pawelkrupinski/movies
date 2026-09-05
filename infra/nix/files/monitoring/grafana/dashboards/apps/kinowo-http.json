@@ -661,6 +661,165 @@
           }
         }
       ]
+    },
+    {
+      "id": 13,
+      "title": "Caches \u2014 bytes held against budget",
+      "description": "This tier's in-heap caches, and the reading that was missing for both of its heap incidents. The gzipped-response cache was unbounded when a crawler walking the US sitemap pinned all 55 states in a 768m heap and web-us OOM-crash-looped hourly; the share-card cache repeated it on 2026-09-04 behind a bound that counted ENTRIES over rendered images, taking web-uk's old-gen floor from 29% to 71% in two hours. The budget is plotted rather than written here so it stays right when retuned. Poland's corpus fits several times over and should sit flat well under its ceiling; the US should ride at it \u2014 a country that STARTS evicting when it never used to is a corpus that grew.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 43
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*budget.*"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_web_cache_held_bytes{country=~\"$country\"}",
+          "legendFormat": "{{country}} {{cache}} held",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_web_cache_max_bytes{country=~\"$country\"}",
+          "legendFormat": "{{country}} {{cache}} budget",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Caches \u2014 entries, hit ratio and evictions",
+      "description": "Entries is context for the bytes, not a bound: flat while held_bytes rides the budget is the long tail falling out. Hit ratio and evictions come only from the caches that count them \u2014 the share-card caches, where a hit is a whole card not composited again. The response cache is an access-ordered LinkedHashMap with no counters, so it has no ratio line at all rather than a zero one, which would read as a cache serving nothing.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 43
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*hit ratio.*"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_web_cache_entries{country=~\"$country\"}",
+          "legendFormat": "{{country}} {{cache}} entries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_web_cache_hit_ratio{country=~\"$country\"}",
+          "legendFormat": "{{country}} {{cache}} hit ratio",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "C",
+          "expr": "rate(kinowo_web_cache_evictions_total{country=~\"$country\"}[5m])",
+          "legendFormat": "{{country}} {{cache}} evictions/sec",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ]
 }

@@ -68,11 +68,20 @@ class GzippedResponseCache(maxBytes: Long = GzippedResponseCache.DefaultMaxBytes
   }
 
   /** Bytes currently held, and how many bodies that is. Asserted by the size
-   *  tests and published as `kinowo_web_response_cache_*` — a cache whose bound is
+   *  tests and published as `kinowo_web_cache_*` — a cache whose bound is
    *  the point needs its accounting measured, not assumed, and nothing in the
    *  process could previously say how much heap it was holding. */
   def heldBytes: Long = synchronized(bytesHeld)
   def heldEntries: Int = synchronized(entries.size)
+
+  /** What this cache holds against its byte budget, for `kinowo_web_cache_*`.
+   *  Built by hand rather than read off Caffeine — this one is an access-ordered
+   *  `LinkedHashMap`, and it has no hit counters to report. */
+  def occupancy: services.metrics.CacheOccupancy =
+    services.metrics.CacheOccupancy(
+      entries   = heldEntries.toLong,
+      heldBytes = Some(heldBytes),
+      maxBytes  = Some(maxBytes))
 
   private def store(key: String, entry: Entry): Unit = synchronized {
     // An entry larger than the whole budget is never worth holding: storing it

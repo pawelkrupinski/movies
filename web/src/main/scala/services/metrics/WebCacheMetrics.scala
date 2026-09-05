@@ -1,56 +1,78 @@
 package services.metrics
 
-import controllers.GzippedResponseCache
 import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
 
 /**
- * `kinowo_web_response_cache_*` — how much heap the gzipped-response cache is
- * holding, and across how many paths.
+ * `kinowo_web_cache_*` — what each of the web tier's in-heap caches holds,
+ * against what it is allowed to hold.
  *
- * WHY THIS EXISTS. The cache was unbounded, and nothing in the process could say
- * what that cost. It did not matter while a deployment's whole corpus was "a
- * handful of cities × a few paths"; on the US, where a city is a STATE and the
- * largest listing is 1.06 MB gzipped, a crawler walking the sitemap pinned every
- * one of 55 states in a 768m heap that also holds the read model, and `web-us`
- * OOM-crash-looped roughly hourly. Diagnosing that meant guessing at the split
- * between the cache and the read model, because the JRE image carries no `jcmd`
- * and there is no heap dump to look at.
+ * WHY THIS EXISTS, twice over. The gzipped-response cache was unbounded, and
+ * nothing in the process could say what that cost: on the US, where a city is a
+ * STATE and the largest listing is 1.06 MB gzipped, a crawler walking the sitemap
+ * pinned every one of 55 states in a 768m heap that also holds the read model,
+ * and `web-us` OOM-crash-looped roughly hourly. Then on 2026-09-04 the SHARE-CARD
+ * cache did the same thing behind a bound that counted ENTRIES over rendered
+ * images — web-uk's old-gen floor went 29% → 71% in two hours — and it had no
+ * gauge at all. Both times diagnosis meant guessing at the split between the
+ * caches and the read model, because the JRE image carries no `jcmd`.
  *
- * So the bound has a gauge beside it. `held_bytes` against
- * [[GzippedResponseCache.DefaultMaxBytes]] says whether a deployment is evicting
- * at all — Poland's corpus fits several times over and should sit flat well under
- * the ceiling, while the US should ride at it — and a country that starts
- * evicting when it never used to is a corpus that grew.
+ * ONE family with a `cache` label rather than a family per cache, so a new cache
+ * is a registration rather than a new metric name and a new panel — the shape
+ * [[WorkerCacheMetrics]] uses on the other tier. It replaces the older
+ * `kinowo_web_response_cache_*`, which covered only one of these caches and never
+ * published the budget its own help text told you to read against.
  *
- * Read at SCRAPE time through callback gauges, like [[WebHostMetrics]]: both are
- * a field read behind one lock, far cheaper than the JVM collectors on the same
- * scrape, and a timer would only add staleness.
+ * A cache that cannot honestly answer a question publishes NO SERIES for it (see
+ * [[CacheOccupancy]]): the response cache is a `LinkedHashMap` with no hit
+ * counters, so it reports bytes and entries and no ratio. A zero would read as a
+ * cache serving nothing.
+ *
+ * Read at SCRAPE time through callback gauges, like [[WebHostMetrics]]: a field
+ * read behind one lock, far cheaper than the JVM collectors on the same scrape,
+ * and a timer would only add staleness.
  */
-class WebCacheMetrics(registry: PrometheusRegistry, country: String, cache: GzippedResponseCache) {
+class WebCacheMetrics(registry: PrometheusRegistry, country: String,
+                      caches: Seq[(String, () => CacheOccupancy)]) {
 
-  private def gauge(name: String, help: String, unit: Option[io.prometheus.metrics.model.snapshots.Unit], read: () => Double): Unit = {
-    val builder = GaugeWithCallback.builder()
-      .name(name)
-      .help(help)
-      .labelNames("country")
-      .callback(callback => callback.call(read(), country))
+  private def gauge(name: String, help: String, unit: Option[PrometheusUnit])
+                   (read: CacheOccupancy => Option[Double]): Unit = {
+    val builder = GaugeWithCallback.builder().name(name).help(help).labelNames("country", "cache")
     unit.foreach(builder.unit)
-    builder.register(registry)
+    builder
+      .callback { callback =>
+        caches.foreach { case (cache, occupancy) =>
+          read(occupancy()).foreach(value => callback.call(value, country, cache))
+        }
+      }
+      .register(registry)
   }
 
-  gauge(
-    "kinowo_web_response_cache_held_bytes",
-    "Compressed response bodies the web process is holding in heap, against the cache's byte budget.",
-    Some(io.prometheus.metrics.model.snapshots.Unit.BYTES),
-    () => cache.heldBytes.toDouble
-  )
+  gauge("kinowo_web_cache_held_bytes",
+    "Bytes a cache is holding, as its own weigher charges them. Against `max_bytes` this is what " +
+      "says whether a deployment is evicting at all: Poland's corpus fits several times over and " +
+      "should sit flat well under the ceiling, while the US should ride at it.",
+    Some(PrometheusUnit.BYTES))(_.heldBytes.map(_.toDouble))
 
-  gauge(
-    "kinowo_web_response_cache_entries",
-    "How many distinct paths the response cache is holding. Flat below the roster means nothing is " +
-      "evicting; at or below it while held_bytes rides the budget means the long tail is falling out.",
-    None,
-    () => cache.heldEntries.toDouble
-  )
+  gauge("kinowo_web_cache_max_bytes",
+    "The cache's byte budget, published so a dashboard reads the fraction rather than hard-coding " +
+      "a number that goes stale the moment the budget is retuned.",
+    Some(PrometheusUnit.BYTES))(_.maxBytes.map(_.toDouble))
+
+  gauge("kinowo_web_cache_entries",
+    "How many distinct keys the cache is holding — context for `held_bytes`, not the bound itself. " +
+      "Entries flat while held_bytes rides the budget is the long tail falling out.",
+    None)(o => Some(o.entries.toDouble))
+
+  gauge("kinowo_web_cache_hit_ratio",
+    "Share of lookups served from the cache, where the cache counts them. On the share-card caches " +
+      "a hit is a whole card not composited again, so a fall alongside a full budget is the sweep " +
+      "that cost web-uk its heap.",
+    None)(_.hitRatio)
+
+  gauge("kinowo_web_cache_evictions_total",
+    "Entries evicted since boot, where the cache counts them. A card cache evicting steadily is one " +
+      "whose working set no longer fits its budget.",
+    None)(_.evictions.map(_.toDouble))
 }

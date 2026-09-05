@@ -18,6 +18,10 @@ class OgCardService(posters: PosterFetch) {
   private val loader = new PosterImageLoader(posters)
   private val cache  = new OgCardCache(OgCard.MaxCacheBytes)
 
+  /** This service's card cache, for `kinowo_web_cache_*` — the film cards' own
+   *  budget, held separately from the other card service's. */
+  def cacheOccupancy: services.metrics.CacheOccupancy = cache.occupancy
+
   /** `posterUrls` is the ordered candidate list — the primary poster followed by
    *  the cinema fallbacks — mirroring the browser's `<img onerror>` fallback
    *  chain. The card walks it until one URL decodes. This matters because a

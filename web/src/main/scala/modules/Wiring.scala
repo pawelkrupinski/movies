@@ -346,7 +346,13 @@ trait Wiring {
   // lazy for the same reason as the line above: registering the gauges is the
   // whole job. It forces `gzippedResponseCache`, which is only a map — no I/O, no
   // ordering constraint.
-  private val webCacheMetrics = new WebCacheMetrics(webJvmMetrics.registry, metricsCountry.code, gzippedResponseCache)
+  // Every in-heap cache this tier holds, on one `kinowo_web_cache_*` family. The
+  // two share-card caches are separate budgets (film cards get four times the
+  // city cards'), so they are separate series rather than a sum.
+  private val webCacheMetrics = new WebCacheMetrics(webJvmMetrics.registry, metricsCountry.code, Seq(
+    "response"     -> (() => gzippedResponseCache.occupancy),
+    "og_card_film" -> (() => ogCardService.cacheOccupancy),
+    "og_card_city" -> (() => cityOgCardService.cacheOccupancy)))
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics, webJvmMetrics, metricsCountry.code)
   // Read-only on the web side: the worker writes fallback state; the /uptime page's
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).

@@ -26,6 +26,8 @@ private[tools] class OgCardCache(maxBytes: Long, maintenance: Executor = ForkJoi
       .maximumWeight(maxBytes)
       .weigher((_: String, card: Array[Byte]) => card.length: Int)
       .expireAfterWrite(12, TimeUnit.HOURS)
+      // A hit here is a whole card not composited again — worth reading as a ratio.
+      .recordStats()
       // WHERE EVICTION RUNS, and the only reason it is a parameter. Caffeine
       // defers maintenance to this executor and `cleanUp()` only does the work
       // itself if it can take the eviction lock -- so on a machine whose common
@@ -49,6 +51,13 @@ private[tools] class OgCardCache(maxBytes: Long, maintenance: Executor = ForkJoi
   /** Bytes currently held. Caffeine evicts asynchronously, so a caller asserting
    *  on the bound has to settle first -- see `cleanUp`. */
   private[tools] def weight: Long = cache.policy().eviction().get().weightedSize().getAsLong
+
+  /** What this cache holds against its byte budget, for `kinowo_web_cache_*`. The
+   *  reading that was missing on 2026-09-04, when a crawler swept the share cards
+   *  and took web-uk's old-gen floor from 29% to 71% in two hours behind a bound
+   *  that counted ENTRIES. */
+  def occupancy: services.metrics.CacheOccupancy =
+    services.metrics.CacheOccupancy.of(cache, weighted = true)
 
   /** Run pending maintenance (eviction included) now rather than on the next
    *  write. Only the specs need this; production never waits on the bound. */
