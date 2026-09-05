@@ -55,6 +55,14 @@ class CachingDetailFetch(
       .weigher(CachingDetailFetch.RetainedBytes)
       .executor(maintenance)
       .ticker(ticker)
+      // Hit ratio is the reading that says WHICH job this cache is doing, and the
+      // two answers are far apart. Detail is refreshed once per DetailEnrich
+      // window and this TTL expires well inside it, so a scheduled refresh must
+      // MISS: a ratio near zero is the healthy steady state. A high ratio means
+      // the same URL is being asked for over and over inside an hour, which is
+      // the `DetailFetchOutcome.Failed` livelock (an unstamped film re-enqueued
+      // every reaper tick) being absorbed here rather than fixed at the client.
+      .recordStats()
       .build()
 
   override def get(url: String): String = cache.getIfPresent(url) match {
@@ -77,6 +85,12 @@ class CachingDetailFetch(
           throw failure
       }
   }
+
+  /** What this cache is holding against its byte budget, for
+   *  `kinowo_worker_cache_*`. Read at scrape time — Caffeine's own counters, no
+   *  traversal. */
+  def occupancy: services.metrics.CacheOccupancy =
+    services.metrics.CacheOccupancy.of(cache, weighted = true)
 
   // Detail fetches don't vary by request header; key on the URL alone.
   override def get(url: String, headers: Map[String, String]): String = get(url)

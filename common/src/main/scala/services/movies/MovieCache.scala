@@ -320,6 +320,14 @@ class CaffeineMovieCache(
     positive.asMap().asScala.foreach { case (k, r) => rebuilt.put(k, r) }
     rebuilt.snapshot
   }
+  /** The resident corpus, for `kinowo_worker_cache_*`. UNBOUNDED by design — it is
+   *  the hydrated corpus, not a working set — so it reports entries and no maximum:
+   *  a maximum of zero would render as "full" on a ratio panel. What it is worth
+   *  watching for is the SHAPE, a count that tracks the corpus rather than climbing
+   *  past it. */
+  def occupancy: services.metrics.CacheOccupancy =
+    services.metrics.CacheOccupancy.of(positive, weighted = false)
+
   private val negative: Cache[CacheKey, java.lang.Boolean] =
     Caffeine.newBuilder().expireAfterWrite(24, TimeUnit.HOURS).build()
 

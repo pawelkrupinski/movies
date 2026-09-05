@@ -241,6 +241,17 @@ class WorkerWiring(
   // IP-reputation block that the proxy clears, so paying Zyte per request across
   // 843 venues would buy nothing the proxy doesn't already give.
   lazy val flicksFetch: HttpFetch = proxyPrimary(httoFetch)
+  // Publish the venue detail cache's occupancy under `kinowo_worker_cache_*`. Tied
+  // to the catalog rather than registered eagerly: the catalog is `lazy`, and a
+  // wiring that never builds one (a diagnostic) should not publish an empty cache.
+  def registerCacheMetrics(): Unit = {
+    workerMetrics.registerCache(country.code, "venue_detail", () => cinemaScraperCatalog.venueDetailCache.occupancy)
+    // The resident corpus (unbounded — entries only) and the task dedup cache
+    // (count-bounded), so the panels cover every shape a cache here can take.
+    workerMetrics.registerCache(country.code, "movie_corpus", () => movieCache.occupancy)
+    workerMetrics.registerCache(country.code, "task_dedup", () => taskDedupCache.occupancy)
+  }
+
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
     httoFetch, multikinoFetch, biletynaFetch, heliosToday,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
@@ -790,8 +801,10 @@ class WorkerWiring(
       workerMetrics.contentOldestAgeGauge, workerMetrics.neverContentGauge, country)
   // Metered (counts every enqueue attempt, incl. cache-served duplicates) wraps the
   // local dedup cache (skips the redundant enqueue round-trip) wraps Mongo.
-  lazy val taskQueue: TaskQueue =
-    new MeteredTaskQueue(new CachingTaskQueue(new MongoTaskQueue(mongoConnection.database)), taskMetrics)
+  // Held so its occupancy can be published (`kinowo_worker_cache_*`); the queue
+  // itself is consumed through the `TaskQueue` abstraction below.
+  lazy val taskDedupCache: CachingTaskQueue = new CachingTaskQueue(new MongoTaskQueue(mongoConnection.database))
+  lazy val taskQueue: TaskQueue = new MeteredTaskQueue(taskDedupCache, taskMetrics)
   // Persists each operator-triggered bulk-refresh outcome so it survives the task
   // doc's instant deletion and the web `/tasks` page can show it. Written here by
   // BulkRefreshHandler; read by the web (same shared Mongo, like `tasks` itself).
@@ -1251,6 +1264,10 @@ class WorkerWiring(
     // scrape pass (KINOWO_SCRAPE_INITIAL_DELAY_SECONDS) and the projector's orphan
     // prune (KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS).
     movieCache.start()
+    // Publish this country's cache occupancy. Here rather than at construction
+    // because it forces the lazy catalog, and a wiring that is built but never
+    // started (tests, diagnostics) should not pay for a scraper graph.
+    registerCacheMetrics()
     // Start the read-model projector after the cache so its state seed reads a
     // hydrated `movies` collection; it watches the change stream (with a persisted
     // resume token) independently of the cache's own watch.

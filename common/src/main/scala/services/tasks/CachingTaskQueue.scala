@@ -40,6 +40,13 @@ class CachingTaskQueue(
   private val idToKey: Cache[String, String] =
     Caffeine.newBuilder().expireAfterWrite(10L, TimeUnit.MINUTES).maximumSize(maxKeys).build()
 
+  /** What the dedup cache holds against `maxKeys`, for `kinowo_worker_cache_*`.
+   *  The `active` half is the one worth watching: it is what spares a Mongo
+   *  round-trip per re-enqueue, so riding its ceiling means the dedup is being
+   *  evicted and those round-trips are coming back. */
+  def occupancy: services.metrics.CacheOccupancy =
+    services.metrics.CacheOccupancy.of(active, weighted = false)
+
   override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult =
     if (active.getIfPresent(dedupKey) != null) EnqueueResult.Duplicate // known-active: skip the Mongo round-trip
     else {

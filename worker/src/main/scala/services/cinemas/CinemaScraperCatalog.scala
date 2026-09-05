@@ -138,7 +138,12 @@ class CinemaScraperCatalog(
   // locations and several worker processes, and wrong here — one process scrapes
   // Poland, so a shared store buys no dedup and would put ~228 MiB of HTML
   // through Mongo for it.
-  private val venueDetailHttp: HttpFetch = new CachingDetailFetch(http)
+  // Not `private`, and typed as the concrete cache rather than `HttpFetch`, so the
+  // composition root can publish its occupancy — see `WorkerCacheMetrics`. The
+  // clients below still receive it as an `HttpFetch`; nothing downstream knows it
+  // is a cache.
+  val venueDetailCache: CachingDetailFetch = new CachingDetailFetch(http)
+  private val venueDetailHttp: HttpFetch = venueDetailCache
 
   // The three venue clients this catalog builds MANY of — 36 Bilety24 organisers,
   // 5 Ekobilet venues, 3 NoveKino — bind their shared arguments here rather than

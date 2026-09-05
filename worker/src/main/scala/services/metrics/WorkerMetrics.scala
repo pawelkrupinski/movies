@@ -39,6 +39,22 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   // object shared by every country's wiring, so a `country` label would be a lie.
   StringPoolMetrics.register(registry)
 
+  // In-process cache occupancy (`kinowo_worker_cache_*`), one labelled family for
+  // every cache any country's wiring registers. Registered once here; the callback
+  // reads whatever is in `cacheRegistrations` at scrape time, so a wiring built
+  // later still surfaces without re-registering a metric name.
+  private val cacheRegistrations =
+    new java.util.concurrent.CopyOnWriteArrayList[WorkerCacheMetrics.Registration]()
+  WorkerCacheMetrics.register(registry, () => {
+    import scala.jdk.CollectionConverters._
+    cacheRegistrations.asScala.toSeq
+  })
+
+  /** Publish a cache's occupancy under `kinowo_worker_cache_*{country,cache}`.
+   *  `read` is called on every scrape, so it must be cheap and must not throw. */
+  def registerCache(country: String, cache: String, read: () => CacheOccupancy): Unit =
+    cacheRegistrations.add(WorkerCacheMetrics.Registration(country, cache, read))
+
   // The registered-once task-pipeline metric objects, shared across countries.
   val taskSeries: WorkerTaskMetrics.Series = new WorkerTaskMetrics.Series(poolSize, countryCodes, registry)
 
