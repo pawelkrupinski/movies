@@ -25,6 +25,13 @@ package services.movies
  *    `unchanged` SHARE is not a fault — it is the guard earning its keep, and it is the number
  *    that names this class of problem in one look. It read 297:1 on prod on 2026-09-04, where
  *    every other signal said only "projections are up".
+ *  - `recordCoalescedChange()` — one event that rode an apply already queued for its film
+ *    instead of buying its own. The SAVING, made visible: the cursor rings once per (film,
+ *    slot), so a film changing at every venue rings once per venue while one re-read after
+ *    the burst sees all of it. `coalesced / (coalesced + projections)` is how much of the
+ *    fan-out this collapses; it is 0 on a corpus where films move one venue at a time and
+ *    approaches 1 on a wide release. This is the number that stays useful after
+ *    `unchanged` has done its work, because these events are genuine changes.
  *
  * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]]; the web,
  * scripts and unit tests use [[ScreeningsMetrics.noop]]. Mirrors [[ChangeStreamMetrics]]
@@ -33,6 +40,7 @@ package services.movies
 trait ScreeningsMetrics {
   def recordChangeEvent(op: String): Unit
   def recordWrite(outcome: String, count: Int): Unit
+  def recordCoalescedChange(): Unit
 }
 
 object ScreeningsMetrics {
@@ -45,5 +53,6 @@ object ScreeningsMetrics {
   val noop: ScreeningsMetrics = new ScreeningsMetrics {
     def recordChangeEvent(op: String): Unit            = ()
     def recordWrite(outcome: String, count: Int): Unit = ()
+    def recordCoalescedChange(): Unit                  = ()
   }
 }

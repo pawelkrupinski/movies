@@ -56,6 +56,23 @@ tests:
         alertname: ReadModelProjectionTriggerUnaccounted
         exp_alerts: []
 
+  # A WIDE RELEASE, COALESCED. 100 screenings events/s while the apply collapses them onto ~4
+  # projections/s, because they all name the same film and the apply re-reads its current state.
+  # A ratio far UNDER 1 is the coalescing working, and this rule must never read it as a fault —
+  # it only ever looks upward.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_project_calls_total{country="us",job="kinowo-worker"}'
+        values: '0+4x180'
+      - series: 'kinowo_worker_movie_change_events_total{country="us",job="kinowo-worker",op="update"}'
+        values: '0+6x180'
+      - series: 'kinowo_worker_screenings_change_events_total{country="us",job="kinowo-worker",op="update"}'
+        values: '0+6000x180'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelProjectionTriggerUnaccounted
+        exp_alerts: []
+
   # THE FLOOR, and the reason it is not decoration. A quiet country projecting 0.05/s against zero
   # metered events is an INFINITE ratio -- every country idles there overnight, and PL's baseline
   # over 2026-09-01..04 never left 0.1-0.6/s. Without the 0.5/s floor this rule pages the fleet

@@ -390,7 +390,12 @@ class MongoMovieRepository(
   // How far each change-stream cursor may run ahead of the apply thread. Injected only
   // so a spec can prove the bound with a handful of writes instead of a full window's
   // worth; production never passes it. See [[ChangeStreamDemand]].
-  changeDemandWindow: Int = ChangeStreamDemand.DefaultWindow
+  changeDemandWindow: Int = ChangeStreamDemand.DefaultWindow,
+  // What the SCREENINGS cursor's apply does — its events, and the ones it coalesced away.
+  // Separate from `changeStreamMetrics` (which is the `movies` cursor's) because they are
+  // two different streams answering two different questions; the worker happens to satisfy
+  // both with one object. See [[ScreeningsMetrics]].
+  screeningsMetrics: ScreeningsMetrics = ScreeningsMetrics.noop
 ) extends MovieRepository with Logging {
 
 
@@ -1073,6 +1078,42 @@ class MongoMovieRepository(
     }
   }
 
+  // Film ids with a screenings apply already QUEUED AND NOT YET STARTED. The set is the
+  // whole coalescing mechanism — see `applyScreeningsChange`.
+  private val screeningsApplyPending = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+
+  /** One `screenings` change: re-read the film (stitched) and fan it out, COALESCING the
+   *  events that name a film an apply is already queued for.
+   *
+   *  Why coalescing is the point rather than a nicety. The screenings cursor rings once per
+   *  changed screenings DOCUMENT, i.e. once per (film, cinema slot) — so a film that really
+   *  does change at every venue rings once per venue, and every ring costs a blocking stitch
+   *  read plus a full re-projection OF THE SAME FILM. The widest US film carries 3,327 slots.
+   *  Dropping the redundant WRITES (see `ScreeningsRepository.changedSlots`) removed the rows
+   *  that never moved; it cannot remove these, because these rows genuinely did move. The
+   *  answer is that the apply does not need to run per row: it re-reads the film's CURRENT
+   *  state, so one read after the last of a burst sees everything the burst did.
+   *
+   *  Correctness rests on the ORDER of `remove` and the read: the id is removed BEFORE the
+   *  re-read, so an event that lands while we are reading finds the set clear, enqueues its
+   *  own apply, and gets a read that is guaranteed to be after its own write. Removing after
+   *  the read would let exactly that event be swallowed by an apply that could not have seen
+   *  it. The cost of the safe order is at most one extra apply per burst.
+   *
+   *  A COALESCED EVENT MUST STILL RELEASE ITS DEMAND. Every delivered event owes the cursor
+   *  one `applied()` or the window closes and the stream stalls for good ([[ChangeStreamDemand]]),
+   *  and an event that rides an already-queued apply never reaches that task's `finally`. */
+  private def applyScreeningsChange(filmId: String): Unit =
+    if (screeningsApplyPending.add(filmId))
+      applyOffLoop(screeningsDemand) {
+        screeningsApplyPending.remove(filmId)
+        findById(filmId).foreach(movieChanges.dispatchUpsert)
+      }
+    else {
+      screeningsMetrics.recordCoalescedChange()
+      screeningsDemand.applied()
+    }
+
   // The shared cursor reopens (after a terminal error, and — the big win — after a WORKER
   // RESTART) from the last-seen token instead of "now", REPLAYING writes that landed while
   // this process was down — the gap the consumers' periodic backstops exist for. See
@@ -1159,9 +1200,7 @@ class MongoMovieRepository(
       // re-projects the film — the findById is a BLOCKING read, so run it (and the
       // fanout) on `changeApply`, never on the screenings cursor's I/O event loop.
       if (screeningsWatch.get().isEmpty)
-        screeningsWatch.set(screenings.flatMap(_.watch(
-          filmId => applyOffLoop(screeningsDemand)(findById(filmId).foreach(movieChanges.dispatchUpsert)),
-          screeningsDemand)))
+        screeningsWatch.set(screenings.flatMap(_.watch(applyScreeningsChange, screeningsDemand)))
     }
   }
 

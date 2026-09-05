@@ -2454,7 +2454,7 @@
         {
           "id": 47,
           "title": "kinowo-worker projection triggers & output (per-sec)",
-          "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. THERE ARE TWO TRIGGERS, and for a long time this panel drew only one: movie change-events/s is a `movies` write, screenings change-events/s is a `screenings` write (one row per film+cinema slot) — the second cursor, and normally the LARGER of the two. projection-calls/s should track their SUM; against the movies line alone it read as an unexplained 55:1 on worker-de (2026-09-04), which is what an unmetered trigger looks like. readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU). calls/s high with writes/s ~0 means the projector is being rung by writes that changed nothing.",
+          "description": "The per-second rates that DRIVE and RESULT FROM projection — split out of the CPU panel above because they're a different unit (events/s, not centi-cores) and can't stack with cc. THERE ARE TWO TRIGGERS, and for a long time this panel drew only one: movie change-events/s is a `movies` write, screenings change-events/s is a `screenings` write (one row per film+cinema slot) — the second cursor, and normally the LARGER of the two. projection-calls/s should track their SUM; against the movies line alone it read as an unexplained 55:1 on worker-de (2026-09-04), which is what an unmetered trigger looks like. coalesced/s is the part of the screenings rate that rode an apply already queued for its film instead of buying its own — the cursor rings once per (film, slot), so a wide release rings once per venue while one re-read after the burst sees all of it; projection-calls/s therefore tracks (both event rates MINUS coalesced), not the raw sum. readmodel-writes/s is the OUTPUT (post-dedup, near-0 even when projection is hot — which is exactly why raw writes under-report projection CPU). calls/s high with writes/s ~0 means the projector is being rung by writes that changed nothing.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -2492,6 +2492,15 @@
               "refId": "E",
               "expr": "sum(rate(kinowo_worker_screenings_change_events_total{country=~\"$country\"}[5m]))",
               "legendFormat": "screenings change-events /s (the OTHER projection trigger)",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "F",
+              "expr": "sum(rate(kinowo_worker_screenings_coalesced_changes_total{country=~\"$country\"}[5m]))",
+              "legendFormat": "screenings events coalesced away /s",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"

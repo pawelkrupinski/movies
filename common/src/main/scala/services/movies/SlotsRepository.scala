@@ -311,7 +311,17 @@ class MongoSlotsRepository(
   def replaceFilm(filmId: String, slots: Map[String, SourceData]): Boolean = coll.fold(false) { c =>
     Try {
       val now     = Instant.now()
-      val upserts = slots.toSeq.map { case (k, sd) =>
+      // Rewrite only the rows that MOVED — the same guard `MongoScreeningsRepository.replaceFilm`
+      // carries, and for the same reason one collection over: this method is film-wide while its
+      // caller's change is one venue, so a wide release rewrote every row it had with nothing but
+      // a fresh `updatedAt`. Nothing watches `movie_slots`, so the cost here is bytes rather than
+      // re-projections — but these rows are whole `SourceData` documents (title, synopsis, cast,
+      // poster), so it is MORE bytes than the screenings rewrite it mirrors.
+      //
+      // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film should
+      // end up with), never from the subset being written.
+      val (stored, readComplete) = findForFilmChecked(filmId)
+      val upserts = SlotKeyed.changedRows(stored, readComplete, slots).toSeq.map { case (k, sd) =>
         val dto = StoredSlotDto(idOf(filmId, k), filmId, k, sd, now)
         ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
       }
@@ -328,11 +338,22 @@ class MongoSlotsRepository(
   }
 
   def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = coll.foreach { c =>
+    // Same no-op guard as `replaceFilm`, at this method's granularity: a point read on the
+    // composite `_id`. A row that already holds exactly what we would write must not be written.
+    // A read that fails, and a row that is absent, both read as "differs" and write.
     Try {
-      val dto = StoredSlotDto(idOf(filmId, slotKey), filmId, slotKey, slot, Instant.now())
-      Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds); ()
+      if (!storedSlot(c, filmId, slotKey).contains(slot)) {
+        val dto = StoredSlotDto(idOf(filmId, slotKey), filmId, slotKey, slot, Instant.now())
+        Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds); ()
+      }
     }.recover { case e => logger.warn(s"SlotsRepository.upsertSlot($filmId,$slotKey) failed: ${e.getMessage}") }
   }
+
+  /** One row's stored slot, or None when it is absent OR unreadable — the two cases `upsertSlot`
+   *  treats alike, because both mean "we cannot say this write is redundant". */
+  private def storedSlot(c: MongoCollection[StoredSlotDto], filmId: String, slotKey: String): Option[SourceData] =
+    Try(Await.result(c.find(Filters.eq("_id", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))
+      .toOption.flatMap(Option(_)).map(_.slot)
 
   def deleteSlot(filmId: String, slotKey: String): Unit = coll.foreach { c =>
     Try {

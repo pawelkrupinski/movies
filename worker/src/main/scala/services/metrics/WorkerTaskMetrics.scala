@@ -95,6 +95,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // ── ScreeningsMetrics ───────────────────────────────────────────────────────
   def recordChangeEvent(op: String): Unit = series.recordScreeningsChangeEvent(countryCode, op)
   def recordWrite(outcome: String, count: Int): Unit = series.recordScreeningsWrite(countryCode, outcome, count)
+  def recordCoalescedChange(): Unit = series.recordScreeningsCoalesced(countryCode)
 
   // ── Task lifecycle ──────────────────────────────────────────────────────────
   def recordEnqueue(taskType: TaskType, result: String): Unit = series.recordEnqueue(countryCode, taskType, result)
@@ -273,6 +274,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "outcome")
       .register(registry)
 
+    private val screeningsCoalesced = Counter.builder()
+      .name("kinowo_worker_screenings_coalesced_changes")
+      .help("Screenings change events that rode an apply already queued for their film instead of buying their own, by country. The screenings cursor rings once per (film, cinema slot), so a film that changes at every venue rings once per venue — and one re-read after the burst sees all of it, because the apply reads the film's CURRENT state. This is the saving made visible: coalesced/(coalesced+readmodel_project_calls) is the share of the fan-out collapsed, ~0 where films move one venue at a time and approaching 1 on a wide release (the widest US film carries 3,327 slots). Unlike screenings_writes{outcome=unchanged} these are all GENUINE changes; no write guard can remove them.")
+      .labelNames("country")
+      .register(registry)
+
     seed()
 
     /** Materialize every series at 0 for every country so it exists from boot (no
@@ -305,6 +312,7 @@ object WorkerTaskMetrics {
         ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
         ChangeStreamMetrics.Ops.foreach(o => screeningsChangeEvents.labelValues(c, o))
         ScreeningsMetrics.Outcomes.foreach(o => screeningsWrites.labelValues(c, o))
+        screeningsCoalesced.labelValues(c)
         ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(c, k))
       }
       poolSizeGauge.set(poolSize.toDouble)
@@ -357,6 +365,7 @@ object WorkerTaskMetrics {
     def recordScreeningsChangeEvent(country: String, op: String): Unit = screeningsChangeEvents.labelValues(country, op).inc()
     def recordScreeningsWrite(country: String, outcome: String, count: Int): Unit =
       if (count > 0) screeningsWrites.labelValues(country, outcome).inc(count.toDouble)
+    def recordScreeningsCoalesced(country: String): Unit = screeningsCoalesced.labelValues(country).inc()
 
     def recordEnqueue(country: String, taskType: TaskType, result: String): Unit =
       enqueued.labelValues(country, taskType.name, result).inc()

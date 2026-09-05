@@ -9,8 +9,12 @@
 #       per changed screenings DOCUMENT, i.e. per (film, cinema slot), and normally the LARGER of
 #       the two by an order of magnitude
 #
-# Each event costs one `kinowo_worker_readmodel_project_calls_total`, so in a healthy worker the
-# projection rate tracks the SUM of the two within noise. On 2026-09-04 worker-de logged 184
+# An event costs AT MOST one `kinowo_worker_readmodel_project_calls_total` — at most, because the
+# screenings apply COALESCES: an event naming a film an apply is already queued for rides that
+# apply instead of buying its own (counted by `kinowo_worker_screenings_coalesced_changes_total`),
+# since the apply re-reads the film's current state and one read after a burst sees all of it. So
+# a healthy worker projects at or BELOW the sum of the two event rates, never above it. That
+# asymmetry is why this rule only looks upward. On 2026-09-04 worker-de logged 184
 # movies events against 10,114 projections in 85 minutes and every panel that could have named the
 # cause plotted only the movies line -- which was flat. The number was not wrong, it was
 # unattributable, and there is no threshold that catches "unattributable". A RATIO against the
@@ -37,11 +41,12 @@ groups:
       # -----------------------------------------------------------------------------------------
       # THE PROJECTOR IS RUNNING FAR AHEAD OF ANYTHING THAT COULD BE TRIGGERING IT.
       #
-      # 3x, not 1.1x. One event is one projection by construction, but the two rates are measured
-      # over the same window from different counters and a burst that straddles the window edge
-      # skews the ratio either way; a cursor that reopens and replays from its resume token counts
-      # its events again and legitimately runs the ratio under 1. Three times the metered input is
-      # far outside any of that, and the shape this exists for ran at FIFTY-FIVE times.
+      # 3x, not 1.1x. An event buys at most one projection, but the two rates are measured over
+      # the same window from different counters and a burst that straddles the window edge skews
+      # the ratio either way. Under 1 is ROUTINE and never interesting: coalescing pushes it down
+      # by design, and a cursor that reopens and replays from its resume token counts its events
+      # again. Three times the metered input is far outside any of that, and the shape this
+      # exists for ran at FIFTY-FIVE times.
       #
       # THE 0.5/s FLOOR IS THE POINT OF THE RULE, not decoration. At PL's quiet-hour 0.03/s a
       # single stray projection against zero events is an infinite ratio, and every country idles

@@ -39,7 +39,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   private val sentinelImdbIds = Seq(
     "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
-    "tt0000078", "tt0000079", "tt0000080", "tt0000081", "tt0000024", "tt0000025"
+    "tt0000078", "tt0000079", "tt0000080", "tt0000081", "tt0000024", "tt0000025",
+    "tt0000301" // the coalescing burst's film
   ) ++ (1 to 20).map(n => f"tt000021$n%02d") // the backpressure spec's 20 sentinels
 
   // Delete every sentinel this spec could have written. Matches BOTH the
@@ -561,13 +562,9 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   it should "record screenings change-stream event stats onto the injected sink" in {
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     import java.time.LocalDateTime
-    import services.movies.{MongoScreeningsRepository, ScreeningsMetrics}
+    import services.movies.MongoScreeningsRepository
 
-    val recorded = scala.collection.mutable.ListBuffer.empty[String]
-    val sink = new ScreeningsMetrics {
-      def recordChangeEvent(op: String): Unit            = recorded.synchronized(recorded += op)
-      def recordWrite(outcome: String, count: Int): Unit = ()
-    }
+    val sink = new RecordingScreeningsMetrics
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
     val repo   = new MongoScreeningsRepository(Some(db), metrics = sink)
@@ -590,7 +587,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       withClue("the screenings change stream never delivered, so there is nothing to count: ") {
         arrived shouldBe true
       }
-      recorded.synchronized(recorded.toList) should not be empty
+      sink.events should be > 0
     } finally { handle.foreach(_.close()); repo.deleteFilm(film); repo.close(); client.close() }
   }
 
@@ -606,19 +603,123 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // a genuine change, made AFTER the redundant one — cannot arrive before an event the
   // redundant write would have produced. When the tripwire's ring lands, "nothing else
   // arrived" is a fact rather than a guess about timing.
+  // A WIDE FILM'S CHANGES MUST NOT BUY ONE RE-PROJECTION EACH. The screenings cursor rings
+  // once per (film, cinema slot), so a film that genuinely changes at every venue rings once
+  // per venue — and every ring costs a blocking stitch read plus a full projection OF THE
+  // SAME FILM. Dropping the redundant WRITES cannot help here: these rows really did move.
+  // The apply re-reads the film's CURRENT state, so one read after a burst sees all of it.
+  //
+  // WHY THIS CANNOT REASONABLY FLAKE THE OTHER WAY. Each apply is a stitch read — a round
+  // trip strictly heavier than the single-document write that triggered it — and the burst
+  // is 80 writes deep before the stream has even delivered its first event. For the
+  // assertion below to fail, the apply thread would have to complete 80 stitch reads in
+  // less time than 80 sequential writes on the same connection took to land.
+  it should "coalesce a burst of slot changes on one film into far fewer re-projections" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import java.util.concurrent.atomic.AtomicInteger
+    import java.time.LocalDateTime
+    import services.movies.MongoScreeningsRepository
+
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val sink   = new RecordingScreeningsMetrics
+    val scr    = new MongoScreeningsRepository(Some(db))
+    val repo   = new MongoMovieRepository(Some(db), screenings = Some(scr),
+      normalizer = titleNormalizer, screeningsMetrics = sink)
+
+    val title  = "__integration-test-coalesce__"
+    val year   = Some(1905)
+    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
+    val Burst  = 80
+    val Imdb   = "tt0000301"
+
+    val dispatched = new AtomicInteger(0)
+    val warmed     = new CountDownLatch(1)
+    // MATCHED BY imdbId, NOT BY id. The dispatched record's id is RE-DERIVED from the stitched
+    // slots (`stitchRow`), and this burst attaches 80 slots whose wire keys carry their own
+    // title part — so the film arrives under a different id than the one it was written under,
+    // and an id match silently counts nothing. `imdbId` is the stable handle, which is exactly
+    // why this spec's sentinel purge keys on it too.
+    val handle = repo.watchChanges(
+      r => if (r.record.imdbId.contains(Imdb)) { dispatched.incrementAndGet(); warmed.countDown() },
+      _ => ())
+    handle should not be empty
+    try {
+      // The film has to EXIST for the apply's `findById` to fan anything out, and the stream
+      // has to be established before the burst — established by DELIVERY, not by a nap.
+      repo.upsert(title, year, MovieRecord(imdbId = Some(Imdb)))
+      val deadline = System.currentTimeMillis() + 60000
+      var hour     = 0
+      var live     = false
+      while (!live && System.currentTimeMillis() < deadline) {
+        hour += 1
+        scr.upsertSlot(id, "Warm␟c", Seq(Showtime(LocalDateTime.of(2099, 1, 1, hour % 23 + 1, 0), None)))
+        live = warmed.await(1, TimeUnit.SECONDS)
+      }
+      withClue("the screenings change stream never delivered, so a low projection count would " +
+               "mean nothing was arriving rather than that it was being coalesced: ") {
+        live shouldBe true
+      }
+      dispatched.set(0); sink.reset()
+
+      // THE BURST: one film, 80 different venues, every one a genuine change.
+      //
+      // THE MINUTE IS RUN-UNIQUE ON PURPOSE. A fixed payload makes this spec pass once and
+      // then silently stop testing anything: the second run writes exactly what the first
+      // left behind, the no-op guard drops all 80 writes, nothing rings, and the burst that
+      // is the whole point never happens. (Observed — it is why this comment exists.)
+      val nonce = (System.nanoTime() / 1000000L % 60L).toInt
+      (0 until Burst).foreach(i =>
+        scr.upsertSlot(id, s"Venue$i␟c", Seq(Showtime(LocalDateTime.of(2099, 2, 1, i % 23 + 1, nonce), None))))
+
+      // SETTLE ON THE BURST ITSELF rather than on a sentinel written after it. Every delivered
+      // event either bought an apply or rode one, so the two counters sum to the burst once it
+      // has drained — and a cursor whose window leaked (a coalesced event that forgot to
+      // release its demand) stalls and never gets there, which is the other half of this test.
+      val settleBy = System.currentTimeMillis() + 60000
+      while (dispatched.get() + sink.coalescedCount < Burst && System.currentTimeMillis() < settleBy)
+        Thread.sleep(50)
+      withClue(s"only ${dispatched.get() + sink.coalescedCount} of $Burst burst events were " +
+               s"accounted for; a coalesced event that fails to release its demand window " +
+               s"stalls the cursor for good: ") {
+        dispatched.get() + sink.coalescedCount should be >= Burst
+      }
+
+      // Reported, because the ratio is the whole point and a green test otherwise hides it:
+      // measured on a local replica set, 80 slot changes on one film cost 81 re-projections
+      // without this change and a handful with it.
+      info(s"burst of $Burst slot changes on one film: ${dispatched.get()} re-projection(s), " +
+           s"${sink.coalescedCount} event(s) coalesced")
+
+      // THE COALESCED COUNT IS THE ASSERTION, and the raw projection count deliberately is
+      // NOT: how many events find an apply already queued depends on how fast the cursor
+      // delivers relative to the writes, and pinning that number would pin the machine rather
+      // than the behaviour. Events that rode an existing apply are counted exactly, and are
+      // zero without this change however the timing falls.
+      withClue(s"nothing was coalesced (the burst bought ${dispatched.get()} separate " +
+               s"re-projections of one film), so a wide release costs one stitch read and one " +
+               s"full projection per venue exactly as it did before: ") {
+        sink.coalescedCount should be > 0
+      }
+      withClue("coalescing must not swallow the change: the burst has to leave at least one " +
+               "re-read behind, or the film's move never reaches the read model at all: ") {
+        dispatched.get() should be > 0
+      }
+      // …and no update was lost: the film ends up carrying every venue of the burst.
+      scr.findForFilm(id).keySet should contain allElementsOf (0 until Burst).map(i => s"Venue$i␟c")
+    } finally {
+      handle.foreach(_.close()); scr.deleteFilm(id)
+      repo.delete(title, year); repo.close(); client.close()
+    }
+  }
+
   it should "not ring the screenings stream for a write that changes nothing" in {
     import java.util.concurrent.atomic.AtomicInteger
     import java.util.concurrent.{CountDownLatch, TimeUnit}
     import java.time.LocalDateTime
     import services.movies.{MongoScreeningsRepository, ScreeningsMetrics}
 
-    val unchanged = new AtomicInteger(0)
-    val written   = new AtomicInteger(0)
-    val sink = new ScreeningsMetrics {
-      def recordChangeEvent(op: String): Unit = ()
-      def recordWrite(outcome: String, count: Int): Unit =
-        (if (outcome == ScreeningsMetrics.Outcome.Unchanged) unchanged else written).addAndGet(count)
-    }
+    val sink = new RecordingScreeningsMetrics
     val client   = MongoClient(Env.get("MONGODB_URI").get)
     val db       = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
     val repo     = new MongoScreeningsRepository(Some(db), metrics = sink)
@@ -653,7 +754,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       }
 
       val settled = repo.findForFilm(film)(slot)
-      rings.set(0); unchanged.set(0); written.set(0)
+      rings.set(0); sink.reset()
 
       // (1) THE REDUNDANT WRITES — byte-identical to what is stored, through BOTH write paths.
       repo.upsertSlot(film, slot, settled)
@@ -671,8 +772,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       }
       withClue("the redundant rows must be COUNTED as dropped, not silently skipped — that " +
                "count is the canary this class of problem is diagnosed from: ") {
-        unchanged.get() shouldBe 2   // upsertSlot's row, and replaceFilm's
-        written.get()   shouldBe 1   // only the tripwire
+        sink.wrote(ScreeningsMetrics.Outcome.Unchanged) shouldBe 2 // upsertSlot's row, and replaceFilm's
+        sink.wrote(ScreeningsMetrics.Outcome.Written)   shouldBe 1 // only the tripwire
       }
     } finally {
       handle.foreach(_.close()); repo.deleteFilm(film); repo.deleteFilm(after)
@@ -1589,6 +1690,26 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     sentinels          shouldBe sentinels.sorted // …in _id order across the boundaries
   }
 
+  /** One recording `ScreeningsMetrics` for the specs below. Three anonymous copies of this
+   *  had already appeared, each observing a different slice of the same sink, and a fourth
+   *  was owed the moment the trait grew a method — which is how all three broke at once. */
+  private class RecordingScreeningsMetrics extends services.movies.ScreeningsMetrics {
+    private val ops       = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    private val byOutcome = new java.util.concurrent.ConcurrentHashMap[String, java.util.concurrent.atomic.AtomicInteger]()
+    private val coalesced = new java.util.concurrent.atomic.AtomicInteger(0)
+
+    def recordChangeEvent(op: String): Unit = { ops.add(op); () }
+    def recordWrite(outcome: String, count: Int): Unit = {
+      byOutcome.computeIfAbsent(outcome, _ => new java.util.concurrent.atomic.AtomicInteger(0)).addAndGet(count); ()
+    }
+    def recordCoalescedChange(): Unit = { coalesced.incrementAndGet(); () }
+
+    def events: Int                 = ops.size
+    def wrote(outcome: String): Int = Option(byOutcome.get(outcome)).map(_.get()).getOrElse(0)
+    def coalescedCount: Int         = coalesced.get()
+    def reset(): Unit               = { ops.clear(); byOutcome.clear(); coalesced.set(0) }
+  }
+
   private def show(hour: Int) =
     Showtime(java.time.LocalDateTime.of(2026, 6, 1, hour, 0), Some(s"https://book/rf-$hour"))
 
@@ -1631,14 +1752,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val client = MongoClient(MongoClientSettings.builder()
       .applyConnectionString(new ConnectionString(Env.get("MONGODB_URI").get))
       .addCommandListener(listener).build())
-    val writes     = new ConcurrentHashMap[String, AtomicInteger]()
-    val sink = new services.movies.ScreeningsMetrics {
-      def recordChangeEvent(op: String): Unit = ()
-      def recordWrite(outcome: String, count: Int): Unit = {
-        writes.computeIfAbsent(outcome, _ => new AtomicInteger(0)).addAndGet(count); ()
-      }
-    }
-    def wrote(outcome: String): Int = Option(writes.get(outcome)).map(_.get()).getOrElse(0)
+    val sink = new RecordingScreeningsMetrics
     val screenings = new MongoScreeningsRepository(Some(screeningsDb(client)), metrics = sink)
     val film       = "__it-screenings-bulk-roundtrips__"
     try {
@@ -1648,7 +1762,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         "A" -> Seq(show(10)), "B" -> Seq(show(11)), "C" -> Seq(show(12)), "STALE" -> Seq(show(13))))
       screenings.findForFilm(film).keySet shouldBe Set("A", "B", "C", "STALE")
 
-      commands.clear(); writes.clear()
+      commands.clear(); sink.reset()
       // One changed slot, one unchanged, one brand new — and two slots going stale.
       screenings.replaceFilm(film, Map("A" -> Seq(show(20)), "B" -> Seq(show(11)), "NEW" -> Seq(show(14))))
 
@@ -1659,8 +1773,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // …and the bulk update carries only what moved. The command count cannot see inside it,
       // so the write outcomes are what say so — and they are the same numbers the redundant-
       // write canary publishes, which is the metric this class of problem is diagnosed from.
-      wrote("written")   shouldBe 2 // A moved; NEW had no row
-      wrote("unchanged") shouldBe 1 // B was already exactly this, so it was not written
+      sink.wrote("written")   shouldBe 2 // A moved; NEW had no row
+      sink.wrote("unchanged") shouldBe 1 // B was already exactly this, so it was not written
 
       // …and the collapse did not change the result.
       screenings.findForFilm(film) shouldBe Map(

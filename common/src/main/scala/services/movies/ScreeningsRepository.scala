@@ -252,26 +252,12 @@ object ScreeningsRepository {
       s -> screenings.get(s.displayName).fold(if (sd.showtimes.isEmpty) sd else sd.copy(showtimes = Seq.empty))(st => sd.copy(showtimes = st))
     }
 
-  /** The rows of `incoming` a write actually has to make — the ones whose stored showtimes
-   *  differ, plus the ones with no stored row at all.
-   *
-   *  `replaceFilm` is film-wide but its CALLERS' change is not: one venue re-scrapes, its own
-   *  slot moves, the film's whole map therefore differs, and every other row of the film is
-   *  rewritten with nothing but a new `updatedAt`. That is not free — each rewritten row is a
-   *  `screenings` change event, and each event costs `ReadModelProjector` a stitch read and a
-   *  full projection OF THE SAME FILM. Measured on prod 2026-09-04: a newly-folded German
-   *  release attached to 298 venues produced six bursts of 298 writes, 297 of them redundant,
-   *  consecutive versions of a row differing only in `updatedAt`. The blast radius is a film's
-   *  venue count, and the widest US film carries 3,327 slots.
-   *
-   *  `readComplete = false` returns EVERYTHING: a read that did not see the film cannot say
-   *  which of its rows are unchanged, and writing a row that did not need it is the harmless
-   *  direction — skipping one that did is not. Same convention as `reStitchChecked`.
-   *
-   *  Pure, so the rule this whole guard rests on is unit-tested without a Mongo. */
+  /** The slots this film's write actually has to make — [[SlotKeyed.changedRows]] at this
+   *  collection's payload type. Named here because `changedSlots` is what the write path reads
+   *  as; the rule itself is shared with `movie_slots`, which has the identical shape. */
   def changedSlots(stored: Map[String, Seq[Showtime]], readComplete: Boolean,
                    incoming: Map[String, Seq[Showtime]]): Map[String, Seq[Showtime]] =
-    if (!readComplete) incoming else incoming.filter { case (k, st) => !stored.get(k).contains(st) }
+    SlotKeyed.changedRows(stored, readComplete, incoming)
 
   /** The stored slots of `filmId` that `keep` no longer names — the DELETE half of
    *  `replaceFilm`, as ONE server-side predicate instead of a `findForFilm` read plus a

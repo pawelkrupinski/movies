@@ -32,6 +32,28 @@ object SlotKeyed {
    *  slots + screenings with them) keys on the same field as the repositories do. */
   def filmFilter(filmId: String): Bson = Filters.eq("filmId", filmId)
 
+  /** The rows of `incoming` a write actually has to make — the ones whose stored value differs,
+   *  plus the ones with no stored row at all.
+   *
+   *  `replaceFilm` is film-wide in both side collections, but its CALLERS' change is not: one
+   *  venue re-scrapes, its own row moves, the film's whole map therefore differs, and every
+   *  other row of the film is rewritten with nothing but a fresh `updatedAt`. In `screenings`
+   *  that is not merely a wasted write — the row lands in the oplog, rings that collection's
+   *  change stream, and buys `ReadModelProjector` a stitch read plus a full projection OF THE
+   *  SAME FILM. Measured on prod 2026-09-04: a newly-folded German release attached to 298
+   *  venues produced six bursts of 298 writes, 297 of them redundant, consecutive versions of a
+   *  row differing only in `updatedAt`. In `movie_slots` nothing watches the collection, so the
+   *  cost is bytes rather than projections — but the rows are whole `SourceData` documents
+   *  (title, synopsis, cast, poster), so it is MORE bytes, on the same film, at the same rate.
+   *
+   *  `readComplete = false` returns EVERYTHING: a read that did not see the film cannot say
+   *  which of its rows are unchanged, and writing a row that did not need it is the harmless
+   *  direction — skipping one that did is not. Same convention as `reStitchChecked`.
+   *
+   *  Pure, so the rule both guards rest on is unit-tested without a Mongo. */
+  def changedRows[A](stored: Map[String, A], readComplete: Boolean, incoming: Map[String, A]): Map[String, A] =
+    if (!readComplete) incoming else incoming.filter { case (k, v) => !stored.get(k).contains(v) }
+
   /** The stored rows of `filmId` that `keep` no longer names — the DELETE half of a
    *  `replaceFilm`, as ONE server-side predicate rather than a read plus a delete per
    *  stale slot.

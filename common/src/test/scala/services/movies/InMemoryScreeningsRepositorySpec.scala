@@ -28,7 +28,7 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
   // `updatedAt`. Each of those rewrites rings the screenings change stream and buys the
   // read-model projector a stitch read plus a full projection of the same film — 297 of
   // 298 rows redundant on prod DE (2026-09-04), and the widest US film carries 3,327.
-  "changedSlots" should "name only the rows whose showtimes moved, or that are not stored yet" in {
+  "changedRows" should "name only the rows whose value moved, or that are not stored yet" in {
     val stored = Map("A␟f" -> Seq(st(10)), "B␟f" -> Seq(st(11)))
     ScreeningsRepository.changedSlots(stored, readComplete = true,
       Map("A␟f" -> Seq(st(10)), "B␟f" -> Seq(st(11)))) shouldBe empty          // nothing moved
@@ -49,6 +49,15 @@ class InMemoryScreeningsRepositorySpec extends AnyFlatSpec with Matchers {
     // that did not need it is the harmless direction; skipping one that did is not.
     ScreeningsRepository.changedSlots(Map.empty, readComplete = false,
       Map("A␟f" -> Seq(st(10)))) shouldBe Map("A␟f" -> Seq(st(10)))
+  }
+
+  it should "hold for the sibling collection's payload too, since both share the rule" in {
+    // `movie_slots` rewrote every row of a film for one venue's change exactly as `screenings`
+    // did — same shape, bigger documents. It is the same predicate, so it is proved once.
+    val slot = SourceData(title = Some("Wonka"))
+    SlotKeyed.changedRows(Map("A␟f" -> slot), readComplete = true, Map("A␟f" -> slot)) shouldBe empty
+    SlotKeyed.changedRows(Map("A␟f" -> slot), readComplete = true,
+      Map("A␟f" -> slot.copy(title = Some("Wonka 2")))) shouldBe Map("A␟f" -> slot.copy(title = Some("Wonka 2")))
   }
 
   "replaceFilm" should "set a film's screenings to exactly the given slots (deleting the rest)" in {
