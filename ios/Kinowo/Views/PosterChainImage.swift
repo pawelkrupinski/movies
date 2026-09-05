@@ -49,9 +49,13 @@ struct PosterChainImage<Loading: View, NoPoster: View>: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        let baseURL: URL? =
-            index == 0 ? primary
-            : (index - 1 < fallbacks.count ? fallbacks[index - 1] : nil)
+        // Walking past the last fallback can only mean the chain was
+        // re-pointed under us (see the `.onChange` below) — treat it as the
+        // primary rather than handing `CachedAsyncImage` a nil URL, which
+        // would park the view in `.empty` forever with nothing to retry it.
+        let baseURL: URL =
+            index == 0 || index - 1 >= fallbacks.count ? primary
+            : fallbacks[index - 1]
         // `CachedAsyncImage` (not `AsyncImage`) so a poster downloads once
         // and is served from `PosterStore`'s on-disk cache thereafter; it
         // emits the same `AsyncImagePhase` values, so the fallback-walk and
@@ -65,7 +69,6 @@ struct PosterChainImage<Loading: View, NoPoster: View>: View {
                 image.resizable()
                     .aspectRatio(contentMode: contentMode)
                     .accessibilityIdentifier(A11y.Poster.loaded)
-                    .onAppear { exhausted = false }
             case .empty:
                 loading()
             case .failure:
@@ -91,6 +94,13 @@ struct PosterChainImage<Loading: View, NoPoster: View>: View {
             guard phase == .active, exhausted else { return }
             restartFromPrimary()
         }
+        // A card's `@State` is keyed to `Film.id` (the title), so a
+        // repertoire refresh can hand the same view a different poster chain
+        // — a re-enriched film swapping its primary artwork, or dropping a
+        // fallback. Start the new chain from its own primary instead of
+        // resuming at an index that belonged to the old one.
+        .onChange(of: primary) { _ in restartFromPrimary() }
+        .onChange(of: fallbacks) { _ in restartFromPrimary() }
         .onDisappear { retryTask?.cancel(); retryTask = nil }
     }
 

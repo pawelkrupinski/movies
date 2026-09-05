@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 #if canImport(FoundationNetworking)
 // On Linux (swift-corelibs-foundation, used by `swift test` in CI)
 // URLSession/URLRequest live in this separate module, not Foundation.
@@ -28,6 +31,7 @@ final class PosterStore: @unchecked Sendable {
 
     private let directory: URL
     private let fetch: (URL) async -> Data?
+    private let isImage: (Data) -> Bool
 
     /// - Parameters:
     ///   - directory: where poster files live. Defaults to
@@ -36,12 +40,21 @@ final class PosterStore: @unchecked Sendable {
     ///     non-2xx / transport error. Defaults to a cache-bypassing
     ///     `URLSession` (this disk store *is* the cache); tests inject a
     ///     stub so the cache logic is exercised without the network.
+    ///   - isImage: whether a body is artwork we can actually render.
+    ///     Defaults to a real decode on iOS. `networkFetch` only checks
+    ///     the status code, and a Cloudflare-fronted origin answers a bot
+    ///     challenge with `200 text/html` — bytes that would otherwise sit
+    ///     in the cache forever, blanking the poster on every screen that
+    ///     reads it (`reconcile` keeps them: the URL is still in the
+    ///     repertoire).
     init(
         directory: URL = PosterStore.defaultDirectory,
-        fetch: @escaping (URL) async -> Data? = PosterStore.networkFetch
+        fetch: @escaping (URL) async -> Data? = PosterStore.networkFetch,
+        isImage: @escaping (Data) -> Bool = PosterStore.decodesAsImage
     ) {
         self.directory = directory
         self.fetch = fetch
+        self.isImage = isImage
         try? FileManager.default.createDirectory(
             at: directory, withIntermediateDirectories: true
         )
@@ -52,12 +65,19 @@ final class PosterStore: @unchecked Sendable {
     /// and writes nothing — a transient 4xx must not be cached as a
     /// permanent blank; the caller walks its fallback chain instead and we
     /// retry the URL next time.
+    ///
+    /// A body that isn't decodable artwork is treated the same way as a
+    /// failed download, on both legs: never cached, and evicted if it
+    /// somehow already is. Without that, one 200-with-an-HTML-challenge
+    /// poisons the entry permanently — the caller's backoff retry re-reads
+    /// the same bad bytes off disk and never reaches the network again.
     func data(for url: URL) async -> Data? {
         let file = fileURL(for: url)
         if let cached = try? Data(contentsOf: file) {
-            return cached
+            if isImage(cached) { return cached }
+            try? FileManager.default.removeItem(at: file)
         }
-        guard let downloaded = await fetch(url) else { return nil }
+        guard let downloaded = await fetch(url), isImage(downloaded) else { return nil }
         try? downloaded.write(to: file, options: .atomic)
         return downloaded
     }
@@ -125,6 +145,18 @@ final class PosterStore: @unchecked Sendable {
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         return URLSession(configuration: config)
     }()
+
+    /// Does `data` decode as an image? Real ImageIO on the app's platforms;
+    /// on the Linux toolchain `swift test` runs against there's no image
+    /// framework, so it falls back to "not empty" — the tests that care
+    /// inject their own predicate rather than relying on the default.
+    static func decodesAsImage(_ data: Data) -> Bool {
+        #if canImport(UIKit)
+        return UIImage(data: data) != nil
+        #else
+        return !data.isEmpty
+        #endif
+    }
 
     static func networkFetch(_ url: URL) async -> Data? {
         var request = URLRequest(url: url)

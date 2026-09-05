@@ -66,6 +66,63 @@ final class PosterStoreTests: XCTestCase {
         XCTAssertEqual(calls, 0, "a seeded poster must come off disk without a download")
     }
 
+    // MARK: - Bodies that aren't artwork
+
+    /// A Cloudflare-fronted origin answers a bot challenge with `200
+    /// text/html`, which `networkFetch`'s status-code check waves through.
+    /// Caching that poisons the entry for good: `reconcile` keeps the file
+    /// (the URL is still in the repertoire) and every later read serves the
+    /// same undecodable bytes, so the caller's backoff retry never reaches
+    /// the network again.
+    func testUndecodableDownloadIsNotCached() async {
+        let counter = CallCounter()
+        let store = PosterStore(
+            directory: directory,
+            fetch: { _ in
+                await counter.bump()
+                return Data("<html>Just a moment…</html>".utf8)
+            },
+            isImage: { $0.starts(with: Data("PNG".utf8)) }
+        )
+        let challenged = url("https://img/challenged.jpg")
+
+        let first = await store.data(for: challenged)
+        XCTAssertNil(first, "an HTML challenge body is not a poster")
+        XCTAssertFalse(fileExists(challenged), "it must not reach the cache")
+
+        let second = await store.data(for: challenged)
+        XCTAssertNil(second)
+        let calls = await counter.value
+        XCTAssertEqual(calls, 2, "nothing was cached, so the second read must retry the network")
+    }
+
+    /// The recovery leg: an entry already poisoned by an older build is
+    /// evicted on the next read and re-downloaded, rather than blanking the
+    /// poster on every screen until the film leaves the repertoire.
+    func testPoisonedCacheEntryIsEvictedAndRefetched() async {
+        let counter = CallCounter()
+        let store = PosterStore(
+            directory: directory,
+            fetch: { _ in
+                await counter.bump()
+                return Data("PNGgood".utf8)
+            },
+            isImage: { $0.starts(with: Data("PNG".utf8)) }
+        )
+        let poisoned = url("https://img/poisoned.jpg")
+        store.seed(Data("<html>Just a moment…</html>".utf8), for: poisoned)
+
+        let loaded = await store.data(for: poisoned)
+        XCTAssertEqual(loaded, Data("PNGgood".utf8), "the bad bytes must be replaced, not served")
+        let calls = await counter.value
+        XCTAssertEqual(calls, 1, "the poisoned entry must fall through to a download")
+
+        let again = await store.data(for: poisoned)
+        XCTAssertEqual(again, Data("PNGgood".utf8))
+        let callsAfter = await counter.value
+        XCTAssertEqual(callsAfter, 1, "the replacement is cached like any other poster")
+    }
+
     func testFailedDownloadIsNotCached() async {
         let counter = CallCounter()
         let store = PosterStore(directory: directory, fetch: { _ in
