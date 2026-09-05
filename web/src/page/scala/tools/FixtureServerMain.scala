@@ -2,7 +2,7 @@ package tools
 
 import testsupport.TestMessages.given
 
-import controllers.{ApiFilm, ApiFilmDetails, MovieController}
+import controllers.{ApiFilm, ApiFilmDetails}
 import models.City
 import play.api.libs.json.Json
 
@@ -101,17 +101,6 @@ object FixtureServerMain {
       views.html.repertoire(schedulesFor(c), c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
         currentUser = anon, oauthProviders = noOauth, renderedAt = now).body
     }
-    /** The grid fragment the listing fetches after first paint. Rendered from the
-     *  PRODUCTION `_filmCards` + `MovieController.withinWindow`, so this harness
-     *  cannot answer with a shape the real controller would not -- the day the
-     *  two disagree, the browser tests would be proving the wrong page. */
-    def gridFragmentFor(c: City, sub: String): String = {
-      implicit val ci: City = c
-      val days = "days=(\\d+)".r.findFirstMatchIn(sub).map(_.group(1).toInt)
-      views.html._filmCards(
-        MovieController.withinWindow(schedulesFor(c), now.toLocalDate, MovieController.dayWindow(days))
-      ).body
-    }
     def browsePageFor(c: City): String = {
       implicit val ci: City = c
       views.html.browse(schedulesFor(c), "Filmy", devMode = false, currentUser = anon, oauthProviders = noOauth).body
@@ -177,7 +166,6 @@ object FixtureServerMain {
         sub match {
           case s if s == "/"     || s.startsWith("/?")     => indexPageFor(c)
           case "/movies"                                    => indexPageFor(c)
-          case s if s.startsWith("/movies/grid")             => gridFragmentFor(c, s)
           case s if s.startsWith("/movies?") &&
                      (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => browsePageFor(c)
           case s if s.startsWith("/movies?")                => indexPageFor(c)

@@ -57,7 +57,6 @@ hidden.title=Ausgeblendete Filme
 
 # ── Empty states ────────────────────────────────────────────────────────────
 empty.repertoire=Keine Vorstellungen.
-listing.alsoShowing=Läuft außerdem an anderen Tagen
 empty.films=Keine Filme.
 
 # ── Browse (filtered film list) ─────────────────────────────────────────────

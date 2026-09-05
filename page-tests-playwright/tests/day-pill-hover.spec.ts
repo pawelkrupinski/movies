@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { gotoAndWaitForCards } from './helpers';
 
 // The day pills carry two highlights: `.active` (light blue #aad4ff = the

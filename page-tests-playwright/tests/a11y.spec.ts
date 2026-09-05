@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { firstVisibleCard, gotoAndWaitForCards, waitForCards } from './helpers';
 

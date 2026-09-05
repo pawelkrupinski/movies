@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 
 // Visual regression on the stable UI chrome at the top of the page.
 // Card-grid contents shift daily as the schedule changes and films

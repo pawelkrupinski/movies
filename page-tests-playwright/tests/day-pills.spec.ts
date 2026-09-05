@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // The four day presets render as a `.day-pill` row backed by a visually-hidden

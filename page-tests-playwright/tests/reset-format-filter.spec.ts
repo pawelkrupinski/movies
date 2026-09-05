@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { pinDateFilterAnytime } from './helpers';
 
 // "Wyczyść" inside the Filtry panel — `resetFormatFilter` flips

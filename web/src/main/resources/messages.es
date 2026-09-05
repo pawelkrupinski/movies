@@ -57,7 +57,6 @@ hidden.title=Películas ocultas
 
 # ── Empty states ────────────────────────────────────────────────────────────
 empty.repertoire=No hay cartelera.
-listing.alsoShowing=También en otros días
 empty.films=No hay películas.
 
 # ── Browse (filtered film list) ─────────────────────────────────────────────

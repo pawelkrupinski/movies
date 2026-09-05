@@ -1,4 +1,4 @@
-import { test, expect, type Page } from './fixtures';
+import { test, expect, type Page } from '@playwright/test';
 import { gotoAndWaitForCards, reload } from './helpers';
 
 // Whether the hidden-films modal is currently open, read from the

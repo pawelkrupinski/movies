@@ -3,7 +3,7 @@
    client-side showtime expiry counts forward from. Must be the SAME instant
    passed to `MovieControllerService.toSchedules`, or the page starts life
    already disagreeing with itself about what has lapsed. *@
-@(films: Seq[FilmSchedule], laterFilms: Seq[FilmSchedule], devMode: Boolean, renderedAt: java.time.LocalDateTime)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], devMode: Boolean, renderedAt: java.time.LocalDateTime)(implicit city: models.City, messages: play.api.i18n.Messages)
 @* The Filmy view-root. Rendered inside `#view-pager` (the day carousel
    viewport) on the full repertoire page.
 
@@ -12,31 +12,10 @@
 <main id="view-root" data-view="films" data-next-day="@{renderedAt.toLocalDate.plusDays(1).atStartOfDay(city.zoneId).toInstant.toEpochMilli}">
 <div class="container-fluid py-4 px-4">
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">@messages("empty.repertoire")</div>
-  <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid" data-grid="today">
+  <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">
     @_filmCards(films)
   </div>
 </div>
-
-@* EVERY OTHER FILM THIS CITY IS SHOWING, as links and nothing else.
-   `#film-grid` above carries only today, because the browser has to parse and
-   index all of it before the grid may appear. But `/{city}/` is in the sitemap
-   and robots.txt does NOT disallow it, so a today-only document would drop
-   hundreds of film links from a page Google indexes. This list costs ~13 KB
-   gzipped on London's 665 remaining films and keeps every one of them in server
-   HTML -- no dependence on the crawler executing our JavaScript, which is a
-   deferred second wave and not promised per page.
-   Hidden once the full grid has arrived (`bootView` clears it), because by then
-   the same films are on the page as real cards. *@
-@if(laterFilms.nonEmpty) {
-<div class="container-fluid px-4 pb-4" id="later-films">
-  <h2 class="later-films-heading">@messages("listing.alsoShowing")</h2>
-  <ul class="later-films-list">
-    @for(film <- laterFilms) {
-    <li><a href="@controllers.FilmHref(film.movie.title)">@film.movie.title</a></li>
-    }
-  </ul>
-</div>
-}
 
 @_minified(devMode) {
 <script>

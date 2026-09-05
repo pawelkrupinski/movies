@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { getLocalStorageJson, gotoAndWaitForCards, pinDateFilterAnytime, reload } from './helpers';
 
 // Filtry > Kina section: per-cinema checkboxes + the master
@@ -18,13 +18,6 @@ const visibleCinemaGroups = (page: import('@playwright/test').Page) =>
 test.describe('Filtry > Kina checkboxes', { tag: '@agnostic' }, () => {
 
   test.beforeEach(async ({ page }) => {
-    // `gotoAndWaitForCards`, NOT a bare `goto`: these tests count cinema-groups,
-    // filter, and count again, so the today → all grid swap landing between the
-    // two counts makes them measure the swap instead of the filter. That is the
-    // failure `waitForGridSettled` was written for — its doc names this very
-    // test — and this spec was the one place still navigating past it. It went
-    // red the moment the grid became one request instead of a seven-day window,
-    // because the bigger payload lands later.
     await gotoAndWaitForCards(page, '/poznan/');
     await pinDateFilterAnytime(page);
   });

@@ -234,20 +234,6 @@
     .day-pill:hover { background: #3a3a6e; color: #fff; }
   }
   .day-pill.active { background: #aad4ff; color: #1a1a2e; font-weight: 600; }
-  /* Any day but today needs the wider window, which is fetched after first
-     paint. Dimmed rather than disabled: the tap still registers and is replayed
-     when the grid lands (see pickDay/_queuedDay), so making it unclickable would
-     lose an input the page can honour. */
-  .day-pill--loading { opacity: .55; }
-  .day-pill--loading::after { content: "…"; margin-left: .15em; }
-  /* The links for films not showing today. Plain and dense: it exists so the
-     film pages stay in server HTML for a crawler and for a visitor who only
-     ever sees today, and it is removed once the real cards arrive. */
-  .later-films-heading { font-size: .95rem; color: #9aa; margin: 0 0 .5rem; font-weight: 600; }
-  .later-films-list { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 1.5rem; font-size: .85rem; }
-  @@media (min-width: 768px) { .later-films-list { columns: 4; } }
-  .later-films-list a { color: #8ab; text-decoration: none; }
-  .later-films-list a:hover { text-decoration: underline; }
   .day-pill:focus-visible { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
   /* Hide an element visually while keeping it for assistive tech + form state —
      the day-filter `<select>` is the model the pills and carousel read. */

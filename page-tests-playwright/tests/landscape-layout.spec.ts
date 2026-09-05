@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // Locks landscape mobile to the one-row desktop layout. A previous

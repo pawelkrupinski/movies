@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { cdpSwipe, reload } from './helpers';
 

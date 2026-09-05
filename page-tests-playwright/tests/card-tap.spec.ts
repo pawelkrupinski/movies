@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { firstVisibleCard, pinDateFilterAnytime } from './helpers';
 
 // Single-tap card navigation — tapping a poster or title link goes

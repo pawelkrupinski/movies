@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { firstVisibleCard, getVisibleTitles, gotoAndWaitForCards, setDateFilter, waitForCards } from './helpers';
 
 // Broad-strokes liveness check against kinowo.net. The home page

@@ -542,34 +542,6 @@ class MovieController( cc: ControllerComponents,
     )
   }
 
-  /** The listing grid for a WINDOW of days, as the same card markup the page
-   *  renders inline — cards only, no document around them.
-   *
-   *  HTML AND NOT JSON, deliberately. The client's job is then
-   *  `grid.innerHTML = fragment`, which is three lines and cannot merge
-   *  anything wrongly; the alternative is a second card renderer in JavaScript
-   *  carrying the poster fallback chain, the rating pills, the cinema grouping
-   *  and the showtime badges, i.e. two renderers for one card and a standing
-   *  drift risk. The JSON at `/{city}/api/repertoire` stays what it is for the
-   *  mobile apps, which have their own renderers already.
-   *
-   *  Cacheable by a shared cache like any other public listing bytes: the
-   *  markup is identical for every visitor (the cinema filter is applied
-   *  client-side, see `_filmShowings`). */
-  def indexGrid(city: String, days: Option[Int]): Action[AnyContent] = Action { request =>
-    withCity(city) { c =>
-      implicit val cc: City = c
-      val window = MovieController.dayWindow(days)
-      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = false, shared = true,
-                         cacheKey = MovieController.windowCacheKey(window), city = Some(c)) {
-        val now = LocalDateTime.now(c.zoneId)
-        views.html._filmCards(
-          MovieController.withinWindow(movieControllerService.toSchedules(c, now), now.toLocalDate, window)
-        ).body
-      }
-    }
-  }
-
   def index(city: String): Action[AnyContent] = Action { request => withCity(city)(renderIndex(_, request)) }
 
   private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {

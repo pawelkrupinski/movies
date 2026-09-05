@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { firstVisibleCard, gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
 
 // `/poznan/movie/{slug}` detail page. Walks from a card on `/` to its

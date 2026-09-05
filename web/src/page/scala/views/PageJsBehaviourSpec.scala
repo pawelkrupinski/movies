@@ -59,6 +59,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private var slotsRowId: String = _
   private var slotsUnchangedFrame: String = _
   private var slotsChangedFrame: String = _
+  // Every film the city will ever show, counted off the fixture corpus the index
+  // is rendered from — the number of cards the served document must already hold.
+  private var corpusFilmCount: Int = 0
 
   override def beforeAll(): Unit = {
     chrome = Chrome.tryStart()
@@ -73,6 +76,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val noOauth = Set.empty[String]
       val cinemas = city.cinemaDisplayNames
       val schedules       = service.toSchedules(city, now)
+      corpusFilmCount     = schedules.size
 
       // The city-selection landing (`/` with no city cookie) — drives the
       // inline city-search filter. City-independent, so served off-prefix.
@@ -198,17 +202,6 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // — the real Play routes do too, and the day-selector ↔ URL tests
           // need to boot the page with the parameter already in `location.search`.
           case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
-          // The grid the listing fetches after first paint. Rendered through the
-          // PRODUCTION `_filmCards` + `withinWindow`, exactly as the real
-          // controller and FixtureServerMain do: the day-ordering and carousel
-          // tests below are ABOUT days other than today, and without this route
-          // the page they drive would legitimately have none.
-          case p if sub(p).startsWith("/movies/grid") =>
-            val days = "days=(\\d+)".r.findFirstMatchIn(sub(p)).map(_.group(1).toInt)
-            views.html._filmCards(
-              controllers.MovieController.withinWindow(
-                schedules, now.toLocalDate, controllers.MovieController.dayWindow(days))
-            ).body
           case p if sub(p).startsWith("/movie/") =>
             renderFilm(sub(p).stripPrefix("/movie/"))
           case p if sub(p) == "/li"           => loggedInHtml
@@ -253,31 +246,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     chrome match {
       // `path` is an in-city sub-path ("/", "/movie/{slug}"); pages
       // live under `/{city}/…`, so prepend the city prefix.
-      case Some(c) => c.openPage(server.baseUrl + cityPrefix + path) { page =>
-        waitForGridSettled(page)
-        body(page)
-      }
+      case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
-
-  /** Wait until the listing has stopped changing underneath the test.
-   *
-   *  The page renders TODAY and swaps the rest of the week in after first paint
-   *  (`#film-grid[data-grid]` today → all), which is what takes the document from
-   *  46k DOM tags to 9k. It also means the grid GAINS CARDS a moment after the
-   *  first ones attach, so a spec that counts cards, filters, and counts again
-   *  can measure the swap instead of the filter. Four cases here did exactly
-   *  that in CI while passing locally, where the swap had already landed before
-   *  the test began.
-   *
-   *  Falls through if the page never widens — a film page has no grid, and a
-   *  today-only corpus is a legitimate resting state. */
-  private def waitForGridSettled(page: CdpPage): Unit = {
-    val deadline = System.currentTimeMillis() + 5000
-    while (System.currentTimeMillis() < deadline &&
-           page.evalBool("(function(){var g=document.getElementById('film-grid');return !!g && g.dataset.grid==='today'})()"))
-      Thread.sleep(50)
-  }
 
   /** Open the city-selection landing page (not city-scoped). */
   private def onLanding(body: CdpPage => Any): Unit =
@@ -589,6 +560,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   }
 
   // ── / page filters ───────────────────────────────────────────────────────
+
+  "the / page" should "carry the city's whole repertoire at first paint" in {
+    onPath("/") { page =>
+      // THE DOCUMENT IS THE REPERTOIRE. Every film the city will show is a card
+      // in the HTML the server sent, so every day the pills offer is answerable
+      // from what is already here — no second request, no day that cannot be
+      // shown yet, no pill that has to say it is still loading.
+      //
+      // A listing that shipped today alone and swapped the rest in after first
+      // paint fails here as a card count short of the corpus.
+      page.evalInt("document.querySelectorAll('.col[data-title]').length") shouldBe corpusFilmCount
+    }
+  }
 
   "the / page search input" should "filter visible film cards by title substring" in {
     onPath("/") { page =>

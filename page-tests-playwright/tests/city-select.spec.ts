@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // Multi-city: the bare `/` is a city-selection landing (every page lives

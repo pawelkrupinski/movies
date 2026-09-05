@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // At 150% display zoom the CSS viewport shrinks to 240×507 (Galaxy S10).

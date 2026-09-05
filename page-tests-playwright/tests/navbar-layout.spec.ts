@@ -1,4 +1,4 @@
-import { test, expect, Page } from './fixtures';
+import { test, expect, Page } from '@playwright/test';
 import { gotoAndWaitForCards, measureGridRatio, pinDateFilterAnytime, waitForCards } from './helpers';
 
 // Consolidated navbar layout spec — covers control-height uniformity,

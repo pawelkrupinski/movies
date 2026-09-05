@@ -1,4 +1,4 @@
-import { test, expect, Page } from './fixtures';
+import { test, expect, Page } from '@playwright/test';
 import { gotoAndWaitForCards } from './helpers';
 
 // Layout-stress spec. The navbar holds (in some combination):
