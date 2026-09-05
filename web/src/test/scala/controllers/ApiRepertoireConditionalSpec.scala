@@ -296,4 +296,49 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     narrowAfter should not contain ("Distant Film")
   }
 
+
+  // ── ETAG, WHICH IS WHAT A SHARED CACHE ANSWERS A CONDITIONAL FROM ────────────
+  //
+  // Measured against the live edge 2026-09-05: with `s-maxage` set and no ETag,
+  // Cloudflare served its cached copy as a 200 WITH THE WHOLE BODY when the app
+  // sent `If-Modified-Since` -- so edge caching had quietly traded the mobile
+  // apps' 0-byte 304s for ~750 KB payloads. `/api/catalog` was unaffected
+  // because it already carried an ETag. These pin the missing half.
+
+  it should "carry an ETag beside Last-Modified, so a cache can answer a conditional" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.apiRepertoire("poznan")(FakeRequest())
+    val etag = header("ETag", result).value
+    etag should startWith ("\"")
+    etag should endWith ("\"")
+    header("Last-Modified", result) shouldBe defined
+  }
+
+  it should "answer a matching If-None-Match with a bodiless 304" in {
+    val (ctrl, _) = buildController()
+    val etag = header("ETag", ctrl.apiRepertoire("poznan")(FakeRequest())).value
+    val result = ctrl.apiRepertoire("poznan")(FakeRequest().withHeaders("If-None-Match" -> etag))
+    status(result) shouldBe NOT_MODIFIED
+    contentAsBytes(result).length shouldBe 0
+  }
+
+  it should "give two windows of one path DIFFERENT etags" in {
+    // Same path, different bodies. A shared validator would let a cache answer
+    // "not modified" to a client holding the other window's copy.
+    val (ctrl, _) = windowController()
+    val wide   = header("ETag", ctrl.apiRepertoire("poznan", None)(FakeRequest())).value
+    val narrow = header("ETag", ctrl.apiRepertoire("poznan", Some(7))(
+      FakeRequest("GET", "/poznan/api/repertoire?days=7"))).value
+    narrow should not be wide
+  }
+
+  it should "move the etag when the read model does" in {
+    val (ctrl, readModel) = buildController()
+    val before = header("ETag", ctrl.apiRepertoire("poznan")(FakeRequest())).value
+    Thread.sleep(1100)          // the validator is second-resolution
+    readModel.reload()
+    val after = header("ETag", ctrl.apiRepertoire("poznan")(FakeRequest())).value
+    after should not be before
+  }
+
 }

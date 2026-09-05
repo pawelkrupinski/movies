@@ -418,9 +418,23 @@ class MovieController( cc: ControllerComponents,
       if (revalidate) Seq("Cache-Control" -> "private, no-cache")
       else if (shared) Seq("Cache-Control" -> s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}")
       else Nil
-    val validators: Seq[(String, String)] = ("Last-Modified" -> httpDate) +: cacheControl
+    // AN ETAG AS WELL AS Last-Modified, BECAUSE A SHARED CACHE NEEDS ONE.
+    //
+    // Measured against the live edge on 2026-09-05: once Cloudflare holds a copy,
+    // an `If-Modified-Since` against it comes back 200 WITH THE WHOLE BODY --
+    // Cloudflare answers a conditional from cache off the ETag, and these
+    // responses had none. So adding `s-maxage` traded the mobile apps' 0-byte
+    // 304s for ~750 KB payloads: better for the origin, worse for the phone.
+    // `/api/catalog` never had the problem precisely because it carries one.
+    //
+    // Derived from the read-model version and the cache key rather than hashing
+    // the body: the body is the expensive thing here (it is why the gzip cache
+    // exists) and the version already changes exactly when the body does. The
+    // key is in it so two windows of the same path cannot share a validator.
+    val etag = "\"" + Integer.toHexString((request.path + cacheKey).hashCode) + "-" + lastMod.getEpochSecond.toHexString + "\""
+    val validators: Seq[(String, String)] = ("Last-Modified" -> httpDate) +: ("ETag" -> etag) +: cacheControl
 
-    if (ifModifiedSinceCurrent(request, lastMod))
+    if (request.headers.get("If-None-Match").contains(etag) || ifModifiedSinceCurrent(request, lastMod))
       NotModified.withHeaders(validators*)
     else if (acceptsGzip(request)) {
       // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
