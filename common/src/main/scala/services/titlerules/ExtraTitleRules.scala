@@ -211,6 +211,13 @@ object ExtraTitleRules {
     // 'Aferim! (2015)' as a bare query returns nothing, but 'Aferim!' + year 2015 is
     // a single hit (see MovieService.searchTitleCandidates / effectiveYear).
     prog("xtra-pp-radu-jude-retro",    """(?iu)^Radu\s+Jude\.\s+Retrospektywa:\s+""", "'Radu Jude. Retrospektywa: <film> (YYYY)' director-retrospective prefix — 5 films, each year-scoped-unique on TMDB (Aferim! 2015, Nie obchodzi mnie… 2018, Niefortunny numerek lub szalone porno 2021, Nie obiecujcie sobie… 2023, Dracula 2025)"),
+    // Twenty-fourth wave (2026-09-05), from an audit of the 261 UNRESOLVED PL rows —
+    // PL sits at 27% unresolved against 2-7% for every other country, and a leading
+    // cycle banner is the largest single cause. Both lead with a title-case (or
+    // numeric) word, so `caseSegment` leaves the extracted banner intact and neither
+    // hits the recase regression that got the all-caps 'WSP:' dropped above.
+    prog("xtra-pp-akademia-kina-polskiego", """(?iu)^Akademia\s+Kina\s+Polskiego:\s+""", "'Akademia Kina Polskiego: <film> (YYYY) [4K]' Polish-cinema-academy retrospective prefix — 12 rows, 8 verified year-scoped-unique on TMDB (Człowiek z żelaza 225, Dzieje grzechu 156627, Fucha 42134, Krzyżacy 66030, Pałac 439339, Potop 36627, Psy 18575, Sala samobójców 72478); the trailing '(YYYY)' stays for `EmbeddedYear` and the '4K' peels via xtra-4k-suffix"),
+    prog("xtra-pp-50-na-51",                """(?iu)^50\s+na\s+51:\s+""",                "'50 na 51: <film>' Polish-cinema anniversary strand — all 3 resolve after the strip (Darmozjad polski 142029, Farba 553196, Spis cudzołożnic 424702)"),
     prog("xtra-pp-mikrofeminizacje",   """(?iu)^Mikrofeminizacje:\s+""",              "'Mikrofeminizacje: <film> (przedpremierowo)' art-cycle prefix (Pejzaż w kolorze sepii → TMDB, the trailing '(przedpremierowo)' peels via the resolver's trailing-paren deDecorate)"),
     prog("xtra-pp-replika",            """(?iu)^Replika\s+(?:KFF|Młodzi\s+i\s+Film):\s+""", "'Replika KFF: / Replika Młodzi i Film: <film>' festival-replay prefix (KFF = Krakowski Festiwal Filmowy, 'Młodzi i Film' = Koszalin) — Igrając z diabłem 2026 resolves; siblings (Capo, La petite mort, Magic Hour, Zero) are too generic to resolve year-less but the banner is still non-title decoration"),
     // Twenty-third wave (2026-08-29), from the Poland convergence leg's IDENTIFICATION

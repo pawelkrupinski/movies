@@ -381,6 +381,15 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Filmowe Lato w Kinie: Amelia"                         -> "Amelia",
     "Wakacje z klasyką: Rejs"                              -> "Rejs",
     "Wakacje z klasyką kina: Rejs"                         -> "Rejs",
+    // 2026-09-05 audit of the 261 UNRESOLVED PL rows. Two title-case cycle
+    // banners the seed misses, both verified against TMDB after the strip:
+    // 8 of the 12 Akademia films resolve (Człowiek z żelaza 225, Dzieje grzechu
+    // 156627, Fucha 42134, Krzyżacy 66030, Pałac 439339, Potop 36627, Psy 18575,
+    // Sala samobójców 72478) and all 3 of the 50 na 51 films do.
+    "Akademia Kina Polskiego: Psy (1992)"                  -> "Psy (1992)",
+    "Akademia Kina Polskiego: Krzyżacy (1960)"             -> "Krzyżacy (1960)",
+    "50 na 51: darmozjad polski"                           -> "darmozjad polski",
+    "50 na 51: spis cudzołożnic"                           -> "spis cudzołożnic",
     // The generic keyword-guarded pipe SUFFIX (banner follows the pipe).
     "Persona | Cykl Bergmana"                              -> "Persona",
     "Stalker | Przegląd Tarkowskiego"                      -> "Stalker",
