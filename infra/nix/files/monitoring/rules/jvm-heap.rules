@@ -38,6 +38,36 @@
 # left for allocation is gone whether the cause is retention or deferred compaction, and both end
 # in the same OOM.
 #
+# ⚠️ ON THE WORKERS (SerialGC) THE FLOOR IS WEAKER STILL, and reading it as retention sent the
+# 2026-09-05 worker-pl investigation off in the wrong direction for a while. G1 marks concurrently
+# and collects often, so its floor tracks the live set loosely but continuously. SerialGC only ever
+# reclaims tenured at a FULL collection, and these workers do very few -- worker-pl did 2 in 24h
+# while healthy. Between two full GCs the floor is simply "everything tenured since the last one",
+# which is garbage and live data indistinguishable, so a floor that has climbed says nothing about
+# retention until a full GC has actually run under it. Before believing a worker's floor, check
+# `increase(jvm_gc_collection_seconds_count{gc="MarkSweepCompact"}[30m])` over the same window.
+#
+# The tell that a worker is genuinely out of room is not the floor at all: it is `Copy` (the young
+# collector) FROZEN while `MarkSweepCompact` climbs. SerialGC replaces a young collection with a
+# full one once tenured cannot guarantee promotion, so a flat young-GC counter means every
+# collection is already a full one -- worker-pl sat at exactly 313.2 MB of a 313.2 MB pool doing
+# ~2 full GCs a minute and reclaiming nothing.
+#
+# ------------------------------------------------------------------------------------------------
+# "THE CORPUS OUTGREW THE HEAP" IS A GUESS, AND IT WAS WRONG ONCE ALREADY
+# ------------------------------------------------------------------------------------------------
+#
+# worker-pl fired this alert on 2026-09-05 at 99.69% while carrying the SMALLEST showtime corpus in
+# the fleet -- 49k against worker-uk's 187k, which sat at 57% on an identical 448m heap. Nothing
+# had outgrown anything. A cache of whole HTML detail pages was bounded by ENTRY COUNT
+# (`maximumSize(10000)`), so 1,015 entries held 228 MiB of a 313 MiB old gen while nine thousand
+# entries short of its bound. The fix was the cache, not the heap.
+#
+# So: measure what is retained before resizing anything. These pods are JRE images with no
+# `jcmd`/`jmap`, and the attach procedure that gets a histogram or an hprof out of one anyway is in
+# the runbook -- take it BEFORE restarting the pod, because a restart is also the thing that
+# destroys the evidence.
+#
 # ------------------------------------------------------------------------------------------------
 # THE POOL NAMES DIFFER BY COLLECTOR, WHICH IS WHY THE MATCH IS A REGEX
 # ------------------------------------------------------------------------------------------------
@@ -72,5 +102,9 @@ groups:
             FIRST CHECK THAT THE HEAP IS THE SIZE THE REPOSITORY THINKS IT IS -- Flux reconciles the ConfigMap now and Reloader rolls the pod on a real change, so a
             disagreement here means Flux is FAILING rather than merely waiting -- see flux.rules. Compare
             `kubectl -n kinowo get cm <tier>-env-<country> -o jsonpath='{.data.JAVA_OPTS}'`
-            against the overlay. If they already agree, the corpus has outgrown the heap and the
-            fix is the heap or the retention, not the ConfigMap.
+            against the overlay. If they already agree, something RETAINS more than this heap
+            holds -- which is NOT always the corpus, so measure before resizing. On a worker
+            (SerialGC) first confirm `increase(jvm_gc_collection_seconds_count{gc="MarkSweepCompact"}[30m])`
+            actually moved: with no full GC under it the floor is uncollected garbage, not the live
+            set. worker-pl paged here on 2026-09-05 carrying the fleet's SMALLEST corpus, because a
+            cache bounded by entry count held 228 MiB of HTML; the fix was the cache, not the heap.
