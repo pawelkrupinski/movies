@@ -61,6 +61,7 @@ hidden.title=Ukryte filmy
 
 # ── Empty states ────────────────────────────────────────────────────────────
 empty.repertoire=Brak repertuaru.
+listing.alsoShowing=W repertuarze w innych dniach
 empty.films=Brak filmów.
 
 # ── Browse (filtered film list) ─────────────────────────────────────────────

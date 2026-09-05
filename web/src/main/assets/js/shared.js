@@ -1633,6 +1633,17 @@
   function pickDay(value) {
     const sel = document.getElementById('date-filter');
     if (!sel || sel.value === value) return;
+    // Any day but today needs the wider window that is still in flight. QUEUE it
+    // rather than block or show an empty grid: the fetch started at boot, so by
+    // the time somebody has reached for a pill it has usually landed already,
+    // and `swapInWiderWindow` replays this the moment it has. The pill still
+    // highlights, so the tap is acknowledged either way.
+    if (value !== 'today' && _windowState === 'pending') {
+      _dayAwaitingWindow = value;
+      sel.value = value;
+      syncDayPills();
+      return;
+    }
     sel.value = value;
     syncDayPills();   // highlight immediately; the slide commits the grid
     onDateSelect();
@@ -2166,8 +2177,79 @@
     // First visit to a split city (London): ask which areas to show. No-op on a
     // flat city or once the visitor has already chosen.
     maybeShowAreaPicker();
+    // The document carries TODAY only; go and get the rest of the week.
+    loadWiderWindow();
   }
   window.bootView = bootView;
+
+  // ── THE REST OF THE WEEK ────────────────────────────────────────────────────
+  //
+  // The server renders today into the document and nothing else, because the
+  // browser must parse and index the whole grid before it may show any of it:
+  // London was 784 cards / 28,712 showtimes / 236k tags, of which 119 films
+  // played that day. Today alone is 85k tags. Everything else arrives here.
+  //
+  // WHY A WHOLE-GRID SWAP AND NOT A MERGE: 94 of the 119 films showing today in
+  // London also show later, so a delta would have to merge day-groups into most
+  // of the cards already on the page -- into the very DOM the swipe carousel
+  // clones. `innerHTML` once is a thing that cannot half-work.
+  const WINDOW_DAYS = 7;
+  let _windowState = 'pending';          // pending | ready | failed
+  // NOT `_queuedDay` — the carousel already owns that name for a day-step
+  // requested mid-slide. This one is a day requested before the WINDOW has
+  // arrived, which is a different wait with a different resolution.
+  let _dayAwaitingWindow = null;
+
+  function loadWiderWindow() {
+    const grid = document.getElementById('film-grid');
+    if (!grid || grid.dataset.window !== '1') { _windowState = 'ready'; return; }
+    markWiderDaysBusy(true);
+    fetch(CITY_BASE + '/movies/grid?days=' + WINDOW_DAYS, { credentials: 'same-origin' })
+      .then(function (r) { if (!r.ok) throw new Error('grid ' + r.status); return r.text(); })
+      .then(function (html) { whenIdle(function () { swapInWiderWindow(grid, html); }); })
+      .catch(function () {
+        // A failed fetch must not strand the pills as "Loading…" forever: the
+        // page still works, it just has today. Re-enable them and let a day
+        // change fall through to a full navigation.
+        _windowState = 'failed';
+        markWiderDaysBusy(false);
+      });
+  }
+
+  // Swap on an IDLE callback, not the moment the bytes land. Re-parsing back up
+  // to ~236k tags and rebuilding the index is real main-thread work, and doing
+  // it while the visitor is reading (or mid-scroll, or mid-swipe) turns a fast
+  // first paint into a stutter -- paying the cost we just avoided, visibly.
+  function whenIdle(fn) {
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(fn, { timeout: 3000 });
+    else setTimeout(fn, 200);
+  }
+
+  function swapInWiderWindow(grid, html) {
+    grid.innerHTML = html;
+    grid.dataset.window = String(WINDOW_DAYS);
+    // The later-films link list exists for crawlers and for a visitor who has
+    // only today; once the real cards are here it is the same films twice.
+    const later = document.getElementById('later-films');
+    if (later) later.remove();
+    _windowState = 'ready';
+    markWiderDaysBusy(false);
+    // The index addresses cards by position and the order cache is per-index,
+    // so both have to be rebuilt against the new DOM -- see buildIndex.
+    buildIndex();
+    applyFilters();
+    if (_dayAwaitingWindow) { const d = _dayAwaitingWindow; _dayAwaitingWindow = null; pickDay(d); }
+  }
+
+  // `today` is always answerable from the document. The others are not, until
+  // the swap lands -- so they say so rather than silently showing an empty day.
+  function markWiderDaysBusy(busy) {
+    document.querySelectorAll('#day-pills .day-pill').forEach(function (pill) {
+      if (pill.dataset.day === 'today') return;
+      pill.classList.toggle('day-pill--loading', busy);
+      if (busy) pill.setAttribute('aria-busy', 'true'); else pill.removeAttribute('aria-busy');
+    });
+  }
 
   // Every page is under `{mount}/{city}/…`, where the mount point is empty for a
   // country that owns its domain (`kinowo.net/poznan/`) and a country segment

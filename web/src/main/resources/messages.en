@@ -57,6 +57,7 @@ hidden.title=Hidden films
 
 # ── Empty states ────────────────────────────────────────────────────────────
 empty.repertoire=No listings.
+listing.alsoShowing=Also showing on other days
 empty.films=No films.
 
 # ── Browse (filtered film list) ─────────────────────────────────────────────

@@ -15,6 +15,9 @@
      permanently blank page. *@
   <script>(function(e){e.classList.add('grid-cloak');setTimeout(function(){e.classList.remove('grid-cloak')},2000)})(document.documentElement)</script>
   @_ogTagsApp(pageTitle = pageTitle, pageDescription = pageDescription, pageUrl = pageUrl, fbAppId = fbAppId, imageUrl = s"${models.Country.of(city).ogOrigin}/assets/img/${city.shareImage}", canonicalUrl = canonicalUrl)
+  @* The whole city, not just today: this describes the PAGE, and the page is
+     still the city listing. Trimming it to today would shrink what the crawler
+     is told for no rendering benefit -- it is a script block, not DOM. *@
   @_jsonLd(controllers.StructuredData.cityPage(pageUrl, city, films))
   @_resourceHints()
   @_errorTracking()
@@ -46,7 +49,16 @@
    gesture start and removed once the slide settles (see shared.js). *@
 <div id="view-pager">
   <div id="day-track">
-@_repertoireView(films, devMode, renderedAt)
+@* TODAY IN THE DOCUMENT, THE REST FETCHED AFTER FIRST PAINT — and split HERE
+   rather than in the controller so the fixture server and the snapshot spec,
+   which call this template directly with the whole corpus, render the same
+   shape production does instead of restating the rule and drifting from it.
+   `renderedAt` is already the clock the schedules were filtered by. *@
+@defining(controllers.MovieController.withinWindow(films, renderedAt.toLocalDate, Some(1))) { todayFilms =>
+@defining(films.filterNot(f => todayFilms.exists(_.slug == f.slug))) { laterFilms =>
+@_repertoireView(todayFilms, laterFilms, devMode, renderedAt)
+}
+}
   </div>
 </div>
 

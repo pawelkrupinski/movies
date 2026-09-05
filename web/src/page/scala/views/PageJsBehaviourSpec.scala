@@ -198,6 +198,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // — the real Play routes do too, and the day-selector ↔ URL tests
           // need to boot the page with the parameter already in `location.search`.
           case p if { val s = sub(p); s == "/" || s.startsWith("/?") }     => indexHtml
+          // The grid the listing fetches after first paint. Rendered through the
+          // PRODUCTION `_filmCards` + `withinWindow`, exactly as the real
+          // controller and FixtureServerMain do: the day-ordering and carousel
+          // tests below are ABOUT days other than today, and without this route
+          // the page they drive would legitimately have none.
+          case p if sub(p).startsWith("/movies/grid") =>
+            val days = "days=(\\d+)".r.findFirstMatchIn(sub(p)).map(_.group(1).toInt)
+            views.html._filmCards(
+              controllers.MovieController.withinWindow(
+                schedules, now.toLocalDate, controllers.MovieController.dayWindow(days))
+            ).body
           case p if sub(p).startsWith("/movie/") =>
             renderFilm(sub(p).stripPrefix("/movie/"))
           case p if sub(p) == "/li"           => loggedInHtml

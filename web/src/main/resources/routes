@@ -34,6 +34,9 @@ GET     /:city/film/*rest           controllers.MovieController.filmSubPathLegac
 GET     /:city/filmy                controllers.MovieController.browseLegacy(city: String)
 
 # ── API (JSON) ────────────────────────────────────────────────────────────────
+# The listing grid for a window of days, as card markup. The page renders TODAY
+# inline and swaps this in after first paint -- see MovieController.indexGrid.
+GET     /:city/movies/grid          controllers.MovieController.indexGrid(city: String, days: Option[Int])
 GET     /:city/api/repertoire       controllers.MovieController.apiRepertoire(city: String, days: Option[Int])
 # Detail-only payload (synopsis + trailers), fetched in parallel with the
 # listing and merged client-side by title. Kept off the listing so the latency-
