@@ -98,4 +98,55 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     // the correct film, 1026057.
     cache.get(key).flatMap(_.tmdbId) shouldBe Some(Correct)
   }
+
+  // Prod 2026-09-05. TMDB's title search for "Vivaldi i ja" returned a
+  // STABAT MATER concert short — 18 minutes — and nothing checked it against the
+  // 110 minutes all 46 venues were advertising, so the row carried that short's
+  // year, poster and ratings. Cinemas round and pad their runtimes, but nothing
+  // in that noise turns 110 into 18.
+  private val Concert = 1667002   // "STABAT MATER RV621 … Jakub Józef Orliński" (2023), 18 min
+  private val Feature = 1200001   // the 110-minute feature the cinemas are screening
+
+  private def vivaldiTmdb(featureRuntime: Int): TmdbClient = new TmdbClient(
+    http = new StubFetch(Seq(
+      "/search/movie" -> s"""{"results":[
+        |{"id":$Concert,"title":"Vivaldi i ja","original_title":"Vivaldi i ja","release_date":"2023-04-01","popularity":9.0},
+        |{"id":$Feature,"title":"Vivaldi i ja","original_title":"Vivaldi et moi","release_date":"2023-05-01","popularity":0.4}
+        |]}""".stripMargin,
+      s"/movie/$Concert?"  -> s"""{"id":$Concert,"title":"Vivaldi i ja","release_date":"2023-04-01","runtime":18}""",
+      s"/movie/$Feature?"  -> s"""{"id":$Feature,"title":"Vivaldi i ja","release_date":"2023-05-01","runtime":$featureRuntime}""",
+      s"/movie/$Concert/external_ids" -> s"""{"id":$Concert,"imdb_id":""}""",
+      s"/movie/$Feature/external_ids" -> s"""{"id":$Feature,"imdb_id":""}"""
+    )),
+    apiKey = Some("stub")
+  )
+
+  private def resolveVivaldi(tmdb: TmdbClient): Option[Int] = {
+    // Every venue advertises a feature-length running time.
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      CinemaCityPoznanPlaza -> SourceData(title = Some("Vivaldi i ja"), runtimeMinutes = Some(110)),
+      Helios                -> SourceData(title = Some("Vivaldi i ja"), runtimeMinutes = Some(112))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Vivaldi i ja", Some(2023), seed))),
+      normalizer = titleNormalizer)
+    new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Vivaldi i ja", Some(2023))
+    cache.get(cache.keyOf("Vivaldi i ja", Some(2023))).flatMap(_.tmdbId)
+  }
+
+  "a title match a fraction of the length the cinemas advertise" should "not be accepted" in {
+    resolveVivaldi(vivaldiTmdb(featureRuntime = 110)) should not be Some(Concert)
+  }
+
+  it should "still resolve normally when the match's runtime is credible" in {
+    // Same search, but the popular hit is now a real feature — nothing to veto.
+    val tmdb = new TmdbClient(
+      http = new StubFetch(Seq(
+        "/search/movie" -> s"""{"results":[
+          |{"id":$Concert,"title":"Vivaldi i ja","original_title":"Vivaldi i ja","release_date":"2023-04-01","popularity":9.0}
+          |]}""".stripMargin,
+        s"/movie/$Concert?" -> s"""{"id":$Concert,"title":"Vivaldi i ja","release_date":"2023-04-01","runtime":108}""",
+        s"/movie/$Concert/external_ids" -> s"""{"id":$Concert,"imdb_id":""}"""
+      )),
+      apiKey = Some("stub"))
+    resolveVivaldi(tmdb) shouldBe Some(Concert)
+  }
 }

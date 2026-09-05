@@ -1070,7 +1070,25 @@ class MovieService(
       // pin a same-director adjacent-year TMDB duplicate to its lowest id so the
       // outcome can't drift with scrape/merge order. No-op when no director or no dup.
       .map(rid => if (rowDirectors.nonEmpty) collapseDirectorDuplicate(rid, rowDirectors) else rid)
-    resolvedId.map(id => (id, freshHit))
+    resolvedId
+      // VETO: a title search can land on a film of an entirely different kind —
+      // prod matched "Vivaldi i ja" to an 18-minute STABAT MATER concert short
+      // while 46 venues advertised the 110-minute feature, and "Homo sapiens?" to
+      // a 9-minute animated short. The row then carried that film's year, poster
+      // and ratings, which is worse than carrying none. The cinemas' own minutes
+      // are the check — they can't be derived from the resolution being tested —
+      // and the band is wide enough that ordinary padding and rounding pass (see
+      // `RuntimeCorroboration.plausible`). Only the SEARCH paths are vetoed; the
+      // id-based fallbacks below are exact reverse lookups, not guesses.
+      .filter { id =>
+        val credible = RuntimeCorroboration.plausible(
+          row.cinemaRuntimesMinutes, tmdb.fullDetails(id).flatMap(_.runtimeMinutes))
+        if (!credible)
+          logger.info(s"TMDB: '$title' (${year.getOrElse("?")}) → rejecting $id: its " +
+            s"runtime is not credible against the cinemas' ${row.cinemaRuntimesMinutes.mkString("/")} min")
+        credible
+      }
+      .map(id => (id, freshHit))
       // FALLBACK — exact reverse lookup by a known imdbId, only when the title /
       // director search above found nothing AND the row has no tmdbId yet. Such a
       // row can carry an imdbId from a NON-TMDB source (`OmdbBackfill` recovers one
