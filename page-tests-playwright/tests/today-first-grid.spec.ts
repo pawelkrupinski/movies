@@ -11,21 +11,34 @@ import { gotoAndWaitForCards } from './helpers';
 // carousel while the visitor is already looking at it.
 test.describe('today-first grid', { tag: '@agnostic' }, () => {
 
-  test('the document carries today only, then widens to the week', async ({ page }) => {
+  test('the document carries today only, then widens to the whole repertoire', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     // The server marks what it rendered; the client overwrites it after the swap.
     // Polling rather than asserting once: the fetch is deliberately deferred to
     // an idle callback, so "not yet" is a legal intermediate state.
     await expect.poll(
-      () => page.locator('#film-grid').getAttribute('data-window'),
-      { message: 'grid should widen to the 7-day window' },
-    ).toBe('7');
+      () => page.locator('#film-grid').getAttribute('data-grid'),
+      { message: 'grid should widen to the whole repertoire' },
+    ).toBe('all');
+  });
+
+  test('widens to the WHOLE repertoire, not a truncated slice of it', async ({ page }) => {
+    // One fetch, no window. An earlier revision asked for `?days=7`, which left
+    // everything past the first week unreachable: switching to "anytime" showed
+    // a repertoire silently cut short, with nothing on the page saying so. The
+    // count after the swap must match every film the server itself links to.
+    const res  = await page.request.get('/poznan/');
+    const html = await res.text();
+    const all  = new Set([...html.matchAll(/\/poznan\/movie\/([a-z0-9-]+)/g)].map(m => m[1]));
+    await gotoAndWaitForCards(page, '/poznan/?date=anytime');
+    await expect.poll(() => page.locator('#film-grid').getAttribute('data-grid')).toBe('all');
+    await expect.poll(() => page.locator('#film-grid .col[data-title]').count()).toBe(all.size);
   });
 
   test('widening ADDS films rather than replacing them with a different set', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/?date=anytime');
     const todayCards = await page.locator('#film-grid .col[data-title]').count();
-    await expect.poll(() => page.locator('#film-grid').getAttribute('data-window')).toBe('7');
+    await expect.poll(() => page.locator('#film-grid').getAttribute('data-grid')).toBe('all');
     const wideCards = await page.locator('#film-grid .col[data-title]').count();
     expect(wideCards).toBeGreaterThanOrEqual(todayCards);
   });
@@ -44,7 +57,7 @@ test.describe('today-first grid', { tag: '@agnostic' }, () => {
 
   test('the later-films list is removed once the real cards arrive', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
-    await expect.poll(() => page.locator('#film-grid').getAttribute('data-window')).toBe('7');
+    await expect.poll(() => page.locator('#film-grid').getAttribute('data-grid')).toBe('all');
     // Otherwise the same films are on the page twice — as cards and as links.
     await expect(page.locator('#later-films')).toHaveCount(0);
   });
@@ -63,7 +76,7 @@ test.describe('today-first grid', { tag: '@agnostic' }, () => {
     await expect(page.locator('.day-pill[data-day="tomorrow"]')).toHaveClass(/\bactive\b/);
     await expect.poll(() => page.locator('#date-filter').inputValue()).toBe('tomorrow');
     // ...and still the chosen day once the window lands.
-    await expect.poll(() => page.locator('#film-grid').getAttribute('data-window')).toBe('7');
+    await expect.poll(() => page.locator('#film-grid').getAttribute('data-grid')).toBe('all');
     await expect.poll(() => page.locator('#date-filter').inputValue()).toBe('tomorrow');
     await expect(page.locator('.day-pill.active')).toHaveCount(1);
   });

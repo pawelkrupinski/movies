@@ -263,7 +263,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   /** Wait until the listing has stopped changing underneath the test.
    *
    *  The page renders TODAY and swaps the rest of the week in after first paint
-   *  (`#film-grid[data-window]` 1 → 7), which is what takes the document from
+   *  (`#film-grid[data-grid]` today → all), which is what takes the document from
    *  46k DOM tags to 9k. It also means the grid GAINS CARDS a moment after the
    *  first ones attach, so a spec that counts cards, filters, and counts again
    *  can measure the swap instead of the filter. Four cases here did exactly
@@ -275,7 +275,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def waitForGridSettled(page: CdpPage): Unit = {
     val deadline = System.currentTimeMillis() + 5000
     while (System.currentTimeMillis() < deadline &&
-           page.evalBool("(function(){var g=document.getElementById('film-grid');return !!g && g.dataset.window==='1'})()"))
+           page.evalBool("(function(){var g=document.getElementById('film-grid');return !!g && g.dataset.grid==='today'})()"))
       Thread.sleep(50)
   }
 

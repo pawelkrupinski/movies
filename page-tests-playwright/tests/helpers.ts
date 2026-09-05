@@ -71,7 +71,7 @@ export async function waitForCards(page: Page): Promise<void> {
  * Wait until the listing has stopped changing under the test.
  *
  * The page renders TODAY and then swaps in the rest of the week after first
- * paint (`#film-grid[data-window]` goes 1 → 7). That is deliberate — it is what
+ * paint (`#film-grid[data-grid]` goes today → all). That is deliberate — it is what
  * takes the document from 46k DOM tags to 9k — but it means the grid gains
  * cards a moment AFTER the first ones attach. A test that counts cards, filters,
  * and counts again can otherwise have the swap land between its two counts and
@@ -88,7 +88,7 @@ export async function waitForGridSettled(page: Page): Promise<void> {
   await page
     .waitForFunction(() => {
       const g = document.getElementById('film-grid');
-      return !g || g.dataset.window !== '1';
+      return !g || g.dataset.grid !== 'today';
     }, undefined, { timeout: 5000 })
     .catch(() => { /* today-only is a legitimate resting state */ });
 }
