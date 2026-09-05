@@ -51,7 +51,7 @@ class MongoCachingDetailFetch(
   // to show for it. See that helper's comment for the same defect in two other places.
   coll.foreach { c =>
     val thread = new Thread(() => {
-      db.foreach(MongoTtlIndex.reconcile(_, c, "fetchedAt", ttl.toSeconds, s"Detail-cache $collectionName"))
+      db.foreach(MongoTtlIndex.reconcile(_, c, "fetchedAt", ttl.toSeconds, "Detail-cache"))
     }, "detail-cache-init")
     thread.setDaemon(true)
     thread.start()

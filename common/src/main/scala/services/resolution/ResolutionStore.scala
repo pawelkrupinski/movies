@@ -190,5 +190,5 @@ class MongoResolutionStore(
    *  the same call `UptimeMonitor.ensureIndexes` makes, and its comment explains
    *  why the `collMod` this used to fire unconditionally never worked. */
   private def ensureTtlIndex(c: MongoCollection[Document]): Unit =
-    db.foreach(services.MongoTtlIndex.reconcile(_, c, "at", ResolutionStore.Ttl.toSeconds, collectionName))
+    db.foreach(services.MongoTtlIndex.reconcile(_, c, "at", ResolutionStore.Ttl.toSeconds, "ResolutionStore"))
 }

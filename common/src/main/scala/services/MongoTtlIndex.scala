@@ -43,8 +43,17 @@ object MongoTtlIndex extends Logging {
 
   /** Ensure `collection` carries a TTL index on `field` expiring after
    *  `wantedSeconds` — creating it when absent, reconciling it when it
-   *  disagrees, and doing nothing at all when it already agrees. `label` names
-   *  the caller in log lines. */
+   *  disagrees, and doing nothing at all when it already agrees.
+   *
+   *  `db` MUST be the database `collection` lives in: `collMod` is a database
+   *  command naming the collection, so a mismatched pair addresses a collection
+   *  in the wrong database. The collection itself is passed rather than looked up
+   *  from `db` so the caller's own handle — and the write concern it configured —
+   *  is the one that builds the index.
+   *
+   *  `label` names the CALLER, not the collection: this logs the collection
+   *  itself, so passing a collection name here reads `resolve_tmdb: resolve_tmdb
+   *  TTL index on ...`. */
   def reconcile(
     db:            MongoDatabase,
     collection:    MongoCollection[Document],
@@ -67,7 +76,13 @@ object MongoTtlIndex extends Logging {
             new JIndexOptions().expireAfter(wantedSeconds, TimeUnit.SECONDS)
           ).toFuture(), 10.seconds)
         }.recover { case exception =>
-          logger.warn(s"$label: $name TTL index on `$field` could not be created: ${exception.getMessage}")
+          // `IndexOptionsConflict` HERE MEANS THE READ ABOVE FAILED, not that the index is
+          // absent — `currentExpiry` returns None for an unreadable collection too, and
+          // `createIndex` is then rejected by the index it could not see. Saying "could not
+          // be created" would send a reader looking for a missing index that is right there
+          // with the wrong expiry, so name both possibilities.
+          logger.warn(s"$label: $name has no readable TTL index on `$field` and one could not be created — " +
+            s"if it exists, it KEEPS ITS OLD EXPIRY rather than ${wantedSeconds}s: ${exception.getMessage}")
         }
     }
   }
