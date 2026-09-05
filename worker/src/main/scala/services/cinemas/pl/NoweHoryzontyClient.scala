@@ -3,7 +3,7 @@ package services.cinemas.pl
 import play.api.libs.json.Json
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 
 import java.time.format.DateTimeFormatter
@@ -28,10 +28,14 @@ import scala.util.Try
  * countries / genres / director / synopsis. `today` is injected so the day
  * window (and thus the fixture replay) is deterministic.
  */
-class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends ChunkedCinemaScraper with DetailEnricher {
+class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends ChunkedCinemaScraper with DetailEnricher {
 
-  // Static op.s detail pages cached across passes; day blobs keep the live http.
-  private val detailHttp = new CachingDetailFetch(http)
+  // Static op.s detail pages routed to the shared detail cache; day blobs keep the live http.
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = KinoNoweHoryzonty
   override val detailGroup: String = "nowe-horyzonty"
@@ -114,7 +118,7 @@ class NoweHoryzontyClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val detail = NoweHoryzontyClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
@@ -11,13 +11,17 @@ import scala.util.Try
 import services.cinemas.CountryNames
 import services.movies.TitleNormalizer
 
-class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer) extends CinemaScraper with DetailEnricher {
+class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer,
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends CinemaScraper with DetailEnricher {
 
   val cinema: Cinema = KinoPalacowe
   private val BaseUrl = "https://kinopalacowe.pl"
-  // Static film pages cached across passes; the paginated calendar API keeps the
+  // Static film pages routed to the shared detail cache; the paginated calendar API keeps the
   // live `http` since its screenings change every pass.
-  private val detailHttp = new CachingDetailFetch(http)
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
   private val ApiBase = s"$BaseUrl/public/api/calendar/?widgetHash=widget_17943"
 
   // Each film page carries a single one-liner like
@@ -159,7 +163,7 @@ class KinoPalacoweClient(http: HttpFetch, titles: TitleNormalizer) extends Cinem
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).flatMap(parseFilmMeta).map { meta =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).flatMap(parseFilmMeta).map { meta =>
       FilmDetail(
         synopsis       = None,
         cast           = Seq.empty,

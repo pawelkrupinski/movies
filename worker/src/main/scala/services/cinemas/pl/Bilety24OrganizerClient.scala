@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import org.jsoup.nodes.Document
 import services.movies.TitleNormalizer
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
@@ -45,11 +45,15 @@ import scala.util.Try
  * a bilety24-hosted cinema is a catalog line, not a new client (OCP).
  */
 class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override val cinema: Cinema,
-                              titles: TitleNormalizer)
+                              titles: TitleNormalizer,
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+)
     extends CinemaScraper with DetailEnricher {
 
-  // Event pages are static across passes for a live film, so cache them.
-  private val detailHttp = new CachingDetailFetch(http)
+  // Event pages are static across passes for a live film, so they go to the shared detail cache.
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(organizerUrl)
   override def sourceUrl: Option[String] = Some(organizerUrl)
@@ -69,7 +73,7 @@ class Bilety24OrganizerClient(http: HttpFetch, organizerUrl: String, override va
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map(html => Bilety24OrganizerClient.parseDetail(Jsoup.parse(html)))
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map(html => Bilety24OrganizerClient.parseDetail(Jsoup.parse(html)))
 
   def fetch(): Seq[CinemaMovie] =
     Bilety24OrganizerClient.parse(http.get(organizerUrl), cinema, titles)

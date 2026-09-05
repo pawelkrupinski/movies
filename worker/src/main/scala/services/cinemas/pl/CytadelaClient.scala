@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -18,11 +18,15 @@ import scala.util.Try
  * `/kino-film/<slug>` page adds the synopsis. (`/repertuar`, NOT `/pl/repertuar`
  * — the latter is the JS app shell.)
  */
-class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
+class CytadelaClient(http: HttpFetch,
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends CinemaScraper with DetailEnricher {
 
-  // Static /kino-film detail pages cached across passes; the repertoire listing
+  // Static /kino-film detail pages routed to the shared detail cache; the repertoire listing
   // keeps the live `http` since its showtimes change every pass.
-  private val detailHttp = new CachingDetailFetch(http)
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = KinoCytadela
 
@@ -76,7 +80,7 @@ class CytadelaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val document      = Jsoup.parse(html)
       // The description tails into an inline venue/ticket footer — a "♦ Bilety:
       // …", a "Kino Cytadela znajduje się …" venue blurb, a "◊ sprawdź dojazd

@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models._
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, ParallelDetailFetch}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -19,10 +19,14 @@ import scala.util.Try
  * (runtime isn't published anywhere — TMDB supplies it). Parameterised by the
  * cinema's URL slug so one client serves any Nove Kino venue.
  */
-class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema) extends CinemaScraper with DetailEnricher {
+class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema,
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends CinemaScraper with DetailEnricher {
 
-  // Static film.php detail pages cached across passes; listing pages stay live.
-  private val detailHttp = new CachingDetailFetch(http)
+  // Static film.php detail pages routed to the shared detail cache; listing pages stay live.
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   private val BaseUrl    = "https://www.novekino.pl"
   private val CinemaUrl  = s"$BaseUrl/kina/$slug"
@@ -84,7 +88,7 @@ class NoveKinoClient(http: HttpFetch, slug: String, override val cinema: Cinema)
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val detail = NoveKinoClient.parseDetail(html)
       FilmDetail(
         synopsis    = detail.synopsis,

@@ -70,6 +70,26 @@ class DcfClientSpec extends AnyFlatSpec with Matchers {
       Showtime(LocalDateTime.of(2026, 6, 5, 15, 30), Some("https://dcf.bilety24.pl/kup-bilety/?id=938261"), Some("Sala Lalka"), Nil)
   }
 
+  /** The detail cache is handed down, not built here. `CachingDetailFetch` is
+   *  bounded per instance, so a client that builds its own turns one budget into
+   *  one per venue — the multiplicity behind worker-pl's 2026-09-05 heap alert.
+   *  Detail pages must go through the injected fetch; the repertoire listing
+   *  carries volatile showtimes and must NOT, so it stays on `http`. */
+  "DcfClient" should "fetch detail pages through the detail fetch it is given" in {
+    var detailUrls = List.empty[String]
+    val listing = new FakeHttpFetch("dcf")
+    val sharedDetail = new _root_.tools.HttpFetch {
+      def get(url: String): String = { detailUrls ::= url; listing.get(url) }
+      def post(url: String, body: String, contentType: String): String = listing.post(url, body, contentType)
+    }
+    val injected = new DcfClient(listing, detailHttp = Some(sharedDetail))
+    val film = injected.fetch().flatMap(_.filmUrl).head
+    injected.fetchFilmDetail(film).isDefined shouldBe true
+
+    detailUrls shouldBe List(film)                       // the detail page went through the shared fetch
+    film.startsWith("https://dcf.bilety24.pl/wydarzenie/") shouldBe true
+  }
+
   "DcfClient.normalizeTitle" should "strip a trailing programme label" in {
     DcfClient.normalizeTitle("Ojczyzna | pokaz przedpremierowy") shouldBe "Ojczyzna"
     DcfClient.normalizeTitle("Znaki Pana Śliwki | FKS")          shouldBe "Znaki Pana Śliwki"

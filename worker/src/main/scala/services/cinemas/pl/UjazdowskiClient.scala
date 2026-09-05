@@ -1,7 +1,7 @@
 package services.cinemas.pl
 
 import models._
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScrapeHorizon}
 
@@ -26,11 +26,14 @@ import scala.util.Try
  */
 class UjazdowskiClient(
   http:  HttpFetch,
-  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
 ) extends CinemaScraper with DetailEnricher {
 
-  // Static film pages cached across passes; the listing/day pages stay live.
-  private val detailHttp = new CachingDetailFetch(http)
+  // Static film pages routed to the shared detail cache; the listing/day pages stay live.
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = Ujazdowski
   override val detailGroup: String = "ujazdowski"
@@ -102,7 +105,7 @@ class UjazdowskiClient(
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map(Jsoup.parse).map { document =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map(Jsoup.parse).map { document =>
       FilmDetail(
         // Some descriptions embed a source/related link as plain-text URL; strip
         // it so the synopsis stays prose-only. cleanSynopsis also keeps the

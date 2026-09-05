@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -16,11 +16,15 @@ import scala.util.Try
  * per-screening room+time, poster and booking link. The `/movies/<slug>` detail
  * page adds director, production countries, year and the full synopsis.
  */
-class AmondoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
+class AmondoClient(http: HttpFetch,
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends CinemaScraper with DetailEnricher {
 
-  // Static detail pages cached across passes; the repertoire page keeps the
+  // Static detail pages routed to the shared detail cache; the repertoire page keeps the
   // live `http` since its showtimes change every pass.
-  private val detailHttp = new CachingDetailFetch(http)
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = KinoAmondo
 
@@ -73,7 +77,7 @@ class AmondoClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val detail = AmondoClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

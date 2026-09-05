@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import org.jsoup.nodes.{Document, Element}
 import models._
-import tools.{CachingDetailFetch, HttpFetch, ParallelDetailFetch}
+import tools.{HttpFetch, ParallelDetailFetch}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -22,11 +22,15 @@ import scala.util.Try
  * `filmUrl`. The detail page is fetched per film for showtimes (always) and
  * for synopsis + trailerUrl (via `fetchFilmDetail`).
  */
-class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher {
+class FalenicaClient(http: HttpFetch,
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends CinemaScraper with DetailEnricher {
 
-  // Static film detail pages cached across passes; the repertoire listing keeps
+  // Static film detail pages routed to the shared detail cache; the repertoire listing keeps
   // the live `http` since its showtimes change every pass.
-  private val detailHttp = new CachingDetailFetch(http)
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = StacjaFalenica
 
@@ -81,7 +85,7 @@ class FalenicaClient(http: HttpFetch) extends CinemaScraper with DetailEnricher 
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val document = Jsoup.parse(html)
       FilmDetail(
         // `div.section.tresc` wraps the synopsis prose alongside the

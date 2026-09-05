@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.format.DateTimeFormatter
@@ -36,11 +36,15 @@ import services.movies.TitleNormalizer
  *   6. "Czytaj opis" link — `<a href="kinoapollo.pl/kino/<slug>/">` → detail page
  *   7. Poster     — `<img>` to a WordPress media URL
  */
-class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer) extends CinemaScraper with DetailEnricher {
+class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer,
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends CinemaScraper with DetailEnricher {
 
-  // Static film detail pages cached across passes; the repertoire listing keeps
+  // Static film detail pages routed to the shared detail cache; the repertoire listing keeps
   // the live `http` since its showtimes change every pass.
-  private val detailHttp = new CachingDetailFetch(http)
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = KinoApollo
   // Production redirects from /kino to /kino/ — request the canonical-shaped URL
@@ -128,7 +132,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer) extends CinemaS
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val m = parseDetail(html)
       FilmDetail(
         synopsis       = m.synopsis,

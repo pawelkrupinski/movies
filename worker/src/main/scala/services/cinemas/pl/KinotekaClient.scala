@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 import services.movies.TitleNormalizer
 
@@ -27,11 +27,15 @@ import scala.util.Try
  * films by `/film/<slug>/`. The synchronous `fetch()` (the harness path) composes
  * these to exactly the old whole-scrape output.
  */
-class KinotekaClient(http: HttpFetch, titles: TitleNormalizer) extends ChunkedCinemaScraper with DetailEnricher {
+class KinotekaClient(http: HttpFetch, titles: TitleNormalizer,
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends ChunkedCinemaScraper with DetailEnricher {
 
-  // Static detail pages cached across passes (CachingDetailFetch); the listing
+  // Static detail pages routed to the shared detail cache; the listing
   // and day pages keep the live `http` since their showtimes change every pass.
-  private val detailHttp = new CachingDetailFetch(http)
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = Kinoteka
 
@@ -97,7 +101,7 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer) extends ChunkedCi
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val detail = KinotekaClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,

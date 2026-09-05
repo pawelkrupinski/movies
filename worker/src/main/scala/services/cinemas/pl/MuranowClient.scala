@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import models._
 import org.jsoup.Jsoup
-import tools.{CachingDetailFetch, HttpFetch}
+import tools.HttpFetch
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
@@ -18,11 +18,15 @@ import scala.util.Try
  * by that slug; the per-film detail page is fetched for runtime / director /
  * year / countries / genres / synopsis, degrading to listing-only on failure.
  */
-class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw"))) extends CinemaScraper with DetailEnricher {
+class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")),
+  // ONE cache shared across every venue, injected by `CinemaScraperCatalog`:
+  // `CachingDetailFetch` is bounded per INSTANCE, so one per client is no bound.
+  detailHttp: Option[HttpFetch] = None
+) extends CinemaScraper with DetailEnricher {
 
-  // Static film node pages cached across passes; the calendar listing keeps the
+  // Static film node pages routed to the shared detail cache; the calendar listing keeps the
   // live `http` since its showtimes change every pass.
-  private val detailHttp = new CachingDetailFetch(http)
+  private val detailFetch: HttpFetch = detailHttp.getOrElse(http)
 
   val cinema: Cinema = KinoMuranow
 
@@ -94,7 +98,7 @@ class MuranowClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
    *  A durable 404/410 escapes rather than folding into None, so a page that is
    *  gone for good gets stamped instead of retried every tick — see [[DetailFetchOutcome]]. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
-    DetailFetchOutcome.transientToNone(detailHttp.get(ref)).map { html =>
+    DetailFetchOutcome.transientToNone(detailFetch.get(ref)).map { html =>
       val detail = MuranowClient.parseDetail(html)
       FilmDetail(
         synopsis       = detail.synopsis,
