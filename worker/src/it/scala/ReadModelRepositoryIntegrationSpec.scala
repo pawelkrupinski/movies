@@ -1,6 +1,6 @@
 package integration
 
-import org.mongodb.scala.MongoClient
+import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -61,6 +61,38 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // (7 real timeouts logged 2026-07-04); this guards the paging MECHANISM instead — every row
   // comes back exactly once across page boundaries (batchSize forced to 2 over 5 sentinels → 3
   // pages), the boundary correctness the empty-seed fix depends on.
+  // NO SECONDARY INDEXES ON `web_screenings`. Two were created at every boot, on `city` and
+  // `filmId`, for queries that do not exist: every read in `MongoReadModelRepository` goes
+  // through `_id`. `$indexStats` on prod agreed — 0 operations against either over 73 hours,
+  // against 246,309 on `_id_` — and this is the collection the projector rewrites, so each
+  // one was an index write on every upsert and delete, paid forever for nothing.
+  //
+  // Its own database, because the assertion is about what a BOOT creates: the shared one
+  // still carries the indexes earlier builds made, and dropping them there would be a
+  // destructive act in a spec.
+  "the read model" should "create no secondary index on web_screenings" in {
+    import models.CityScreening
+    val ownDb   = tools.IntegrationCorpusDatabase.named("readmodel-indexes")
+    val client2 = MongoClient(Env.get("MONGODB_URI").get)
+    val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
+    try {
+      // The collection does not exist until something is written to it.
+      fresh.upsertScreening(CityScreening(_id = "__it-rm-index__", filmId = "__it-rm-index-film__",
+        city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
+      val names = scala.concurrent.Await.result(
+        client2.getDatabase(ownDb).getCollection("web_screenings").listIndexes().toFuture(),
+        scala.concurrent.duration.Duration(10, "seconds")).flatMap(_.get("name").map(_.asString().getValue)).toSet
+      withClue(s"an index nothing queries still costs a write on every projector upsert — " +
+               s"re-add one only alongside the query that needs it (found $names): ") {
+        names shouldBe Set("_id_")
+      }
+    } finally {
+      scala.concurrent.Await.ready(client2.getDatabase(ownDb).drop().toFuture(),
+        scala.concurrent.duration.Duration(10, "seconds"))
+      fresh.close(); client2.close()
+    }
+  }
+
   "findAllScreenings" should "page across batch boundaries, returning every written screening exactly once in _id order" in {
     import models.CityScreening
     val paged = new MongoReadModelRepository(Some(db), findAllBatchSize = 2)

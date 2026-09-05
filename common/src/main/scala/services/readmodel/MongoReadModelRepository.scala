@@ -7,7 +7,7 @@ import models.{CityScreening, ResolvedMovie}
 import org.bson.BsonDocumentReader
 import org.bson.codecs.{Codec, DecoderContext}
 import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, Projections, Sorts}
+import org.mongodb.scala.model.{Filters, Projections, Sorts}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription}
 import play.api.Logging
 import services.movies.KeysetScan
@@ -50,15 +50,18 @@ class MongoReadModelRepository(
   private val screenings: Option[MongoCollection[CityScreening]] =
     sharedDb.map(_.withCodecRegistry(ReadModelCodecs.registry).getCollection[CityScreening](MongoReadModelRepository.ScreeningsCollection).withWriteConcern(RelaxedWrites))
 
-  // Best-effort index creation. The web's per-city read filters on `city`; the
-  // projector's per-film prune filters on `filmId`. Idempotent — re-creating an
-  // existing index is a no-op.
-  screenings.foreach { c =>
-    Try {
-      Await.result(c.createIndex(Indexes.ascending("city"), new IndexOptions().background(true)).toFuture(), 10.seconds)
-      Await.result(c.createIndex(Indexes.ascending("filmId"), new IndexOptions().background(true)).toFuture(), 10.seconds)
-    }.recover { case exception: Throwable => logger.warn(s"web_screenings index creation failed: ${exception.getMessage}") }
-  }
+  // NO SECONDARY INDEXES ON `web_screenings`, deliberately. There used to be two, on `city`
+  // and `filmId`, justified by "the web's per-city read filters on `city`; the projector's
+  // per-film prune filters on `filmId`". Neither query exists: EVERY read in this class goes
+  // through `_id` — the two full scans page by `Filters.gt("_id", …)` and the point
+  // reads/writes use `Filters.eq("_id", …)` — and the prune filters `findAllScreeningRefs`
+  // client-side rather than asking Mongo per film. `$indexStats` agreed: 0 operations against
+  // either index over 73 hours of uptime, against 246,309 on `_id_`.
+  //
+  // An index nothing reads is not free. This is the collection the projector rewrites, so
+  // each one was an extra index write on every upsert and delete, paid forever for a query
+  // that was never written. Re-adding one is fine — but add the QUERY in the same commit, or
+  // it will read as unused again to whoever measures next.
 
   def enabled: Boolean = movies.isDefined
 
