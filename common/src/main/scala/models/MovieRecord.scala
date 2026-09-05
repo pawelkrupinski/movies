@@ -78,7 +78,14 @@ case class MovieRecord(
   // (`MovieRecordMerge`). Dropped only when the WHOLE row is deleted
   // (`UnscreenedCleanup`, when no cinema screens the film at all). See
   // `synopsis`.
-  retainedSynopses:  Map[Source, String] = Map.empty
+  retainedSynopses:  Map[Source, String] = Map.empty,
+
+  // How `tmdbId` was concluded — see `services.resolution.TmdbBasis`. Stored as
+  // the enum's name so an unrecognised value (or the absent field on every row
+  // written before this existed) degrades to "unknown" rather than failing the
+  // decode: a REQUIRED field here would kill the whole batch. Defaulted and last
+  // for the same reason. None on a row that has never resolved.
+  tmdbBasis:         Option[String] = None
 ) {
   def imdbUrl: Option[String] = imdbId.map(id => s"https://www.imdb.com/title/$id/")
   def tmdbUrl: Option[String] = tmdbId.map(id => s"https://www.themoviedb.org/movie/$id")

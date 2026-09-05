@@ -7,7 +7,7 @@ import services.cinemas.CountryNames
 import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
-import services.resolution.{ResolutionCache, ResolutionKeys}
+import services.resolution.{ResolutionCache, ResolutionKeys, TmdbBasis}
 import services.tasks.RatingTasks
 import tools.{DaemonExecutors, HttpStatusException}
 
@@ -451,8 +451,8 @@ class MovieService(
     val (origHint, directoryHint) = tmdbHints(existing)
     val label = s"'$cleanTitle' (${year.getOrElse("?")})"
     Try(lookupTmdb(cleanTitle, year, existing, origHint, directoryHint)) match {
-      case Success(Some((tmdbId, hit, externalIds, detailsOpt))) =>
-        val resolved = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, existing)
+      case Success(Some((tmdbId, hit, externalIds, detailsOpt, basis))) =>
+        val resolved = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, existing, basis)
         logger.info(s"TMDB (staging): $label → matched tmdbId=${resolved.tmdbId.getOrElse("—")} imdbId=${resolved.imdbId.getOrElse("—")}")
         Some(resolved)
       case Success(None) =>
@@ -546,7 +546,7 @@ class MovieService(
     // internally before `row` was passed in) — outside the lock, like the slow
     // lookup it feeds.
     val candidateRow = cache.get(cache.keyOf(key.cleanTitle, key.year)).getOrElse(MovieRecord())
-    lookupTmdb(key.cleanTitle, key.year, candidateRow, originalTitleHint, directorHint).map { case (tmdbId, hit, externalIds, detailsOpt) =>
+    lookupTmdb(key.cleanTitle, key.year, candidateRow, originalTitleHint, directorHint).map { case (tmdbId, hit, externalIds, detailsOpt, basis) =>
       // Read → modify → write under the per-title lock so a cinema scrape's
       // freshly-written slot, landing just before this thread enters the
       // critical section, is visible to the carry-forward below — and so
@@ -582,7 +582,7 @@ class MovieService(
         if (!readOk) throw new IllegalStateException(
           s"TMDB carry-forward read failed for '${writeKey.cleanTitle}' (${writeKey.year.getOrElse("—")}) — " +
           "deferring the resolve rather than writing the row without its ratings and cinemas")
-        val enr      = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, carryForward.getOrElse(MovieRecord()))
+        val enr      = buildResolvedRecord(tmdbId, hit, externalIds, detailsOpt, carryForward.getOrElse(MovieRecord()), basis)
         // Settle this film at conclusion: write the resolved record AND fold any
         // yearless+idless sibling a concurrent scrape stranded (the "Dzień
         // objawienia" Multikino row) onto it in ONE merged write — so the row's
@@ -615,9 +615,9 @@ class MovieService(
     row:               MovieRecord,
     originalTitleHint: Option[String],
     directorHint:      Option[String]
-  ): Option[(Int, Option[TmdbClient.SearchResult], TmdbClient.ExternalIds, Option[TmdbClient.FullDetails])] =
-    resolveTmdbId(cleanTitle, year, row, originalTitleHint, directorHint).flatMap { case (tmdbId, hit) =>
-      externalIdsOfLiveMovie(tmdbId, cleanTitle).map(ids => (tmdbId, hit, ids, tmdb.fullDetails(tmdbId)))
+  ): Option[(Int, Option[TmdbClient.SearchResult], TmdbClient.ExternalIds, Option[TmdbClient.FullDetails], TmdbBasis)] =
+    resolveTmdbId(cleanTitle, year, row, originalTitleHint, directorHint).flatMap { case (tmdbId, hit, basis) =>
+      externalIdsOfLiveMovie(tmdbId, cleanTitle).map(ids => (tmdbId, hit, ids, tmdb.fullDetails(tmdbId), basis))
     }
 
   /** The candidate's cross-reference ids, or None when TMDB answers 404 — the id
@@ -655,7 +655,8 @@ class MovieService(
     hit:         Option[TmdbClient.SearchResult],
     externalIds: TmdbClient.ExternalIds,
     detailsOpt:  Option[TmdbClient.FullDetails],
-    existing:    MovieRecord
+    existing:    MovieRecord,
+    basis:       TmdbBasis
   ): MovieRecord = {
     // Preserve the previously-known `imdbId`/`wikidataId` when TMDB resolved the
     // same film (same `tmdbId`) but momentarily dropped a cross-reference —
@@ -751,6 +752,11 @@ class MovieService(
       filmwebRating     = ifSameFilm(existing.filmwebRating),
       rottenTomatoes    = ifSameFilm(existing.rottenTomatoes),
       tmdbId            = Some(tmdbId),
+      // Keep the EVIDENCE beside the conclusion. Without it a guess from a bare
+      // title is indistinguishable ever after from an answer a director's
+      // filmography confirmed — which is how five wrong resolutions survived weeks
+      // in prod on rows that had since acquired the hints to correct them.
+      tmdbBasis         = Some(basis.toString),
       wikidataId        = resolvedWikidata,
       metacriticUrl     = ifSameFilm(existing.metacriticUrl),
       rottenTomatoesUrl = ifSameFilm(existing.rottenTomatoesUrl),
@@ -913,7 +919,7 @@ class MovieService(
     row:           MovieRecord,
     originalTitle: Option[String] = None,
     director:      Option[String] = None
-  ): Option[(Int, Option[TmdbClient.SearchResult])] = {
+  ): Option[(Int, Option[TmdbClient.SearchResult], TmdbBasis)] = {
     // Resolve from the row's OWN reported titles. A decorated festival/preview
     // row whose own title doesn't match TMDB ("Opętanie | ŻUŁAWSKI. KINO
     // EKSTAZY", "Ojczyzna (pokaz przedpremierowy)") must still resolve on its
@@ -1019,6 +1025,7 @@ class MovieService(
     // director-bearing row keeps the richer director-walk path below, which can
     // disambiguate. This is the generalised "Zaproszenie" guard (a bare title with two
     // same-title TMDB entries) — see StagingOrderDeterminismSpec.
+    var searchBasis: TmdbBasis = TmdbBasis.TitleOnly
     var freshHit: Option[TmdbClient.SearchResult] = None
     val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
       val hit =
@@ -1031,6 +1038,7 @@ class MovieService(
           // yearless rows are untouched (searchYearExactTop is a no-op without a year).
           candidates.iterator.flatMap(q => tmdb.searchUnique(q, effectiveYear)).nextOption()
             .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, effectiveYear)).nextOption())
+            .map(hit => { searchBasis = if (effectiveYear.isDefined) TmdbBasis.YearScoped else TmdbBasis.TitleOnly; hit })
         else {
           // Resolve from this row's own titles only — no sister-row shortcut. Copying
           // a tmdbId from an already-resolved relative was order-dependent (it could
@@ -1062,6 +1070,7 @@ class MovieService(
           rowDirectors.iterator
             .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, row.cinemaRuntimesMinutes, row.cinemaCast))
             .nextOption()
+            .map(hit => { searchBasis = TmdbBasis.DirectorWalk; hit })
         }
       freshHit = hit
       hit.map(_.id.toString)
@@ -1088,7 +1097,7 @@ class MovieService(
             s"runtime is not credible against the cinemas' ${row.cinemaRuntimesMinutes.mkString("/")} min")
         credible
       }
-      .map(id => (id, freshHit))
+      .map(id => (id, freshHit, searchBasis))
       // FALLBACK — exact reverse lookup by a known imdbId, only when the title /
       // director search above found nothing AND the row has no tmdbId yet. Such a
       // row can carry an imdbId from a NON-TMDB source (`OmdbBackfill` recovers one
@@ -1133,9 +1142,9 @@ class MovieService(
               rowYear  <- effectiveYear
               if tmdb.fullDetails(tmdbId).flatMap(_.releaseYear).contains(rowYear)
             } yield tmdbId
-          row.imdbId.flatMap(tmdb.findByImdbId).map(hit => (hit.id, Some(hit)))
-            .orElse(viaLetterboxd.map((_, Option.empty[TmdbClient.SearchResult])))
-            .orElse(viaFilmwebWikidata.map((_, Option.empty[TmdbClient.SearchResult])))
+          row.imdbId.flatMap(tmdb.findByImdbId).map(hit => (hit.id, Some(hit), TmdbBasis.ExternalId))
+            .orElse(viaLetterboxd.map((_, Option.empty[TmdbClient.SearchResult], TmdbBasis.ExternalId)))
+            .orElse(viaFilmwebWikidata.map((_, Option.empty[TmdbClient.SearchResult], TmdbBasis.ExternalId)))
         } else None
       }
   }

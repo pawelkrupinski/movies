@@ -149,4 +149,44 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
       apiKey = Some("stub"))
     resolveVivaldi(tmdb) shouldBe Some(Concert)
   }
+
+  // S3: a conclusion now records the evidence it was reached on, so a guess from
+  // a bare title stays distinguishable from an answer a director's filmography
+  // confirmed. Without it every resolution looks equally settled, which is how
+  // five wrong ones survived weeks in prod on rows that had since acquired the
+  // very hints that would have corrected them.
+  "a resolution" should "record that it was reached from a bare title alone" in {
+    // A singleton title hit, no year and no director to narrow it — all a
+    // deferred-detail cinema's first scrape can offer.
+    val tmdb = new TmdbClient(
+      http = new StubFetch(Seq(
+        "/search/movie" -> s"""{"results":[{"id":$Concert,"title":"Vivaldi i ja","original_title":"Vivaldi i ja","release_date":"2023-04-01","popularity":9.0}]}""",
+        s"/movie/$Concert?" -> s"""{"id":$Concert,"title":"Vivaldi i ja","release_date":"2023-04-01","runtime":108}""",
+        s"/movie/$Concert/external_ids" -> s"""{"id":$Concert,"imdb_id":""}"""
+      )),
+      apiKey = Some("stub"))
+    val cache = new CaffeineMovieCache(
+      new InMemoryMovieRepository(Seq(("Vivaldi i ja", None,
+        MovieRecord(data = Map[Source, SourceData](CinemaCityPoznanPlaza -> SourceData(title = Some("Vivaldi i ja"))))))),
+      normalizer = titleNormalizer)
+    new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Vivaldi i ja", None)
+
+    // `settleResolved` has already re-keyed the yearless row onto the year of the
+    // film it guessed — the very promotion of guess to identity this basis exists
+    // to make visible — so read it back under that key.
+    val settled = cache.get(cache.keyOf("Vivaldi i ja", Some(2023)))
+    settled.flatMap(_.tmdbId)    shouldBe Some(Concert)
+    settled.flatMap(_.tmdbBasis) shouldBe Some(services.resolution.TmdbBasis.TitleOnly.toString)
+  }
+
+  it should "record a director walk as the stronger basis it is" in {
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some(Title), director = Seq(Director))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq((Title, Year, seed))), normalizer = titleNormalizer)
+    new MovieService(cache, new InProcessEventBus(), visitorTmdb()).reEnrichSync(Title, Year)
+
+    val row = cache.get(cache.keyOf(Title, Year))
+    row.flatMap(_.tmdbId)    shouldBe Some(Correct)
+    row.flatMap(_.tmdbBasis) shouldBe Some(services.resolution.TmdbBasis.DirectorWalk.toString)
+  }
 }
