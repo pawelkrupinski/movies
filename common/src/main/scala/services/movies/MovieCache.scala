@@ -1615,6 +1615,16 @@ class CaffeineMovieCache(
           // once it has: a skipped write that still dropped the slot from the row
           // holding it would delete this venue's showtimes and put them nowhere,
           // which is the very loss the unreadable-row skip exists to prevent.
+          //
+          // NOT COVERED BY A FAILING TEST, unlike the rest of this file, and worth
+          // knowing before touching it. The state needs a key that `concludedKeyFor` /
+          // `redirectToExistingVariant` picks from the corpus INDEX while Caffeine has
+          // evicted it AND its Mongo read fails — cold cache plus a degraded Mongo, the
+          // 2026-07-27 shape. Every path a spec can drive routes the scrape to the row
+          // already holding the slot, so `keysForCinemaSlot - key` is empty there and
+          // the drop cannot fire either way. `UnreadableRowScrapeSpec` pins the
+          // reachable half (a skipped write leaves the holder intact); this guard is
+          // the unreachable half, kept because it can only ever refrain from deleting.
           val landed = existingOpt match {
             case Some(_) =>
               putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
