@@ -361,9 +361,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // could fall through before the half being asserted existed, and CI read
       // `["Local Z"]` on a boot that was merely unfinished. The sibling test
       // above has always waited on its server-side value; this one did not.
+      // 5s, not the 2s default: the condition now includes `Film A`, which only
+      // exists once the SERVER fetch has landed, so this wait spans a network
+      // round-trip rather than a local read. It timed out on CI's slower runner
+      // across several unrelated commits on 2026-09-05 while passing locally —
+      // the condition was already right, the budget was not. Matches the 5s the
+      // sibling waits in this file already use for post-login server state.
       page.waitFor(
         "localStorage.getItem('serverStateSynced') === '1' && " +
-          "getHidden().indexOf('Local Z') !== -1 && getHidden().indexOf('Film A') !== -1")
+          "getHidden().indexOf('Local Z') !== -1 && getHidden().indexOf('Film A') !== -1",
+        timeoutMs = 5000)
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")  // pulled from the server
       hidden should include ("Local Z") // migrated up from this device
