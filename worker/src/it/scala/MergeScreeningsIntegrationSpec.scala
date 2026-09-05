@@ -3,14 +3,9 @@ package services.movies
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
-import org.mongodb.scala.model.Filters
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.Env
-
-import scala.concurrent.Await
-import scala.concurrent.duration._
 
 /**
  * PROBE: does a duplicate MERGE keep both films' showtimes?
@@ -37,10 +32,7 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val uri    = Env.get("MONGODB_URI").get
-  // Its own corpus: this suite hydrates a `CaffeineMovieCache` over the WHOLE `movies`
-  // collection and settles it, which is not survivable for a neighbouring suite's rows.
-  private val dbName = tools.IntegrationCorpusDatabase.named("merge-screenings")
+  private val uri = Env.get("MONGODB_URI").get
 
   // Two rows the fold will recognise as the same film (shared tmdbId) under different keys —
   // the cross-language duplicate shape (`Tangled` / `Zaplatani`) the canonicaliser exists for.
@@ -48,17 +40,15 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   private val titleB = "__merge-probe-sentinel-b__"
   private val when   = java.time.LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
 
-  it should "keep both films' showtimes when a duplicate merge folds one into the other" in {
-    val client     = MongoClient(uri)
-    val db         = client.getDatabase(dbName)
+  it should "keep both films' showtimes when a duplicate merge folds one into the other" in
+    tools.IntegrationCorpusDatabase.withDatabase(uri, "merge-screenings") { db =>
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
     val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
     val idA        = StoredMovieRecord.idFor(titleA, Some(2026), titleNormalizer)
     val idB        = StoredMovieRecord.idFor(titleB, Some(2026), titleNormalizer)
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     try {
-      val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-
       // Row B FIRST, so by the time A arrives B is resident in the cache STRIPPED — its
       // showtimes live only in `screenings` under B's own id, the slot carrying just a digest.
       // Order matters: the fold canonicalises onto A, making B the victim. A merge that
@@ -84,14 +74,6 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
         surviving should contain (Multikino.displayName)
         surviving should contain (KinoMuranow.displayName)
       }
-      cache.stop()
-    } finally {
-      Seq(idA, idB).foreach { id => screenings.deleteFilm(id); slots.deleteFilm(id) }
-      Seq(titleA, titleB).foreach { t =>
-        Await.ready(db.getCollection("movies")
-          .deleteMany(Filters.regex("_id", s"^${titleNormalizer.sanitize(t)}\\|")).toFuture(), 10.seconds)
-      }
-      client.close()
-    }
+    } finally cache.stop()
   }
 }

@@ -3,7 +3,6 @@ package integration
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models.{KinoMuranow, Multikino, MovieRecord, Showtime, Source, SourceData}
-import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository,
@@ -40,8 +39,10 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val uri    = Env.get("MONGODB_URI").get
-  private val dbName = tools.IntegrationCorpusDatabase.named("screenings-rewrite")
+  private val uri = Env.get("MONGODB_URI").get
+  // Its own corpus, dropped when each leg's scope closes — the per-row purge this replaced
+  // tidied the sentinels but left the database itself behind on every run.
+  private val CorpusSuite = "screenings-rewrite"
   private val title  = "__screenings-rewrite-sentinel__"
   private val year   = Some(2026)
   private val when   =
@@ -54,9 +55,8 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       Multikino   -> SourceData(title = Some(title), showtimes = Seq(Showtime(at, None))),
       KinoMuranow -> SourceData(title = Some(title), showtimes = Seq(Showtime(at.plusHours(2), None)))))
 
-  it should "not rewrite a film's screenings when the upsert leaves its showtimes unchanged" in {
-    val client     = MongoClient(uri)
-    val db         = client.getDatabase(dbName)
+  it should "not rewrite a film's screenings when the upsert leaves its showtimes unchanged" in
+    tools.IntegrationCorpusDatabase.withDatabase(uri, CorpusSuite) { db =>
     val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
     val repository = new MongoMovieRepository(Some(db),
       screenings = Some(counting), slots = Some(new MongoSlotsRepository(Some(db))),
@@ -90,11 +90,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       }
       counting.findForFilm(id).values.flatten.map(_.dateTime).toSet shouldBe
         Set(when.plusDays(1), when.plusDays(1).plusHours(2))
-    } finally {
-      repository.delete(title, year)
-      counting.deleteFilm(id)
-      client.close()
-    }
+    } finally repository.close()
   }
 
   // THE ORPHAN PRUNE MUST NOT READ SHOWTIMES. It runs every 30 minutes per country and its
@@ -106,9 +102,8 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
   // variants from its cinemas, so a scan that dropped those too would compute FEWER live ids
   // than the read model holds and delete live cards — which is why the cheap
   // `foreachRecordWithoutShowtimes` is the wrong tool and this asserts the slots are read.
-  it should "prune the read model without reading a single showtime" in {
-    val client     = MongoClient(uri)
-    val db         = client.getDatabase(dbName)
+  it should "prune the read model without reading a single showtime" in
+    tools.IntegrationCorpusDatabase.withDatabase(uri, CorpusSuite) { db =>
     val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
     val countSlots = new CountingSlotsRepository(new MongoSlotsRepository(Some(db)))
     val repository = new MongoMovieRepository(Some(db),
@@ -135,6 +130,6 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       withClue("the full reproject writes showtimes, so it must read them: ") {
         counting.batchReadCalls.get() should be > 0
       }
-    } finally { repository.delete(title, year); repository.close(); client.close() }
+    } finally repository.close()
   }
 }

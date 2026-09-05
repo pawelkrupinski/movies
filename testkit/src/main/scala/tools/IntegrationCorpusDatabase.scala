@@ -1,5 +1,10 @@
 package tools
 
+import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
+
 /**
  * A database name no other `it/` suite shares, for a spec that operates on the WHOLE
  * corpus.
@@ -29,4 +34,34 @@ object IntegrationCorpusDatabase {
    *  configured name as the PREFIX means the `IntegrationMongo` throwaway guard and the
    *  CI teardown still recognise it as a test database. */
   def named(suite: String): String = s"${Env.get("MONGODB_DB").getOrElse("kinowo")}_$suite"
+
+  /**
+   * Run `body` against this suite's own corpus and DROP that corpus afterwards — dropped
+   * even when `body` throws, since the alternative is an orphan database per failed run.
+   *
+   * A suite that owns a whole database has no reason to delete its rows one id at a time:
+   * dropping takes the `movies` rows, the `screenings` and `movie_slots` they cascade to,
+   * and every index with them. The per-row `finally` blocks this replaced were only ever
+   * approximating that, and they left the database itself behind — fifty of them had piled
+   * up on the local replica set before anything dropped one.
+   *
+   * The drop is AWAITED. `WorkerWiringNormalizerIntegrationSpec` used to call
+   * `drop().toFuture()` without awaiting it, so the JVM exited before the command reached
+   * the server and `kinowo_it_wiring_*` survived every run — a drop that is merely started
+   * is not a drop.
+   *
+   * Only ever call this for a database this suite alone owns, i.e. one named by [[named]].
+   * The bare `MONGODB_DB` is SHARED by every other spec in both modules — `itAll` runs web
+   * and worker in parallel with `IntegrationTest / parallelExecution := true` — so dropping
+   * that one would delete a neighbour's corpus mid-run.
+   */
+  def withDatabase[A](uri: String, suite: String)(body: MongoDatabase => A): A = {
+    IntegrationMongo.requireThrowaway(uri, Env.get(IntegrationMongo.OverrideVar).exists(v => v == "1" || v.equalsIgnoreCase("true")))
+    val client = MongoClient(uri)
+    try {
+      val database = client.getDatabase(named(suite))
+      try body(database)
+      finally Await.result(database.drop().toFuture(), 60.seconds)
+    } finally client.close()
+  }
 }

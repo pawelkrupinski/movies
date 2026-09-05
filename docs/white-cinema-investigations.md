@@ -2026,6 +2026,13 @@ to prod. And **always pass a unique `MONGODB_DB`**: the specs default to
 `"kinowo"`, which on the local instance is full of residue from previous runs
 (that residue alone caused two spurious failures this run).
 
+The per-suite corpus databases now clean themselves up: a whole-corpus spec takes
+its `<MONGODB_DB>_<suite>` through `IntegrationCorpusDatabase.withDatabase`, which
+drops it when the scope closes, and `WorkerWiringNormalizerIntegrationSpec` drops
+its `kinowo_it_wiring_*` in `afterAll`. So a run leaves behind only the base
+`MONGODB_DB` you named — that one is SHARED by every spec in both modules (`itAll`
+runs web and worker in parallel), so nothing drops it for you.
+
 Mid-run this layer also failed on `integration.StagingFoldIntegrationSpec` →
 *"should keep a retired key's screenings"* (`BsonInvalidOperationException:
 Missing field: updatedAt`) while passing when run alone. That was **not** this

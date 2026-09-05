@@ -1,10 +1,14 @@
 package modules
 
 import models.Country
-import org.mongodb.scala.SingleObservableFuture
+import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import services.movies.TitleNormalizer
+import tools.Env
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 /**
  * Every component a wiring builds keys through THAT wiring's country.
@@ -26,7 +30,8 @@ import services.movies.TitleNormalizer
  */
 class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAfterAll {
 
-  private val built = scala.collection.mutable.ListBuffer.empty[WorkerWiring]
+  private val built        = scala.collection.mutable.ListBuffer.empty[WorkerWiring]
+  private val ownDatabases = scala.collection.mutable.ListBuffer.empty[String]
 
   /** A real wiring on a database of its own, so nothing it touches is shared. */
   private def isolated(forCountry: Country): WorkerWiring = {
@@ -35,12 +40,25 @@ class WorkerWiringNormalizerIntegrationSpec extends AnyFlatSpec with BeforeAndAf
       override protected def mongoDbName: String = ownDatabase
     }
     built += wiring
+    ownDatabases += ownDatabase
     wiring
   }
 
+  /**
+   * Drop each wiring's database through a FRESH client, after every wiring has stopped.
+   *
+   * Two things had to be true for this to work, and neither was. The drop went through
+   * `w.mongoConnection`, which `w.stop()` has already CLOSED — so it raised
+   * `state should be: open`, straight into a `Try` that discarded it. And it was never
+   * awaited, so even on an open client the JVM would have exited before the command
+   * landed. `kinowo_it_wiring_de` / `_pl` / `_uk` survived every run for both reasons.
+   */
   override def afterAll(): Unit = {
     built.foreach(w => scala.util.Try(w.stop()))
-    built.foreach(w => scala.util.Try(w.mongoConnection.database.foreach(_.drop().toFuture())))
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    try ownDatabases.distinct.foreach(name =>
+      scala.util.Try(Await.result(client.getDatabase(name).drop().toFuture(), 60.seconds)))
+    finally client.close()
     super.afterAll()
   }
 

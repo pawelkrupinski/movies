@@ -36,27 +36,26 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  private val uri    = Env.get("MONGODB_URI").get
+  private val uri = Env.get("MONGODB_URI").get
   // Its own corpus: this suite hydrates a `CaffeineMovieCache` over the WHOLE `movies`
   // collection and settles it, which is not survivable for a neighbouring suite's rows.
-  private val dbName = tools.IntegrationCorpusDatabase.named("rekey-screenings")
+  // Dropped when each leg's scope closes, so a run leaves no `*_rekey-screenings` behind.
+  private val CorpusSuite = "rekey-screenings"
 
   // A yearless row whose cinema slot carries a delimited year — exactly what
   // `backfillEmbeddedYears` re-keys onto that year.
   private val title  = "__rekey-probe-sentinel__"
   private val when   = java.time.LocalDateTime.now().plusDays(3).withHour(20).withMinute(0).withSecond(0).withNano(0)
 
-  it should "keep a film's showtimes when the settle re-keys it onto its embedded year" in {
-    val client     = MongoClient(uri)
-    val db         = client.getDatabase(dbName)
+  it should "keep a film's showtimes when the settle re-keys it onto its embedded year" in
+    tools.IntegrationCorpusDatabase.withDatabase(uri, CorpusSuite) { db =>
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
     val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
     val yearlessId = StoredMovieRecord.idFor(title, None, titleNormalizer)
     val yearedId   = StoredMovieRecord.idFor(title, Some(2026), titleNormalizer)
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     try {
-      val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
-
       // A yearless row, one cinema, real showtimes — the shape a scrape leaves behind
       // before TMDB concludes. The slot title carries the year the settle will key on.
       cache.put(CacheKey(title, None, titleNormalizer), MovieRecord(
@@ -79,12 +78,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
 
       withClue("the film was re-keyed and its showtimes did not come with it: ")(
         surviving should not be empty)
-    } finally {
-      Seq(yearlessId, yearedId).foreach { id => screenings.deleteFilm(id); slots.deleteFilm(id) }
-      Await.ready(db.getCollection("movies")
-        .deleteMany(Filters.regex("_id", s"^${titleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
-      client.close()
-    }
+    } finally cache.stop()
   }
 
   // The settle above is a WHOLE-CORPUS operation, and this suite runs in parallel with
@@ -109,14 +103,13 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds))
 
-      val ownClient = MongoClient(uri)
-      try {
+      tools.IntegrationCorpusDatabase.withDatabase(uri, CorpusSuite) { own =>
         val cache = new CaffeineMovieCache(new MongoMovieRepository(
-          Some(ownClient.getDatabase(dbName)),
-          screenings = Some(new MongoScreeningsRepository(Some(ownClient.getDatabase(dbName)))),
-          slots      = Some(new MongoSlotsRepository(Some(ownClient.getDatabase(dbName)))), normalizer = titleNormalizer), normalizer = titleNormalizer)
-        cache.backfillEmbeddedYears()
-      } finally ownClient.close()
+          Some(own),
+          screenings = Some(new MongoScreeningsRepository(Some(own))),
+          slots      = Some(new MongoSlotsRepository(Some(own))), normalizer = titleNormalizer), normalizer = titleNormalizer)
+        try cache.backfillEmbeddedYears() finally cache.stop()
+      }
 
       val left = Await.result(shared.find(Filters.in("_id", neighbours*)).toFuture(), 10.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
