@@ -58,16 +58,33 @@ object CinemaCorroboration {
     !RuntimeCorroboration.plausible(record.cinemaRuntimesMinutes, filmRuntime)
 
   /** Directors speak only when BOTH sides name someone: a film TMDB credits to
-   *  nobody, or one no venue credits, says nothing either way. */
+   *  nobody, or one no venue credits, says nothing either way. A contradiction
+   *  needs EVERY cinema credit to match no film credit at all. */
   private def directorDenies(record: MovieRecord, filmDirectors: Seq[String]): Boolean = {
-    val cinemaNames = record.cinemaDirector.map(nameKey).filter(_.nonEmpty).toSet
-    val filmNames   = filmDirectors.map(nameKey).filter(_.nonEmpty).toSet
-    cinemaNames.nonEmpty && filmNames.nonEmpty && !cinemaNames.exists(filmNames.contains)
+    val cinemaNames = record.cinemaDirector.map(nameTokens).filter(_.nonEmpty)
+    val filmNames   = filmDirectors.map(nameTokens).filter(_.nonEmpty)
+    cinemaNames.nonEmpty && filmNames.nonEmpty &&
+      !cinemaNames.exists(c => filmNames.exists(f => samePerson(c, f)))
   }
 
-  /** Fold a credit the way the rating clients already compare names — case- and
-   *  diacritic-insensitive, punctuation dropped — so "Gastón Duprat" and "Gaston
-   *  Duprat" are one person and a stray comma can't split a credit. */
-  private def nameKey(name: String): String =
-    TextNormalization.deburr(name).toLowerCase.replaceAll("[^a-z0-9]", "")
+  /** A credit as its SET of name tokens — case- and diacritic-folded, punctuation
+   *  dropped. A set rather than a string because the two sides do not agree on
+   *  ORDER: TMDB writes Hungarian and Japanese credits surname-first ("Enyedi
+   *  Ildikó", "Szabó István", "Pálfi György") where the cinemas write them
+   *  given-name-first. Comparing folded strings made every one of those a
+   *  contradiction — 191 of the 202 rows the first version of this flagged in prod
+   *  were correctly resolved films whose director had simply been written the other
+   *  way round.
+   *
+   *  Empty for a name that folds away entirely, which is how a CJK credit behaves:
+   *  "王家衛" and "Wong Kar Wai" are the same person and nothing here can know it,
+   *  so that comparison must abstain rather than guess. */
+  private def nameTokens(name: String): Set[String] =
+    TextNormalization.deburr(name).toLowerCase.split("[^a-z0-9]+").filter(_.nonEmpty).toSet
+
+  /** One credit naming the same person as the other. Subset rather than equality
+   *  so a middle name present on one side only ("Neele Leana Vollmar" against
+   *  TMDB's "Neele Vollmar") is not a different director. */
+  private def samePerson(a: Set[String], b: Set[String]): Boolean =
+    a.subsetOf(b) || b.subsetOf(a)
 }
