@@ -360,4 +360,65 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     stamps.distinct.size shouldBe stamps.size
     rm.stop()
   }
+
+  // ── A rewrite that changes nothing invalidates nothing ──────────────────────
+  //
+  // The change stream delivers DOCUMENT WRITES, not content changes. A re-key or
+  // a venue re-projection rewrites every row it touches — `replaceFilm` once
+  // rewrote all 298 rows for a single venue — and each of those arrives here as
+  // an upsert. Bumping on the write rather than on a real difference threw away
+  // a city's cached page, its gzipped body, and every client's 304 for a
+  // document byte-identical to the one already held.
+  //
+  // These rows are pure case classes with no timestamp, so structural equality
+  // is exactly the question "would any client see different bytes?".
+
+  it should "leave a city's validator alone when an upsert rewrites an identical row" in {
+    val (repository, rm) = twoCityModel()
+    val before = rm.lastModifiedFor("warszawa")
+    val modelWide = rm.lastModified
+
+    repository.upsertScreening(screening("s-waw", "belle|2021", "warszawa"))
+
+    rm.lastModifiedFor("warszawa") shouldBe before
+    rm.lastModified shouldBe modelWide
+    rm.stop()
+  }
+
+  it should "still move it when the rewrite genuinely changes the row" in {
+    val (repository, rm) = twoCityModel()
+    val before = rm.lastModifiedFor("warszawa")
+
+    // Same _id, different content — a real showtime edit.
+    repository.upsertScreening(CityScreening("s-waw", "belle|2021", "warszawa", "Muranow",
+      Some("https://example.test/belle"), Nil))
+
+    rm.lastModifiedFor("warszawa") should be > before
+    rm.stop()
+  }
+
+  it should "move nothing when an upsert rewrites an identical movie document" in {
+    val (repository, rm) = twoCityModel()
+    val warsawBefore = rm.lastModifiedFor("warszawa")
+    val londonBefore = rm.lastModifiedFor("london")
+    val modelWide    = rm.lastModified
+
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)))
+
+    rm.lastModifiedFor("warszawa") shouldBe warsawBefore
+    rm.lastModifiedFor("london")   shouldBe londonBefore
+    rm.lastModified                shouldBe modelWide
+    rm.stop()
+  }
+
+  it should "still move the screening cities when a movie rewrite changes a field" in {
+    // The guard must not swallow a real metadata change.
+    val (repository, rm) = twoCityModel()
+    val before = rm.lastModifiedFor("warszawa")
+
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)).copy(weightedRating = 8.1))
+
+    rm.lastModifiedFor("warszawa") should be > before
+    rm.stop()
+  }
 }

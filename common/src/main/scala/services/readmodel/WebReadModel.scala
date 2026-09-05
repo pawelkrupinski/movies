@@ -172,11 +172,21 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
 
   private def applyMovieUpsert(m: ResolvedMovie): Unit = {
     val previous = Option(movies.put(m._id, m))
-    // A film ENTERING the corpus, or changing title/year, reshuffles addresses
-    // corpus-wide (see `_globalFloor`). Anything else -- a rating refresh, a new
-    // poster, a synopsis -- only changes the bytes of the cities screening it.
-    if (!previous.exists(slugKey(_) == slugKey(m))) touchEveryCity()
-    else citiesScreening(m._id).foreach(touchCity)
+    // A REWRITE THAT CHANGED NOTHING INVALIDATES NOTHING. The stream carries
+    // document WRITES, not content changes: a re-key or a venue re-projection
+    // rewrites rows wholesale (`replaceFilm` once rewrote all 298 rows for one
+    // venue) and every one of them arrives here as an upsert. Bumping on the
+    // write threw away the city's page, its gzipped body and every client's 304
+    // for bytes identical to those already held. These are pure case classes
+    // with no timestamp, so structural equality is exactly the question "would
+    // any client see different bytes?".
+    if (!previous.contains(m)) {
+      // A film ENTERING the corpus, or changing title/year, reshuffles addresses
+      // corpus-wide (see `_globalFloor`). Anything else -- a rating refresh, a new
+      // poster, a synopsis -- only changes the bytes of the cities screening it.
+      if (!previous.exists(slugKey(_) == slugKey(m))) touchEveryCity()
+      else citiesScreening(m._id).foreach(touchCity)
+    }
   }
 
   private def applyMovieDelete(id: String): Unit = {
@@ -186,9 +196,13 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   }
 
   private def applyScreeningUpsert(s: CityScreening): Unit = {
-    byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]()).put(s._id, s)
+    val bucket   = byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]())
+    val previous = bucket.put(s._id, s)
     indexFilmCity(s.filmId, s.city)
-    touchCity(s.city)
+    // Only a row that actually differs changes what the city renders — see the
+    // note on `applyMovieUpsert`. `previous` is null for a genuinely new row,
+    // which is never equal to `s`, so a first insert still bumps.
+    if (previous != s) touchCity(s.city)
   }
   private def applyScreeningDelete(id: String): Unit = {
     // The delete event carries only the id; it's globally unique, so drop it
