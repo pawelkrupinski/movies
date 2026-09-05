@@ -148,7 +148,15 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
    *  redo that work on every request. `lastModified` is the same stamp the
    *  change streams already bump, so a stale map can't outlive an upsert. */
   def filmSlugs: FilmSlugs = {
-    val stamp = _lastModified.get()
+    // VERSIONED BY THE SLUG CORPUS, NOT BY EVERY CHANGE. `FilmSlugs` walks and
+    // sorts the whole corpus, and it is a pure function of the
+    // (id, title, releaseYear) projection — precisely what `_globalFloor`
+    // tracks. Keyed on the model-wide stamp instead, a showtime edit anywhere
+    // discarded the map and the next listing render rebuilt every address in
+    // the corpus; screenings are the bulk of all events, so the memo almost
+    // never hit. The floor moves only when a film enters, leaves, or changes
+    // title/year — the only things that can re-address anything.
+    val stamp = _globalFloor.get()
     val cached = _filmSlugs
     if (cached != null && cached._1 == stamp) cached._2
     else {
@@ -220,9 +228,10 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   }
 
   private def applyMovieDelete(id: String): Unit = {
-    movies.remove(id)
-    // A departing film frees its slug for a namesake in another city.
-    touchEveryCity()
+    // Only a film we actually held frees a slug for a namesake in another city.
+    // Deletes on this collection are mostly RE-KEYS, so one naming an id this
+    // model never saw is ordinary traffic — and it re-addresses nothing.
+    if (movies.remove(id) != null) touchEveryCity()
   }
 
   private def applyScreeningUpsert(s: CityScreening): Unit = {

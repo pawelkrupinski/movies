@@ -547,4 +547,69 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.lastModifiedFor("poznan") should be > poznanBefore
     rm.stop()
   }
+
+  // ── The slug map is versioned by the SLUG corpus, not by every change ───────
+  //
+  // `FilmSlugs` walks and sorts every film to assign addresses. It is a pure
+  // function of the (id, title, releaseYear) projection — which is exactly what
+  // `_globalFloor` tracks — so keying its memo on the model-wide stamp meant a
+  // showtime edit anywhere threw the whole map away and the next listing render
+  // rebuilt it over the entire corpus.
+
+  it should "reuse the slug map across a change that cannot re-address anything" in {
+    val (repository, rm) = twoCityModel()
+    val first = rm.filmSlugs
+
+    // A showtime edit: no film entered, left, or changed title/year.
+    repository.upsertScreening(CityScreening("s-waw-2", "belle|2021", "warszawa", "Atlantic", None, Nil))
+
+    rm.filmSlugs should be theSameInstanceAs first
+    rm.stop()
+  }
+
+  it should "rebuild the slug map when a film's title changes" in {
+    val (repository, rm) = twoCityModel()
+    val first = rm.filmSlugs
+
+    repository.upsertMovie(titled("belle|2021", "Belle Reissued", Some(2021)))
+
+    rm.filmSlugs should not be theSameInstanceAs(first)
+    rm.stop()
+  }
+
+  it should "rebuild the slug map when a film enters the corpus" in {
+    val (repository, rm) = twoCityModel()
+    val first = rm.filmSlugs
+
+    repository.upsertMovie(titled("dune|1984", "Dune", Some(1984)))
+
+    rm.filmSlugs should not be theSameInstanceAs(first)
+    rm.stop()
+  }
+
+  // ── A delete of something we never held changed nothing ─────────────────────
+
+  it should "not invalidate every city when a delete names a film it does not hold" in {
+    // Deletes here are mostly RE-KEYS, so a delete for an id this model never
+    // saw is ordinary traffic — and it frees no slug, because none was taken.
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+    val modelWide    = rm.lastModified
+
+    repository.deleteMovie("never-held|1999")
+
+    rm.lastModifiedFor("london") shouldBe londonBefore
+    rm.lastModified              shouldBe modelWide
+    rm.stop()
+  }
+
+  it should "still invalidate every city when a delete removes a film it held" in {
+    val (repository, rm) = twoCityModel()
+    val londonBefore = rm.lastModifiedFor("london")
+
+    repository.deleteMovie("belle|2021")
+
+    rm.lastModifiedFor("london") should be > londonBefore
+    rm.stop()
+  }
 }
