@@ -82,15 +82,22 @@ route:
     # never an alert that stops arriving.
     #
     # TWO ROUTES RATHER THAN ONE, so the cadences below stay exactly what the severity routes that
-    # follow would have given them. A single `alertname =~ "Filesystem.*"` route would have to pick
-    # one `repeat_interval` for both, and quietly re-time either the critical (1h) or the warning
-    # (12h). These MUST stay above the severity routes: first match wins, and a route that matched
-    # `severity` first would never reach these.
+    # follow would have given them. One route matching both severities would have to pick a single
+    # `repeat_interval`, and quietly re-time either the critical (1h) or the warning (12h). These
+    # MUST stay above the severity routes: first match wins, and a route that matched `severity`
+    # first would never reach these.
+    #
+    # WHAT THE TWO PREFIXES ACTUALLY CATCH, listed because a regex is not a list and the answer
+    # should not have to be re-derived: FilesystemSpaceLow/Critical, FilesystemInodesLow/Critical,
+    # FilesystemWillFillWithin7Days, FilesystemReadOnly, FilesystemMetricsAbsent, WorkerDown,
+    # WorkerQueueStalled, WorkerQueueGrowingUnbounded, WorkerQueueMetricsAbsent. Eleven, and every
+    # one of them is meant. `FilesystemReadOnly` lives in host-health.rules rather than with the
+    # other six and is easy to miss when reading this — a root that has gone read-only is exactly
+    # the kind of thing worth a mailbox, so it is kept, deliberately rather than by accident.
     #
     # THE `absent()` COMPANIONS MATCH TOO, deliberately: "nothing is watching any disk" and
     # "nothing is publishing queue metrics" belong with the alerts they cover rather than with the
-    # fleet-wide noise. `WorkerDown` matches on the same prefix and wants the mailbox for the same
-    # reason the queue rules do.
+    # fleet-wide noise.
     - matchers:
         - alertname =~ "Filesystem.*|Worker.*"
         - severity = "critical"

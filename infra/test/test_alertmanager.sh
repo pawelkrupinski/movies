@@ -99,6 +99,9 @@ route_is telegram-and-email alertname=FilesystemInodesLow severity=warning host=
 route_is telegram-and-email alertname=FilesystemWillFillWithin7Days severity=warning host=mongo-1
 # "nothing is watching any disk" belongs with the disk alerts, and carries no host label.
 route_is telegram-and-email alertname=FilesystemMetricsAbsent severity=warning
+# LIVES IN host-health.rules, NOT WITH THE OTHER SIX, so it is the one the prefix catches that a
+# reader of filesystem-capacity.rules would not think to look for. Pinned so that stays deliberate.
+route_is telegram-and-email alertname=FilesystemReadOnly severity=critical host=mongo-1
 
 # THE WORKER PIPELINE EARNS THE MAILBOX FOR A DIFFERENT REASON than the disks: a stalled or
 # runaway queue does not 500 anything. The site keeps serving and the listings just go stale, which
