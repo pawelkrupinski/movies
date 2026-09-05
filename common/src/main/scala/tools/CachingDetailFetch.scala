@@ -1,8 +1,8 @@
 package tools
 
-import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Ticker}
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine, Ticker, Weigher}
 
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.{Executor, ForkJoinPool, TimeUnit}
 import scala.concurrent.duration._
 
 /**
@@ -17,6 +17,13 @@ import scala.concurrent.duration._
  * instead of hundreds of times a day. It must NOT wrap the listing/day fetches:
  * those carry volatile showtimes and have to stay live.
  *
+ * The cache is bounded by the BYTES its bodies retain, not by how many there are.
+ * Detail pages run from a few KB to 1.4 MB, so an entry count says nothing about
+ * memory: with the old `maximumSize(10000)` bound, worker-pl was found holding
+ * 1,015 bodies worth 228 MiB — 73% of its 313 MiB old gen, and its tenured floor
+ * pinned at the cap doing two full GCs a minute — while still nine thousand
+ * entries short of the bound that was supposed to stop it. See [[maxBytes]].
+ *
  * Successes are cached, and so are PERMANENT failures — a 404/410 describes the
  * URL, not the moment, so re-asking every pass buys the same answer while the film
  * whose detail it is stays gated on a fetch that will not start succeeding. Every
@@ -29,8 +36,13 @@ import scala.concurrent.duration._
 class CachingDetailFetch(
   underlying: HttpFetch,
   ttl:        FiniteDuration = CachingDetailFetch.DefaultTtl,
-  maxEntries: Long           = 10000,
-  ticker:     Ticker         = Ticker.systemTicker()
+  maxBytes:   Long           = CachingDetailFetch.DefaultMaxBytes,
+  ticker:     Ticker         = Ticker.systemTicker(),
+  // WHERE EVICTION RUNS, and the only reason it is a parameter — same trade-off
+  // `OgCardCache` documents at length: Caffeine defers maintenance here, so a
+  // spec asserting on the bound has to run it on the calling thread to know it
+  // has happened. Production keeps the common pool.
+  maintenance: Executor      = ForkJoinPool.commonPool()
 ) extends HttpFetch {
 
   // One cache for both outcomes: a URL is either a body or a remembered permanent
@@ -39,7 +51,9 @@ class CachingDetailFetch(
   private val cache: Cache[String, CachingDetailFetch.Outcome] =
     Caffeine.newBuilder()
       .expireAfterWrite(ttl.toMillis, TimeUnit.MILLISECONDS)
-      .maximumSize(maxEntries)
+      .maximumWeight(maxBytes)
+      .weigher(CachingDetailFetch.RetainedBytes)
+      .executor(maintenance)
       .ticker(ticker)
       .build()
 
@@ -79,11 +93,48 @@ class CachingDetailFetch(
 object CachingDetailFetch {
 
   /** What the cache holds for a URL: the body, or the permanent failure that URL gives. */
-  private sealed trait Outcome
-  private final case class Body(body: String) extends Outcome
-  private final case class Gone(code: Int)    extends Outcome
+  private[tools] sealed trait Outcome
+  private[tools] final case class Body(body: String) extends Outcome
+  private[tools] final case class Gone(code: Int)    extends Outcome
 
   /** Detail metadata is effectively static per film; refreshing twice a day is
    *  plenty fresh while cutting ~all of the redundant per-pass detail fetches. */
   val DefaultTtl: FiniteDuration = 12.hours
+
+  /**
+   * What one cache may retain, in bytes of body.
+   *
+   * MEASURED, not guessed, from worker-pl's heap on 2026-09-05: 1,015 live
+   * bodies, median 142 KiB, mean 236 KiB, largest 1.39 MiB. The widest single
+   * venue in that dump held 54 pages, so 8 MiB — ~56 median pages — covers the
+   * largest working set actually observed while the pathological megabyte pages
+   * get evicted instead of pinned.
+   *
+   * The bound is PER INSTANCE and every bespoke cinema client builds its own, so
+   * the Polish worker's ~17 of them cap out around 136 MiB against a 313 MiB
+   * tenured space — inside it, but not by a wide margin. Giving those clients one
+   * shared cache (the seam `CinemaScraperCatalog.chainDetailCache` already draws
+   * for the chains) would make this one budget rather than seventeen.
+   */
+  val DefaultMaxBytes: Long = 8L * 1024 * 1024
+
+  /**
+   * What an entry actually costs the heap.
+   *
+   * A `String` holds one byte per char only while every char fits in Latin-1;
+   * one that doesn't is stored UTF-16, at two. That is not a rounding error
+   * here — it is half of why the POLISH worker blew its heap where the larger UK
+   * corpus did not: `ł`, `ż` and `ś` are all outside Latin-1, so essentially
+   * every Polish detail page costs double what its length suggests. A remembered
+   * failure retains nothing but its own small record, so it weighs 1 — never 0,
+   * which Caffeine reads as "may never be evicted".
+   */
+  private[tools] val RetainedBytes: Weigher[String, Outcome] =
+    (_: String, outcome: Outcome) =>
+      outcome match {
+        case Body(body) =>
+          val perChar = if (body.chars().anyMatch(_ > 0xFF)) 2 else 1
+          math.max(1, math.min(Int.MaxValue.toLong, body.length.toLong * perChar).toInt)
+        case Gone(_) => 1
+      }
 }
