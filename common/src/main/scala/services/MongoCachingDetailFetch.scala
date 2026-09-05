@@ -1,12 +1,10 @@
 package services
 
-import com.mongodb.client.model.{IndexOptions => JIndexOptions}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Indexes, Updates}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, documentToUntypedDocument}
+import org.mongodb.scala.model.{Filters, Updates}
 import play.api.Logging
 import tools.{HttpFetch, HttpStatusException}
 
-import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -34,22 +32,26 @@ class MongoCachingDetailFetch(
   // Cinema City 6h), so the second `createIndex` was rejected for redefining
   // `fetchedAt_1` and one chain silently ran on the other's expiry — logged as a warning
   // and otherwise invisible. A cache keyed by a TTL has to be named by whoever owns that
-  // TTL; there is no sensible shared default.
+  // TTL; there is no sensible shared default. ONE OWNER PER COLLECTION IS STILL THE RULE:
+  // `MongoTtlIndex.reconcile` below now applies whatever expiry it is handed, so two
+  // owners sharing a collection would take turns rewriting the index instead of one
+  // silently losing — visible rather than invisible, but no more correct.
   collectionName: String
 ) extends HttpFetch with Logging {
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(collectionName))
 
-  // TTL index built in a daemon thread so construction never blocks on Mongo.
+  // TTL index reconciled in a daemon thread so construction never blocks on Mongo.
+  //
+  // `MongoTtlIndex.reconcile` RATHER THAN A BARE `createIndex`, because a bare one cannot
+  // change an expiry that already exists — it is rejected with `IndexOptionsConflict` and
+  // the collection keeps reaping on the OLD ttl. So every past change to one of these
+  // durations silently did not take on any collection that had already been indexed: the
+  // constructor argument said 2h and Mongo went on expiring at 6h, with one warning line
+  // to show for it. See that helper's comment for the same defect in two other places.
   coll.foreach { c =>
     val thread = new Thread(() => {
-      Try(
-        Await.result(
-          c.createIndex(Indexes.ascending("fetchedAt"),
-            new JIndexOptions().expireAfter(ttl.toSeconds, TimeUnit.SECONDS)).toFuture(),
-          10.seconds)
-      ).recover { case exception => logger.warn(s"Detail-cache index creation failed: ${exception.getMessage}") }
-      ()
+      db.foreach(MongoTtlIndex.reconcile(_, c, "fetchedAt", ttl.toSeconds, s"Detail-cache $collectionName"))
     }, "detail-cache-init")
     thread.setDaemon(true)
     thread.start()

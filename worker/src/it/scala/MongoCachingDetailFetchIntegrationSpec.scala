@@ -1,6 +1,6 @@
 package integration
 
-import org.mongodb.scala.{MongoClient, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, ObservableFuture, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -99,6 +99,36 @@ class MongoCachingDetailFetchIntegrationSpec extends AnyFlatSpec with Matchers w
     a [tools.HttpStatusException] should be thrownBy server.get(url)
     awaitStored(url)
     the [tools.HttpStatusException] thrownBy server.get(url) should have (Symbol("code") (410))
+  }
+
+  /** THE TTL IS A CONSTRUCTOR ARGUMENT AND HAS TO MEAN SOMETHING. `createIndex` cannot
+   *  alter an existing expiry — it is rejected `IndexOptionsConflict` — so before
+   *  `MongoTtlIndex` this collection went on reaping at whatever duration it was FIRST
+   *  indexed with, no matter what the caller asked for afterwards, with one warning line
+   *  as the only trace. Every change to one of these durations was silently ignored. */
+  "A detail cache whose TTL has changed" should "reap on the NEW duration, not the one it was first indexed with" in {
+    val name = s"__integration_test_detail_ttl_${System.nanoTime()}"
+    try {
+      new MongoCachingDetailFetch(new CountingFetch, Some(db), 6.hours, name)
+      awaitExpiry(name, 6.hours.toSeconds)
+
+      // A second owner-lifetime with a different duration — a redeploy after the constant moved.
+      new MongoCachingDetailFetch(new CountingFetch, Some(db), 2.hours, name)
+      awaitExpiry(name, 2.hours.toSeconds)
+    } finally Await.ready(db.getCollection(name).drop().toFuture(), 10.seconds)
+  }
+
+  /** The index is built on a daemon thread, so poll for it rather than race a sleep — the
+   *  same reason `awaitStored` exists. Fails with the expiry it actually found, so a
+   *  regression here says WHICH duration won. */
+  private def awaitExpiry(collection: String, wantedSeconds: Long): Unit = {
+    val deadline = System.currentTimeMillis() + 10.seconds.toMillis
+    def current: Option[Long] =
+      Await.result(db.getCollection(collection).listIndexes().toFuture(), 5.seconds)
+        .find(_.get("key").exists(_.asDocument().containsKey("fetchedAt")))
+        .flatMap(_.get("expireAfterSeconds")).map(_.asNumber().longValue())
+    while (System.currentTimeMillis() < deadline && !current.contains(wantedSeconds)) Thread.sleep(25)
+    current shouldBe Some(wantedSeconds)
   }
 
   it should "NOT be remembered when the failure is transient, so a 5xx still retries" in {
