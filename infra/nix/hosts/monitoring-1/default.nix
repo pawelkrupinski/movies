@@ -109,10 +109,25 @@ in
   # again; on rules whose shortest `for:` is 5m that is not a real risk of missing anything.
   #
   # STILL NAMED UNITS, NOT `[ "*" ]`, for the reason modules/fleet/default.nix gives about
-  # `reloadableUnits`: alertmanager.service would be equally cheap to bounce, but nothing has yet
-  # needed it to be, and a wildcard also forgives every unit nobody has thought about. The fleet's
+  # `reloadableUnits`: a wildcard forgives every unit nobody has thought about. The fleet's
   # neverDisturbUnits floor (sshd, mongodb, k3s) is checked first and still applies.
-  fleet.autoApply.restartableUnits = [ "grafana.service" "prometheus.service" ];
+  #
+  # ALERTMANAGER JOINED THE LIST ON 2026-09-05, which is the case this comment used to describe as
+  # hypothetical ("equally cheap to bounce, but nothing has yet needed it to be"). Something needed
+  # it: alertmanager.yaml gained an email receiver, and roles/prometheus.nix sets `restartTriggers`
+  # on that file precisely so a changed route is READ rather than silently written -- so every
+  # future edit to a route or a receiver disturbs this unit. Without it here, each of those edits
+  # would refuse the whole switch and hold back every other merge staged onto this host.
+  #
+  # THE COST IS SMALL AND BOUNDED. A bounce loses no alert state that matters: silences and the
+  # notification log live under `--storage.path` on disk, and an alert mid-`group_wait` is re-sent
+  # by the next evaluation. What it does lose is in-flight grouping, which is seconds.
+  #
+  # AND IT DOES NOT COVER ITS OWN INTRODUCTION. `nixos-auto-apply` reads this list from the closure
+  # it is RUNNING, not the one it is judging, so the switch that ADDS a name here is weighed
+  # without it -- the same caveat container-image-gc.nix documents. Expect this one to want a hand
+  # apply; `AutoApplyBlocked` in nixos-deploy.rules says so within a day if it does.
+  fleet.autoApply.restartableUnits = [ "alertmanager.service" "grafana.service" "prometheus.service" ];
 
   # WHO THIS API SERVER WILL BELIEVE BESIDES ITS OWN CERTIFICATES. Headlamp
   # (movies-gitops/headlamp/) logs a person in with Google and then presents that token to the

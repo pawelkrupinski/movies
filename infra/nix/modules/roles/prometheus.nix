@@ -343,11 +343,23 @@ in
 
     alertEmailFrom = lib.mkOption {
       type = lib.types.str;
-      default = "alerts@kinowo.net";
+      default = "onboarding@resend.dev";
       description = ''
-        Envelope sender. IT MUST BE AT A DOMAIN THE RELAY HAS VERIFIED or the relay accepts the
-        submission and drops the message, which is the failure mode this whole stack exists to
-        avoid. kinowo.net is on Cloudflare, so verifying it is a DNS record rather than a project.
+        Envelope sender. IT MUST BE AT A DOMAIN THE RELAY HAS VERIFIED, and this account has
+        verified none -- MEASURED, not assumed: submitting as `alerts@kinowo.net` over the real
+        SMTP path returns `550 The kinowo.net domain is not verified`, while
+        `onboarding@resend.dev` is accepted and the Resend API reports the message `delivered`.
+
+        `onboarding@resend.dev` IS RESEND'S SHARED SANDBOX SENDER AND IT HAS ONE LIMIT THAT
+        MATTERS HERE: it can only deliver to the address that owns the Resend account. That is
+        exactly the one recipient this fleet has, so it costs nothing today — but adding a second
+        recipient later will silently fail until a domain is verified, which is the trap worth
+        knowing about before somebody adds one.
+
+        THE UPGRADE IS A DNS RECORD, NOT A PROJECT: verify kinowo.net (it is already on
+        Cloudflare) at https://resend.com/domains, then set this to `alerts@kinowo.net`. Worth
+        doing before the mailbox matters — a sandbox sender is also the first thing a provider
+        rate-limits.
       '';
     };
 
