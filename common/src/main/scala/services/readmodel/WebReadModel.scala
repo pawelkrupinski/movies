@@ -118,6 +118,19 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
    *  city-scopable; a change to one is not. */
   private def slugKey(m: ResolvedMovie): (String, Option[Int]) = (m.title, m.releaseYear)
 
+  /** True when the two documents are equal everywhere except `synopsisByCity` —
+   *  the one field whose effect is confined to named cities. */
+  private def differsOnlyInSynopsisByCity(previous: ResolvedMovie, current: ResolvedMovie): Boolean =
+    previous.copy(synopsisByCity = current.synopsisByCity) == current
+
+  /** The city slugs whose rendered synopsis moved: an entry added, removed or
+   *  rewritten. A removal counts — that city falls back to `synopsis` and its
+   *  bytes change with it. */
+  private def citiesWithChangedSynopsis(previous: ResolvedMovie, current: ResolvedMovie): Seq[String] =
+    (previous.synopsisByCity.keySet ++ current.synopsisByCity.keySet)
+      .filter(slug => previous.synopsisByCity.get(slug) != current.synopsisByCity.get(slug))
+      .toSeq
+
   private def citiesScreening(filmId: String): Seq[String] =
     Option(filmCities.get(filmId)).map(_.asScala.toSeq).getOrElse(Nil)
 
@@ -190,10 +203,19 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
     // any client see different bytes?".
     if (!previous.contains(m)) {
       // A film ENTERING the corpus, or changing title/year, reshuffles addresses
-      // corpus-wide (see `_globalFloor`). Anything else -- a rating refresh, a new
-      // poster, a synopsis -- only changes the bytes of the cities screening it.
+      // corpus-wide (see `_globalFloor`).
       if (!previous.exists(slugKey(_) == slugKey(m))) touchEveryCity()
-      else citiesScreening(m._id).foreach(touchCity)
+      // A blurb that landed for ONE city is one city's change. `synopsisFor`
+      // reads that city's `synopsisByCity` entry and falls back to the
+      // city-independent `synopsis` only when it has none, so when the document
+      // differs in NOTHING ELSE, exactly the cities whose entry moved render
+      // different bytes -- including one whose entry was removed, which now
+      // falls back. Everything else (a rating, a poster, the fallback synopsis)
+      // reaches every city screening the film.
+      else previous match {
+        case Some(p) if differsOnlyInSynopsisByCity(p, m) => citiesWithChangedSynopsis(p, m).foreach(touchCity)
+        case _                                            => citiesScreening(m._id).foreach(touchCity)
+      }
     }
   }
 

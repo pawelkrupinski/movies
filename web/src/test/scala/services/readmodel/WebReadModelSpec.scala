@@ -477,4 +477,74 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     regressions.get() shouldBe 0
     rm.stop()
   }
+
+  // ── A per-city synopsis change is a per-city change ─────────────────────────
+  //
+  // `ResolvedMovie.synopsisByCity` holds one blurb per city, and
+  // `synopsisFor(city)` reads that city's entry before falling back to the
+  // city-independent `synopsis`. So a cinema blurb landing for Warsaw changes
+  // WARSAW's bytes and nobody else's — yet a movie upsert bumped every city
+  // screening the film, because the document as a whole had changed.
+
+  private def screenedInBoth(): (InMemoryReadModelRepository, WebReadModel) = {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)))
+    repository.upsertScreening(screening("s-waw", "belle|2021", "warszawa"))
+    repository.upsertScreening(screening("s-poz", "belle|2021", "poznan"))
+    (repository, started(repository))
+  }
+
+  it should "bump only the city whose synopsis override changed" in {
+    val (repository, rm) = screenedInBoth()
+    val poznanBefore = rm.lastModifiedFor("poznan")
+    val warsawBefore = rm.lastModifiedFor("warszawa")
+
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021))
+      .copy(synopsisByCity = Map("warszawa" -> "Muranow's own blurb")))
+
+    rm.lastModifiedFor("warszawa") should be > warsawBefore
+    rm.lastModifiedFor("poznan")   shouldBe poznanBefore
+    rm.stop()
+  }
+
+  it should "bump a city whose synopsis override was REMOVED, since it falls back now" in {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021))
+      .copy(synopsisByCity = Map("warszawa" -> "blurb", "poznan" -> "other")))
+    repository.upsertScreening(screening("s-waw", "belle|2021", "warszawa"))
+    repository.upsertScreening(screening("s-poz", "belle|2021", "poznan"))
+    val rm = started(repository)
+    val poznanBefore = rm.lastModifiedFor("poznan")
+    val warsawBefore = rm.lastModifiedFor("warszawa")
+
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021))
+      .copy(synopsisByCity = Map("poznan" -> "other")))
+
+    rm.lastModifiedFor("warszawa") should be > warsawBefore
+    rm.lastModifiedFor("poznan")   shouldBe poznanBefore
+    rm.stop()
+  }
+
+  it should "still bump EVERY screening city when the fallback synopsis changes" in {
+    // Cities with no override of their own render `synopsis`, so a change to it
+    // reaches all of them. The narrowing must not swallow this.
+    val (repository, rm) = screenedInBoth()
+    val poznanBefore = rm.lastModifiedFor("poznan")
+
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021))
+      .copy(synopsis = Some("a new city-independent blurb")))
+
+    rm.lastModifiedFor("poznan") should be > poznanBefore
+    rm.stop()
+  }
+
+  it should "still bump every screening city when a non-synopsis field changes" in {
+    val (repository, rm) = screenedInBoth()
+    val poznanBefore = rm.lastModifiedFor("poznan")
+
+    repository.upsertMovie(titled("belle|2021", "Belle", Some(2021)).copy(weightedRating = 9.2))
+
+    rm.lastModifiedFor("poznan") should be > poznanBefore
+    rm.stop()
+  }
 }
