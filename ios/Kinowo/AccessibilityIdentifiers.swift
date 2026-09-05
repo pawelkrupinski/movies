@@ -37,6 +37,19 @@ enum A11y {
         static let ageRating = "filmcard.ageRating"
     }
 
+    /// A poster rendered by `PosterChainImage` — the listing card, the
+    /// detail header and the full-screen viewer all go through it, so these
+    /// two identifiers say which of the two terminal states a poster is in
+    /// wherever it appears.
+    enum Poster {
+        /// A poster that actually decoded — the primary URL or one of the
+        /// fallbacks came back with image bytes.
+        static let loaded  = "poster.loaded"
+        /// The "Brak plakatu" placeholder: the whole chain was walked and
+        /// nothing loaded.
+        static let missing = "poster.missing"
+    }
+
     /// Per-film detail screen.
     enum FilmDetail {
         /// The header poster — tap or long-press opens the full-screen viewer.

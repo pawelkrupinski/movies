@@ -94,6 +94,8 @@
 		DD00000000000000000036 /* FormatTokenFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000036 /* FormatTokenFilter.swift */; };
 		DD00000000000000000050 /* PosterStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000050 /* PosterStore.swift */; };
 		DD00000000000000000051 /* CachedAsyncImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000051 /* CachedAsyncImage.swift */; };
+		DD000000000000000004C1 /* DetailPosterCacheUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC000000000000000004C1 /* DetailPosterCacheUITests.swift */; };
+		DD00000000000000000052 /* PosterChainImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000052 /* PosterChainImage.swift */; };
 		DD00000000000000000300 /* City.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000300 /* City.swift */; };
 		DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000304 /* HiddenFilmsFilter.swift */; };
 		DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000303 /* CitySwitchSuppressor.swift */; };
@@ -200,6 +202,8 @@
 		CC00000000000000000036 /* FormatTokenFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormatTokenFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000050 /* PosterStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterStore.swift; sourceTree = "<group>"; };
 		CC00000000000000000051 /* CachedAsyncImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CachedAsyncImage.swift; sourceTree = "<group>"; };
+		CC000000000000000004C1 /* DetailPosterCacheUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailPosterCacheUITests.swift; sourceTree = "<group>"; };
+		CC00000000000000000052 /* PosterChainImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PosterChainImage.swift; sourceTree = "<group>"; };
 		CC00000000000000000300 /* City.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = City.swift; sourceTree = "<group>"; };
 		CC00000000000000000304 /* HiddenFilmsFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFilmsFilter.swift; sourceTree = "<group>"; };
 		CC00000000000000000303 /* CitySwitchSuppressor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CitySwitchSuppressor.swift; sourceTree = "<group>"; };
@@ -362,6 +366,7 @@
 				CC00000000000000000019 /* FlowLayoutMath.swift */,
 				CC00000000000000000036 /* FormatTokenFilter.swift */,
 				CC00000000000000000051 /* CachedAsyncImage.swift */,
+				CC00000000000000000052 /* PosterChainImage.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -391,6 +396,7 @@
 				CC00000000000000000307 /* CityChoiceSearchUITests.swift */,
 				CC000000000000000004A1 /* DetailShowsAllDaysUITests.swift */,
 				CC000000000000000004B1 /* CinemaLinkRowUITests.swift */,
+				CC000000000000000004C1 /* DetailPosterCacheUITests.swift */,
 			);
 			path = KinowoUITests;
 			sourceTree = "<group>";
@@ -548,6 +554,7 @@
 				DD00000000000000000036 /* FormatTokenFilter.swift in Sources */,
 				DD00000000000000000050 /* PosterStore.swift in Sources */,
 				DD00000000000000000051 /* CachedAsyncImage.swift in Sources */,
+				DD00000000000000000052 /* PosterChainImage.swift in Sources */,
 				DD00000000000000000300 /* City.swift in Sources */,
 				DD00000000000000000E01 /* Country.swift in Sources */,
 				DD00000000000000000E07 /* CatalogCache.swift in Sources */,
@@ -586,6 +593,7 @@
 				DD00000000000000000307 /* CityChoiceSearchUITests.swift in Sources */,
 				DD000000000000000004A1 /* DetailShowsAllDaysUITests.swift in Sources */,
 				DD000000000000000004B1 /* CinemaLinkRowUITests.swift in Sources */,
+				DD000000000000000004C1 /* DetailPosterCacheUITests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

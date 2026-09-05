@@ -221,15 +221,31 @@ extension RepertoireStore {
         ProcessInfo.processInfo.environment["KINOWO_UITEST_FIXTURE"] == "1"
     }
 
+    /// A poster URL that can only ever resolve from `PosterStore`'s on-disk
+    /// cache: `.invalid` is the reserved TLD that never resolves, so any
+    /// screen that re-downloads instead of reading the cache shows "Brak
+    /// plakatu". `KINOWO_UITEST_SEED_POSTER=1` primes the cache for it (see
+    /// `seedUITestPoster`) and hands it to the fixture films.
+    static let uiTestSeededPosterURL = URL(string: "https://poster.invalid/fixture-poster.png")!
+
+    /// Off by default: giving every fixture card a poster changes the grid's
+    /// layout, which the spacing/inset suites measure. Only the poster-cache
+    /// suite turns it on.
+    static var uiTestPosterSeedEnabled: Bool {
+        ProcessInfo.processInfo.environment["KINOWO_UITEST_SEED_POSTER"] == "1"
+    }
+
     /// Deterministic stand-in repertoire served when the fixture hook is on —
     /// enough cards to fill the grid well past the first row so the top
-    /// content inset actually matters. No poster URLs: the cards lay out from
-    /// their fixed aspect ratio, keeping the test fully offline.
+    /// content inset actually matters. No poster URLs unless
+    /// `KINOWO_UITEST_SEED_POSTER=1`: the cards lay out from their fixed
+    /// aspect ratio, keeping the test fully offline.
     static var uiTestFixture: [Film] {
-        (1...12).map { n in
+        let poster = uiTestPosterSeedEnabled ? uiTestSeededPosterURL : nil
+        return (1...12).map { n in
             Film(
                 title: "Film \(n)",
-                posterURL: nil,
+                posterURL: poster,
                 fallbackPosterURLs: [],
                 runtimeMinutes: 120,
                 releaseYear: 2026,

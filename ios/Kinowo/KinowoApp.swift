@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 @main
 struct KinowoApp: App {
@@ -27,7 +28,29 @@ struct KinowoApp: App {
             userPublisher: authService.$user.eraseToAnyPublisher(),
             client: HttpUserStateClient()
         ))
+        #if DEBUG
+        Self.seedUITestPoster()
+        #endif
     }
+
+    #if DEBUG
+    /// `KINOWO_UITEST_SEED_POSTER=1`: put one poster in `PosterStore` before
+    /// the first frame, under a URL nothing can download
+    /// (`RepertoireStore.uiTestSeededPosterURL`). Every screen that reads the
+    /// cache renders it; any screen that re-downloads instead shows "Brak
+    /// plakatu" — which is how `DetailPosterCacheUITests` tells the two apart
+    /// without a network.
+    private static func seedUITestPoster() {
+        guard RepertoireStore.uiTestPosterSeedEnabled else { return }
+        let size = CGSize(width: 60, height: 90)
+        let image = UIGraphicsImageRenderer(size: size).image { context in
+            UIColor.systemTeal.setFill()
+            context.fill(CGRect(origin: .zero, size: size))
+        }
+        guard let data = image.pngData() else { return }
+        PosterStore.shared.seed(data, for: RepertoireStore.uiTestSeededPosterURL)
+    }
+    #endif
 
     var body: some Scene {
         WindowGroup {

@@ -87,6 +87,7 @@ let package = Package(
                 "Views/FiltersBar.swift",
                 "Views/FlowLayout.swift",
                 "Views/Palette.swift",
+                "Views/PosterChainImage.swift",
                 "Views/RatingBadgesView.swift",
                 "Views/RatingPillStyle.swift",
                 "Views/ShowingsView.swift",

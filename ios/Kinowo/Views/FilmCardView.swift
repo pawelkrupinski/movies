@@ -197,9 +197,20 @@ private struct PosterView: View {
             // Mirror the web's `<img data-fallbacks=... onerror=...>` from
             // _movieCard: try the primary URL first, then walk through
             // every non-primary cinema/TMDB/IMDb poster on .failure.
-            // AsyncImage has no built-in fallback so we own a `@State`
-            // index that advances after each error.
-            PosterImage(primary: url, fallbacks: film.fallbackPosterURLs, noPoster: { noPoster })
+            // `PosterChainImage` owns that walk (and the on-disk cache) for
+            // the detail header too, so the two screens can't disagree about
+            // whether a film has a poster.
+            PosterChainImage(
+                primary: url,
+                fallbacks: film.fallbackPosterURLs,
+                contentMode: .fill,
+                loading: {
+                    Rectangle()
+                        .fill(Color(red: 0.16, green: 0.16, blue: 0.24))
+                        .overlay(ProgressView().tint(.gray))
+                },
+                noPoster: { noPoster }
+            )
         } else {
             noPoster
         }
@@ -213,6 +224,7 @@ private struct PosterView: View {
                     .font(.system(size: 12)).italic()
                     .foregroundColor(.secondary)
             )
+            .accessibilityIdentifier(A11y.Poster.missing)
     }
 
     private var hideButton: some View {
@@ -226,99 +238,6 @@ private struct PosterView: View {
                 .background(.black.opacity(0.55), in: Circle())
         }
         .buttonStyle(.plain)
-    }
-
-}
-
-/// Walking AsyncImage: tries `primary`, then every entry in `fallbacks`
-/// in order on `.failure`. Mirrors `_movieCard`'s
-/// `<img data-fallbacks=... onerror=...>` so cinema-side 4xxs walk
-/// through other cinemas + TMDB + IMDb before "Brak plakatu" shows.
-///
-/// When the whole chain is exhausted (no URL loaded) we don't sit on
-/// "Brak plakatu" forever — an exponential-backoff retry restarts
-/// from the primary URL after 2s, 6s, 18s, 54s, 162s (then 162s
-/// forever). Each retry bumps `generation`, used as the SwiftUI
-/// `.id(...)` to remount the subtree and force a fresh load: the
-/// remount re-runs `CachedAsyncImage`'s `.task`, and `PosterStore`
-/// never caches a failure, so the URL is genuinely re-fetched. The
-/// cycle resets to 2s on every `scenePhase == .active` transition —
-/// opening the app or returning from background gives the cinema CDN
-/// one more chance.
-private struct PosterImage<NoPoster: View>: View {
-    let primary: URL
-    let fallbacks: [URL]
-    @ViewBuilder var noPoster: () -> NoPoster
-
-    @State private var index = 0
-    @State private var generation = 0
-    @State private var cycleAttempt = 0
-    @State private var retryTask: Task<Void, Never>?
-    @Environment(\.scenePhase) private var scenePhase
-
-    var body: some View {
-        // index 0 = primary; 1…N = fallbacks[i-1]. Out-of-bounds means
-        // we've exhausted the chain and `.failure` should show
-        // noPoster + schedule the next retry.
-        let baseURL: URL? =
-            index == 0 ? primary
-            : (index - 1 < fallbacks.count ? fallbacks[index - 1] : nil)
-        // `CachedAsyncImage` (not `AsyncImage`) so a poster downloads once and
-        // is served from `PosterStore`'s on-disk cache thereafter; it emits the
-        // same `AsyncImagePhase` values, so the fallback-walk and backoff-retry
-        // logic below is unchanged. A retry remounts this view via
-        // `.id(generation)`, which re-runs the load — no cache-busting URL
-        // token needed (`PosterStore` bypasses `URLCache` and never caches a
-        // failure).
-        CachedAsyncImage(url: baseURL) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().aspectRatio(contentMode: .fill)
-            case .empty:
-                Rectangle()
-                    .fill(Color(red: 0.16, green: 0.16, blue: 0.24))
-                    .overlay(ProgressView().tint(.gray))
-            case .failure:
-                if index < fallbacks.count {
-                    Color.clear.onAppear { index += 1 }
-                } else {
-                    noPoster()
-                        .onAppear { scheduleNextRetry() }
-                }
-            @unknown default:
-                noPoster()
-            }
-        }
-        .id(generation)
-        .onChange(of: scenePhase) { phase in
-            // Bringing the app to the foreground resets the backoff
-            // clock so a flaky CDN gets a fresh attempt immediately,
-            // not on the 64-second tail of an old cycle. Only fire the
-            // restart when we're currently sitting on a failed chain —
-            // a successfully loaded poster shouldn't be re-fetched.
-            guard phase == .active, index > fallbacks.count else { return }
-            retryTask?.cancel()
-            retryTask = nil
-            cycleAttempt = 0
-            index = 0
-            generation += 1
-        }
-        .onDisappear { retryTask?.cancel(); retryTask = nil }
-    }
-
-    private func scheduleNextRetry() {
-        // `noPoster`'s onAppear can fire more than once (scroll
-        // off+on, sibling state churn). Don't stack retry tasks.
-        guard retryTask == nil else { return }
-        let delaySeconds = RetryBackoff.seconds(forAttempt: cycleAttempt)
-        retryTask = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: UInt64(delaySeconds) * 1_000_000_000)
-            if Task.isCancelled { return }
-            cycleAttempt += 1
-            index = 0
-            generation += 1
-            retryTask = nil
-        }
     }
 
 }

@@ -151,11 +151,7 @@ struct FilmDetailView: View {
     @ViewBuilder
     private var poster: some View {
         if let primary = film.posterURL {
-            DetailPosterImage(
-                primary: primary,
-                fallbacks: film.fallbackPosterURLs,
-                noPoster: { noPosterPlaceholder }
-            )
+            detailPoster(primary: primary, fallbacks: film.fallbackPosterURLs) { noPosterPlaceholder }
         } else {
             noPosterPlaceholder
         }
@@ -170,6 +166,7 @@ struct FilmDetailView: View {
                     .font(.system(size: 12)).italic()
                     .foregroundColor(.secondary)
             )
+            .accessibilityIdentifier(A11y.Poster.missing)
     }
 
     @ViewBuilder
@@ -318,47 +315,35 @@ struct FilmDetailView: View {
     }
 }
 
-/// Same walking-AsyncImage as `FilmCardView.PosterImage` but sized for
-/// the detail-page header (large frame, contentMode .fit). Kept as a
-/// separate type so the listing card's variant can keep its
-/// aspect-ratio-fit clipping behaviour without leaking sizing
-/// assumptions across pages.
-private struct DetailPosterImage<NoPoster: View>: View {
-    let primary: URL
-    let fallbacks: [URL]
-    @ViewBuilder var noPoster: () -> NoPoster
-    @State private var index = 0
-
-    var body: some View {
-        let url: URL? =
-            index == 0 ? primary
-            : (index - 1 < fallbacks.count ? fallbacks[index - 1] : nil)
-        AsyncImage(url: url) { phase in
-            switch phase {
-            case .success(let image):
-                image.resizable().aspectRatio(contentMode: .fit)
-            case .empty:
-                Rectangle()
-                    .fill(Color.kinowoPanel)
-                    .aspectRatio(PosterMetrics.aspectRatio, contentMode: .fit)
-                    .overlay(ProgressView().tint(.gray))
-            case .failure:
-                if index < fallbacks.count {
-                    Color.clear.onAppear { index += 1 }
-                } else {
-                    noPoster()
-                }
-            @unknown default:
-                noPoster()
-            }
-        }
-    }
+/// The detail header / full-screen poster: `PosterChainImage` sized for a
+/// large frame (contentMode `.fit`) with the panel-coloured placeholder
+/// while the chain is being walked. A free function rather than another
+/// wrapper struct — the walk, the on-disk cache and the backoff retry all
+/// live in `PosterChainImage`, shared with the listing card.
+@ViewBuilder
+private func detailPoster<NoPoster: View>(
+    primary: URL,
+    fallbacks: [URL],
+    @ViewBuilder noPoster: @escaping () -> NoPoster
+) -> some View {
+    PosterChainImage(
+        primary: primary,
+        fallbacks: fallbacks,
+        contentMode: .fit,
+        loading: {
+            Rectangle()
+                .fill(Color.kinowoPanel)
+                .aspectRatio(PosterMetrics.aspectRatio, contentMode: .fit)
+                .overlay(ProgressView().tint(.gray))
+        },
+        noPoster: noPoster
+    )
 }
 
 /// Full-screen poster viewer presented from `FilmDetailView` on a tap or
 /// long-press of the header poster. Black backdrop, the whole poster shown
 /// (fit), pinch-to-zoom and drag-to-pan up to 4×, dismissed by a tap on the
-/// backdrop or the close button. Reuses `DetailPosterImage` so the
+/// backdrop or the close button. Reuses `detailPoster` so the
 /// fallback-walking logic lives in one place. Mirrors the Android
 /// `FullScreenPoster`.
 private struct FullScreenPosterView: View {
@@ -390,7 +375,7 @@ private struct FullScreenPosterView: View {
             Color.black.opacity(backdropOpacity).ignoresSafeArea()
                 .accessibilityIdentifier(A11y.FilmDetail.fullScreen)
 
-            DetailPosterImage(primary: primary, fallbacks: fallbacks, noPoster: { EmptyView() })
+            detailPoster(primary: primary, fallbacks: fallbacks) { EmptyView() }
                 .scaleEffect(scale)
                 .offset(x: offset.width + dismissOffset.width,
                         y: offset.height + dismissOffset.height)

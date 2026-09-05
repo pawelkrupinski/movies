@@ -47,6 +47,25 @@ final class PosterStoreTests: XCTestCase {
         XCTAssertEqual(calls, 1, "the second load must come off disk, not the network")
     }
 
+    func testSeededPosterIsServedWithoutTouchingTheNetwork() async {
+        // The UI-test fixture hook (`KinowoApp.seedUITestPoster`) leans on
+        // this: a seeded poster has to be indistinguishable from a downloaded
+        // one, so a screen reading the cache renders it even though the URL is
+        // unreachable. `DetailPosterCacheUITests` is what that buys us.
+        let counter = CallCounter()
+        let store = PosterStore(directory: directory, fetch: { _ in
+            await counter.bump()
+            return nil // the seeded URL must never be fetched
+        })
+        let seeded = url("https://poster.invalid/fixture-poster.png")
+        store.seed(Data("seeded-bytes".utf8), for: seeded)
+
+        let loaded = await store.data(for: seeded)
+        XCTAssertEqual(loaded, Data("seeded-bytes".utf8))
+        let calls = await counter.value
+        XCTAssertEqual(calls, 0, "a seeded poster must come off disk without a download")
+    }
+
     func testFailedDownloadIsNotCached() async {
         let counter = CallCounter()
         let store = PosterStore(directory: directory, fetch: { _ in

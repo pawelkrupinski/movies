@@ -60,7 +60,7 @@ enum HTMLParser {
         // source-priority order (Cinema City after Multikino, then
         // other cinemas, then TMDB, then IMDb). The web's inline
         // `onerror` pops the next URL until the chain is empty; iOS
-        // does the same in PosterImage. Without this, films whose
+        // does the same in PosterChainImage. Without this, films whose
         // primary URL 4xxs (Multikino's CDN today; Cinema City's
         // missing-upload case historically) show "Brak plakatu" on
         // iOS while the web swaps through cinema fallbacks.

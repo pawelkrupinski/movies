@@ -62,6 +62,17 @@ final class PosterStore: @unchecked Sendable {
         return downloaded
     }
 
+    /// Put `data` in the cache for `url` without going near the network.
+    ///
+    /// The one production caller is the UI-test fixture hook, which primes a
+    /// poster the app can then only render by reading the cache — that's what
+    /// makes "does this screen use the cache?" observable from a UI test at
+    /// all. `data(for:)` reads the same file, so a seeded poster is
+    /// indistinguishable from a downloaded one.
+    func seed(_ data: Data, for url: URL) {
+        try? data.write(to: fileURL(for: url), options: .atomic)
+    }
+
     /// The daily purge. `keepURLs` is every poster + fallback URL across
     /// the films currently in the repertoire; any cached file whose URL
     /// isn't among them is deleted. Because the repertoire is already

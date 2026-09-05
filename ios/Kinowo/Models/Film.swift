@@ -22,7 +22,7 @@ struct Film: Identifiable, Hashable, Codable {
     /// uploaded; some cinemas rotate slugs without redirects), so we'd
     /// rather walk through every cinema poster we know before falling
     /// back to TMDB. The web swaps via `onerror`; we do it in
-    /// `FilmCardView.PosterImage`.
+    /// `PosterChainImage`.
     ///
     /// Multikino specifically is fine from residential IPs — phones,
     /// browsers, this app's `AsyncImage` on a user's network all hit

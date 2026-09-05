@@ -1,8 +1,8 @@
 import Foundation
 
 /// Exponential-backoff timing for the poster-retry loop in
-/// `PosterImage` (Views/FilmCardView.swift). Lives in the model
-/// layer rather than alongside `PosterImage` itself so the math is
+/// `PosterChainImage` (Views/PosterChainImage.swift). Lives in the model
+/// layer rather than alongside `PosterChainImage` itself so the math is
 /// unit-testable — SwiftUI views are excluded from `KinowoCore`.
 ///
 /// Sequence: 2, 6, 18, 54, 162 (then 162 forever). Multiplier of 3

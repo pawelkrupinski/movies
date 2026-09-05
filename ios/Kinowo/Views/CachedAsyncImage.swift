@@ -6,7 +6,7 @@ import SwiftUI
 ///
 /// It hands the caller the same `AsyncImagePhase` values — `.empty` while
 /// loading, `.success` with the decoded image, `.failure` when the store
-/// returns no bytes — so `FilmCardView.PosterImage`'s fallback/retry
+/// returns no bytes — so `PosterChainImage`'s fallback/retry
 /// `switch` reads identically whether it's backed by `AsyncImage` or this.
 struct CachedAsyncImage<Content: View>: View {
     let url: URL?
@@ -29,7 +29,7 @@ struct CachedAsyncImage<Content: View>: View {
            let image = UIImage(data: data) {
             phase = .success(Image(uiImage: image))
         } else {
-            // Mirror AsyncImage's failure phase so PosterImage advances to
+            // Mirror AsyncImage's failure phase so PosterChainImage advances to
             // the next fallback / schedules a retry exactly as before.
             phase = .failure(URLError(.cannotDecodeContentData))
         }

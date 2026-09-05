@@ -9,7 +9,7 @@ import XCTest
 /// omits the `data-fallbacks` chain when no other source (TMDB, IMDb,
 /// another cinema) carries an alternative poster. The web's
 /// `<img onerror>` walks the empty fallback chain straight to
-/// `.no-poster`; iOS does the same via `PosterImage`.
+/// `.no-poster`; iOS does the same via `PosterChainImage`.
 ///
 /// User-visible symptom we're guarding against: a multikino-only film
 /// renders fine in the browser (Multikino's CDN accepts a referer-
