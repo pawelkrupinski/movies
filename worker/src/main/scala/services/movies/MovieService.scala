@@ -1007,7 +1007,18 @@ class MovieService(
     // persisted year still wins. `ImdbIdResolver.resolve` already reads the
     // cinema-reported years exactly this way.
     val reportedYears = row.data.values.flatMap(_.releaseYear).toSeq.distinct.sorted
-    val effectiveYear = year
+    // A key year STAMPED FROM A GUESS is not evidence — it is the guess, handed
+    // back as if it were a fact. `MovieCache.settleResolved` re-keys a yearless row
+    // onto the year of whatever film resolved it, so a TitleOnly conclusion writes
+    // its own answer into the key; every later attempt then searches that year and
+    // finds the same film, however loudly the cinemas disagree. Prod's
+    // `homosapiens|1960` was keyed 1960 because a title-only search picked a
+    // 9-minute 1960 short, while twelve venues published 2025. So a row whose
+    // conclusion was TitleOnly falls through to what the CINEMAS published — the one
+    // year here not derived from the resolution being re-examined. Any stronger
+    // basis keeps its year: those were narrowed by evidence in the first place.
+    val keyYearIsEvidence = !row.tmdbBasis.flatMap(TmdbBasis.parse).contains(TmdbBasis.TitleOnly)
+    val effectiveYear = Option.when(keyYearIsEvidence)(year).flatten
       .orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
       .orElse(reportedYears.headOption)
     val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle, cache.normalizer)

@@ -189,4 +189,45 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     row.flatMap(_.tmdbId)    shouldBe Some(Correct)
     row.flatMap(_.tmdbBasis) shouldBe Some(services.resolution.TmdbBasis.DirectorWalk.toString)
   }
+
+  // S1': a key year stamped from a TitleOnly guess is not evidence — it IS the
+  // guess, handed back to the next resolution as if it were a fact. That loop is
+  // what made prod's mis-resolutions self-confirming: `homosapiens|1960` was keyed
+  // 1960 because a title-only search picked a 1960 short, and every later attempt
+  // then searched 1960 and found the same short, while twelve venues published
+  // 2025. A row whose conclusion was a guess must fall through to what the CINEMAS
+  // published instead.
+  "a row whose key year came from a title-only guess" should
+    "re-resolve on the cinemas' year, not on its own stamped one" in {
+    val Short   = 891655    // the 9-minute 1960 short a title-only search found
+    val Feature = 1200002   // the 2025 film twelve venues are actually screening
+    val tmdb = new TmdbClient(
+      http = new StubFetch(Seq(
+        // Year-scoped searches: 1960 still finds the short, 2025 finds the feature.
+        "&year=1960" ->
+          s"""{"results":[{"id":$Short,"title":"Homo sapiens","release_date":"1960-01-01","popularity":5.0}]}""",
+        "&year=2025" ->
+          s"""{"results":[{"id":$Feature,"title":"Homo sapiens","release_date":"2025-01-01","popularity":1.0}]}""",
+        s"/movie/$Short?"   -> s"""{"id":$Short,"title":"Homo sapiens","release_date":"1960-01-01","runtime":9}""",
+        s"/movie/$Feature?" -> s"""{"id":$Feature,"title":"Homo sapiens","release_date":"2025-01-01","runtime":95}""",
+        s"/movie/$Short/external_ids"   -> s"""{"id":$Short,"imdb_id":""}""",
+        s"/movie/$Feature/external_ids" -> s"""{"id":$Feature,"imdb_id":""}"""
+      )),
+      apiKey = Some("stub"))
+
+    // The row as prod held it: keyed 1960 off a TitleOnly conclusion, with every
+    // venue publishing 2025 and a feature-length runtime.
+    val seed = MovieRecord(
+      tmdbId = Some(Short), tmdbBasis = Some(services.resolution.TmdbBasis.TitleOnly.toString),
+      data = Map[Source, SourceData](
+        CinemaCityPoznanPlaza -> SourceData(title = Some("Homo sapiens"), releaseYear = Some(2025), runtimeMinutes = Some(95))))
+    val cache = new CaffeineMovieCache(
+      new InMemoryMovieRepository(Seq(("Homo sapiens", Some(1960), seed))), normalizer = titleNormalizer)
+
+    new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Homo sapiens", Some(1960))
+
+    withClue("the stamped 1960 must not be fed back in as if it were evidence: ") {
+      cache.entries.flatMap(_._2.tmdbId).toSet should contain(Feature)
+    }
+  }
 }
