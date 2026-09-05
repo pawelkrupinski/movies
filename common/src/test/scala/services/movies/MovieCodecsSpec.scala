@@ -8,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 
 import java.time.{Instant, LocalDateTime}
 import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.resolution.TmdbBasis
 
 /**
  * Round-trips `StoredMovieDto` through the codec registry to confirm:
@@ -41,6 +42,7 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
       filmwebRating     = Some(7.2),
       rottenTomatoes    = Some(91),
       tmdbId            = Some(424242),
+      tmdbBasis         = Some(TmdbBasis.DirectorWalk.toString),
       metacriticUrl     = Some("https://www.metacritic.com/movie/test"),
       rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/test")
     )
@@ -56,6 +58,28 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.year          shouldBe Some(1900)
     back.record        shouldBe record
     decoded.updatedAt  shouldBe dto.updatedAt
+  }
+
+  /**
+   * The resolution basis has to survive BOTH persistence paths, and it was
+   * reaching neither: `StoredMovieDto` had no column for it and `MovieRecordPatch`
+   * no field, so a basis lived only in the in-memory cache and vanished at the next
+   * hydrate. `CinemaCorroboration.resolvedOnWeakerEvidenceThanAvailable` reads a
+   * missing basis as "not a guess", so every restarted worker treated every row as
+   * settled and the re-resolve-a-guess path could never fire — which is how
+   * "Mistyczka" stayed pinned to another film's tmdbId, original title and Filmweb
+   * URL. The round-trip above covers the whole-document write; this covers the
+   * field-level `$set` that `updateIfPresent` uses.
+   */
+  it should "carry the resolution basis through a field-level update, not just a whole-document write" in {
+    val before = MovieRecord(tmdbId = Some(1), tmdbBasis = Some(TmdbBasis.TitleOnly.toString))
+    val after  = before.copy(tmdbId = Some(2), tmdbBasis = Some(TmdbBasis.DirectorWalk.toString))
+
+    val patch = MovieRecordPatch.diff(before, after)
+    patch.isEmpty                     shouldBe false
+    patch.applyTo(before).tmdbBasis   shouldBe Some(TmdbBasis.DirectorWalk.toString)
+    // And a basis that goes away is unset rather than left standing.
+    MovieRecordPatch.diff(after, after.copy(tmdbBasis = None)).applyTo(after).tmdbBasis shouldBe None
   }
 
   it should "round-trip an all-None MovieRecord (sparse row)" in {

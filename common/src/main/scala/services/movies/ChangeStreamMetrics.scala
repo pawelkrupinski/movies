@@ -41,7 +41,7 @@ object ChangeStreamMetrics {
 
   // Stored field names as `patchToUpdate` emits them (NOT the domain names).
   private val RatingFields   = Set("imdbRating", "metascore", "filmwebRating", "rottenTomatoes", "filmwebUrl", "metacriticUrl", "rottenTomatoesUrl")
-  private val IdentityFields = Set("imdbId", "tmdbId", "searchTitle", "tmdbNoMatch", "detailPending")
+  private val IdentityFields = Set("imdbId", "tmdbId", "tmdbBasis", "searchTitle", "tmdbNoMatch", "detailPending")
 
   /** Collapse any mongo op string to the fixed label set, so an unexpected op
    *  (invalidate / drop / rename) doesn't spawn a new series. */

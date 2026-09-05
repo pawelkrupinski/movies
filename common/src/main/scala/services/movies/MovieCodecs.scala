@@ -28,6 +28,12 @@ case class StoredMovieDto(
   filmwebRating:     Option[Double],
   rottenTomatoes:    Option[Int],
   tmdbId:            Option[Int],
+  // WHAT the tmdbId was concluded from (a `TmdbBasis` name). Optional on the wire
+  // so legacy documents decode to None — which `CinemaCorroboration` reads as "no
+  // evidence recorded", never as a guess. Without this column the basis lived only
+  // in the in-memory cache and was lost at every hydrate, so the re-resolve-a-guess
+  // path could never fire on a restarted worker.
+  tmdbBasis:         Option[String],
   // Optional on the wire so legacy documents (written before this existed)
   // decode to None.
   wikidataId:        Option[String],
@@ -77,6 +83,7 @@ object StoredMovieDto {
       filmwebRating     = r.filmwebRating,
       rottenTomatoes    = r.rottenTomatoes,
       tmdbId            = r.tmdbId,
+      tmdbBasis         = r.tmdbBasis,
       wikidataId        = r.wikidataId,
       metacriticUrl     = r.metacriticUrl,
       rottenTomatoesUrl = r.rottenTomatoesUrl,
@@ -101,6 +108,7 @@ object StoredMovieDto {
       filmwebRating     = dto.filmwebRating,
       rottenTomatoes    = dto.rottenTomatoes,
       tmdbId            = dto.tmdbId,
+      tmdbBasis         = dto.tmdbBasis,
       wikidataId        = dto.wikidataId,
       metacriticUrl     = dto.metacriticUrl,
       rottenTomatoesUrl = dto.rottenTomatoesUrl,
