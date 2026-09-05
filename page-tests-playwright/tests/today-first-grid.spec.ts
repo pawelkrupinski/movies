@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { gotoAndWaitForCards } from './helpers';
 
 // The listing ships TODAY and fetches the rest of the week after first paint.

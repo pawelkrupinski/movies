@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // Anonymous nag toast — `showAnonymousNag` adds `.open` to the
 // `#anon-nag-toast` element + queues a fade-out timer;

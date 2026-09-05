@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { getLocalStorageJson, pinDateFilterAnytime, reload, setLocalStorageJson } from './helpers';
 
 // "Wyczyść" button in the Ukryte filmy modal — `showAllFilms` empties

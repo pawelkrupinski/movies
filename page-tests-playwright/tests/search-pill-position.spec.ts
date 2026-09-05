@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { gotoAndWaitForCards } from './helpers';
 
 // Mobile portrait floats the search field as a fixed pill near the bottom of

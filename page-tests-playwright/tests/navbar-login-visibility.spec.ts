@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { gotoAndWaitForCards, waitForCards } from './helpers';
 
 // The signed-out "Zaloguj" pill lives in the navbar on DESKTOP only. On

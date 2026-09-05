@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { firstVisibleCard, pinDateFilterAnytime } from './helpers';
 
 // Mobile portrait: the search field is a floating pill at the bottom of the

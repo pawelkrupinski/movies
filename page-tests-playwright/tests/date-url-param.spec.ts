@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { setDateFilter, gotoAndWaitForCards } from './helpers';
 
 // `?date=` is the round-trip URL representation of the navbar's

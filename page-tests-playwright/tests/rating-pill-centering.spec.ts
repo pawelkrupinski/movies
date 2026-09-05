@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { gotoAndWaitForCards, pinDateFilterAnytime } from './helpers';
 
 // The rating-pill digits rode high in their coloured box because the line-box

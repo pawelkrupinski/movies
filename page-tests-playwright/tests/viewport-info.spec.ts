@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // The tune-panel viewport readout is a pure function shared by the browser and
 // this test, so exercise it directly in node (no browser/server needed) — it

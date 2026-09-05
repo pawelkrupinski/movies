@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { gotoAndWaitForCards, setDateFilter, waitForCards } from './helpers';
 
 // Document-level keydown handler in shared.js maps ArrowLeft / Right

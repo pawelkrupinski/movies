@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 // The Filtry button (`#format-filter-btn`) toggles the dropdown
 // panel (`#format-panel`) open/closed. The panel is `display: none`
