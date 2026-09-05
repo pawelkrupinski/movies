@@ -38,10 +38,18 @@ runs:
     # Single-node REPLICA SET rather than standalone: change streams (the
     # read-model projector) and multi-document transactions (the staging fold)
     # are both rejected by a standalone mongod, and both are on the path.
+    #
+    # `--wiredTigerCacheSizeGB` because mongod's DEFAULT is half of (RAM - 1GB),
+    # which on a 16 GB `ubuntu-latest` runner is ~7.5 GB — sized for a host it owns,
+    # and this one it shares with a JVM holding a whole country resident. The two
+    # defaults together ask for more than the box has, which is why the heaviest
+    # leg's `-Xmx` could not be raised without capping this first. 2 GB is ample:
+    # the databases here live for one job and are read back through a driver, not
+    # served to anyone.
     - name: Start MongoDB (single-node replica set, for change streams)
       shell: bash
       run: |
-          docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0
+          docker run -d --name mongo -p 27017:27017 mongo:7 --replSet rs0 --wiredTigerCacheSizeGB 2
           until docker exec mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
           docker exec mongo mongosh --quiet --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'
           until docker exec mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done

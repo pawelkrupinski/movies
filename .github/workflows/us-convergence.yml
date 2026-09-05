@@ -82,8 +82,8 @@ jobs:
                     # budget is cancelled before it can record the tree that would have
                     # made it fast.
                     #
-                    # `heap` is the sbt JVM's `-Xmx`, and 8g against the other three's 4g
-                    # is the ceiling this country actually needs. A leg holds the whole
+                    # `heap` is the sbt JVM's `-Xmx`, and 10g against the other three's
+                    # 4g is the ceiling this country actually needs. A leg holds the whole
                     # country resident at once — the replayed corpus, the enrichment
                     # cache, and the read model it reloads once the boot has projected
                     # it. On 2026-09-01 that projection was 114,002 documents, and both
@@ -91,6 +91,16 @@ jobs:
                     # exited 3 on `.jvmopts`' `-XX:+ExitOnOutOfMemoryError` — before
                     # ScalaTest had reported one assertion. A budget buys nothing if the
                     # heap runs out first.
+                    #
+                    # 8g was not enough for the order-independence row. It died the same
+                    # way on 2026-09-05 at 116,065 documents, and the run four hours
+                    # earlier had PASSED on an identical corpus with 2.10 GB to spare —
+                    # the row had no margin rather than a regression, on a projection
+                    # that grows every day. `CorpusComparison` took the peak down by
+                    # holding one pass's corpus at a time instead of all three; this
+                    # raise is the other half, and it only became available once
+                    # `convergence-setup` stopped letting mongod default its WiredTiger
+                    # cache to ~7.5 GB of the same 16 GB runner.
                     #
                     # `order`/`orderJob`/`orderSuite` split the whole-corpus
                     # order-independence replay out of the full leg — the ONLY country
@@ -104,7 +114,7 @@ jobs:
                     # hours in a job GitHub cancels at 6. Every US leg before this died on
                     # the replays' own 75-minute guard having diverged on nothing. The two
                     # rows run side by side off the same sample gate.
-                    - { country: united-states, code: us, cmd: convergenceUs, sample: convergenceUsSample, job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 8g, order: convergenceUsOrder, orderJob: 330, orderSuite: 315 }
+                    - { country: united-states, code: us, cmd: convergenceUs, sample: convergenceUsSample, job: 330, suite: 315, sampleJob: 75, sampleSuite: 60, heap: 10g, order: convergenceUsOrder, orderJob: 330, orderSuite: 315 }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
