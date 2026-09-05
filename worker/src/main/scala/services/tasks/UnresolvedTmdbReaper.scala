@@ -3,7 +3,7 @@ package services.tasks
 import models.{Country, MovieRecord, Tmdb}
 import play.api.Logging
 import services.Stoppable
-import services.movies.{CacheKey, MovieCacheReader}
+import services.movies.{CacheKey, CinemaCorroboration, MovieCacheReader}
 import services.schedule.{AlwaysClaimScheduledRunStore, OccurrenceKey, ScheduledRunStore}
 import tools.DaemonExecutors
 
@@ -117,7 +117,8 @@ class UnresolvedTmdbReaper(
       val (key, record) = rows.next()
       val unresolved = record.tmdbId.isEmpty && !record.detailPending
       val staleLang  = staleLanguage(record)
-      if ((unresolved || staleLang) &&
+      val misresolved = contradictedByCinemas(record)
+      if ((unresolved || staleLang || misresolved) &&
           dueWindow.isDue(EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year), Some(since), now)) {
         // A stale-language row is already resolved, so the plain retry (which
         // only fires on `tmdbId.isEmpty`) would no-op — it needs the forced path.
@@ -127,7 +128,8 @@ class UnresolvedTmdbReaper(
     }
     if (enqueued > 0)
       logger.info(s"UnresolvedTmdbReaper re-tried ${enqueued - forced} unresolved row(s)" +
-                  (if (forced > 0) s" and force-re-resolved $forced row(s) enriched in the wrong language." else "."))
+                  (if (forced > 0) s" and force-re-resolved $forced row(s) whose Tmdb slot is wrong " +
+                     "(wrong language, or a film their own cinemas contradict)." else "."))
     enqueued
   }
 
@@ -142,6 +144,13 @@ class UnresolvedTmdbReaper(
    *  Gated on a slot that actually carries localized text: a slot the details
    *  fetch never filled has nothing stale to correct, and forcing it would just
    *  re-run a search that already concluded. */
+  /** True when the row is resolved to a film its OWN cinemas contradict — the
+   *  third kind, and the one that was permanent. See [[CinemaCorroboration]] for
+   *  why these rows arise and why both its signals abstain unless the venues
+   *  positively disagree. */
+  private[tasks] def contradictedByCinemas(record: MovieRecord): Boolean =
+    CinemaCorroboration.contradicts(record)
+
   private[tasks] def staleLanguage(record: MovieRecord): Boolean =
     record.data.get(Tmdb).exists { slot =>
       val carriesLocalizedText =

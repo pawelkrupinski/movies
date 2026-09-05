@@ -56,6 +56,67 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     seen shouldBe empty
   }
 
+  // The third kind. Prod 2026-09-05: five rows sat resolved to a film their OWN
+  // venues contradicted — "Vivaldi i ja" on an 18-minute STABAT MATER concert
+  // short while 46 venues advertised 110 minutes and named Damiano Michieletto;
+  // "Das Phantom der Oper" on the 1925 silent while 10 venues published 2004,
+  // 140 minutes and Joel Schumacher. `resolveTmdbId` never re-runs once a tmdbId
+  // is set, so each was permanent — every one of them needed a hand repair. The
+  // evidence to catch them was on the rows the whole time.
+  it should "force a re-resolve when the film's runtime is a fraction of what the venues advertise" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Vivaldi i ja") { r =>
+      r.copy(tmdbId = Some(1667002),
+        data = r.data
+          + ((Tmdb: Source) -> SourceData(title = Some("STABAT MATER RV621"), runtimeMinutes = Some(18)))
+          + ((KinoApollo: Source) -> SourceData(title = Some("Vivaldi i ja"), runtimeMinutes = Some(110))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 1
+    forced.map(_.cleanTitle) should contain(cache.keyOf("Vivaldi i ja", None).cleanTitle)
+  }
+
+  it should "force a re-resolve when no venue names any of the resolved film's directors" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Das Phantom der Oper") { r =>
+      r.copy(tmdbId = Some(964),
+        data = r.data
+          + ((Tmdb: Source) -> SourceData(title = Some("Das Phantom der Oper"), runtimeMinutes = Some(93),
+               director = Seq("Rupert Julian")))
+          + ((KinoApollo: Source) -> SourceData(title = Some("Das Phantom der Oper"), runtimeMinutes = Some(140),
+               director = Seq("Joel Schumacher"))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 1
+    forced should have size 1
+  }
+
+  it should "leave a row alone when the venues corroborate it" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Lalka") { r =>
+      r.copy(tmdbId = Some(1321666),
+        data = r.data
+          + ((Tmdb: Source) -> SourceData(title = Some("Lalka"), runtimeMinutes = Some(162),
+               director = Seq("Maciej Kawalski")))
+          // Multikino advertises this 162-minute film at 147 and names its director.
+          + ((KinoApollo: Source) -> SourceData(title = Some("Lalka"), runtimeMinutes = Some(147),
+               director = Seq("Maciej Kawalski"))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 0
+    forced shouldBe empty
+  }
+
+  // Abstention is the whole discipline here: a venue that publishes nothing must
+  // never be read as disagreement, or the sweep force-re-resolves the corpus.
+  it should "leave a row alone when the venues published nothing to contradict it" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Silent") { r =>
+      r.copy(tmdbId = Some(42),
+        data = r.data + ((Tmdb: Source) -> SourceData(title = Some("Silent"), runtimeMinutes = Some(120),
+          director = Seq("Someone"))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 0
+    forced shouldBe empty
+  }
+
   it should "never re-try a row still awaiting detail enrichment" in {
     val cache = newCache(); val (seen, retry) = recorder()
     seedRow(cache, "Pending")(_.copy(detailPending = true)) // unresolved but detail owed

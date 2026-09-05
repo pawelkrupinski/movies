@@ -34,6 +34,26 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
     MovieRecord()                                            // bare: counts only toward total
   )
 
+  // The population that was invisible: rows resolved to a film their own cinemas
+  // contradict. Five sat in prod undetected until a hand-written scan found them,
+  // so the point of the series is that nobody has to go looking again.
+  "CorpusCounts" should "count rows whose cinemas contradict the film they resolved to" in {
+    val misresolved = models.MovieRecord(
+      tmdbId = Some(1667002),
+      data = Map[models.Source, models.SourceData](
+        models.Tmdb -> models.SourceData(title = Some("STABAT MATER RV621"), runtimeMinutes = Some(18)),
+        models.KinoApollo -> models.SourceData(title = Some("Vivaldi i ja"), runtimeMinutes = Some(110))))
+    val corroborated = models.MovieRecord(
+      tmdbId = Some(1321666),
+      data = Map[models.Source, models.SourceData](
+        models.Tmdb -> models.SourceData(title = Some("Lalka"), runtimeMinutes = Some(162)),
+        models.KinoApollo -> models.SourceData(title = Some("Lalka"), runtimeMinutes = Some(147))))
+
+    val c = CorpusCounts.from(Seq(misresolved, corroborated))
+    c.bySubset.toMap.apply(Subset.Misresolved) shouldBe 1
+    c.total shouldBe 2
+  }
+
   "CorpusCounts" should "tally each subset independently" in {
     val c = CorpusCounts.from(corpus)
     c.total         shouldBe 5

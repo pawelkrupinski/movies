@@ -61,7 +61,7 @@ object WorkerCorpusMetrics {
   def gauge(registry: PrometheusRegistry): Gauge =
     Gauge.builder()
       .name(Name)
-      .help("Distinct movie records in the live movies collection, by country and subset: total population, those with any rating, with a resolved tmdb/imdb id, and the per-source rating populations (imdb/rt/mc/fw).")
+      .help("Distinct movie records in the live movies collection, by country and subset: total population, those with any rating, with a resolved tmdb/imdb id, the per-source rating populations (imdb/rt/mc/fw), and those resolved to a film their own cinemas contradict (misresolved).")
       .labelNames("country", "subset")
       .register(registry)
 
@@ -75,15 +75,20 @@ object WorkerCorpusMetrics {
     val RtRating      = "rt_rating"
     val McRating      = "mc_rating"
     val FwRating      = "fw_rating"
+    /** Resolved to a film this row's own cinemas contradict — see
+     *  [[services.movies.CinemaCorroboration]]. Five such rows sat in prod
+     *  undetected until a hand-written scan found them; this is so nobody has to
+     *  go looking again. Expected to sit at or near zero. */
+    val Misresolved   = "misresolved"
     val all: Seq[String] =
-      Seq(Total, WithAnyRating, WithTmdbId, WithImdbId, ImdbRating, RtRating, McRating, FwRating)
+      Seq(Total, WithAnyRating, WithTmdbId, WithImdbId, ImdbRating, RtRating, McRating, FwRating, Misresolved)
   }
 
   /** Pure tally of a corpus, accumulated one record at a time so the worker's
    *  paged scan never holds the whole collection on the heap. */
   case class CorpusCounts(
     total: Int, withAnyRating: Int, withTmdbId: Int, withImdbId: Int,
-    imdbRating: Int, rtRating: Int, mcRating: Int, fwRating: Int
+    imdbRating: Int, rtRating: Int, mcRating: Int, fwRating: Int, misresolved: Int
   ) {
     def add(r: MovieRecord): CorpusCounts = CorpusCounts(
       total         = total + 1,
@@ -93,7 +98,8 @@ object WorkerCorpusMetrics {
       imdbRating    = imdbRating + bool(r.imdbRating.isDefined),
       rtRating      = rtRating + bool(r.rottenTomatoes.isDefined),
       mcRating      = mcRating + bool(r.metascore.isDefined),
-      fwRating      = fwRating + bool(r.filmwebRating.isDefined)
+      fwRating      = fwRating + bool(r.filmwebRating.isDefined),
+      misresolved   = misresolved + bool(services.movies.CinemaCorroboration.contradicts(r))
     )
 
     /** Pair each subset label with its count, in `Subset.all` order. */
@@ -101,12 +107,13 @@ object WorkerCorpusMetrics {
       Subset.Total -> total, Subset.WithAnyRating -> withAnyRating,
       Subset.WithTmdbId -> withTmdbId, Subset.WithImdbId -> withImdbId,
       Subset.ImdbRating -> imdbRating, Subset.RtRating -> rtRating,
-      Subset.McRating -> mcRating, Subset.FwRating -> fwRating
+      Subset.McRating -> mcRating, Subset.FwRating -> fwRating,
+      Subset.Misresolved -> misresolved
     )
   }
 
   object CorpusCounts {
-    val empty: CorpusCounts = CorpusCounts(0, 0, 0, 0, 0, 0, 0, 0)
+    val empty: CorpusCounts = CorpusCounts(0, 0, 0, 0, 0, 0, 0, 0, 0)
     def from(records: IterableOnce[MovieRecord]): CorpusCounts =
       records.iterator.foldLeft(empty)((acc, r) => acc.add(r))
   }
