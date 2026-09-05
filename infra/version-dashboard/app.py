@@ -44,6 +44,7 @@ roster and `ssh` for the Prometheus read.
 """
 
 import concurrent.futures
+import hashlib
 import html
 import json
 import os
@@ -80,6 +81,7 @@ PROM_SELECTOR = '{__name__=~"nixos_.*|node_os_info"}'
 SSH_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new"]
 
 CACHE_TTL = 30.0        # how long a built page is served without rebuilding
+ROSTER_RETRY = 300.0    # after a FAILED roster evaluation, the floor before another is tried
 STALE_GRACE = 300.0     # past this, the page says out loud that it is stale rather than looking fresh
 NIX_TIMEOUT = 240
 SSH_TIMEOUT = 30
@@ -171,6 +173,101 @@ def flake_machines():
         return json.loads(out), None
     except json.JSONDecodeError as exc:
         return {}, f"nix eval returned unparseable JSON: {exc}"
+
+
+# WHAT AN EVALUATION READS, and therefore what has to change before one is worth repeating: the
+# flake, its lock, and the host/module tree they import. NOT the repository's HEAD -- `nix eval .`
+# in infra/ resolves to the ENCLOSING git checkout, which is this repository's Scala application
+# (~18k tracked files), so keying on its commit would re-evaluate the fleet roster on every
+# application commit, which is most commits.
+ROSTER_INPUTS = ("flake.nix", "flake.lock", "nix")
+
+
+def _input_files(path):
+    if os.path.isdir(path):
+        for dirpath, dirnames, filenames in os.walk(path):
+            dirnames.sort()
+            for name in sorted(filenames):
+                yield os.path.join(dirpath, name)
+    else:
+        yield path
+
+
+def flake_fingerprint(root=None):
+    """A cheap stamp over the files a roster evaluation reads, used to decide whether to repeat it.
+
+    SIZE AND MTIME RATHER THAN THE BYTES, because this runs on every page build and its whole job is
+    to be orders of magnitude cheaper than the evaluation it is deciding to skip. It cannot miss an
+    edit made by an editor, a checkout or a rebase -- all of them rewrite the file -- only one that
+    restores a file to its exact previous size and modification time, which is not something that
+    happens to a flake by accident.
+    """
+    stamp = hashlib.sha256()
+    for entry in ROSTER_INPUTS:
+        for path in _input_files(os.path.join(root or INFRA_DIR, entry)):
+            try:
+                st = os.stat(path)
+                stamp.update(f"{path}:{st.st_size}:{st.st_mtime_ns}\n".encode())
+            except OSError:
+                stamp.update(f"{path}:gone\n".encode())
+    return stamp.hexdigest()
+
+
+_roster_lock = threading.Lock()
+_roster = {"fingerprint": None, "machines": None, "evaluated_at": 0.0,
+           "error": None, "failed_at": 0.0}
+
+
+def _last_roster(machines, error, evaluated_at):
+    """What to answer with when this evaluation has no answer of its own.
+
+    A ROSTER THAT WAS READ AN HOUR AGO IS STILL THE ROSTER. The page's subject is what the machines
+    are doing now, and it reads that from Prometheus every 30 seconds regardless; dropping every row
+    because `nix` could not be run is throwing away the healthy half of the page along with the
+    broken half. The error is still shown, and it says how old the rows are.
+    """
+    if machines is None:
+        return {}, error
+    return machines, (f"{error or 'roster evaluation is pending'} \u2014 the machines below are the "
+                      f"roster read {fmt_age(evaluated_at)}, which is the last one that evaluated")
+
+
+def roster():
+    """The declared fleet, evaluated only when the flake declaring it has actually changed.
+
+    WHY A SECOND CACHE, when `cached()` below already holds the whole page for 30 seconds: the
+    evaluation underneath is `nix eval` over three complete NixOS configurations, reached through a
+    flakeref that resolves to a 1.1GB git checkout. Measured on an idle laptop it takes 86 seconds,
+    almost none of it CPU -- it is nix copying the enclosing repository's tree into the store. Run
+    on every build, an evaluation was therefore in flight essentially all the time, each one
+    queueing behind the previous one's git-fetch and eval-cache locks, and that queue is what the
+    240s timeout was actually measuring. The page said `roster unavailable -- these counts are not a
+    picture of the fleet` on every load while all three machines were healthy, and the laptop paid
+    for it continuously.
+
+    THE ROSTER IS A DECLARATION, NOT A READING. It changes when somebody edits infra/nix, not when a
+    machine does something -- so it is read then, and the running state the page exists to watch
+    keeps its 30-second cadence. A failure is not retried on every build either, for the same
+    reason: continuous retries were the fault, not the diagnosis.
+    """
+    fingerprint = flake_fingerprint()
+    now = time.time()
+    with _roster_lock:
+        machines, error = _roster["machines"], _roster["error"]
+        evaluated_at = _roster["evaluated_at"]
+        if machines is not None and _roster["fingerprint"] == fingerprint:
+            return machines, None
+        if error and now - _roster["failed_at"] < ROSTER_RETRY:
+            return _last_roster(machines, error, evaluated_at)
+
+    evaluated, error = flake_machines()
+    with _roster_lock:
+        _roster["error"] = error
+        if error:
+            _roster["failed_at"] = time.time()
+            return _last_roster(_roster["machines"], error, _roster["evaluated_at"])
+        _roster.update(fingerprint=fingerprint, machines=evaluated, evaluated_at=time.time())
+        return evaluated, None
 
 
 def git_head():
@@ -397,36 +494,38 @@ def read_machine(name, decl, series_list, head, origin):
 
 
 def build():
-    """Gather everything the page needs. Roster and metrics are fetched CONCURRENTLY because one is
-    a local nix eval and the other an ssh round trip, and there is no reason to pay for both."""
+    """Gather everything the page needs. Roster and metrics are fetched CONCURRENTLY because one
+    may have to run a local nix eval and the other is an ssh round trip, and there is no reason to
+    pay for both. Most builds do neither piece of nix work at all -- see `roster`."""
     started = time.time()
     head, dirty_checkout, origin = git_head()
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
-        f_roster = pool.submit(flake_machines)
+        f_roster = pool.submit(roster)
         f_series = pool.submit(prom_series)
-        roster, roster_err = f_roster.result()
+        machines, roster_err = f_roster.result()
         series, prom_err = f_series.result()
 
     by_addr = index_by_host(series)
     rows = []
-    for name in sorted(roster):
-        decl = roster[name]
+    for name in sorted(machines):
+        decl = machines[name]
         rows.append(read_machine(name, decl, by_addr.get(decl.get("privateAddress", ""), []),
                                  head, origin))
 
     # Anything publishing metrics that the flake does not declare. On a three-host fleet this should
     # always be empty; if it is not, something is scraping a machine nobody owns.
     #
-    # ONLY MEANINGFUL IF THE ROSTER ACTUALLY LOADED. A failed `nix eval` returns an EMPTY roster, and
-    # "not declared" is computed against it -- so every healthy host in the fleet is reported as
-    # undeclared, which reads as a serious finding and is pure noise. Seen for real when the flake
-    # directory moved out from under a running process: the page announced all three machines as
-    # rogue while the only fault was a stale working directory.
+    # ONLY MEANINGFUL IF THE ROSTER ACTUALLY LOADED. A failed `nix eval` yields either an empty
+    # roster or the one read before the failure, and "not declared" computed against either is a
+    # finding about the query rather than about the fleet -- with an empty roster every healthy host
+    # is reported as rogue, and with an older one anything added since it was read is. Seen for real
+    # when the flake directory moved out from under a running process: the page announced all three
+    # machines as rogue while the only fault was a stale working directory.
     #
     # The rule is that a check whose input failed must report NOTHING, not the answer it would have
     # given with no input. The roster error is already shown on its own.
-    declared = {d.get("privateAddress") for d in roster.values()}
+    declared = {d.get("privateAddress") for d in machines.values()}
     undeclared = (
         [] if roster_err else sorted(a for a in by_addr if a not in declared)
     )

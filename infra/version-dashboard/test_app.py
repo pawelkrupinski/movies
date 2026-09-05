@@ -9,9 +9,11 @@ that has gone silent, one built from a dirty tree, one whose auto-apply is refus
 Run:  python3 infra/version-dashboard/test_app.py
 """
 import importlib.util
+import os
 import pathlib
 import re
 import sys
+import tempfile
 import time
 import unittest
 
@@ -293,6 +295,117 @@ class OneRowBuilder(unittest.TestCase):
             self.assertIn("error", app.fleet_machine_reading("nope"))
         finally:
             app._cache["data"] = None
+
+
+class RosterIsReadOnlyWhenTheFlakeChanges(unittest.TestCase):
+    """The roster half of a build is a `nix eval` over three whole NixOS configurations -- 86
+    seconds on an idle laptop, measured, almost none of it CPU. Running it on every 30-second build
+    meant one was always in flight, each queueing behind the previous one's git-fetch and
+    eval-cache locks until every one of them hit the 240s timeout and the page announced
+    `roster unavailable -- these counts are not a picture of the fleet` while all three machines
+    were healthy. These pin what stopped that: an unchanged flake is not read again, and a read
+    that fails is neither retried on the next build nor allowed to empty the table."""
+
+    CLEAN = {"fingerprint": None, "machines": None, "evaluated_at": 0.0,
+             "error": None, "failed_at": 0.0}
+
+    def setUp(self):
+        self.reads = []
+        self.answer = ({"mongo-1": {"hostName": "mongo-1", "privateAddress": "10.20.0.13"}}, None)
+        self.fingerprint = "flake-as-committed"
+        self._machines, self._stamp = app.flake_machines, app.flake_fingerprint
+        app.flake_machines = self._read
+        app.flake_fingerprint = lambda *a, **k: self.fingerprint
+        app._roster.update(self.CLEAN)
+
+    def tearDown(self):
+        app.flake_machines, app.flake_fingerprint = self._machines, self._stamp
+        app._roster.update(self.CLEAN)
+
+    def _read(self):
+        self.reads.append(self.fingerprint)
+        return self.answer
+
+    def test_an_unchanged_flake_is_read_once_however_many_builds_run(self):
+        for _ in range(3):
+            machines, err = app.roster()
+            self.assertIsNone(err)
+            self.assertEqual(list(machines), ["mongo-1"])
+        self.assertEqual(len(self.reads), 1)
+
+    def test_an_edited_flake_is_read_again(self):
+        app.roster()
+        self.fingerprint = "flake-with-a-fourth-host"
+        app.roster()
+        self.assertEqual(len(self.reads), 2)
+
+    def test_a_failed_read_keeps_the_machines_the_last_one_returned(self):
+        app.roster()
+        self.fingerprint, self.answer = "edited", ({}, "nix eval failed: timed out after 240s")
+        machines, err = app.roster()
+        self.assertEqual(list(machines), ["mongo-1"])
+        self.assertIn("timed out after 240s", err)
+        self.assertIn("last one that evaluated", err)
+
+    def test_a_failed_read_is_not_repeated_on_the_next_build(self):
+        self.answer = ({}, "nix eval failed: timed out after 240s")
+        first, err = app.roster()
+        second, err_again = app.roster()
+        self.assertEqual(len(self.reads), 1)
+        self.assertEqual((first, second), ({}, {}))
+        self.assertEqual(err, err_again)
+
+    def test_the_retry_floor_does_expire(self):
+        self.answer = ({}, "nix eval failed: timed out after 240s")
+        app.roster()
+        app._roster["failed_at"] = time.time() - app.ROSTER_RETRY - 1
+        self.answer = ({"mongo-1": {"privateAddress": "10.20.0.13"}}, None)
+        machines, err = app.roster()
+        self.assertEqual((len(self.reads), list(machines), err), (2, ["mongo-1"], None))
+
+    def test_a_roster_that_never_loaded_reports_the_error_and_no_machines(self):
+        # The state the page was stuck in. It must still say why rather than show an empty fleet.
+        self.answer = ({}, "nix eval failed: timed out after 240s")
+        machines, err = app.roster()
+        self.assertEqual(machines, {})
+        self.assertEqual(err, "nix eval failed: timed out after 240s")
+
+
+class FlakeFingerprint(unittest.TestCase):
+    """What counts as "the flake changed". It has to notice an edit to anything the evaluation
+    reads, and -- the reason it is not simply the repository's HEAD -- ignore the ~18k application
+    files that share this checkout with infra/."""
+
+    def _flake(self, root):
+        os.makedirs(os.path.join(root, "nix", "hosts", "mongo-1"))
+        os.makedirs(os.path.join(root, "web", "src"))
+        for rel, text in [("flake.nix", "{ outputs = _: {}; }"),
+                          ("flake.lock", "{}"),
+                          ("nix/hosts/mongo-1/default.nix", "{ fleet.role = \"mongo\"; }"),
+                          ("web/src/Application.scala", "object Application")]:
+            with open(os.path.join(root, rel), "w") as fh:
+                fh.write(text)
+
+    def test_an_edit_to_a_host_changes_the_stamp(self):
+        with tempfile.TemporaryDirectory() as root:
+            self._flake(root)
+            before = app.flake_fingerprint(root)
+            self.assertEqual(before, app.flake_fingerprint(root))
+            host = os.path.join(root, "nix", "hosts", "mongo-1", "default.nix")
+            with open(host, "w") as fh:
+                fh.write("{ fleet.role = \"mongo\"; fleet.environment = \"prod\"; }")
+            os.utime(host, (time.time() + 10, time.time() + 10))
+            self.assertNotEqual(before, app.flake_fingerprint(root))
+
+    def test_a_commit_to_the_application_sharing_the_checkout_does_not(self):
+        with tempfile.TemporaryDirectory() as root:
+            self._flake(root)
+            before = app.flake_fingerprint(root)
+            scala = os.path.join(root, "web", "src", "Application.scala")
+            with open(scala, "w") as fh:
+                fh.write("object Application { val changed = true }")
+            os.utime(scala, (time.time() + 10, time.time() + 10))
+            self.assertEqual(before, app.flake_fingerprint(root))
 
 
 if __name__ == "__main__":
