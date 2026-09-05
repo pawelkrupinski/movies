@@ -123,6 +123,20 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Andrzej Żuławski"))) shouldBe true
   }
 
+  // Names that are the same person and share no letters: a pseudonym, or one name
+  // romanised from two different dialects. No comparison of the strings reaches
+  // these, so they are listed. Small and closed by nature — each entry is a fact
+  // about one director, not a rule.
+  it should "treat a known pseudonym as the person behind it" in {
+    CinemaCorroboration.contradicts(row(Seq("Loriot"), Seq("Vicco von Bülow"))) shouldBe false
+    CinemaCorroboration.contradicts(row(Seq("Anthony M. Dawson"), Seq("Antonio Margheriti"))) shouldBe false
+  }
+
+  it should "treat two romanisations of one name as one director" in {
+    // Cantonese and Mandarin readings of the same characters.
+    CinemaCorroboration.contradicts(row(Seq("Lau Kar-leung"), Seq("Liu Chia-Liang"))) shouldBe false
+  }
+
   it should "still catch two genuinely different directors" in {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Louisa Proske"))) shouldBe true
   }

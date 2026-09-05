@@ -132,7 +132,8 @@ object CinemaCorroboration {
     // surname ("Amrou Al-Kadhi" / "Amrou Alkadhi"), or a Tamil name written as one
     // word with a given name TMDB omits ("Mathi Maran" / "Pugazhendhi Mathimaran").
     // Token-wise both look like an extra word; written out one contains the other.
-    joinedMatch(a.mkString, b.mkString) || covers(a, b) || covers(b, a) || sameFamiliarForm(a, b)
+    joinedMatch(a.mkString, b.mkString) || covers(a, b) || covers(b, a) ||
+      sameFamiliarForm(a, b) || DirectorAliases.sameDirector(a.mkString, b.mkString)
 
   /** Every token of `narrow` accounted for by some token of `wide`. */
   private def covers(narrow: Seq[String], wide: Seq[String]): Boolean =
