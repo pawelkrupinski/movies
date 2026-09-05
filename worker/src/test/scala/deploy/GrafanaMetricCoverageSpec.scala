@@ -59,13 +59,19 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  Empty on purpose — see the class comment. */
   private val UnchartedOnPurpose: Map[String, String] = Map.empty
 
-  /** Families the web app exports that this module cannot enumerate — the ones
-   *  `controllers.MetricsController` renders by hand, plus the ones registered on
-   *  the web's own Prometheus registry, which lives in a module the worker does
-   *  not depend on. Listed by name here so the coverage guarantee still reaches
-   *  them; their NAMES are guarded on the web side (`MetricsControllerSpec`,
-   *  `WebMovieMetricsSpec`, `HttpMetricsFilterSpec`, `WebHostMetricsSpec`) and
-   *  what's guarded here is that a dashboard draws them. */
+  /** Web families, listed here for the REVERSE guard below — so a panel drawing
+   *  one is not read as dangling by a module that cannot see the web's registry.
+   *
+   *  ⚠️ IT IS NO LONGER WHAT MAKES THEM CHARTED. This list used to carry that too,
+   *  and being hand-maintained it could not: a family left off it was invisible to
+   *  the guard rather than caught by it, which is exactly what happened to
+   *  `kinowo_web_response_cache_*` and `kinowo_web_http_response_bytes` — both
+   *  exported, both drawn nowhere, for as long as they existed.
+   *  `deploy.GrafanaWebMetricCoverageSpec` in the WEB module now enumerates that
+   *  tier's registry the way `workerFamilies` does this one, so forgetting this
+   *  list fails loudly here (a live panel reads as dangling) instead of quietly
+   *  there. The hand-rendered families stay, because `MetricsController` writes
+   *  them as text and no registry can enumerate them. */
   private val WebExportedFamilies = Seq(
     "kinowo_web_movies_served",
     // Added 2026-08-29 with the HTTP filter. These two are the web tier's replacement for Fly's
@@ -73,6 +79,9 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // they measure the application's own work rather than the edge in front of it.
     "kinowo_web_http_requests_total",
     "kinowo_web_http_request_duration_seconds",
+    // Exported since the HTTP filter landed and charted nowhere until the web-side
+    // coverage spec enumerated the registry and said so.
+    "kinowo_web_http_response_bytes",
     // Added 2026-08-29 alongside them: the web MACHINE's free RAM and free disk, read by the
     // process from its own kernel. Same cause -- fly_instance_memory_* and fly_volume_* died with
     // the Fly Prometheus token, and nothing scrapes the Fly host at all.
