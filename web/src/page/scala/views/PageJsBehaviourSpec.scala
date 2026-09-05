@@ -253,9 +253,31 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     chrome match {
       // `path` is an in-city sub-path ("/", "/movie/{slug}"); pages
       // live under `/{city}/…`, so prepend the city prefix.
-      case Some(c) => c.openPage(server.baseUrl + cityPrefix + path)(body(_))
+      case Some(c) => c.openPage(server.baseUrl + cityPrefix + path) { page =>
+        waitForGridSettled(page)
+        body(page)
+      }
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
+
+  /** Wait until the listing has stopped changing underneath the test.
+   *
+   *  The page renders TODAY and swaps the rest of the week in after first paint
+   *  (`#film-grid[data-window]` 1 → 7), which is what takes the document from
+   *  46k DOM tags to 9k. It also means the grid GAINS CARDS a moment after the
+   *  first ones attach, so a spec that counts cards, filters, and counts again
+   *  can measure the swap instead of the filter. Four cases here did exactly
+   *  that in CI while passing locally, where the swap had already landed before
+   *  the test began.
+   *
+   *  Falls through if the page never widens — a film page has no grid, and a
+   *  today-only corpus is a legitimate resting state. */
+  private def waitForGridSettled(page: CdpPage): Unit = {
+    val deadline = System.currentTimeMillis() + 5000
+    while (System.currentTimeMillis() < deadline &&
+           page.evalBool("(function(){var g=document.getElementById('film-grid');return !!g && g.dataset.window==='1'})()"))
+      Thread.sleep(50)
+  }
 
   /** Open the city-selection landing page (not city-scoped). */
   private def onLanding(body: CdpPage => Any): Unit =

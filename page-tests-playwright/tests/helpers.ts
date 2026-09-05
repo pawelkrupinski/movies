@@ -64,6 +64,33 @@ export async function setDateFilter(page: Page, value: string): Promise<void> {
  */
 export async function waitForCards(page: Page): Promise<void> {
   await page.waitForSelector('.col[data-title]', { state: 'attached' });
+  await waitForGridSettled(page);
+}
+
+/**
+ * Wait until the listing has stopped changing under the test.
+ *
+ * The page renders TODAY and then swaps in the rest of the week after first
+ * paint (`#film-grid[data-window]` goes 1 → 7). That is deliberate — it is what
+ * takes the document from 46k DOM tags to 9k — but it means the grid gains
+ * cards a moment AFTER the first ones attach. A test that counts cards, filters,
+ * and counts again can otherwise have the swap land between its two counts and
+ * measure the swap instead of the filter. That is exactly how
+ * `filtry-cinemas` ("unchecking a cinema hides its groups") and four
+ * `PageJsBehaviourSpec` cases failed in CI while passing locally: on a faster
+ * machine the swap had already landed before the test started interacting.
+ *
+ * Waiting for the settled state rather than asserting on the racy one keeps the
+ * tests about what they are about. Tolerant of a page that never widens (a
+ * fixture with only today, or a failed fetch): the poll simply falls through.
+ */
+export async function waitForGridSettled(page: Page): Promise<void> {
+  await page
+    .waitForFunction(() => {
+      const g = document.getElementById('film-grid');
+      return !g || g.dataset.window !== '1';
+    }, undefined, { timeout: 5000 })
+    .catch(() => { /* today-only is a legitimate resting state */ });
 }
 
 /**
