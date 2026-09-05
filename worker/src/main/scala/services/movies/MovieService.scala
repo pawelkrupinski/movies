@@ -1039,9 +1039,25 @@ class MovieService(
     // year here not derived from the resolution being re-examined. Any stronger
     // basis keeps its year: those were narrowed by evidence in the first place.
     val keyYearIsEvidence = !row.tmdbBasis.flatMap(TmdbBasis.parse).contains(TmdbBasis.TitleOnly)
-    val effectiveYear = Option.when(keyYearIsEvidence)(year).flatten
+    val keyYear = Option.when(keyYearIsEvidence)(year).flatten
+    // The same trap once more, for the rows that predate a recorded basis — 6194 of
+    // prod's 6201 resolved rows carry none, so the guard above passes them all. A key
+    // year NO SOURCE EVER REPORTED has only one place it can have come from:
+    // `settleResolved` stamping the resolution's own answer back into the key. So it
+    // yields to a year the VENUE wrote into its own title, which is the venue saying
+    // WHICH film it means. Two UK venues published "Scarface (1932)" and 93 minutes at
+    // a row keyed 1983, and the 1983 in the key kept winning.
+    //
+    // A key year a source DID report is the cinema's own evidence and keeps its
+    // precedence, so a decorative "(1926)" on a row scraped as 2015 still loses.
+    // `cinemaYears` and not `reportedYears`: the latter includes the TMDB slot's own
+    // year, so a mis-resolved row would corroborate its key year with the very
+    // resolution being re-examined — "scarface|1983" carries a 1983 TMDB slot.
+    val corroboratedKeyYear = keyYear.filter(row.cinemaYears.contains)
+    val effectiveYear = corroboratedKeyYear
       .orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
       .orElse(reportedYears.headOption)
+      .orElse(keyYear)
     val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle, cache.normalizer)
     // `freshHit` captures the SearchResult on a cache MISS (the loader runs on
     // this thread), so the caller keeps the hit's title/year as a fallback when

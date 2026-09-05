@@ -64,6 +64,32 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().flatMap(_.record.tmdbId) should contain (555)
   }
 
+  it should "let a year the venue wrote into its own title outrank a guessed key year" in {
+    // Prod's "scarface|1983". A title-only guess landed on De Palma's and
+    // `settleResolved` stamped 1983 into the KEY, so every later attempt searched
+    // 1983 and found it again — while both UK venues published "Scarface (1932)"
+    // and a 93-minute runtime. The venue's own annotation names WHICH film; the key
+    // year is only the earlier guess handed back.
+    // Carries the WRONG film's TMDB slot, as the prod row does. The key year must
+    // not be able to corroborate itself out of the resolution being re-examined.
+    val seed = MovieRecord(tmdbId = Some(111), data = Map[Source, SourceData](
+      CinemaCityPoznanPlaza -> SourceData(title = Some("Scarface (1932)")),
+      Tmdb                  -> SourceData(title = Some("Scarface"), releaseYear = Some(1983),
+                                          runtimeMinutes = Some(170), director = Seq("Brian De Palma"))))
+    val cache = new CaffeineMovieCache(
+      new InMemoryMovieRepository(Seq(("Scarface", Some(1983), seed))), normalizer = titleNormalizer)
+    val service = new MovieService(cache, new InProcessEventBus(),
+      tmdb(
+        "year=1932"               -> s"""{"results":[${result(877, "Scarface", "1932-04-09", 5.0)}]}""",
+        "year=1983"               -> s"""{"results":[${result(111, "Scarface", "1983-12-09", 30.0)}]}""",
+        "/movie/877/external_ids" -> """{"id":877,"imdb_id":"tt0023427"}""",
+        "/movie/111/external_ids" -> """{"id":111,"imdb_id":"tt0086250"}"""
+      ))
+
+    service.reEnrichSync("Scarface", Some(1983))
+    cache.snapshot().flatMap(_.record.tmdbId) should contain (877)
+  }
+
   it should "persist the wikidata_id from TMDB's /external_ids onto the resolved row" in {
     val cache = bareRow("Osobliwość")
     val service = new MovieService(cache, new InProcessEventBus(),

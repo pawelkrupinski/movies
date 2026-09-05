@@ -45,13 +45,40 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
     // whether this is the right film, and treating it as agreement would re-resolve
     // rows on the strength of a failed request.
     if (crew.isEmpty) return false
-    val named = record.cinemaDirector.flatMap(credits.personIds)
+    val named = record.cinemaDirector.flatMap(personIds)
     // Likewise a name TMDB has never heard of: unknown is not absent.
     if (named.isEmpty) return false
     val stranger = !named.exists(crew.contains)
     if (!stranger)
       logger.debug(s"crew confirmation: the venue's director is on tmdbId=$tmdbId's crew — not a contradiction")
     stranger
+  }
+
+  /** The people a credited name can mean, retrying without the middle names when
+   *  TMDB knows nobody by the whole thing.
+   *
+   *  A venue writes the name in full where TMDB holds the working form: German
+   *  venues published "David Kerrick Hand" for Disney's "Snow White", and TMDB has
+   *  him only as "David Hand" (5446, Directing). The search is exact enough that
+   *  the fuller name returns NOTHING, so the confirmation abstained and a genuinely
+   *  mis-resolved row — the 1937 Disney feature sitting on a 1939 German film of
+   *  the same title — went untouched.
+   *
+   *  Only ever reached when the full name found nobody, so it cannot change an
+   *  answer TMDB already gave; and a name it resolves still has to be ABSENT from
+   *  the crew before anything acts. */
+  private def personIds(name: String): Seq[Int] =
+    credits.personIds(name) match {
+      case Nil   => withoutMiddleNames(name).map(credits.personIds).getOrElse(Seq.empty)
+      case found => found
+    }
+
+  /** "David Kerrick Hand" as "David Hand" — the first and last of three or more
+   *  words. Fewer than three has no middle to drop, and the result would just be
+   *  the query that already failed. */
+  private def withoutMiddleNames(name: String): Option[String] = {
+    val words = name.split("\\s+").filter(_.nonEmpty)
+    Option.when(words.length >= 3)(s"${words.head} ${words.last}")
   }
 }
 

@@ -48,9 +48,27 @@ class CrewConfirmationSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stand when the venue names nobody who worked on the film" in {
-    // The venue screens Hawks' 1932 "Scarface"; the row resolved to De Palma's 1983.
-    val confirm = new CrewConfirmation(credits(Map("Howard Hawks" -> Seq(9999)), crew = Set(1, 2, 3)))
-    confirm.confirmed(row(Seq("Brian De Palma"), Seq("Howard Hawks"))) shouldBe true
+    // Prod's "birdman|2014": the venues screen Iñárritu's, the row resolved to a
+    // Romanian film of the same name, and TMDB puts him nowhere on its crew.
+    val confirm = new CrewConfirmation(
+      credits(Map("Alejandro González Iñárritu" -> Seq(223)), crew = Set(1, 2, 3)))
+    confirm.confirmed(row(Seq("Alexandru Mavrodineanu"), Seq("Alejandro González Iñárritu"))) shouldBe true
+  }
+
+  it should "look past the middle names TMDB does not carry" in {
+    // German venues published "David Kerrick Hand" for Disney's "Snow White"; TMDB
+    // knows him only as "David Hand" and answers the fuller name with NOTHING, so
+    // the row sat on a 1939 German film of the same title untouched.
+    val confirm = new CrewConfirmation(credits(Map("David Hand" -> Seq(5446)), crew = Set(1, 2)))
+    confirm.confirmed(row(Seq("Carl Heinz Wolff"), Seq("David Kerrick Hand"))) shouldBe true
+  }
+
+  it should "still take TMDB's answer to the full name when it has one" in {
+    // The shortening is a fallback, never an override: a name TMDB does answer is
+    // answered once, by the name the venue actually published.
+    val confirm = new CrewConfirmation(
+      credits(Map("Anthony M. Dawson" -> Seq(7), "Anthony Dawson" -> Seq(9999)), crew = Set(7)))
+    confirm.confirmed(row(Seq("Antonio Margheriti"), Seq("Anthony M. Dawson"))) shouldBe false
   }
 
   // Abstention again: an answer TMDB cannot give is not evidence of a wrong film.
