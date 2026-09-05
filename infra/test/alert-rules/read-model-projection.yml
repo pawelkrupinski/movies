@@ -184,6 +184,23 @@ tests:
               summary: "es dropped 53.12% of its films from the read model in an hour"
               description: "`kinowo_worker_readmodel_films_pruned_total` has removed more than 30% of `corpus_movies{subset=\"total\"}` for this country within an hour, so schedules are disappearing from the site with the films that carried them. The worst healthy hour measured over the week to 2026-09-05 was 16.9%. Read the worker's `kinowo.removal-audit` log first -- it names every card removed with its screening count and a reason (reconcile-prune / scrape-prune) -- then check whether a backfill or reprojection script is running against this country, whether a city slug was renamed (which re-keys every CityScreening and orphans the old ones), and whether the source `movies` rows still exist: a prune whose rows are intact is a projection fault, and a prune that follows rows actually vanishing is a scrape or cleanup fault."
 
+  # A CENSUS OUTAGE MUST NOT PAGE AS A PRUNE. `WorkerCorpusMetrics` seeds every subset
+  # at 0 on boot and publishes NOTHING on a scan that could not read the whole corpus,
+  # so after a restart with a failing read the denominator sits at a real 0 while the
+  # numerator still carries the last hour's routine re-keys. Dividing by a clamped 1
+  # turned that into "pl dropped 4000% of its films" — the exact shape this rule's own
+  # comment rejects the showtime-volume rules for.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="pl",job="kinowo-worker"}'
+        values: '0+0.7x180'
+      - series: 'kinowo_worker_corpus_movies{country="pl",job="kinowo-worker",subset="total"}'
+        values: '0x180'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelFilmPruneBurst
+        exp_alerts: []
+
   # A COUNTRY THAT HAS PRUNED NOTHING has no counter series at all -- a labelled counter only
   # appears on its first observation. The rule must be silent, not absent-firing, which is why it
   # has no absent() companion.

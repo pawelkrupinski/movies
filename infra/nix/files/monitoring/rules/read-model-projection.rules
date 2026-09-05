@@ -121,12 +121,25 @@ groups:
       # series until its first observation, so a country that has pruned nothing is legitimately
       # absent and an absence rule would page for a read model doing no harm. The projector's own
       # liveness is already covered by ReadModelProjectionMetricsAbsent.
+      # THE DENOMINATOR HAS TO BE A REAL CORPUS, which is why the trailing `> 0` is not
+      # decoration. `WorkerCorpusMetrics` SEEDS every subset at 0 on boot and its
+      # `publish` writes nothing on a scan that could not read the whole corpus, so a
+      # restart into a failing read leaves `corpus_movies{subset="total"}` at a genuine
+      # 0 for as long as the read stays broken — the 2026-07-27 decode bug held exactly
+      # that for ~50 minutes. The numerator is unaffected, since the pre-restart samples
+      # are still inside the `[1h]` window. A `clamp_min(..., 1)` denominator turned
+      # that into "pl dropped 4200% of its films" — a critical page for a census
+      # outage, which is the failure this rule's own preamble rejects the
+      # showtime-volume rules for. `kinowo-corpus-census-stuck` owns that shape.
       - alert: ReadModelFilmPruneBurst
         expr: >-
           (
-            sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[1h]))
-            / clamp_min(sum by (country) (kinowo_worker_corpus_movies{subset="total"}), 1)
-          ) > 0.3
+            (
+              sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[1h]))
+              / sum by (country) (kinowo_worker_corpus_movies{subset="total"})
+            ) > 0.3
+          )
+          and on (country) (sum by (country) (kinowo_worker_corpus_movies{subset="total"}) > 0)
         # The increase window is already an hour, so this is not waiting for the condition to be
         # real -- it is confirming the ratio is not a single scrape-boundary sample.
         for: 15m

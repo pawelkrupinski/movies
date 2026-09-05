@@ -63,6 +63,15 @@ class CrewConfirmationSpec extends AnyFlatSpec with Matchers {
     confirm.confirmed(row(Seq("Carl Heinz Wolff"), Seq("David Kerrick Hand"))) shouldBe true
   }
 
+  it should "not shorten across a nobiliary particle" in {
+    // "Lars von Trier" is not "Lars Trier". Dropping the middle token is only safe when
+    // it is a middle NAME; across a particle the shortened form names a DIFFERENT
+    // person, and TMDB answering for them would confirm a contradiction that isn't
+    // there — the row would be force-re-resolved off a stranger who never existed.
+    val confirm = new CrewConfirmation(credits(Map("Lars Trier" -> Seq(9999)), crew = Set(1, 2)))
+    confirm.confirmed(row(Seq("Someone Else"), Seq("Lars von Trier"))) shouldBe false
+  }
+
   it should "still take TMDB's answer to the full name when it has one" in {
     // The shortening is a fallback, never an override: a name TMDB does answer is
     // answered once, by the name the venue actually published.

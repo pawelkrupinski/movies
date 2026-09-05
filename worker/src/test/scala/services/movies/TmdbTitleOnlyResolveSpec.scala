@@ -90,6 +90,28 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     cache.snapshot().flatMap(_.record.tmdbId) should contain (877)
   }
 
+  it should "keep the key year ahead of a stray year some other slot reported" in {
+    // The EmbeddedYear promotion above moved the key year down the chain; it must
+    // not fall below `reportedYears`, which is sorted ASCENDING and spans every
+    // slot — so one venue misreporting 1999 on a 2024 film would otherwise hand the
+    // search the older year and lose the row rather than merely mis-year it.
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      CinemaCityPoznanPlaza -> SourceData(title = Some("Unikat"), releaseYear = Some(1999)),
+      Tmdb                  -> SourceData(title = Some("Unikat"), releaseYear = Some(2024))))
+    val cache = new CaffeineMovieCache(
+      new InMemoryMovieRepository(Seq(("Unikat", Some(2024), seed))), normalizer = titleNormalizer)
+    val service = new MovieService(cache, new InProcessEventBus(),
+      tmdb(
+        "year=2024"               -> s"""{"results":[${result(600, "Unikat", "2024-01-01", 5.0)}]}""",
+        "year=1999"               -> s"""{"results":[${result(601, "Unikat", "1999-01-01", 9.0)}]}""",
+        "/movie/600/external_ids" -> """{"id":600,"imdb_id":"tt6000000"}""",
+        "/movie/601/external_ids" -> """{"id":601,"imdb_id":"tt6010000"}"""
+      ))
+
+    service.reEnrichSync("Unikat", Some(2024))
+    cache.snapshot().flatMap(_.record.tmdbId) should contain (600)
+  }
+
   it should "persist the wikidata_id from TMDB's /external_ids onto the resolved row" in {
     val cache = bareRow("Osobliwość")
     val service = new MovieService(cache, new InProcessEventBus(),

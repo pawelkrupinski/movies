@@ -36,7 +36,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
   /** Records what the cache writes back, and can be told to fail its per-row read — the
    *  one thing that separates "absent" from "unreadable". */
-  private class Repo(rows: Seq[StoredMovieRecord], readable: Boolean) extends MovieRepository {
+  private class Repo(rows: Seq[StoredMovieRecord], var readable: Boolean) extends MovieRepository {
     val normalizer: TitleNormalizer = titleNormalizer
     val upserts = scala.collection.mutable.ListBuffer.empty[(String, MovieRecord)]
     def enabled = true
@@ -58,8 +58,8 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   private val stored = StoredMovieRecord("Live Film", Some(2026), liveFilm)
 
   /** One cinema's scrape of `title` — the Multikino listing that lands on a cold cache. */
-  private def cinemaMovie(title: String) = CinemaMovie(
-    movie = models.Movie(title, releaseYear = Some(2026)), cinema = Multikino, posterUrl = None, filmUrl = None,
+  private def cinemaMovie(title: String, year: Int = 2026) = CinemaMovie(
+    movie = models.Movie(title, releaseYear = Some(year)), cinema = Multikino, posterUrl = None, filmUrl = None,
     synopsis = None, cast = Seq.empty, director = Seq.empty, showtimes = Seq(showtime))
 
   "a scrape landing on a film whose stored row cannot be READ" should
@@ -73,6 +73,30 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     withClue(s"wrote ${repo.upserts.map { case (t, r) => s"$t -> ${r.data.keySet}" }}: ")(
       repo.upserts.filter { case (_, r) => !r.data.contains(Helios) } shouldBe empty)
     cache.skippedUnreadable.get() should be > 0L
+  }
+
+  // The slot MOVE is the other write this branch guards. Deciding which film a
+  // (cinema, title) belongs to drops the slot from every OTHER row holding it — correct
+  // once the slot has landed, but on an unreadable row nothing lands, so an unguarded
+  // drop deletes the venue's showtimes and puts them nowhere.
+  it should "not strip the venue's slot off the row that still holds it" in {
+    val repo  = new Repo(Seq(stored), readable = true)
+    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film")))
+    val holder = cache.keyOf("Live Film", Some(2026))
+    def multikinoSlots = cache.get(holder).toSeq
+      .flatMap(_.data.keys.filter(Source.cinemaOf(_).contains(Multikino)))
+    withClue("the seed scrape must leave the row holding Multikino's slot: ")(
+      multikinoSlots should not be empty)
+
+    // The venue now publishes the same title under a DIFFERENT year, so the scrape
+    // decides the slot belongs to another key — and that key cannot be read. Nothing
+    // lands there, so nothing may be taken from the row that still holds it.
+    repo.readable = false
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film", year = 2027)))
+
+    withClue(s"skipped=${cache.skippedUnreadable.get()}, row=${cache.get(holder).map(_.data.keySet)}: ")(
+      multikinoSlots should not be empty)
   }
 
   // The other half of the contract: an unreadable read must not become a licence to stop

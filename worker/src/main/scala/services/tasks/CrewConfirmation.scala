@@ -75,14 +75,32 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
 
   /** "David Kerrick Hand" as "David Hand" — the first and last of three or more
    *  words. Fewer than three has no middle to drop, and the result would just be
-   *  the query that already failed. */
+   *  the query that already failed.
+   *
+   *  Never across a NOBILIARY PARTICLE. "Lars von Trier" shortens to "Lars Trier",
+   *  which is a different person if TMDB has one at all — and a person TMDB does
+   *  answer for is exactly what turns an abstention into a confirmed contradiction,
+   *  so a wrong answer here force-re-resolves a row that was right. A middle NAME is
+   *  droppable; a particle is part of the surname. */
   private def withoutMiddleNames(name: String): Option[String] = {
     val words = name.split("\\s+").filter(_.nonEmpty)
-    Option.when(words.length >= 3)(s"${words.head} ${words.last}")
+    Option.when(words.length >= 3 && !words.tail.init.exists(isParticle))(
+      s"${words.head} ${words.last}")
   }
+
+  /** The lowercase-by-convention words that bind a surname to its prefix. Compared
+   *  case-insensitively because venues capitalise inconsistently ("Von Trier"). */
+  private def isParticle(word: String): Boolean =
+    CrewConfirmation.Particles.contains(word.toLowerCase.stripSuffix("."))
 }
 
 object CrewConfirmation {
+  /** Nobiliary and patronymic particles: a middle word that belongs to the SURNAME
+   *  rather than being a middle name, so shortening across it renames the person. */
+  private val Particles: Set[String] = Set(
+    "von", "van", "de", "del", "della", "der", "den", "di", "da", "dos", "das",
+    "du", "la", "le", "el", "al", "bin", "ibn", "ben", "af", "av", "ter", "te", "zu")
+
   /** The two questions this asks TMDB, as a seam so a spec answers them directly
    *  and production wires them to the real client. */
   trait Credits {

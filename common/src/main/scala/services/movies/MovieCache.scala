@@ -1611,9 +1611,14 @@ class CaffeineMovieCache(
           // out-of-band edits); first-time scrapes `put` (keeps the tmdbId
           // identity gate live).
           val slotKey = cinemaSlotKey(cinema, displayTitle)
-          existingOpt match {
+          // Whether the slot actually LANDED on `key`. The move below is only safe
+          // once it has: a skipped write that still dropped the slot from the row
+          // holding it would delete this venue's showtimes and put them nowhere,
+          // which is the very loss the unreadable-row skip exists to prevent.
+          val landed = existingOpt match {
             case Some(_) =>
               putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
+              true
             case None =>
               // A cache MISS is not proof of first-time: a restart/eviction/re-key
               // can leave a fully-rated Mongo row unseen by Caffeine. Build the
@@ -1643,9 +1648,11 @@ class CaffeineMovieCache(
                     s"${cinema.displayName}: its stored row could not be READ, and rebuilding it from " +
                     "this scrape alone would prune every other cinema's showtimes.")
                   skippedUnreadable.incrementAndGet()
+                  false
                 case (row, true) =>
                   val base = row.getOrElse(MovieRecord())
                   put(key, base.copy(data = base.data + (slotKey -> slot)))
+                  true
               }
           }
           // This tick just decided which film this (cinema, title) belongs to, so
@@ -1664,7 +1671,8 @@ class CaffeineMovieCache(
           // different Source spelling (a bare `Cinema` from an older write, a
           // `CinemaShowing` for a decorated edition), and dropping only `slotKey`
           // would miss exactly the stranded copies this is here to clear.
-          (corpusIndex.keysForCinemaSlot(cinema, norm) - key).foreach { other =>
+          // Gated on the write above: see `landed`.
+          if (landed) (corpusIndex.keysForCinemaSlot(cinema, norm) - key).foreach { other =>
             dropCinemaSlots(other, _.data.collect {
               case (src, sd) if Source.cinemaOf(src).contains(cinema) &&
                                 sd.title.exists(t => normalizer.sanitize(t) == norm) => src

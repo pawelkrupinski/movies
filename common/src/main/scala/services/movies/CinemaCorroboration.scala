@@ -58,10 +58,15 @@ object CinemaCorroboration {
   def contradiction(record: MovieRecord): Option[Contradiction] =
     if (record.tmdbId.isEmpty) None
     else record.data.get(Tmdb).flatMap { film =>
-      if (directorAffirms(record, film.director))         None
-      else if (runtimeDenies(record, film.runtimeMinutes)) Some(Contradiction.Runtime)
-      else if (directorDenies(record, film.director))     Some(Contradiction.Director)
-      else                                                None
+      namesAgree(record, film.director) match {
+        // Agreement settles the row on the strongest evidence either side carries and
+        // leaves the runtime nothing to decide — see `namesAgree`.
+        case Some(true) => None
+        case agreement =>
+          if (runtimeDenies(record, film.runtimeMinutes)) Some(Contradiction.Runtime)
+          else if (agreement.contains(false))             Some(Contradiction.Director)
+          else                                            None
+      }
     }
 
   /** True when the cinemas positively contradict the film this row resolved to.
@@ -69,41 +74,33 @@ object CinemaCorroboration {
    *  act on it should go through [[contradiction]] and confirm a director. */
   def contradicts(record: MovieRecord): Boolean = contradiction(record).isDefined
 
-  /** Both sides naming the SAME person, which settles the row on the strongest
-   *  evidence either carries and leaves the runtime nothing to decide.
-   *
-   *  Prod, 2026-09-05: seven of the nine runtime contradictions had a director
-   *  agreeing across them. Almodovar's 30-minute "The Human Voice" advertised at
-   *  90 because the slot included a Q&A; a Chaplin/Keaton shorts PROGRAMME
-   *  measured against the one Keaton short it resolved to; "Klimt & Schiele"
-   *  likewise. In every one the film is right and the cinema's number describes
-   *  the event around it, not the film.
-   *
-   *  It gives up the reverse case — a director's OTHER film of the same name, the
-   *  8-minute "Shiva Baby" short standing in for the 2020 feature. That is the
-   *  cheaper mistake to make: a missed contradiction leaves one row uncorrected,
-   *  while acting on a false one force-re-resolves a film that was already right
-   *  and can lose its resolution outright. */
-  private def directorAffirms(record: MovieRecord, filmDirectors: Seq[String]): Boolean = {
-    val cinemaNames = record.cinemaDirector.map(nameTokens).filter(_.nonEmpty)
-    val filmNames   = filmDirectors.map(nameTokens).filter(_.nonEmpty)
-    cinemaNames.exists(c => filmNames.exists(f => samePerson(c, f)))
-  }
-
   /** The runtime band is deliberately wide (see [[RuntimeCorroboration.plausible]]):
    *  cinemas pad, round and shave, and Multikino advertises the 162-minute "Lalka"
    *  at 147. Only a category error trips it. */
   private def runtimeDenies(record: MovieRecord, filmRuntime: Option[Int]): Boolean =
     !RuntimeCorroboration.plausible(record.cinemaRuntimesMinutes, filmRuntime)
 
-  /** Directors speak only when BOTH sides name someone: a film TMDB credits to
-   *  nobody, or one no venue credits, says nothing either way. A contradiction
-   *  needs EVERY cinema credit to match no film credit at all. */
-  private def directorDenies(record: MovieRecord, filmDirectors: Seq[String]): Boolean = {
+  /** Whether the two sides name the same person, or None when one of them names
+   *  nobody this can compare — a film TMDB credits to nobody, a film no venue
+   *  credits, or a credit that folds away entirely (a CJK name). Disagreement means
+   *  EVERY cinema credit matched no film credit at all. The single
+   *  three-valued answer `contradiction` reads once, so "they agree" and "they
+   *  disagree" cannot drift apart and each credit is tokenised once per row.
+   *
+   *  Agreement is load-bearing on its own, not just the negation of a
+   *  contradiction. Prod, 2026-09-05: seven of the nine runtime contradictions had a
+   *  director agreeing across them — Almodovar's 30-minute "The Human Voice"
+   *  advertised at 90 because the slot included a Q&A, a Chaplin/Keaton shorts
+   *  PROGRAMME measured against the one Keaton short it resolved to. The film is
+   *  right and the cinema's number describes the event around it. It gives up the
+   *  reverse case (a director's OTHER film of the same name), which is the cheaper
+   *  mistake: a missed contradiction leaves one row uncorrected, while acting on a
+   *  false one force-re-resolves a film that was already right. */
+  private def namesAgree(record: MovieRecord, filmDirectors: Seq[String]): Option[Boolean] = {
     val cinemaNames = record.cinemaDirector.map(nameTokens).filter(_.nonEmpty)
     val filmNames   = filmDirectors.map(nameTokens).filter(_.nonEmpty)
-    cinemaNames.nonEmpty && filmNames.nonEmpty &&
-      !cinemaNames.exists(c => filmNames.exists(f => samePerson(c, f)))
+    Option.when(cinemaNames.nonEmpty && filmNames.nonEmpty)(
+      cinemaNames.exists(c => filmNames.exists(f => samePerson(c, f))))
   }
 
   /** A credit as its SET of name tokens — case- and diacritic-folded, punctuation

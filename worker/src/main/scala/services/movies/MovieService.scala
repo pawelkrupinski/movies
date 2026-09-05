@@ -1063,10 +1063,14 @@ class MovieService(
     // year, so a mis-resolved row would corroborate its key year with the very
     // resolution being re-examined — "scarface|1983" carries a 1983 TMDB slot.
     val corroboratedKeyYear = keyYear.filter(row.cinemaYears.contains)
+    // Only the EMBEDDED year is promoted above the key year. `reportedYears` stays
+    // BELOW it, as it always was: it is sorted ascending and spans every slot, so
+    // one venue misreporting 1999 on a 2024 film would otherwise hand the search the
+    // older year.
     val effectiveYear = corroboratedKeyYear
       .orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
-      .orElse(reportedYears.headOption)
       .orElse(keyYear)
+      .orElse(reportedYears.headOption)
     val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle, cache.normalizer)
     // `freshHit` captures the SearchResult on a cache MISS (the loader runs on
     // this thread), so the caller keeps the hit's title/year as a fallback when
