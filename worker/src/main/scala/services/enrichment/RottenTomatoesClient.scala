@@ -189,14 +189,19 @@ class RottenTomatoesClient(http: HttpFetch) {
       // 2026 "Lalka" ended up on /m/lalka_1969, Has's 1968 film. A MODIFIER-suffix
       // hit ("<title> - Re-Release") stays unguarded on purpose — it is explicitly
       // the same film re-issued, so a large gap is expected and correct.
-      val exact = hits
-        .filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
-        .filter(h => MetacriticClient.yearConfirms(year, h.year))
-      val modifier = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
+      val exactTitle = hits.filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
+      val exact      = exactTitle.filter(h => MetacriticClient.yearConfirms(year, h.year))
+      val modifier   = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
+      // The modifier branch is a fallback for "no exact title here at all" — NOT for
+      // "the exact titles were rejected". Falling through on a year rejection hands an
+      // unguarded candidate the win the guard just denied a guarded one: a 2026 "Lalka"
+      // whose exact hit carries no year would land on the 1968 ":  Restored" re-issue,
+      // which is the very page the year guard was added to stop. An exact title that
+      // fails the year means this film is not here.
       val candidates =
-        if (exact.nonEmpty) exact
-        else if (modifier.nonEmpty) modifier
-        else Seq.empty
+        if (exact.nonEmpty)                          exact
+        else if (exactTitle.isEmpty && modifier.nonEmpty) modifier
+        else                                         Seq.empty
       candidates
         .sortBy(h => year.flatMap(y => h.year.map(hy => math.abs(hy - y))).getOrElse(Int.MaxValue))
         .headOption

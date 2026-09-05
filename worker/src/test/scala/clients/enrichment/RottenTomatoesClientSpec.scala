@@ -405,4 +405,17 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
       Some("https://www.rottentomatoes.com/m/inception")
     fetch.requested.exists(_.contains("never_reached")) shouldBe false
   }
+
+  it should "refuse rather than fall through to a modifier when the exact title fails the year" in {
+    // The year guard filters the EXACT set; emptying it used to hand control to the
+    // MODIFIER branch, which is unguarded on purpose. So a 2026 "Lalka" whose exact
+    // hit carries no year could still land on a 1968 ":  Restored" re-issue — a worse
+    // answer than the one the guard just rejected. An exact title that failed the year
+    // means "not this film", not "try something looser".
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    val hits = Seq(
+      RottenTomatoesClient.SearchHit("lalka", "Lalka", None, None),
+      RottenTomatoesClient.SearchHit("lalka_1969", "Lalka: Restored", Some(1968), None))
+    c.pickBestSearchHit(hits, "Lalka", Some(2026)) shouldBe None
+  }
 }
