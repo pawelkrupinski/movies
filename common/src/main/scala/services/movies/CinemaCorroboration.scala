@@ -94,8 +94,46 @@ object CinemaCorroboration {
   private def samePerson(a: Set[String], b: Set[String]): Boolean =
     covers(a, b) || covers(b, a)
 
-  /** Every token of `narrow` accounted for in `wide`, letting a single letter stand
-   *  for a `wide` token that begins with it. */
+  /** Every token of `narrow` accounted for by some token of `wide`. */
   private def covers(narrow: Set[String], wide: Set[String]): Boolean =
-    narrow.forall(t => wide.contains(t) || (t.length == 1 && wide.exists(_.startsWith(t))))
+    narrow.forall(t => wide.exists(sameToken(t, _)))
+
+  /** One name token standing for another. Beyond equality this forgives the three
+   *  ways upstream feeds mangle a credit, none of which says a different person:
+   *
+   *    - an INITIAL for the name it abbreviates ("Alejandro G." / "González");
+   *    - a TRUNCATION, which arrives identically from every venue on a feed —
+   *      "Michael Gottli" from five Arc cinemas, "Pedro Almod" cut at the accent;
+   *    - a ONE-LETTER misspelling — "Paul Verhoven" for Verhoeven, from six
+   *      unrelated UK venues, so a feed's error rather than a venue's.
+   *
+   *  Both tolerances need length to earn them: a prefix must be 5+ characters and a
+   *  near-miss 6+, so "Bong Joon Ho" and "Bong Joon Il" stay two people. The whole
+   *  point of this comparison is to abstain unless the names genuinely differ. */
+  private def sameToken(a: String, b: String): Boolean =
+    a == b ||
+      (a.length == 1 && b.startsWith(a)) || (b.length == 1 && a.startsWith(b)) ||
+      (a.length >= 5 && b.startsWith(a)) || (b.length >= 5 && a.startsWith(b)) ||
+      (a.length >= 6 && b.length >= 6 && withinOneEdit(a, b))
+
+  /** True when `a` and `b` are at most one insertion, deletion or substitution
+   *  apart. Bounded and allocation-free: the only distance that matters here is
+   *  "one", so a longer walk is abandoned as soon as a second difference shows. */
+  private def withinOneEdit(a: String, b: String): Boolean = {
+    if (math.abs(a.length - b.length) > 1) return false
+    var i = 0
+    var j = 0
+    var edits = 0
+    while (i < a.length && j < b.length) {
+      if (a.charAt(i) == b.charAt(j)) { i += 1; j += 1 }
+      else {
+        edits += 1
+        if (edits > 1) return false
+        if (a.length == b.length) { i += 1; j += 1 }        // substitution
+        else if (a.length > b.length) i += 1                 // deletion from a
+        else j += 1                                          // insertion into a
+      }
+    }
+    edits + (a.length - i) + (b.length - j) <= 1
+  }
 }

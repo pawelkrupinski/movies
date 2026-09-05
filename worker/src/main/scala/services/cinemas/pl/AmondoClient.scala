@@ -124,7 +124,11 @@ object AmondoClient {
 
   private def infoLi(document: org.jsoup.nodes.Document, label: String): Option[String] =
     document.select("ul.movie-info li").asScala.find(_.text.toLowerCase.contains(label))
-      .map(_.text.replaceFirst(s"(?i)^[^A-Za-zÀ-ž0-9]*$label[:\\s]*", "").trim).filter(_.nonEmpty)
+      // `(?iu)`, not `(?i)`: Java folds ASCII only without UNICODE_CASE, so an
+      // UPPERCASE label carrying a diacritic never matched its lowercase form and
+      // rode into the value — prod stored a director of "REŻYSERIA Lee Chang-dong".
+      // Same ASCII-only trap as `\w` not matching "września".
+      .map(_.text.replaceFirst(s"(?iu)^[^A-Za-zÀ-ž0-9]*$label[:\\s]*", "").trim).filter(_.nonEmpty)
 
   def parseDetail(html: String): Detail = {
     val document  = Jsoup.parse(html)

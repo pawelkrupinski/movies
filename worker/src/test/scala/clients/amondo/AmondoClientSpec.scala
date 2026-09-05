@@ -56,4 +56,22 @@ class AmondoClientSpec extends AnyFlatSpec with Matchers {
     synopses.exists(_.contains("Julie wkrótce kończy trzydzieści lat")) shouldBe true // prose preserved
     synopses.foreach(_ should not include "KUP BILET")
   }
+
+  // Amondo writes the label in caps on some pages, and Java's `(?i)` folds ASCII
+  // only — so `REŻYSERIA` never matched the lowercase `reżyseria` the stripper was
+  // given, and the label rode into the value. Prod stored the director of
+  // "Płomienie" as "REŻYSERIA Lee Chang-dong", which then read as a director
+  // disagreement and masked the real finding underneath: Płomienie is the Polish
+  // title of Lee Chang-dong's "Burning", and the row had resolved to Ryszard
+  // Czekała's 1977 film of the same name.
+  it should "strip an UPPERCASE label whose diacritic ASCII case-folding cannot match" in {
+    val html =
+      """<html><body><ul class="movie-info">
+        |<li>REŻYSERIA Lee Chang-dong</li>
+        |<li>CZAS TRWANIA 148 min</li>
+        |</ul></body></html>""".stripMargin
+    val detail = AmondoClient.parseDetail(html)
+    detail.director       shouldBe Seq("Lee Chang-dong")
+    detail.runtimeMinutes shouldBe Some(148)
+  }
 }

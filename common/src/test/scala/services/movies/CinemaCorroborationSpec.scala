@@ -47,6 +47,25 @@ class CinemaCorroborationSpec extends AnyFlatSpec with Matchers {
     CinemaCorroboration.contradicts(row(Seq("A. Wajda"), Seq("Louisa Proske"))) shouldBe true
   }
 
+  // Upstream feeds mangle names, and not per-venue: "Paul Verhoven" arrives
+  // identically from six unrelated UK cinemas, "Michael Gottli" from five Arc
+  // venues, "Pedro Almod" truncated at the accent. None is evidence of a different
+  // film, and none can be fixed at source. A contradiction has to mean the names
+  // are actually DIFFERENT, not merely differently mangled.
+  it should "not read a truncated credit as a different director" in {
+    CinemaCorroboration.contradicts(row(Seq("Michael Gottlieb"), Seq("Michael Gottli"))) shouldBe false
+    CinemaCorroboration.contradicts(row(Seq("Pedro Almodóvar"),  Seq("Pedro Almod")))    shouldBe false
+  }
+
+  it should "not read a one-letter misspelling as a different director" in {
+    CinemaCorroboration.contradicts(row(Seq("Paul Verhoeven"), Seq("Paul Verhoven"))) shouldBe false
+  }
+
+  it should "keep short names strict, where one letter is a different person" in {
+    // "Lee" and "Loe", or "Kim" and "Kam", are not near-misses to forgive.
+    CinemaCorroboration.contradicts(row(Seq("Bong Joon Ho"), Seq("Bong Joon Il"))) shouldBe true
+  }
+
   it should "still catch two genuinely different directors" in {
     CinemaCorroboration.contradicts(row(Seq("Andrzej Wajda"), Seq("Louisa Proske"))) shouldBe true
   }
