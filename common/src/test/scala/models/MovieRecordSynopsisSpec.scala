@@ -273,39 +273,63 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     record.synopsisForCity(Wroclaw) shouldBe Some("Krótki TMDB.")
   }
 
-  // The chain-detail branch above asks whether any venue of the chain is present
-  // AND in this city — a MEMBERSHIP question. It used to ask `cinemaData.keySet`,
-  // which rebuilds a sorted map over every slot on each call, once per city the
-  // film screens in; `synopsisByCity` walks every such city on every projection,
-  // so a wide record paid that rebuild hundreds of times.
-  //
-  // Timed as a RATIO against the same record with the chain slot removed — the
-  // chain branch is the only difference between the two, and a ratio survives
-  // whatever hardware CI hands us, where an absolute bound does not. The rebuild
-  // put this over 6x; without it the branch short-circuits and the two shapes do
-  // the same per-city blurb work.
+  /** THE CHAIN BRANCH MUST NOT REBUILD THE SLOT MAP, once per city, on a record
+   *  that screens in a hundred of them.
+   *
+   *  `synopsisAppliesToCity` asks a MEMBERSHIP question: is any venue of this
+   *  chain both present on the record and in this city. It used to ask it through
+   *  `cinemaData.keySet`, which sorts every slot and builds a fresh `Map` — and
+   *  `synopsisByCity` walks every city the film screens in, on every projection,
+   *  so a wide record paid that rebuild hundreds of times. It now walks
+   *  `slotCinemas`, a lazy `keysIterator` that short-circuits on the first hit.
+   *
+   *  ASSERTED BY COUNTING, not by the clock. This was a timed ratio (chain vs no
+   *  chain, expected under 3x) and it failed CI at 3.4 on a contended runner while
+   *  the code was perfectly correct — a wall-clock threshold measures the runner
+   *  as much as the algorithm. The rebuild is visible without timing anything: it
+   *  consumes the map's ENTRY iterator (`data.iterator`, via `cinemaSlots`), while
+   *  the membership walk touches only `keysIterator`. So the honest statement is
+   *  that adding the chain slot buys no additional full-entry traversals, and that
+   *  holds on any hardware. */
   it should "not rebuild the slot map once per city when a chain slot is present" in {
-    val venues   = (Country.Poland.cities ++ Country.UnitedStates.cities).flatMap(_.cinemas)
-    val slots    = venues.map(c => (c: Source) -> SourceData(title = Some("Film"), synopsis = Some("Opis kina.")))
-    val withChain = MovieRecord(data = (slots :+ ((CinemaCityChain: Source) -> SourceData(synopsis = Some("Opis z sieci Cinema City.")))).toMap)
-    val noChain   = MovieRecord(data = slots.toMap)
-    withChain.cities.size should be > 100
+    /** A `data` map that records how often each kind of traversal is asked for.
+     *  `iterator` is what rebuilding the slot map consumes; `keysIterator` is what
+     *  the membership walk uses. */
+    final class CountingMap(underlying: Map[Source, SourceData])
+        extends scala.collection.immutable.AbstractMap[Source, SourceData] {
+      var entryTraversals = 0
+      def get(key: Source): Option[SourceData] = underlying.get(key)
+      override def iterator: Iterator[(Source, SourceData)] = { entryTraversals += 1; underlying.iterator }
+      override def keysIterator: Iterator[Source] = underlying.keysIterator
+      def updated[V1 >: SourceData](key: Source, value: V1): Map[Source, V1] = underlying.updated(key, value)
+      def removed(key: Source): Map[Source, SourceData] = underlying.removed(key)
+    }
 
-    // The chain blurb wins in a city where a Cinema City venue screens the film —
-    // i.e. the chain-detail branch this test is timing really is being taken.
+    val venues = (Country.Poland.cities ++ Country.UnitedStates.cities).flatMap(_.cinemas)
+    val slots  = venues.map(c => (c: Source) -> SourceData(title = Some("Film"), synopsis = Some("Opis kina.")))
+    val chain  = (CinemaCityChain: Source) -> SourceData(synopsis = Some("Opis z sieci Cinema City."))
+
+    val withChainData = new CountingMap((slots :+ chain).toMap)
+    val noChainData   = new CountingMap(slots.toMap)
+    val withChain     = MovieRecord(data = withChainData)
+    val noChain       = MovieRecord(data = noChainData)
+
+    withChain.cities.size should be > 100
+    // The chain blurb wins where a Cinema City venue screens the film, so the
+    // branch this is about really is being taken.
     withChain.synopsisForCity(Poznan) shouldBe Some("Opis z sieci Cinema City.")
 
-    def timeAllCities(record: MovieRecord): Double = {
-      val cities = record.cities
-      (1 to 2).foreach(_ => cities.map(record.synopsisForCity))
-      val started = System.nanoTime()
-      cities.map(record.synopsisForCity)
-      (System.nanoTime() - started) / 1e6
-    }
-    val chainMillis = timeAllCities(withChain)
-    val baseMillis  = timeAllCities(noChain)
-    withClue(f"chain slot cost $chainMillis%.0f ms vs $baseMillis%.0f ms without it: ") {
-      chainMillis / baseMillis should be < 3.0
+    withChainData.entryTraversals = 0
+    noChainData.entryTraversals = 0
+    withChain.cities.foreach(withChain.synopsisForCity)
+    noChain.cities.foreach(noChain.synopsisForCity)
+
+    withClue(
+      s"the chain slot cost ${withChainData.entryTraversals - noChainData.entryTraversals} extra " +
+        s"full-map traversals across ${withChain.cities.size} cities " +
+        s"(${withChainData.entryTraversals} vs ${noChainData.entryTraversals}) — " +
+        "the chain-detail branch is rebuilding the slot map per city again: ") {
+      withChainData.entryTraversals shouldBe noChainData.entryTraversals
     }
   }
 }
