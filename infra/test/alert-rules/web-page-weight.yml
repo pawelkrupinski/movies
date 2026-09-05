@@ -1,0 +1,128 @@
+# UNIT TESTS FOR THE PAGE-WEIGHT ALERT.
+#
+# The rule exists because SIZE AND LATENCY DO NOT MOVE TOGETHER, and these cases pin the three ways
+# it could fail to say that:
+#
+#   1. Does it FIRE on the shape that was actually found -- a listing answering its header fast and
+#      then handing over 1.66 MB? That page's latency percentiles read HEALTHY, so no tuning of
+#      web-latency.rules could have caught it.
+#   2. Does a NORMAL city page stay silent? Poznan and Norwich are ~200 KB. A threshold that pages
+#      on those is a threshold nobody keeps.
+#   3. Does the traffic floor bite, so a near-idle country cannot page on one large response?
+rule_files:
+  - ../../nix/files/monitoring/rules/web-page-weight.rules
+
+evaluation_interval: 1m
+
+tests:
+  # 1. THE LOS ANGELES SHAPE: 30 req/min, every response between 1 MiB and 2 MiB.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="1024"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="4096"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="16384"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="65536"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="131072"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="262144"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="524288"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="1048576"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="2097152"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="4194304"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="8388608"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="us",route="/us/:city/movies",le="+Inf"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_count{job="kinowo-web",country="us",route="/us/:city/movies"}'
+        values: '0+30x200'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WebPageTooHeavy
+        exp_alerts: []
+      - eval_time: 1h30m
+        alertname: WebPageTooHeavy
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: us
+              route: /us/:city/movies
+            exp_annotations:
+              summary: "us /us/:city/movies is serving 1.95MiB pages"
+              description: "This route's 95th-percentile response is over a megabyte on the wire, AFTER gzip. The server is probably answering fast -- check web-latency.rules, which will read healthy -- because the cost is in the transfer, not the render. The cause is almost always the listing rendering an entire city's repertoire in one document: measure it with `curl -H 'Accept-Encoding: gzip' -o /dev/null -w '%{size_download}'` and count `data-time=\"` occurrences for the showtime total. The fix is to bound what is rendered, not to compress harder -- gzip is already on, and the repeated markup compresses well enough that trimming attributes measured 1.4% while rendering 60 films instead of 784 measured 80%."
+
+  # 2. A NORMAL CITY PAGE (~200 KB) MUST STAY SILENT.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="1024"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="4096"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="16384"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="65536"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="131072"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="262144"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="524288"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="1048576"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="2097152"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="4194304"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="8388608"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="pl",route="/:city/",le="+Inf"}'
+        values: '0+30x200'
+      - series: 'kinowo_web_http_response_bytes_count{job="kinowo-web",country="pl",route="/:city/"}'
+        values: '0+30x200'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: WebPageTooHeavy
+        exp_alerts: []
+
+  # 3. THE TRAFFIC FLOOR: two requests a minute at 1.9 MiB is under the 0.05 req/s floor.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="1024"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="4096"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="16384"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="65536"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="131072"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="262144"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="524288"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="1048576"}'
+        values: '0+0x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="2097152"}'
+        values: '0+2x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="4194304"}'
+        values: '0+2x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="8388608"}'
+        values: '0+2x200'
+      - series: 'kinowo_web_http_response_bytes_bucket{job="kinowo-web",country="es",route="/es/:city/movies",le="+Inf"}'
+        values: '0+2x200'
+      - series: 'kinowo_web_http_response_bytes_count{job="kinowo-web",country="es",route="/es/:city/movies"}'
+        values: '0+2x200'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: WebPageTooHeavy
+        exp_alerts: []

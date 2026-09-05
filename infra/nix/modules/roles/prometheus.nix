@@ -196,6 +196,10 @@ let
     # than the regression it would have to see: on 2026-09-04 one route at a 2s p95 owned ~70% of
     # the tier's request-seconds while error share, heap and restarts all stayed green.
     "web-latency"
+    # HOW MANY BYTES A PAGE HANDS THE VISITOR, which the latency rules cannot see: they stop at the
+    # response header, so a page answering in 50 ms and then shipping 1.66 MB reads perfectly
+    # healthy. Four city listings were over a megabyte gzipped when this was written.
+    "web-page-weight"
   ];
 in
 {

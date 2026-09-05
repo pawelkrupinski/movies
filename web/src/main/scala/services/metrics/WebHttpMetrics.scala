@@ -87,13 +87,34 @@ class WebHttpMetrics(registry: PrometheusRegistry, country: String) {
     .classicUpperBounds(WebHttpMetrics.Buckets*)
     .register(registry)
 
+  private val responseBytes: Histogram = Histogram.builder()
+    .name("kinowo_web_http_response_bytes")
+    .help("Size of the response body actually put on the wire, by country, method and matched " +
+      "route pattern. Measured AFTER gzip, so it is what the visitor downloads. Only recorded " +
+      "when the response declares a Content-Length: a streamed body (SSE) has none, and guessing " +
+      "one would be worse than the gap.")
+    .labelNames("country", "method", "route")
+    .classicOnly()
+    .classicUpperBounds(WebHttpMetrics.ByteBuckets*)
+    .register(registry)
+
   /** Record one answered request. Called once per request by
-   *  [[modules.HttpMetricsFilter]]; both metric objects are thread-safe. */
-  def record(request: RequestHeader, status: Int, durationSeconds: Double): Unit = {
+   *  [[modules.HttpMetricsFilter]]; all three metric objects are thread-safe.
+   *
+   *  `responseLength` is the wire size when the response declares one. It is
+   *  separate from duration because THE TWO DO NOT MOVE TOGETHER, which is the
+   *  whole reason this metric exists: `/us/los-angeles/movies` answers its
+   *  header in ~50 ms and then hands the visitor 1.6 MB, so every latency
+   *  percentile reads healthy while the page takes seconds to arrive over a
+   *  real connection. Timing the body instead would have been the wrong fix --
+   *  it would put the SSE streams' multi-minute lives into the latency tail. */
+  def record(request: RequestHeader, status: Int, durationSeconds: Double,
+             responseLength: Option[Long] = None): Unit = {
     val method = WebHttpMetrics.methodLabel(request.method)
     val route  = WebHttpMetrics.routeLabel(request)
     requests.labelValues(country, method, route, WebHttpMetrics.statusClass(status)).inc()
     duration.labelValues(country, method, route).observe(durationSeconds)
+    responseLength.foreach(bytes => responseBytes.labelValues(country, method, route).observe(bytes.toDouble))
   }
 }
 
@@ -112,6 +133,21 @@ object WebHttpMetrics {
    *  read wrong until the old series age out. */
   val Buckets: Seq[Double] =
     Seq(0.005, 0.01, 0.025, 0.05, 0.1, 0.15, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+
+  /** Histogram boundaries for response size, in BYTES, and spread wide because
+   *  the populations here are three orders of magnitude apart: a `/api/me`
+   *  answer is a few hundred bytes, a typical city listing is ~200 KB gzipped
+   *  (Poznan 209 KB, Norwich 188 KB), and the largest markets are past a
+   *  megabyte -- measured 2026-09-04: London 1.27 MB, New York 1.31 MB,
+   *  Chicago 1.17 MB, Los Angeles 1.66 MB. The bounds are dense either side of
+   *  512 KB because that is where "large page" turns into "page a phone on a
+   *  train will not finish", and the 8 MB top exists so a runaway render lands
+   *  somewhere finite rather than in +Inf.
+   *
+   *  ⚠️ Changing these resets every stored bucket series, exactly as for
+   *  [[Buckets]]. */
+  val ByteBuckets: Seq[Double] =
+    Seq(1024, 4096, 16384, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608)
 
   /** Label value for a request the router could not resolve. One bucket for
    *  every unmatched path — see the cardinality note on the class. */

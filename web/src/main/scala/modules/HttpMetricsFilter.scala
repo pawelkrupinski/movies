@@ -1,6 +1,6 @@
 package modules
 
-import play.api.mvc.{EssentialAction, EssentialFilter}
+import play.api.mvc.{EssentialAction, EssentialFilter, Result}
 import services.metrics.WebHttpMetrics
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -45,7 +45,8 @@ class HttpMetricsFilter(
 
       next(request)
         .map { result =>
-          metrics.record(request, result.header.status, elapsedSeconds)
+          metrics.record(request, result.header.status, elapsedSeconds,
+                         HttpMetricsFilter.wireLength(result))
           result
         }(using executionContext)
         // A handler whose future FAILS never reaches the branch above: Play's
@@ -66,4 +67,23 @@ object HttpMetricsFilter {
   /** What an escaped exception is recorded as — matching the 500 Play's own
    *  error handler will end up returning for it. */
   val UnhandledErrorStatus: Int = 500
+
+  /** The bytes this response puts on the wire, when it says.
+   *
+   *  READ HERE AND NOWHERE ELSE, because of where this filter sits. It is
+   *  wired OUTERMOST, so by the time the result comes back up the chain gzip
+   *  has already run — this Content-Length is the COMPRESSED size, which is
+   *  what the visitor actually downloads. Measured anywhere inside the gzip
+   *  filter it would report the uncompressed body and overstate every page by
+   *  roughly an order of magnitude.
+   *
+   *  `None` for a body with no declared length — chunked responses and the SSE
+   *  streams. Recording a zero for those would drag every percentile down and
+   *  make the metric say the opposite of the truth. */
+  def wireLength(result: Result): Option[Long] =
+    result.header.headers
+      .get(play.api.http.HeaderNames.CONTENT_LENGTH)
+      .flatMap(v => scala.util.Try(v.toLong).toOption)
+      .orElse(result.body.contentLength)
+      .filter(_ >= 0)
 }

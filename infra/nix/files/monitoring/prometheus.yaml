@@ -42,6 +42,7 @@ rule_files:
   - "/etc/prometheus/rules/read-model-projection.rules"
   - "/etc/prometheus/rules/web-errors.rules"
   - "/etc/prometheus/rules/web-latency.rules"
+  - "/etc/prometheus/rules/web-page-weight.rules"
 
 # EVERY JOB THAT IS NOT UNCONDITIONAL LIVES IN scrape.d, AND THIS IS ONE GLOB OVER ALL OF THEM.
 # Five files land there today:

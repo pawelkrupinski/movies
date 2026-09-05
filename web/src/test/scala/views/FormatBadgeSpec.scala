@@ -131,13 +131,19 @@ class FormatBadgeSpec extends AnyFlatSpec with Matchers {
     html should include ("""data-format="3D DUB"""")
   }
 
-  it should "emit an empty data-format on showtimes that have no format tokens" in {
+  it should "OMIT data-format on showtimes that have no format tokens, rather than emit it empty" in {
+    // Most showtimes carry no format token, so an unconditional attribute is
+    // mostly empty ones: 12,200 of them on one London listing, 179 KB of a 17 MB
+    // page. The reader cannot tell the difference -- `_repertoireView` reads
+    // `(badge.dataset.format || '')` and the navbar filter selects on `.badge-time`,
+    // not on `[data-format]` -- so the empty spelling bought nothing. This mirrors
+    // `data-room` on the same element, which has always been omitted when absent.
     val showtimes = Seq(
       Showtime(baseTime,              Some("https://example.com/a"), Some("Sala 1"), Nil),
       Showtime(baseTime.plusHours(2), Some("https://example.com/b"), Some("Sala 2"), List("2D")),
     )
     val html = views.html._filmCards(Seq(schedule(showtimes))).body
-    html should include ("""data-format=""""")
+    html should not include ("""data-format=""""")
     html should include ("""data-format="2D"""")
   }
 

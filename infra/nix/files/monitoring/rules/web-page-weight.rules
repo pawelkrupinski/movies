@@ -1,0 +1,76 @@
+---
+# HOW MANY BYTES A PAGE HANDS THE VISITOR.
+#
+# ------------------------------------------------------------------------------------------------
+# THE FAILURE THIS EXISTS FOR
+# ------------------------------------------------------------------------------------------------
+#
+# On 2026-09-04 `/uk/london/movies` was taking 7-22 SECONDS to load over a normal connection, and
+# every dashboard said the web tier was healthy. Both readings were correct: the server produced
+# the response header in ~50 ms and then handed the visitor 1.27 MB of gzipped HTML. Latency
+# metrics stop at the response header -- deliberately, because the SSE streams would otherwise put
+# a multi-minute tail in the histogram -- so THE ENTIRE COST WAS INVISIBLE. It was found by
+# somebody curling the page by hand.
+#
+# It is not one page and it is not the worst one. Measured the same day, gzipped:
+#
+#   /us/los-angeles/movies  1.66 MB   70,209 showtimes   <- worst
+#   /us/new-york/movies     1.31 MB   50,739 showtimes
+#   /uk/london/movies       1.27 MB   28,710 showtimes
+#   /us/chicago/movies      1.17 MB   42,780 showtimes
+#   /poznan/                0.21 MB    2,224 showtimes   <- typical
+#
+# ------------------------------------------------------------------------------------------------
+# WHY A SIZE RULE AND NOT A LATENCY ONE
+# ------------------------------------------------------------------------------------------------
+#
+# web-latency.rules cannot see this and no tuning of it could. It reads
+# `kinowo_web_http_request_duration_seconds`, which by construction measures time-to-header; on
+# these exact pages that is ~50 ms. A size histogram is a different question about the same
+# request, and it is the one a visitor on a train is actually asking.
+#
+# THE PAGE HAS NO UPPER BOUND BY CONSTRUCTION. The listing renders the whole city repertoire --
+# every film, every cinema, every showtime, each with its booking link -- so weight tracks the
+# market. Los Angeles is 33x Poznan's showtime count today, and a new metro is onboarded by adding
+# a row to a roster. That is why this alerts on an ABSOLUTE size rather than on growth: there is no
+# baseline to grow from, only the size the corpus happens to be.
+groups:
+  - name: web-page-weight
+    rules:
+      - alert: WebPageTooHeavy
+        # p95 rather than max: one enormous response is a curiosity, but a 95th percentile past the
+        # threshold means it is what people are routinely being handed.
+        expr: >-
+          (
+            histogram_quantile(0.95,
+              sum by (le, country, route) (
+                rate(kinowo_web_http_response_bytes_bucket{
+                  route!~"other|.*(og-image|assets/|/api/|img-event|/uptime|/tasks|sitemap).*"
+                }[30m])
+              )
+            ) > 1048576
+          )
+          and on (country, route)
+          (
+            sum by (country, route) (
+              rate(kinowo_web_http_response_bytes_count[30m])
+            ) >= 0.05
+          )
+        # An hour, because this is a property of the corpus rather than an event. It moves when a
+        # city's repertoire moves -- the weekly programme drop, a new market -- and none of those
+        # want paging within minutes.
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} {{ $labels.route }} is serving {{ $value | humanize1024 }}B pages"
+          description: >-
+            This route's 95th-percentile response is over a megabyte on the wire, AFTER gzip. The
+            server is probably answering fast -- check web-latency.rules, which will read healthy --
+            because the cost is in the transfer, not the render. The cause is almost always the
+            listing rendering an entire city's repertoire in one document: measure it with
+            `curl -H 'Accept-Encoding: gzip' -o /dev/null -w '%{size_download}'` and count
+            `data-time="` occurrences for the showtime total. The fix is to bound what is rendered,
+            not to compress harder -- gzip is already on, and the repeated markup compresses well
+            enough that trimming attributes measured 1.4% while rendering 60 films instead of 784
+            measured 80%.

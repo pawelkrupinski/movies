@@ -40,6 +40,7 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
 
   private val Counter   = "kinowo_web_http_requests_total"
   private val Histogram = "kinowo_web_http_request_duration_seconds"
+  private val Bytes     = "kinowo_web_http_response_bytes"
 
   // Exactly what the router generates for `GET /:city/movie/:slug`.
   private val FilmBySlugPath = "/$city<[^/]+>/movie/$slug<[^/]+>"
@@ -201,4 +202,49 @@ class HttpMetricsFilterSpec extends AnyFlatSpec with Matchers {
     harness.valueOf(s"""$Counter{country="pl",method="GET",route="/:city/",status="5xx"}""") shouldBe Some(1.0)
     harness.valueOf(s"""${Histogram}_count{country="pl",method="GET",route="/:city/"}""") shouldBe Some(1.0)
   }
+
+  // ── RESPONSE SIZE ────────────────────────────────────────────────────────────
+  //
+  // The metric exists because SIZE AND LATENCY DO NOT MOVE TOGETHER. Measured on
+  // 2026-09-04: `/us/los-angeles/movies` produced its response header in ~50 ms
+  // and then handed the visitor 1.66 MB gzipped (70,209 showtimes), so every
+  // latency percentile read healthy while the page took seconds to arrive on a
+  // real connection. London 1.27 MB, New York 1.31 MB, Chicago 1.17 MB, against
+  // ~200 KB for a typical city. Nothing in Prometheus could see any of it.
+
+  it should "record the response size a request actually put on the wire" in {
+    val h = new Harness()
+    h.run(routed("GET", "/london/movies", CityIndexPath),
+          Results.Ok("x" * 300000).withHeaders("Content-Length" -> "300000"))
+    // 300 KB lands above the 262144 bound and at or below 524288.
+    h.valueOf(Bytes + s"""_bucket{country="pl",method="GET",route="/:city/",le="262144.0"}""") shouldBe Some(0.0)
+    h.valueOf(Bytes + s"""_bucket{country="pl",method="GET",route="/:city/",le="524288.0"}""") shouldBe Some(1.0)
+    h.valueOf(Bytes + s"""_sum{country="pl",method="GET",route="/:city/"}""") shouldBe Some(300000.0)
+  }
+
+  it should "measure the COMPRESSED size, because the filter sits outside gzip" in {
+    // The result reaching this filter has already been through the gzip filter,
+    // so its Content-Length is the compressed body. A 1.6 MB gzipped listing
+    // must record as 1.6 MB, not as the ~20 MB of HTML that produced it.
+    val h = new Harness()
+    h.run(routed("GET", "/los-angeles/movies", CityIndexPath),
+          Results.Ok("gz").withHeaders("Content-Length" -> "1657425"))
+    h.valueOf(Bytes + s"""_sum{country="pl",method="GET",route="/:city/"}""") shouldBe Some(1657425.0)
+    h.valueOf(Bytes + s"""_bucket{country="pl",method="GET",route="/:city/",le="1048576.0"}""") shouldBe Some(0.0)
+    h.valueOf(Bytes + s"""_bucket{country="pl",method="GET",route="/:city/",le="2097152.0"}""") shouldBe Some(1.0)
+  }
+
+  it should "record NO size for a streamed body, rather than a misleading zero" in {
+    // The SSE streams (`/uptime/stream`) have no Content-Length. Observing 0 for
+    // them would drag every percentile down and make the metric say the opposite
+    // of the truth, so they are absent from the histogram entirely.
+    val h = new Harness()
+    h.run(routed("GET", "/uptime/stream", CityIndexPath),
+          Results.Ok.chunked(org.apache.pekko.stream.scaladsl.Source.single(
+            org.apache.pekko.util.ByteString("event: tick"))))
+    h.valueOf(Bytes + s"""_count{country="pl",method="GET",route="/:city/"}""") shouldBe None
+    // ...while the request itself is still counted and timed.
+    h.valueOf(Histogram + s"""_count{country="pl",method="GET",route="/:city/"}""") shouldBe Some(1.0)
+  }
+
 }
