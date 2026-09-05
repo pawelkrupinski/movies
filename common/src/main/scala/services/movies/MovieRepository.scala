@@ -835,6 +835,12 @@ class MongoMovieRepository(
       // in the system. A read that FAILED is passed as None, not as an empty map: empty
       // would read as "every row is new" and be trusted, where None makes `replaceFilm`
       // read for itself.
+      //
+      // The read is not fenced against a concurrent writer, so a slot that changes between
+      // this read and the write can leave us skipping a row whose value happens to match
+      // what we read. Reading here rather than inside `replaceFilm` widens that window by
+      // the length of this method, and the price is one delayed row: the film's next scrape
+      // reads again and writes it. Not worth a transaction on the hottest write path.
       val (current, readOk) = s.findForFilmChecked(id)
       if (readOk && current == slotPayload) true
       else s.replaceFilm(id, slotPayload, if (readOk) Some(current) else None)
@@ -1142,7 +1148,12 @@ class MongoMovieRepository(
    *
    *  A COALESCED EVENT MUST STILL RELEASE ITS DEMAND. Every delivered event owes the cursor
    *  one `applied()` or the window closes and the stream stalls for good ([[ChangeStreamDemand]]),
-   *  and an event that rides an already-queued apply never reaches that task's `finally`. */
+   *  and an event that rides an already-queued apply never reaches that task's `finally`.
+   *
+   *  AFTER `close()` an enqueue is dropped on the floor (`dropRejectedAfterShutdown`), so the id
+   *  stays in the set and its demand is never released. That is deliberate, not an oversight: the
+   *  only reachable case is a repository being discarded, whose cursor nobody is waiting on any
+   *  more. Anything that resurrects a closed repository would have to clear the set first. */
   private def applyScreeningsChange(filmId: String): Unit =
     if (screeningsApplyPending.add(filmId))
       applyOffLoop(screeningsDemand) {

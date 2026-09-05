@@ -25,8 +25,8 @@ import scala.util.Try
  *
  * Both case classes carry their `_id` directly, so writes filter on `_id` and
  * change-stream delete events hand us that same id (no ObjectId→id mapping).
- * The `web_screenings` collection is indexed on `city` (the web's per-city
- * query) and `filmId` (the projector's per-film prune).
+ * Neither collection carries a secondary index — every read here is by `_id`;
+ * see the note above the collection handles.
  *
  * When `sharedDb` is `None` (Mongo disabled in local dev / tests without a
  * cluster) the repository is a silent no-op, mirroring `MongoMovieRepository`.
