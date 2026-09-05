@@ -1,7 +1,7 @@
 package services.movies
 
 import clients.TmdbClient
-import models.{Filmweb, Helios, Imdb, MovieRecord, Source, SourceData, Tmdb}
+import models.{Filmweb, Helios, Imdb, KinoMuza, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
@@ -389,6 +389,49 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
       Helios  -> SourceData(title = Some("Mistyczka"), director = Seq("Jan Sobierajski")),
       Imdb    -> SourceData(originalTitle = Some("Maryja. Matka Papieza")),
       Filmweb -> SourceData(originalTitle = Some("Maryja. Matka Papieża"))
+    ))
+    val resolved = service.resolveStagingRecord("Mistyczka", Some(2026), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(1731866)
+  }
+
+  /**
+   * When a row really is holding TWO films, both of their titles are cinema-reported
+   * and the walk's lowest-id tie-break decides between them by accident.
+   *
+   * Prod's "Mistyczka" row: 38 venues list "Mistyczka" (tmdb 1731866), and Kino Klaps
+   * lists "DOBRE Kino - Maryja. Matka Papieża" — Jan Sobierajski's OTHER 2026 film
+   * (tmdb 1646379), whose own row merged in when both had wrongly resolved to it.
+   * Both credits then match a CINEMA title exactly, so the cinema-first ranking
+   * cannot separate them and 1646379 < 1731866 handed the row to the single venue.
+   *
+   * The count is the evidence the set of titles threw away: prefer the credit the
+   * MOST venues name. Lowest id still breaks a real tie, which is the TMDB
+   * adjacent-year duplicate it was written for.
+   */
+  it should "prefer the credit the MOST cinemas name when a row holds two films" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"              -> """{"results":[]}""",
+      "query=Jan+Sobierajski"      -> """{"results":[{"id":9001,"name":"Jan Sobierajski","known_for_department":"Directing"}]}""",
+      "/person/9001/movie_credits" -> """{"crew":[
+        |{"id":1646379,"title":"Maryja. Matka papieża","original_title":"Maryja. Matka papieża",
+        | "release_date":"2026-04-17","department":"Directing","popularity":2.0},
+        |{"id":1731866,"title":"Mistyczka","original_title":"Mistyczka",
+        | "release_date":"2026-09-11","department":"Directing","popularity":1.0}
+        |]}""".stripMargin,
+      "/movie/1646379/external_ids" -> """{"id":1646379,"imdb_id":"tt42003610"}""",
+      "/movie/1731866/external_ids" -> """{"id":1731866,"imdb_id":null}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // Two venues call it "Mistyczka"; one lists the other film under a programme
+    // banner. Both titles are cinema-published, so only the COUNT tells them apart.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios     -> SourceData(title = Some("Mistyczka"), director = Seq("Jan Sobierajski")),
+      Multikino  -> SourceData(title = Some("Mistyczka")),
+      KinoMuza   -> SourceData(title = Some("DOBRE Kino - Maryja. Matka Papieża"))
     ))
     val resolved = service.resolveStagingRecord("Mistyczka", Some(2026), existing)
 

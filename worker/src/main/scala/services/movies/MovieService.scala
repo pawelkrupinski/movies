@@ -960,6 +960,20 @@ class MovieService(
     // ranks a credit matching one of these ABOVE a credit matching a derived
     // title, so a row's own previous resolution can never outbid the cinemas.
     val cinemaCandidates = queryForms(cinemaTitles.toSeq.sorted)
+    // How many CINEMA SLOTS published each title form. `cinemaTitles` is a set, so it
+    // cannot tell the film 38 venues are showing from the one a single venue lists
+    // under a different name — and when a row really does hold two films, both of
+    // their titles are cinema-reported and the walk's lowest-id tie-break decides
+    // between them by accident. Kino Klaps's "DOBRE Kino - Maryja. Matka Papieża"
+    // sat on the "Mistyczka" row that way, and 1646379 < 1731866 handed the row to
+    // the one venue. Weight per SLOT, over the same de-decorated forms the search
+    // uses, so the banner-stripped "Maryja. Matka Papieża" counts once and
+    // "Mistyczka" counts as often as it is published.
+    val cinemaTitleWeight: Map[String, Int] = row.cinemaSlots.iterator
+      .flatMap { case (_, sd) => sd.title.toSeq }
+      .flatMap(t => MovieService.searchTitleCandidates(t, None).map(cache.normalizer.sanitize))
+      .filter(_.nonEmpty)
+      .toSeq.groupBy(identity).view.mapValues(_.size).toMap
     // Director hints drawn from EVERY cinema slot on the merged row, not just the
     // one cinema event that happened to trigger this stage. Every cinema fires its
     // own `MovieDetailsComplete`, so the triggering event's director varied with
@@ -1086,7 +1100,7 @@ class MovieService(
           // title. CINEMA-only, like every other hint here — reading the merged
           // fields would hand the check the previous resolution's own numbers.
           rowDirectors.iterator
-            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, row.cinemaRuntimesMinutes, row.cinemaCast, cinemaCandidates))
+            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, row.cinemaRuntimesMinutes, row.cinemaCast, cinemaCandidates, cinemaTitleWeight))
             .nextOption()
             .map(hit => { searchBasis = TmdbBasis.DirectorWalk; hit })
         }
@@ -1222,7 +1236,8 @@ class MovieService(
     candidates:       Seq[String] = Nil,
     cinemaRuntimes:   Seq[Int] = Nil,
     cinemaCast:       Seq[String] = Nil,
-    cinemaCandidates: Seq[String] = Nil
+    cinemaCandidates: Seq[String] = Nil,
+    cinemaTitleWeight: Map[String, Int] = Map.empty
   ): Option[TmdbClient.SearchResult] = {
     director.flatMap { directory =>
       // Try each person the name could mean, in turn — TMDB's top hit is wrong
@@ -1297,12 +1312,19 @@ class MovieService(
         // cycle (`MovieServiceTmdbHintsSpec`). Four tiers, cinema-exact first, each
         // still tie-broken by lowest id; derived titles resolve only when no cinema
         // title reaches a credit, which is the case they were added for.
+        // Within a tier, the credit the MOST venues name wins; lowest id still breaks
+        // a genuine tie (the TMDB adjacent-year duplicate this was written for, where
+        // both entries carry the same title and so the same weight).
+        def venuesNaming(f: TmdbClient.SearchResult): Int =
+          titleOf(f).iterator.map(cinemaTitleWeight.getOrElse(_, 0)).maxOption.getOrElse(0)
+        def bestOf(tier: Seq[TmdbClient.SearchResult]): Option[TmdbClient.SearchResult] =
+          tier.sortBy(f => (-venuesNaming(f), f.id)).headOption
         val byTitle = Seq(
           eligible.filter(f => titleOf(f).exists(wantedCinema.contains)),
           eligible.filter(f => titleClose(f, wantedCinema)),
           eligible.filter(f => titleOf(f).exists(wanted.contains)),
           eligible
-        ).find(_.nonEmpty).flatMap(_.minByOption(_.id))
+        ).find(_.nonEmpty).flatMap(bestOf)
         // The year-pinned branch below exists for films whose Polish title has no
         // TMDB entry at all: pl-PL credits fall back to the ORIGINAL title, so
         // "Giulietta i duchy" faces "Giulietta degli spiriti" and `titleClose`
