@@ -322,7 +322,7 @@ class AuthController(
   /** Who is looking — the ONLY place this application names a visitor now.
    *
    *  The HTML pages stopped rendering the avatar so that a shared cache could
-   *  hold them (`MovieController.SharedMaxAgeSeconds`), which moved the whole
+   *  hold them (`CachePolicy.RevalidatedAnywhere`), which moved the whole
    *  per-user surface here: `shared.js` calls this on every page load and builds
    *  the account menu from the answer. So this response, and only this response,
    *  is the one nothing may keep a copy of — a stored 200 is an avatar rebuilt

@@ -536,7 +536,7 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
   // ── /api/me is now the only thing that names anybody ──────────────────────
   //
   // The listing page stopped rendering the avatar so Cloudflare could hold it
-  // (`MovieController.SharedMaxAgeSeconds`), and the whole per-user surface moved
+  // (`CachePolicy.RevalidatedAnywhere`), and the whole per-user surface moved
   // here. Which inverts the cache requirement: the page may be stored by anyone,
   // this must be stored by no one. It used to carry no `Cache-Control` at all,
   // and a response with none is HEURISTICALLY cacheable — so a browser could have

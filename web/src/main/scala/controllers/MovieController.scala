@@ -344,10 +344,11 @@ class MovieController( cc: ControllerComponents,
                        // hopping to the other country's prod host (which 404s /debug).
                        debugCountries: DebugCountries,
                        // NO `UserRepository` — deliberately, and it is the strongest
-                       // form of the promise `SharedMaxAgeSeconds` needs. This
+                       // form of the promise `CachePolicy` needs. This
                        // controller renders every page it serves without the means to
                        // find out who asked for it, so no response of its can vary by
-                       // session and `s-maxage` on the listing cannot leak anybody.
+                       // session, so a shared cache holding the listing cannot leak
+                       // anybody.
                        // Who is signed in is `AuthController`'s question, answered
                        // per client at `/api/me`.
                        // Gate for the state-mutating /…/debug/rehydrate trigger
@@ -400,7 +401,7 @@ class MovieController( cc: ControllerComponents,
   // to: `conditionalGzipped` serves that client the uncompressed body with the
   // same validators, and the `Vary: Accept-Encoding` both branches carry is what
   // keeps the two spellings apart in a shared cache. `/api/repertoire` has been
-  // shared-cacheable on exactly those terms since it got `s-maxage`.
+  // shared-cacheable on exactly those terms since it was first offered to the edge.
   private def cacheablePlainPage(request: RequestHeader): Boolean =
     request.queryString.isEmpty
 
@@ -455,7 +456,6 @@ class MovieController( cc: ControllerComponents,
     val cacheControl: Seq[(String, String)] = policy match {
       case CachePolicy.BrowserOnly         => Seq("Cache-Control" -> "private, no-cache")
       case CachePolicy.RevalidatedAnywhere => Seq("Cache-Control" -> "public, max-age=0, must-revalidate")
-      case CachePolicy.EdgeTtl             => Seq("Cache-Control" -> s"public, max-age=0, s-maxage=${MovieController.SharedMaxAgeSeconds}")
       case CachePolicy.Unset               => Nil
     }
     // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
@@ -481,8 +481,10 @@ class MovieController( cc: ControllerComponents,
     // Measured against the live edge on 2026-09-05: once Cloudflare holds a copy,
     // an `If-Modified-Since` against it comes back 200 WITH THE WHOLE BODY --
     // Cloudflare answers a conditional from cache off the ETag, and these
-    // responses had none. So adding `s-maxage` traded the mobile apps' 0-byte
-    // 304s for ~750 KB payloads: better for the origin, worse for the phone.
+    // responses had none. So letting the edge hold them traded the mobile apps'
+    // 0-byte 304s for ~750 KB payloads: better for the origin, worse for the
+    // phone. (The TTL that first exposed this is gone; the ETag it forced is
+    // what makes revalidation work at all.)
     // `/api/catalog` never had the problem precisely because it carries one.
     //
     // Derived from the read-model version and `bodyKey` rather than hashing the
@@ -557,8 +559,9 @@ class MovieController( cc: ControllerComponents,
    *  rather than a side effect of it: the controller holds no `UserRepository`,
    *  `views.html.repertoire` has no parameter to take a `models.User`, and
    *  `_authMenu` has nothing to draw. So the bytes cannot depend on the session
-   *  cookie, and `s-maxage` cannot hand one visitor's page to another — the rule
-   *  `SharedMaxAgeSeconds` states, met structurally instead of by inspection.
+   *  cookie, and a shared cache cannot hand one visitor's page to another — the rule
+   *  `CachePolicy.RevalidatedAnywhere` states, met structurally rather than by
+   *  inspection.
    *  Whoever is signed in is layered on after first paint, by `shared.js` off
    *  `/api/me` (which is `no-store`, so it cannot be shared either).
    *
@@ -751,7 +754,7 @@ class MovieController( cc: ControllerComponents,
    *  mtime, so a 304 on one is a 304 on the other. */
   private def conditionalJson(request: Request[AnyContent], city: City, cacheKey: String = "")(body: => play.api.libs.json.JsValue): Result =
     conditionalGzipped(request, "application/json", vary = "Accept-Encoding",
-                       CachePolicy.EdgeTtl, cacheKey = cacheKey, city = Some(city))(
+                       CachePolicy.RevalidatedAnywhere, cacheKey = cacheKey, city = Some(city))(
       play.api.libs.json.Json.stringify(body)
     )
 
@@ -1060,8 +1063,9 @@ class MovieController( cc: ControllerComponents,
     val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
     // Nobody is rendered into this page either, so `no-cache` (revalidate, keep
     // the browser copy, bfcache works) replaces the `no-store` a signed-in render
-    // used to need. It stops short of `s-maxage` only because a per-film edge
-    // entry wants its own validator analysis, not because the bytes are anyone's.
+    // used to need. It stops short of offering itself to a shared cache only
+    // because a per-film edge entry wants its own validator analysis, not because
+    // the bytes are anyone's.
     Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, oauthProviders))
       .withHeaders("Cache-Control" -> "private, no-cache")
       .withCookies(cityCookie(c))
@@ -1162,40 +1166,6 @@ object MovieController {
       case Some(dayStart) if dayStart.isAfter(modelStamp) => dayStart
       case _                                              => modelStamp
     }
-
-  /** How long a SHARED cache (Cloudflare) may serve one of the public JSON
-   *  payloads before it must re-check with us.
-   *
-   *  SIXTY SECONDS, AND THE NUMBER IS MEASURED RATHER THAN PICKED. The
-   *  validator these responses carry is `WebReadModel.lastModifiedFor(city)`,
-   *  which bumps when the bytes THAT CITY renders can have changed. Sampled
-   *  against production on 2026-09-05 the model-wide stamp it replaced moved
-   *  every couple of minutes -- but most of those moves were some other city's
-   *  showtimes, which is exactly why the validator is now per city. A minute
-   *  remains inside the interval a single city's content changes on, so an edge
-   *  copy cannot outlive the data it was made from by more than one tick.
-   *
-   *  `max-age=0` ALONGSIDE IT IS THE POINT, not an oversight: browsers and the
-   *  mobile apps keep revalidating on every request exactly as they did before
-   *  this existed, so `If-Modified-Since` and the 304s behave identically. Only
-   *  the SHARED cache is allowed to answer without asking, and only for a minute.
-   *  What changes is WHO answers the conditional request: with an edge copy
-   *  present Cloudflare returns the 304 itself instead of waking the JVM for a
-   *  payload it will not send. Verified against the live edge: the origin's
-   *  strong ETag survives the proxy unweakened and both `If-None-Match` and
-   *  `If-Modified-Since` already round-trip to a 0-byte 304.
-   *
-   *  ⚠️ ONLY FOR RESPONSES THAT ARE BYTE-IDENTICAL FOR EVERY CLIENT. The bare
-   *  city listing now qualifies and takes it: no template it reaches accepts a
-   *  `models.User`, so no session cookie can move a byte of it (see
-   *  `renderIndex`). What is per-user went the other way instead — `/api/me` and
-   *  `/api/me/state` answer about one person and say `private, no-store`
-   *  (`PerUserResponse`), and `shared.js` layers their answer onto the cached
-   *  page after first paint. Filtered listings, facet pages and film pages stay
-   *  `private, no-cache`: client-independent too, but not worth an edge entry
-   *  each without their own validator analysis. A shared cache in front of
-   *  anything per-user would serve one visitor's state to another. */
-  val SharedMaxAgeSeconds: Int = 60
 
   /** How many days from today a listing request wants, or `None` for everything.
    *

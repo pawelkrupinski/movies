@@ -27,13 +27,29 @@ enum CachePolicy {
    *  a second after the edge stored it, and a clock cannot know — while
    *  revalidating costs the origin only a 304, which short-circuits before the
    *  page is rendered or gzipped at all. The edge still saves the whole body
-   *  on the wire; it just never guesses about freshness. */
+   *  on the wire; it just never guesses about freshness.
+   *
+   *  Verified against the live edge: a response carrying this answers
+   *  `cf-cache-status: REVALIDATED` — Cloudflare kept the bytes, asked us, took
+   *  the 304, and served its own copy.
+   *
+   *  ⚠️ ONLY FOR RESPONSES THAT ARE BYTE-IDENTICAL FOR EVERY CLIENT, because a
+   *  shared cache hands one visitor's copy to the next. The bare city listing
+   *  and the public JSON payloads qualify: no template they reach accepts a
+   *  `models.User`, and `MovieController` holds no `UserRepository`, so no
+   *  session cookie can move a byte of them. What is per-user went the other way
+   *  instead — `/api/me` and `/api/me/state` answer about one person and say
+   *  `private, no-store` (`PerUserResponse`), and `shared.js` layers their
+   *  answer onto the cached page after first paint. Filtered listings, facet
+   *  pages and film pages stay `BrowserOnly`: client-independent too, but one
+   *  URL per filter per city is not worth an edge entry each. A shared cache in
+   *  front of anything per-user would serve one visitor's state to another.
+   *
+   *  ⚠️ AND NO `Set-Cookie` ON SUCH A RESPONSE. Cloudflare bypasses the cache
+   *  for anything carrying one — measured, the listing went `DYNAMIC` ->
+   *  `BYPASS` with the `city=` cookie the only thing left on it. `shared.js`
+   *  writes that cookie now. */
   case RevalidatedAnywhere
-
-  /** `public, max-age=0, s-maxage=N` — a shared cache may answer for N seconds
-   *  without asking us. Carries real staleness, so it is only for payloads
-   *  where absorbing origin load has been measured to be worth that. */
-  case EdgeTtl
 
   /** No `Cache-Control` at all; the client manages its own revalidation. */
   case Unset

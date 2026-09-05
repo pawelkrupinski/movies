@@ -12,7 +12,7 @@ import java.time.LocalDateTime
 /**
  * The city listing may be held by a shared cache, and this is why that is safe.
  *
- * The rule `MovieController.SharedMaxAgeSeconds` states is absolute: only a
+ * The rule `CachePolicy.RevalidatedAnywhere` states is absolute: only a
  * response that is byte-identical for every client may carry `s-maxage`, because
  * a shared cache hands one visitor's copy to the next. The listing used to fail
  * that on three bytes — the avatar `<div>`, the display name inside it, and

@@ -188,24 +188,35 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // the proxy cached nothing, so each conditional request from each app install
   // still woke the JVM to compute a 304 it would then send as 0 bytes.
   //
-  // `s-maxage` is what lets the edge answer instead. `max-age=0` beside it keeps
-  // every CLIENT revalidating exactly as before, so If-Modified-Since and the
-  // 304s are unchanged from the app's point of view -- only who answers moves.
+  // `public` is what lets the edge hold a copy at all. It holds the BODY and
+  // revalidates it against the ETag rather than trusting a clock: measured on
+  // the live edge, a `must-revalidate` listing answers `cf-cache-status:
+  // REVALIDATED` — Cloudflare kept the bytes, asked us, took the 304, and served
+  // its copy. `max-age=0` beside it keeps every CLIENT revalidating exactly as
+  // before, so If-Modified-Since and the 304s are unchanged from the app's point
+  // of view — only who answers moves.
+  //
+  // NO `s-maxage`. It was sixty seconds of licence to serve showtimes that had
+  // already changed, bought to save an origin round-trip the ETag makes cheap
+  // anyway: a conditional short-circuits before the payload is built.
 
-  it should "let a shared cache hold the lean listing briefly, while clients still revalidate" in {
+  it should "let a shared cache hold the lean listing, revalidating rather than timing out" in {
     val (ctrl, _) = buildController()
     val result = ctrl.apiRepertoire("poznan")(FakeRequest())
     status(result) shouldBe OK
     val cc = header("Cache-Control", result).value
-    cc should include ("public")
+    cc should include ("public")                    // the edge may hold the body
     cc should include ("max-age=0")                 // clients revalidate, as before
-    cc should include ("s-maxage=60")               // only the shared cache may answer
+    cc should include ("must-revalidate")           // and so must the edge, every time
+    cc should not include ("s-maxage")              // no window in which stale is allowed
     header("Last-Modified", result) shouldBe defined
+    header("ETag", result) shouldBe defined         // what the revalidation runs on
   }
 
   it should "still answer a current If-Modified-Since with a bodiless 304" in {
-    // The whole point is that this behaviour does NOT change: adding s-maxage
-    // must not cost the conditional request that mobile already relies on.
+    // The whole point is that this behaviour does NOT change: neither adding a
+    // shared-cache offer nor dropping the TTL may cost the conditional request
+    // that mobile already relies on.
     val (ctrl, readModel) = buildController()
     val lastMod = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME.format(
       readModel.lastModified.truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
