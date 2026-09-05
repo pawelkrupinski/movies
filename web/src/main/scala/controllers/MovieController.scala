@@ -393,7 +393,9 @@ class MovieController( cc: ControllerComponents,
   // more, so the only things left that change the bytes are the ones below.
   //
   // Filter queries are the only thing left that bypasses it: they move the OG
-  // meta, and `request.path` — the blob's key — drops the query string. A client
+  // meta, and `request.path` — the blob's key — drops the query string. That
+  // costs them the blob, not the conditional GET: `renderIndex` still runs them
+  // through `conditionalGzipped` keyed on the query, for the validators. A client
   // that cannot take gzip no longer bypasses it either, because it never needed
   // to: `conditionalGzipped` serves that client the uncompressed body with the
   // same validators, and the `Vary: Accept-Encoding` both branches carry is what
@@ -423,7 +425,8 @@ class MovieController( cc: ControllerComponents,
    *  without a check. */
   private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String,
                                  revalidate: Boolean, shared: Boolean = false,
-                                 cacheKey: String = "", city: Option[City] = None)(body: => String): Result = {
+                                 cacheKey: String = "", city: Option[City] = None,
+                                 cacheBody: Boolean = true)(body: => String): Result = {
     // THE VALIDATOR IS PER CITY, not model-wide. `readModel.lastModified` moves
     // when anything anywhere changes, so validating London's payload with it
     // meant a Warsaw showtime expired London's ETag: every city looked like it
@@ -432,7 +435,20 @@ class MovieController( cc: ControllerComponents,
     // THIS city renders can have changed -- including the corpus-wide film-address
     // reshuffles that genuinely do reach every city. `None` means a payload that
     // really is model-wide.
-    val lastMod  = city.fold(readModel.lastModified)(c => readModel.lastModifiedFor(c.slug))
+    //
+    // AND THE CITY'S CALENDAR DAY FLOORS IT. Every city-scoped payload here is
+    // anchored on `LocalDate.now(city.zoneId)`: the listing renders that day's
+    // `data-next-day` (the midnight the document retires itself at) and the
+    // expiry stamps the client prunes forward from, and `/api/repertoire` cuts
+    // its window from the same date. The read-model stamp knows nothing about
+    // that -- so a quiet night would answer a request made AFTER midnight with a
+    // 304 for a body rendered before it, handing back a document that has
+    // already told itself to reload and reloads into the same 304. Flooring at
+    // the day's start retires every held copy at the boundary the payload
+    // itself names, and stays monotonic because both inputs only ever advance.
+    val lastMod  = MovieController.dayFlooredValidator(
+      city.fold(readModel.lastModified)(c => readModel.lastModifiedFor(c.slug)),
+      city.map(_.zoneId))
       .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
       .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
@@ -458,7 +474,7 @@ class MovieController( cc: ControllerComponents,
 
     if (request.headers.get("If-None-Match").contains(etag) || ifModifiedSinceCurrent(request, lastMod))
       NotModified.withHeaders(validators*)
-    else if (acceptsGzip(request)) {
+    else if (acceptsGzip(request) && cacheBody) {
       // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
       // does not: it drops the query string. `?days=7` and the full payload are
       // the same path, so keying on it alone would serve one client's window to
@@ -529,7 +545,9 @@ class MovieController( cc: ControllerComponents,
    *  `/api/me` (which is `no-store`, so it cannot be shared either).
    *
    *  `?filter=` variants keep `private, no-cache`: still client-independent, but
-   *  combinatorially many and not worth an edge entry each. */
+   *  combinatorially many and not worth an edge entry each. They do carry the
+   *  same validators, so revalidating one comes back 304 rather than re-sending
+   *  the listing — what they skip is the shared blob, not the conditional GET. */
   private def renderIndex(city: City, request: RequestHeader): Result = {
     implicit val c: City = city
     if (cacheablePlainPage(request)) {
@@ -539,8 +557,29 @@ class MovieController( cc: ControllerComponents,
                          city = Some(city))(renderIndexHtml(city, request).body)
         .withCookies(cityCookie(city))
     } else {
-      Ok(renderIndexHtml(city, request))
-        .withHeaders("Cache-Control" -> "private, no-cache")
+      // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
+      //
+      // `private, no-cache` tells the browser to store the page and re-validate
+      // before every re-use -- but a re-validation with nothing to validate
+      // AGAINST cannot come back 304, so every refresh of a shared
+      // `?date=tomorrow` link re-downloaded the whole listing (265 KB gzipped,
+      // 3.8 MB of HTML for Manchester). An ETag makes that refresh free when the
+      // city has not moved, without promising any cache it may serve the copy
+      // unasked.
+      //
+      // `cacheBody = false` is the other half of the decision above: these
+      // variants stay out of the shared gzip cache, which is an LRU over BYTES,
+      // so one-off filter combinations cannot evict the bare city pages that
+      // earn their place there. The GzipFilter still compresses on the way out.
+      //
+      // The whole query string is the key, not a normalised subset of it: the
+      // page puts the request's own URL in `og:url`, so two spellings that mean
+      // the same thing really do render different bytes and must not share a
+      // validator. Nothing is stored per key, so an appended `?foo=1` costs a
+      // hash and nothing else.
+      conditionalGzipped(request, HtmlContentType, HtmlVary, revalidate = true,
+                         cacheKey = "|q=" + request.rawQueryString, city = Some(city),
+                         cacheBody = false)(renderIndexHtml(city, request).body)
         .withCookies(cityCookie(city))
     }
   }
@@ -1059,6 +1098,32 @@ class MovieController( cc: ControllerComponents,
 }
 
 object MovieController {
+
+  /** The validator instant for a payload, floored at the start of the day it was
+   *  rendered for.
+   *
+   *  `modelStamp` is when the read model this payload draws on last moved. That
+   *  is the whole story for a payload that says the same thing at any hour, and
+   *  none of it for the ones here, which are cut against `LocalDate.now(zone)`:
+   *  the listing carries that day's retire-at-midnight stamp, and the repertoire
+   *  API cuts its window from that date. On a quiet night the model stamp can
+   *  sit still across midnight, and a client revalidating at 00:05 would then be
+   *  told 304 for a body belonging to the day before -- a document that has
+   *  already scheduled its own reload, and that reloads straight back into the
+   *  same 304.
+   *
+   *  So a zoned payload's validator is the LATER of the two. Both inputs only
+   *  advance, so the result is monotonic, which is what a validator has to be:
+   *  a repeated value must mean unchanged bytes. `None` is a payload with no
+   *  day in it, which keeps the model stamp alone.
+   */
+  def dayFlooredValidator(modelStamp: java.time.Instant,
+                          zone: Option[java.time.ZoneId],
+                          now: java.time.Instant = java.time.Instant.now()): java.time.Instant =
+    zone.map(z => now.atZone(z).toLocalDate.atStartOfDay(z).toInstant) match {
+      case Some(dayStart) if dayStart.isAfter(modelStamp) => dayStart
+      case _                                              => modelStamp
+    }
 
   /** How long a SHARED cache (Cloudflare) may serve one of the public JSON
    *  payloads before it must re-check with us.

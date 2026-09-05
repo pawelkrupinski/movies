@@ -119,4 +119,87 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     header("Content-Encoding", after) shouldBe Some("gzip")
     gunzip(contentAsBytes(after)) should include ("Cache Test Film")
   }
+
+  // ── Filter variants (`?date=`, `?q=`, …) ───────────────────────────────────
+  //
+  // These stay out of the shared gzip cache and out of the edge — they are
+  // combinatorially many and would evict the bare city pages that earn their
+  // place. What they DO get is a validator, so that `private, no-cache` means
+  // "ask, then usually 304" rather than "ask, then always re-download". A
+  // shared `?date=tomorrow` link was re-sending the whole listing on every
+  // refresh because a revalidation had nothing to validate against.
+
+  "a filtered page" should "still tell the browser to revalidate before re-use" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))
+
+    status(result) shouldBe OK
+    header("Cache-Control", result) shouldBe Some("private, no-cache")
+  }
+
+  it should "carry validators so that revalidation can come back empty" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))
+
+    header("ETag", result) shouldBe defined
+    header("Last-Modified", result) shouldBe defined
+  }
+
+  it should "304 a refresh carrying the ETag it was given" in {
+    val (ctrl, _) = buildController()
+    val etag = header("ETag", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))).get
+
+    val refresh = ctrl.index("poznan")(
+      gzipRequest("/poznan/?date=tomorrow").withHeaders("If-None-Match" -> etag))
+    status(refresh) shouldBe NOT_MODIFIED
+    contentAsBytes(refresh).isEmpty shouldBe true
+  }
+
+  // The page puts its own URL in `og:url`, so two filters really do render
+  // different bytes — one must never validate the other.
+  it should "not answer one filter with another filter's validator" in {
+    val (ctrl, _) = buildController()
+    val tomorrow = header("ETag", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))).get
+    val week     = header("ETag", ctrl.index("poznan")(gzipRequest("/poznan/?date=week"))).get
+
+    tomorrow should not be week
+    val crossed = ctrl.index("poznan")(
+      gzipRequest("/poznan/?date=week").withHeaders("If-None-Match" -> tomorrow))
+    status(crossed) shouldBe OK
+    contentAsString(crossed) should include ("Cache Test Film")
+  }
+
+  // The bare page keeps the precompressed blob; a filter variant must not take
+  // an entry in that byte-bounded LRU.
+  it should "not be served from the shared precompressed blob" in {
+    val (ctrl, _) = buildController()
+    header("Content-Encoding", ctrl.index("poznan")(gzipRequest("/poznan/"))) shouldBe Some("gzip")
+    header("Content-Encoding", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))) shouldBe None
+  }
+
+  // ── The day the payload was cut for ────────────────────────────────────────
+
+  "a zoned payload's validator" should "advance to the new day even when the model has not moved" in {
+    val zone      = java.time.ZoneId.of("Europe/Warsaw")
+    val beforeMid = java.time.ZonedDateTime.of(2026, 9, 5, 23, 40, 0, 0, zone).toInstant
+    val afterMid  = java.time.ZonedDateTime.of(2026, 9, 6, 0, 5, 0, 0, zone).toInstant
+    val dayStart  = java.time.ZonedDateTime.of(2026, 9, 6, 0, 0, 0, 0, zone).toInstant
+
+    // Same model stamp on both sides of midnight — the day is what moved.
+    MovieController.dayFlooredValidator(beforeMid, Some(zone), now = beforeMid) shouldBe beforeMid
+    MovieController.dayFlooredValidator(beforeMid, Some(zone), now = afterMid)  shouldBe dayStart
+  }
+
+  it should "leave a stamp from later in the same day alone" in {
+    val zone  = java.time.ZoneId.of("Europe/Warsaw")
+    val noon  = java.time.ZonedDateTime.of(2026, 9, 6, 12, 0, 0, 0, zone).toInstant
+    val later = java.time.ZonedDateTime.of(2026, 9, 6, 15, 0, 0, 0, zone).toInstant
+
+    MovieController.dayFlooredValidator(noon, Some(zone), now = later) shouldBe noon
+  }
+
+  it should "leave a payload with no day in it on the model stamp alone" in {
+    val stamp = java.time.Instant.parse("2020-01-01T00:00:00Z")
+    MovieController.dayFlooredValidator(stamp, None) shouldBe stamp
+  }
 }
