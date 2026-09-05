@@ -1045,6 +1045,7 @@ class MongoMovieRepository(
     scalar("rottenTomatoes",    p.rottenTomatoes,    (i: Int)    => new org.mongodb.scala.bson.BsonInt32(i))
     scalar("tmdbId",            p.tmdbId,            (i: Int)    => new org.mongodb.scala.bson.BsonInt32(i))
     scalar("tmdbBasis",         p.tmdbBasis,         (s: String) => new org.mongodb.scala.bson.BsonString(s))
+    scalar("wikidataId",        p.wikidataId,        (s: String) => new org.mongodb.scala.bson.BsonString(s))
     scalar("metacriticUrl",     p.metacriticUrl,     (s: String) => new org.mongodb.scala.bson.BsonString(s))
     scalar("rottenTomatoesUrl", p.rottenTomatoesUrl, (s: String) => new org.mongodb.scala.bson.BsonString(s))
     scalar("searchTitle",       p.searchTitle,       (s: String) => new org.mongodb.scala.bson.BsonString(s))

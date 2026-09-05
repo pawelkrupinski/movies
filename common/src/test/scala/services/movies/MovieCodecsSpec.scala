@@ -82,6 +82,20 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     MovieRecordPatch.diff(after, after.copy(tmdbBasis = None)).applyTo(after).tmdbBasis shouldBe None
   }
 
+  /** `wikidataId` had the same gap the basis above did, one path along: it round-trips
+   *  through the DTO, so a whole-document write persists it, but `MovieRecordPatch`
+   *  carried no field — so the field-level `$set` path (`updateIfPresent`) silently
+   *  dropped a change to it, and an out-of-band writer's value could neither land nor
+   *  be cleared. Every other identity field on the record is diffed; this one was
+   *  missed because nothing wrote it often enough to notice. */
+  it should "carry a wikidataId change through a field-level update" in {
+    val before = MovieRecord(tmdbId = Some(1))
+    val after  = before.copy(wikidataId = Some("Q42"))
+
+    MovieRecordPatch.diff(before, after).applyTo(before).wikidataId shouldBe Some("Q42")
+    MovieRecordPatch.diff(after, before).applyTo(after).wikidataId  shouldBe None
+  }
+
   it should "round-trip an all-None MovieRecord (sparse row)" in {
     val record = MovieRecord(imdbId = Some("tt0000002"))
     val dto = StoredMovieDto.fromDomain("sparse|", record, Instant.parse("2026-05-17T10:00:00Z"))

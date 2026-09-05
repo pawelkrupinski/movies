@@ -30,6 +30,7 @@ final case class MovieRecordPatch(
   rottenTomatoes:    FieldUpdate[Int]                       = FieldUpdate.NoChange,
   tmdbId:            FieldUpdate[Int]                       = FieldUpdate.NoChange,
   tmdbBasis:         FieldUpdate[String]                    = FieldUpdate.NoChange,
+  wikidataId:        FieldUpdate[String]                    = FieldUpdate.NoChange,
   metacriticUrl:     FieldUpdate[String]                    = FieldUpdate.NoChange,
   rottenTomatoesUrl: FieldUpdate[String]                    = FieldUpdate.NoChange,
   searchTitle:       FieldUpdate[String]                    = FieldUpdate.NoChange,
@@ -43,6 +44,7 @@ final case class MovieRecordPatch(
     metascore == FieldUpdate.NoChange && filmwebUrl == FieldUpdate.NoChange &&
     filmwebRating == FieldUpdate.NoChange && rottenTomatoes == FieldUpdate.NoChange &&
     tmdbId == FieldUpdate.NoChange && tmdbBasis == FieldUpdate.NoChange &&
+    wikidataId == FieldUpdate.NoChange &&
     metacriticUrl == FieldUpdate.NoChange &&
     rottenTomatoesUrl == FieldUpdate.NoChange && searchTitle == FieldUpdate.NoChange &&
     tmdbNoMatch == FieldUpdate.NoChange && detailPending == FieldUpdate.NoChange &&
@@ -77,6 +79,7 @@ final case class MovieRecordPatch(
       rottenTomatoes    = merge(rottenTomatoes,    current.rottenTomatoes),
       tmdbId            = merge(tmdbId,            current.tmdbId),
       tmdbBasis         = merge(tmdbBasis,         current.tmdbBasis),
+      wikidataId        = merge(wikidataId,        current.wikidataId),
       metacriticUrl     = merge(metacriticUrl,     current.metacriticUrl),
       rottenTomatoesUrl = merge(rottenTomatoesUrl, current.rottenTomatoesUrl),
       searchTitle       = merge(searchTitle,       current.searchTitle),
@@ -100,6 +103,7 @@ object MovieRecordPatch {
       rottenTomatoes    = diffOpt(before.rottenTomatoes,    after.rottenTomatoes),
       tmdbId            = diffOpt(before.tmdbId,            after.tmdbId),
       tmdbBasis         = diffOpt(before.tmdbBasis,         after.tmdbBasis),
+      wikidataId        = diffOpt(before.wikidataId,        after.wikidataId),
       metacriticUrl     = diffOpt(before.metacriticUrl,     after.metacriticUrl),
       rottenTomatoesUrl = diffOpt(before.rottenTomatoesUrl, after.rottenTomatoesUrl),
       searchTitle       = diffOpt(before.searchTitle,       after.searchTitle),
