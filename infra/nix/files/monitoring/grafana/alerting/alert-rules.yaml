@@ -92,6 +92,8 @@ apiVersion: 1
 # nobody is reading alert definitions.
 deleteRules:
   - orgId: 1
+    uid: kinowo-worker-queue-backlog
+  - orgId: 1
     uid: kinowo-cpu-credit-exhausted
   - orgId: 1
     uid: kinowo-cpu-throttled
@@ -933,10 +935,12 @@ groups:
   # the per-reaper enqueue caps — because shared-CPU credit is a Fly billing concept with no
   # counterpart on a dedicated box, and nothing had driven it since the org's tokens were revoked.
   #
-  # THE TWO SURVIVORS WERE NEVER PART OF THAT. `kinowo-worker-task-age-high` and
-  # `kinowo-worker-queue-backlog` read the application's own queue and say the pipeline is
-  # struggling; they are the only warning left that a worker is not keeping up, which is worth
-  # knowing now that nothing eases it off automatically. Hence the name.
+  # THE SURVIVOR WAS NEVER PART OF THAT. `kinowo-worker-task-age-high` reads the application's own
+  # queue and says the pipeline is struggling, which is worth knowing now that nothing eases it off
+  # automatically. Hence the name. Its companion `kinowo-worker-queue-backlog` was retired on
+  # 2026-09-05 -- it alerted on queue DEPTH, which has no healthy level on a 5,000-venue roster, so
+  # it fired continuously; the slope and claim-rate rules that replace it live in
+  # nix/files/monitoring/rules/worker-pipeline.rules.
   #
   # THE 30s `interval` IS A LEFTOVER of the control loop, which wanted to react quickly. Two queue
   # gauges would be perfectly happy at 1m. Harmless, and not worth an edit on its own.
@@ -982,8 +986,9 @@ groups:
       # backstopped by a webhook to the worker over 6PN; credit is a Fly billing concept
       # with no counterpart on a dedicated box, and nothing had set the signal since the
       # org's tokens were revoked. The gauge, the gate, the `/throttle` endpoint and the
-      # per-reaper enqueue caps went together. `kinowo-worker-task-age-high` and
-      # `kinowo-worker-queue-backlog` below are what still say the pipeline is struggling.
+      # per-reaper enqueue caps went together. `kinowo-worker-task-age-high` below, and
+      # `WorkerQueueGrowingUnbounded` / `WorkerQueueStalled` in worker-pipeline.rules, are what
+      # still say the pipeline is struggling.
 
       # ---- Task-queue head-of-line starvation ------------------------------------
       # The EARLIEST symptom of a throttle/backlog spiral. During the 2026-06-23
@@ -1029,44 +1034,13 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
-      # ---- Task-queue backlog depth ----------------------------------------------
-      # Backs up the age signal with a volume one: a large WAITING set that isn't
-      # draining. Normal steady state is ~0 (work is claimed near-instantly); the
-      # spiral piled 286→568. `for: 10m` rides out the brief post-boot flush (the
-      # 568 blip cleared in ~4min) and only fires on a genuinely stuck backlog.
-      - uid: kinowo-worker-queue-backlog
-        title: Worker task queue backlog high
-        condition: C
-        for: 10m
-        noDataState: OK
-        execErrState: OK
-        annotations:
-          summary: 'kinowo-worker waiting task backlog > 150 for 10min — pool not keeping up'
-          description: 'kinowo_worker_queue_depth{state="waiting"} > 150 for 10m: the waiting task set has stayed large, so the worker pool is not draining it (throttle spiral or a stuck reaper). Pairs with kinowo-worker-task-age-high.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 300, to: 0 }
-            datasourceUid: local-prometheus
-            model:
-              datasource: { type: prometheus, uid: local-prometheus }
-              editorMode: code
-              expr: 'max(kinowo_worker_queue_depth{app="kinowo-worker", state="waiting"})'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [150] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # RETIRED RULE kinowo-worker-queue-backlog -- replaced 2026-09-05 by
+      # `WorkerQueueGrowingUnbounded` and `WorkerQueueStalled` in
+      # nix/files/monitoring/rules/worker-pipeline.rules. It read
+      # `kinowo_worker_queue_depth{state="waiting"} > 150 for 10m`, which is a LEVEL on a number
+      # that has no healthy level: measured over the 24h before removal, the US worker's median
+      # waiting depth was 450 and it sat above the threshold 98.1% of the day. It was firing
+      # continuously, and had been for as long as the US roster had been that size. The
+      # replacements ask the two questions a depth cannot -- is the queue running away (a slope
+      # held for a full hour), and is anything being claimed at all (no task started in five
+      # minutes with work waiting).

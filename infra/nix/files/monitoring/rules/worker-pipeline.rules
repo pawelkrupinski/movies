@@ -1,0 +1,140 @@
+---
+# IS THE WORKER PIPELINE STILL MOVING? -- the three questions the queue can fail in, and none of
+# them is "is the queue big".
+#
+# WHAT THIS REPLACES, AND WHY. `kinowo-worker-queue-backlog` (a Grafana rule, retired alongside
+# this file) fired on `queue_depth{state="waiting"} > 150`. Measured over the 24h before it was
+# removed: the US worker's MEDIAN waiting depth is 450 and it spent 98.1% of the day above that
+# threshold. It was firing continuously, and had been for as long as the US roster had been that
+# size. A permanently-firing alert is worse than no alert -- it is the thing that teaches you to
+# scroll past the channel where the real one will appear.
+#
+# THE DEPTH WAS NEVER THE SIGNAL. A queue of 450 that drains at 143 tasks/min is healthy; a queue
+# of 20 that nothing is claiming is not. What matters is the DERIVATIVE (is it running away) and
+# the THROUGHPUT (is anything being claimed at all), and both are independent of how big the
+# backlog happens to be on a roster of 5,000 US venues.
+#
+# EVERY THRESHOLD BELOW WAS MEASURED AGAINST 24h OF THE FLEET'S OWN DATA rather than guessed, and
+# the measurement is written beside each one so the next person can redo it instead of arguing.
+groups:
+  - name: worker-pipeline
+    rules:
+      # -----------------------------------------------------------------------------------------
+      # 1. THE QUEUE IS RUNNING AWAY -- a slope that stays positive for a solid hour.
+      #
+      # WHY A SLOPE AND NOT A LEVEL: see the header. `deriv` over 1h is the "trend line", and the
+      # `for: 1h` is the "continuously" -- the condition has to hold for a full hour of evaluation,
+      # so an ordinary enqueue burst that drains cannot reach it.
+      #
+      # 0.05 tasks/sec IS 180 TASKS/HOUR OF NET GROWTH, and it is chosen from the data. Longest
+      # CONTINUOUS run above each candidate over 24h, per country:
+      #
+      #     > 0      de 65m  es 55m  pl 35m  uk 50m  us 50m   <- `for: 1h` would have fired on DE
+      #     > 0.02   de  0   es  0   pl  0   uk 10m  us 35m
+      #     > 0.05   de  0   es  0   pl  0   uk  0   us 25m   <- 35 minutes of headroom
+      #     > 0.10   de  0   es  0   pl  0   uk  0   us  5m
+      #
+      # The queue oscillates by design (reapers enqueue in bursts, the pool drains them), so a
+      # naive `deriv > 0` is true about half of any given day -- which is exactly why the obvious
+      # rule is the wrong one.
+      - alert: WorkerQueueGrowingUnbounded
+        expr: deriv(kinowo_worker_queue_depth{state="waiting"}[1h]) > 0.05
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s task queue has grown for an hour straight ({{ $value | printf \"%.3f\" }} tasks/s)"
+          description: >-
+            The WAITING set has climbed continuously for an hour at more than 180 tasks/hour net,
+            which is a queue the pool is not keeping up with rather than a burst it is working
+            through. THE DEPTH ITSELF IS NOT THE PROBLEM and is not worth reacting to -- the US
+            worker sits at ~450 waiting in normal operation. Look at what is ENQUEUEING: a reaper
+            that has started scheduling faster than the pool can drain (panels 20/30 on the
+            application dashboard split enqueued from worked), or a task type failing and being
+            retried forever (panel 25, waiting by type). `WorkerQueueStalled` below is the other
+            half of this: if nothing is being claimed at all, that one fires instead and is the
+            more urgent of the two.
+
+      # -----------------------------------------------------------------------------------------
+      # 2. NOTHING IS BEING CLAIMED, AND THERE IS WORK TO CLAIM. The pipeline has stopped.
+      #
+      # THE OBVIOUS FORM OF THIS RULE IS UNUSABLE, and it is worth recording why so nobody
+      # "simplifies" it back. `queue_depth{state="worked_on"} == 0 and waiting > 0` reads like the
+      # same statement and is true 39-84% of any given day (UK 83.7%) -- because `worked_on` is an
+      # instantaneous gauge and tasks finish in milliseconds, so a scrape lands between claims more
+      # often than not. It would page every few minutes for a perfectly healthy worker.
+      #
+      # THE THROUGHPUT FORM IS EXACT: no task has been CLAIMED in five minutes while the queue was
+      # non-empty. Measured over 24h across all five countries, this condition was true for
+      # 0.0000% of the time -- it has no false-positive rate to speak of, because a healthy worker
+      # claims 13-143 tasks a minute.
+      #
+      # CRITICAL, unlike the growth alert: a queue growing slowly is a capacity conversation, a
+      # queue nobody is touching is the pipeline stopped -- scrapes, enrichment and the read-model
+      # projection all ride this queue.
+      - alert: WorkerQueueStalled
+        expr: >-
+          (sum by (country) (rate(kinowo_worker_tasks_started_total[5m])) == 0)
+          and on (country)
+          (max by (country) (kinowo_worker_queue_depth{state="waiting"}) > 0)
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.country }}'s worker has claimed no task for 5 minutes with work waiting"
+          description: >-
+            Tasks are queued and NOTHING is picking them up, so every scrape, rating refresh and
+            read-model projection for this country has stopped. A healthy worker claims 13-143
+            tasks a minute. Check, in order: is the pod up and past its hydrate (`WorkerDown` fires
+            separately if the target is gone); is the whole pool stuck on handlers that never
+            return (`kinowo_worker_queue_depth{state="worked_on"}` pinned at the pool size of 4 is
+            that shape, and the task-duration panels name the type); and is `TaskQueue.claim`
+            failing in the logs -- a Mongo stall shows up here first because claim is a
+            `findOneAndUpdate` that blocks.
+
+      # -----------------------------------------------------------------------------------------
+      # 3. THE WORKER ITSELF IS GONE.
+      #
+      # `TargetDown` in monitoring-self.rules already fires on `up == 0` for ANY job at 10m; this
+      # is the same condition at 5m for the workers specifically, because they are the pipeline and
+      # ten minutes of silence is ten minutes of no scraping. Alertmanager inhibits the slower,
+      # broader one when this fires, so a dead worker is one message rather than two.
+      #
+      # 5 MINUTES SURVIVES A DEPLOY, and that is measured, not assumed: over 24h the workers
+      # restarted 23-26 times each and the LONGEST continuous stretch any of them was unscrapeable
+      # was 2.5 minutes (us; de/es/uk 1.5, pl 2.0). Half the window is headroom. A shorter `for:`
+      # would page on every rollout, which on this fleet is roughly hourly.
+      - alert: WorkerDown
+        expr: up{job="kinowo-worker"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The {{ $labels.country }} worker has been unreachable for 5 minutes"
+          description: >-
+            Prometheus cannot scrape this worker, so it is either crash-looping, wedged, or gone.
+            Nothing is scraping cinemas, refreshing ratings or projecting the read model for
+            {{ $labels.country }} while this holds. A rollout takes it down for under three minutes,
+            so five means something other than a deploy. `kubectl -n kinowo logs deploy/worker-{{ $labels.country }}`
+            and the JVM heap panels are the first two places to look -- an OOM kill presents exactly
+            like this.
+
+      # -----------------------------------------------------------------------------------------
+      # THE COMPANION. Rules 1 and 2 are comparisons against a series, and a comparison cannot fire
+      # when its series is gone -- so a worker that stops publishing its queue gauges would leave
+      # both silent, which is indistinguishable from a queue that is behaving. `WorkerDown` covers
+      # the case where the whole target vanishes; this covers the narrower one where the process is
+      # up and answering /metrics without the queue family in it.
+      - alert: WorkerQueueMetricsAbsent
+        expr: absent(kinowo_worker_queue_depth)
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No worker is publishing task-queue metrics"
+          description: >-
+            `kinowo_worker_queue_depth` has no series from any country, so neither
+            WorkerQueueGrowingUnbounded nor WorkerQueueStalled can fire and the pipeline is
+            unwatched. If the workers were simply down, `WorkerDown` would be firing too and is the
+            better alert to read; if they are up, the queue gauges have stopped being refreshed
+            from the per-country `QueueSnapshot`, which no target-level check would catch.

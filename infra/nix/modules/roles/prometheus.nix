@@ -191,6 +191,10 @@ let
     # "projection trigger" line and could not be attributed for an evening. Alphabetically after
     # nixos-deploy and before web-errors.
     "read-model-projection"
+    # IS THE WORKER PIPELINE MOVING. Replaces a Grafana rule that fired on queue DEPTH and had
+    # therefore been firing continuously -- the US worker's median waiting depth is 3x the
+    # threshold it used. Depth is not the signal; the slope and the claim rate are.
+    "worker-pipeline"
     # IS THE SITE ANSWERING. Every other file here watches a machine or a process, all of which can
     # be green while the web tier serves a 500 to every visitor. Added after the "Error share" panel
     # spent an afternoon at 25% with nothing failing -- the file explains why the 4xx half of that

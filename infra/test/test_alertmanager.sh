@@ -75,7 +75,13 @@ step "routing"
 route_is() {
   local want="$1"; shift
   local got
-  got="$(amtool config routes test --config.file "$rendered" "$@" 2>&1 | tr -d '[:space:]')"
+  # STDOUT ONLY, AND THE LAST LINE OF IT. When amtool comes from `nix shell`rather than PATH, nix
+  # is free to write to stderr -- "SQLite database ... is busy" from a contended eval cache is the
+  # one that showed up, and folding it into the comparison turned five correct routes into five
+  # failures whose message contained the right answer. A checker that fails on the weather is worse
+  # than no checker. A genuine amtool failure still fails this: it prints nothing usable on stdout,
+  # so `got` ends up empty and cannot equal any expected receiver.
+  got="$(amtool config routes test --config.file "$rendered" "$@" 2>/dev/null | tail -1 | tr -d '[:space:]')"
   if [ "$got" = "$want" ]; then
     echo "  ok  $* -> $want"
   else
@@ -93,6 +99,15 @@ route_is telegram-and-email alertname=FilesystemInodesLow severity=warning host=
 route_is telegram-and-email alertname=FilesystemWillFillWithin7Days severity=warning host=mongo-1
 # "nothing is watching any disk" belongs with the disk alerts, and carries no host label.
 route_is telegram-and-email alertname=FilesystemMetricsAbsent severity=warning
+
+# THE WORKER PIPELINE EARNS THE MAILBOX FOR A DIFFERENT REASON than the disks: a stalled or
+# runaway queue does not 500 anything. The site keeps serving and the listings just go stale, which
+# is the failure most likely to be scrolled past in a chat channel. Both severities, and the
+# absent() companion, must reach email the same way the disk alerts do.
+route_is telegram-and-email alertname=WorkerQueueStalled severity=critical country=us
+route_is telegram-and-email alertname=WorkerQueueGrowingUnbounded severity=warning country=uk
+route_is telegram-and-email alertname=WorkerDown severity=critical country=de
+route_is telegram-and-email alertname=WorkerQueueMetricsAbsent severity=warning
 
 # AND NOTHING ELSE CHANGED. The email receiver is for the disk alerts alone; every other alert must
 # still land on plain Telegram, or "add email for the disks" has quietly become "add email".

@@ -1,0 +1,148 @@
+# UNIT TESTS FOR THE WORKER PIPELINE ALERTS.
+#
+# These rules exist because the one they replaced fired on queue DEPTH and was therefore firing
+# continuously -- the US worker's median waiting depth is three times the threshold it used. So the
+# load-bearing cases here are the NEGATIVE ones: a big-but-healthy queue must stay silent, and the
+# two obvious-but-wrong formulations must not creep back. Every "normal" series below is shaped
+# from the fleet's real 24h numbers rather than invented.
+rule_files:
+  - ../../nix/files/monitoring/rules/worker-pipeline.rules
+
+evaluation_interval: 1m
+
+tests:
+  # THE CASE THAT RETIRED THE OLD RULE. 450 waiting, flat, draining at 143 tasks/min -- the US
+  # worker's ordinary Tuesday. The alert it replaced fired on this for 98.1% of the day. Nothing
+  # here may say anything at all.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_depth{country="us",state="waiting",job="kinowo-worker"}'
+        values: '450 448 452 449 451 450 447 453 450 449 451 450 448 452 450 449 451 450 452 448 450 449 451 450 448 452 450 449 451 450 452 448 450 449 451 450 448 452 450 449 451 450 452 448 450 449 451 450 452 448 450 449 451 450 448 452 450 449 451 450 452 448 450 449 451 450 448 452 450 449 451 450 452 448 450 449 451 450 452 448'
+      - series: 'kinowo_worker_tasks_started_total{country="us",job="kinowo-worker",task_type="ScrapeChunk"}'
+        values: '0+143x80'
+    alert_rule_test:
+      - eval_time: 75m
+        alertname: WorkerQueueGrowingUnbounded
+        exp_alerts: []
+      - eval_time: 75m
+        alertname: WorkerQueueStalled
+        exp_alerts: []
+
+  # A GENUINE RUNAWAY: +6 tasks/min sustained (0.1/s, twice the threshold) for two hours. The
+  # `for: 1h` means it must not fire early, and must fire once the hour is up.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_depth{country="uk",state="waiting",job="kinowo-worker"}'
+        values: '100+6x150'
+      - series: 'kinowo_worker_tasks_started_total{country="uk",job="kinowo-worker",task_type="ScrapeChunk"}'
+        values: '0+60x150'
+    alert_rule_test:
+      # The SLOPE is measurable within minutes, so the `for: 1h` starts counting almost at once and
+      # completes around t=62m -- not at t=120m as the first draft of this case assumed. Half an
+      # hour in, the queue has already grown by 180 and the rule is correctly still silent.
+      - eval_time: 30m
+        alertname: WorkerQueueGrowingUnbounded
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: WorkerQueueGrowingUnbounded
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk, state: waiting, job: kinowo-worker }
+            exp_annotations:
+              summary: "uk's task queue has grown for an hour straight (0.100 tasks/s)"
+              description: "The WAITING set has climbed continuously for an hour at more than 180 tasks/hour net, which is a queue the pool is not keeping up with rather than a burst it is working through. THE DEPTH ITSELF IS NOT THE PROBLEM and is not worth reacting to -- the US worker sits at ~450 waiting in normal operation. Look at what is ENQUEUEING: a reaper that has started scheduling faster than the pool can drain (panels 20/30 on the application dashboard split enqueued from worked), or a task type failing and being retried forever (panel 25, waiting by type). `WorkerQueueStalled` below is the other half of this: if nothing is being claimed at all, that one fires instead and is the more urgent of the two."
+
+  # THE PIPELINE STOPPED: work is queued and the started counter is flat. This is the one that
+  # matters most, and it is critical rather than warning.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_depth{country="pl",state="waiting",job="kinowo-worker"}'
+        values: '40x40'
+      - series: 'kinowo_worker_tasks_started_total{country="pl",job="kinowo-worker",task_type="ScrapeChunk"}'
+        values: '5000x40'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: WorkerQueueStalled
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: WorkerQueueStalled
+        exp_alerts:
+          - exp_labels: { severity: critical, country: pl }
+            exp_annotations:
+              summary: "pl's worker has claimed no task for 5 minutes with work waiting"
+              description: "Tasks are queued and NOTHING is picking them up, so every scrape, rating refresh and read-model projection for this country has stopped. A healthy worker claims 13-143 tasks a minute. Check, in order: is the pod up and past its hydrate (`WorkerDown` fires separately if the target is gone); is the whole pool stuck on handlers that never return (`kinowo_worker_queue_depth{state=\"worked_on\"}` pinned at the pool size of 4 is that shape, and the task-duration panels name the type); and is `TaskQueue.claim` failing in the logs -- a Mongo stall shows up here first because claim is a `findOneAndUpdate` that blocks."
+
+  # AN IDLE WORKER IS NOT A STALLED ONE. Nothing claimed for half an hour, but nothing waiting
+  # either -- which is a quiet night, not an outage. This is the case that separates "stopped" from
+  # "nothing to do", and getting it wrong would page every time the queue drains.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_depth{country="es",state="waiting",job="kinowo-worker"}'
+        values: '0x40'
+      - series: 'kinowo_worker_tasks_started_total{country="es",job="kinowo-worker",task_type="ScrapeChunk"}'
+        values: '900x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WorkerQueueStalled
+        exp_alerts: []
+
+  # THE OBVIOUS-BUT-WRONG FORM, PINNED. `worked_on == 0` while waiting > 0 is true 39-84% of a
+  # normal day because tasks finish in milliseconds and the scrape lands between claims. If anybody
+  # ever rewrites the rule that way, this case fails: work is flowing at 60/min and worked_on
+  # happens to be 0 at every sample.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_depth{country="de",state="waiting",job="kinowo-worker"}'
+        values: '51x40'
+      - series: 'kinowo_worker_queue_depth{country="de",state="worked_on",job="kinowo-worker"}'
+        values: '0x40'
+      - series: 'kinowo_worker_tasks_started_total{country="de",job="kinowo-worker",task_type="ScrapeChunk"}'
+        values: '0+60x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WorkerQueueStalled
+        exp_alerts: []
+
+  # A ROLLOUT MUST NOT PAGE. Measured: the workers restart 23-26 times a day and the longest any of
+  # them is unscrapeable is 2.5 minutes. Two minutes down, then back.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="kinowo-worker",country="us",instance="10.20.0.12:30905"}'
+        values: '1x10 0 0 1x30'
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: WorkerDown
+        exp_alerts: []
+
+  # A WORKER THAT IS ACTUALLY GONE.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="kinowo-worker",country="de",instance="10.20.0.12:30902"}'
+        values: '1x5 0x40'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: WorkerDown
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: WorkerDown
+        exp_alerts:
+          - exp_labels: { severity: critical, country: de, job: kinowo-worker, instance: "10.20.0.12:30902" }
+            exp_annotations:
+              summary: "The de worker has been unreachable for 5 minutes"
+              description: "Prometheus cannot scrape this worker, so it is either crash-looping, wedged, or gone. Nothing is scraping cinemas, refreshing ratings or projecting the read model for de while this holds. A rollout takes it down for under three minutes, so five means something other than a deploy. `kubectl -n kinowo logs deploy/worker-de` and the JVM heap panels are the first two places to look -- an OOM kill presents exactly like this."
+
+  # THE TRIPWIRE.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="kinowo-worker",country="pl"}'
+        values: '1x200'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WorkerQueueMetricsAbsent
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: WorkerQueueMetricsAbsent
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "No worker is publishing task-queue metrics"
+              description: "`kinowo_worker_queue_depth` has no series from any country, so neither WorkerQueueGrowingUnbounded nor WorkerQueueStalled can fire and the pipeline is unwatched. If the workers were simply down, `WorkerDown` would be firing too and is the better alert to read; if they are up, the queue gauges have stopped being refreshed from the per-country `QueueSnapshot`, which no target-level check would catch."

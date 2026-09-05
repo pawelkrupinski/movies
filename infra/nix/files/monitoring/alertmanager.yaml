@@ -66,13 +66,15 @@ route:
       group_wait: 0s
       repeat_interval: 24h
 
-    # THE DISK ALERTS ALSO GO TO EMAIL, and they are the only ones that do.
+    # THE DISK AND WORKER-PIPELINE ALERTS ALSO GO TO EMAIL, and they are the only ones that do.
     #
-    # WHY THESE AND NOT EVERYTHING. A filling disk is the one class of alert on this fleet whose
+    # WHY THESE AND NOT EVERYTHING. Two classes earn a mailbox. A filling disk is the alert whose
     # useful response is days away rather than minutes -- growing a volume is a Tuesday-afternoon
-    # decision, not a 03:00 one -- so it is the one worth having somewhere that outlives a chat
-    # channel being muted, scrolled past, or read on a phone and forgotten. Everything else here
-    # wants to be seen NOW, and Telegram is better at that than a mailbox.
+    # decision, not a 03:00 one. A stalled or runaway task queue is the one whose damage is
+    # CUMULATIVE and invisible: nothing 500s, the site keeps serving, and the listings simply go
+    # stale hour by hour, so it is the failure most likely to be scrolled past in a chat channel
+    # and least likely to announce itself any other way. Everything else here wants to be seen NOW,
+    # and Telegram is better at that than a mailbox.
     #
     # BOTH DESTINATIONS, NOT INSTEAD. This file's header argues for one channel because a second
     # is a second thing to notice has stopped working, and that argument is still right -- so the
@@ -85,17 +87,19 @@ route:
     # (12h). These MUST stay above the severity routes: first match wins, and a route that matched
     # `severity` first would never reach these.
     #
-    # `FilesystemMetricsAbsent` matches too, deliberately: "nothing is watching any disk" belongs
-    # with the disk alerts rather than with the fleet-wide noise.
+    # THE `absent()` COMPANIONS MATCH TOO, deliberately: "nothing is watching any disk" and
+    # "nothing is publishing queue metrics" belong with the alerts they cover rather than with the
+    # fleet-wide noise. `WorkerDown` matches on the same prefix and wants the mailbox for the same
+    # reason the queue rules do.
     - matchers:
-        - alertname =~ "Filesystem.*"
+        - alertname =~ "Filesystem.*|Worker.*"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*"
+        - alertname =~ "Filesystem.*|Worker.*"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m
