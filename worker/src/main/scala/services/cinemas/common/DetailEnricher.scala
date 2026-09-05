@@ -127,7 +127,13 @@ trait DetailEnricher {
    *  resolution. Set false for a cinema whose listing already carries those
    *  hints and whose detail is purely display enrichment (synopsis / poster /
    *  trailer): the row resolves immediately from the listing and the detail
-   *  merges in asynchronously when its `EnrichDetails` task runs. */
+   *  merges in asynchronously when its `EnrichDetails` task runs.
+   *
+   *  Scopes to the DIRECT scrape path only. Staging waits for every detail
+   *  cinema regardless (`StagingSteps.fetchDetailFor`): a newcomer has no place
+   *  in the read model to lose, and resolving it on a listing while the page
+   *  carrying its year and director is already in flight is how a guess gets
+   *  stamped into a row's key and becomes permanent. */
   def defersTmdbResolution: Boolean = true
   /** Fetch + parse one film's detail by the reference the listing scrape left on
    *  the movie (its `filmUrl`). None on failure/absence, so the task stays

@@ -846,7 +846,8 @@ class WorkerWiring(
 
   /** Cinemas that defer per-film detail AND whose detail supplies TMDB hints —
    *  a film one of these scrapes (with a detail filmUrl) waits for its
-   *  EnrichDetails task before TMDB resolution. A display-only enricher
+   *  EnrichDetails task before TMDB resolution. This set gates the DIRECT scrape
+   *  path only; staging waits for every detail cinema (`StagingSteps`). A display-only enricher
    *  (`defersTmdbResolution = false`, e.g. KinoMuza) still rides the
    *  EnrichDetails pipeline but isn't held back: it resolves from the listing
    *  and merges its synopsis/poster/trailer in asynchronously. */

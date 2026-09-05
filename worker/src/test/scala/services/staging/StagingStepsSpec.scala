@@ -62,6 +62,37 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().head.record.cinemaData(Helios).synopsis shouldBe None  // native enricher never fetched the filmweb URL
   }
 
+  // The ordering is unconditional: `fetchDetailRow` runs for every detail cinema
+  // before resolution, `defersTmdbResolution` or not, so a newcomer is never
+  // resolved on its listing while the page carrying its year and director is
+  // unread. The flag decides only what a FAILED fetch means — and for a
+  // display-only detail it must NOT block, or a page the fixtures (or the live
+  // site) cannot serve costs the film entirely.
+  it should "fetch and merge a non-deferring cinema's detail before the film is ready" in {
+    val (repository, anchor) = seeded(Helios, "Newcomer", Some(2026))
+    val enricher = new FakeDetailEnricher(Helios, "fake",
+      Some(FilmDetail(synopsis = Some("A plot"), director = Seq("Jane Doe"))), defersTmdb = false)
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
+
+    s.fetchDetailFor(Helios, anchor) shouldBe true
+    withClue("the detail must have been fetched, not skipped: ") {
+      repository.findAll().head.record.cinemaData(Helios).synopsis shouldBe Some("A plot")
+      repository.findAll().head.record.cinemaData(Helios).director shouldBe Seq("Jane Doe")
+    }
+    enricher.calls should be > 0
+  }
+
+  it should "let a non-deferring cinema's film graduate when its display-only detail fails" in {
+    val (repository, anchor) = seeded(Helios, "Newcomer", Some(2026))
+    val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("A plot"))),
+      failure = Some(new RuntimeException("HTTP 503")), defersTmdb = false)
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r))
+
+    withClue("a display-only detail that fails must degrade, not block: ") {
+      s.fetchDetailFor(Helios, anchor) shouldBe true
+    }
+  }
+
   it should "give up (degrade to listing-only) when told to, so a permanently-failing deferred fetch stops blocking the film" in {
     // The safety net for a genuinely-dead NATIVE event page (a cinema's own
     // filmUrl that 404s every pass): without a give-up the staging-detail step

@@ -71,10 +71,25 @@ class StagingSteps(
 
   /** STEP 1 (per film + cinema): fetch + merge this cinema's per-film detail into
    *  EVERY one of its year-variant rows for the film, then mark the fetch fresh so
-   *  `detailReady` lets resolution proceed. Returns true once the fetch has landed
-   *  (or the cinema doesn't defer) — false when a deferred fetch still hasn't, so
-   *  the task reschedules + retries. `mergeInto` is idempotent, so a re-fetch only
-   *  fills gaps.
+   *  `detailReady` lets resolution proceed. Returns true once the fetch has landed —
+   *  false while it hasn't, so the task reschedules + retries. `mergeInto` is
+   *  idempotent, so a re-fetch only fills gaps.
+   *
+   *  The detail is FETCHED for every detail cinema before resolution, deferring or
+   *  not: `fetchDetailRow` is the left operand below and always runs. So staging
+   *  never resolves a newcomer on its listing while the page carrying that film's
+   *  year and director is still unread — the ordering is unconditional.
+   *
+   *  `defersTmdbResolution` decides only what a FAILED fetch means. For a cinema
+   *  whose detail carries TMDB-identity hints, failure blocks: resolving without
+   *  them risks a title-only guess, and `MovieCache.settleResolved` would stamp that
+   *  guess's year into the row's key, where it becomes an identity that steers every
+   *  later resolution back to the same wrong film. For a cinema whose detail is
+   *  display-only there is nothing to wait for, so a failure is tolerated and the
+   *  film graduates on its listing — making it blocking instead costs films outright:
+   *  the e2e corpus loses its anchor and drops to 193 schedules, because a detail
+   *  page the fixture tree cannot serve becomes a permanent block rather than a
+   *  degradation.
    *
    *  `giveUp` is the handler's "retry budget exhausted" signal: a deferred fetch
    *  that can NEVER land (e.g. a Filmweb-fallback row whose filmUrl points at
