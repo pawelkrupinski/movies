@@ -1,4 +1,4 @@
-{ ... }:
+{ config, ... }:
 {
   imports = [
     ./disko.nix
@@ -95,6 +95,18 @@
     facetThrottle = {
       userAgents = [ "meta-externalagent" ];
     };
+    # ⚠️ ONLY THE PROXIED NAMES. A Cloudflare Origin certificate is trusted by Cloudflare and by
+    # nothing else, so putting one on a name a browser reaches directly hands every visitor a
+    # certificate they reject. All four vhosts here are behind Cloudflare; `grafana` and `headlamp`
+    # are dns-only and live on monitoring-1, so they are not reachable from this list at all.
+    kinowoOrigin = {
+      certFile = ../../files/origin-certs/kinowo.net.crt;
+      keyFile  = config.sops.secrets."origin-tls/kinowo_net".path;
+    };
+    showtimesOrigin = {
+      certFile = ../../files/origin-certs/showtimes.cc.crt;
+      keyFile  = config.sops.secrets."origin-tls/showtimes_cc".path;
+    };
   in {
     enable = true;
     acmeEmail = "pawel@bitcashier.io";
@@ -104,8 +116,9 @@
       "kinowo.net" = {
         upstream = "127.0.0.1:30910";
         crawlerThrottle = facetThrottle;
+        originCertificate = kinowoOrigin;
       };
-      "www.kinowo.net".redirectTo = "kinowo.net";
+      "www.kinowo.net" = { redirectTo = "kinowo.net"; originCertificate = kinowoOrigin; };
 
       # THE SHOWTIMES COUNTRIES SHARE ONE DOMAIN AND ARE TOLD APART BY A PATH SEGMENT.
       #
@@ -140,12 +153,22 @@
           "/es" = "127.0.0.1:30914";
         };
         crawlerThrottle = facetThrottle;
+        originCertificate = showtimesOrigin;
       };
-      "www.showtimes.cc".redirectTo = "showtimes.cc";
+      "www.showtimes.cc" = { redirectTo = "showtimes.cc"; originCertificate = showtimesOrigin; };
     };
   };
 
   sops.defaultSopsFile = ../../secrets/k3s-worker-1.yaml;
+
+  # THE ORIGIN CERTIFICATES' PRIVATE KEYS. Only the keys are secret -- the certificates themselves
+  # are public documents and live in the nix store beside this file.
+  #
+  # `owner = "caddy"` because Caddy reads them as itself at startup, and 0400 because nothing else
+  # on this host has any business with them. A wrong owner here does not fail the build: it fails
+  # at Caddy start, which on this host means the product is down until somebody reads a journal.
+  sops.secrets."origin-tls/kinowo_net"   = { owner = "caddy"; mode = "0400"; };
+  sops.secrets."origin-tls/showtimes_cc" = { owner = "caddy"; mode = "0400"; };
 
   system.stateVersion = "26.05";
 }

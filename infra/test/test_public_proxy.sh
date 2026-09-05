@@ -46,6 +46,24 @@ if [ -z "$vhost" ]; then
   echo "  FAILED could not evaluate the vhost:"; sed 's/^/    /' "$work/eval.err" | tail -5; exit 1
 fi
 
+# THE FIXED CERTIFICATE IS ASSERTED, THEN REMOVED BEFORE SERVING.
+#
+# Names reached only through Cloudflare pin their own certificate
+# (fleet.publicProxy.*.originCertificate). Its cert is in the nix store and its key under
+# /run/secrets, so Caddy here could not load either -- and a `tls` directive inside this
+# `:port { }` block would also turn the listener HTTPS, which every plain-http assertion below
+# would then fail against. Both failure modes look identical from the outside: 000.
+#
+# So the line is checked for and then dropped. That keeps this file about what it says it is about
+# -- which requests match the throttle -- while still failing if the option silently stops emitting
+# anything. Whether the right certificate is SERVED is a property of the deployed host: `nix eval`
+# in bin/check proves the closure builds, and a bad path fails loudly at caddy start on the switch.
+case "$vhost" in
+  *"tls "*) echo "  ok  the vhost pins its own certificate" ;;
+  *)        echo "  FAILED expected an originCertificate tls line in showtimes.cc's vhost"; failed=1 ;;
+esac
+vhost="$(printf '%s\n' "$vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
+
 # `auto_https off` and a plain port, because the rule under test is about matching, not TLS -- and
 # a test that had to obtain a certificate could not run offline.
 { echo "{ auto_https off"; echo "  admin off"; echo "}"; echo ":$port {"; echo "$vhost"; echo "}"; } > "$work/Caddyfile"

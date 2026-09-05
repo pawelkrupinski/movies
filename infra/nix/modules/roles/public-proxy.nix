@@ -160,6 +160,34 @@ in
             });
           };
 
+          originCertificate = lib.mkOption {
+            type = lib.types.nullOr (lib.types.submodule {
+              options = {
+                certFile = lib.mkOption { type = lib.types.path; description = "PEM certificate, world-readable."; };
+                keyFile  = lib.mkOption { type = lib.types.str;  description = "Path to the PEM key on the host, readable by caddy."; };
+              };
+            });
+            default = null;
+            description = ''
+              Serve a FIXED certificate for this vhost instead of getting one from Let's Encrypt.
+
+              This exists for one shape: a name that is only ever reached through a CDN. Cloudflare
+              in `Full (strict)` mode validates the origin certificate against ITS OWN Origin CA, so
+              a Cloudflare Origin certificate is trusted there and lasts fifteen years -- which takes
+              renewal off the critical path entirely. That matters more under a CDN than without one:
+              a failed ACME renewal in front of `strict` is not a browser warning any more, it is a
+              526 and the site is down.
+
+              ⚠️ NEVER ON A NAME BROWSERS REACH DIRECTLY. An Origin CA certificate is trusted by
+              Cloudflare and by nothing else, so a visitor arriving at a dns-only name would get a
+              certificate their browser rejects outright. On this fleet that means it belongs on the
+              product vhosts (which are proxied) and NOT on `grafana` / `headlamp`, which are
+              dns-only and live on monitoring-1 in any case.
+
+              ACME still runs for every vhost that does not set this, so the two coexist.
+            '';
+          };
+
           redirectTo = lib.mkOption {
             type = lib.types.nullOr lib.types.str;
             default = null;
@@ -241,8 +269,15 @@ in
                 respond "Filtered listings are disallowed by robots.txt on this host. The film pages and sitemap are open." 429
               }
             '');
+          # A FIXED CERTIFICATE INSTEAD OF ACME, when the vhost asks for one. Emitted FIRST so it is
+          # unmistakable when reading the generated Caddyfile which names are not on Let's Encrypt.
+          # Caddy takes an explicit `tls <cert> <key>` as "manage nothing for this site", so the
+          # ACME machinery simply does not run for it -- there is no renewal to fail.
+          tlsBlock = lib.optionalString (v.originCertificate != null)
+            "tls ${v.originCertificate.certFile} ${v.originCertificate.keyFile}";
         in {
         extraConfig = ''
+          ${tlsBlock}
           ${v.extraConfig}
           ${throttleBlock}
           ${if v.pathUpstreams == { }
