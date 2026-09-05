@@ -2,8 +2,8 @@ package services.movies
 
 
 import clients.TmdbClient
-import controllers.{FilmSchedule, MovieControllerService}
-import models.{Cinema, Country, MovieRecord, Showtime}
+import controllers.MovieControllerService
+import models.{Cinema, Country, MovieRecord}
 import org.mongodb.scala.MongoClient
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -905,9 +905,14 @@ abstract class CountryConvergenceBehaviour(
     }
   }
 
-  /** One whole-corpus pass in a seeded-random order, returning everything a
-   *  divergence could hide in: the persisted film records, the per-slot
-   *  screenings, and the rows the web would actually render.
+  /** One whole-corpus pass in a seeded-random order, handing everything a
+   *  divergence could hide in — the persisted film records, the per-slot
+   *  screenings, and the rows the web would actually render — to `comparison`
+   *  rather than returning it.
+   *
+   *  It submits rather than returns because the corpus is what the heap cannot
+   *  afford `Passes` copies of; see [[CorpusComparison]] for the leg that died
+   *  proving it. Everything up to `replayProject` stays concurrent.
    *
    *  Two orders are shuffled, because they fail differently. CINEMA order is the
    *  one production varies every tick (the reaper enqueues by due-time, not by
@@ -920,8 +925,7 @@ abstract class CountryConvergenceBehaviour(
    *  only nondeterminism left is the seeded shuffle — otherwise a thread race,
    *  not an order dependency, would decide the outcome and the test would flake
    *  rather than fail. */
-  private def replay(archive: ScrapeArchiveRepository, seed: Long)
-      : (Seq[StoredMovieRecord], Map[String, Map[String, Seq[Showtime]]], Seq[FilmSchedule]) = {
+  private def replay(archive: ScrapeArchiveRepository, comparison: CorpusComparison, seed: Long): Unit = {
     val rnd = new Random(seed)
     // Its OWN Mongo database, one per pass. The passes run concurrently over the same
     // corpus, so they cannot share collections — but they no longer run in memory either.
@@ -970,13 +974,16 @@ abstract class CountryConvergenceBehaviour(
     PhaseTimer.timed(scope, "replaySettleSecondPass")(w.movieService.settle())
     PhaseTimer.timed(scope, "replayConcludeEnrichment")(w.concludeEnrichment())
     PhaseTimer.timed(scope, "replayProject")(w.readModelProjector.reconcile())
-    PhaseTimer.timed(scope, "replayReloadReadModel")(w.webReadModel.reload())
-
-    val records = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
-    val screenings = w.screeningsRepository.findAll()
-    val service = new MovieControllerService(w.webReadModel)
-    val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt))
-    (records, screenings, rows)
+    // Reload AND materialise inside the comparison's lock: this is the step that
+    // allocates the corpus, so it is the step that has to be one-at-a-time.
+    comparison.submit((seed - OrderSeed).toInt) { () =>
+      PhaseTimer.timed(scope, "replayReloadReadModel")(w.webReadModel.reload())
+      val records = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+      val screenings = w.screeningsRepository.findAll()
+      val service = new MovieControllerService(w.webReadModel)
+      val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt))
+      ReplayCorpus(records, screenings, rows)
+    }
   }
 
   s"the ${country.displayName} corpus" should
@@ -991,41 +998,34 @@ abstract class CountryConvergenceBehaviour(
       // Concurrently: the passes are independent whole-corpus replays and running
       // them back-to-back made this the leg's long pole (three boots serially, on
       // top of the shared one). Same helper the fixture determinism specs use.
-      val passes = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, _))
-      val (records0, screenings0, rows0) = passes.head
-      info(s"${country.displayName}: $Passes passes over ${records0.size} films, " +
-           s"${screenings0.values.map(_.size).sum} slots, ${rows0.size} rendered rows")
-      records0 should not be empty
-      rows0    should not be empty
-      // NOTE: the screenings comparison below is currently VACUOUS. `screenings0` is empty
-      // because `MongoConvergenceStorage` builds `movies` without the `screenings`/`slots`
-      // read-split that `WorkerWiring` wires in prod, so showtimes stay embedded in the film
-      // document and the side collection is never written. Two empty maps compare equal on
-      // every pass, so this axis passes without testing anything. The films and rendered-rows
-      // axes are real; only this one is not.
       //
-      // Do NOT "fix" it by passing `screenings = Some(...), slots = Some(...)` — that was
-      // tried (2026-07-31) and it empties the pipeline outright: the read model went to
-      // 0 cinemas / 0 screenings / 0 films and an identical re-scrape churned 3,079 writes,
-      // while `movies` still held all 773 films. The read-split is a protocol (write order,
-      // re-stitch on read, change-stream fan-out), not two constructor arguments, and
-      // turning it on here needs that protocol traced first.
+      // Each pass folds ITSELF into `comparison` as it finishes rather than handing
+      // a corpus back to be diffed afterwards, so only the baseline and the pass
+      // being compared are ever resident. Everything before that stays concurrent;
+      // only the materialise-and-diff tail is one-at-a-time. See [[CorpusComparison]]
+      // for the leg that ran out of heap holding all three.
+      val comparison = new CorpusComparison
+      val _ = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
+      val reference = comparison.reference
+      info(s"${country.displayName}: $Passes passes over ${reference.records.size} films, " +
+           s"${reference.screenings.values.map(_.size).sum} slots, ${reference.rows.size} rendered rows")
+      reference.records should not be empty
+      reference.rows    should not be empty
+      // All three axes are real. This note used to say the screenings one was VACUOUS —
+      // that `MongoConvergenceStorage` built `movies` without the `screenings`/`slots`
+      // read-split, so the side collection was never written and two empty maps compared
+      // equal on every pass. True when it was written (2026-07-31, when wiring the split
+      // naively emptied the pipeline outright); no longer true since the split was wired
+      // for real. The US leg's own info line prints 113,708 slots, which an empty map
+      // cannot produce.
 
-      val divergences = mutable.ListBuffer.empty[String]
-      (1 until Passes).foreach { i =>
-        val (recordsI, screeningsI, rowsI) = passes(i)
-        if (recordsI != records0) divergences += s"FILMS differ on pass $i:\n${CorpusDiff.records(records0, recordsI, "pass0", s"pass$i")}"
-        if (screeningsI != screenings0) divergences += s"SCREENINGS differ on pass $i:\n${CorpusDiff.slots(screenings0, screeningsI, "pass0", s"pass$i")}"
-        if (rowsI != rows0)
-          divergences += s"RENDERED ROWS differ on pass $i (${rows0.size} vs ${rowsI.size}):\n" +
-                         CorpusDiff.rows(rows0, rowsI, "pass0", s"pass$i")
-      }
+      val divergences = comparison.divergences
       // Name the seeds: each pass's arrival order is a pure function of its seed, so
       // quoting them makes a CI-only divergence reproducible on a laptop instead of
       // something you re-run and hope to see again.
       val seeds = (0 until Passes).map(i => s"pass$i=0x${(OrderSeed + i.toLong).toHexString}").mkString(", ")
       withClue(s"${divergences.size} order-dependent divergence(s) [$seeds]:\n${divergences.take(10).mkString("\n")}\n") {
-        divergences.toList shouldBe empty
+        divergences shouldBe empty
       }
     }
   }
