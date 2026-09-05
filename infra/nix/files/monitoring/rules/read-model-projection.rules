@@ -90,6 +90,63 @@ groups:
             the event counters proportionally.
 
       # -----------------------------------------------------------------------------------------
+      # THE READ MODEL IS DROPPING FILMS FASTER THAN RE-KEYING EXPLAINS.
+      #
+      # `reconcile` removes a film's derived documents when its source row vanishes or its
+      # filmId changes, and the film's whole schedule goes with it -- the card 404s until the
+      # new key propagates. Most prunes are RE-KEYS and completely routine (see
+      # `movies deletes are mostly re-keys`), so the signal cannot be "a prune happened". It is
+      # a prune BURST measured against the corpus it is eating.
+      #
+      # A FRACTION, not a rate. Absolute rates are not comparable across countries whose
+      # corpora differ 12x (ES 192 films, US 2,302), and a threshold tuned on US volume would be
+      # most of the ES catalogue. Dividing by `corpus_movies{subset="total"}` makes one number
+      # mean the same thing everywhere: the share of a country's films that left the read model
+      # in an hour.
+      #
+      # 30%, from the measured week. Over the 7 days to 2026-09-05 the worst HEALTHY hour any
+      # country reached was PL at 16.9% (DE 9.4%, ES 7.8%, US 4.6%, UK 3.7%), with p99s of
+      # 1.0-5.4% -- so 30% sits at ~1.8x the worst real sample and far above every typical one.
+      # The shape it exists for is much larger than that: the 2026-08-10 BackfillReadModel wipe
+      # took Poznan from 209 films to 28 in one pass.
+      #
+      # WHAT THIS DOES NOT CATCH, deliberately: ONE film disappearing. A single row is ~0.05% of
+      # a corpus and no aggregate threshold can separate it from routine re-keying -- on
+      # 2026-09-05 clearing one film's resolution by hand pruned `lalka|2026` with 148 screenings
+      # and 404'd its page, and nothing here would have moved. That case is caught by reading the
+      # removal audit (`kinowo.removal-audit` logs every card with its screening count), not by a
+      # rule. This is the MASS-loss alert.
+      #
+      # NO absent() COMPANION for this one, unlike its siblings below: a labelled counter has no
+      # series until its first observation, so a country that has pruned nothing is legitimately
+      # absent and an absence rule would page for a read model doing no harm. The projector's own
+      # liveness is already covered by ReadModelProjectionMetricsAbsent.
+      - alert: ReadModelFilmPruneBurst
+        expr: >-
+          (
+            sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[1h]))
+            / clamp_min(sum by (country) (kinowo_worker_corpus_movies{subset="total"}), 1)
+          ) > 0.3
+        # The increase window is already an hour, so this is not waiting for the condition to be
+        # real -- it is confirming the ratio is not a single scrape-boundary sample.
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.country }} dropped {{ $value | humanizePercentage }} of its films from the read model in an hour"
+          description: >-
+            `kinowo_worker_readmodel_films_pruned_total` has removed more than 30% of
+            `corpus_movies{subset="total"}` for this country within an hour, so schedules are
+            disappearing from the site with the films that carried them. The worst healthy hour
+            measured over the week to 2026-09-05 was 16.9%. Read the worker's `kinowo.removal-audit`
+            log first -- it names every card removed with its screening count and a reason
+            (reconcile-prune / scrape-prune) -- then check whether a backfill or reprojection
+            script is running against this country, whether a city slug was renamed (which
+            re-keys every CityScreening and orphans the old ones), and whether the source
+            `movies` rows still exist: a prune whose rows are intact is a projection fault, and
+            a prune that follows rows actually vanishing is a scrape or cleanup fault.
+
+      # -----------------------------------------------------------------------------------------
       # THE COMPANION, in the shape mongodb.rules and cinema-scrape.rules use throughout: a rule
       # that can only fire on a series has to be paired with one that fires on the series'
       # ABSENCE, or the monitoring's own failure looks exactly like health. The rule above is

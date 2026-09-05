@@ -124,3 +124,74 @@ tests:
             exp_annotations:
               summary: "No worker is publishing read-model projection metrics"
               description: "`kinowo_worker_readmodel_project_calls_total` has no series from any country, so ReadModelProjectionTriggerUnaccounted cannot fire and the read model's whole input path is unwatched. Either every worker is down -- in which case TargetDown in monitoring-self.rules is also firing and is the better alert to read -- or the projector is no longer wired to `WorkerTaskMetrics`, which TargetDown would NOT catch because the pod is up and serving /metrics without this family in it."
+
+  # ---------------------------------------------------------------------------------------------
+  # THE PRUNE BURST. A 1,000-film corpus losing 8 films a minute is 480 in the increase window --
+  # 48%, well past the threshold, and the shape of a backfill eating a country's read model.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="pl",job="kinowo-worker"}'
+        values: '0+8x180'
+      - series: 'kinowo_worker_corpus_movies{country="pl",job="kinowo-worker",subset="total"}'
+        values: '1000x180'
+    alert_rule_test:
+      # Nothing yet at 20m: only ~160 films have gone, 16% of the corpus, which is inside the
+      # healthy band PL itself reached in the week this was measured.
+      - eval_time: 20m
+        alertname: ReadModelFilmPruneBurst
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: ReadModelFilmPruneBurst
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              country: pl
+            exp_annotations:
+              summary: "pl dropped 48% of its films from the read model in an hour"
+              description: "`kinowo_worker_readmodel_films_pruned_total` has removed more than 30% of `corpus_movies{subset=\"total\"}` for this country within an hour, so schedules are disappearing from the site with the films that carried them. The worst healthy hour measured over the week to 2026-09-05 was 16.9%. Read the worker's `kinowo.removal-audit` log first -- it names every card removed with its screening count and a reason (reconcile-prune / scrape-prune) -- then check whether a backfill or reprojection script is running against this country, whether a city slug was renamed (which re-keys every CityScreening and orphans the old ones), and whether the source `movies` rows still exist: a prune whose rows are intact is a projection fault, and a prune that follows rows actually vanishing is a scrape or cleanup fault."
+
+  # THE HEALTHY WEEK, replayed: PL's worst real hour over the 7 days to 2026-09-05 was 16.9% of
+  # its corpus, which is routine re-keying and must stay silent. 2.8 films/min against 1,000 is
+  # 168/h -- that exact shape.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="pl",job="kinowo-worker"}'
+        values: '0+2.8x180'
+      - series: 'kinowo_worker_corpus_movies{country="pl",job="kinowo-worker",subset="total"}'
+        values: '1000x180'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelFilmPruneBurst
+        exp_alerts: []
+
+  # A SMALL COUNTRY loses the same NUMBER of films and must page where the big one did not: ES
+  # carries 192 films, so 100 gone in an hour is over half its catalogue. This is why the rule
+  # divides by the corpus instead of thresholding a rate.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="es",job="kinowo-worker"}'
+        values: '0+1.7x180'
+      - series: 'kinowo_worker_corpus_movies{country="es",job="kinowo-worker",subset="total"}'
+        values: '192x180'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelFilmPruneBurst
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              country: es
+            exp_annotations:
+              summary: "es dropped 53.12% of its films from the read model in an hour"
+              description: "`kinowo_worker_readmodel_films_pruned_total` has removed more than 30% of `corpus_movies{subset=\"total\"}` for this country within an hour, so schedules are disappearing from the site with the films that carried them. The worst healthy hour measured over the week to 2026-09-05 was 16.9%. Read the worker's `kinowo.removal-audit` log first -- it names every card removed with its screening count and a reason (reconcile-prune / scrape-prune) -- then check whether a backfill or reprojection script is running against this country, whether a city slug was renamed (which re-keys every CityScreening and orphans the old ones), and whether the source `movies` rows still exist: a prune whose rows are intact is a projection fault, and a prune that follows rows actually vanishing is a scrape or cleanup fault."
+
+  # A COUNTRY THAT HAS PRUNED NOTHING has no counter series at all -- a labelled counter only
+  # appears on its first observation. The rule must be silent, not absent-firing, which is why it
+  # has no absent() companion.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_corpus_movies{country="uk",job="kinowo-worker",subset="total"}'
+        values: '1600x180'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: ReadModelFilmPruneBurst
+        exp_alerts: []
