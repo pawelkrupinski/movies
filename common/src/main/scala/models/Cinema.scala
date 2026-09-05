@@ -1527,19 +1527,28 @@ object GermanRoster {
   private def claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ Seq(CinemaCityChain, CineworldChain, RegalChain)).map(_.displayName).toSet
 
-  private val built: Seq[(GermanRegion, Seq[(GermanCinema, String)])] =
-    GermanRosterData.regions.map { case (slug, name, lat, lon, cities, cinemas) =>
+  private val built: Seq[(GermanRegion, String, Seq[(GermanCinema, String)])] =
+    GermanRosterData.regions.map { case (slug, name, bundesland, lat, lon, cities, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and the wire
       // keys of every already-stored German slot — stay exactly as they are otherwise.
       val venues = cinemas.map { case (disp, pill, tid) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $name" else disp
         (new GermanCinema(unique, pill), tid)
       }
-      (new GermanRegion(slug, CityLabels(name, name, name), lat, lon, venues.map(_._1), cities), venues)
+      (new GermanRegion(slug, CityLabels(name, name, name), lat, lon, venues.map(_._1), cities), bundesland, venues)
     }
   val regions: Seq[GermanRegion]             = built.map(_._1)
-  val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, v) => r.labels.nominative -> v.map(_._1) }
-  val theaterIdByCinema: Map[Cinema, String] = built.flatMap(_._2).toMap
+  val byCity:  Seq[(String, Seq[Cinema])]    = built.map { case (r, _, v) => r.labels.nominative -> v.map(_._1) }
+  val theaterIdByCinema: Map[Cinema, String] = built.flatMap(_._3).toMap
+
+  /** Each region's BUNDESLAND — the heading the picker finds it under, straight
+   *  from `regions.json` (`cluster_regions.py` reads it off the Filmstarts lander
+   *  page the region's hub came from).
+   *
+   *  Kept here, beside the regions themselves, rather than on `GermanRegion`:
+   *  a region does not need to know what it is listed under any more than a US
+   *  metro does, and `City.germanStates` is the one caller. */
+  val bundeslandByRegion: Seq[(GermanRegion, String)] = built.map { case (r, land, _) => (r, land) }
 }
 
 

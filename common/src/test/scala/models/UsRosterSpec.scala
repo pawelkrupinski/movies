@@ -58,12 +58,14 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
     City.bySlug("california") shouldBe None
     City.bySlug("texas") shouldBe None
     val california = group("California")
-    california.cities.map(_.labels.nominative).take(2) shouldBe Seq("Los Angeles", "San Francisco Bay Area")
+    california.cities.map(_.labels.nominative) should contain allOf ("Los Angeles", "San Francisco Bay Area")
     california.cities should have size 22
     california.cities.flatMap(_.cinemas) should have size 486
-    // Biggest metro first — the one most of the state's visitors want.
-    val sizes = california.cities.map(_.cinemas.size)
-    sizes shouldBe sizes.sorted.reverse
+    // Alphabetical — a heading you OPEN is a list you scan for a name you already
+    // know. `UsRoster.places` is still biggest-first, and the redirect that needs
+    // that reads it for itself (`City.splitStateSuccession`).
+    val names = california.cities.map(_.labels.nominative)
+    names shouldBe names.sorted
   }
 
   "A metro named for a city it is really the region around" should "be called the region, and answer at the region's own URL" in {
@@ -88,9 +90,25 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
     // reshuffle of whole state blocks leaves intact.
     val states = City.usStates.map(_.slug)
     states shouldBe states.sorted
-    City.usCities.map(_.slug).take(2) shouldBe
-      City.usStates.head.cities.map(_.slug).take(2)   // Alabama's, not another state's
+    // The first state's block is the first places of the roster — whatever order
+    // the group then shows them in. Compared as SETS because the group sorts its
+    // own members alphabetically while the roster stays biggest-first.
+    City.usCities.map(_.slug).take(City.usStates.head.cities.size) should contain theSameElementsAs
+      City.usStates.head.cities.map(_.slug)
     City.usStates.head.label shouldBe "Alabama"
+  }
+
+  it should "still send a split state's URL to its BIGGEST metro, not its first alphabetically" in {
+    // The picker's order and the redirect's are two different questions of one
+    // list, and this one used to be answered by accident: `usStates` inherited
+    // biggest-first from the roster, so alphabetising it for the picker moved
+    // `/hawaii/` from Oahu (11 venues) to Hawaii (Big Island).
+    City.renamedSlugs.get("alaska") shouldBe Some("anchorage")
+    City.renamedSlugs.get("hawaii") shouldBe Some("oahu")
+    def biggest(state: String): String =
+      City.usStates.find(_.slug == state).get.cities.maxBy(_.cinemas.size).slug
+    biggest("alaska") shouldBe "anchorage"
+    biggest("hawaii") shouldBe "oahu"
   }
 
   it should "partition the country's cities, with none dropped or shared" in {

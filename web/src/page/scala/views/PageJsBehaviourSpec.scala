@@ -89,6 +89,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val groupedLandingHtml: String =
         views.html.landing(models.Country.UnitedStates)(using testsupport.TestMessages.forLang("en")).body
 
+      // …and the NESTED one. The UK puts a county between its nation and its
+      // places, so a heading there sits inside another heading — the shape the
+      // filter has to open a whole chain of, and the one the US page cannot
+      // exercise at all.
+      val nestedLandingHtml: String =
+        views.html.landing(models.Country.UnitedKingdom)(using testsupport.TestMessages.forLang("en")).body
+
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
         schedules, cinemas, pills, devMode = false,
@@ -220,6 +227,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case "/landing" => landingHtml
           // Its grouped variant — same template, a country with `cityGroups`.
           case "/landing-grouped" => groupedLandingHtml
+          // …and its two-level variant.
+          case "/landing-nested" => nestedLandingHtml
           // The global-corpus /debug page (no city prefix).
           case "/debug" => debugHtml
           // Isolated single-row /debug variant for the Cinemas-cell layout test.
@@ -267,6 +276,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onGroupedLanding(body: CdpPage => Any): Unit =
     chrome match {
       case Some(c) => c.openPage(server.baseUrl + "/landing-grouped")(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  /** Open the two-level city-selection landing — the UK one, whose places sit
+   *  behind a county heading behind a nation heading. */
+  private def onNestedLanding(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + "/landing-nested")(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -513,6 +530,65 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // …and every heading is back, including the ones the query filtered out.
       renderedCount(page, "#city-list summary") +
         renderedCount(page, "#city-list > li.city-direct > a") shouldBe models.Country.UnitedStates.cityGroups.size
+    }
+  }
+
+  "the two-level city-selection landing" should
+    "keep a county shut inside a shut nation, and open only what is asked for" in {
+    onNestedLanding { page =>
+      // Nothing but the five nations on screen: not a county, not a place.
+      renderedCount(page, "#city-list summary") shouldBe
+        models.Country.UnitedKingdom.cityGroups.size
+      renderedCount(page, "#city-list details.city-group a") shouldBe 0
+      renderedTexts(page, "#city-list summary") shouldBe
+        """["England","Scotland","Wales","Northern Ireland","Crown Dependencies"]"""
+
+      clickGroup(page, "England")
+      // The county level appears — and most of it is places, because a county
+      // that IS its one place collapsed into a link.
+      renderedTexts(page, "#city-list summary") should include ("West Midlands")
+      renderedTexts(page, "#city-list a") should include ("Cheshire")
+      // …but nothing INSIDE a county has opened with it.
+      renderedTexts(page, "#city-list a") should not include "Birmingham"
+
+      clickGroup(page, "West Midlands")
+      renderedTexts(page, "#city-list a") should include ("Birmingham")
+      // Both levels are open, and only those two.
+      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 2
+    }
+  }
+
+  it should "open the WHOLE chain above a search hit, not just the heading nearest it" in {
+    onNestedLanding { page =>
+      // Birmingham is two headings deep. Opening only West Midlands would leave
+      // it inside a shut England, which is a hit the searcher still cannot see.
+      typeCitySearch(page, "birmingham")
+      renderedTexts(page, "#city-list a") shouldBe """["Birmingham"]"""
+      renderedTexts(page, "#city-list summary") shouldBe """["England","West Midlands"]"""
+      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 2
+    }
+  }
+
+  it should "match a place on its COUNTY's name as well as its nation's" in {
+    onNestedLanding { page =>
+      // Every heading above a row is a term the box takes — the grouping is how
+      // a visitor knows the place is there.
+      typeCitySearch(page, "west midlands")
+      renderedTexts(page, "#city-list a") shouldBe """["Birmingham","Dudley","Sandwell"]"""
+
+      typeCitySearch(page, "crown dependencies")
+      renderedTexts(page, "#city-list a") shouldBe """["Guernsey","Isle of Man","Jersey"]"""
+    }
+  }
+
+  it should "shut both levels again when the query is cleared" in {
+    onNestedLanding { page =>
+      typeCitySearch(page, "birmingham")
+      typeCitySearch(page, "")
+      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 0
+      renderedCount(page, "#city-list details.city-group a") shouldBe 0
+      renderedCount(page, "#city-list summary") shouldBe
+        models.Country.UnitedKingdom.cityGroups.size
     }
   }
 

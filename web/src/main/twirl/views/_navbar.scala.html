@@ -190,9 +190,14 @@
 
          Grouped into `<optgroup>`s where the country says its places are found
          through something (`Country.cityGroups` — the US, whose 457 metros are
-         listed under their state). Flat otherwise, byte-for-byte as before: two
-         of those metros really are both called "Philadelphia", and a flat list
-         offers them as two identical options.
+         listed under their state; the UK, whose counties are listed under their
+         nation). Flat otherwise, byte-for-byte as before: two of those metros
+         really are both called "Philadelphia", and a flat list offers them as two
+         identical options.
+
+         The TOP level only, flattened through `allCities`: an `<optgroup>` may
+         not contain another, so a picker that nests deeper (the UK's county sits
+         between) still gets one heading here.
 
          The branches are GLUED to their braces (`{@@for(…) {`), so the flat one
          emits byte-for-byte what the bare loop emitted: Twirl keeps the template
@@ -205,7 +210,7 @@
           @if(city.country.cityGroups.isEmpty) {@for(c <- city.country.allSorted) {
             <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
           }} else {@for(g <- city.country.cityGroups) {
-            <optgroup label="@g.label">@for(c <- g.cities) {
+            <optgroup label="@g.label">@for(c <- g.allCities) {
               <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
             }
             </optgroup>

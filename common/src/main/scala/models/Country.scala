@@ -204,6 +204,9 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
+    /** The 16 Bundesländer, each over the regions inside it — 158 in one A-to-Z
+     *  is not a list anybody reads. */
+    override val cityGroups: Seq[CityGroup] = City.germanStates
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
   }
 
@@ -480,6 +483,18 @@ private[models] object CityListing {
   def sorted(cities: Seq[City], locale: Locale): Seq[City] = {
     val collator = Collator.getInstance(locale)
     cities.sortWith((a, b) => collator.compare(a.labels.nominative, b.labels.nominative) < 0)
+  }
+
+  /** `sorted`'s ordering over bare labels — for the HEADINGS of a grouped picker,
+   *  which are place names too but not [[City]]s.
+   *
+   *  A code-point sort is not the alphabet anywhere the names leave ASCII: it
+   *  files Köln after Krefeld (ö is code point 246, past every letter) and Łódź
+   *  past Z, which is exactly the ordering a reader scanning for a name cannot
+   *  use. */
+  def sortedLabels[A](items: Seq[A], locale: Locale)(label: A => String): Seq[A] = {
+    val collator = Collator.getInstance(locale)
+    items.sortWith((a, b) => collator.compare(label(a), label(b)) < 0)
   }
 
   def json(cities: Seq[City]): String =

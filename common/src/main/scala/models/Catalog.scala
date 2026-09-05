@@ -86,7 +86,13 @@ object Catalog {
         // "California" then "Los Angeles" is. Absent in the flat countries, where
         // a name is all a visitor needs — so the field costs bytes only where it
         // earns them.
-        val regionOf = c.cityGroups.flatMap(g => g.cities.map(_.slug -> g.label)).toMap
+        //
+        // The TOP level, through `allCities`, wherever the web nests deeper than
+        // one (the UK puts a county between its nation and its places). `region`
+        // is one string per city and the apps' pick is two steps, so the nation is
+        // the level that fits them; the county is a refinement the page can afford
+        // and they cannot.
+        val regionOf = c.cityGroups.flatMap(g => g.allCities.map(_.slug -> g.label)).toMap
         // The city's own zone, but ONLY where it differs from the country's — the
         // field a client falls back from, so writing it out where it would say the
         // same thing costs bytes and says nothing. Four countries keep one zone

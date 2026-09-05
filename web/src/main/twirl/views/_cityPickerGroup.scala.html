@@ -1,0 +1,36 @@
+@(group: models.CityGroup)
+@*
+   One node of the `/` picker's place tree, rendered as a row you can open.
+   Recursive, because the tree is not one shape across countries: the US and
+   Germany nest one level (state / Bundesland over its places), the UK two
+   (nation over county over its places), and a country may deepen without this
+   template changing.
+
+   A group that stands exactly where its one place stands is that place's LINK,
+   not a heading you open to find it repeated — see `CityGroup.soleCity`. Most UK
+   counties are that shape, which is what keeps a two-level list readable: only
+   the counties that really group something (West Midlands over Birmingham,
+   Dudley and Sandwell) cost the reader a second tap.
+
+   A <details> rather than a button and a class: the open/closed state, the
+   keyboard handling and the ARIA a disclosure owes are all native here, and the
+   group still opens on a page whose script never ran.
+*@
+@group.soleCity match {
+  case Some(c) => {
+<li class="city-direct"><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+  }
+  case None => {
+<li>
+  <details class="city-group">
+    <summary class="city-group-label">@group.label</summary>
+    <ul class="city-group-cities">
+    @for(sub <- group.groups) {@_cityPickerGroup(sub)}
+    @for(c <- group.cities) {
+      <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+    }
+    </ul>
+  </details>
+</li>
+  }
+}

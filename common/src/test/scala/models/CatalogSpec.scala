@@ -79,10 +79,15 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     cityEntry("los-angeles") should include(""""region":"California"""")
     cityEntry("glasgow")     should include(""""region":"Scotland"""")
     cityEntry("cardiff")     should include(""""region":"Wales"""")
+    cityEntry("muenchen")    should include(""""region":"Bayern"""")
+    // The TOP level, where the web nests deeper: `region` is one string and the
+    // apps' pick is two steps, so a UK city names its NATION, not the county the
+    // page puts between them.
+    cityEntry("cheshire") should include(""""region":"England"""")
+    cityEntry("cheshire") should not include "West Midlands"
     // A flat country sends nothing — a name is all its visitor needs, and the
     // field costs bytes on every city where it would say nothing.
     cityEntry("poznan") should not include "region"
-    cityEntry("berlin") should not include "region"
     cityEntry("madrid") should not include "region"
   }
 

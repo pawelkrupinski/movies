@@ -990,27 +990,38 @@ final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: 
  *
  *  A country whose picker is one flat list (Poland, Germany, Spain) leaves
  *  `Country.cityGroups` empty rather than declaring one group per city. */
-final case class CityGroup(label: String, slug: String, cities: Seq[City]) {
+final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
+                          groups: Seq[CityGroup] = Nil) {
 
   /** The city this group IS, where the grouping level and the place are the same
    *  thing — and `None` for a group that only arranges other places.
    *
    *  Seven US states and territories are too small to cut into metros (Delaware,
    *  Vermont, DC, Guam, …), so the state's own venue list IS its page and
-   *  `UsRoster.places` emits it as a place under its own state slug. The picker
-   *  then held a heading you had to open to reveal a single row repeating it.
-   *  Such a group is offered as a plain link straight to that page instead.
+   *  `UsRoster.places` emits it as a place under its own state slug. Most UK
+   *  counties are the same shape: a Flicks region already IS Cheshire, so the
+   *  county node over it stands exactly where it does. The picker would
+   *  otherwise hold a heading you open to reveal a single row repeating it;
+   *  such a group is offered as a plain link straight to that page instead.
    *
-   *  Keyed on the SLUG rather than on `cities.sizeIs == 1`, which today selects
-   *  the same seven. The slug is what "the group IS the place" actually means: a
-   *  group holding one city addressed at some OTHER slug is still a grouping —
-   *  its own name is then reachable nowhere else, and collapsing it into a link
-   *  labelled something different would lose that name. The count is a
-   *  coincidence of the current roster; this is the condition. */
-  def soleCity: Option[City] = cities match {
-    case Seq(only) if only.slug == slug => Some(only)
-    case _                              => None
+   *  Keyed on the SLUG, not on `cities.sizeIs == 1`. The slug is what "the group
+   *  IS the place" actually means: a group holding one city addressed at some
+   *  OTHER slug is still a grouping — Greater Manchester holds Manchester and
+   *  says something by doing so, and collapsing it into a link labelled
+   *  "Manchester" would lose the county the visitor was reading by. */
+  def soleCity: Option[City] = (cities, groups) match {
+    case (Seq(only), Nil) if only.slug == slug => Some(only)
+    case _                                     => None
   }
+
+  /** Every city under this group at any depth — its own, plus its subgroups'.
+   *
+   *  A picker nests (a UK nation over its counties over their places), but the
+   *  things that read a grouping FLAT do not: `<optgroup>` may not contain
+   *  another, and the apps' `region` is one string per city. Both take the top
+   *  level's label over this, so a deeper tree arranges the page without
+   *  changing what they get. */
+  def allCities: Seq[City] = cities ++ groups.flatMap(_.allCities)
 }
 
 object City {
@@ -1047,57 +1058,172 @@ object City {
    *  of [[allUkCities]], kept in that list's declared order. */
   private[models] val ukCities: Seq[City] = allUkCities.filter(activeUkCities)
 
-  /** The UK picker's grouping: one entry per NATION, over the counties and
-   *  cities inside it.
+  /** The UK picker's grouping: NATION over COUNTY over the places inside it.
    *
    *  79 places is past what anyone reads as one A-to-Z — the same problem the US
-   *  has at 457 — but the UK's answer is a level UP rather than one down. A
-   *  Flicks region already IS the county ("Cheshire", "Cornwall", "Kent"), with
-   *  a handful of cities big enough to be regions in their own right (London,
-   *  Birmingham, Glasgow); there is nothing to cut them into, so what the list
-   *  wants is the nation above them.
+   *  has at 457 — but the UK's answer is levels UP rather than one down. A Flicks
+   *  region is usually already the county ("Cheshire", "Cornwall", "Kent"), so
+   *  there is nothing to cut those into; what the list wanted was the county over
+   *  them and the nation over that.
    *
-   *  Declared as a table rather than derived, because nothing in a `UkCity`
-   *  knows its nation: the roster is hand-authored `case object`s carrying a
-   *  slug, a label and a fix, and a county's nation is not a fact any of those
-   *  imply. Ordered by size, not alphabetically — England first is the order a
-   *  visitor scans, and `Country.cityGroups` is a picker's arrangement.
+   *  Most counties therefore stand exactly where their one place stands and
+   *  collapse back into it — see [[CityGroup.soleCity]]. The level earns its keep
+   *  on the entries that are a CITY rather than a county: Birmingham, Dudley and
+   *  Sandwell are three separate places a visitor finds under West Midlands, and
+   *  Manchester is where it is because Greater Manchester is.
+   *
+   *  Declared as a table rather than derived, because nothing in a `UkCity` knows
+   *  its county or its nation: the roster is hand-authored `case object`s
+   *  carrying a slug, a label and a fix, and neither fact is one those imply.
+   *  Nations are ordered by size — England first is the order a visitor scans —
+   *  and everything below is alphabetical, which is the only order a reader can
+   *  search by eye.
    *
    *  Every LIVE city appears exactly once (`CountrySpec` holds that, the same
-   *  partition it holds over the US states — a county reachable from no nation
-   *  is a county nobody can find), so narrowing
-   *  [[activeUkCities]] drops rows here without leaving an empty nation
-   *  standing; a nation nobody is live in falls out entirely. */
-  private[models] val ukNations: Seq[CityGroup] = Seq(
-    ("England",   "england", Seq[City](
-      Bedfordshire, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cheshire, Cornwall,
-      CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Dudley, EastSussex, EastYorkshire, Essex,
-      Gloucestershire, Hampshire, Herefordshire, Hertfordshire, IsleOfWight, Kent, Lancashire, Leicestershire,
-      Lincolnshire, Liverpool, London, Manchester, NorthYorkshire, Northamptonshire, Northumberland,
-      Norwich, Nottinghamshire, Oxfordshire, Sandwell, Shropshire, Somerset, SouthYorkshire, Staffordshire,
-      Suffolk, Surrey, TyneAndWear, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire,
-      Yorkshire,
-    )),
-    ("Scotland",  "scotland", Seq[City](
-      Aberdeenshire, AyrshireAndArran, CentralScotland, DumfriesAndGalloway, DunbartonshireArgyllBute,
-      EdinburghAndLothians, Fife, Glasgow, HighlandsAndIslands, Lanarkshire, Renfrewshire,
-      RoxburghEttrickAndLauderdale, Tayside,
-    )),
-    ("Wales",     "wales", Seq[City](Cardiff, Clwyd, Dyfed, Glamorgan, Gwent, Gwynedd, Powys)),
-    ("Northern Ireland", "northern-ireland", Seq[City](
-      Antrim, Armagh, Belfast, Down, Fermanagh, Londonderry, Tyrone,
-    )),
-    // Not part of the UK, but served by the same Flicks market and reached from
-    // the same picker, so they need a heading rather than a nation to be filed
-    // under wrongly.
-    ("Crown Dependencies", "crown-dependencies", Seq[City](Guernsey, IsleOfMan, Jersey)),
-  ).map { case (label, slug, cities) => CityGroup(label, slug, cities.filter(activeUkCities)) }
-    .filter(_.cities.nonEmpty)
+   *  partition it holds over the US states — a place reachable from no heading is
+   *  a place nobody can find), so narrowing [[activeUkCities]] drops rows here
+   *  without leaving an empty county or nation standing. */
+  private[models] val ukNations: Seq[CityGroup] = {
+    // (nation, nation slug, (county, its places)*). A county named for the place
+    // it holds is the common case and collapses away; the ones that group
+    // something are the point of the level.
+    val UkLocale = Locale.forLanguageTag("en-GB")
+    val table: Seq[(String, String, Seq[(String, Seq[City])])] = Seq(
+      ("England", "england", Seq(
+        "Bedfordshire"      -> Seq(Bedfordshire),
+        "Berkshire"         -> Seq(Berkshire),
+        "Bristol"           -> Seq(Bristol),
+        "Buckinghamshire"   -> Seq(Buckinghamshire),
+        "Cambridgeshire"    -> Seq(Cambridgeshire),
+        "Cheshire"          -> Seq(Cheshire),
+        "Cornwall"          -> Seq(Cornwall),
+        "County Durham"     -> Seq(CountyDurham),
+        "Cumbria"           -> Seq(Cumbria),
+        "Derbyshire"        -> Seq(Derbyshire),
+        "Devon"             -> Seq(Devon),
+        "Dorset"            -> Seq(Dorset),
+        "East Sussex"       -> Seq(EastSussex),
+        "East Yorkshire"    -> Seq(EastYorkshire),
+        "Essex"             -> Seq(Essex),
+        "Gloucestershire"   -> Seq(Gloucestershire),
+        "Greater London"    -> Seq(London),
+        "Greater Manchester"-> Seq(Manchester),
+        "Hampshire"         -> Seq(Hampshire),
+        "Herefordshire"     -> Seq(Herefordshire),
+        "Hertfordshire"     -> Seq(Hertfordshire),
+        "Isle of Wight"     -> Seq(IsleOfWight),
+        "Kent"              -> Seq(Kent),
+        "Lancashire"        -> Seq(Lancashire),
+        "Leicestershire"    -> Seq(Leicestershire),
+        "Lincolnshire"      -> Seq(Lincolnshire),
+        "Merseyside"        -> Seq(Liverpool),
+        "Norfolk"           -> Seq(Norwich),
+        "North Yorkshire"   -> Seq(NorthYorkshire),
+        "Northamptonshire"  -> Seq(Northamptonshire),
+        "Northumberland"    -> Seq(Northumberland),
+        "Nottinghamshire"   -> Seq(Nottinghamshire),
+        "Oxfordshire"       -> Seq(Oxfordshire),
+        "Shropshire"        -> Seq(Shropshire),
+        "Somerset"          -> Seq(Somerset),
+        "South Yorkshire"   -> Seq(SouthYorkshire),
+        "Staffordshire"     -> Seq(Staffordshire),
+        "Suffolk"           -> Seq(Suffolk),
+        "Surrey"            -> Seq(Surrey),
+        "Tyne and Wear"     -> Seq(TyneAndWear),
+        "Warwickshire"      -> Seq(Warwickshire),
+        // The one county that groups several places rather than standing in for
+        // one: three of the metropolitan boroughs are separately scraped.
+        "West Midlands"     -> Seq(Birmingham, Dudley, Sandwell),
+        "West Sussex"       -> Seq(WestSussex),
+        "West Yorkshire"    -> Seq(WestYorkshire),
+        "Wiltshire"         -> Seq(Wiltshire),
+        "Worcestershire"    -> Seq(Worcestershire),
+        // Flicks carries a catch-all Yorkshire region beside the four ridings.
+        "Yorkshire"         -> Seq(Yorkshire),
+      )),
+      ("Scotland", "scotland", Seq(
+        "Aberdeenshire"                    -> Seq(Aberdeenshire),
+        "Ayrshire and Arran"               -> Seq(AyrshireAndArran),
+        "Central Scotland"                 -> Seq(CentralScotland),
+        "Dumfries and Galloway"            -> Seq(DumfriesAndGalloway),
+        "Dunbartonshire and Argyll & Bute" -> Seq(DunbartonshireArgyllBute),
+        "Edinburgh & Lothians"             -> Seq(EdinburghAndLothians),
+        "Fife"                             -> Seq(Fife),
+        "Glasgow"                          -> Seq(Glasgow),
+        "Highlands and Islands"            -> Seq(HighlandsAndIslands),
+        "Lanarkshire"                      -> Seq(Lanarkshire),
+        "Renfrewshire"                     -> Seq(Renfrewshire),
+        "Roxburgh Ettrick and Lauderdale"  -> Seq(RoxburghEttrickAndLauderdale),
+        "Tayside"                          -> Seq(Tayside),
+      )),
+      ("Wales", "wales", Seq(
+        "Clwyd"     -> Seq(Clwyd),
+        "Dyfed"     -> Seq(Dyfed),
+        // Cardiff is in Glamorgan, which Flicks also carries as a region of its
+        // own — so the county holds the city and the rest of itself.
+        "Glamorgan" -> Seq(Cardiff, Glamorgan),
+        "Gwent"     -> Seq(Gwent),
+        "Gwynedd"   -> Seq(Gwynedd),
+        "Powys"     -> Seq(Powys),
+      )),
+      ("Northern Ireland", "northern-ireland", Seq(
+        // Belfast straddles Antrim and Down; County Antrim holds the bulk of it
+        // and is where it is conventionally filed.
+        "Antrim"      -> Seq(Antrim, Belfast),
+        "Armagh"      -> Seq(Armagh),
+        "Down"        -> Seq(Down),
+        "Fermanagh"   -> Seq(Fermanagh),
+        "Londonderry" -> Seq(Londonderry),
+        "Tyrone"      -> Seq(Tyrone),
+      )),
+      // Not part of the UK, but served by the same Flicks market and reached from
+      // the same picker, so they need a heading rather than a nation to be filed
+      // under wrongly.
+      ("Crown Dependencies", "crown-dependencies", Seq(
+        "Guernsey"    -> Seq(Guernsey),
+        "Isle of Man" -> Seq(IsleOfMan),
+        "Jersey"      -> Seq(Jersey),
+      )),
+    )
+    table.map { case (nation, nationSlug, counties) =>
+      val kept = counties
+        .map { case (county, places) =>
+          CityGroup(county, Slugify.stable(county),
+                    CityListing.sorted(places.filter(activeUkCities), UkLocale))
+        }
+        .filter(_.cities.nonEmpty)
+      CityGroup(nation, nationSlug, Nil, CityListing.sortedLabels(kept, UkLocale)(_.label))
+    }.filter(_.groups.nonEmpty)
+  }
 
   /** Germany's cities — the authoritative list for [[Country.Germany]]. The full
    *  158-region roster, materialised data-driven from `GermanRosterData` (see
    *  [[GermanRegion]] / `GermanRoster`), rather than hand-authored case objects. */
   private[models] val germanCities: Seq[City] = GermanRoster.regions
+
+  /** The German picker's grouping: one entry per BUNDESLAND, over the regions
+   *  inside it, alphabetically both ways.
+   *
+   *  158 regions is Germany's version of the same problem the US has at 457 and
+   *  the UK at 79 — and unlike the UK there is a natural level directly above,
+   *  so this is one level rather than two. A region is already a travel-shed of
+   *  towns around a hub ("Köln" also covers Düsseldorf and Bonn); the Land is
+   *  what a visitor knows it by.
+   *
+   *  Data-driven, not a table: `regions.json` has carried each region's
+   *  `bundesland` since `cluster_regions.py` first wrote it, and the roster
+   *  generator now emits it — so a re-harvest re-groups the picker rather than
+   *  drifting from a list somebody has to remember to edit. That is the same
+   *  shape the US state grouping has, and the reason the UK's is hand-authored
+   *  is only that its roster carries no such field. */
+  private[models] val germanStates: Seq[CityGroup] = {
+    val de = Locale.forLanguageTag("de-DE")
+    val grouped = GermanRoster.bundeslandByRegion.groupMap(_._2)(_._1).toSeq
+    CityListing.sortedLabels(grouped, de)(_._1).map { case (land, regions) =>
+      CityGroup(land, Slugify.stable(land), CityListing.sorted(regions, de))
+    }
+  }
+
 
   /** The United States' cities — the authoritative list for
    *  [[Country.UnitedStates]]. One city per METRO (448 of them, distance-clustered
@@ -1200,11 +1326,17 @@ object City {
 
   private lazy val splitStateSuccession: Map[String, Seq[String]] =
     usStates.filter(group => splitStates(group.slug))
-      .map(group => group.slug -> group.cities.map(_.slug))
+      // BIGGEST FIRST, said here rather than inherited. [[renamedSlugs]] sends
+      // `/alaska/` to the first of these, and the group's own order is the
+      // PICKER's — alphabetical, so a reader can find a name they already know.
+      // Those are two different questions of one list, and the redirect used to
+      // get its answer by accident: alphabetising the picker silently moved
+      // `/hawaii/` from Oahu to Hawaii (Big Island).
+      .map(group => group.slug -> group.cities.sortBy(c => (-c.cinemas.size, c.slug)).map(_.slug))
       .toMap
 
   /** Where an old slug's URL now points: its FIRST successor, which for a split
-   *  is the biggest metro cut out of it (`UsRoster.places` is biggest first).
+   *  is the biggest metro cut out of it (see [[splitStateSuccession]]).
    *  `/alaska/` lands on Anchorage — the answer most of that traffic wanted, and
    *  the picker is one tap away for the rest. */
   lazy val renamedSlugs: Map[String, String] = slugSuccession.view.mapValues(_.head).toMap
@@ -1247,14 +1379,20 @@ object City {
 
   /** The US picker's grouping: one entry per state or territory, in roster
    *  order, holding the metros cut out of it (or the state itself, where it is
-   *  small enough to be one place). */
+   *  small enough to be one place).
+   *
+   *  The metros inside a state are ALPHABETICAL. `UsRoster.places` has them
+   *  biggest-first, which is the right order for a list you read the top of and
+   *  the wrong one for a list you search by eye: a visitor opening "California"
+   *  is looking for a name they already know, and the only order that tells them
+   *  where to look for it is the one the alphabet gives. */
   private[models] val usStates: Seq[CityGroup] =
     UsRoster.places.zip(usCities).foldLeft(Vector.empty[CityGroup]) {
       case (groups :+ last, (place, city)) if last.slug == place.stateSlug =>
         groups :+ last.copy(cities = last.cities :+ city)
       case (groups, (place, city)) =>
         groups :+ CityGroup(place.stateName, place.stateSlug, Seq(city))
-    }
+    }.map(g => g.copy(cities = CityListing.sorted(g.cities, Locale.forLanguageTag("en-US"))))
 
   /** Spain's cities — the authoritative list for [[Country.Spain]]. One city per
    *  PROVINCE (52 of them), materialised data-driven from `SpanishRosterData`

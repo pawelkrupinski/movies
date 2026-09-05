@@ -138,19 +138,19 @@ object FixtureServerMain {
     // decision actually lives, in controllers.LandingApexSpec.
     val landingHtml: String = views.html.landing(models.Country.default).body
 
-    // The same screen for a country whose place list is GROUPED — the US, whose
-    // metros are found under their state's heading, and the UK, whose counties
-    // are found under their nation's. Fixture-only paths, like
-    // `/{city}/movie-many`: production serves one country per deployment, so its
-    // `/` can only ever be one of the two shapes, and the grouped one is not the
-    // shape this harness's default country has.
+    // The same screen for a country whose place list is GROUPED. Fixture-only
+    // paths, like `/{city}/movie-many`: production serves one country per
+    // deployment, so its `/` can only ever be one of these shapes, and the
+    // grouped ones are not the shape this harness's default country has.
     //
-    // Both, not one standing for the other: they differ in exactly the place a
-    // browser spec is for. The US groups 461 metros under 55 states and has seven
-    // that are a state and a place at once; the UK groups 79 counties under five
-    // nations and has none.
+    // All three, not one standing for the others: they differ in exactly the
+    // places a browser spec is for. The US nests ONE level, 461 metros under 55
+    // states, and has seven states that are a place at once; Germany nests one,
+    // 158 regions under 16 Bundesländer; the UK nests TWO, its places under a
+    // county under a nation — the only one with a heading inside a heading.
     val usLandingHtml: String = views.html.landing(models.Country.UnitedStates).body
     val ukLandingHtml: String = views.html.landing(models.Country.UnitedKingdom).body
+    val deLandingHtml: String = views.html.landing(models.Country.Germany).body
 
     // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
     // is matched against the known cities; an unknown first segment → None.
@@ -167,6 +167,7 @@ object FixtureServerMain {
       case p if p == "/" || p.startsWith("/?") => landingHtml
       case p if p == "/landing-us" || p.startsWith("/landing-us?") => usLandingHtml
       case p if p == "/landing-uk" || p.startsWith("/landing-uk?") => ukLandingHtml
+      case p if p == "/landing-de" || p.startsWith("/landing-de?") => deLandingHtml
       // Everything else under `/{city}/…`. Each route tolerates a `?…` suffix.
       case p if resolve(p).isDefined =>
         val (c, sub) = resolve(p).get

@@ -82,16 +82,48 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   private val ukHtml =
     views.html.landing(models.Country.UnitedKingdom)(using testsupport.TestMessages.forLang("en")).body
 
-  "the UK landing page" should "list every county, each under its nation" in {
+  "the UK landing page" should "list every county under its nation, and its places under the county" in {
     models.Country.UnitedKingdom.cities.foreach(c => ukHtml should include (s"/${c.slug}/"))
     ukHtml should include ("""<summary class="city-group-label">England</summary>""")
     ukHtml should include ("""<summary class="city-group-label">Scotland</summary>""")
     ukHtml should include ("""<summary class="city-group-label">Northern Ireland</summary>""")
-    ukHtml should include ("""<a href="/cheshire/">Cheshire</a>""")
-    ukHtml should include ("""<a href="/glasgow/">Glasgow</a>""")
-    // A nation is a heading, never a link: `/scotland/` is not a page.
+    // The second level: a county heading, with its places inside it.
+    ukHtml should include ("""<summary class="city-group-label">West Midlands</summary>""")
+    ukHtml should include ("""<a href="/birmingham/">Birmingham</a>""")
+    // Neither level is a link: `/scotland/` and `/west-midlands/` are not pages.
     ukHtml should not include """href="/scotland/""""
     ukHtml should not include """href="/england/""""
+    ukHtml should not include """href="/west-midlands/""""
+  }
+
+  it should "collapse a county that IS its one place, so most of the list stays one tap deep" in {
+    // A Flicks region already IS Cheshire, so the county over it stands exactly
+    // where it does and links straight through. Only the counties that really
+    // group something cost a second tap — which is what keeps two levels
+    // readable. See `CityGroup.soleCity`.
+    ukHtml should include ("""<li class="city-direct"><a href="/cheshire/">Cheshire</a></li>""")
+    ukHtml should not include """<summary class="city-group-label">Cheshire</summary>"""
+    // Greater Manchester is the other half of the rule: it holds Manchester and
+    // says something by doing so, so it keeps its heading.
+    ukHtml should include ("""<summary class="city-group-label">Greater Manchester</summary>""")
+    ukHtml should include ("""<a href="/manchester/">Manchester</a>""")
+  }
+
+  /** Germany picks a REGION — Köln, München — found under its Bundesland. */
+  private val deHtml =
+    views.html.landing(models.Country.Germany)(using testsupport.TestMessages.forLang("en")).body
+
+  "the German landing page" should "list every region under its Bundesland" in {
+    models.Country.Germany.cities.foreach(c => deHtml should include (s"/${c.slug}/"))
+    deHtml should include ("""<summary class="city-group-label">Bayern</summary>""")
+    deHtml should include ("""<summary class="city-group-label">Nordrhein-Westfalen</summary>""")
+    deHtml should include ("""<a href="/koeln/">Köln</a>""")
+    // A Land is a heading, never a link.
+    deHtml should not include """href="/bayern/""""
+    // …except Hamburg, where the Land and the region are the same place.
+    deHtml should include ("""<li class="city-direct"><a href="/hamburg/">Hamburg</a></li>""")
+    // One level, not the UK's two.
+    deHtml should not include """<summary class="city-group-label">Saarbrücken</summary>"""
   }
 
   it should "ask for a city, like every other country" in {

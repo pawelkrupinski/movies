@@ -1,5 +1,11 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { gotoAndWaitForCards, waitForCards } from './helpers';
+
+// The group whose OWN heading is `name`. `hasText` would not do: it matches any
+// group containing the text, and a nested picker's outermost group contains
+// every heading under it — asking for "West Midlands" that way returns England.
+const groupNamed = (page: Page, name: string) =>
+  page.locator(`#city-list details.city-group:has(> summary:text-is("${name}"))`);
 
 // Multi-city: the bare `/` is a city-selection landing (every page lives
 // under `/{city}/`). It tries browser geolocation first and falls back to a
@@ -56,30 +62,31 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
     await expect(groups.first()).toContainText('Alabama');
 
-    const california = page.locator('details.city-group', { hasText: 'California' }).first();
-    await expect(california.locator('summary')).toHaveText('California');
+    const california = groupNamed(page, 'California');
     await expect(california.locator('a')).toHaveCount(22);
     // No state is addressable.
     await expect(page.locator('.city-list a[href="/california/"]')).toHaveCount(0);
 
-    await california.locator('summary').click();
+    await california.locator('> summary').click();
     await expect(california).toHaveAttribute('open', '');
     // Opening one leaves the rest alone.
     await expect(page.locator('details.city-group[open]')).toHaveCount(1);
-    // Biggest metro first — City.usStates' own order.
-    await expect(california.locator('a').first()).toHaveText('Los Angeles');
+    // ALPHABETICAL — a heading you open is a list you scan for a name you already
+    // know. Los Angeles is the state's biggest metro and led the roster-ordered
+    // list this replaced; it is now in the middle, which is the point.
+    await expect(california.locator('a').first()).toHaveText('Bakersfield');
 
-    await california.locator('a').first().click();
+    await page.locator('a[href="/los-angeles/"]').click();
     await page.waitForURL((u) => new URL(u).pathname === '/los-angeles/');
     await expect(page.locator('#view-root')).toHaveCount(1);
   });
 
   test('a heading closes again on a second click', async ({ page }) => {
     await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
-    const california = page.locator('details.city-group', { hasText: 'California' }).first();
-    await california.locator('summary').click();
+    const california = groupNamed(page, 'California');
+    await california.locator('> summary').click();
     await expect(california.locator('a').first()).toBeVisible();
-    await california.locator('summary').click();
+    await california.locator('> summary').click();
     await expect(california).not.toHaveAttribute('open', '');
     await expect(california.locator('a').first()).toBeHidden();
   });
@@ -108,52 +115,82 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
   });
 });
 
-// The UK lists 79 places — Flicks regions, which are already the COUNTY
+// The UK lists 79 places — Flicks regions, which are usually already the COUNTY
 // ("Cheshire", "Kent") plus the handful of cities big enough to be a region of
-// their own (London, Birmingham, Glasgow). There is nothing to cut them into,
-// so the level the picker gained is the one ABOVE: the four nations, plus the
-// Crown Dependencies, which are served from the same market but are not part of
-// any of them.
-test.describe('grouped city landing (the UK)', { tag: '@agnostic' }, () => {
-  test('keeps every nation shut until it is opened, then lands on the county picked', async ({ page }) => {
+// their own (Birmingham, Glasgow, Liverpool). So its picker gained BOTH levels
+// above them: the county, and the nation over that. Most counties are the region
+// and collapse straight back into it, which is what keeps two levels readable —
+// only the ones that really group something cost a second tap.
+test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
+  test('shows nations first, then counties, then places — one level per tap', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.city-list a')).toHaveCount(79);
-    const groups = page.locator('details.city-group');
-    await expect(groups).toHaveCount(5);
-    await expect(page.locator('details.city-group[open]')).toHaveCount(0);
-    // By size, not alphabetically — the order a visitor scans.
-    await expect(groups.locator('summary')).toHaveText(
+    // Nothing but the five nations: not a county, not a place.
+    await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveText(
       ['England', 'Scotland', 'Wales', 'Northern Ireland', 'Crown Dependencies']);
-    // No nation is a page: `/scotland/` is nothing, the way `/california/` is.
+    await expect(page.locator('details.city-group[open]')).toHaveCount(0);
+    // Neither level is a page.
     await expect(page.locator('.city-list a[href="/scotland/"]')).toHaveCount(0);
-    await expect(page.locator('.city-list a[href="/england/"]')).toHaveCount(0);
-    // Every UK place is behind a heading — the UK has no county that is also its
-    // own nation, so nothing links straight through here.
-    await expect(page.locator('#city-list > li.city-direct > a')).toHaveCount(0);
+    await expect(page.locator('.city-list a[href="/west-midlands/"]')).toHaveCount(0);
 
-    const scotland = page.locator('details.city-group', { hasText: 'Scotland' }).first();
-    await scotland.locator('summary').click();
-    await expect(scotland.locator('a')).toHaveCount(13);
-    await expect(scotland.locator('a', { hasText: 'Glasgow' })).toBeVisible();
+    const england = groupNamed(page, 'England');
+    await england.locator('> summary').click();
+    // A county that IS its one place is a link, not a heading to open.
+    await expect(page.locator('#city-list a[href="/cheshire/"]')).toBeVisible();
+    // A county that groups something keeps its heading — and stays shut.
+    const westMidlands = groupNamed(page, 'West Midlands');
+    await expect(westMidlands.locator('> summary')).toBeVisible();
+    await expect(page.locator('a[href="/birmingham/"]')).toBeHidden();
 
-    await scotland.locator('a', { hasText: 'Glasgow' }).click();
-    await page.waitForURL((u) => new URL(u).pathname === '/glasgow/');
-    await expect(page.locator('#view-root')).toHaveCount(1);
+    await westMidlands.locator('> summary').click();
+    await expect(westMidlands.locator('a')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
+    await expect(page.locator('details.city-group[open]')).toHaveCount(2);
+
+    await page.locator('a[href="/birmingham/"]').click();
+    await page.waitForURL((u) => new URL(u).pathname === '/birmingham/');
   });
 
-  test('the search box reaches a county through its nation, and by its nation', async ({ page }) => {
+  test('a search hit opens every heading above it, not just the nearest', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
-    await page.locator('#city-search').fill('cheshire');
-    await expect(page.locator('details.city-group[open]')).toContainText('England');
-    await expect(page.locator('.city-list a:visible')).toHaveText(['Cheshire']);
+    // Birmingham is two headings deep; opening only West Midlands would leave it
+    // inside a shut England, which is a hit the searcher still cannot see.
+    await page.locator('#city-search').fill('birmingham');
+    await expect(page.locator('.city-list a:visible')).toHaveText(['Birmingham']);
+    await expect(page.locator('#city-list summary:visible')).toHaveText(['England', 'West Midlands']);
 
-    // The nation is the term the list taught them, so the box takes it.
-    await page.locator('#city-search').fill('wales');
-    await expect(page.locator('.city-list a:visible')).toHaveCount(7);
+    // Every heading above a row is a term the box takes.
+    await page.locator('#city-search').fill('west midlands');
+    await expect(page.locator('.city-list a:visible')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
 
     await page.locator('#city-search').fill('');
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
     await expect(page.locator('#city-list > li:visible')).toHaveCount(5);
+  });
+});
+
+// Germany lists 158 regions — each already a travel-shed of towns around a hub
+// ("Köln" also covers Düsseldorf and Bonn) — under the 16 Bundesländer, which is
+// what a visitor knows them by. One level, like the US.
+test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
+  test('lists regions under their Bundesland, collated as German', async ({ page }) => {
+    await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.city-list a')).toHaveCount(158);
+    await expect(page.locator('details.city-group[open]')).toHaveCount(0);
+    // Two of the 16 are the Land AND its one region, so they link straight
+    // through: Berlin and Hamburg. The other 14 are headings.
+    await expect(page.locator('#city-list > li.city-direct > a')).toHaveText(['Berlin', 'Hamburg']);
+    await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveCount(14);
+
+    const nrw = groupNamed(page, 'Nordrhein-Westfalen');
+    await nrw.locator('> summary').click();
+    // Collated, not code-point-ordered: Köln belongs under K-o, and a bare sort
+    // files it after Krefeld because 'ö' outranks every letter.
+    const names = await nrw.locator('a').allTextContents();
+    expect(names.indexOf('Köln')).toBeLessThan(names.indexOf('Krefeld'));
+
+    await page.locator('#city-search').fill('bayern');
+    await expect(page.locator('.city-list a:visible')).toContainText(['München']);
+    await expect(page.locator('#city-list summary:visible')).toHaveText(['Bayern']);
   });
 });
 

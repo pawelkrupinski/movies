@@ -1,6 +1,9 @@
 package models
 
+import java.util.Locale
+
 import org.scalatest.flatspec.AnyFlatSpec
+import org.scalatest.Inspectors.forAll
 import org.scalatest.matchers.should.Matchers
 
 /**
@@ -97,42 +100,128 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5031
   }
 
+  /** Every place in `group` in its country's own collation — the order a reader
+   *  scanning an opened heading needs it in. */
+  private def sortedUnder(group: CityGroup, languageTag: String): org.scalatest.Assertion = {
+    val collator = java.text.Collator.getInstance(Locale.forLanguageTag(languageTag))
+    val names    = group.cities.map(_.labels.nominative)
+    names shouldBe names.sortWith((a, b) => collator.compare(a, b) < 0)
+  }
+
   "Country.cityGroups" should "group the US by state and leave the flat countries flat" in {
     Country.Poland.cityGroups shouldBe empty
-    Country.Germany.cityGroups shouldBe empty
+    Country.Spain.cityGroups shouldBe empty
     Country.UnitedStates.cityGroups should have size 55
     // The groups partition the country's cities — a metro reachable from no
     // state heading is a metro nobody can find.
-    Country.UnitedStates.cityGroups.flatMap(_.cities) should contain theSameElementsAs
+    Country.UnitedStates.cityGroups.flatMap(_.allCities) should contain theSameElementsAs
       Country.UnitedStates.cities
     Country.UnitedStates.cityGroups.map(_.label) should contain allOf ("California", "Texas", "Alaska")
     Country.UnitedStates.cityGroups.find(_.label == "California").get
       .cities.map(_.labels.nominative) should contain ("Los Angeles")
+    // One level: a state holds metros, not sub-groups.
+    Country.UnitedStates.cityGroups.flatMap(_.groups) shouldBe empty
   }
 
-  it should "group the UK by nation, over the counties the roster is already cut into" in {
-    // A level UP rather than one down: a Flicks region already is the county, so
-    // 79 of them wanted a heading above, not metros below.
+  it should "order the places inside a group alphabetically, which is how a reader searches one" in {
+    // `UsRoster.places` is biggest-metro-first, the right order for a list you
+    // read the top of. A group you OPEN is a list you scan for a name you already
+    // know, and the alphabet is the only order that says where to look.
+    val california = Country.UnitedStates.cityGroups.find(_.label == "California").get
+    california.cities.map(_.labels.nominative).head shouldBe "Bakersfield"
+    // …and it really was not sorted before: Los Angeles is the state's biggest
+    // metro and led the roster-ordered list this replaced. It is now buried in
+    // the middle, which is the whole point.
+    california.cities.map(_.labels.nominative).head should not be "Los Angeles"
+    california.cities.maxBy(_.cinemas.size).labels.nominative shouldBe "Los Angeles"
+
+    forAll(Country.UnitedStates.cityGroups)(sortedUnder(_, "en-US"))
+    forAll(Country.Germany.cityGroups)(sortedUnder(_, "de-DE"))
+    forAll(Country.UnitedKingdom.cityGroups.flatMap(_.groups))(sortedUnder(_, "en-GB"))
+
+    // Collated, not code-point-ordered: Köln belongs under K-o, and a bare sort
+    // files it after Krefeld because 'ö' outranks every letter.
+    val nrw = Country.Germany.cityGroups.find(_.label == "Nordrhein-Westfalen").get
+    val names = nrw.cities.map(_.labels.nominative)
+    names.indexOf("Köln") should be < names.indexOf("Krefeld")
+  }
+
+  it should "group the UK by nation, then by county — the two levels above a Flicks region" in {
     Country.UnitedKingdom.cityGroups.map(_.label) shouldBe
       Seq("England", "Scotland", "Wales", "Northern Ireland", "Crown Dependencies")
-    // The same partition invariant the US groups hold: every live UK city is
-    // reachable from exactly one nation, and no nation names a city twice.
-    Country.UnitedKingdom.cityGroups.flatMap(_.cities) should contain theSameElementsAs
+    // A nation holds counties, never places directly.
+    Country.UnitedKingdom.cityGroups.flatMap(_.cities) shouldBe empty
+    // The two levels together partition the country's cities, exactly once each.
+    Country.UnitedKingdom.cityGroups.flatMap(_.allCities) should contain theSameElementsAs
       Country.UnitedKingdom.cities
-    Country.UnitedKingdom.cityGroups.flatMap(_.cities).distinct should have size
+    Country.UnitedKingdom.cityGroups.flatMap(_.allCities).distinct should have size
       Country.UnitedKingdom.cities.size
 
-    def nation(label: String): Seq[String] =
-      Country.UnitedKingdom.cityGroups.find(_.label == label).get.cities.map(_.slug)
+    def nation(label: String): CityGroup =
+      Country.UnitedKingdom.cityGroups.find(_.label == label).getOrElse(fail(s"no nation $label"))
 
-    nation("England")           should contain allOf ("london", "cheshire", "liverpool", "kent")
-    nation("Scotland")          should contain allOf ("glasgow", "fife", "highlands-and-islands")
-    nation("Wales")             should contain allOf ("cardiff", "gwynedd", "powys")
-    nation("Northern Ireland")  should contain allOf ("belfast", "antrim", "tyrone")
-    nation("Crown Dependencies") should contain theSameElementsAs Seq("guernsey", "isle-of-man", "jersey")
-    // A nation is a heading, not a page: `/scotland/` is nothing, the same way
-    // `/california/` is.
+    nation("England").allCities.map(_.slug)          should contain allOf ("london", "cheshire", "liverpool", "kent")
+    nation("Scotland").allCities.map(_.slug)         should contain allOf ("glasgow", "fife", "highlands-and-islands")
+    nation("Wales").allCities.map(_.slug)            should contain allOf ("cardiff", "gwynedd", "powys")
+    nation("Northern Ireland").allCities.map(_.slug) should contain allOf ("belfast", "antrim", "tyrone")
+    nation("Crown Dependencies").allCities.map(_.slug) should contain theSameElementsAs
+      Seq("guernsey", "isle-of-man", "jersey")
+
+    // The county level earns its keep on the entries that are a CITY rather than
+    // a county: three separately-scraped boroughs under one heading.
+    val westMidlands = nation("England").groups.find(_.label == "West Midlands").getOrElse(fail("no West Midlands"))
+    westMidlands.cities.map(_.slug) shouldBe Seq("birmingham", "dudley", "sandwell")
+    // Counties are alphabetical under British collation, and nations are not —
+    // England leads by size.
+    val collator = java.text.Collator.getInstance(Locale.forLanguageTag("en-GB"))
+    val counties = nation("England").groups.map(_.label)
+    counties shouldBe counties.sortWith((a, b) => collator.compare(a, b) < 0)
+
+    // Neither level is a page: `/scotland/` and `/west-midlands/` are nothing,
+    // the way `/california/` is.
     Country.UnitedKingdom.cityGroups.map(_.slug).flatMap(Country.UnitedKingdom.bySlug.get) shouldBe empty
+    Country.UnitedKingdom.bySlug.get("west-midlands")  shouldBe None
+    Country.UnitedKingdom.bySlug.get("greater-london") shouldBe None
+  }
+
+  it should "group Germany by Bundesland, from the roster's own field" in {
+    // 16 Länder over 158 regions, and the grouping is DATA — `regions.json` has
+    // carried each region's `bundesland` all along, so a re-harvest re-groups the
+    // picker instead of drifting from a hand-kept list.
+    Country.Germany.cityGroups should have size 16
+    Country.Germany.cityGroups.map(_.label) should contain allOf (
+      "Bayern", "Nordrhein-Westfalen", "Sachsen-Anhalt", "Saarland")
+    // The city-states are the Land, not the crawl's "Berlin (Land)" spelling,
+    // which only ever existed to tell it from the city on a Filmstarts page.
+    Country.Germany.cityGroups.map(_.label) should contain allOf ("Berlin", "Bremen", "Hamburg")
+    all(Country.Germany.cityGroups.map(_.label)) should not include "(Land)"
+
+    Country.Germany.cityGroups.flatMap(_.allCities) should contain theSameElementsAs Country.Germany.cities
+    Country.Germany.cityGroups.flatMap(_.groups) shouldBe empty
+    Country.Germany.cityGroups.map(_.label) shouldBe Country.Germany.cityGroups.map(_.label).sorted
+
+    def land(label: String): Seq[String] =
+      Country.Germany.cityGroups.find(_.label == label).get.cities.map(_.slug)
+    land("Bayern")              should contain allOf ("muenchen", "nuernberg", "augsburg")
+    land("Nordrhein-Westfalen") should contain allOf ("koeln", "dortmund", "muenster")
+    // A Land is a heading, never a page.
+    Country.Germany.bySlug.get("bayern") shouldBe None
+  }
+
+  it should "file a German region by its own coordinates where the crawl mis-filed it" in {
+    // `cluster_regions.py` takes a region's Land from the Filmstarts lander page
+    // its hub venues came from, and two of those pages are wrong. Both regions
+    // are in North Rhine-Westphalia by their own coordinates — Westphalian
+    // Münster (51.96N), not the Hessian village near Darmstadt; Dorsten in the
+    // Ruhr, 450 km from the Berlin the crawl filed it under.
+    def landOf(slug: String): String =
+      Country.Germany.cityGroups.find(_.cities.exists(_.slug == slug)).get.label
+    landOf("muenster") shouldBe "Nordrhein-Westfalen"
+    landOf("dorsten")  shouldBe "Nordrhein-Westfalen"
+    // A region whose CLUSTER crosses a border still follows its hub: Rheine is
+    // in NRW though most of its venues are over the line in Niedersachsen.
+    landOf("rheine")   shouldBe "Nordrhein-Westfalen"
+    landOf("cuxhaven") shouldBe "Niedersachsen"
   }
 
   "CityGroup.soleCity" should "collapse a group that stands exactly where its one city stands" in {
@@ -153,8 +242,33 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     group(Country.UnitedStates, "new-york").cities.map(_.slug) should contain ("new-york")
     group(Country.UnitedStates, "new-york").soleCity shouldBe None
 
-    // No UK nation is a place either, however few counties are live in it.
+    val england = Country.UnitedKingdom.cityGroups.find(_.label == "England").get
+    def county(label: String): CityGroup = england.groups.find(_.label == label).getOrElse(fail(s"no $label"))
+    // Most UK counties ARE the Flicks region, so they collapse — which is what
+    // keeps a two-level list readable.
+    county("Cheshire").soleCity.map(_.slug) shouldBe Some("cheshire")
+    england.groups.count(_.soleCity.isDefined) should be > 30
+    // The ones that say something keep their heading: Greater Manchester holds
+    // Manchester, and collapsing it into a link labelled "Manchester" would lose
+    // the county the visitor was reading by.
+    county("Greater Manchester").soleCity shouldBe None
+    county("Greater Manchester").cities.map(_.slug) shouldBe Seq("manchester")
+    county("West Midlands").soleCity shouldBe None
+
+    // A nation is never a place.
     Country.UnitedKingdom.cityGroups.flatMap(_.soleCity) shouldBe empty
+    // A Bundesland can be: Hamburg the Land is Hamburg the region, so the heading
+    // and the row are the same place and the picker links straight through. So is
+    // Berlin — but only once Dorsten stopped being mis-filed under it, which is
+    // what left the Land holding its own city and nothing else.
+    group(Country.Germany, "hamburg").soleCity.map(_.slug) shouldBe Some("hamburg")
+    group(Country.Germany, "berlin").soleCity.map(_.slug)  shouldBe Some("berlin")
+    Country.Germany.cityGroups.count(_.soleCity.isDefined) shouldBe 2
+    // Saarland is not — its one region is Saarbrücken, a different name, and a
+    // link labelled that would lose the Land the visitor was reading by.
+    group(Country.Germany, "saarland").soleCity shouldBe None
+    group(Country.Germany, "saarland").cities.map(_.slug) shouldBe Seq("saarbruecken")
+    group(Country.Germany, "bayern").soleCity shouldBe None
   }
 
   "Country.Spain" should "be a Spanish, Filmweb-free deployment (SensaCine-sourced) on its own database" in {

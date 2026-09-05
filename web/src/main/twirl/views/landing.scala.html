@@ -12,13 +12,20 @@
    keeps the "nothing reads a global current country" rule this template used to
    break four times over with `Country.fromEnv`.
 
-   Poland, Germany and Spain are one flat A-to-Z. The US and the UK are GROUPED
-   (`Country.cityGroups`) — one collapsed section per US state over the metros
-   cut out of it, per UK nation over its counties — because "Los Angeles" is
-   found under "California", and neither 457 metros nor 79 counties in one
-   alphabetical run is a list anybody reads. A group that stands exactly where
-   its one city stands (Delaware, Vermont, DC) is a plain link to that city
-   instead of a heading you open to find it repeated; see `CityGroup.soleCity`.
+   Poland and Spain are one flat A-to-Z (41 and 52 — a name is all a visitor
+   needs). The US, Germany and the UK are GROUPED (`Country.cityGroups`), because
+   "Los Angeles" is found under "California" and 457 metros, 158 German regions
+   or 79 UK counties in one alphabetical run is not a list anybody reads.
+
+   The tree is not the same depth in each: the US nests one level (state over its
+   metros), Germany one (Bundesland over its regions), the UK two (nation over
+   county over its places). `_cityPickerGroup` renders a node of it and recurses,
+   so the depth is the country's to decide and not this template's to know.
+
+   Within a group everything is alphabetical — the only order a reader can search
+   by eye. A group that stands exactly where its one place stands (Delaware,
+   Vermont, and most UK counties) is a plain link to that place instead of a
+   heading you open to find it repeated; see `CityGroup.soleCity`.
 
    `places` IS NONE IN EVERY DEPLOYMENT, meaning "the country's own list" — a
    visitor to the Polish site is offered Polish cities and nothing else, and no
@@ -101,6 +108,10 @@
       list-style: none; display: flex; flex-direction: column; gap: .6rem;
       margin: .6rem 0 0 .9rem;
     }
+    /* Each level indents once. Two levels of counties under a nation would
+       otherwise walk the rows off a phone's right edge, and the nesting is
+       already legible from the heading above them. */
+    .city-group-cities .city-group-cities { margin-left: .6rem; }
     /* A grouped list reads down one edge: the heading is left-aligned because it
        carries a chevron on the other side, so the rows under it — and the groups
        that collapsed into a single row — line up with it rather than floating in
@@ -125,28 +136,7 @@
         <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
       }
       } else {
-      @for(g <- country.cityGroups) {
-        @g.soleCity match {
-          case Some(c) => {
-        <li class="city-direct"><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
-          }
-          case None => {
-        <li>
-          @* A <details> rather than a button and a class: the open/closed state,
-             the keyboard handling and the ARIA a disclosure owes are all native
-             here, and the group still opens on a page whose script never ran. *@
-          <details class="city-group">
-            <summary class="city-group-label">@g.label</summary>
-            <ul class="city-group-cities">
-            @for(c <- g.cities) {
-              <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
-            }
-            </ul>
-          </details>
-        </li>
-          }
-        }
-      }
+      @for(g <- country.cityGroups) {@_cityPickerGroup(g)}
       }
     </ul>
     <p class="locating" id="locating"></p>
@@ -169,51 +159,69 @@
         .replace(/ź/g, 'z').replace(/ż/g, 'z');
     }
 
-    // Client-side filter of the place list (41 Polish cities, 457 US metros, 79
-    // UK counties, …): typing narrows the visible rows by folded substring
-    // match; an empty box shows everything.
+    // Client-side filter of the place list (41 Polish cities, 457 US metros, 158
+    // German regions, 79 UK counties, …): typing narrows the visible rows by
+    // folded substring match; an empty box shows everything.
     //
-    // Two things the grouped countries need on top of that. A row matches on its
-    // GROUP's name as well as its own, so "california" finds Los Angeles and
-    // "scotland" finds Fife — the grouping is how a visitor knows the place is
-    // there, and a search that ignores it answers nothing for the term they are
-    // most likely to type. And a group holding a match OPENS, because a hit
-    // behind a closed heading is a hit the searcher cannot see; clearing the box
-    // shuts them all again, back to the list they arrived on.
+    // Three things the grouped countries need on top of that. A row matches on
+    // the name of EVERY heading above it as well as its own, so "california"
+    // finds Los Angeles, "bayern" finds Nürnberg and "west midlands" finds
+    // Dudley — the grouping is how a visitor knows the place is there, and a
+    // search that ignores it answers nothing for the term they are most likely
+    // to type. Every heading above a hit OPENS, because a match behind a shut one
+    // is a match the searcher cannot see. And clearing the box shuts them all
+    // again, back to the list they arrived on.
+    //
+    // Depth-agnostic throughout: the UK puts a county between its nation and its
+    // places, and nothing here counts levels.
     (function () {
       var list = document.getElementById('city-list');
       var input = document.getElementById('city-search');
       if (!list || !input) return;
       var empty  = document.getElementById('city-empty');
       var groups = Array.prototype.slice.call(list.querySelectorAll('details.city-group'));
-      // Each linked row with the text it answers to: its own, plus the heading
-      // it sits under where it has one. Folded once here rather than per
-      // keystroke — 457 metros × every character typed is work worth not doing.
+
+      // The headings above `el`, innermost first.
+      var ancestors = function (el) {
+        var chain = [];
+        for (var d = el.parentElement && el.parentElement.closest('details.city-group'); d;
+             d = d.parentElement && d.parentElement.closest('details.city-group')) {
+          chain.push(d);
+        }
+        return chain;
+      };
+
+      // Each linked row with the text it answers to: its own, plus every heading
+      // it sits under. Folded once here rather than per keystroke — 457 metros ×
+      // every character typed is work worth not doing.
       var rows = Array.prototype.slice.call(list.querySelectorAll('li'))
         .filter(function (li) {
           return Array.prototype.some.call(li.children, function (n) { return n.tagName === 'A'; });
         })
         .map(function (li) {
-          var group = li.closest ? li.closest('details.city-group') : null;
-          var label = group ? group.querySelector('.city-group-label').textContent : '';
-          return { li: li, group: group, text: foldPl(li.textContent + ' ' + label) };
+          var above = ancestors(li);
+          var text = li.textContent + ' ' + above.map(function (d) {
+            return d.querySelector(':scope > summary').textContent;
+          }).join(' ');
+          return { li: li, above: above, text: foldPl(text) };
         });
+
       var apply = function () {
         var q = foldPl(input.value.trim());
         var shown = 0;
-        var hit = [];
+        var live = [];
         rows.forEach(function (row) {
           var match = q === '' || row.text.indexOf(q) !== -1;
           row.li.style.display = match ? '' : 'none';
           if (match) {
             shown++;
-            if (row.group && hit.indexOf(row.group) === -1) hit.push(row.group);
+            row.above.forEach(function (d) { if (live.indexOf(d) === -1) live.push(d); });
           }
         });
         groups.forEach(function (g) {
-          var any = hit.indexOf(g) !== -1;
-          // A group whose every row filtered out goes with them, so the list
-          // never leaves a heading standing over nothing.
+          var any = live.indexOf(g) !== -1;
+          // A heading whose every row filtered out goes with them, so the list
+          // never leaves one standing over nothing.
           g.parentNode.style.display = (q === '' || any) ? '' : 'none';
           g.open = q !== '' && any;
         });
