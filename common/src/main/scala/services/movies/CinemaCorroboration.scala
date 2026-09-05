@@ -1,6 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Tmdb}
+import services.resolution.TmdbBasis
 import tools.TextNormalization
 
 /**
@@ -25,6 +26,24 @@ import tools.TextNormalization
  * force-re-resolve the corpus.
  */
 object CinemaCorroboration {
+
+  /** True when the row's conclusion is weaker than the evidence it now holds — a
+   *  bare-title guess on a row that has SINCE acquired a director or a year.
+   *
+   *  Resolution is a one-shot, and nothing makes it look again:
+   *  `needsTmdbResolution` re-verifies only when the triggering event carries a
+   *  director, and the later detail refresh that finally supplies one publishes no
+   *  event at all. So the row keeps a guess it could now improve on — which is how
+   *  every one of prod's five mis-resolved films stayed wrong while sitting on the
+   *  very hints that would have corrected them.
+   *
+   *  Converges rather than churning: a re-resolve concludes on the stronger basis
+   *  (or fails and leaves the row unresolved, which the sweep's first predicate
+   *  owns), so a given row satisfies this at most once. */
+  def resolvedOnWeakerEvidenceThanAvailable(record: MovieRecord): Boolean =
+    record.tmdbId.isDefined &&
+      record.tmdbBasis.flatMap(TmdbBasis.parse).contains(TmdbBasis.TitleOnly) &&
+      (record.cinemaDirector.nonEmpty || record.cinemaYears.nonEmpty)
 
   /** True when the cinemas positively contradict the film this row resolved to. */
   def contradicts(record: MovieRecord): Boolean =

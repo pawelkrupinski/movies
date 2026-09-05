@@ -6,6 +6,7 @@ import org.scalatest.matchers.should.Matchers
 import services.events.InProcessEventBus
 import services.movies.{CacheKey, CaffeineMovieCache, InMemoryMovieRepository}
 import services.schedule.{InMemoryScheduledRunStore, NeverClaimScheduledRunStore}
+import services.resolution.TmdbBasis
 
 import java.time.{Instant, LocalDateTime}
 import scala.collection.mutable
@@ -87,6 +88,47 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
     }
     runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 1
     forced should have size 1
+  }
+
+  // S2: a conclusion reached on a bare title, on a row that has SINCE acquired a
+  // director or a year, is weaker than the evidence now available. Nothing made it
+  // look again — `needsTmdbResolution` re-verifies only when the triggering event
+  // carries a director, and a later detail refresh publishes none. So the row keeps
+  // a guess it could now improve on, which is every one of the five prod films.
+  it should "force a re-resolve when a title-only guess now has a director to check" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Homo sapiens") { r =>
+      r.copy(tmdbId = Some(891655), tmdbBasis = Some(TmdbBasis.TitleOnly.toString),
+        data = r.data
+          + ((Tmdb: Source) -> SourceData(title = Some("Homo sapiens"), runtimeMinutes = Some(95),
+               director = Seq("Mariano Cohn")))
+          + ((KinoApollo: Source) -> SourceData(title = Some("Homo sapiens"), runtimeMinutes = Some(95),
+               director = Seq("Mariano Cohn"))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 1
+    forced should have size 1
+  }
+
+  it should "leave a title-only guess alone while nothing better has arrived" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Still Bare") { r =>
+      r.copy(tmdbId = Some(42), tmdbBasis = Some(TmdbBasis.TitleOnly.toString),
+        data = r.data + ((Tmdb: Source) -> SourceData(title = Some("Still Bare"), runtimeMinutes = Some(100))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 0
+    forced shouldBe empty
+  }
+
+  it should "not keep re-resolving a row already concluded on strong evidence" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (forced, forceRetry) = recorder()
+    seedRow(cache, "Verified") { r =>
+      r.copy(tmdbId = Some(7), tmdbBasis = Some(TmdbBasis.DirectorWalk.toString),
+        data = r.data
+          + ((Tmdb: Source) -> SourceData(title = Some("Verified"), runtimeMinutes = Some(100), director = Seq("A Director")))
+          + ((KinoApollo: Source) -> SourceData(title = Some("Verified"), runtimeMinutes = Some(100), director = Seq("A Director"))))
+    }
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry)).sum shouldBe 0
+    forced shouldBe empty
   }
 
   it should "leave a row alone when the venues corroborate it" in {

@@ -117,7 +117,8 @@ class UnresolvedTmdbReaper(
       val (key, record) = rows.next()
       val unresolved = record.tmdbId.isEmpty && !record.detailPending
       val staleLang  = staleLanguage(record)
-      val misresolved = contradictedByCinemas(record)
+      val misresolved = contradictedByCinemas(record) ||
+                        CinemaCorroboration.resolvedOnWeakerEvidenceThanAvailable(record)
       if ((unresolved || staleLang || misresolved) &&
           dueWindow.isDue(EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year), Some(since), now)) {
         // A stale-language row is already resolved, so the plain retry (which

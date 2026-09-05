@@ -609,6 +609,12 @@ case class MovieRecord(
 
   /** Every cast name the cinemas reported, de-duplicated and sorted. Cinema-only
    *  for the same reason as [[cinemaRuntimesMinutes]]. */
+  /** Every release year the cinemas reported, de-duplicated and sorted. Cinema-only
+   *  for the same reason as [[cinemaRuntimesMinutes]]: a year drawn from the
+   *  resolution cannot be used to check that resolution. */
+  def cinemaYears: Seq[Int] =
+    prioritizedCinema.flatMap(_._2.releaseYear).distinct.sorted
+
   def cinemaCast: Seq[String] =
     prioritizedCinema.flatMap(_._2.cast).map(_.trim).filter(_.nonEmpty).distinct.sorted
 
