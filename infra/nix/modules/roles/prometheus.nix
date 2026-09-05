@@ -42,7 +42,12 @@ let
     substitute ${src} $out \
       --replace-quiet '@LISTEN_ADDRESS@' '${cfg.listenAddress}' \
       --replace-quiet '@GRAFANA_PORT@' '${toString cfg.grafanaPort}' \
-      --replace-quiet '@TELEGRAM_BOT_TOKEN_FILE@' '${cfg.telegramBotTokenFile}'
+      --replace-quiet '@TELEGRAM_BOT_TOKEN_FILE@' '${cfg.telegramBotTokenFile}' \
+      --replace-quiet '@SMTP_SMARTHOST@' '${cfg.smtpSmarthost}' \
+      --replace-quiet '@SMTP_USERNAME@' '${cfg.smtpUsername}' \
+      --replace-quiet '@SMTP_PASSWORD_FILE@' '${cfg.smtpPasswordFile}' \
+      --replace-quiet '@ALERT_EMAIL_FROM@' '${cfg.alertEmailFrom}' \
+      --replace-quiet '@ALERT_EMAIL_TO@' '${cfg.alertEmailTo}'
     if grep -nE '@[A-Z0-9_]+@' $out; then
       echo "render: ${name} still carries an unsubstituted placeholder (above)." >&2
       exit 1
@@ -294,6 +299,64 @@ in
       description = "Path to the @kinowobot bot token, from sops-nix. Alertmanager reads it at send time.";
     };
 
+    # ── THE EMAIL PATH ─────────────────────────────────────────────────────────────────────────
+    #
+    # A SECOND DESTINATION IS A SECOND THING TO NOTICE HAS STOPPED WORKING, which is the reason
+    # this file's header gives for everything going to one Telegram channel. The disk alerts get
+    # email ANYWAY, and the trade is made honestly rather than talked out of: a filling disk is
+    # the one class of alert here whose useful response is days away rather than minutes, so it
+    # is the one worth having somewhere that survives a chat channel being muted or missed.
+    #
+    # THEY GO TO BOTH, NOT INSTEAD. An SMTP relay that starts rejecting is silent in exactly the
+    # way an alerting path must not be, and email is the newer of the two paths here. Telegram
+    # stays the one that is known to work; email is additional until it has earned otherwise.
+    smtpSmarthost = lib.mkOption {
+      type = lib.types.str;
+      default = "smtp.resend.com:587";
+      description = ''
+        `host:port` of the SMTP submission endpoint. Resend by default: an API key is the
+        password, so there is no mailbox password to rotate and no account whose 2FA settings
+        can silently break sending -- which is what rules a personal Gmail out for this.
+        587 (submission + STARTTLS), not 465: Alertmanager negotiates TLS on 587 and `require_tls`
+        below refuses to send if the upgrade does not happen.
+      '';
+    };
+
+    smtpUsername = lib.mkOption {
+      type = lib.types.str;
+      default = "resend";
+      description = ''
+        SMTP username. For Resend this is the literal string `resend` for every account -- the API
+        key in `smtpPasswordFile` is what identifies you. Change both together if the relay moves.
+      '';
+    };
+
+    smtpPasswordFile = lib.mkOption {
+      type = lib.types.str;
+      default = config.sops.secrets."alertmanager/smtp-password".path;
+      defaultText = ''config.sops.secrets."alertmanager/smtp-password".path'';
+      description = ''
+        Path to the relay's API key, from sops-nix. Read at SEND time like the Telegram token, so
+        it never reaches the world-readable Nix store.
+      '';
+    };
+
+    alertEmailFrom = lib.mkOption {
+      type = lib.types.str;
+      default = "alerts@kinowo.net";
+      description = ''
+        Envelope sender. IT MUST BE AT A DOMAIN THE RELAY HAS VERIFIED or the relay accepts the
+        submission and drops the message, which is the failure mode this whole stack exists to
+        avoid. kinowo.net is on Cloudflare, so verifying it is a DNS record rather than a project.
+      '';
+    };
+
+    alertEmailTo = lib.mkOption {
+      type = lib.types.str;
+      default = "pawel.krupinski@gmail.com";
+      description = "Where the disk alerts land. One operator, one mailbox.";
+    };
+
     externalUrl = lib.mkOption {
       type = lib.types.str;
       default = "http://alertmanager.kinowo.internal:9093";
@@ -492,6 +555,9 @@ in
     # start. A `prometheus/fly-token` sat beside it, read at scrape time by the Fly federation job,
     # until both went on 2026-09-04.
     sops.secrets."alertmanager/telegram-bot-token" = { owner = "alertmanager"; mode = "0400"; };
+    # Same shape, same reason, for the SMTP relay's API key: owned by the process that reads it,
+    # read at send time, never interpolated into a config file.
+    sops.secrets."alertmanager/smtp-password" = { owner = "alertmanager"; mode = "0400"; };
 
     users.users.prometheus = { isSystemUser = true; group = "prometheus"; description = "Prometheus"; };
     users.groups.prometheus = { };

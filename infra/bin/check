@@ -16,6 +16,9 @@
 #                      or an unset secret fails here rather than at 03:00 on the auto-apply timer.
 #   alert rule tests   the alerting rules, fed a series and asked what they do -- the question
 #                      `promtool check rules` does not ask and Prometheus never asks at all.
+#   alertmanager       the same question one step later: given an alert's labels, WHICH RECEIVER
+#                      does it reach. Routing is first-match-wins, so a misordered route is dead on
+#                      arrival and reads as correct.
 #   reboot-required    the decision behind `nixos_reboot_required`, whose only other test is to
 #                      reboot a machine and read a metric afterwards -- which is how it stayed
 #                      wrong.
@@ -133,6 +136,24 @@ if [ -f test/test_alert_rules.sh ]; then
   fi
 else
   echo "  FAILED test/test_alert_rules.sh is missing"
+  failed=1
+fi
+
+step "alertmanager routing"
+# THE RULES DECIDE WHETHER AN ALERT FIRES; THIS DECIDES WHETHER ANYBODY HEARS IT. `route.routes` is
+# first-match-wins, so a route added below one that already matches is dead the moment it is
+# written and looks perfectly correct in review -- and its failure mode is a message that simply
+# does not arrive, which is what a healthy fleet also looks like. Until this existed, `nix eval`
+# proving the document RENDERED was the whole of the coverage. See test_alertmanager.sh.
+if [ -f test/test_alertmanager.sh ]; then
+  if out="$(bash test/test_alertmanager.sh 2>&1)"; then
+    echo "$out"
+  else
+    echo "$out"
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_alertmanager.sh is missing"
   failed=1
 fi
 

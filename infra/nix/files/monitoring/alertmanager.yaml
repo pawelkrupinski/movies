@@ -66,6 +66,41 @@ route:
       group_wait: 0s
       repeat_interval: 24h
 
+    # THE DISK ALERTS ALSO GO TO EMAIL, and they are the only ones that do.
+    #
+    # WHY THESE AND NOT EVERYTHING. A filling disk is the one class of alert on this fleet whose
+    # useful response is days away rather than minutes -- growing a volume is a Tuesday-afternoon
+    # decision, not a 03:00 one -- so it is the one worth having somewhere that outlives a chat
+    # channel being muted, scrolled past, or read on a phone and forgotten. Everything else here
+    # wants to be seen NOW, and Telegram is better at that than a mailbox.
+    #
+    # BOTH DESTINATIONS, NOT INSTEAD. This file's header argues for one channel because a second
+    # is a second thing to notice has stopped working, and that argument is still right -- so the
+    # email path is ADDITIVE. A relay that starts rejecting costs a duplicate that stops arriving,
+    # never an alert that stops arriving.
+    #
+    # TWO ROUTES RATHER THAN ONE, so the cadences below stay exactly what the severity routes that
+    # follow would have given them. A single `alertname =~ "Filesystem.*"` route would have to pick
+    # one `repeat_interval` for both, and quietly re-time either the critical (1h) or the warning
+    # (12h). These MUST stay above the severity routes: first match wins, and a route that matched
+    # `severity` first would never reach these.
+    #
+    # `FilesystemMetricsAbsent` matches too, deliberately: "nothing is watching any disk" belongs
+    # with the disk alerts rather than with the fleet-wide noise.
+    - matchers:
+        - alertname =~ "Filesystem.*"
+        - severity = "critical"
+      receiver: telegram-and-email
+      group_wait: 10s
+      repeat_interval: 1h
+
+    - matchers:
+        - alertname =~ "Filesystem.*"
+        - severity = "warning"
+      receiver: telegram-and-email
+      group_interval: 15m
+      repeat_interval: 12h
+
     # CRITICALS DO NOT WAIT FOR THEIR FRIENDS. The root `group_wait` of 30s exists to let a
     # multi-rule incident coalesce into one message; on a critical -- mongod down, a read-only
     # filesystem, the WireGuard tunnel gone -- thirty seconds of tidiness is not worth thirty
@@ -121,6 +156,59 @@ receivers:
           {{ .Annotations.summary }}
           {{ .Annotations.description }}
           {{ end }}
+
+  # ONE RECEIVER THAT DOES BOTH, rather than a route with `continue: true` into a second one.
+  # `continue` would work and is how this is usually written; it also means the Telegram message
+  # is produced by a DIFFERENT route from the email, with its own timing, so the two halves of one
+  # alert can drift apart in when and how often they arrive. One receiver keeps them in step by
+  # construction.
+  - name: telegram-and-email
+    telegram_configs:
+      - bot_token_file: "@TELEGRAM_BOT_TOKEN_FILE@"
+        chat_id: 1771340065
+        # Plain text for the reason the `telegram` receiver gives: a `<` from a PromQL threshold in
+        # an annotation is enough for Telegram to reject an HTML-parsed message and drop the alert
+        # at delivery.
+        parse_mode: ""
+        send_resolved: true
+        message: |-
+          {{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Labels.alertname }}{{ if .Labels.host }} on {{ .Labels.host }}{{ end }}
+          {{ .Annotations.summary }}
+          {{ .Annotations.description }}
+          {{ end }}
+    email_configs:
+      - to: "@ALERT_EMAIL_TO@"
+        from: "@ALERT_EMAIL_FROM@"
+        smarthost: "@SMTP_SMARTHOST@"
+        auth_username: "@SMTP_USERNAME@"
+        # The API key, read from a file at send time -- never interpolated into this document,
+        # which lives in the world-readable Nix store.
+        auth_password_file: "@SMTP_PASSWORD_FILE@"
+        # REFUSE TO SEND IN CLEARTEXT. Without this Alertmanager will happily fall back to an
+        # unencrypted submission if STARTTLS is not offered, which would put the alert -- and the
+        # API key authenticating it -- on the wire in plain text.
+        require_tls: true
+        send_resolved: true
+        headers:
+          # The SUBJECT is the whole message for anyone reading on a phone, so it carries the
+          # host and the mountpoint rather than a count of alerts.
+          subject: >-
+            [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}{{ if .CommonLabels.host }} on
+            {{ .CommonLabels.host }}{{ end }}{{ if .CommonLabels.mountpoint }}
+            ({{ .CommonLabels.mountpoint }}){{ end }}
+        # PLAIN TEXT, not `html`. Alertmanager's default HTML template is a large document that
+        # renders poorly in half the clients that receive it, and the descriptions in these rules
+        # are already written as prose with shell commands in them -- which is exactly what HTML
+        # mangles. The cost is that nothing is clickable.
+        text: |-
+          {{ range .Alerts }}[{{ .Status | toUpper }}] {{ .Labels.alertname }}{{ if .Labels.host }} on {{ .Labels.host }}{{ end }}
+
+          {{ .Annotations.summary }}
+
+          {{ .Annotations.description }}
+
+          {{ end }}
+          Silence or inspect: {{ .ExternalURL }}
 
   - name: telegram-heartbeat
     telegram_configs:
