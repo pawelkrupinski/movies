@@ -54,11 +54,14 @@ import java.util.concurrent.ConcurrentHashMap
  * per-country instance rather than an object: see [[voiceover]].
  */
 class ScreeningTokens(
-  /** The token a VOICE-OVER screening carries — see [[models.Country.voiceoverToken]].
-   *  Every OTHER token in the vocabulary is the same in every country (a source
-   *  either says IMAX or it doesn't), so this one parameter is the whole reason
-   *  the vocabulary is instantiated per country instead of being a shared table. */
-  val voiceover: String
+  /** The token a VOICE-OVER screening carries, or `None` in a country whose
+   *  cinemas offer no such version — see [[models.Country.voiceoverToken]]. A
+   *  voice-over label from a source in such a country is dropped like any other
+   *  label the country has no badge for. Every OTHER token in the vocabulary is
+   *  the same in every country (a source either says IMAX or it doesn't), so this
+   *  one parameter is the whole reason the vocabulary is instantiated per country
+   *  instead of being a shared table. */
+  val voiceover: Option[String]
 ) extends Logging {
   import ScreeningTokens._
 
@@ -66,7 +69,7 @@ class ScreeningTokens(
   def canonical(raw: String): List[String] = {
     val k = key(raw)
     if (k.isEmpty) Nil
-    else if (VoiceoverLabels.contains(k)) List(voiceover)
+    else if (VoiceoverLabels.contains(k)) voiceover.toList
     else Canonical.get(k).orElse(LanguageNames.get(k)).getOrElse {
       if (!NotAScreeningAttribute.contains(k) && reported.add(k))
         logger.info(s"ScreeningTokens: dropping unrecognised screening label '$raw' — " +

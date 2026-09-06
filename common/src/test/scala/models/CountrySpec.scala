@@ -39,6 +39,27 @@ class CountrySpec extends AnyFlatSpec with Matchers {
       List(Country.Poland, Country.UnitedKingdom, Country.Germany, Country.UnitedStates, Country.Spain)
   }
 
+  "Country.versionTokens and voiceoverToken" should "be each country's OWN, with none borrowed from a sibling" in {
+    // Every token here is what that country's scrapers emit, and only that. The
+    // trap this pins is a DEFAULT: `voiceoverToken` was `"LEK"` unless overridden,
+    // so Germany and Spain carried Poland's badge for months. Now it is abstract,
+    // and this table is the one place every country's answer is written out —
+    // including "nothing", which is the right answer for the Webedia markets.
+    val expected = Map[Country, (Option[VersionTokens], Option[String])](
+      Country.Poland        -> (Some(VersionTokens("NAP", "DUB")),   Some("LEK")),
+      Country.UnitedKingdom -> (Some(VersionTokens("SUB", "DUB")),   Some("LEC")),
+      Country.Germany       -> (Some(VersionTokens("OmU", "DF")),    None),
+      Country.UnitedStates  -> (Some(VersionTokens("SUB", "DUB")),   Some("LEC")),
+      Country.Spain         -> (Some(VersionTokens("VOSE", "DOB")),  None),
+    )
+    expected.keySet shouldBe Country.all.toSet
+    forAll(Country.all) { country =>
+      withClue(s"${country.code}: ") {
+        (country.versionTokens, country.voiceoverToken) shouldBe expected(country)
+      }
+    }
+  }
+
   "Country.UnitedKingdom" should "be an English, Filmweb-free deployment (Flicks-sourced) on its own database" in {
     Country.UnitedKingdom.code shouldBe "uk"
     Country.UnitedKingdom.mongoDb shouldBe "kinowo_uk"

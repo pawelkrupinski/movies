@@ -116,13 +116,19 @@ sealed abstract class Country(
 
   /** The token a VOICE-OVER screening carries — one narrator read over the
    *  original soundtrack, which is neither dubbing nor subtitles and is a version
-   *  of its own wherever it is offered. Poland writes it `LEK`; the
-   *  English-speaking deployments `LEC`.
+   *  of its own wherever it is offered — or `None` where the country's cinemas
+   *  offer no such version. Poland writes it `LEK`; the English-speaking
+   *  deployments `LEC`; Germany and Spain have nothing to write, their sources
+   *  naming only original/subtitled/dubbed prints (`WebediaMarket`).
+   *
+   *  ABSTRACT, not defaulted: a default is Poland's, and Germany and Spain
+   *  inherited `LEK` for months without any spec noticing. A new country has to
+   *  say what it uses, even when the answer is nothing.
    *
    *  Its own member rather than a third field on [[VersionTokens]] because that
    *  pair is what the Filtry radios FILTER on, and a voice-over screening is not
    *  one of the two choices those radios offer. */
-  def voiceoverToken: String = "LEK"
+  def voiceoverToken: Option[String]
 
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
 
@@ -185,6 +191,7 @@ object Country {
   ) {
     val cities: Seq[City] = City.polishCities
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
+    val voiceoverToken: Option[String] = Some("LEK")
   }
 
   /** The United Kingdom — an English-language country on its own `kinowo_uk`
@@ -208,7 +215,7 @@ object Country {
     // 2026-09-02) is the one a visitor filters for, `DUB` the rare foreign-language
     // print. Both are what the chains' own labels normalise to.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
-    override val voiceoverToken: String = "LEC"
+    val voiceoverToken: Option[String] = Some("LEC")
   }
 
   /** Germany — a German-language country on its own `kinowo_de` database,
@@ -230,6 +237,8 @@ object Country {
      *  is not a list anybody reads. */
     override val cityGroups: Seq[CityGroup] = City.germanStates
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
+    // Filmstarts names four versions — OV, OmU, OmeU, DF — and none is a voice-over.
+    val voiceoverToken: Option[String] = None
   }
 
   /** The United States — an English-language country on its own `kinowo_us`
@@ -262,7 +271,7 @@ object Country {
     // Same pair as the UK, and for the same reason — a subtitled print is the
     // marked case, a dubbed one rare.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
-    override val voiceoverToken: String = "LEC"
+    val voiceoverToken: Option[String] = Some("LEC")
   }
 
   /** Spain — a Spanish-language country on its own `kinowo_es` database, sourced
@@ -292,6 +301,8 @@ object Country {
   ) {
     val cities: Seq[City] = City.spanishCities
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("VOSE", "DOB"))
+    // SensaCine names VO, VOSE, VOSI, DOB and CAT — and no voice-over.
+    val voiceoverToken: Option[String] = None
   }
 
   /** Every country the codebase knows about. A worker iterates this; a web

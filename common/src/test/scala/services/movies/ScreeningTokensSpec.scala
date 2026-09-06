@@ -135,4 +135,17 @@ class ScreeningTokensSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "carry NO token in a country whose cinemas offer no such version" in {
+    // Germany and Spain name original/subtitled/dubbed prints and nothing else
+    // (`WebediaMarket`), so they have no spelling for a voice-over — and for
+    // months they inherited Poland's `LEK` by default, a badge no German or
+    // Spanish visitor could read. A voice-over label there is dropped, the same
+    // as any other label the country has no badge for.
+    for (country <- Seq(models.Country.Germany, models.Country.Spain)) withClue(s"${country.code}: ") {
+      val tokens = ScreeningTokens.of(country)
+      tokens.canonical("lektor") shouldBe Nil
+      tokens.normalize(Seq("OmU", "LEK", "IMAX")) shouldBe List("OmU", "IMAX")
+    }
+  }
+
 }
