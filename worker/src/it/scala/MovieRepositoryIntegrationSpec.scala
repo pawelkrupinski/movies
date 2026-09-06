@@ -447,7 +447,20 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import java.util.concurrent.{CountDownLatch, TimeUnit}
 
     val client = MongoClient(Env.get("MONGODB_URI").get)
-    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    // ⚠️ ITS OWN DATABASE, because this is the one spec in the module that DROPS
+    // `movies` — and `IntegrationTest / parallelExecution` is true, so the drop
+    // lands underneath whatever else is mid-transaction against that collection.
+    // Mongo answers those with error 112 WriteConflict labelled
+    // `TransientTransactionError`: "Unable to write to collection 'kinowo.movies'
+    // due to catalog changes" in a sibling, or "namespace is already in use" when
+    // the implicit re-create races. Both were seen on CI within a day, in two
+    // DIFFERENT specs, neither of which does anything wrong — the drop below is the
+    // whole cause. `FoldOnUnreadableRowSpec` pins `maxRetries = 1` to keep its read
+    // counts meaningful, so it cannot even spend the retry that would absorb one.
+    //
+    // It also stops this spec writing `change_stream_tokens` in the SHARED database,
+    // which `persistResumeToken = true` makes it do, and which other specs read.
+    val db     = client.getDatabase(s"kinowo_it_dropresume_${System.nanoTime()}")
     def clearToken(): Unit = Await.ready(
       db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), 10.seconds)
     clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
@@ -504,11 +517,9 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       } finally { handle2.foreach(_.close()); repo2.close() }
     } finally {
       Option(writer).foreach(_.interrupt())
-      val cleanup = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
-      try Seq("A", "D", "warm").foreach(s => cleanup.delete(s"__integration-test-dropped-${s}__", Some(1911)))
-      finally cleanup.close()
-      clearToken()
-      client.close()
+      // The whole database goes, which is every sentinel and the resume token with
+      // it — nothing in here is shared with another spec any more.
+      try Await.ready(db.drop().toFuture(), 30.seconds) finally client.close()
     }
   }
 
