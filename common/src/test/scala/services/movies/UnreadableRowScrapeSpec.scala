@@ -174,6 +174,27 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
       written.exists(_.data.contains(Helios)) shouldBe true)
   }
 
+  // THE END-OF-TICK PRUNE, asked the same question the move above was. `resolved`
+  // collects only writes that LANDED, so a skipped write leaves the venue's slot out
+  // of `touchedSlots` — and the prune reads that absence as "the venue stopped
+  // listing this title" and drops the slot, deleting showtimes this very scrape saw.
+  // One known slot keeps the tick off the shrink guard (`MinSlotsForShrinkGuard` is
+  // 8), so the prune genuinely runs rather than standing down for its own reasons.
+  it should "not prune the venue's slot for a title it listed but could not write" in {
+    val cache = new LosesWrites(new Repo(Seq.empty, readable = true))
+    val key   = cache.keyOf("Live Film", Some(2026))
+    cache.put(key, MovieRecord(data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Live Film"), showtimes = Seq(showtime)))))
+    def venueSlots = cache.get(key).toSeq.flatMap(_.data.keys.filter(Source.cinemaOf(_).contains(Multikino)))
+    venueSlots should not be empty
+
+    // The venue lists exactly the title it already holds a slot for, and the write is lost.
+    cache.loseWrites = true
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film", year = 2026)))
+
+    withClue(s"row=${cache.get(key).map(_.data.keySet)}: ")(venueSlots should not be empty)
+  }
+
   // The OTHER way the write can fail to land, which the unreadable-row case cannot
   // reach: the row IS in Caffeine when the loop looks, and gone by the time
   // `putIfPresent` computes — a concurrent `rekey` of a DIFFERENT title invalidates

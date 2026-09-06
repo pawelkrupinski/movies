@@ -65,11 +65,13 @@ of all of them without being counted anywhere — the reaper logs a re-try, not 
 outcome, one film is far below any prune-burst threshold, and only the
 `kinowo.removal-audit` log named it (`reason=reconcile-prune`).
 
-**It is not yet alerted on, deliberately.** A `> 0` rule would page from day one,
-because at least two rows sit in this state permanently and legitimately (the two
-below). The threshold needs a measured baseline from the gauge itself, the way
-`ReadModelFilmPruneBurst` was calibrated against its 16.9% worst-healthy
-reading — so: chart it, watch it, then set the rule.
+**Alerted by `ReadModelFilmsInvisibleWithScreenings`** (`> 0` for 2h, warning) in
+`infra/nix/files/monitoring/rules/read-model-projection.rules`. A plain `> 0` is
+right because the measured baseline IS zero — see the audit below — and newcomers
+do not trip it either: an unresolved new film incubates in `pending_movies` and
+reaches `movies` already concluded. The `for: 2h` rides out a re-key or
+title-rule wave without letting a stuck row hide, since the reaper's own retry
+period is 24h.
 
 **Method, per flagged row:**
 
@@ -80,25 +82,61 @@ reading — so: chart it, watch it, then set the rule.
 3. Write the correct `tmdbId` and TMDB slot directly. **Never clear `tmdbId`
    to force a re-resolution** — see the traps below.
 
-**Measured 2026-09-06:** prod contradictions fell 56 → 29 over ~14h on the 24h
-phase spread. ~13 of the 29 confirmed rows had not been acted on yet at the
-time of writing. Four rows had been left unresolved-and-invisible by the sweep
-and were repaired by hand: `birdman` (194662), Mission: Impossible — Dead
-Reckoning (575264), Goosebumps 2 (442062), G.B.H. (136775).
+**Audit completed 2026-09-06 — the answer is ZERO.** Across all five prod
+databases there is currently no row that fails `readyToProject` while carrying an
+upcoming showtime. The corpus holds 504 unresolved rows (PL 245, UK 103, US 100,
+DE 52, ES 4), and every one of them has concluded `tmdbNoMatch` with its cinema
+detail done — so they all satisfy `readyToProject` and are visible, carrying
+venue-supplied title, runtime and director instead of TMDB's.
+
+That is the correction worth carrying forward: **unresolved does NOT mean
+invisible.** `readyToProject` is `tmdbConcluded && (tmdbId.isDefined ||
+detailDone)`, so a definitive no-match with detail done publishes fine. Only a row
+that is unresolved AND un-concluded (or still detail-pending) disappears. Querying
+`tmdbId: null` alone over-counts the invisible population by ~500 rows; the whole
+of the "event cinema" catalogue — Met Opera, Royal Ballet & Opera, NT Live — lives
+there legitimately and is on the site.
+
+Earlier the same day, prod contradictions fell 56 → 29 over ~14h on the 24h phase
+spread, and four rows the sweep had left unresolved were repaired by hand:
+`birdman` (194662), Mission: Impossible — Dead Reckoning (575264), Goosebumps 2
+(442062), G.B.H. (136775).
+
+**How to re-run the audit.** Reach prod Mongo as `docs/white-cinema-investigations.md`
+describes, then per country database intersect two sets: rows in `movies` matching
+`tmdbId` absent AND (`tmdbNoMatch` not true OR `detailPending` true), against
+`filmId`s in `screenings` having a `showtimes.dateTime` in the future. Slots live
+in `movie_slots` (keyed by `filmId`) since the storage split — `movies` documents
+carry no `data`/`sourceData` map any more, which is the trap that makes a naive
+slot query return nothing.
 
 ## Rows deliberately left, and why each needs a different tool
 
-- **`kungfupanda4|2008`** (`kinowo_us`, ~17 screenings) is a **mixed** row: its
-  cinema slots carry both "Kung Fu Panda" and "Kung Fu Panda 4", two directors
-  and two runtimes, and it has bounced between the two films. Do **not** hand-pick
-  one — either answer is wrong for half the screenings. It needs
-  `MixedFilmSplitter` (`worker/.../services/movies/MixedFilmSplitter.scala`).
-  Note that most same-film splits in this corpus are intentional; this is the
-  opposite case, one row that should be two.
-- **`it|1990`** (`kinowo_uk`, ~17 screenings) is the 1990 miniseries, which TMDB
-  carries as **television**. A movie-only resolver cannot resolve it, so it is
-  correctly unresolved and consequently invisible. Open question: accept that,
-  or give TV a path.
+- **`kungfupanda4|2008`** (`kinowo_us`, 112 upcoming screenings) is a genuine
+  **mixed** row, and it is VISIBLE — showing the wrong film to most of its
+  venues. It resolves to `tmdbId=9502`, Kung Fu Panda (2008, 90 min, Osborne &
+  Stevenson). One venue (Bear Tooth Theatrepub) really is screening that film;
+  **sixteen** Galaxy/Hangar venues are screening "Kung Fu Panda 4" (94 min, Joel
+  Crawford). So 16 of 17 venues get the wrong poster, cast and ratings. Do not
+  hand-pick — either single answer is wrong for one side.
+
+  **Why `MixedFilmSplitter` never fires on it**, confirmed against the live row:
+  `MixedFilmDetector.identityGroups` filters `cinemaSlots` down to those with a
+  non-empty `originalTitle`, and **no US cinema slot carries one at all** (the
+  Flicks-sourced slots have `title` only), so the row yields zero identity groups
+  and `split` returns empty. Falling back to `title` is not enough on its own
+  either: `titlesDiffer` demands DISJOINT word sets, and "Kung Fu Panda" is a
+  subset of "Kung Fu Panda 4" — a base film and its numbered sequel never differ
+  under that test. Two independent blockers, and loosening either one risks
+  over-splitting a corpus where `splitsSoFar` is asserted to stay zero. Not
+  attempted here for that reason.
+- **`it|1990`** (`kinowo_uk`, 33 upcoming screenings) — **the earlier claim that
+  this is invisible was WRONG.** The row carries `tmdbNoMatch=true` with detail
+  done, so `readyToProject` holds and it IS in `web_movies` and on the site,
+  listed from what the venues published (one of them supplies "It (1990)", 168
+  min, Tommy Lee Wallace). TMDB carrying the 1990 miniseries as television costs
+  it TMDB's poster/synopsis/ratings, not its visibility. There is no invisibility
+  decision to make; giving TV a path is a quality improvement, not a fix.
 
 ## What provably cannot be closed at this layer
 

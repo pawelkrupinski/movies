@@ -1514,6 +1514,17 @@ class CaffeineMovieCache(
     // (prior row present) is NOT collected, so we don't republish every tick.
     val newlyDiverted = scala.collection.mutable.ArrayBuffer.empty[String]
 
+    /** Titles this venue LISTED this tick whose write did not land — a concurrent
+     *  `rekey` invalidated the key between the read and the `putIfPresent`, or the
+     *  stored row could not be read. `resolved` only collects LANDED writes, so
+     *  these titles are absent from `touchedSlots` below and the end-of-tick prune
+     *  would drop their existing slots — deleting showtimes the scrape actually
+     *  SAW, on the strength of a write that failed for an unrelated reason. The
+     *  prune's question is "did the venue stop listing this title", and a skipped
+     *  write is no evidence either way. Diverted titles are deliberately NOT spared:
+     *  there the listing belongs to a different film, which is a real answer. */
+    val listedButNotWritten = scala.collection.mutable.Set.empty[String]
+
     val resolved: Seq[((CinemaMovie, CacheKey, Boolean), SourceData)] =
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).flatMap { cm =>
       val displayTitle = cleaned(cm)
@@ -1713,6 +1724,10 @@ class CaffeineMovieCache(
           // TMDB re-resolve against an empty one. Nothing was recorded this tick, so
           // nothing downstream should be told that something was.
           if (isNew && landed) clearNegative(key)
+          // Spare this title's existing slot from the prune below: we observed the
+          // venue listing it, so the only thing the failed write proves is that the
+          // write failed.
+          if (!landed && !divert) listedButNotWritten += norm
           Option.when(landed)(((cm, key, isNew), slot))
         }
       }
@@ -1747,8 +1762,14 @@ class CaffeineMovieCache(
     else {
       // This cinema's slots, straight from the index — the seventh full-corpus walk
       // this method used to make per venue, and the one that ran on every healthy tick.
+      // Touched by reference, OR named by a listing whose write was skipped — see
+      // `listedButNotWritten`. A slot in neither set is one the venue genuinely
+      // stopped listing, which is the only thing this prune is entitled to act on.
+      val spared = listedButNotWritten.toSet
+      def wasListed(sd: SourceData): Boolean =
+        sd.title.exists(t => spared.contains(normalizer.sanitize(t)))
       val toPrune = corpusIndex.slotsOf(cinema).iterator
-        .collect { case (k, s, sd) if !touchedSlots.contains(sd) => k -> s }
+        .collect { case (k, s, sd) if !touchedSlots.contains(sd) && !wasListed(sd) => k -> s }
         .toList.groupBy(_._1).view.mapValues(_.map(_._2).toSet).toList
       toPrune.foreach { case (k, staleKeys) => dropCinemaSlots(k, _ => staleKeys) }
       // The batch signal the served-films sawtooth needed: which cinema dropped how

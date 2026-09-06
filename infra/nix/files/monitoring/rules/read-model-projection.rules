@@ -131,6 +131,46 @@ groups:
       # that into "pl dropped 4200% of its films" — a critical page for a census
       # outage, which is the failure this rule's own preamble rejects the
       # showtime-volume rules for. `kinowo-corpus-census-stuck` owns that shape.
+      # ---------------------------------------------------------------------------------------
+      # THE SILENT HALF OF THE MIS-RESOLUTION SWEEP. `CinemaCorroboration` finds a row whose own
+      # cinemas contradict the film it resolved to, and `UnresolvedTmdbReaper` re-resolves it.
+      # Rejecting the wrong film and finding the right one are SEPARATE steps, and the second can
+      # fail alone: the row is then left unresolved, stops satisfying `readyToProject`, and the
+      # projector prunes its card -- so the film is invisible on the site while its venues still
+      # sell tickets for it. For a row carrying screenings that is worse than the wrong poster it
+      # started with, and nothing else reports it: the reaper logs a re-try but never an outcome,
+      # every other census gauge gates on `readyToProject` and so drops these rows silently, and
+      # ONE film is far below the ReadModelFilmPruneBurst ratio above.
+      #
+      # Threshold is a plain > 0 because the measured baseline IS zero: on 2026-09-06 all five
+      # countries had 0 such rows (504 unresolved rows across the corpus, every one of them
+      # concluded `tmdbNoMatch` with its cinema detail done, so all of them project and are
+      # visible). Newcomers do not trip this either -- an unresolved new film incubates in
+      # `pending_movies` and reaches `movies` already concluded. `for: 2h` rides out a genuine
+      # transient (a re-key or title-rule wave leaving a row briefly un-concluded) without
+      # letting a stuck row hide: the reaper's own retry period is 24h, so anything still here
+      # after two hours is waiting a day, not a tick.
+      - alert: ReadModelFilmsInvisibleWithScreenings
+        expr: >-
+          sum by (country) (kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}) > 0
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} has {{ $value }} film(s) screening but invisible on the site"
+          description: >-
+            `kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}` counts rows that fail
+            `readyToProject` while their cinemas still list an UPCOMING showtime, so the read model
+            prunes their cards and the films 404 while tickets are on sale. Read the worker's
+            `kinowo.removal-audit` log to name them (`reason=reconcile-prune`), then for each row
+            compare the CINEMA slots' director and runtime against the film it resolved to and
+            search TMDB for the title the venues actually publish. Write the correct `tmdbId` and
+            TMDB slot directly -- do NOT clear `tmdbId` to force a re-resolve, because that prunes
+            the card within minutes and `UnresolvedTmdbReaper` will not revisit the key for up to
+            24h. Its sibling `subset="misresolved"` counts the sweep's INPUT: that falling while
+            this rises is the sweep trading wrong films for invisible ones. Full method in
+            `docs/misresolution-sweep.md`.
+
       - alert: ReadModelFilmPruneBurst
         expr: >-
           (
