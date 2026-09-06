@@ -195,7 +195,7 @@ Layers, in the order worth running:
 
 | Layer | Command | Time |
 |---|---|---|
-| the proof | `sbt "common/testOnly services.movies.StableSpellingUnderDivertSpec"` | seconds |
+| the proof | `sbt "worker/IntegrationTest/testOnly integration.FoldSpellingAgreesWithSettleSpec"` (needs `MONGODB_URI` → **:28017**, and `MONGODB_DB` unset; the unit-level `StableSpellingUnderDivertSpec` this row once named is deleted — see the header) | ~30 s |
 | unit | `sbt testUnit` | ~1 min |
 | integration | `sbt itAll` (needs `MONGODB_URI` → **:28017**, and `MONGODB_DB` unset) | ~35 s |
 | reproduction | `sbt convergencePolandSample` | ~30 s warm, ~6 min cold |

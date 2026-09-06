@@ -3,8 +3,8 @@
 //   common  — shared domain + data layer (models, MovieRepository/MovieCache, Mongo,
 //             EventBus, UptimeMonitor, the HTTP-fetch family). Plain Scala lib.
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
-//   web     — content-serving Play app (controllers, Twirl views). Fly: kinowo.
-//   worker  — scrape + enrich background app (plain `def main`). Fly: <worker>.
+//   web     — content-serving Play app (controllers, Twirl views). The k3s web tier.
+//   worker  — scrape + enrich background app (plain `def main`). The per-country k3s worker pods.
 //             worker's `fixtures` sbt config (src/fixtures/scala) holds the fixture
 //             pipeline harness (TestWiring/FixtureTestWiring/ReadModelSnapshot).
 //             e2e and web/PageTest depend on it via "test->fixtures" / "page->fixtures"
@@ -12,9 +12,12 @@
 //   e2e     — cross-app end-to-end specs (not deployed). dependsOn(web, worker).
 //
 // `root` is a pure aggregator — no sources of its own. web and worker each
-// depend on common and never on each other; they share the Mongo database, not
-// in-process state. testkit and e2e are libraries — only web and worker are
-// ever staged/deployed, so the build still ships exactly two Fly apps.
+// depend on common, and their Compile classpaths never see each other: the two
+// deployed apps share the Mongo database, not in-process state. The one cross
+// edge is test-only — web's PageTest config depends on worker's `fixtures`
+// config ("page->fixtures", below) for the fixture pipeline harness. testkit
+// and e2e are libraries — only web and worker are ever staged/deployed, so the
+// build still ships exactly two apps.
 
 // Every third-party artifact + its version lives in project/Dependencies.scala;
 // the modules below reference those vals so no version string is repeated here.

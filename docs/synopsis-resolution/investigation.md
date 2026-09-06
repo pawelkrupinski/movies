@@ -13,8 +13,10 @@ pipeline — is not yet built.
 
 ## 2026-06-28 refresh
 
-`accepts.jsonl` now holds the **current** corroborated resolutions (18), not the
-original 2026-06-25 snapshot (142, preserved as `accepts-2026-06-25.jsonl`).
+`archive/accepts.jsonl` now holds the **current** corroborated resolutions (18), not the
+original 2026-06-25 snapshot (142, preserved as `archive/accepts-2026-06-25.jsonl`).
+Every data file and page generator named below lives in `archive/` — frozen inputs
+of this investigation, moved out of the way on 2026-09-06.
 
 Why the re-run: verifying the 142 against live prod showed it had decayed badly —
 only 9 rows were still open gaps, 11 had since resolved through the normal
@@ -43,7 +45,7 @@ MONGODB_URI=… TMDB_API_KEY=… sbt 'worker/Test/runMain scripts.GateReport [ou
 
 Current result: 18 accepts (TMDB 2, Filmweb 15, IMDb 1), **all** corroborated by
 director or exact-title, 0 domain-only guesses. Regenerate the report page from
-this data with `python3 regenerate_page.py` (writes `~/Desktop/synopsis-resolutions.html`).
+this data with `python3 archive/regenerate_page.py` (writes `~/Desktop/synopsis-resolutions.html`).
 
 ---
 
@@ -135,7 +137,7 @@ from the TMDB primary title).
 
 ---
 
-## Data files in this directory
+## Data files (in `archive/`)
 
 `accepts.jsonl` — one JSON object per accepted resolution. Fields:
 
@@ -234,8 +236,11 @@ The 51 Filmweb gaps would largely be fixed by:
 - Re-running `FilmwebRatings` for films that previously returned no result
   (currently these are cached as "miss" and not retried automatically).
 
-A `FilmwebMissReaper` that clears the negative cache for films where the TMDB
-synopsis is now available would trigger the retry through the existing pipeline.
+*Historical (2026-06):* the `FilmwebMissReaper` sketched here — a sweep clearing
+the negative cache once a TMDB synopsis arrives — was never built. A Filmweb miss
+is re-attempted by the adaptive `services.cadence.RatingCadence` instead:
+`FilmwebRatings` is a `CacheRefresher`, a `None` result is the signal the cadence
+backs off on, and backing off is not stopping.
 
 ---
 
@@ -244,8 +249,8 @@ synopsis is now available would trigger the retry through the existing pipeline.
 Run from the session scratchpad data (or from `docs/synopsis-resolution/`):
 
 ```python
-# python3 regenerate_page.py
-# reads: accepts.jsonl, enrich.json (same directory)
+# python3 archive/regenerate_page.py
+# reads: accepts.jsonl, enrich.json (from archive/, its own directory)
 # writes: ~/Desktop/synopsis-resolutions.html
 ```
 
@@ -262,10 +267,11 @@ search for `PYEOF`). Key logic:
 
 ---
 
-## GateReport harness (throwaway — recreate if needed)
+## GateReport harness (historical recreate notes)
 
-The harness (`GateReport.scala`, run as `sbt worker/Test/runMain scripts.GateReport`)
-lived in a throwaway worktree and was removed after the investigation. To recreate:
+*The harness is in the tree now — `worker/src/test/scala/scripts/GateReport.scala`,
+see the top of this document.* The notes below are how it was rebuilt on 2026-06-28
+after the original lived in a throwaway worktree and was removed:
 
 **Inputs**: prod `movies` collection (via `scripts/local-mirror/prod-tunnel.sh`
 + `MONGODB_URI` from `.env.local`); live TMDB / Filmweb / IMDb APIs

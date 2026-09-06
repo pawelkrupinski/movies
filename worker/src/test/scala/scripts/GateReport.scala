@@ -38,8 +38,10 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 object GateReport {
 
   private val ApiKey = sys.env.getOrElse("TMDB_API_KEY", "")
-  private val DefaultOut = "/Users/pawel/projects/movies-synopsis-refresh/docs/synopsis-resolution/accepts.jsonl"
-  private val DefaultRatingsOut = "/Users/pawel/projects/movies-synopsis-refresh/docs/synopsis-resolution/ratings-eval.jsonl"
+  // Relative to the sbt working directory (the repo root): the frozen inputs of the
+  // 2026-06 investigation live under docs/synopsis-resolution/archive/.
+  private val DefaultOut = "docs/synopsis-resolution/archive/accepts.jsonl"
+  private val DefaultRatingsOut = "docs/synopsis-resolution/archive/ratings-eval.jsonl"
   private val Tau = 0.06 // stem-IDF synopsis floor (scores run low; corroborators carry precision)
   private val http = new RealHttpFetch
   private val filmweb = new FilmwebClient(http)
