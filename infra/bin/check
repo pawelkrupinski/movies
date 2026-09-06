@@ -298,6 +298,31 @@ else
   failed=1
 fi
 
+step "a log shipper may be restarted unattended"
+# THE ONE THING THAT MAKES EVERY OTHER CHANGE TO logs.nix DEPLOYABLE. vector.service carries its
+# own rendered config in `restartTriggers`, so every edit to what the fleet ships disturbs the unit
+# -- and `nixos-auto-apply` is default-deny, so a host that has not accepted that bounce refuses
+# the WHOLE closure and strands every unrelated change staged for it, with nothing said. That
+# failure is invisible from here, which is why it is asserted here.
+shipper_bad=()
+for host in "${hosts[@]}"; do
+  ships="$(nix "${nix_flags[@]}" eval "$here/../nix#nixosConfigurations.$host.config.fleet.logs.enable" 2>/dev/null)"
+  [ "$ships" = "true" ] || continue
+  accepts="$(nix "${nix_flags[@]}" eval --json \
+    "$here/../nix#nixosConfigurations.$host.config.fleet.autoApply.restartableUnits" 2>/dev/null)"
+  case "$accepts" in
+    *'"vector.service"'*) ;;
+    *) shipper_bad+=("$host") ;;
+  esac
+done
+if [ ${#shipper_bad[@]} -eq 0 ]; then
+  echo "  ok  every host that ships logs accepts a vector restart"
+else
+  echo "  FAILED these hosts ship logs but would refuse the switch that changes the shipper:"
+  printf '         %s\n' "${shipper_bad[@]}"
+  failed=1
+fi
+
 step "replica-set origin"
 # EXACTLY ONE HOST MAY CREATE THE REPLICA SET, and nothing else in this gate can see a violation.
 #

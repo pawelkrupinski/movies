@@ -627,6 +627,31 @@ in
   config = lib.mkIf cfg.enable {
     fleet.logs.settings = vectorConfig;
 
+    # THIS UNIT IS CHEAP TO BOUNCE, AND IT SAYS SO ITSELF RATHER THAN IN THREE HOST FILES.
+    #
+    # `restartableUnits` is default-deny and its description asks each entry to be a HOST saying
+    # which bounce it accepts. This one is the same sentence on all three, because all three run
+    # this shipper and the cost is a property of the shipper rather than of the machine -- so it is
+    # written once, here, where the reasoning can sit next to the mechanism it depends on.
+    #
+    # THE SENTENCE: a vector restart at an arbitrary moment loses nothing. The journal CHECKPOINT
+    # and the disk buffer both live under `stateDir`, so a restart resumes where it stopped instead
+    # of skipping, and pod log files are fingerprinted by CONTENT rather than by offset, so a
+    # re-read does not re-ship. What it costs is a few seconds during which lines are not shipped,
+    # and the journal is still holding them -- the same trade this module already makes, in the
+    # header, for the store being unreachable.
+    #
+    # WITHOUT IT EVERY CHANGE TO THIS FILE STRANDS EVERY OTHER. The rendered configuration is one
+    # of vector.service's own `restartTriggers`, precisely so a changed pipeline is READ rather
+    # than silently written -- which means an edit here disturbs the unit, the applier refuses the
+    # whole closure, and every unrelated change staged for that host waits behind it, SILENTLY.
+    #
+    # ⚠️ IT DOES NOT COVER ITS OWN INTRODUCTION. `nixos-auto-apply` reads this list out of the
+    # closure it is RUNNING, not the one it is judging, so the very switch that adds this name is
+    # weighed without it and needs a hand apply. `AutoApplyBlocked` in nixos-deploy.rules says so
+    # within a day if it is forgotten.
+    fleet.autoApply.restartableUnits = [ "vector.service" ];
+
     assertions = [
       {
         assertion = cfg.serverAddress != "";
