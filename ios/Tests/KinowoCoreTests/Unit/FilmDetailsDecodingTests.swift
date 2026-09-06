@@ -7,7 +7,7 @@ import XCTest
 final class FilmDetailsDecodingTests: XCTestCase {
 
     private func loadDetails() throws -> [FilmDetails] {
-        let json = try Fixtures.load("api_details", ext: "json")
+        let json = try Fixtures.load("api_details")
         let data = Data(json.utf8)
         return try JSONDecoder().decode([FilmDetails].self, from: data)
     }

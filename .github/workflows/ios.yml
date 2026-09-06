@@ -10,8 +10,6 @@ on:
         paths:
             - 'ios/**'
             - '.github/workflows/ios.yml'
-    schedule:
-        - cron: '0 4 * * *'
     workflow_dispatch:
 
 # A newer push to the same ref cancels the older run mid-flight, freeing the
@@ -26,17 +24,16 @@ permissions:
     contents: read
     checks: write
 
-# Three jobs, two lanes:
+# Two jobs, two lanes:
 #
 #   unit-integration ─► Linux swift:5.10 container, fast.
 #   ui-tests         ─► macOS runner + iOS Simulator, slow.
-#   smoke            ─► Linux container, hits prod (kinowo.net).
-#                       Gated on RUN_SMOKE_TESTS=1; scheduled nightly,
-#                       skipped on PRs so kinowo.net doesn't soak
-#                       every push.
+#
+# The live-server contract (the JSON the app decodes) is checked by the
+# `mobile-local-server` job in ci.yml against a FixtureServerMain boot, not
+# against production.
 jobs:
     unit-integration:
-        if: github.event_name != 'schedule'
         runs-on: ubuntu-latest
         container: swift:5.10
         steps:
@@ -49,8 +46,8 @@ jobs:
                   restore-keys: |
                       spm-build-${{ runner.os }}-
 
-            # RUN_SMOKE_TESTS unset → SmokeTestCase XCTSkips itself, so a
-            # plain `swift test` covers Unit + Integration cleanly.
+            # KINOWO_LOCAL_URL unset → LocalServerTestCase XCTSkips itself, so
+            # a plain `swift test` covers the unit suites cleanly.
             - run: swift test --package-path ios --xunit-output ios-unit.xml
 
             - name: Publish test report
@@ -64,7 +61,6 @@ jobs:
 
 
     ui-tests:
-        if: github.event_name != 'schedule'
         runs-on: macos-latest
         steps:
             - uses: actions/checkout@v5
@@ -124,7 +120,7 @@ jobs:
               run: '[ -s xcuitest.xml ] && grep -q "<failure" xcuitest.xml && echo "::warning::XCUITest reported failures — see the iOS XCUITest check" || true'
 
             # Parity check — catches Foundation/Darwin vs Linux drift in
-            # the parser layer that Linux swift-corelibs-foundation
+            # the model / decoder layer that Linux swift-corelibs-foundation
             # wouldn't surface.
             - name: Run SPM tests on macOS
               run: swift test --package-path ios --xunit-output ios-macos.xml
@@ -144,26 +140,3 @@ jobs:
                   name: Kinowo.xcresult
                   path: build/Kinowo.xcresult
                   if-no-files-found: ignore
-
-
-    smoke:
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-        runs-on: ubuntu-latest
-        container: swift:5.10
-        steps:
-            - uses: actions/checkout@v5
-
-            - uses: actions/cache@v5
-              with:
-                  path: ios/.build
-                  key: spm-build-${{ runner.os }}-${{ hashFiles('ios/Package.swift', 'ios/Package.resolved') }}
-                  restore-keys: |
-                      spm-build-${{ runner.os }}-
-
-            - run: swift test --package-path ios --filter Smoke
-              env:
-                  RUN_SMOKE_TESTS: '1'
-
-            - if: failure()
-              run: echo "::warning::Smoke tests failed — kinowo.net response shape drifted; see test output above."
-

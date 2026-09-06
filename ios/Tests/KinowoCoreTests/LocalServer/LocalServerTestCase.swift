@@ -7,15 +7,16 @@ import FoundationNetworking
 
 // Base class for tests that hit a live Play server boot of
 // `FixtureServerMain`. The server is started by the
-// `ios-local-server` GH Actions job (or by hand for local dev — see
-// the LocalServer README) and writes its random port to a file the
-// shell reads back into `KINOWO_LOCAL_URL`.
+// `mobile-local-server` GH Actions job (or by hand for local dev — see
+// the "LocalServer" lane in `ios/README.md`) and writes its random port
+// to a file the shell reads back into `KINOWO_LOCAL_URL`.
 //
-// Why a real server instead of bundled HTML fixtures: the bundled
-// snapshots only catch parser drift; they don't catch server-side
-// HTML changes until the snapshot is regenerated. Running against
-// a live render closes that loop — a template change that breaks
-// `HTMLParser.parse` fails CI on the same PR that introduced it.
+// Why a real server instead of bundled JSON fixtures: the bundled
+// snapshots only catch client-side decoder drift; they don't catch a
+// server-side JSON shape change until the snapshot is regenerated.
+// Running against a live render closes that loop — a `MovieController`
+// change that breaks `JSONDecoder().decode([Film].self, …)` fails CI on
+// the same PR that introduced it.
 //
 // Skipping when `KINOWO_LOCAL_URL` is unset is the correct local-dev
 // behaviour: `swift test` from `ios/` shouldn't require sbt running.
@@ -36,40 +37,53 @@ class LocalServerTestCase: XCTestCase {
         self.baseURL = url
     }
 
-    /// Synchronous fetch helper. Uses `URLSession.dataTask` +
-    /// `DispatchSemaphore` rather than the async API because Swift
-    /// 5.10's FoundationNetworking on Linux doesn't ship
-    /// `URLSession.shared.data(for:)`. The completion-handler
-    /// dataTask is present on both Darwin and Linux, so this one
-    /// helper works in both CI containers.
-    func fetchHTML(path: String) throws -> String {
-        guard let url = URL(string: path, relativeTo: baseURL) else {
-            throw URLError(.badURL)
-        }
+    /// One fetched API response: the body and the headers the app's
+    /// conditional-request path reads back (`Last-Modified`).
+    struct Fetched {
+        let data: Data
+        let response: HTTPURLResponse
+
+        var lastModified: String? { response.value(forHTTPHeaderField: "Last-Modified") }
+    }
+
+    /// Synchronous GET of `url`, sent the way `RepertoireStore` /
+    /// `DetailsStore` send theirs (same User-Agent, cache bypass). Uses
+    /// `URLSession.dataTask` + `DispatchSemaphore` rather than the async
+    /// API because Swift 5.10's FoundationNetworking on Linux doesn't ship
+    /// `URLSession.shared.data(for:)`. The completion-handler dataTask is
+    /// present on both Darwin and Linux, so this one helper works in both
+    /// CI containers.
+    func fetch(_ url: URL) throws -> Fetched {
         var request = URLRequest(url: url)
-        request.setValue("KinowoLocalServerTests/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
         let semaphore = DispatchSemaphore(value: 0)
-        var captured: Result<String, Error> = .failure(URLError(.badServerResponse))
+        var captured: Result<Fetched, Error> = .failure(URLError(.badServerResponse))
         URLSession.shared.dataTask(with: request) { data, response, error in
             defer { semaphore.signal() }
             if let error = error {
                 captured = .failure(error)
                 return
             }
-            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+            guard let http = response as? HTTPURLResponse, let data = data,
+                  (200..<300).contains(http.statusCode) else {
                 captured = .failure(URLError(.badServerResponse))
                 return
             }
-            guard let data = data else {
-                captured = .failure(URLError(.badServerResponse))
-                return
-            }
-            captured = .success(String(decoding: data, as: UTF8.self))
+            captured = .success(Fetched(data: data, response: http))
         }.resume()
         // Localhost over loopback; 30s is generous for any real fail mode.
         _ = semaphore.wait(timeout: .now() + .seconds(30))
         return try captured.get()
+    }
+
+    /// Fetch `/{city}/api/{endpoint}` — the exact URL `City.apiURL` builds
+    /// for the production stores — and decode it with the same bare
+    /// `JSONDecoder()` they use. Anything the stores would fail on, this
+    /// fails on.
+    func decodeCityAPI<T: Decodable>(_ type: T.Type, city: String, endpoint: String) throws -> (value: T, fetched: Fetched) {
+        let fetched = try fetch(City.apiURL(base: baseURL, slug: city, endpoint: endpoint))
+        return (try JSONDecoder().decode(type, from: fetched.data), fetched)
     }
 }

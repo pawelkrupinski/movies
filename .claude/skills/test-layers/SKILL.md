@@ -32,10 +32,11 @@ is that the local toolchain is missing (e.g. no full Xcode for
 - **iOS LocalServer** — `sbt 'web/PageTest/runMain tools.FixtureServerMain
   <port-file>'` in one shell, `KINOWO_LOCAL_URL=http://127.0.0.1:$(cat
   <port-file>) swift test --package-path ios --filter LocalServer`
-  in another. Exercises the real iOS listing parser against the live
-  fixture-server render. (The detail screen no longer parses HTML — it
-  reads the `/api/details` JSON — so detail changes are covered by the
-  unit suites, not here.)
+  in another. Decodes the live `/{city}/api/repertoire`, `/api/details`
+  and `/api/cinemas` JSON through the app's own `Codable` models with the
+  stores' bare `JSONDecoder()` — the same line `RepertoireStore` /
+  `DetailsStore` run. (The app has no HTML path any more; a Twirl
+  template change cannot break it, a `MovieController` JSON change can.)
 - **`swift test --package-path ios`** — iOS unit / integration suites
   without the live server. Quicker; required for any change to iOS
   model / parser logic regardless of whether you also need LocalServer.

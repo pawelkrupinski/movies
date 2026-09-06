@@ -198,12 +198,12 @@ jobs:
     # Mobile LocalServer tests — iOS + Android share ONE FixtureServerMain boot.
     # Boots the fixture Play server (same FixtureServerMain + InMemoryMovieRepository
     # the Playwright suite uses) once, then runs both the iOS `LocalServer*` XCTest
-    # cases and the Android `LocalServerApiTest` against it. KinowoCore's real
-    # parsers (HTMLParser, FilmDetailParser) crawl the HTML the Twirl templates
-    # rendered; Android's production KinowoApi + kotlinx models decode the live
-    # /api/repertoire + /api/details JSON. The cross-cutting gate: a server-side
-    # template / MovieController JSON drift that would break either mobile client
-    # fails CI here, on the PR that introduces it.
+    # cases and the Android `LocalServerApiTest` against it. Both decode the live
+    # /{city}/api/repertoire + /api/details (+ /api/cinemas on iOS) JSON through
+    # their production models — KinowoCore's `Codable` types with the stores'
+    # bare `JSONDecoder()`, Android's KinowoApi + kotlinx models. The
+    # cross-cutting gate: a MovieController JSON drift that would break either
+    # mobile client fails CI here, on the PR that introduces it.
     #
     # Was two separate jobs, each paying the SAME ~4-min FixtureServerMain boot to
     # run a <20s test. Merged so the boot is shared and one runner slot is freed —

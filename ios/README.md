@@ -3,10 +3,10 @@
 SwiftUI client for [kinowo.net](https://kinowo.net) — the same repertuar
 ("/" page) the web app shows, on an iPhone.
 
-The app calls `/{city}/api/repertoire` (film grid) and `/{city}/api/details`
-(synopsis, trailers) as JSON. `HTMLParser` is still used for the LocalServer
-fixture tests (it parses listing HTML produced by the fixture server), but the
-production app fetches JSON, not HTML.
+The app calls `/{city}/api/repertoire` (film grid), `/{city}/api/details`
+(synopsis, trailers), `/{city}/api/cinemas` (cinema universe + areas) and
+`/api/catalog` (countries + cities) as JSON. There is no HTML path: the models
+in `Models/` are `Codable` and the stores decode the API bodies directly.
 
 ## Open & run
 
@@ -40,8 +40,8 @@ ios/
 │   │   └── Filters.swift       DateFilter (anytime/today/tomorrow/week)
 │   ├── Networking/
 │   │   ├── RepertoireClient.swift  URLSession fetcher + @Published store
-│   │   ├── HTMLParser.swift        Slice-and-regex extractor
-│   │   └── HTMLDecoding.swift      Cheap `&amp;`/`&#39;`/… decoder
+│   │   ├── DetailsStore.swift      `/api/details` fetcher (synopsis, trailers)
+│   │   └── CatalogStore.swift      `/api/catalog` fetcher (countries, cities)
 │   ├── Storage/
 │   │   └── UserPreferences.swift   UserDefaults-backed hidden-films state
 │   ├── Views/
@@ -54,10 +54,9 @@ ios/
 │   └── Assets.xcassets/
 ├── Package.swift                  SPM manifest — KinowoCore library + tests
 ├── Tests/KinowoCoreTests/         XCTest cases (Foundation-only)
-│   ├── Unit/                      Per-component tests (parsers, filters, prune)
-│   ├── Integration/               Pipeline tests against captured fixtures
-│   ├── Smoke/                     Live-network tests (env-gated)
-│   ├── Fixtures/                  Captured production HTML
+│   ├── Unit/                      Per-component tests (decoders, filters, prune, metrics)
+│   ├── LocalServer/               JSON-contract tests against a live fixture server (env-gated)
+│   ├── Fixtures/                  Captured production `/api/details` JSON
 │   └── Support/Fixtures.swift     Bundle-resource loader
 └── KinowoUITests/                 XCUITest target — drives the simulator
 ```
@@ -67,12 +66,17 @@ ios/
 Three lanes:
 
 ```sh
-# Unit + integration (fast, offline). ~125 tests, runs in ~2s on macOS.
+# Unit (fast, offline). Runs in a few seconds on macOS.
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcrun swift test
 
-# Smoke tests against the live site (opt-in — hits kinowo.net).
-RUN_SMOKE_TESTS=1 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
-    xcrun swift test --filter Smoke
+# LocalServer: the JSON contract against a live FixtureServerMain boot
+# (opt-in — skipped when KINOWO_LOCAL_URL is unset). Boot the fixture
+# server from the repo root in one shell —
+#   sbt 'web/PageTest/runMain tools.FixtureServerMain <port-file>'
+# — then point the suite at the port it wrote:
+KINOWO_LOCAL_URL=http://127.0.0.1:$(cat <port-file>) \
+    DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+    xcrun swift test --filter LocalServer
 
 # UI tests on a booted simulator (requires full Xcode).
 DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test \
@@ -81,13 +85,14 @@ DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild test \
     CODE_SIGNING_ALLOWED=NO
 ```
 
-CI runs the same three lanes (`.github/workflows/ios.yml`): unit + integration
-on every PR (Linux Docker, swift:5.10), UI tests on every PR (macos-latest
-runner), smoke nightly at 04:00 UTC against production.
+CI runs the unit and UI lanes from `.github/workflows/ios.yml` (Linux Docker
+swift:5.10 and a macos-latest runner, on every PR) and the LocalServer lane
+from the `mobile-local-server` job in `ci.yml`, which boots one fixture
+server for the iOS and Android suites together.
 
-The smoke tests catch API drift against the live site; the unit/integration
-tests catch parser/decoder regressions against pinned fixtures so the client
-doesn't quietly rot between live-site changes.
+The LocalServer tests catch server-side JSON drift on the PR that introduces
+it; the unit tests catch decoder regressions against pinned fixtures so the
+client doesn't quietly rot between server changes.
 
 ## Known gaps
 

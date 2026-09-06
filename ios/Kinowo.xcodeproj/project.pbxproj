@@ -33,8 +33,6 @@
 		DD00000000000000000033 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000033 /* UserProfile.swift */; };
 		DD00000000000000000034 /* UserStateClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000034 /* UserStateClient.swift */; };
 		DD00000000000000000035 /* TrailerEmbedHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000035 /* TrailerEmbedHTML.swift */; };
-		DD00000000000000000008 /* HTMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000008 /* HTMLParser.swift */; };
-		DD00000000000000000009 /* HTMLDecoding.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000009 /* HTMLDecoding.swift */; };
 		DD0000000000000000000A /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000A /* UserPreferences.swift */; };
 		DD0000000000000000000B /* FilmGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000B /* FilmGridView.swift */; };
 		DD0000000000000000000C /* FilmCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000C /* FilmCardView.swift */; };
@@ -53,9 +51,6 @@
 		DD00000000000000000211 /* FilmDetailStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000211 /* FilmDetailStyle.swift */; };
 		DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000096 /* ShowtimeTuningScreen.swift */; };
 		DD00000000000000000095 /* RatingPillStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000095 /* RatingPillStyle.swift */; };
-		DD00000000000000000012 /* HTMLPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000012 /* HTMLPrimitives.swift */; };
-		DD00000000000000000013 /* ShowingsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000013 /* ShowingsParser.swift */; };
-		DD00000000000000000014 /* RatingsParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000014 /* RatingsParser.swift */; };
 		DD00000000000000000040 /* FilmDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000040 /* FilmDetails.swift */; };
 		DD00000000000000000041 /* CinemaLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000041 /* CinemaLink.swift */; };
 		DD00000000000000000042 /* DetailsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000042 /* DetailsStore.swift */; };
@@ -141,8 +136,6 @@
 		CC00000000000000000033 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		CC00000000000000000034 /* UserStateClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserStateClient.swift; sourceTree = "<group>"; };
 		CC00000000000000000035 /* TrailerEmbedHTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailerEmbedHTML.swift; sourceTree = "<group>"; };
-		CC00000000000000000008 /* HTMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLParser.swift; sourceTree = "<group>"; };
-		CC00000000000000000009 /* HTMLDecoding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLDecoding.swift; sourceTree = "<group>"; };
 		CC0000000000000000000A /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferences.swift; sourceTree = "<group>"; };
 		CC0000000000000000000B /* FilmGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmGridView.swift; sourceTree = "<group>"; };
 		CC0000000000000000000C /* FilmCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmCardView.swift; sourceTree = "<group>"; };
@@ -161,9 +154,6 @@
 		CC00000000000000000211 /* FilmDetailStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetailStyle.swift; sourceTree = "<group>"; };
 		CC00000000000000000096 /* ShowtimeTuningScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowtimeTuningScreen.swift; sourceTree = "<group>"; };
 		CC00000000000000000095 /* RatingPillStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingPillStyle.swift; sourceTree = "<group>"; };
-		CC00000000000000000012 /* HTMLPrimitives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HTMLPrimitives.swift; sourceTree = "<group>"; };
-		CC00000000000000000013 /* ShowingsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShowingsParser.swift; sourceTree = "<group>"; };
-		CC00000000000000000014 /* RatingsParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RatingsParser.swift; sourceTree = "<group>"; };
 		CC00000000000000000040 /* FilmDetails.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmDetails.swift; sourceTree = "<group>"; };
 		CC00000000000000000041 /* CinemaLink.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CinemaLink.swift; sourceTree = "<group>"; };
 		CC00000000000000000042 /* DetailsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DetailsStore.swift; sourceTree = "<group>"; };
@@ -312,11 +302,6 @@
 				CC00000000000000000042 /* DetailsStore.swift */,
 				CC00000000000000000E06 /* CatalogStore.swift */,
 				CC00000000000000000043 /* DetailsCache.swift */,
-				CC00000000000000000008 /* HTMLParser.swift */,
-				CC00000000000000000012 /* HTMLPrimitives.swift */,
-				CC00000000000000000013 /* ShowingsParser.swift */,
-				CC00000000000000000014 /* RatingsParser.swift */,
-				CC00000000000000000009 /* HTMLDecoding.swift */,
 				CC00000000000000000035 /* TrailerEmbedHTML.swift */,
 				CC00000000000000000050 /* PosterStore.swift */,
 			);
@@ -517,8 +502,6 @@
 				DD00000000000000000033 /* UserProfile.swift in Sources */,
 				DD00000000000000000034 /* UserStateClient.swift in Sources */,
 				DD00000000000000000035 /* TrailerEmbedHTML.swift in Sources */,
-				DD00000000000000000008 /* HTMLParser.swift in Sources */,
-				DD00000000000000000009 /* HTMLDecoding.swift in Sources */,
 				DD0000000000000000000A /* UserPreferences.swift in Sources */,
 				DD0000000000000000000B /* FilmGridView.swift in Sources */,
 				DD0000000000000000000C /* FilmCardView.swift in Sources */,
@@ -537,9 +520,6 @@
 				DD00000000000000000211 /* FilmDetailStyle.swift in Sources */,
 				DD00000000000000000096 /* ShowtimeTuningScreen.swift in Sources */,
 				DD00000000000000000095 /* RatingPillStyle.swift in Sources */,
-				DD00000000000000000012 /* HTMLPrimitives.swift in Sources */,
-				DD00000000000000000013 /* ShowingsParser.swift in Sources */,
-				DD00000000000000000014 /* RatingsParser.swift in Sources */,
 				DD00000000000000000040 /* FilmDetails.swift in Sources */,
 				DD00000000000000000041 /* CinemaLink.swift in Sources */,
 				DD00000000000000000042 /* DetailsStore.swift in Sources */,

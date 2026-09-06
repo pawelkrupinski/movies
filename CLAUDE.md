@@ -21,9 +21,10 @@ layers and which kinds of changes they catch:
 - **Playwright** (`page-tests-playwright`) — mobile + desktop ×
   Chromium / WebKit / Firefox / Edge. Required for visible UX changes —
   card-tap, pill rows, gestures, the empty / loading states.
-- **iOS LocalServer** — the real iOS listing parser against a live
-  fixture-server render. Required for any change to either side of that
-  contract: server-side template/HTML shape or iOS `HTMLParser`.
+- **iOS LocalServer** — the iOS JSON decoders (`[Film]`, `[FilmDetails]`,
+  `CinemaCatalog`) against a live fixture-server `/{city}/api/*` render.
+  Required for any change to either side of that contract: the
+  `MovieController` JSON shape or the iOS `Codable` models.
 - **`swift test --package-path ios`** — iOS unit / integration suites
   without the live server. Required for any change to iOS model /
   parser logic regardless of whether you also need LocalServer.

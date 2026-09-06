@@ -7,8 +7,8 @@ import PackageDescription
 // `swift test` on Linux/Docker without a full Xcode install.
 //
 // Three targets:
-// - `KinowoCore` — Foundation-only sources (Models + parser layer of
-//   Networking). The Views/, Storage/, ContentView, KinowoApp,
+// - `KinowoCore` — Foundation-only sources (Models + the cache /
+//   poster layer of Networking). The Views/, Storage/, ContentView, KinowoApp,
 //   RepertoireClient, DetailsStore files are excluded because they
 //   import SwiftUI/UIKit/Combine, none of which exist on
 //   swift-corelibs-foundation. The Xcode app still compiles those
@@ -20,8 +20,8 @@ import PackageDescription
 // - `KinowoAuth` — Combine-dependent auth/sync layer (macOS/iOS only).
 //   Compiled as a separate module so StateSyncService can be tested via
 //   `swift test` on macOS without pulling SwiftUI into KinowoCore.
-// - `KinowoCoreTests` — unit + integration + smoke XCTest cases,
-//   resourced with captured production HTML fixtures.
+// - `KinowoCoreTests` — unit + LocalServer XCTest cases, resourced
+//   with a captured production `/api/details` JSON fixture.
 // - `KinowoAuthTests` — sync-service tests (Combine; macOS/iOS only).
 #if canImport(Combine)
 let authTargets: [Target] = [
