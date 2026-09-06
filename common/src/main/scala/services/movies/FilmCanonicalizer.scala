@@ -429,8 +429,15 @@ object FilmCanonicalizer {
           // how the Poland convergence leg found it. Refusing on the SAME evidence the
           // splitter uses is what makes the two agree: an edge may only fold what the
           // splitter would not split back out.
+          // …and refusing on what the TITLE itself says, because the cinemas can be silent
+          // on this axis too: UK slots publish an original title one time in nine, so
+          // "The Hunger Games: Mockingjay Pt 2 (2026 Re-Release)" folded onto the 2012
+          // "The Hunger Games" twenty times in nine days of logs with nothing to stop it.
+          // A sequel carries the base title exactly the way a decoration does; the
+          // ordinal is the difference (`SequelMarker`).
           val matched = cands.collect {
             case (base, i) if isTokenRun(base, whole) &&
+              !SequelMarker.namesAnotherEntry(base, whole) &&
               !MixedFilmDetector.describeDifferentFilms(rows(i)._2, rows(j)._2, normalizer) => i
           }
           if (matched.map(i => rows(i)._2.tmdbId.get).distinct.lengthIs == 1) matched.foreach(union(_, j))

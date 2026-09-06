@@ -184,6 +184,30 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // Nine days of prod re-key logs (2026-08-29 → 09-06): "The Hunger Games: Mockingjay
+  // Pt 2 (2026 Re-Release)" folded onto the 2012 "The Hunger Games" twenty times, so UK
+  // venues screening the re-release served the first film's poster, cast and ratings.
+  // The containment edge saw the base title as a prefix run and nothing to refuse on —
+  // UK slots publish an original title one time in nine. The ordinal is the refusal.
+  it should "not fold a sequel onto the first film just because it carries its title" in {
+    val rows = Seq(
+      resolved("The Hunger Games", tmdbId = 70160, tmdbYear = 2012, cinema = Multikino),
+      unresolved("The Hunger Games: Mockingjay Pt 2 (2026 Re-Release)", None, cinema = Helios))
+    Seq(rows, rows.reverse).foreach { ordered =>
+      val components = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer)
+      withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
+        components should have size 2
+      }
+    }
+  }
+
+  it should "still fold a banner-decorated screening of the same film" in {
+    val rows = Seq(
+      resolved("Toy Story 5", tmdbId = 1, tmdbYear = 2026, cinema = Multikino),
+      unresolved("Toddler Club: Toy Story 5", None, cinema = Helios))
+    FilmCanonicalizer.groupByFilm(rows, titleNormalizer) should have size 1
+  }
+
   it should "fold a non-Latin-original film keyed under its English title via the englishTitle alias" in {
     // The Taiwanese "左撇子女孩" screens in Poland as both the Polish TMDB title
     // "Left-Handed Girl. To była ręka… diabła!" and the plain English release
