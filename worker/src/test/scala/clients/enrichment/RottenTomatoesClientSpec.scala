@@ -237,24 +237,6 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.pickBestSearchHit(hits, "Lalka", Some(2026)) shouldBe None
   }
 
-  it should "still take a modifier hit that agrees on the year, undated exact or not" in {
-    // The suppression above must key off the modifier failing the YEAR, not off an
-    // exact title merely existing. RT often omits the year on a new release, so an
-    // undated exact hit is common — and blanking the modifier there loses the correct
-    // answer for the very films this guard was added to get right.
-    val c = new RottenTomatoesClient(stub(Set.empty))
-    val undatedExact = Seq(
-      RottenTomatoesClient.SearchHit("lalka", "Lalka", None, None),
-      RottenTomatoesClient.SearchHit("lalka_rr", "Lalka - Re-Release", Some(2026), None))
-    c.pickBestSearchHit(undatedExact, "Lalka", Some(2026)).map(_.slug) shouldBe Some("lalka_rr")
-
-    // And a wrong-year exact alongside a right-year modifier: the remaster is the film.
-    val wrongYearExact = Seq(
-      RottenTomatoesClient.SearchHit("nosferatu", "Nosferatu", Some(1922), None),
-      RottenTomatoesClient.SearchHit("nosferatu_2024", "Nosferatu: Remastered", Some(2024), None))
-    c.pickBestSearchHit(wrongYearExact, "Nosferatu", Some(2024)).map(_.slug) shouldBe Some("nosferatu_2024")
-  }
-
   it should "REJECT an exact-title hit a different film's distance away" in {
     val c = new RottenTomatoesClient(stub(Set.empty))
     val hits = Seq(RottenTomatoesClient.SearchHit("lalka_1969", "Lalka", Some(1969), None))
@@ -422,6 +404,18 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     c.urlForAny(Seq("Poczatek", "Inception", "Never Reached")) shouldBe
       Some("https://www.rottentomatoes.com/m/inception")
     fetch.requested.exists(_.contains("never_reached")) shouldBe false
+  }
+
+  it should "not let a Restored hit rescue an exact title that failed the year" in {
+    // A "- Restored" / "- Re-Release" hit carries the RE-RELEASE year, so it confirms
+    // against a 2026 query while its page is the 1968 film. Year-filtering the modifier
+    // rather than suppressing it therefore reopens the /m/lalka_1969 leak — which is why
+    // the fallback is gated on there being no exact title AT ALL.
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    val hits = Seq(
+      RottenTomatoesClient.SearchHit("lalka_1969", "Lalka", Some(1968), None),
+      RottenTomatoesClient.SearchHit("lalka_restored", "Lalka - Restored", Some(2026), None))
+    c.pickBestSearchHit(hits, "Lalka", Some(2026)) shouldBe None
   }
 
   it should "refuse rather than fall through to a modifier when the exact title fails the year" in {

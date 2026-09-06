@@ -1635,8 +1635,12 @@ class CaffeineMovieCache(
           // it there deletes the venue's showtimes and puts them nowhere.
           val landed = existingOpt match {
             case Some(_) =>
+              // Its RESULT, not `true`. `putIfPresent` answers false when the key is no
+              // longer in Caffeine by the time it computes — a concurrent `rekey` of a
+              // DIFFERENT title invalidates keys without holding this title's lock — and
+              // assuming the write landed is what lets the move below strip a slot that
+              // was never replaced. The gate is only worth having if it reads the write.
               putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
-              true
             case None =>
               // A cache MISS is not proof of first-time: a restart/eviction/re-key
               // can leave a fully-rated Mongo row unseen by Caffeine. Build the

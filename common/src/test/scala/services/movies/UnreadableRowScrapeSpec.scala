@@ -57,6 +57,18 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     override def close() = ()
   }
 
+  /** A cache whose row-update reports failure on demand — what a lost race looks like
+   *  to the caller. Named rather than anonymous: an anonymous subclass capturing a
+   *  local `var` trips a JVM VerifyError under this Scala version. */
+  private class LosesWrites(repo: MovieRepository) extends CaffeineMovieCache(repo, normalizer = titleNormalizer) {
+    var loseWrites = false
+    override private[services] def putIfPresent(
+      key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
+      val landed = super.putIfPresent(key, updater)
+      !loseWrites && landed
+    }
+  }
+
   private val stored = StoredMovieRecord("Live Film", Some(2026), liveFilm)
 
   /** One cinema's scrape of `title` — the Multikino listing that lands on a cold cache. */
@@ -160,5 +172,45 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     val written = repo.upserts.map(_._2)
     withClue(s"wrote ${written.map(_.data.keySet)}: ")(
       written.exists(_.data.contains(Helios)) shouldBe true)
+  }
+
+  // The OTHER way the write can fail to land, which the unreadable-row case cannot
+  // reach: the row IS in Caffeine when the loop looks, and gone by the time
+  // `putIfPresent` computes — a concurrent `rekey` of a DIFFERENT title invalidates
+  // keys without holding this title's lock. The gate has to read the write's own
+  // answer for that; assuming `true` because the key was present a moment ago is the
+  // same data loss with a narrower window.
+  it should "not strip the slot when the write itself reports it did not land" in {
+    val cache = new LosesWrites(new Repo(Seq.empty, readable = true))
+    // TWO rows carrying this venue's slot for the same title, so the scrape lands on
+    // one (the canonical) and the move would drop the other.
+    val slot  = SourceData(title = Some("Live Film"), showtimes = Seq(showtime))
+    val keep  = cache.keyOf("Live Film", Some(2026))
+    val other = cache.keyOf("Live Film", Some(2027))
+    cache.put(keep,  MovieRecord(data = Map[Source, SourceData](Multikino -> slot)))
+    cache.put(other, MovieRecord(data = Map[Source, SourceData](Multikino -> slot)))
+    // Filler so the one-film tick below is a SHRINK the end-of-tick prune stands down
+    // for (`MinSlotsForShrinkGuard` 8, `PruneFloorRatio` 0.5). Without it the prune
+    // removes the slot for its own good reasons and hides what the move did.
+    (1 to 9).foreach { i =>
+      cache.put(cache.keyOf(s"Filler $i", Some(2026)), MovieRecord(data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some(s"Filler $i"), showtimes = Seq(showtime)))))
+    }
+    def slotsOn(k: CacheKey) = cache.get(k).toSeq
+      .flatMap(_.data.keys.filter(Source.cinemaOf(_).contains(Multikino)))
+    withClue("both seeded rows must hold the venue's slot: ") {
+      slotsOn(keep)  should not be empty
+      slotsOn(other) should not be empty
+    }
+
+    // The write into the canonical row reports that it did not land.
+    cache.loseWrites = true
+    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film", year = 2026)))
+
+    // `other` is the row the move would strip. Asserting the UNION passes even when it
+    // is stripped, because `keep` still has its own slot — which is how this test first
+    // went green against the very bug it is for.
+    withClue(s"keep=${cache.get(keep).map(_.data.keySet)} other=${cache.get(other).map(_.data.keySet)}: ")(
+      slotsOn(other) should not be empty)
   }
 }

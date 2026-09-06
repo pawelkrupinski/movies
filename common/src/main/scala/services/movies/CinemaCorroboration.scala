@@ -137,8 +137,9 @@ object CinemaCorroboration {
     a == b || (a.length >= 8 && b.contains(a)) || (b.length >= 8 && a.contains(b))
 
   /** Honorific suffixes, dropped before a credit is compared so they cannot pose
-   *  as the surname. */
-  private val Suffixes = Set("jr", "sr", "ii", "iii", "iv")
+   *  as the surname. Shared with `services.tasks.CrewConfirmation`, which drops them
+   *  before shortening a name for the same reason. */
+  private[services] val Suffixes = Set("jr", "sr", "ii", "iii", "iv")
 
   /** Same SURNAME and a compatible first initial — the shape a familiar form
    *  takes: "Tom Donnelly" for "Thomas Michael Donnelly", "Dave Derrick Jr." for

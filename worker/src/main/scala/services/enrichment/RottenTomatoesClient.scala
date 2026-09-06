@@ -190,6 +190,10 @@ class RottenTomatoesClient(http: HttpFetch) {
       // hit ("<title> - Re-Release") stays unguarded on purpose — it is explicitly
       // the same film re-issued, so a large gap is expected and correct.
       val exactTitle = hits.filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
+      // Strict, INCLUDING the undated: "a hit that declines to say WHEN is not evidence
+      // that it is the right film" — /m/lalka_1969 publishes no year on the page either,
+      // which is exactly how the leak below reached prod. That rejection is deliberate
+      // and its own test; do not relax it to rescue a modifier fallback.
       val exact      = exactTitle.filter(h => MetacriticClient.yearConfirms(year, h.year))
       val modifier   = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
       // The modifier branch is a fallback for "no exact title here at all" — NOT for
@@ -198,17 +202,16 @@ class RottenTomatoesClient(http: HttpFetch) {
       // whose exact hit carries no year would land on the 1968 ":  Restored" re-issue,
       // which is the very page the year guard was added to stop. An exact title that
       // fails the year means this film is not here.
-      // Three cases, not two. An exact title that PASSES the year wins outright. When
-      // none passes, a modifier hit may still be right — but only on its own year:
-      // suppressing it whenever any exact title existed threw away the correct answer
-      // for an UNDATED exact hit (RT often omits the year on a new release), which is
-      // most of them. And letting it through unguarded is what put the 2026 "Lalka" on
-      // /m/lalka_1969. So it must earn it. Only where RT has no exact title at all
-      // does the unguarded fallback stand — there the decorated name is all RT has.
+      // The modifier fallback is for "RT has no exact title at all", never for "the
+      // exact titles were rejected". Year-filtering the modifier instead does NOT work:
+      // a "- Restored" / "- Re-Release" hit carries the RE-RELEASE year, so it confirms
+      // against a 2026 query while its page is the 1968 film — which is the /m/lalka_1969
+      // leak this guard exists to stop, reopened. An exact title that positively
+      // disagreed on the year means this film is not here.
       val candidates =
-        if (exact.nonEmpty)        exact
+        if (exact.nonEmpty)          exact
         else if (exactTitle.isEmpty) modifier
-        else                       modifier.filter(h => MetacriticClient.yearConfirms(year, h.year))
+        else                         Seq.empty
       candidates
         .sortBy(h => year.flatMap(y => h.year.map(hy => math.abs(hy - y))).getOrElse(Int.MaxValue))
         .headOption

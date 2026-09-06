@@ -88,15 +88,20 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
     // suffix as the last word yields "David Jr." — which discards the one token that
     // identifies the person, and whoever TMDB returns for it is by construction off
     // the film's crew, so a correct row gets force-re-resolved.
-    val words = name.split("\\s+").filter(_.nonEmpty).filterNot(isSuffix)
-    Option.when(words.length >= 3 && !words.tail.init.exists(isParticle))(
-      s"${words.head} ${words.last}")
+    val words = name.split("\\s+").filter(_.nonEmpty)
+    val core  = words.filterNot(isSuffix)
+    // The length test is on the SUFFIX-FREE tokens, and the result only has to differ
+    // from what was already asked. Requiring three of them refused "Robert Downey Jr."
+    // outright — the suffix is stripped, leaving two, and the retry the fallback exists
+    // for never ran for exactly the names that need it most.
+    val shortened = Option.when(core.length >= 2)(s"${core.head} ${core.last}")
+    shortened.filter(_ != name).filterNot(_ => core.tail.dropRight(1).exists(isParticle))
   }
 
   /** Jr. / Sr. / II / III / IV — the same set `CinemaCorroboration` strips before
    *  comparing credits, for the same reason: they are not the surname. */
   private def isSuffix(word: String): Boolean =
-    CrewConfirmation.Suffixes.contains(word.toLowerCase.stripSuffix("."))
+    CinemaCorroboration.Suffixes.contains(word.toLowerCase.stripSuffix("."))
 
   /** The lowercase-by-convention words that bind a surname to its prefix. Compared
    *  case-insensitively because venues capitalise inconsistently ("Von Trier"). */
@@ -107,8 +112,6 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
 object CrewConfirmation {
   /** Nobiliary and patronymic particles: a middle word that belongs to the SURNAME
    *  rather than being a middle name, so shortening across it renames the person. */
-  private val Suffixes: Set[String] = Set("jr", "sr", "ii", "iii", "iv")
-
   private val Particles: Set[String] = Set(
     "von", "van", "de", "del", "della", "der", "den", "di", "da", "dos", "das",
     "du", "la", "le", "el", "al", "bin", "ibn", "ben", "af", "av", "ter", "te", "zu")
