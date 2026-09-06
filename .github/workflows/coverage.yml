@@ -1,0 +1,136 @@
+name: Coverage
+
+# Unit-test coverage for the three deployed modules, measured with sbt-scoverage
+# (configured in build.sbt since the plugin landed, but nothing ever RAN it, so
+# nobody knew where the ~5,700 unit cases do not reach).
+#
+# NOT A JOB IN ci.yml, ON PURPOSE. An instrumented run is ~2× the wall-clock of
+# the `test` job, and ci.yml is (a) at the account's 20-concurrent-runner budget
+# — a 21st job queues, and CiRunnerBudgetSpec fails the build that adds one —
+# and (b) the thing main.yml's deploy `needs`, so even a `continue-on-error`
+# job there would hold every deploy until coverage finished. Coverage gates
+# nothing, so it must contend with nothing: it runs AFTER `Main` has completed
+# (deploy included), when the account's runners are idle, and on demand.
+# CoverageWorkflowSpec locks that trigger shape.
+#
+# One report per push to main is plenty. A newer run supersedes an older one
+# still in flight rather than queueing behind it — the newer commit's number is
+# the one anyone will read.
+on:
+    workflow_run:
+        workflows: [Main]
+        types: [completed]
+    workflow_dispatch:
+
+concurrency:
+    group: coverage
+    cancel-in-progress: true
+
+jobs:
+    coverage:
+        runs-on: ubuntu-latest
+        # ~2× the `test` job's instrumented-free run, plus a cold zinc cache on
+        # its own key; the ceiling is a guard against a hung sbt, not a target.
+        timeout-minutes: 90
+        permissions:
+            contents: read
+        steps:
+            # `workflow_run` checks out the DEFAULT branch by default, which is
+            # usually — but not always — the commit that just deployed: a second
+            # push landing while Main runs would otherwise be measured under the
+            # first push's run. Pin to the triggering run's SHA; a manual dispatch
+            # has no such SHA and measures the ref it was dispatched from.
+            - uses: actions/checkout@v5
+              with:
+                  ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+            # Same as the `test` job in ci.yml: nine specs under
+            # worker/src/test/scala/deploy/ read the GitOps manifests at this
+            # path, and `worker/test` runs them.
+            - uses: actions/checkout@v5
+              with:
+                  repository: pawelkrupinski/movies-gitops
+                  path: infra/kubernetes
+
+            - uses: actions/setup-java@v5
+              with:
+                  distribution: temurin
+                  java-version: 25
+                  cache: sbt
+
+            - uses: sbt/setup-sbt@v1
+
+            # Own cache key. Instrumentation is a scalac option (`-coverage-out`),
+            # so zinc recompiles every module from the `test` job's cache anyway —
+            # and restoring instrumented classes INTO that cache would make the
+            # deploy-gating jobs pay the same full recompile in reverse. Keep the
+            # two apart; same paths as ci.yml (modules, never the root target).
+            - uses: actions/cache@v5
+              with:
+                  path: |
+                      project/target
+                      project/project/target
+                      */target/scala-*
+                  key: sbt-target-coverage-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
+                  restore-keys: |
+                      sbt-target-coverage-${{ runner.os }}-
+
+            # Measurements ACCUMULATE: every instrumented JVM appends its own
+            # `scoverage.measurements.<run-id>` file under a module's
+            # `scoverage-data`, and the report sums whatever is there. That
+            # directory rides inside the cached `*/target/scala-*`, so without
+            # this a warm run would report yesterday's hits plus today's — a
+            # number that only ever goes up. (Seen locally: three run-ids from
+            # one measured run plus two report-only sbt sessions.)
+            - name: Drop measurements from any earlier run
+              run: rm -rf */target/scala-*/scoverage-data target/scala-*/scoverage-data
+
+            # The same modules and suites as ci.yml's `test` job (the alias skips
+            # the e2e module, which is fanned out over its own shards there and
+            # only re-exercises worker + web code through the fixture pipeline).
+            # A failing spec is the `test` job's news, not this run's — the
+            # report is still wanted, so the step's status is not the job's.
+            - name: Run the unit suites instrumented
+              continue-on-error: true
+              run: sbt coverage testUnitNoE2e
+              env:
+                  ZYTE_API_KEY:    ${{ secrets.ZYTE_API_KEY }}
+                  TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
+                  MONGODB_URI:     ${{ secrets.MONGODB_URI }}
+                  MONGODB_DB:      ${{ secrets.MONGODB_DB }}
+
+            # A separate sbt invocation on purpose: sbt has no try/finally, so
+            # `coverage testUnitNoE2e coverageAggregate` in one command would
+            # skip the report on the first red spec. `coverageAggregate` reads the
+            # per-module `scoverage-data` the run above wrote and needs neither
+            # the tests nor the `coverage` switch to be on.
+            - name: Aggregate the per-module reports
+              run: sbt coverageAggregate
+
+            - name: Coverage summary
+              run: |
+                  set -euo pipefail
+                  rate() {  # $1 = scoverage.xml, $2 = attribute → "12.34%"
+                      printf '%s%%' "$(sed -n 's/.*[[:space:]]'"$2"'="\([0-9.]*\)".*/\1/p' "$1" | head -n 1)"
+                  }
+                  aggregate=$(ls target/scala-*/scoverage-report/scoverage.xml)
+                  {
+                      echo "## Unit-test coverage"
+                      echo
+                      echo "| Module | Statements | Branches |"
+                      echo "|---|---|---|"
+                      echo "| **aggregate** | **$(rate "$aggregate" statement-rate)** | **$(rate "$aggregate" branch-rate)** |"
+                      for xml in */target/scala-*/scoverage-report/scoverage.xml; do
+                          echo "| ${xml%%/*} | $(rate "$xml" statement-rate) | $(rate "$xml" branch-rate) |"
+                      done
+                      echo
+                      echo "Full HTML report: the \`coverage-report\` artifact of this run."
+                  } | tee -a "$GITHUB_STEP_SUMMARY"
+
+            - uses: actions/upload-artifact@v6
+              with:
+                  name: coverage-report
+                  path: |
+                      target/scala-*/scoverage-report
+                      */target/scala-*/scoverage-report
+                  if-no-files-found: error
