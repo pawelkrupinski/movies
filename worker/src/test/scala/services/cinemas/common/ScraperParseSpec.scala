@@ -4,7 +4,7 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import org.jsoup.Jsoup
 
-import java.time.LocalTime
+import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
 
 /** Direct coverage for the parsing snippets shared across the cinema scrapers.
   * Each `*Client` spec exercises these via a real fixture, but the shared helper
@@ -42,6 +42,113 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
         "7 czerwca" -> "czerwca").foreach { case (text, month) =>
       ScraperParse.DayMonthPat.findFirstMatchIn(text).map(_.group(2)) shouldBe Some(month)
     }
+  }
+
+  // The numeric spellings below are the ones the clients parsed through their
+  // own `DateTimeFormatter.ofPattern` copies: Kino Paradox / Apollo / Falenica
+  // ("dd.MM.yyyy"), Nowe Horyzonty / Sfinks ("dd-MM-yyyy"), Cyfrowe Kino / Tatry
+  // ("dd/MM/yyyy"), GCF / Kino Forum ("yyyy-MM-dd").
+  "parseDate" should "read the day-first spellings the cinema pages use" in {
+    Seq("06.09.2026", "6.09.2026", "06-09-2026", "06/09/2026").foreach { s =>
+      withClue(s)(ScraperParse.parseDate(s) shouldBe Some(LocalDate.of(2026, 9, 6)))
+    }
+  }
+
+  it should "read an ISO date" in {
+    ScraperParse.parseDate("2026-09-06") shouldBe Some(LocalDate.of(2026, 9, 6))
+  }
+
+  it should "pull the first date out of surrounding text" in {
+    ScraperParse.parseDate("Data: 06.09.2026 18:00")       shouldBe Some(LocalDate.of(2026, 9, 6))
+    ScraperParse.parseDate("wtorek, 2026-09-08 (sala 1)")  shouldBe Some(LocalDate.of(2026, 9, 8))
+    ScraperParse.parseDate("/wydarzenie/2026-09-08-18-30") shouldBe Some(LocalDate.of(2026, 9, 8))
+  }
+
+  it should "return None for an impossible date, a bare time, or no date" in {
+    Seq("31.02.2026", "12:30", "brak daty", "2026-13-01", "5.09").foreach { s =>
+      withClue(s)(ScraperParse.parseDate(s) shouldBe None)
+    }
+  }
+
+  // Bilety24 / Kino Orzeł / Kino Aurum ("yyyy-MM-dd HH:mm"), DCF / Kino Mikro /
+  // Kino Fenomen ("dd.MM.yyyy HH:mm"), Prom Kępa ("d.MM.yyyy, HH:mm"), SCK
+  // Stargard ("yyyy-MM-dd HH:mm:ss").
+  "parseDateTime" should "pair the date with the HH:mm beside it" in {
+    val expected = LocalDateTime.of(2026, 9, 6, 18, 0)
+    Seq("2026-09-06 18:00", "06.09.2026 18:00", "6.09.2026, 18:00", "2026-09-06 18:00:00",
+        "Tytuł; Miejsce: Sala 1; Data: 06.09.2026 18:00", "18:00 06.09.2026").foreach { s =>
+      withClue(s)(ScraperParse.parseDateTime(s) shouldBe Some(expected))
+    }
+  }
+
+  it should "return None when either half is missing" in {
+    ScraperParse.parseDateTime("2026-09-06")        shouldBe None
+    ScraperParse.parseDateTime("18:00")             shouldBe None
+    ScraperParse.parseDateTime("2026-09-06-18-30")  shouldBe None  // `-HH-mm` is not an HH:mm
+  }
+
+  "polishMonth" should "resolve genitive, nominative and abbreviated spellings in any case" in {
+    Seq("września" -> 9, "Września" -> 9, "WRZEŚNIA" -> 9, "wrzesień" -> 9, "wrz" -> 9, "Wrz" -> 9,
+        "października" -> 10, "paź" -> 10, "maja" -> 5, "maj" -> 5, "Czerwiec" -> 6, "cze " -> 6).foreach {
+      case (token, month) => withClue(token)(ScraperParse.polishMonth(token) shouldBe Some(month))
+    }
+    ScraperParse.polishMonth("sala") shouldBe None
+  }
+
+  // Kino Amok / CSW Toruń / Pod Baranami ("5 września"), Iluzjon ("5 Czerwca -
+  // Piątek"), Kinomuzeum / Ekobilet ("10 cze"), Kino Bułgarska.
+  "parseDayMonth" should "read a day followed by a Polish month name in any spelling" in {
+    Seq("5 września" -> MonthDay.of(9, 5), "Piątek, 5 września" -> MonthDay.of(9, 5),
+        "5 Czerwca - Piątek" -> MonthDay.of(6, 5), "10 cze" -> MonthDay.of(6, 10),
+        "1 Styczeń" -> MonthDay.of(1, 1), "31 października, 18:00" -> MonthDay.of(10, 31)).foreach {
+      case (text, expected) => withClue(text)(ScraperParse.parseDayMonth(text) shouldBe Some(expected))
+    }
+  }
+
+  it should "return None for an impossible day or a word that is not a month" in {
+    Seq("31 kwietnia", "5 sala", "godz. 18:00", "").foreach { s =>
+      withClue(s)(ScraperParse.parseDayMonth(s) shouldBe None)
+    }
+  }
+
+  // Kino Zorza / Kino Roma spell the day header "5.09" with no year.
+  "parseNumericDayMonth" should "read a dotted day.month" in {
+    ScraperParse.parseNumericDayMonth("Piątek 5.09") shouldBe Some(MonthDay.of(9, 5))
+    ScraperParse.parseNumericDayMonth("31.12")       shouldBe Some(MonthDay.of(12, 31))
+    ScraperParse.parseNumericDayMonth("12.30")       shouldBe None
+    ScraperParse.parseNumericDayMonth("sala 3")      shouldBe None
+  }
+
+  // Kino Agrafka / OKF Iluzja / Sokół Brzozów / System Biletowy / Kino Zbyszek
+  // ("4 września 2026", "Piątek, 12 Października 2026").
+  "parseDayMonthYear" should "read the explicit year" in {
+    ScraperParse.parseDayMonthYear("4 września 2026")             shouldBe Some(LocalDate.of(2026, 9, 4))
+    ScraperParse.parseDayMonthYear("Piątek, 12 Października 2026") shouldBe Some(LocalDate.of(2026, 10, 12))
+    ScraperParse.parseDayMonthYear("9 czerwca 2026, 17:00")       shouldBe Some(LocalDate.of(2026, 6, 9))
+  }
+
+  it should "return None without a year, or for an impossible date" in {
+    ScraperParse.parseDayMonthYear("4 września")      shouldBe None
+    ScraperParse.parseDayMonthYear("31 lutego 2026")  shouldBe None
+  }
+
+  "upcomingDate" should "keep a recent date this year and roll an older one into next year" in {
+    val today = LocalDate.of(2026, 9, 6)
+    ScraperParse.upcomingDate(MonthDay.of(9, 5), today)  shouldBe Some(LocalDate.of(2026, 9, 5))
+    ScraperParse.upcomingDate(MonthDay.of(12, 24), today) shouldBe Some(LocalDate.of(2026, 12, 24))
+    ScraperParse.upcomingDate(MonthDay.of(7, 20), today)  shouldBe Some(LocalDate.of(2026, 7, 20))  // 48 days back
+    ScraperParse.upcomingDate(MonthDay.of(7, 1), today)   shouldBe Some(LocalDate.of(2027, 7, 1))   // 67 days back
+    ScraperParse.upcomingDate(MonthDay.of(1, 13), today)  shouldBe Some(LocalDate.of(2027, 1, 13))
+  }
+
+  it should "honour a caller's own grace window" in {
+    val today = LocalDate.of(2026, 9, 6)
+    ScraperParse.upcomingDate(MonthDay.of(7, 1), today, grace = Period.ofMonths(6)) shouldBe Some(LocalDate.of(2026, 7, 1))
+    ScraperParse.upcomingDate(MonthDay.of(8, 25), today, grace = Period.ofWeeks(1)) shouldBe Some(LocalDate.of(2027, 8, 25))
+  }
+
+  it should "return None for 29 February in a non-leap year rather than clamp it" in {
+    ScraperParse.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2026, 1, 10)) shouldBe None
   }
 
   "cssUrl" should "unwrap a plain url()" in {

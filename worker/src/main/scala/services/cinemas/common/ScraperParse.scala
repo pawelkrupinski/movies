@@ -3,7 +3,8 @@ package services.cinemas.common
 import org.jsoup.nodes.{Document, Element}
 import services.movies.FormatTags
 
-import java.time.LocalTime
+import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
+import java.time.temporal.TemporalAmount
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -68,11 +69,78 @@ private[cinemas] object ScraperParse {
   def polishMonthAbbrev(token: String): Option[Int] =
     PolishMonthAbbrevs.get(token.trim.toLowerCase)
 
+  /** The month number for a Polish month token in any spelling the cinema
+    * pages use — genitive ("września"), nominative ("wrzesień") or the
+    * three-letter abbreviation ("wrz") — case-insensitively. */
+  def polishMonth(token: String): Option[Int] = {
+    val key = token.trim.toLowerCase
+    PolishMonthsAnyCase.get(key).orElse(PolishMonthAbbrevs.get(key))
+  }
+
   /** The first `HH:mm` in `s` as a `LocalTime`, or `None` when there's no
     * match or the captured hour/minute is out of range. */
   def parseHHmm(s: String): Option[LocalTime] =
     HourMinute.findFirstMatchIn(s)
       .flatMap(m => Try(LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption)
+
+  /** ISO `2026-09-06` or the day-first `6.09.2026` / `06-09-2026` / `06/09/2026`
+    * the Polish cinema pages spell their dates in. Groups 1-3 are the ISO
+    * year/month/day, groups 4-6 the day-first day/month/year. */
+  private val NumericDate = """(\d{4})-(\d{2})-(\d{2})|(\d{1,2})[./-](\d{1,2})[./-](\d{4})""".r
+  private val DayDotMonth = """(\d{1,2})\.(\d{1,2})""".r
+
+  /** The first calendar date in `s` in any [[NumericDate]] spelling; `None`
+    * for no match or an impossible date. Finds rather than requires the whole
+    * string to be the date — like [[parseHHmm]] — so a label such as
+    * "Data: 06.09.2026 18:00" reads without a per-client extraction regex, and
+    * one helper replaces the `DateTimeFormatter.ofPattern` copy each scraper
+    * used to carry for its own separator. */
+  def parseDate(s: String): Option[LocalDate] =
+    NumericDate.findFirstMatchIn(s).flatMap { m =>
+      val (year, month, day) =
+        if (m.group(1) != null) (m.group(1), m.group(2), m.group(3))
+        else (m.group(6), m.group(5), m.group(4))
+      Try(LocalDate.of(year.toInt, month.toInt, day.toInt)).toOption
+    }
+
+  /** [[parseDate]] paired with [[parseHHmm]] on the same string — "06.09.2026
+    * 18:00", "2026-09-06 18:00:00", "6.09.2026, 18:00", in either order.
+    * `None` when either half is missing. */
+  def parseDateTime(s: String): Option[LocalDateTime] =
+    for { date <- parseDate(s); time <- parseHHmm(s) } yield date.atTime(time)
+
+  /** The first "<day> <Polish month name>" in `s` ([[DayMonthPat]], the month
+    * in any spelling [[polishMonth]] knows) as a `MonthDay` — the yearless day
+    * header most calendar pages carry; [[upcomingDate]] places it in a year.
+    * `None` when that first "<digits> <word>" is not a date. */
+  def parseDayMonth(s: String): Option[MonthDay] =
+    DayMonthPat.findFirstMatchIn(s).flatMap { m =>
+      polishMonth(m.group(2)).flatMap(month => Try(MonthDay.of(month, m.group(1).toInt)).toOption)
+    }
+
+  /** The numeric day header some pages use instead ("5.09") as a `MonthDay`. */
+  def parseNumericDayMonth(s: String): Option[MonthDay] =
+    DayDotMonth.findFirstMatchIn(s)
+      .flatMap(m => Try(MonthDay.of(m.group(2).toInt, m.group(1).toInt)).toOption)
+
+  /** The first "<day> <Polish month name> <yyyy>" in `s` ([[DayMonthYearPat]])
+    * as a date; `None` without a year or for an impossible date. */
+  def parseDayMonthYear(s: String): Option[LocalDate] =
+    DayMonthYearPat.findFirstMatchIn(s).flatMap { m =>
+      polishMonth(m.group(2))
+        .flatMap(month => Try(LocalDate.of(m.group(3).toInt, month, m.group(1).toInt)).toOption)
+    }
+
+  /** The year a yearless page date belongs to: this year's, unless that lies
+    * more than `grace` before `today`, in which case next year's. A
+    * late-December page listing "13 stycznia" means January of the coming
+    * year, while a page still showing last week's screenings means this one;
+    * each scraper picks the grace its page's staleness warrants. `None` when
+    * the day doesn't exist in that year (29 lutego). */
+  def upcomingDate(dayMonth: MonthDay, today: LocalDate, grace: TemporalAmount = Period.ofDays(60)): Option[LocalDate] =
+    Try(LocalDate.of(today.getYear, dayMonth.getMonthValue, dayMonth.getDayOfMonth)).toOption.map { candidate =>
+      if (candidate.isBefore(today.minus(grace))) candidate.plusYears(1) else candidate
+    }
 
   /** The URL inside a CSS `url(...)` value, unwrapping `'`, `"` or `&quot;`
     * quoting. `None` when `s` holds no `url(...)`. */
