@@ -12,7 +12,9 @@ struct Film: Identifiable, Hashable, Codable {
     /// argument optional — the many fixture `Film(…)` constructions across the
     /// test suites don't care about slugs and shouldn't have to name one.
     var slug: String? = nil
-    let posterURL: URL?
+    /// Lenient on purpose: a poster URL Foundation refuses is `nil`, not a
+    /// failed listing — see `LenientURL`.
+    @LenientURL var posterURL: URL?
     /// Chain of alternative poster URLs to try when `posterURL` fails.
     /// Server-side `_movieCard` ships them in source-priority order
     /// (Cinema City after Multikino, then other cinemas, then TMDB,
@@ -30,7 +32,7 @@ struct Film: Identifiable, Hashable, Codable {
     /// because weserv's datacenter egress (and Fly's) lands on
     /// Cloudflare's ASN blocklist; client fetches don't go through
     /// either, so end-users see the poster fine.
-    let fallbackPosterURLs: [URL]
+    @LenientURLs var fallbackPosterURLs: [URL]
     let runtimeMinutes: Int?
     /// Release year — shown as a `.pill.year` next to runtime, mirroring
     /// the web `_movieCard` / `/movie` title block. Optional because not
@@ -235,5 +237,77 @@ enum FilmShareLink {
         // Safe to force-unwrap: `encoded` and `citySlug` contain only URL-safe
         // characters and the surrounding string is a fixed, valid absolute URL.
         return URL(string: "\(origin)/\(citySlug)/movie?title=\(encoded)")!
+    }
+}
+
+/// A URL the server emits that Foundation may refuse — decoded to `nil` rather
+/// than failing the whole payload.
+///
+/// A poster URL is copied verbatim from whatever CDN a cinema publishes, and
+/// one of them carrying a space or a bare non-ASCII character is enough for
+/// `URL(string:)` to throw inside a synthesized `Decodable`, which throws away
+/// every film in the listing for the sake of one poster. The fixture-server
+/// contract test found exactly that at index 14 of Poznań's repertoire. A poster
+/// is decoration; the film and its showings are the content, so the URL is
+/// parsed leniently — percent-encoding what Foundation cannot swallow — and
+/// given up as `nil` when even that fails.
+@propertyWrapper
+struct LenientURL: Codable, Hashable {
+    var wrappedValue: URL?
+
+    init(wrappedValue: URL?) { self.wrappedValue = wrappedValue }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { wrappedValue = nil; return }
+        wrappedValue = LenientURL.parse(try container.decode(String.self))
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        if let url = wrappedValue { try container.encode(url.absoluteString) } else { try container.encodeNil() }
+    }
+
+    /// `URL(string:)`, then the same string with the characters Foundation
+    /// refuses percent-encoded, then nothing.
+    static func parse(_ raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        if let url = URL(string: trimmed) { return url }
+        return trimmed.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed).flatMap(URL.init(string:))
+    }
+}
+
+/// A list of URLs decoded the same way, dropping the entries that cannot be
+/// parsed instead of failing the list.
+@propertyWrapper
+struct LenientURLs: Codable, Hashable {
+    var wrappedValue: [URL]
+
+    init(wrappedValue: [URL]) { self.wrappedValue = wrappedValue }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        if container.decodeNil() { wrappedValue = []; return }
+        wrappedValue = try container.decode([String].self).compactMap(LenientURL.parse)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(wrappedValue.map(\.absoluteString))
+    }
+}
+
+// A synthesized `Decodable` calls `decode`, not `decodeIfPresent`, for a wrapped
+// property, so an absent key would throw before the wrapper ever ran. These make
+// a missing key read as no URL / no URLs, as the plain `URL?` / `[URL]` fields
+// they replace did.
+extension KeyedDecodingContainer {
+    func decode(_ type: LenientURL.Type, forKey key: Key) throws -> LenientURL {
+        try decodeIfPresent(type, forKey: key) ?? LenientURL(wrappedValue: nil)
+    }
+
+    func decode(_ type: LenientURLs.Type, forKey key: Key) throws -> LenientURLs {
+        try decodeIfPresent(type, forKey: key) ?? LenientURLs(wrappedValue: [])
     }
 }
