@@ -209,7 +209,7 @@ object ExtraTitleRules {
     // resolver's `deDecorate` also tries the paren-dropped form and `EmbeddedYear`
     // reads the year for a year-scoped lookup, so each resolves UNIQUELY there —
     // 'Aferim! (2015)' as a bare query returns nothing, but 'Aferim!' + year 2015 is
-    // a single hit (see MovieService.searchTitleCandidates / effectiveYear).
+    // a single hit (see services.resolution.SearchTitles.candidates / effectiveYear).
     prog("xtra-pp-radu-jude-retro",    """(?iu)^Radu\s+Jude\.\s+Retrospektywa:\s+""", "'Radu Jude. Retrospektywa: <film> (YYYY)' director-retrospective prefix — 5 films, each year-scoped-unique on TMDB (Aferim! 2015, Nie obchodzi mnie… 2018, Niefortunny numerek lub szalone porno 2021, Nie obiecujcie sobie… 2023, Dracula 2025)"),
     // Twenty-fourth wave (2026-09-05), from an audit of the 261 UNRESOLVED PL rows —
     // PL sits at 27% unresolved against 2-7% for every other country, and a leading

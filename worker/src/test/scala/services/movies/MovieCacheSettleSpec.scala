@@ -255,7 +255,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     val r = c.snapshot()
     r.size shouldBe 1
     titleNormalizer.sanitize(r.head.title) shouldBe "zaproszenie"
-    r.head.record.cinemaTitles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
+    r.head.record.evidence.titles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
   }
 
   // --- merge metrics: each fold is counted, by reason --------------------------

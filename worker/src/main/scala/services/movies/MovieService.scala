@@ -7,7 +7,7 @@ import services.cinemas.CountryNames
 import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
-import services.resolution.{ResolutionCache, ResolutionKeys, TitleCorroboration, TmdbBasis}
+import services.resolution.{FilmEvidence, ResolutionCache, ResolutionKeys, SearchTitles, TitleCorroboration, TmdbBasis}
 import services.tasks.RatingTasks
 import tools.{DaemonExecutors, HttpStatusException}
 
@@ -331,8 +331,9 @@ class MovieService(
    *  the cinemas alone the contradiction fires and the row re-resolves itself,
    *  so this whole class heals without an operator (`DirectorWalkResolvesSpec`). */
   private def reportedDirectors(existing: Option[MovieRecord], eventDirector: Option[String]): String =
-    (eventDirector.toSeq.flatMap(_.split(",")) ++ existing.map(_.cinemaDirector).getOrElse(Nil))
-      .map(_.trim).filter(_.nonEmpty).distinct.sorted.mkString(",")
+    existing.fold(FilmEvidence.empty)(_.evidence)
+      .withDirectors(eventDirector.toSeq.flatMap(_.split(",")))
+      .directors.mkString(",")
 
   /** Reset a row to its scraped-only form ([[MovieRecord.scrapedOnly]]) and re-key it
    *  onto the SCRAPED year, returning the key to resolve against. The scraped year comes
@@ -886,7 +887,7 @@ class MovieService(
    *  a cached row — used by the retry sweeps and as the fallback hints in
    *  `resolveTmdbOnce` when the dispatch carried none (the operator re-enrich). */
   private def tmdbHints(e: MovieRecord): (Option[String], Option[String]) =
-    (e.cinemaOriginalTitle, if (e.cinemaDirector.nonEmpty) Some(e.cinemaDirector.mkString(", ")) else None)
+    (e.evidence.originalTitle, e.evidence.directorHint)
 
 
   // ── TMDB resolution ────────────────────────────────────────────────────────
@@ -943,7 +944,8 @@ class MovieService(
     // Both therefore build the SAME candidate set — without it the staging row,
     // absent from the cache, collapsed to its single title and missed films the
     // direct path resolved via a cinema-reported / original title.
-    val cinemaTitles  = row.cinemaTitles
+    val evidence      = row.evidence
+    val cinemaTitles  = evidence.titles
     val slotOriginals = row.data.values.flatMap(_.originalTitle).toSet
     // Sorted so the candidate order — hence which query resolves first when
     // several map to the same film — is independent of the (Set) iteration
@@ -955,8 +957,8 @@ class MovieService(
     // resolves via the raw query — and TMDB is case-insensitive, so trying both
     // costs nothing but covers every spelling. Order is deterministic
     // (`searchTitleCandidates` is pre-sorted), so resolution is order-independent.
-    def queryForms(titles: Iterable[String]): Seq[String] = MovieService
-      .searchTitleCandidates(title, originalTitle, titles)
+    def queryForms(titles: Iterable[String]): Seq[String] = SearchTitles
+      .candidates(title, originalTitle, titles)
       .flatMap(t => Seq(cache.normalizer.apiQuery(t), cache.normalizer.searchQuery(t)))
       .filter(_.nonEmpty).distinct
     val candidates = queryForms(extraTitles)
@@ -966,29 +968,11 @@ class MovieService(
     // ranks a credit matching one of these ABOVE a credit matching a derived
     // title, so a row's own previous resolution can never outbid the cinemas.
     val cinemaCandidates = queryForms(cinemaTitles.toSeq.sorted)
-    // How many CINEMA SLOTS published each title form. `cinemaTitles` is a set, so it
-    // cannot tell the film 38 venues are showing from the one a single venue lists
-    // under a different name — and when a row really does hold two films, both of
-    // their titles are cinema-reported and the walk's lowest-id tie-break decides
-    // between them by accident. Kino Klaps's "DOBRE Kino - Maryja. Matka Papieża"
-    // sat on the "Mistyczka" row that way, and 1646379 < 1731866 handed the row to
-    // the one venue. Weight per SLOT, over the same de-decorated forms the search
-    // uses, so the banner-stripped "Maryja. Matka Papieża" counts once and
-    // "Mistyczka" counts as often as it is published.
-    val cinemaTitleWeight: Map[String, Int] = row.cinemaSlots.iterator
-      .flatMap { case (_, sd) => sd.title.toSeq }
-      .flatMap { t =>
-        // The SAME forms `cinemaCandidates` is built from, or a credit could sit in
-        // the cinema tier and still score zero: `apiQuery` strips the accessibility
-        // decoration ("Kino bez barier: Freak Show (AD)" → "Freak Show") that
-        // `searchTitleCandidates` leaves alone, so the venue naming the film that way
-        // would not be counted as naming it. `.distinct` per slot because the two
-        // query forms usually sanitize to the same string — one venue, one vote.
-        MovieService.searchTitleCandidates(t, None)
-          .flatMap(f => Seq(cache.normalizer.apiQuery(f), cache.normalizer.searchQuery(f)))
-          .map(cache.normalizer.sanitize).filter(_.nonEmpty).distinct
-      }
-      .toSeq.groupBy(identity).view.mapValues(_.size).toMap
+    // How many CINEMA SLOTS published each title form — see `FilmEvidence.titleVotes`.
+    // `cinemaTitles` is a set, so it cannot tell the film 38 venues are showing from
+    // the one a single venue lists under a different name; the walk below weights a
+    // credit by the venues naming it.
+    val cinemaTitleWeight: Map[String, Int] = evidence.titleVotes(cache.normalizer)
     // Director hints drawn from EVERY cinema slot on the merged row, not just the
     // one cinema event that happened to trigger this stage. Every cinema fires its
     // own `MovieDetailsComplete`, so the triggering event's director varied with
@@ -1009,8 +993,7 @@ class MovieService(
     // ahead of it and re-won every cycle, so Michel Franco was never walked at
     // all (`MovieServiceTmdbHintsSpec`). `cinemaOriginalTitle`, the other half of
     // this hint pair, is cinema-only for exactly the same reason.
-    val rowDirectors = (director.toSeq.flatMap(_.split(",")) ++ row.cinemaDirector)
-      .map(_.trim).filter(_.nonEmpty).distinct.sorted
+    val rowDirectors = evidence.withDirectors(director.toSeq.flatMap(_.split(","))).directors
 
     // Cache the id resolution per hint-combination: two cinema rows (or two
     // scrape cycles) with the same title + year + director set + original-title
@@ -1068,7 +1051,7 @@ class MovieService(
     // `cinemaYears` and not `reportedYears`: the latter includes the TMDB slot's own
     // year, so a mis-resolved row would corroborate its key year with the very
     // resolution being re-examined — "scarface|1983" carries a 1983 TMDB slot.
-    val corroboratedKeyYear = keyYear.filter(row.cinemaYears.contains)
+    val corroboratedKeyYear = keyYear.filter(evidence.years.contains)
     // Only the EMBEDDED year is promoted above the key year. `reportedYears` stays
     // BELOW it, as it always was: it is sorted ascending and spans every slot, so
     // one venue misreporting 1999 on a 2024 film would otherwise hand the search the
@@ -1084,7 +1067,7 @@ class MovieService(
     val effectiveYear = corroboratedKeyYear
       .orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
       .orElse(keyYear)
-      .orElse(row.cinemaYears.headOption)
+      .orElse(evidence.years.headOption)
       .orElse(reportedYears.headOption)
     val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle, cache.normalizer)
     // `freshHit` captures the SearchResult on a cache MISS (the loader runs on
@@ -1150,7 +1133,7 @@ class MovieService(
           // title. CINEMA-only, like every other hint here — reading the merged
           // fields would hand the check the previous resolution's own numbers.
           rowDirectors.iterator
-            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, row.cinemaRuntimesMinutes, row.cinemaCast, cinemaCandidates, cinemaTitleWeight))
+            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, evidence.runtimes, evidence.cast, cinemaCandidates, cinemaTitleWeight))
             .nextOption()
             .map(hit => { searchBasis = Some(TmdbBasis.DirectorWalk); hit })
         }
@@ -1173,10 +1156,10 @@ class MovieService(
       // id-based fallbacks below are exact reverse lookups, not guesses.
       .filter { id =>
         val credible = RuntimeCorroboration.plausible(
-          row.cinemaRuntimesMinutes, tmdb.fullDetails(id).flatMap(_.runtimeMinutes))
+          evidence.runtimes, tmdb.fullDetails(id).flatMap(_.runtimeMinutes))
         if (!credible)
           logger.info(s"TMDB: '$title' (${year.getOrElse("?")}) → rejecting $id: its " +
-            s"runtime is not credible against the cinemas' ${row.cinemaRuntimesMinutes.mkString("/")} min")
+            s"runtime is not credible against the cinemas' ${evidence.runtimes.mkString("/")} min")
         credible
       }
       .map(id => (id, freshHit, searchBasis))
@@ -1517,33 +1500,4 @@ object MovieService {
    *  resolves to the base film's ratings. */
 
 
-  /** TMDB title-search candidates for a row, in priority order: the row's title,
-   *  the cinema-provided original title, then every other reported title
-   *  (`extraTitles` = the row's cinemaTitles + per-slot original titles). Each is
-   *  additionally expanded with its de-decorated forms — every side of a `" | "`
-   *  festival/preview split ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY",
-   *  "WTF Fest | Stolik kawowy") and the trailing-parenthetical-stripped form
-   *  ("Ojczyzna (pokaz przedpremierowy)" → "Ojczyzna"). Blanks/duplicates
-   *  collapse. Callers verify each hit by director, so extra candidates can't
-   *  mis-resolve onto a same-title different film. */
-  def searchTitleCandidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] = {
-    def deDecorate(t: String): Seq[String] = {
-      val pipeParts       = if (t.contains(" | ")) t.split("""\s+\|\s+""").toIndexedSeq else Nil
-      // A programme banner is joined with a DASH as often as a pipe or a colon
-      // ("Filmoczule Dla Edukacji … – 500 mil", "Ladies Night - Narodziny
-      // gwiazdy"), and the film's own title is the part after it. Hyphen, en dash
-      // and em dash all appear; the surrounding spaces are what mark it as a
-      // separator rather than a hyphenated word ("Spider-Man" is untouched).
-      // Purely ADDITIVE — the undivided title stays a candidate — and a candidate
-      // only ever becomes a resolution by matching, so an over-eager split on a
-      // title that genuinely contains " - " costs nothing.
-      val dashParts       = if (t.matches(""".*\s[-–—]\s.*""")) t.split("""\s+[-–—]\s+""").toIndexedSeq else Nil
-      val noTrailingParen = t.replaceAll("""\s*\([^)]*\)\s*$""", "").trim
-      (Seq(t) ++ pipeParts ++ dashParts :+ noTrailingParen)
-    }
-    (Seq(title) ++ originalTitle.toSeq ++ extraTitles)
-      .map(_.trim).filter(_.nonEmpty).distinct
-      .flatMap(deDecorate)
-      .map(_.trim).filter(_.nonEmpty).distinct
-  }
 }

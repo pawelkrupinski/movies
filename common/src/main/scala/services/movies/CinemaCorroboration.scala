@@ -53,7 +53,7 @@ object CinemaCorroboration {
   def resolvedOnWeakerEvidenceThanAvailable(record: MovieRecord): Boolean =
     record.tmdbId.isDefined &&
       record.tmdbBasis.flatMap(TmdbBasis.parse).contains(TmdbBasis.TitleOnly) &&
-      (record.cinemaDirector.nonEmpty || record.cinemaYears.nonEmpty)
+      (record.evidence.directors.nonEmpty || record.evidence.years.nonEmpty)
 
   /** Which signal contradicts, if either. The two are not equally trustworthy, so
    *  the caller needs to know which fired: a runtime is a NUMBER the cinemas
@@ -85,7 +85,7 @@ object CinemaCorroboration {
    *  cinemas pad, round and shave, and Multikino advertises the 162-minute "Lalka"
    *  at 147. Only a category error trips it. */
   private def runtimeDenies(record: MovieRecord, filmRuntime: Option[Int]): Boolean =
-    !RuntimeCorroboration.plausible(record.cinemaRuntimesMinutes, filmRuntime)
+    !RuntimeCorroboration.plausible(record.evidence.runtimes, filmRuntime)
 
   /** Whether the two sides name the same person, or None when one of them names
    *  nobody this can compare — a film TMDB credits to nobody, a film no venue
@@ -104,7 +104,7 @@ object CinemaCorroboration {
    *  mistake: a missed contradiction leaves one row uncorrected, while acting on a
    *  false one force-re-resolves a film that was already right. */
   private def namesAgree(record: MovieRecord, filmDirectors: Seq[String]): Option[Boolean] = {
-    val cinemaNames = record.cinemaDirector.map(SamePerson.tokens).filter(_.nonEmpty)
+    val cinemaNames = record.evidence.directors.map(SamePerson.tokens).filter(_.nonEmpty)
     val filmNames   = filmDirectors.map(SamePerson.tokens).filter(_.nonEmpty)
     Option.when(cinemaNames.nonEmpty && filmNames.nonEmpty)(
       cinemaNames.exists(c => filmNames.exists(f => SamePerson.sameTokens(c, f))))

@@ -164,10 +164,10 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // of the "X | Y" pipe + the de-parenthesised title.
 
   "searchTitleCandidates" should "offer the original title, each pipe side, and the de-parenthesised title" in {
-    MovieService.searchTitleCandidates("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some("Possession")) should
+    services.resolution.SearchTitles.candidates("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", Some("Possession")) should
       contain allOf ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "Possession", "Opętanie", "ŻUŁAWSKI. KINO EKSTAZY")
-    MovieService.searchTitleCandidates("Ojczyzna (pokaz przedpremierowy)", None) should contain ("Ojczyzna")
-    MovieService.searchTitleCandidates("Plain Title", None) shouldBe Seq("Plain Title")
+    services.resolution.SearchTitles.candidates("Ojczyzna (pokaz przedpremierowy)", None) should contain ("Ojczyzna")
+    services.resolution.SearchTitles.candidates("Plain Title", None) shouldBe Seq("Plain Title")
   }
 
   // A banner is joined with a dash as often as a pipe. "500 mil" is the worked
@@ -175,14 +175,14 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
   // on its title alone — but the whole decorated string was the only candidate, so
   // it fell through to the year-pinned branch instead. Both dash forms occur.
   it should "split a dash-joined programme banner, without touching hyphenated words" in {
-    MovieService.searchTitleCandidates("Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil", None) should contain ("500 mil")
-    MovieService.searchTitleCandidates("Ladies Night - Narodziny gwiazdy", None) should contain ("Narodziny gwiazdy")
-    MovieService.searchTitleCandidates("Spider-Man", None) shouldBe Seq("Spider-Man")
+    services.resolution.SearchTitles.candidates("Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil", None) should contain ("500 mil")
+    services.resolution.SearchTitles.candidates("Ladies Night - Narodziny gwiazdy", None) should contain ("Narodziny gwiazdy")
+    services.resolution.SearchTitles.candidates("Spider-Man", None) shouldBe Seq("Spider-Man")
   }
 
   it should "also draw on the row's other reported titles (cinemaTitles + slot originals), de-decorated" in {
     // Every title the cinemas reported for the row becomes a search candidate.
-    MovieService.searchTitleCandidates(
+    services.resolution.SearchTitles.candidates(
       title = "KINO SENIORA | Opętanie", originalTitle = None,
       extraTitles = Seq("Opętanie (pokaz)", "Possession")
     ) should contain allOf ("Opętanie", "Possession")

@@ -149,9 +149,10 @@ case class MovieRecord(
       .flatMap { case (source, sd) => Source.cinemaOf(source).map(_ -> sd) }
       .toMap
 
-  /** Derived view of every raw title currently reported by a cinema for
-   *  this record. Empty when no cinema is scraping. */
-  def cinemaTitles: Set[String] = cinemaShowings.iterator.flatMap(_._2.title).toSet
+  /** What the cinemas published about this film — the only evidence a TMDB
+   *  resolution is searched from or judged against. Cinema slots only; see
+   *  [[services.resolution.FilmEvidence]] for why the derived slots are excluded. */
+  def evidence: services.resolution.FilmEvidence = services.resolution.FilmEvidence.of(this)
 
   /** A view of this record restricted to the given cinema SLOT KEYS, keeping
    *  every NON-cinema source (TMDB / IMDb / Filmweb) and their retained synopses
@@ -574,57 +575,6 @@ case class MovieRecord(
     seen.toSeq
   }
 
-  /** Cinema-reported original/international title — first non-empty with
-   *  Multikino preferred. Separate from `originalTitle` (the TMDB-resolved
-   *  production-language title): this is what the cinema's own API exposed,
-   *  used as a fallback hint for the TMDB search. */
-  def cinemaOriginalTitle: Option[String] =
-    prioritizedCinema.iterator.flatMap(_._2.originalTitle).nextOption()
-
-  /** Every director the cinemas reported — the UNION across their slots, not the
-   *  first non-empty one. Separate from `director` (which falls back to the
-   *  TMDB/IMDb slots for display): this is what the cinemas themselves published,
-   *  and it is the only form fit to HINT a TMDB resolution.
-   *
-   *  The union is load-bearing for DETERMINISM. A "first non-empty in priority
-   *  order" reading changes its answer as cinemas arrive — a higher-priority
-   *  cinema landing later displaces the hint a partial group already resolved
-   *  under, so the same corpus settles differently depending on scrape order
-   *  (`StagingOrderDeterminismSpec`). A union only ever grows, so every arrival
-   *  order converges on the same hint set.
-   *
-   *  Feeding `director` to the resolver let a resolution corroborate its own
-   *  output. The derived slots carry the director of whatever film was matched,
-   *  so a mis-resolved row grew a second "reported" director — and since the
-   *  hints are sorted and the director-walk takes the first that hits, which film
-   *  the row re-resolved to came down to alphabetical order. Kino Malta's
-   *  "Dreams" reports Michel Franco, but the row's earlier match to Dag Johan
-   *  Haugerud's "Drømmer" sorted first and re-won every time, so Michel Franco
-   *  was never tried (`MovieServiceTmdbHintsSpec`).
-   *
-   *  Same reasoning as `cinemaOriginalTitle` directly above — these two are the
-   *  cinema-side hint pair the TMDB search runs on. */
-  def cinemaDirector: Seq[String] =
-    prioritizedCinema.flatMap(_._2.director).map(_.trim).filter(_.nonEmpty).distinct.sorted
-
-  /** Every runtime the cinemas reported, de-duplicated and sorted. Separate from
-   *  `runtimeMinutes`, which falls back to the TMDB slot: these are what the
-   *  cinemas themselves published, so they can CORROBORATE a candidate resolution
-   *  without the answer being derived from the resolution it is checking. */
-  def cinemaRuntimesMinutes: Seq[Int] =
-    prioritizedCinema.flatMap(_._2.runtimeMinutes).distinct.sorted
-
-  /** Every cast name the cinemas reported, de-duplicated and sorted. Cinema-only
-   *  for the same reason as [[cinemaRuntimesMinutes]]. */
-  /** Every release year the cinemas reported, de-duplicated and sorted. Cinema-only
-   *  for the same reason as [[cinemaRuntimesMinutes]]: a year drawn from the
-   *  resolution cannot be used to check that resolution. */
-  def cinemaYears: Seq[Int] =
-    prioritizedCinema.flatMap(_._2.releaseYear).distinct.sorted
-
-  def cinemaCast: Seq[String] =
-    prioritizedCinema.flatMap(_._2.cast).map(_.trim).filter(_.nonEmpty).distinct.sorted
-
   /** Best available original (production-language) title across sources —
    *  the TMDB-resolved one first, then IMDb's `originalTitleText`, then
    *  whatever a cinema's own API exposed (only Multikino does), then Filmweb's
@@ -635,7 +585,7 @@ case class MovieRecord(
   def anyOriginalTitle: Option[String] =
     originalTitle
       .orElse(data.get(Imdb).flatMap(_.originalTitle))
-      .orElse(cinemaOriginalTitle)
+      .orElse(evidence.originalTitle)
       .orElse(data.get(Filmweb).flatMap(_.originalTitle))
 
   /** Original (production-language) titles contributed by the resolved-metadata

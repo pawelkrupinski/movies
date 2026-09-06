@@ -69,7 +69,7 @@ class QueueEnrichmentRetriggerSpec extends AnyFlatSpec with Matchers {
   // `record.originalTitle`, which is the Tmdb slot verbatim — so a re-resolve was
   // handed the PREVIOUS resolution's own original title as if a cinema had
   // published it, and then ranked it as cinema evidence. That is the leak
-  // `MovieRecord.cinemaOriginalTitle` exists to close, and how "Mistyczka" kept
+  // `MovieRecord.evidence.originalTitle` exists to close, and how "Mistyczka" kept
   // re-confirming another film's identity.
   //
   // A derived original title still REACHES the resolver — `resolveTmdbId` mines

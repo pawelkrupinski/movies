@@ -234,7 +234,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       // all-caps "ZAWODOWCY", some "Zawodowcy". `displayTitle` ranks those raw
       // spellings (the all-caps one ranks low) and then `recase`s the winner, so
       // the home-page card reads "Zawodowcy" and never shouts.
-      enrichment.cinemaTitles should contain allElementsOf Set(
+      enrichment.evidence.titles should contain allElementsOf Set(
         "Zawodowcy",
         "ZAWODOWCY"
       )
@@ -419,7 +419,7 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     // canonical form that `MovieController.toSchedules` writes into
     // `Movie.title` (and therefore the `=== TITLE ===` header above).
     // Showing both makes the picker's behaviour explicit per film.
-    val cinemaTitles = e.map(_.cinemaTitles.toSeq.sorted).getOrElse(Nil)
+    val cinemaTitles = e.map(_.evidence.titles.toSeq.sorted).getOrElse(Nil)
     val showings = s.showings.sortBy(_._1).flatMap { case (date, byCinema) =>
       byCinema.sortBy(_.cinema.displayName).map { sht =>
         val slots = sht.showtimes.sortBy(_.dateTime).map { st =>

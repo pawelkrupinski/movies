@@ -229,7 +229,7 @@ class FilmwebRatings(
       .orElse(details.flatMap(_.englishTitle))
       .filterNot(_.equalsIgnoreCase(linkTitle))
     val tmdbDirectors   = e.tmdbId.map(tmdb.directorsFor).getOrElse(Set.empty)
-    val cinemaDirectors = e.cinemaData.values.flatMap(_.director).toSet
+    val cinemaDirectors = e.evidence.directors.toSet
     val directors       = tmdbDirectors ++ cinemaDirectors
     // A yearless retrospective ("Konwicki: Lawa (1989)") carries no scraped year,
     // so the Filmweb search had nothing to gate a same-title collision against and
@@ -238,7 +238,7 @@ class FilmwebRatings(
     // year — the SAME deterministic hint `resolveTmdbId` uses (`EmbeddedYear`), fed
     // here so the Filmweb side gets the same disambiguation. Falls back to the
     // scraped key year.
-    val effectiveYear = key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: e.cinemaTitles.toSeq))
+    val effectiveYear = key.year.orElse(EmbeddedYear.ofAll(key.cleanTitle +: e.evidence.titles.toSeq))
     // TMDB's Polish blurb (same language as Filmweb's `plot`) breaks a same-year
     // same-title tie inside `lookup`; None when TMDB hasn't resolved a synopsis.
     val referenceSynopsis = e.data.get(models.Tmdb).flatMap(_.synopsis)

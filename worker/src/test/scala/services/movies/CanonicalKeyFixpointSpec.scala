@@ -150,7 +150,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     withClue(s"rows: ${snap.map(r => (r.title, r.year))}\n")(snap should have size 1)
     val rec = snap.head.record
     rec.tmdbId        shouldBe Some(tmdbId)
-    rec.cinemaTitles  should contain allOf ("Ścieżki życia", "Plenerowe Pałacowe: Ścieżki życia")
+    rec.evidence.titles  should contain allOf ("Ścieżki życia", "Plenerowe Pałacowe: Ścieżki życia")
     rec.cinemaData.keySet should contain (KinoMuranow: Cinema)
   }
 

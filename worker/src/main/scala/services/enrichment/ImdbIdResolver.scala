@@ -3,7 +3,7 @@ package services.enrichment
 import play.api.Logging
 import services.Drainable
 import services.events.{DomainEvent, ImdbIdMissing}
-import services.movies.{CacheKey, MovieCache, MovieService}
+import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import tools.DaemonExecutors
 
@@ -84,7 +84,7 @@ class ImdbIdResolver(
    * screening is its own card by design. It just needs the film's id.
    */
   private def cachedFindId(searchTitle: String, year: Option[Int]): Option[String] =
-    MovieService.searchTitleCandidates(searchTitle, originalTitle = None)
+    services.resolution.SearchTitles.candidates(searchTitle, originalTitle = None)
       .map(cache.normalizer.apiQuery).filter(_.nonEmpty).distinct
       .iterator
       .flatMap(query => imdbIdCache.getOrResolve(ResolutionKeys.imdb(query, year, cache.normalizer))(
@@ -192,7 +192,7 @@ class ImdbIdResolver(
         // corroborated (see OMDbClient) so a fuzzy hit can't bind a wrong film.
         // This is the id the once-daily OmdbBackfill sweep would have supplied
         // hours later; running it inline lands it now.
-        omdb.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year, record.director.toSet))
+        omdb.flatMap(_.findImdbId((searchTitle +: record.evidence.titles.toSeq).distinct, year, record.director.toSet))
       }
       .orElse {
         // Wikidata DIRECT-title — distinct from the Filmweb-id path above: for a
@@ -206,7 +206,7 @@ class ImdbIdResolver(
         // Cinemeta (Stremio) — final rung. IMDb-keyed catalogue covering a broad
         // foreign/regional long tail; corroborated by title+year so a fuzzy hit
         // can't bind a wrong film. Free, no API key.
-        cinemeta.flatMap(_.findImdbId((searchTitle +: record.cinemaTitles.toSeq).distinct, year))
+        cinemeta.flatMap(_.findImdbId((searchTitle +: record.evidence.titles.toSeq).distinct, year))
       }
     found
   }

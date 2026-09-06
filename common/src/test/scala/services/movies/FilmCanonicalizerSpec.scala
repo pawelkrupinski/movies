@@ -405,7 +405,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     val clusters = FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer)
     clusters should have size 1                                       // one tmdbId → one film
     val (_, merged) = FilmCanonicalizer.canonical(clusters.head, titleNormalizer)
-    merged.cinemaTitles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
+    merged.evidence.titles shouldBe Set("Zaproszenie", "Zaproszenie | Kinoteka dla rodziców")
   }
 
   it should "keep a remake (two distinct tmdbIds sharing a title) as one component but two clusters" in {

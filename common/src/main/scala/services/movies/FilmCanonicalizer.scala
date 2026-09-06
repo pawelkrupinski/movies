@@ -458,7 +458,7 @@ object FilmCanonicalizer {
     val resolved = ranked.filter(_._2.tmdbId.isDefined)
     if (resolved.map(_._2.tmdbId).distinct.sizeIs <= 1) ranked
     else RuntimeCorroboration.strictNearest(
-      cluster.flatMap(_._2.cinemaRuntimesMinutes).distinct,
+      cluster.flatMap(_._2.evidence.runtimes).distinct,
       resolved.map(row => row -> row._2.data.get(Tmdb).flatMap(_.runtimeMinutes))
     ).map(best => best +: ranked.filterNot(_._1 == best._1)).getOrElse(ranked)
   }

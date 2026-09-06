@@ -76,12 +76,12 @@ class QueueEnrichmentRetrigger(
           // — and `resolveTmdbId` now RANKS a cinema-reported title above a derived
           // one, so a derived title arriving through this hint would be ranked as
           // though a venue had published it. They are one pair; both halves are
-          // cinema-only (see `MovieRecord.cinemaOriginalTitle`).
+          // cinema-only (see `MovieRecord.evidence.originalTitle`).
           //
           // A derived original title still reaches the resolver — `resolveTmdbId`
           // mines every slot's `originalTitle` into its candidate set, which is what
           // lets a Filmweb-supplied original crack a film TMDB missed.
-          EnrichTaskKeys.resolveTmdbPayload(key.cleanTitle, key.year, record.cinemaDirector.headOption, record.cinemaOriginalTitle))
+          EnrichTaskKeys.resolveTmdbPayload(key.cleanTitle, key.year, record.evidence.directors.headOption, record.evidence.originalTitle))
       case RetriggerKind.ResolveImdbId =>
         queue.enqueue(
           TaskType.ResolveImdbId,

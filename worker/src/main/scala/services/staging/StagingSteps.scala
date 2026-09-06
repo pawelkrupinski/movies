@@ -240,7 +240,7 @@ class StagingSteps(
    *  combination it resolves under. Dropping the `Tmdb` slot by hand was the old
    *  spelling and left the equally-derived `Imdb`/`Filmweb` slots in. */
   private def hintGroupKey(r: StagingRecord): String =
-    ResolutionKeys.tmdb(r.title, r.year, r.record.cinemaDirector, r.record.cinemaOriginalTitle, stagingRepository.normalizer)
+    ResolutionKeys.tmdb(r.title, r.year, r.record.evidence.directors, r.record.evidence.originalTitle, stagingRepository.normalizer)
 
   /** STEP 3 (per film): recover a missing IMDb cross-reference and stamp it onto
    *  every row — the promoter's inline recovery, now its own retryable task. A

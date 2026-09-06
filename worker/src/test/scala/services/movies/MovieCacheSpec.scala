@@ -608,7 +608,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     val snap = cache.snapshot()
     snap should have size 1
     snap.head.record.tmdbId       shouldBe Some(928344)
-    snap.head.record.cinemaTitles shouldBe Set("Diabeł ubiera się u Prady 2", "ДИЯВОЛ НОСИТЬ ПРАДА 2")
+    snap.head.record.evidence.titles shouldBe Set("Diabeł ubiera się u Prady 2", "ДИЯВОЛ НОСИТЬ ПРАДА 2")
   }
 
   it should "keep a same-tmdbId dub + original at the SAME cinema as two distinct slots" in {
@@ -630,7 +630,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // the read-model split renders a card each; no showtime is lost or merged.
     val snap = cache.snapshot()
     snap should have size 1
-    snap.head.record.cinemaTitles   shouldBe Set(baseTitle, dubTitle)
+    snap.head.record.evidence.titles   shouldBe Set(baseTitle, dubTitle)
     snap.head.record.cinemaShowings should have size 2
   }
 
@@ -1345,7 +1345,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     row.posterUrl shouldBe Some("multikino.jpg")
     // Both raw titles are recorded in their per-cinema slot's `title` (and
     // surfaced via the derived `cinemaTitles` view).
-    row.cinemaTitles should contain allOf ("Top Gun: Maverick", "Top Gun Maverick")
+    row.evidence.titles should contain allOf ("Top Gun: Maverick", "Top Gun Maverick")
   }
 
   // Most cinema clients parse a production-country list from their sources
@@ -1572,7 +1572,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     // fresh row was created at ("Mortal Kombat 2", 2026). Its provenance
     // records the raw title.
     val newRow = cache.get(cache.keyOf("Mortal Kombat 2", Some(2026))).get
-    newRow.cinemaTitles should contain ("Mortal Kombat 2")
+    newRow.evidence.titles should contain ("Mortal Kombat 2")
   }
 
   // The scrape redirect and the settle must answer "is this the same film?" the
@@ -1632,7 +1632,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(KinoBulgarska, Seq(cinemaMovie("Bez wyjścia", KinoBulgarska, None)))
 
     val row = cache.get(cache.keyOf("Bez wyjścia", Some(2025))).get
-    row.cinemaTitles should contain ("Bez wyjścia")
+    row.evidence.titles should contain ("Bez wyjścia")
     cache.get(cache.keyOf("Bez wyjścia", None)) shouldBe None
   }
 

@@ -61,12 +61,12 @@ object MovieDetailsComplete {
    *  (cinema-only) but plain `director` (which falls back to the derived
    *  `Tmdb`/`Imdb`/`Filmweb` slots). That fed a previous resolution's own output
    *  back in as a hint for re-resolving the same row — see
-   *  `MovieRecord.cinemaDirector`. */
+   *  `MovieRecord.evidence.directors`. */
   def forRow(title: String, year: Option[Int], row: Option[models.MovieRecord]): MovieDetailsComplete =
     MovieDetailsComplete(
       title, year,
-      row.flatMap(_.cinemaOriginalTitle),
-      row.map(_.cinemaDirector).filter(_.nonEmpty).map(_.mkString(", ")))
+      row.flatMap(_.evidence.originalTitle),
+      row.map(_.evidence.directors).filter(_.nonEmpty).map(_.mkString(", ")))
 }
 
 /** A *new* `(cinema, title, year)` tuple was just persisted to the cache (and

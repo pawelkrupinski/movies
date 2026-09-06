@@ -29,7 +29,7 @@ object SnapshotProdTitlesToFixture {
     try {
       val records = repository.findAll()
       val titles = records
-        .flatMap(r => r.record.cinemaTitles + r.title)
+        .flatMap(r => r.record.evidence.titles + r.title)
         .map(_.trim).filter(_.nonEmpty).distinct.sorted
       Files.createDirectories(Out.getParent)
       Files.write(Out, titles.asJava)

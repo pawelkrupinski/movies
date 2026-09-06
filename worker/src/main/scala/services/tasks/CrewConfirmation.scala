@@ -45,7 +45,7 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
     // whether this is the right film, and treating it as agreement would re-resolve
     // rows on the strength of a failed request.
     if (crew.isEmpty) return false
-    val named = record.cinemaDirector.flatMap(personIds)
+    val named = record.evidence.directors.flatMap(personIds)
     // Likewise a name TMDB has never heard of: unknown is not absent.
     if (named.isEmpty) return false
     val stranger = !named.exists(crew.contains)

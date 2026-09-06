@@ -164,7 +164,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
     // and pruned). Both shown titles survive for the read-model split.
     cache.get(cache.keyOf(dubTitle, Some(2026))) shouldBe None
     val base = cache.get(cache.keyOf(Title, Some(2026))).getOrElse(fail("base row vanished"))
-    base.cinemaTitles                shouldBe Set(Title, dubTitle)
+    base.evidence.titles                shouldBe Set(Title, dubTitle)
     base.cinemaShowings.map(_._1).toSet shouldBe Set(Helios, CinemaCityKinepolis)
   }
 

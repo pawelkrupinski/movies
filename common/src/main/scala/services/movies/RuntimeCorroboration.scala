@@ -16,7 +16,7 @@ package services.movies
  * translation, and two prints of one film agree on it while two different films do
  * not. Crucially it is published by the CINEMAS, so an answer drawn from it is not
  * derived from the resolution being questioned (see
- * `MovieRecord.cinemaRuntimesMinutes`).
+ * `MovieRecord.evidence.runtimes`).
  *
  * NEAREST, not "agrees within a tolerance", because cinemas round and pad: for
  * "Tylko jedna noc" TMDB says 102 minutes while Multikino publishes 105 and Cinema
