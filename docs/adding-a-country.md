@@ -52,7 +52,7 @@ those is expensive to change once a `Country` is switchable.
    the third by measuring:
    - **The pace gate.** `RateLimitedHttpFetch` buckets by FULL LOWERCASED
      HOSTNAME, so two markets on different hostnames never share a slot queue.
-     But `RealHttpFetch.HostPolicies` rows match by host SUFFIX, so a new
+     But `HostPolicies` rows match by host SUFFIX, so a new
      market's host does NOT inherit its sibling's row (`flicks.co.uk` does not
      match `flicks.us`) — **a host with no row of its own is not paced at all**,
      which is the condition that produced the UK's self-inflicted 429 storm.
@@ -180,7 +180,7 @@ those is expensive to change once a `Country` is switchable.
    invisible. Strictness makes a market applied to the wrong payload produce
    NOTHING, which something notices.
 
-   And give the new market **its own `RealHttpFetch.HostPolicies` row.** Rows
+   And give the new market **its own `HostPolicies` row.** Rows
    match by host SUFFIX, so `filmstarts.de` does not match `www.sensacine.com`
    and a market with no row of its own **is not paced at all** — the condition
    that produced the UK's self-inflicted 429 storm, and one that is much easier

@@ -18,7 +18,7 @@ import java.time.ZoneId
  * 429 back-off ([[tools.ThrottledHttpFetch]]) both bucket by full lowercased
  * hostname, so a `Retry-After` earned on `www.filmstarts.de` never stalls
  * `www.sensacine.com` and neither market spends the other's request budget. The
- * corollary is the one that bites: `RealHttpFetch.HostPolicies` matches by host
+ * corollary is the one that bites: `HostPolicies` matches by host
  * SUFFIX, so a new market does NOT inherit a sibling's row and **a host with no
  * row of its own is not paced at all**. Every market here needs its own row.
  */

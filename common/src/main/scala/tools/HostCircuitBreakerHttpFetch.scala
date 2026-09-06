@@ -43,7 +43,7 @@ class CircuitOpenException(val host: String, val openForMs: Long, val lastFailur
  * otherwise pins the [[ParallelDetailFetch]] slots (cap 2) for the FULL per-host
  * timeout on EVERY call — across many venues × screens — ballooning scrapes and
  * draining the worker's shared-cpu credit into a sustained throttle spiral. The
- * static per-host timeout policy in [[RealHttpFetch]] ([[RealHttpFetch.HostPolicies]])
+ * static per-host timeout policy in [[HostPolicies]] ([[HostPolicies.all]])
  * shortens each individual hang; this generalises it to ANY host with no allowlist: after a few
  * hangs the host is skipped outright for a cooldown, so the worker stops paying
  * even the short timeout and the slot is freed for hosts that ARE answering.

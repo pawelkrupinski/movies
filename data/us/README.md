@@ -141,7 +141,7 @@ Two passes, because neither source alone is complete:
 429 — it THROTTLES BY STALLING CONNECTIONS, and its throughput plateaus at ~3-5
 req/s no matter how much concurrency you point at it, so going wider makes the
 harvest slower and degrades the host. Measured 2026-08-30; see the `flicks.us`
-row in `RealHttpFetch.HostPolicies`.
+row in `HostPolicies`.
 
 State parsing needs tolerance beyond "full name before the ZIP": some addresses
 use two-letter abbreviations, some New England ZIPs are missing their leading
