@@ -19,22 +19,22 @@ class TitleTidySpec extends AnyFlatSpec with Matchers {
   private val pl = TitleNormalizer.forCountry(models.Country.Poland)
 
   "decodeEntities" should "resolve the entities cinema listings actually publish" in {
-    TitleNormalizer.decodeEntities("""André Rieu &quot;Niech żyje Maastricht&quot;""") shouldBe
+    TitleText.decodeEntities("""André Rieu &quot;Niech żyje Maastricht&quot;""") shouldBe
       """André Rieu "Niech żyje Maastricht""""
-    TitleNormalizer.decodeEntities("Andr&#233; Rieu")   shouldBe "André Rieu"
-    TitleNormalizer.decodeEntities("Andr&#xE9; Rieu")   shouldBe "André Rieu"
-    TitleNormalizer.decodeEntities("Kubu&#347; i przyjaciele") shouldBe "Kubuś i przyjaciele"
-    TitleNormalizer.decodeEntities("Lilo &amp; Stitch") shouldBe "Lilo & Stitch"
+    TitleText.decodeEntities("Andr&#233; Rieu")   shouldBe "André Rieu"
+    TitleText.decodeEntities("Andr&#xE9; Rieu")   shouldBe "André Rieu"
+    TitleText.decodeEntities("Kubu&#347; i przyjaciele") shouldBe "Kubuś i przyjaciele"
+    TitleText.decodeEntities("Lilo &amp; Stitch") shouldBe "Lilo & Stitch"
   }
 
   it should "decode &amp; last, so a double-encoded entity resolves one level" in {
-    TitleNormalizer.decodeEntities("Rieu &amp;quot;Maastricht&amp;quot;") shouldBe
+    TitleText.decodeEntities("Rieu &amp;quot;Maastricht&amp;quot;") shouldBe
       """Rieu &quot;Maastricht&quot;"""
   }
 
   it should "leave a title alone when it carries no entity" in {
     val plain = "André Rieu. Niech żyje Maastricht!"
-    TitleNormalizer.decodeEntities(plain) shouldBe plain
+    TitleText.decodeEntities(plain) shouldBe plain
   }
 
   "the key" should "not weld an entity's name into a film's identity" in {
@@ -45,11 +45,11 @@ class TitleTidySpec extends AnyFlatSpec with Matchers {
   }
 
   "spaceAfterSentenceMark" should "put back the space a listing dropped" in {
-    TitleNormalizer.spaceAfterSentenceMark("André Rieu.Niech żyje Maastricht") shouldBe
+    TitleText.spaceAfterSentenceMark("André Rieu.Niech żyje Maastricht") shouldBe
       "André Rieu. Niech żyje Maastricht"
-    TitleNormalizer.spaceAfterSentenceMark("…Maastricht!”Retransmisja letniego koncertu") shouldBe
+    TitleText.spaceAfterSentenceMark("…Maastricht!”Retransmisja letniego koncertu") shouldBe
       "…Maastricht!” Retransmisja letniego koncertu"
-    TitleNormalizer.spaceAfterSentenceMark("Co się zdarzyło?Baby Jane") shouldBe
+    TitleText.spaceAfterSentenceMark("Co się zdarzyło?Baby Jane") shouldBe
       "Co się zdarzyło? Baby Jane"
   }
 
@@ -61,10 +61,10 @@ class TitleTidySpec extends AnyFlatSpec with Matchers {
       "Faraon 4K",
       "Wall·E",
       "André Rieu. Niech żyje Maastricht!")   // already spaced
-    unchanged.foreach(t => withClue(s"$t\n")(TitleNormalizer.spaceAfterSentenceMark(t) shouldBe t))
+    unchanged.foreach(t => withClue(s"$t\n")(TitleText.spaceAfterSentenceMark(t) shouldBe t))
   }
 
   "tidy" should "decode before spacing, so a decoded mark still gets its space" in {
-    TitleNormalizer.tidy("Rieu&#33;Niech żyje Maastricht") shouldBe "Rieu! Niech żyje Maastricht"
+    TitleText.tidy("Rieu&#33;Niech żyje Maastricht") shouldBe "Rieu! Niech żyje Maastricht"
   }
 }

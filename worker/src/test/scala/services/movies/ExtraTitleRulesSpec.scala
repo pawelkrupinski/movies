@@ -2,7 +2,7 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer.normalize
+import services.movies.TitleText.normalize
 import services.titlerules.{ExtraTitleRules, TitleRules, TitleRuleSet}
 
 import java.util.Locale

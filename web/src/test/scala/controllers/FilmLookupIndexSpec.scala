@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
  *  model's memoised indexes, not by walking the corpus per request.
  *
  *  `film(city, title)` used to scan every movie the read model holds, folding
- *  each title through `TitleNormalizer.normalize` on every miss — a per-request
+ *  each title through `TitleText.normalize` on every miss — a per-request
  *  O(corpus) walk on the one path (an old shared link) that most needs to be
  *  cheap. The indexes are built once per read-model version, like `filmSlugs`,
  *  so a lookup is a map read. This pins both halves: the answers are the ones

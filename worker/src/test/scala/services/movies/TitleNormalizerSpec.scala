@@ -261,7 +261,7 @@ class TitleNormalizerSpec extends AnyFlatSpec with Matchers {
   }
 
   "wellFormedTitle" should "reject ALL-CAPS, double-space, and edge-junk titles" in {
-    import TitleNormalizer.wellFormedTitle
+    import TitleText.wellFormedTitle
     wellFormedTitle("Drzewo magii")             shouldBe true
     wellFormedTitle("Diabeł ubiera się u Prady 2") shouldBe true
     wellFormedTitle("ALL YOU NEED IS KILL")     shouldBe false  // all-caps

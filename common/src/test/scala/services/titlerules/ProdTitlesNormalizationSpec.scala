@@ -2,7 +2,7 @@ package services.titlerules
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer.normalize
+import services.movies.TitleText.normalize
 
 import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters._

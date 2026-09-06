@@ -1,7 +1,7 @@
 package services.readmodel
 
 import models.ResolvedMovie
-import services.movies.TitleNormalizer
+import services.movies.TitleText
 
 /** The legacy `/{city}/movie?title=…` addressing rule, for the whole corpus at
  *  once.
@@ -9,7 +9,7 @@ import services.movies.TitleNormalizer
  *  A title-addressed link carries whatever spelling the page showed when it was
  *  minted, and the display title can have moved under it since — most often a
  *  numeral a cinema wrote in Roman ("Rocky II") that the corpus now shows in
- *  Arabic. So a link matches on `TitleNormalizer.normalize`, the numeral fold
+ *  Arabic. So a link matches on `TitleText.normalize`, the numeral fold
  *  the worker keys spellings by, and not on the string.
  *
  *  Memoised per read-model version by `WebReadModel.filmTitles`, the way
@@ -28,7 +28,7 @@ final class FilmTitles private(private val idsByKey: Map[String, Seq[String]]) {
 
 object FilmTitles {
 
-  def key(title: String): String = TitleNormalizer.normalize(title)
+  def key(title: String): String = TitleText.normalize(title)
 
   def apply(movies: Seq[ResolvedMovie]): FilmTitles =
     new FilmTitles(movies.sortBy(FilmSlugs.newestFirst).groupMap(m => key(m.title))(_._id))
