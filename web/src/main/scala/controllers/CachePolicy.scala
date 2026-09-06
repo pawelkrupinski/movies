@@ -2,7 +2,7 @@ package controllers
 
 /**
  * What a cache — the visitor's browser, and Cloudflare in front of us — may do
- * with one of the conditional responses `MovieController.conditionalGzipped`
+ * with one of the conditional responses `MovieController.conditionalCompressed`
  * builds.
  *
  * Every one of them carries a per-city ETag derived from
@@ -11,8 +11,9 @@ package controllers
  * when, the bytes that city renders can have changed.
  *
  * The tag is WEAK (`W/"…"`). It is a content VERSION, not a hash of the body,
- * and the same one is stamped on the gzipped and the identity response — weak
- * is what that actually is.
+ * and the same one is stamped on all THREE representations — brotli, gzip and
+ * identity — which share no bytes at all. A strong validator is not permitted to
+ * do that; a weak one is, because the three are the same document.
  *
  * ⚠️ AND EVERY REVALIDATING POLICY CARRIES `no-transform`, or the tag reaches
  * nobody. Cloudflare recompresses our gzip to brotli on `text/html` and drops
@@ -22,7 +23,7 @@ package controllers
  *
  * The brotli that withdrawal gave up is now made here instead, smaller than the
  * edge made it — see `EncodedResponseCache.BrotliQuality` and
- * `MovieController.conditionalGzipped` for both sets of numbers.
+ * `MovieController.conditionalCompressed` for both sets of numbers.
  */
 enum CachePolicy {
 

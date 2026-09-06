@@ -403,9 +403,9 @@ class MovieController( cc: ControllerComponents,
   // Filter queries are the only thing left that bypasses it: they move the OG
   // meta, and `request.path` — the blob's key — drops the query string. That
   // costs them the blob, not the conditional GET: `renderIndex` still runs them
-  // through `conditionalGzipped` keyed on the query, for the validators. A client
+  // through `conditionalCompressed` keyed on the query, for the validators. A client
   // that cannot take gzip no longer bypasses it either, because it never needed
-  // to: `conditionalGzipped` serves that client the uncompressed body with the
+  // to: `conditionalCompressed` serves that client the uncompressed body with the
   // same validators, and the `Vary: Accept-Encoding` both branches carry is what
   // keeps the two spellings apart in a shared cache. `/api/repertoire` has been
   // shared-cacheable on exactly those terms since it was first offered to the edge.
@@ -420,18 +420,25 @@ class MovieController( cc: ControllerComponents,
         .exists(!lastMod.isAfter(_))
     }
 
-  /** Conditional-GET + gzip-cache for a response that is byte-identical for
-   *  every client at the current [[MovieCache]] version. A client whose
-   *  `If-Modified-Since` is still current gets a bodiless 304 — so a browser
-   *  refresh re-validates cheaply and re-uses its cached copy instead of
-   *  re-downloading the body. Otherwise the body is served, from the shared
-   *  versioned, path-keyed gzip cache when the client accepts gzip (declaring
-   *  `Content-Encoding: gzip` makes the GzipFilter pass it through rather than
-   *  double-compress). `revalidate` adds `Cache-Control: private, no-cache` so
-   *  the browser caches the page yet always re-validates before re-use — the
-   *  pages change when showtimes do, so we never want a stale copy served
-   *  without a check. */
-  private def conditionalGzipped(request: RequestHeader, contentType: String, vary: String,
+  /** Conditional-GET + compressed-response cache for a response that is
+   *  byte-identical for every client at the current [[MovieCache]] version.
+   *
+   *  A client whose `If-None-Match` offers this response's validator, or whose
+   *  `If-Modified-Since` is still current, gets a bodiless 304 — so a browser
+   *  refresh revalidates cheaply and reuses its cached copy instead of
+   *  re-downloading the body.
+   *
+   *  Otherwise the body is served, compressed with the best encoding the client
+   *  accepts ([[ContentEncoding.negotiate]] — brotli for anything current, gzip
+   *  for anything that cannot take it) and held per (path, encoding) in the
+   *  versioned [[EncodedResponseCache]]. Naming the `Content-Encoding` ourselves is
+   *  also what keeps Play's `GzipFilter` off the response: it skips anything that
+   *  already declares one. A `cacheBody = false` caller, or a client that refuses
+   *  both encodings, gets the body uncompressed and the filter handles it instead.
+   *
+   *  `policy` decides what a cache may do with the result — see [[CachePolicy]] for
+   *  the two, and for why every one of them carries `no-transform`. */
+  private def conditionalCompressed(request: RequestHeader, contentType: String, vary: String,
                                  policy: CachePolicy, cacheKey: String = "",
                                  city: Option[City] = None,
                                  cacheBody: Boolean = true)(body: => String): Result = {
@@ -480,7 +487,7 @@ class MovieController( cc: ControllerComponents,
     // 200, and a revalidation went from 287,531 bytes to a bodiless 304. But the
     // full fetch did grow, 228,940 -> 287,531, +26%.
     //
-    // It does not any more. `conditionalGzipped` compresses with brotli itself now
+    // It does not any more. `conditionalCompressed` compresses with brotli itself now
     // (`ContentEncoding` / `EncodedResponseCache`), at 197,131 bytes -- BELOW the
     // 228,940 the edge used to produce, because Cloudflare was compressing at
     // roughly quality 4 and we can afford 5. So the ETag and the brotli are both
@@ -553,8 +560,11 @@ class MovieController( cc: ControllerComponents,
 
     if (MovieController.offersValidator(request.headers.get("If-None-Match"), etag)
         || ifModifiedSinceCurrent(request, lastMod))
-      // ⚠️ `Vary` ON THE 304 TOO, not just on the 200s below. RFC 9110 15.4.5 asks
-      // for it, and this response needs it more than most: ONE weak validator now
+      // ⚠️ `Vary` ON THE 304 TOO, not just on the 200s below. RFC 9110 §15.4.5 makes
+      // it a MUST, not a nicety -- a 304 "MUST generate any of the following header
+      // fields that would have been sent in a 200 to the same request:
+      // Content-Location, Date, ETag, and Vary". And this response needs it more
+      // than most: ONE weak validator now
       // covers THREE representations of the page -- brotli, gzip and identity --
       // which is legitimate precisely because it is weak, but it means a cache that
       // stores this 304's headers without being told the response varies by
@@ -654,7 +664,7 @@ class MovieController( cc: ControllerComponents,
       // writes it on load with the same name, path and lifetime. The filtered
       // branch below is `private, no-cache`, so it keeps setting it server-side
       // and a visitor with no JS is still remembered.
-      conditionalGzipped(request, HtmlContentType, HtmlVary, CachePolicy.RevalidatedAnywhere,
+      conditionalCompressed(request, HtmlContentType, HtmlVary, CachePolicy.RevalidatedAnywhere,
                          city = Some(city))(renderIndexHtml(city, request).body)
     } else {
       // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
@@ -689,7 +699,7 @@ class MovieController( cc: ControllerComponents,
       // it costs that the blob branch does not is byte-identity between two
       // clients holding one validator, which only a SHARED cache could observe
       // -- and `private, no-cache` is exactly the instruction that none may.
-      conditionalGzipped(request, HtmlContentType, HtmlVary, CachePolicy.BrowserOnly,
+      conditionalCompressed(request, HtmlContentType, HtmlVary, CachePolicy.BrowserOnly,
                          cacheKey = "|q=" + request.rawQueryString, city = Some(city),
                          cacheBody = false)(renderIndexHtml(city, request).body)
         .withCookies(cityCookie(city))
@@ -817,14 +827,14 @@ class MovieController( cc: ControllerComponents,
   }
 
   /** Conditional-GET wrapper for the JSON API endpoints — the same mechanism as
-   *  the HTML pages (see [[conditionalGzipped]]): a current `If-Modified-Since`
+   *  the HTML pages (see [[conditionalCompressed]]): a current `If-Modified-Since`
    *  yields a bodiless 304 (what warm mobile clients hit), otherwise the payload
    *  is served from the shared gzip cache. The endpoints don't set
    *  `Cache-Control` (mobile manages its own revalidation), so `revalidate` is
    *  off. Both the listing and the details payload track the same city's cache
    *  mtime, so a 304 on one is a 304 on the other. */
   private def conditionalJson(request: Request[AnyContent], city: City, cacheKey: String = "")(body: => play.api.libs.json.JsValue): Result =
-    conditionalGzipped(request, "application/json", vary = "Accept-Encoding",
+    conditionalCompressed(request, "application/json", vary = "Accept-Encoding",
                        CachePolicy.RevalidatedAnywhere, cacheKey = cacheKey, city = Some(city))(
       play.api.libs.json.Json.stringify(body)
     )
