@@ -193,22 +193,26 @@ groups:
         # ZERO IS THE ONLY HEALTHY VALUE, so this is `> 0` and not a tuned threshold. The gauge is
         # always present and reads 0 when every TTL index agrees with its constant, which is why it
         # can be compared rather than tested for presence.
-        expr: max(kinowo_worker_ttl_index_mismatches) > 0
+        # PER COUNTRY, because `max()` alone drops every label and an alert that cannot name the
+        # pod cannot be acted on -- the collection is in that worker's log, and you have to know
+        # whose log to read. `max by (country)` also survives two workers scraping the same
+        # country during a rollout without double-firing.
+        expr: max by (country) (kinowo_worker_ttl_index_mismatches) > 0
         # TEN MINUTES: the reconciler runs at construction, so a rollout is the only time this can
         # legitimately flicker while pods come up on a new constant and rebuild their indexes.
         for: 10m
         labels:
           severity: warning
         annotations:
-          summary: "{{ $value }} TTL index(es) do not match what the code asks for"
+          summary: "{{ $labels.country }}: {{ $value }} TTL index(es) do not match what the code asks for"
           description: >-
             A TTL index's `expireAfterSeconds` disagrees with the constant in the code AND the app
             could not rebuild it. THE COSTLY CASE IS AN INDEX THAT IS NOW ABSENT: the reconciler
             drops and recreates (`collMod` is not in `readWrite`), so a drop that succeeded and a
             create that failed leaves the collection reaping NOTHING and growing without bound --
             check `detailCache-*` and `uptimeBuckets` sizes first. WHICH collection is in the
-            worker log, not in this metric: `kubectl -n kinowo logs deploy/worker-pl | grep -i
-            "TTL index"` names it along with both expiries. This class of drift was invisible until
+            worker log, not in this metric: `kubectl -n kinowo logs deploy/worker-{{ $labels.country }} | grep -i
+            "TTL index"` names it, with both expiries and the database it is in. This class of drift was invisible until
             2026-09-06, when `detailCache-cinema-city` was found still reaping at 6h a day after
             the code moved it to 2h, so treat a sustained reading here as real.
 

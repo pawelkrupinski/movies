@@ -146,9 +146,33 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     // the un-reconcilable branch without a restricted user: an invalid collection name
     // fails both the read and the create.
     val collection = database.getCollection[Document]("__integration_test_ttl_$bad$name")
-    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
-    MongoTtlIndex.Mismatches.names should contain (collection.namespace.getCollectionName)
-    MongoTtlIndex.Mismatches.count should be > 0
+    try {
+      MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+      // BY NAMESPACE, NOT BY COLLECTION NAME. A worker JVM builds one wiring per country and
+      // every country owns a collection of each name, so a bare name is not an identity: one
+      // country reconciling its copy would clear another country's record of a broken one.
+      MongoTtlIndex.Mismatches.names should contain (collection.namespace.getFullName)
+      MongoTtlIndex.Mismatches.count should be > 0
+    } finally
+      // The register is process-wide, so a spec that leaves an entry in it changes what every
+      // later spec in this JVM reads from the gauge.
+      MongoTtlIndex.Mismatches.resolved(collection.namespace.getFullName)
+  }
+
+  /** WHAT THE REGISTER IS KEYED BY, which is the whole reason the gauge can be trusted.
+   *  A worker JVM builds one wiring per country in `KINOWO_COUNTRIES`, and every country
+   *  owns an `uptimeBuckets`, a `resolve_*` and a `detailCache-*` of its own. Keyed by the
+   *  bare collection name, one country reconciling its copy clears another country's record
+   *  of a broken one — the gauge falls to zero with the index still wrong. The collision
+   *  itself is exercised in `TtlIndexMetricsSpec`; what this pins is that `reconcile`
+   *  supplies a namespace rather than a name, which is what makes the two distinguishable. */
+  it should "record a mismatch under its full namespace, not the bare collection name" in {
+    val collection = database.getCollection[Document]("__integration_test_ttl_$clash$")
+    try {
+      MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+      MongoTtlIndex.Mismatches.names should contain (s"${database.name}.__integration_test_ttl_$$clash$$")
+      MongoTtlIndex.Mismatches.names should not contain "__integration_test_ttl_$clash$"
+    } finally MongoTtlIndex.Mismatches.resolved(collection.namespace.getFullName)
   }
 
   it should "ignore a compound index that merely mentions the field" in {

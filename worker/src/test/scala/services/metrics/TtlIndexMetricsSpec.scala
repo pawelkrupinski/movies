@@ -52,6 +52,26 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterE
     PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0)
   }
 
+  /** THE COLLISION THIS GAUGE WOULD OTHERWISE HIDE. A worker JVM builds one wiring per
+   *  country in `KINOWO_COUNTRIES`, and every country owns an `uptimeBuckets`, a
+   *  `resolve_*` and a `detailCache-*` of its own. Keyed by the bare collection name,
+   *  one country reconciling its copy would clear another country's record of a broken
+   *  one and drop the gauge to zero with the index still wrong — a false negative in
+   *  the metric that exists to prevent false negatives. */
+  it should "not let one database's entry clear another's for the same collection name" in {
+    MongoTtlIndex.Mismatches.record("kinowo_pl.uptimeBuckets")
+    MongoTtlIndex.Mismatches.record("kinowo_de.uptimeBuckets")
+    try {
+      PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(2.0)
+      MongoTtlIndex.Mismatches.resolved("kinowo_de.uptimeBuckets")
+      withClue("Germany's healthy index cleared Poland's broken one: ")(
+        PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(1.0))
+    } finally {
+      MongoTtlIndex.Mismatches.resolved("kinowo_pl.uptimeBuckets")
+      MongoTtlIndex.Mismatches.resolved("kinowo_de.uptimeBuckets")
+    }
+  }
+
   it should "fall back to zero once that index is reconciled, so the alert clears itself" in {
     MongoTtlIndex.Mismatches.record(sentinel)
     MongoTtlIndex.Mismatches.resolved(sentinel)

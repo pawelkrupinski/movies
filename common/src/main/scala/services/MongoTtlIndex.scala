@@ -61,9 +61,16 @@ object MongoTtlIndex extends Logging {
     label:         String
   ): Unit = {
     val name = collection.namespace.getCollectionName
+    // THE KEY IS THE NAMESPACE, NOT THE COLLECTION NAME. A worker JVM builds one wiring per
+    // country in `KINOWO_COUNTRIES`, and every country has its own `uptimeBuckets`,
+    // `resolve_*` and `detailCache-*` in its own database. Keyed by the bare name, Germany
+    // reconciling its `uptimeBuckets` would clear the entry Poland recorded for a broken one
+    // of the same name — the gauge would fall to zero and the alert clear itself while the
+    // index was still wrong. That is the exact false negative this metric exists to prevent.
+    val key = collection.namespace.getFullName
     currentExpiry(collection, field) match {
       case Some(actual) if actual == wantedSeconds =>
-        Mismatches.resolved(name)
+        Mismatches.resolved(key)
 
       case Some(actual) =>
         logger.warn(s"$label: $name TTL index on `$field` expires after ${actual}s, want ${wantedSeconds}s — rebuilding it.")
@@ -83,7 +90,7 @@ object MongoTtlIndex extends Logging {
           // with the wrong expiry, so name both possibilities.
           logger.warn(s"$label: $name has no readable TTL index on `$field` and one could not be created — " +
             s"if it exists, it KEEPS ITS OLD EXPIRY rather than ${wantedSeconds}s: ${exception.getMessage}")
-          Mismatches.record(name)
+          Mismatches.record(key)
         }
     }
   }
@@ -128,6 +135,7 @@ object MongoTtlIndex extends Logging {
    *  class of failure that spent months invisible in a `logger.debug`. */
   private def rebuild(collection: MongoCollection[Document], field: String, wantedSeconds: Long, label: String): Unit = {
     val name = collection.namespace.getCollectionName
+    val key  = collection.namespace.getFullName
     Try {
       Await.result(collection.dropIndex(Indexes.ascending(field)).toFuture(), 10.seconds)
       Await.result(collection.createIndex(
@@ -137,16 +145,16 @@ object MongoTtlIndex extends Logging {
     } match {
       case Failure(exception) =>
         logger.warn(s"$label: $name TTL index on `$field` could not be rebuilt to ${wantedSeconds}s: ${exception.getMessage}")
-        Mismatches.record(name)
+        Mismatches.record(key)
       case Success(_) =>
         currentExpiry(collection, field) match {
           case Some(actual) if actual == wantedSeconds =>
             logger.info(s"$label: $name TTL index on `$field` now expires after ${wantedSeconds}s.")
-            Mismatches.resolved(name)
+            Mismatches.resolved(key)
           case other =>
             logger.warn(s"$label: $name TTL index on `$field` reads back as ${other.map(_.toString).getOrElse("ABSENT")} " +
               s"after a rebuild to ${wantedSeconds}s — the collection may now have NO TTL index and will grow.")
-            Mismatches.record(name)
+            Mismatches.record(key)
         }
     }
   }
@@ -160,12 +168,21 @@ object MongoTtlIndex extends Logging {
    *  a gauge that disappeared because the exporter did. The collection NAMES are in
    *  the WARN lines above, which is where triage reads them. */
   object Mismatches {
-    private val collections = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
-    private[services] def record(collection: String): Unit   = { collections.add(collection); () }
-    private[services] def resolved(collection: String): Unit  = { collections.remove(collection); () }
+    /** Keyed by NAMESPACE (`database.collection`) — see `reconcile`. Every country in this JVM
+     *  has a collection of each name, so the bare name is not an identity. */
+    private val namespaces = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+    /** ONLY THE RECONCILER MAY CREATE A MISMATCH. Package-private so no other caller can
+     *  invent one — a gauge anybody can raise is a gauge nobody trusts. */
+    private[services] def record(namespace: String): Unit = { namespaces.add(namespace); () }
+
+    /** Clearing is public and idempotent, because it has honest callers outside this package:
+     *  a successful reconcile, and any test that has to leave this process-wide register as it
+     *  found it. Clearing an entry cannot manufacture a problem — at worst it silences one
+     *  until the next construction re-reads the index and records it again. */
+    def resolved(namespace: String): Unit = { namespaces.remove(namespace); () }
     /** How many TTL indexes are known to be wrong right now. Zero is healthy. */
-    def count: Int = collections.size
-    /** The names, for a diagnostic page or a test — not for a metric label. */
-    def names: Set[String] = { import scala.jdk.CollectionConverters._; collections.asScala.toSet }
+    def count: Int = namespaces.size
+    /** The namespaces, for a diagnostic page or a test — not for a metric label. */
+    def names: Set[String] = { import scala.jdk.CollectionConverters._; namespaces.asScala.toSet }
   }
 }

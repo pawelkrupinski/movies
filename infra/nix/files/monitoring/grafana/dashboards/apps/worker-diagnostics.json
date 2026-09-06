@@ -1134,7 +1134,10 @@
           "custom": {
             "drawStyle": "line",
             "fillOpacity": 12,
-            "spanNulls": 300000
+            "spanNulls": 300000,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
           },
           "thresholds": {
             "mode": "absolute",
