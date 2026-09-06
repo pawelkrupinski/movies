@@ -1263,8 +1263,8 @@
       "panels": [
         {
           "id": 32,
-          "title": "Worker — movie-row merges by reason & splits (per min)",
-          "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total — one increment per VICTIM absorbed; a cluster of N counts N−1). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a ±year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate; normalize-rebuild=a title-rule change re-keys rows that now share a key and unions them. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness — so a canonicalize spike here precedes the EnrichDetails → ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19. The splits series (kinowo_worker_splits_total) is the inverse — cinema slots the settle pass sent back to staging because their row held a SECOND film (MixedFilmSplitter), each re-resolving on its own hints; a healthy corpus needs almost none, so a sustained rate means the detector is reading ordinary rows as two films.",
+          "title": "Worker — movie-row merges, re-keys and splits (per min)",
+          "description": "Rate of movie rows folded into another row per reason (kinowo_worker_merges_total — one increment per VICTIM absorbed; a cluster of N counts N−1). canonicalize=periodic same-film settle/rehydrate fold (cross-language same-tmdbId rows, or a ±year/spelling drift of one title); resolved-settle=a yearless stray absorbed when TMDB concludes a year; tmdb-identity=the runtime put-time same-tmdbId gate; normalize-rebuild=a title-rule change re-keys rows that now share a key and unions them. Each fold abandons the victim's title|year key, orphaning its DETAIL freshness — so a canonicalize spike here precedes the EnrichDetails → ResolveTmdb re-enrichment cascade that throttled the worker on 2026-06-19. The splits series (kinowo_worker_splits_total) is the inverse — cinema slots the settle pass sent back to staging because their row held a SECOND film (MixedFilmSplitter), each re-resolving on its own hints; a healthy corpus needs almost none, so a sustained rate means the detector is reading ordinary rows as two films. The rekey series (kinowo_worker_rekeys_total) is a row that stayed the same film but moved to a new title|year key — the churn a stable film id would remove and nothing else, so it is the measurement that decides that change.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1305,6 +1305,15 @@
               "refId": "B",
               "expr": "sum(rate(kinowo_worker_splits_total{country=~\"$country\"}[$__rate_interval])) * 60",
               "legendFormat": "splits",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "C",
+              "expr": "sum by (reason) (rate(kinowo_worker_rekeys_total{country=~\"$country\"}[$__rate_interval])) * 60",
+              "legendFormat": "rekey {{reason}}",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"

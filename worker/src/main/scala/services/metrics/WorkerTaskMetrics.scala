@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, ScreeningsMetrics, SplitMetrics}
+import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScreeningsMetrics, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
@@ -75,6 +75,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
 
   // ── MergeMetrics / SplitMetrics ─────────────────────────────────────────────
   def recordMerge(reason: MergeReason, victims: Int): Unit = series.recordMerge(countryCode, reason, victims)
+  override def recordRekey(reason: RekeyReason): Unit      = series.recordRekey(countryCode, reason)
   def recordSplit(fragments: Int): Unit                    = series.recordSplit(countryCode, fragments)
 
   // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
@@ -193,6 +194,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "reason")
       .register(registry)
 
+    private val rekeys = Counter.builder()
+      .name("kinowo_worker_rekeys")
+      .help("Movie rows that stayed the same film but moved to a new title|year key since boot, by country and reason — resolved-year=TMDB concluded a year for a yearless row, canonicalize=the settle re-spelled or re-yeared a lone row, embedded-year=a year a venue wrote into its title promoted a yearless key, forced-reset=the operator's forced re-enrich re-keyed onto the scraped year. A re-key is the one cost a stable film id would remove, so rate() is the measurement that decides that change.")
+      .labelNames("country", "reason")
+      .register(registry)
+
     private val splits = Counter.builder()
       .name("kinowo_worker_splits")
       .help("Cinema slots the settle pass re-diverted to staging since boot because their row held a SECOND film (MixedFilmSplitter), by country — the inverse of a merge. Each re-resolves on its own hints, so rate() is the un-merge re-enrichment load; a healthy corpus needs almost none, so a sustained rate means the detector is reading ordinary rows as two films.")
@@ -298,6 +305,7 @@ object WorkerTaskMetrics {
         QueueStates.foreach(s => queueDepth.labelValues(c, s).set(0.0))
         StagingStep.all.foreach(s => stagingMovies.labelValues(c, s.label).set(0.0))
         MergeReason.all.foreach(r => merges.labelValues(c, r.label))
+        RekeyReason.all.foreach(r => rekeys.labelValues(c, r.label))
         splits.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
         ReadModelProjectionMetrics.Targets.foreach(t =>
           ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
@@ -325,6 +333,10 @@ object WorkerTaskMetrics {
     /** Each absorbed victim row is one increment under its fold's reason. */
     def recordMerge(country: String, reason: MergeReason, victims: Int): Unit =
       if (victims > 0) merges.labelValues(country, reason.label).inc(victims.toDouble)
+
+    /** One increment per row whose key moved while it stayed the same film. */
+    def recordRekey(country: String, reason: RekeyReason): Unit =
+      rekeys.labelValues(country, reason.label).inc()
 
     /** Each cinema slot re-diverted by a mixed-row split is one increment. */
     def recordSplit(country: String, fragments: Int): Unit =

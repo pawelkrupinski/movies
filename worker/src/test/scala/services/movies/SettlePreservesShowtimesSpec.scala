@@ -75,7 +75,7 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
     cache.put(CacheKey("Beta", None, titleNormalizer), MovieRecord(data = withShowtime(Helios, "Beta")))
     showtimeCount(screenings) shouldBe 1
 
-    cache.rekey(CacheKey("Beta", None, titleNormalizer), CacheKey("Beta", Some(2026), titleNormalizer), identity)
+    cache.rekey(CacheKey("Beta", None, titleNormalizer), CacheKey("Beta", Some(2026), titleNormalizer), identity, services.movies.RekeyReason.Canonicalize)
 
     withClue(s"rows=${cache.snapshot().map(r => (r.title, r.year))} deletes=${repository.deletes.size}: ")(
       showtimeCount(screenings) should be > 0)

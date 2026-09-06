@@ -176,6 +176,20 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     out should include ("""kinowo_worker_merges_total{country="pl",reason="resolved-settle"} 0""")
   }
 
+  it should "count re-keys per reason and seed every reason to 0" in {
+    val (m, series) = newPl()
+    m.recordRekey(services.movies.RekeyReason.ResolvedYear)
+    m.recordRekey(services.movies.RekeyReason.ResolvedYear)
+    m.recordRekey(services.movies.RekeyReason.Canonicalize)
+
+    val out = scrapePl(series)
+    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="resolved-year"} 2""")
+    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="canonicalize"} 1""")
+    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="embedded-year"} 0""")
+    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="forced-reset"} 0""")
+    out should include ("""kinowo_worker_rekeys_total{country="pl",reason="scrape-variant"} 0""")
+  }
+
   it should "count movie-row splits, summing fragments and seeding the series to 0" in {
     val (m, series) = newPl()
     m.recordSplit(2)  // a settle pass re-diverted two slots

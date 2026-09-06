@@ -415,7 +415,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
     // it (oldKey → newKey). Before the fix the cold read returned EMPTY, so the rekey
     // deleted the rated oldKey doc and wrote an empty row at newKey — ratings gone.
     repo.upsert("Mróz", None, ratedRecord("Mróz", 2026, 900, Helios))
-    c.rekey(c.keyOf("Mróz", None), c.keyOf("Mróz", Some(2026)), identity)
+    c.rekey(c.keyOf("Mróz", None), c.keyOf("Mróz", Some(2026)), identity, services.movies.RekeyReason.Canonicalize)
     val r = c.snapshot().filter(x => titleNormalizer.sanitize(x.title) == "mroz")
     withClue(s"expected ONE row, got ${r.map(x => (x.title, x.year))}\n")(r.size shouldBe 1)
     r.head.year shouldBe Some(2026)

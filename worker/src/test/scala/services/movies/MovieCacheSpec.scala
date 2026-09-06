@@ -1691,7 +1691,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         latch.await()
         cache.withTitleLock(keyNone.cleanTitle) {
           val live = cache.canonicalKeyFor(keyNone).getOrElse(keyNone)
-          cache.rekey(live, key2000, _ => resolved)
+          cache.rekey(live, key2000, _ => resolved, services.movies.RekeyReason.Canonicalize)
         }
       }(using executionContext)
       // Thread B: a concurrent cinema scrape with year=2001. Contends for
@@ -1777,7 +1777,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
         latch.await()
         cache.rekey(cache.keyOf(title, None), cache.keyOf(title, Some(2026)),
           current => current.copy(tmdbId = Some(454639))
-        )
+        , services.movies.RekeyReason.Canonicalize)
       }(using executionContext)
 
       latch.countDown()

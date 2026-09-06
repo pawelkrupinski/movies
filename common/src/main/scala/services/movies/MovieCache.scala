@@ -175,7 +175,7 @@ trait MovieCache extends MovieCacheReader {
    *  the CURRENT state at `oldKey` (under the per-title lock) and returns
    *  the record to write at `newKey` — so a concurrent cinema-slot write
    *  that landed before `update` runs is visible to it. */
-  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit
+  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord, reason: RekeyReason): Unit
 
   /** Re-kick the enrichments whose INPUT fields an enrichment write (not a merge)
    *  changed — e.g. Filmweb writing a director / originalTitle onto its slot
@@ -581,7 +581,7 @@ class CaffeineMovieCache(
               val stamped = cur.copy(data = cur.data.view.mapValues(sd =>
                 if (sd.releaseYear.isEmpty) sd.copy(releaseYear = Some(year)) else sd).toMap)
               occupant.fold(stamped)(o => MovieRecordMerge.union(stamped, o))
-            })
+            }, RekeyReason.EmbeddedYear)
           }
         }.isDefined
     }.count(identity)
@@ -668,6 +668,7 @@ class CaffeineMovieCache(
       // Victims = every other row in the cluster folded away; a lone respelled
       // key (keys.size == 1) is a re-key, not a merge, so it counts 0.
       if (keys.sizeIs > 1) mergeMetrics.recordMerge(MergeReason.Canonicalize, keys.size - 1)
+      else mergeMetrics.recordRekey(RekeyReason.Canonicalize)
       retriggerChangedEnrichments(baseRec, baseKey, merged, canonical)
     }
   }
@@ -781,6 +782,7 @@ class CaffeineMovieCache(
       // strays and any prior occupant of the resolved year are folded-away rows.
       val folded = strays.size + priorTarget.size
       if (folded > 0) mergeMetrics.recordMerge(MergeReason.ResolvedSettle, folded)
+      if (target != oldKey) mergeMetrics.recordRekey(RekeyReason.ResolvedYear)
       target
     }
 
@@ -1096,7 +1098,7 @@ class CaffeineMovieCache(
    *  Both keys must share the same cleanTitle (same lock). Used by the
    *  TMDB stage when a no-year scrape's resolved year promotes the row
    *  to a year-keyed identity. */
-  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord): Unit = {
+  private[services] def rekey(oldKey: CacheKey, newKey: CacheKey, update: MovieRecord => MovieRecord, reason: RekeyReason): Unit = {
     require(oldKey.normalized == newKey.normalized,
       s"rekey requires same normalised cleanTitle: ${oldKey.cleanTitle} vs ${newKey.cleanTitle}")
     withTitleLock(oldKey.cleanTitle) {
@@ -1135,7 +1137,7 @@ class CaffeineMovieCache(
               "be carried to the new id, and re-keying without them empties the film.")
             skippedUnreadable.incrementAndGet()
           } else {
-            if (oldKey != newKey) invalidate(oldKey)
+            if (oldKey != newKey) { invalidate(oldKey); mergeMetrics.recordRekey(reason) }
             put(newKey, updated)
           }
       }
@@ -1571,7 +1573,7 @@ class CaffeineMovieCache(
                 if (existingResolved) existingKey
                 else {
                   val canonical = Seq(primary, existingKey).minBy(canonicalRank)
-                  if (canonical != existingKey) rekey(existingKey, canonical, identity)
+                  if (canonical != existingKey) rekey(existingKey, canonical, identity, RekeyReason.ScrapeVariant)
                   canonical
                 }
               // No title/year match — but if some row ALREADY holds this exact

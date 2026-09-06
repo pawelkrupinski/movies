@@ -43,6 +43,33 @@ object MergeReason {
  */
 trait MergeMetrics {
   def recordMerge(reason: MergeReason, victims: Int): Unit
+  /** A row that kept its identity but changed its `(title, year)` key — the
+   *  degenerate merge of one row. Counted separately from merges because it is the
+   *  cost a stable film id would remove and nothing else, so its rate is the
+   *  measurement that decides whether that change is worth making. Defaulted so
+   *  the SAM `noop` stays a lambda. */
+  def recordRekey(reason: RekeyReason): Unit = ()
+}
+
+/** Why a row's `(title, year)` key moved while the row stayed the same film. */
+sealed trait RekeyReason { def label: String }
+object RekeyReason {
+  /** `MovieCache.settleResolved` — TMDB concluded a year for a yearless row. */
+  case object ResolvedYear extends RekeyReason { val label = "resolved-year" }
+  /** `MovieCache.collapseCluster` — the settle re-spelled or re-yeared a lone row
+   *  onto its canonical form. */
+  case object Canonicalize extends RekeyReason { val label = "canonicalize"  }
+  /** `MovieCache.backfillEmbeddedYears` — a year a venue wrote into its title
+   *  promoted a yearless key. */
+  case object EmbeddedYear extends RekeyReason { val label = "embedded-year" }
+  /** `MovieService.resetToScrapedData` — the operator's forced re-enrich re-keyed
+   *  the row onto its scraped year. */
+  case object ForcedReset  extends RekeyReason { val label = "forced-reset"  }
+  /** `MovieCache.recordCinemaScrape` — a scrape's spelling or year variant
+   *  promoted an unresolved row's key at landing time. */
+  case object ScrapeVariant extends RekeyReason { val label = "scrape-variant" }
+
+  val all: Seq[RekeyReason] = Seq(ResolvedYear, Canonicalize, EmbeddedYear, ForcedReset, ScrapeVariant)
 }
 
 object MergeMetrics {

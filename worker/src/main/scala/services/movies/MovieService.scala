@@ -351,7 +351,7 @@ class MovieService(
       case None      => rawKey
       case Some(row) =>
         val newKey = cache.keyOf(live.cleanTitle, row.scrapedOnly.resolvedYear)
-        cache.rekey(live, newKey, _.scrapedOnly)
+        cache.rekey(live, newKey, _.scrapedOnly, services.movies.RekeyReason.ForcedReset)
         newKey
     }
   }
