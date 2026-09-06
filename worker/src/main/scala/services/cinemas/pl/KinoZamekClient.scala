@@ -175,7 +175,7 @@ object KinoZamekClient {
       ScreeningLine.findFirstMatchIn(paragraph.text) match {
         case Some(matched) =>
           for {
-            month <- ScraperParse.PolishMonthsAnyCase.get(matched.group(2).toLowerCase)
+            month <- ScraperParse.polishMonth(matched.group(2))
             time  <- Try(LocalTime.of(matched.group(3).toInt, matched.group(4).toInt)).toOption
             date  <- resolveDate(matched.group(1).toInt, month, dated, today)
             if !date.isBefore(today)

@@ -27,20 +27,22 @@ private[cinemas] object ScraperParse {
   /** Polish month names in the NOMINATIVE ("Czerwiec", "Styczeń"), as several
     * calendar pages spell their day headers, vs the genitive [[PolishMonths]]
     * ("czerwca"). */
-  val PolishMonthsNominative: Map[String, Int] = Map(
+  private val PolishMonthsNominative: Map[String, Int] = Map(
     "styczeń" -> 1, "luty" -> 2, "marzec" -> 3, "kwiecień" -> 4, "maj" -> 5, "czerwiec" -> 6,
     "lipiec" -> 7, "sierpień" -> 8, "wrzesień" -> 9, "październik" -> 10, "listopad" -> 11, "grudzień" -> 12
   )
 
   /** Genitive and nominative month names folded into one lookup — accepts
     * either spelling (the dok.pl / Iluzjon calendars use the nominative in their
-    * day headers, most other pages the genitive). Keyed lower-case; callers
-    * lower-case the token before lookup. */
-  val PolishMonthsAnyCase: Map[String, Int] = PolishMonths ++ PolishMonthsNominative
+    * day headers, most other pages the genitive). Keyed lower-case; [[polishMonth]]
+    * folds the token's case. */
+  private val PolishMonthsAnyCase: Map[String, Int] = PolishMonths ++ PolishMonthsNominative
 
   /** A day header's "<day> <Polish month name>" opening, with [[DayMonthYearPat]]
     * the same shape closed by an explicit 4-digit year ("4 września 2026"). The
-    * month group feeds [[PolishMonths]] / [[PolishMonthsAnyCase]].
+    * month group feeds [[polishMonth]] — via [[parseDayMonth]] / [[parseDayMonthYear]]
+    * for the common shapes, or directly for a scraper with a composite pattern of
+    * its own (a "5-7 września" day range, say).
     *
     * The month is matched with `\p{L}`, NOT `\w`, and that is the whole point of
     * sharing these two: Java's `\w` is ASCII-only unless the pattern is compiled
@@ -55,10 +57,11 @@ private[cinemas] object ScraperParse {
   val DayMonthYearPat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})""".r
 
   /** Polish three-letter month abbreviations as several cinema pages spell them
-    * ("10 Cze 2026", "5 paź"). Keyed lower-case; [[polishMonthAbbrev]] folds case
-    * so a page can capitalise them ("Cze") or not ("cze"). Shared so the
-    * hand-rolled scrapers (Kino Żak, the MSI portals, Kijów, Kinomuzeum, Praha)
-    * don't each carry their own copy of the same 12-entry map. */
+    * ("10 Cze 2026", "5 paź"). Keyed lower-case; [[polishMonthAbbrev]] and
+    * [[polishMonth]] fold case so a page can capitalise them ("Cze") or not
+    * ("cze"). Shared so the hand-rolled scrapers (the MSI portals, Praha, Art
+    * Kino Krosno, and every [[parseDayMonth]] caller) don't each carry their own
+    * copy of the same 12-entry map. */
   private val PolishMonthAbbrevs: Map[String, Int] = Map(
     "sty" -> 1, "lut" -> 2, "mar" -> 3, "kwi" -> 4, "maj" -> 5, "cze" -> 6,
     "lip" -> 7, "sie" -> 8, "wrz" -> 9, "paź" -> 10, "lis" -> 11, "gru" -> 12
