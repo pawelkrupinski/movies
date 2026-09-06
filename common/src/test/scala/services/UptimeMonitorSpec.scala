@@ -39,10 +39,10 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
     val step = UptimeMonitor.BucketDurationMs
     // Oldest → newest: green, zero, red, red.
-    monitor.applyExternalUpdate("Kino", base - 3 * step, successes = 1, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
-    monitor.applyExternalUpdate("Kino", base - 2 * step, successes = 0, failures = 0, zeroes = 1, 0L, 0, Seq.empty)
-    monitor.applyExternalUpdate("Kino", base - 1 * step, successes = 0, failures = 1, zeroes = 0, 0L, 0, Seq.empty)
-    monitor.applyExternalUpdate("Kino", base,            successes = 0, failures = 1, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Kino", base - 3 * step, successes = 1, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Kino", base - 2 * step, successes = 0, failures = 0, zeroes = 1, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Kino", base - 1 * step, successes = 0, failures = 1, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Kino", base,            successes = 0, failures = 1, zeroes = 0, 0L, 0, Seq.empty)
 
     monitor.recentStatuses("Kino", 3) shouldBe Seq("zero", "red", "red")
     monitor.recentStatuses("Kino", 10) shouldBe Seq("green", "zero", "red", "red")
@@ -52,8 +52,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     val monitor = new UptimeMonitor()
     val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
     val step = UptimeMonitor.BucketDurationMs
-    monitor.applyExternalUpdate("Kino", base - step, successes = 1, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
-    monitor.applyExternalUpdate("Kino", base,        successes = 0, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Kino", base - step, successes = 1, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Kino", base,        successes = 0, failures = 0, zeroes = 0, 0L, 0, Seq.empty)
 
     monitor.recentStatuses("Kino", 3) shouldBe Seq("green")
   }
@@ -210,7 +210,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.addListener((s, _) => notified = s :: notified)
 
     val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
-    monitor.applyExternalUpdate("TMDB", timestamp,
+    monitor.sync.applyExternalUpdate("TMDB", timestamp,
       successes = 7, failures = 2, zeroes = 1, durationSumMs = 1400L, durationCount = 7, errors = Seq("HTTP 503"))
 
     val h = monitor.history("TMDB")
@@ -230,8 +230,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   it should "replace (not add to) the bucket's counts when applied repeatedly" in {
     val monitor = new UptimeMonitor()
     val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
-    monitor.applyExternalUpdate("IMDb", timestamp, successes = 3, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
-    monitor.applyExternalUpdate("IMDb", timestamp, successes = 5, failures = 1, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq("boom"))
+    monitor.sync.applyExternalUpdate("IMDb", timestamp, successes = 3, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.sync.applyExternalUpdate("IMDb", timestamp, successes = 5, failures = 1, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq("boom"))
 
     monitor.history("IMDb").head.successes shouldBe 5
     monitor.history("IMDb").head.failures shouldBe 1
@@ -248,16 +248,16 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.addListener((_, _) => notifications += 1)
     val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
 
-    monitor.applyExternalUpdate("RT", timestamp, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.sync.applyExternalUpdate("RT", timestamp, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 1
     // Same snapshot again (next poll, no new worker activity) → no listener fire.
-    monitor.applyExternalUpdate("RT", timestamp, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.sync.applyExternalUpdate("RT", timestamp, successes = 4, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 1
     // A real change (worker recorded more) → fires.
-    monitor.applyExternalUpdate("RT", timestamp, successes = 5, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.sync.applyExternalUpdate("RT", timestamp, successes = 5, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 2
     // A change confined to the zeroes dimension also counts as a change → fires.
-    monitor.applyExternalUpdate("RT", timestamp, successes = 5, failures = 0, zeroes = 1, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
+    monitor.sync.applyExternalUpdate("RT", timestamp, successes = 5, failures = 0, zeroes = 1, durationSumMs = 0L, durationCount = 0, errors = Seq.empty)
     notifications shouldBe 3
   }
 
@@ -266,9 +266,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // bucket) count grew. Writes only ever hit the current slot, so the poll is
   // bounded to recently-changeable buckets via a `{bucket: {$gte}}` filter.
   "the poll query" should "fetch only buckets within the lookback window, not the whole collection" in {
-    val monitor = new UptimeMonitor()
     val now = 1700000000000L
-    val filterDocument = monitor.pollFilter(now).toBsonDocument()
+    val filterDocument = UptimeSync.pollFilter(now).toBsonDocument()
 
     // A regression to find()/an empty filter would scan the whole collection.
     filterDocument.isEmpty shouldBe false
@@ -279,9 +278,8 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   // via an unbounded find(). An unbounded scan with a tight timeout is what
   // stranded the serving process with no history when Mongo was slow at boot.
   "the hydrate query" should "bound to the displayed window, not scan the whole collection" in {
-    val monitor = new UptimeMonitor()
     val now = 1700000000000L
-    val filterDocument = monitor.hydrateFilter(now).toBsonDocument()
+    val filterDocument = UptimeSync.hydrateFilter(now).toBsonDocument()
 
     filterDocument.isEmpty shouldBe false
     filterDocument.getDocument("bucket").getDateTime("$gte").getValue shouldBe
@@ -465,14 +463,14 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     monitor.addListener((_, _) => notifications += 1)
     val timestamp = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
 
-    monitor.applyExternalUpdate("Kino Praha", timestamp,
+    monitor.sync.applyExternalUpdate("Kino Praha", timestamp,
       successes = 2, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, fallback = true)
     monitor.history("Kino Praha").head.fallback shouldBe true
     notifications shouldBe 1
 
     // Same counts, fallback flipped off (primary recovered) — the flag change
     // alone must register as a change and fire.
-    monitor.applyExternalUpdate("Kino Praha", timestamp,
+    monitor.sync.applyExternalUpdate("Kino Praha", timestamp,
       successes = 2, failures = 0, zeroes = 0, durationSumMs = 0L, durationCount = 0, errors = Seq.empty, fallback = false)
     monitor.history("Kino Praha").head.fallback shouldBe false
     notifications shouldBe 2
@@ -489,10 +487,10 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     val monitor = new UptimeMonitor()
     val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
     val step = UptimeMonitor.BucketDurationMs
-    monitor.applyExternalUpdate("Residential proxy", base - 4 * step, successes = 99, failures = 99, zeroes = 99, 0L, 0, Seq.empty)
-    monitor.applyExternalUpdate("Residential proxy", base - 1 * step, successes = 0,  failures = 12, zeroes = 1, 0L, 0, Seq("boom"))
-    monitor.applyExternalUpdate("Residential proxy", base,            successes = 1,  failures = 3,  zeroes = 0, 0L, 0, Seq.empty)
-    monitor.applyExternalUpdate("TMDB",              base,            successes = 7,  failures = 0,  zeroes = 0, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Residential proxy", base - 4 * step, successes = 99, failures = 99, zeroes = 99, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("Residential proxy", base - 1 * step, successes = 0,  failures = 12, zeroes = 1, 0L, 0, Seq("boom"))
+    monitor.sync.applyExternalUpdate("Residential proxy", base,            successes = 1,  failures = 3,  zeroes = 0, 0L, 0, Seq.empty)
+    monitor.sync.applyExternalUpdate("TMDB",              base,            successes = 7,  failures = 0,  zeroes = 0, 0L, 0, Seq.empty)
 
     val totals = monitor.recentTotals(base - 2 * step).toMap
 
@@ -506,7 +504,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
   it should "still emit a service whose buckets all fall outside the window" in {
     val monitor = new UptimeMonitor()
     val base = UptimeMonitor.bucketTimestamp(System.currentTimeMillis())
-    monitor.applyExternalUpdate("Quiet cinema", base - 10 * UptimeMonitor.BucketDurationMs,
+    monitor.sync.applyExternalUpdate("Quiet cinema", base - 10 * UptimeMonitor.BucketDurationMs,
       successes = 5, failures = 5, zeroes = 5, 0L, 0, Seq.empty)
 
     monitor.recentTotals(base) shouldBe Seq("Quiet cinema" -> UptimeMonitor.RecentTotals(0, 0, 0))
@@ -536,7 +534,7 @@ class UptimeMonitorSpec extends AnyFlatSpec with Matchers {
     val services = (1 to 1000).map(i => s"Cinema $i")
     services.foreach { service =>
       (0 until UptimeMonitor.MaxBuckets).foreach { slot =>
-        monitor.applyExternalUpdate(service, base - slot * step,
+        monitor.sync.applyExternalUpdate(service, base - slot * step,
           successes = 3, failures = 1, zeroes = 0, 0L, 0, Seq("connect timed out", "certificate_expired"))
       }
     }

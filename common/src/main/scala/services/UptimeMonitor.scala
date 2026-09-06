@@ -1,15 +1,12 @@
 package services
 
-import com.mongodb.client.model.{IndexOptions => JIndexOptions, UpdateOptions}
+import com.mongodb.client.model.UpdateOptions
 import java.util.concurrent.TimeUnit
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
-import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, SingleObservableFuture}
+import org.mongodb.scala.model.{Filters, Indexes, Updates}
 import play.api.Logging
-import services.movies.KeysetScan
-import tools.RetryWithBackoff
 
-import java.util.concurrent.{ConcurrentHashMap, Executors, ScheduledExecutorService}
+import java.util.concurrent.{ConcurrentHashMap, ConcurrentSkipListMap, Executors, ScheduledExecutorService}
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger, AtomicLong, AtomicReference}
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -32,7 +29,7 @@ import scala.util.Try
  *    bucket's hundreds of per-pass records collapse into one write.
  *  - READS are polled, not change-streamed: the serving app does one `find()`
  *    per `PollIntervalMs` instead of reacting to every write, and that `find()`
- *    is BOUNDED to the recently-changeable buckets (`pollFilter`). So its cost
+ *    is BOUNDED to the recently-changeable buckets (`UptimeSync.pollFilter`). So its cost
  *    scales with the number of services in that small window, not with the full
  *    24h of retained history — an unbounded poll re-read the whole collection
  *    every interval and, once every city scraped (so the collection tripled),
@@ -47,20 +44,18 @@ class UptimeMonitor(
 ) extends Logging {
   import UptimeMonitor._
 
-  private val data = new ConcurrentHashMap[String, java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]]()
+  private val data = new BucketStore()
   private val listeners = new java.util.concurrent.CopyOnWriteArrayList[BucketListener]()
 
-  // Per-SERVICE (per-row, not per-bucket) labels — a generic tag mechanism the
-  // /uptime page renders as chips next to a row. Static metadata, decoupled from
-  // the time-series buckets: the worker (which alone knows the scraper catalog)
-  // tags each cinema with its client kind via `tagService`; the serving app reads
-  // them through the same Mongo channel it polls the buckets on. See `tagColl`.
-  private val serviceTags = new ConcurrentHashMap[String, Set[String]]()
-
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeBuckets"))
-  // Tags live in their own collection (no TTL — they're static config, unlike the
-  // 24h-expiring buckets), one document per service keyed by `service`.
   private val tagColl: Option[MongoCollection[Document]] = db.map(_.getCollection("uptimeServiceTags"))
+
+  // The cross-process reads (boot hydrate + serving-app poll) share this
+  // process's bucket map and listener fan-out; see `UptimeSync`. Package-private
+  // so a spec can seed buckets the way a polled worker write would.
+  private[services] val sync = new UptimeSync(data, notifyListeners)
+  // Per-service labels ride their own collection; see `ServiceTags`.
+  private val serviceTags = new ServiceTags(tagColl)
 
   // Daemon scheduler running the flusher (always) + poller (serving app only);
   // null until init runs, or if Mongo is absent.
@@ -73,9 +68,9 @@ class UptimeMonitor(
   coll.foreach { c =>
     val thread = new Thread(() => {
       ensureIndexes(c)
-      tagColl.foreach(ensureTagIndex)
-      hydrate(c)
-      tagColl.foreach(loadTags)
+      tagColl.foreach(serviceTags.ensureIndex)
+      sync.hydrate(c)
+      tagColl.foreach(serviceTags.load)
       // Schedule background work only AFTER hydrate: flushing absolute cumulative
       // state before the on-disk base is loaded would overwrite Mongo with just
       // this process's fresh increments.
@@ -109,26 +104,6 @@ class UptimeMonitor(
     }.recover { case exception => logger.warn(s"Uptime compound index creation failed: ${exception.getMessage}") }
   }
 
-  /** `uptimeServiceTags` is keyed by `service` and queried by NOTHING ELSE — the upsert in
-   *  `tagService` and the whole-collection `loadTags` are its only readers. It had no index
-   *  on it at all, because `ensureIndexes` above is only ever handed `uptimeBuckets`.
-   *
-   *  The cost of that omission was the single largest source of work on the database. Every
-   *  one of the ~8,300 upserts per scrape cycle, per country, was a COLLSCAN of the ~8,300
-   *  documents already there: 244,569,244 documents examined and 85 minutes of query time in
-   *  one two-day window, ~93% of ALL document scanning on the server. Measured again after
-   *  the fact — `explain` on `find({service})` reported COLLSCAN, `docsExamined: 8315`,
-   *  `keysExamined: 0`, in all five databases.
-   *
-   *  UNIQUE, because `service` IS the key: there are no duplicates today, and the constraint
-   *  also closes the upsert-under-concurrency race that could create one. Isolated in its own
-   *  `Try` like the others — an existing non-unique index would make this throw, and a
-   *  collection that cannot be indexed must not stop the monitor from running. */
-  private def ensureTagIndex(c: MongoCollection[Document]): Unit =
-    Try {
-      Await.result(c.createIndex(Indexes.ascending("service"), new JIndexOptions().unique(true)).toFuture(), 10.seconds)
-    }.recover { case exception => logger.warn(s"Uptime tag index creation failed: ${exception.getMessage}") }
-
   /** The recurring background work this monitor runs once hydrate lands, as data
    *  so the CADENCES are assertable without a scheduler or a Mongo round-trip.
    *  The writer side always flushes; the reader side (serving app) additionally
@@ -142,12 +117,12 @@ class UptimeMonitor(
     val readerJobs =
       if (!surfaceExternalWrites) Seq.empty
       else Seq(
-        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => Try(poll(c)))),
+        bucketCollection.map(c => ScheduledJob("poll-buckets", PollIntervalMs, () => Try(sync.poll(c)))),
         // Re-read the tag collection so a cinema tagged by the worker after this
         // app booted still surfaces — but on its OWN, far slower period. The read
         // is unfiltered and the collection is no longer small (see
         // `TagReloadIntervalMs`), so it must not ride the 10s bucket poll.
-        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => Try(loadTags(tc)))),
+        tagCollection.map(tc => ScheduledJob("reload-tags", tagReloadIntervalMs, () => Try(serviceTags.load(tc)))),
       ).flatten
     flushJob.toSeq ++ readerJobs
   }
@@ -316,112 +291,19 @@ class UptimeMonitor(
 
   // ── Per-service tags (generic per-row labels) ────────────────────────────────
 
-  /** Attach `tags` to `service`, replacing any existing set. Updates the in-memory map and,
-   *  WHEN THE VALUE ACTUALLY CHANGED, best-effort upserts the one tag document for the
-   *  service so other processes (the serving app) pick it up. Caller-supplied empty `tags`
-   *  clears the row's tags. Returns whether a write was made — the only reason it returns
-   *  anything is that the skip is worth being able to assert on.
-   *
-   *  It used to write unconditionally, and the comment here used to say so ("a no-op set is
-   *  still written (idempotent `$set`)"), which was true and expensive. Tags are static
-   *  config re-asserted once per cinema per scrape cycle: of 35,883 slow tag updates in one
-   *  two-day window, 35,882 reported `nModified: 0`. Mongo does not collapse those for us —
-   *  each still had to FIND the row it then did not change, and until `ensureTagIndex` that
-   *  was a full scan of the collection. */
-  def tagService(service: String, tags: Set[String]): Boolean = {
-    // `put` RETURNS the value it replaced, so the guard costs neither a read nor extra state.
-    // A first call in a fresh process has no previous value and writes once, which is what
-    // reconciles a tag that changed while this process was not running.
-    val previous = Option(serviceTags.put(service, tags))
-    val changed  = !previous.contains(tags)
-    if (changed) tagColl.foreach { c =>
-      Try {
-        c.updateOne(
-          Filters.eq("service", service),
-          Updates.combine(Updates.set("service", service), Updates.set("tags", tags.toList.asJava)),
-          new UpdateOptions().upsert(true)
-        ).subscribe(
-          (_: org.mongodb.scala.result.UpdateResult) => (),
-          (exception: Throwable) => tagWriteFailed(service, tags, previous, exception)
-        )
-      }.recover { case exception => tagWriteFailed(service, tags, previous, exception) }.getOrElse(())
-    }
-    changed
-  }
+  /** Attach `tags` to `service`, replacing any existing set; returns whether a
+   *  Mongo write was made. The rules — and why a no-op set must NOT write — are
+   *  on [[ServiceTags.tagService]]. */
+  def tagService(service: String, tags: Set[String]): Boolean = serviceTags.tagService(service, tags)
 
-  /** Undo the optimistic in-memory `put` when its Mongo write did not land.
-   *
-   *  The skip-if-unchanged guard reads the in-memory map, so leaving the new value there
-   *  after a failed write would make every later call report "unchanged" and never retry —
-   *  Mongo would stay on the old tags until the process restarted. The unconditional write
-   *  this guard replaced healed that on the next scrape cycle; rolling back keeps it doing so.
-   *
-   *  Both rollbacks are CONDITIONAL on the value still being the one we wrote, because the
-   *  failure arrives asynchronously and a newer `tagService` may already have overwritten it —
-   *  that newer value is the one Mongo will be asked for next, so it must not be clobbered. */
-  private def tagWriteFailed(service: String, tags: Set[String], previous: Option[Set[String]], exception: Throwable): Unit = {
-    previous match {
-      case Some(value) => serviceTags.replace(service, tags, value)
-      case None        => serviceTags.remove(service, tags)
-    }
-    logger.debug(s"Uptime tag write failed: ${exception.getMessage}")
-  }
-
-  /** Current per-service tags, for the page render. Returns the in-memory view,
-   *  populated from Mongo at boot + on each poll (serving app) or directly by
-   *  `tagService` (worker). */
-  def serviceTagsSnapshot(): Map[String, Set[String]] = serviceTags.asScala.toMap
-
-  /** Load all service tags from Mongo into the in-memory map. This is an
-   *  UNFILTERED read of the entire collection — NOT cheap: one document per tagged
-   *  service used to mean a handful, but it is 2,687 documents for Poland alone
-   *  (measured 2026-07-18) and grows with every cinema in every country. That is
-   *  why the reader schedules it on `TagReloadIntervalMs` (5 min) rather than the
-   *  10s bucket poll it once shared. `$set` semantics make re-loading idempotent,
-   *  so a slower cadence only delays a newly tagged cinema appearing, never
-   *  corrupts the map. */
-  private def loadTags(c: MongoCollection[Document]): Unit = Try {
-    // Keyset-paged rather than one cursor. The comment above already counts 2,687
-    // documents for Poland alone and says it grows with every cinema in every
-    // country — which is precisely the size at which an unbounded `find()` stops
-    // being merely slow and recurses the async driver into `StackOverflowError` on
-    // an I/O thread (see services.movies.KeysetScan). This runs every 5 minutes,
-    // forever, in BOTH the web and the worker, so it is the highest-frequency
-    // unbounded read we had.
-    //
-    // `$set`-style application per document means a partial load is harmless: tags
-    // that did not arrive are simply not refreshed this cycle, and the next one
-    // picks them up. That is why an incomplete scan stays at debug here rather than
-    // warning like the staging read, where a short result silences an alarm.
-    KeysetScan.scan[Document](
-      label          = "UptimeMonitor tag load",
-      batchSize      = 1000,
-      maxAttempts    = 2,
-      initialBackoff = 500.millis,
-      keyOf          = _.getString("_id"),
-      fetchPage      = (afterId, limit) => {
-        val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
-        Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), HydrateTimeout)
-      },
-      onIncomplete   = exception => logger.debug(s"Uptime tag load incomplete: ${exception.getMessage}")
-    ) { documents =>
-      documents.foreach { document =>
-        Option(document.getString("service")).foreach { service =>
-          val tags = Try(document.getList("tags", classOf[String])).toOption.flatMap(Option(_))
-            .map(_.asScala.toSet).getOrElse(Set.empty[String])
-          if (tags.nonEmpty) serviceTags.put(service, tags) else serviceTags.remove(service)
-        }
-      }
-    }
-    ()
-  }.recover { case exception => logger.debug(s"Uptime tag load failed: ${exception.getMessage}") }
+  /** Current per-service tags, for the page render. */
+  def serviceTagsSnapshot(): Map[String, Set[String]] = serviceTags.snapshot()
 
   private def currentBucket(service: String): Bucket = {
     val timestamp = bucketTimestamp(System.currentTimeMillis())
-    val buckets = data.computeIfAbsent(service, _ => new java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]())
-    val bucket = buckets.computeIfAbsent(timestamp, t => Bucket(t))
-    val cutoff = timestamp - MaxBuckets * BucketDurationMs
-    buckets.headMap(cutoff).clear()
+    val buckets = bucketsOf(data, service)
+    val bucket = bucketAt(buckets, timestamp)
+    dropExpired(buckets, timestamp)
     bucket
   }
 
@@ -477,136 +359,11 @@ class UptimeMonitor(
     )
   }.recover { case exception => logger.debug(s"Uptime Mongo write failed: ${exception.getMessage}") }.getOrElse(())
 
-  // ── Polled reads (serving app) ──────────────────────────────────────────────
-
-  /** The poll only needs buckets that can still change. Writes only ever land in
-   *  the CURRENT 15-min slot (see `currentBucket`), so a bucket is frozen once its
-   *  slot closes and its final cumulative count flushes — within
-   *  `BucketDurationMs + FlushIntervalMs` of the slot start. Everything older was
-   *  already loaded by the boot `hydrate` and never changes again, so re-reading
-   *  it every interval is pure waste (it dominated the serving box's CPU once the
-   *  scraper count — hence the collection — grew). Bound the poll to a generous
-   *  recent window; `PollLookbackMs` carries the margin rationale. The
-   *  `{bucket: {$gte}}` range is served by the existing `{bucket:1}` TTL index. */
-  private[services] def pollFilter(nowMs: Long): Bson =
-    Filters.gte("bucket", new java.util.Date(nowMs - PollLookbackMs))
-
-  /** Read the recently-changeable `uptimeBuckets` and merge them in. One bounded
-   *  query per interval — cost scales with the number of services in the window,
-   *  not with the full 24h of retained history. */
-  private def poll(c: MongoCollection[Document]): Unit = Try {
-    val documents = Await.result(c.find(pollFilter(System.currentTimeMillis())).toFuture(), 10.seconds)
-    documents.foreach { document =>
-      for {
-        service    <- Option(document.getString("service"))
-        bucketDate <- Option(document.getDate("bucket"))
-      } {
-        val timestamp = bucketTimestamp(bucketDate.getTime)
-        // Don't clobber a bucket this process has un-flushed local changes for
-        // (its own recorded services, e.g. web's OAuth fetches) — the next flush
-        // will reconcile it. External (worker) buckets are never locally dirty.
-        val locallyDirty = Option(data.get(service)).flatMap(b => Option(b.get(timestamp))).exists(_.dirty.get())
-        if (!locallyDirty)
-          applyExternalUpdate(
-            service, bucketDate.getTime,
-            document.getInteger("successes", 0),
-            document.getInteger("failures", 0),
-            document.getInteger("zeroes", 0),
-            Try(document.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L),
-            document.getInteger("durationCount", 0),
-            Try(document.getList("errors", classOf[String])).toOption.fold(Seq.empty[String])(_.asScala.toSeq),
-            Try(document.getBoolean("fallback", false)).getOrElse(false)
-          )
-      }
-    }
-  }.recover { case exception => logger.warn(s"Uptime poll failed: ${exception.getMessage}") }
-
   private def notifyListeners(service: String, bucket: Bucket): Unit =
     if (!listeners.isEmpty) {
       val snap = BucketSnapshot(bucket.timestamp, bucket.successes.get(), bucket.failures.get(), bucket.zeroes.get(), bucket.errors.asScala.toSeq, bucket.fallback.get())
       listeners.forEach(f => Try(f(service, snap)))
     }
-
-  /** The hydrate only needs the buckets the /uptime page actually renders — the
-   *  most recent `MaxBuckets` slots. Bounding to that window (a) skips older documents
-   *  that linger inside the TTL margin but never display, and (b) rides the
-   *  `{bucket:1}` index instead of a full collection scan. */
-  private[services] def hydrateFilter(nowMs: Long): Bson =
-    Filters.gte("bucket", new java.util.Date(bucketTimestamp(nowMs) - MaxBuckets.toLong * BucketDurationMs))
-
-  /** Load the retained display window into the in-memory map at boot. The fetch
-   *  is wrapped in `RetryWithBackoff`: a single 10s timeout used to STRAND the
-   *  process with no history (the /uptime page then showed only the ~poll window,
-   *  not the full 24h) whenever Mongo was briefly slow at boot — e.g. during a
-   *  deploy storm. A transient slowdown must not be permanent, so retry with a
-   *  generous per-attempt timeout before giving up. Runs on a daemon thread, so
-   *  neither the timeout nor the backoff blocks app start, and records arriving
-   *  mid-hydrate merge additively. Only the FETCH retries — the merge runs once on
-   *  the materialised documents, so a retry can't double-count via `addAndGet`. */
-  private def hydrate(c: MongoCollection[Document]): Unit = Try {
-    val documents = RetryWithBackoff("Uptime hydrate", maxAttempts = HydrateMaxAttempts, initialBackoff = HydrateRetryBackoff) {
-      Await.result(c.find(hydrateFilter(System.currentTimeMillis())).toFuture(), HydrateTimeout)
-    }
-    var count = 0
-    documents.foreach { document =>
-      for {
-        service <- Option(document.getString("service"))
-        bucketDate <- Option(document.getDate("bucket"))
-      } {
-        val timestamp = bucketTimestamp(bucketDate.getTime)
-        val buckets = data.computeIfAbsent(service, _ => new java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]())
-        val bucket = buckets.computeIfAbsent(timestamp, t => Bucket(t))
-        bucket.successes.addAndGet(document.getInteger("successes", 0))
-        bucket.failures.addAndGet(document.getInteger("failures", 0))
-        bucket.zeroes.addAndGet(document.getInteger("zeroes", 0))
-        bucket.durationSumMs.addAndGet(Try(document.get("durationSumMs").map(_.asNumber().longValue()).getOrElse(0L)).getOrElse(0L))
-        bucket.durationCount.addAndGet(document.getInteger("durationCount", 0))
-        Try(document.getList("errors", classOf[String])).toOption.foreach { errs =>
-          errs.asScala.take(MaxErrorsPerBucket).foreach(bucket.errors.add)
-        }
-        if (Try(document.getBoolean("fallback", false)).getOrElse(false)) bucket.fallback.set(true)
-        count += 1
-      }
-    }
-    if (count > 0) logger.info(s"Hydrated $count uptime bucket(s) from Mongo.")
-  }.recover { case exception => logger.warn(s"Uptime hydrate failed after $HydrateMaxAttempts attempts: ${exception.getMessage}") }
-
-  /** Merge a bucket post-image that originated in another process (the worker),
-   *  read by the poller. The snapshot carries the CUMULATIVE totals for that
-   *  service+bucket, so we SET rather than add — re-applying the same snapshot
-   *  (every poll re-reads it) is idempotent. Listeners fire only when something
-   *  actually changed, so an unchanged poll doesn't spam the /uptime SSE.
-   *  Package-private: the only callers are the poller and its test. */
-  private[services] def applyExternalUpdate(
-    service: String, rawTimestamp: Long,
-    successes: Int, failures: Int, zeroes: Int,
-    durationSumMs: Long, durationCount: Int,
-    errors: Seq[String], fallback: Boolean = false
-  ): Unit = {
-    val timestamp = bucketTimestamp(rawTimestamp)
-    val buckets = data.computeIfAbsent(service, _ => new java.util.concurrent.ConcurrentSkipListMap[Long, Bucket]())
-    val bucket = buckets.computeIfAbsent(timestamp, t => Bucket(t))
-    val cappedErrors = errors.take(MaxErrorsPerBucket)
-    val changed =
-      bucket.successes.get() != successes ||
-      bucket.failures.get() != failures ||
-      bucket.zeroes.get() != zeroes ||
-      bucket.durationSumMs.get() != durationSumMs ||
-      bucket.durationCount.get() != durationCount ||
-      bucket.errors.asScala.toSeq != cappedErrors ||
-      bucket.fallback.get() != fallback
-    bucket.successes.set(successes)
-    bucket.failures.set(failures)
-    bucket.zeroes.set(zeroes)
-    bucket.durationSumMs.set(durationSumMs)
-    bucket.durationCount.set(durationCount)
-    bucket.fallback.set(fallback)
-    bucket.errors.clear()
-    cappedErrors.foreach(bucket.errors.add)
-    val cutoff = timestamp - MaxBuckets * BucketDurationMs
-    buckets.headMap(cutoff).clear()
-    if (changed) notifyListeners(service, bucket)
-  }
 
   /** Flush anything pending and stop the background scheduler. Idempotent; safe
    *  when nothing was started (no Mongo). */
@@ -636,7 +393,7 @@ object UptimeMonitor {
   // The serving app re-reads the uptimeBuckets snapshot this often (reader side).
   val PollIntervalMs: Long = 10000L
   // The serving app re-reads uptimeServiceTags this often. Deliberately MUCH
-  // slower than the bucket poll: `loadTags` is an UNFILTERED read of the whole
+  // slower than the bucket poll: `ServiceTags.load` is an UNFILTERED read of the whole
   // collection, which is no longer the handful of documents it was when it rode
   // the 10s poll — 2,687 tag documents for Poland alone (measured 2026-07-18),
   // i.e. ~8,640 reloads/day × 2,687 documents × 4 web machines, ~23M document
@@ -663,6 +420,21 @@ object UptimeMonitor {
   val HydrateRetryBackoff: FiniteDuration = 2.seconds
 
   def bucketTimestamp(epochMs: Long): Long = epochMs - (epochMs % BucketDurationMs)
+
+  /** service → (bucket timestamp → bucket): the in-memory state every cluster
+   *  reads or writes. One instance per monitor, shared by reference with the
+   *  [[UptimeSync]] that merges other processes' buckets into it. */
+  type BucketStore = ConcurrentHashMap[String, ConcurrentSkipListMap[Long, Bucket]]
+
+  private[services] def bucketsOf(store: BucketStore, service: String): ConcurrentSkipListMap[Long, Bucket] =
+    store.computeIfAbsent(service, _ => new ConcurrentSkipListMap[Long, Bucket]())
+
+  private[services] def bucketAt(buckets: ConcurrentSkipListMap[Long, Bucket], timestamp: Long): Bucket =
+    buckets.computeIfAbsent(timestamp, t => Bucket(t))
+
+  /** Forget the slots that fell out of the retained window as of `timestamp`. */
+  private[services] def dropExpired(buckets: ConcurrentSkipListMap[Long, Bucket], timestamp: Long): Unit =
+    buckets.headMap(timestamp - MaxBuckets * BucketDurationMs).clear()
 
   // The venue's public source-page URL travels as a `"url:<https…>"` service
   // tag (written by the worker's `CinemaClientMarkers`). Both /uptime and /debug
