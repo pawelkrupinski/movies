@@ -72,7 +72,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     sentinels += collectionName
     val collection = database.getCollection[Document](collectionName)
     Await.ready(collection.drop().toFuture(), 10.seconds)
-    // A collection has to EXIST before listIndexes/collMod address anything.
+    // A collection has to EXIST before listIndexes or dropIndex address anything.
     Await.result(database.createCollection(collectionName).toFuture(), 10.seconds)
     collection
   }

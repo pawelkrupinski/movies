@@ -78,10 +78,12 @@ class TtlIndexMetricsSpec extends AnyFlatSpec with Matchers with BeforeAndAfterE
     PrometheusExposition.value(scrape(), "kinowo_worker_ttl_index_mismatches") shouldBe Some(0.0)
   }
 
-  it should "carry no country label — one reconciler serves every country's wiring in the JVM" in {
-    // `MongoTtlIndex` is an `object`, so the collections Poland reconciles are recorded
-    // in the same set Germany's wiring writes to. A country label would be a lie, for
-    // the reason StringPoolMetrics gives about the intern pool.
+  it should "add no country label of its own — one reconciler serves every country in the JVM" in {
+    // `MongoTtlIndex` is an `object`, so the collections Poland reconciles are recorded in
+    // the same set Germany's wiring writes to; a country label MINTED HERE would be a lie.
+    // Prometheus still attaches a `country` TARGET label naming the pod, which is honest and
+    // is what `TtlIndexUnreconciled` groups by — this asserts the metric does not invent one,
+    // not that the alert has none to group by.
     val line = scrape().linesIterator.find(l => l.startsWith("kinowo_worker_ttl_index_mismatches") && !l.startsWith("#"))
     line.getOrElse(fail("gauge not exported")) should not include "country="
   }

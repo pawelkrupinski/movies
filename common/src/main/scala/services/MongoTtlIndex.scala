@@ -82,6 +82,13 @@ object MongoTtlIndex extends Logging {
             Indexes.ascending(field),
             new JIndexOptions().expireAfter(wantedSeconds, TimeUnit.SECONDS)
           ).toFuture(), 10.seconds)
+          // SYMMETRY, so a namespace cannot stay counted after it is healthy again. Every
+          // branch that ends with the index correct clears the entry; every branch that ends
+          // with it wrong records one. There is no path to this today — `reconcile` runs once
+          // per namespace per process, so nothing recorded a mismatch earlier in this JVM for
+          // the clear to matter — which is why no case reaches it and none is invented. It is
+          // here so the invariant holds if that ever stops being true.
+          Mismatches.resolved(key)
         }.recover { case exception =>
           // `IndexOptionsConflict` HERE MEANS THE READ ABOVE FAILED, not that the index is
           // absent — `currentExpiry` returns None for an unreadable collection too, and

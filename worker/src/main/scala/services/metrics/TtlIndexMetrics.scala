@@ -32,7 +32,17 @@ import services.MongoTtlIndex
  * lines `MongoTtlIndex` emits, which is where triage reads them.
  *
  * Process-level, like [[StringPoolMetrics]]: the reconciler is one `object` shared
- * by every country's wiring in the JVM, so a `country` label would be a lie.
+ * by every country's wiring in the JVM, so a `country` label PUT HERE would be a lie —
+ * the register spans whatever countries this process runs, and attributing its count
+ * to one of them would be made up.
+ *
+ * THAT IS NOT THE SAME AS THE `country` PROMETHEUS ADDS, and `TtlIndexUnreconciled`
+ * groups by it on purpose. That one is a TARGET label: it names the pod the sample was
+ * scraped from, which is honest whatever the pod runs, and is the only thing that tells
+ * an operator whose log to read. Verified against the live series — one per pod,
+ * `country` = pl/de/uk/es/us. If a pod is ever given several countries in
+ * `KINOWO_COUNTRIES`, that label names the pod rather than the guilty database, and the
+ * WARN line stays the thing that names the collection.
  */
 object TtlIndexMetrics {
 
