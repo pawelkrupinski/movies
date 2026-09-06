@@ -7,7 +7,7 @@ import services.cinemas.CountryNames
 import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
-import services.resolution.{Candidate, Contradiction, FilmEvidence, ResolutionCache, ResolutionKeys, SearchTitles, TitleCorroboration, TmdbAttempt, TmdbBasis, Verdict}
+import services.resolution.{Candidate, Contradiction, FilmEvidence, ResolutionCache, ResolutionKeys, SearchTitles, TitleMatch, TmdbAttempt, TmdbBasis, Verdict}
 import services.tasks.RatingTasks
 import tools.{DaemonExecutors, HttpStatusException}
 
@@ -1286,13 +1286,11 @@ class MovieService(
         // Yann Gozlan's "Gourou"), so an exact match misses and the year-only `byYear`
         // below then pins whichever of the director's films sits at the row's
         // (cinema-disagreed, merge-order-dependent) year — "Dalloway" 2025 vs "Gourou"
-        // 2026, the SAME-director cross-film flip. A tight edit-distance match (≤2 and
-        // ≤1/3 of the longer title) ties "guru"→"gourou" but never "guru"→"dalloway".
+        // 2026, the SAME-director cross-film flip. A tight edit-distance match
+        // (`TitleMatch.close`: ≤2 and ≤1/3 of the longer title) ties "guru"→"gourou"
+        // but never "guru"→"dalloway".
         def titleClose(f: TmdbClient.SearchResult, want: Set[String] = wanted): Boolean =
-          titleOf(f).exists(t => want.exists { w =>
-            val d = tools.EditDistance.between(w, t)
-            d <= 2 && d * 3 <= math.max(w.length, t.length)
-          })
+          titleOf(f).exists(t => want.exists(TitleMatch.close(_, t)))
         // Title match first (±1-year-tolerant); fall back to an exact-year match,
         // but ONLY when that year is unambiguous in the filmography. A director
         // with two same-year credits (Andrew Stanton: "In the Blink of an Eye"
@@ -1358,10 +1356,10 @@ class MovieService(
         // it, just loosely enough to survive translation: the two must share a
         // distinctive word. Titles of the same film keep a proper noun across
         // languages ("Giulietta", "Munch", "Mavka"); unrelated films share nothing.
-        // `TitleCorroboration` owns which words count and how they are folded —
-        // Filmweb's director+year override answers the same question.
+        // `TitleMatch.sharesDistinctiveToken` owns which words count and how they
+        // are folded — Filmweb's director+year override answers the same question.
         def corroboratedByTitle(f: TmdbClient.SearchResult): Boolean =
-          TitleCorroboration.sharesDistinctiveToken(
+          TitleMatch.sharesDistinctiveToken(
             candidates, Seq(f.title) ++ f.originalTitle.toSeq, cache.normalizer.sanitize)
 
         // When the title is FULLY translated it keeps nothing to share — "Trener

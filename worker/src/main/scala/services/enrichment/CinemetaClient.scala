@@ -1,7 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
-import services.resolution.YearWindow
+import services.resolution.{TitleMatch, YearWindow}
 import tools.HttpFetch
 
 import java.net.URLEncoder
@@ -52,7 +52,7 @@ class CinemetaClient(http: HttpFetch) {
   private def corroborated(c: Candidate, queryTitle: String, year: Option[Int]): Boolean = {
     val q = norm(queryTitle); val n = norm(c.name)
     val exact         = q.nonEmpty && q == n
-    val titleContains = q.nonEmpty && n.nonEmpty && (q.startsWith(n) || n.startsWith(q))
+    val titleContains = TitleMatch.oneStartsWithTheOther(q, n)
     val yearMatch     = YearWindow.agrees(year, c.year, YearTolerance).contains(true)
     // A year off by >1 vetoes even an EXACT title — two different films share a
     // name often enough ("Alpha" 2015 vs 2026) that a title-only resolver must not

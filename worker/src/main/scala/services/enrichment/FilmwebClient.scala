@@ -2,7 +2,7 @@ package services.enrichment
 
 import play.api.libs.json._
 import services.movies.SamePerson
-import services.resolution.{TitleCorroboration, YearWindow}
+import services.resolution.{TitleMatch, YearWindow}
 import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder
@@ -312,9 +312,9 @@ class FilmwebClient(http: HttpFetch) {
   }
 
   private[enrichment] def matchesByTitle(c: Candidate, query: String): Boolean = {
-    val normalizedQuery = normalizeTitle(query)
-    val titles = (c.title +: c.originalTitle.toSeq).map(normalizeTitle)
-    titles.exists(_ == normalizedQuery) || titles.exists(t => MetacriticClient.isModifierSuffix(t, normalizedQuery))
+    val normalizedQuery = TitleMatch.fold(query)
+    val titles = (c.title +: c.originalTitle.toSeq).map(TitleMatch.fold)
+    titles.exists(_ == normalizedQuery) || titles.exists(t => TitleMatch.isModifierSuffix(t, normalizedQuery))
   }
 
   private[enrichment] def matchesByDirector(c: Candidate, directors: Set[String]): Boolean =
@@ -323,10 +323,8 @@ class FilmwebClient(http: HttpFetch) {
   /** True iff `c`'s canonical title (or originalTitle) EQUALS the query — the
    *  strict half of [[matchesByTitle]], excluding the looser modifier-suffix
    *  branch. */
-  private[enrichment] def matchesByExactTitle(c: Candidate, query: String): Boolean = {
-    val normalizedQuery = normalizeTitle(query)
-    (c.title +: c.originalTitle.toSeq).map(normalizeTitle).contains(normalizedQuery)
-  }
+  private[enrichment] def matchesByExactTitle(c: Candidate, query: String): Boolean =
+    (c.title +: c.originalTitle.toSeq).exists(TitleMatch.exact(_, query))
 
   /** False-positive guard for the no-director path. When neither the caller nor
    *  the merge gives us a director to disambiguate AND the row carries a year,
@@ -367,13 +365,14 @@ class FilmwebClient(http: HttpFetch) {
    *  disagreement inside a word still counts. And against every name the row is
    *  known by, not just the query being searched: "Cinema Italia Oggi: Miasta na
    *  równinie" is filed under "Le città di pianura", which its own TMDB original
-   *  title — already among the queries — names exactly. See [[TitleCorroboration]], which
-   *  answers the same question for TMDB's director-walk. */
+   *  title — already among the queries — names exactly. See
+   *  [[TitleMatch.sharesDistinctiveToken]], which answers the same question for
+   *  TMDB's director-walk. */
   private[enrichment] def matchesByDirectorAndYear(c: Candidate, knownAs: Seq[String], year: Option[Int], directors: Set[String]): Boolean =
     directors.nonEmpty && c.directors.nonEmpty &&
       YearWindow.agrees(year, c.year, YearTolerance).contains(true) &&
       directorsOverlap(c.directors, directors) &&
-      TitleCorroboration.sharesDistinctiveToken(
+      TitleMatch.sharesDistinctiveToken(
         knownAs, c.title +: c.originalTitle.toSeq, deburr, maxTokenEdits = 1)
 
   /** Some caller director naming some Filmweb director, per [[SamePerson]] — so
@@ -468,13 +467,6 @@ object FilmwebClient {
   private val UrlYearPat = """-(\d{4})-\d+/?$""".r
 
   private def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
-
-  /** Lower-case + trim + fold every dash variant to '-', for title-equality
-   *  comparison. Dash folding is shared with the MC/RT/IMDb matchers via
-   *  [[MetacriticClient.foldDashes]]. Unlike [[deburr]] this keeps diacritics —
-   *  Filmweb titles carry them and the `/info` titles we compare against do too. */
-  private[enrichment] def normalizeTitle(s: String): String =
-    MetacriticClient.foldDashes(s).toLowerCase.trim
 
   /** Extra search queries to try when the raw title carries a screening-cycle or
    *  festival banner the bare film title doesn't. Splits on `|` (each segment is

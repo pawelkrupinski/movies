@@ -2,6 +2,7 @@ package services.enrichment
 
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
+import services.resolution.TitleMatch
 import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -121,9 +122,9 @@ class RottenTomatoesClient(http: HttpFetch) {
     if (primary.isEmpty) Seq.empty
     else {
       // Year-suffixed form first, then plain, per form — the shared ordering
-      // rule (see MetacriticClient.yearSuffixedFirst), which MC needs too.
-      MetacriticClient.yearSuffixedFirst(
-        primary +: MetacriticClient.dropLeadingArticle(primary, '_').toSeq, year, '_')
+      // rule (see TitleMatch.yearSuffixedFirst), which MC needs too.
+      TitleMatch.yearSuffixedFirst(
+        primary +: TitleMatch.dropLeadingArticle(primary, '_').toSeq, year, '_')
     }
   }
 
@@ -180,7 +181,7 @@ class RottenTomatoesClient(http: HttpFetch) {
     query: String,
     year:  Option[Int]
   ): Option[SearchHit] = {
-    val normalizedQuery = MetacriticClient.foldDashes(query.toLowerCase.trim)
+    val normalizedQuery = TitleMatch.fold(query)
     if (hits.isEmpty || normalizedQuery.isEmpty) None
     else {
       // Year-guard the EXACT matches, and require the hit to POSITIVELY agree —
@@ -191,13 +192,13 @@ class RottenTomatoesClient(http: HttpFetch) {
       // names the ORIGINAL film — a re-issue's own gap from its film is expected and
       // correct, and an undated one says nothing. See the fallback below for the case
       // that leaves open and why no year test here can close it.
-      val exactTitle = hits.filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
+      val exactTitle = hits.filter(h => TitleMatch.exact(h.title, normalizedQuery))
       // Strict, INCLUDING the undated: "a hit that declines to say WHEN is not evidence
       // that it is the right film" — /m/lalka_1969 publishes no year on the page either,
       // which is exactly how the leak below reached prod. That rejection is deliberate
       // and its own test; do not relax it to rescue a modifier fallback.
       val exact      = exactTitle.filter(h => MetacriticClient.yearConfirms(year, h.year))
-      val modifier   = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
+      val modifier   = hits.filter(h => TitleMatch.isModifierSuffix(h.title, normalizedQuery))
       // The modifier branch is a fallback for "no exact title here at all" — NOT for
       // "the exact titles were rejected". Falling through on a year rejection hands an
       // unguarded candidate the win the guard just denied a guarded one: a 2026 "Lalka"

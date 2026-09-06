@@ -2,7 +2,7 @@ package services.enrichment
 
 import play.api.libs.json._
 import services.movies.SamePerson
-import services.resolution.YearWindow
+import services.resolution.{TitleMatch, YearWindow}
 import tools.{Env, HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -95,7 +95,7 @@ class OMDbClient(http: HttpFetch, apiKey: => Option[String] = OMDbClient.ApiKey)
     val dirOverlap     = directorsOverlap(directors, c.directors)
     val dirContradicts = directors.nonEmpty && c.directors.nonEmpty && !dirOverlap
     val yearMatch      = YearWindow.agrees(year, c.year, YearTolerance).contains(true)
-    val titleContains  = { val a = norm(queryTitle); val b = norm(c.title); a.nonEmpty && b.nonEmpty && (a.startsWith(b) || b.startsWith(a)) }
+    val titleContains  = TitleMatch.oneStartsWithTheOther(norm(queryTitle), norm(c.title))
     !dirContradicts && !(YearWindow.contradicts(year, c.year, YearTolerance) && !exact) &&
       (exact || dirOverlap || (yearMatch && titleContains))
   }

@@ -2,7 +2,8 @@ package services.enrichment
 
 import play.api.libs.json._
 import services.movies.SamePerson
-import tools.{EnrichmentRead, HttpFetch, TextNormalization}
+import services.resolution.TitleMatch
+import tools.{EnrichmentRead, HttpFetch}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -210,10 +211,9 @@ class ImdbClient(http: HttpFetch) {
    *  want fixture-driven assertions independent of HTTP. */
   def parseSuggestions(body: String, title: String, year: Option[Int]): Option[String] = {
     // Deburr both sides: IMDb stores titles in ASCII (ł→l, ą→a, ś→s, etc.) while
-    // our query titles retain Polish diacritics. `TextNormalization.deburr` handles
-    // NFD-based stripping PLUS the explicit ł/Ł→l substitution that NFD alone misses.
-    // `foldDashes` then aligns en-dash/em-dash titles with hyphen queries.
-    val normalizedTitle = MetacriticClient.foldDashes(TextNormalization.deburr(title).toLowerCase.trim)
+    // our query titles retain Polish diacritics — and en-dash/em-dash titles must
+    // meet hyphen queries. Both are `TitleMatch.deburredFold`.
+    val normalizedTitle = TitleMatch.deburredFold(title)
     Try(Json.parse(body)).toOption.flatMap { js =>
       // Real film candidates: tt-id, qid "movie". Keep document order — IMDb
       // returns the best query match first, popularity padding after.
@@ -222,7 +222,7 @@ class ImdbClient(http: HttpFetch) {
           for {
             id  <- (entry \ "id").asOpt[String] if id.startsWith("tt")
             qid <- (entry \ "qid").asOpt[String] if qid == "movie"
-          } yield Suggestion(id, (entry \ "l").asOpt[String].map(s => MetacriticClient.foldDashes(TextNormalization.deburr(s).toLowerCase.trim)), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
+          } yield Suggestion(id, (entry \ "l").asOpt[String].map(TitleMatch.deburredFold), (entry \ "y").asOpt[Int], (entry \ "rank").asOpt[Int].getOrElse(Int.MaxValue))
         }
       // A leading article is not a difference. IMDb lists a film under its PRIMARY title,
       // so the Polish release title "Bodyguard" belongs to "The Bodyguard" (1992) — an AKA

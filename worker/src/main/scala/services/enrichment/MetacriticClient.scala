@@ -3,7 +3,7 @@ package services.enrichment
 import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
 import services.movies.SamePerson
-import services.resolution.YearWindow
+import services.resolution.{TitleMatch, YearWindow}
 import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -167,12 +167,12 @@ class MetacriticClient(http: HttpFetch) {
 
   /** Slugs to probe, best-first. When the film's year is known the year-suffixed
    *  variant of each form is tried BEFORE its bare form — see
-   *  [[MetacriticClient.yearSuffixedFirst]] for why that ordering is load-bearing. */
+   *  [[TitleMatch.yearSuffixedFirst]] for why that ordering is load-bearing. */
   def candidateSlugs(title: String, year: Option[Int] = None): Seq[String] = {
     val primary = MetacriticClient.slugify(title)
     if (primary.isEmpty) Seq.empty
-    else MetacriticClient.yearSuffixedFirst(
-      primary +: MetacriticClient.dropLeadingArticle(primary, '-').toSeq, year, '-')
+    else TitleMatch.yearSuffixedFirst(
+      primary +: TitleMatch.dropLeadingArticle(primary, '-').toSeq, year, '-')
   }
 
   /** Scrape MC's HTML search page and pick the best `/movie/{slug}` link by
@@ -234,7 +234,7 @@ class MetacriticClient(http: HttpFetch) {
     query: String,
     year:  Option[Int]
   ): Option[SearchHit] = {
-    val normalizedQuery = MetacriticClient.foldDashes(query.toLowerCase.trim)
+    val normalizedQuery = TitleMatch.fold(query)
     if (hits.isEmpty || normalizedQuery.isEmpty) None
     else {
       // Year-guard the EXACT matches only. Same title + distant year means a
@@ -249,9 +249,9 @@ class MetacriticClient(http: HttpFetch) {
       // 2024, 71 years apart and correct. Guarding those would reject every
       // anniversary screening, so it deliberately stays unguarded.
       val exact = hits
-        .filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
+        .filter(h => TitleMatch.exact(h.title, normalizedQuery))
         .filter(h => MetacriticClient.yearsCompatible(year, h.year))
-      val modifier = hits.filter(h => MetacriticClient.isModifierSuffix(h.title, normalizedQuery))
+      val modifier = hits.filter(h => TitleMatch.isModifierSuffix(h.title, normalizedQuery))
       val candidates =
         if (exact.nonEmpty) exact
         else if (modifier.nonEmpty) modifier
@@ -300,20 +300,6 @@ object MetacriticClient {
 
   case class SearchHit(slug: String, title: String, year: Option[Int])
 
-  // Unicode dash variants (hyphen-minus aside): hyphen, non-breaking hyphen,
-  // figure dash, en dash, em dash, horizontal bar, minus sign. Cinemas and the
-  // rating sources disagree on which one a title uses ("Chainsaw Man – The
-  // Movie" vs "Chainsaw Man - The Movie"), so fold them all to ASCII '-' before
-  // comparing titles. Shared across the title matchers of MC/RT (search-hit
-  // acceptance), Filmweb (`normalizeTitle`), and IMDb (suggestion-title
-  // disambiguation) so one rule governs dash equivalence everywhere.
-  private val DashVariants: Set[Char] = Set('‐', '‑', '‒', '–', '—', '―', '−')
-
-  /** Fold every Unicode dash variant in `s` to ASCII '-'. Case- and
-   *  diacritic-preserving — callers lowercase/deburr separately. */
-  private[enrichment] def foldDashes(s: String): String =
-    if (s.exists(DashVariants)) s.map(c => if (DashVariants(c)) '-' else c) else s
-
   /** A resolved Metacritic movie page, plus its Metascore when the resolving
    *  fetch already downloaded the movie page (the slug probe validates the page
    *  with a GET, so its body yields the score for free). `metascore` is None
@@ -332,16 +318,6 @@ object MetacriticClient {
       .replaceAll("[''']", "")        // drop apostrophes (straight + curly)
       .replaceAll("[^a-z0-9!]+", "-") // preserve !, everything else → hyphen
       .replaceAll("^-+|-+$", "")
-
-  /** Some films index without their leading "the"/"a"/"an" (more common on
-   *  RT, but happens on Metacritic too). Returns the de-articled slug only
-   *  when the leading article is present, so callers can decide whether to
-   *  also probe the variant.
-   */
-  def dropLeadingArticle(slug: String, sep: Char): Option[String] = {
-    val prefixes = Seq(s"the$sep", s"a$sep", s"an$sep")
-    prefixes.collectFirst { case p if slug.startsWith(p) => slug.drop(p.length) }
-  }
 
   /** Extract the Metascore (critic aggregate, 0–100) from a Metacritic movie
    *  page's HTML. Reads the `<script type="application/ld+json">` block,
@@ -384,23 +360,6 @@ object MetacriticClient {
    *  is not delicate. Shared by [[MetacriticClient]] and [[RottenTomatoesClient]]. */
   private val YearMatchTolerance = 15
 
-  /** Interleave `base` slug forms with their `<slug><sep><year>` variants, each
-   *  year-suffixed form immediately BEFORE its bare form. No year → unchanged.
-   *
-   *  Both Metacritic and Rotten Tomatoes disambiguate same-titled films with a
-   *  year suffix, and for a NEW film the bare slug is routinely the older
-   *  namesake: `/movie/the-odyssey` is Jerome Salle's Cousteau biopic while
-   *  Nolan's 2026 film is `/movie/the-odyssey-2026`. Probing bare-first stored
-   *  the wrong film — and the year guard could not catch it, because that page
-   *  serves `datePublished: "0000-00-00"`, which parses to no year at all and so
-   *  is "compatible" with everything. Trying the year-suffixed form first is what
-   *  actually separates them; the guard only rejects what it can disprove.
-   *
-   *  Shared by both clients (RT with '_', MC with '-') so the ordering rule has
-   *  one definition. */
-  def yearSuffixedFirst(base: Seq[String], year: Option[Int], separator: Char): Seq[String] =
-    year.fold(base)(y => base.flatMap(s => Seq(s"$s$separator$y", s)).distinct)
-
   /** True when the film's year and a probed page's year are compatible — i.e.
    *  we have NO positive evidence they're different films. Only a conflict of
    *  BOTH known years beyond [[YearMatchTolerance]] returns false; a missing
@@ -429,22 +388,4 @@ object MetacriticClient {
    *  for no gain ("keep an undated hit" in `MetacriticClientSpec`). */
   def yearConfirms(filmYear: Option[Int], candidateYear: Option[Int]): Boolean =
     filmYear.isEmpty || YearWindow.agrees(filmYear, candidateYear, YearMatchTolerance).contains(true)
-
-  /** True when `title` starts with `query` and the *next* non-space character
-   *  is punctuation — indicating a modifier suffix like " - Re-Release",
-   *  ": Restored", " (Anniversary Edition)". False for "Deaf President Now!"
-   *  vs "Deaf" (next char "P" is alphanumeric → different film), and for
-   *  exact equals (caller treats those separately).
-   *
-   *  `query` is expected pre-lowercased + trimmed. Both sides are dash-folded
-   *  so an en-dash title still prefix-matches a hyphen query (and vice versa).
-   */
-  def isModifierSuffix(title: String, query: String): Boolean = {
-    val normalizedQuery = foldDashes(query)
-    val normalizedTitle = foldDashes(title.toLowerCase.trim)
-    normalizedTitle.startsWith(normalizedQuery) && normalizedTitle != normalizedQuery && {
-      val rest = normalizedTitle.drop(normalizedQuery.length).dropWhile(_.isWhitespace)
-      rest.headOption.exists(c => !c.isLetterOrDigit)
-    }
-  }
 }

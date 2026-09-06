@@ -96,7 +96,7 @@ object MetacriticDiagnostics {
 
         val primary = MetacriticClient.slugify(linkTitle)
         val variants = candidates.map { case (label, t) => label -> MetacriticClient.slugify(t) }
-        val withDeArt = variants ++ MetacriticClient
+        val withDeArt = variants ++ services.resolution.TitleMatch
           .dropLeadingArticle(primary, '-')
           .map("de-articled (already supported)" -> _)
           .toSeq

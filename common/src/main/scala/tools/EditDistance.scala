@@ -5,7 +5,7 @@ package tools
  * the corpus asks for: the distance itself, and the cheaper "is it within N", which
  * abandons the walk as soon as every path has spent the budget.
  *
- * One implementation. The title-side comparison (`TitleCorroboration`) and the
+ * One implementation. The title-side comparison (`TitleMatch`) and the
  * person-side one (`SamePerson`) each carried their own, and the person-side one had
  * already replaced a greedy walk that mis-scored a substitution following a deletion
  * ("Sokourov" against "Sokurow" — exactly the shape two transliterations take).
