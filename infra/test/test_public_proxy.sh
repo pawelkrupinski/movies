@@ -18,6 +18,12 @@
 # it, and makes the requests. The upstreams (127.0.0.1:3091x NodePorts) do not exist on a laptop,
 # so anything that reaches `reverse_proxy` answers 502 -- which is exactly the signal wanted: 502
 # means "passed the throttle and went to the app", 429 means "the throttle took it".
+#
+# THE SAME TRICK COVERS logs.kinowo.net ON monitoring-1, whose rule has its own quiet failures:
+# the login could be missing (a reload with an unreadable hash file does not fail, it just lets
+# nobody in -- or, worse, a directive order change lets everybody in), or the vhost could publish
+# more of VictoriaLogs than `/select` -- and `/insert`, `/delete` are one prefix away. 502 again
+# means "authenticated and proxied"; 401 and 404 are the two answers the rule exists to give.
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -64,9 +70,30 @@ case "$vhost" in
 esac
 vhost="$(printf '%s\n' "$vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
 
+echo "==> rendering logs.kinowo.net's vhost out of monitoring-1"
+logs_port=8898
+logs_vhost="$(nix "${nix_flags[@]}" eval --raw \
+  "$infra/nix#nixosConfigurations.monitoring-1.config.services.caddy.virtualHosts.\"logs.kinowo.net\".extraConfig" 2>"$work/eval.err")"
+if [ -z "$logs_vhost" ]; then
+  echo "  FAILED could not evaluate the vhost:"; sed 's/^/    /' "$work/eval.err" | tail -5; exit 1
+fi
+
+# THE HASH FILE IS A sops SECRET UNDER /run/secrets ON THE HOST, so it is asserted for and then
+# pointed at a hash of a password this test knows. The `{file.…}` placeholder is what is under
+# test as much as the directive: it is how the hash stays out of the store, and it is read at
+# provision time by THIS caddy, so a placeholder that Caddy stopped honouring would fail here.
+case "$logs_vhost" in
+  *"basic_auth"*"{file./run/secrets/"*) echo "  ok  the vhost has a login whose hash is read from a secret file" ;;
+  *) echo "  FAILED expected basic_auth with a {file./run/secrets/…} hash in logs.kinowo.net's vhost"; failed=1 ;;
+esac
+"${caddy_cmd[@]}" hash-password --plaintext 'open-sesame' > "$work/hash"
+logs_vhost="$(printf '%s\n' "$logs_vhost" | sed "s#{file\./run/secrets/[^}]*}#{file.$work/hash}#")"
+
 # `auto_https off` and a plain port, because the rule under test is about matching, not TLS -- and
 # a test that had to obtain a certificate could not run offline.
-{ echo "{ auto_https off"; echo "  admin off"; echo "}"; echo ":$port {"; echo "$vhost"; echo "}"; } > "$work/Caddyfile"
+{ echo "{ auto_https off"; echo "  admin off"; echo "}"
+  echo ":$port {"; echo "$vhost"; echo "}"
+  echo ":$logs_port {"; echo "$logs_vhost"; echo "}"; } > "$work/Caddyfile"
 
 "${caddy_cmd[@]}" run --config "$work/Caddyfile" --adapter caddyfile >"$work/caddy.log" 2>&1 &
 for _ in $(seq 1 50); do
@@ -102,6 +129,34 @@ echo "==> the Retry-After a throttled crawler is handed"
 retry="$(curl -s -o /dev/null -D - -A "$META" "http://127.0.0.1:$port/us/florence/movies" | tr -d '\r' | awk -F': ' '/^[Rr]etry-[Aa]fter/{print $2}')"
 if [ "$retry" = "3600" ]; then echo "  ok  429 carries Retry-After: 3600, which is the half that reduces the RATE"
 else echo "  FAILED Retry-After was '$retry', wanted 3600"; failed=1; fi
+
+logs_check() { # <expected status> <curl auth args or -> <path> <what it proves>
+  local want="$1" auth="$2" path="$3" why="$4" got
+  if [ "$auth" = "-" ]; then got="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$logs_port$path")"
+  else got="$(curl -s -o /dev/null -w '%{http_code}' -u "$auth" "http://127.0.0.1:$logs_port$path")"; fi
+  if [ "$got" = "$want" ]; then printf '  ok  %s\n' "$why"
+  else printf '  FAILED %s\n         %s -> %s, wanted %s\n' "$why" "$path" "$got" "$want"; failed=1; fi
+}
+
+echo "==> what logs.kinowo.net answers"
+logs_check 401 -                    "/select/vmui/"            "no credentials: the UI is not served"
+logs_check 401 "pawel:wrong"        "/select/vmui/"            "a wrong password is a 401, not a 502"
+logs_check 401 "someone:open-sesame" "/select/vmui/"           "the right password under another name is still a 401"
+logs_check 502 "pawel:open-sesame"  "/select/vmui/"            "the right credentials reach VictoriaLogs (502: no store on this laptop)"
+logs_check 502 "pawel:open-sesame"  "/select/logsql/query?query=*" "...and so does the query API the UI calls"
+logs_check 404 "pawel:open-sesame"  "/insert/jsonline"         "ingest is NOT published, even authenticated"
+logs_check 404 "pawel:open-sesame"  "/delete/run_task"         "deletion is NOT published, even authenticated"
+logs_check 404 "pawel:open-sesame"  "/metrics"                 "the store's own metrics stay private"
+logs_check 404 "pawel:open-sesame"  "/internal/force_flush"    "...and its internal endpoints"
+logs_check 401 -                    "/insert/jsonline"         "an unpublished path still asks for a login first, so it cannot be enumerated"
+
+echo "==> where the bare paths go"
+loc="$(curl -s -o /dev/null -D - "http://127.0.0.1:$logs_port/" | tr -d '\r' | awk -F': ' '/^[Ll]ocation/{print $2}')"
+if [ "$loc" = "/select/vmui/" ]; then echo "  ok  / redirects to the UI"
+else echo "  FAILED / redirected to '$loc', wanted /select/vmui/"; failed=1; fi
+loc="$(curl -s -o /dev/null -D - "http://127.0.0.1:$logs_port/select" | tr -d '\r' | awk -F': ' '/^[Ll]ocation/{print $2}')"
+if [ "$loc" = "/select/" ]; then echo "  ok  /select without its slash is redirected, not 404'd"
+else echo "  FAILED /select redirected to '$loc', wanted /select/"; failed=1; fi
 
 [ "$failed" = 0 ] && echo "  ok  public proxy behaves" || { echo; echo "caddy log:"; sed 's/^/    /' "$work/caddy.log" | tail -20; }
 exit "$failed"

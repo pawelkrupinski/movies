@@ -171,9 +171,10 @@ in
     rootUrl = "https://grafana.kinowo.net/";
   };
 
-  # PUBLIC HTTPS FOR GRAFANA ONLY. See roles/public-proxy.nix for why nothing else is published:
-  # Grafana is the only service here that authenticates its own users, and its login IS the
-  # security boundary -- the proxy adds TLS and a name, not authentication.
+  # PUBLIC HTTPS FOR THE THREE THINGS A PERSON OPENS IN A BROWSER. See roles/public-proxy.nix for
+  # why nothing else is published: Grafana and Headlamp authenticate their own users, so their
+  # login IS the security boundary and the proxy adds TLS and a name. VictoriaLogs has no login,
+  # so it is the one vhost the proxy authenticates itself -- and only its read paths are published.
   fleet.publicProxy = {
     enable = true;
     acmeEmail = "pawel@bitcashier.io";
@@ -195,6 +196,27 @@ in
       # on every node's interfaces. The address is PINNED in
       # movies-gitops/headlamp/deployment.yaml precisely so this line can name it.
       "headlamp.kinowo.net".upstream = "10.43.165.84:80";
+
+      # THE FLEET'S LOGS, IN A BROWSER, and the one vhost that does NOT clear the bar the two
+      # above set: VictoriaLogs has no authentication of its own (roles/victoria-logs.nix says so
+      # at length, and until this vhost the bind address was the whole of its access control).
+      # So the proxy supplies the login -- a single bcrypt-hashed password, sealed in this host's
+      # sops file -- and publishes ONLY `/select`, which is vmui and the LogsQL query API.
+      # `/insert`, `/delete`, `/internal`, `/metrics` and the flags page answer 404 here; the
+      # password guards a surface that can read logs, not one that can write or erase them.
+      #
+      # The Grafana datasource is unchanged and still the everyday path; this is for VictoriaLogs'
+      # own UI -- its query builder, field stats and hit histograms -- without an ssh tunnel.
+      "logs.kinowo.net" = {
+        basicAuth = {
+          user = "pawel";
+          passwordHashFile = config.sops.secrets."victoria-logs/basic-auth-hash".path;
+        };
+        pathUpstreams."/select" =
+          "${config.fleet.victoriaLogs.listenAddress}:${toString config.fleet.victoriaLogs.port}";
+        # The store's own `/` is a bare index of links, most of them to paths this vhost 404s.
+        extraConfig = "redir / /select/vmui/";
+      };
 
       # THE sslip.io NAME IS GONE, and the move to fsn1 is what settled it rather than a change of
       # mind. `grafana.2-28-52-210.sslip.io` RESOLVES ITS OWN IP OUT OF ITS OWN LABEL -- that is what
@@ -272,6 +294,12 @@ in
   fleet.firewall.k3sServer = true;
 
   sops.defaultSopsFile = ../../secrets/monitoring-1.yaml;
+
+  # THE logs.kinowo.net PASSWORD, as a bcrypt hash, readable by caddy alone. Rotating it is
+  # `htpasswd -nbB pawel <new>` into this key and a `caddy reload` -- the hash is read at provision
+  # time (see `basicAuth` in roles/public-proxy.nix), so no restart. The plaintext lives in the
+  # operator's .env.local as LOGS_KINOWO_NET_BASIC_AUTH.
+  sops.secrets."victoria-logs/basic-auth-hash" = { owner = "caddy"; mode = "0400"; };
 
   system.stateVersion = "26.05";
 }

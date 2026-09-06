@@ -5,14 +5,16 @@
 # WHAT IT PUBLISHES. Two different things on two different hosts, and the distinction is worth
 # keeping straight:
 #
-#   monitoring-1   Grafana, and nothing else. Of the three things a reverse proxy can do --
-#                  terminate TLS, route, and authenticate -- only the first two are useful to a
-#                  service with no login of its own. Grafana authenticates its own users, so it is
-#                  the sole internal service that can safely stand behind a proxy whose only job is
-#                  TLS. Prometheus, Alertmanager, VictoriaLogs, the k3s apiserver, node_exporter and
-#                  mongod stay private; publishing them would mean inventing an auth layer here, and
-#                  a shared password in front of an unauthenticated admin API is a worse answer than
-#                  a tunnel. For those the answer remains
+#   monitoring-1   Grafana and Headlamp, which authenticate their own users, and VictoriaLogs,
+#                  which does not. Of the three things a reverse proxy can do -- terminate TLS,
+#                  route, and authenticate -- a service with a login of its own needs only the first
+#                  two, and that is the bar Grafana and Headlamp clear. VictoriaLogs is the one
+#                  exception, published under `basicAuth` and restricted to its READ paths
+#                  (`pathUpstreams` with no `upstream`, so everything outside `/select` is a 404):
+#                  a shared password over TLS in front of a query-only surface is a smaller thing
+#                  than the same password in front of an API that can also ingest and delete.
+#                  Prometheus, Alertmanager, the k3s apiserver, node_exporter and mongod stay
+#                  private -- each of those IS an admin API, and for them the answer remains
 #                  `ssh -N -L <port>:10.20.0.11:<port> root@<host>`, which needs no open port.
 #
 #   k3s-worker-1   the PRODUCT: kinowo.net, the showtimes.cc apex, and the per-country path
@@ -61,6 +63,41 @@ in
             description = ''
               host:port to proxy to -- a private-subnet address for a service on another fleet host,
               or 127.0.0.1:<nodePort> for a workload on this host's own k3s node.
+
+              May stay null when `pathUpstreams` is set: the vhost then publishes ONLY those
+              prefixes and answers 404 to everything else. That is how a service is exposed by its
+              read paths alone -- see `basicAuth`.
+            '';
+          };
+
+          basicAuth = lib.mkOption {
+            type = lib.types.nullOr (lib.types.submodule {
+              options = {
+                user = lib.mkOption { type = lib.types.str; description = "The one username the vhost accepts."; };
+                passwordHashFile = lib.mkOption {
+                  type = lib.types.str;
+                  description = ''
+                    Path ON THE HOST to a file holding the bcrypt hash of the password (`caddy
+                    hash-password` or `htpasswd -nbB`), readable by caddy -- a sops-nix secret with
+                    `owner = "caddy"`. Never a store path: the hash is a credential.
+                  '';
+                };
+              };
+            });
+            default = null;
+            description = ''
+              Put a login in front of the whole vhost, for a service that has none of its own.
+
+              THIS IS THE THIRD THING A PROXY CAN DO, and the header explains why it is used
+              sparingly: it is a shared password, and it is only an acceptable boundary in front of
+              a surface that can READ and nothing else. Pair it with `pathUpstreams` and a null
+              `upstream`, so the paths that mutate the service are not published at all -- then
+              the password guards a query API, not an admin one.
+
+              The hash is read at Caddy's provision time through the `{file.<path>}` placeholder,
+              NOT baked into the Caddyfile: the Caddyfile is in the store, and the store is
+              world-readable. Reading it at provision time also means a `caddy reload` picks up a
+              rotated hash with no restart, so this stays within what auto-apply may reload.
             '';
           };
 
@@ -86,7 +123,8 @@ in
               Caddy `handle` matching the prefix and everything under it, and `upstream` /
               `redirectTo` become the fallback for whatever no prefix claimed — wrapped in a
               `handle` of its own so the precedence is written down rather than inferred from
-              Caddy's directive order.
+              Caddy's directive order. With neither set, the fallback is a 404: the vhost
+              publishes these prefixes and nothing else.
 
               This exists because the Showtimes countries share one domain and are told apart by a
               leading path segment (`showtimes.cc/uk/…`), each still its own pod against its own
@@ -206,11 +244,14 @@ in
 
   config = lib.mkIf cfg.enable {
     assertions = lib.mapAttrsToList (host: v: {
-      # Catches the two ways a vhost is silently wrong: neither field set (Caddy would serve an
-      # empty 200 for the site, which looks like the app returning a blank page) and both set
-      # (the redirect wins and the upstream is dead config nobody notices).
-      assertion = (v.upstream == null) != (v.redirectTo == null);
-      message = "fleet.publicProxy.vhosts.\"${host}\" must set exactly one of `upstream` or `redirectTo`.";
+      # Catches the two ways a vhost is silently wrong: nothing to serve (Caddy would answer an
+      # empty 200 for the site, which looks like the app returning a blank page) and both
+      # `upstream` and `redirectTo` set (the redirect wins and the upstream is dead config nobody
+      # notices). A vhost with only `pathUpstreams` is the deliberate third shape: those prefixes
+      # are published and the rest is a 404.
+      assertion = !(v.upstream != null && v.redirectTo != null)
+        && (v.upstream != null || v.redirectTo != null || v.pathUpstreams != { });
+      message = "fleet.publicProxy.vhosts.\"${host}\" must set `upstream`, `redirectTo`, or at least one `pathUpstreams` entry -- and never both `upstream` and `redirectTo`.";
     }) cfg.vhosts;
 
     security.acme = {
@@ -239,7 +280,19 @@ in
 
           fallback = if v.redirectTo != null
             then ''redir https://${v.redirectTo}{uri} permanent''
-            else ''reverse_proxy ${v.upstream}'';
+            else if v.upstream != null
+            then ''reverse_proxy ${v.upstream}''
+            else ''respond 404'';
+
+          # THE LOGIN, when the vhost has one. `basic_auth` sorts AFTER `redir` in Caddy's directive
+          # order and BEFORE every `handle`, so a bare-prefix redirect answers without credentials
+          # (it reveals nothing) and nothing that reaches an upstream does. The hash is a runtime
+          # placeholder, for the reasons on the option.
+          authBlock = lib.optionalString (v.basicAuth != null) ''
+            basic_auth {
+              ${v.basicAuth.user} {file.${v.basicAuth.passwordHashFile}}
+            }
+          '';
 
           # THE FACETED-LISTING THROTTLE, emitted as the FIRST `handle` so it wins over the
           # per-country ones. `handle` blocks at one level are mutually exclusive and evaluated in
@@ -278,6 +331,7 @@ in
         in {
         extraConfig = ''
           ${tlsBlock}
+          ${authBlock}
           ${v.extraConfig}
           ${throttleBlock}
           ${if v.pathUpstreams == { }

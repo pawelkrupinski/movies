@@ -22,12 +22,17 @@
 # ------------------------------------------------------------------------------------------------
 #
 # VictoriaLogs ships no auth of its own -- upstream's answer is to put vmauth or a reverse proxy in
-# front of it. There is none here, so the bind address IS the control: `fleet.privateAddress`, on
-# an interface Hetzner's edge firewall does not filter at all, admitted by one rule in
-# modules/fleet/firewall.nix. That is the same posture Prometheus and Alertmanager already have on
-# this host and it has the same uncomfortable edge: "on the private network" includes every pod
-# k3s will ever schedule on these two machines. Anything that reads this store reads every log line
-# the fleet has produced, including whatever a service was careless enough to print.
+# front of it. On the private network there is none, so the bind address IS the control:
+# `fleet.privateAddress`, on an interface Hetzner's edge firewall does not filter at all, admitted
+# by one rule in modules/fleet/firewall.nix. That is the same posture Prometheus and Alertmanager
+# already have on this host and it has the same uncomfortable edge: "on the private network"
+# includes every pod k3s will ever schedule on these two machines. Anything that reads this store
+# reads every log line the fleet has produced, including whatever a service was careless enough to
+# print.
+#
+# THE ONE PUBLIC DOOR is `logs.kinowo.net` in hosts/monitoring-1/default.nix: Caddy in front with
+# its own login, publishing `/select` (vmui and the query API) and nothing else. It is the reverse
+# proxy upstream recommends, and it changes nothing about the bind address above.
 #
 # ------------------------------------------------------------------------------------------------
 # DELIBERATELY NOT PORTED FROM bitcashier
