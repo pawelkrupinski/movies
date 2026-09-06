@@ -251,6 +251,34 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     etag should startWith ("W/\"")
   }
 
+  // A 304 has to say what the 200 would have said about varying, or a cache that
+  // keeps the 304's headers can pair this validator with the wrong encoding of the
+  // page. It only got away with it because Cloudflare adds the token itself: the
+  // live origin answered a conditional with `vary: Origin` while the 200 beside it
+  // said `vary: Accept-Encoding,Origin`.
+  "a 304" should "carry the same Vary the 200 would have" in {
+    val (ctrl, _) = buildController()
+    val full = ctrl.index("poznan")(gzipRequest("/poznan/"))
+    val etag = header("ETag", full).get
+
+    val refresh = ctrl.index("poznan")(
+      gzipRequest("/poznan/").withHeaders("If-None-Match" -> etag))
+    status(refresh) shouldBe NOT_MODIFIED
+    header("Vary", refresh) shouldBe header("Vary", full)
+    header("Vary", refresh) shouldBe Some("Accept-Encoding")
+  }
+
+  it should "carry it on the JSON payloads too" in {
+    val (ctrl, _) = buildController()
+    val full = ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))
+    val etag = header("ETag", full).get
+
+    val refresh = ctrl.apiRepertoire("poznan")(
+      gzipRequest("/poznan/api/repertoire").withHeaders("If-None-Match" -> etag))
+    status(refresh) shouldBe NOT_MODIFIED
+    header("Vary", refresh) shouldBe header("Vary", full)
+  }
+
   // ── Brotli, which `no-transform` made the origin's job ─────────────────────
   //
   // Cloudflare was recompressing our gzip to `br` at the edge; that recompression

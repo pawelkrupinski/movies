@@ -553,7 +553,18 @@ class MovieController( cc: ControllerComponents,
 
     if (MovieController.offersValidator(request.headers.get("If-None-Match"), etag)
         || ifModifiedSinceCurrent(request, lastMod))
-      NotModified.withHeaders(validators*)
+      // ⚠️ `Vary` ON THE 304 TOO, not just on the 200s below. RFC 9110 15.4.5 asks
+      // for it, and this response needs it more than most: ONE weak validator now
+      // covers THREE representations of the page -- brotli, gzip and identity --
+      // which is legitimate precisely because it is weak, but it means a cache that
+      // stores this 304's headers without being told the response varies by
+      // `Accept-Encoding` can hand a brotli body to a client that asked for gzip.
+      //
+      // Measured on the live origin before this line existed: a 304 came back
+      // `vary: Origin`, while the 200 beside it said `vary: Accept-Encoding,Origin`.
+      // Cloudflare adds the missing token on the way out, so the edge looked
+      // correct and the origin was not -- and nothing else in front of us would.
+      NotModified.withHeaders((("Vary" -> vary) +: validators)*)
     else bestEncoding(request) match {
       // Compressed HERE, and stamped `Content-Encoding` HERE, which is also what
       // keeps Play's GzipFilter off it: the filter skips any response that already
