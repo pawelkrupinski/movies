@@ -296,4 +296,18 @@ class MovieRecordMergeSpec extends AnyFlatSpec with Matchers {
       MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](CinemaCityChain -> first)),
       MovieRecord(tmdbId = Some(7), data = Map[Source, SourceData](CinemaCityChain -> second))
     )).data(CinemaCityChain)
+  // Found by the e2e re-scrape idempotency guard after the slots were settled across
+  // all rows at once: a source held by ONE row was rebuilt through the slot merge,
+  // whose showtime dedup re-sorts, so an identical re-scrape read as a changed slot
+  // and the row folded again. A lone slot is not a disagreement to settle.
+  "unionAll" should "pass a source held by one row through untouched, showtime order included" in {
+    val later   = models.Showtime(java.time.LocalDateTime.of(2026, 9, 8, 21, 0), None)
+    val earlier = models.Showtime(java.time.LocalDateTime.of(2026, 9, 8, 18, 0), None)
+    val slot    = SourceData(title = Some("Diuna"), showtimes = Seq(later, earlier))
+    val row     = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](Helios -> slot))
+    val other   = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Diuna"))))
+    MovieRecordMerge.unionAll(Seq(row, other)).data(Helios).showtimes shouldBe Seq(later, earlier)
+    MovieRecordMerge.unionAll(Seq(row)).data(Helios) should be theSameInstanceAs slot
+  }
+
 }

@@ -99,7 +99,14 @@ object MovieRecordMerge {
     // with three rows carrying the same source the fold order decided which title
     // won (the property spec's `Diuna`/`Dune` counterexample). One sort over every
     // slot of a source is a total order, so the answer is the same in any order.
-    base.copy(data = records.map(_.data).flatten.groupMap(_._1)(_._2).view.mapValues(mergeSlots).toMap)
+    // Only a source that several rows hold is settled; a lone slot passes through
+    // untouched, exactly as the pairwise fold left it. Settling it would rebuild it
+    // (dedup re-sorts the showtimes) and an identical re-scrape would then read as
+    // a change and fold the row again — the e2e re-scrape guard caught that.
+    base.copy(data = records.map(_.data).flatten.groupMap(_._1)(_._2).view.mapValues {
+      case Seq(only) => only
+      case several   => mergeSlots(several)
+    }.toMap)
   }
 
   private def mergeData(
