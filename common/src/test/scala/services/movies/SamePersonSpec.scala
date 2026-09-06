@@ -67,6 +67,13 @@ class SamePersonSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "still match two identical credits the fold cannot read" in {
+    // A site that prints the director in the original script, against a cinema
+    // that prints the same string: the substring tests this replaced said yes.
+    SamePerson("王家衛", "王家衛") shouldBe true
+    SamePerson("王家衛", " 王家衛 ") shouldBe true
+  }
+
   it should "deny rather than match when a credit folds away to nothing" in {
     // The CALLER that must abstain ("王家衛" is not evidence either way) checks
     // `tokens` for emptiness; the bare answer is false so nothing matches on nothing.

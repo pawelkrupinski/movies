@@ -32,7 +32,11 @@ object SamePerson {
    *  should test [[tokens]] for emptiness itself, as `CinemaCorroboration` does. */
   def apply(a: String, b: String): Boolean = {
     val (ta, tb) = (tokens(a), tokens(b))
-    ta.nonEmpty && tb.nonEmpty && sameTokens(ta, tb)
+    // Two credits the fold cannot read at all ("王家衛" twice) are still the same
+    // credit when they are the same string; only a COMPARISON of unreadable
+    // credits has to abstain.
+    a.trim.equalsIgnoreCase(b.trim) && a.trim.nonEmpty ||
+      ta.nonEmpty && tb.nonEmpty && sameTokens(ta, tb)
   }
 
   /** A credit as its SEQUENCE of name tokens — case- and diacritic-folded,
