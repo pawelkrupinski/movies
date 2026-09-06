@@ -163,8 +163,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // that met the migration head-on: one `$unset` row in a batch threw
   // `Missing field: sourceData`, the batch failed all its retries, and the scan
   // reported INCOMPLETE — silently, since a failed scan only logs. Written against
-  // the real `$unset` rather than a hand-built document so it tracks whatever
-  // `RetireEmbeddedSlots` actually leaves behind.
+  // the real `$unset` rather than a hand-built document so it tracks what
+  // the 2026-07 slot migration actually left behind.
   it should "scan a film whose embedded sourceData the slot migration retired" in {
     val record = MovieRecord(
       imdbId = Some("tt0000078"),

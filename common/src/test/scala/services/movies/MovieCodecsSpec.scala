@@ -287,8 +287,8 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "decode a migrated document whose embedded sourceData was retired to an empty map" in {
-    // Once a film's slots reach `movie_slots`, `scripts.RetireEmbeddedSlots`
-    // `$unset`s `sourceData` outright — the field is absent, not empty. Decoding it
+    // Once a film's slots reach `movie_slots`, the 2026-07 slot migration
+    // `$unset` `sourceData` outright — the field is absent, not empty. Decoding it
     // as a required Map threw `Missing field: sourceData`, which killed the whole
     // `MovieRepository` keyset batch (corpus scan "incomplete") and aborted every
     // staging fold whose group loaded such a row, stranding newcomers in

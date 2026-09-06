@@ -130,8 +130,7 @@ trait MovieCache extends MovieCacheReader {
    *  so this only ever moves rows a year source hasn't otherwise claimed. Reuses the
    *  vetted `rekey` (merging into any existing occupant so a sister row isn't
    *  clobbered) and always ends with a `canonicalizeBySanitize`; returns the count
-   *  re-keyed. Driven by `MovieService.settle` (the periodic `SettleReaper`) and the
-   *  one-shot `scripts.EmbeddedYearBackfill`. */
+   *  re-keyed. Driven by `MovieService.settle` (the periodic `SettleReaper`). */
   def backfillEmbeddedYears(): Int
   def canonicalizeBySanitize(): Unit
   /** Conclusion-time scoped settle: the just-resolved record `resolved` is the

@@ -139,7 +139,7 @@ object ReresolveSelfLockedRows {
     // ("Grzegorzdolniakmoglobycgorzejstandup"). Enqueuing THAT as the resolve payload
     // would key the reset on a title no cinema ever published and search TMDB for a
     // concatenated string. Same trap as the unstitched read that wiped live screenings on
-    // 2026-08-10; the fix is the same one MergeKinotekaPoisonedRows already applies.
+    // 2026-08-10; the fix is to wire them, as below.
     val repo: MovieRepository = new MongoMovieRepository(
       sharedDb = Some(db), fallbackToOwnInit = false,
       screenings = Some(new MongoScreeningsRepository(Some(db))),

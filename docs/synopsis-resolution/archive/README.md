@@ -1,0 +1,1 @@
+Frozen inputs and page generators of the 2026-06 synopsis-resolution investigation (see ../investigation.md). Nothing in the build reads them; the two `regenerate_*.py` scripts read their `.json`/`.jsonl` siblings from this directory and write to `~/Desktop`.

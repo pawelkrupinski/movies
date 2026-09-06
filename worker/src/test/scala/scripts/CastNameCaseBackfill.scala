@@ -33,7 +33,7 @@ import tools.PersonName
  *    `MovieRecord.cast` is the longest of these), written through
  *    [[services.movies.SlotsRepository.upsertSlot]].
  *  - `movies.sourceData.<slot>.cast` — the LEGACY embedded copy, still present
- *    on films whose slots have not been retired by `scripts.RetireEmbeddedSlots`.
+ *    on films the 2026-07 slot migration did not retire.
  *    Written through `updateIfPresent`, whose field-level patch touches nothing
  *    else.
  *  - `web_movies.cast` — the read model the site actually serves, written

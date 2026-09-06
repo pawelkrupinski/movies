@@ -45,8 +45,8 @@ case class StoredMovieDto(
   tmdbNoMatch:       Option[Boolean],
   detailPending:     Option[Boolean],
   // Optional on the wire so a MIGRATED document decodes to None → empty map. Once
-  // a film's slots have landed in `movie_slots`, `scripts.RetireEmbeddedSlots`
-  // `$unset`s this field entirely — and as a required `Map` it decoded as
+  // a film's slots have landed in `movie_slots`, the 2026-07 slot migration
+  // `$unset` this field entirely — and as a required `Map` it decoded as
   // `Missing field: sourceData`, killing the whole keyset batch (so the corpus
   // scan reported incomplete) and aborting every staging fold that loaded such a
   // row (so PL newcomers never left `pending_movies`). Encoding is unchanged —
