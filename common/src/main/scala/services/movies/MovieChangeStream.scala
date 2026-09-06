@@ -101,7 +101,7 @@ final class MovieChangeStream(
    *  changed screenings DOCUMENT, i.e. once per (film, cinema slot) — so a film that really
    *  does change at every venue rings once per venue, and every ring costs a blocking stitch
    *  read plus a full re-projection OF THE SAME FILM. The widest US film carries 3,327 slots.
-   *  Dropping the redundant WRITES (see `ScreeningsRepository.changedSlots`) removed the rows
+   *  Dropping the redundant WRITES (see `ScreeningsSplit.changedSlots`) removed the rows
    *  that never moved; it cannot remove these, because these rows genuinely did move. The
    *  answer is that the apply does not need to run per row: it re-reads the film's CURRENT
    *  state, so one read after the last of a burst sees everything the burst did.

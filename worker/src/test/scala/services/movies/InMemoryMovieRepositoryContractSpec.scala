@@ -21,7 +21,7 @@ import java.time.LocalDateTime
  *
  * `MovieRepositoryIntegrationSpec` pins the same rule against real Mongo. This is the unit-level
  * twin, and it exists so the two implementations cannot drift apart again — they now share the
- * decision in [[ScreeningsRepository.applyFilm]], and this is what proves the fake calls it.
+ * decision in [[ScreeningsSplit.applyFilm]], and this is what proves the fake calls it.
  */
 class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
 

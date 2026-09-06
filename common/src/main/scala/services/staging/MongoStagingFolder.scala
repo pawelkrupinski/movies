@@ -135,7 +135,7 @@ class MongoStagingFolder(
    *  session-aware. That write embeds the film's `sourceData`, showtimes and all, and
    *  touches neither `movie_slots` nor `screenings`. Under the production read-split
    *  those are not equivalent shapes: `SlotsRepository.merge` tolerates an embedded slot
-   *  map (it UNIONS stored with embedded), but `ScreeningsRepository.stitch` treats
+   *  map (it UNIONS stored with embedded), but `ScreeningsSplit.stitch` treats
    *  `screenings` as AUTHORITATIVE and empties the showtimes of any slot it has no row
    *  for. So a folded film read back through `findAll` / `foreachRecord` had cinemas and
    *  no showtimes at all — it rendered as a title with nothing under it until that
@@ -244,7 +244,7 @@ class MongoStagingFolder(
    *  `MovieRepository.upsert`, and a slot recovered from `movie_slots` carries no
    *  `showtimesDigest` — that field is cache-only and never persisted (`SourceData`). So a
    *  stitched slot is indistinguishable from "this cinema screens nothing"
-   *  (`ScreeningsRepository.reStitchChecked` refills only slots that have a digest), and
+   *  (`ScreeningsSplit.reStitchChecked` refills only slots that have a digest), and
    *  putting one into the written record makes `upsert` delete that cinema's screenings.
    *  Feeding the vote alone cannot lose data, whatever the fold then decides.
    *

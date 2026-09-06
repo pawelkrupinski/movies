@@ -81,7 +81,7 @@ class InMemoryMovieRepository(
   }
 
   private def stripFor(data: Map[Source, SourceData]): Map[Source, SourceData] =
-    if (screenings.isDefined) ScreeningsRepository.stripShowtimes(data) else data
+    if (screenings.isDefined) ScreeningsSplit.stripShowtimes(data) else data
 
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
@@ -128,7 +128,7 @@ class InMemoryMovieRepository(
       if (stored.isEmpty) embedded else SlotsRepository.merge(embedded, stored)
     }
     screenings.fold(withSlots)(_ =>
-      ScreeningsRepository.stitch(withSlots, allScreenings.getOrElse(id, Map.empty)))
+      ScreeningsSplit.stitch(withSlots, allScreenings.getOrElse(id, Map.empty)))
   }
 
   def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
@@ -145,9 +145,9 @@ class InMemoryMovieRepository(
     // them — and it wrote screenings with an unconditional `replaceFilm`, which deletes the rows an
     // incomplete re-stitch could not see. A spec written against this fake would have asserted the
     // opposite of what production does, which is the whole reason the rules moved into
-    // `SlotsRepository.applyFilm` / `ScreeningsRepository.applyFilm`.
-    val stitch = screenings.fold(ScreeningsRepository.ReStitched(e.data, Map.empty, complete = true))(
-      ScreeningsRepository.reStitchChecked(_, id, e.data))
+    // `SlotsRepository.applyFilm` / `ScreeningsSplit.applyFilm`.
+    val stitch = screenings.fold(ScreeningsSplit.ReStitched(e.data, Map.empty, complete = true))(
+      ScreeningsSplit.reStitchChecked(_, id, e.data))
     val restitched = stitch.data
     // Slots go FIRST, and the embedded map is dropped only once they have actually landed —
     // dropping it on a failed slot write is the one way this migration loses a film's
@@ -157,9 +157,9 @@ class InMemoryMovieRepository(
     val dataForMovies =
       if (slotsLanded) Map.empty[Source, SourceData]
       else if (screenings.isEmpty) restitched
-      else ScreeningsRepository.stripShowtimes(restitched)
+      else ScreeningsSplit.stripShowtimes(restitched)
     store.put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies)))
-    screenings.foreach(ScreeningsRepository.applyFilm(_, id, ScreeningsRepository.showtimesOf(restitched), stitch))
+    screenings.foreach(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.showtimesOf(restitched), stitch))
     upserts.append((t, y, e))
     notifyWatcher(t, y, e)
   }
@@ -202,7 +202,7 @@ class InMemoryMovieRepository(
         // embedded map field by field and undo the shrink the split exists for — and,
         // because `upsert` leaves that map empty, would patch onto emptiness and store a
         // record holding only the slots this one call happened to touch.
-        val showtimeOps = if (screenings.isDefined) ScreeningsRepository.slotOps(before.data, after.data)
+        val showtimeOps = if (screenings.isDefined) ScreeningsSplit.slotOps(before.data, after.data)
                           else Map.empty[String, Option[Seq[models.Showtime]]]
         val slotOps     = if (slots.isDefined) SlotsRepository.slotOps(before.data, after.data)
                           else Map.empty[String, Option[SourceData]]

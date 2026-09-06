@@ -34,7 +34,7 @@ class SlotOpsStrippedRecordSpec extends AnyFlatSpec with Matchers {
     // The same slot as the cache holds it: no resident list, digest intact.
     val after   = ShowtimesDigest.stripForCache(record(slot(showtimes.tail)))
 
-    val ops = ScreeningsRepository.slotOps(before.data, after.data)
+    val ops = ScreeningsSplit.slotOps(before.data, after.data)
 
     // Nothing to write, and above all nothing to delete: the digest moved, but a stripped
     // record cannot say what to. The whole-record path carries it.
@@ -46,7 +46,7 @@ class SlotOpsStrippedRecordSpec extends AnyFlatSpec with Matchers {
     val before = record(slot(showtimes))
     val after  = record(slot(Seq.empty))       // scraped, present, and screening nothing
 
-    ScreeningsRepository.slotOps(before.data, after.data) shouldBe
+    ScreeningsSplit.slotOps(before.data, after.data) shouldBe
       Map(Multikino.displayName -> None)
   }
 
@@ -54,7 +54,7 @@ class SlotOpsStrippedRecordSpec extends AnyFlatSpec with Matchers {
     val before = record(slot(showtimes.tail))
     val after  = record(slot(showtimes))
 
-    ScreeningsRepository.slotOps(before.data, after.data) shouldBe
+    ScreeningsSplit.slotOps(before.data, after.data) shouldBe
       Map(Multikino.displayName -> Some(showtimes))
   }
 
@@ -62,6 +62,6 @@ class SlotOpsStrippedRecordSpec extends AnyFlatSpec with Matchers {
     val before = record(slot(showtimes))
     val after  = ShowtimesDigest.stripForCache(record(slot(showtimes)))
 
-    ScreeningsRepository.slotOps(before.data, after.data) shouldBe empty
+    ScreeningsSplit.slotOps(before.data, after.data) shouldBe empty
   }
 }

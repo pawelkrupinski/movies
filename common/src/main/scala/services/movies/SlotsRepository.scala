@@ -164,7 +164,7 @@ object SlotsRepository {
 
   /**
    * Write one film's slots the way `MovieRepository.upsert` must, and report whether they are now
-   * known to be on disk. THE RULE LIVES HERE for [[ScreeningsRepository.applyFilm]]'s reason: both
+   * known to be on disk. THE RULE LIVES HERE for [[ScreeningsSplit.applyFilm]]'s reason: both
    * the Mongo repository and the in-memory one call this rather than restating it, because the
    * in-memory one had already drifted into the unchecked read this exists to avoid.
    *

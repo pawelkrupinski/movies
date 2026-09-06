@@ -114,7 +114,7 @@ trait MovieRepository {
    *  backoff and no give-up, since the exception carries no transient label to retry
    *  on and none to abandon on either.
    *
-   *  The stripped shape loses nothing: under the split `ScreeningsRepository.stitch`
+   *  The stripped shape loses nothing: under the split `ScreeningsSplit.stitch`
    *  treats `screenings` as authoritative and empties the showtimes of any slot it
    *  has no row for, so an embedded board is discarded on the way back out. It is
    *  weight the reader was already throwing away.
@@ -123,7 +123,7 @@ trait MovieRepository {
    *  detail — a repository that answered differently would be a repository whose
    *  documents mean something else. */
   final def slotsForStorage(data: Map[Source, SourceData]): Map[Source, SourceData] =
-    if (hasScreenings) ScreeningsRepository.stripShowtimes(data) else data
+    if (hasScreenings) ScreeningsSplit.stripShowtimes(data) else data
 
   /** Whether the persistence layer is wired up. When false, callers can still
    *  use the in-memory cache but writes are no-ops. */
@@ -430,7 +430,7 @@ class MongoMovieRepository(
     val withSlots = stitchSlots(r, storedSlots)
     if (screenings.isEmpty) withSlots
     else withSlots.copy(record = withSlots.record.copy(
-      data = ScreeningsRepository.stitch(withSlots.record.data, scr)))
+      data = ScreeningsSplit.stitch(withSlots.record.data, scr)))
   }
 
   /** Union a row's stored `movie_slots` rows with whatever its `movies` document still
@@ -806,8 +806,8 @@ class MongoMovieRepository(
     // `stitch.complete` carries that distinction down to the write, and `stitch.stored`
     // carries the read itself, so the write can tell an unchanged film from a changed one
     // without asking again.
-    val stitch = screenings.fold(ScreeningsRepository.ReStitched(e.data, Map.empty, complete = true))(
-      ScreeningsRepository.reStitchChecked(_, id, e.data))
+    val stitch = screenings.fold(ScreeningsSplit.ReStitched(e.data, Map.empty, complete = true))(
+      ScreeningsSplit.reStitchChecked(_, id, e.data))
     val restitched = stitch.data
     // Slots go FIRST, and `movies` only drops its embedded copy once they have actually
     // landed. Dropping it on a FAILED slot write would leave the film with no cinemas in
@@ -884,7 +884,7 @@ class MongoMovieRepository(
       // tick positively carries, but never the delete half — a slot we simply could not read
       // is not a slot that stopped screening.
       screenings.foreach { s =>
-        val showtimes = ScreeningsRepository.showtimesOf(restitched)
+        val showtimes = ScreeningsSplit.showtimesOf(restitched)
         // Skip the whole call when the stored rows already match — the same guard the slots
         // write above has, and here it is FREE: `reStitchChecked` has already read these
         // rows, so `stitch.stored` costs no round trip where the slots half pays one.
@@ -902,8 +902,8 @@ class MongoMovieRepository(
         // including an empty one — writes, which is the safe direction.
         // `stitch.stored` is this film's rows as they are NOW, already read above, and is handed
         // on rather than making `replaceFilm` read them a second time. The three-way choice lives
-        // in `ScreeningsRepository.applyFilm` so the in-memory repository makes the same one.
-        ScreeningsRepository.applyFilm(s, id, showtimes, stitch)
+        // in `ScreeningsSplit.applyFilm` so the in-memory repository makes the same one.
+        ScreeningsSplit.applyFilm(s, id, showtimes, stitch)
       }
       ()
     }.recover {
@@ -923,7 +923,7 @@ class MongoMovieRepository(
       val id = documentId(title, year)
       // Showtime deltas → `screenings` (its authority under the split); from the
       // ORIGINAL records. Only when a screenings repo is wired.
-      val ops = if (screenings.isDefined) ScreeningsRepository.slotOps(before.data, after.data)
+      val ops = if (screenings.isDefined) ScreeningsSplit.slotOps(before.data, after.data)
                 else Map.empty[String, Option[Seq[Showtime]]]
       // Slot deltas → `movie_slots` (dual write). Also from the ORIGINAL records:
       // `slotsOf` drops showtimes itself, so a showtimes-only change yields no slot

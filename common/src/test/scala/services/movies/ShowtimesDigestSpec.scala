@@ -100,13 +100,13 @@ class ShowtimesDigestSpec extends AnyFlatSpec with Matchers {
   "slotOps (digest-aware)" should "emit NO op when a stripped slot's digest is preserved (no phantom delete)" in {
     val prior    = stripped(Seq(st("2026-06-11T10:00"), st("2026-06-11T12:00")))
     val enriched = prior.copy(synopsis = Some("x"))   // metadata change, showtimes untouched
-    ScreeningsRepository.slotOps(Map(src -> prior), Map(src -> enriched)) shouldBe empty
+    ScreeningsSplit.slotOps(Map(src -> prior), Map(src -> enriched)) shouldBe empty
   }
 
   it should "write the real showtimes when a fresh scrape differs from the stripped prior" in {
     val prior = stripped(Seq(st("2026-06-11T10:00")))
     val fresh = SourceData(showtimes = Seq(st("2026-06-11T10:00"), st("2026-06-11T12:00")))
-    ScreeningsRepository.slotOps(Map(src -> prior), Map(src -> fresh)) shouldBe
+    ScreeningsSplit.slotOps(Map(src -> prior), Map(src -> fresh)) shouldBe
       Map(src.displayName -> Some(fresh.showtimes))
   }
 
@@ -114,13 +114,13 @@ class ShowtimesDigestSpec extends AnyFlatSpec with Matchers {
     val real  = Seq(st("2026-06-11T10:00"))
     val prior = stripped(real)
     val fresh = SourceData(showtimes = real)
-    ScreeningsRepository.slotOps(Map(src -> prior), Map(src -> fresh)) shouldBe empty
+    ScreeningsSplit.slotOps(Map(src -> prior), Map(src -> fresh)) shouldBe empty
   }
 
   it should "delete only when showtimes genuinely go empty (a fresh slot with no digest)" in {
     val prior = stripped(Seq(st("2026-06-11T10:00")))
     val gone  = SourceData(showtimes = Nil)   // a listing that legitimately dropped the slot
-    ScreeningsRepository.slotOps(Map(src -> prior), Map(src -> gone)) shouldBe Map(src.displayName -> None)
+    ScreeningsSplit.slotOps(Map(src -> prior), Map(src -> gone)) shouldBe Map(src.displayName -> None)
   }
 
   // ── reStitch: the FULL-REPLACE delete-vector defense ──────────────────────
@@ -132,14 +132,14 @@ class ShowtimesDigestSpec extends AnyFlatSpec with Matchers {
     val real = Seq(st("2026-06-11T10:00"), st("2026-06-11T12:00"))
     val scr  = new InMemoryScreeningsRepository()
     scr.upsertSlot("film1", src.displayName, real)
-    val restitched = ScreeningsRepository.reStitch(scr, "film1", Map(src -> stripped(real)))
+    val restitched = ScreeningsSplit.reStitch(scr, "film1", Map(src -> stripped(real)))
     restitched(src).showtimes shouldBe real
     // ...so a full write keeps them: showtimesOf is non-empty → replaceFilm won't delete.
-    ScreeningsRepository.showtimesOf(restitched) shouldBe Map(src.displayName -> real)
+    ScreeningsSplit.showtimesOf(restitched) shouldBe Map(src.displayName -> real)
   }
 
   it should "leave slots with real showtimes untouched" in {
     val fresh = SourceData(showtimes = Seq(st("2026-06-11T10:00")))
-    ScreeningsRepository.reStitch(new InMemoryScreeningsRepository(), "film1", Map(src -> fresh)) shouldBe Map(src -> fresh)
+    ScreeningsSplit.reStitch(new InMemoryScreeningsRepository(), "film1", Map(src -> fresh)) shouldBe Map(src -> fresh)
   }
 }

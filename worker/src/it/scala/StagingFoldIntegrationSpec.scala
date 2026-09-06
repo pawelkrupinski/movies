@@ -116,7 +116,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    *
    *  The transaction writes `movies` directly, embedding the film's `sourceData` and
    *  touching neither side collection. `SlotsRepository.merge` tolerates that (it unions
-   *  stored with embedded), but `ScreeningsRepository.stitch` treats `screenings` as
+   *  stored with embedded), but `ScreeningsSplit.stitch` treats `screenings` as
    *  authoritative and EMPTIES the showtimes of any slot it has no row for — so a folded
    *  film read back through the repository had its cinemas and none of its showtimes, and
    *  rendered as a title with nothing under it until that cinema's next scrape. Measured
