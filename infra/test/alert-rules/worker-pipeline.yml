@@ -261,3 +261,31 @@ tests:
       - eval_time: 60m
         alertname: WorkerTaskTypeUnhandled
         exp_alerts: []
+
+  # A CIRCUIT-BREAKER STORM MUST NOT HIDE A RETRY LOOP. Both are happening: 30 tasks a minute
+  # finish `done`, 30 come back `rescheduled`, and 300 are refused untried by an open circuit. Half
+  # of the work that was ATTEMPTED is not sticking, which is the alert.
+  #
+  # THIS IS THE CASE THAT CAUGHT `deferred` IN THE DENOMINATOR. Counting it there put the ratio at
+  # 30/360 = 0.083, comfortably under the threshold — so the louder the upstream failure, the more
+  # certain the alert was to stay silent. Excluding it puts the ratio at 30/60 = 0.5 and the alert
+  # where it belongs.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="de",job="kinowo-worker",task_type="ScrapeCinema",outcome="done"}'
+        values: '0+30x80'
+      - series: 'kinowo_worker_tasks_finished_total{country="de",job="kinowo-worker",task_type="ScrapeCinema",outcome="rescheduled"}'
+        values: '0+30x80'
+      - series: 'kinowo_worker_tasks_finished_total{country="de",job="kinowo-worker",task_type="ScrapeCinema",outcome="deferred"}'
+        values: '0+300x80'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: WorkerTasksFailingRepeatedly
+        exp_alerts: []
+      - eval_time: 60m
+        alertname: WorkerTasksFailingRepeatedly
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de }
+            exp_annotations:
+              summary: "de's worker is failing or retrying 50% of the tasks it finishes"
+              description: "The pool is busy and the work is not sticking. Over 24h of normal operation this share is 0.000 in every country -- 13 failures in 464,903 tasks -- so a quarter is a loop, not a bad afternoon. Panel 25 (waiting by type) and the per-type finish counters name WHICH type: `sum by (task_type) (rate(kinowo_worker_tasks_finished_total{outcome=~\"failed|rescheduled\"}[15m]))`. The usual causes are an upstream that has started refusing us (the scraper types), a handler throwing on a data shape it has not seen, and a task whose precondition can never be met so it reschedules itself forever. NOTE `deferred` IS EXCLUDED: a circuit breaker refusing tasks is an upstream being down and reads on the scrape dashboards."

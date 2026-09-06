@@ -172,14 +172,20 @@ groups:
       # is finishing: a country that completes three tasks in the window, one of which retries, is
       # at 33% and perfectly healthy. Requiring 0.01 failures/sec (36 an hour) means the alert
       # describes a loop rather than an arithmetic accident.
+      #
+      # `deferred` IS EXCLUDED FROM THE DENOMINATOR TOO, and leaving it in was a bug for one day.
+      # Excluding it from the numerator alone means a circuit-breaker storm -- thousands of tasks
+      # refused untried, all landing in the denominator -- DILUTES the ratio and suppresses the
+      # alert at exactly the moment the pipeline is spinning hardest and achieving least. The
+      # denominator has to be the work that was actually attempted.
       - alert: WorkerTasksFailingRepeatedly
         expr: >-
           (
             sum by (country) (rate(kinowo_worker_tasks_finished_total{outcome=~"failed|rescheduled"}[15m]))
             /
-            sum by (country) (rate(kinowo_worker_tasks_finished_total[15m]))
+            sum by (country) (rate(kinowo_worker_tasks_finished_total{outcome!="deferred"}[15m]))
           ) > 0.25
-          and
+          and on (country)
           sum by (country) (rate(kinowo_worker_tasks_finished_total{outcome=~"failed|rescheduled"}[15m])) > 0.01
         for: 30m
         labels:
@@ -205,10 +211,16 @@ groups:
       # measured baseline is exactly zero -- 105 series, every one 0 over 24h -- so any occurrence
       # at all is the alert, with no threshold to argue about.
       #
-      # `for: 5m` ONLY TO RIDE OUT A DEPLOY, in which a new task type can briefly outrun the handler
-      # registration on a worker that has not rolled yet. The `increase(...[1h])` then holds the
-      # alert up for an hour after the last one, which is deliberate: a handful of dropped tasks an
-      # hour is still a bug, and a rule that resolved the instant the flow paused would flap.
+      # `for: 5m` DELAYS THIS BY FIVE MINUTES AND SUPPRESSES NOTHING, which is worth stating plainly
+      # because the first version of this comment claimed it "rides out a deploy". It cannot:
+      # `increase(...[1h])` stays above zero for a full hour after a single dropped task, so the
+      # `for:` is guaranteed to elapse. One task discarded during a rollout fires this and holds it
+      # for about sixty-five minutes.
+      #
+      # THAT IS THE INTENDED ANSWER, not a tolerated one. A task claimed with no handler is work
+      # that silently did not happen; one of them is a bug worth a message, and the hour-long tail
+      # is what stops the alert flapping as the flow pauses and resumes. The five minutes buys a
+      # rolling deploy the chance to finish before the mail goes out, and nothing more.
       - alert: WorkerTaskTypeUnhandled
         expr: sum by (country, task_type) (increase(kinowo_worker_tasks_finished_total{outcome="no_handler"}[1h])) > 0
         for: 5m
