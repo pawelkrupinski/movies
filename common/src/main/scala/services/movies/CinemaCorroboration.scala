@@ -24,6 +24,14 @@ import tools.TextNormalization
  * Both signals demand POSITIVE contradiction and abstain otherwise. A venue that
  * published nothing is not disagreeing, and read the other way this would
  * force-re-resolve the corpus.
+ *
+ * Detection is only the first of three steps — `CrewConfirmation` asks TMDB who
+ * actually made the film before anything acts, and `UnresolvedTmdbReaper` spends the
+ * re-resolution. That reaper's scaladoc carries the warning that matters most: finding
+ * the RIGHT film can fail on its own, and a row left unresolved is pruned from the read
+ * model rather than merely wrong. The operational log — how to re-measure the sweep, how
+ * to audit its outcomes film-by-film, and which rows are deliberately left alone — is in
+ * `docs/misresolution-sweep.md`.
  */
 object CinemaCorroboration {
 

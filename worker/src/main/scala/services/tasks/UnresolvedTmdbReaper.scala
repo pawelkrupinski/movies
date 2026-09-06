@@ -52,6 +52,19 @@ import scala.util.Try
  * per-tick cap, and the cluster occurrence claim. On a multi-machine worker each
  * tick is gated by a cluster-wide [[ScheduledRunStore]] claim keyed by the tick
  * window, so one machine sweeps per tick.
+ *
+ * '''This sweep is not self-checking.''' Rejecting a wrong film and finding the right one
+ * are separate steps, and the second can fail on its own: the row is then left unresolved,
+ * stops satisfying [[MovieRecord.readyToProject]], and the projector prunes its card — so
+ * the film goes INVISIBLE, which for a row carrying screenings is worse than the wrong
+ * poster it started with. Nothing here reports that. A re-try is logged, an outcome is
+ * not, and one film sits far below the `ReadModelFilmPruneBurst` threshold; only the
+ * `kinowo.removal-audit` log names it. A sweep run is therefore finished only once its
+ * outcomes have been checked film-by-film against what the venues publish — and for the
+ * same reason, never clear a row's `tmdbId` to force a re-resolution, because the card is
+ * pruned within minutes and this reaper will not revisit that key for up to a full period.
+ * The audit method, the rows deliberately left alone and why each needs a different tool,
+ * and the traps this has already cost are in `docs/misresolution-sweep.md`.
  */
 class UnresolvedTmdbReaper(
   cache:     MovieCacheReader,
