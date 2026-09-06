@@ -1384,8 +1384,24 @@ class CaffeineMovieCache(
       val aDifferentFilm = staging.isDefined && sameTitledRows.nonEmpty && sameTitledRows.forall(record =>
         MixedFilmDetector.wouldAddASecondFilm(
           record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
+      // …or a DECORATED listing of a resolved film: the film's title runs along an edge
+      // of this one ("gb Fallen Angels by Noël Coward.", "Toddler Club: Toy Story 5").
+      // The settle's containment edge has always folded such a row onto its film; the
+      // gate asking the SAME question (`TitleContainment`, through the index) lands the
+      // slot on the film's row instead, so there is no row to fold. Without it every
+      // venue's first scrape of a chain's banner variant was a newcomer — diverted,
+      // resolved to the film already in `movies`, folded, re-keyed: 92 times in nine
+      // days for one film. The cinemas' own evidence still gets its veto, exactly as
+      // the edge gives it: a listing whose venue describes a different film is not a
+      // decoration of this one.
+      val decorationOf: Set[CacheKey] =
+        if (sameTitledRows.nonEmpty) Set.empty
+        else corpusIndex.keysDecoratedBy(TitleContainment.tokens(displayTitle)).filter { k =>
+          Option(positive.getIfPresent(k)).forall(record => !MixedFilmDetector.wouldAddASecondFilm(
+            record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
+        }
       val divert       = diverting && ((!corpusIndex.holdsTitle(norm) && !corpusIndex.holdsAlias(norm) &&
-                         !corpusIndex.holdsCinemaSlot(cinema, norm)) || aDifferentFilm)
+                         !corpusIndex.holdsCinemaSlot(cinema, norm) && decorationOf.isEmpty) || aDifferentFilm)
       // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
       // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
       // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)
@@ -1455,7 +1471,10 @@ class CaffeineMovieCache(
               // onto the base film under a different display title), land on THAT
               // row and update the slot in place, instead of spawning a new
               // title-keyed row that re-resolves and re-folds every tick.
-              case None => keyHoldingCinemaSlot(norm).getOrElse(primary)
+              // …then the resolved film this listing decorates, ranked the way the
+              // settle would rank the fold's survivor; only a listing nothing holds
+              // starts a row of its own.
+              case None => keyHoldingCinemaSlot(norm).orElse(decorationOf.minByOption(canonicalRank)).getOrElse(primary)
             }
           }
           val existingOpt   = Option(positive.getIfPresent(key))

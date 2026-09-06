@@ -85,6 +85,14 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  one must not un-know it" property the refcount was there for — set removal is
    *  idempotent per row — and answers the harder question too. */
   private val keysByAlias = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  /** A RESOLVED row's title runs — the tokens of its TMDB aliases and its own key
+   *  title — keyed by the run's first and last token, so a decorated listing is
+   *  checked only against the bases that could edge-match it. The settle's
+   *  containment edge indexes exactly this per pass; the divert gate asks it per
+   *  listing. `tmdbIdByKey` beside it, for the ambiguity refusal. */
+  private val keysByEdgeToken = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  private val runsByKey       = mutable.Map.empty[CacheKey, Seq[Seq[String]]]
+  private val tmdbIdByKey     = mutable.Map.empty[CacheKey, Int]
 
   /** Index `record` under `key`, replacing whatever that key contributed before. */
   def put(key: CacheKey, record: MovieRecord): Unit = synchronized {
@@ -104,6 +112,28 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       record.tmdbTitleAliases.foreach { alias =>
         keysByAlias.getOrElseUpdate(normalizer.sanitize(alias), mutable.Set.empty) += key
       }
+    record.tmdbId.foreach { id =>
+      val runs = (record.tmdbTitleAliases + key.cleanTitle).iterator.map(TitleContainment.tokens).filter(_.nonEmpty).toSeq
+      runsByKey.update(key, runs); tmdbIdByKey.update(key, id)
+      runs.foreach { run =>
+        keysByEdgeToken.getOrElseUpdate(run.head, mutable.Set.empty) += key
+        keysByEdgeToken.getOrElseUpdate(run.last, mutable.Set.empty) += key
+      }
+    }
+  }
+
+  /** The resolved rows this decorated title is a screening of — the divert gate's
+   *  fourth question, the settle's containment edge asked at landing time. Empty when
+   *  no resolved title runs along an edge of it, when what it adds names another entry
+   *  in the series, or when the runs it matches belong to MORE than one film (the
+   *  edge's ambiguity refusal). The caller still checks the cinemas' own evidence. */
+  def keysDecoratedBy(whole: Seq[String]): Set[CacheKey] = synchronized {
+    if (whole.isEmpty) Set.empty
+    else {
+      val candidates = keysByEdgeToken.getOrElse(whole.head, Set.empty) ++ keysByEdgeToken.getOrElse(whole.last, Set.empty)
+      val matched = candidates.iterator.filter(k => runsByKey.get(k).exists(_.exists(TitleContainment.decorates(_, whole)))).toSet
+      if (matched.flatMap(tmdbIdByKey.get).sizeIs == 1) matched else Set.empty
+    }
   }
 
   /** Drop everything `key` contributes. */
@@ -159,7 +189,8 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       rowsByNormalized = rowsByNormalized.map { case (n, rows) => n -> rows.keySet.toSet }.toMap,
       keysByCinemaSlot = keysByCinemaSlot.map { case (slot, keys) => slot -> keys.toSet }.toMap,
       slotsByCinema    = slotsByCinema.map { case (c, slots) => c -> slots.keySet.toSet }.toMap,
-      keysByAlias      = keysByAlias.map { case (a, keys) => a -> keys.toSet }.toMap)
+      keysByAlias      = keysByAlias.map { case (a, keys) => a -> keys.toSet }.toMap,
+      runsByKey        = runsByKey.toMap)
   }
 
   private def forget(key: CacheKey): Unit = {
@@ -191,6 +222,14 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
           }
         }
     }
+    runsByKey.remove(key).foreach { runs =>
+      runs.foreach { run =>
+        Seq(run.head, run.last).foreach { t =>
+          keysByEdgeToken.get(t).foreach { keys => keys -= key; if (keys.isEmpty) keysByEdgeToken -= t }
+        }
+      }
+    }
+    tmdbIdByKey -= key
     rowsByNormalized.get(key.normalized).foreach { rows =>
       rows -= key
       if (rows.isEmpty) rowsByNormalized -= key.normalized
@@ -203,5 +242,6 @@ private[movies] object CorpusIndex {
   final case class Snapshot(rowsByNormalized: Map[String, Set[CacheKey]],
                             keysByCinemaSlot: Map[(Cinema, String), Set[CacheKey]],
                             slotsByCinema: Map[Cinema, Set[(CacheKey, Source)]],
-                            keysByAlias: Map[String, Set[CacheKey]])
+                            keysByAlias: Map[String, Set[CacheKey]],
+                            runsByKey: Map[CacheKey, Seq[Seq[String]]])
 }

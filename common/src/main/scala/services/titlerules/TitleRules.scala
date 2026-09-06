@@ -18,7 +18,8 @@ object TitleRules {
   //    fold FIRST (orders 10–14), then the decoration strips (orders 20–60),
   //    reproducing the legacy `structural(searchRules(t))` composition
   //    byte-for-byte. NOT in the merge key — a decoration/programme edition keys
-  //    by its own form and stays a separate row. ──────────────────────────────
+  //    by its own form; whether it then lands on its film's row is
+  //    `TitleContainment`'s call, and it keeps its own slot title either way. ──
   private val ProgrammePrefixPattern =
     """(?i)^(?:Kino\s+bez\s+barier|""" +
     """Pokaz\s+sensorycznie\s+przyjazny|""" +

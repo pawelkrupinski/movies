@@ -361,15 +361,10 @@ object FilmCanonicalizer {
     // REFUSE ON AMBIGUITY (runs of two different resolved films → attach to neither),
     // and REFUSE ON CONTRADICTION (the edition's cinemas published a different film —
     // see below).
-    def titleTokens(s: String): Seq[String] =
-      tools.TextNormalization.deburr(s).toLowerCase(java.util.Locale.ROOT)
-        .split("[^\\p{L}\\p{N}]+").iterator.filter(_.nonEmpty).toSeq
-    // PREFIX-or-SUFFIX run, not mid-string: a decoration wraps the base at an EDGE
-    // ("WAJDA: re-wizje: Brzezina", "Podziemny Krąg (Fight Club)"), so even a 1-token
-    // base can't be swallowed by an unrelated title that merely mentions the word in
-    // the middle. The edition must be strictly longer (a real decoration).
-    def isTokenRun(base: Seq[String], whole: Seq[String]): Boolean =
-      base.nonEmpty && whole.lengthIs > base.length && (whole.startsWith(base) || whole.endsWith(base))
+    // The predicate is `TitleContainment`'s — the same one the scrape-time divert gate
+    // asks, so a decorated listing lands on its film's row instead of becoming a
+    // newcomer this edge later folds.
+    def titleTokens(s: String): Seq[String] = TitleContainment.tokens(s)
     val resolvedBaseRuns: Seq[(Seq[String], Int)] =
       rows.indices
         .filter(i => rows(i)._2.tmdbId.isDefined)
@@ -436,8 +431,7 @@ object FilmCanonicalizer {
           // A sequel carries the base title exactly the way a decoration does; the
           // ordinal is the difference (`SequelMarker`).
           val matched = cands.collect {
-            case (base, i) if isTokenRun(base, whole) &&
-              !SequelMarker.namesAnotherEntry(base, whole) &&
+            case (base, i) if TitleContainment.decorates(base, whole) &&
               !MixedFilmDetector.describeDifferentFilms(rows(i)._2, rows(j)._2, normalizer) => i
           }
           if (matched.map(i => rows(i)._2.tmdbId.get).distinct.lengthIs == 1) matched.foreach(union(_, j))

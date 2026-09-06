@@ -2058,14 +2058,20 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     titleNormalizer.sanitize(rows.head.title) shouldBe "zaplatani"
   }
 
-  it should "NOT land a decorated edition on the base film via alias-matching" in {
+  it should "land a programme edition on the base film's row under its own slot title, as the settle would" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     cache.put(cache.keyOf("Zaproszenie", Some(2022)),
       resolvedRecord(9001, 2022, tmdbTitle = "Zaproszenie", originalTitle = "The Invitation", cinema = Helios))
-    // A programme edition of the base film: its title adds the banner, so it
-    // matches no TMDB alias and must stay its own row.
+    // A programme edition of the base film. Its title adds the banner, so it matches
+    // no TMDB alias — which this case used to pin as "stays its own row". That row
+    // was a transient: the settle's containment edge folded it onto the base on its
+    // next pass, and the next scrape spawned it again (the re-key flap measured
+    // 2026-09-06). The gate now asks the settle's question at landing time, so the
+    // edition lands on the film's row — under ITS OWN slot title, which is what the
+    // read model splits a card per, so the programme still shows as its own card.
     cache.recordCinemaScrape(KinoMuza, Seq(cm(KinoMuza, "Zaproszenie | Kinoteka dla rodziców", Some(2022))))
-    cache.snapshot().map(r => titleNormalizer.sanitize(r.title)).toSet shouldBe
-      Set("zaproszenie", "zaproszeniekinotekadlarodzicow")
+    cache.snapshot().map(r => titleNormalizer.sanitize(r.title)).toSet shouldBe Set("zaproszenie")
+    val row = cache.get(cache.keyOf("Zaproszenie", Some(2022))).getOrElse(fail("row missing"))
+    row.cinemaShowings.collectFirst { case (KinoMuza, sd) => sd.title } shouldBe Some(Some("Zaproszenie | Kinoteka dla rodziców"))
   }
 }

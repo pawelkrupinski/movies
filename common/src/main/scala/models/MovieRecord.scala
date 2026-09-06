@@ -280,7 +280,9 @@ case class MovieRecord(
    *  onto one row. The English title matters when `originalTitle` is non-Latin
    *  (Taiwanese, Korean, …) and so doesn't itself match the cinema's English
    *  listing. A decorated edition (dub / "+ Kinoteka dla rodziców") adds words
-   *  beyond any alias, so it never matches and stays its own row. Empty until
+   *  beyond any alias, so it never matches HERE; it reaches the film's row through
+   *  `TitleContainment` instead (the settle edge and the scrape-time gate), keeping
+   *  its own slot title for the read model to render as its own card. Empty until
    *  TMDB resolves. */
   def tmdbTitleAliases: Set[String] =
     data.get(Tmdb).toSet.flatMap((sd: SourceData) => Set(sd.title, sd.originalTitle, sd.englishTitle).flatten)
