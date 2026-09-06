@@ -7174,7 +7174,7 @@ rottenTomatoes:    99
 filmwebRating:     —
 metacriticUrl:     https://www.metacritic.com/movie/parasite
 rottenTomatoesUrl: https://www.rottentomatoes.com/m/parasite_2019
-filmwebUrl:        —
+filmwebUrl:        https://www.filmweb.pl/film/Parasite-2019-798143
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/12909-plenerowe-paacowe-parasite/
 cinemaScrapes:

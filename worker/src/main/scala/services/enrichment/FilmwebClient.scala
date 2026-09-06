@@ -1,6 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
+import services.movies.SamePerson
 import services.resolution.TitleCorroboration
 import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, SynopsisSimilarity, TextNormalization}
 
@@ -375,13 +376,12 @@ class FilmwebClient(http: HttpFetch) {
       TitleCorroboration.sharesDistinctiveToken(
         knownAs, c.title +: c.originalTitle.toSeq, deburr, maxTokenEdits = 1)
 
-  /** Diacritic-stripped, case-folded director-name overlap; substring match in
-   *  either direction passes so "M. Szumowska" hits "Małgorzata Szumowska". */
-  private def directorsOverlap(filmwebDirectors: Set[String], callerDirectors: Set[String]): Boolean = {
-    val callerNorms = callerDirectors.map(deburr)
-    val fwNorms     = filmwebDirectors.map(deburr)
-    callerNorms.exists(d => fwNorms.exists(f => d == f || d.contains(f) || f.contains(d)))
-  }
+  /** Some caller director naming some Filmweb director, per [[SamePerson]] — so
+   *  "M. Szumowska" meets "Małgorzata Szumowska" and TMDB's surname-first "Enyedi
+   *  Ildikó" meets Filmweb's "Ildikó Enyedi". False when either side is empty:
+   *  each caller decides for itself whether an empty side abstains. */
+  private def directorsOverlap(filmwebDirectors: Set[String], callerDirectors: Set[String]): Boolean =
+    callerDirectors.exists(d => filmwebDirectors.exists(SamePerson(d, _)))
 }
 
 object FilmwebClient {

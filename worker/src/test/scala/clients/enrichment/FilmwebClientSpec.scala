@@ -367,6 +367,15 @@ class FilmwebClientSpec extends AnyFlatSpec with Matchers {
     client.pickBest(hits, "Bodysnatchers", None, Set("malgorzata szumowska")).map(_.id) shouldBe Some(1)
   }
 
+  it should "match a director written surname-first, or with an initial for a middle name" in {
+    // TMDB writes Hungarian credits surname-first ("Enyedi Ildikó") where Filmweb
+    // writes them given-name-first; a substring test saw two different people.
+    val enyedi = Seq(candidate(id = 1, title = "Testről és lélekről", directors = Set("Ildikó Enyedi")))
+    client.pickBest(enyedi, "Testről és lélekről", None, Set("Enyedi Ildikó")).map(_.id) shouldBe Some(1)
+    val inarritu = Seq(candidate(id = 2, title = "Birdman", directors = Set("Alejandro González Iñárritu")))
+    client.pickBest(inarritu, "Birdman", None, Set("Alejandro G. Iñárritu")).map(_.id) shouldBe Some(2)
+  }
+
   it should "skip director verification when the candidate has no directors" in {
     // FW row with empty directors → can't verify; don't reject, fall back to
     // title+year. This protects against missing /preview data.
