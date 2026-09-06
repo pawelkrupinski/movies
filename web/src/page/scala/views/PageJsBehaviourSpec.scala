@@ -243,7 +243,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // A corpus row's per-source breakdown, fetched lazily when its /debug
           // table row is expanded (the heavy subtree is no longer rendered inline).
           // The `id` query param is the row's `_id`; serve the matching row's
-          // debugDetails, mirroring MovieController.debugDetails.
+          // debugDetails, mirroring DebugController.debugDetails.
           case p if p.startsWith("/debug/details?") =>
             val id = java.net.URLDecoder.decode(p.split("id=", 2).lift(1).getOrElse(""), "UTF-8")
             (debugRows :+ slotsRow).find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id)

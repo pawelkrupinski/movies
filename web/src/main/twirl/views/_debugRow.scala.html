@@ -82,7 +82,7 @@
      other enrichments). stopPropagation in the handler keeps the click
      from toggling the details row. *@
   <td class="actions">
-    <button type="button" class="reenrich" data-url="@routes.MovieController.reenrich(title, year)"
+    <button type="button" class="reenrich" data-url="@routes.DebugController.reenrich(title, year)"
             title="Re-enrich TMDB, then ratings">↻</button>
   </td>
 </tr>
@@ -98,7 +98,7 @@
    can be dropped whole. *@
 <tr class="details hidden" data-id="@id" data-row-id="@id"
     data-digest="@ShowtimesDigest.recordDigest(e)"
-    data-details-url="@routes.MovieController.debugDetails(id)">
+    data-details-url="@routes.DebugController.debugDetails(id)">
   <td colspan="9"></td>
 </tr>
 }

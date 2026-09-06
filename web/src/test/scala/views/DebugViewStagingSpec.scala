@@ -99,6 +99,6 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
     """data-anchor="sharedfilm"""".r.findAllMatchIn(html).size shouldBe 2
     // …but the header counts FILMS (distinct anchors), not cinemas.
     html should include ("""<span id="staging-count">2</span> films""")
-    html should include (s"Showing the first ${controllers.MovieController.StagingRowLimit} films")
+    html should include (s"Showing the first ${controllers.DebugController.StagingRowLimit} films")
   }
 }

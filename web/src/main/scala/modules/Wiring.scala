@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AuthController, CatalogController, ClientSupportController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, EncodedResponseCache, FacebookDataDeletionController, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, SupportController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
+import controllers.{AdminAction, AuthController, CatalogController, ClientSupportController, DebugController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, EncodedResponseCache, FacebookDataDeletionController, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, SupportController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -311,7 +311,8 @@ trait Wiring {
       debugExtraStacks.map { case (country, _, stack) => country -> stack }.toMap,
       devMode = environmentMode != Mode.Prod)
 
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, debugCountries, adminAction, oauthProviders.keySet, environmentMode, encodedResponseCache, ogCardService, cityOgCardService,
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache, ogCardService, cityOgCardService)
+  lazy val debugController  = new DebugController(controllerComponents, debugCountries, webReadModel, adminAction, environmentMode,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.

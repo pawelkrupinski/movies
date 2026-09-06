@@ -20,15 +20,15 @@ import java.time.Instant
  * so it's now a top-level `GET /debug` taking no city parameter. It renders (200) in
  * Dev/Test and 404s in Prod via the same `devOnly` gate as `/debug/tune`.
  */
-class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
+class DebugControllerSpec extends AnyFlatSpec with Matchers {
 
   private val records = Seq(
     ("Belle", Some(2021), MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Belle"))))),
     ("Incepcja", Some(2010), MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Incepcja"))))),
   )
 
-  private def buildController(mode: Mode): MovieController =
-    TestMovieController.build(records, mode)._1
+  private def buildController(mode: Mode): DebugController =
+    TestDebugController.build(records, mode)._1
 
   "GET /debug" should "render the whole corpus in dev mode" in {
     val result = buildController(Mode.Dev).debug().apply(FakeRequest(GET, "/debug"))
@@ -78,7 +78,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   private val cadenceRecords = Seq(("Belle", Some(2021), MovieRecord(tmdbId = Some(1))))
 
   "GET /debug/cadence" should "group films by refresh interval (slowest first) with the title and change history" in {
-    val ctrl   = TestMovieController.build(cadenceRecords, Mode.Dev, ratingCadenceReader = cadenceReader)._1
+    val ctrl   = TestDebugController.build(cadenceRecords, Mode.Dev, ratingCadenceReader = cadenceReader)._1
     val result = ctrl.cadence().apply(FakeRequest(GET, "/debug/cadence"))
     status(result) shouldBe OK
     val html = contentAsString(result)
@@ -101,7 +101,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "404 in production" in {
-    val result = TestMovieController.build(Seq.empty, Mode.Prod)._1.cadence().apply(FakeRequest(GET, "/debug/cadence"))
+    val result = TestDebugController.build(Seq.empty, Mode.Prod)._1.cadence().apply(FakeRequest(GET, "/debug/cadence"))
     status(result) shouldBe NOT_FOUND
   }
 
@@ -133,7 +133,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
       def delete(cinema: models.Source, title: String, year: Option[Int]): Unit = ()
     }
 
-    val ctrl = TestMovieController.build(records, Mode.Dev,
+    val ctrl = TestDebugController.build(records, Mode.Dev,
       movieRepository = Some(movieRepo), stagingRepository = stagingRepo)._1
 
     status(ctrl.debug().apply(FakeRequest(GET, "/debug"))) shouldBe OK
@@ -149,7 +149,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
       (CinemaCityWroclavia, "Newcomer", Some(2099),
         MovieRecord(detailPending = true, data = Map(CinemaCityWroclavia -> SourceData(title = Some("Newcomer")))))))
     val html = contentAsString(
-      TestMovieController.build(records, Mode.Dev, stagingRepository = staging)._1
+      TestDebugController.build(records, Mode.Dev, stagingRepository = staging)._1
         .debug().apply(FakeRequest(GET, "/debug")))
 
     html should include ("<th>Cinemas</th>")
@@ -193,7 +193,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     attempts.record("rt|tmdb:1", services.attempts.EnrichmentAttempt(
       cadenceNow, 30, services.attempts.AttemptOutcome.Failed("IOException: connect timed out")))
 
-    val (controller, _) = TestMovieController.build(resolved, Mode.Dev,
+    val (controller, _) = TestDebugController.build(resolved, Mode.Dev,
       ratingCadenceReader = cadenceReader, attemptReader = attempts)
     val id     = services.movies.StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer)
     val result = controller.debugDetails(id).apply(FakeRequest(GET, s"/debug/details?id=$id"))
@@ -255,13 +255,13 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
       task("ImdbRating",           "imdb-rating|x",                 TaskState.Waiting),  // place 2 (non-staging, bumps counter)
       task("StagingResolveImdbId", "staging-imdb|waitingfive",      TaskState.Waiting),  // place 3
     )
-    MovieController.orderStagingByQueue(rows, active, titleNormalizer).map(_.title) shouldBe
+    DebugController.orderStagingByQueue(rows, active, titleNormalizer).map(_.title) shouldBe
       Seq("Running Film", "Waiting Two", "Waiting Five", "No Task")
   }
 
   it should "keep the incoming order for equal-rank (e.g. no-task) rows — a stable sort" in {
     val rows = Seq("Zebra", "Alpha").map(staged) // both have no active task → equal rank
-    MovieController.orderStagingByQueue(rows, Seq.empty, titleNormalizer).map(_.title) shouldBe Seq("Zebra", "Alpha")
+    DebugController.orderStagingByQueue(rows, Seq.empty, titleNormalizer).map(_.title) shouldBe Seq("Zebra", "Alpha")
   }
 
   // ── /debug/queue snapshot the staging columns poll for queue places ─────────
@@ -271,7 +271,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
     q.enqueue(TaskType.EnrichDetails, "detail|cc|Belle|2021", submittedAt = t0)
     q.enqueue(TaskType.ResolveTmdb, EnrichTaskKeys.resolveTmdbDedup("Incepcja", Some(2010)),
       submittedAt = t0.plusSeconds(1))
-    val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
+    val ctrl = TestDebugController.build(records, Mode.Dev, taskQueue = q)._1
 
     val result = ctrl.debugQueue().apply(FakeRequest(GET, "/debug/queue"))
     status(result) shouldBe OK
@@ -283,7 +283,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "404 in production like the rest of /debug" in {
-    val ctrl = TestMovieController.build(records, Mode.Prod, taskQueue = new InMemoryTaskQueue)._1
+    val ctrl = TestDebugController.build(records, Mode.Prod, taskQueue = new InMemoryTaskQueue)._1
     status(ctrl.debugQueue().apply(FakeRequest(GET, "/debug/queue"))) shouldBe NOT_FOUND
   }
 
@@ -335,7 +335,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
           bookingUrl = Some("https://book.example/helios"),
           format     = List("ATMOS"))))))
 
-    val ctrl = TestMovieController.build(Seq(("Belle", Some(2021), rich)), Mode.Dev)._1
+    val ctrl = TestDebugController.build(Seq(("Belle", Some(2021), rich)), Mode.Dev)._1
     val html = contentAsString(ctrl.debugReadModel().apply(FakeRequest(GET, "/debug/readmodel")))
 
     // New column header + the distinct-cinema count for the row.
@@ -372,19 +372,19 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
   private val rehydrateRequest = FakeRequest(POST, "/wroclaw/debug/rehydrate")
 
   "POST /…/debug/rehydrate" should "401 an anonymous request" in {
-    val ctrl = TestMovieController.build(records, Mode.Prod)._1
+    val ctrl = TestDebugController.build(records, Mode.Prod)._1
     status(ctrl.rehydrate("wroclaw").apply(rehydrateRequest)) shouldBe UNAUTHORIZED
   }
 
   it should "403 a logged-in user not on the allowlist" in {
-    val ctrl = TestMovieController.build(records, Mode.Prod,
+    val ctrl = TestDebugController.build(records, Mode.Prod,
       adminAction = TestAdminAction(allow = Set("someone-else@example.com")))._1
     status(ctrl.rehydrate("wroclaw").apply(
       rehydrateRequest.withSession("userId" -> TestAdminAction.AdminUserId))) shouldBe FORBIDDEN
   }
 
   it should "reload the caches for an allowlisted admin" in {
-    val ctrl = TestMovieController.build(records, Mode.Prod)._1
+    val ctrl = TestDebugController.build(records, Mode.Prod)._1
     val result = ctrl.rehydrate("wroclaw").apply(
       rehydrateRequest.withSession("userId" -> TestAdminAction.AdminUserId))
     status(result) shouldBe OK
@@ -396,7 +396,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
 
   "POST /debug/reenrich" should "enqueue a ResolveTmdb task with the row's title + year in dev" in {
     val q    = new InMemoryTaskQueue
-    val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
+    val ctrl = TestDebugController.build(records, Mode.Dev, taskQueue = q)._1
 
     val result = ctrl.reenrich("Belle", Some(2021)).apply(reenrichRequest)
     status(result) shouldBe OK
@@ -409,7 +409,7 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
 
   it should "report duplicate on a second enqueue for the same film" in {
     val q    = new InMemoryTaskQueue
-    val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
+    val ctrl = TestDebugController.build(records, Mode.Dev, taskQueue = q)._1
     ctrl.reenrich("Belle", Some(2021)).apply(reenrichRequest)
     val second = ctrl.reenrich("Belle", Some(2021)).apply(reenrichRequest)
     (Json.parse(contentAsString(second)) \ "duplicate").as[Boolean] shouldBe true
@@ -418,14 +418,14 @@ class MovieControllerDebugSpec extends AnyFlatSpec with Matchers {
 
   it should "400 a request with no title (and enqueue nothing)" in {
     val q    = new InMemoryTaskQueue
-    val ctrl = TestMovieController.build(records, Mode.Dev, taskQueue = q)._1
+    val ctrl = TestDebugController.build(records, Mode.Dev, taskQueue = q)._1
     status(ctrl.reenrich("", None).apply(reenrichRequest)) shouldBe BAD_REQUEST
     q.monitor().active shouldBe empty
   }
 
   it should "404 in production (no enqueue) like the rest of /debug" in {
     val q    = new InMemoryTaskQueue
-    val ctrl = TestMovieController.build(records, Mode.Prod, taskQueue = q)._1
+    val ctrl = TestDebugController.build(records, Mode.Prod, taskQueue = q)._1
     status(ctrl.reenrich("Belle", Some(2021)).apply(reenrichRequest)) shouldBe NOT_FOUND
     q.monitor().active shouldBe empty
   }

@@ -55,24 +55,24 @@ GET     /api/client-support         controllers.ClientSupportController.clientSu
 # Top-level, not city-scoped: the debug table is the *global* corpus (every
 # enriched row across all cities), so there's nothing per-city about it. Each
 # /movie deep-link picks a city the film actually plays in.
-GET     /debug                      controllers.MovieController.debug()
+GET     /debug                      controllers.DebugController.debug()
 # Dev-only: one corpus row's per-source breakdown, fetched lazily when the /debug
 # table row is expanded. Rendering every row's breakdown inline OOM'd the view on
 # the full corpus, so it's served per-row on demand. 404 in prod like the rest.
-GET     /debug/details              controllers.MovieController.debugDetails(id: String)
+GET     /debug/details              controllers.DebugController.debugDetails(id: String)
 # Dev-only: dumps what the web is actually serving from — the warm read cache
 # (`web_movies` + `web_screenings`), not the source `movies` corpus /debug shows.
 # 404 in prod like the rest of /debug.
-GET     /debug/readmodel            controllers.MovieController.debugReadModel()
+GET     /debug/readmodel            controllers.DebugController.debugReadModel()
 # Dev-only: per-(rating source, film) adaptive refresh cadence — films grouped by
 # their current refresh interval (slowest/most-stable first), with the last two
 # displayed-value changes on hover. Reads the worker-written `rating_cadence`.
-GET     /debug/cadence              controllers.MovieController.cadence()
+GET     /debug/cadence              controllers.DebugController.cadence()
 # Dev-only: the /debug row "re-enrich" button enqueues a per-movie ResolveTmdb
 # task (worker re-resolves TMDB, then the event chain re-runs the rest). 404 in
 # prod like the rest of /debug; nocsrf, posted by the page's fetch.
 + nocsrf
-POST    /debug/reenrich             controllers.MovieController.reenrich(title: String, year: Option[Int])
+POST    /debug/reenrich             controllers.DebugController.reenrich(title: String, year: Option[Int])
 # Dev-only SSE feed of `movies` change-stream events so the /debug table live-
 # updates (merged rows vanish, new films appear). 404 in prod — the stream is
 # only ever opened in dev, never watching the worker's collection 24/7.
@@ -80,22 +80,22 @@ GET     /debug/stream               controllers.DebugStreamController.stream()
 # Dev-only JSON snapshot of the durable task queue's active tasks (oldest-first),
 # so the /debug "pending work" sections can show whether a movie already has an
 # enrichment task and its place in the queue. 404 in prod like the rest of /debug.
-GET     /debug/queue                controllers.MovieController.debugQueue()
+GET     /debug/queue                controllers.DebugController.debugQueue()
 # Dev-only visual-tuning page: live sliders over the real movie card that drive
 # the CSS custom properties the production card styles read (vertical gaps,
 # showtime-pill + rating-pill font/padding/corner). Lets us eyeball spacing
 # without redeploying; never exposed in prod.
-GET     /:city/debug/tune           controllers.MovieController.tune(city: String)
+GET     /:city/debug/tune           controllers.DebugController.tune(city: String)
 # Sibling tuning page for the film-detail view, linked by a sub-nav inside the
 # /:city/debug/tune* pages. Same live-CSS-variable approach as
 # /:city/debug/tune; dev-only, so it gets no redirect from its pre-rename
 # `/debug/tune/film` address — nothing outside a dev box ever linked it.
-GET     /:city/debug/tune/movie     controllers.MovieController.tuneFilm(city: String)
+GET     /:city/debug/tune/movie     controllers.DebugController.tuneFilm(city: String)
 # Drop the in-memory positive cache and reload it from Mongo. Not gated by
 # devOnly — usable on a deployed instance to reconcile after out-of-band
 # Mongo edits.
 + nocsrf
-POST    /:city/debug/rehydrate      controllers.MovieController.rehydrate(city: String)
+POST    /:city/debug/rehydrate      controllers.DebugController.rehydrate(city: String)
 
 # ── Auth (OAuth2 — Google / Facebook) ────────────────────────────────────────
 # `/auth/<provider>/start` issues a CSRF state, stashes it in the signed

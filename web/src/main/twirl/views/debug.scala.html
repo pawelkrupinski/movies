@@ -1,7 +1,7 @@
 @import services.movies.StoredMovieRecord
 @import services.movies.TitleNormalizer
 @import services.staging.StagingRecord
-@import controllers.MovieController
+@import controllers.DebugController
 @(rows: Seq[StoredMovieRecord], normalizer: services.movies.TitleNormalizer, staging: Seq[StagingRecord] = Seq.empty, current: models.Country = models.Country.fromEnv, sameOrigin: Boolean = false, mirror: Option[services.MirrorFreshness.Age] = None)(implicit city: models.City)
 <!DOCTYPE html>
 <html lang="pl">
@@ -155,7 +155,7 @@
    first `StagingRowLimit` films. Source rows are added/removed live off the
    `pending_movies` change stream; the header count is the film total. *@
 <h1>Pending enrichment (staging) · <span id="staging-count">@staging.map(r => normalizer.sanitize(r.title)).distinct.size</span> films</h1>
-<div class="summary">Newcomer films incubating in <code>pending_movies</code> — folded across cinemas (Cinemas = how many report the film). Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage (Detail only once all cinemas are done), the last column its place in the durable task queue. Showing the first @MovieController.StagingRowLimit films, re-sorted live by queue place (most imminent first).</div>
+<div class="summary">Newcomer films incubating in <code>pending_movies</code> — folded across cinemas (Cinemas = how many report the film). Each walks Detail → TMDB → IMDb → fold; a ✓ marks a concluded stage (Detail only once all cinemas are done), the last column its place in the durable task queue. Showing the first @DebugController.StagingRowLimit films, re-sorted live by queue place (most imminent first).</div>
 <table id="staging-t">
   <thead>
     <tr><th>Cinemas</th><th>Title</th><th>Year</th><th class="tick">Detail</th><th class="tick">TMDB</th><th class="tick">IMDb</th><th>Queue #</th></tr>
@@ -344,7 +344,7 @@
   // sits in the durable task queue. The snapshot is polled from /debug/queue; the
   // helpers below turn it into a per-film badge (see rebuildStagingTable).
   let queueActive = []; // [{taskType, dedupKey, state}] — worked_on first, then waiting oldest-first
-  const STAGING_CAP = @MovieController.StagingRowLimit; // declared up here — rebuildStagingTable (below) reads it on the first load call
+  const STAGING_CAP = @DebugController.StagingRowLimit; // declared up here — rebuildStagingTable (below) reads it on the first load call
 
   // Place every WAITING task's dedupKey at its 1-based spot in the global queue.
   // The worker leases the oldest waiting task first regardless of type, so a task's
@@ -470,7 +470,7 @@
   }
 
   function pollQueue() {
-    fetch("@routes.MovieController.debugQueue()", { headers: { 'Accept': 'application/json' } })
+    fetch("@routes.DebugController.debugQueue()", { headers: { 'Accept': 'application/json' } })
       .then(r => r.json())
       .then(j => { queueActive = Array.isArray(j.active) ? j.active : []; rebuildStagingTable(); })
       .catch(() => {});

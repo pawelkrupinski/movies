@@ -17,7 +17,7 @@ import java.time.Instant
  * 404s /debug). In the single-country holder prod + other specs use, the param
  * is ignored.
  */
-class MovieControllerDebugCountrySpec extends AnyFlatSpec with Matchers {
+class DebugControllerCountrySpec extends AnyFlatSpec with Matchers {
 
   private def corpusStack(country: Country, title: String) = new DebugStack(
     country,
@@ -33,7 +33,7 @@ class MovieControllerDebugCountrySpec extends AnyFlatSpec with Matchers {
   private val ukStack = corpusStack(Country.UnitedKingdom, "Uk Only Film")
 
   private def switchingController =
-    TestMovieController.build(Seq.empty, Mode.Dev, debugCountries = Some(
+    TestDebugController.build(Seq.empty, Mode.Dev, debugCountries = Some(
       DebugCountries.of(plStack, Map(Country.UnitedKingdom -> ukStack), devMode = true)))._1
 
   "GET /debug?country=uk" should "read the UK corpus and stamp the sticky cookie" in {
@@ -71,7 +71,7 @@ class MovieControllerDebugCountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "GET /debug?country=uk with the switch off (single country)" should "ignore the param and read the boot corpus" in {
-    val ctrl = TestMovieController.build(Seq.empty, Mode.Dev,
+    val ctrl = TestDebugController.build(Seq.empty, Mode.Dev,
       debugCountries = Some(DebugCountries.single(plStack)))._1
     val result = ctrl.debug().apply(FakeRequest(GET, "/debug?country=uk"))
     val html   = contentAsString(result)
