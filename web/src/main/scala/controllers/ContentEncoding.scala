@@ -49,7 +49,8 @@ object ContentEncoding {
    *  A `*` covers anything not named, so `Accept-Encoding: *` means "whatever you
    *  have" — but a named `q=0` still wins over it, which is what lets a client take
    *  everything EXCEPT brotli. */
-  def negotiate(acceptEncoding: Option[String]): Option[ContentEncoding] = {
+  def negotiate(acceptEncoding: Option[String],
+                willing: Set[ContentEncoding] = values.toSet): Option[ContentEncoding] = {
     val offered: Map[String, Double] =
       acceptEncoding.toList
         .flatMap(_.split(','))
@@ -63,7 +64,7 @@ object ContentEncoding {
 
     // Heaviest weight wins; a tie falls to declaration order, which is brotli
     // first. Spelled out rather than leaning on how `maxBy` breaks ties.
-    values.map(e => e -> weightOf(e)).filter(_._2 > 0) match {
+    values.filter(willing).map(e => e -> weightOf(e)).filter(_._2 > 0) match {
       case Array()   => None
       case supported => Some(supported.minBy { case (e, q) => (-q, e.ordinal) }._1)
     }

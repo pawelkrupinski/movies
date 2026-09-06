@@ -384,8 +384,27 @@ class MovieController( cc: ControllerComponents,
    *  [[ContentEncoding.negotiate]] weighs what the client actually asked for, and
    *  can now say `br`, which is the point: `no-transform` stopped Cloudflare
    *  brotli-ing our gzip on the way out, so the origin does it or nobody does. */
+  /** ⚠️ GZIP ONLY, THOUGH WE CAN BUILD BROTLI AND BROTLI IS BETTER. Cloudflare
+   *  caches ONE variant per URL. It does not key on `Accept-Encoding`, so when the
+   *  origin answered br to the browsers that ask for it, the edge stored that one
+   *  copy — and then had to serve it to clients that cannot read br. `no-transform`
+   *  forbids re-compressing it to gzip, so what it did instead was DECOMPRESS and
+   *  send the body raw. Measured on the live edge, gzip-only clients:
+   *
+   *      /uk/manchester/                  3,789,572 B   (297,089 from the origin)
+   *      /uk/manchester/api/repertoire    1,470,154 B
+   *
+   *  OkHttp sends `Accept-Encoding: gzip` by default, so that second line is the
+   *  Android app's own listing fetch — 1.4 MB where it used to take about 200 KB.
+   *
+   *  So the origin offers exactly one encoding, and every client gets a body it can
+   *  read. Brotli stays built and tested and costs us nothing sitting here; what it
+   *  needs is an edge that keys its cache on the encoding, which this plan's cache
+   *  rules cannot express. */
+  private val ServableEncodings = Set(ContentEncoding.Gzip)
+
   private def bestEncoding(request: RequestHeader): Option[ContentEncoding] =
-    ContentEncoding.negotiate(request.headers.get("Accept-Encoding"))
+    ContentEncoding.negotiate(request.headers.get("Accept-Encoding"), ServableEncodings)
 
   // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for
   // EVERY visitor at a given cache version — signed in or not, which is the whole

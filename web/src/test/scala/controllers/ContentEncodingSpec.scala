@@ -65,4 +65,22 @@ class ContentEncodingSpec extends AnyFlatSpec with Matchers {
     best("gzip,,br")            shouldBe Some(Brotli)
     best("identity")            shouldBe None
   }
+
+  // What `MovieController.ServableEncodings` relies on. The origin may build brotli
+  // but must not OFFER it while Cloudflare caches one variant per URL and cannot key
+  // it on the encoding — it stored br and served gzip-only clients the decompressed
+  // body, 3.8 MB of it.
+  "a restricted willing-set" should "pick only from what the caller can serve" in {
+    val gzipOnly = Set[ContentEncoding](Gzip)
+
+    negotiate(Some("gzip, deflate, br, zstd"), gzipOnly) shouldBe Some(Gzip)
+    negotiate(Some("br"), gzipOnly)                      shouldBe None
+    negotiate(Some("br;q=1.0, gzip;q=0.1"), gzipOnly)    shouldBe Some(Gzip)
+    negotiate(Some("*"), gzipOnly)                       shouldBe Some(Gzip)
+    negotiate(Some("gzip;q=0"), gzipOnly)                shouldBe None
+  }
+
+  it should "still default to everything we can build when unrestricted" in {
+    negotiate(Some("gzip, deflate, br")) shouldBe Some(Brotli)
+  }
 }

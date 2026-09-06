@@ -279,43 +279,54 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     header("Vary", refresh) shouldBe header("Vary", full)
   }
 
-  // ── Brotli, which `no-transform` made the origin's job ─────────────────────
+  // ── ONE encoding on the wire, because the edge caches only one ─────────────
   //
-  // Cloudflare was recompressing our gzip to `br` at the edge; that recompression
-  // is exactly why it deleted the ETag, and `no-transform` stopping it cost
-  // 228,940 -> 287,531 bytes on a full fetch of `/uk/manchester/`. Serving brotli
-  // ourselves gets that back AND keeps the validator, because now the bytes we
-  // stamp are the bytes we send.
-  "a brotli-accepting client" should "get brotli, not gzip" in {
+  // The origin CAN build brotli and brotli is better (197 KB against gzip's 300 KB
+  // on this page). It must not offer it. Cloudflare caches ONE variant per URL and
+  // does not key on `Accept-Encoding`: it stored the br copy the browsers pulled,
+  // then had to answer clients that cannot read br, and since `no-transform` bars
+  // it from re-compressing, it DECOMPRESSED and sent the body raw. Measured live:
+  //
+  //     /uk/manchester/                gzip-only client   3,789,572 B
+  //     /uk/…/api/repertoire           gzip-only client   1,470,154 B
+  //
+  // OkHttp defaults to `Accept-Encoding: gzip`, so the second is the Android app's
+  // own fetch, at seven times its proper size. These pin the origin to one encoding
+  // until the edge can key a cache on it.
+  "the origin" should "offer gzip even to a client that would prefer brotli" in {
     val (ctrl, _) = buildController()
     val result = ctrl.index("poznan")(
       FakeRequest("GET", "/poznan/").withHeaders("Accept-Encoding" -> "gzip, deflate, br, zstd"))
-
-    header("Content-Encoding", result) shouldBe Some("br")
-    header("Vary", result)             shouldBe Some("Accept-Encoding")
-
-    com.aayushatharva.brotli4j.Brotli4jLoader.ensureAvailability()
-    val html = new String(
-      com.aayushatharva.brotli4j.decoder.Decoder
-        .decompress(contentAsBytes(result).toArray).getDecompressedData,
-      StandardCharsets.UTF_8)
-    html should include ("Cache Test Film")
-  }
-
-  it should "still be given gzip when that is all it takes" in {
-    val (ctrl, _) = buildController()
-    val result = ctrl.index("poznan")(gzipRequest("/poznan/"))
 
     header("Content-Encoding", result) shouldBe Some("gzip")
     gunzip(contentAsBytes(result)) should include ("Cache Test Film")
   }
 
-  // `gzip;q=0` is a refusal. The substring check this replaced read it as consent
-  // and would have sent a body the client cannot inflate.
-  it should "be sent an uncompressed body when it refuses everything we can build" in {
+  it should "offer gzip on the JSON the mobile apps fetch, whatever they advertise" in {
+    val (ctrl, _) = buildController()
+    Seq("gzip", "gzip, deflate", "br, gzip", "gzip, deflate, br, zstd").foreach { accept =>
+      val result = ctrl.apiRepertoire("poznan")(
+        FakeRequest("GET", "/poznan/api/repertoire").withHeaders("Accept-Encoding" -> accept))
+      withClue(s"Accept-Encoding: $accept: ")(
+        header("Content-Encoding", result) shouldBe Some("gzip"))
+    }
+  }
+
+  it should "never put brotli on the wire, which is the whole regression" in {
+    val (ctrl, _) = buildController()
+    Seq("br", "br;q=1.0", "br, gzip", "gzip, deflate, br, zstd", "*").foreach { accept =>
+      val result = ctrl.index("poznan")(
+        FakeRequest("GET", "/poznan/").withHeaders("Accept-Encoding" -> accept))
+      withClue(s"Accept-Encoding: $accept: ")(
+        header("Content-Encoding", result) should not be Some("br"))
+    }
+  }
+
+  // A client that refuses gzip still gets a body it can read, uncompressed.
+  it should "send an uncompressed body to a client that refuses gzip" in {
     val (ctrl, _) = buildController()
     val result = ctrl.index("poznan")(
-      FakeRequest("GET", "/poznan/").withHeaders("Accept-Encoding" -> "gzip;q=0, br;q=0"))
+      FakeRequest("GET", "/poznan/").withHeaders("Accept-Encoding" -> "gzip;q=0, br"))
 
     header("Content-Encoding", result) shouldBe None
     contentAsString(result) should include ("Cache Test Film")
