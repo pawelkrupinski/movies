@@ -119,7 +119,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     // `forceResolve` + `country` drive the stale-language sweep: a row whose Tmdb slot
     // was fetched in another deployment's language gets re-resolved so its title /
     // synopsis / genres come back in this country's own.
-    forceRetry = movieService.forceResolve, country = country,
+    forceRetry = movieService.forceResolve, refill = movieService.refillTmdbSlot, country = country,
     // A cinema-vs-resolution DIRECTOR disagreement is confirmed against the film's
     // TMDB crew before the sweep acts: the venue crediting a film's other director,
     // or the person behind a pseudonym, is not a wrong film, and re-resolving a

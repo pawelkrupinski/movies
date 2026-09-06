@@ -110,6 +110,23 @@ in `movie_slots` (keyed by `filmId`) since the storage split — `movies` docume
 carry no `data`/`sourceData` map any more, which is the trap that makes a naive
 slot query return nothing.
 
+## A resolved row with no `Tmdb` slot is refilled by id, never re-searched
+
+Found 2026-09-06 while auditing the corpus: 483 rows across PL (122), UK (134) and
+DE (227) carried a `tmdbId` and no `TMDB` row in `movie_slots` — no TMDB poster,
+synopsis, genres or runtime, while their IMDb and Filmweb slots (which the rating
+refreshers rewrite on cadence) were intact. Dated by the freshness store, every one
+had been resolved inside the slot migration's window (2026-07-27 → 08-06); nothing
+resolved since is affected, so it was a bounded artefact — but nothing was going to
+heal it, because every sweep asks "is the id wrong?" and none asked "is the slot
+there?". `UnresolvedTmdbReaper` now has that fourth eligibility and hands the row to
+`MovieService.refillTmdbSlot`, which fetches the details BY THE ROW'S OWN ID and
+writes the slot through the same builder a resolution uses, ratings and cinemas
+carried forward. Not a forced re-resolve: that re-searches, and for a row with
+screenings a re-search can land on a stranger and prune the card (see the traps).
+Audit query: `movies` rows with `tmdbId` set whose `_id` has no `movie_slots` row
+with `slotKey: "TMDB"`; the count should reach zero within one 24h period.
+
 ## Rows deliberately left, and why each needs a different tool
 
 - **`kungfupanda4|2008`** (`kinowo_us`, 112 upcoming screenings) is a genuine

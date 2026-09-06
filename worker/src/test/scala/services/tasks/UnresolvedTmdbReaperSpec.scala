@@ -52,9 +52,35 @@ class UnresolvedTmdbReaperSpec extends AnyFlatSpec with Matchers {
 
   it should "never re-try a TMDB-resolved row" in {
     val cache = newCache(); val (seen, retry) = recorder()
-    seedRow(cache, "Resolved")(_.copy(tmdbId = Some(42)))
+    // A resolved row as production holds it: the id AND the slot the resolution
+    // wrote. (A resolved row WITHOUT its slot is the refill case below.)
+    seedRow(cache, "Resolved")(r => r.copy(tmdbId = Some(1),
+      data = r.data + ((Tmdb: Source) -> SourceData(title = Some("Resolved"), language = Some(Country.default.language.toLanguageTag)))))
     runOnePeriod(new UnresolvedTmdbReaper(cache, retry)).sum shouldBe 0
     seen shouldBe empty
+  }
+
+
+  // The fourth kind. Prod 2026-09-06: 483 rows across PL/UK/DE resolved inside the
+  // slot migration's window (2026-07-27 → 08-06) carry a tmdbId and no Tmdb slot —
+  // no TMDB poster, synopsis or runtime, and nothing that would ever re-fetch them.
+  // The id is right, so this is a REFILL by id, never a re-search: a forced
+  // re-resolve of a row with screenings can land on a stranger and prune the card.
+  it should "refill a resolved row's missing Tmdb slot by id, without re-searching" in {
+    val cache = newCache(); val (retried, retry) = recorder(); val (forced, forceRetry) = recorder(); val (refilled, refill) = recorder()
+    seedRow(cache, "Coś za mną chodzi")(r => r.copy(tmdbId = Some(270303)))   // resolved, no Tmdb slot
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, forceRetry = forceRetry, refill = refill)).sum shouldBe 1
+    refilled.map(_.cleanTitle) should contain only cache.keyOf("Coś za mną chodzi", None).cleanTitle
+    retried shouldBe empty
+    forced  shouldBe empty
+  }
+
+  it should "not refill a resolved row that has its Tmdb slot" in {
+    val cache = newCache(); val (_, retry) = recorder(); val (refilled, refill) = recorder()
+    seedRow(cache, "Kept")(r => r.copy(tmdbId = Some(1),
+      data = r.data + ((Tmdb: Source) -> SourceData(title = Some("Kept"), language = Some(Country.default.language.toLanguageTag)))))
+    runOnePeriod(new UnresolvedTmdbReaper(cache, retry, refill = refill)).sum shouldBe 0
+    refilled shouldBe empty
   }
 
   // The third kind. Prod 2026-09-05: five rows sat resolved to a film their OWN

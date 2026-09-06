@@ -880,6 +880,30 @@ class MovieService(
   def forceResolve(key: CacheKey): Unit =
     cache.get(key).foreach(e => dispatchWithHints(key, e, force = true))
 
+  /** Give a RESOLVED row back the `Tmdb` slot it has lost, by id — no search.
+   *
+   *  A row that carries a `tmdbId` but no `Tmdb` slot renders without TMDB's poster,
+   *  synopsis, genres and runtime, and nothing re-fetches them: resolution is a
+   *  one-shot, and every other sweep asks "is the id wrong?", not "is the slot
+   *  there?". Prod, 2026-09-06: 483 such rows across PL/UK/DE, every one resolved
+   *  inside the 2026-07-27 → 08-06 window the slot migration ran in, none since —
+   *  a bounded artefact, but one nothing was going to heal. Re-SEARCHING would be
+   *  wrong here (a row with screenings can re-resolve to a stranger and be pruned;
+   *  see `docs/misresolution-sweep.md`); the row already knows which film it is, so
+   *  the details are fetched by that id and written through the same builder a
+   *  resolution uses, ratings and cinemas carried forward untouched.
+   *
+   *  Returns true when a slot was written; false when the row needs no refill or TMDB
+   *  could not answer (the reaper sees it again next period). */
+  def refillTmdbSlot(key: CacheKey): Boolean =
+    cache.get(key).filter(e => e.tmdbId.isDefined && !e.data.contains(Tmdb)).exists { e =>
+      val tmdbId = e.tmdbId.get
+      tmdb.fullDetails(tmdbId).exists { details =>
+        val ids = Try(tmdb.externalIds(tmdbId)).getOrElse(TmdbClient.ExternalIds(e.imdbId, e.wikidataId))
+        cache.putIfPresent(key, cur => buildResolvedRecord(tmdbId, hit = None, ids, Some(details), cur, basis = None))
+      }
+    }
+
   /** Dispatch a row's TMDB resolution with its `data`-merged director +
    *  originalTitle hints (the only path `directorWalk` can fire on for films
    *  TMDB doesn't index under their Polish title). Shared by the bulk

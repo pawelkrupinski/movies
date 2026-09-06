@@ -93,6 +93,10 @@ class UnresolvedTmdbReaper(
   // check passes `CinemaCorroboration.contradicts` and says so.
   confirmContradiction: MovieRecord => Boolean =
     CinemaCorroboration.contradiction(_).contains(services.resolution.Contradiction.Runtime),
+  // Give a resolved row its missing `Tmdb` slot back, by id. Wired to
+  // `MovieService.refillTmdbSlot`; a no-op default so a construction site that does
+  // not wire it degrades to not refilling, never to re-searching.
+  refill:    CacheKey => Unit = _ => (),
   // This deployment's country — its `language` is the tag every `Tmdb` slot is
   // expected to carry. Poland by default, matching the historical enrichment
   // language, so a defaulted construction sweeps nothing extra.
@@ -141,23 +145,31 @@ class UnresolvedTmdbReaper(
     val cap   = maxEnqueuePerTick
     var enqueued = 0
     var forced   = 0
+    var refilled = 0
     val rows = cache.entries.iterator
     while (rows.hasNext && enqueued < cap) {
       val (key, record) = rows.next()
       val unresolved = record.tmdbId.isEmpty && !record.detailPending
+      // Resolved, but the slot the resolution wrote is gone — the 2026-07/08 slot
+      // migration left 483 such rows. The id is right; only the slot is missing, so
+      // this is a refill by id, never a re-search (see `MovieService.refillTmdbSlot`).
+      val slotMissing = record.tmdbId.isDefined && !record.data.contains(Tmdb)
       val staleLang  = staleLanguage(record)
       val misresolved = confirmContradiction(record) ||
                         CinemaCorroboration.resolvedOnWeakerEvidenceThanAvailable(record)
-      if ((unresolved || staleLang || misresolved) &&
+      if ((unresolved || slotMissing || staleLang || misresolved) &&
           dueWindow.isDue(EnrichTaskKeys.resolveTmdbDedup(key.cleanTitle, key.year), Some(since), now)) {
         // A stale-language row is already resolved, so the plain retry (which
         // only fires on `tmdbId.isEmpty`) would no-op — it needs the forced path.
-        if (unresolved) retry(key) else { forceRetry(key); forced += 1 }
+        if (unresolved) retry(key)
+        else if (slotMissing) { refill(key); refilled += 1 }
+        else { forceRetry(key); forced += 1 }
         enqueued += 1
       }
     }
     if (enqueued > 0)
-      logger.info(s"UnresolvedTmdbReaper re-tried ${enqueued - forced} unresolved row(s)" +
+      logger.info(s"UnresolvedTmdbReaper re-tried ${enqueued - forced - refilled} unresolved row(s)" +
+                  (if (refilled > 0) s", refilled the missing Tmdb slot of $refilled resolved row(s) by id" else "") +
                   (if (forced > 0) s" and force-re-resolved $forced row(s) whose Tmdb slot is wrong " +
                      "(wrong language, or a film their own cinemas contradict)." else "."))
     enqueued
