@@ -144,3 +144,117 @@ tests:
             exp_annotations:
               summary: "No host is publishing filesystem metrics"
               description: "None of the four capacity alerts can fire, so nothing is watching any disk or inode table on this fleet. Either node_exporter's filesystem collector is disabled everywhere or Prometheus has stopped scraping it. IT DOES NOT MEAN EVERY FILESYSTEM HAS ROOM."
+
+  # THE CRITICAL BYTES THRESHOLD, which nothing asserted firing until 2026-09-06 — the file claimed
+  # to "pin the thresholds" and pinned exactly one of them. 5% free is under the 7% critical and
+  # well under the 20% warning, and the two `for:` durations are what separate them in time: the
+  # critical (10m) has already fired at t=20m while the warning (30m) has not. That ordering is the
+  # whole point of having two levels, and it is what a single-instant assertion cannot see.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="mongo-1",mountpoint="/var/lib/mongodb",fstype="ext4",device="/dev/sdb",instance="10.20.0.13:9100",job="node"}'
+        values: '525000000x60'
+      - series: 'node_filesystem_size_bytes{host="mongo-1",mountpoint="/var/lib/mongodb",fstype="ext4",device="/dev/sdb",instance="10.20.0.13:9100",job="node"}'
+        values: '10500000000x60'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: FilesystemSpaceCritical
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: FilesystemSpaceCritical
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              host: mongo-1
+              mountpoint: /var/lib/mongodb
+              fstype: ext4
+              device: /dev/sdb
+              instance: 10.20.0.13:9100
+              job: node
+            exp_annotations:
+              summary: "Less than 7% of /var/lib/mongodb (mongo-1) is free"
+              description: "A full data volume stops the service that owns it: mongod refuses writes and cannot grow its oplog, and on the monitoring host a full volume takes Prometheus AND Grafana's database down together. Free space or grow the volume now."
+      # The warning is slower by construction and has NOT arrived yet at twenty minutes.
+      - eval_time: 20m
+        alertname: FilesystemSpaceLow
+        exp_alerts: []
+
+  # THE INODE WARNING AT 20%, the other threshold the file named and never asserted: the existing
+  # inode case sits at 6% free and only proves the CRITICAL. 15% is under the warning and above the
+  # 8% critical, so it pins the warning's threshold from both sides at once.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_files_free{host="monitoring-1",mountpoint="/",fstype="ext4",device="/dev/sda1",instance="10.20.0.11:9100",job="node"}'
+        values: '150000x60'
+      - series: 'node_filesystem_files{host="monitoring-1",mountpoint="/",fstype="ext4",device="/dev/sda1",instance="10.20.0.11:9100",job="node"}'
+        values: '1000000x60'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: FilesystemInodesLow
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: FilesystemInodesLow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: monitoring-1
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda1
+              instance: 10.20.0.11:9100
+              job: node
+            exp_annotations:
+              summary: "Fewer than 20% of the inodes on / (monitoring-1) are free"
+              description: "This is not the same as running out of space and `df -h` will not show it. On a NixOS host the usual cause is accumulated system generations and store paths: check `df -i /` and `ls /nix/var/nix/profiles/ | grep -c system-`, then collect with `nix-collect-garbage --delete-older-than 14d`. If that has already run, find the real consumer with `for d in /var /root /tmp; do echo $d $(find $d -xdev | wc -l); done`."
+      # 15% free is NOT critical. As with the bytes pair, the two levels must not collapse.
+      - eval_time: 45m
+        alertname: FilesystemInodesCritical
+        exp_alerts: []
+
+  # THE PREDICTION, which had no case at all — the newest rule in the file, the only one built on
+  # `predict_linear`, and the only one joining two clauses with `and`, i.e. the most fragile thing
+  # here and the least covered.
+  #
+  # A REAL TREND: 10.5 GB volume starting at 38% free and losing 1 MB a minute. The slope alone
+  # extrapolates past zero inside seven days, and the volume is under the 40%-free second clause,
+  # so both halves are true and the alert must fire once its two-hour `for:` completes.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="mongo-1",mountpoint="/var/lib/mongodb",fstype="ext4",device="/dev/sdb",instance="10.20.0.13:9100",job="node"}'
+        values: '4000000000-1000000x600'
+      - series: 'node_filesystem_size_bytes{host="mongo-1",mountpoint="/var/lib/mongodb",fstype="ext4",device="/dev/sdb",instance="10.20.0.13:9100",job="node"}'
+        values: '10500000000x600'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: FilesystemWillFillWithin7Days
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: FilesystemWillFillWithin7Days
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              host: mongo-1
+              mountpoint: /var/lib/mongodb
+              fstype: ext4
+              device: /dev/sdb
+              instance: 10.20.0.13:9100
+              job: node
+            exp_annotations:
+              summary: "/var/lib/mongodb on mongo-1 is on course to fill within 7 days"
+              description: "A TREND, NOT A LEVEL -- there is still room right now. On /var/lib/mongodb this is the alert that gives enough notice to grow the volume deliberately; on / it usually means the Nix store is accumulating faster than the collector removes it, so check `NixGarbageCollectionStale` in nixos-deploy.rules before treating it as a capacity problem. Straight-line extrapolation over six hours is easily fooled by a one-off bulk write; confirm against a longer window before acting."
+
+  # THE SECOND CLAUSE EARNING ITS KEEP, and the case that has to be built deliberately: the FIRST
+  # clause must be TRUE and the alert still silent. 15 MB/minute off a mostly-EMPTY 160 GB root
+  # extrapolates to 151 GB over seven days, which is more than the 120 GB free — so the projection
+  # does cross zero — while the disk sits at 75% free throughout. Without the `< 0.40` guard this
+  # pages. That is exactly what the rule's comment claims and what nothing checked.
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_avail_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '120000000000-15000000x600'
+      - series: 'node_filesystem_size_bytes{host="k3s-worker-1",mountpoint="/",fstype="ext4",device="/dev/sda2",instance="10.20.0.12:9100",job="node"}'
+        values: '160000000000x600'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: FilesystemWillFillWithin7Days
+        exp_alerts: []
