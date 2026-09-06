@@ -92,7 +92,14 @@ object MovieRecordMerge {
   def unionAll(records: Seq[MovieRecord]): MovieRecord = {
     require(records.nonEmpty, "MovieRecordMerge.unionAll: no records")
     val canonical = records.find(_.tmdbId.isDefined).getOrElse(records.head)
-    records.filterNot(_ eq canonical).foldLeft(canonical)(union)
+    val base      = records.filterNot(_ eq canonical).foldLeft(canonical)(union)
+    // The per-source slots are settled across ALL rows at once, not pairwise. A
+    // pairwise fold is commutative but not associative: `richer` settles a field on
+    // the more-populated side, and a merged slot is richer than either input, so
+    // with three rows carrying the same source the fold order decided which title
+    // won (the property spec's `Diuna`/`Dune` counterexample). One sort over every
+    // slot of a source is a total order, so the answer is the same in any order.
+    base.copy(data = records.map(_.data).flatten.groupMap(_._1)(_._2).view.mapValues(mergeSlots).toMap)
   }
 
   private def mergeData(
@@ -132,17 +139,24 @@ object MovieRecordMerge {
    *  time. Fields neither side has stay empty, and a field only one side has now
    *  SURVIVES the fold instead of being dropped with the losing slot — the merge
    *  gained data as well as determinism. */
-  private[services] def mergeSlot(a: SourceData, b: SourceData): SourceData = {
-    // The side whose slot is richer overall — the tie-break for a field both
-    // published with different values, and the source of the cache-only digest
-    // fields below, which are not independently mergeable.
-    val (primary, other) = if (richer(a, b)) (a, b) else (b, a)
+  private[services] def mergeSlot(a: SourceData, b: SourceData): SourceData = mergeSlots(Seq(a, b))
+
+  /** Settle any number of slots of ONE source into one, richest first: every field
+   *  takes the richest slot that published it. A total order over the slots, so the
+   *  result does not depend on the order they are given in — which the pairwise fold
+   *  this replaces could not promise beyond two slots. */
+  private[services] def mergeSlots(slots: Seq[SourceData]): SourceData = {
+    require(slots.nonEmpty, "MovieRecordMerge.mergeSlots: no slots")
+    // Richest first — the tie-break for a field several published with different
+    // values, and the source of the cache-only digest fields below, which are not
+    // independently mergeable.
+    val ranked = slots.sortBy(slot => (-populatedFields(slot), contentOrder(slot)))
     def text(pick: SourceData => Option[String]): Option[String] =
-      pick(primary).filter(_.nonEmpty).orElse(pick(other).filter(_.nonEmpty))
+      ranked.iterator.flatMap(s => pick(s).filter(_.nonEmpty)).nextOption()
     def number(pick: SourceData => Option[Int]): Option[Int] =
-      pick(primary).orElse(pick(other))
+      ranked.iterator.flatMap(pick).nextOption()
     def list(pick: SourceData => Seq[String]): Seq[String] =
-      if (pick(primary).nonEmpty) pick(primary) else pick(other)
+      ranked.iterator.map(pick).find(_.nonEmpty).getOrElse(Seq.empty)
     SourceData(
       title           = text(_.title),
       rawTitle        = text(_.rawTitle),
@@ -151,8 +165,8 @@ object MovieRecordMerge {
       // Longest wins, the same rule `mergeRetainedSynopses` already applies to the
       // stickied copies of these blurbs — a truncated listing teaser must not beat
       // the full detail-page text just because its slot is richer elsewhere.
-      synopsis        = (primary.synopsis.iterator ++ other.synopsis.iterator)
-                          .filter(_.nonEmpty).maxByOption(_.length),
+      synopsis        = ranked.iterator.flatMap(_.synopsis).filter(_.nonEmpty)
+                          .maxByOption(_.length),
       cast            = list(_.cast),
       director        = list(_.director),
       runtimeMinutes  = number(_.runtimeMinutes),
@@ -162,31 +176,22 @@ object MovieRecordMerge {
       posterUrl       = text(_.posterUrl),
       filmUrl         = text(_.filmUrl),
       trailerUrl      = text(_.trailerUrl),
-      showtimes       = dedupShowtimes(a.showtimes ++ b.showtimes),
+      showtimes       = dedupShowtimes(slots.flatMap(_.showtimes)),
       language        = text(_.language),
       // Cache-only, and both describe the showtime list they were stamped from — which
       // is neither of these two once the lists are unioned. `ShowtimesDigest.stripForCache`
       // re-stamps them on the way into the cache; carrying the richer side's forward
       // keeps a merged-but-not-yet-restripped slot self-consistent in the meantime.
-      showtimesDigest = primary.showtimesDigest.orElse(other.showtimesDigest),
-      showtimesCount  = primary.showtimesCount.orElse(other.showtimesCount),
+      showtimesDigest = number(_.showtimesDigest),
+      showtimesCount  = number(_.showtimesCount),
       ageRating       = text(_.ageRating)
     )
   }
 
-  /** Is `a` the side a disagreement should be settled on? A pure function of the two
-   *  slots, so it answers the same whichever way round it is asked (`richer(a, b)`
-   *  and `richer(b, a)` can't both be true unless the slots are identical, in which
-   *  case the choice doesn't matter).
-   *
-   *  More populated fields first — the slot that describes the film more fully is the
-   *  better witness — then a total order on the content so two equally-populated slots
-   *  still resolve the same way every time. */
-  private def richer(a: SourceData, b: SourceData): Boolean =
-    Ordering[(Int, String)].lteq(
-      (-populatedFields(a), contentOrder(a)),
-      (-populatedFields(b), contentOrder(b)))
-
+  // The order a disagreement is settled in — more populated fields first (the slot
+  // that describes the film more fully is the better witness), then a total order on
+  // the content so two equally-populated slots still resolve the same way every time.
+  // `mergeSlots` sorts by exactly this pair.
   // The fields a disagreement between two slots can land on, named ONCE — both the
   // richness count and the total order below walk exactly these, and a field that
   // appeared in one but not the other would quietly weaken whichever it was missing from.

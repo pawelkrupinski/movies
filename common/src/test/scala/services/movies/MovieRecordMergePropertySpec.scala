@@ -53,49 +53,47 @@ class MovieRecordMergePropertySpec extends IdentityPropertySpec {
   // before folding, so the settle is deterministic anyway; the cache's rehydrate
   // fold is the caller that hands `unionAll` rows in read order.
   //
-  // Both specs below stay pending until the owner decides: either make the slot
-  // merge associative (settle each field against ALL the slots at once, not
-  // pairwise) or drop the order-independence claim.
+  // Both specs below found `unionAll` order-DEPENDENT when written: the pairwise
+  // slot fold was commutative but not associative. `mergeSlots` now settles every
+  // slot of a source at once, richest first, so they hold.
 
   "MovieRecordMerge.unionAll" should "settle a three-way slot disagreement the same way in any order (MINIMAL counterexample)" in {
-    pendingUntilFixed {
-      // Three rows of one film, each with a Helios slot. `a` and `c` disagree on
-      // the title; `b` says nothing about it but is populated enough to tip the
-      // richness count of whatever it merges into.
-      val a = SourceData(title = Some("Diuna"), cast = Seq("Timothée Chalamet"))                              // 2 fields
-      val b = SourceData(director = Seq("Denis Villeneuve"), genres = Seq("Sci-Fi"))                        // 2 fields
-      val c = SourceData(title = Some("Dune"), cast = Seq("Zendaya"), countries = Seq("USA"))                // 3 fields
-      def row(slot: SourceData): MovieRecord = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](Helios -> slot))
+    // Three rows of one film, each with a Helios slot. `a` and `c` disagree on
+    // the title; `b` says nothing about it but is populated enough to tip the
+    // richness count of whatever it merges into.
+    val a = SourceData(title = Some("Diuna"), cast = Seq("Timothée Chalamet"))                              // 2 fields
+    val b = SourceData(director = Seq("Denis Villeneuve"), genres = Seq("Sci-Fi"))                        // 2 fields
+    val c = SourceData(title = Some("Dune"), cast = Seq("Zendaya"), countries = Seq("USA"))                // 3 fields
+    def row(slot: SourceData): MovieRecord = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](Helios -> slot))
 
-      // (a ⊕ b) has 4 fields and beats c, so "Diuna" survives; (a ⊕ c) is settled
-      // on c's richer slot first, so "Dune" survives and b cannot undo it.
-      MovieRecordMerge.unionAll(Seq(row(a), row(b), row(c))).data(Helios).title shouldBe
-        MovieRecordMerge.unionAll(Seq(row(a), row(c), row(b))).data(Helios).title
-    }
+    // (a ⊕ b) has 4 fields and beats c, so "Diuna" survives; (a ⊕ c) is settled
+    // on c's richer slot first, so "Dune" survives and b cannot undo it.
+    MovieRecordMerge.unionAll(Seq(row(a), row(b), row(c))).data(Helios).title shouldBe
+      MovieRecordMerge.unionAll(Seq(row(a), row(c), row(b))).data(Helios).title
+
   }
 
   it should "merge the per-source data the same way whatever order the rows arrive in" in {
-    pendingUntilFixed {
-      // One venue, one title, plus the derived sources: every row's slots collide.
-      // The single-source fields are NOT claimed order-free (the first
-      // tmdbId-bearing row is the base), so only `data` and the retained synopses
-      // are compared. Enough cases that the three-way shape above is always drawn.
-      val genCollidingRecord: Gen[MovieRecord] =
-        genMovieRecord(Gen.frequency(
-          2 -> genCinemaSlot(cinemaPool = Seq(Helios), titles = Gen.const("Diuna")),
-          1 -> genEnrichmentSlot), maxSlots = 2)
-      val genResolvedRows: Gen[Seq[MovieRecord]] = for {
-        n    <- Gen.choose(3, 4)
-        rows <- Gen.listOfN(n, genCollidingRecord)
-      } yield rows.head.copy(tmdbId = Some(1)) +: rows.tail
+    // One venue, one title, plus the derived sources: every row's slots collide.
+    // The single-source fields are NOT claimed order-free (the first
+    // tmdbId-bearing row is the base), so only `data` and the retained synopses
+    // are compared. Enough cases that the three-way shape above is always drawn.
+    val genCollidingRecord: Gen[MovieRecord] =
+      genMovieRecord(Gen.frequency(
+        2 -> genCinemaSlot(cinemaPool = Seq(Helios), titles = Gen.const("Diuna")),
+        1 -> genEnrichmentSlot), maxSlots = 2)
+    val genResolvedRows: Gen[Seq[MovieRecord]] = for {
+      n    <- Gen.choose(3, 4)
+      rows <- Gen.listOfN(n, genCollidingRecord)
+    } yield rows.head.copy(tmdbId = Some(1)) +: rows.tail
 
-      forAll(withPermutation(genResolvedRows), minSuccessful(1000)) { case (rows, permuted) =>
-        val expected = MovieRecordMerge.unionAll(rows)
-        val actual   = MovieRecordMerge.unionAll(permuted)
-        actual.data shouldBe expected.data
-        showtimesOf(actual) shouldBe showtimesOf(expected)
-        actual.retainedSynopses shouldBe expected.retainedSynopses
-      }
+    forAll(withPermutation(genResolvedRows), minSuccessful(1000)) { case (rows, permuted) =>
+      val expected = MovieRecordMerge.unionAll(rows)
+      val actual   = MovieRecordMerge.unionAll(permuted)
+      actual.data shouldBe expected.data
+      showtimesOf(actual) shouldBe showtimesOf(expected)
+      actual.retainedSynopses shouldBe expected.retainedSynopses
     }
+
   }
 }
