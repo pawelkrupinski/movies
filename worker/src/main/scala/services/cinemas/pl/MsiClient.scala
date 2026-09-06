@@ -62,7 +62,7 @@ class MsiClient(
   // The month-page route. Almost every venue serves it at `/MSI/mvc/pl`, but a
   // few VisualTicket installs expose the identical page under a different prefix
   // (e.g. Kino Planeta Brzesko at `/Rezerwacja/mvc/pl`); override for those.
-  mvcPath: String = "/MSI/mvc/pl",
+  mvcPath: String = MsiClient.DefaultMvcPath,
   // Some MSI portals host TWO cinemas on one site and disambiguate by prefixing
   // every title with the venue name and a " - " separator ("Chemik - …",
   // "TWIERDZA - …" on bilety.mok.com.pl). When set, this instance keeps only the
@@ -122,6 +122,11 @@ class MsiClient(
 }
 
 object MsiClient {
+
+  /** The month-page route almost every install serves; the constructor's default,
+    * named so the catalog's per-venue table can spell "no override" without a
+    * second copy of the path. */
+  val DefaultMvcPath = "/MSI/mvc/pl"
 
   def monthUrl(baseUrl: String, mvcPath: String, ym: YearMonth): String =
     s"$baseUrl$mvcPath?sort=Name&date=${ym.getYear}-${"%02d".format(ym.getMonthValue)}"

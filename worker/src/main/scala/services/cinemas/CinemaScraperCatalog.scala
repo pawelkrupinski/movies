@@ -140,6 +140,114 @@ class CinemaScraperCatalog(
   private def noveKino(slug: String, cinema: Cinema): NoveKinoClient =
     new NoveKinoClient(http, slug, cinema)
 
+  // ── The four Polish ticketing platforms that host MANY venues ─────────────
+  // One table per platform — each venue's page or portal URL (plus the odd
+  // per-venue knob) beside its Cinema — and one factory binding the shared
+  // arguments, the way Germany / Spain / the US build every scraper off their
+  // rosters below. The city lists keep naming each venue in scrape order; only
+  // what used to be a repeated constructor moved here.
+
+  // MSI / VisualTicket portals (30). `fetch` is Zyte's residential egress for
+  // the one venue whose origin firewall blocks both our Fly IP and the Decodo
+  // proxy (see the ctor doc); `mvcPath` / `titlePrefix` / `titleSuffix` are the
+  // per-install quirks `MsiClient` documents.
+  private case class MsiVenue(baseUrl:     String,
+                              mvcPath:     String         = MsiClient.DefaultMvcPath,
+                              titlePrefix: Option[String] = None,
+                              titleSuffix: Option[String] = None,
+                              fetch:       HttpFetch      = http)
+  private val msiVenues: Map[Cinema, MsiVenue] = Map(
+    Cinema1Gdansk                -> MsiVenue("https://bilety.cinemaone.pl"),
+    KinoKryterium                -> MsiVenue("https://bilety.ck105.koszalin.pl", fetch = zyteFetch),
+    KinoMillenium                -> MsiVenue("https://bilety.csm.tarnow.pl", mvcPath = "/Kino/mvc/pl"),
+    KinoKinomax                  -> MsiVenue("https://bilety.kinomax.info.pl"),
+    KinoCentrumSkarzyskoKamienna -> MsiVenue("https://bilet-mck.skarzysko.pl"),
+    KinoKozienickiDomKultury     -> MsiVenue("http://bilety.dkkozienice.pl"),
+    KinoSwitZwolen               -> MsiVenue("https://bilety.switzwolen.pl"),
+    KinoMCK                      -> MsiVenue("https://bilety.kinolezajsk.pl"),
+    KinoSniezka                  -> MsiVenue("https://bilety.mokdebica.pl"),
+    KinoWarszawa                 -> MsiVenue("https://bilety-kino.przeworsk.um.gov.pl"),
+    KinoCinemaLumiere            -> MsiVenue("https://bilety.kinoszczytno.pl"),
+    KinoIgnacy                   -> MsiVenue("https://www.biletyignacy.pl"),
+    KinoChemik                   -> MsiVenue("https://bilety.mok.com.pl", titlePrefix = Some("Chemik")),
+    KinoTwierdza                 -> MsiVenue("https://bilety.mok.com.pl", titlePrefix = Some("TWIERDZA")),
+    KinoPowisle                  -> MsiVenue("https://kinosztumbilety.pl"),
+    KinoBajkaDarlowo             -> MsiVenue("https://darlowo.vectorsoft.pl"),
+    KinoGOK                      -> MsiVenue("https://bilety.goktychowo.pl"),
+    KinoGoplana                  -> MsiVenue("https://bilety.ckpolczyn.pl"),
+    KinoWybrzeze                 -> MsiVenue("http://bilety.rck.kolobrzeg.pl", titleSuffix = Some("KINO WYBRZEŻE")),
+    KinoMaxKino                  -> MsiVenue("https://repertuar.maxkino.eu"),
+    KinoSDKSwiebodzin            -> MsiVenue("https://bilety.kino.swiebodzin.pl:4433"),
+    KinoPlanetCinema             -> MsiVenue("https://oswiecim.planetcinema.pl"),
+    KinoMOKNowaRuda              -> MsiVenue("https://bilety.nowaruda.pl"),
+    KinoPlaneta                  -> MsiVenue("https://rezerwacja.planetabrzesko.pl", mvcPath = "/Rezerwacja/mvc/pl"),
+    KinoJutrzenka                -> MsiVenue("https://kino.sierpc.pl"),
+    KinoNoweKinoWarszawa         -> MsiVenue("https://bilety.mck-gostynin.pl"),
+    KinoZaRogiem                 -> MsiVenue("https://bilety.pokis.pl"),
+    KinoODEON                    -> MsiVenue("https://kinoodeon.eurobilet.pl"),
+    KinoIkar                     -> MsiVenue("https://kinoikar.mok-jar.pl"),
+    KinoNaBiegunach              -> MsiVenue("https://jaroslaw.kinonabiegunach.pl"),
+  )
+  private def msi(cinema: Cinema): MsiClient = {
+    val venue = msiVenues(cinema)
+    new MsiClient(venue.fetch, venue.baseUrl, cinema, today,
+      mvcPath = venue.mvcPath, titlePrefix = venue.titlePrefix, titleSuffix = venue.titleSuffix)
+  }
+
+  // biletyna.pl venue pages (17). biletyna.pl 403s our datacenter IP (Cloudflare
+  // waiting-room), so every one routes through `bnFetch` — Zyte's residential
+  // egress in prod, the fixture fake in tests.
+  private val biletynaPages: Map[Cinema, String] = Map(
+    AdaKinoStudyjne             -> "https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne",
+    KinoKameralne               -> "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe",
+    KinoTur                     -> "https://biletyna.pl/Turek/Kino-Tur",
+    KinoMok                     -> "https://biletyna.pl/Zagorow/Gminny-Osrodek-Kultury",
+    KinoPDK                     -> "https://biletyna.pl/Pyrzyce/Pyrzycki-Dom-Kultury",
+    KinoNaSzekspirowskim        -> "https://biletyna.pl/Gdansk/Kino-na-Szekspirowskim",
+    KinoRondo                   -> "https://biletyna.pl/Chelmno/Kinoteatr-Rondo",
+    KinoMiejskieCentrumKultury  -> "https://biletyna.pl/Aleksandrow-Kujawski/Miejskie-Centrum-Kultury",
+    KinoZdroj                   -> "https://biletyna.pl/Ciechocinek/Kino-Zdroj",
+    KinoKoneckieCentrumKultury  -> "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa",
+    KinoSwitCzechowiceDziedzice -> "https://biletyna.pl/Czechowice-Dziedzice/Kino-Swit",
+    KinoTeatrElektryczny        -> "https://biletyna.pl/Skoczow/Teatr-Elektryczny",
+    KinoPegaz                   -> "https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury",
+    KinoZulawskiOsrodekKultury  -> "https://biletyna.pl/Nowy-Dwor-Gdanski/Zulawski-Osrodek-Kultury",
+    KinoDK                      -> "https://biletyna.pl/Slawno/Slawienski-Dom-Kultury",
+    KinoGCK                     -> "https://biletyna.pl/Solec-Zdroj/Kino-Solec-Zdroj",
+    KinoNawojka                 -> "https://biletyna.pl/Lipno/Kino-Nawojka",
+  )
+  private def biletyna(cinema: Cinema): BiletynaClient =
+    new BiletynaClient(bnFetch, biletynaPages(cinema), cinema)
+
+  // systembiletowy.pl installs (9), by portal base URL.
+  private val systemBiletowyPortals: Map[Cinema, String] = Map(
+    KinoKawiarnia   -> "https://kgl.systembiletowy.pl",
+    KinoKuznica     -> "https://shd.systembiletowy.pl",
+    KinoPckulKino   -> "https://bilety.pckul.pl",
+    KinoNaStarowce  -> "https://bilety.mok.zory.pl",
+    KinoCentrum3D   -> "https://kck.systembiletowy.pl",
+    KinoNaszeKino   -> "https://ock.systembiletowy.pl",
+    KinoFarys       -> "https://kfb.systembiletowy.pl",
+    KinoRegis       -> "https://bilety.kino.bochnia.pl",
+    KinoKalejdoskop -> "https://ckp.systembiletowy.pl",
+  )
+  private def systemBiletowy(cinema: Cinema): SystemBiletowyClient =
+    new SystemBiletowyClient(http, systemBiletowyPortals(cinema), cinema, titles = titles)
+
+  // Venues on their own `<venue>.bilety24.pl` subdomain (7) — as opposed to the
+  // organiser listings on bilety24.pl itself that `bilety24` above builds.
+  private val bilety24Subdomains: Map[Cinema, String] = Map(
+    KinoLuna            -> "https://kinoluna.bilety24.pl",
+    KinoteatrRialto     -> "https://kinoteatrrialto.bilety24.pl",
+    KinoCkLublin        -> "https://ck-lublin.bilety24.pl",
+    KinoApolloWalbrzych -> "https://kino-apollo.bilety24.pl",
+    KinoPiast           -> "https://kino-piast.bilety24.pl",
+    KinoLot             -> "https://kino-lot.bilety24.pl",
+    KinoOskard          -> "https://ckis-konin.bilety24.pl",
+  )
+  private def bilety24Subdomain(cinema: Cinema): Bilety24Client =
+    new Bilety24Client(http, bilety24Subdomains(cinema), cinema, titles = titles)
+
   // Shared per-source helper clients the scrapers below reuse.
   val cinemaCityClient: CinemaCityClient = new CinemaCityClient(http, Some(cinemaCityDetailHttp), titles = titles)
   // One per Cinema City venue.
@@ -191,7 +299,7 @@ class CinemaScraperCatalog(
     multikino("0025", MultikinoWolaPark),
     helios(HeliosNuxt.BlueCity),
     new MuranowClient(http, today),
-    new Bilety24Client(http, "https://kinoluna.bilety24.pl", KinoLuna, titles = titles),
+    bilety24Subdomain(KinoLuna),
     bilety24("https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik),
     new IluzjonClient(http, today),
     new KinoGramClient(http),
@@ -209,10 +317,7 @@ class CinemaScraperCatalog(
     new UjazdowskiClient(http, today),
     new CytadelaClient(http),
     noveKino("wisla", KinoWisla),
-    // biletyna.pl 403s our datacenter IP (Cloudflare waiting-room), so route
-    // through `bnFetch` — Zyte's residential egress in prod, the fixture fake
-    // in tests. Same seam as Kino Kameralne below.
-    new BiletynaClient(bnFetch, "https://www.biletyna.pl/Warszawa/ADA-Kino-Studyjne", AdaKinoStudyjne),
+    biletyna(AdaKinoStudyjne),
     new AlternatywyClient(http, today, titles = titles),
   )
 
@@ -250,7 +355,7 @@ class CinemaScraperCatalog(
     // linking per-film `/wydarzenie/?id=N` pages, so they reuse the shared Bilety24Client.
     bilety24("https://www.bilety24.pl/kino/organizator/kino-kosmos-1501", KinoKosmos),
     bilety24("https://www.bilety24.pl/kino/organizator/kino-swiatowid-1503", KinoSwiatowid),
-    new Bilety24Client(http, "https://kinoteatrrialto.bilety24.pl", KinoteatrRialto, titles = titles),
+    bilety24Subdomain(KinoteatrRialto),
   )
 
   private val szczecinScrapers: Seq[CinemaScraper] = Seq(
@@ -277,7 +382,7 @@ class CinemaScraperCatalog(
     // biletyna.pl 403s our datacenter IP, so route through `bnFetch` — Zyte's
     // residential egress in production, the fixture fake in tests. See
     // WorkerWiring.biletynaFetch / ZyteFallback.
-    new BiletynaClient(bnFetch, "https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe", KinoKameralne),
+    biletyna(KinoKameralne),
     new KinoIkmClient(http, KinoIkm, today),
     new KinoMuzeumGdanskClient(http, KinoMuzeumGdansk),
     new KinoZakClient(http, KinoZak, today),
@@ -287,7 +392,7 @@ class CinemaScraperCatalog(
     // screening five films a day — so we read GCSW's own repertoire post instead,
     // via the WP REST route that survives the post's rotating permalink.
     new KinoPortClient(http, KinoPort, today),
-    new MsiClient(http, "https://bilety.cinemaone.pl", Cinema1Gdansk, today),
+    msi(Cinema1Gdansk),
     new GdynskieCentrumFilmoweClient(http, GdynskieCentrumFilmowe),
   )
 
@@ -303,7 +408,7 @@ class CinemaScraperCatalog(
     cinemaCity("1084", CinemaCityLublinPlaza),
     multikino("0034", MultikinoLublin),
     new KinoBajkaClient(http, KinoBajka, titles = titles),
-    new Bilety24Client(http, "https://ck-lublin.bilety24.pl", KinoCkLublin, titles = titles),
+    bilety24Subdomain(KinoCkLublin),
     new KinoChatkaZakaClient(http, KinoChatkaZaka),
   )
 
@@ -370,20 +475,20 @@ class CinemaScraperCatalog(
   private val rybnikScrapers       = Seq(multikino("0014", MultikinoRybnik), cinemaCity("1082", CinemaCityRybnik))
   private val gorzowScrapers       = Seq(helios(HeliosNuxt.Gorzow), multikino("0047", MultikinoGorzow), bilety24("https://www.bilety24.pl/kino/organizator/miejski-osrodek-sztuki-kino-60-krzesel-dkf-megaron-776", Kino60Krzesel))
   private val elblagScrapers       = Seq(multikino("0037", MultikinoElblag), cinemaCity("1099", CinemaCityElblag))
-  private val koszalinScrapers     = Seq(helios(HeliosNuxt.Koszalin), multikino("0015", MultikinoKoszalin), new MsiClient(zyteFetch, "https://bilety.ck105.koszalin.pl", KinoKryterium, today))
+  private val koszalinScrapers     = Seq(helios(HeliosNuxt.Koszalin), multikino("0015", MultikinoKoszalin), msi(KinoKryterium))
   private val kaliszScrapers       = Seq(helios(HeliosNuxt.Kalisz), multikino("0042", MultikinoKalisz))
   private val zielonaGoraScrapers  = Seq(cinemaCity("1087", CinemaCityZielonaGora))
   private val tychyScrapers        = Seq(multikino("0053", MultikinoTychy))
-  private val walbrzychScrapers    = Seq(cinemaCity("1091", CinemaCityWalbrzych), new Bilety24Client(http, "https://kino-apollo.bilety24.pl", KinoApolloWalbrzych, titles = titles))
-  private val tarnowScrapers       = Seq(multikino("0050", MultikinoTarnow), new MsiClient(http, "https://bilety.csm.tarnow.pl", KinoMillenium, today, mvcPath = "/Kino/mvc/pl"))
+  private val walbrzychScrapers    = Seq(cinemaCity("1091", CinemaCityWalbrzych), bilety24Subdomain(KinoApolloWalbrzych))
+  private val tarnowScrapers       = Seq(multikino("0050", MultikinoTarnow), msi(KinoMillenium))
   private val wloclawekScrapers    = Seq(multikino("0008", MultikinoWloclawek))
-  private val legnicaScrapers      = Seq(helios(HeliosNuxt.Legnica), new Bilety24Client(http, "https://kino-piast.bilety24.pl", KinoPiast, titles = titles))
+  private val legnicaScrapers      = Seq(helios(HeliosNuxt.Legnica), bilety24Subdomain(KinoPiast))
   private val plockScrapers        = Seq(helios(HeliosNuxt.Plock), noveKino("przedwiosnie", KinoPrzedwiosnie))
   private val bytomScrapers        = Seq(cinemaCity("1092", CinemaCityBytom))
   private val dabrowaGorniczaScrapers = Seq(helios(HeliosNuxt.DabrowaGornicza), new VisualTicketClient(http, "https://bilety.palac.art.pl", KinoKadr, locationId = 2))
   private val nowySaczScrapers     = Seq(helios(HeliosNuxt.NowySacz), bilety24("https://www.bilety24.pl/kino/organizator/malopolskie-centrum-kultury-sokol-w-nowym-saczu-1225", KinoSokol))
   private val slupskScrapers       = Seq(multikino("0030", MultikinoSlupsk), ekobilet("kinorejs", KinoRejs))
-  private val jeleniaGoraScrapers  = Seq(helios(HeliosNuxt.JeleniaGora), new Bilety24Client(http, "https://kino-lot.bilety24.pl", KinoLot, titles = titles))
+  private val jeleniaGoraScrapers  = Seq(helios(HeliosNuxt.JeleniaGora), bilety24Subdomain(KinoLot))
   private val przemyslScrapers     = Seq(helios(HeliosNuxt.Przemysl))
   // Konin + its catchment: Helios via the chain client, Oskard via Bilety24, and
   // the remaining independents Filmweb serves by internal cinema id (verified
@@ -391,13 +496,13 @@ class CinemaScraperCatalog(
   // not wired.
   private val koninScrapers        = Seq(
     helios(HeliosNuxt.Konin),
-    new Bilety24Client(http, "https://ckis-konin.bilety24.pl", KinoOskard, titles = titles),
+    bilety24Subdomain(KinoOskard),
     new FilmwebShowtimesClient(http, 2405, KinoZacheta,  today = today),   // Kleczew
     bilety24("https://www.bilety24.pl/kino/organizator/koninskie-centrum-kultury-1626", KinoNadWarta),   // Koło
     bilety24("https://www.bilety24.pl/kino/organizator/kino-hel-dom-kultury-w-pleszewie-1255", KinoHel),   // Pleszew
     bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-slupcy-1423", KinoSokolnia),   // Słupca
-    new BiletynaClient(bnFetch, "https://biletyna.pl/Turek/Kino-Tur", KinoTur),   // Turek
-    new BiletynaClient(bnFetch, "https://biletyna.pl/Zagorow/Gminny-Osrodek-Kultury", KinoMok),   // Zagórów
+    biletyna(KinoTur),   // Turek
+    biletyna(KinoMok),   // Zagórów
   )
 
   /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
@@ -412,35 +517,35 @@ class CinemaScraperCatalog(
     "warszawa" -> Seq(new PrahaClient(http, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha)),
     "lodz" -> Seq(new KinoSpojniaClient(http, KinoSpojnia), bilety24("https://www.bilety24.pl/kino/organizator/miejski-osrodek-kultury-stary-mlyn-w-zgierzu-1697", KinoStaryMlyn)),
     "katowice" -> Seq(cinemaCity("1062", CinemaCity), new KinoPatriaClient(http, KinoPatria, today)),
-    "szczecin" -> Seq(new SystemBiletowyClient(http, "https://kgl.systembiletowy.pl", KinoKawiarnia, titles = titles), new BiletynaClient(bnFetch, "https://biletyna.pl/Pyrzyce/Pyrzycki-Dom-Kultury", KinoPDK), new SckStargardClient(http, KinoSCK)),
+    "szczecin" -> Seq(systemBiletowy(KinoKawiarnia), biletyna(KinoPDK), new SckStargardClient(http, KinoSCK)),
     "bialystok" -> Seq(new KinoSokolSokolkaClient(http, KinoSokolSokolka)),
-    "trojmiasto" -> Seq(new BiletynaClient(bnFetch, "https://biletyna.pl/Gdansk/Kino-na-Szekspirowskim", KinoNaSzekspirowskim), multikino("0027", MultikinoRumia)),
-    "bydgoszcz" -> Seq(new MsiClient(http, "https://bilety.kinomax.info.pl", KinoKinomax, today), new BiletynaClient(bnFetch, "https://biletyna.pl/Chelmno/Kinoteatr-Rondo", KinoRondo)),
+    "trojmiasto" -> Seq(biletyna(KinoNaSzekspirowskim), multikino("0027", MultikinoRumia)),
+    "bydgoszcz" -> Seq(msi(KinoKinomax), biletyna(KinoRondo)),
     "lublin" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-lewart-w-lubartowie-1382", KinoLewart), bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-i-promocji-w-krasniku-1529", KinoMetalowiec)),
     "czestochowa" -> Seq(new KinoDKFRumcajsClient(http, KinoDKFRumcajs, today = today), new KinoKarolinkaClient(http, KinoKarolinka), bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-radomsku-1546", KinoMDK), bilety24("https://www.bilety24.pl/kino/organizator/miejski-osrodek-kultury-centrum-im-adama-mickiewicza-w-zawierciu-1305", KinoMOKCentrum), new KinoZaciszeClient(http, KinoZacisze)),
-    "radom" -> Seq(helios(HeliosNuxt.Starachowice), new MsiClient(http, "https://bilet-mck.skarzysko.pl", KinoCentrumSkarzyskoKamienna, today), bilety24("https://www.bilety24.pl/kino/organizator/kino-gornik-szydlowiec-1320", KinoGornik), new MsiClient(http, "http://bilety.dkkozienice.pl", KinoKozienickiDomKultury, today), new SystemBiletowyClient(http, "https://shd.systembiletowy.pl", KinoKuznica, titles = titles), new MsiClient(http, "https://bilety.switzwolen.pl", KinoSwitZwolen, today)),
-    "torun" -> Seq(new BiletynaClient(bnFetch, "https://biletyna.pl/Aleksandrow-Kujawski/Miejskie-Centrum-Kultury", KinoMiejskieCentrumKultury), new BiletynaClient(bnFetch, "https://biletyna.pl/Ciechocinek/Kino-Zdroj", KinoZdroj)),
-    "kielce" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-w-jedrzejowie-1458", KinoCK), new BiletynaClient(bnFetch, "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa", KinoKoneckieCentrumKultury)),
-    "rzeszow" -> Seq(helios(HeliosNuxt.Krosno), new ArtKinoKrosnoClient(http, KinoArtKino, today), new KinoJednoscClient(http, KinoJednosc), new MsiClient(http, "https://bilety.kinolezajsk.pl", KinoMCK, today), new MsiClient(http, "https://bilety.mokdebica.pl", KinoSniezka, today), new KinoSokolBrzozowClient(http, KinoSokolBrzozow), new MsiClient(http, "https://bilety-kino.przeworsk.um.gov.pl", KinoWarszawa, today)),
+    "radom" -> Seq(helios(HeliosNuxt.Starachowice), msi(KinoCentrumSkarzyskoKamienna), bilety24("https://www.bilety24.pl/kino/organizator/kino-gornik-szydlowiec-1320", KinoGornik), msi(KinoKozienickiDomKultury), systemBiletowy(KinoKuznica), msi(KinoSwitZwolen)),
+    "torun" -> Seq(biletyna(KinoMiejskieCentrumKultury), biletyna(KinoZdroj)),
+    "kielce" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-w-jedrzejowie-1458", KinoCK), biletyna(KinoKoneckieCentrumKultury)),
+    "rzeszow" -> Seq(helios(HeliosNuxt.Krosno), new ArtKinoKrosnoClient(http, KinoArtKino, today), new KinoJednoscClient(http, KinoJednosc), msi(KinoMCK), msi(KinoSniezka), new KinoSokolBrzozowClient(http, KinoSokolBrzozow), msi(KinoWarszawa)),
     "gliwice" -> Seq(new KinoScenaKulturaClient(http, KinoScenaKultura)),
-    "olsztyn" -> Seq(new MsiClient(http, "https://bilety.kinoszczytno.pl", KinoCinemaLumiere, today), new MsiClient(http, "https://www.biletyignacy.pl", KinoIgnacy, today), bilety24("https://www.bilety24.pl/kino/organizator/kino-narie-w-moragu-1682", KinoNarie)),
-    "bielsko-biala" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-janosik-1500", KinoJanosik), new SystemBiletowyClient(http, "https://bilety.pckul.pl", KinoPckulKino, titles = titles), new BiletynaClient(bnFetch, "https://biletyna.pl/Czechowice-Dziedzice/Kino-Swit", KinoSwitCzechowiceDziedzice), new BiletynaClient(bnFetch, "https://biletyna.pl/Skoczow/Teatr-Elektryczny", KinoTeatrElektryczny), bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-w-brzeszczach-1539", KinoWislaBrzeszcze), multikino("0033", MultikinoCzechowiceDziedzice)),
-    "opole" -> Seq(helios(HeliosNuxt.KedzierzynKozle), bilety24("https://www.bilety24.pl/kino/organizator/kino-bajka-w-kluczborku-1467", KinoBajkaKluczbork), new MsiClient(http, "https://bilety.mok.com.pl", KinoChemik, today, titlePrefix = Some("Chemik")), new KinoDianaClient(http, KinoDiana), new KdkKrapkowiceClient(http, KinoKrapkowice), new KinoStudioClient(http, KinoStudio, today), new MsiClient(http, "https://bilety.mok.com.pl", KinoTwierdza, today, titlePrefix = Some("TWIERDZA"))),
-    "rybnik" -> Seq(helios(HeliosNuxt.Zory), bilety24("https://www.bilety24.pl/kino/organizator/kino-baltyk-1499", KinoBaltyk), ekobilet("kino-centrum-jastrzebiezdrj", KinoCentrum), new SystemBiletowyClient(http, "https://bilety.mok.zory.pl", KinoNaStarowce, titles = titles), new BiletynaClient(bnFetch, "https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury", KinoPegaz), new TeatrZiemiRybnickiejClient(http)),
-    "elblag" -> Seq(helios(HeliosNuxt.Tczew), bilety24("https://www.bilety24.pl/kino/organizator/kino-baszta-477", KinoBaszta), new MsiClient(http, "https://kinosztumbilety.pl", KinoPowisle, today), new BiletynaClient(bnFetch, "https://biletyna.pl/Nowy-Dwor-Gdanski/Zulawski-Osrodek-Kultury", KinoZulawskiOsrodekKultury)),
-    "koszalin" -> Seq(new MsiClient(http, "https://darlowo.vectorsoft.pl", KinoBajkaDarlowo, today), bilety24("https://www.bilety24.pl/kino/organizator/kino-centrum-w-bialogardzie-1685", KinoCentrumBialogard), new BiletynaClient(bnFetch, "https://biletyna.pl/Slawno/Slawienski-Dom-Kultury", KinoDK), new MsiClient(http, "https://bilety.goktychowo.pl", KinoGOK, today), new MsiClient(http, "https://bilety.ckpolczyn.pl", KinoGoplana, today), new MsiClient(http, "http://bilety.rck.kolobrzeg.pl", KinoWybrzeze, today, titleSuffix = Some("KINO WYBRZEŻE"))),
-    "kalisz" -> Seq(helios(HeliosNuxt.OstrowWielkopolski), new SystemBiletowyClient(http, "https://kck.systembiletowy.pl", KinoCentrum3D, titles = titles), bilety24("https://www.bilety24.pl/kino/organizator/kino-echo-w-jarocinie-1159", KinoEcho), bilety24("https://www.bilety24.pl/kino/organizator/ostrzeszowskie-centrum-kultury-601", KinoPiastOstrzeszow), bilety24("https://www.bilety24.pl/kino/organizator/krotoszynski-osrodek-kultury-1668", KinoPrzedwiosnieKrotoszyn)),
-    "zielona-gora" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/nowosolski-dom-kultury-1679", KinoEuropa), new MsiClient(http, "https://repertuar.maxkino.eu", KinoMaxKino, today), bilety24("https://www.bilety24.pl/kino/organizator/kino-pionier-w-zarach-1492", KinoPionierZary), new MsiClient(http, "https://bilety.kino.swiebodzin.pl:4433", KinoSDKSwiebodzin, today)),
-    "tychy" -> Seq(new SystemBiletowyClient(http, "https://ock.systembiletowy.pl", KinoNaszeKino, titles = titles), new MsiClient(http, "https://oswiecim.planetcinema.pl", KinoPlanetCinema, today)),
-    "walbrzych" -> Seq(new MsiClient(http, "https://bilety.nowaruda.pl", KinoMOKNowaRuda, today), ekobilet("mokis-bielawa", KinoMOKiS), new KinoSlezaClient(http, KinoSleza), new KinoZbyszekClient(http, KinoZbyszek), multikino("0041", MultikinoKlodzko), multikino("0043", MultikinoSwidnica)),
-    "tarnow" -> Seq(new SystemBiletowyClient(http, "https://kfb.systembiletowy.pl", KinoFarys, titles = titles), new BiletynaClient(bnFetch, "https://biletyna.pl/Solec-Zdroj/Kino-Solec-Zdroj", KinoGCK), bilety24("https://www.bilety24.pl/kino/organizator/gorlickie-centrum-kultury-1581", KinoKolory), new MsiClient(http, "https://rezerwacja.planetabrzesko.pl", KinoPlaneta, today, mvcPath = "/Rezerwacja/mvc/pl"), new KinoPromienClient(http, KinoPromien, today), new SystemBiletowyClient(http, "https://bilety.kino.bochnia.pl", KinoRegis, titles = titles), bilety24("https://www.bilety24.pl/kino/organizator/kino-sokol-w-dabrowie-tarnowskiej-1303", KinoSokolDabrowaTarnowska)),
-    "wloclawek" -> Seq(new MsiClient(http, "https://kino.sierpc.pl", KinoJutrzenka, today), new BiletynaClient(bnFetch, "https://biletyna.pl/Lipno/Kino-Nawojka", KinoNawojka), new MsiClient(http, "https://bilety.mck-gostynin.pl", KinoNoweKinoWarszawa, today), new MsiClient(http, "https://bilety.pokis.pl", KinoZaRogiem, today)),
+    "olsztyn" -> Seq(msi(KinoCinemaLumiere), msi(KinoIgnacy), bilety24("https://www.bilety24.pl/kino/organizator/kino-narie-w-moragu-1682", KinoNarie)),
+    "bielsko-biala" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-janosik-1500", KinoJanosik), systemBiletowy(KinoPckulKino), biletyna(KinoSwitCzechowiceDziedzice), biletyna(KinoTeatrElektryczny), bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-w-brzeszczach-1539", KinoWislaBrzeszcze), multikino("0033", MultikinoCzechowiceDziedzice)),
+    "opole" -> Seq(helios(HeliosNuxt.KedzierzynKozle), bilety24("https://www.bilety24.pl/kino/organizator/kino-bajka-w-kluczborku-1467", KinoBajkaKluczbork), msi(KinoChemik), new KinoDianaClient(http, KinoDiana), new KdkKrapkowiceClient(http, KinoKrapkowice), new KinoStudioClient(http, KinoStudio, today), msi(KinoTwierdza)),
+    "rybnik" -> Seq(helios(HeliosNuxt.Zory), bilety24("https://www.bilety24.pl/kino/organizator/kino-baltyk-1499", KinoBaltyk), ekobilet("kino-centrum-jastrzebiezdrj", KinoCentrum), systemBiletowy(KinoNaStarowce), biletyna(KinoPegaz), new TeatrZiemiRybnickiejClient(http)),
+    "elblag" -> Seq(helios(HeliosNuxt.Tczew), bilety24("https://www.bilety24.pl/kino/organizator/kino-baszta-477", KinoBaszta), msi(KinoPowisle), biletyna(KinoZulawskiOsrodekKultury)),
+    "koszalin" -> Seq(msi(KinoBajkaDarlowo), bilety24("https://www.bilety24.pl/kino/organizator/kino-centrum-w-bialogardzie-1685", KinoCentrumBialogard), biletyna(KinoDK), msi(KinoGOK), msi(KinoGoplana), msi(KinoWybrzeze)),
+    "kalisz" -> Seq(helios(HeliosNuxt.OstrowWielkopolski), systemBiletowy(KinoCentrum3D), bilety24("https://www.bilety24.pl/kino/organizator/kino-echo-w-jarocinie-1159", KinoEcho), bilety24("https://www.bilety24.pl/kino/organizator/ostrzeszowskie-centrum-kultury-601", KinoPiastOstrzeszow), bilety24("https://www.bilety24.pl/kino/organizator/krotoszynski-osrodek-kultury-1668", KinoPrzedwiosnieKrotoszyn)),
+    "zielona-gora" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/nowosolski-dom-kultury-1679", KinoEuropa), msi(KinoMaxKino), bilety24("https://www.bilety24.pl/kino/organizator/kino-pionier-w-zarach-1492", KinoPionierZary), msi(KinoSDKSwiebodzin)),
+    "tychy" -> Seq(systemBiletowy(KinoNaszeKino), msi(KinoPlanetCinema)),
+    "walbrzych" -> Seq(msi(KinoMOKNowaRuda), ekobilet("mokis-bielawa", KinoMOKiS), new KinoSlezaClient(http, KinoSleza), new KinoZbyszekClient(http, KinoZbyszek), multikino("0041", MultikinoKlodzko), multikino("0043", MultikinoSwidnica)),
+    "tarnow" -> Seq(systemBiletowy(KinoFarys), biletyna(KinoGCK), bilety24("https://www.bilety24.pl/kino/organizator/gorlickie-centrum-kultury-1581", KinoKolory), msi(KinoPlaneta), new KinoPromienClient(http, KinoPromien, today), systemBiletowy(KinoRegis), bilety24("https://www.bilety24.pl/kino/organizator/kino-sokol-w-dabrowie-tarnowskiej-1303", KinoSokolDabrowaTarnowska)),
+    "wloclawek" -> Seq(msi(KinoJutrzenka), biletyna(KinoNawojka), msi(KinoNoweKinoWarszawa), msi(KinoZaRogiem)),
     "legnica" -> Seq(helios(HeliosNuxt.Lubin), new KinoAurumClient(http, KinoAurum), new CyfroweKinoClient(http, KinoCyfroweKino, titles = titles), bilety24("https://www.bilety24.pl/kino/organizator/boleslawiecki-osrodek-kultury-miedzynarodowe-centrum-ceramiki-kino-forum-1586", KinoForumBoleslawiec), bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-muza-w-lubinie-1375", KinoMuzaLubin), bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-w-polkowicach-1689", KinoPCA)),
-    "plock" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-kutnowskiego-domu-kultury-1474", KinoKDK), new SystemBiletowyClient(http, "https://ckp.systembiletowy.pl", KinoKalejdoskop, titles = titles), new MsiClient(http, "https://kinoodeon.eurobilet.pl", KinoODEON, today)),
+    "plock" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-kutnowskiego-domu-kultury-1474", KinoKDK), systemBiletowy(KinoKalejdoskop), msi(KinoODEON)),
     "nowy-sacz" -> Seq(ekobilet("kino-jaworzyna", KinoJaworzyna), bilety24("https://www.bilety24.pl/kino/organizator/limanowski-dom-kultury-1368", KinoKlaps)),
     "slupsk" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/leborskie-centrum-kultury-kino-fregata-1683", KinoFregata)),
     "jelenia-gora" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-wawel-w-lubaniu-1489", KinoWawel)),
-    "przemysl" -> Seq(new KinoCentrum3DPrzemyslClient(http, KinoCentrum3DPrzemysl), new MsiClient(http, "https://kinoikar.mok-jar.pl", KinoIkar, today), new MsiClient(http, "https://jaroslaw.kinonabiegunach.pl", KinoNaBiegunach, today), new KinoSDKSanokClient(http, KinoSDK, today)),
+    "przemysl" -> Seq(new KinoCentrum3DPrzemyslClient(http, KinoCentrum3DPrzemysl), msi(KinoIkar), msi(KinoNaBiegunach), new KinoSDKSanokClient(http, KinoSDK, today)),
   )
 
   // ── United Kingdom (Flicks) ──────────────────────────────────────────────
