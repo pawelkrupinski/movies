@@ -149,15 +149,34 @@
        Poznań fix with whichever of four countries happened to be closest. *@
     var CITIES = @Html(country.allJson);
 
-    // Fold a Polish string to its diacritic-free, lower-case form so the city
-    // search matches what people actually type ("lodz" → "Łódź", "krakow" →
-    // "Kraków"). NFD won't fold ł/ą/ę/ń, so map the Polish letters explicitly.
-    function foldPl(s) {
+    // Fold a place name to the form people actually type it in. Two folds,
+    // because one is not enough once the list is not Polish.
+    //
+    // `fold` is the general one: lower-case, then drop every combining mark NFD
+    // exposes. That covers ó ą ć ę ń ś ź ż, í á é ú ñ, ö ü ä — everything the
+    // Polish, Spanish and German rosters carry except Ł, which has no decomposed
+    // form, and ß, which has no mark to strip.
+    function fold(s) {
       return (s || '').toLowerCase()
-        .replace(/ą/g, 'a').replace(/ć/g, 'c').replace(/ę/g, 'e').replace(/ł/g, 'l')
-        .replace(/ń/g, 'n').replace(/ó/g, 'o').replace(/ś/g, 's')
-        .replace(/ź/g, 'z').replace(/ż/g, 'z');
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/ł/g, 'l').replace(/ß/g, 'ss');
     }
+
+    // …and the German one, which a stripped fold gets WRONG. Nobody types
+    // "koln": the umlaut expands, and the slug agrees — `/koeln/`, `/muenchen/`,
+    // `/nuernberg/`. Stripping alone answers "koeln" with nothing, which on a
+    // picker whose 16 Bundesländer all arrive shut is most of the way to
+    // unusable.
+    function foldExpanded(s) {
+      return (s || '').toLowerCase()
+        .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/ł/g, 'l');
+    }
+
+    // A row answers to BOTH spellings, so one folded query reaches either:
+    // "Köln" is indexed as "koln koeln" and found by köln, koln and koeln alike.
+    function haystack(s) { return fold(s) + ' ' + foldExpanded(s); }
 
     // Client-side filter of the place list (41 Polish cities, 468 US places, 158
     // German regions, 79 UK counties, …): typing narrows the visible rows by
@@ -208,11 +227,11 @@
             above.map(function (d) {
               return d.querySelector(':scope > summary').textContent;
             }).join(' ');
-          return { li: li, above: above, text: foldPl(text) };
+          return { li: li, above: above, text: haystack(text) };
         });
 
       var apply = function () {
-        var q = foldPl(input.value.trim());
+        var q = fold(input.value.trim());
         var shown = 0;
         var live = [];
         rows.forEach(function (row) {
@@ -233,6 +252,10 @@
         if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
       };
       input.addEventListener('input', apply);
+      // Once up front too: a browser that restores the box's value across a
+      // reload or a back-navigation would otherwise show that text over an
+      // unfiltered list with every group shut.
+      apply();
     })();
 
     // Haversine distance in km between two lat/lon points.

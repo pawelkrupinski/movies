@@ -66,8 +66,14 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     // The grouping only earns its keep closed. Rendered open, the page is the
     // A-to-Z of 468 places the states were introduced to break up, with 55
     // headings added to it.
-    usHtml should not include "<details class=\"city-group\" open"
-    usHtml should not include "<details open"
+    // No `<details>` anywhere on the page carries `open` — matched as an
+    // ATTRIBUTE rather than by a substring, so it cannot be satisfied or
+    // defeated by the word appearing in a comment.
+    """<details\b[^>]*\bopen\b[^>]*>""".r.findFirstIn(usHtml) shouldBe None
+    // …and the disclosures really are there to be shut: one per state that did
+    // not collapse onto its single place.
+    """<details class="city-group">""".r.findAllIn(usHtml).size shouldBe
+      models.Country.UnitedStates.cityGroups.count(_.soleCity.isEmpty)
   }
 
   it should "link a state that IS a place straight through, rather than heading a list of one" in {
@@ -139,6 +145,23 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     deHtml should not include """<summary class="city-group-label">Saarland</summary>"""
     // One level, not the UK's two.
     deHtml should not include """<summary class="city-group-label">Saarbrücken</summary>"""
+  }
+
+  "a collapsed group's search alias" should "be HTML-escaped, not pasted into the attribute" in {
+    // `data-alias` carries the group's own name, and a Bundesland's comes out of
+    // the scraped `regions.json` rather than being hand-authored — so nothing
+    // upstream guarantees it holds no quote. Built as raw `Html(...)` the first
+    // one to do so would close the attribute and inject whatever followed.
+    val hostile = models.CityGroup(
+      """Ruck" onmouseover=alert(1) x="""",
+      "hostile",
+      Seq(models.Country.UnitedKingdom.cities.head))
+    val rendered = views.html._cityPickerGroup(hostile).body
+    rendered should include ("""data-alias="Ruck&quot; onmouseover=alert(1) x=&quot;"""")
+    rendered should not include "onmouseover=alert(1) x=\"\">"
+    // The attribute is still one attribute: exactly one unescaped quote pair
+    // around it, so nothing after the label is read as markup.
+    rendered.split("data-alias=").last.takeWhile(_ != '>') should not include "\" "
   }
 
   it should "ask for a city, like every other country" in {

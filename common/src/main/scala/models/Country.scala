@@ -85,6 +85,22 @@ sealed abstract class Country(
    *  cities directly. `CountrySpec` holds that. */
   def cityGroups: Seq[CityGroup] = Nil
 
+  /** [[cityGroups]] FLATTENED to one level and re-sorted — what a control that
+   *  cannot nest needs. The navbar's `<select>` is the caller: an `<optgroup>`
+   *  may not contain another, so a UK place appears under its NATION there, with
+   *  the county it sits under on the page contributing nothing but its members.
+   *
+   *  Re-sorted HERE, not taken from [[CityGroup.allCities]] in tree order. The
+   *  tree's order is the PAGE's: a county that kept its heading contributes its
+   *  places at the county's own alphabetical position, which reads correctly
+   *  under a "West Midlands" heading and not at all without one — Birmingham
+   *  came after Warwickshire in a flat list, where native type-ahead on "b"
+   *  never reaches it.
+   *
+   *  Empty for a flat country, whose `<select>` takes the ungrouped branch. */
+  def optionGroups: Seq[(String, Seq[City])] =
+    cityGroups.map(group => group.label -> CityListing.sorted(group.allCities, language))
+
   /** The two [[Showtime.format]] tokens THIS country's sources mark a subtitled
    *  and a dubbed screening with, or `None` where nothing marks either.
    *

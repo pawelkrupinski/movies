@@ -1011,7 +1011,13 @@ final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
    *  county unfindable, and the search is where that name was doing its work.
    *
    *  Nil `groups` is part of the test: a node with one city AND a subgroup under
-   *  it is still arranging two things. */
+   *  it is still arranging two things.
+   *
+   *  [[slug]] is deliberately NOT consulted. An earlier version required the
+   *  city's slug to equal the group's, which collapsed Cheshire and left
+   *  Merseyside, Greater Manchester, Norfolk and Saarland as headings over a
+   *  single row — the tap this exists to remove. Re-adding that condition would
+   *  silently restore all four; `CountrySpec` pins each of them by name. */
   def soleCity: Option[City] = (cities, groups) match {
     case (Seq(only), Nil) => Some(only)
     case _                => None
@@ -1031,7 +1037,7 @@ final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
    *  `None` when there is nothing extra to remember (Cheshire under Cheshire) or
    *  when the group did not collapse at all. */
   def collapsedAlias: Option[String] =
-    soleCity.map(_.labels.nominative).filter(_ != label).map(_ => label)
+    soleCity.filter(_.labels.nominative != label).map(_ => label)
 
   /** Every city under this group at any depth — its own, plus its subgroups'.
    *

@@ -1,66 +1,86 @@
 package tools
 
-import models.{City, Country}
+import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * The one contract the Playwright suite depends on and could not state: the
- * fixture server's `/` lists EVERY city, across every country.
+ * The contract the Playwright suite depends on and could not state: which places
+ * each of the fixture server's landing paths actually offers.
  *
- * No deployment renders that page. A Polish visitor is offered Polish cities, a
- * US visitor US states, and `landing.scala.html` defaults to exactly that. But
- * `page-tests-playwright` runs ONE fixture server for specs written against
- * four countries — `city-select.spec.ts` clicks Poznań, München and California
- * on this single page — so the harness passes the union explicitly, and three
- * quarters of that suite has nothing to click the moment it stops.
+ * WHY IT IS WORTH A SPEC OF ITS OWN. On 2026-08-30 `FixtureServerMain`'s `/` was
+ * narrowed as part of an unrelated (and correct) change. It compiled, every Scala
+ * layer stayed green — the contract was asserted nowhere in this repository
+ * except a browser spec several CI shards away — and it surfaced as
+ * `Test timeout of 30000ms exceeded` waiting to click a link that no longer
+ * existed. Nothing in that message points at a fixture server.
  *
- * WHY IT IS WORTH A SPEC OF ITS OWN. That is precisely what happened on
- * 2026-08-30: `FixtureServerMain` was narrowed from `City.all` to one country as
- * part of an unrelated (and correct) change to the landing's copy. It compiled,
- * and every Scala layer stayed green — the union was asserted nowhere in this
- * repository except a browser spec several CI shards away, which failed as
- * `Test timeout of 30000ms exceeded` waiting to click a `California` link that
- * no longer existed. Nothing in that message points at a fixture server.
+ * The spec written to prevent that was then defeated by the same class of drift:
+ * it called a `renderLanding()` helper that only IT called, while the route
+ * built its own string. Narrowing the route left the spec green over a page
+ * nothing served. So this now reads `FixtureServerMain.landings()` — the same map
+ * the route table indexes — and there is no second copy left to diverge from.
  *
- * So this asserts the contract where it is cheap: no browser, no server, just
- * the string the harness would serve.
+ * No browser, no server: just the strings the harness would serve.
  */
 class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
 
-  private val html = FixtureServerMain.renderLanding()
+  private val landings = FixtureServerMain.landings()
 
-  private val rows = """<li><a href="/([^/"]+)/">""".r
-    .findAllMatchIn(html).map(_.group(1)).toList
-
-  "the fixture server's landing" should "offer every city of every country, not just the default one's" in {
-    rows should contain theSameElementsAs City.all.map(_.slug)
-    // Said twice on purpose: the count is what a reader compares against the
-    // number in city-select.spec.ts, and the set is what actually holds.
-    rows.size shouldBe City.all.size
-    rows.size should be > Country.default.allSorted.size
+  /** The place slugs a landing offers, in render order. */
+  private def rows(path: String): List[String] = {
+    val html = landings.getOrElse(path, fail(s"the fixture server serves no $path"))
+    """<a href="/([^/"]+)/">""".r.findAllMatchIn(html).map(_.group(1)).toList
   }
 
-  it should "reach a city from each country a browser spec clicks on" in {
-    // One per country the Playwright suite navigates from this page. Slugs, not
-    // labels, because the label is the half that the copy change legitimately
-    // moves around.
-    //
-    // The US one is a METRO, not a state: a US place is now the metro cut out of
-    // a state ("los-angeles"), and the state is only the heading it is listed
-    // under. `california` is not a city any more and is deliberately asserted
-    // absent, since a row by that name would mean the state leaked back in as a
-    // clickable place.
-    rows should contain allOf ("poznan", "london", "berlin", "los-angeles")
-    rows should not contain "california"
+  "the fixture server's `/`" should "offer the default country's own list, exactly as a deployment does" in {
+    // Poland's 41, and NOT the union across countries. `city-select.spec.ts`
+    // counts them, and the geolocation redirect it also drives is a claim about
+    // where the visitor IS — offered every country's places, a Poznań fix would
+    // answer with whichever of five happened to be nearest.
+    rows("/") should contain theSameElementsAs Country.default.cities.map(_.slug)
+    rows("/") should not contain "london"
+    rows("/") should not contain "los-angeles"
+  }
+
+  it should "serve a landing for each country a browser spec picks a place on" in {
+    // Slugs, not labels: the label is the half a copy change legitimately moves.
+    rows("/landing-us") should contain theSameElementsAs Country.UnitedStates.cities.map(_.slug)
+    rows("/landing-uk") should contain theSameElementsAs Country.UnitedKingdom.cities.map(_.slug)
+    rows("/landing-de") should contain theSameElementsAs Country.Germany.cities.map(_.slug)
+
+    // The ones the Playwright specs actually click, named so a failure here says
+    // which page lost them rather than timing out in a browser.
+    rows("/landing-us") should contain allOf ("los-angeles", "delaware")
+    rows("/landing-uk") should contain allOf ("cheshire", "birmingham", "liverpool")
+    rows("/landing-de") should contain allOf ("koeln", "muenchen", "hamburg")
+  }
+
+  it should "keep each landing to ONE country, so a place is never offered by the wrong one" in {
+    // A grouped landing that leaked another country's places would let a spec
+    // click a row whose `/{slug}/` the deployment under test does not serve.
+    rows("/landing-us") should not contain "poznan"
+    rows("/landing-uk") should not contain "los-angeles"
+    rows("/landing-de") should not contain "london"
+  }
+
+  it should "offer a GROUPED country every place it has, not just the ones a heading collapsed onto" in {
+    // The nesting is what this could silently lose: a bug in `_cityPickerGroup`'s
+    // recursion, or a group that stopped being rendered, drops rows the count
+    // catches and the spot-checks above would not.
+    rows("/landing-uk") should have size Country.UnitedKingdom.cities.size
+    rows("/landing-de") should have size Country.Germany.cities.size
+    rows("/landing-us") should have size Country.UnitedStates.cities.size
+    // …and none of them twice, which a mis-recursion would do.
+    rows("/landing-uk").distinct should have size rows("/landing-uk").size
+    rows("/landing-us").distinct should have size rows("/landing-us").size
   }
 
   it should "still read as the default country, which is where its copy comes from" in {
-    // The seam the harness overrides is the LIST and nothing else. The specs
-    // read Polish nouns off the pages they land on ("133 kin", not "133
-    // cinemas"), so a fixture server that also switched country would break
-    // them in a second, quieter way.
-    html should include(s"""<html lang="${Country.default.language.getLanguage}"""")
-    html should include(Country.default.brandName)
+    // The specs read Polish nouns off the pages they land on ("133 kin", not
+    // "133 cinemas"), so a harness that also switched country would break them in
+    // a second, quieter way.
+    landings("/") should include(s"""<html lang="${Country.default.language.getLanguage}"""")
+    landings("/") should include(Country.default.brandName)
   }
 }

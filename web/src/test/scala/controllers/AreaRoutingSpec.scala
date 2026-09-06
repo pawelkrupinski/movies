@@ -62,6 +62,14 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     messages       = testsupport.TestMessages.forLang("en"),
   )._1
 
+  private def deController(): MovieController = TestMovieController.build(
+    Seq(
+      (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
+    ),
+    servingCountry = Country.Germany,
+    messages       = testsupport.TestMessages.forLang("de"),
+  )._1
+
   private def ukController(): MovieController = TestMovieController.build(
     Seq(
       (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
@@ -134,8 +142,41 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     html should include ("""<optgroup label="Scotland">""")
     html should include ("""<optgroup label="Crown Dependencies">""")
     html should include ("""<option value="glasgow">Glasgow</option>""")
-    // A nation is a heading, never an option: `/scotland/` is not a page.
-    html should not include """<option value="scotland">"""
+    // FLATTENED to the top level: the UK picker nests a county between the nation
+    // and the place, and an `<optgroup>` may not contain another — so every one
+    // of a nation's places sits directly under it here, county and all.
+    html should include ("""<option value="birmingham">Birmingham</option>""")
+    html should not include """<optgroup label="West Midlands">"""
+
+    // …and RE-SORTED, which the tree's own order is not. A county that kept its
+    // heading contributes its places at the COUNTY's alphabetical position, so
+    // Birmingham used to follow Warwickshire here — correct under a "West
+    // Midlands" heading, nonsense in a flat list, where typing "b" walks
+    // Bedfordshire, Berkshire, Bristol and never reaches it.
+    val options = """<option value="[^"]+">([^<]+)</option>""".r
+      .findAllMatchIn(html.split("""<optgroup label="England">""")(1)
+                          .split("</optgroup>").head)
+      .map(_.group(1)).toList
+    options should contain allOf ("Birmingham", "Warwickshire", "Cheshire")
+    options.indexOf("Birmingham") should be < options.indexOf("Cheshire")
+    // British collation, not a code-point sort — the latter files "North
+    // Yorkshire" before "Northamptonshire" on the space.
+    val collator = java.text.Collator.getInstance(java.util.Locale.forLanguageTag("en-GB"))
+    withClue(s"England's options: ${options.take(8)}: ") {
+      options shouldBe options.sortWith((a, b) => collator.compare(a, b) < 0)
+    }
+  }
+
+  it should "group Germany's regions by Bundesland, the same way" in {
+    // Germany joined the grouped countries with the UK; the switcher reads the
+    // same `Country.cityGroups`, so 158 options are arranged rather than run
+    // together.
+    val html = contentAsString(deController().index("koeln")(req("/koeln/")))
+    html should include ("""<optgroup label="Nordrhein-Westfalen">""")
+    html should include ("""<optgroup label="Bayern">""")
+    html should include ("""<option value="muenchen">München</option>""")
+    // A Land is a heading, never an option.
+    html should not include """<option value="bayern">"""
   }
 
   "A small metro" should "leave its cinema list flat rather than wrapping it in one group" in {

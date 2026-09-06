@@ -38,29 +38,27 @@ object FixtureServerMain {
   // test sees them — independent of the wall-clock when CI runs.
   private val now = LocalDateTime.of(2026, 6, 8, 0, 0)
 
-  /** The bare `/` landing (place-selection screen). Production serves TWO screens
-   *  here — a country picker when the request Host is the bare showtimes.cc apex,
-   *  the place picker otherwise (see `LandingController`) — and this harness only
-   *  ever renders the second, because its routes are keyed on the path alone and
-   *  have no request to read a Host off. The apex branch is covered where the
-   *  decision actually lives, in `controllers.LandingApexSpec`.
+  /** Every landing page this server serves, keyed by the path it answers on.
    *
-   *  IT LISTS `City.all`, THE UNION ACROSS EVERY COUNTRY, which no real deployment
-   *  ever renders — a Polish visitor is offered Polish cities and nothing else.
-   *  This harness serves ONE `/` to browser specs written for four countries at
-   *  once (`city-select.spec.ts` clicks Poznań, München AND California on this one
-   *  page), so a country-scoped list leaves three of them with nothing to click.
-   *  The COPY still comes from the default country, which is why those specs read
-   *  Polish nouns off the pages they land on.
+   *  BUILT HERE RATHER THAN INLINE IN `main`, so the routes and the spec read
+   *  the same values and cannot drift. That drift is exactly what happened
+   *  before: the union render lived in a method only the spec called while the
+   *  `/` route built its own string, so narrowing the route left
+   *  `FixtureServerLandingSpec` green over a page nothing served — the second
+   *  time the same class of regression got through, and the first time it did so
+   *  with a spec supposedly guarding it.
    *
-   *  A METHOD, SO A SPEC CAN CALL IT. The union was asserted nowhere but a
-   *  Playwright spec several CI shards away, so narrowing it to one country
-   *  compiled, passed every Scala layer, and surfaced as a 30s browser timeout
-   *  with nothing in it naming a fixture server; `FixtureServerLandingSpec` now
-   *  says it in two seconds.
+   *  `/` is the DEFAULT country's own list, exactly as a deployment serves it.
+   *  The per-country paths are fixture-only, for the browser specs written
+   *  against a country this server is not defaulting to; production has one
+   *  country per deployment and so only ever one of these shapes.
    */
-  private[tools] def renderLanding(): String =
-    views.html.landing(models.Country.default, Some(City.all)).body
+  private[tools] def landings(): Map[String, String] = Map(
+    "/"           -> views.html.landing(models.Country.default).body,
+    "/landing-us" -> views.html.landing(models.Country.UnitedStates).body,
+    "/landing-uk" -> views.html.landing(models.Country.UnitedKingdom).body,
+    "/landing-de" -> views.html.landing(models.Country.Germany).body,
+  )
 
   def main(args: Array[String]): Unit = {
     val portFile = args.headOption.map(Paths.get(_)).getOrElse {
@@ -130,27 +128,24 @@ object FixtureServerMain {
       }
     }
 
-    // The bare `/` landing (city-selection screen). Production serves TWO screens
-    // here — a country picker when the request Host is the bare showtimes.cc apex,
-    // the city picker otherwise (see LandingController) — and this harness only
-    // ever renders the second, because its routes are keyed on the path alone and
-    // have no request to read a Host off. The apex branch is covered where the
-    // decision actually lives, in controllers.LandingApexSpec.
-    val landingHtml: String = views.html.landing(models.Country.default).body
-
-    // The same screen for a country whose place list is GROUPED. Fixture-only
-    // paths, like `/{city}/movie-many`: production serves one country per
-    // deployment, so its `/` can only ever be one of these shapes, and the
-    // grouped ones are not the shape this harness's default country has.
+    // The city-selection screens, from `landings()` so this route table and
+    // `FixtureServerLandingSpec` read the same strings.
     //
-    // All three, not one standing for the others: they differ in exactly the
-    // places a browser spec is for. The US nests ONE level, 461 metros under 55
-    // states, and has seven states that are a place at once; Germany nests one,
-    // 158 regions under 16 Bundesländer; the UK nests TWO, its places under a
-    // county under a nation — the only one with a heading inside a heading.
-    val usLandingHtml: String = views.html.landing(models.Country.UnitedStates).body
-    val ukLandingHtml: String = views.html.landing(models.Country.UnitedKingdom).body
-    val deLandingHtml: String = views.html.landing(models.Country.Germany).body
+    // Production serves TWO screens at `/` — a country picker when the request
+    // Host is the bare showtimes.cc apex, the city picker otherwise (see
+    // LandingController) — and this harness only ever renders the second,
+    // because its routes are keyed on the path alone and have no request to read
+    // a Host off. The apex branch is covered where the decision actually lives,
+    // in controllers.LandingApexSpec.
+    //
+    // The per-country paths beside it are fixture-only, like `/{city}/movie-many`,
+    // and all three exist because they differ in exactly the places a browser
+    // spec is for: the US nests ONE level, 461 metros under 55 states, with seven
+    // states that are a place at once; Germany nests one, 158 regions under 16
+    // Bundesländer, and is the only roster whose names carry umlauts; the UK
+    // nests TWO, its places under a county under a nation — the only one with a
+    // heading inside a heading.
+    val landingPages: Map[String, String] = landings()
 
     // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
     // is matched against the known cities; an unknown first segment → None.
@@ -164,10 +159,8 @@ object FixtureServerMain {
 
     val routes: PartialFunction[String, String] = {
       // Bare `/` → the city-selection landing (hard-cut: not a repertoire page).
-      case p if p == "/" || p.startsWith("/?") => landingHtml
-      case p if p == "/landing-us" || p.startsWith("/landing-us?") => usLandingHtml
-      case p if p == "/landing-uk" || p.startsWith("/landing-uk?") => ukLandingHtml
-      case p if p == "/landing-de" || p.startsWith("/landing-de?") => deLandingHtml
+      case p if landingPages.contains(p.takeWhile(_ != '?')) =>
+        landingPages(p.takeWhile(_ != '?'))
       // Everything else under `/{city}/…`. Each route tolerates a `?…` suffix.
       case p if resolve(p).isDefined =>
         val (c, sub) = resolve(p).get

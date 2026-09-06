@@ -87,6 +87,15 @@ def bundesland(region: dict) -> str:
 def main() -> int:
     regions = json.loads((DATA / "regions.json").read_text())
     cinemas = sum(len(r["cinemas"]) for r in regions)
+    stale = set(MISFILED) - {r["slug"] for r in regions}
+    if stale:
+        # `bundesland()` only consults MISFILED for slugs that EXIST, so a
+        # re-harvest that re-slugs or drops one of them would leave the override
+        # correcting nothing and never say so.
+        raise SystemExit(
+            f"ERROR: MISFILED names {sorted(stale)}, which regions.json no longer "
+            f"has. Re-check the correction against the new roster, then drop or "
+            f"re-key it.")
     laender = sorted({bundesland(r) for r in regions})
 
     seen: dict[str, str] = {}

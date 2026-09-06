@@ -130,10 +130,10 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     val california = Country.UnitedStates.cityGroups.find(_.label == "California").get
     california.cities.map(_.labels.nominative).head shouldBe "Bakersfield"
     // …and it really was not sorted before: Los Angeles is the state's biggest
-    // metro and led the roster-ordered list this replaced. It is now buried in
-    // the middle, which is the whole point.
-    california.cities.map(_.labels.nominative).head should not be "Los Angeles"
+    // metro and led the roster-ordered list this replaced. It is now well down
+    // the list, which is the whole point.
     california.cities.maxBy(_.cinemas.size).labels.nominative shouldBe "Los Angeles"
+    california.cities.map(_.labels.nominative).indexOf("Los Angeles") should be > 3
 
     forAll(Country.UnitedStates.cityGroups)(sortedUnder(_, "en-US"))
     forAll(Country.Germany.cityGroups)(sortedUnder(_, "de-DE"))
@@ -182,11 +182,22 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     shown.indexOf("Liverpool")  should be < shown.indexOf("Manchester")
     shown.indexOf("Manchester") should be < shown.indexOf("Norwich")
 
-    // Neither level is a page: `/scotland/` and `/west-midlands/` are nothing,
-    // the way `/california/` is.
+    // A NATION is never a place: nothing is served at `/scotland/`.
     Country.UnitedKingdom.cityGroups.map(_.slug).flatMap(Country.UnitedKingdom.bySlug.get) shouldBe empty
     Country.UnitedKingdom.bySlug.get("west-midlands")  shouldBe None
     Country.UnitedKingdom.bySlug.get("greater-london") shouldBe None
+
+    // A COUNTY's slug is a different matter, and deliberately so: most are their
+    // one place's (`Slugify.stable("Cheshire")` is `cheshire`), which is why they
+    // collapse onto it, and two counties that arrange several still share a slug
+    // with a member — Glamorgan holds Cardiff and Glamorgan, Antrim holds Antrim
+    // and Belfast. The same shape the US has, where the state "New York" holds a
+    // metro of that name. Harmless because nothing ROUTES a group slug: the
+    // picker links `city.slug` and nothing else, which `LandingViewSpec` holds.
+    val counties = Country.UnitedKingdom.cityGroups.flatMap(_.groups)
+    counties.find(_.label == "Cheshire").get.slug shouldBe "cheshire"
+    counties.filter(_.soleCity.isEmpty).map(_.label) should contain theSameElementsAs
+      Seq("West Midlands", "Glamorgan", "Antrim")
   }
 
   it should "group Germany by Bundesland, from the roster's own field" in {
@@ -229,6 +240,20 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // in NRW though most of its venues are over the line in Niedersachsen.
     landOf("rheine")   shouldBe "Nordrhein-Westfalen"
     landOf("cuxhaven") shouldBe "Niedersachsen"
+  }
+
+  it should "keep every node either a list of places or a list of groups, never both" in {
+    // `_cityPickerGroup` renders subgroups first and then cities, so a node
+    // holding both would emit two separate alphabetical runs under one heading —
+    // and `CountrySpec`'s ordering guards read only `cities`, so they would not
+    // see it. No country builds such a node today; this is what says so, and
+    // fails on the change that first does.
+    def nodes(c: Country): Seq[CityGroup] = c.cityGroups.flatMap(g => g +: g.groups)
+    forAll(Country.all.flatMap(nodes)) { g =>
+      withClue(s"${g.label} holds ${g.cities.size} places AND ${g.groups.size} groups: ") {
+        (g.cities.nonEmpty && g.groups.nonEmpty) shouldBe false
+      }
+    }
   }
 
   "CityGroup.soleCity" should "collapse a group that stands exactly where its one city stands" in {

@@ -93,6 +93,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // places, so a heading there sits inside another heading — the shape the
       // filter has to open a whole chain of, and the one the US page cannot
       // exercise at all.
+      // The GERMAN landing. Its names are the ones a stripped-diacritics fold gets
+      // wrong — nobody types "koln" — and its 16 Bundesländer all arrive shut, so
+      // the search box is the way in rather than a convenience.
+      val germanLandingHtml: String =
+        views.html.landing(models.Country.Germany)(using testsupport.TestMessages.forLang("en")).body
+
       val nestedLandingHtml: String =
         views.html.landing(models.Country.UnitedKingdom)(using testsupport.TestMessages.forLang("en")).body
 
@@ -229,6 +235,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case "/landing-grouped" => groupedLandingHtml
           // …and its two-level variant.
           case "/landing-nested" => nestedLandingHtml
+          case "/landing-german" => germanLandingHtml
           // The global-corpus /debug page (no city prefix).
           case "/debug" => debugHtml
           // Isolated single-row /debug variant for the Cinemas-cell layout test.
@@ -276,6 +283,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onGroupedLanding(body: CdpPage => Any): Unit =
     chrome match {
       case Some(c) => c.openPage(server.baseUrl + "/landing-grouped")(body(_))
+      case None    => cancel("Chrome not installed — skipping JS behaviour test")
+    }
+
+  /** Open the GERMAN city-selection landing — the one whose place names carry
+   *  umlauts the search has to fold both ways. */
+  private def onGermanLanding(body: CdpPage => Any): Unit =
+    chrome match {
+      case Some(c) => c.openPage(server.baseUrl + "/landing-german")(body(_))
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -349,6 +364,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  budgets these waits now carry, and neither 3x-core CPU load nor a 300ms
    *  delay injected into `/api/me/state` reproduced it locally. This closes the
    *  separate hole of a guard that did not wait for what it said it did.
+   *
+   *  Nor is it airtight, and it is worth saying which window is left: the values
+   *  waited on are the ones ANY boot on this origin writes, so if the previous
+   *  document's own `/api/me/state` resolves between this clear and the reload
+   *  committing, its write can satisfy the wait. Shutting that would need a
+   *  per-document marker the production script does not offer — a signal to add
+   *  there, not to fake here.
    *
    *  5s for the same reason the other waits here carry one: it spans a fresh
    *  document plus the chained fetches its boot makes. */
@@ -569,6 +591,45 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // …and every heading is back, including the ones the query filtered out.
       renderedCount(page, "#city-list summary") +
         renderedCount(page, "#city-list > li.city-direct > a") shouldBe models.Country.UnitedStates.cityGroups.size
+    }
+  }
+
+  "the search fold" should "find a German name by the spelling its own slug uses" in {
+    onGermanLanding { page =>
+      // "Köln" lives at `/koeln/`, so "koeln" is what a visitor types. A fold
+      // that only strips the umlaut answers that with nothing — and with every
+      // Bundesland arriving shut, nothing is the whole page.
+      typeCitySearch(page, "koeln")
+      renderedTexts(page, "#city-list a") shouldBe """["Köln"]"""
+      typeCitySearch(page, "muenchen")
+      renderedTexts(page, "#city-list a") shouldBe """["München"]"""
+
+      // …and by the stripped spelling too, and by the literal one.
+      typeCitySearch(page, "koln")
+      renderedTexts(page, "#city-list a") shouldBe """["Köln"]"""
+      typeCitySearch(page, "köln")
+      renderedTexts(page, "#city-list a") shouldBe """["Köln"]"""
+
+      // A heading answers to both spellings for the same reason.
+      typeCitySearch(page, "wuerttemberg")
+      renderedTexts(page, "#city-list summary") shouldBe """["Baden-Württemberg"]"""
+      typeCitySearch(page, "wurttemberg")
+      renderedTexts(page, "#city-list summary") shouldBe """["Baden-Württemberg"]"""
+    }
+  }
+
+  it should "still fold Polish the way it always did" in {
+    onLanding { page =>
+      // NFD replaced the hand-written Polish table; ł is the one letter it does
+      // not decompose, so it stays spelled out.
+      typeCitySearch(page, "lodz")
+      visibleCities(page) shouldBe """["Łódź"]"""
+      typeCitySearch(page, "krakow")
+      visibleCities(page) shouldBe """["Kraków"]"""
+      typeCitySearch(page, "czestochowa")
+      visibleCities(page) shouldBe """["Częstochowa"]"""
+      typeCitySearch(page, "zielona")
+      visibleCities(page) shouldBe """["Zielona Góra"]"""
     }
   }
 

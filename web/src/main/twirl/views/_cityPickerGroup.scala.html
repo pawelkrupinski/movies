@@ -17,13 +17,18 @@
    search still finds the row by it. Dropping the heading saves a tap; it is not
    meant to make the county unfindable.
 
+   The alias goes through Twirl's own escaping (`@@alias`, not a hand-built
+   `Html(...)`): a Bundesland's name is scraped out of `regions.json` rather than
+   hand-authored here, so it is not this template's place to assume no label will
+   ever carry a quote.
+
    A <details> rather than a button and a class: the open/closed state, the
    keyboard handling and the ARIA a disclosure owes are all native here, and the
    group still opens on a page whose script never ran.
 *@
 @group.soleCity match {
   case Some(c) => {
-<li class="city-direct"@group.collapsedAlias.map(a => Html(s""" data-alias="$a""""))><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+<li class="city-direct"@for(alias <- group.collapsedAlias) { data-alias="@alias"}><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
   }
   case None => {
 <li>
