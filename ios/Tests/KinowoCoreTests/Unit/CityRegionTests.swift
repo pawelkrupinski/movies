@@ -1,7 +1,7 @@
 import XCTest
 @testable import KinowoCore
 
-/// The US is picked in two steps — state, then city — because 457 metros in one
+/// The US is picked in two steps — state, then city — because 468 places in one
 /// A-to-Z is not a list anybody reads. These are the queries the picker drives
 /// both steps from; every other country has no regions and keeps one flat list.
 final class CityRegionTests: XCTestCase {

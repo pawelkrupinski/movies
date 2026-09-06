@@ -62,9 +62,9 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     usHtml should not include "/poznan/"
   }
 
-  it should "start every group SHUT — a <details> with no `open`, so 468 metros aren't the first screen" in {
+  it should "start every group SHUT — a <details> with no `open`, so 468 places aren't the first screen" in {
     // The grouping only earns its keep closed. Rendered open, the page is the
-    // A-to-Z of 468 metros the states were introduced to break up, with 55
+    // A-to-Z of 468 places the states were introduced to break up, with 55
     // headings added to it.
     usHtml should not include "<details class=\"city-group\" open"
     usHtml should not include "<details open"
@@ -96,17 +96,28 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     ukHtml should not include """href="/west-midlands/""""
   }
 
-  it should "collapse a county that IS its one place, so most of the list stays one tap deep" in {
-    // A Flicks region already IS Cheshire, so the county over it stands exactly
-    // where it does and links straight through. Only the counties that really
-    // group something cost a second tap — which is what keeps two levels
-    // readable. See `CityGroup.soleCity`.
+  it should "pull a county's single place up a level, so most of the list stays one tap deep" in {
+    // A heading you open to find one row underneath is a tap that buys nothing.
+    // A Flicks region already IS Cheshire, so those two names agree; Merseyside
+    // and Greater Manchester collapse onto names that differ. Only the counties
+    // really arranging several cost a second tap — which is what keeps two
+    // levels readable. See `CityGroup.soleCity`.
     ukHtml should include ("""<li class="city-direct"><a href="/cheshire/">Cheshire</a></li>""")
     ukHtml should not include """<summary class="city-group-label">Cheshire</summary>"""
-    // Greater Manchester is the other half of the rule: it holds Manchester and
-    // says something by doing so, so it keeps its heading.
-    ukHtml should include ("""<summary class="city-group-label">Greater Manchester</summary>""")
-    ukHtml should include ("""<a href="/manchester/">Manchester</a>""")
+    ukHtml should not include """<summary class="city-group-label">Greater Manchester</summary>"""
+    ukHtml should not include """<summary class="city-group-label">Merseyside</summary>"""
+
+    // …and the county's own name rides along so the search still finds the row
+    // by it: dropping the heading saves a tap, it does not hide the county.
+    ukHtml should include (
+      """<li class="city-direct" data-alias="Merseyside"><a href="/liverpool/">Liverpool</a></li>""")
+    ukHtml should include (
+      """<li class="city-direct" data-alias="Greater Manchester"><a href="/manchester/">Manchester</a></li>""")
+    // Nothing to remember where the two names already agree.
+    ukHtml should not include """data-alias="Cheshire""""
+
+    // West Midlands really groups three, so it keeps its heading.
+    ukHtml should include ("""<summary class="city-group-label">West Midlands</summary>""")
   }
 
   /** Germany picks a REGION — Köln, München — found under its Bundesland. */
@@ -120,8 +131,12 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     deHtml should include ("""<a href="/koeln/">Köln</a>""")
     // A Land is a heading, never a link.
     deHtml should not include """href="/bayern/""""
-    // …except Hamburg, where the Land and the region are the same place.
+    // …except a Land holding one region, which is pulled up: Hamburg shares its
+    // region's name, Saarland does not and keeps "Saarland" searchable.
     deHtml should include ("""<li class="city-direct"><a href="/hamburg/">Hamburg</a></li>""")
+    deHtml should include (
+      """<li class="city-direct" data-alias="Saarland"><a href="/saarbruecken/">Saarbrücken</a></li>""")
+    deHtml should not include """<summary class="city-group-label">Saarland</summary>"""
     // One level, not the UK's two.
     deHtml should not include """<summary class="city-group-label">Saarbrücken</summary>"""
   }

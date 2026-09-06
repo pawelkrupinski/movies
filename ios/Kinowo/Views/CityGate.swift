@@ -163,9 +163,10 @@ struct CityChoiceView: View {
 
     private var countryCode: String { prefs.selectedCountry.code }
 
-    /// A country that groups its cities (the US, by state) is picked in two
-    /// steps: 457 metros in one A-to-Z is not a list anybody reads. Everywhere
-    /// else this is empty and the view collapses to the single flat list.
+    /// A country that groups its cities — the US by state, Germany by
+    /// Bundesland, the UK by nation — is picked in two steps: 468 US places in
+    /// one A-to-Z is not a list anybody reads. In Poland and Spain this is empty
+    /// and the view collapses to the single flat list.
     private var regions: [String] { catalog.regions(inCountry: countryCode) }
     private var pickingRegion: Bool { !regions.isEmpty && region == nil }
 

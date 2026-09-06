@@ -14,7 +14,7 @@
 
    Poland and Spain are one flat A-to-Z (41 and 52 — a name is all a visitor
    needs). The US, Germany and the UK are GROUPED (`Country.cityGroups`), because
-   "Los Angeles" is found under "California" and 457 metros, 158 German regions
+   "Los Angeles" is found under "California" and 468 US places, 158 German regions
    or 79 UK counties in one alphabetical run is not a list anybody reads.
 
    The tree is not the same depth in each: the US nests one level (state over its
@@ -159,7 +159,7 @@
         .replace(/ź/g, 'z').replace(/ż/g, 'z');
     }
 
-    // Client-side filter of the place list (41 Polish cities, 457 US metros, 158
+    // Client-side filter of the place list (41 Polish cities, 468 US places, 158
     // German regions, 79 UK counties, …): typing narrows the visible rows by
     // folded substring match; an empty box shows everything.
     //
@@ -192,7 +192,7 @@
       };
 
       // Each linked row with the text it answers to: its own, plus every heading
-      // it sits under. Folded once here rather than per keystroke — 457 metros ×
+      // it sits under. Folded once here rather than per keystroke — 468 places ×
       // every character typed is work worth not doing.
       var rows = Array.prototype.slice.call(list.querySelectorAll('li'))
         .filter(function (li) {
@@ -200,9 +200,14 @@
         })
         .map(function (li) {
           var above = ancestors(li);
-          var text = li.textContent + ' ' + above.map(function (d) {
-            return d.querySelector(':scope > summary').textContent;
-          }).join(' ');
+          // The row's own name, the headings above it, and — for a row that WAS
+          // a heading until its single place was pulled up — the name it had
+          // then. Merseyside is not on screen any more; typing it must still
+          // find Liverpool.
+          var text = li.textContent + ' ' + (li.getAttribute('data-alias') || '') + ' ' +
+            above.map(function (d) {
+              return d.querySelector(':scope > summary').textContent;
+            }).join(' ');
           return { li: li, above: above, text: foldPl(text) };
         });
 

@@ -77,9 +77,10 @@ fun CityChoiceScreen(
         region = null
     }
 
-    // A country that groups its cities (the US, by state) is picked in two steps:
-    // 457 metros in one A-to-Z is not a list anybody reads. Everywhere else the
-    // regions are empty and this collapses to the single flat list it always was.
+    // A country that groups its cities — the US by state, Germany by Bundesland,
+    // the UK by nation — is picked in two steps: 468 US places in one A-to-Z is
+    // not a list anybody reads. In Poland and Spain the regions are empty and
+    // this collapses to the single flat list it always was.
     val regions = catalog.cities.regionsIn(country)
     val pickingRegion = regions.isNotEmpty() && region == null
 

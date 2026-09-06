@@ -326,10 +326,15 @@ fun List<City>.sortedForPicker(countryCode: String): List<City> {
     return inCountry(countryCode).sortedWith(compareBy(collator) { it.name })
 }
 
-/** The regions [countryCode]'s cities are grouped under (US states), in the
- *  catalog's own order — which is the order the web picker lists them in, so the
- *  two read alike. Empty for a country that does not group its cities, and that
- *  emptiness is what the picker reads as "show one flat list". */
+/** The regions [countryCode]'s cities are grouped under — US states, German
+ *  Bundesländer, UK nations — in the catalog's own order, which is the order the
+ *  web picker lists them in, so the two read alike. Empty for a country that does
+ *  not group its cities (Poland, Spain), and that emptiness is what the picker
+ *  reads as "show one flat list".
+ *
+ *  ONE level, even where the web has two: the UK page puts a county between the
+ *  nation and the place, and `/api/catalog` sends only the nation, which is the
+ *  level a single `region` string per city can carry. */
 fun List<City>.regionsIn(countryCode: String): List<String> =
     inCountry(countryCode).mapNotNull { it.region }.distinct()
 

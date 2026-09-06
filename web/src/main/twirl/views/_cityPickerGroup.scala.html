@@ -6,11 +6,16 @@
    (nation over county over its places), and a country may deepen without this
    template changing.
 
-   A group that stands exactly where its one place stands is that place's LINK,
-   not a heading you open to find it repeated — see `CityGroup.soleCity`. Most UK
-   counties are that shape, which is what keeps a two-level list readable: only
-   the counties that really group something (West Midlands over Birmingham,
-   Dudley and Sandwell) cost the reader a second tap.
+   A group holding ONE place is that place's link, pulled up a level — a heading
+   you open to find a single row underneath is a tap that buys nothing. See
+   `CityGroup.soleCity`. Most UK counties are that shape, which is what keeps a
+   two-level list readable: only the counties that really group something (West
+   Midlands over Birmingham, Dudley and Sandwell) cost the reader a second tap.
+
+   Where the group's own name differs from the place it collapsed onto —
+   Merseyside over Liverpool — that name rides along in `data-alias` so the
+   search still finds the row by it. Dropping the heading saves a tap; it is not
+   meant to make the county unfindable.
 
    A <details> rather than a button and a class: the open/closed state, the
    keyboard handling and the ARIA a disclosure owes are all native here, and the
@@ -18,7 +23,7 @@
 *@
 @group.soleCity match {
   case Some(c) => {
-<li class="city-direct"><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+<li class="city-direct"@group.collapsedAlias.map(a => Html(s""" data-alias="$a""""))><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
   }
   case None => {
 <li>

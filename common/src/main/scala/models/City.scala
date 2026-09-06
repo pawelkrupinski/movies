@@ -958,8 +958,8 @@ final class UsCity(slug: String, labels: CityLabels, lat: Double, lon: Double,
 /** A Spanish PROVINCE — the data-driven `City` subtype, and the unit both the
  *  source and a Spanish visitor use. SensaCine enumerates its own catalogue by
  *  province (`/cines/provincias-<id>/`), and 52 of them is a list a picker stays
- *  readable at, so unlike the US there is nothing to group them under: Spain's
- *  picker is flat, like Germany's.
+ *  readable at, so unlike every other country here there is nothing to group
+ *  them under: Spain's picker is the only flat one left besides Poland's.
  *
  *  The roster (595 cinemas over 52 provinces) is generated into
  *  `SpanishRosterData` and materialised by [[SpanishRoster]]; instances are built
@@ -988,31 +988,50 @@ final class SpanishProvince(slug: String, labels: CityLabels, lat: Double, lon: 
  *
  *  The exception is [[soleCity]] — see there.
  *
- *  A country whose picker is one flat list (Poland, Germany, Spain) leaves
- *  `Country.cityGroups` empty rather than declaring one group per city. */
+ *  A country whose picker is one flat list — Poland's 41 and Spain's 52, the
+ *  two short enough to read straight through — leaves `Country.cityGroups`
+ *  empty rather than declaring one group per city. */
 final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
                           groups: Seq[CityGroup] = Nil) {
 
-  /** The city this group IS, where the grouping level and the place are the same
-   *  thing — and `None` for a group that only arranges other places.
+  /** The one place this group holds, pulled up a level — and `None` for a group
+   *  that really arranges several.
    *
-   *  Seven US states and territories are too small to cut into metros (Delaware,
-   *  Vermont, DC, Guam, …), so the state's own venue list IS its page and
-   *  `UsRoster.places` emits it as a place under its own state slug. Most UK
-   *  counties are the same shape: a Flicks region already IS Cheshire, so the
-   *  county node over it stands exactly where it does. The picker would
-   *  otherwise hold a heading you open to reveal a single row repeating it;
-   *  such a group is offered as a plain link straight to that page instead.
+   *  A heading you open to find exactly one row underneath is a tap that buys
+   *  the reader nothing, whatever the two are called. Seven US states are too
+   *  small to cut into metros (Delaware, Vermont, DC, …) and most UK counties
+   *  ARE the Flicks region under them (Cheshire, Kent), so those collapse onto a
+   *  name they already share. The rest collapse onto a name they do not:
+   *  Merseyside shows as Liverpool, Greater Manchester as Manchester, Saarland
+   *  as Saarbrücken.
    *
-   *  Keyed on the SLUG, not on `cities.sizeIs == 1`. The slug is what "the group
-   *  IS the place" actually means: a group holding one city addressed at some
-   *  OTHER slug is still a grouping — Greater Manchester holds Manchester and
-   *  says something by doing so, and collapsing it into a link labelled
-   *  "Manchester" would lose the county the visitor was reading by. */
+   *  The group's own name is NOT lost when it differs — the picker keeps it on
+   *  the row as a search alias (`data-alias`), so "merseyside" still finds
+   *  Liverpool. Dropping the heading is meant to save a tap, not to make the
+   *  county unfindable, and the search is where that name was doing its work.
+   *
+   *  Nil `groups` is part of the test: a node with one city AND a subgroup under
+   *  it is still arranging two things. */
   def soleCity: Option[City] = (cities, groups) match {
-    case (Seq(only), Nil) if only.slug == slug => Some(only)
-    case _                                     => None
+    case (Seq(only), Nil) => Some(only)
+    case _                => None
   }
+
+  /** The name the picker actually SHOWS for this node: the place's, where the
+   *  group collapsed onto one, and the group's own otherwise.
+   *
+   *  What a list of these must be sorted by. Sorting on [[label]] would order
+   *  Merseyside and Greater Manchester under M and G while displaying Liverpool
+   *  and Manchester — an alphabetical list that visibly is not one, which is
+   *  precisely the failure the ordering exists to prevent. */
+  def displayLabel: String = soleCity.map(_.labels.nominative).getOrElse(label)
+
+  /** The group's own name, where it differs from the single place it collapsed
+   *  onto — what the picker keeps searchable after pulling that place up, and
+   *  `None` when there is nothing extra to remember (Cheshire under Cheshire) or
+   *  when the group did not collapse at all. */
+  def collapsedAlias: Option[String] =
+    soleCity.map(_.labels.nominative).filter(_ != label).map(_ => label)
 
   /** Every city under this group at any depth — its own, plus its subgroups'.
    *
@@ -1192,7 +1211,10 @@ object City {
                     CityListing.sorted(places.filter(activeUkCities), UkLocale))
         }
         .filter(_.cities.nonEmpty)
-      CityGroup(nation, nationSlug, Nil, CityListing.sortedLabels(kept, UkLocale)(_.label))
+      // By what each row SHOWS, not by the county it came from: a county that
+      // collapsed onto its one place displays that place's name, and sorting on
+      // the county would file Manchester under "Greater Manchester".
+      CityGroup(nation, nationSlug, Nil, CityListing.sortedLabels(kept, UkLocale)(_.displayLabel))
     }.filter(_.groups.nonEmpty)
   }
 
@@ -1219,9 +1241,12 @@ object City {
   private[models] val germanStates: Seq[CityGroup] = {
     val de = Locale.forLanguageTag("de-DE")
     val grouped = GermanRoster.bundeslandByRegion.groupMap(_._2)(_._1).toSeq
-    CityListing.sortedLabels(grouped, de)(_._1).map { case (land, regions) =>
+    val built = grouped.map { case (land, regions) =>
       CityGroup(land, Slugify.stable(land), CityListing.sorted(regions, de))
     }
+    // By the displayed name — a Land holding one region shows that region
+    // (Saarland shows Saarbrücken), and sorting on the Land would misplace it.
+    CityListing.sortedLabels(built, de)(_.displayLabel)
   }
 
 

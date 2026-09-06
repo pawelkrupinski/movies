@@ -1809,8 +1809,9 @@ final class SpanishCinema(displayName: String, pillName: String) extends Cinema(
 /** One addressable Spanish place: a PROVINCE, which is both the unit SensaCine
  *  itself enumerates (`/cines/provincias-<id>/`) and the one a Spanish visitor
  *  names — "los cines de Alicante" is a thing people say, and there are 52 of
- *  them, a list a picker stays readable at. So unlike the US there is no group
- *  above it and no metro below it: Spain's picker is flat, like Germany's.
+ *  them, a list a picker stays readable at. So unlike every other country here
+ *  there is no group above it and no metro below it: Spain's picker is the only
+ *  flat one left besides Poland's.
  *
  *  Deliberately plain data rather than a [[City]], for the reason [[UsPlace]]
  *  is: the slug a province ends up addressable under depends on what every

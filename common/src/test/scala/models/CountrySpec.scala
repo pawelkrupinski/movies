@@ -171,11 +171,16 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // a county: three separately-scraped boroughs under one heading.
     val westMidlands = nation("England").groups.find(_.label == "West Midlands").getOrElse(fail("no West Midlands"))
     westMidlands.cities.map(_.slug) shouldBe Seq("birmingham", "dudley", "sandwell")
-    // Counties are alphabetical under British collation, and nations are not —
-    // England leads by size.
+    // Counties are alphabetical under British collation BY WHAT THEY SHOW, and
+    // nations are not — England leads by size. Sorting on the county name would
+    // file Manchester under "Greater Manchester" and Liverpool under
+    // "Merseyside", giving a list that reads out of order.
     val collator = java.text.Collator.getInstance(Locale.forLanguageTag("en-GB"))
-    val counties = nation("England").groups.map(_.label)
-    counties shouldBe counties.sortWith((a, b) => collator.compare(a, b) < 0)
+    val shown    = nation("England").groups.map(_.displayLabel)
+    shown shouldBe shown.sortWith((a, b) => collator.compare(a, b) < 0)
+    shown should contain allOf ("Liverpool", "Manchester", "Cheshire", "West Midlands")
+    shown.indexOf("Liverpool")  should be < shown.indexOf("Manchester")
+    shown.indexOf("Manchester") should be < shown.indexOf("Norwich")
 
     // Neither level is a page: `/scotland/` and `/west-midlands/` are nothing,
     // the way `/california/` is.
@@ -198,7 +203,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
     Country.Germany.cityGroups.flatMap(_.allCities) should contain theSameElementsAs Country.Germany.cities
     Country.Germany.cityGroups.flatMap(_.groups) shouldBe empty
-    Country.Germany.cityGroups.map(_.label) shouldBe Country.Germany.cityGroups.map(_.label).sorted
+    val deCollator = java.text.Collator.getInstance(Locale.forLanguageTag("de-DE"))
+    val deShown    = Country.Germany.cityGroups.map(_.displayLabel)
+    deShown shouldBe deShown.sortWith((a, b) => deCollator.compare(a, b) < 0)
 
     def land(label: String): Seq[String] =
       Country.Germany.cityGroups.find(_.label == label).get.cities.map(_.slug)
@@ -244,30 +251,36 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
     val england = Country.UnitedKingdom.cityGroups.find(_.label == "England").get
     def county(label: String): CityGroup = england.groups.find(_.label == label).getOrElse(fail(s"no $label"))
-    // Most UK counties ARE the Flicks region, so they collapse — which is what
-    // keeps a two-level list readable.
-    county("Cheshire").soleCity.map(_.slug) shouldBe Some("cheshire")
-    england.groups.count(_.soleCity.isDefined) should be > 30
-    // The ones that say something keep their heading: Greater Manchester holds
-    // Manchester, and collapsing it into a link labelled "Manchester" would lose
-    // the county the visitor was reading by.
-    county("Greater Manchester").soleCity shouldBe None
-    county("Greater Manchester").cities.map(_.slug) shouldBe Seq("manchester")
+    // ANY county holding one place collapses onto it, whatever the two are
+    // called — a heading you open to find a single row is a tap that buys
+    // nothing. That is what keeps a two-level list readable.
+    county("Cheshire").soleCity.map(_.slug)           shouldBe Some("cheshire")
+    county("Greater Manchester").soleCity.map(_.slug) shouldBe Some("manchester")
+    county("Merseyside").soleCity.map(_.slug)         shouldBe Some("liverpool")
+    county("Norfolk").soleCity.map(_.slug)            shouldBe Some("norwich")
+    // Only the ones really arranging several keep a heading.
     county("West Midlands").soleCity shouldBe None
+    england.groups.count(_.soleCity.isEmpty) shouldBe 1
+
+    // A collapsed county's own name is kept as a search alias where it differs,
+    // so dropping the heading saves a tap without making the county unfindable.
+    county("Merseyside").collapsedAlias         shouldBe Some("Merseyside")
+    county("Greater Manchester").collapsedAlias shouldBe Some("Greater Manchester")
+    // …and there is nothing to remember when the two names already agree.
+    county("Cheshire").collapsedAlias    shouldBe None
+    county("West Midlands").collapsedAlias shouldBe None
 
     // A nation is never a place.
     Country.UnitedKingdom.cityGroups.flatMap(_.soleCity) shouldBe empty
-    // A Bundesland can be: Hamburg the Land is Hamburg the region, so the heading
-    // and the row are the same place and the picker links straight through. So is
-    // Berlin — but only once Dorsten stopped being mis-filed under it, which is
-    // what left the Land holding its own city and nothing else.
-    group(Country.Germany, "hamburg").soleCity.map(_.slug) shouldBe Some("hamburg")
-    group(Country.Germany, "berlin").soleCity.map(_.slug)  shouldBe Some("berlin")
-    Country.Germany.cityGroups.count(_.soleCity.isDefined) shouldBe 2
-    // Saarland is not — its one region is Saarbrücken, a different name, and a
-    // link labelled that would lose the Land the visitor was reading by.
-    group(Country.Germany, "saarland").soleCity shouldBe None
-    group(Country.Germany, "saarland").cities.map(_.slug) shouldBe Seq("saarbruecken")
+    // The same rule reaches Germany: a Land holding one region collapses onto it.
+    // Hamburg and Berlin share their region's name; Saarland does not, and shows
+    // as Saarbrücken while keeping "Saarland" searchable.
+    group(Country.Germany, "hamburg").soleCity.map(_.slug)  shouldBe Some("hamburg")
+    group(Country.Germany, "berlin").soleCity.map(_.slug)   shouldBe Some("berlin")
+    group(Country.Germany, "saarland").soleCity.map(_.slug) shouldBe Some("saarbruecken")
+    group(Country.Germany, "saarland").collapsedAlias       shouldBe Some("Saarland")
+    group(Country.Germany, "hamburg").collapsedAlias        shouldBe None
+    Country.Germany.cityGroups.count(_.soleCity.isDefined)  shouldBe 3
     group(Country.Germany, "bayern").soleCity shouldBe None
   }
 

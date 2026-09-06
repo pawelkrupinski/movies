@@ -80,12 +80,12 @@ object Catalog {
       .mkString("[", ",", "]")
     val cities = Country.switchable
       .flatMap { c =>
-        // A country whose picker GROUPS its cities (the US by state, the UK by
-        // nation) names each city's group, so the apps can offer the same two-step
-        // pick the web does: 457 metros in one A-to-Z is not a list anybody reads,
-        // "California" then "Los Angeles" is. Absent in the flat countries, where
-        // a name is all a visitor needs — so the field costs bytes only where it
-        // earns them.
+        // A country whose picker GROUPS its cities (the US by state, Germany by
+        // Bundesland, the UK by nation) names each city's group, so the apps can
+        // offer the same two-step pick the web does: 468 US places in one A-to-Z
+        // is not a list anybody reads, "California" then "Los Angeles" is. Absent
+        // in the flat countries — Poland and Spain — where a name is all a visitor
+        // needs, so the field costs bytes only where it earns them.
         //
         // The TOP level, through `allCities`, wherever the web nests deeper than
         // one (the UK puts a county between its nation and its places). `region`

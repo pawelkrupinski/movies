@@ -135,9 +135,12 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
 
     const england = groupNamed(page, 'England');
     await england.locator('> summary').click();
-    // A county that IS its one place is a link, not a heading to open.
+    // A county holding ONE place is that place's link, pulled up a level —
+    // whether the two names agree (Cheshire) or not (Merseyside → Liverpool).
     await expect(page.locator('#city-list a[href="/cheshire/"]')).toBeVisible();
-    // A county that groups something keeps its heading — and stays shut.
+    await expect(page.locator('#city-list a[href="/liverpool/"]')).toBeVisible();
+    await expect(groupNamed(page, 'Merseyside')).toHaveCount(0);
+    // A county that really groups several keeps its heading — and stays shut.
     const westMidlands = groupNamed(page, 'West Midlands');
     await expect(westMidlands.locator('> summary')).toBeVisible();
     await expect(page.locator('a[href="/birmingham/"]')).toBeHidden();
@@ -162,6 +165,12 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
     await page.locator('#city-search').fill('west midlands');
     await expect(page.locator('.city-list a:visible')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
 
+    // …and so is a county that is no longer a heading at all, because its one
+    // place was pulled up. Dropping the heading saved a tap; it must not have
+    // made the county unfindable.
+    await page.locator('#city-search').fill('merseyside');
+    await expect(page.locator('.city-list a:visible')).toHaveText(['Liverpool']);
+
     await page.locator('#city-search').fill('');
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
     await expect(page.locator('#city-list > li:visible')).toHaveCount(5);
@@ -176,10 +185,16 @@ test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
     await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.city-list a')).toHaveCount(158);
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
-    // Two of the 16 are the Land AND its one region, so they link straight
-    // through: Berlin and Hamburg. The other 14 are headings.
-    await expect(page.locator('#city-list > li.city-direct > a')).toHaveText(['Berlin', 'Hamburg']);
-    await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveCount(14);
+    // Three of the 16 hold one region each and are pulled up: Berlin and Hamburg
+    // share their region's name, Saarland collapses onto Saarbrücken. The other
+    // 13 are headings.
+    await expect(page.locator('#city-list > li.city-direct > a')).toHaveText(
+      ['Berlin', 'Hamburg', 'Saarbrücken']);
+    await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveCount(13);
+    // Saarland is gone as a heading but still findable.
+    await page.locator('#city-search').fill('saarland');
+    await expect(page.locator('.city-list a:visible')).toHaveText(['Saarbrücken']);
+    await page.locator('#city-search').fill('');
 
     const nrw = groupNamed(page, 'Nordrhein-Westfalen');
     await nrw.locator('> summary').click();

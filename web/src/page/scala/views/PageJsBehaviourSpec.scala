@@ -84,7 +84,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The GROUPED landing — the same page for a country whose places are found
       // through a heading (`Country.cityGroups`). Poland's is one flat list, so
       // nothing above reaches the disclosure the US and the UK render instead:
-      // 55 collapsed states over 468 metros, and the seven that are a state and a
+      // 55 collapsed states over 468 places, and the seven that are a state and a
       // place at once. Rendered under the English bundle that host serves.
       val groupedLandingHtml: String =
         views.html.landing(models.Country.UnitedStates)(using testsupport.TestMessages.forLang("en")).body
@@ -461,7 +461,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── grouped landing: the state/nation disclosures ────────────────────────
   //
-  // A country with 468 metros or 79 counties does not get one A-to-Z. Its places
+  // A country with 468 US places or 79 UK counties does not get one A-to-Z. They
   // sit behind a heading you open — a native `<details>`, so it works before the
   // script does — and the search has to reach through those headings, because a
   // match nobody can see is a match that did not happen.
@@ -507,7 +507,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val direct   = renderedCount(page, "#city-list > li.city-direct > a")
       headings + direct shouldBe models.Country.UnitedStates.cityGroups.size
       headings should be > 40
-      // Not one of the 468 metros is on screen yet.
+      // Not one of the 468 places is on screen yet.
       renderedCount(page, AnyGroupedCity) shouldBe 0
       page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 0
     }
@@ -583,11 +583,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """["England","Scotland","Wales","Northern Ireland","Crown Dependencies"]"""
 
       clickGroup(page, "England")
-      // The county level appears — and most of it is places, because a county
-      // that IS its one place collapsed into a link.
+      // The county level appears — and almost all of it is places, because every
+      // county holding ONE place was pulled up into a link.
       renderedTexts(page, "#city-list summary") should include ("West Midlands")
       renderedTexts(page, "#city-list a") should include ("Cheshire")
-      // …but nothing INSIDE a county has opened with it.
+      // Including the ones whose county name differs from the place's.
+      renderedTexts(page, "#city-list a") should include ("Liverpool")
+      renderedTexts(page, "#city-list a") should include ("Manchester")
+      renderedTexts(page, "#city-list summary") should not include "Merseyside"
+      // …but nothing INSIDE a real county has opened with it.
       renderedTexts(page, "#city-list a") should not include "Birmingham"
 
       clickGroup(page, "West Midlands")
@@ -605,6 +609,20 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       renderedTexts(page, "#city-list a") shouldBe """["Birmingham"]"""
       renderedTexts(page, "#city-list summary") shouldBe """["England","West Midlands"]"""
       page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 2
+    }
+  }
+
+  it should "still find a county by name after its one place was pulled up" in {
+    onNestedLanding { page =>
+      // "Merseyside" is no longer a heading anywhere on the page — it collapsed
+      // onto Liverpool. It has to stay a term the box takes, or pulling the row
+      // up would have made the county unfindable.
+      typeCitySearch(page, "merseyside")
+      renderedTexts(page, "#city-list a") shouldBe """["Liverpool"]"""
+      renderedTexts(page, "#city-list summary") shouldBe """["England"]"""
+
+      typeCitySearch(page, "greater manchester")
+      renderedTexts(page, "#city-list a") shouldBe """["Manchester"]"""
     }
   }
 

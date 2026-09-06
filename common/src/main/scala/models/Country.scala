@@ -14,8 +14,9 @@ import tools.Env
  *   - each country owns its own set of [[City]] objects ([[cities]]),
  *   - each maps to its OWN Mongo database ([[mongoDb]]) on the shared cluster,
  *   - each carries its UI [[language]] (for collation + i18n),
- *   - each says how its city list is GROUPED in a picker ([[cityGroups]] — the
- *     US's metros are found through their state), and
+ *   - each says how its city list is GROUPED in a picker ([[cityGroups]] — a US
+ *     metro is found through its state, a German region through its Bundesland,
+ *     a UK place through its county and its nation), and
  *   - each decides whether the Filmweb rating/fallback path applies
  *     ([[filmwebEnabled]] — a new country won't use Filmweb at all).
  *
@@ -72,11 +73,16 @@ sealed abstract class Country(
   def servesApex(host: String): Boolean = pathPrefix.isEmpty && Country.isApexHost(host)
 
   /** How the picker at `/` ARRANGES [[cities]]: empty for a flat list (Poland's
-   *  41, Germany's 158, Spain's 52 — a name is all a visitor needs), one group
-   *  per US state or per UK nation, because "Los Angeles" is found under
-   *  "California" and neither 457 metros nor 79 counties is a list anybody reads
-   *  straight through. Where it is non-empty the groups PARTITION [[cities]] —
-   *  `CountrySpec` holds that. */
+   *  41 and Spain's 52 — short enough that a name is all a visitor needs), and
+   *  otherwise one group per US state, per German Bundesland, or per UK nation
+   *  over its counties. "Los Angeles" is found under "California", and none of
+   *  468 US places, 158 German regions or 79 UK counties is a list anybody reads
+   *  straight through.
+   *
+   *  Depth is the country's own: the US and Germany nest one level, the UK two.
+   *  Where it is non-empty the groups PARTITION [[cities]] — through
+   *  [[CityGroup.allCities]], since a nesting country's top level holds no
+   *  cities directly. `CountrySpec` holds that. */
   def cityGroups: Seq[CityGroup] = Nil
 
   /** The two [[Showtime.format]] tokens THIS country's sources mark a subtitled
