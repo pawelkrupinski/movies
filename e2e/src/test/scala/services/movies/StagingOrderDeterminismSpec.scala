@@ -63,7 +63,16 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     w.converge(Some(rnd))
     w.readModelProjector.reconcile()
     w.webReadModel.reload()
-    val record = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+    // Compare the FILM's settled state, not the search bookkeeping: a no-match
+    // `tmdbAttempt` records what the search that found nothing was run on, and which
+    // search that was depends on arrival order by design — the staging group folds
+    // the moment its first cinema concludes, and the second cinema lands as a slot on
+    // the concluded row. Both orders reach the same film state (a recorded miss, the
+    // same slots); they differ only in whose inputs the miss names, which the next
+    // look re-opens either way. So the miss is kept and its inputs are not compared.
+    val record = w.movieRepository.findAll()
+      .map(r => r.copy(record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_ => services.resolution.TmdbAttempt.Legacy))))
+      .sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     val service = new MovieControllerService(w.webReadModel)
     val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now))
     (record, rows)
