@@ -66,7 +66,15 @@ class EncodedResponseCache(maxBytes: Long = EncodedResponseCache.DefaultMaxBytes
   /** `encoding`-compressed bytes for `key` at `version`. On a hit with a matching
    *  version the cached bytes are returned and `renderBody` is never evaluated;
    *  otherwise `renderBody` runs, its output is compressed, stored under `version`,
-   *  and returned. */
+   *  and returned.
+   *
+   *  NOTE THE MISS IS PER (path, encoding), SO A PAGE FETCHED BOTH WAYS RENDERS
+   *  TWICE. That is the deliberate half of the trade: holding one rendered string
+   *  and compressing it two ways would save the second render, at the cost of
+   *  keeping the uncompressed body — several megabytes of it, in the same heap as
+   *  the read model, for a second encoding almost nobody asks for. Virtually every
+   *  client takes brotli, so the gzip render happens for the rare client that
+   *  cannot, and the brotli one is what stays hot. */
   def encodedBody(key: String, version: Instant, encoding: ContentEncoding)
                  (renderBody: => String): ByteString = {
     val slot = s"${encoding.token}\u001f$key"
@@ -121,7 +129,16 @@ object EncodedResponseCache {
    *  several times over (so those deployments never evict), while the US — 55
    *  states, the largest 1.06 MB gzipped apiece — keeps its warm ones and lets the
    *  long tail a crawler touches fall out, instead of holding all of them against
-   *  the same heap the read model lives in. */
+   *  the same heap the read model lives in.
+   *
+   *  A PAGE CAN NOW TAKE TWO ENTRIES, one per encoding, so that arithmetic is no
+   *  longer strictly one blob per path. It holds anyway, and by more than it used
+   *  to: brotli is about two thirds the size of the gzip those figures were
+   *  measured in, and essentially every client that asks takes brotli, so the gzip
+   *  slot is minted only for the rare client that cannot. The worst case is a page
+   *  fetched both ways, which is smaller than the two gzip copies this budget was
+   *  already sized to survive — and the LRU is what makes the worst case an
+   *  eviction rather than a leak. */
   val DefaultMaxBytes: Long = 64L * 1024 * 1024
 
   /** Brotli quality. NOT the library default of 11.
