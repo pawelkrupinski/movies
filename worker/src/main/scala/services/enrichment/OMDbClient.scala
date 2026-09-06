@@ -1,6 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
+import services.movies.SamePerson
 import tools.{Env, HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -137,13 +138,11 @@ object OMDbClient {
   private[enrichment] def parseDirectors(field: Option[String]): Set[String] =
     field.toSet.flatMap((s: String) => s.split(",").map(_.trim).filter(d => d.nonEmpty && d != "N/A"))
 
-  private[enrichment] def directorsOverlap(a: Set[String], b: Set[String]): Boolean = {
-    if (a.isEmpty || b.isEmpty) false
-    else {
-      val na = a.map(norm); val nb = b.map(norm)
-      na.exists(x => nb.exists(y => x == y || (x.length > 4 && y.contains(x)) || (y.length > 4 && x.contains(y))))
-    }
-  }
+  /** Some director of ours naming some of OMDb's, per [[SamePerson]]. False when
+   *  either side is empty — and the callers only call that a CONTRADICTION when
+   *  both sides named somebody. */
+  private[enrichment] def directorsOverlap(a: Set[String], b: Set[String]): Boolean =
+    a.exists(x => b.exists(SamePerson(x, _)))
 
   private def norm(s: String): String =
     TextNormalization.deburr(s).toLowerCase.filter(_.isLetterOrDigit)

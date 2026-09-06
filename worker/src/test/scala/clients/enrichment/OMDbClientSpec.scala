@@ -51,6 +51,15 @@ class OMDbClientSpec extends AnyFlatSpec with Matchers {
     omdb.findImdbId(Seq("Mawka"), Some(2026), Set("Katya Tsarik")) shouldBe None
   }
 
+  it should "NOT read an initial or a surname-first credit as a contradicting director" in {
+    // OMDb credits "Alejandro G. Iñárritu" where TMDB writes the name in full; a
+    // substring test called that a different director and refused an exact title.
+    val omdb = client(_ => """{"Title":"Birdman","Year":"2014","Director":"Alejandro G. Iñárritu","imdbID":"tt2562232","Response":"True"}""")
+    omdb.findImdbId(Seq("Birdman"), Some(2014), Set("Alejandro González Iñárritu")) shouldBe Some("tt2562232")
+    val enyedi = client(_ => """{"Title":"On Body and Soul","Year":"2017","Director":"Ildikó Enyedi","imdbID":"tt5607714","Response":"True"}""")
+    enyedi.findImdbId(Seq("On Body and Soul"), Some(2017), Set("Enyedi Ildikó")) shouldBe Some("tt5607714")
+  }
+
   it should "REJECT a candidate whose director contradicts ours" in {
     val omdb = client(_ => """{"Title":"Aftersun","Year":"2022","Director":"Someone Else","imdbID":"tt19770238","Response":"True"}""")
     omdb.findImdbId(Seq("Aftersun"), Some(2022), Set("Charlotte Wells")) shouldBe None
