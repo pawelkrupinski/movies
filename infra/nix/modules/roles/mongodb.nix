@@ -675,11 +675,19 @@ in
       # `mongod.log` reads as ~0 bytes and the disk fills behind it. That is the exact shape this
       # whole stanza exists to prevent, and `|| true` was hiding it.
       #
-      # The `is-active` guard keeps the legitimately-quiet case quiet: mongod stopped for
-      # maintenance is not a rotation failure, there is simply nothing to signal, and the next
-      # start opens the fresh file (`logAppend` appends to whatever is at the path).
+      # THE GUARD ASKS `pgrep`, NOT `systemctl is-active`, and the difference is the whole point.
+      # The first attempt at this guard asked the UNIT, which answers a different question: mongod
+      # running while the unit is not `active` -- during restart backoff, or started by hand -- took
+      # the `exit 0` branch, so the file was renamed, the signal skipped, and the rotation broke
+      # silently. That is the same hole `|| true` left, reopened by the fix for it. Asking whether
+      # the PROCESS exists is asking the thing the next line acts on, and it drops a `pkgs.systemd`
+      # reference this tree uses nowhere else.
+      #
+      # A process that legitimately is not there stays quiet -- mongod stopped for maintenance is
+      # not a rotation failure, there is nothing to signal, and the next start appends to the fresh
+      # file (`logAppend`). A process that IS there and does not take the signal fails the unit.
       postrotate = ''
-        ${pkgs.systemd}/bin/systemctl is-active --quiet mongodb || exit 0
+        ${pkgs.procps}/bin/pgrep --exact mongod > /dev/null || exit 0
         ${pkgs.procps}/bin/pkill -SIGUSR1 --exact mongod
       '';
     };
