@@ -162,6 +162,27 @@ object SlotsRepository {
    *  is a constant rather than an inline literal. */
   val Collection = "movie_slots"
 
+  /**
+   * Write one film's slots the way `MovieRepository.upsert` must, and report whether they are now
+   * known to be on disk. THE RULE LIVES HERE for [[ScreeningsRepository.applyFilm]]'s reason: both
+   * the Mongo repository and the in-memory one call this rather than restating it, because the
+   * in-memory one had already drifted into the unchecked read this exists to avoid.
+   *
+   * THE RETURN VALUE IS LOAD-BEARING and is why this is not fire-and-forget: `upsert` drops the
+   * film's embedded slot map from `movies` only once the slots have landed, so answering `true`
+   * for a write that failed loses the film's cinemas from BOTH places. A slots failure is
+   * swallowed so it cannot break the movies write, which is exactly why the write has to report.
+   *
+   * The read is `findForFilmChecked`, never the plain one: a FAILED read returns an empty map,
+   * and an empty map equals an empty payload — so the unchecked form answers "already landed" for
+   * a film it could not read, on the one path where that answer deletes data.
+   */
+  def applyFilm(slots: SlotsRepository, filmId: String, payload: Map[String, SourceData]): Boolean = {
+    val (current, readOk) = slots.findForFilmChecked(filmId)
+    if (readOk && current == payload) true
+    else slots.replaceFilm(filmId, payload, if (readOk) Some(current) else None)
+  }
+
   /** A record's slots in wire form, ready to store. Showtimes are dropped — they are
    *  authoritative in `screenings`, and storing them twice would let the two disagree. */
   def slotsOf(data: Map[Source, SourceData]): Map[String, SourceData] =

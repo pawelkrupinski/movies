@@ -841,9 +841,7 @@ class MongoMovieRepository(
       // what we read. Reading here rather than inside `replaceFilm` widens that window by
       // the length of this method, and the price is one delayed row: the film's next scrape
       // reads again and writes it. Not worth a transaction on the hottest write path.
-      val (current, readOk) = s.findForFilmChecked(id)
-      if (readOk && current == slotPayload) true
-      else s.replaceFilm(id, slotPayload, if (readOk) Some(current) else None)
+      SlotsRepository.applyFilm(s, id, slotPayload)
     }
     // Under the read-split `movies` carries no showtimes (they go to `screenings`), and
     // once the slots have landed it carries no sourceData either — which is what shrinks
@@ -904,10 +902,10 @@ class MongoMovieRepository(
         // Equality is safe against the delete vector: if the stored rows equal what we
         // would write, there is no slot for `replaceFilm` to prune. A differing read —
         // including an empty one — writes, which is the safe direction.
-        if (!stitch.complete) showtimes.foreach { case (slotKey, st) => s.upsertSlot(id, slotKey, st) }
-        // `stitch.stored` is this film's rows as they are NOW, already read above — so hand
-        // it on rather than making `replaceFilm` read them a second time.
-        else if (showtimes != stitch.stored) s.replaceFilm(id, showtimes, Some(stitch.stored))
+        // `stitch.stored` is this film's rows as they are NOW, already read above, and is handed
+        // on rather than making `replaceFilm` read them a second time. The three-way choice lives
+        // in `ScreeningsRepository.applyFilm` so the in-memory repository makes the same one.
+        ScreeningsRepository.applyFilm(s, id, showtimes, stitch)
       }
       ()
     }.recover {

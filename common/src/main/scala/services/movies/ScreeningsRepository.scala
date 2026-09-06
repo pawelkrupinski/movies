@@ -202,6 +202,26 @@ object ScreeningsRepository {
    */
   case class ReStitched(data: Map[Source, SourceData], stored: Map[String, Seq[Showtime]], complete: Boolean)
 
+  /**
+   * Write one film's showtimes the way `MovieRepository.upsert` must, given the re-stitch that
+   * read them. THE RULE LIVES HERE so the Mongo repository and the in-memory one cannot drift:
+   * both call this, neither restates it. It drifted once — the fake wrote an unconditional
+   * `replaceFilm` while production had grown two guards — which is the failure mode that lets a
+   * spec pass against rules production does not follow.
+   *
+   * Three outcomes, and the middle one is the whole point of the split:
+   *  - the re-stitch's READ FAILED: patch each slot individually. `replaceFilm` prunes every row
+   *    the payload does not name, and a failed read under-reports the film, so a full replace here
+   *    deletes the screenings it could not see.
+   *  - the stored rows already equal the payload: write nothing. This is the outer of the two
+   *    skip guards (`changedSlots` is the inner one) and it saves `replaceFilm` its own read.
+   *  - otherwise replace, handing on the rows already read rather than making it read again.
+   */
+  def applyFilm(screenings: ScreeningsRepository, filmId: String,
+                showtimes: Map[String, Seq[Showtime]], stitch: ReStitched): Unit =
+    if (!stitch.complete) showtimes.foreach { case (slotKey, st) => screenings.upsertSlot(filmId, slotKey, st) }
+    else if (showtimes != stitch.stored) screenings.replaceFilm(filmId, showtimes, Some(stitch.stored))
+
   /** [[reStitch]] plus whether the screenings read that fed it SAW the film. A
    *  `complete = false` means the stripped slots could not be refilled, so the result
    *  under-reports the film's showtimes and MUST NOT be handed to a full `replaceFilm` —
@@ -436,7 +456,11 @@ class MongoScreeningsRepository(
       // therefore skipped is still a row this call keeps.
       val (current, readComplete) = stored.map(_ -> true).getOrElse(findForFilmChecked(filmId))
       val changed = ScreeningsRepository.changedSlots(current, readComplete, slots)
-      metrics.recordWrite(ScreeningsMetrics.Outcome.Written,   changed.size)
+      // The SKIP is counted here and the WRITE is counted after the bulkWrite returns, which is
+      // not fussiness: this whole `Try` swallows its failure into a `logger.warn`, so counting
+      // `written` up front meant a 30-second bulkWrite timeout or a stepdown incremented it for
+      // rows that never landed. The documented canary for a broken guard is "`written` climbing
+      // under a flat scrape rate" -- exactly the shape a Mongo incident would have forged.
       metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, slots.size - changed.size)
       val upserts = changed.toSeq.map { case (k, st) =>
         val dto = StoredScreeningsDto(idOf(filmId, k), filmId, k, st, now)
@@ -444,6 +468,7 @@ class MongoScreeningsRepository(
       }
       val dropStale = DeleteManyModel[StoredScreeningsDto](ScreeningsRepository.staleSlotsFilter(filmId, slots.keySet))
       val result    = Await.result(c.bulkWrite(upserts :+ dropStale, new BulkWriteOptions().ordered(true)).toFuture(), 30.seconds)
+      metrics.recordWrite(ScreeningsMetrics.Outcome.Written, changed.size)
       if (result.getDeletedCount > 0)
         RemovalAudit.screeningsCleared("screenings.replaceFilm", filmId, result.getDeletedCount.toInt,
           whole = slots.isEmpty, reason = "stale-slot-prune")

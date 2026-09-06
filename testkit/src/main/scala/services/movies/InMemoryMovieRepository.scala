@@ -137,21 +137,29 @@ class InMemoryMovieRepository(
     // stripped for cache residency, and `showtimesOf` would then drop showtimes that
     // `replaceFilm` proceeds to delete), then store the row WITHOUT showtimes and file
     // them under the film id.
-    val restitched = screenings.fold(e.data)(ScreeningsRepository.reStitch(_, id, e.data))
+    //
+    // EVERY DECISION BELOW IS THE SHARED ONE, not a restatement of it. This method used to
+    // re-implement the two write rules and had fallen behind production on both: it read slots
+    // with the UNCHECKED `findForFilm`, so a failed read returning empty equalled an empty payload
+    // and reported "landed" — dropping the film's embedded cinemas with nothing on disk to replace
+    // them — and it wrote screenings with an unconditional `replaceFilm`, which deletes the rows an
+    // incomplete re-stitch could not see. A spec written against this fake would have asserted the
+    // opposite of what production does, which is the whole reason the rules moved into
+    // `SlotsRepository.applyFilm` / `ScreeningsRepository.applyFilm`.
+    val stitch = screenings.fold(ScreeningsRepository.ReStitched(e.data, Map.empty, complete = true))(
+      ScreeningsRepository.reStitchChecked(_, id, e.data))
+    val restitched = stitch.data
     // Slots go FIRST, and the embedded map is dropped only once they have actually landed —
     // dropping it on a failed slot write is the one way this migration loses a film's
-    // cinemas outright. An already-matching row counts as landed (see the same skip in
-    // `MongoMovieRepository.upsert`, which exists so a showtime-only change doesn't churn
-    // every slot of a film showing at 471 venues).
+    // cinemas outright.
     val slotPayload = SlotsRepository.slotsOf(restitched)
-    val slotsLanded = slots.exists(sl =>
-      if (sl.findForFilm(id) == slotPayload) true else sl.replaceFilm(id, slotPayload))
+    val slotsLanded = slots.exists(SlotsRepository.applyFilm(_, id, slotPayload))
     val dataForMovies =
       if (slotsLanded) Map.empty[Source, SourceData]
       else if (screenings.isEmpty) restitched
       else ScreeningsRepository.stripShowtimes(restitched)
     store.put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies)))
-    screenings.foreach(_.replaceFilm(id, ScreeningsRepository.showtimesOf(restitched)))
+    screenings.foreach(ScreeningsRepository.applyFilm(_, id, ScreeningsRepository.showtimesOf(restitched), stitch))
     upserts.append((t, y, e))
     notifyWatcher(t, y, e)
   }
