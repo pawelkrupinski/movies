@@ -285,7 +285,7 @@ jobs:
             # invalidates coursier while a source change invalidates sbt-target — and
             # then the runner spends the entire window fetching the sbt launcher and
             # compiling, reaching only "set current project to movies" by the time it is
-            # killed. It reports as `FixtureServerMain never wrote a port file`, which
+            # killed. It reported as `FixtureServerMain never wrote a port file`, which
             # points at the server rather than at the build that never finished making
             # it. Split, a slow build is just a slow build, a compile error says so, and
             # the ceiling below measures the one thing it names. Backgrounding the
@@ -308,31 +308,21 @@ jobs:
                   fi
                   exit "$(cat /tmp/compile.status)"
 
+            # Through `.github/scripts/fixture-server.sh`, which relaunches a server
+            # that exits before writing its port (a boot-jar fetch timeout took a
+            # page-test shard down this way on 2026-09-06) — see its header.
             - name: Boot FixtureServerMain
-              run: |
-                  set -euo pipefail
-                  PORT_FILE=$(mktemp)
-                  echo "PORT_FILE=$PORT_FILE" >> "$GITHUB_ENV"
-
-                  nohup sbt "web/PageTest/runMain tools.FixtureServerMain $PORT_FILE" > fixture-server.log 2>&1 &
-                  echo "SERVER_PID=$!" >> "$GITHUB_ENV"
-
+              env:
                   # 300s ceiling over ~110s of CPU-bound bootStartup (the whole
                   # ~1000-film fixture corpus through scrape→enrich→fold against
                   # in-memory fixtures — processing cost, not retries) plus sbt's own
                   # startup. The compile is no longer inside this window.
-                  for _ in $(seq 1 150); do
-                      if [ -s "$PORT_FILE" ]; then break; fi
-                      sleep 2
-                  done
-                  if [ ! -s "$PORT_FILE" ]; then
-                      echo "::error::FixtureServerMain never wrote a port file"
-                      tail -100 fixture-server.log
-                      exit 1
-                  fi
-                  PORT=$(cat "$PORT_FILE")
-                  echo "KINOWO_LOCAL_URL=http://127.0.0.1:$PORT" >> "$GITHUB_ENV"
-                  echo "fixture server listening on http://127.0.0.1:$PORT"
+                  FIXTURE_BOOT_CEILING_SECONDS: 300
+              run: |
+                  set -euo pipefail
+                  .github/scripts/fixture-server.sh launch /tmp/fixture-server sbt "web/PageTest/runMain tools.FixtureServerMain /tmp/fixture-server/port"
+                  .github/scripts/fixture-server.sh await /tmp/fixture-server
+                  echo "KINOWO_LOCAL_URL=http://127.0.0.1:$(cat /tmp/fixture-server/port)" >> "$GITHUB_ENV"
 
             # Both suites run against the one server; `set +e` + a combined exit
             # status so an iOS failure still lets the Android suite run (and vice
@@ -370,17 +360,14 @@ jobs:
 
             - name: Stop FixtureServerMain
               if: always()
-              run: |
-                  if [ -n "${SERVER_PID:-}" ]; then
-                      kill "$SERVER_PID" 2>/dev/null || true
-                  fi
+              run: .github/scripts/fixture-server.sh stop /tmp/fixture-server
 
             - name: Upload fixture-server log on failure
               if: failure()
               uses: actions/upload-artifact@v6
               with:
                   name: fixture-server-log-mobile
-                  path: fixture-server.log
+                  path: /tmp/fixture-server/log
                   if-no-files-found: ignore
 
 

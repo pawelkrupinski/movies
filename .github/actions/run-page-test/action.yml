@@ -109,17 +109,15 @@ runs:
     # installs below are ~25s of mostly-network work that no longer has to
     # follow it. Splitting launch from wait is what buys that: while sbt loads,
     # apt and npm run.
+    #
+    # The launch, the wait and the stop are `.github/scripts/fixture-server.sh`,
+    # which also RELAUNCHES a server that exits before writing its port — the
+    # script's header has the 2026-09-06 boot-jar fetch timeout that made an
+    # inline wait loop sit out its whole ceiling on a dead sbt.
     - name: Launch FixtureServerMain
       if: inputs.kind == 'playwright'
       shell: bash
-      run: |
-        rm -f /tmp/kinowo-port.txt
-        # `nohup` + a detached stdin because the launch and the wait are now
-        # SEPARATE steps: a bare `&` job was fine while the wait sat in the same
-        # step, but this shell exits as soon as the step does, and the runner
-        # would take an attached child with it.
-        nohup sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/kinowo-port.txt' > /tmp/sbt-fixture.log 2>&1 < /dev/null &
-        echo "FIXTURE_PID=$!" >> $GITHUB_ENV
+      run: .github/scripts/fixture-server.sh launch /tmp/fixture-server sbt 'web/PageTest/runMain tools.FixtureServerMain /tmp/fixture-server/port'
 
     - uses: actions/setup-node@v4
       if: inputs.kind == 'playwright'
@@ -194,29 +192,23 @@ runs:
     - name: Wait for FixtureServerMain
       if: inputs.kind == 'playwright'
       shell: bash
+      # 600s ceiling, measured from here (the installs above have already
+      # eaten ~25s since the launch). On a cold `sbt-target-page` cache the boot
+      # recompiles every module first, which is what the generous ceiling is
+      # for. A healthy boot writes the port and returns early, so this costs
+      # nothing on a warm row.
+      #
+      # It was 300s, and that did NOT cover a cold row: on 2026-07-28 two of the
+      # eight WebKit shards failed here having got no further than sbt's "set
+      # current project" in the whole 300s, while their siblings squeaked in.
+      # A ceiling that only some runners clear is a coin-flip, not a timeout —
+      # the point of this guard is to catch a server that never comes up, and
+      # 600s still does that a great deal faster than the job's own limit.
+      env:
+        FIXTURE_BOOT_CEILING_SECONDS: 600
       run: |
-        # 600s ceiling, measured from the LAUNCH step (the installs above have
-        # already eaten ~25s of it). On a cold `sbt-target-page` cache the boot
-        # recompiles every module first, which is what the generous ceiling is
-        # for. A healthy boot writes the port and breaks early, so this costs
-        # nothing on a warm row.
-        #
-        # It was 300s, and that did NOT cover a cold row: on 2026-07-28 two of the
-        # eight WebKit shards failed here having got no further than sbt's "set
-        # current project" in the whole 300s, while their siblings squeaked in.
-        # A ceiling that only some runners clear is a coin-flip, not a timeout —
-        # the point of this guard is to catch a server that never comes up, and
-        # 600s still does that a great deal faster than the job's own limit.
-        for _ in $(seq 1 300); do
-            [ -f /tmp/kinowo-port.txt ] && break
-            sleep 2
-        done
-        if [ ! -f /tmp/kinowo-port.txt ]; then
-            echo "FixtureServerMain didn't write port within 600s; sbt log:"
-            cat /tmp/sbt-fixture.log
-            exit 1
-        fi
-        echo "KINOWO_BASE_URL=http://127.0.0.1:$(cat /tmp/kinowo-port.txt)" >> $GITHUB_ENV
+        .github/scripts/fixture-server.sh await /tmp/fixture-server
+        echo "KINOWO_BASE_URL=http://127.0.0.1:$(cat /tmp/fixture-server/port)" >> $GITHUB_ENV
 
     # Point CdpDriver at the matrix-installed browser via env var.
     # The driver also prints the resolved browser version to stderr
@@ -323,7 +315,4 @@ runs:
     - name: Stop FixtureServerMain
       if: always() && inputs.kind == 'playwright'
       shell: bash
-      run: |
-        if [ -n "$FIXTURE_PID" ]; then
-            kill $FIXTURE_PID 2>/dev/null || true
-        fi
+      run: .github/scripts/fixture-server.sh stop /tmp/fixture-server
