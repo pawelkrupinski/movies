@@ -98,6 +98,22 @@ CASES = [
      {"alertname": "ReadModelProjectionTriggerUnaccounted", "severity": "warning", "country": "uk"},
      True),
 
+    # A DEAD WORKER DOES NOT EXPLAIN A WIRING BUG. `WorkerTaskTypeUnhandled` fires on tasks claimed
+    # with no handler — a code defect the worker had to be RUNNING to commit. Silencing it here is
+    # the same loss the web-tier case above guards against, arriving by a different door, and a
+    # `Worker.*` target prefix let it in for one revision.
+    ("a down worker does NOT silence its country's unhandled-task-type bug",
+     {"alertname": "WorkerDown", "severity": "critical", "country": "uk"},
+     {"alertname": "WorkerTaskTypeUnhandled", "severity": "warning", "country": "uk", "task_type": "RefreshRatings"},
+     False),
+
+    # `CinemaScrapeNeverScraped` has `for: 24h`; no five-minute outage can cause it, and a stall
+    # held for hours would hide a venue whose parse has been broken all along.
+    ("...nor a venue that has never been scraped at all",
+     {"alertname": "WorkerQueueStalled", "severity": "critical", "country": "uk"},
+     {"alertname": "CinemaScrapeNeverScraped", "severity": "warning", "country": "uk"},
+     False),
+
     # FLUX HAS NO RULE, and the case is here so re-adding one has to argue with a test. A suspended
     # reconciliation is somebody's deliberate act; a controller being down does not explain it.
     ("a down Flux controller does NOT silence a deliberate suspension",
@@ -165,6 +181,13 @@ def main():
         state = states.get(key(target))
         if state is None:
             print(f"  FAILED {name}: target alert never appeared in the API")
+            bad = 1
+            continue
+        if state == "unprocessed":
+            # Alertmanager had not finished with it inside the wait loop's deadline. Reading that as
+            # "not suppressed" would pass every NEGATIVE case for the wrong reason, which is the one
+            # way this suite could go quietly worthless.
+            print(f"  FAILED {name}: alertmanager never finished processing the target alert")
             bad = 1
             continue
         suppressed = state == "suppressed"

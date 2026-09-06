@@ -358,20 +358,31 @@ inhibit_rules:
   # `WorkerQueueStalled` aggregates with `sum by (country)` and therefore carries NO `job` label to
   # match on. Scoping by alertname on both sides is what survives that.
   #
-  # THE TARGET IS THE COUNTRY'S PIPELINE, NOT JUST THE QUEUE RULES. A dead worker stops that
-  # country's scraping and its read-model projection too, so `CinemaScrapeOldestAgeHigh`,
-  # `CinemaScrapeNeverScraped` and the `ReadModelProjection*` warnings are restatements of it and
-  # arrive minutes later saying the same thing. Listing the families explicitly rather than matching
-  # every `country` warning is what keeps the WEB tier out: it carries `country` from the same
-  # scrape config, and letting it in is how this rule silenced `WorkerTaskTypeUnhandled` a revision
-  # ago. Add a family here when a new one genuinely restates a dead worker, and not otherwise.
+  # THE TARGETS ARE NAMED ONE BY ONE, and the list is the argument. A dead worker stops that
+  # country's scraping and its read-model projection, so those warnings are restatements arriving
+  # minutes later — but only the ones a dead worker can actually CAUSE, which is not the same as
+  # the ones that share its prefix. Two do not belong and were swept in by a `Worker.*|CinemaScrape.*`
+  # shape for one revision:
+  #
+  #   - `WorkerTaskTypeUnhandled` fires on `increase(no_handler[1h]) > 0`, a WIRING BUG. A worker
+  #     that is down cannot produce one; a worker that is crash-looping can be down AND still have
+  #     dropped tasks in the window, and that is the diagnosis, not the noise. This is the alert
+  #     the paragraph above protects from the web tier — silencing it here undid that by another
+  #     door.
+  #   - `CinemaScrapeNeverScraped` has `for: 24h`. Nothing a five-minute outage does can cause it,
+  #     and a `WorkerQueueStalled` held for hours would hide a venue whose parse is permanently
+  #     broken.
+  #
+  # Matching by `country` alone is what let the WEB tier in a revision before that: it carries
+  # `country` from the same scrape config. So the rule is pinned at both ends, and every entry
+  # below has a case in inhibition_cases.py — as does every alert deliberately NOT here.
   - source_matchers:
       - severity = "critical"
       - alertname =~ "Worker.*"
       - country =~ ".+"
     target_matchers:
       - severity = "warning"
-      - alertname =~ "Worker.*|CinemaScrape.*|ReadModelProjection.*"
+      - alertname =~ "WorkerQueueGrowingUnbounded|WorkerTasksFailingRepeatedly|CinemaScrapeOldestAgeHigh|ReadModelProjectionTriggerUnaccounted"
     equal: ["country"]
 
   # NO FLUX RULE, deliberately, and this is the second time that has been decided. A rule joining
