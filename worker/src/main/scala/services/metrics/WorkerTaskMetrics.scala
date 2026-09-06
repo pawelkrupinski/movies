@@ -135,7 +135,7 @@ object WorkerTaskMetrics {
 
     private val finished = Counter.builder()
       .name("kinowo_worker_tasks_finished")
-      .help("Tasks that finished a handler run since boot, by country, type and outcome (done=fully worked, skipped=data already fresh, rescheduled=transient retry, failed=handler threw, no_handler=no wired handler).")
+      .help("Tasks that finished a handler run since boot, by country, type and outcome (done=fully worked, skipped=data already fresh, rescheduled=transient retry, deferred=refused untried by an open circuit, failed=handler threw, no_handler=no wired handler).")
       .labelNames("country", "task_type", "outcome")
       .register(registry)
 

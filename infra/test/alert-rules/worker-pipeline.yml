@@ -51,6 +51,35 @@ tests:
               summary: "uk's task queue has grown for an hour straight (0.100 tasks/s)"
               description: "The WAITING set has climbed continuously for an hour at more than 180 tasks/hour net, which is a queue the pool is not keeping up with rather than a burst it is working through. THE DEPTH ITSELF IS NOT THE PROBLEM and is not worth reacting to -- the US worker sits at ~450 waiting in normal operation. Look at what is ENQUEUEING: a reaper that has started scheduling faster than the pool can drain (panels 20/30 on the application dashboard split enqueued from worked), or a task type failing and being retried forever (panel 25, waiting by type). `WorkerQueueStalled` below is the other half of this: if nothing is being claimed at all, that one fires instead and is the more urgent of the two."
 
+  # THE SAME RUNAWAY, INTERRUPTED BY A ROLLOUT. This case exists because a review argued the alert
+  # could essentially never fire: the workers redeploy roughly hourly, each rollout leaves a 1.5-2.5
+  # minute hole in the scrape, and an emptied result vector resets a `for:` timer to zero -- so a
+  # rule needing a full uninterrupted hour would be reset before it ever completed.
+  #
+  # IT DOES NOT, AND THE REASON IS THE 5-MINUTE LOOKBACK. Prometheus answers an instant query from
+  # the most recent sample within `--query.lookback-delta` (5m by default), so a two-minute hole
+  # does not empty anything -- the series simply carries its last value across the gap. Only an
+  # outage longer than five minutes would reset the timer, and at that length `WorkerDown` is
+  # already firing and is the alert you want. The gap below is two samples, the shape a real
+  # rollout leaves; the rule must still fire at t=90m exactly as it does without it.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_queue_depth{country="uk",state="waiting",job="kinowo-worker"}'
+        values: '100+6x40 _x2 358+6x107'
+      - series: 'kinowo_worker_tasks_started_total{country="uk",job="kinowo-worker",task_type="ScrapeChunk"}'
+        values: '0+60x40 _x2 2580+60x107'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: WorkerQueueGrowingUnbounded
+        exp_alerts: []
+      - eval_time: 90m
+        alertname: WorkerQueueGrowingUnbounded
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk, state: waiting, job: kinowo-worker }
+            exp_annotations:
+              summary: "uk's task queue has grown for an hour straight (0.100 tasks/s)"
+              description: "The WAITING set has climbed continuously for an hour at more than 180 tasks/hour net, which is a queue the pool is not keeping up with rather than a burst it is working through. THE DEPTH ITSELF IS NOT THE PROBLEM and is not worth reacting to -- the US worker sits at ~450 waiting in normal operation. Look at what is ENQUEUEING: a reaper that has started scheduling faster than the pool can drain (panels 20/30 on the application dashboard split enqueued from worked), or a task type failing and being retried forever (panel 25, waiting by type). `WorkerQueueStalled` below is the other half of this: if nothing is being claimed at all, that one fires instead and is the more urgent of the two."
+
   # THE PIPELINE STOPPED: work is queued and the started counter is flat. This is the one that
   # matters most, and it is critical rather than warning.
   - interval: 1m
@@ -68,7 +97,7 @@ tests:
         exp_alerts:
           - exp_labels: { severity: critical, country: pl }
             exp_annotations:
-              summary: "pl's worker has claimed no task for 5 minutes with work waiting"
+              summary: "pl's worker has claimed no task for ten minutes with work waiting"
               description: "Tasks are queued and NOTHING is picking them up, so every scrape, rating refresh and read-model projection for this country has stopped. A healthy worker claims 13-143 tasks a minute. Check, in order: is the pod up and past its hydrate (`WorkerDown` fires separately if the target is gone); is the whole pool stuck on handlers that never return (`kinowo_worker_queue_depth{state=\"worked_on\"}` pinned at the pool size of 4 is that shape, and the task-duration panels name the type); and is `TaskQueue.claim` failing in the logs -- a Mongo stall shows up here first because claim is a `findOneAndUpdate` that blocks."
 
   # AN IDLE WORKER IS NOT A STALLED ONE. Nothing claimed for half an hour, but nothing waiting
@@ -146,3 +175,89 @@ tests:
             exp_annotations:
               summary: "No worker is publishing task-queue metrics"
               description: "`kinowo_worker_queue_depth` has no series from any country, so neither WorkerQueueGrowingUnbounded nor WorkerQueueStalled can fire and the pipeline is unwatched. If the workers were simply down, `WorkerDown` would be firing too and is the better alert to read; if they are up, the queue gauges have stopped being refreshed from the per-country `QueueSnapshot`, which no target-level check would catch."
+
+  # A RETRY LOOP AT FULL THROUGHPUT -- the case the other three rules are all blind to. 30 tasks a
+  # minute finish `done` and 30 come back `rescheduled`, so the pool is busy, the queue depth is
+  # flat and nothing else here has anything to say. Half of the work is not sticking.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="uk",job="kinowo-worker",task_type="ScrapeChunk",outcome="done"}'
+        values: '0+30x80'
+      - series: 'kinowo_worker_tasks_finished_total{country="uk",job="kinowo-worker",task_type="ScrapeChunk",outcome="rescheduled"}'
+        values: '0+30x80'
+    alert_rule_test:
+      # `for: 30m`, so a bad quarter of an hour is not a loop yet.
+      - eval_time: 20m
+        alertname: WorkerTasksFailingRepeatedly
+        exp_alerts: []
+      - eval_time: 60m
+        alertname: WorkerTasksFailingRepeatedly
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk }
+            exp_annotations:
+              summary: "uk's worker is failing or retrying 50% of the tasks it finishes"
+              description: "The pool is busy and the work is not sticking. Over 24h of normal operation this share is 0.000 in every country -- 13 failures in 464,903 tasks -- so a quarter is a loop, not a bad afternoon. Panel 25 (waiting by type) and the per-type finish counters name WHICH type: `sum by (task_type) (rate(kinowo_worker_tasks_finished_total{outcome=~\"failed|rescheduled\"}[15m]))`. The usual causes are an upstream that has started refusing us (the scraper types), a handler throwing on a data shape it has not seen, and a task whose precondition can never be met so it reschedules itself forever. NOTE `deferred` IS EXCLUDED: a circuit breaker refusing tasks is an upstream being down and reads on the scrape dashboards."
+      # The queue is neither stalled nor growing, which is the whole point of adding this rule.
+      - eval_time: 60m
+        alertname: WorkerQueueStalled
+        exp_alerts: []
+
+  # THE SAME 50% SHARE, ON ALMOST NO WORK -- the denominator floor. 0.3 tasks a minute finishing,
+  # half of them retried, is roughly one retry every three minutes: an arithmetic accident, not a
+  # loop. Without the `> 0.01` clause a country that had gone quiet would page for one bad task.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="es",job="kinowo-worker",task_type="ScrapeCinema",outcome="done"}'
+        values: '0+0.3x80'
+      - series: 'kinowo_worker_tasks_finished_total{country="es",job="kinowo-worker",task_type="ScrapeCinema",outcome="rescheduled"}'
+        values: '0+0.3x80'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: WorkerTasksFailingRepeatedly
+        exp_alerts: []
+
+  # A HEALTHY FLEET STAYS SILENT. The measured shape: 464,903 tasks a day and a handful of
+  # failures. `deferred` is deliberately excluded from the numerator, so a circuit breaker refusing
+  # a whole upstream -- which is a scrape problem, not a queue problem -- must not fire this.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="us",job="kinowo-worker",task_type="ScrapeChunk",outcome="done"}'
+        values: '0+190x80'
+      - series: 'kinowo_worker_tasks_finished_total{country="us",job="kinowo-worker",task_type="ScrapeChunk",outcome="deferred"}'
+        values: '0+150x80'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: WorkerTasksFailingRepeatedly
+        exp_alerts: []
+
+  # A TASK TYPE WITH NO HANDLER. Claimed, counted, discarded -- every throughput metric stays
+  # healthy while the work never happens. The baseline is exactly zero fleet-wide, so one is enough.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="de",job="kinowo-worker",task_type="RefreshRatings",outcome="no_handler"}'
+        values: '0x10 1+1x70'
+    alert_rule_test:
+      # Nothing has been dropped yet, and the `for: 5m` rides out a deploy that briefly enqueues a
+      # type the rolling worker has not registered.
+      - eval_time: 3m
+        alertname: WorkerTaskTypeUnhandled
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: WorkerTaskTypeUnhandled
+        exp_alerts:
+          - exp_labels: { severity: warning, country: de, task_type: RefreshRatings }
+            exp_annotations:
+              summary: "de is claiming RefreshRatings tasks with no handler wired for them"
+              description: "Something is enqueueing `RefreshRatings` and nothing is running it -- the tasks are claimed, counted, and discarded, so the work silently never happens while every throughput metric looks healthy. The baseline for this counter is zero across the whole fleet. Look at the handler registration in `WorkerWiring` for this type, and at whatever enqueues it: either the registration was lost in a rename or the enqueue outlived the handler it was written for."
+
+  # A COUNTER SITTING AT ZERO IS NOT AN ALERT. The worker publishes the full cartesian of
+  # (country x task_type x outcome) seeded at 0, so every one of these series EXISTS at all times --
+  # a rule written as `> -1`, or one that forgot the comparison, would page for the whole fleet.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_tasks_finished_total{country="pl",job="kinowo-worker",task_type="ScrapeChunk",outcome="no_handler"}'
+        values: '0x80'
+    alert_rule_test:
+      - eval_time: 60m
+        alertname: WorkerTaskTypeUnhandled
+        exp_alerts: []

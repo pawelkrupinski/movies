@@ -1,6 +1,11 @@
 ---
-# IS THE WORKER PIPELINE STILL MOVING? -- the three questions the queue can fail in, and none of
+# IS THE WORKER PIPELINE STILL MOVING? -- the five questions the queue can fail in, and none of
 # them is "is the queue big".
+#
+# The first three ask whether the queue is MOVING (running away, claimed by nobody, or gone with
+# the process). The last two ask whether the movement ACHIEVES anything, which is the failure that
+# looks healthiest from outside: a pool at full throughput, re-failing or discarding everything it
+# claims, with a flat queue depth and every other rule here silent.
 #
 # WHAT THIS REPLACES, AND WHY. `kinowo-worker-queue-backlog` (a Grafana rule, retired alongside
 # this file) fired on `queue_depth{state="waiting"} > 150`. Measured over the 24h before it was
@@ -69,6 +74,19 @@ groups:
       # 0.0000% of the time -- it has no false-positive rate to speak of, because a healthy worker
       # claims 13-143 tasks a minute.
       #
+      # IT IS UP TO TEN MINUTES OF SILENCE BEFORE THIS FIRES, not five: the `rate` window and the
+      # `for:` are five minutes EACH and they run in series -- the rate has to fall to zero, which
+      # takes five minutes of no claims, and only then does the `for:` start counting. Both halves
+      # earn their length (a shorter rate window on a 15s scrape is noisy, and a shorter `for:`
+      # would fire on the gap around a rollout), so the fix is to say ten rather than to shorten
+      # one of them. The summary said "5 minutes" until 2026-09-06 and was wrong about it.
+      #
+      # A COLD START CAN REACH IT. `tasks_started_total` resets on restart, so a worker that is
+      # being scraped but has not claimed anything for ten minutes -- a long hydrate, a pool
+      # waiting on Mongo -- fires this even though nothing is broken yet. That is arguably the
+      # right answer (ten minutes past boot with work waiting IS a stall) and the description says
+      # where to look, but the measured 0.0000% is a steady-state number and does not cover it.
+      #
       # CRITICAL, unlike the growth alert: a queue growing slowly is a capacity conversation, a
       # queue nobody is touching is the pipeline stopped -- scrapes, enrichment and the read-model
       # projection all ride this queue.
@@ -81,7 +99,7 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: "{{ $labels.country }}'s worker has claimed no task for 5 minutes with work waiting"
+          summary: "{{ $labels.country }}'s worker has claimed no task for ten minutes with work waiting"
           description: >-
             Tasks are queued and NOTHING is picking them up, so every scrape, rating refresh and
             read-model projection for this country has stopped. A healthy worker claims 13-143
@@ -97,8 +115,15 @@ groups:
       #
       # `TargetDown` in monitoring-self.rules already fires on `up == 0` for ANY job at 10m; this
       # is the same condition at 5m for the workers specifically, because they are the pipeline and
-      # ten minutes of silence is ten minutes of no scraping. Alertmanager inhibits the slower,
-      # broader one when this fires, so a dead worker is one message rather than two.
+      # ten minutes of silence is ten minutes of no scraping.
+      #
+      # IT DOES NOT INHIBIT `TargetDown`, and this comment claimed it did until 2026-09-06. Both are
+      # `severity: critical`, and the critical-silences-warning rule only reaches warnings; the
+      # host-scoped rule requires `job = "node"` on its source and a worker's `TargetDown` carries
+      # `job = "kinowo-worker"`. So a dead worker really is two messages, five minutes apart. That
+      # is tolerable -- they say the same thing and the second confirms the first -- and it is not
+      # worth an inhibit rule whose source and target are both critical, which is the shape
+      # Alertmanager's own documentation warns against.
       #
       # 5 MINUTES SURVIVES A DEPLOY, and that is measured, not assumed: over 24h the workers
       # restarted 23-26 times each and the LONGEST continuous stretch any of them was unscrapeable
@@ -118,6 +143,86 @@ groups:
             so five means something other than a deploy. `kubectl -n kinowo logs deploy/worker-{{ $labels.country }}`
             and the JVM heap panels are the first two places to look -- an OOM kill presents exactly
             like this.
+
+      # -----------------------------------------------------------------------------------------
+      # 4. THE QUEUE IS MOVING AND GETTING NOWHERE -- tasks are being claimed and finished, and a
+      # quarter of them are coming back as failures or retries.
+      #
+      # THIS IS THE HOLE THE THREE RULES ABOVE LEAVE, and rule 1's own description points straight
+      # at it: "a task type failing and being retried forever". Such a loop claims tasks (so
+      # `WorkerQueueStalled` stays silent), re-enqueues them at the rate it drains them (so the
+      # depth is FLAT and `WorkerQueueGrowingUnbounded` stays silent), and keeps the process up (so
+      # `WorkerDown` stays silent). The pipeline spins at full throughput and the listings go stale
+      # anyway, which is the failure nobody would be told about.
+      #
+      # 25% IS ~8x THE WORST THING THE FLEET HAS EVER DONE. Share of finishes that are `failed` or
+      # `rescheduled`, measured over 24h across all five countries:
+      #
+      #     median   0.000 everywhere
+      #     p95      0.000 everywhere except pl (0.007)
+      #     max      0.029 (pl), 0.000-0.004 elsewhere
+      #     longest continuous run above 0.20 / 0.50 / 0.80:  0 minutes, every country, both outcomes
+      #
+      # In absolute terms the whole fleet finished 464,903 tasks in that day and 13 of them failed.
+      # `deferred` is deliberately NOT counted: it means a circuit breaker refused the task untried,
+      # which is a host being unreachable rather than the pipeline eating itself, and it is already
+      # separated from `rescheduled` in the metric for exactly that reason.
+      #
+      # THE SECOND CLAUSE IS A FLOOR ON THE DENOMINATOR. A ratio is meaningless when almost nothing
+      # is finishing: a country that completes three tasks in the window, one of which retries, is
+      # at 33% and perfectly healthy. Requiring 0.01 failures/sec (36 an hour) means the alert
+      # describes a loop rather than an arithmetic accident.
+      - alert: WorkerTasksFailingRepeatedly
+        expr: >-
+          (
+            sum by (country) (rate(kinowo_worker_tasks_finished_total{outcome=~"failed|rescheduled"}[15m]))
+            /
+            sum by (country) (rate(kinowo_worker_tasks_finished_total[15m]))
+          ) > 0.25
+          and
+          sum by (country) (rate(kinowo_worker_tasks_finished_total{outcome=~"failed|rescheduled"}[15m])) > 0.01
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s worker is failing or retrying {{ $value | humanizePercentage }} of the tasks it finishes"
+          description: >-
+            The pool is busy and the work is not sticking. Over 24h of normal operation this share
+            is 0.000 in every country -- 13 failures in 464,903 tasks -- so a quarter is a loop, not
+            a bad afternoon. Panel 25 (waiting by type) and the per-type finish counters name WHICH
+            type: `sum by (task_type) (rate(kinowo_worker_tasks_finished_total{outcome=~"failed|rescheduled"}[15m]))`.
+            The usual causes are an upstream that has started refusing us (the scraper types), a
+            handler throwing on a data shape it has not seen, and a task whose precondition can
+            never be met so it reschedules itself forever. NOTE `deferred` IS EXCLUDED: a circuit
+            breaker refusing tasks is an upstream being down and reads on the scrape dashboards.
+
+      # -----------------------------------------------------------------------------------------
+      # 5. A TASK TYPE NOBODY HANDLES. Tasks are being claimed, dropped on the floor, and counted.
+      #
+      # `no_handler` is what `TaskWorker` records when it claims a task and finds nothing wired to
+      # run it. It is not a degradation, it is a WIRING BUG: whatever enqueued those tasks believes
+      # the work is happening, and the queue drains them as fast as it can to no effect. The
+      # measured baseline is exactly zero -- 105 series, every one 0 over 24h -- so any occurrence
+      # at all is the alert, with no threshold to argue about.
+      #
+      # `for: 5m` ONLY TO RIDE OUT A DEPLOY, in which a new task type can briefly outrun the handler
+      # registration on a worker that has not rolled yet. The `increase(...[1h])` then holds the
+      # alert up for an hour after the last one, which is deliberate: a handful of dropped tasks an
+      # hour is still a bug, and a rule that resolved the instant the flow paused would flap.
+      - alert: WorkerTaskTypeUnhandled
+        expr: sum by (country, task_type) (increase(kinowo_worker_tasks_finished_total{outcome="no_handler"}[1h])) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} is claiming {{ $labels.task_type }} tasks with no handler wired for them"
+          description: >-
+            Something is enqueueing `{{ $labels.task_type }}` and nothing is running it -- the tasks
+            are claimed, counted, and discarded, so the work silently never happens while every
+            throughput metric looks healthy. The baseline for this counter is zero across the whole
+            fleet. Look at the handler registration in `WorkerWiring` for this type, and at whatever
+            enqueues it: either the registration was lost in a rename or the enqueue outlived the
+            handler it was written for.
 
       # -----------------------------------------------------------------------------------------
       # THE COMPANION. Rules 1 and 2 are comparisons against a series, and a comparison cannot fire
