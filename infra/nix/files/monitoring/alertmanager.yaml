@@ -357,26 +357,33 @@ inhibit_rules:
   # `equal: ["country"]` ALONE IS RIGHT HERE, unlike a job- or tier-scoped join, because
   # `WorkerQueueStalled` aggregates with `sum by (country)` and therefore carries NO `job` label to
   # match on. Scoping by alertname on both sides is what survives that.
+  #
+  # THE TARGET IS THE COUNTRY'S PIPELINE, NOT JUST THE QUEUE RULES. A dead worker stops that
+  # country's scraping and its read-model projection too, so `CinemaScrapeOldestAgeHigh`,
+  # `CinemaScrapeNeverScraped` and the `ReadModelProjection*` warnings are restatements of it and
+  # arrive minutes later saying the same thing. Listing the families explicitly rather than matching
+  # every `country` warning is what keeps the WEB tier out: it carries `country` from the same
+  # scrape config, and letting it in is how this rule silenced `WorkerTaskTypeUnhandled` a revision
+  # ago. Add a family here when a new one genuinely restates a dead worker, and not otherwise.
   - source_matchers:
       - severity = "critical"
       - alertname =~ "Worker.*"
       - country =~ ".+"
     target_matchers:
       - severity = "warning"
-      - alertname =~ "Worker.*"
+      - alertname =~ "Worker.*|CinemaScrape.*|ReadModelProjection.*"
     equal: ["country"]
 
-  # FLUX IS ITS OWN FAMILY, on its own label. `FluxControllerDown` (critical) carries `controller`
-  # and neither `host` nor `country`, so the two rules above cannot reach it -- and until the guard
-  # went in it silenced its warnings by the empty-host accident rather than by design. A controller
-  # that is down does make "reconciliation is failing" for that controller a restatement, so the
-  # rule is worth keeping; it just has to say which label it means.
-  - source_matchers:
-      - severity = "critical"
-      - controller =~ ".+"
-    target_matchers:
-      - severity = "warning"
-    equal: ["controller"]
+  # NO FLUX RULE, deliberately, and this is the second time that has been decided. A rule joining
+  # `FluxControllerDown` to its warnings on `controller` reads obviously right and earns nothing:
+  # when a controller is down its `gotk_*` series go ABSENT, so the warnings it would silence
+  # resolve on their own within a scrape or two. What it does do is silence `FluxSuspended` --
+  # `controller` comes from the scrape target, so every flux series carries it -- and a suspension
+  # somebody set by hand is exactly the news a controller being down does not contain.
+  #
+  # Two messages for a Flux outage is the same trade already taken for `WorkerDown` and
+  # `TargetDown` above: they say the same thing five minutes apart, and the second confirms the
+  # first. That is cheaper than an inhibit rule that hides a deliberate suspension.
 
 # NO MUTE INTERVALS. There is no maintenance window on this fleet -- deploys are continuous and
 # reboots are occasional and by hand -- so a time-of-day mute would only ever suppress a real alert
