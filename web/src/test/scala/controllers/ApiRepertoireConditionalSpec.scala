@@ -89,6 +89,28 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
     (film \ "slug").as[String] shouldBe "test-film"
   }
 
+  // The assertion above pins the field, but "test-film" is also what folding the
+  // title gives — so it would pass on a controller that re-folded client-side. Two
+  // films sharing a title is the case that tells the two apart: `FilmSlugs` qualifies
+  // the older one with its year, and only the ASSIGNED slug carries that.
+  it should "serve the ASSIGNED slug, not a re-fold of the title" in {
+    val now = LocalDateTime.now()
+    def rec(year: Int) = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Zaproszenie"), releaseYear = Some(year),
+        synopsis = Some("s"), trailerUrl = Some("https://www.youtube.com/watch?v=abc123DEF45"),
+        showtimes = Seq(models.Showtime(now.plusHours(2), None, None, Nil)))))
+    val (ctrl, _) = TestMovieController.build(
+      Seq(("Zaproszenie", Some(2026), rec(2026)), ("Zaproszenie", Some(1986), rec(1986))))
+
+    val slugs = play.api.libs.json.Json.parse(contentAsString(ctrl.apiRepertoire("poznan")(FakeRequest())))
+      .as[Seq[play.api.libs.json.JsValue]].map(f => (f \ "slug").as[String]).toSet
+    withClue(s"slugs=$slugs: ") {
+      slugs should contain ("zaproszenie")
+      // The older one cannot have the bare fold; it must carry its assigned year.
+      slugs.exists(_.startsWith("zaproszenie-")) shouldBe true
+    }
+  }
+
   it should "omit films with neither synopsis nor trailers" in {
     val (ctrl, _) = buildController()
     // The single fixture film has both, so it is present; a film with neither

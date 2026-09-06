@@ -36,7 +36,9 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
   /** Records what the cache writes back, and can be told to fail its per-row read — the
    *  one thing that separates "absent" from "unreadable". */
-  private class Repo(rows: Seq[StoredMovieRecord], var readable: Boolean) extends MovieRepository {
+  private class Repo(rows: Seq[StoredMovieRecord], var readable: Boolean,
+                     var canMoveFilm: Boolean = true) extends MovieRepository {
+    override def moveFilm(oldId: String, newId: String): Boolean = oldId == newId || canMoveFilm
     val normalizer: TitleNormalizer = titleNormalizer
     val upserts = scala.collection.mutable.ListBuffer.empty[(String, MovieRecord)]
     def enabled = true
@@ -59,7 +61,8 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
   /** One cinema's scrape of `title` — the Multikino listing that lands on a cold cache. */
   private def cinemaMovie(title: String, year: Int = 2026) = CinemaMovie(
-    movie = models.Movie(title, releaseYear = Some(year)), cinema = Multikino, posterUrl = None, filmUrl = None,
+    movie = models.Movie(title, releaseYear = Option.when(year != 0)(year)), cinema = Multikino,
+    posterUrl = None, filmUrl = None,
     synopsis = None, cast = Seq.empty, director = Seq.empty, showtimes = Seq(showtime))
 
   "a scrape landing on a film whose stored row cannot be READ" should
@@ -75,30 +78,39 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     cache.skippedUnreadable.get() should be > 0L
   }
 
-  // Pins the INVARIANT that makes the slot move safe next to this skip, rather than a
-  // branch: deciding which film a (cinema, title) belongs to drops the slot from every
-  // OTHER row holding it, and on an unreadable row nothing lands to replace it. That is
-  // harmless today only because a skip implies a Caffeine miss, every key the move can
-  // stand on came from the index, and the index shadows an UNBOUNDED cache — so a miss
-  // means nothing held the slot. This asserts the end of that chain. Bound the cache
-  // and the chain breaks; this test is what should start failing when it does.
+  // The slot MOVE, next to this skip. Deciding which film a (cinema, title) belongs to
+  // drops the slot from every OTHER row holding it — right once the slot has landed,
+  // fatal when it has not.
+  //
+  // Reaching "has not" needs the redirect arm: it returns `canonical`, which can be
+  // `primary` — a key it has just proved is a Caffeine MISS — and returns it whether
+  // or not the `rekey` onto it landed. `rekey` defers silently on an unreadable row
+  // and on a failing `moveFilm`, so a degraded Mongo leaves the loop standing on a key
+  // in neither cache nor index, while `keysForCinemaSlot` still names the row holding
+  // the slot. Ungated, the drop deletes this venue's showtimes and puts them nowhere.
   it should "not strip the venue's slot off the row that still holds it" in {
-    val repo  = new Repo(Seq(stored), readable = true)
+    val repo  = new Repo(Seq.empty, readable = true)
     val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
-    cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film")))
-    val holder = cache.keyOf("Live Film", Some(2026))
+    // A yearless row holding Multikino's slot — what the redirect will try to promote.
+    // Alongside nine filler films, so the degraded tick below is a SHRINK the prune
+    // stands down for (`MinSlotsForShrinkGuard` 8, `PruneFloorRatio` 0.5). Otherwise
+    // the prune legitimately removes the stale slot and hides what the move did.
+    cache.recordCinemaScrape(Multikino,
+      cinemaMovie("Live Film", year = 0) +: (1 to 9).map(i => cinemaMovie(s"Filler $i", year = 0)))
+    val holder = cache.keyOf("Live Film", None)
     def multikinoSlots = cache.get(holder).toSeq
       .flatMap(_.data.keys.filter(Source.cinemaOf(_).contains(Multikino)))
-    withClue("the seed scrape must leave the row holding Multikino's slot: ")(
+    withClue("the seed scrape must leave the yearless row holding Multikino's slot: ")(
       multikinoSlots should not be empty)
 
-    // The venue now publishes the same title under a DIFFERENT year, so the scrape
-    // decides the slot belongs to another key — and that key cannot be read. Nothing
-    // lands there, so nothing may be taken from the row that still holds it.
-    repo.readable = false
+    // Mongo goes bad, then the venue republishes the same title WITH a year. The
+    // redirect picks the year-bearing key as canonical and asks for a re-key onto it;
+    // both defer, so nothing is written there — and nothing may be taken from here.
+    repo.readable    = false
+    repo.canMoveFilm = false
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film", year = 2027)))
 
-    withClue(s"skipped=${cache.skippedUnreadable.get()}, row=${cache.get(holder).map(_.data.keySet)}: ")(
+    withClue(s"skipped=${cache.skippedUnreadable.get()}, holder=${cache.get(holder).map(_.data.keySet)}: ")(
       multikinoSlots should not be empty)
   }
 

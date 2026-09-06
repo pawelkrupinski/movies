@@ -83,10 +83,20 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
    *  so a wrong answer here force-re-resolves a row that was right. A middle NAME is
    *  droppable; a particle is part of the surname. */
   private def withoutMiddleNames(name: String): Option[String] = {
-    val words = name.split("\\s+").filter(_.nonEmpty)
+    // Generational suffixes are dropped BEFORE first-and-last is taken, not treated
+    // as the surname: venues publish them ("David G. Derrick Jr."), and keeping the
+    // suffix as the last word yields "David Jr." — which discards the one token that
+    // identifies the person, and whoever TMDB returns for it is by construction off
+    // the film's crew, so a correct row gets force-re-resolved.
+    val words = name.split("\\s+").filter(_.nonEmpty).filterNot(isSuffix)
     Option.when(words.length >= 3 && !words.tail.init.exists(isParticle))(
       s"${words.head} ${words.last}")
   }
+
+  /** Jr. / Sr. / II / III / IV — the same set `CinemaCorroboration` strips before
+   *  comparing credits, for the same reason: they are not the surname. */
+  private def isSuffix(word: String): Boolean =
+    CrewConfirmation.Suffixes.contains(word.toLowerCase.stripSuffix("."))
 
   /** The lowercase-by-convention words that bind a surname to its prefix. Compared
    *  case-insensitively because venues capitalise inconsistently ("Von Trier"). */
@@ -97,6 +107,8 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
 object CrewConfirmation {
   /** Nobiliary and patronymic particles: a middle word that belongs to the SURNAME
    *  rather than being a middle name, so shortening across it renames the person. */
+  private val Suffixes: Set[String] = Set("jr", "sr", "ii", "iii", "iv")
+
   private val Particles: Set[String] = Set(
     "von", "van", "de", "del", "della", "der", "den", "di", "da", "dos", "das",
     "du", "la", "le", "el", "al", "bin", "ibn", "ben", "af", "av", "ter", "te", "zu")

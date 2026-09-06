@@ -1623,9 +1623,20 @@ class CaffeineMovieCache(
           // out-of-band edits); first-time scrapes `put` (keeps the tmdbId
           // identity gate live).
           val slotKey = cinemaSlotKey(cinema, displayTitle)
-          existingOpt match {
+          // Whether the slot actually LANDED on `key`, which is what makes the move
+          // below safe. I deleted this once, reasoning that a Caffeine miss implies no
+          // row holds the slot because every key here comes from `corpusIndex`. That is
+          // false for one arm: the redirect above returns `canonical`, which can be
+          // `primary` — a key `redirectToExistingVariant` has just proved is a MISS —
+          // and it returns it whether or not the `rekey` landed. `rekey` defers
+          // silently on an unreadable row and on a `moveFilm` that fails, so under a
+          // degraded Mongo the loop stands on a key that is in neither cache nor index
+          // while `keysForCinemaSlot` still names the row that holds the slot. Dropping
+          // it there deletes the venue's showtimes and puts them nowhere.
+          val landed = existingOpt match {
             case Some(_) =>
               putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
+              true
             case None =>
               // A cache MISS is not proof of first-time: a restart/eviction/re-key
               // can leave a fully-rated Mongo row unseen by Caffeine. Build the
@@ -1655,9 +1666,11 @@ class CaffeineMovieCache(
                     s"${cinema.displayName}: its stored row could not be READ, and rebuilding it from " +
                     "this scrape alone would prune every other cinema's showtimes.")
                   skippedUnreadable.incrementAndGet()
+                  false
                 case (row, true) =>
                   val base = row.getOrElse(MovieRecord())
                   put(key, base.copy(data = base.data + (slotKey -> slot)))
+                  true
               }
           }
           // This tick just decided which film this (cinema, title) belongs to, so
@@ -1676,17 +1689,8 @@ class CaffeineMovieCache(
           // different Source spelling (a bare `Cinema` from an older write, a
           // `CinemaShowing` for a decorated edition), and dropping only `slotKey`
           // would miss exactly the stranded copies this is here to clear.
-          // SAFE EVEN WHEN THE WRITE ABOVE WAS SKIPPED, and not by luck. The skip
-          // happens only on a Caffeine MISS, and every key this loop can be standing on
-          // when another row holds the slot came from `corpusIndex` — `concludedKeyFor`
-          // and `redirectToExistingVariant` are both index lookups, and the remaining
-          // arm is `keyHoldingCinemaSlot` itself. The index shadows `positive`, which is
-          // UNBOUNDED (no maximumSize, no expiry), so an indexed key is a cached key: a
-          // miss here means no row held this venue's slot, which makes the set below
-          // empty. Bound that cache and the two stop implying each other — the drop
-          // would then have to be gated on the write having landed, or a skipped write
-          // would delete this venue's showtimes and put them nowhere.
-          (corpusIndex.keysForCinemaSlot(cinema, norm) - key).foreach { other =>
+          // Gated on the write above: see `landed`.
+          if (landed) (corpusIndex.keysForCinemaSlot(cinema, norm) - key).foreach { other =>
             dropCinemaSlots(other, _.data.collect {
               case (src, sd) if Source.cinemaOf(src).contains(cinema) &&
                                 sd.title.exists(t => normalizer.sanitize(t) == norm) => src

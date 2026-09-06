@@ -1070,9 +1070,18 @@ class MovieService(
     // BELOW it, as it always was: it is sorted ascending and spans every slot, so
     // one venue misreporting 1999 on a 2024 film would otherwise hand the search the
     // older year.
+    // `cinemaYears` ABOVE `reportedYears`, and both below an evidence-bearing key
+    // year. For a TitleOnly row `keyYear` is None by design, so `reportedYears` was
+    // the sole fallback — and it spans every slot INCLUDING Tmdb, sorted ascending,
+    // so the row handed the search back the very year its own guess had written.
+    // `homosapiens|1960` carries a 1960 Tmdb slot against twelve venues publishing
+    // 2025: min([1960, 2025]) is 1960, and the guess re-confirmed itself through the
+    // fallback this guard exists to route around. What the CINEMAS published is the
+    // one year here not derived from the resolution being re-examined.
     val effectiveYear = corroboratedKeyYear
       .orElse(EmbeddedYear.ofAll(Seq(title) ++ candidates ++ cinemaTitles))
       .orElse(keyYear)
+      .orElse(row.cinemaYears.headOption)
       .orElse(reportedYears.headOption)
     val hintKey = ResolutionKeys.tmdb(title, effectiveYear, rowDirectors, originalTitle, cache.normalizer)
     // `freshHit` captures the SearchResult on a cache MISS (the loader runs on

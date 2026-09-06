@@ -198,10 +198,17 @@ class RottenTomatoesClient(http: HttpFetch) {
       // whose exact hit carries no year would land on the 1968 ":  Restored" re-issue,
       // which is the very page the year guard was added to stop. An exact title that
       // fails the year means this film is not here.
+      // Three cases, not two. An exact title that PASSES the year wins outright. When
+      // none passes, a modifier hit may still be right — but only on its own year:
+      // suppressing it whenever any exact title existed threw away the correct answer
+      // for an UNDATED exact hit (RT often omits the year on a new release), which is
+      // most of them. And letting it through unguarded is what put the 2026 "Lalka" on
+      // /m/lalka_1969. So it must earn it. Only where RT has no exact title at all
+      // does the unguarded fallback stand — there the decorated name is all RT has.
       val candidates =
-        if (exact.nonEmpty)                          exact
-        else if (exactTitle.isEmpty && modifier.nonEmpty) modifier
-        else                                         Seq.empty
+        if (exact.nonEmpty)        exact
+        else if (exactTitle.isEmpty) modifier
+        else                       modifier.filter(h => MetacriticClient.yearConfirms(year, h.year))
       candidates
         .sortBy(h => year.flatMap(y => h.year.map(hy => math.abs(hy - y))).getOrElse(Int.MaxValue))
         .headOption

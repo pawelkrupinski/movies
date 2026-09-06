@@ -30,6 +30,13 @@ object EnrichDetailsTasks {
       YearKey  -> key.year.map(_.toString).getOrElse("")
     )
 
+  /** The freshness key marking that this detail page was READ, as opposed to merely
+   *  asked for. Distinct from the task's own dedup key because the `Gone` branch
+   *  stamps that one to stop a 404 re-enqueueing every tick — so it answers "we asked
+   *  recently", never "we have data". The handler reads this one to decide whether a
+   *  fetch is a RE-read, and therefore authoritative over the listing. */
+  def readMarker(dedupKey: String): String = s"$dedupKey|read"
+
   /** Enqueue a detail task for `(enricher's group, film)` unless it's already
    *  detail-fresh. The freshness pre-check just avoids queue churn; the queue's
    *  unique index is the real cross-server guarantee that a `(group, film)`
@@ -39,13 +46,6 @@ object EnrichDetailsTasks {
    *  [[enqueueIfDue]] instead — it must gate on the same [[DueWindow]] the handler
    *  re-gates on, or it churns the queue. (`!isFresh ⟹ isDue`, so a task these
    *  one-shot paths enqueue is always still due at the handler — never churned.) */
-  /** The freshness key marking that this detail page was READ, as opposed to merely
-   *  asked for. Distinct from the task's own dedup key because the `Gone` branch
-   *  stamps that one to stop a 404 re-enqueueing every tick — so it answers "we asked
-   *  recently", never "we have data". The handler reads this one to decide whether a
-   *  fetch is a RE-read, and therefore authoritative over the listing. */
-  def readMarker(dedupKey: String): String = s"$dedupKey|read"
-
   def enqueueIfStale(queue: TaskQueue, freshness: FreshnessStore, enricher: DetailEnricher, key: CacheKey, ref: String): Boolean = {
     val dk = dedupKey(enricher.detailGroup, key)
     !freshness.isFresh(dk, FreshnessKind.DetailEnrich) &&
@@ -203,7 +203,11 @@ class EnrichDetailsHandler(
             // a 1:1 cinema's slot already exists, so this preserves its showtimes.
             // Clearing `detailPending` releases the row to the read model + the
             // TMDB stage now that its detail (director/originalTitle/year) is in.
-            cache.putIfPresent(rowKey, current =>
+            // `putIfPresent` is a no-op on a row that was re-keyed between enqueue and
+            // pickup. Recording a READ for a merge that did not happen would make the
+            // NEXT fetch authoritative over the listing — the very harm the marker is
+            // here to prevent — so the marker follows the write, not the fetch.
+            val merged = cache.putIfPresent(rowKey, current =>
               current.copy(
                 data          = targets.foldLeft(current.data)((d, tgt) =>
                                   d + (tgt -> {
@@ -213,7 +217,7 @@ class EnrichDetailsHandler(
                                   })),
                 detailPending = false))
             freshness.markFresh(key, FreshnessKind.DetailEnrich)
-            freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich)
+            if (merged) freshness.markFresh(EnrichDetailsTasks.readMarker(key), FreshnessKind.DetailEnrich)
             uptime.recordSuccess(service)
             // The detail just landed → enrich the film now, with the better hints.
             if (wasPending) bus.publish(MovieDetailsComplete.forRow(title, year, cache.get(rowKey)))

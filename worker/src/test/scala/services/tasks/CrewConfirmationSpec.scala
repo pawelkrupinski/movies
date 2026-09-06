@@ -72,6 +72,18 @@ class CrewConfirmationSpec extends AnyFlatSpec with Matchers {
     confirm.confirmed(row(Seq("Someone Else"), Seq("Lars von Trier"))) shouldBe false
   }
 
+  it should "not let a generational suffix pose as the surname" in {
+    // "David G. Derrick Jr." must shorten to "David Derrick", not "David Jr." —
+    // taking first-and-last blindly discards the one token that identifies him, and
+    // whoever TMDB answers for "David Jr." is by construction off this film's crew,
+    // so a CORRECT row would be force-re-resolved off a stranger.
+    val confirm = new CrewConfirmation(
+      credits(Map("David Derrick" -> Seq(77), "David Jr." -> Seq(9999)), crew = Set(77)))
+    // The film's credit must NOT match the venue's as a string, or `contradiction`
+    // answers None and the confirmation is never consulted.
+    confirm.confirmed(row(Seq("Someone Else"), Seq("David G. Derrick Jr."))) shouldBe false
+  }
+
   it should "still take TMDB's answer to the full name when it has one" in {
     // The shortening is a fallback, never an override: a name TMDB does answer is
     // answered once, by the name the venue actually published.

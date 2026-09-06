@@ -279,4 +279,43 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
       cache.entries.flatMap(_._2.tmdbId).toSet should contain(Feature)
     }
   }
+
+  // The same row as prod actually holds it: carrying the TMDB SLOT of the film it
+  // wrongly resolved to. The test above seeds only the cinema slot, so the fallback
+  // it exercises sees the venues' 2025 alone — but `reportedYears` spans every slot
+  // INCLUDING Tmdb, and takes the minimum, so the real row hands the search back the
+  // 1960 the guess put there. The guess re-confirms itself through the fallback the
+  // guard was added to route around.
+  it should "not take its own resolution's year back off the Tmdb slot" in {
+    val Short   = 891655
+    val Feature = 1200002
+    val tmdb = new TmdbClient(
+      http = new StubFetch(Seq(
+        "&year=1960" ->
+          s"""{"results":[{"id":$Short,"title":"Homo sapiens","release_date":"1960-01-01","popularity":5.0}]}""",
+        "&year=2025" ->
+          s"""{"results":[{"id":$Feature,"title":"Homo sapiens","release_date":"2025-01-01","popularity":1.0}]}""",
+        s"/movie/$Short?"   -> s"""{"id":$Short,"title":"Homo sapiens","release_date":"1960-01-01","runtime":9}""",
+        s"/movie/$Feature?" -> s"""{"id":$Feature,"title":"Homo sapiens","release_date":"2025-01-01","runtime":95}""",
+        s"/movie/$Short/external_ids"   -> s"""{"id":$Short,"imdb_id":""}""",
+        s"/movie/$Feature/external_ids" -> s"""{"id":$Feature,"imdb_id":""}"""
+      )),
+      apiKey = Some("stub"))
+
+    val seed = MovieRecord(
+      tmdbId = Some(Short), tmdbBasis = Some(services.resolution.TmdbBasis.TitleOnly.toString),
+      data = Map[Source, SourceData](
+        // The wrong film's own slot, 1960 — what the guess wrote onto the row.
+        models.Tmdb           -> SourceData(title = Some("Homo sapiens"), releaseYear = Some(1960),
+                                            runtimeMinutes = Some(9)),
+        CinemaCityPoznanPlaza -> SourceData(title = Some("Homo sapiens"), releaseYear = Some(2025),
+                                            runtimeMinutes = Some(95))))
+    val cache = new CaffeineMovieCache(
+      new InMemoryMovieRepository(Seq(("Homo sapiens", Some(1960), seed))), normalizer = titleNormalizer)
+
+    new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Homo sapiens", Some(1960))
+
+    withClue(s"ids=${cache.entries.flatMap(_._2.tmdbId).toSet}: ")(
+      cache.entries.flatMap(_._2.tmdbId).toSet should contain(Feature))
+  }
 }
