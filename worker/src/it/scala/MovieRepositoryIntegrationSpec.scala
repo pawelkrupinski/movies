@@ -448,6 +448,19 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val filmC = "__it-screenings-resume-C__"
     val filmWarm = "__it-screenings-resume-warmup__"
     val repo1 = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
+    // SWEEP A PRIOR RUN'S ROWS BEFORE WRITING ANY, not only in the `finally`. The
+    // slots below are written at FIXED hours, and since `5fb4f607e` the screenings
+    // cursor does not ring for a row that did not move — so if a previous run died
+    // between its writes and its cleanup (a cancelled CI run, which this repository
+    // produces constantly), the identical re-write here is a no-op, no event is
+    // owed, and `gotA` times out. That reads as a BROKEN RESUME, which is the one
+    // bug this spec exists to catch.
+    //
+    // `beforeAll`'s `purgeSentinels` does not reach these: it deletes from `movies`
+    // by `_id ^integrationtest`, and these live in `screenings` under
+    // `itscreeningsresume…`. Same reasoning as the warm-up loop's fresh hour just
+    // below — a write this spec depends on has to be a real change every time.
+    Seq(filmA, filmB, filmC, filmWarm).foreach(repo1.deleteFilm)
     val gotA  = new CountDownLatch(1)
     val gotWarm = new CountDownLatch(1)
     val handle1 = repo1.watch { fid =>
