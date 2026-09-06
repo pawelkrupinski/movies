@@ -37,7 +37,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
   private val tmdbId   = 42433
 
   it should "refuse to fold a film whose cinemas it could not read, rather than re-key it on the staging spelling" in {
-    FoldFixture.withFold(sanitize) { fold =>
+    FoldFixture.withFold("fold-unreadable-row") { fold =>
       fold.seedMigratedFilm(title, Some(2026), tmdbId)
       fold.seedStagingRow(Multikino.displayName, title, Some(2026), tmdbId)
 
@@ -89,7 +89,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "skip the completion write when the film cannot be read back, rather than write one that deletes its cinemas" in {
-    FoldFixture.withFold(sanitize) { fold =>
+    FoldFixture.withFold("fold-unreadable-row") { fold =>
       fold.seedMigratedFilm(title, Some(2026), tmdbId)
       val stagingId  = fold.seedStagingRow(Multikino.displayName, title, Some(2026), tmdbId)
       val repository = new FailAfterPlanningRepository
@@ -121,7 +121,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
     // other test in this file is about, and reading it on CI sends you looking for a corruption
     // that is not there. Whatever comes out of a fold that could not commit, it is the Mongo
     // error, not `IllegalStateException("Refusing to re-key the film")`.
-    FoldFixture.withFold(sanitize) { fold =>
+    FoldFixture.withFold("fold-unreadable-row") { fold =>
       fold.seedMigratedFilm(title, Some(2026), tmdbId)
       fold.seedStagingRow(Multikino.displayName, title, Some(2026), tmdbId)
       val repository = new FailAfterPlanningRepository(transientOnFirstAttempt = true)
@@ -153,7 +153,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
    *  only copy, and `ReapOrphanedFilmRows` clears it out of band. */
   Seq("reports failure" -> false, "raises" -> true).foreach { case (label, raise) =>
     it should s"commit the fold even when carrying a retired key's cinemas $label" in {
-      FoldFixture.withFold(sanitize) { fold =>
+      FoldFixture.withFold("fold-unreadable-row") { fold =>
         // Two year-variants, which `planGroup` collapses onto the TMDB year — so the fold
         // RETIRES one key, which is what makes it try to migrate that key's side rows.
         Seq(2025, 2026).foreach(y => fold.seedMigratedFilm(title, Some(y), tmdbId))

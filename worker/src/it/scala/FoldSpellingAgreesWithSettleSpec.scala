@@ -62,7 +62,7 @@ class FoldSpellingAgreesWithSettleSpec extends AnyFlatSpec with Matchers {
   private val fancyVenue  = models.KinoMuza
 
   it should "keep a film on the spelling its stitched cinemas report, not the one diverted venue's" in {
-    FoldFixture.withFold(bareSanitize, decoratedSanitize) { fold =>
+    FoldFixture.withFold("fold-spelling-settle") { fold =>
       // A fully MIGRATED film, which is what prod's corpus is: the `movies` document carries
       // no `sourceData` at all, and every cinema it has lives in `movie_slots`. Five venues
       // publish it plainly and one dresses it up, so the settled spelling is the plain one.

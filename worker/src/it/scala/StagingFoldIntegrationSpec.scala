@@ -52,7 +52,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   private def sd(t: String) = SourceData(title = Some(t))
 
   it should "keep a retired key's screenings — the winner has not inherited them yet" in {
-    FoldFixture.withFold(titleNormalizer.sanitize(title)) { fold =>
+    FoldFixture.withFold("staging-fold") { fold =>
       import fold.{movies, staging, slots, screenings}
       // Both year-variants exist in `movies`, each with cinemas in the side collections.
       Seq(winner, loser).foreach { id =>
@@ -127,7 +127,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    *  show the embedded showtimes the transaction wrote and pass while every real reader
    *  saw none. */
   it should "give a graduated film its showtimes in `screenings`, not just embedded" in {
-    FoldFixture.withFold(titleNormalizer.sanitize(newcomerTitle)) { fold =>
+    FoldFixture.withFold("staging-fold") { fold =>
       import fold.{movies, staging, screenings, db}
       val repository = new services.movies.MongoMovieRepository(Some(db), fallbackToOwnInit = false,
       normalizer = titleNormalizer,
@@ -177,7 +177,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    *  trip to survive. `StagingFoldDocumentSizeSpec` measures the same ceiling against the
    *  real catalogue, in bytes, without needing a replica set. */
   it should "fold a film whose venues carry more board than one document can hold" in {
-    FoldFixture.withFold(titleNormalizer.sanitize(oversizeTitle)) { fold =>
+    FoldFixture.withFold("staging-fold") { fold =>
       import fold.{screenings, staging}
       val cinemas = Seq(Multikino, models.Helios)
       cinemas.foreach(seedOversizeRow(staging, _))
@@ -306,7 +306,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    * conclusion.
    */
   it should "keep a migrated film on its existing key rather than adopting the staging spelling" in {
-    FoldFixture.withFold(blindSanitize) { fold =>
+    FoldFixture.withFold("staging-fold") { fold =>
       import fold.{movies, staging, slots}
       val existing = StoredMovieRecord.idFor(blindTitle, Some(2026), titleNormalizer)
       // The bare spelling is what the cinemas report, and it is the one the settle would key
@@ -364,7 +364,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
   it should "fold the same group whether or not it is told which rows to read" in {
     val hintTitle = "Fold Hint Sentinel"
     val anchor    = titleNormalizer.sanitize(hintTitle)
-    FoldFixture.withFold(anchor) { fold =>
+    FoldFixture.withFold("staging-fold") { fold =>
       import fold.db
       val repository = new services.staging.MongoStagingRepository(Some(db), titleNormalizer)
       val folder     = fold.folder()

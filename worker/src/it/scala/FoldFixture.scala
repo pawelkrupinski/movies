@@ -3,11 +3,11 @@ package integration
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.MongoConnection
 import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, StoredMovieRecord}
 import services.staging.{MongoStagingFolder, StagingRepository}
-import tools.Env
+import tools.{Env, IntegrationCorpusDatabase}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -17,20 +17,27 @@ import scala.concurrent.duration._
  *
  * `MongoStagingFolder` needs transactions, so every spec that reaches it opens a real client,
  * seeds RAW documents (the fold plans against raw `movies`, so a spec that writes through the
- * repository is not exercising the same read), and purges them afterwards. Three specs were
+ * repository is not exercising the same read), and clears them afterwards. Three specs were
  * each carrying their own copy of that — ~90 lines of identical client/collection/teardown
  * plumbing — and the copies had already drifted: one cleaned `movies` and staging but not the
- * side rows, which left a `movie_slots` row behind on every run. Those rows are not inert,
- * because the it suites share one database and the fold pulls cross-title siblings by `tmdbId`
- * from the WHOLE collection, so a leftover row is a stray cinema waiting to join someone
- * else's group — it made a passing spec fail for a reason unrelated to the change under test.
+ * side rows, which left a `movie_slots` row behind on every run. Those rows are not inert: the
+ * fold pulls cross-title siblings by `tmdbId` from the WHOLE collection, so a leftover row is a
+ * stray cinema waiting to join someone else's group — it made a passing spec fail for a reason
+ * unrelated to the change under test.
  *
- * Hence `purge` takes the anchors up front and runs in a `finally`: a spec cannot forget a
- * collection, and adding one here fixes every caller at once.
+ * EACH `withFold` GETS ITS OWN DATABASE, dropped afterwards. The suites used to run in
+ * parallel against one, purging by sentinel anchor on the way out — which is only as good as
+ * every spec remembering to pick a unique title AND a unique `tmdbId` (the fold's sibling
+ * lookup makes that a shared namespace too), and only covers rows a purge knows to look for.
+ * It did not hold: `FoldOnUnreadableRowSpec` failed intermittently under a full `itAll` with
+ * its seeded films simply gone — once as "no migration was attempted", once as "the fold
+ * collapsed nothing", on different cases each time. Nothing in this fixture could have
+ * prevented that, because whatever removed the rows was not addressing them by anchor.
  *
- * Each spec still needs its OWN sentinel anchor. The suites run in parallel against one
- * database, so two specs sharing a title (or a `tmdbId` — the fold's sibling lookup makes that
- * a shared namespace too) will delete each other's rows mid-fold.
+ * A database nothing else writes to cannot be interfered with, and dropping it takes the
+ * `movies` rows, the `screenings` and `movie_slots` they cascade to, and the staging rows
+ * together — which is why the per-anchor `purge` this replaced is gone rather than kept
+ * alongside.
  */
 object FoldFixture {
 
@@ -40,8 +47,7 @@ object FoldFixture {
     tools.IntegrationMongo.requireThrowaway()
   }
 
-  private def uri    = Env.get("MONGODB_URI").get
-  private def dbName = Env.get("MONGODB_DB").getOrElse("kinowo")
+  private def uri = Env.get("MONGODB_URI").get
 
   private val Timeout = 10.seconds
   private def now     = java.util.Date.from(java.time.Instant.now())
@@ -99,24 +105,13 @@ object FoldFixture {
     def stagingRowExists(id: String): Boolean =
       Await.result(staging.find(Filters.eq("_id", id)).toFuture(), Timeout).nonEmpty
 
-    private[integration] def purge(anchors: Seq[String]): Unit = anchors.foreach { anchor =>
-      // Side rows FIRST, off the ids that still exist — once the `movies` documents are gone
-      // there is nothing left to derive the film ids from.
-      filmIds(anchor).foreach { id => slots.deleteFilm(id); screenings.deleteFilm(id) }
-      Await.ready(movies.deleteMany(Filters.regex("_id", s"^$anchor\\|")).toFuture(), Timeout)
-      Await.ready(staging.deleteMany(Filters.regex("_id", s".*$anchor.*")).toFuture(), Timeout)
-    }
   }
 
-  /** Run `test` against a live throwaway Mongo, purging every `anchor`'s rows afterwards
-   *  whatever the test did — including when it threw. */
-  def withFold[A](anchors: String*)(test: Handles => A): A = {
-    val client = MongoClient(uri)
-    val db     = client.getDatabase(dbName)
-    val handles = new Handles(db, new MongoConnection(Some(uri), dbName, required = false))
-    try test(handles)
-    finally {
-      try handles.purge(anchors) finally client.close()
+  /** Run `test` against a database of this suite's own, dropped afterwards whatever the test
+   *  did — including when it threw. `suite` names it; give each spec a distinct one, since two
+   *  suites sharing a name would share a database and be back where this started. */
+  def withFold[A](suite: String)(test: Handles => A): A =
+    IntegrationCorpusDatabase.withDatabase(uri, suite) { db =>
+      test(new Handles(db, new MongoConnection(Some(uri), db.name, required = false)))
     }
-  }
 }
