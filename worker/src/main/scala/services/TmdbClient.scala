@@ -275,6 +275,12 @@ class TmdbClient(
         val directors = crew
           .filter(c => (c \ "job").asOpt[String].contains("Director"))
           .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
+        // Writers too: a venue prints the writer as often as the director ("Drzewo
+        // magii" is directed by Ben Gregor and written by Simon Farnaby), and the
+        // verdict on a candidate asks whether the credited name is on the CREW.
+        val writers = crew
+          .filter(c => (c \ "job").asOpt[String].exists(TmdbClient.WritingJobs.contains))
+          .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty).distinct
         val topCast = cast
           .sortBy(c => (c \ "order").asOpt[Int].getOrElse(Int.MaxValue))
           .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
@@ -300,6 +306,7 @@ class TmdbClient(
           originalTitle = (js \ "original_title").asOpt[String].filter(_.nonEmpty),
           synopsis      = (js \ "overview").asOpt[String].filter(_.nonEmpty),
           director      = directors,
+          writers       = writers,
           cast          = topCast,
           runtimeMinutes= (js \ "runtime").asOpt[Int].filter(_ > 0),
           releaseYear   = (js \ "release_date").asOpt[String].filter(_.length >= 4).flatMap(s => Try(s.take(4).toInt).toOption),
@@ -568,8 +575,17 @@ object TmdbClient {
     countries:      Seq[String],
     genres:         Seq[String],
     posterUrl:      Option[String],
-    ageRating:      Option[String] = None
-  )
+    ageRating:      Option[String] = None,
+    /** Writing credits (writer, screenplay, story) — part of the crew a venue may
+     *  print as the director; see `services.resolution.Candidate`. */
+    writers:        Seq[String]    = Nil
+  ) {
+    /** Everyone a cinema could credit as the film's maker. */
+    def crew: Seq[String] = (director ++ writers).distinct
+  }
+
+  /** TMDB crew `job`s that count as writing the film. */
+  val WritingJobs: Set[String] = Set("Writer", "Screenplay", "Story")
 
   /** One poster variant from `/movie/{id}/images`. `aspectRatio` is
    *  width/height (TMDB's convention) — a 2:3 portrait poster is ~0.667.

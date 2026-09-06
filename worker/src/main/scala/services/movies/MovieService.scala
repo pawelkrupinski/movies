@@ -7,7 +7,7 @@ import services.cinemas.CountryNames
 import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
-import services.resolution.{FilmEvidence, ResolutionCache, ResolutionKeys, SearchTitles, TitleCorroboration, TmdbBasis}
+import services.resolution.{Candidate, Contradiction, FilmEvidence, ResolutionCache, ResolutionKeys, SearchTitles, TitleCorroboration, TmdbBasis, Verdict}
 import services.tasks.RatingTasks
 import tools.{DaemonExecutors, HttpStatusException}
 
@@ -265,23 +265,24 @@ class MovieService(
         // same-title film (a query with no director picks TMDB's most-popular
         // hit). The director is the only signal we can check a resolution
         // against, so a re-scrape that brings none keeps the current id (no TMDB
-        // call). When THIS event carries a director, RE-VERIFY: if none of the
-        // row's reported directors appear in the current tmdbId's credits, the
-        // resolution is contradicted → re-resolve (the title search +
-        // `directorWalk` will land the right film). When it still verifies, keep
-        // it — that keep makes the stage idempotent: a correctly-resolved row
-        // never re-resolves, so re-running it on every director-bearing change
-        // can't churn TMDB or loop on the stage's own writes.
+        // call). When THIS event carries a director, RE-VERIFY with the one
+        // `Verdict` the sweep uses: a credited name that matches nobody on the
+        // current film's crew is a contradiction → re-resolve (the director walk
+        // will land the right film). Anything else — agreement, or a crew TMDB
+        // could not read — keeps it; an unanswered question is not evidence, and
+        // the keep is what makes the stage idempotent so a correctly-resolved row
+        // never churns TMDB on every director-bearing change.
         if (director.isEmpty) false
         else {
-          val dirs = reportedDirectors(existing, director)
-          if (dirs.isEmpty ||
-              verifyByDirector(Some(TmdbClient.SearchResult(currentId, "", None, None, 0.0)), Some(dirs)).isDefined)
-            false
-          else {
-            logger.info(s"TMDB re-resolve: '${key.cleanTitle}' (${key.year.getOrElse("?")}) tmdbId=$currentId " +
-                        s"no longer matches the reported director(s) [$dirs] — re-resolving.")
-            true
+          val evidence = existing.fold(FilmEvidence.empty)(_.evidence)
+            .withDirectors(director.toSeq.flatMap(_.split(",")))
+          if (evidence.directors.isEmpty) false
+          else Verdict.of(evidence, Candidate(currentId, crew = tmdb.directorsFor(currentId).toSeq)) match {
+            case Verdict.Reject(Contradiction.Director) =>
+              logger.info(s"TMDB re-resolve: '${key.cleanTitle}' (${key.year.getOrElse("?")}) tmdbId=$currentId " +
+                          s"no longer matches the reported director(s) [${evidence.directors.mkString(",")}] — re-resolving.")
+              true
+            case _ => false
           }
         }
       case None =>
@@ -317,23 +318,6 @@ class MovieService(
         else true
     }
   }
-
-  /** The directors reported for a row — every CINEMA slot's plus the triggering
-   *  event's — normalised the same way `resolveTmdb` derives its hint, as one
-   *  comma-joined, de-duplicated, sorted string (empty when none). Sorted so the
-   *  re-verification is a pure function of the row's state, not arrival order.
-   *
-   *  `cinemaDirector`, never `data.values` — this feeds the contradiction check
-   *  in `needsTmdbResolution`, and reading the derived `Tmdb`/`Imdb`/`Filmweb`
-   *  slots let the WRONG film's own director verify the wrong film. The check
-   *  could then never fire: "Dreams" sat on Haugerud's "Drømmer" while its only
-   *  cinema said Michel Franco, and every re-scrape confirmed it. Sourced from
-   *  the cinemas alone the contradiction fires and the row re-resolves itself,
-   *  so this whole class heals without an operator (`DirectorWalkResolvesSpec`). */
-  private def reportedDirectors(existing: Option[MovieRecord], eventDirector: Option[String]): String =
-    existing.fold(FilmEvidence.empty)(_.evidence)
-      .withDirectors(eventDirector.toSeq.flatMap(_.split(",")))
-      .directors.mkString(",")
 
   /** Reset a row to its scraped-only form ([[MovieRecord.scrapedOnly]]) and re-key it
    *  onto the SCRAPED year, returning the key to resolve against. The scraped year comes
@@ -934,7 +918,7 @@ class MovieService(
     // that made whole-corpus snapshots flaky. Build candidates from every
     // cinema-reported title + every slot's original (English) title, plus
     // de-decorated forms (each side of a "X | Y" pipe, trailing "(…)" dropped),
-    // and try each (verifyByDirector-gated, so extra terms can't mis-resolve
+    // and try each (verdict-gated, so extra terms can't mis-resolve
     // onto a same-title different film). `apiQuery` additionally strips the
     // accessibility-programme decoration ("Kino bez barier: Freak Show (AD)" →
     // "Freak Show") before hitting TMDB.
@@ -1092,6 +1076,10 @@ class MovieService(
     // once every sweep for ever. An unknown basis must stay unknown.
     var searchBasis: Option[TmdbBasis] = None
     var freshHit: Option[TmdbClient.SearchResult] = None
+    // The credited person whose filmography a walk hit came from — on the film's
+    // crew by construction, so the verdict below can see the agreement even where
+    // TMDB spells the name in a way `SamePerson` cannot bridge.
+    var walkedBy: Option[String] = None
     val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
       val hit =
         if (rowDirectors.isEmpty)
@@ -1133,9 +1121,9 @@ class MovieService(
           // title. CINEMA-only, like every other hint here — reading the merged
           // fields would hand the check the previous resolution's own numbers.
           rowDirectors.iterator
-            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, evidence.runtimes, evidence.cast, cinemaCandidates, cinemaTitleWeight))
+            .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, evidence.runtimes, evidence.cast, cinemaCandidates, cinemaTitleWeight).map(d -> _))
             .nextOption()
-            .map(hit => { searchBasis = Some(TmdbBasis.DirectorWalk); hit })
+            .map { case (d, hit) => searchBasis = Some(TmdbBasis.DirectorWalk); walkedBy = Some(d); hit }
         }
       freshHit = hit
       hit.map(_.id.toString)
@@ -1149,14 +1137,23 @@ class MovieService(
       // prod matched "Vivaldi i ja" to an 18-minute STABAT MATER concert short
       // while 46 venues advertised the 110-minute feature, and "Homo sapiens?" to
       // a 9-minute animated short. The row then carried that film's year, poster
-      // and ratings, which is worse than carrying none. The cinemas' own minutes
-      // are the check — they can't be derived from the resolution being tested —
-      // and the band is wide enough that ordinary padding and rounding pass (see
-      // `RuntimeCorroboration.plausible`). Only the SEARCH paths are vetoed; the
+      // and ratings, which is worse than carrying none. `Verdict` is the one
+      // judgement the sweep and the re-verify use too: the cinemas' own minutes deny
+      // a category error, and an agreeing credit — a walk hit carries the walked
+      // person on its crew by construction — settles a short film in a longer slot
+      // as the sweep does, instead of the two disagreeing. Only a RUNTIME rejection
+      // vetoes here: a name rejection needs TMDB's crew ids to confirm, and the
+      // resolver never spent one before. Only the SEARCH paths are vetoed; the
       // id-based fallbacks below are exact reverse lookups, not guesses.
       .filter { id =>
-        val credible = RuntimeCorroboration.plausible(
-          evidence.runtimes, tmdb.fullDetails(id).flatMap(_.runtimeMinutes))
+        val details   = tmdb.fullDetails(id)
+        val candidate = Candidate(id,
+          titles  = details.toSet.flatMap(d => Set(d.title, d.originalTitle).flatten),
+          year    = details.flatMap(_.releaseYear),
+          runtime = details.flatMap(_.runtimeMinutes),
+          crew    = details.toSeq.flatMap(_.crew) ++ walkedBy.toSeq,
+          cast    = details.toSeq.flatMap(_.cast))
+        val credible = Verdict.of(evidence, candidate) != Verdict.Reject(Contradiction.Runtime)
         if (!credible)
           logger.info(s"TMDB: '$title' (${year.getOrElse("?")}) → rejecting $id: its " +
             s"runtime is not credible against the cinemas' ${evidence.runtimes.mkString("/")} min")
@@ -1213,33 +1210,6 @@ class MovieService(
         } else None
       }
   }
-
-  /** When the cinema reports a director, drop title-search candidates whose
-   *  TMDB credits don't include that director — they're probably a same-
-   *  title-different-film hit. When no director is reported, pass the
-   *  candidate through unchanged.
-   *
-   *  Cinemas often comma-list several names while a film may have several credited
-   *  directors, so ANY pairing that [[SamePerson]] accepts counts — the one
-   *  comparison the sweep's contradiction check and the crew confirmation use too,
-   *  so a hit this keeps is a hit the sweep would not later reject. */
-  private def verifyByDirector(
-    candidate: Option[TmdbClient.SearchResult],
-    director:  Option[String]
-  ): Option[TmdbClient.SearchResult] =
-    candidate.flatMap { hit =>
-      director match {
-        case None => Some(hit)   // no hint → can't verify, accept
-        case Some(directory) =>
-          val cinemaNames = directory.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq
-          if (cinemaNames.isEmpty) Some(hit)
-          else {
-            val tmdbNames = tmdb.directorsFor(hit.id)
-            val matches = tmdbNames.exists(t => cinemaNames.exists(c => SamePerson(c, t)))
-            if (matches) Some(hit) else None
-          }
-      }
-    }
 
   /** Walk a cinema-reported director's TMDB filmography and pick the entry the
    *  cinema is actually showing. Needed when the title search lands on the wrong

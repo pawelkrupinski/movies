@@ -92,7 +92,7 @@ class UnresolvedTmdbReaper(
   // the confirmation exists to prevent. A caller that genuinely wants the unconfirmed
   // check passes `CinemaCorroboration.contradicts` and says so.
   confirmContradiction: MovieRecord => Boolean =
-    CinemaCorroboration.contradiction(_).contains(CinemaCorroboration.Contradiction.Runtime),
+    CinemaCorroboration.contradiction(_).contains(services.resolution.Contradiction.Runtime),
   // This deployment's country — its `language` is the tag every `Tmdb` slot is
   // expected to carry. Poland by default, matching the historical enrichment
   // language, so a defaulted construction sweeps nothing extra.

@@ -136,6 +136,33 @@ class TmdbMisresolveSpec extends AnyFlatSpec with Matchers {
     resolveVivaldi(vivaldiTmdb(featureRuntime = 110)) should not be Some(Concert)
   }
 
+  // The sweep already let an agreeing director settle a runtime mismatch —
+  // Almodóvar's 30-minute "The Human Voice" advertised at 90 with a Q&A — while the
+  // resolver vetoed the very same film on runtime alone, so the walk could never
+  // resolve what the sweep would then have kept. One verdict, both places.
+  "a director-walk hit a fraction of the advertised length" should "still be accepted, because the director agrees" in {
+    val Short    = 615777
+    val PersonId = 8817
+    val tmdb = new TmdbClient(
+      http = new StubFetch(Seq(
+        "/search/movie"    -> """{"results":[]}""",
+        "/search/person"   -> s"""{"results":[{"id":$PersonId,"name":"Pedro Almodóvar","known_for_department":"Directing"}]}""",
+        s"/person/$PersonId/movie_credits" -> s"""{"crew":[
+          |{"id":$Short,"title":"Ludzki głos","original_title":"The Human Voice","release_date":"2020-10-21","department":"Directing","popularity":5.0}
+          |]}""".stripMargin,
+        s"/movie/$Short?"            -> s"""{"id":$Short,"title":"Ludzki głos","original_title":"The Human Voice","release_date":"2020-10-21","runtime":30,
+          |"credits":{"crew":[{"job":"Director","name":"Pedro Almodóvar"}],"cast":[]}}""".stripMargin,
+        s"/movie/$Short/external_ids" -> s"""{"id":$Short,"imdb_id":"tt12545256"}"""
+      )),
+      apiKey = Some("stub"))
+    val seed = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Ludzki głos"), runtimeMinutes = Some(90), director = Seq("Pedro Almodóvar"))))
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Ludzki głos", Some(2020), seed))),
+      normalizer = titleNormalizer)
+    new MovieService(cache, new InProcessEventBus(), tmdb).reEnrichSync("Ludzki głos", Some(2020))
+    cache.get(cache.keyOf("Ludzki głos", Some(2020))).flatMap(_.tmdbId) shouldBe Some(Short)
+  }
+
   it should "still resolve normally when the match's runtime is credible" in {
     // Same search, but the popular hit is now a real feature — nothing to veto.
     val tmdb = new TmdbClient(

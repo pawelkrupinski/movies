@@ -1,7 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Tmdb}
-import services.resolution.TmdbBasis
+import services.resolution.{Candidate, Contradiction, TmdbBasis, Verdict}
 
 /**
  * Does a row's own resolution survive contact with what its CINEMAS published?
@@ -34,9 +34,6 @@ import services.resolution.TmdbBasis
  */
 object CinemaCorroboration {
 
-  /** What the cinemas disagree with the resolution about. */
-  enum Contradiction { case Runtime, Director }
-
   /** True when the row's conclusion is weaker than the evidence it now holds — a
    *  bare-title guess on a row that has SINCE acquired a director or a year.
    *
@@ -55,58 +52,25 @@ object CinemaCorroboration {
       record.tmdbBasis.flatMap(TmdbBasis.parse).contains(TmdbBasis.TitleOnly) &&
       (record.evidence.directors.nonEmpty || record.evidence.years.nonEmpty)
 
-  /** Which signal contradicts, if either. The two are not equally trustworthy, so
-   *  the caller needs to know which fired: a runtime is a NUMBER the cinemas
-   *  published and needs no confirming, while a director is a NAME, and a name can
-   *  disagree for a dozen reasons that are not a different film — the venue crediting
-   *  the film's other director, a pseudonym, a romanisation. A caller about to spend
-   *  a re-resolution on the director signal should confirm it first (see
-   *  `services.tasks.CrewConfirmation`). */
+  /** Which signal contradicts, if either — [[services.resolution.Verdict]]'s rejection
+   *  of the film the row's own `Tmdb` slot describes. The two reasons are not equally
+   *  trustworthy, so the caller needs to know which fired: a runtime is a NUMBER the
+   *  cinemas published and needs no confirming, while a director is a NAME, and a
+   *  name can disagree for a dozen reasons that are not a different film. A caller
+   *  about to spend a re-resolution on the director signal should confirm it first
+   *  (see `services.tasks.CrewConfirmation`). */
   def contradiction(record: MovieRecord): Option[Contradiction] =
-    if (record.tmdbId.isEmpty) None
-    else record.data.get(Tmdb).flatMap { film =>
-      namesAgree(record, film.director) match {
-        // Agreement settles the row on the strongest evidence either side carries and
-        // leaves the runtime nothing to decide — see `namesAgree`.
-        case Some(true) => None
-        case agreement =>
-          if (runtimeDenies(record, film.runtimeMinutes)) Some(Contradiction.Runtime)
-          else if (agreement.contains(false))             Some(Contradiction.Director)
-          else                                            None
+    for {
+      tmdbId <- record.tmdbId
+      film   <- record.data.get(Tmdb)
+      reason <- Verdict.of(record.evidence, Candidate.fromSlot(tmdbId, film)) match {
+        case Verdict.Reject(r) => Some(r)
+        case _                 => None
       }
-    }
+    } yield reason
 
   /** True when the cinemas positively contradict the film this row resolved to.
    *  The cheap, PURE form — a corpus-scan metric uses it as-is; a caller about to
    *  act on it should go through [[contradiction]] and confirm a director. */
   def contradicts(record: MovieRecord): Boolean = contradiction(record).isDefined
-
-  /** The runtime band is deliberately wide (see [[RuntimeCorroboration.plausible]]):
-   *  cinemas pad, round and shave, and Multikino advertises the 162-minute "Lalka"
-   *  at 147. Only a category error trips it. */
-  private def runtimeDenies(record: MovieRecord, filmRuntime: Option[Int]): Boolean =
-    !RuntimeCorroboration.plausible(record.evidence.runtimes, filmRuntime)
-
-  /** Whether the two sides name the same person, or None when one of them names
-   *  nobody this can compare — a film TMDB credits to nobody, a film no venue
-   *  credits, or a credit that folds away entirely (a CJK name). Disagreement means
-   *  EVERY cinema credit matched no film credit at all. The single
-   *  three-valued answer `contradiction` reads once, so "they agree" and "they
-   *  disagree" cannot drift apart and each credit is tokenised once per row.
-   *
-   *  Agreement is load-bearing on its own, not just the negation of a
-   *  contradiction. Prod, 2026-09-05: seven of the nine runtime contradictions had a
-   *  director agreeing across them — Almodovar's 30-minute "The Human Voice"
-   *  advertised at 90 because the slot included a Q&A, a Chaplin/Keaton shorts
-   *  PROGRAMME measured against the one Keaton short it resolved to. The film is
-   *  right and the cinema's number describes the event around it. It gives up the
-   *  reverse case (a director's OTHER film of the same name), which is the cheaper
-   *  mistake: a missed contradiction leaves one row uncorrected, while acting on a
-   *  false one force-re-resolves a film that was already right. */
-  private def namesAgree(record: MovieRecord, filmDirectors: Seq[String]): Option[Boolean] = {
-    val cinemaNames = record.evidence.directors.map(SamePerson.tokens).filter(_.nonEmpty)
-    val filmNames   = filmDirectors.map(SamePerson.tokens).filter(_.nonEmpty)
-    Option.when(cinemaNames.nonEmpty && filmNames.nonEmpty)(
-      cinemaNames.exists(c => filmNames.exists(f => SamePerson.sameTokens(c, f))))
-  }
 }

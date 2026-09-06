@@ -165,6 +165,28 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     client.fullDetails(872585).get.genres shouldBe Seq("Dramat", "Historyczny")
   }
 
+  it should "carry the writing credits as part of the crew, since venues print either" in {
+    // "Drzewo magii": directed by Ben Gregor, written by Simon Farnaby — cinemas
+    // credit one or the other, and the verdict on a candidate asks whether the
+    // credited name is on the CREW. A producer is not someone a venue credits.
+    val body =
+      """{
+        |  "id":1,"title":"Drzewo magii","original_title":"The Magic Faraway Tree",
+        |  "release_date":"2026-05-01","runtime":100,"genres":[],
+        |  "credits":{"crew":[
+        |    {"job":"Director","name":"Ben Gregor"},
+        |    {"job":"Screenplay","name":"Simon Farnaby"},
+        |    {"job":"Writer","name":"Simon Farnaby"},
+        |    {"job":"Novel","name":"Enid Blyton"},
+        |    {"job":"Producer","name":"Somebody Rich"}
+        |  ],"cast":[]}
+        |}""".stripMargin
+    val d = fakeClient(Map("/movie/1?language=pl-PL" -> body)).fullDetails(1).get
+    d.director shouldBe Seq("Ben Gregor")
+    d.writers  shouldBe Seq("Simon Farnaby")
+    d.crew     shouldBe Seq("Ben Gregor", "Simon Farnaby")
+  }
+
   // ── fullDetails: the deployment language threads into the request ──────────
   //
   // A non-Polish deployment (UK, `language=en-GB`) must fetch TMDB in its own

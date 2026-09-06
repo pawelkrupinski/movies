@@ -3,7 +3,7 @@ package services.tasks
 import models.MovieRecord
 import play.api.Logging
 import services.movies.{CinemaCorroboration, SamePerson}
-import services.movies.CinemaCorroboration.Contradiction
+import services.resolution.Contradiction
 
 /**
  * Confirms a contradiction with TMDB before anything acts on it.
