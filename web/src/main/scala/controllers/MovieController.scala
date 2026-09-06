@@ -446,6 +446,11 @@ class MovieController( cc: ControllerComponents,
     // origin never sees who is really asking. It needs a cache key that includes
     // the encoding (Enterprise), a Worker doing the negotiation at the edge, or
     // not fronting these routes with Cloudflare.
+    //
+    // ⚠️ RE-ENABLING IS NOT JUST THIS LINE. A `cacheBody = false` route offered a
+    // second coding also needs a branch in `conditionalCompressed` that compresses
+    // without keeping a blob; there was one, and it went with the revert rather
+    // than sitting here unreachable.
     case CachePolicy.BrowserOnly | CachePolicy.RevalidatedAnywhere => Set(ContentEncoding.Gzip)
   }
 
@@ -649,15 +654,6 @@ class MovieController( cc: ControllerComponents,
       case Some(encoding) if cacheBody =>
         val bytes = responseCache.encodedBody(bodyKey, lastMod, encoding)(body)
         Ok(bytes).as(contentType)
-          .withHeaders((Seq("Content-Encoding" -> encoding.token, "Vary" -> vary) ++ validators)*)
-
-      // Brotli on a response we deliberately keep no blob for. Only `BrowserOnly`
-      // can reach this (nothing else offers brotli at all), and it is worth the
-      // work per request rather than none: brotli at q5 measured 24 ms against the
-      // 125 ms the GzipFilter spends gzipping the same body, so compressing here is
-      // CHEAPER than letting the filter do it, as well as 34% smaller.
-      case Some(encoding @ ContentEncoding.Brotli) =>
-        Ok(EncodedResponseCache.compress(encoding, body)).as(contentType)
           .withHeaders((Seq("Content-Encoding" -> encoding.token, "Vary" -> vary) ++ validators)*)
 
       // Gzip on an uncached response, or a client that refuses everything: leave it
