@@ -428,8 +428,25 @@ class MovieController( cc: ControllerComponents,
    *  null result, not another regression, which is why it is being asked here and
    *  not on the listings. */
   private def servableEncodings(policy: CachePolicy): Set[ContentEncoding] = policy match {
-    case CachePolicy.BrowserOnly         => ContentEncoding.values.toSet
-    case CachePolicy.RevalidatedAnywhere => Set(ContentEncoding.Gzip)
+    // ⚠️ ANSWERED, AND THE ANSWER WAS NO. The experiment below this line used to
+    // give `BrowserOnly` brotli, on the reasoning that a response the edge answers
+    // `BYPASS` has no stored variant to collapse. Measured on the live edge
+    // 2026-09-06, `/uk/manchester/?date=tomorrow`:
+    //
+    //   client sending `gzip, deflate, br, zstd`   br,  194,136 B
+    //   client sending `gzip`                      NONE, 3,768,974 B
+    //
+    // So Cloudflare does not forward the client's `Accept-Encoding` even when it
+    // caches nothing: it asks the origin with its own, gets brotli, and then
+    // decompresses for a client that cannot read it. BYPASS removes the shared
+    // CACHE, not the rewriting.
+    //
+    // That closes the question for every policy, not just this one. Origin-side
+    // brotli is unreachable behind this zone at any cache setting, because the
+    // origin never sees who is really asking. It needs a cache key that includes
+    // the encoding (Enterprise), a Worker doing the negotiation at the edge, or
+    // not fronting these routes with Cloudflare.
+    case CachePolicy.BrowserOnly | CachePolicy.RevalidatedAnywhere => Set(ContentEncoding.Gzip)
   }
 
   private def bestEncoding(request: RequestHeader, policy: CachePolicy): Option[ContentEncoding] =

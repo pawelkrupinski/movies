@@ -314,7 +314,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "never put brotli on an EDGE-CACHED response, which is the whole regression" in {
+  it should "never put brotli on the wire at all, which is the whole regression" in {
     val (ctrl, _) = buildController()
     Seq("br", "br;q=1.0", "br, gzip", "gzip, deflate, br, zstd", "*").foreach { accept =>
       val bare = ctrl.index("poznan")(
@@ -326,36 +326,37 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
         FakeRequest("GET", "/poznan/api/repertoire").withHeaders("Accept-Encoding" -> accept))
       withClue(s"the listing JSON, Accept-Encoding: $accept: ")(
         header("Content-Encoding", json) should not be Some("br"))
+
+      val filtered = ctrl.index("poznan")(
+        FakeRequest("GET", "/poznan/?date=tomorrow").withHeaders("Accept-Encoding" -> accept))
+      withClue(s"a BYPASSED filtered page, Accept-Encoding: $accept: ")(
+        header("Content-Encoding", filtered) should not be Some("br"))
     }
   }
-
-  // ── …and brotli WHERE THE EDGE KEEPS NO COPY ───────────────────────────────
+  // ── …AND NOT EVEN WHERE THE EDGE KEEPS NO COPY ─────────────────────────────
   //
-  // A filtered page is `private, no-cache`, which the edge answers `BYPASS`. With
-  // no stored variant there is nothing to collapse, so the origin's negotiation is
-  // the one that reaches the client and brotli is safe. This is the experiment: if
-  // Cloudflare turns out to normalise Accept-Encoding on a bypass too, these pages
-  // just keep arriving gzip and nothing breaks.
-  "a bypassed page" should "take brotli when the client asks for it" in {
+  // This asserted the opposite for about twenty minutes. The reasoning was that a
+  // `private, no-cache` page is answered `BYPASS`, so with no stored variant there
+  // is nothing to collapse and the origin's negotiation is what reaches the client.
+  // Measured on the live edge, `/uk/manchester/?date=tomorrow`:
+  //
+  //   client sending `gzip, deflate, br, zstd`   br,  194,136 B
+  //   client sending `gzip`                      NONE, 3,768,974 B
+  //
+  // Cloudflare does not forward the client's `Accept-Encoding` even when it caches
+  // nothing. BYPASS removes the shared CACHE, not the rewriting — the origin never
+  // learns who is really asking, so it cannot negotiate for them at any policy.
+  "a bypassed page" should "get gzip too, because BYPASS does not mean pass-through" in {
     val (ctrl, _) = buildController()
     val result = ctrl.index("poznan")(
       FakeRequest("GET", "/poznan/?date=tomorrow")
         .withHeaders("Accept-Encoding" -> "gzip, deflate, br, zstd"))
 
-    header("Content-Encoding", result) shouldBe Some("br")
+    header("Content-Encoding", result) should not be Some("br")
     header("Cache-Control", result).get should include ("private, no-cache")
-
-    com.aayushatharva.brotli4j.Brotli4jLoader.ensureAvailability()
-    val html = new String(
-      com.aayushatharva.brotli4j.decoder.Decoder
-        .decompress(contentAsBytes(result).toArray).getDecompressedData,
-      StandardCharsets.UTF_8)
-    html should include ("Cache Test Film")
   }
 
-  // It must not start minting blobs for filter variants — that bound is why they
-  // are BrowserOnly in the first place.
-  it should "still keep no blob, brotli or not" in {
+  it should "still keep no blob" in {
     val cache = new EncodedResponseCache
     val (ctrl, _) = TestMovieController.build(
       Seq(("Cache Test Film", Some(2024), cacheTestRecord())), responseCache = cache)
