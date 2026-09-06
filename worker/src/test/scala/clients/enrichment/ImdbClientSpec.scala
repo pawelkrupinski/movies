@@ -296,6 +296,18 @@ class ImdbClientSpec extends AnyFlatSpec with Matchers {
     found shouldBe Some("tt9999999")
   }
 
+  it should "match a director written surname-first, or misspelt by a letter, when disambiguating" in {
+    // TMDB writes "Enyedi Ildikó"; IMDb "Ildikó Enyedi". A UK feed spells
+    // "Paul Verhoven" where IMDb has "Paul Verhoeven". A substring test on the
+    // folded strings saw a different person both times and refused the film.
+    def resolving(imdbDirector: String, ours: String) = new ImdbClient(http = new HttpFetch {
+      def get(url: String): String = AkaSuggestionBody
+      override def post(url: String, body: String, contentType: String): String = detailsBody(imdbDirector)
+    }).findId("Nasz Film", Some(2026), Set(ours))
+    resolving("Ildikó Enyedi", "Enyedi Ildikó")  shouldBe Some("tt9999999")
+    resolving("Paul Verhoeven", "Paul Verhoven") shouldBe Some("tt9999999")
+  }
+
   it should "return None when no candidate's director matches" in {
     val c = new ImdbClient(http = new HttpFetch {
       def get(url: String): String = AkaSuggestionBody

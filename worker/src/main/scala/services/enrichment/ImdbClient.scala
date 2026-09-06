@@ -1,6 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
+import services.movies.SamePerson
 import tools.{EnrichmentRead, HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -191,18 +192,13 @@ class ImdbClient(http: HttpFetch) {
         } yield id
       }.distinct.take(5)
     if (candidates.isEmpty) return None
-    val callerNorms = directors.map(d => TextNormalization.deburr(d).toLowerCase)
     val matching = candidates.filter { id =>
       details(id) match {
         case None    => false
         case Some(d) =>
           // Require director data on IMDb's side — an undocumented entry provides no
           // evidence and must not be accepted without the confirmatory signal.
-          d.director.nonEmpty &&
-          d.director.exists { dir =>
-            val norm = TextNormalization.deburr(dir).toLowerCase
-            callerNorms.exists(c => norm.contains(c) || c.contains(norm))
-          }
+          d.director.nonEmpty && d.director.exists(dir => directors.exists(SamePerson(dir, _)))
       }
     }
     if (matching.sizeIs == 1) Some(matching.head) else None
