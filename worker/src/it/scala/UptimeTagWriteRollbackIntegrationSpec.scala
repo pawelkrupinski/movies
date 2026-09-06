@@ -1,7 +1,7 @@
 package integration
 
 import org.mongodb.scala.model.{CreateCollectionOptions, Filters, ValidationOptions}
-import org.mongodb.scala.{Document, MongoCollection, SingleObservableFuture}
+import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -49,9 +49,23 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
   private val monitor  = new UptimeMonitor(Some(db))
   private val service  = "__uptime-tag-rollback-sentinel__"
 
+  /**
+   * DROP UNTIL IT STAYS DROPPED. `close()` stops the scheduler but cannot join the constructor's
+   * daemon init thread (`ensureIndexes` → `hydrate` → `loadTags`) or a flush already in flight,
+   * and either one RECREATES this database simply by touching a collection in it — after the
+   * drop has run. A single drop therefore leaks, silently and on every run: eighteen of these
+   * had piled up on the local instance before anyone counted them.
+   *
+   * The loop is the fix rather than a sleep because there is no handle to wait on and the
+   * window depends on how long index creation takes on the day.
+   */
   override protected def afterAll(): Unit = {
     monitor.close()
-    tools.IsolatedMongoDatabase.drop(db)
+    try Eventually.eventually({
+      Await.result(db.drop().toFuture(), 30.seconds)
+      Await.result(db.listCollectionNames().toFuture(), 30.seconds) shouldBe empty
+    }, timeoutMs = 20000, pollMs = 250)
+    finally tools.IsolatedMongoDatabase.drop(db)
     super.afterAll()
   }
 
