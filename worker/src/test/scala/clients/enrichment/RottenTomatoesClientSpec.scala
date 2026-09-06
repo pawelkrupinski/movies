@@ -406,6 +406,19 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
     fetch.requested.exists(_.contains("never_reached")) shouldBe false
   }
 
+  it should "not take a lone Restored hit dated as the ORIGINAL film" in {
+    // The other door to the same leak: RT lists only "Lalka - Restored" (1968) and no
+    // bare exact title, so the modifier arm was reached with no year check at all and
+    // handed back /m/lalka_1969 for a 2026 query — 58 years off.
+    val c = new RottenTomatoesClient(stub(Set.empty))
+    val hits = Seq(RottenTomatoesClient.SearchHit("lalka_1969", "Lalka - Restored", Some(1968), None))
+    c.pickBestSearchHit(hits, "Lalka", Some(2026)) shouldBe None
+
+    // An UNDATED re-issue still passes — that is what this arm is for.
+    val undated = Seq(RottenTomatoesClient.SearchHit("lalka_rr", "Lalka - Re-Release", None, None))
+    c.pickBestSearchHit(undated, "Lalka", Some(2026)).map(_.slug) shouldBe Some("lalka_rr")
+  }
+
   it should "not let a Restored hit rescue an exact title that failed the year" in {
     // A "- Restored" / "- Re-Release" hit carries the RE-RELEASE year, so it confirms
     // against a 2026 query while its page is the 1968 film. Year-filtering the modifier

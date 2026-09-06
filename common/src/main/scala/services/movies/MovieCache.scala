@@ -1703,8 +1703,15 @@ class CaffeineMovieCache(
           // A brand-new cinema observation grows what the TMDB stage can work
           // with; drop any stale "missing" verdict so the imminent publish
           // re-resolves against the grown row.
-          if (isNew) clearNegative(key)
-          Some(((cm, key, isNew), slot))
+          //
+          // Both gated on the write having LANDED. A skipped write leaves Caffeine
+          // without the row, so clearing its negative verdict and announcing it as new
+          // sends `MovieDetailsComplete` / `classify`'s `detailPending` write at a key
+          // nothing holds — and `MovieService` then finds no row and dispatches a full
+          // TMDB re-resolve against an empty one. Nothing was recorded this tick, so
+          // nothing downstream should be told that something was.
+          if (isNew && landed) clearNegative(key)
+          Option.when(landed)(((cm, key, isNew), slot))
         }
       }
     }

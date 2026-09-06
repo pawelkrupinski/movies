@@ -208,9 +208,16 @@ class RottenTomatoesClient(http: HttpFetch) {
       // against a 2026 query while its page is the 1968 film — which is the /m/lalka_1969
       // leak this guard exists to stop, reopened. An exact title that positively
       // disagreed on the year means this film is not here.
+      // Even with no exact title, a modifier hit whose year positively DISAGREES is the
+      // old film: RT lists "Lalka - Restored" (1968) and nothing else, and handing that
+      // back for a 2026 query is the /m/lalka_1969 leak reached by the other door. An
+      // UNDATED modifier still passes — a re-issue that declines to say when is the case
+      // this arm exists for, and the doc's "a large gap is expected" applies to the gap
+      // between the film and its re-release, not to a hit dated as the original.
+      val datedPlausibly = modifier.filter(h => h.year.isEmpty || MetacriticClient.yearConfirms(year, h.year))
       val candidates =
         if (exact.nonEmpty)          exact
-        else if (exactTitle.isEmpty) modifier
+        else if (exactTitle.isEmpty) datedPlausibly
         else                         Seq.empty
       candidates
         .sortBy(h => year.flatMap(y => h.year.map(hy => math.abs(hy - y))).getOrElse(Int.MaxValue))

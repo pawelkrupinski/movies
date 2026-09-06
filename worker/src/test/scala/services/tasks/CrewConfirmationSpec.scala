@@ -84,16 +84,14 @@ class CrewConfirmationSpec extends AnyFlatSpec with Matchers {
     confirm.confirmed(row(Seq("Someone Else"), Seq("David G. Derrick Jr."))) shouldBe false
   }
 
-  it should "still shorten a two-word name that carries a suffix" in {
-    // "Robert Downey Jr." is three words but only TWO names. Requiring three tokens
-    // AFTER dropping the suffix refused it outright, so the retry never ran for exactly
-    // the names the suffix handling was added for.
-    // Asserted the way round that can TELL: TMDB knows the shortened name and that
-    // person is NOT on this film's crew, so the shortening must produce a confirmed
-    // contradiction. With no shortening there is no person at all and the answer is an
-    // abstention — indistinguishable from a correct clear if asserted the other way.
+  it should "NOT shorten a two-name credit that carries a suffix" in {
+    // "Robert Downey Jr." minus its suffix is "Robert Downey" — his FATHER. TMDB carries
+    // him (59874, Directing) and `findPersonCandidates` ranks Directing first, so he is
+    // the one it would answer with; he is off this film's crew by construction, and the
+    // shortening would therefore confirm a contradiction and force-re-resolve a correct
+    // row. Cuba Gooding and Sammy Davis are the same shape. Abstain instead.
     val confirm = new CrewConfirmation(credits(Map("Robert Downey" -> Seq(88)), crew = Set(1, 2)))
-    confirm.confirmed(row(Seq("Someone Else"), Seq("Robert Downey Jr."))) shouldBe true
+    confirm.confirmed(row(Seq("Someone Else"), Seq("Robert Downey Jr."))) shouldBe false
   }
 
   it should "still take TMDB's answer to the full name when it has one" in {

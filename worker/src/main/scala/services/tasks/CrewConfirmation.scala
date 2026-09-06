@@ -94,7 +94,14 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
     // from what was already asked. Requiring three of them refused "Robert Downey Jr."
     // outright — the suffix is stripped, leaving two, and the retry the fallback exists
     // for never ran for exactly the names that need it most.
-    val shortened = Option.when(core.length >= 2)(s"${core.head} ${core.last}")
+    // THREE suffix-free tokens, i.e. there is a middle name to drop. Two is not the
+    // same shape and must not be shortened: "Robert Downey Jr." minus its suffix is
+    // "Robert Downey", who is his FATHER — TMDB carries him (59874) and returns him
+    // FIRST, because `findPersonCandidates` ranks Directing ahead of Acting. That
+    // person is by construction off the film's crew, so the shortening would confirm
+    // a contradiction and force-re-resolve a correct row. Same for Cuba Gooding and
+    // Sammy Davis. Abstaining is the safe answer for a name with no middle to drop.
+    val shortened = Option.when(core.length >= 3)(s"${core.head} ${core.last}")
     shortened.filter(_ != name).filterNot(_ => core.tail.dropRight(1).exists(isParticle))
   }
 
