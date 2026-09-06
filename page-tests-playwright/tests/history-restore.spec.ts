@@ -34,8 +34,29 @@ test.describe('returning to the listing through history', { tag: '@agnostic' }, 
     await expect(page.locator('#date-filter')).toHaveValue('tomorrow');
     // No filter the visitor never set, and the same films as before.
     await expect(page.locator('#format-imax')).not.toBeChecked();
-    await expect(page.locator('#search-input')).toHaveValue('');
     await expect.poll(() => getVisibleTitles(page).then(t => t.length)).toBe(before.length);
     await expect(page.locator('#no-films')).toBeHidden();
+  });
+
+  // The other half of the same mechanism. The engine restores a text input
+  // correctly even while it is corrupting a checkbox beside it, so clearing the
+  // search on Back cost a real behaviour and bought nothing. Only the controls
+  // that share a queue with the panel's runtime-built checkboxes are reset.
+  test('the search you typed survives the same trip', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    const all = await getVisibleTitles(page);
+    const term = all[0].slice(0, 4).toLowerCase();
+
+    await page.fill('#search-input', term);
+    await expect.poll(() => getVisibleTitles(page).then(t => t.length)).toBeLessThan(all.length);
+    const narrowed = await getVisibleTitles(page);
+
+    await gotoAndWaitForCards(page, '/poznan/?date=anytime');
+    await page.goBack({ waitUntil: 'load' });
+    await page.waitForFunction(() => document.getElementById('film-grid') !== null);
+
+    await expect(page.locator('#search-input')).toHaveValue(term);
+    await expect(page.locator('#format-imax')).not.toBeChecked();
+    await expect.poll(() => getVisibleTitles(page).then(t => t.length)).toBe(narrowed.length);
   });
 });

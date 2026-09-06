@@ -3851,20 +3851,51 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "not leave a restored search box, day, or from-time filtering the page either" in {
+  // The reset is deliberately NARROW. Measured on a page shaped like this navbar:
+  // an engine corrupts an unnamed checkbox while restoring a text input, a select
+  // and a NAMED radio beside it perfectly — the (name, type) queues do not
+  // interfere. So the search you typed survives Back, as it always did in Chrome
+  // and, for this control, in Safari too. Clearing it bought nothing.
+  it should "keep a restored search box, because that one was never corrupted" in {
+    onPath("/?date=tomorrow") { page =>
+      page.eval("document.getElementById('search-input').value = 'spider'; bootView()")
+      page.evalString("document.getElementById('search-input').value") shouldBe "spider"
+    }
+  }
+
+  it should "keep a restored sort axis and from-time for the same reason" in {
+    onPath("/?date=tomorrow") { page =>
+      page.eval(
+        "(() => { document.getElementById('sort-by').value = 'rating';" +
+        "         document.getElementById('from-hour').value = '18';" +
+        "         bootView(); })()")
+      page.evalString("document.getElementById('sort-by').value") shouldBe "rating"
+      page.evalString("document.getElementById('from-hour').value") shouldBe "18"
+    }
+  }
+
+  // The built checkboxes are what shifted the saved values onto the static ones,
+  // so they opt out of being saved at all — the fix at source, ahead of the belt.
+  it should "build its panel checkboxes opted out of form-state restore" in {
+    onPath("/") { page =>
+      val built = page.evalInt("document.querySelectorAll('#cinema-list input[type=\"checkbox\"]').length")
+      withClue("no cinema checkboxes were built, so this asserts nothing: ") { built should be > 0 }
+      page.evalInt(
+        "[...document.querySelectorAll('#cinema-list input[type=\"checkbox\"]')]" +
+          ".filter(c => c.getAttribute('autocomplete') !== 'off').length") shouldBe 0
+    }
+  }
+
+  it should "not leave a restored day or format filter on the page, which are the two that can lie" in {
     onPath("/?date=tomorrow") { page =>
       val before = visibleCardCount(page)
       page.eval(
         "(() => {" +
-        "  document.getElementById('search-input').value = 'zzzzz_no_match';" +
-        "  document.getElementById('from-hour').value = '23';" +
         "  document.getElementById('date-filter').value = 'anytime';" +
         "  document.querySelector('input[name=\"format-dim\"][value=\"3D\"]').checked = true;" +
         "  bootView();" +
         "})()")
 
-      page.evalString("document.getElementById('search-input').value") shouldBe ""
-      page.evalString("document.getElementById('from-hour').value") shouldBe ""
       page.evalBool("document.querySelector('input[name=\"format-dim\"][value=\"\"]').checked") shouldBe true
       // The URL still names the day, so that one is re-applied rather than lost.
       page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"

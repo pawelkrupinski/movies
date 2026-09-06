@@ -443,6 +443,7 @@
     allLabel.style.paddingBottom = '8px';
     var allCb = document.createElement('input');
     allCb.type = 'checkbox';
+    allCb.autocomplete = 'off';   // see KEEPING BUILT CONTROLS OUT OF THE RESTORE QUEUE
     allCb.checked = true;
     allCb.className = 'submenu-all';
     allCb.onchange = function() {
@@ -458,6 +459,7 @@
       label.className = 'panel-label';
       var checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
+      checkbox.autocomplete = 'off';
       checkbox.value = entry.value;
       checkbox.checked = true;
       checkbox.onchange = function() { updateSubmenuCount(key); updateFormatBtn(); applyFilters(); };
@@ -552,6 +554,7 @@
     allLabel.style.paddingBottom = '8px';
     var allCb = document.createElement('input');
     allCb.type = 'checkbox';
+    allCb.autocomplete = 'off';   // see KEEPING BUILT CONTROLS OUT OF THE RESTORE QUEUE
     allCb.checked = true;
     allCb.className = 'submenu-all';
     allCb.onchange = function() {
@@ -608,6 +611,7 @@
         label.className = 'panel-label';
         var checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
+        checkbox.autocomplete = 'off';
         checkbox.value = cinema + '|' + room;
         checkbox.checked = true;
         checkbox.onchange = function() {
@@ -1263,6 +1267,7 @@
     label.className = 'panel-label';
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.autocomplete = 'off';
     checkbox.dataset.cinema = cinema;
     checkbox.checked = !getDisabledCinemas().includes(cinema);
     checkbox.onchange = () => {
@@ -1297,6 +1302,7 @@
 
     const areaCb = document.createElement('input');
     areaCb.type = 'checkbox';
+    areaCb.autocomplete = 'off';
     areaCb.className = 'cinema-area-toggle';
     areaCb.onclick = e => e.stopPropagation();          // toggle the area, don't fold
     areaCb.onchange = () => toggleArea(area, areaCb.checked);
@@ -1466,6 +1472,7 @@
     allLabel.style.cssText = rowCss + 'font-weight:600;';
     const allCb = document.createElement('input');
     allCb.type = 'checkbox';
+    allCb.autocomplete = 'off';
     allCb.checked = true;
     allCb.id = 'area-picker-all';
     const allName = document.createElement('span');
@@ -1480,6 +1487,7 @@
       label.style.cssText = rowCss;
       const cb = document.createElement('input');
       cb.type = 'checkbox';
+      cb.autocomplete = 'off';
       cb.checked = true;                                       // all pre-selected
       cb.dataset.areaSlug = area.slug;
       cb.onchange = syncAreaPickerAll;
@@ -1990,22 +1998,58 @@
   // because "harmless" there rests on running order rather than on anything the
   // markup says, and the next static checkbox added to that panel would inherit
   // the restore slot rather than the reasoning.
+  // KEEPING BUILT CONTROLS OUT OF THE RESTORE QUEUE is the first half of this,
+  // and it is done above: every checkbox `buildCinemaPanel` and the submenu
+  // builders create is marked `autocomplete="off"` as it is made. An engine
+  // queues saved values per (name, type) and replays them positionally, so it
+  // was the BUILT boxes -- absent from a freshly parsed document -- that shifted
+  // the saved values onto the static ones. Measured in WebKit on a page shaped
+  // like this navbar: marking them removes the shift outright.
+  //
+  // WHAT STILL RESETS, AND WHY ONLY THIS MUCH. Measured on the same page: a text
+  // input, a select and a NAMED radio each restore correctly while an unnamed
+  // checkbox is being corrupted -- the queues do not interfere. So search, sort
+  // and the from-time selects are left exactly as the engine restored them, and
+  // pressing Back keeps the search you typed, which is the behaviour every
+  // engine already gets right.
+  //
+  // Reset here are only the two that cannot be taken at face value:
+  //  - the FORMAT group, because `#format-imax` is an unnamed checkbox sharing
+  //    the queue the built boxes join. `autocomplete="off"` should now keep them
+  //    out of it, but that attribute is honoured unevenly and a phantom IMAX
+  //    filter blanks the day being viewed (it hid 636 of tomorrow's 647
+  //    showtimes in Manchester), so the belt stays on. The whole group goes
+  //    together: half a restored format filter is worse than none.
+  //  - `#date-filter`, which has a truth outside the DOM. `syncDateToURL` writes
+  //    the day to the URL and deletes it for `today`, so a URL with no `date` MEANS
+  //    today and a restored `anytime` would contradict the address bar.
   function resetFilterControls() {
     for (const radio of document.querySelectorAll('input[name="format-dim"], input[name="format-lang"]'))
       radio.checked = radio.value === '';
     const imax = document.getElementById('format-imax');
     if (imax) imax.checked = false;
-    const search = document.getElementById('search-input');
-    if (search) search.value = '';
     const date = document.getElementById('date-filter');
     if (date) date.value = 'today';
-    // The remaining selects all carry their default FIRST -- "Any" hour, :00,
-    // sort by next showtime -- so the markup stays the single definition of it.
-    for (const id of ['from-hour', 'from-minute', 'sort-by']) {
-      const sel = document.getElementById(id);
-      if (sel && sel.options.length > 0) sel.value = sel.options[0].value;
-    }
   }
+
+  // ...AND THE RESTORE CAN LAND AFTER THE GRID IS ALREADY DRAWN. Measured in
+  // Chromium: the search box is still EMPTY at `DOMContentLoaded`, so the filter
+  // pass `bootView` runs sees nothing, and the engine fills the box afterwards.
+  // A box reading "spider" above an unfiltered grid is worse than an empty one,
+  // so re-filter when the controls stop agreeing with the pass that drew what is
+  // on screen. Comparing, rather than re-running unconditionally, keeps an
+  // ordinary load to the single pass it has always cost.
+  let _appliedSignature = null;
+  function filterSignature() {
+    const valueOf = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+    return ['search-input', 'sort-by', 'from-hour', 'from-minute'].map(valueOf).join('\u0000');
+  }
+  function noteFiltersApplied() { _appliedSignature = filterSignature(); }
+  window.addEventListener('pageshow', function () {
+    if (_appliedSignature === null || filterSignature() === _appliedSignature) return;
+    applyFilters();
+    noteFiltersApplied();
+  });
 
   function applyFiltersFromURL() {
     resetFilterControls();
@@ -2310,6 +2354,7 @@
     if (dateSel) _appliedDay = dateSel.value;
     syncDayPills();
     applyFilters();
+    noteFiltersApplied();
     // Reveal the grid now that the first filter pass has set final visibility —
     // drops the anti-FOUC cloak the head script added (repertoire.scala.html /
     // the `grid-cloak` rule in _sharedStyles). No-op on views without the class.
