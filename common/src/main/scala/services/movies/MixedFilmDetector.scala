@@ -47,9 +47,12 @@ import models.{MovieRecord, Source, SourceData}
 object MixedFilmDetector {
 
   /** One film's worth of a row: the identity its cinemas published, and the slots
-   *  that published it. `directors` is pre-computed because comparing names needs
+   *  that published it. `identity` is the ORIGINAL title's words where the row
+   *  publishes any, and the plain title's where it publishes none — see
+   *  [[identityTitle]]; either way every group on a row is built from the same field. `directors` is pre-computed because comparing names needs
    *  the normalizer, which a slot doesn't carry. */
-  case class Group(originalTitle: Set[String], slots: Seq[(Source, SourceData)], directors: Set[String]) {
+  case class Group(identity: Set[String], slots: Seq[(Source, SourceData)], directors: Set[String],
+                   numbers: Set[String] = Set.empty) {
     def runtimes: Set[Int] = slots.flatMap(_._2.runtimeMinutes).toSet
     def years:    Set[Int] = slots.flatMap(_._2.releaseYear).toSet
   }
@@ -60,7 +63,7 @@ object MixedFilmDetector {
    *  Empty when the row describes ONE film — the normal case, including when it
    *  describes it inconsistently. */
   def split(record: MovieRecord, normalizer: TitleNormalizer): Seq[Group] = {
-    val groups = identityGroups(record, normalizer)
+    val groups = identityGroups(record, normalizer, allowTitleFallback = true)
     if (groups.sizeIs < 2 || !groups.exists(g => conflicting(groups.head, g))) Seq.empty else groups
   }
 
@@ -94,7 +97,7 @@ object MixedFilmDetector {
     val incomingTitle     = titleWords(originalTitle, normalizer)
     val incomingDirectors = directorKeys(director, normalizer)
     incomingTitle.nonEmpty && identityGroups(record, normalizer).headOption.exists { main =>
-      titlesDiffer(main.originalTitle, incomingTitle) &&
+      titlesDiffer(main.identity, incomingTitle) &&
         !sameDirector(main.directors, incomingDirectors) &&
         corroborated(main.runtimes, runtime.toSet, main.years, year.toSet)
     }
@@ -126,17 +129,78 @@ object MixedFilmDetector {
 
   /** Do these two identities describe DIFFERENT films? */
   def conflicting(a: Group, b: Group): Boolean =
-    titlesDiffer(a.originalTitle, b.originalTitle) &&
+    (titlesDiffer(a.identity, b.identity) || sequelApart(a, b)) &&
       !sameDirector(a.directors, b.directors) &&
       corroborated(a.runtimes, b.runtimes, a.years, b.years)
 
-  private def identityGroups(record: MovieRecord, normalizer: TitleNormalizer): Seq[Group] =
-    record.cinemaSlots
-      .filter { case (_, sd) => sd.originalTitle.exists(_.trim.nonEmpty) }
-      .groupBy { case (_, sd) => titleWords(sd.originalTitle, normalizer) }
+  /** A film beside its own numbered SEQUEL — the one pair `titlesDiffer` structurally
+   *  cannot see. `titleWords` drops anything under four characters, so "Kung Fu Panda"
+   *  and "Kung Fu Panda 4" reduce to the same two words and read as one film; the
+   *  numeral that is the entire difference between a 2008 film and a 2024 one is
+   *  filtered out before any comparison happens. `kungfupanda4|2008` sat on that:
+   *  sixteen US venues screening the fourth film, one screening the first, on a row
+   *  resolved to the first.
+   *
+   *  Deliberately the NARROWEST rule that sees it: the two sides must agree on every
+   *  word and disagree on the numbers. Anything less — comparing numbers whenever the
+   *  words merely overlap — reaches titles like "Ojczyzna" beside "Ojczyzna | pokaz
+   *  przedpremierowy", which are one film with a programme banner, and strips venues
+   *  off a good row. The numbers are also kept OUT of `titleWords`, so they can never
+   *  dilute the disjoint-words test that carries every other split. */
+  private def sequelApart(a: Group, b: Group): Boolean =
+    a.identity.nonEmpty && a.identity == b.identity && a.numbers != b.numbers
+
+  /** Short numeric tokens — the sequel markers `titleWords` drops. Four digits and up
+   *  are already words there (a year like "2049"), so this is about the bare "2"/"4"
+   *  that distinguishes a sequel and nothing else. */
+  private def sequelNumbers(title: Option[String], normalizer: TitleNormalizer): Set[String] =
+    title.toSet[String]
+      .flatMap(_.split("[^\\p{L}\\p{N}]+"))
+      .map(normalizer.sanitize)
+      .filter(w => w.nonEmpty && w.length < DistinctiveTitleWord && w.forall(_.isDigit))
+
+  /** The identity field, chosen ONCE per row so every group is compared like for like.
+   *
+   *  `originalTitle` is the right field and stays the default: it survives translation,
+   *  which is the whole reason a differing title is only evidence alongside a runtime or
+   *  year. But a row whose cinemas publish NO original title at all yields no groups and
+   *  can therefore never split, however plainly mixed it is — and that is not a corner
+   *  case, it is every US and UK row, because the Flicks listings carry `title` only.
+   *  `kungfupanda4|2008` sat that way: sixteen venues screening "Kung Fu Panda 4" at 94
+   *  minutes and one screening "Kung Fu Panda" at 82, on one row resolved to the 2008
+   *  film, with the detector structurally unable to see it.
+   *
+   *  Falling back for the WHOLE row rather than per slot is what keeps it honest: mixing
+   *  one venue's original title with another's localised one would compare a translation
+   *  against an original and call the difference evidence. A row with even one original
+   *  title behaves exactly as before.
+   *
+   *  And ONLY [[split]] may ask for it. The fallback widens which rows yield groups at
+   *  all, and `identityGroups` also answers two questions that are not "should this row
+   *  be split": [[wouldAddASecondFilm]] gates a scrape-time divert against an incoming
+   *  ORIGINAL title, and [[describeDifferentFilms]] gates whether the canonicaliser may
+   *  adopt one row onto another. Letting the fallback reach those cost the fixture corpus
+   *  real venues — "Ojczyzna" lost five cinemas' preview screenings and "Rozmowa" lost its
+   *  ratings — because a row that used to yield no groups, and so refused nothing, began
+   *  refusing adoptions on the strength of a programme banner. Splitting is the only
+   *  decision this evidence is good enough for. */
+  private def identityTitle(slots: Seq[(Source, SourceData)], allowTitleFallback: Boolean): SourceData => Option[String] =
+    if (!allowTitleFallback) _.originalTitle
+    else if (slots.exists { case (_, sd) => sd.originalTitle.exists(_.trim.nonEmpty) }) _.originalTitle
+    else _.title
+
+  private def identityGroups(record: MovieRecord, normalizer: TitleNormalizer,
+                             allowTitleFallback: Boolean = false): Seq[Group] = {
+    val slots   = record.cinemaSlots
+    val titleOf = identityTitle(slots, allowTitleFallback)
+    slots
+      .filter { case (_, sd) => titleOf(sd).exists(_.trim.nonEmpty) }
+      .groupBy { case (_, sd) => (titleWords(titleOf(sd), normalizer), sequelNumbers(titleOf(sd), normalizer)) }
       .toSeq
-      .map { case (title, slots) => Group(title, slots, directorKeys(slots.flatMap(_._2.director), normalizer)) }
-      .sortBy(g => (-g.slots.size, g.originalTitle.toSeq.sorted.mkString(" ")))
+      .map { case ((title, numbers), slots) =>
+        Group(title, slots, directorKeys(slots.flatMap(_._2.director), normalizer), numbers) }
+      .sortBy(g => (-g.slots.size, g.identity.toSeq.sorted.mkString(" "), g.numbers.toSeq.sorted.mkString(" ")))
+  }
 
   private def titlesDiffer(a: Set[String], b: Set[String]): Boolean =
     a.nonEmpty && b.nonEmpty && a.intersect(b).isEmpty

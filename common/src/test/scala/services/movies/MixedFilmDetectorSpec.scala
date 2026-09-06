@@ -1,6 +1,6 @@
 package services.movies
 
-import models.{Helios, KinoMuranow, Multikino, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaShowing, Helios, KinoMuranow, Multikino, MovieRecord, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
@@ -35,7 +35,42 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
   // ("Joanna d'Arc" — the other production row — is covered below, with the years
   // its cinemas actually publish; a differing title needs corroborating.)
 
+  // `kungfupanda4|2008` (kinowo_us), field for field as prod carried it: ONE row,
+  // resolved to tmdbId 9502 = Kung Fu Panda (2008), serving sixteen Galaxy/Hangar
+  // venues that are screening Kung Fu Panda 4. It was invisible to this detector
+  // twice over — the Flicks listings publish NO original title, so the row yielded
+  // no groups at all; and `titleWords` drops anything under four characters, so the
+  // "4" that is the entire difference was filtered out before any comparison.
+  "a row mixing a film with its own sequel" should "split, keeping the majority" in {
+    def us(title: String, runtime: Int, director: String) =
+      SourceData(title = Some(title), runtimeMinutes = Some(runtime), director = Seq(director))
+    val galaxy = (1 to 16).map(i => (CinemaShowing(Cinema.all.head, s"galaxy-$i"): Source) ->
+      us("Kung Fu Panda 4", 94, "Joel Crawford"))
+    val bearTooth = (CinemaShowing(Cinema.all.head, "bear-tooth"): Source) ->
+      us("Kung Fu Panda", 82, "Mark Osborne")
+    val record = MovieRecord(tmdbId = Some(9502), data = (galaxy :+ bearTooth).toMap)
+
+    val strays = MixedFilmDetector.strays(record, titleNormalizer)
+    withClue(s"strays=${strays.map(_._1)}: ") {
+      strays.map(_._2.title) shouldBe Seq(Some("Kung Fu Panda"))
+    }
+  }
+
   // ── What must NOT split ───────────────────────────────────────────────────
+
+  // The other side of the sequel arm: a number appearing on one venue's title and not
+  // the other's is NOT enough on its own. "Ocean's 8" beside "Ocean's Eight" is one
+  // film, and the agreeing runtime is what says so — exactly as a differing plain
+  // title has always needed corroborating.
+  "a number on one title only" should "not split when the runtimes agree" in {
+    def us(title: String, runtime: Int, director: String) =
+      SourceData(title = Some(title), runtimeMinutes = Some(runtime), director = Seq(director))
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino -> us("Ocean's 8", 110, "Gary Ross"),
+      Helios    -> us("Ocean's Eight", 110, "Gary Ross")))
+
+    MixedFilmDetector.strays(record, titleNormalizer) shouldBe empty
+  }
 
   "cinemas describing ONE film to different depths" should "not split" in {
     // The overwhelmingly common shape: one publishes a director, another doesn't.
