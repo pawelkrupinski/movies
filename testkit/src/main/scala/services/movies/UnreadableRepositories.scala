@@ -34,6 +34,15 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = store.upsertSlot(filmId, slotKey, showtimes)
   def deleteSlot(filmId: String, slotKey: String): Unit                         = store.deleteSlot(filmId, slotKey)
   def deleteFilm(filmId: String): Unit                                          = store.deleteFilm(filmId)
+  // DELEGATED LIKE EVERY OTHER NON-READ. These two were missing until 2026-09-06, so decorating a
+  // real Mongo store — which is the case this class documents itself as existing for — silently
+  // dropped the screenings change stream and never persisted its resume token: the spec looked
+  // like it was exercising the real repository and was quietly running without half of it. Only
+  // the per-film READS are meant to fail here.
+  override def watch(onChange: String => Unit,
+                     demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] =
+    store.watch(onChange, demand)
+  override def close(): Unit = store.close()
 }
 
 /** A [[SlotsRepository]] whose WRITES always fail. The mirror-image guard: `upsert` may
