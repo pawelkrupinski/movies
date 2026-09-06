@@ -10,8 +10,14 @@ package controllers
  * validator describes. `Cache-Control: no-transform` stopped the rewriting and got
  * the validator through, and the cost of that was the brotli: full fetches went
  * from 228,940 bytes to 287,531 on `/uk/manchester/`, +26%. Compressing here gets
- * it back and keeps the ETag, because the bytes we stamp are now the bytes we send
- * — and at 197,131 bytes it beats the 228,940 the edge was producing.
+ * it back in principle — the bytes we stamp would be the bytes we send, and at
+ * 197,131 they beat the 228,940 the edge produced.
+ *
+ * ⚠️ IN PRACTICE THE ORIGIN OFFERS GZIP ONLY, and this type exists to make that a
+ * decision rather than an assumption. Cloudflare caches ONE variant per URL and
+ * cannot key it on the encoding, so offering two meant it stored br and served
+ * gzip-only clients the decompressed body. `MovieController.ServableEncodings` is
+ * where that is decided and where the numbers are.
  *
  * ⚠️ ONLY THE CACHED RESPONSES REACH THIS. Everything else leaves the controller
  * uncompressed and Play's `GzipFilter` compresses it on the way out — the filter
@@ -22,7 +28,9 @@ enum ContentEncoding(val token: String) {
 
   /** 34% smaller than gzip on this HTML, and cheaper to produce — see
    *  `EncodedResponseCache.BrotliQuality` for the measurements. Every current
-   *  browser asks for it. */
+   *  browser asks for it, and we do not currently answer: see
+   *  `MovieController.ServableEncodings`. Built and tested, waiting on an edge that
+   *  can cache per encoding. */
   case Brotli extends ContentEncoding("br")
 
   /** The floor. Anything that talks HTTP/1.1 to us takes it. */

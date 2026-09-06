@@ -18,9 +18,9 @@ import java.util.zip.GZIPInputStream
  *  correctly. */
 class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
 
-  private def buildController(): (MovieController, services.readmodel.WebReadModel) = {
+  private def cacheTestRecord(): MovieRecord = {
     val now = LocalDateTime.now()
-    val record = MovieRecord(
+    MovieRecord(
       imdbId = Some("tt123"),
       data = Map[Source, SourceData](
         Helios -> SourceData(
@@ -30,8 +30,10 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
         )
       )
     )
-    TestMovieController.build(Seq(("Cache Test Film", Some(2024), record)))
   }
+
+  private def buildController(): (MovieController, services.readmodel.WebReadModel) =
+    TestMovieController.build(Seq(("Cache Test Film", Some(2024), cacheTestRecord())))
 
   private def gzipRequest(path: String) =
     // NO `br` in here, deliberately: this helper is named for the encoding it is
@@ -312,14 +314,66 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "never put brotli on the wire, which is the whole regression" in {
+  it should "never put brotli on an EDGE-CACHED response, which is the whole regression" in {
     val (ctrl, _) = buildController()
     Seq("br", "br;q=1.0", "br, gzip", "gzip, deflate, br, zstd", "*").foreach { accept =>
-      val result = ctrl.index("poznan")(
+      val bare = ctrl.index("poznan")(
         FakeRequest("GET", "/poznan/").withHeaders("Accept-Encoding" -> accept))
-      withClue(s"Accept-Encoding: $accept: ")(
-        header("Content-Encoding", result) should not be Some("br"))
+      withClue(s"the bare listing, Accept-Encoding: $accept: ")(
+        header("Content-Encoding", bare) should not be Some("br"))
+
+      val json = ctrl.apiRepertoire("poznan")(
+        FakeRequest("GET", "/poznan/api/repertoire").withHeaders("Accept-Encoding" -> accept))
+      withClue(s"the listing JSON, Accept-Encoding: $accept: ")(
+        header("Content-Encoding", json) should not be Some("br"))
     }
+  }
+
+  // ── …and brotli WHERE THE EDGE KEEPS NO COPY ───────────────────────────────
+  //
+  // A filtered page is `private, no-cache`, which the edge answers `BYPASS`. With
+  // no stored variant there is nothing to collapse, so the origin's negotiation is
+  // the one that reaches the client and brotli is safe. This is the experiment: if
+  // Cloudflare turns out to normalise Accept-Encoding on a bypass too, these pages
+  // just keep arriving gzip and nothing breaks.
+  "a bypassed page" should "take brotli when the client asks for it" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.index("poznan")(
+      FakeRequest("GET", "/poznan/?date=tomorrow")
+        .withHeaders("Accept-Encoding" -> "gzip, deflate, br, zstd"))
+
+    header("Content-Encoding", result) shouldBe Some("br")
+    header("Cache-Control", result).get should include ("private, no-cache")
+
+    com.aayushatharva.brotli4j.Brotli4jLoader.ensureAvailability()
+    val html = new String(
+      com.aayushatharva.brotli4j.decoder.Decoder
+        .decompress(contentAsBytes(result).toArray).getDecompressedData,
+      StandardCharsets.UTF_8)
+    html should include ("Cache Test Film")
+  }
+
+  // It must not start minting blobs for filter variants — that bound is why they
+  // are BrowserOnly in the first place.
+  it should "still keep no blob, brotli or not" in {
+    val cache = new EncodedResponseCache
+    val (ctrl, _) = TestMovieController.build(
+      Seq(("Cache Test Film", Some(2024), cacheTestRecord())), responseCache = cache)
+
+    ctrl.index("poznan")(
+      FakeRequest("GET", "/poznan/?date=tomorrow")
+        .withHeaders("Accept-Encoding" -> "gzip, deflate, br, zstd"))
+    withClue("a filter variant must not take an entry in the byte-bounded LRU: ")(
+      cache.heldEntries shouldBe 0)
+
+    // …while the bare listing still does, so this is measuring the right thing.
+    ctrl.index("poznan")(gzipRequest("/poznan/"))
+    cache.heldEntries shouldBe 1
+  }
+
+  it should "leave a gzip-only client to the GzipFilter, exactly as before" in {
+    val (ctrl, _) = buildController()
+    header("Content-Encoding", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))) shouldBe None
   }
 
   // A client that refuses gzip still gets a body it can read, uncompressed.

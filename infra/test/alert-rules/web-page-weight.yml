@@ -126,3 +126,101 @@ tests:
       - eval_time: 3h
         alertname: WebPageTooHeavy
         exp_alerts: []
+
+  # ── THE SWING RULES ─────────────────────────────────────────────────────────────────────────────
+  #
+  # 4. THE 2026-09-06 SHAPE: a deploy turns 297 KB responses into 3.8 MB ones. p95 on this route
+  #    would not have moved if only part of the traffic regressed, and `/api/` is not even in
+  #    WebPageTooHeavy's selector -- the mean-vs-yesterday rule is what sees it.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_response_bytes_count{job="kinowo-web",country="uk",route="/:city/api/repertoire"}'
+        values: '0+30x1500 45030+30x200'
+      - series: 'kinowo_web_http_response_bytes_sum{job="kinowo-web",country="uk",route="/:city/api/repertoire"}'
+        values: '0+6000000x1500 9044100000+44100000x200'
+    alert_rule_test:
+      # A day in at the old size: nothing, and nothing to compare against yet either.
+      - eval_time: 20h
+        alertname: WebResponseSizeJumped
+        exp_alerts: []
+      # 90 minutes after the jump the 1h windows are clear of the old size and `for: 30m` is spent.
+      - eval_time: 26h30m
+        alertname: WebResponseSizeJumped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: uk
+              route: /:city/api/repertoire
+            exp_annotations:
+              summary: "uk /:city/api/repertoire responses are 7.35x yesterday's size"
+              description: "The mean response on this route is more than three times what it was a day ago. This is a step change rather than the corpus growing, so look at what deployed: the usual cause is content negotiation, where a change makes the origin answer one encoding while the edge caches another and serves some clients an unusable or decompressed body. Compare the origin against the edge for the SAME Accept-Encoding before anything else -- `curl -H 'Accept-Encoding: gzip' -o /dev/null -w '%{size_download}'` against showtimes.cc, then the same with `--resolve` straight at the k3s node. A gap between them is the edge; no gap is the origin."
+      # …and the collapse rule must stay quiet through the same data.
+      - eval_time: 26h30m
+        alertname: WebResponseSizeCollapsed
+        exp_alerts: []
+
+  # 5. THE PROGRAMME DROP MUST NOT PAGE. Polish cinemas publish a new week on Tuesday and the
+  #    corpus roughly doubles; page weight follows it. 2x is normal here and the rule is set at 3x
+  #    precisely so this stays silent.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_response_bytes_count{job="kinowo-web",country="pl",route="/:city/"}'
+        values: '0+30x1500 45030+30x200'
+      - series: 'kinowo_web_http_response_bytes_sum{job="kinowo-web",country="pl",route="/:city/"}'
+        values: '0+6300000x1500 9462600000+12600000x200'
+    alert_rule_test:
+      - eval_time: 26h30m
+        alertname: WebResponseSizeJumped
+        exp_alerts: []
+
+  # 6. THE EMPTY-LISTING SHAPE: the 2026-08-10 prune left the pages valid, fast and nearly empty.
+  #    No size ceiling can see that; the collapse rule can.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_response_bytes_count{job="kinowo-web",country="de",route="/:city/"}'
+        values: '0+30x1500 45030+30x200'
+      - series: 'kinowo_web_http_response_bytes_sum{job="kinowo-web",country="de",route="/:city/"}'
+        values: '0+9000000x1500 13500600000+600000x200'
+    alert_rule_test:
+      - eval_time: 26h30m
+        alertname: WebResponseSizeCollapsed
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: de
+              route: /:city/
+            exp_annotations:
+              summary: "de /:city/ responses are 6.667% of yesterday's size"
+              description: "The mean response on this route is under a third of a day ago. A listing does not shrink like that because the market did; it shrinks because it is rendering less than it should. Check the read model has screenings for the affected country before assuming the page template changed -- a prune that empties `web_screenings` renders a valid, fast, nearly empty page, and every other web alert stays green through it."
+      - eval_time: 26h30m
+        alertname: WebResponseSizeJumped
+        exp_alerts: []
+
+  # 7. THE TRAFFIC FLOOR ON THE SWING RULES: one request a minute is under 0.05 req/s, so even a
+  #    12x jump must not page. A near-idle route's mean is one or two responses.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_response_bytes_count{job="kinowo-web",country="es",route="/:city/"}'
+        values: '0+1x1500 1501+1x200'
+      - series: 'kinowo_web_http_response_bytes_sum{job="kinowo-web",country="es",route="/:city/"}'
+        values: '0+200000x1500 302400000+2400000x200'
+    alert_rule_test:
+      - eval_time: 26h30m
+        alertname: WebResponseSizeJumped
+        exp_alerts: []
+
+  # 8. THE COMPANION: no size samples at all must page, because all three rules above go quiet and
+  #    quiet is what healthy looks like.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_web_http_requests_total{job="kinowo-web",country="pl",method="GET",route="/:city/",status="2xx"}'
+        values: '0+30x200'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: WebResponseSizeUnobserved
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No web response-size samples at all"
+              description: "Nothing in the web tier is reporting response sizes, so WebPageTooHeavy, WebResponseSizeJumped and WebResponseSizeCollapsed are all reading as healthy without being able to fire. Either the tier is down -- check web-errors.rules, which will say so -- or responses stopped carrying a Content-Length for the filter to measure."

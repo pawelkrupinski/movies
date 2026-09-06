@@ -18,6 +18,11 @@ object TestMovieController {
     cinemaSourceUrls: Map[String, String] = Map.empty,
     adminAction: AdminAction = TestAdminAction(),
     taskQueue: TaskQueue = new InMemoryTaskQueue,
+    // Injectable so a spec can assert what the blob cache ended up holding —
+    // the "filter variants mint no blob" bound is otherwise only observable
+    // through `Content-Encoding`, which stopped being a proxy for it once
+    // bypassed pages started carrying brotli.
+    responseCache: EncodedResponseCache = new EncodedResponseCache,
     // On-demand corpus dump only (dev /debug); defaults to an in-memory repo
     // holding the same `records`. Override to drive the /debug read path (e.g.
     // to assert the two scans run concurrently).
@@ -60,7 +65,7 @@ object TestMovieController {
       adminAction            = adminAction,
       oauthProviders         = Set.empty,
       environment            = mode,
-      responseCache          = new EncodedResponseCache,
+      responseCache          = responseCache,
       // No live HTTP: a poster fetch that returns nothing decodes to None, so
       // the OG card falls back to text-only — fine for controller specs that
       // don't assert on the card image itself.

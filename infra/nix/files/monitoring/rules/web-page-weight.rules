@@ -74,3 +74,138 @@ groups:
             not to compress harder -- gzip is already on, and the repeated markup compresses well
             enough that trimming attributes measured 1.4% while rendering 60 films instead of 784
             measured 80%.
+
+      # ------------------------------------------------------------------------------------------
+      # AND SEPARATELY: DID IT SUDDENLY CHANGE?
+      # ------------------------------------------------------------------------------------------
+      #
+      # `WebPageTooHeavy` above answers "is this page big". It cannot answer "did this page just
+      # become a different size", and on 2026-09-06 that was the question. A deploy taught the
+      # origin to answer brotli; Cloudflare caches ONE variant per URL and could not re-compress it
+      # under `no-transform`, so it DECOMPRESSED and handed gzip-only clients the raw body:
+      #
+      #   /uk/manchester/                297,089 B  ->  3,789,572 B
+      #   /uk/:city/api/repertoire       ~200,000 B ->  1,470,154 B    <- the Android app's fetch
+      #
+      # Nothing alerted. `WebPageTooHeavy` could not: `/api/` is excluded from its selector, and on
+      # the page routes the blow-up hit only the gzip-only slice of traffic, which is too small to
+      # move a 95th percentile. It was found by hand, again.
+      #
+      # SO THIS ONE USES THE MEAN, NOT A PERCENTILE. A regression that hits a MINORITY of requests
+      # moves the mean in proportion to that minority and leaves p95 alone; that is exactly the
+      # shape above, and it is the shape of any change that depends on what the client sent.
+      #
+      # AND IT COMPARES AGAINST YESTERDAY rather than a constant, because unlike absolute weight
+      # there IS a baseline for "the same route, one day ago" -- and the routes have no fixed size
+      # to test against, which is the whole reason the rule above had to be absolute.
+      #
+      # ⚠️ THE THRESHOLD CLEARS THE PROGRAMME DROP. Polish cinemas publish a new week on Tuesday
+      # afternoon and the showtime corpus roughly DOUBLES; page weight tracks showtimes, so a 2x
+      # day-over-day rule would page every Tuesday and be turned off by the third week. 3x sits
+      # above that and still well under the 7x and 12x measured above.
+      - alert: WebResponseSizeJumped
+        expr: >-
+          (
+            (
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h]))
+              /
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h]))
+            )
+            /
+            (
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
+              /
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
+            )
+          ) > 3
+          and on (country, route)
+          (
+            sum by (country, route) (
+              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h])
+            ) >= 0.05
+          )
+          and on (country, route)
+          (
+            sum by (country, route) (
+              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d)
+            ) >= 0.05
+          )
+        # Half an hour: a deploy that does this does it to every request immediately, so there is
+        # nothing to wait out except a scrape or two. Long enough that a rollout's own cold cache
+        # cannot trip it.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} {{ $labels.route }} responses are {{ $value | humanize }}x yesterday's size"
+          description: >-
+            The mean response on this route is more than three times what it was a day ago. This is
+            a step change rather than the corpus growing, so look at what deployed: the usual cause
+            is content negotiation, where a change makes the origin answer one encoding while the
+            edge caches another and serves some clients an unusable or decompressed body. Compare
+            the origin against the edge for the SAME Accept-Encoding before anything else --
+            `curl -H 'Accept-Encoding: gzip' -o /dev/null -w '%{size_download}'` against
+            showtimes.cc, then the same with `--resolve` straight at the k3s node. A gap between
+            them is the edge; no gap is the origin.
+
+      # The mirror. A page that suddenly gets much SMALLER is the same class of accident and has
+      # happened here: the 2026-08-10 read-model backfill pruned live screenings and the listings
+      # went nearly empty, which no size ceiling can see. A third of yesterday is far below the
+      # Tuesday-to-Monday decay of the programme drop.
+      - alert: WebResponseSizeCollapsed
+        expr: >-
+          (
+            (
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h]))
+              /
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h]))
+            )
+            /
+            (
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_sum{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
+              /
+              sum by (country, route) (rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d))
+            )
+          ) < 0.33
+          and on (country, route)
+          (
+            sum by (country, route) (
+              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h])
+            ) >= 0.05
+          )
+          and on (country, route)
+          (
+            sum by (country, route) (
+              rate(kinowo_web_http_response_bytes_count{route!~"other|.*(og-image|assets/|img-event|/uptime|/tasks).*"}[1h] offset 1d)
+            ) >= 0.05
+          )
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }} {{ $labels.route }} responses are {{ $value | humanizePercentage }} of yesterday's size"
+          description: >-
+            The mean response on this route is under a third of a day ago. A listing does not
+            shrink like that because the market did; it shrinks because it is rendering less than
+            it should. Check the read model has screenings for the affected country before assuming
+            the page template changed -- a prune that empties `web_screenings` renders a valid,
+            fast, nearly empty page, and every other web alert stays green through it.
+
+      # ⚠️ THE COMPANION. All three rules above can only fire on a series that exists, so a web tier
+      # that stopped OBSERVING sizes would leave them permanently Normal -- indistinguishable from
+      # pages that are the right size. `absent(kinowo_web_http_requests_total)` in web-errors.rules
+      # does NOT cover this: sizes are recorded only when a response carries a Content-Length
+      # (`WebHttpMetrics.responseLength`), so a change that made responses stream would keep the
+      # request counter flowing while this histogram went silent.
+      - alert: WebResponseSizeUnobserved
+        expr: absent(kinowo_web_http_response_bytes_count)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No web response-size samples at all"
+          description: >-
+            Nothing in the web tier is reporting response sizes, so WebPageTooHeavy,
+            WebResponseSizeJumped and WebResponseSizeCollapsed are all reading as healthy without
+            being able to fire. Either the tier is down -- check web-errors.rules, which will say
+            so -- or responses stopped carrying a Content-Length for the filter to measure.

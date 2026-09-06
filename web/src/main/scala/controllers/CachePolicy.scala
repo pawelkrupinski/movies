@@ -21,9 +21,10 @@ package controllers
  * on both domains, and weak was stripped exactly as strong had been.
  * `no-transform` is what withdraws that permission.
  *
- * The brotli that withdrawal gave up is now made here instead, smaller than the
- * edge made it — see `EncodedResponseCache.BrotliQuality` and
- * `MovieController.conditionalCompressed` for both sets of numbers.
+ * The brotli that withdrawal gave up has NOT been replaced. Building it at the
+ * origin was tried and reverted: the edge caches one variant per URL, so it kept
+ * the br copy and served gzip-only clients the decompressed body. See
+ * `MovieController.bestEncoding` for the measurements.
  */
 enum CachePolicy {
 
