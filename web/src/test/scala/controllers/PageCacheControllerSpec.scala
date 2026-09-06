@@ -411,8 +411,8 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val dayStart  = java.time.ZonedDateTime.of(2026, 9, 6, 0, 0, 0, 0, zone).toInstant
 
     // Same model stamp on both sides of midnight — the day is what moved.
-    MovieController.dayFlooredValidator(beforeMid, Some(zone), now = beforeMid) shouldBe beforeMid
-    MovieController.dayFlooredValidator(beforeMid, Some(zone), now = afterMid)  shouldBe dayStart
+    ConditionalResponse.dayFlooredValidator(beforeMid, Some(zone), now = beforeMid) shouldBe beforeMid
+    ConditionalResponse.dayFlooredValidator(beforeMid, Some(zone), now = afterMid)  shouldBe dayStart
   }
 
   it should "leave a stamp from later in the same day alone" in {
@@ -420,11 +420,11 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val noon  = java.time.ZonedDateTime.of(2026, 9, 6, 12, 0, 0, 0, zone).toInstant
     val later = java.time.ZonedDateTime.of(2026, 9, 6, 15, 0, 0, 0, zone).toInstant
 
-    MovieController.dayFlooredValidator(noon, Some(zone), now = later) shouldBe noon
+    ConditionalResponse.dayFlooredValidator(noon, Some(zone), now = later) shouldBe noon
   }
 
   it should "leave a payload with no day in it on the model stamp alone" in {
     val stamp = java.time.Instant.parse("2020-01-01T00:00:00Z")
-    MovieController.dayFlooredValidator(stamp, None) shouldBe stamp
+    ConditionalResponse.dayFlooredValidator(stamp, None) shouldBe stamp
   }
 }
