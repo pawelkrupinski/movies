@@ -87,9 +87,9 @@ abstract class CacheRefresher(
    *  soft-blocks under load (Filmweb). */
   protected def refreshConcurrency: Int = 8
 
-  /** The full-corpus walk of a URL-keyed source (Metacritic, RT): ONE pass, two
-   *  steps per row — re-derive the row's URL, then re-read the score off
-   *  whatever URL the row NOW holds.
+  /** The full-corpus walk of a URL-keyed source (Metacritic, RT, Filmweb): ONE
+   *  pass, two steps per row — re-derive the row's URL, then re-read the score
+   *  off whatever URL the row NOW holds.
    *
    *  It used to be two passes split on whether the row already had a URL, which
    *  made a stored URL permanently authoritative: the operator's button could
@@ -104,14 +104,17 @@ abstract class CacheRefresher(
    *
    *  Each score write goes through `cache.putIfPresent` (the per-title lock),
    *  and a moved score is reported to the adaptive cadence under the SNAPSHOT
-   *  row's tmdbId. A `fetchScore` that throws counts the row as failed and
-   *  leaves its stored score alone.
+   *  row's tmdbId. A failed step — a `rediscoverUrl` that answers `Failure`, a
+   *  `fetchScore` that throws — counts the row as failed and leaves what the
+   *  row holds alone; a row whose re-resolution failed still refreshes its
+   *  score off the URL it already had.
    *
    *  @param walkLabel     log prefix ("RT refresh"); also names the pool.
    *  @param urlOf         the row's stored URL for this source.
    *  @param scoreOf       the row's stored score for this source.
    *  @param rediscoverUrl step 1 — re-derive and persist the URL. Runs only for
-   *                       rows with a tmdbId; `true` when a URL was found.
+   *                       rows with a tmdbId; `Success(true)` when a URL was
+   *                       found.
    *  @param fetchScore    step 2 — read the score off a URL.
    *  @param withScore     write a fresh score onto the live row.
    *  @param badge         the displayed value a fresh score becomes — what the
@@ -122,7 +125,7 @@ abstract class CacheRefresher(
     walkLabel:     String,
     urlOf:         MovieRecord => Option[String],
     scoreOf:       MovieRecord => Option[A],
-    rediscoverUrl: (CacheKey, MovieRecord) => Boolean,
+    rediscoverUrl: (CacheKey, MovieRecord) => Try[Boolean],
     fetchScore:    String => Option[A],
     withScore:     (MovieRecord, Option[A]) => MovieRecord,
     badge:         A => String,
@@ -140,7 +143,13 @@ abstract class CacheRefresher(
     BoundedParallel.foreach(walkLabel.replace(' ', '-'), snapshot, refreshConcurrency) { case (key, enrichment) =>
       // 1. Re-derive the URL when the row has a tmdbId to derive it from. A
       //    better match replaces the stored one; a failure leaves it be.
-      if (enrichment.tmdbId.isDefined && rediscoverUrl(key, enrichment)) urlDiscovered.incrementAndGet()
+      if (enrichment.tmdbId.isDefined) rediscoverUrl(key, enrichment) match {
+        case Success(true)  => urlDiscovered.incrementAndGet()
+        case Success(false) => ()
+        case Failure(exception) =>
+          failed.incrementAndGet()
+          logger.debug(s"$walkLabel: ${key.cleanTitle} lookup failed: ${exception.getMessage}")
+      }
 
       // 2. Refresh the score off whatever URL the row NOW holds — possibly the
       //    one just re-resolved, possibly the pre-existing one.

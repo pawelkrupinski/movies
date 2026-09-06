@@ -5,10 +5,8 @@ import models.{Filmweb, Source, SourceData}
 import services.movies.{CacheKey, EmbeddedYear, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
-import tools.BoundedParallel
 
-import java.util.concurrent.atomic.AtomicInteger
-import scala.util.{Failure, Success, Try}
+import scala.util.Try
 
 /**
  * Filmweb data maintenance — the Filmweb counterpart of `ImdbRatings`,
@@ -18,14 +16,15 @@ import scala.util.{Failure, Success, Try}
  *   1. **Per-row refresh** (`refreshOne`): the `RatingHandler` fetches Filmweb
  *      data for one resolved row.
  *   2. **Full-corpus refresh** (`refreshAll`): the operator-triggered bulk
- *      refresh. For rows that already have a `filmwebUrl`, the walk does the
- *      cheap rating-only lookup (one HTTP); for rows without a URL it does the
- *      full `filmweb.lookup` (search + info + optionally preview + rating).
+ *      refresh — the shared URL-then-score walk: every row with a tmdbId
+ *      re-runs the full `filmweb.lookup` (search + info + optionally preview +
+ *      rating), then every row with a `filmwebUrl` re-reads its rating off it
+ *      (one HTTP).
  *
  * URL resolution needs TMDB data (English / original title, director credits)
  * that the MovieRecord row alone may not carry — we hit `tmdb.details` and
  * `tmdb.directorsFor` lazily for rows that need URL discovery, and never for
- * rows whose canonical Filmweb URL is already stored.
+ * a per-row refresh of a row whose canonical Filmweb URL is already stored.
  *
  * Shared entry points live in [[CacheRefresher]].
  *
@@ -47,8 +46,6 @@ class FilmwebRatings(
   onImdbIdMissing: (String, Option[Int], String) => Unit = (_, _, _) => (),
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
-  // Fold titles with the rules the corpus was keyed under, not a process default.
-  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   override protected def sourceName: String = "Filmweb"
 
@@ -268,61 +265,26 @@ class FilmwebRatings(
   // (see CLAUDE.md), so cap its parallel walk lower than the other sources.
   override protected def refreshConcurrency: Int = 5
 
-  /** Walk every cached row and refresh its Filmweb data. Rows with a URL
-   *  get the cheap rating-only refresh; rows without one get the expensive
-   *  full-lookup. The latter group is small in practice — only films
-   *  Filmweb didn't surface at first enrichment. */
-  private[services] def refreshAll(): BulkRefreshResult = {
-    val snapshot  = cache.entries
-    val startedAt = System.currentTimeMillis()
-    val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
-    logger.info(s"Filmweb refresh: starting tick over ${snapshot.size} cached row(s) " +
-                s"($resolvable re-resolving their URL first).")
-    val changed       = new AtomicInteger(0)
-    val failed        = new AtomicInteger(0)
-    val urlDiscovered = new AtomicInteger(0)
-
-    // One pass, two steps per row — see the note in MetascoreRatings.refreshAll:
-    // a stored URL used to be authoritative, so the button could never correct a
-    // wrong one; and re-resolving ALONE would stop refreshing the rating of any
-    // row whose re-resolution fails.
-    BoundedParallel.foreach("Filmweb-refresh", snapshot, refreshConcurrency) { case (key, enrichment) =>
-      if (enrichment.tmdbId.isDefined) {
-        Try(resolveAndPersistUrl(key, enrichment)) match {
-          case Success(reported) =>
-            reported.foreach(v => recordCadenceChange(key, enrichment.tmdbId, Some(v)))
-            // urlDiscovered: re-read the cache to see if the helper actually
-            // stored a URL the row didn't have before.
-            if (cache.get(key).exists(_.filmwebUrl.isDefined && !enrichment.filmwebUrl.isDefined)) urlDiscovered.incrementAndGet()
-          case Failure(exception) =>
-            failed.incrementAndGet()
-            logger.debug(s"Filmweb refresh: ${key.cleanTitle} lookup failed: ${exception.getMessage}")
-        }
-      }
-
-      val current = cache.get(key).getOrElse(enrichment)
-      current.filmwebUrl.foreach { url =>
-        Try(filmweb.ratingFor(url).map(RatingDisplay.oneDecimal)) match {
-          case Success(fresh) if fresh != current.filmwebRating =>
-            logger.debug(s"Filmweb refresh: ${key.cleanTitle} $url ${current.filmwebRating.getOrElse("—")} → ${fresh.getOrElse("—")}")
-            cache.putIfPresent(key, _.copy(filmwebRating = fresh))
-            fresh.foreach(r => recordCadenceChange(key, enrichment.tmdbId, Some(RatingDisplay.label(r))))
-            changed.incrementAndGet()
-          case Success(_) => ()
-          case Failure(exception) =>
-            failed.incrementAndGet()
-            logger.debug(s"Filmweb refresh: $url lookup failed: ${exception.getMessage}")
-        }
-      }
-    }
-
-    val took = System.currentTimeMillis() - startedAt
-    val message = s"tick done in ${took}ms — ${changed.get} rating(s) changed, " +
-                  s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
-    logger.info(s"Filmweb refresh: $message")
-    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = urlDiscovered.get, failed = failed.get, message = message)
-  }
-
+  /** Walk every cached row: re-run the full lookup for every row with a tmdbId
+   *  (a Filmweb soft-block or network blip counts the row as failed rather than
+   *  aborting the walk), then refresh the rating off whatever URL the row holds. */
+  private[services] def refreshAll(): BulkRefreshResult =
+    refreshAllUrlThenScore[Double](
+      walkLabel     = "Filmweb refresh",
+      urlOf         = _.filmwebUrl,
+      scoreOf       = _.filmwebRating,
+      rediscoverUrl = (key, row) => Try(resolveAndPersistUrl(key, row)).map { reported =>
+        // Discovery already scored the row (a first lookup lands the rating with
+        // the URL) — that displayed change is the cadence's to hear too.
+        reported.foreach(v => recordCadenceChange(key, row.tmdbId, Some(v)))
+        // Discovered iff the lookup stored a URL the snapshot row didn't have.
+        cache.get(key).exists(_.filmwebUrl.isDefined && !row.filmwebUrl.isDefined)
+      },
+      fetchScore    = filmweb.ratingFor(_).map(RatingDisplay.oneDecimal),
+      withScore     = (row, fresh) => row.copy(filmwebRating = fresh),
+      badge         = RatingDisplay.label,
+      changedNoun   = "rating(s)"
+    )
 }
 
 object FilmwebRatings {

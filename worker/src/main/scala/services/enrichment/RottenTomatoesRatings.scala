@@ -5,6 +5,8 @@ import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
 
+import scala.util.Success
+
 /**
  * Rotten Tomatoes side of enrichment — owns BOTH:
  *   - `rottenTomatoesUrl` discovery (slug probe with year-suffix preference,
@@ -123,7 +125,7 @@ class RottenTomatoesRatings(
       walkLabel     = "RT refresh",
       urlOf         = _.rottenTomatoesUrl,
       scoreOf       = _.rottenTomatoes,
-      rediscoverUrl = resolveAndPersistUrl(_, _).isDefined,
+      rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
       fetchScore    = rt.scoreFor,
       withScore     = (row, fresh) => row.copy(rottenTomatoes = fresh),
       badge         = s => s"$s%"

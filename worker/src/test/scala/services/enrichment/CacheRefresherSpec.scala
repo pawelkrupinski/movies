@@ -9,6 +9,7 @@ import services.tasks.BulkRefreshResult
 
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters._
+import scala.util.{Failure, Success, Try}
 
 /**
  * The URL-then-score corpus walk on its own. A refresher whose hooks record
@@ -23,14 +24,15 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
   private val urlC = "https://scores.example/c"
   private val urlD = "https://scores.example/d"
 
-  /** Scores by URL; a URL mapped to `Failure` throws on fetch. `discover` maps a
-   *  title to the URL its re-resolution finds and stores. The fake keeps its URL
-   *  and score in the Metacritic fields — the walk itself is field-agnostic. */
+  /** Scores by URL; an unmapped URL throws on fetch. `discover` maps a row to
+   *  what its re-resolution does: find and store a URL, or fail. The fake keeps
+   *  its URL and score in the Metacritic fields — the walk itself is
+   *  field-agnostic. */
   private class RecordingRefresher(
     cache:    CaffeineMovieCache,
     scores:   Map[String, Option[Int]],
-    discover: Map[CacheKey, String],
-    recorder: (CacheKey, Option[Int], Option[String]) => Unit
+    discover: Map[CacheKey, Try[String]],
+    recorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
   ) extends CacheRefresher(cache, recorder) {
     val events = new ConcurrentLinkedQueue[String]
 
@@ -44,7 +46,11 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
         scoreOf       = _.metascore,
         rediscoverUrl = (key, _) => {
           events.add(s"resolve ${key.cleanTitle}")
-          discover.get(key).exists { url => cache.putIfPresent(key, _.copy(metacriticUrl = Some(url))) }
+          discover.get(key) match {
+            case None               => Success(false)
+            case Some(Success(url)) => Success(cache.putIfPresent(key, _.copy(metacriticUrl = Some(url))))
+            case Some(Failure(e))   => Failure(e)
+          }
         },
         fetchScore    = url => {
           events.add(s"fetch $url")
@@ -67,7 +73,7 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
     val cadence = new ConcurrentLinkedQueue[(CacheKey, Option[Int], Option[String])]
     val refresher = new RecordingRefresher(cache,
       scores   = Map(urlA -> Some(9), urlB -> Some(2), urlC -> Some(7)),
-      discover = Map(keyOf("C") -> urlC),
+      discover = Map(keyOf("C") -> Success(urlC)),
       recorder = (key, tmdbId, value) => cadence.add((key, tmdbId, value)))
 
     val result = refresher.refreshAll()
@@ -93,5 +99,23 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
     result.discovered shouldBe Some(1)
     result.failed     shouldBe Some(1)
     result.message should include ("2 score(s) changed, 1 URL(s) newly discovered, 1 failed")
+  }
+
+  it should "count a failed re-resolution and still refresh the score off the URL the row already had" in {
+    val repository = new InMemoryMovieRepository(Seq(
+      ("E", None, MovieRecord(tmdbId = Some(5), metacriticUrl = Some(urlA), metascore = Some(5)))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val key = cache.keyOf("E", None)
+    val refresher = new RecordingRefresher(cache,
+      scores   = Map(urlA -> Some(6)),
+      discover = Map(key -> Failure(new RuntimeException("soft-blocked"))))
+
+    val result = refresher.refreshAll()
+
+    refresher.events.asScala.toSeq shouldBe Seq(s"resolve ${key.cleanTitle}", s"fetch $urlA", s"persist $urlA")
+    cache.get(key).flatMap(_.metascore) shouldBe Some(6)
+    result.failed  shouldBe Some(1)
+    result.changed shouldBe Some(1)
+    result.message should include ("1 score(s) changed, 0 URL(s) newly discovered, 1 failed")
   }
 }

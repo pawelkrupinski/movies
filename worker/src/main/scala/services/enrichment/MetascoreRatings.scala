@@ -5,6 +5,8 @@ import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
 
+import scala.util.Success
+
 /**
  * Metacritic side of enrichment — owns BOTH:
  *   - `metacriticUrl` discovery (slug probe + cleanTitle fallback + lazy
@@ -160,7 +162,7 @@ class MetascoreRatings(
       walkLabel     = "Metascore refresh",
       urlOf         = _.metacriticUrl,
       scoreOf       = _.metascore,
-      rediscoverUrl = resolveAndPersistUrl(_, _).isDefined,
+      rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
       fetchScore    = metacritic.metascoreFor,
       withScore     = (row, fresh) => row.copy(metascore = fresh),
       badge         = _.toString
