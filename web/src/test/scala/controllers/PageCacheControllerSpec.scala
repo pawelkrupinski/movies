@@ -34,7 +34,10 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   private def gzipRequest(path: String) =
-    FakeRequest("GET", path).withHeaders("Accept-Encoding" -> "gzip, deflate, br")
+    // NO `br` in here, deliberately: this helper is named for the encoding it is
+    // meant to exercise, and the controller now prefers brotli whenever a client
+    // offers it. A real browser's full header is used by the brotli tests instead.
+    FakeRequest("GET", path).withHeaders("Accept-Encoding" -> "gzip, deflate")
 
   private def gunzip(bytes: org.apache.pekko.util.ByteString): String = {
     val in = new GZIPInputStream(new ByteArrayInputStream(bytes.toArray))
@@ -246,6 +249,48 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val etag = header("ETag", ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))).get
 
     etag should startWith ("W/\"")
+  }
+
+  // ── Brotli, which `no-transform` made the origin's job ─────────────────────
+  //
+  // Cloudflare was recompressing our gzip to `br` at the edge; that recompression
+  // is exactly why it deleted the ETag, and `no-transform` stopping it cost
+  // 228,940 -> 287,531 bytes on a full fetch of `/uk/manchester/`. Serving brotli
+  // ourselves gets that back AND keeps the validator, because now the bytes we
+  // stamp are the bytes we send.
+  "a brotli-accepting client" should "get brotli, not gzip" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.index("poznan")(
+      FakeRequest("GET", "/poznan/").withHeaders("Accept-Encoding" -> "gzip, deflate, br, zstd"))
+
+    header("Content-Encoding", result) shouldBe Some("br")
+    header("Vary", result)             shouldBe Some("Accept-Encoding")
+
+    com.aayushatharva.brotli4j.Brotli4jLoader.ensureAvailability()
+    val html = new String(
+      com.aayushatharva.brotli4j.decoder.Decoder
+        .decompress(contentAsBytes(result).toArray).getDecompressedData,
+      StandardCharsets.UTF_8)
+    html should include ("Cache Test Film")
+  }
+
+  it should "still be given gzip when that is all it takes" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.index("poznan")(gzipRequest("/poznan/"))
+
+    header("Content-Encoding", result) shouldBe Some("gzip")
+    gunzip(contentAsBytes(result)) should include ("Cache Test Film")
+  }
+
+  // `gzip;q=0` is a refusal. The substring check this replaced read it as consent
+  // and would have sent a body the client cannot inflate.
+  it should "be sent an uncompressed body when it refuses everything we can build" in {
+    val (ctrl, _) = buildController()
+    val result = ctrl.index("poznan")(
+      FakeRequest("GET", "/poznan/").withHeaders("Accept-Encoding" -> "gzip;q=0, br;q=0"))
+
+    header("Content-Encoding", result) shouldBe None
+    contentAsString(result) should include ("Cache Test Film")
   }
 
   // ── `no-transform`, without which the ETag above reaches nobody ────────────

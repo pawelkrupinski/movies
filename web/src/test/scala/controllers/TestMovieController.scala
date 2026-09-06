@@ -60,7 +60,7 @@ object TestMovieController {
       adminAction            = adminAction,
       oauthProviders         = Set.empty,
       environment            = mode,
-      responseCache          = new GzippedResponseCache,
+      responseCache          = new EncodedResponseCache,
       // No live HTTP: a poster fetch that returns nothing decodes to None, so
       // the OG card falls back to text-only — fine for controller specs that
       // don't assert on the card image itself.

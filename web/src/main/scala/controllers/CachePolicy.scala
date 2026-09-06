@@ -18,8 +18,11 @@ package controllers
  * nobody. Cloudflare recompresses our gzip to brotli on `text/html` and drops
  * the ETag rather than describe bytes it rewrote — measured on an uncached page
  * on both domains, and weak was stripped exactly as strong had been.
- * `no-transform` is what withdraws that permission; `MovieController.conditionalGzipped`
- * has the numbers.
+ * `no-transform` is what withdraws that permission.
+ *
+ * The brotli that withdrawal gave up is now made here instead, smaller than the
+ * edge made it — see `EncodedResponseCache.BrotliQuality` and
+ * `MovieController.conditionalGzipped` for both sets of numbers.
  */
 enum CachePolicy {
 
@@ -61,7 +64,4 @@ enum CachePolicy {
    *  `BYPASS` with the `city=` cookie the only thing left on it. `shared.js`
    *  writes that cookie now. */
   case RevalidatedAnywhere
-
-  /** No `Cache-Control` at all; the client manages its own revalidation. */
-  case Unset
 }

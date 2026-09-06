@@ -1,6 +1,6 @@
 package services.metrics
 
-import controllers.GzippedResponseCache
+import controllers.{ContentEncoding, EncodedResponseCache}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -33,13 +33,13 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
   import CacheMetricSamples.sample
 
   "the response-cache gauges" should "report what the cache holds at scrape time, not at registration" in {
-    val cache    = new GzippedResponseCache()
+    val cache    = new EncodedResponseCache()
     val registry = new PrometheusRegistry()
     register(registry, "response" -> (() => cache.occupancy))
 
     // Everything cached AFTER the gauges were registered must still be counted.
-    cache.gzippedBody("/california/", version)("<html>california</html>")
-    cache.gzippedBody("/texas/", version)("<html>texas</html>")
+    cache.encodedBody("/california/", version, ContentEncoding.Gzip)("<html>california</html>")
+    cache.encodedBody("/texas/", version, ContentEncoding.Gzip)("<html>texas</html>")
 
     val text = PrometheusExposition.render(registry)
     sample(text, "kinowo_web_cache_entries", "response") shouldBe Some(2.0)
@@ -53,17 +53,17 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
   it should "publish the budget beside what is held" in {
     val budget   = 32L * 1024
     val registry = new PrometheusRegistry()
-    register(registry, "response" -> (() => new GzippedResponseCache(maxBytes = budget).occupancy))
+    register(registry, "response" -> (() => new EncodedResponseCache(maxBytes = budget).occupancy))
 
     sample(PrometheusExposition.render(registry), "kinowo_web_cache_max_bytes", "response") shouldBe Some(budget.toDouble)
   }
 
   it should "stay under the budget once eviction has kicked in" in {
     val budget = 32L * 1024
-    val cache  = new GzippedResponseCache(maxBytes = budget)
+    val cache  = new EncodedResponseCache(maxBytes = budget)
     val random = new scala.util.Random(7)
     (1 to 30).foreach { state =>
-      cache.gzippedBody(s"/state-$state/", version)(random.alphanumeric.take(8 * 1024).mkString)
+      cache.encodedBody(s"/state-$state/", version, ContentEncoding.Gzip)(random.alphanumeric.take(8 * 1024).mkString)
     }
     val registry = new PrometheusRegistry()
     register(registry, "response" -> (() => cache.occupancy))
@@ -77,7 +77,7 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
    *  the truth — so it must publish nothing. */
   "a cache with no hit counters" should "publish no ratio rather than a zero" in {
     val registry = new PrometheusRegistry()
-    register(registry, "response" -> (() => new GzippedResponseCache().occupancy))
+    register(registry, "response" -> (() => new EncodedResponseCache().occupancy))
 
     val text = PrometheusExposition.render(registry)
     sample(text, "kinowo_web_cache_hit_ratio", "response")        shouldBe None

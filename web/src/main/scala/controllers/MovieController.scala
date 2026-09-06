@@ -357,7 +357,7 @@ class MovieController( cc: ControllerComponents,
                        adminAction: AdminAction,
                        oauthProviders: Set[String],
                        environment: Mode,
-                       responseCache: GzippedResponseCache,
+                       responseCache: EncodedResponseCache,
                        ogCardService: tools.OgCardService,
                        cityOgCardService: tools.CityOgCardService,
                        // `cinema displayName -> public source-page URL`, the same
@@ -377,8 +377,15 @@ class MovieController( cc: ControllerComponents,
   // so /debug orders staging rows by the same anchor the worker wrote.
   private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
 
-  private def acceptsGzip(request: RequestHeader): Boolean =
-    request.headers.get("Accept-Encoding").exists(_.toLowerCase.contains("gzip"))
+  /** The best compressed form this client accepts, or `None` for uncompressed.
+   *
+   *  This was `Accept-Encoding contains "gzip"`, which could only answer one
+   *  question and answered it wrong for `gzip;q=0` — a refusal read as consent.
+   *  [[ContentEncoding.negotiate]] weighs what the client actually asked for, and
+   *  can now say `br`, which is the point: `no-transform` stopped Cloudflare
+   *  brotli-ing our gzip on the way out, so the origin does it or nobody does. */
+  private def bestEncoding(request: RequestHeader): Option[ContentEncoding] =
+    ContentEncoding.negotiate(request.headers.get("Accept-Encoding"))
 
   // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for
   // EVERY visitor at a given cache version — signed in or not, which is the whole
@@ -467,16 +474,20 @@ class MovieController( cc: ControllerComponents,
     // here: the listing carries no email address and the edge body contains no
     // `cdn-cgi` marker).
     //
-    // THE TRADE, MEASURED on `/uk/manchester/`: a full fetch grows from 228,940
-    // bytes (edge brotli) to 287,531 (our gzip), +26%. A revalidation shrinks from
-    // 287,531 -- Cloudflare answers a conditional ONLY from an ETag, so with none to
-    // send, a refreshing browser was being handed the entire body under a 200 -- to
-    // a bodiless 304. Any client that asks twice is already ahead, and this page is
-    // one people come back to.
+    // WHAT IT COST, AND WHY IT NO LONGER COSTS IT. Giving up the edge's brotli was
+    // worth it on its own: Cloudflare answers a conditional ONLY from an ETag, so
+    // with none to send, a refreshing browser was handed the entire body under a
+    // 200, and a revalidation went from 287,531 bytes to a bodiless 304. But the
+    // full fetch did grow, 228,940 -> 287,531, +26%.
+    //
+    // It does not any more. `conditionalGzipped` compresses with brotli itself now
+    // (`ContentEncoding` / `EncodedResponseCache`), at 197,131 bytes -- BELOW the
+    // 228,940 the edge used to produce, because Cloudflare was compressing at
+    // roughly quality 4 and we can afford 5. So the ETag and the brotli are both
+    // ours, and they no longer trade against each other.
     val cacheControl: Seq[(String, String)] = policy match {
       case CachePolicy.BrowserOnly         => Seq("Cache-Control" -> "private, no-cache, no-transform")
       case CachePolicy.RevalidatedAnywhere => Seq("Cache-Control" -> "public, max-age=0, must-revalidate, no-transform")
-      case CachePolicy.Unset               => Nil
     }
     // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
     // does not.
@@ -533,20 +544,28 @@ class MovieController( cc: ControllerComponents,
     // CONTENT VERSION rather than a hash of the body, and since b84004f84 the
     // filtered branch keeps no blob, so two responses sharing one validator can
     // legitimately differ in which showtimes have already started. The same tag
-    // also goes on the gzipped AND the identity response below, which a strong
-    // validator is not permitted to do. Weak says all of that out loud.
+    // also goes on all THREE representations below -- brotli, gzip and identity --
+    // which a strong validator is flatly not permitted to do, since a strong tag
+    // promises byte-equality and those three share no bytes at all. Weak says all
+    // of that out loud.
     val etag = "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + lastMod.getEpochSecond.toHexString + "\""
     val validators: Seq[(String, String)] = ("Last-Modified" -> httpDate) +: ("ETag" -> etag) +: cacheControl
 
     if (MovieController.offersValidator(request.headers.get("If-None-Match"), etag)
         || ifModifiedSinceCurrent(request, lastMod))
       NotModified.withHeaders(validators*)
-    else if (acceptsGzip(request) && cacheBody) {
-      val bytes = responseCache.gzippedBody(bodyKey, lastMod)(body)
-      Ok(bytes).as(contentType)
-        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> vary) ++ validators)*)
-    } else
-      Ok(body).as(contentType).withHeaders((("Vary" -> vary) +: validators)*)
+    else bestEncoding(request) match {
+      // Compressed HERE, and stamped `Content-Encoding` HERE, which is also what
+      // keeps Play's GzipFilter off it: the filter skips any response that already
+      // names an encoding. The uncached branch below deliberately names none, and
+      // the filter gzips it on the way out.
+      case Some(encoding) if cacheBody =>
+        val bytes = responseCache.encodedBody(bodyKey, lastMod, encoding)(body)
+        Ok(bytes).as(contentType)
+          .withHeaders((Seq("Content-Encoding" -> encoding.token, "Vary" -> vary) ++ validators)*)
+      case _ =>
+        Ok(body).as(contentType).withHeaders((("Vary" -> vary) +: validators)*)
+    }
   }
 
   private val HtmlContentType = "text/html; charset=utf-8"

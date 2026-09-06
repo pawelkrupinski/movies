@@ -1,6 +1,6 @@
 package modules
 
-import controllers.{AdminAction, AuthController, CatalogController, ClientSupportController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, FacebookDataDeletionController, GzippedResponseCache, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, SupportController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
+import controllers.{AdminAction, AuthController, CatalogController, ClientSupportController, DebugCountries, DebugStack, DebugStreamController, EnvConfigController, EncodedResponseCache, FacebookDataDeletionController, HealthController, LandingController, LegalController, MetricsController, MovieController, MovieControllerService, SupportController, TasksController, UptimeController, UserStateController, WebMovieMetrics, WellKnownController}
 import play.api.Mode
 import play.api.mvc.ControllerComponents
 import services.{MongoConnection, UptimeMonitor}
@@ -207,7 +207,7 @@ trait Wiring {
   // (`deploymentMessages`, implicit above) so their Twirl views resolve
   // `@messages("…")` in the country's language.
   lazy val landingController = new LandingController(controllerComponents, models.Country.fromEnv)
-  lazy val gzippedResponseCache = new GzippedResponseCache
+  lazy val encodedResponseCache = new EncodedResponseCache
   // Fetches + composites the per-film Open Graph share card. Its own poster
   // fetch (not the scraper's httoFetch) so slow cinema origins get a generous
   // connect budget instead of the fan-out's tight 5s.
@@ -311,7 +311,7 @@ trait Wiring {
       debugExtraStacks.map { case (country, _, stack) => country -> stack }.toMap,
       devMode = environmentMode != Mode.Prod)
 
-  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, debugCountries, adminAction, oauthProviders.keySet, environmentMode, gzippedResponseCache, ogCardService, cityOgCardService,
+  lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, debugCountries, adminAction, oauthProviders.keySet, environmentMode, encodedResponseCache, ogCardService, cityOgCardService,
     cinemaSourceUrls = () => UptimeMonitor.cinemaUrls(uptimeMonitor.serviceTagsSnapshot()))
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.
@@ -344,13 +344,13 @@ trait Wiring {
   private val webHostMetrics = new WebHostMetrics(webJvmMetrics.registry, metricsCountry.code)
   // How much heap the gzipped-response cache is holding, against its budget. NOT
   // lazy for the same reason as the line above: registering the gauges is the
-  // whole job. It forces `gzippedResponseCache`, which is only a map — no I/O, no
+  // whole job. It forces `encodedResponseCache`, which is only a map — no I/O, no
   // ordering constraint.
   // Every in-heap cache this tier holds, on one `kinowo_web_cache_*` family. The
   // two share-card caches are separate budgets (film cards get four times the
   // city cards'), so they are separate series rather than a sum.
   private val webCacheMetrics = new WebCacheMetrics(webJvmMetrics.registry, metricsCountry.code, Seq(
-    "response"     -> (() => gzippedResponseCache.occupancy),
+    "response"     -> (() => encodedResponseCache.occupancy),
     "og_card_film" -> (() => ogCardService.cacheOccupancy),
     "og_card_city" -> (() => cityOgCardService.cacheOccupancy)))
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics, webJvmMetrics, metricsCountry.code)

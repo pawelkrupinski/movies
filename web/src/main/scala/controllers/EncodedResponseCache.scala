@@ -7,14 +7,25 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.zip.GZIPOutputStream
 
-/** Caches the gzip-compressed bytes of the responses that are byte-identical
+import com.aayushatharva.brotli4j.Brotli4jLoader
+import com.aayushatharva.brotli4j.encoder.{BrotliOutputStream, Encoder}
+
+/** Caches the COMPRESSED bytes of the responses that are byte-identical
  *  for every client at a given cache version: the anonymous HTML pages
  *  (`/{city}/`, `/{city}/movies`) and the mobile JSON endpoints
  *  (`/{city}/api/repertoire`, `/{city}/api/details`). A hit skips BOTH the body
- *  build (Twirl render / JSON serialize) and the gzip pass — measured at ~16 ms
- *  of server CPU per `/api/repertoire`, of which gzip alone is a large share.
- *  Caching the
- *  compressed bytes (not just the body string) is what captures that share.
+ *  build (Twirl render / JSON serialize) and the compression pass — measured at
+ *  ~16 ms of server CPU per `/api/repertoire`, of which the compression alone is a
+ *  large share. Caching the compressed bytes (not just the body string) is what
+ *  captures that share, and it is what makes brotli affordable here at all: brotli
+ *  costs meaningfully more CPU than gzip per pass, and this turns "per request"
+ *  into "once per version".
+ *
+ *  ⚠️ KEYED BY PATH **AND ENCODING**, because one page now has two compressed
+ *  spellings. Sharing one slot between them would serve brotli bytes under
+ *  `Content-Encoding: gzip` to the next caller — a body the client cannot inflate,
+ *  from a cache that looked like it hit. The two blobs are independent entries and
+ *  each is charged to the same byte budget.
  *
  *  The cache is keyed by request path and versioned by
  *  `WebReadModel.lastModifiedFor(city)` — the same per-city validator the
@@ -40,9 +51,9 @@ import java.util.zip.GZIPOutputStream
  *  access pattern that overflows this is a crawler sweeping cold states while
  *  real visitors sit on a few hot ones, and insertion order would evict exactly
  *  the hot ones. */
-class GzippedResponseCache(maxBytes: Long = GzippedResponseCache.DefaultMaxBytes) {
+class EncodedResponseCache(maxBytes: Long = EncodedResponseCache.DefaultMaxBytes) {
 
-  private final case class Entry(version: Instant, gzipped: ByteString)
+  private final case class Entry(version: Instant, bytes: ByteString)
 
   // Access-ordered, so `get` promotes; guarded by `this` rather than concurrent
   // because access order makes reads mutating anyway. The critical sections are
@@ -52,17 +63,19 @@ class GzippedResponseCache(maxBytes: Long = GzippedResponseCache.DefaultMaxBytes
   private val entries = new java.util.LinkedHashMap[String, Entry](16, 0.75f, true)
   private var bytesHeld = 0L
 
-  /** Gzipped bytes for `key` at `version`. On a hit with a matching version the
-   *  cached bytes are returned and `renderBody` is never evaluated; otherwise
-   *  `renderBody` runs, its output is compressed, stored under `version`, and
-   *  returned. */
-  def gzippedBody(key: String, version: Instant)(renderBody: => String): ByteString = {
-    val hit = synchronized(Option(entries.get(key)))
+  /** `encoding`-compressed bytes for `key` at `version`. On a hit with a matching
+   *  version the cached bytes are returned and `renderBody` is never evaluated;
+   *  otherwise `renderBody` runs, its output is compressed, stored under `version`,
+   *  and returned. */
+  def encodedBody(key: String, version: Instant, encoding: ContentEncoding)
+                 (renderBody: => String): ByteString = {
+    val slot = s"${encoding.token}\u001f$key"
+    val hit  = synchronized(Option(entries.get(slot)))
     hit match {
-      case Some(entry) if entry.version == version => entry.gzipped
+      case Some(entry) if entry.version == version => entry.bytes
       case _ =>
-        val bytes = GzippedResponseCache.gzip(renderBody)
-        store(key, Entry(version, bytes))
+        val bytes = EncodedResponseCache.compress(encoding, renderBody)
+        store(slot, Entry(version, bytes))
         bytes
     }
   }
@@ -86,23 +99,23 @@ class GzippedResponseCache(maxBytes: Long = GzippedResponseCache.DefaultMaxBytes
   private def store(key: String, entry: Entry): Unit = synchronized {
     // An entry larger than the whole budget is never worth holding: storing it
     // would evict everything else and then itself on the next put.
-    if (entry.gzipped.size <= maxBytes) {
-      Option(entries.put(key, entry)).foreach(previous => bytesHeld -= previous.gzipped.size)
-      bytesHeld += entry.gzipped.size
+    if (entry.bytes.size <= maxBytes) {
+      Option(entries.put(key, entry)).foreach(previous => bytesHeld -= previous.bytes.size)
+      bytesHeld += entry.bytes.size
       val stale = entries.entrySet().iterator()
       while (bytesHeld > maxBytes && stale.hasNext) {
         val evicted = stale.next()          // access order: eldest use first
         if (evicted.getKey != key) {
-          bytesHeld -= evicted.getValue.gzipped.size
+          bytesHeld -= evicted.getValue.bytes.size
           stale.remove()
         }
       }
     } else
-      Option(entries.remove(key)).foreach(previous => bytesHeld -= previous.gzipped.size)
+      Option(entries.remove(key)).foreach(previous => bytesHeld -= previous.bytes.size)
   }
 }
 
-object GzippedResponseCache {
+object EncodedResponseCache {
   /** 64 MiB of compressed bodies. Chosen against the two shapes that share this
    *  process: every Polish, German, Spanish and British city's pages fit inside it
    *  several times over (so those deployments never evict), while the US — 55
@@ -111,11 +124,56 @@ object GzippedResponseCache {
    *  the same heap the read model lives in. */
   val DefaultMaxBytes: Long = 64L * 1024 * 1024
 
+  /** Brotli quality. NOT the library default of 11.
+   *
+   *  Measured on a real `/uk/manchester/` body (3,820,489 bytes of HTML), JIT and
+   *  native warmed, best of three:
+   *
+   *      gzip    300,431 B     125 ms
+   *      q=1     649,868 B      16 ms   (worse than gzip — brotli's window is tiny here)
+   *      q=4     229,805 B      17 ms
+   *      q=5     197,131 B      24 ms   ← chosen
+   *      q=6     191,109 B      36 ms
+   *      q=9     181,875 B     132 ms
+   *      q=11    157,323 B  16,506 ms
+   *
+   *  q=5 is 34% SMALLER THAN GZIP AND FIVE TIMES FASTER TO PRODUCE, so replacing
+   *  gzip with it costs nothing on either axis — an unusual position, and the
+   *  reason there is no trade to argue about below q=6.
+   *
+   *  It also beats what we lost. Cloudflare's edge brotli measured 228,940 B on
+   *  this page, which is q=4 to within a rounding error; `no-transform` gave that
+   *  up to get the ETag through, and this gets back more than it gave.
+   *
+   *  Above q=5 the curve turns: q=9 buys 8% for 5x the CPU, and q=11 buys 20% for
+   *  SIXTEEN SECONDS on the thread that renders — paid by whichever visitor
+   *  arrives first after a showtime moves, on a page that moves all day. */
+  val BrotliQuality = 5
+
+  def compress(encoding: ContentEncoding, s: String): ByteString = encoding match {
+    case ContentEncoding.Gzip   => gzip(s)
+    case ContentEncoding.Brotli => brotli(s)
+  }
+
   def gzip(s: String): ByteString = {
     val bos = new ByteArrayOutputStream()
     val gz  = new GZIPOutputStream(bos)
     try gz.write(s.getBytes(StandardCharsets.UTF_8))
     finally gz.close()
+    ByteString(bos.toByteArray)
+  }
+
+  /** ⚠️ `ensureAvailability` FIRST, EVERY TIME. It unpacks and links the JNI
+   *  native, is idempotent and cheap after the first call, and without it the
+   *  first `BrotliOutputStream` on a fresh JVM throws `UnsatisfiedLinkError` —
+   *  which surfaces as a 500 on one unlucky request rather than as a boot
+   *  failure, because nothing else touches brotli until a page is served. */
+  def brotli(s: String): ByteString = {
+    Brotli4jLoader.ensureAvailability()
+    val bos = new ByteArrayOutputStream()
+    val br  = new BrotliOutputStream(bos, new Encoder.Parameters().setQuality(BrotliQuality))
+    try br.write(s.getBytes(StandardCharsets.UTF_8))
+    finally br.close()
     ByteString(bos.toByteArray)
   }
 }

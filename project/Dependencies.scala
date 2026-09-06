@@ -32,6 +32,15 @@ object Dependencies {
   // histogram) and renders the text exposition via the exposition-formats
   // module, rather than hand-rolling the `0.0.4` format.
   private val prometheusVersion    = "1.8.0"
+  // Brotli ENCODER. The JDK ships gzip and no brotli, and `org.brotli:dec` is a
+  // decoder only — brotli4j is the maintained JNI binding round the reference
+  // encoder. ⚠️ IT NEEDS A NATIVE PER PLATFORM, and a missing one is not a build
+  // error: it is an `UnsatisfiedLinkError` at first use, on that platform only. So
+  // BOTH are declared — linux-x86_64 is what the `eclipse-temurin:25-jre` image and
+  // the ubuntu CI runners load, osx-aarch64 is what `sbt test` on the dev machine
+  // loads. Dropping either gives a green build on one and a runtime failure on the
+  // other, which is the whole trap.
+  private val brotli4jVersion      = "1.18.0"
 
   // ── Artifacts ──────────────────────────────────────────────────────────────
   val play             = "org.playframework"             %% "play"               % playVersion
@@ -45,4 +54,7 @@ object Dependencies {
   val prometheusCore   = "io.prometheus"                  %  "prometheus-metrics-core"               % prometheusVersion
   val prometheusText   = "io.prometheus"                  %  "prometheus-metrics-exposition-formats" % prometheusVersion
   val prometheusJvm    = "io.prometheus"                  %  "prometheus-metrics-instrumentation-jvm" % prometheusVersion
+  val brotli4j         = "com.aayushatharva.brotli4j"     %  "brotli4j"           % brotli4jVersion
+  val brotli4jLinux    = "com.aayushatharva.brotli4j"     %  "native-linux-x86_64" % brotli4jVersion
+  val brotli4jMacArm   = "com.aayushatharva.brotli4j"     %  "native-osx-aarch64"  % brotli4jVersion
 }
