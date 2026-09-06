@@ -59,26 +59,7 @@ class MetascoreRatings(
   // index the film.
   private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[MetacriticClient.Resolved] =
     e.tmdbId.flatMap { tmdbId =>
-      // `apiQuery` strips accessibility-programme decoration so an "Kino
-      // bez barier: Arco (AD)" row queries MC as just "Arco". Cache key
-      // stays decorated so the accessibility screening keeps its own row.
-      val cleanLookup = cache.normalizer.searchQuery(key.cleanTitle)
-      val linkTitle   = e.originalTitle.getOrElse(cleanLookup)
-      val mcFallback  = if (linkTitle != cleanLookup) Some(cleanLookup) else None
-      val details    = tmdb.details(tmdbId)
-      val year       = details.flatMap(_.releaseYear)
-
-      // englishTitle fallback for non-English films (TMDB's en-US `title`).
-      // usTitle fallback for UK/US release-title divergence (HP1 etc.) — TMDB
-      // keeps the British title in the en-US locale, but the US alternative
-      // title from /alternative_titles is the one MC indexes under.
-      val englishTitle = details.flatMap(_.englishTitle)
-        .filterNot(_.equalsIgnoreCase(linkTitle))
-        .filterNot(t => mcFallback.exists(_.equalsIgnoreCase(t)))
-      val usTitle = details.flatMap(_.usTitle)
-        .filterNot(_.equalsIgnoreCase(linkTitle))
-        .filterNot(t => mcFallback.exists(_.equalsIgnoreCase(t)))
-        .filterNot(t => englishTitle.exists(_.equalsIgnoreCase(t)))
+      val titles = RatingSiteTitles.derive(key, e, tmdb.details(tmdbId), cache.normalizer)
       // The link cache stores the URL only (the score is read fresh each
       // refresh). We thread the Metascore the resolving probe already parsed
       // out-of-band via `freshScore`: it's set ONLY when the resolve closure
@@ -87,11 +68,11 @@ class MetascoreRatings(
       // re-fetch. On a cache HIT the closure is skipped, `freshScore` stays
       // None, and the caller reads the score via `metascoreFor`.
       var freshScore: Option[Int] = None
-      val url = mcLinkCache.getOrResolve(ResolutionKeys.mc(linkTitle, mcFallback, year, cache.normalizer)) {
-        // One attempt across all three candidate titles rather than three
-        // independent ones: same ladder, same order, but the titles share a
-        // fetch memo so a slug an earlier title already probed isn't probed
-        // again ("The Sting" and "Sting" both end at /movie/sting).
+      val url = mcLinkCache.getOrResolve(ResolutionKeys.mc(titles.linkTitle, titles.fallback, titles.year, cache.normalizer)) {
+        // One attempt across all the candidate titles rather than one each:
+        // same ladder, same order, but the titles share a fetch memo so a slug
+        // an earlier title already probed isn't probed again ("The Sting" and
+        // "Sting" both end at /movie/sting).
         // The film's own director — the one thing that tells two same-titled,
         // same-year films apart on a rating site.
         //
@@ -101,8 +82,7 @@ class MetascoreRatings(
         // thrown away. `directorsFor` returns the localised AND native-script
         // spellings, so either side's rendering matches.
         val directors = tmdb.directorsFor(tmdbId)
-        val resolved = metacritic.resolveAcross(
-          Seq(linkTitle) ++ englishTitle ++ usTitle, mcFallback, year, directors)
+        val resolved = metacritic.resolveAcross(titles.candidates, titles.fallback, titles.year, directors)
         freshScore = resolved.flatMap(_.metascore)
         resolved.map(_.url)
       }

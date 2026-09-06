@@ -50,34 +50,15 @@ class RottenTomatoesRatings(
 
   private def resolveAndPersistUrl(key: CacheKey, e: models.MovieRecord): Option[String] =
     e.tmdbId.flatMap { tmdbId =>
-      // `apiQuery` strips accessibility-programme decoration so an "Kino
-      // bez barier: Arco (AD)" row queries RT as just "Arco". Cache key
-      // stays decorated so the accessibility screening keeps its own row.
-      val cleanLookup = cache.normalizer.searchQuery(key.cleanTitle)
-      val linkTitle   = e.originalTitle.getOrElse(cleanLookup)
-      val rtFallback  = if (linkTitle != cleanLookup) Some(cleanLookup) else None
-      val details    = tmdb.details(tmdbId)
-      val year       = details.flatMap(_.releaseYear)
-
-      // englishTitle fallback for non-English films (TMDB's en-US `title`).
-      // usTitle fallback for UK/US release-title divergence (HP1 etc.) — TMDB
-      // keeps the British title in the en-US locale, but the US alternative
-      // title from /alternative_titles is the one RT indexes under.
-      val englishTitle = details.flatMap(_.englishTitle)
-        .filterNot(_.equalsIgnoreCase(linkTitle))
-        .filterNot(t => rtFallback.exists(_.equalsIgnoreCase(t)))
-      val usTitle = details.flatMap(_.usTitle)
-        .filterNot(_.equalsIgnoreCase(linkTitle))
-        .filterNot(t => rtFallback.exists(_.equalsIgnoreCase(t)))
-        .filterNot(t => englishTitle.exists(_.equalsIgnoreCase(t)))
+      val titles = RatingSiteTitles.derive(key, e, tmdb.details(tmdbId), cache.normalizer)
       // Cache the whole slug-probe chain keyed by the primary identity, so a
       // cache hit skips the RT HTTP probes entirely.
-      val resolved = rtLinkCache.getOrResolve(ResolutionKeys.rt(linkTitle, rtFallback, year, cache.normalizer)) {
-        // One attempt across all three candidate titles rather than three
-        // independent ones: same ladder, same order, but the titles share a
-        // fetch memo so a slug an earlier title already probed isn't probed
-        // again ("The Sting" and "Sting" both end at /m/sting).
-        rt.urlForAny(Seq(linkTitle) ++ englishTitle ++ usTitle, rtFallback, year)
+      val resolved = rtLinkCache.getOrResolve(ResolutionKeys.rt(titles.linkTitle, titles.fallback, titles.year, cache.normalizer)) {
+        // One attempt across all the candidate titles rather than one each:
+        // same ladder, same order, but the titles share a fetch memo so a slug
+        // an earlier title already probed isn't probed again ("The Sting" and
+        // "Sting" both end at /m/sting).
+        rt.urlForAny(titles.candidates, titles.fallback, titles.year)
       }
 
       resolved.foreach { url =>
