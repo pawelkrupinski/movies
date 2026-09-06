@@ -15,7 +15,9 @@
  * what is faked here is the fleet, never the page or the script driving it.
  *
  * Run:  node infra/version-dashboard/test_browser.js
- * Skips (exit 0) when Playwright's browsers are not installed, which is the CI-on-a-fork case.
+ * Skips (exit 0) when Playwright is not installed, which is the bin/check-on-a-fork case —
+ * UNLESS KINOWO_PLAYWRIGHT names a path, when a failed load is a failure: CI sets it, so CI
+ * cannot skip this and report green.
  */
 'use strict';
 const http = require('http');
@@ -39,6 +41,10 @@ for (const where of candidates) {
   try { ({ chromium } = require(where)); break; } catch (err) { /* try the next */ }
 }
 if (!chromium) {
+  if (process.env.KINOWO_PLAYWRIGHT) {
+    console.error(`FAILED KINOWO_PLAYWRIGHT=${process.env.KINOWO_PLAYWRIGHT} does not load as playwright — a broken install, not a fork without one`);
+    process.exit(1);
+  }
   console.log('skip: playwright is not installed here (set KINOWO_PLAYWRIGHT to its path)');
   process.exit(0);
 }

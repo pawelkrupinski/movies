@@ -114,6 +114,8 @@ on:
       # THE RULE TESTS TOO, because they are the only thing that reads nix/files/monitoring/rules
       # for meaning and a change to a test alone is a change to what this job would say.
       - 'infra/test/**'
+      # The fleet dashboard's own tests live beside it, not under test/.
+      - 'infra/version-dashboard/**'
       - 'infra/flake.nix'
       - 'infra/flake.lock'
       - '.github/workflows/nix-stage-closures.yaml'
@@ -192,6 +194,44 @@ jobs:
       - name: The auto-apply classifier still refuses what it should
         working-directory: infra
         run: python3 test/test_auto_apply_classify.py
+
+      # THE REST OF bin/check, WHICH UNTIL 2026-09-06 RAN ONLY FOR WHOEVER RAN bin/check. Each of
+      # these is pure and instant — stdlib Python or bash over files in the tree — so the only
+      # reason they were not here was that nobody had added them. A dashboard panel naming a
+      # series nothing emits, or the reboot-required decision reporting a reboot on every boot
+      # (which it did, for as long as it lived inline), is exactly the kind of wrong that
+      # `nix eval` cannot see and a person will not notice until the incident.
+      - name: The Grafana dashboards name real series and do not overlap
+        working-directory: infra
+        run: python3 test/test_dashboards.py
+
+      - name: reboot-required decides from the booted closure, not from a missing one
+        working-directory: infra
+        run: bash test/test_reboot_required.sh
+
+      - name: The fleet dashboard renders what the fleet reports
+        working-directory: infra
+        run: python3 version-dashboard/test_app.py
+
+      # The bulk-apply queue in the fleet dashboard is only observable with a DOM and a real
+      # click, so this one needs a browser. Playwright is the page-test suite's dependency and
+      # is installed from its lockfile; the test SKIPS when it cannot find Playwright, which is
+      # right for a fork's bin/check and wrong here — so the path is passed explicitly, and an
+      # explicit path that does not load is a failure.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install Playwright for the fleet dashboard's browser checks
+        working-directory: page-tests-playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+      - name: The fleet dashboard's bulk run behaves in a real browser
+        working-directory: infra
+        env:
+          KINOWO_PLAYWRIGHT: ${{ github.workspace }}/page-tests-playwright/node_modules/playwright
+        run: node version-dashboard/test_browser.js
 
       - name: Every host in the flake evaluates
         working-directory: infra
