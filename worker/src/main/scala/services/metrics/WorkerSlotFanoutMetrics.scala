@@ -42,7 +42,22 @@ class WorkerSlotFanoutMetrics(widest: Gauge, countryCode: String) extends Corpus
     // therefore what the change stream rings for. A row held back from the read model still
     // has its slots written, so this deliberately does not gate on `readyToProject` the way
     // the served-films censuses do.
-    def accept(row: StoredMovieRecord): Unit = if (row.record.data.size > max) max = row.record.data.size
+    //
+    // CINEMA SLOTS, NOT EVERY SOURCE. This counted `data.size` until 2026-09-06, which added the
+    // Tmdb / Imdb / Filmweb metadata slots to a number the help text and the panel both describe as
+    // cinema slots: every film read two or three wider than it is, and a TMDB-only film with no
+    // venue at all reported a fanout. Only cinema slots become `screenings` rows, so only they are
+    // the blast radius. `cinemaSlots` covers `CinemaShowing` as well as `Cinema` (`Source.cinemaOf`)
+    // -- a per-title venue slot rings the stream exactly like its venue does.
+    //
+    // IT DELIBERATELY DOES NOT ASK FOR SHOWTIMES. `showtimesOf` is what `replaceFilm` actually
+    // keys on, and it would be the truer measure on a stitched row -- but this rides a corpus scan
+    // that may be the CHEAP one, whose rows carry no showtimes at all, and a gauge that silently
+    // reads zero on half the scans is worse than one that counts a slot whose showtimes are empty.
+    def accept(row: StoredMovieRecord): Unit = {
+      val slots = row.record.cinemaSlots.size
+      if (slots > max) max = slots
+    }
 
     /** Publishes ONLY a complete census, for [[WorkerCorpusMetrics]]' reason and one of its
      *  own: a MAXIMUM over a truncated scan is not a smaller maximum, it is the maximum of
