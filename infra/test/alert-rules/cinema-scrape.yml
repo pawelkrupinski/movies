@@ -1,0 +1,216 @@
+# UNIT TESTS FOR THE CINEMA-SCRAPE CENSUS ALERTS.
+#
+# The rules read two gauges and nothing else, and every threshold in them is a literal that
+# `CinemaScrapeStalenessAlertSpec` in the application repository derives from the deploy configs.
+# What that spec cannot ask is whether the PromQL around those literals means what the comments
+# say -- that an `or` chain yields one alert per breaching country, that a country with no clause
+# is silent however stale it gets, that the never-scraped count and the age are two separate
+# questions, and that the companion `absent()` fires on the census going missing rather than on
+# any country going quiet. Those are the claims pinned here.
+#
+# The age rule's summary renders `$value` through `humanizeDuration`, so the breaching readings
+# are round numbers of hours; a value like 5401 would render as "1h 30m 1s" and prove nothing
+# the round one does not.
+
+rule_files:
+  - ../../nix/files/monitoring/rules/cinema-scrape.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A HEALTHY SAWTOOTH. PL rides just under its 1.5x window (5400s) and DE sits at half of its
+  # (54000s): the shape the header describes as normal operation, which must not fire even
+  # though PL is within a few minutes of the line. Nobody is never-scraped, and the census is
+  # present, so the companion is quiet too.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="pl"}'
+        values: '5000+0x120'
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="de"}'
+        values: '27000+0x120'
+      - series: 'kinowo_worker_cinema_scrape_never_scraped{country="pl"}'
+        values: '0+0x120'
+      - series: 'kinowo_worker_cinema_scrape_never_scraped{country="de"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: CinemaScrapeOldestAgeHigh
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: CinemaScrapeNeverScraped
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: CinemaScrapeCensusAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # ONE COUNTRY OVER ITS OWN LINE, ANOTHER OVER PL'S LINE BUT UNDER ITS OWN. PL at two hours
+  # is past 5400s; the US at the same two hours is nowhere near its 75600s. A single fleet-
+  # wide threshold would have paged the US here or missed PL -- the whole reason the clauses
+  # are per country. The `for: 30m` holds the PL alert back at the twenty-minute mark and
+  # releases it at the hour.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="pl"}'
+        values: '7200+0x120'
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="us"}'
+        values: '7200+0x120'
+    alert_rule_test:
+      # Past the line but not yet for thirty minutes: the restart-spike filter.
+      - eval_time: 20m
+        alertname: CinemaScrapeOldestAgeHigh
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: CinemaScrapeOldestAgeHigh
+        exp_alerts:
+          - exp_labels:
+              country: pl
+              severity: warning
+            exp_annotations:
+              summary: "pl's oldest cinema has not scraped in 2h 0m 0s"
+              description: >-
+                The least recently scraped cinema in "pl" is past 1.5x that country's
+                KINOWO_SCRAPE_FRESHNESS_MINUTES window, so the sweep is not keeping up with its own cadence.
+                Read the shape before reading the number: a line climbing in a straight diagonal is ONE
+                cinema failing every attempt (a failed scrape does not mark freshness, so it stays stale for
+                ever and drags the maximum with it), while an oscillating but high ceiling is the whole
+                sweep running slower than its window -- a slow upstream, a pacing change, or a roster that
+                grew. Panel 58 on the application dashboard draws it. Check the worker's logs for a venue
+                erroring on every pass, and `RealHttpFetch.HostPolicies` for a pace that has been tightened
+                without the cadence being widened to match; that pairing is what put DE 4x over its window
+                in July 2026 with every other panel clean. If the sweep is simply too slow for the window,
+                the cadence is the lever, and `WorkerScrapeCadenceConfigSpec` asserts the arithmetic.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE OR-CHAIN YIELDS ONE ALERT PER BREACHING COUNTRY. DE and UK are both past their lines
+  # at once; the header promises "five times with five names rather than once with none", and
+  # this is the two-name version of that promise.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="de"}'
+        values: '72000+0x120'
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="uk"}'
+        values: '43200+0x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: CinemaScrapeOldestAgeHigh
+        exp_alerts:
+          - exp_labels:
+              country: de
+              severity: warning
+            exp_annotations:
+              summary: "de's oldest cinema has not scraped in 20h 0m 0s"
+              description: >-
+                The least recently scraped cinema in "de" is past 1.5x that country's
+                KINOWO_SCRAPE_FRESHNESS_MINUTES window, so the sweep is not keeping up with its own cadence.
+                Read the shape before reading the number: a line climbing in a straight diagonal is ONE
+                cinema failing every attempt (a failed scrape does not mark freshness, so it stays stale for
+                ever and drags the maximum with it), while an oscillating but high ceiling is the whole
+                sweep running slower than its window -- a slow upstream, a pacing change, or a roster that
+                grew. Panel 58 on the application dashboard draws it. Check the worker's logs for a venue
+                erroring on every pass, and `RealHttpFetch.HostPolicies` for a pace that has been tightened
+                without the cadence being widened to match; that pairing is what put DE 4x over its window
+                in July 2026 with every other panel clean. If the sweep is simply too slow for the window,
+                the cadence is the lever, and `WorkerScrapeCadenceConfigSpec` asserts the arithmetic.
+          - exp_labels:
+              country: uk
+              severity: warning
+            exp_annotations:
+              summary: "uk's oldest cinema has not scraped in 12h 0m 0s"
+              description: >-
+                The least recently scraped cinema in "uk" is past 1.5x that country's
+                KINOWO_SCRAPE_FRESHNESS_MINUTES window, so the sweep is not keeping up with its own cadence.
+                Read the shape before reading the number: a line climbing in a straight diagonal is ONE
+                cinema failing every attempt (a failed scrape does not mark freshness, so it stays stale for
+                ever and drags the maximum with it), while an oscillating but high ceiling is the whole
+                sweep running slower than its window -- a slow upstream, a pacing change, or a roster that
+                grew. Panel 58 on the application dashboard draws it. Check the worker's logs for a venue
+                erroring on every pass, and `RealHttpFetch.HostPolicies` for a pace that has been tightened
+                without the cadence being widened to match; that pairing is what put DE 4x over its window
+                in July 2026 with every other panel clean. If the sweep is simply too slow for the window,
+                the cadence is the lever, and `WorkerScrapeCadenceConfigSpec` asserts the arithmetic.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A COUNTRY WITH NO CLAUSE IS NOT WATCHED -- stated in the rule's own comment as the failure
+  # mode to look for after onboarding, and pinned here so the sentence stays true rather than
+  # merely written. A week-old "fr" reading fires nothing. If this case ever starts failing,
+  # the rule grew a fleet-wide fallback and the per-country reasoning in the header needs
+  # revisiting, not the test.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="fr"}'
+        values: '604800+0x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: CinemaScrapeOldestAgeHigh
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # CINEMAS THAT HAVE NEVER SCRAPED. Three US venues carry no successful scrape while the US
+  # age gauge sits at a healthy value: the hole the age rule is structurally blind to. Twelve
+  # hours in, this is still what a fresh US worker looks like before its first sweep reaches
+  # everything, so nothing fires; at twenty-five hours it is not a cold start any more.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_cinema_scrape_oldest_age_seconds{country="us"}'
+        values: '36000+0x1600'
+      - series: 'kinowo_worker_cinema_scrape_never_scraped{country="us"}'
+        values: '3+0x1600'
+    alert_rule_test:
+      - eval_time: 12h
+        alertname: CinemaScrapeNeverScraped
+        exp_alerts: []
+      - eval_time: 25h
+        alertname: CinemaScrapeNeverScraped
+        exp_alerts:
+          - exp_labels:
+              country: us
+              severity: warning
+            exp_annotations:
+              summary: "3 cinema(s) in us have never been scraped successfully"
+              description: >-
+                These venues carry no successful scrape at all, so they contribute no age to
+                CinemaScrapeOldestAgeHigh and appear in no scrape counter -- they are invisible to every
+                other signal. A full day is longer than any country's sweep, so this is not a cold start.
+                Most likely a venue was added to the roster with a URL that has never resolved, or a client
+                throws before it can record anything. Panel 59 on the application dashboard counts them per
+                country; the `cinema_scrapes` archive names which.
+      # The never-scraped venues contribute no age, by design, so the age rule stays quiet.
+      - eval_time: 25h
+        alertname: CinemaScrapeOldestAgeHigh
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE CENSUS IS GONE. No worker in any country publishes the age gauge -- the one shape both
+  # rules above cannot see, because they only ever compare a series that is there. Quiet
+  # inside the hour, which is a fleet-wide rollout; firing after it. `absent()` carries no
+  # country label, so the alert has none.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_cinema_scrape_never_scraped{country="pl"}'
+        values: '0+0x200'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: CinemaScrapeCensusAbsent
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: CinemaScrapeCensusAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No worker is publishing the cinema-scrape census"
+              description: >-
+                kinowo_worker_cinema_scrape_oldest_age_seconds has no series from any country, so
+                CinemaScrapeOldestAgeHigh and CinemaScrapeNeverScraped cannot fire and the roster is
+                unwatched. Either every worker is down -- in which case TargetDown in monitoring-self.rules
+                is also firing and is the better alert to read -- or `CinemaScrapeCensus` has stopped being
+                scheduled, which TargetDown would NOT catch because the pod is up and serving /metrics
+                without this gauge in it. AN ABSENT CENSUS IS NOT A FRESH ROSTER.

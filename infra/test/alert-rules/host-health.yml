@@ -1,0 +1,484 @@
+# UNIT TESTS FOR THE HOST-HEALTH ALERTS.
+#
+# Every threshold in host-health.rules is, in that file's own words, reasoned rather than measured,
+# and is expected to be revised. What these cases pin is not the numbers but the SHAPE of each
+# expression around them, which is where the alerts in this directory have actually gone wrong:
+#
+#   * the memory rules are a proportion of `MemTotal`, so the same absolute headroom is a warning
+#     on a 4GB host and nothing on a 16GB one;
+#   * the CPU rules average over cores and divide load by the core count, so a 2-core and an
+#     8-core host are held to the same standard;
+#   * the OOM rule is an `increase()` of a counter -- a past event, fired without `for:` -- and its
+#     companion fires on the counter's absence rather than on a zero;
+#   * `time() - node_boot_time_seconds` fires for fifteen minutes after a boot and then clears
+#     itself, with no `for:` to delay the message past the window it is about.
+#
+# `host` and `role` are target labels on every series from a machine, so every input series here
+# carries both, and every fired alert carries both back.
+
+rule_files:
+  - ../../nix/files/monitoring/rules/host-health.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A 4GB HOST WITH A QUARTER OF ITS MEMORY AVAILABLE, idle CPU, no OOM kills, no failed
+  # units, a writable root, booted an hour ago. Nothing in the file may fire -- the baseline
+  # every case below departs from in one dimension.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{host="mongo-1",role="mongodb"}'
+        values: '4000000000+0x120'
+      - series: 'node_memory_MemAvailable_bytes{host="mongo-1",role="mongodb"}'
+        values: '1000000000+0x120'
+      - series: 'node_pressure_memory_stalled_seconds_total{host="mongo-1",role="mongodb"}'
+        values: '0+0x120'
+      - series: 'node_vmstat_oom_kill{host="mongo-1",role="mongodb"}'
+        values: '0+0x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="0",host="mongo-1",role="mongodb"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="1",host="mongo-1",role="mongodb"}'
+        values: '0+60x120'
+      - series: 'node_load15{host="mongo-1",role="mongodb"}'
+        values: '0.5+0x120'
+      - series: 'node_systemd_unit_state{name="mongodb.service",state="failed",host="mongo-1",role="mongodb"}'
+        values: '0+0x120'
+      - series: 'node_filesystem_readonly{mountpoint="/",fstype="ext4",device="/dev/sda1",host="mongo-1",role="mongodb"}'
+        values: '0+0x120'
+      - series: 'node_boot_time_seconds{host="mongo-1",role="mongodb"}'
+        values: '-3600+0x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: MemoryAvailableLow
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: MemoryAvailableCritical
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: MemoryStallHigh
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: HostOomKilled
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: OomKillMetricAbsent
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: CpuBusySustained
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: CpuRunQueueDeep
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: SystemdUnitFailed
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: FilesystemReadOnly
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: HostRecentlyRebooted
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A TENTH OF THE MEMORY AVAILABLE: under the 15% warning line, over the 7% critical one. The
+  # warning waits its fifteen minutes (a build or a dump takes a transient bite) and then
+  # fires; the critical rule never does, because 10% is not 7%.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{host="mongo-1",role="mongodb"}'
+        values: '4000000000+0x120'
+      - series: 'node_memory_MemAvailable_bytes{host="mongo-1",role="mongodb"}'
+        values: '400000000+0x120'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: MemoryAvailableLow
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: MemoryAvailableLow
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              severity: warning
+            exp_annotations:
+              summary: "Less than 15% of mongo-1's memory is available"
+              description: >-
+                A GUESSED THRESHOLD -- see this file's header. On mongo-1 the first thing to rule out is the
+                WiredTiger cache being larger than roles/mongodb.nix pins it to, which happens when the pin
+                is removed and mongod falls back to its default of half of RAM minus 1GB; on monitoring-1 it
+                is Prometheus's head block, which grows with series count and is reported by
+                `prometheus_tsdb_head_series`. `systemd-cgtop -m --order=memory` names the unit responsible
+                in one screen.
+      - eval_time: 20m
+        alertname: MemoryAvailableCritical
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A TWENTIETH AVAILABLE, which is OOM-killer territory. The critical rule fires after five
+  # minutes rather than fifteen, because past here the next event does not wait fifteen. The
+  # warning fires too, later -- two alerts for one condition, which Alertmanager's inhibition,
+  # not this file, is responsible for collapsing.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{host="mongo-1",role="mongodb"}'
+        values: '4000000000+0x120'
+      - series: 'node_memory_MemAvailable_bytes{host="mongo-1",role="mongodb"}'
+        values: '200000000+0x120'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: MemoryAvailableCritical
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: MemoryAvailableCritical
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              severity: critical
+            exp_annotations:
+              summary: "mongo-1 is nearly out of memory (5% available)"
+              description: >-
+                The OOM killer takes the LARGEST process, not the guilty one. On mongo-1 that is mongod and
+                the database goes down; on monitoring-1 it is Prometheus, and the CPUWeight ordering in
+                roles/prometheus.nix does nothing about memory -- it is stated there that weights are a CPU
+                mechanism and buy no protection here. Free memory now or accept which process the kernel
+                picks.
+      - eval_time: 20m
+        alertname: MemoryAvailableLow
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              severity: warning
+            exp_annotations:
+              summary: "Less than 15% of mongo-1's memory is available"
+              description: >-
+                A GUESSED THRESHOLD -- see this file's header. On mongo-1 the first thing to rule out is the
+                WiredTiger cache being larger than roles/mongodb.nix pins it to, which happens when the pin
+                is removed and mongod falls back to its default of half of RAM minus 1GB; on monitoring-1 it
+                is Prometheus's head block, which grows with series count and is reported by
+                `prometheus_tsdb_head_series`. `systemd-cgtop -m --order=memory` names the unit responsible
+                in one screen.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE SAME ABSOLUTE HEADROOM ON A 16GB HOST. 400MB available is a tenth of mongo-1 and a
+  # fortieth of k3s-worker-1 -- 2.5%, deep into critical -- while 1.6GB on the big host is the
+  # same 10% as the warning case above. A floor in bytes would get both of these wrong in
+  # opposite directions; the proportion gets both right.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{host="k3s-worker-1",role="k3s-worker"}'
+        values: '16000000000+0x120'
+      - series: 'node_memory_MemAvailable_bytes{host="k3s-worker-1",role="k3s-worker"}'
+        values: '1600000000+0x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: MemoryAvailableLow
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              role: k3s-worker
+              severity: warning
+            exp_annotations:
+              summary: "Less than 15% of k3s-worker-1's memory is available"
+              description: >-
+                A GUESSED THRESHOLD -- see this file's header. On mongo-1 the first thing to rule out is the
+                WiredTiger cache being larger than roles/mongodb.nix pins it to, which happens when the pin
+                is removed and mongod falls back to its default of half of RAM minus 1GB; on monitoring-1 it
+                is Prometheus's head block, which grows with series count and is reported by
+                `prometheus_tsdb_head_series`. `systemd-cgtop -m --order=memory` names the unit responsible
+                in one screen.
+      - eval_time: 20m
+        alertname: MemoryAvailableCritical
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # MEMORY PRESSURE WITHOUT A HEADROOM BREACH. Plenty available on paper, but the `full` PSI
+  # counter grows by twelve seconds a minute -- a fifth of wall-clock with every task stalled,
+  # twice the line. The headroom rules stay quiet, which is the case the PSI rule exists for;
+  # a counter growing by one second a minute (under 2%) is the noise floor and does not fire.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{host="mongo-1",role="mongodb"}'
+        values: '4000000000+0x120'
+      - series: 'node_memory_MemAvailable_bytes{host="mongo-1",role="mongodb"}'
+        values: '1000000000+0x120'
+      - series: 'node_pressure_memory_stalled_seconds_total{host="mongo-1",role="mongodb"}'
+        values: '0+12x120'
+      - series: 'node_pressure_memory_stalled_seconds_total{host="monitoring-1",role="monitoring"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: MemoryStallHigh
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: MemoryStallHigh
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 is spending over 10% of its time stalled on memory"
+              description: >-
+                Every task on the host is blocked in reclaim for a tenth of the time. This is what "slow for
+                no reason" looks like from the outside -- the machine answers, everything it does takes
+                longer, and no single process looks wrong. Check the memory rules above for which process
+                grew.
+      - eval_time: 20m
+        alertname: MemoryAvailableLow
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # AN OOM KILL. The counter steps from 0 to 1 at the fifth minute and stays there -- it is a
+  # count of past events, so it never goes back down. The rule fires within the ten-minute
+  # `increase()` window with no `for:`, and stops on its own once the step falls out of the
+  # window: a kill twelve minutes ago is not a kill now, and the counter sitting at 1 for ever
+  # is not one either.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_vmstat_oom_kill{host="mongo-1",role="mongodb"}'
+        values: '0 0 0 0 0 1+0x120'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: HostOomKilled
+        exp_alerts: []
+      - eval_time: 7m
+        alertname: HostOomKilled
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              severity: critical
+            exp_annotations:
+              summary: "The kernel OOM-killed a process on mongo-1"
+              description: >-
+                `dmesg -T | grep -i 'killed process'` names the victim and its RSS at the time. THE VICTIM
+                IS NOT THE CULPRIT: the kernel takes the largest process, which on mongo-1 is mongod and on
+                monitoring-1 is Prometheus, whatever actually consumed the memory. If the victim is mongod,
+                note that the web tier will keep serving its in-memory read model and look healthy while it
+                stops updating -- the same silent shape the Fly tunnel's rules describes.
+      # The step is out of the window. A counter that stays at 1 is not a fresh kill.
+      - eval_time: 20m
+        alertname: HostOomKilled
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE OOM COUNTER IS MISSING FROM EVERY HOST -- a vmstat collector without the field, or no
+  # vmstat collector. `HostOomKilled` can never fire in this state, and the companion is what
+  # says so, after six hours. It carries no host label, since there is no series to take one
+  # from.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{host="mongo-1",role="mongodb"}'
+        values: '4000000000+0x500'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: OomKillMetricAbsent
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: OomKillMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No host is publishing the kernel's OOM-kill counter"
+              description: >-
+                `HostOomKilled` is a comparison and cannot fire without this series, so an OOM kill would
+                now pass unremarked. The counter comes from `oom_kill` in /proc/vmstat via node_exporter's
+                vmstat collector, whose default field filter includes it; check the field is present on the
+                host (`grep oom_kill /proc/vmstat`) before assuming the exporter is at fault.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A PEGGED CPU. Both cores accrue three idle seconds a minute -- 95% busy -- for long enough
+  # to clear the thirty-minute window that lets a rebuild or a dump through. The load is
+  # modest, so the run-queue rule stays quiet: utilisation and saturation are different
+  # questions, and this case has only the first.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="0",host="mongo-1",role="mongodb"}'
+        values: '0+3x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="1",host="mongo-1",role="mongodb"}'
+        values: '0+3x120'
+      - series: 'node_load15{host="mongo-1",role="mongodb"}'
+        values: '1.8+0x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: CpuBusySustained
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: CpuBusySustained
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 has been over 90% busy for half an hour"
+              description: >-
+                Utilisation, not saturation -- see `CpuRunQueueDeep` for whether anything is actually
+                waiting. On monitoring-1 the ordering under contention is deliberate and written down in
+                roles/prometheus.nix: Prometheus (CPUWeight 400) and Alertmanager (300) outrank Grafana
+                (200) and k3s (100), so a starved monitoring host keeps RECORDING the starvation even when
+                it stops being pleasant to look at.
+      - eval_time: 40m
+        alertname: CpuRunQueueDeep
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A DEEP RUN QUEUE ON A TWO-CORE HOST. Load 5 over two cores is 2.5 runnable tasks per core,
+  # past the line of 2; the same load 5 on an eight-core host is 0.625 and nothing. The
+  # division by `count(idle series)` is what makes those two readings differ, and it is the
+  # part of the expression most worth pinning -- a rule on raw `node_load15` would page the
+  # big host first.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="0",host="mongo-1",role="mongodb"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="1",host="mongo-1",role="mongodb"}'
+        values: '0+60x120'
+      - series: 'node_load15{host="mongo-1",role="mongodb"}'
+        values: '5+0x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="0",host="k3s-worker-1",role="k3s-worker"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="1",host="k3s-worker-1",role="k3s-worker"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="2",host="k3s-worker-1",role="k3s-worker"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="3",host="k3s-worker-1",role="k3s-worker"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="4",host="k3s-worker-1",role="k3s-worker"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="5",host="k3s-worker-1",role="k3s-worker"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="6",host="k3s-worker-1",role="k3s-worker"}'
+        values: '0+60x120'
+      - series: 'node_cpu_seconds_total{mode="idle",cpu="7",host="k3s-worker-1",role="k3s-worker"}'
+        values: '0+60x120'
+      - series: 'node_load15{host="k3s-worker-1",role="k3s-worker"}'
+        values: '5+0x120'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: CpuRunQueueDeep
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: CpuRunQueueDeep
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 has more than 2 runnable tasks per core (15m load)"
+              description: >-
+                Work is queueing rather than merely arriving. Remember that Linux loadavg includes
+                uninterruptible I/O waits, so a machine blocked on its disk looks identical here to one
+                short of CPU -- `vmstat 1 5` separates them (the `r` column is runnable, `b` is blocked). On
+                mongo-1, blocked-on-disk with a healthy CPU usually means the volume, not the processor.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A UNIT SYSTEMD HAS GIVEN UP ON. node_exporter publishes one series per state and moves the
+  # 1 between them, so `state="failed"` sits at 0 on a healthy unit and at 1 on a failed one;
+  # without the `== 1` the rule would name every unit on every host. Fifteen minutes lets a
+  # `Restart=on-failure` unit recover unremarked.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_systemd_unit_state{name="fleet-nix-gc.service",state="failed",host="mongo-1",role="mongodb"}'
+        values: '1+0x120'
+      - series: 'node_systemd_unit_state{name="mongodb.service",state="failed",host="mongo-1",role="mongodb"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: SystemdUnitFailed
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: SystemdUnitFailed
+        exp_alerts:
+          - exp_labels:
+              name: fleet-nix-gc.service
+              state: failed
+              host: mongo-1
+              role: mongodb
+              severity: warning
+            exp_annotations:
+              summary: "fleet-nix-gc.service has failed on mongo-1"
+              description: >-
+                `systemctl status fleet-nix-gc.service` and `journalctl -u fleet-nix-gc.service -n 200`.
+                Note that units systemd has given up on stay failed until somebody runs `systemctl
+                reset-failed`, so this alert holds after the underlying cause is fixed -- which is correct:
+                a unit nobody restarted is still not running.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A ROOT FILESYSTEM REMOUNTED READ-ONLY, beside a tmpfs that is read-only by design. The
+  # `fstype` exclusion is the difference between one critical alert and one critical alert
+  # plus a permanent false one for every host's /sys/fs/cgroup.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_filesystem_readonly{mountpoint="/",fstype="ext4",device="/dev/sda1",host="mongo-1",role="mongodb"}'
+        values: '1+0x120'
+      - series: 'node_filesystem_readonly{mountpoint="/sys/fs/cgroup",fstype="tmpfs",device="tmpfs",host="mongo-1",role="mongodb"}'
+        values: '1+0x120'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: FilesystemReadOnly
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: FilesystemReadOnly
+        exp_alerts:
+          - exp_labels:
+              mountpoint: /
+              fstype: ext4
+              device: /dev/sda1
+              host: mongo-1
+              role: mongodb
+              severity: critical
+            exp_annotations:
+              summary: "/ on mongo-1 is mounted read-only"
+              description: >-
+                Almost always ext4 remounting itself after a metadata error -- check `dmesg -T` for I/O
+                errors on the underlying device. If this is /var/lib/mongodb, mongod is still running and
+                still answering reads while every write fails, which is the same looks-healthy-but-is-not
+                shape as a dropped WireGuard tunnel. Hetzner volume faults are rare and not unheard of; a
+                fsck needs the volume detached from a running mongod.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A HOST THAT BOOTED AT t=0. Five minutes later the notification is up, with no `for:` to
+  # hold it; twenty minutes later it has cleared itself, because a boot twenty minutes ago is
+  # not news. This is the one alert in the file that is SUPPOSED to resolve without anybody
+  # doing anything.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'node_boot_time_seconds{host="mongo-1",role="mongodb"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: HostRecentlyRebooted
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 rebooted within the last 15 minutes"
+              description: >-
+                If you rebooted it, this message is the system working. If you did not: `last -x reboot` and
+                `journalctl --list-boots` say when, and `journalctl -b -1 -e` shows how the previous boot
+                ended -- a clean shutdown looks quite different from a host that was fenced or lost power.
+                Check nixos-deploy.rules' `RebootOwed` too: a reboot clears a pending boot-chain change, so
+                one that was owed and is now gone was probably this.
+      - eval_time: 20m
+        alertname: HostRecentlyRebooted
+        exp_alerts: []

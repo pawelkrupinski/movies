@@ -1,0 +1,197 @@
+# UNIT TESTS FOR THE MONITORING STACK'S OWN ALERTS.
+#
+# The heartbeat is the odd one out in this directory: it is `vector(1)`, it fires for ever, and
+# the file it lives in says in as many words not to "fix" that. So it has no not-firing case --
+# there is no input under which it should be quiet -- and the test instead pins that it fires
+# from the first evaluation with exactly the labels Alertmanager's daily route matches on. A
+# heartbeat that acquired a `for:` or lost its `severity: none` would stop being delivered, and
+# that is a change this file would name.
+#
+# The rest are comparisons on the stack's own series, and each has the two cases every rule here
+# owes: the condition present for longer than its `for:`, and the condition absent or transient.
+
+rule_files:
+  - ../../nix/files/monitoring/rules/monitoring-self.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE HEARTBEAT, fired on purpose from the first evaluation. `vector(1)` carries no labels
+  # of its own, so the alert has exactly the rule's -- which is what the Alertmanager route
+  # keys on.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+    alert_rule_test:
+      - eval_time: 0m
+        alertname: MonitoringHeartbeat
+        exp_alerts:
+          - exp_labels:
+              severity: none
+            exp_annotations:
+              summary: "Monitoring heartbeat"
+              description: >-
+                Prometheus, Alertmanager and the Telegram delivery path are all working. If this stops
+                arriving daily, assume the alerting path is broken and check it directly -- do not assume a
+                quiet channel means a quiet fleet.
+      - eval_time: 1d
+        alertname: MonitoringHeartbeat
+        exp_alerts:
+          - exp_labels:
+              severity: none
+            exp_annotations:
+              summary: "Monitoring heartbeat"
+              description: >-
+                Prometheus, Alertmanager and the Telegram delivery path are all working. If this stops
+                arriving daily, assume the alerting path is broken and check it directly -- do not assume a
+                quiet channel means a quiet fleet.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # EVERY TARGET UP, every config loaded, every rule evaluating, every notification delivered:
+  # the quiet that is meant to be quiet. The failure counters exist and sit at zero, which is
+  # how a healthy Prometheus and Alertmanager actually report.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node",instance="mongo-1:9100",host="mongo-1"}'
+        values: '1+0x120'
+      - series: 'prometheus_config_last_reload_successful{job="prometheus",instance="localhost:9090"}'
+        values: '1+0x120'
+      - series: 'prometheus_rule_evaluation_failures_total{rule_group="/etc/prometheus/rules/mongodb.rules;mongodb",job="prometheus",instance="localhost:9090"}'
+        values: '0+0x120'
+      - series: 'alertmanager_notifications_failed_total{integration="telegram",job="alertmanager",instance="localhost:9093"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: TargetDown
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: PrometheusConfigReloadFailed
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: PrometheusRuleEvaluationFailing
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: AlertmanagerNotificationsFailing
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A HOST GONE, AND A HOST THAT BLINKED. mongo-1's node_exporter answers nothing for the
+  # whole run and is named after ten minutes; monitoring-1's was down for three scrapes while
+  # an activation restarted it, which is exactly what the ten minutes are for.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'up{job="node",instance="mongo-1:9100",host="mongo-1"}'
+        values: '0+0x120'
+      - series: 'up{job="node",instance="monitoring-1:9100",host="monitoring-1"}'
+        values: '1 1 0 0 0 1+0x120'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: TargetDown
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: TargetDown
+        exp_alerts:
+          - exp_labels:
+              job: node
+              instance: mongo-1:9100
+              host: mongo-1
+              severity: critical
+            exp_annotations:
+              summary: "Prometheus cannot scrape node at mongo-1:9100"
+              description: >-
+                Everything this fleet alerts on is a comparison against a series from this target, so while
+                it is down those alerts are not firing -- they are unable to fire. Note the `job`: `node` is
+                a machine, `prometheus`/`alertmanager`/`grafana` are this stack's own processes on the
+                monitoring host, and `kinowo-web`/`kinowo-worker` are the application pods.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # PROMETHEUS RUNNING ON ITS LAST GOOD CONFIG. The gauge sits at 0 from the restart; five
+  # minutes later, past a reload that is merely slow, it is a config that was rejected.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'prometheus_config_last_reload_successful{job="prometheus",instance="localhost:9090"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PrometheusConfigReloadFailed
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: PrometheusConfigReloadFailed
+        exp_alerts:
+          - exp_labels:
+              job: prometheus
+              instance: localhost:9090
+              severity: critical
+            exp_annotations:
+              summary: "Prometheus is running with a configuration it failed to load"
+              description: >-
+                The process is serving the LAST GOOD config, so everything looks normal while the change
+                that was just deployed is not in effect -- including any new scrape target or rule file.
+                Check `journalctl -u prometheus` for the parse error. Note that on this host a config change
+                restarts the unit rather than reloading it (restartTriggers in roles/prometheus.nix), so
+                this firing means the restarted process rejected what activation wrote.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A RULE GROUP THAT FAILS EVERY EVALUATION. The failure counter for one group climbs by one
+  # a minute -- a rule that cannot be evaluated cannot fire, and this is the only thing that
+  # says so. Named by `rule_group`, after fifteen minutes; a group whose counter is flat is
+  # not named.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'prometheus_rule_evaluation_failures_total{rule_group="/etc/prometheus/rules/host-health.rules;host-health",job="prometheus",instance="localhost:9090"}'
+        values: '0+1x120'
+      - series: 'prometheus_rule_evaluation_failures_total{rule_group="/etc/prometheus/rules/mongodb.rules;mongodb",job="prometheus",instance="localhost:9090"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: PrometheusRuleEvaluationFailing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: PrometheusRuleEvaluationFailing
+        exp_alerts:
+          - exp_labels:
+              rule_group: /etc/prometheus/rules/host-health.rules;host-health
+              job: prometheus
+              instance: localhost:9090
+              severity: warning
+            exp_annotations:
+              summary: "Prometheus is failing to evaluate one or more rules"
+              description: >-
+                A rule that cannot be evaluated cannot fire, and it fails quietly -- the alert it would have
+                raised simply never appears. `rule_group` in the labels names the file.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # TELEGRAM DELIVERY FAILING. Every notification attempt to the integration fails, so the
+  # counter climbs, and after fifteen minutes the alert names the integration -- knowing, as
+  # its own text says, that it may not arrive by the path it is reporting broken.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'alertmanager_notifications_failed_total{integration="telegram",job="alertmanager",instance="localhost:9093"}'
+        values: '0+1x120'
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: AlertmanagerNotificationsFailing
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: AlertmanagerNotificationsFailing
+        exp_alerts:
+          - exp_labels:
+              integration: telegram
+              job: alertmanager
+              instance: localhost:9093
+              severity: critical
+            exp_annotations:
+              summary: "Alertmanager is failing to deliver notifications to telegram"
+              description: >-
+                Alerts are being raised and are not arriving. The likely causes are a revoked @kinowobot
+                token, the bot having been removed from the chat, or a message Telegram rejected --
+                alertmanager.yaml sets `parse_mode: ""` precisely to rule the last of those out, so if it
+                reappears, check whether that was changed. NOTE THE ORDER OF EVENTS: this alert has to
+                travel the same path it is reporting as broken, so it may well not arrive either. The
+                heartbeat above is what covers that case.

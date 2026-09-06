@@ -1,0 +1,301 @@
+# UNIT TESTS FOR THE FLEET'S SELF-DEPLOYMENT ALERTS.
+#
+# The failure this rule file exists for is silent by construction -- an applier that stops leaves
+# every service up and every other alert green -- so the rules cannot be checked by watching the
+# fleet; a fleet that has stopped deploying itself looks exactly like one that has nothing to
+# deploy. The claims worth pinning are the ones the file's comments make at length:
+#
+#   * the staleness rules key on a TIMESTAMP, so a textfile that is still being served with an old
+#     value inside it fires, and one that has no `for:` fires at the threshold and not later;
+#   * the two "absent" rules are JOINS on `machine`, so a scraped host publishing nothing is named
+#     and a host that is not scraped at all is not;
+#   * the long `for:` windows (a day, a week) hold, because they are the difference between a
+#     decision waiting for a person and a page nobody reads.
+#
+# Every timestamp series is pinned at absolute values and read at an absolute `eval_time`, as the
+# k3s tests do: `time()` starts at zero in promtool, so a series frozen at 0 is one that last
+# reported at the start of the test.
+
+rule_files:
+  - ../../nix/files/monitoring/rules/nixos-deploy.rules
+
+evaluation_interval: 1m
+
+tests:
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A HOST DEPLOYING ITSELF NORMALLY. Both publishers are fresh (they wrote at t=0 and are
+  # read within their windows), nothing is pending, blocked or owed, and the store was
+  # collected. Every rule in the file must be quiet.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'machine{host="mongo-1",role="mongodb",env="prod"}'
+        values: '1+0x120'
+      - series: 'fleet_auto_apply_state_last_run_timestamp_seconds{host="mongo-1"}'
+        values: '0+0x120'
+      - series: 'nixos_auto_apply_last_attempt_timestamp_seconds{host="mongo-1"}'
+        values: '0+0x120'
+      - series: 'nixos_auto_apply_blocked_reason{host="mongo-1",reason="restart-not-allowed"}'
+        values: '0+0x120'
+      - series: 'nixos_staged_pending{host="mongo-1"}'
+        values: '0+0x120'
+      - series: 'nixos_reboot_required{host="mongo-1"}'
+        values: '0+0x120'
+      - series: 'fleet_nix_gc_last_success_timestamp_seconds{host="mongo-1"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: AutoApplyStatePublisherStale
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: AutoApplyNotReporting
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: AutoApplyStalled
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: AutoApplyBlocked
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: StagedClosureNotActivated
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: RebootOwed
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: NixGarbageCollectionStale
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: NixGarbageCollectionMetricAbsent
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE STATE PUBLISHER STOPPED. The textfile is still served -- the series is present at
+  # every scrape -- but the timestamp inside it stays at 0. Twenty minutes is four missed runs
+  # of a five-minute timer and still quiet; forty is past the thirty-minute threshold. No
+  # `for:`, so it fires the moment the arithmetic says so and not some silent double of the
+  # threshold later.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'fleet_auto_apply_state_last_run_timestamp_seconds{host="mongo-1"}'
+        values: '0+0x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: AutoApplyStatePublisherStale
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: AutoApplyStatePublisherStale
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 has not published its deploy state for over 30 minutes"
+              description: >-
+                Everything this fleet knows about whether mongo-1 is up to date comes from two textfiles,
+                and one of them has gone stale -- so `StagedClosureNotActivated` and `AutoApplyBlocked`
+                below are reading numbers that may be hours old and still look current. Check `systemctl
+                status fleet-auto-apply-state.timer` and its service. This is a warning rather than a page
+                because it does not mean anything is BROKEN; it means this fleet has stopped being able to
+                tell.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE JOIN, FOR BOTH ABSENT-RULES AT ONCE. Two hosts are scraped; only monitoring-1 has ever
+  # published a deploy state or a collection. mongo-1 is named by both absent-rules after
+  # their windows and by neither before, and monitoring-1 by neither at any time. A host that
+  # is not in `machine` at all would be invisible here, which is the join's stated limit
+  # rather than a bug.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'machine{host="mongo-1",role="mongodb",env="prod"}'
+        values: '1+0x5000'
+      - series: 'machine{host="monitoring-1",role="monitoring",env="prod"}'
+        values: '1+0x5000'
+      - series: 'fleet_auto_apply_state_last_run_timestamp_seconds{host="monitoring-1"}'
+        values: '0+0x5000'
+      - series: 'fleet_nix_gc_last_success_timestamp_seconds{host="monitoring-1"}'
+        values: '0+0x5000'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: AutoApplyNotReporting
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: AutoApplyNotReporting
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              env: prod
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 is scraped but is publishing no deploy state at all"
+              description: >-
+                Not stale -- ABSENT. The `fleet-auto-apply-state` unit has never written its textfile on
+                this host, or node_exporter is not reading the directory it writes to
+                (`--collector.textfile.directory` must be `fleet.observability.textfileDirectory`). Until it
+                does, this host is invisible to every rule in this file and could sit a month behind main
+                without anything saying so.
+      - eval_time: 1d
+        alertname: NixGarbageCollectionMetricAbsent
+        exp_alerts: []
+      - eval_time: 3d
+        alertname: NixGarbageCollectionMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              role: mongodb
+              env: prod
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 has never reported a successful Nix store collection"
+              description: >-
+                `NixGarbageCollectionStale` is a comparison and cannot fire without this series, so the
+                store on this host is unwatched. Either the collection has never succeeded here or
+                `fleet.nixGc.enable` is false on it. AN ABSENT SERIES IS NOT A COLLECTED STORE.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE APPLIER STOPPED WHILE THE STATE PUBLISHER KEPT GOING -- the two claims the file
+  # insists are different. The applier's own last-attempt stamp freezes at 0 while the
+  # publisher's stays current (its series is regenerated to track `time()`, which is what a
+  # live five-minute timer looks like). Two hours in, quiet; four hours in, past the three-
+  # hour line, and only the applier rule says so.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'nixos_auto_apply_last_attempt_timestamp_seconds{host="k3s-worker-1"}'
+        values: '0+0x300'
+      - series: 'fleet_auto_apply_state_last_run_timestamp_seconds{host="k3s-worker-1"}'
+        values: '0+60x300'
+    alert_rule_test:
+      - eval_time: 2h
+        alertname: AutoApplyStalled
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: AutoApplyStalled
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              severity: warning
+            exp_annotations:
+              summary: "nixos-auto-apply has not completed a pass on k3s-worker-1 for over 3 hours"
+              description: >-
+                Merges to main are not reaching this host, and nothing else would say so -- the machine
+                keeps running its old closure perfectly happily. `systemctl status nixos-auto-apply` and
+                `journalctl -u nixos-auto-apply -n 200`. Note that a pass which cannot MEASURE the host
+                still publishes a verdict of `undetermined`, so this firing means no pass finished at all,
+                not that a pass was inconclusive.
+      - eval_time: 4h
+        alertname: AutoApplyStatePublisherStale
+        exp_alerts: []
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # BLOCKED, AND STAGED-BUT-NOT-ACTIVATED, FOR A DAY. The applier declined a change (the
+  # `reason` series is what the rule keys on, not the info gauge whose `detail` label would
+  # reset the `for:` at every merge) and the host is consequently running something older than
+  # what CI staged. Twelve hours is a person's working day and still quiet; twenty-five is
+  # past the day both rules give.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'nixos_auto_apply_blocked_reason{host="k3s-worker-1",reason="restart-not-allowed"}'
+        values: '1+0x1600'
+      - series: 'nixos_staged_pending{host="k3s-worker-1"}'
+        values: '1+0x1600'
+    alert_rule_test:
+      - eval_time: 12h
+        alertname: AutoApplyBlocked
+        exp_alerts: []
+      - eval_time: 12h
+        alertname: StagedClosureNotActivated
+        exp_alerts: []
+      - eval_time: 25h
+        alertname: AutoApplyBlocked
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              reason: restart-not-allowed
+              severity: warning
+            exp_annotations:
+              summary: "k3s-worker-1 has been blocked from auto-applying for a day (restart-not-allowed)"
+              description: >-
+                The applier found a change it will not make on its own. `reason` says which class;
+                `nixos_auto_apply_info`'s `detail` label carries the specifics. Resolve it by switching by
+                hand, or by declaring the unit in `fleet.autoApply.restartableUnits` if disturbing it really
+                is acceptable on this host. LEAVING IT BLOCKED IS A CHOICE, not a stable state: every later
+                merge queues behind it.
+      - eval_time: 25h
+        alertname: StagedClosureNotActivated
+        exp_alerts:
+          - exp_labels:
+              host: k3s-worker-1
+              severity: warning
+            exp_annotations:
+              summary: "k3s-worker-1 has been running a closure older than the staged one for a day"
+              description: >-
+                CI has put a closure on this host that it is not running. Look at `AutoApplyBlocked` first
+                -- if that is also firing, this is its consequence and there is one problem, not two. If it
+                is not, the applier either never ran (see `AutoApplyStalled`) or this host is deliberately
+                excluded, which publishes `nixos_auto_apply_excluded` with a reason.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # A REBOOT OWED FOR A WEEK. The four-component comparison says the kernel or its kin
+  # changed; three days in that is a reboot to be planned, not paged, and eight days in it is
+  # one that was not.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'nixos_reboot_required{host="mongo-1"}'
+        values: '1+0x12000'
+    alert_rule_test:
+      - eval_time: 3d
+        alertname: RebootOwed
+        exp_alerts: []
+      - eval_time: 8d
+        alertname: RebootOwed
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 has owed a reboot for a week"
+              description: >-
+                The running kernel, initrd, kernel modules or systemd differ from what is deployed.
+                `nixos_auto_apply_reboot_component` names WHICH -- a replaced kernel and a replaced initrd
+                are the same gauge and very different news. Reboot order matters on this fleet: mongo-1
+                takes the database and the Fly WireGuard tunnel down with it, and monitoring-1 takes the
+                alerting down, so reboot monitoring-1 LAST if you want the others watched while they go.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE NIX COLLECTOR STOPPED. Its last success stays at 0 while the series goes on being
+  # served. Two days is two missed dailies and quiet; four is past the three-day line. No
+  # `for:` here either. The companion absent-rule must stay quiet throughout: this host IS
+  # publishing, it is publishing something old.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'machine{host="mongo-1",role="mongodb",env="prod"}'
+        values: '1+0x6000'
+      - series: 'fleet_nix_gc_last_success_timestamp_seconds{host="mongo-1"}'
+        values: '0+0x6000'
+    alert_rule_test:
+      - eval_time: 2d
+        alertname: NixGarbageCollectionStale
+        exp_alerts: []
+      - eval_time: 4d
+        alertname: NixGarbageCollectionStale
+        exp_alerts:
+          - exp_labels:
+              host: mongo-1
+              severity: warning
+            exp_annotations:
+              summary: "mongo-1 has not collected its Nix store for over 3 days"
+              description: >-
+                Left alone this ends as inode exhaustion, which `df -h` does not show and which makes its
+                own fix impossible -- see `FilesystemInodesCritical` in filesystem-capacity.rules for how to
+                break that deadlock. `systemctl status fleet-nix-gc` and its timer.
+                `fleet_nix_gc_system_generations` says how many generations are currently retained.
+      - eval_time: 4d
+        alertname: NixGarbageCollectionMetricAbsent
+        exp_alerts: []
