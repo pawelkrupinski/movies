@@ -59,6 +59,38 @@ object RepoFile {
     (lines(start) +: body).mkString("\n")
   }
 
+  /**
+   * The workflow step named `stepName` — its `- name:` line and everything up
+   * to the next `- ` item at the same indentation — so a spec asserting on one
+   * step's `continue-on-error:` or `run:` cannot read the neighbouring step's.
+   */
+  def step(yml: String, stepName: String): String = {
+    val lines = yml.linesIterator.toVector
+    val start = lines.indexWhere(_.trim == s"- name: $stepName")
+    require(start >= 0, s"no `- name: $stepName` step in the workflow")
+    val indent = lines(start).takeWhile(_ == ' ').length
+    val body = lines
+      .drop(start + 1)
+      .takeWhile(l => l.trim.isEmpty || l.trim.startsWith("#") || l.takeWhile(_ == ' ').length > indent)
+    (lines(start) +: body).mkString("\n")
+  }
+
+  /**
+   * The `run: |` body of the workflow step named `stepName`, verbatim and
+   * de-indented to its own margin — for the specs that RUN the shell CI runs
+   * rather than pattern-match it (FluxImageAutomationSpec, CoverageWorkflowSpec).
+   */
+  def stepScript(yml: String, stepName: String): String = {
+    val lines = step(yml, stepName).linesIterator.toVector
+    val runAt = lines.indexWhere(_.trim == "run: |")
+    require(runAt >= 0, s"the `$stepName` step has no `run: |` body")
+    val indent = lines(runAt).takeWhile(_ == ' ').length
+    lines
+      .drop(runAt + 1)
+      .takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > indent)
+      .mkString("\n")
+  }
+
   /** `KINOWO_SCRAPE_FRESHNESS_MINUTES` out of a deploy config, whichever syntax it
    *  is written in: `= '420'` in a fly toml, `: "840"` in a k3s overlay's ConfigMap.
    *  Only the digits are kept, so the quoting style is not part of the contract —

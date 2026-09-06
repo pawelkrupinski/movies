@@ -35,18 +35,8 @@ class FluxImageAutomationSpec extends AnyFlatSpec with Matchers {
   private val Apps = Seq("web", "worker")
 
   /** The `run:` body of the step that builds the sortable tag, verbatim. */
-  private def orderableTagScript: String = {
-    val lines = mainYml.linesIterator.toVector
-    val start = lines.indexWhere(_.trim == "- name: Compute an orderable image tag")
-    require(start >= 0, "main.yml has no `Compute an orderable image tag` step")
-    val runAt = lines.indexWhere(_.trim == "run: |", start)
-    require(runAt >= 0, "the orderable-tag step has no `run: |` body")
-    val indent = lines(runAt).takeWhile(_ == ' ').length
-    lines
-      .drop(runAt + 1)
-      .takeWhile(l => l.trim.isEmpty || l.takeWhile(_ == ' ').length > indent)
-      .mkString("\n")
-  }
+  private def orderableTagScript: String =
+    RepoFile.stepScript(mainYml, "Compute an orderable image tag")
 
   /** The tag CI would actually publish for `sha`, produced by running CI's own shell. */
   private def tagBuiltByCi(sha: String): String = {

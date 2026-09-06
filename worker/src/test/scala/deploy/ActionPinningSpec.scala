@@ -27,16 +27,10 @@ import org.scalatest.matchers.should.Matchers
  * directly.
  */
 class ActionPinningSpec extends AnyFlatSpec with Matchers {
-  private def workflows: Seq[java.io.File] =
-    Option(new java.io.File(".github/workflows").listFiles())
-      .getOrElse(Array.empty[java.io.File])
-      .filter(f => f.getName.endsWith(".yml") || f.getName.endsWith(".yaml"))
-      .sortBy(_.getName)
-      .toSeq
-
   private val MovingRef = """uses:\s*(\S+)@(master|main)\b""".r
 
   "every workflow action" should "be pinned to a version tag, not a moving branch" in {
+    val workflows = RepoFile.workflows()
     workflows should not be empty
 
     val floating = for {
