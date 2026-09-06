@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.ChainFlicksFallback
 import services.cinemas.us.UsChainVenues
-import tools.{RateLimitedHttpFetch, RealHttpFetch}
+import tools.{HostPolicies, RateLimitedHttpFetch}
 
 import scala.concurrent.duration.*
 
@@ -131,8 +131,8 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
 
   it should "pace Filmstarts slowly enough to stop the 429s, yet still sweep inside that cadence" in {
     // These two numbers are coupled and live in different files, so a change to
-    // either alone silently breaks DE: the outbound pace (RealHttpFetch's
-    // HostPolicies) decides how long a full sweep takes, and the cadence (the
+    // either alone silently breaks DE: the outbound pace (the
+    // HostPolicies row) decides how long a full sweep takes, and the cadence (the
     // toml above) decides how long it may take. Tightening the pace to fix 429s
     // lengthens the sweep; shortening the cadence shrinks the budget. Assert the
     // invariant rather than the arithmetic, so either can move as long as the
@@ -282,8 +282,8 @@ class WorkerScrapeCadenceConfigSpec extends AnyFlatSpec with Matchers {
     de should not be empty
     // Equal TODAY (Spain adopted its sibling's number), but they are separate knobs:
     // KINOWO_SENSACINE_PACE_MS moves one without the other.
-    RealHttpFetch.HostPolicies.count(_.hostSuffixes.contains("sensacine.com")) shouldBe 1
-    RealHttpFetch.HostPolicies.count(_.hostSuffixes.contains("filmstarts.de")) shouldBe 1
+    HostPolicies.all.count(_.hostSuffixes.contains("sensacine.com")) shouldBe 1
+    HostPolicies.all.count(_.hostSuffixes.contains("filmstarts.de")) shouldBe 1
   }
 
   "every k3s worker overlay" should "set the cadence explicitly rather than inheriting the code default" in {

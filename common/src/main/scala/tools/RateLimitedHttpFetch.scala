@@ -89,8 +89,8 @@ class RateLimitedHttpFetch(
 object RateLimitedHttpFetch {
 
   /** The pacing interval for `url`'s host, read off the one per-host policy table
-   *  ([[RealHttpFetch.HostPolicies]]) so a paced host is a DATA row like any
+   *  ([[HostPolicies]]) so a paced host is a DATA row like any
    *  other host override — never an if-branch here. */
   def configuredInterval(url: String): Option[FiniteDuration] =
-    RealHttpFetch.requestIntervalFor(url).map(_.toMillis.millis)
+    HostPolicies.requestIntervalFor(url).map(_.toMillis.millis)
 }
