@@ -1,8 +1,13 @@
 package services.enrichment
 
+import models.MovieRecord
 import play.api.Logging
 import services.movies.{CacheKey, MovieCache}
 import services.tasks.BulkRefreshResult
+import tools.BoundedParallel
+
+import java.util.concurrent.atomic.AtomicInteger
+import scala.util.{Failure, Success, Try}
 
 /**
  * Common skeleton for the four `*Ratings` services (`ImdbRatings`,
@@ -81,4 +86,84 @@ abstract class CacheRefresher(
    *  [[tools.BoundedParallel]]). Default 8; override lower for an upstream that
    *  soft-blocks under load (Filmweb). */
   protected def refreshConcurrency: Int = 8
+
+  /** The full-corpus walk of a URL-keyed source (Metacritic, RT): ONE pass, two
+   *  steps per row — re-derive the row's URL, then re-read the score off
+   *  whatever URL the row NOW holds.
+   *
+   *  It used to be two passes split on whether the row already had a URL, which
+   *  made a stored URL permanently authoritative: the operator's button could
+   *  only re-scrape the score off whatever was there, so a WRONG URL was never
+   *  corrected and the run reported "0 changed" while films sat on another
+   *  film's page.
+   *
+   *  Both steps run, deliberately. Re-resolving ALONE would be a regression: a
+   *  row whose re-resolution fails (transient, or the site genuinely has no
+   *  page) would stop refreshing its score at all — which is what two specs
+   *  caught.
+   *
+   *  Each score write goes through `cache.putIfPresent` (the per-title lock),
+   *  and a moved score is reported to the adaptive cadence under the SNAPSHOT
+   *  row's tmdbId. A `fetchScore` that throws counts the row as failed and
+   *  leaves its stored score alone.
+   *
+   *  @param walkLabel     log prefix ("RT refresh"); also names the pool.
+   *  @param urlOf         the row's stored URL for this source.
+   *  @param scoreOf       the row's stored score for this source.
+   *  @param rediscoverUrl step 1 — re-derive and persist the URL. Runs only for
+   *                       rows with a tmdbId; `true` when a URL was found.
+   *  @param fetchScore    step 2 — read the score off a URL.
+   *  @param withScore     write a fresh score onto the live row.
+   *  @param badge         the displayed value a fresh score becomes — what the
+   *                       cadence is told.
+   *  @param changedNoun   what the summary line counts as changed.
+   */
+  protected def refreshAllUrlThenScore[A](
+    walkLabel:     String,
+    urlOf:         MovieRecord => Option[String],
+    scoreOf:       MovieRecord => Option[A],
+    rediscoverUrl: (CacheKey, MovieRecord) => Boolean,
+    fetchScore:    String => Option[A],
+    withScore:     (MovieRecord, Option[A]) => MovieRecord,
+    badge:         A => String,
+    changedNoun:   String = "score(s)"
+  ): BulkRefreshResult = {
+    val snapshot  = cache.entries
+    val startedAt = System.currentTimeMillis()
+    val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
+    logger.info(s"$walkLabel: starting tick over ${snapshot.size} cached row(s) " +
+                s"($resolvable re-resolving their URL first).")
+    val changed       = new AtomicInteger(0)
+    val failed        = new AtomicInteger(0)
+    val urlDiscovered = new AtomicInteger(0)
+
+    BoundedParallel.foreach(walkLabel.replace(' ', '-'), snapshot, refreshConcurrency) { case (key, enrichment) =>
+      // 1. Re-derive the URL when the row has a tmdbId to derive it from. A
+      //    better match replaces the stored one; a failure leaves it be.
+      if (enrichment.tmdbId.isDefined && rediscoverUrl(key, enrichment)) urlDiscovered.incrementAndGet()
+
+      // 2. Refresh the score off whatever URL the row NOW holds — possibly the
+      //    one just re-resolved, possibly the pre-existing one.
+      val current = cache.get(key).getOrElse(enrichment)
+      urlOf(current).foreach { url =>
+        Try(fetchScore(url)) match {
+          case Success(fresh) if fresh != scoreOf(current) =>
+            logger.debug(s"$walkLabel: ${key.cleanTitle} $url ${scoreOf(current).getOrElse("—")} → ${fresh.getOrElse("—")}")
+            cache.putIfPresent(key, withScore(_, fresh))
+            fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(badge(s))))
+            changed.incrementAndGet()
+          case Success(_) => ()
+          case Failure(exception) =>
+            failed.incrementAndGet()
+            logger.debug(s"$walkLabel: $url lookup failed: ${exception.getMessage}")
+        }
+      }
+    }
+
+    val took = System.currentTimeMillis() - startedAt
+    val message = s"tick done in ${took}ms — ${changed.get} $changedNoun changed, " +
+                  s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
+    logger.info(s"$walkLabel: $message")
+    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = urlDiscovered.get, failed = failed.get, message = message)
+  }
 }

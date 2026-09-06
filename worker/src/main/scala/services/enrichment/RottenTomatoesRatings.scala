@@ -4,10 +4,6 @@ import clients.TmdbClient
 import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
-import tools.BoundedParallel
-
-import java.util.concurrent.atomic.AtomicInteger
-import scala.util.{Failure, Success, Try}
 
 /**
  * Rotten Tomatoes side of enrichment — owns BOTH:
@@ -31,8 +27,6 @@ class RottenTomatoesRatings(
   rtLinkCache: ResolutionCache = ResolutionCache.passthrough,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
-  // Fold titles with the rules the corpus was keyed under, not a process default.
-  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   override protected def sourceName: String = "RT"
 
@@ -122,46 +116,16 @@ class RottenTomatoesRatings(
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────
 
-  /** Walk every cached row. Rows with a `rottenTomatoesUrl` get a cheap
-   *  Tomatometer refresh; rows without one get the full URL-discovery probe
-   *  (and a score refresh if discovery succeeds). */
-  private[services] def refreshAll(): BulkRefreshResult = {
-    val snapshot  = cache.entries
-    val startedAt = System.currentTimeMillis()
-    val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
-    logger.info(s"RT refresh: starting tick over ${snapshot.size} cached row(s) " +
-                s"($resolvable re-resolving their URL first).")
-    val changed       = new AtomicInteger(0)
-    val failed        = new AtomicInteger(0)
-    val urlDiscovered = new AtomicInteger(0)
-
-    // One pass, two steps per row — see the note in MetascoreRatings.refreshAll:
-    // a stored URL used to be authoritative, so the button could never correct a
-    // wrong one; and re-resolving ALONE would stop refreshing the score of any
-    // row whose re-resolution fails.
-    BoundedParallel.foreach("RT-refresh", snapshot, refreshConcurrency) { case (key, enrichment) =>
-      if (enrichment.tmdbId.isDefined && resolveAndPersistUrl(key, enrichment).isDefined) urlDiscovered.incrementAndGet()
-
-      val current = cache.get(key).getOrElse(enrichment)
-      current.rottenTomatoesUrl.foreach { url =>
-        Try(rt.scoreFor(url)) match {
-          case Success(fresh) if fresh != current.rottenTomatoes =>
-            logger.debug(s"RT refresh: ${key.cleanTitle} $url ${current.rottenTomatoes.getOrElse("—")} → ${fresh.getOrElse("—")}")
-            cache.putIfPresent(key, _.copy(rottenTomatoes = fresh))
-            fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(s"$s%")))
-            changed.incrementAndGet()
-          case Success(_) => ()
-          case Failure(exception) =>
-            failed.incrementAndGet()
-            logger.debug(s"RT refresh: $url lookup failed: ${exception.getMessage}")
-        }
-      }
-    }
-
-    val took = System.currentTimeMillis() - startedAt
-    val message = s"tick done in ${took}ms — ${changed.get} score(s) changed, " +
-                  s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
-    logger.info(s"RT refresh: $message")
-    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = urlDiscovered.get, failed = failed.get, message = message)
-  }
+  /** Walk every cached row: re-resolve the URL of every row with a tmdbId, then
+   *  refresh the Tomatometer off whatever URL the row holds. */
+  private[services] def refreshAll(): BulkRefreshResult =
+    refreshAllUrlThenScore[Int](
+      walkLabel     = "RT refresh",
+      urlOf         = _.rottenTomatoesUrl,
+      scoreOf       = _.rottenTomatoes,
+      rediscoverUrl = resolveAndPersistUrl(_, _).isDefined,
+      fetchScore    = rt.scoreFor,
+      withScore     = (row, fresh) => row.copy(rottenTomatoes = fresh),
+      badge         = s => s"$s%"
+    )
 }

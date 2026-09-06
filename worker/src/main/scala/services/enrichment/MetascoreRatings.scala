@@ -4,10 +4,6 @@ import clients.TmdbClient
 import services.movies.{CacheKey, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
-import tools.BoundedParallel
-
-import java.util.concurrent.atomic.AtomicInteger
-import scala.util.{Failure, Success, Try}
 
 /**
  * Metacritic side of enrichment — owns BOTH:
@@ -32,8 +28,6 @@ class MetascoreRatings(
   mcLinkCache: ResolutionCache = ResolutionCache.passthrough,
   cadenceRecorder: (CacheKey, Option[Int], Option[String]) => Unit = (_, _, _) => ()
 ) extends CacheRefresher(cache, cadenceRecorder) {
-  // Fold titles with the rules the corpus was keyed under, not a process default.
-  private val normalizer: services.movies.TitleNormalizer = cache.normalizer
 
   override protected def sourceName: String = "Metacritic"
 
@@ -158,56 +152,17 @@ class MetascoreRatings(
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────
 
-  /** Walk every cached row. Rows with a `metacriticUrl` get a cheap score
-   *  refresh; rows without one get the full URL-discovery probe (and then a
-   *  score refresh if discovery succeeds). Per-row failures are logged at
-   *  debug — one bad row can't poison the whole tick. */
-  private[services] def refreshAll(): BulkRefreshResult = {
-    val snapshot  = cache.entries
-    val startedAt = System.currentTimeMillis()
-    val resolvable = snapshot.count { case (_, e) => e.tmdbId.isDefined }
-    logger.info(s"Metascore refresh: starting tick over ${snapshot.size} cached row(s) " +
-                s"($resolvable re-resolving their URL first).")
-    val changed       = new AtomicInteger(0)
-    val failed        = new AtomicInteger(0)
-    val urlDiscovered = new AtomicInteger(0)
-
-    // ONE pass, two steps per row. It used to be two passes split on whether the
-    // row already had a URL, which made a stored URL permanently authoritative:
-    // the operator's button could only re-scrape the score off whatever was
-    // there, so a WRONG URL was never corrected and the run reported "0 changed"
-    // while films sat on another film's page.
-    //
-    // Both steps run, deliberately. Re-resolving ALONE would be a regression:
-    // a row whose re-resolution fails (transient, or MC genuinely has no page)
-    // would stop refreshing its score at all — which is what two specs caught.
-    BoundedParallel.foreach("Metascore-refresh", snapshot, refreshConcurrency) { case (key, enrichment) =>
-      // 1. Re-derive the URL when the row has a tmdbId to derive it from. A
-      //    better match replaces the stored one; a failure leaves it be.
-      if (enrichment.tmdbId.isDefined && resolveAndPersistUrl(key, enrichment).isDefined) urlDiscovered.incrementAndGet()
-
-      // 2. Refresh the score off whatever URL the row NOW holds — possibly the
-      //    one just re-resolved, possibly the pre-existing one.
-      val current = cache.get(key).getOrElse(enrichment)
-      current.metacriticUrl.foreach { url =>
-        Try(metacritic.metascoreFor(url)) match {
-          case Success(fresh) if fresh != current.metascore =>
-            logger.debug(s"Metascore refresh: ${key.cleanTitle} $url ${current.metascore.getOrElse("—")} → ${fresh.getOrElse("—")}")
-            cache.putIfPresent(key, _.copy(metascore = fresh))
-            fresh.foreach(s => recordCadenceChange(key, enrichment.tmdbId, Some(s.toString)))
-            changed.incrementAndGet()
-          case Success(_) => ()
-          case Failure(exception) =>
-            failed.incrementAndGet()
-            logger.debug(s"Metascore refresh: $url lookup failed: ${exception.getMessage}")
-        }
-      }
-    }
-
-    val took = System.currentTimeMillis() - startedAt
-    val message = s"tick done in ${took}ms — ${changed.get} score(s) changed, " +
-                  s"${urlDiscovered.get} URL(s) newly discovered, ${failed.get} failed."
-    logger.info(s"Metascore refresh: $message")
-    BulkRefreshResult.counts(walked = snapshot.size, changed = changed.get, discovered = urlDiscovered.get, failed = failed.get, message = message)
-  }
+  /** Walk every cached row: re-resolve the URL of every row with a tmdbId, then
+   *  refresh the score off whatever URL the row holds. Per-row failures are
+   *  logged at debug — one bad row can't poison the whole tick. */
+  private[services] def refreshAll(): BulkRefreshResult =
+    refreshAllUrlThenScore[Int](
+      walkLabel     = "Metascore refresh",
+      urlOf         = _.metacriticUrl,
+      scoreOf       = _.metascore,
+      rediscoverUrl = resolveAndPersistUrl(_, _).isDefined,
+      fetchScore    = metacritic.metascoreFor,
+      withScore     = (row, fresh) => row.copy(metascore = fresh),
+      badge         = _.toString
+    )
 }
