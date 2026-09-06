@@ -74,8 +74,7 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
     }
 
   /** "David Kerrick Hand" as "David Hand" — the first and last of three or more
-   *  words. Fewer than three has no middle to drop, and the result would just be
-   *  the query that already failed.
+   *  SUFFIX-FREE tokens. Fewer than three has no middle name to drop.
    *
    *  Never across a NOBILIARY PARTICLE. "Lars von Trier" shortens to "Lars Trier",
    *  which is a different person if TMDB has one at all — and a person TMDB does
@@ -90,10 +89,6 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
     // the film's crew, so a correct row gets force-re-resolved.
     val words = name.split("\\s+").filter(_.nonEmpty)
     val core  = words.filterNot(isSuffix)
-    // The length test is on the SUFFIX-FREE tokens, and the result only has to differ
-    // from what was already asked. Requiring three of them refused "Robert Downey Jr."
-    // outright — the suffix is stripped, leaving two, and the retry the fallback exists
-    // for never ran for exactly the names that need it most.
     // THREE suffix-free tokens, i.e. there is a middle name to drop. Two is not the
     // same shape and must not be shortened: "Robert Downey Jr." minus its suffix is
     // "Robert Downey", who is his FATHER — TMDB carries him (59874) and returns him
@@ -101,8 +96,10 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
     // person is by construction off the film's crew, so the shortening would confirm
     // a contradiction and force-re-resolve a correct row. Same for Cuba Gooding and
     // Sammy Davis. Abstaining is the safe answer for a name with no middle to drop.
-    val shortened = Option.when(core.length >= 3)(s"${core.head} ${core.last}")
-    shortened.filter(_ != name).filterNot(_ => core.tail.dropRight(1).exists(isParticle))
+    // No `!= name` guard: with three or more suffix-free tokens the two-token result
+    // can never equal the original, so it would be unreachable.
+    Option.when(core.length >= 3)(s"${core.head} ${core.last}")
+      .filterNot(_ => core.tail.dropRight(1).exists(isParticle))
   }
 
   /** Jr. / Sr. / II / III / IV — the same set `CinemaCorroboration` strips before

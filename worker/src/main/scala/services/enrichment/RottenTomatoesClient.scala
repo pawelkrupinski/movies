@@ -187,8 +187,10 @@ class RottenTomatoesClient(http: HttpFetch) {
       // see `MetacriticClient.yearConfirms`. This picker had no year guard at
       // all, so an exact same-title hit won on its title alone: that is how the
       // 2026 "Lalka" ended up on /m/lalka_1969, Has's 1968 film. A MODIFIER-suffix
-      // hit ("<title> - Re-Release") stays unguarded on purpose — it is explicitly
-      // the same film re-issued, so a large gap is expected and correct.
+      // hit ("<title> - Re-Release") is guarded only against a year that positively
+      // names the ORIGINAL film — a re-issue's own gap from its film is expected and
+      // correct, and an undated one says nothing. See the fallback below for the case
+      // that leaves open and why no year test here can close it.
       val exactTitle = hits.filter(h => MetacriticClient.foldDashes(h.title.toLowerCase.trim) == normalizedQuery)
       // Strict, INCLUDING the undated: "a hit that declines to say WHEN is not evidence
       // that it is the right film" — /m/lalka_1969 publishes no year on the page either,
@@ -203,17 +205,23 @@ class RottenTomatoesClient(http: HttpFetch) {
       // which is the very page the year guard was added to stop. An exact title that
       // fails the year means this film is not here.
       // The modifier fallback is for "RT has no exact title at all", never for "the
-      // exact titles were rejected". Year-filtering the modifier instead does NOT work:
-      // a "- Restored" / "- Re-Release" hit carries the RE-RELEASE year, so it confirms
-      // against a 2026 query while its page is the 1968 film — which is the /m/lalka_1969
-      // leak this guard exists to stop, reopened. An exact title that positively
-      // disagreed on the year means this film is not here.
-      // Even with no exact title, a modifier hit whose year positively DISAGREES is the
-      // old film: RT lists "Lalka - Restored" (1968) and nothing else, and handing that
-      // back for a 2026 query is the /m/lalka_1969 leak reached by the other door. An
-      // UNDATED modifier still passes — a re-issue that declines to say when is the case
-      // this arm exists for, and the doc's "a large gap is expected" applies to the gap
-      // between the film and its re-release, not to a hit dated as the original.
+      // exact titles were rejected": a "- Restored" hit can carry the RE-RELEASE year and
+      // so confirm against a query whose film it is not, which is why it must not be able
+      // to rescue an exact title the year already rejected. An exact title that positively
+      // disagreed means this film is not here.
+      // A modifier hit dated at the ORIGINAL film's year is that film: RT lists
+      // "Lalka - Restored" (1968) and nothing else, and handing it back for a 2026 query
+      // is the /m/lalka_1969 leak by another door. Undated still passes — a re-issue that
+      // declines to say when is what this arm is for.
+      //
+      // WHAT THIS CANNOT CLOSE, and no year test at this layer can: a modifier dated at
+      // the RE-RELEASE year. "Top Gun" 2024 against "Top Gun - Re-Release" (2024) must be
+      // ACCEPTED — it is the same film re-issued — and "Lalka" 2026 against
+      // "Lalka - Restored" (2026) must be REJECTED, because that page is the 1968 film.
+      // The two search results are identical in shape; only the PAGE could tell them
+      // apart, and /m/lalka_1969 publishes no year either, which is how the leak reached
+      // prod in the first place. Both cases are pinned by tests, so anyone tightening
+      // this will see immediately which one they broke.
       val datedPlausibly = modifier.filter(h => h.year.isEmpty || MetacriticClient.yearConfirms(year, h.year))
       val candidates =
         if (exact.nonEmpty)          exact

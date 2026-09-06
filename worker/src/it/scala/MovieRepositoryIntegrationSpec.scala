@@ -41,7 +41,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
     "tt0000078", "tt0000079", "tt0000080", "tt0000081", "tt0000024", "tt0000025",
     "tt0000301" // the coalescing burst's film
-  ) ++ (1 to 20).map(n => f"tt000021$n%02d") // the backpressure spec's 20 sentinels
+  ) ++ (1 to 20).map(n => f"tt000021$n%02d")           // the backpressure spec's 20 sentinels
+    ++ (1 to 40).flatMap(n => Seq(f"tt900$n%05d", f"tt901$n%05d", f"tt902$n%05d", f"tt903$n%05d"))
+    // …and the change-stream warm-ups, which write until the cursor delivers and so
+    // cannot know in advance how many they will need. This list is the fallback for a
+    // sentinel whose `_id` a re-key moved, and it claims to hold every fake imdbId the
+    // spec writes — it has to include these too.
 
   // Delete every sentinel this spec could have written. Matches BOTH the
   // sanitized `_id` shape the documents are actually stored under (`integrationtest…`
@@ -321,7 +326,9 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       applyThread.get              should startWith ("movie-change-apply")
       applyThread.get.toLowerCase  should not include "eventloop"      // not a Netty I/O loop
       applyThread.get              should not include "InnocuousThread" // not the NIO2 async pool
-    } finally handle.foreach(_.close())
+      // Clean up the warm row like the other three do — a run killed before `afterAll`
+      // otherwise strands it, which is what `beforeAll`'s purge exists for.
+    } finally { repository.delete(warmTitle, year); handle.foreach(_.close()) }
   }
 
   // The worker attaches two change-stream consumers (MovieCache + ReadModelProjector).

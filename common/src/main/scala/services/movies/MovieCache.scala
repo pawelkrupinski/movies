@@ -94,7 +94,9 @@ trait MovieCacheReader {
  */
 trait MovieCache extends MovieCacheReader {
   /** Apply one cinema's fresh scrape to the cache. Returns one
-   *  `(CinemaMovie, CacheKey, isNew)` triple per input movie.
+   *  `(CinemaMovie, CacheKey, isNew)` triple per input movie WHOSE SLOT WAS WRITTEN —
+   *  a listing whose write was skipped (its stored row could not be read) yields none,
+   *  so a caller cannot classify or announce a row the cache does not hold.
    *
    *  `listingIsComplete = false` means the caller KNOWS this listing is short — a chunked
    *  scrape reduced from only some of its date-chunks. The prune is then skipped outright,
