@@ -26,6 +26,20 @@ class CatalogTest {
     }
 
     @Test
+    fun parsesTheCountrysVersionTokensAndAnswersThemPerCity() {
+        // The pair a deep link's `?lang=` is checked against is the LINKED city's
+        // country's — a Berlin link takes `OmU`/`DF`, a Poznań one `NAP`/`DUB`.
+        val json = """{"countries":[{"code":"de","name":"Deutschland","baseUrl":"https://showtimes.cc/de","language":"de","brand":"Showtimes","timezone":"Europe/Berlin","versionTokens":{"subtitled":"OmU","dubbed":"DF"}},{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo","timezone":"Europe/Warsaw"}],"cities":[{"slug":"berlin","name":"Berlin","lat":52.5,"lon":13.4,"country":"de"},{"slug":"poznan","name":"Poznań","lat":52.4,"lon":16.9,"country":"pl"}]}"""
+        val c = Catalog.parseBody(json)!!
+        assertEquals(VersionTokens("OmU", "DF"), c.countries[0].versionTokens)
+        assertEquals(VersionTokens("OmU", "DF"), c.versionTokensOf("berlin"))
+        assertEquals(VersionTokens.POLAND, c.versionTokensOf("poznan"))
+        // A slug the catalog does not know falls back to Poland's — the link is
+        // rejected on the slug before the pair matters.
+        assertEquals(VersionTokens.POLAND, c.versionTokensOf("nowhere"))
+    }
+
+    @Test
     fun parsesSeedEnvelopeWithEtag() {
         val seed = """{"etag":"\"abc123\"","catalog":{"countries":[{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo"}],"cities":[{"slug":"poznan","name":"Poznań","lat":52.4,"lon":16.9,"country":"pl"}]}}"""
         val (etag, cat) = Catalog.parseSeed(seed)!!

@@ -4,6 +4,7 @@ import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Cities
+import pl.kinowo.model.VersionTokens
 import java.net.URI
 import java.net.URLDecoder
 
@@ -66,10 +67,18 @@ data class DeepLink(
          * when it isn't a recognisable city link (OAuth callback, unknown host,
          * unknown city). Returning `null` lets the caller no-op rather than
          * navigate somewhere wrong.
+         *
+         * [versionTokens] answers, for the linked city, the pair its country's
+         * version filter can match — `OmU`/`DF` in Germany, `NAP`/`DUB` in
+         * Poland — and `?lang=` is accepted only from it. The app passes the live
+         * catalog's lookup ([pl.kinowo.model.Catalog.versionTokensOf]); the
+         * default is Poland's pair, the one every link was checked against before
+         * the catalog carried the field.
          */
         fun parse(
             url: String,
             knownCitySlugs: Set<String> = Cities.all.map { it.slug }.toSet(),
+            versionTokens: (citySlug: String) -> VersionTokens = { VersionTokens.POLAND },
         ): DeepLink? {
             // Split the query (and any fragment) off the raw string BEFORE
             // handing the base to java.net.URI. The single-arg URI(String)
@@ -131,7 +140,7 @@ data class DeepLink(
                 query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
             } else null
 
-            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query))
+            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, versionTokens(city)))
         }
 
         private fun pathSegments(rawPath: String?): List<String> =
@@ -165,7 +174,7 @@ data class DeepLinkFilters(
     val date: DateFilter? = null,
     val query: String? = null,
     val dimension: String? = null,   // "2D" | "3D"
-    val language: String? = null,    // "NAP" | "DUB"
+    val language: String? = null,    // one of the linked country's version tokens ("NAP" | "DUB" in Poland)
     val imax: Boolean? = null,
     val fromHour: Int? = null,
     val fromMinute: Int? = null,
@@ -207,7 +216,9 @@ data class DeepLinkFilters(
 
         private val ISO_DATE = Regex("""^\d{4}-\d{2}-\d{2}$""")
 
-        fun from(query: List<Pair<String, String>>): DeepLinkFilters {
+        /** [versionTokens] is the pair `?lang=` may take — the linked country's;
+         *  anything else is dropped like any other garbage value. */
+        fun from(query: List<Pair<String, String>>, versionTokens: VersionTokens = VersionTokens.POLAND): DeepLinkFilters {
             fun first(key: String): String? =
                 query.firstOrNull { it.first == key }?.second?.takeIf { it.isNotEmpty() }
             // Repeated params AND legacy comma-lists both flatten to one set.
@@ -219,7 +230,7 @@ data class DeepLinkFilters(
                 date = first("date")?.let(::parseDate),
                 query = first("q"),
                 dimension = first("dim")?.takeIf { it == "2D" || it == "3D" },
-                language = first("lang")?.takeIf { it == "NAP" || it == "DUB" },
+                language = first("lang")?.takeIf { it in versionTokens.accepted },
                 imax = if (query.any { it.first == "imax" }) first("imax") == "1" else null,
                 fromHour = from?.first,
                 fromMinute = from?.second,

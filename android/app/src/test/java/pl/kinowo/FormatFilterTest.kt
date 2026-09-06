@@ -38,6 +38,17 @@ class FormatFilterTest {
     }
 
     @Test
+    fun languageConstraintOnAnotherCountrysToken() {
+        // The Wersja choice now offers the selected country's own pair, so a
+        // German user's "subtitles" is `OmU` — and it must match German
+        // showtimes, not Poland's `NAP` which no German screening carries.
+        val f = FormatFilter(language = "OmU")
+        assertTrue(f.matches(slot("18:00", "2D OmU")))
+        assertFalse(f.matches(slot("18:00", "2D DF")))
+        assertFalse(f.matches(slot("18:00", "2D NAP")))
+    }
+
+    @Test
     fun imaxRequiresImaxToken() {
         val f = FormatFilter(imax = true)
         assertTrue(f.matches(slot("20:00", "IMAX 3D")))

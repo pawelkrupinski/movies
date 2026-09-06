@@ -9,6 +9,7 @@ import pl.kinowo.deeplink.DeepLink
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
+import pl.kinowo.model.VersionTokens
 
 /**
  * [DeepLink.parse] is the inverse of the web's `buildShareURL()`: every
@@ -205,6 +206,20 @@ class DeepLinkTest {
         assertNull(f.language)
         assertNull(f.fromHour)
         assertNull(f.date)
+    }
+
+    @Test fun langIsAcceptedFromTheLinkedCountrysOwnVersionTokens() {
+        // A German share link carries the German pair; the whitelist used to be
+        // Poland's, so `lang=OmU` was dropped as garbage and the link opened
+        // unfiltered.
+        val german = VersionTokens(subtitled = "OmU", dubbed = "DF")
+        val slugs = setOf("berlin", "poznan")
+        val tokens: (String) -> VersionTokens = { slug -> if (slug == "berlin") german else VersionTokens.POLAND }
+        assertEquals("OmU", DeepLink.parse("https://showtimes.cc/de/berlin/?lang=OmU", slugs, tokens)!!.filters.language)
+        // …and a Polish token on a German city is not the German filter's.
+        assertNull(DeepLink.parse("https://showtimes.cc/de/berlin/?lang=NAP", slugs, tokens)!!.filters.language)
+        // The default whitelist is still Poland's pair.
+        assertNull(DeepLink.parse("https://kinowo.net/poznan/?lang=OmU")!!.filters.language)
     }
 
     // MARK: multi-value inclusion → exclusion

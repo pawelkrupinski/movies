@@ -106,4 +106,43 @@ class CountryTest {
                 .toCountry().zoneId,
         )
     }
+
+    @Test
+    fun eachCountryCarriesItsOwnVersionTokens() {
+        // The fallback registry mirrors the server's `Country.versionTokens`, so
+        // the Wersja filter is right even before the catalog loads — no country
+        // silently carries Poland's `NAP`/`DUB`.
+        assertEquals(VersionTokens("NAP", "DUB"), Country.byCode("pl").versionTokens)
+        assertEquals(VersionTokens("SUB", "DUB"), Country.byCode("uk").versionTokens)
+        assertEquals(VersionTokens("OmU", "DF"), Country.byCode("de").versionTokens)
+        assertEquals(VersionTokens("SUB", "DUB"), Country.byCode("us").versionTokens)
+        assertEquals(VersionTokens("VOSE", "DOB"), Country.byCode("es").versionTokens)
+    }
+
+    @Test
+    fun countryDtoDecodesVersionTokensWithPolandsAsTheFallback() {
+        val german = CountryDto("de", "Deutschland", "https://showtimes.cc/de", "de", "Europe/Berlin", VersionTokens("OmU", "DF"))
+        assertEquals(VersionTokens("OmU", "DF"), german.toCountry().versionTokens)
+        assertEquals(setOf("OmU", "DF"), german.toCountry().versionTokens.accepted)
+        // A cached catalog that predates the field: Poland's pair, exactly what
+        // the app hardcoded before.
+        assertEquals(
+            VersionTokens.POLAND,
+            CountryDto("de", "Deutschland", "https://showtimes.cc/de", "de", "Europe/Berlin", null).toCountry().versionTokens,
+        )
+        assertEquals(VersionTokens("NAP", "DUB"), VersionTokens.POLAND)
+    }
+
+    @Test
+    fun selectedResolvesTheLiveEntryThenTheRegistryThenTheDefault() {
+        val live = listOf(Country.byCode("de").copy(displayName = "Live Germany"))
+        assertEquals("Live Germany", live.selected("de").displayName)
+        // A legacy ISO code normalises before the live lookup.
+        assertEquals("uk", listOf(Country.byCode("uk")).selected("GB").code)
+        // Not in the live list: the compile-time registry's entry, and the
+        // default for a code nobody knows.
+        assertEquals(Country.byCode("us"), live.selected("us"))
+        assertEquals(Country.default, live.selected(null))
+        assertEquals(Country.default, live.selected("ZZ"))
+    }
 }

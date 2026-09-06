@@ -40,8 +40,26 @@ final class CountryDTOTests: XCTestCase {
         XCTAssertEqual(dtos[0].toCountry()?.timeZone, TimeZone(identifier: "Europe/Warsaw"))
     }
 
+    func testDecodesTheCountrysOwnVersionTokens() throws {
+        // The pair the Filtry "version" picker offers and `?lang=` is checked
+        // against — Germany's, which the hardcoded Polish pair never matched.
+        let json = #"[{"code":"de","name":"Deutschland","baseUrl":"https://showtimes.cc/de","language":"de","brand":"Showtimes","timezone":"Europe/Berlin","versionTokens":{"subtitled":"OmU","dubbed":"DF"}}]"#
+        let dtos = try JSONDecoder().decode([CountryDTO].self, from: Data(json.utf8))
+        XCTAssertEqual(dtos[0].toCountry()?.versionTokens, VersionTokens(subtitled: "OmU", dubbed: "DF"))
+        XCTAssertEqual(dtos[0].toCountry()?.versionTokens.accepted, ["OmU", "DF"])
+    }
+
+    func testMissingVersionTokensFallBackToPolands() throws {
+        // A cached catalog that predates the field: Poland's pair, exactly what
+        // the app hardcoded before.
+        let json = #"[{"code":"de","name":"Deutschland","baseUrl":"https://showtimes.cc/de","language":"de","brand":"Showtimes","timezone":"Europe/Berlin"}]"#
+        let dtos = try JSONDecoder().decode([CountryDTO].self, from: Data(json.utf8))
+        XCTAssertEqual(dtos[0].toCountry()?.versionTokens, .poland)
+        XCTAssertEqual(VersionTokens.poland, VersionTokens(subtitled: "NAP", dubbed: "DUB"))
+    }
+
     func testDropsRowWithUnparseableBaseUrl() {
-        let dto = CountryDTO(code: "xx", name: "X", baseUrl: "ht tp://bad url", language: "en", timezone: nil)
+        let dto = CountryDTO(code: "xx", name: "X", baseUrl: "ht tp://bad url", language: "en", timezone: nil, versionTokens: nil)
         XCTAssertNil(dto.toCountry())
     }
 }

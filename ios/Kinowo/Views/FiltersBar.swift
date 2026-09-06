@@ -487,12 +487,17 @@ struct FiltersSheet: View {
                     .pickerStyle(.segmented)
                 }
 
+                // The two choices filter on a LITERAL format token, so they carry
+                // the selected country's own pair from the catalog (`OmU`/`DF` in
+                // Germany, `VOSE`/`DOB` in Spain) — Poland's, hardcoded here
+                // before, matched nothing anywhere else.
+                let versionTokens = catalog.country(code: prefs.selectedCountry.code).versionTokens
                 Section(header: Text("filtersheet.version")
                     .accessibilityIdentifier(A11y.FiltersSheet.versionSection)) {
                     Picker("filtersheet.version", selection: $formatFilter.language) {
                         Text("filtersheet.all").tag("")
-                        Text("filtersheet.subtitles").tag("NAP")
-                        Text("filtersheet.dubbing").tag("DUB")
+                        Text("filtersheet.subtitles").tag(versionTokens.subtitled)
+                        Text("filtersheet.dubbing").tag(versionTokens.dubbed)
                     }
                     .pickerStyle(.segmented)
                 }

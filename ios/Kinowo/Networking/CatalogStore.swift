@@ -112,6 +112,13 @@ final class CatalogStore: ObservableObject {
     func country(code: String?) -> Country {
         countries.withCode(Country.normalizeCode(code)) ?? Country.byCode(code)
     }
+    /// The version-filter pair of the country `slug` belongs to — what a deep
+    /// link's `?lang=` is validated against, since the linked city names the
+    /// country and the pair is the country's own. Poland's for a slug the
+    /// catalog does not know (the link is rejected on the slug anyway).
+    func versionTokens(ofSlug slug: String) -> VersionTokens {
+        country(code: cities.country(ofSlug: slug)).versionTokens
+    }
     var isSwitchable: Bool { countries.isSwitchable }
     var allSlugs: Set<String> { Set(cities.map(\.slug)) }
 }

@@ -10,6 +10,13 @@ import kotlinx.serialization.json.Json
  * the I/O lives in `CatalogRepository`.
  */
 data class Catalog(val countries: List<Country>, val cities: List<City>) {
+    /** The version-filter pair of the country [citySlug] belongs to — what a
+     *  deep link's `?lang=` is validated against, since the linked city names
+     *  the country and the pair is the country's own. Poland's for a slug this
+     *  catalog does not know (the link is rejected on the slug anyway). */
+    fun versionTokensOf(citySlug: String): VersionTokens =
+        countries.selected(cities.countryOf(citySlug)).versionTokens
+
     companion object {
         /** Compile-time fallback — used only if the bundled seed ever fails to
          *  decode (it always ships and is guard-tested), so effectively never. */

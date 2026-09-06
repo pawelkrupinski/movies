@@ -65,7 +65,7 @@ enum DateFilter: Hashable {
 /// `applyFilters()` on the web side.
 struct FormatFilter: Equatable {
     var dimension: String = ""    // "" | "2D" | "3D"
-    var language: String = ""     // "" | "NAP" | "DUB"
+    var language: String = ""     // "" | one of the country's `VersionTokens` ("NAP" | "DUB" in Poland)
     var imax: Bool = false
     var fromHour: Int = -1        // -1 = Dowolna
     var fromMinute: Int = 0

@@ -93,7 +93,7 @@ import pl.kinowo.model.Country
 import pl.kinowo.model.defaultCity
 import pl.kinowo.model.isSwitchable
 import pl.kinowo.model.sortedForPicker
-import pl.kinowo.model.withCode
+import pl.kinowo.model.selected
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
@@ -162,6 +162,9 @@ private fun FiltersList(
     onClose: () -> Unit,
 ) {
     val hidden by viewModel.hiddenFilms.collectAsState()
+    val catalogCountries = viewModel.countryCatalog.collectAsState().value.countries
+    val selectedCountryCode by viewModel.selectedCountryCode.collectAsState()
+    val selectedCountry = catalogCountries.selected(selectedCountryCode)
     val allCountries = remember(films) { viewModel.allCountries(films) }
     val allGenres = remember(films) { viewModel.allGenres(films) }
     val allDirectors = remember(films) { viewModel.allDirectors(films) }
@@ -244,11 +247,19 @@ private fun FiltersList(
                     selected = viewModel.formatFilter.dimension,
                 ) { viewModel.formatFilter = viewModel.formatFilter.copy(dimension = it) }
             }
-            // Wersja
+            // Wersja — the two choices filter on a LITERAL format token, so they
+            // carry the selected country's own pair from the catalog (`OmU`/`DF`
+            // in Germany, `VOSE`/`DOB` in Spain); Poland's, hardcoded here before,
+            // matched nothing anywhere else.
             item {
+                val versionTokens = selectedCountry.versionTokens
                 FilterSectionLabel(stringResource(R.string.filter_version))
                 SegmentedChoice(
-                    options = listOf(stringResource(R.string.all) to "", stringResource(R.string.version_subtitles) to "NAP", stringResource(R.string.version_dubbing) to "DUB"),
+                    options = listOf(
+                        stringResource(R.string.all) to "",
+                        stringResource(R.string.version_subtitles) to versionTokens.subtitled,
+                        stringResource(R.string.version_dubbing) to versionTokens.dubbed,
+                    ),
                     selected = viewModel.formatFilter.language,
                 ) { viewModel.formatFilter = viewModel.formatFilter.copy(language = it) }
             }
@@ -524,7 +535,7 @@ private fun CountrySection(viewModel: KinowoViewModel) {
     val countries = viewModel.countryCatalog.collectAsState().value.countries
     if (!countries.isSwitchable) return
     val selectedCode by viewModel.selectedCountryCode.collectAsState()
-    val current = countries.withCode(Country.normalizeCode(selectedCode)) ?: Country.default
+    val current = countries.selected(selectedCode)
     var expanded by remember { mutableStateOf(false) }
     FilterSectionLabel(stringResource(R.string.country_label))
     ExposedDropdownMenuBox(

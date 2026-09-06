@@ -34,6 +34,15 @@ data class Country(
      *  buckets reason in this zone, so a London show disappears on London time,
      *  not Warsaw. Defaults to Warsaw when the source omits it. */
     val zoneId: ZoneId = WARSAW_ZONE,
+    /** The two `Showtime.format` tokens this country's sources mark a subtitled
+     *  and a dubbed screening with, from the catalog's per-country
+     *  `versionTokens`. The Filtry "Wersja" choice offers exactly this pair and
+     *  a deep link's `?lang=` is accepted only from it — the filter matches a
+     *  LITERAL token, so a pair spelled for another country matches nothing,
+     *  which is what Germany (`OmU`/`DF`) and Spain (`VOSE`/`DOB`) shipped with
+     *  while both apps hardcoded Poland's. Defaults to Poland's pair when the
+     *  source omits the field (a cached catalog that predates it). */
+    val versionTokens: VersionTokens = VersionTokens.POLAND,
 ) {
     companion object {
         /** Compile-time FALLBACK registry, used only until the bundled/fetched
@@ -47,6 +56,7 @@ data class Country(
                 baseUrl = "https://kinowo.net",
                 languageTag = "pl",
                 zoneId = ZoneId.of("Europe/Warsaw"),
+                versionTokens = VersionTokens.POLAND,
             ),
             Country(
                 code = "uk",
@@ -54,6 +64,7 @@ data class Country(
                 baseUrl = "https://showtimes.cc/uk",
                 languageTag = "en",
                 zoneId = ZoneId.of("Europe/London"),
+                versionTokens = VersionTokens(subtitled = "SUB", dubbed = "DUB"),
             ),
             Country(
                 code = "de",
@@ -61,6 +72,7 @@ data class Country(
                 baseUrl = "https://showtimes.cc/de",
                 languageTag = "de",
                 zoneId = ZoneId.of("Europe/Berlin"),
+                versionTokens = VersionTokens(subtitled = "OmU", dubbed = "DF"),
             ),
             Country(
                 code = "us",
@@ -72,6 +84,7 @@ data class Country(
                 // the catalog loads; the live payload's per-country `timezone`
                 // (derived server-side from the first US region) replaces it.
                 zoneId = ZoneId.of("America/New_York"),
+                versionTokens = VersionTokens(subtitled = "SUB", dubbed = "DUB"),
             ),
             Country(
                 code = "es",
@@ -83,6 +96,7 @@ data class Country(
                 // only matters before the catalog loads, and the live payload's
                 // per-country `timezone` replaces it.
                 zoneId = ZoneId.of("Europe/Madrid"),
+                versionTokens = VersionTokens(subtitled = "VOSE", dubbed = "DOB"),
             ),
         )
 
@@ -109,12 +123,35 @@ data class Country(
  *  repository holds, so a country added server-side appears without an app update. */
 fun List<Country>.withCode(code: String?): Country? = firstOrNull { it.code == code }
 
+/** The country for a (possibly legacy) persisted selection [code]: the live
+ *  list's entry when it has one, else the compile-time registry's (which also
+ *  answers the default for a null / unknown code). Mirrors iOS
+ *  `CatalogStore.country(code:)`. */
+fun List<Country>.selected(code: String?): Country =
+    withCode(Country.normalizeCode(code)) ?: Country.byCode(code)
+
 /** Whether an in-app country switcher is worth showing (more than one deployed
  *  country). With one there's nothing to switch to. */
 val List<Country>.isSwitchable: Boolean get() = size > 1
 
+/** A country's subtitled/dubbed `Showtime.format` pair — see
+ *  [Country.versionTokens]. Its wire shape is the catalog's `versionTokens`
+ *  object verbatim, so it decodes straight off the country row. */
+@kotlinx.serialization.Serializable
+data class VersionTokens(val subtitled: String, val dubbed: String) {
+    /** The values a `?lang=` deep-link parameter may take for this country. */
+    val accepted: Set<String> get() = setOf(subtitled, dubbed)
+
+    companion object {
+        /** Poland's pair — the historical hardcoded one, and the fallback for a
+         *  catalog row that omits the field. */
+        val POLAND = VersionTokens(subtitled = "NAP", dubbed = "DUB")
+    }
+}
+
 /** Wire shape of one country in the `/api/catalog` payload (`{code,name,baseUrl,
- *  language,brand}`). Decoded then mapped to [Country]; `brand` is ignored. */
+ *  language,brand,timezone,versionTokens}`). Decoded then mapped to [Country];
+ *  `brand` is ignored. */
 @kotlinx.serialization.Serializable
 data class CountryDto(
     val code: String,
@@ -125,6 +162,11 @@ data class CountryDto(
      *  a server predating the field) still decodes — it then falls back to
      *  Warsaw, exactly the pre-fix behaviour. */
     val timezone: String? = null,
+    /** `{subtitled,dubbed}` — the country's version-filter pair. Nullable for
+     *  the same reason as [timezone]: a cached catalog that predates the field
+     *  still decodes, and then gets Poland's pair, exactly what the app
+     *  hardcoded before. */
+    val versionTokens: VersionTokens? = null,
 ) {
     fun toCountry(): Country = Country(
         code = code,
@@ -132,5 +174,6 @@ data class CountryDto(
         baseUrl = baseUrl,
         languageTag = language,
         zoneId = timezone?.let { runCatching { ZoneId.of(it) }.getOrNull() } ?: WARSAW_ZONE,
+        versionTokens = versionTokens ?: VersionTokens.POLAND,
     )
 }

@@ -30,6 +30,17 @@ final class FormatFilterTests: XCTestCase {
         XCTAssertFalse(f.matches(showtime: slot("18:00", "2D DUB")))
     }
 
+    func testLanguageConstraintOnAnotherCountrysToken() {
+        // The picker now offers the selected country's own pair, so a German
+        // user's "subtitles" is `OmU` — and it must match German showtimes, not
+        // Poland's `NAP` which no German screening carries.
+        var f = FormatFilter()
+        f.language = "OmU"
+        XCTAssertTrue(f.matches(showtime: slot("18:00", "2D OmU")))
+        XCTAssertFalse(f.matches(showtime: slot("18:00", "2D DF")))
+        XCTAssertFalse(f.matches(showtime: slot("18:00", "2D NAP")))
+    }
+
     func testImaxRequiresImaxToken() {
         var f = FormatFilter()
         f.imax = true

@@ -61,7 +61,17 @@ struct DeepLink: Equatable {
     /// `knownCitySlugs` defaults to the app's `City.all`; an unknown first
     /// segment (`/auth/…`, `/uptime`, a city the build doesn't know) is rejected
     /// so we never treat a non-city path as a city.
-    static func parse(_ url: URL, knownCitySlugs: Set<String> = Set(City.all.map(\.slug))) -> DeepLink? {
+    ///
+    /// `languageTokens` answers, for the linked city, the `?lang=` values its
+    /// country's version filter can match — the country's own subtitled/dubbed
+    /// pair, which is `OmU`/`DF` in Germany and `NAP`/`DUB` in Poland. The app
+    /// passes the live catalog's lookup (`CatalogStore.versionTokens(ofSlug:)`);
+    /// the default is Poland's pair, the one every link was checked against
+    /// before the catalog carried the field. (`Country` lives in another SPM
+    /// target, so the pair arrives as bare strings.)
+    static func parse(_ url: URL,
+                      knownCitySlugs: Set<String> = Set(City.all.map(\.slug)),
+                      languageTokens: (String) -> Set<String> = { _ in DeepLinkFilters.polishLanguageTokens }) -> DeepLink? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let scheme = components.scheme?.lowercased() else { return nil }
 
@@ -106,7 +116,7 @@ struct DeepLink: Equatable {
             citySlug: city,
             filmTitle: filmTitle.flatMap { $0.isEmpty ? nil : $0 },
             filmSlug: filmSlug.flatMap { $0.isEmpty ? nil : $0 },
-            filters: DeepLinkFilters(queryItems: components.queryItems ?? [])
+            filters: DeepLinkFilters(queryItems: components.queryItems ?? [], languageTokens: languageTokens(city))
         )
     }
 
@@ -126,7 +136,7 @@ struct DeepLinkFilters: Equatable {
     var date: DateFilter?
     var query: String?
     var dimension: String?     // "2D" | "3D"
-    var language: String?      // "NAP" | "DUB"
+    var language: String?      // one of the linked country's version tokens ("NAP" | "DUB" in Poland)
     var imax: Bool?
     var fromHour: Int?
     var fromMinute: Int?
@@ -142,11 +152,17 @@ struct DeepLinkFilters: Equatable {
 
     static let empty = DeepLinkFilters()
 
+    /// Poland's subtitled/dubbed pair — what `?lang=` was checked against for
+    /// every country before the catalog named each country's own.
+    static let polishLanguageTokens: Set<String> = ["NAP", "DUB"]
+
     var isEmpty: Bool { self == DeepLinkFilters.empty }
 
     init() {}
 
-    init(queryItems: [URLQueryItem]) {
+    /// `languageTokens` is the set `?lang=` may take — the linked country's
+    /// version pair; anything else is dropped like any other garbage value.
+    init(queryItems: [URLQueryItem], languageTokens: Set<String> = polishLanguageTokens) {
         func first(_ key: String) -> String? {
             queryItems.first(where: { $0.name == key })?.value.flatMap { $0.isEmpty ? nil : $0 }
         }
@@ -161,7 +177,7 @@ struct DeepLinkFilters: Equatable {
         date = first("date").flatMap(DeepLinkFilters.parseDate)
         query = first("q")
         dimension = first("dim").flatMap { ["2D", "3D"].contains($0) ? $0 : nil }
-        language = first("lang").flatMap { ["NAP", "DUB"].contains($0) ? $0 : nil }
+        language = first("lang").flatMap { languageTokens.contains($0) ? $0 : nil }
         imax = queryItems.contains { $0.name == "imax" } ? (first("imax") == "1") : nil
         if let from = first("from"), let parsed = DeepLinkFilters.parseFrom(from) {
             fromHour = parsed.hour

@@ -108,7 +108,7 @@ enum class SortOption {
  */
 data class FormatFilter(
     val dimension: String = "",   // "" | "2D" | "3D"
-    val language: String = "",    // "" | "NAP" | "DUB"
+    val language: String = "",    // "" | one of the country's `VersionTokens` ("NAP" | "DUB" in Poland)
     val imax: Boolean = false,
     val fromHour: Int = -1,       // -1 = Dowolna
     val fromMinute: Int = 0,

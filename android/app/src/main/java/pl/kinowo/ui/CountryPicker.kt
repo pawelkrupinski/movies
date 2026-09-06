@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import pl.kinowo.R
 import pl.kinowo.model.Country
-import pl.kinowo.model.withCode
+import pl.kinowo.model.selected
 import pl.kinowo.ui.theme.TextSecondary
 
 /**
@@ -44,7 +44,7 @@ fun CountryPicker(
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val current = countries.withCode(Country.normalizeCode(selectedCode)) ?: Country.default
+    val current = countries.selected(selectedCode)
     Column(modifier.fillMaxWidth()) {
         Text(
             stringResource(R.string.country_label),

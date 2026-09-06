@@ -8,17 +8,32 @@ import java.security.MessageDigest
 
 /**
  * The mobile catalog contract: the JSON lists exactly the DEPLOYED countries
- * (those with a `webUrl` — Poland, UK and Germany) and their cities keyed by the
- * server country code, and the ETag is a stable content hash the apps can
+ * (those with a `webUrl` — all five) and their cities keyed by the server
+ * country code, and the ETag is a stable content hash the apps can
  * `If-None-Match` against.
  */
 class CatalogSpec extends AnyFlatSpec with Matchers {
 
   "Catalog.json" should "list every deployed country, keyed by the server country code" in {
     val j = Catalog.json
-    j should include("""{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo","timezone":"Europe/Warsaw"}""")
-    j should include("""{"code":"uk","name":"United Kingdom","baseUrl":"https://showtimes.cc/uk","language":"en","brand":"Showtimes","timezone":"Europe/London"}""")
-    j should include("""{"code":"de","name":"Deutschland","baseUrl":"https://showtimes.cc/de","language":"de","brand":"Showtimes","timezone":"Europe/Berlin"}""")
+    j should include("""{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo","timezone":"Europe/Warsaw","versionTokens":{"subtitled":"NAP","dubbed":"DUB"}}""")
+    j should include("""{"code":"uk","name":"United Kingdom","baseUrl":"https://showtimes.cc/uk","language":"en","brand":"Showtimes","timezone":"Europe/London","versionTokens":{"subtitled":"SUB","dubbed":"DUB"}}""")
+    j should include("""{"code":"de","name":"Deutschland","baseUrl":"https://showtimes.cc/de","language":"de","brand":"Showtimes","timezone":"Europe/Berlin","versionTokens":{"subtitled":"OmU","dubbed":"DF"}}""")
+  }
+
+  it should "carry each country's OWN subtitled/dubbed tokens, and none where it has none" in {
+    // The apps' "version" filter matches a literal `Showtime.format` token, and
+    // until this field existed both hardcoded Poland's pair — so a German user
+    // picking "subtitles" filtered on `NAP` and saw nothing. Each country's entry
+    // names the pair its own scrapers emit; a country that marks neither omits
+    // the field, and the apps then hide the row rather than offer a dead filter.
+    def countryEntry(code: String) =
+      Catalog.json.split("\\{\"code\"").find(_.startsWith(s""":"$code"""")).getOrElse(fail(s"no $code entry"))
+    countryEntry("es") should include(""""versionTokens":{"subtitled":"VOSE","dubbed":"DOB"}""")
+    countryEntry("us") should include(""""versionTokens":{"subtitled":"SUB","dubbed":"DUB"}""")
+    Country.switchable.foreach { c =>
+      countryEntry(c.code).contains("versionTokens") shouldBe c.versionTokens.isDefined
+    }
   }
 
   it should "carry each deployed country's local IANA timezone" in {

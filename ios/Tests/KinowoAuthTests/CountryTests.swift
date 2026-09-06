@@ -48,6 +48,17 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(de.languageCode, "de")
     }
 
+    func testEachCountryCarriesItsOwnVersionTokens() {
+        // The fallback registry mirrors the server's `Country.versionTokens`, so
+        // the version filter is right even before the catalog loads — no country
+        // silently carries Poland's `NAP`/`DUB`.
+        XCTAssertEqual(Country.byCode("pl").versionTokens, VersionTokens(subtitled: "NAP", dubbed: "DUB"))
+        XCTAssertEqual(Country.byCode("uk").versionTokens, VersionTokens(subtitled: "SUB", dubbed: "DUB"))
+        XCTAssertEqual(Country.byCode("de").versionTokens, VersionTokens(subtitled: "OmU", dubbed: "DF"))
+        XCTAssertEqual(Country.byCode("us").versionTokens, VersionTokens(subtitled: "SUB", dubbed: "DUB"))
+        XCTAssertEqual(Country.byCode("es").versionTokens, VersionTokens(subtitled: "VOSE", dubbed: "DOB"))
+    }
+
     func testUsEntryForcesEnglishOnItsOwnDeployment() {
         let us = Country.byCode("us")
         XCTAssertEqual(us.code, "us")

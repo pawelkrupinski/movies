@@ -39,14 +39,24 @@ struct Country: Codable, Hashable {
     /// buckets reason in this zone, so a London show disappears on London time,
     /// not Warsaw. Defaults to Warsaw when the source omits it.
     let timeZone: TimeZone
+    /// The two `Showtime.format` tokens this country's sources mark a subtitled
+    /// and a dubbed screening with, from the catalog's per-country
+    /// `versionTokens`. The Filtry "version" picker offers exactly this pair and
+    /// a deep link's `?lang=` is accepted only from it — the filter matches a
+    /// LITERAL token, so a pair spelled for another country matches nothing,
+    /// which is what Germany (`OmU`/`DF`) and Spain (`VOSE`/`DOB`) shipped with
+    /// while both apps hardcoded Poland's. Defaults to Poland's pair when the
+    /// source omits the field (a cached catalog that predates it).
+    let versionTokens: VersionTokens
 
     init(code: String, displayName: String, baseURL: URL, languageCode: String,
-         timeZone: TimeZone = warsawZone) {
+         timeZone: TimeZone = warsawZone, versionTokens: VersionTokens = .poland) {
         self.code = code
         self.displayName = displayName
         self.baseURL = baseURL
         self.languageCode = languageCode
         self.timeZone = timeZone
+        self.versionTokens = versionTokens
     }
 
     /// Compile-time FALLBACK registry, used only until the bundled/fetched
@@ -59,21 +69,24 @@ struct Country: Codable, Hashable {
             displayName: "Polska",
             baseURL: URL(string: "https://kinowo.net")!,
             languageCode: "pl",
-            timeZone: TimeZone(identifier: "Europe/Warsaw") ?? warsawZone
+            timeZone: TimeZone(identifier: "Europe/Warsaw") ?? warsawZone,
+            versionTokens: .poland
         ),
         Country(
             code: "uk",
             displayName: "United Kingdom",
             baseURL: URL(string: "https://showtimes.cc/uk")!,
             languageCode: "en",
-            timeZone: TimeZone(identifier: "Europe/London") ?? warsawZone
+            timeZone: TimeZone(identifier: "Europe/London") ?? warsawZone,
+            versionTokens: VersionTokens(subtitled: "SUB", dubbed: "DUB")
         ),
         Country(
             code: "de",
             displayName: "Deutschland",
             baseURL: URL(string: "https://showtimes.cc/de")!,
             languageCode: "de",
-            timeZone: TimeZone(identifier: "Europe/Berlin") ?? warsawZone
+            timeZone: TimeZone(identifier: "Europe/Berlin") ?? warsawZone,
+            versionTokens: VersionTokens(subtitled: "OmU", dubbed: "DF")
         ),
         Country(
             code: "us",
@@ -84,7 +97,8 @@ struct Country: Codable, Hashable {
             // nominal Eastern value only matters in the window before the
             // catalog loads; the live payload's per-country `timezone` (derived
             // server-side from the first US region) replaces it immediately.
-            timeZone: TimeZone(identifier: "America/New_York") ?? warsawZone
+            timeZone: TimeZone(identifier: "America/New_York") ?? warsawZone,
+            versionTokens: VersionTokens(subtitled: "SUB", dubbed: "DUB")
         ),
         Country(
             code: "es",
@@ -95,7 +109,8 @@ struct Country: Codable, Hashable {
             // Atlantic/Canary; like the US entry above this nominal value only
             // matters before the catalog loads, and the live payload's
             // per-country `timezone` replaces it immediately.
-            timeZone: TimeZone(identifier: "Europe/Madrid") ?? warsawZone
+            timeZone: TimeZone(identifier: "Europe/Madrid") ?? warsawZone,
+            versionTokens: VersionTokens(subtitled: "VOSE", dubbed: "DOB")
         ),
     ]
 
@@ -149,10 +164,31 @@ struct CountryDTO: Decodable {
     /// (or a server that predates the field) still decodes — it then falls back
     /// to Warsaw, exactly the pre-fix behaviour.
     let timezone: String?
+    /// `{subtitled,dubbed}` — the country's version-filter pair. Optional for
+    /// the same reason as `timezone`: a cached catalog that predates the field
+    /// still decodes, and then gets Poland's pair, exactly what both apps
+    /// hardcoded before.
+    let versionTokens: VersionTokens?
 
     func toCountry() -> Country? {
         guard let url = URL(string: baseUrl) else { return nil }
         let zone = timezone.flatMap { TimeZone(identifier: $0) } ?? warsawZone
-        return Country(code: code, displayName: name, baseURL: url, languageCode: language, timeZone: zone)
+        return Country(code: code, displayName: name, baseURL: url, languageCode: language,
+                       timeZone: zone, versionTokens: versionTokens ?? .poland)
     }
+}
+
+/// A country's subtitled/dubbed `Showtime.format` pair — see
+/// `Country.versionTokens`. Its wire shape is the catalog's `versionTokens`
+/// object verbatim, so it decodes straight off the country row.
+struct VersionTokens: Codable, Hashable {
+    let subtitled: String
+    let dubbed: String
+
+    /// Poland's pair — the historical hardcoded one, and the fallback for a
+    /// catalog row that omits the field.
+    static let poland = VersionTokens(subtitled: "NAP", dubbed: "DUB")
+
+    /// The values a `?lang=` deep-link parameter may take for this country.
+    var accepted: Set<String> { [subtitled, dubbed] }
 }

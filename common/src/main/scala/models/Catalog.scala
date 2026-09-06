@@ -28,6 +28,8 @@ object Catalog {
    * shape the web `ALL_CITIES` clients already parse, plus the owning country
    * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
    * where the country's picker groups its cities, the group's label as `region`.
+   * Each country carries its `timezone` and, where it has one, the
+   * `versionTokens` pair its "version" filter matches on.
    */
   /** The one zone a country is published under: its BIGGEST city's, ties by slug.
    *
@@ -68,14 +70,20 @@ object Catalog {
         // EARLY — hiding a screening someone could still get to, which is the
         // error that costs them something.
         //
-        // Neither is right. The fix is a per-CITY zone in this payload with both
-        // apps preferring it over the country's; `City.zoneId` has been correct
-        // per metro since the US metro split, so the data is already here — it is
-        // the apps that still read only this field (`ios/Kinowo/Models/Country.swift`,
-        // `android/.../model/Country.kt`, both for past-showtime pruning and the
-        // day boundary).
+        // Neither is right on its own, which is why each city carries its OWN
+        // zone below and both apps prefer it (`ios/Kinowo/Models/City.swift`,
+        // `android/.../model/City.kt`); this field is what they fall back to for
+        // a city that omits one.
         val timezone = countryTimezone(c)
-        s"""{"code":"${c.code}","name":"${c.displayName}","baseUrl":"${c.webUrl.get}","language":"${c.language.getLanguage}","brand":"${c.brandName}","timezone":"$timezone"}"""
+        // The pair the country's own scrapers mark a subtitled/dubbed screening
+        // with — the same one the web's version radios are rendered from. The
+        // apps' "version" filter matches a literal `Showtime.format` token, and
+        // before this field existed both hardcoded Poland's `NAP`/`DUB`, so the
+        // filter matched nothing in Germany (`OmU`/`DF`) or Spain (`VOSE`/`DOB`).
+        // Absent for a country that marks neither, and the apps then hide the
+        // row rather than offer a filter that can only match nothing.
+        val versionTokens = c.versionTokens.fold("")(t => s""","versionTokens":{"subtitled":"${t.subtitled}","dubbed":"${t.dubbed}"}""")
+        s"""{"code":"${c.code}","name":"${c.displayName}","baseUrl":"${c.webUrl.get}","language":"${c.language.getLanguage}","brand":"${c.brandName}","timezone":"$timezone"$versionTokens}"""
       }
       .mkString("[", ",", "]")
     val cities = Country.switchable

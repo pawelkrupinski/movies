@@ -199,6 +199,20 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertNil(f.date)
     }
 
+    func testLangIsAcceptedFromTheLinkedCountrysOwnVersionTokens() {
+        // A German share link carries the German pair; the whitelist used to be
+        // Poland's, so `lang=OmU` was dropped as garbage and the link opened
+        // unfiltered.
+        let german: (String) -> Set<String> = { slug in slug == "berlin" ? ["OmU", "DF"] : ["NAP", "DUB"] }
+        let url = URL(string: "https://showtimes.cc/de/berlin/?lang=OmU")!
+        XCTAssertEqual(DeepLink.parse(url, knownCitySlugs: ["berlin", "poznan"], languageTokens: german)?.filters.language, "OmU")
+        // …and a Polish token on a German city is not the German filter's.
+        let mixed = URL(string: "https://showtimes.cc/de/berlin/?lang=NAP")!
+        XCTAssertNil(DeepLink.parse(mixed, knownCitySlugs: ["berlin", "poznan"], languageTokens: german)?.filters.language)
+        // The default whitelist is still Poland's pair.
+        XCTAssertNil(parse("https://kinowo.net/poznan/?lang=OmU")?.filters.language)
+    }
+
     // MARK: multi-value inclusion → exclusion
 
     func testRepeatedAndCommaListInclusionFlatten() {

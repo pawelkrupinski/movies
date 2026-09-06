@@ -49,7 +49,7 @@ import pl.kinowo.model.countryOf
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
 import pl.kinowo.ui.city.CityGateStart
-import pl.kinowo.model.withCode
+import pl.kinowo.model.selected
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.filter.CinemaFilterSection
 import pl.kinowo.filter.CinemaSection
@@ -263,9 +263,7 @@ class KinowoViewModel(
      *  a London show disappears on London time, and a Knoxville one on Eastern
      *  rather than on whichever single zone the US had to publish. */
     private fun currentZone(): java.time.ZoneId {
-        val code = selectedCountryCode.value
-        val country = countryCatalog.value.countries.withCode(Country.normalizeCode(code))
-            ?: Country.byCode(code)
+        val country = countryCatalog.value.countries.selected(selectedCountryCode.value)
         return countryCatalog.value.cities.zoneFor(selectedCity.value, country.zoneId)
     }
 
@@ -412,8 +410,9 @@ class KinowoViewModel(
         // Parse against the LIVE catalog's slugs (like iOS `catalog.allSlugs`), so
         // a city that ships only via `/api/catalog` — every German city — is
         // recognised, not just the compile-time `Cities.all` roster.
-        val cities = countryCatalog.value.cities
-        val link = DeepLink.parse(rawUrl, cities.map { it.slug }.toSet()) ?: return
+        val catalog = countryCatalog.value
+        val cities = catalog.cities
+        val link = DeepLink.parse(rawUrl, cities.map { it.slug }.toSet(), catalog::versionTokensOf) ?: return
         // A link on another country's deployment (showtimes-uk / showtimes-de) must
         // switch the country too, or the linked city resolves against the wrong
         // deployment's host. Unlike the manual switch (`setCountry`) we KEEP the
