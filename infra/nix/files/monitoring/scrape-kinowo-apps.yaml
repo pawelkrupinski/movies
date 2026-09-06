@@ -32,17 +32,22 @@ scrape_configs:
     # one, and any panel that aggregates them without keeping the `country` label is adding several
     # different fleets together.
     #
+    # `instance` IS NAMED, as the web targets' are below, so an alert says "kinowo-worker-de
+    # restarted" rather than "10.20.0.12:30901 restarted" -- the same node and a port nobody has
+    # memorised. Nothing selects on the raw host:port (checked 2026-09-06 across the rules,
+    # dashboards and Alertmanager routes), and the one worker rule that groups by `instance`
+    # (`kinowo-worker-crash-looping`) keys on whatever value the label holds.
     static_configs:
       - targets: ["10.20.0.12:30900"]
-        labels: { app: kinowo-worker, country: pl, tier: worker, platform: k3s }
+        labels: { app: kinowo-worker, country: pl, tier: worker, platform: k3s, instance: kinowo-worker-pl }
       - targets: ["10.20.0.12:30901"]
-        labels: { app: kinowo-worker, country: de, tier: worker, platform: k3s }
+        labels: { app: kinowo-worker, country: de, tier: worker, platform: k3s, instance: kinowo-worker-de }
       - targets: ["10.20.0.12:30902"]
-        labels: { app: kinowo-worker, country: uk, tier: worker, platform: k3s }
+        labels: { app: kinowo-worker, country: uk, tier: worker, platform: k3s, instance: kinowo-worker-uk }
       - targets: ["10.20.0.12:30903"]
-        labels: { app: kinowo-worker, country: us, tier: worker, platform: k3s }
+        labels: { app: kinowo-worker, country: us, tier: worker, platform: k3s, instance: kinowo-worker-us }
       - targets: ["10.20.0.12:30904"]
-        labels: { app: kinowo-worker, country: es, tier: worker, platform: k3s }
+        labels: { app: kinowo-worker, country: es, tier: worker, platform: k3s, instance: kinowo-worker-es }
 
     # DROP `exported_country`, WHICH IS 3961 SERIES OF PURE NOISE. Both apps export a `country`
     # label of their own, and this job also SETS one from the target definition -- so Prometheus
