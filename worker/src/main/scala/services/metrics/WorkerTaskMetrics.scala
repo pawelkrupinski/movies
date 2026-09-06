@@ -195,7 +195,7 @@ object WorkerTaskMetrics {
 
     private val splits = Counter.builder()
       .name("kinowo_worker_splits")
-      .help("New movie rows spawned by un-merging since boot (a 1→N split counts N−1), by country — the inverse of a merge. Only a title-rule change (NormalizeRebuild) re-keys a row's slots onto distinct keys; each split-off is born fresh (no tmdbId) and re-resolves, so rate() is the un-merge re-enrichment load. Pairs with kinowo_worker_merges_total{reason=\"normalize-rebuild\"}.")
+      .help("Cinema slots the settle pass re-diverted to staging since boot because their row held a SECOND film (MixedFilmSplitter), by country — the inverse of a merge. Each re-resolves on its own hints, so rate() is the un-merge re-enrichment load; a healthy corpus needs almost none, so a sustained rate means the detector is reading ordinary rows as two films.")
       .labelNames("country")
       .register(registry)
 
@@ -326,7 +326,7 @@ object WorkerTaskMetrics {
     def recordMerge(country: String, reason: MergeReason, victims: Int): Unit =
       if (victims > 0) merges.labelValues(country, reason.label).inc(victims.toDouble)
 
-    /** Each new row spawned by an un-merge is one increment (a 1→N split = N−1). */
+    /** Each cinema slot re-diverted by a mixed-row split is one increment. */
     def recordSplit(country: String, fragments: Int): Unit =
       if (fragments > 0) splits.labelValues(country).inc(fragments.toDouble)
 

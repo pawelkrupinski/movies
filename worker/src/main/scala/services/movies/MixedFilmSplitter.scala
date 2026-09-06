@@ -38,9 +38,11 @@ import services.staging.StagingRepository
  * merely describing the film less fully than another, and never anything derived
  * from the resolution being checked.
  */
-class MixedFilmSplitter(cache: MovieCache, staging: StagingRepository) extends Logging {
+class MixedFilmSplitter(cache: MovieCache, staging: StagingRepository,
+                        splitMetrics: SplitMetrics = SplitMetrics.noop) extends Logging {
 
-  /** Re-divert every stray slot in the corpus. Returns how many were sent back.
+  /** Re-divert every stray slot in the corpus. Returns how many were sent back, and
+   *  reports the same count to `splitMetrics` (`kinowo_worker_splits_total`).
    *
    *  Idempotent: a split row no longer holds the slots that made it mixed, so a
    *  second pass over the same corpus finds nothing. Safe to run on a cadence. */
@@ -50,7 +52,9 @@ class MixedFilmSplitter(cache: MovieCache, staging: StagingRepository) extends L
       if (strays.isEmpty) None else Some((entry, strays))
     }
 
-    work.foldLeft(0) { case (moved, (entry, strays)) => moved + split(entry, strays) }
+    val moved = work.foldLeft(0) { case (moved, (entry, strays)) => moved + split(entry, strays) }
+    splitMetrics.recordSplit(moved)
+    moved
   }
 
   /** Send one row's stray slots back to staging. Returns how many moved — 0 when the

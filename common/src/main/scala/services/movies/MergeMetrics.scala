@@ -50,15 +50,17 @@ object MergeMetrics {
 }
 
 /**
- * Sink for movie-row SPLIT counts — the inverse of a merge. A title-rule change
- * can re-key a row's cinema slots onto several distinct keys, so
- * `NormalizationRebuilder.rebuild` un-merges it into N rows; this counts the new
- * rows spawned (a 1→N split counts N−1). Each split-off is born fresh (no
- * tmdbId) and re-enters resolution, so `rate(kinowo_worker_splits_total)` is the
- * un-merge re-enrichment load — the counterpart to merges. Splits arise only
- * from a rebuild (no runtime path divides a row), so this is unlabelled. The
- * worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]]; web
- * and unit tests use [[noop]].
+ * Sink for movie-row SPLIT counts — the inverse of a merge. A row keyed by title
+ * can end up holding TWO films ("Joanna d'Arc": Besson 1999 and Pálmason 2025);
+ * `MixedFilmSplitter`, run by every `MovieService.settle`, sends the stray
+ * cinemas' slots back to staging so each film gets a row of its own. This counts
+ * the slots re-diverted. Each one re-enters resolution on its own hints, so
+ * `rate(kinowo_worker_splits_total)` is the un-merge re-enrichment load — the
+ * counterpart to merges — and, since a healthy corpus holds only a handful of
+ * genuine title collisions, any sustained rate means the detector has started
+ * reading ordinary rows as two films. The only splitting path is the settle
+ * pass, so this is unlabelled. The worker wires the Prometheus-backed
+ * [[services.metrics.WorkerTaskMetrics]]; web and unit tests use [[noop]].
  */
 trait SplitMetrics {
   def recordSplit(fragments: Int): Unit

@@ -178,9 +178,9 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
 
   it should "count movie-row splits, summing fragments and seeding the series to 0" in {
     val (m, series) = newPl()
-    m.recordSplit(2)  // a 1→3 un-merge spawned 2 new rows
+    m.recordSplit(2)  // a settle pass re-diverted two slots
     m.recordSplit(1)
-    m.recordSplit(0)  // a no-fragment split contributes nothing
+    m.recordSplit(0)  // a pass that found nothing contributes nothing
 
     scrapePl(series) should include ("""kinowo_worker_splits_total{country="pl"} 3""")
   }

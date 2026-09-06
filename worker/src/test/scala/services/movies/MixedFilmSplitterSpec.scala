@@ -79,6 +79,20 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
     staging.findAll().head.record.cinemaSlots.head._2.director shouldBe Seq("Brandt Andersen")
   }
 
+  "the split count" should "reach the metrics sink, and read zero on the idempotent second pass" in {
+    val record = MovieRecord(data = Map[Source, SourceData](
+      KinoMuranow -> slot("Joanna d'Arc", Seq("Luc Besson"), Some("Joan of Arc"), Some(1999), Some(160)),
+      Helios      -> slot("Joanna d'Arc", Seq.empty, Some("Jóhanna af Örk"), Some(2025), None)))
+    val (cache, staging, _) = fixture(record, "Joanna d'Arc", Some(2025))
+    val recorded = scala.collection.mutable.ArrayBuffer.empty[Int]
+    val splitter = new MixedFilmSplitter(cache, staging, splitMetrics = recorded += _)
+
+    splitter.splitMixedRows() shouldBe 1
+    splitter.splitMixedRows() shouldBe 0
+
+    recorded.toSeq shouldBe Seq(1, 0)
+  }
+
   "a row describing ONE film" should "be left alone" in {
     val record = MovieRecord(data = Map[Source, SourceData](
       Multikino -> slot("Dreams", Seq("Michel Franco"), Some("Dreams: Sueños"), Some(2025), Some(98)),

@@ -692,6 +692,7 @@ class WorkerWiring(
   lazy val movieService: MovieService = new MovieService(
     movieCache, eventBus, tmdbClient,
     dispatcher = resolveDispatcher,
+    splitMetrics = taskMetrics,
     tmdbIdCache = tmdbIdCache,
     // SAME store the rating handlers read, so the resolved → first-rating delay
     // (stamped here on resolution, observed there on first attempt) correlates.

@@ -105,7 +105,10 @@ class MovieService(
   // `settle` re-diverts them here and the ordinary staging path gives each film a
   // record of its own (see `MixedFilmSplitter`). Defaults to the no-op repository,
   // so a caller without staging simply never splits.
-  staging:              services.staging.StagingRepository = services.staging.StagingRepository.empty
+  staging:              services.staging.StagingRepository = services.staging.StagingRepository.empty,
+  // Where the splitter reports the slots it re-diverted (`kinowo_worker_splits_total`).
+  // Production wires `WorkerTaskMetrics`; unit specs and scripts leave it silent.
+  splitMetrics:         SplitMetrics = SplitMetrics.noop
 ) extends Drainable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
@@ -166,7 +169,7 @@ class MovieService(
     ()
   }
 
-  private lazy val mixedFilmSplitter = new MixedFilmSplitter(cache, staging)
+  private lazy val mixedFilmSplitter = new MixedFilmSplitter(cache, staging, splitMetrics)
 
   @volatile private var splitsSoFar = 0
 
