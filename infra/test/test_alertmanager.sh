@@ -147,15 +147,30 @@ import re, sys, yaml
 document = yaml.safe_load(open(sys.argv[1]))
 # `<label> =~ ".+"` or `<label> = "something"` -- either one requires the source to carry a value.
 present = re.compile(r'^\s*(\w+)\s*(=~|=)\s*"([^"]*)"\s*$')
+# A regex that an EMPTY value still satisfies pins nothing: `.*`, the empty string, and any
+# alternation with an empty branch (`.+|`) all match "". Checked explicitly because the first
+# version of this check denied only the first two and would have passed the third.
+def pins(operator, value):
+    if operator == "=":
+        return value != ""
+    return value not in ("", ".*") and not any(branch == "" or branch == ".*" for branch in value.split("|"))
+
 bad = 0
-for index, rule in enumerate(document.get("inhibit_rules", []), start=1):
+rules = document.get("inhibit_rules", [])
+for index, rule in enumerate(rules, start=1):
     equal = rule.get("equal", [])
     if not equal:
+        # NOT a pass. An inhibit rule with no `equal:` silences every matching target regardless of
+        # labels, which is strictly worse than the empty-join this check exists to catch. The first
+        # version `continue`d here and still counted the rule in its "all ok" tally.
+        bad = 1
+        print(f"  FAILED inhibit rule #{index} has no `equal:` at all, so it silences every target "
+              f"it matches on any host or country. Give it the label it means to join on.")
         continue
     pinned = set()
     for matcher in rule.get("source_matchers", []):
         found = present.match(matcher)
-        if found and found.group(3) not in ("", ".*"):
+        if found and pins(found.group(2), found.group(3)):
             pinned.add(found.group(1))
     if not (pinned & set(equal)):
         bad = 1
@@ -164,7 +179,12 @@ for index, rule in enumerate(document.get("inhibit_rules", []), start=1):
         print( "         An alert missing that label would match every other alert missing it, and")
         print( "         silence all of them. Add `<label> =~ \".+\"` to the source matchers.")
 if not bad:
-    print(f"  ok  {len(document.get('inhibit_rules', []))} inhibit rules all pin an equal-label on the source")
+    print(f"  ok  {len(rules)} inhibit rules all join on a label their source must carry")
+# WHAT THIS STILL DOES NOT CATCH, said out loud so the next reader does not over-trust it: only ONE
+# label of a multi-label `equal:` has to be pinned. The host rule pins `host` and not `mountpoint`,
+# so a mountpoint-less critical still matches mountpoint-less warnings on ITS OWN host. That is
+# host-scoped rather than fleet-scoped, it predates this check, and tightening it would break the
+# memory pair the rule's comment is written around -- but it is broader than that comment implies.
 sys.exit(bad)
 PY
 then

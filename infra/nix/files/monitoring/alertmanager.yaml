@@ -105,19 +105,19 @@ route:
     # "nothing is publishing queue metrics" belong with the alerts they cover rather than with the
     # fleet-wide noise.
     #
-    # THESE TWO OVERRIDE `group_by`, and are the only routes that do. The root groups by
-    # `[host, alertname]`, which is right for a fleet whose alerts are about machines -- but it puts
-    # both of a host's filling volumes in one group, and all five countries' `WorkerDown` in
-    # another. The email SUBJECT is built from `.CommonLabels`, which holds only what every alert in
-    # the group agrees on, so a grouped pair silently dropped the very fields the subject exists to
-    # carry: the reader got "[FIRING] FilesystemSpaceLow on mongo-1" with no mountpoint, and
-    # "[FIRING] WorkerDown" with no country at all. Grouping by the two extra labels costs one more
-    # message in the genuinely-two-problems case and makes the subject always name the thing.
+    # THESE ROUTES DO NOT OVERRIDE `group_by`, and the attempt to is worth recording. The root
+    # groups by `[host, alertname]`; the email SUBJECT is built from `.CommonLabels`, which holds
+    # only what every alert in a group agrees on, so a host with two filling volumes produced
+    # "[FIRING] FilesystemSpaceLow on mongo-1" with no mountpoint, and five countries' `WorkerDown`
+    # produced "[FIRING] WorkerDown" with no country. Adding `mountpoint` and `country` to
+    # `group_by` here fixed the subject and cost far more than it looked: this receiver is
+    # `telegram-and-email`, so splitting the group multiplied BOTH. One k3s node reboot went from
+    # one message to five, repeating hourly, on the channel this file's header argues must stay a
+    # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
         - alertname =~ "Filesystem.*|Worker.*"
         - severity = "critical"
       receiver: telegram-and-email
-      group_by: ["host", "alertname", "mountpoint", "country"]
       group_wait: 10s
       repeat_interval: 1h
 
@@ -125,7 +125,6 @@ route:
         - alertname =~ "Filesystem.*|Worker.*"
         - severity = "warning"
       receiver: telegram-and-email
-      group_by: ["host", "alertname", "mountpoint", "country"]
       group_interval: 15m
       repeat_interval: 12h
 
@@ -219,14 +218,20 @@ receivers:
         send_resolved: true
         headers:
           # The SUBJECT is the whole message for anyone reading on a phone, so it names WHAT and
-          # WHERE rather than a count of alerts. `host` + `mountpoint` place a disk alert; `country`
-          # places a worker one, which has no host to name. The routes above group by all three so
-          # these are never empty for want of grouping.
+          # WHERE. `host` + `mountpoint` place a disk alert; `country` places a worker one, which
+          # has no host to name.
+          #
+          # THE COUNT IS THE HONEST ANSWER WHEN A LABEL IS NOT COMMON, and it is why this does not
+          # need a `group_by` override to be useful. `.CommonLabels` holds only what the whole group
+          # agrees on, so two mountpoints or five countries leave that field empty -- and the fix
+          # for that is to say "5 alerts", not to split the group and send five messages to Telegram
+          # as well. The body below ranges over `.Alerts` and names every one of them individually.
           subject: >-
             [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}{{ if .CommonLabels.host }} on
             {{ .CommonLabels.host }}{{ end }}{{ if .CommonLabels.country }}
             ({{ .CommonLabels.country }}){{ end }}{{ if .CommonLabels.mountpoint }}
-            ({{ .CommonLabels.mountpoint }}){{ end }}
+            ({{ .CommonLabels.mountpoint }}){{ end }}{{ if gt (len .Alerts) 1 }}
+            -- {{ len .Alerts }} alerts{{ end }}
         # PLAIN TEXT, not `html`. Alertmanager's default HTML template is a large document that
         # renders poorly in half the clients that receive it, and the descriptions in these rules
         # are already written as prose with shell commands in them -- which is exactly what HTML
@@ -321,7 +326,7 @@ inhibit_rules:
   #
   # `host =~ ".+"` ON THE SOURCE IS THE SAME LOAD-BEARING GUARD THE RULE ABOVE SPELLS OUT, and it
   # was missing here until 2026-09-06. Alertmanager compares an ABSENT label to an absent label as
-  # equal, so without it any critical that carries no `host` -- and this fleet has seven, including
+  # equal, so without it any critical that carries no `host` -- and this fleet has TEN, including
   # `WorkerDown` and `WorkerQueueStalled` -- matched EVERY host-less warning on the fleet and
   # silenced it. One OOM-killed US worker would have muted `FilesystemMetricsAbsent`,
   # `WorkerQueueMetricsAbsent` and every `CinemaScrape*` / `ReadModelProjection*` / `Web*` warning
@@ -334,21 +339,44 @@ inhibit_rules:
       - severity = "warning"
     equal: ["host", "mountpoint"]
 
-  # THE SAME STATEMENT FOR THE APPLICATION ALERTS, which are scoped by COUNTRY rather than by host:
-  # the workers and the read-model projector run on k3s and carry `country`, never `host`. A queue
-  # that has stalled (critical) makes "the queue is growing" (warning) for the same country true by
-  # construction, and a worker that is down makes every other warning about that country's pipeline
-  # a restatement of it.
+  # THE SAME STATEMENT FOR THE WORKER PIPELINE, which is scoped by COUNTRY rather than by host: the
+  # workers run on k3s and carry `country`, never `host`. A queue that has stalled (critical) makes
+  # "the queue is growing" and "the queue is failing everything it claims" (warnings) for the same
+  # country true by construction, and a worker that is DOWN makes every warning about that country's
+  # pipeline a restatement of it.
   #
-  # THIS IS A SEPARATE RULE RATHER THAN A THIRD LABEL IN THE ONE ABOVE. `equal` is a conjunction, so
-  # adding `country` there would have required a critical to match on host AND country -- and no
-  # alert on this fleet carries both. Two rules, each scoped to the label its family actually has.
+  # BOTH SIDES NAME THE FAMILY, and that is not decoration. `country` is set by the SCRAPE TARGET,
+  # so the web tier carries it too -- this rule first shipped matching on `country` alone, which
+  # meant `WebServerErrorsServed{country=pl}` silenced `WorkerTaskTypeUnhandled{country=pl}`: the
+  # web tier crash-looping would have deleted the one alert that exists BECAUSE nothing else can see
+  # a worker discarding its tasks. That is the same empty-join mistake as the rule above, narrowed
+  # from fleet-wide to country-wide, which is not narrow enough. Naming the family on the source AND
+  # the target keeps the statement to what it can actually justify: a dead or stalled worker
+  # explains that worker's other warnings, and nothing else's.
+  #
+  # `equal: ["country"]` ALONE IS RIGHT HERE, unlike a job- or tier-scoped join, because
+  # `WorkerQueueStalled` aggregates with `sum by (country)` and therefore carries NO `job` label to
+  # match on. Scoping by alertname on both sides is what survives that.
   - source_matchers:
       - severity = "critical"
+      - alertname =~ "Worker.*"
       - country =~ ".+"
     target_matchers:
       - severity = "warning"
+      - alertname =~ "Worker.*"
     equal: ["country"]
+
+  # FLUX IS ITS OWN FAMILY, on its own label. `FluxControllerDown` (critical) carries `controller`
+  # and neither `host` nor `country`, so the two rules above cannot reach it -- and until the guard
+  # went in it silenced its warnings by the empty-host accident rather than by design. A controller
+  # that is down does make "reconciliation is failing" for that controller a restatement, so the
+  # rule is worth keeping; it just has to say which label it means.
+  - source_matchers:
+      - severity = "critical"
+      - controller =~ ".+"
+    target_matchers:
+      - severity = "warning"
+    equal: ["controller"]
 
 # NO MUTE INTERVALS. There is no maintenance window on this fleet -- deploys are continuous and
 # reboots are occasional and by hand -- so a time-of-day mute would only ever suppress a real alert
