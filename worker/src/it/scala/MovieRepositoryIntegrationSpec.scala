@@ -254,20 +254,32 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val gotUpsert = new CountDownLatch(1)
     val gotDelete = new CountDownLatch(1)
 
+    val warmTitle = "__integration-test-changestream-warm__"
+    val warmId    = StoredMovieRecord.idFor(warmTitle, year, titleNormalizer)
+    val gotWarm   = new CountDownLatch(1)
+
     val handle = repository.watchChanges(
-      onUpsert = r   => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) gotUpsert.countDown(),
+      onUpsert = r   => StoredMovieRecord.idOf(r, titleNormalizer) match {
+        case `id`     => gotUpsert.countDown()
+        case `warmId` => gotWarm.countDown()
+        case _        => ()
+      },
       onDelete = did => if (did == id) gotDelete.countDown()
     )
     handle should not be empty // requires a replica set (a single-node RS counts)
 
     try {
-      Thread.sleep(1500) // let the stream establish before the writes
+      // Not `Thread.sleep`: the cursor opens asynchronously, so a nap is a guess at
+      // the window and a slow runner then looks exactly like the bug this catches.
+      awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        repository.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt900$pass%05d")))
+      }
       repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000099")))
       gotUpsert.await(15, TimeUnit.SECONDS) shouldBe true
 
       repository.delete(title, year)
       gotDelete.await(15, TimeUnit.SECONDS) shouldBe true
-    } finally handle.foreach(_.close())
+    } finally { repository.delete(warmTitle, year); handle.foreach(_.close()) }
   }
 
   // The change-stream apply does a blocking stitch read + the synchronized read-model
@@ -287,13 +299,23 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val applied     = new CountDownLatch(1)
     val applyThread = new AtomicReference[String]("")
 
+    val warmTitle = "__integration-test-applythread-warm__"
+    val warmId    = StoredMovieRecord.idFor(warmTitle, year, titleNormalizer)
+    val gotWarm   = new CountDownLatch(1)
+
     val handle = repository.watchChanges(
-      onUpsert = r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) { applyThread.set(Thread.currentThread().getName); applied.countDown() },
+      onUpsert = r => StoredMovieRecord.idOf(r, titleNormalizer) match {
+        case `id`     => applyThread.set(Thread.currentThread().getName); applied.countDown()
+        case `warmId` => gotWarm.countDown()
+        case _        => ()
+      },
       onDelete = _ => ()
     )
     handle should not be empty
     try {
-      Thread.sleep(1500)
+      awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        repository.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt901$pass%05d")))
+      }
       repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000077")))
       applied.await(15, TimeUnit.SECONDS) shouldBe true
       applyThread.get              should startWith ("movie-change-apply")
@@ -322,7 +344,16 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     repository.isWatchingChangeStream shouldBe true
 
     try {
-      Thread.sleep(1500) // let the stream establish before the write
+      // Both consumers must be live, so warm up on a THIRD id both of them ignore and
+      // wait for the repository's own delivery rather than napping.
+      val warmTitle = "__integration-test-fanout-warm__"
+      val gotWarm   = new CountDownLatch(1)
+      val warmId    = StoredMovieRecord.idFor(warmTitle, year, titleNormalizer)
+      val warmHandle = repository.watchChanges(
+        r => if (StoredMovieRecord.idOf(r, titleNormalizer) == warmId) gotWarm.countDown(), _ => ())
+      try awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        repository.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt902$pass%05d")))
+      } finally { repository.delete(warmTitle, year); warmHandle.foreach(_.close()) }
       repository.upsert(title, year, MovieRecord(imdbId = Some("tt0000077")))
       gotA.await(15, TimeUnit.SECONDS) shouldBe true // one write reached BOTH consumers
       gotB.await(15, TimeUnit.SECONDS) shouldBe true
@@ -356,7 +387,16 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val handle1 = repo1.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == idA) gotA.countDown(), _ => ())
     handle1 should not be empty
     try {
-      Thread.sleep(1500) // let the stream establish before the write
+      // A write that beats the cursor open is simply gone, and the resume assertion
+      // below then fails for a reason that has nothing to do with resumption.
+      val warmTitle = "__integration-test-resume-warm__"
+      val warmId    = StoredMovieRecord.idFor(warmTitle, Some(1909), titleNormalizer)
+      val gotWarm   = new CountDownLatch(1)
+      val warmHandle = repo1.watchChanges(
+        r => if (StoredMovieRecord.idOf(r, titleNormalizer) == warmId) gotWarm.countDown(), _ => ())
+      try awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        repo1.upsert(warmTitle, Some(1909), MovieRecord(imdbId = Some(f"tt903$pass%05d")))
+      } finally { repo1.delete(warmTitle, Some(1909)); warmHandle.foreach(_.close()) }
       repo1.upsert("__integration-test-resume-A__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
       gotA.await(15, TimeUnit.SECONDS) shouldBe true
       handle1.foreach(_.close()) // last listener gone → stopWatchingIfIdle force-saves the token (position: after A)
