@@ -1,6 +1,6 @@
 {
   "uid": "kinowo-logs",
-  "title": "Kinowo \u2014 logs (all three hosts)",
+  "title": "Kinowo — logs (fleet, by tier and country)",
   "description": "Every host's systemd journal, shipped by Vector into VictoriaLogs on monitoring-1, plus container logs from /var/log/pods on the k3s node (containerd does not use the journal). Retention is bounded by disk, not time: 10GiB on the monitoring volume, so how far back this reaches depends on how noisy the fleet has been. If a panel is empty, check Vector on the host before you doubt the query -- the shipper drops rather than blocks when VictoriaLogs is down, which keeps a log outage from wedging the host but does lose those lines.",
   "tags": [
     "kinowo",
@@ -16,6 +16,124 @@
   },
   "templating": {
     "list": [
+      {
+        "name": "level",
+        "label": "Level",
+        "description": "Severity, normalised across the application's text logs, Flux's JSON and journald's syslog PRIORITY.",
+        "type": "custom",
+        "includeAll": false,
+        "multi": false,
+        "query": "all : *,errors : level:(ERROR or FATAL),errors and warnings : level:(ERROR or FATAL or WARN),warnings only : level:WARN,info and quieter : level:(INFO or DEBUG or TRACE)",
+        "options": [
+          {
+            "selected": true,
+            "text": "all",
+            "value": "*"
+          },
+          {
+            "selected": false,
+            "text": "errors",
+            "value": "level:(ERROR or FATAL)"
+          },
+          {
+            "selected": false,
+            "text": "errors and warnings",
+            "value": "level:(ERROR or FATAL or WARN)"
+          },
+          {
+            "selected": false,
+            "text": "warnings only",
+            "value": "level:WARN"
+          },
+          {
+            "selected": false,
+            "text": "info and quieter",
+            "value": "level:(INFO or DEBUG or TRACE)"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "all",
+          "value": "*"
+        }
+      },
+      {
+        "name": "tier",
+        "label": "Tier",
+        "description": "web serves pages, worker scrapes and enriches. Both run one deployment per country.",
+        "type": "custom",
+        "includeAll": false,
+        "multi": false,
+        "query": "all : *,worker : tier:worker,web : tier:web",
+        "options": [
+          {
+            "selected": true,
+            "text": "all",
+            "value": "*"
+          },
+          {
+            "selected": false,
+            "text": "worker",
+            "value": "tier:worker"
+          },
+          {
+            "selected": false,
+            "text": "web",
+            "value": "tier:web"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "all",
+          "value": "*"
+        }
+      },
+      {
+        "name": "country",
+        "label": "Country",
+        "description": "The two-letter code, read off the deployment name. `all` also keeps lines that belong to no country, such as Flux and the hosts' own units.",
+        "type": "custom",
+        "includeAll": false,
+        "multi": false,
+        "query": "all : *,pl : country:pl,uk : country:uk,de : country:de,us : country:us,es : country:es",
+        "options": [
+          {
+            "selected": true,
+            "text": "all",
+            "value": "*"
+          },
+          {
+            "selected": false,
+            "text": "pl",
+            "value": "country:pl"
+          },
+          {
+            "selected": false,
+            "text": "uk",
+            "value": "country:uk"
+          },
+          {
+            "selected": false,
+            "text": "de",
+            "value": "country:de"
+          },
+          {
+            "selected": false,
+            "text": "us",
+            "value": "country:us"
+          },
+          {
+            "selected": false,
+            "text": "es",
+            "value": "country:es"
+          }
+        ],
+        "current": {
+          "selected": true,
+          "text": "all",
+          "value": "*"
+        }
+      },
       {
         "name": "host",
         "label": "host",
@@ -50,13 +168,9 @@
   "panels": [
     {
       "type": "logs",
-      "title": "Errors and warnings \u2014 whole fleet",
-      "description": "The first thing to look at. Priority <= 4 is err/crit/alert/emerg plus warning, across all three hosts at once, so a fault that moved between machines is still one list.",
       "id": 1,
-      "datasource": {
-        "type": "victoriametrics-logs-datasource",
-        "uid": "victorialogs"
-      },
+      "title": "$level — whole fleet",
+      "description": "Was `priority:<=4 OR _msg:~\"(?i)\\\\b(error|...)\\\\b\"`, and matched NOTHING: the journal field is `PRIORITY` in capitals, and LogsQL reads `\\b` in a quoted string as a backspace rather than a word boundary. Both halves failed silently, which is the one way a log panel cannot be seen to be broken -- an empty error panel reads as a quiet fleet.",
       "gridPos": {
         "x": 0,
         "y": 0,
@@ -73,28 +187,28 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "_msg:* AND (priority:<=4 OR _msg:~\"(?i)\\\\b(error|fatal|panic|traceback)\\\\b\")",
           "datasource": {
             "type": "victoriametrics-logs-datasource",
             "uid": "victorialogs"
-          }
+          },
+          "expr": "$level"
         }
-      ]
-    },
-    {
-      "type": "logs",
-      "title": "Everything from $host",
-      "description": "Unfiltered journal for one machine. Use this once the panel above has told you which.",
-      "id": 2,
+      ],
       "datasource": {
         "type": "victoriametrics-logs-datasource",
         "uid": "victorialogs"
-      },
+      }
+    },
+    {
+      "type": "logs",
+      "id": 4,
+      "title": "The application — $tier, $country, $level",
+      "description": "Both deployments of every country, sliced by the fields the shipper derives from the pod name. `namespace:kinowo` is what makes it ours rather than Flux's or the cluster's.",
       "gridPos": {
         "x": 0,
         "y": 10,
         "w": 24,
-        "h": 10
+        "h": 11
       },
       "options": {
         "showTime": true,
@@ -106,26 +220,26 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "host:$host",
           "datasource": {
             "type": "victoriametrics-logs-datasource",
             "uid": "victorialogs"
-          }
+          },
+          "expr": "namespace:kinowo AND $tier AND $country AND $level"
         }
-      ]
-    },
-    {
-      "type": "logs",
-      "title": "The application worker (k3s pod logs)",
-      "description": "The worker's own output. It runs as a pod, so these arrive from /var/log/pods on k3s-worker-1 rather than from the journal -- which is why they are a separate panel and not a unit filter.",
-      "id": 3,
+      ],
       "datasource": {
         "type": "victoriametrics-logs-datasource",
         "uid": "victorialogs"
-      },
+      }
+    },
+    {
+      "type": "logs",
+      "id": 2,
+      "title": "Everything from $host",
+      "description": "One machine, both its own units and any pods it runs.",
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 21,
         "w": 24,
         "h": 10
       },
@@ -139,13 +253,17 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "_msg:* AND host:k3s-worker-1 AND _msg:~\"(?i)(kinowo|services\\\\.|scrape|enrich)\"",
           "datasource": {
             "type": "victoriametrics-logs-datasource",
             "uid": "victorialogs"
-          }
+          },
+          "expr": "host:$host AND $level"
         }
-      ]
+      ],
+      "datasource": {
+        "type": "victoriametrics-logs-datasource",
+        "uid": "victorialogs"
+      }
     }
   ]
 }

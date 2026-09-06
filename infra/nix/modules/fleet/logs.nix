@@ -134,6 +134,68 @@ let
   '';
 
   # ------------------------------------------------------------------------------------------------
+  # ONE `level`, OUT OF THREE SOURCES THAT EACH SPELL IT DIFFERENTLY
+  # ------------------------------------------------------------------------------------------------
+  #
+  # WITHOUT THIS THERE IS NO WAY TO ASK FOR THE ERRORS. The fleet states a severity three ways and
+  # shares none of them: the application prints `19:26:51 INFO  services.tasks.X - ...` as TEXT,
+  # Flux and etcd emit JSON carrying `"level":"info"`, and journald attaches a numeric syslog
+  # `PRIORITY`. So the dashboard asked the only question those have in common -- a regular
+  # expression over the message -- which is a full scan, and wrong in both directions: it misses a
+  # spelling it did not list, and it matches the word "error" inside a sentence reporting success.
+  #
+  # RUN AFTER `mergeJsonBodyVrl`, WHICH IS WHAT MAKES THE PRECEDENCE RIGHT. A JSON body that names
+  # its own level is the application speaking, and it is more accurate than the PRIORITY journald
+  # stamped on the line that carried it -- etcd logs a `warn` on a line systemd files as `info`.
+  # Reading `.level` first and falling back to PRIORITY is what prefers the former.
+  #
+  # NOT A STREAM FIELD, AND THAT IS THE DELIBERATE HALF. Every other name in that list identifies a
+  # SOURCE -- host, unit, app -- and holds still for as long as the source exists. A level changes
+  # from line to line WITHIN one source, so sharding on it would cut every stream into five and
+  # interleave them, spending compression and locality to speed up a filter VictoriaLogs is already
+  # fast at. It describes the line, not where the line came from, so it stays an ordinary field.
+  levelVrl = ''
+    level_value = .level
+    if is_null(level_value) { level_value = .severity }
+
+    # THE APPLICATION'S OWN FORMAT, which is logback's and has no JSON in it anywhere. Anchored at
+    # the start, so a stack-trace continuation line -- which carries no level and should inherit
+    # none -- does not match, and neither does the word ERROR in the middle of a message.
+    if is_null(level_value) {
+      message_text = to_string(.message) ?? ""
+      text_level, text_level_error = parse_regex(message_text, r'^\d{2}:\d{2}:\d{2}(?:[.,]\d+)? +(?P<level>[A-Z]+) ')
+      if text_level_error == null { level_value = text_level.level }
+    }
+
+    # THE SYSLOG NUMBER LAST, because it is the coarsest of the three. The mapping is syslog's own:
+    # 0-3 emerg/alert/crit/err, 4 warning, 5-6 notice/info, 7 debug.
+    if is_null(level_value) && !is_null(.PRIORITY) {
+      priority = to_int(.PRIORITY) ?? 6
+      if priority <= 3 {
+        level_value = "ERROR"
+      } else if priority == 4 {
+        level_value = "WARN"
+      } else if priority <= 6 {
+        level_value = "INFO"
+      } else {
+        level_value = "DEBUG"
+      }
+    }
+
+    # ONE SPELLING PER SEVERITY, so `level:WARN` means the same thing whichever source it came from.
+    # An unrecognised value is KEPT rather than dropped: this field does not shard, so a surprising
+    # value costs nothing, and discarding it would lose what the application actually said.
+    if !is_null(level_value) {
+      normalised_level = upcase(to_string(level_value) ?? "")
+      if normalised_level == "WARNING" { normalised_level = "WARN" }
+      if normalised_level == "ERR" || normalised_level == "SEVERE" { normalised_level = "ERROR" }
+      if normalised_level == "CRIT" || normalised_level == "CRITICAL" { normalised_level = "FATAL" }
+      if normalised_level != "" { .level = normalised_level }
+    }
+  '';
+
+
+  # ------------------------------------------------------------------------------------------------
   # THE JOURNAL
   # ------------------------------------------------------------------------------------------------
   journalSources = {
@@ -184,6 +246,7 @@ let
         .role = "${config.fleet.role}"
 
         ${mergeJsonBodyVrl}
+        ${levelVrl}
       '';
     };
   };
@@ -214,8 +277,29 @@ let
   #
   # THE POD NAME IS DELIBERATELY NOT A STREAM FIELD. Its value carries a fresh ReplicaSet hash on
   # every deploy, so sharding on it would mint streams for ever with no ceiling and no way to
-  # un-ingest them. It is still stored in `file` and still searchable; it simply does not shard.
-  # `container` and `namespace` ARE stream fields: both are bounded by what is deployed.
+  # un-ingest them. It is still stored in `pod` and in `file`, and still searchable; it simply does
+  # not shard. `container` and `namespace` ARE stream fields: both are bounded by what is deployed.
+  #
+  # ------------------------------------------------------------------------------------------------
+  # WHY `app`, `tier` AND `country` ARE DERIVED FROM THE POD NAME
+  # ------------------------------------------------------------------------------------------------
+  #
+  # `container` IS NOT THE DEPLOYMENT. Every country's worker runs a container called `worker` and
+  # every country's web pod runs one called `web`, so all five workers arrived as ONE stream and a
+  # question as ordinary as "what did the German worker say" could not be asked at all -- the whole
+  # corpus was `container="worker"`, 18k lines an hour with no way to tell `worker-de` from
+  # `worker-pl`. The country lives in the DEPLOYMENT name, which reaches us only inside the pod
+  # name, so it has to be taken from there.
+  #
+  # THREE FIELDS AND NOT ONE, because they are three different questions:
+  #   app     -- `worker-de`: this deployment, the thing that is rolled out and rolled back
+  #   tier    -- `worker`:    every country's worker at once, which is how a pipeline bug looks
+  #   country -- `de`:        web AND worker for one country, which is how a country outage looks
+  #
+  # THEY COST NOTHING IN STREAM CARDINALITY, which is the objection worth answering up front. Each
+  # is a FUNCTION of `app` -- `worker-de` is always tier `worker` and always country `de` -- so
+  # adding them multiplies the stream count by one. It is `app` alone that adds streams, and it adds
+  # one per deployment: about a dozen, bounded by the gitops repository rather than by traffic.
   podLogSources = {
     pod_logs = {
       type = "file";
@@ -258,19 +342,56 @@ let
           .timestamp = parse_timestamp(cri.ts, "%+") ?? .timestamp
         }
 
-        # NAMESPACE AND CONTAINER OUT OF THE PATH. Anchored at the start and stopping at the first
-        # `_`, because a POD name may contain `-` but a NAMESPACE may not contain `_` -- so the
-        # first underscore is an unambiguous boundary.
-        pod_path, pod_path_error = parse_regex(.file, r'^${cfg.kubernetesPodLogs.logRoot}/(?P<namespace>[^_/]+)_[^/]+/(?P<container>[^/]+)/')
+        # NAMESPACE, POD AND CONTAINER OUT OF THE PATH. Anchored at the start and split on `_`,
+        # because a POD name may contain `-` but neither a NAMESPACE nor a pod name may contain
+        # `_` -- so the underscores are unambiguous boundaries. The trailing `[^_/]+` is the pod
+        # UID, matched to prove the shape and then discarded: it is unique per pod and useful to
+        # nobody searching.
+        pod_path, pod_path_error = parse_regex(.file, r'^${cfg.kubernetesPodLogs.logRoot}/(?P<namespace>[^_/]+)_(?P<pod>[^_/]+)_[^_/]+/(?P<container>[^/]+)/')
         if pod_path_error == null {
           .namespace = pod_path.namespace
           .container = pod_path.container
           .env = pod_path.namespace
+          .pod = pod_path.pod
+
+          # THE DEPLOYMENT, OUT OF THE POD NAME. A Deployment names its pods
+          # `<deployment>-<replicaset-hash>-<suffix>`, and both trailing segments come from an
+          # alphabet with no `-` in it, so stripping exactly two of them is unambiguous however
+          # many dashes the deployment's own name has: `image-automation-controller-6f9dc4dffc-82ddx`
+          # gives back all three words of the controller.
+          #
+          # A POD THAT DOES NOT MATCH LEAVES `app` UNSET, and that is the safe direction rather
+          # than a shortcoming. StatefulSet and DaemonSet pods are named differently, and a
+          # half-stripped name would still carry a per-deploy hash -- which, as a STREAM FIELD,
+          # is precisely the unbounded-cardinality failure the note above exists to prevent.
+          # Unset shards nothing; the pod name is still in `pod` for searching.
+          app_name, app_error = parse_regex(pod_path.pod, r'^(?P<app>.+)-[a-z0-9]{5,10}-[a-z0-9]{5}$')
+          if app_error == null {
+            .app = app_name.app
+
+            # THE COUNTRY IS THE LAST SEGMENT, WHEN IT IS TWO LETTERS. Read off the name rather
+            # than matched against a list of countries on purpose: a list is a second place to
+            # remember during a country onboarding, and the one that gets forgotten -- so a new
+            # country would ship, log, and be invisible here until somebody noticed. Two letters
+            # is what every country code in this project is, and it is bounded by that.
+            #
+            # `kustomize-controller` ends in a word, not a code, so it gets no country and its
+            # `tier` is the whole name -- which is the honest answer for a pod that is not one of
+            # ours.
+            tier_country, tier_country_error = parse_regex(app_name.app, r'^(?P<tier>.+)-(?P<country>[a-z]{2})$')
+            if tier_country_error == null {
+              .tier = tier_country.tier
+              .country = tier_country.country
+            } else {
+              .tier = app_name.app
+            }
+          }
         } else {
           .env = "${config.fleet.environment}"
         }
 
         ${mergeJsonBodyVrl}
+        ${levelVrl}
       '';
     };
   };
@@ -350,9 +471,15 @@ let
         #   namespace -- k8s namespaces: a handful
         #   container -- container names, NOT pod names: bounded by what is deployed
         #   type      -- stdout | stderr
+        #   app       -- deployment names, NOT pod names: one per rollout target, about a dozen
+        #   tier      -- `web` | `worker`, plus one per non-ours deployment
+        #   country   -- the two-letter code, one per country this project serves
         # A field that never arrives (a journal line has no `container`) simply does not
         # participate, so one list serves both sources.
-        _stream_fields = "host,job,env,role,unit,namespace,container,type";
+        #
+        # `pod` IS ABSENT FROM THIS LIST ON PURPOSE -- see the pod-log header. It is shipped and
+        # searchable, and it is the one field here whose value changes on every single deploy.
+        _stream_fields = "host,job,env,role,unit,namespace,container,type,app,tier,country";
       };
 
       # SEE MECHANISMS 1 AND 2 IN THE HEADER. This is the part that makes VictoriaLogs being down a
@@ -475,9 +602,31 @@ in
         '';
       };
     };
+
+    settings = lib.mkOption {
+      type = lib.types.attrs;
+      internal = true;
+      readOnly = true;
+      description = ''
+        The rendered vector configuration, as a VALUE, for tests to read.
+
+        NOT SET BY ANYONE -- it is this module's own output, exposed for the same reason
+        `nix/files/reboot-required.sh` is a file rather than an inline activation fragment: so
+        something other than the running host can ask it what it says. `test/test_log_fields.sh`
+        takes the pod-log transform out of here and runs the REAL vector against it.
+
+        THE YAML FILE CANNOT SERVE THAT PURPOSE, and the difference is not stylistic. It is
+        produced by a derivation that builds on the target's platform, so `nix build` on it from a
+        developer's aarch64-darwin machine fails `platform mismatch` -- the config would be
+        testable only on Linux, which is how a test ends up running exclusively in CI. An attrset
+        is evaluated, not built, so it reads the same everywhere.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
+    fleet.logs.settings = vectorConfig;
+
     assertions = [
       {
         assertion = cfg.serverAddress != "";

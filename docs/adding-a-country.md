@@ -586,6 +586,14 @@ edit.
    discovers nothing, so a country missing from this file is simply unmonitored — no
    error, no red target, no panel.
 
+2. **`infra/nix/files/monitoring/grafana/dashboards/fleet/kinowo-logs.json`** — add
+   the new code to the `country` template variable's option list. The LOGS themselves
+   need nothing: the shipper reads `country` off the deployment name, so a new
+   country is labelled and searchable (`country:<cc>` in Explore) the moment its pod
+   starts. It is only the dropdown that is a written-down list, and the cost of
+   missing this step is a country whose logs are one Explore query away rather than
+   invisible.
+
 That is the whole of it. Two Fly-era chores that used to belong here are gone with
 the platform: a Victoria scrape target for the retired stack, and a
 `WorkerThrottle<Cc>` webhook contact point posting to
