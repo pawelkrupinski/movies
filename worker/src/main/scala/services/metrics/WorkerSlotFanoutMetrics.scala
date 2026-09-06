@@ -2,6 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import models.Source
 import services.movies.StoredMovieRecord
 
 /**
@@ -17,6 +18,11 @@ import services.movies.StoredMovieRecord
  * mean is ~16 venues per film while its widest sits at 698, and the United States averages
  * ~53 against a widest of 3,327 (`coyotevsacme|2026`). An average of 53 says this is cheap;
  * the maximum says one changed showtime on one film can cost three thousand projections.
+ *
+ * THOSE FOUR NUMBERS WERE MEASURED UNDER THE OLD ALL-SOURCES COUNT and are therefore each two or
+ * three slots high: until 2026-09-06 this counted every source on the film, metadata included.
+ * They are kept because the argument they support is about orders of magnitude, and re-measuring
+ * only moves 3,327 to about 3,324. Read them as a ceiling.
  *
  * `changedSlots` removed the REDUNDANT part of that cost — the rows a whole-film write
  * touched without changing. It cannot remove the rest: a wide release that genuinely does
@@ -47,15 +53,19 @@ class WorkerSlotFanoutMetrics(widest: Gauge, countryCode: String) extends Corpus
     // Tmdb / Imdb / Filmweb metadata slots to a number the help text and the panel both describe as
     // cinema slots: every film read two or three wider than it is, and a TMDB-only film with no
     // venue at all reported a fanout. Only cinema slots become `screenings` rows, so only they are
-    // the blast radius. `cinemaSlots` covers `CinemaShowing` as well as `Cinema` (`Source.cinemaOf`)
-    // -- a per-title venue slot rings the stream exactly like its venue does.
+    // the blast radius. `Source.cinemaOf` is the test because it covers `CinemaShowing` as well as
+    // `Cinema` -- a per-title venue slot rings the stream exactly like its venue does.
     //
     // IT DELIBERATELY DOES NOT ASK FOR SHOWTIMES. `showtimesOf` is what `replaceFilm` actually
     // keys on, and it would be the truer measure on a stitched row -- but this rides a corpus scan
     // that may be the CHEAP one, whose rows carry no showtimes at all, and a gauge that silently
     // reads zero on half the scans is worse than one that counts a slot whose showtimes are empty.
+    //
+    // COUNTED OFF AN ITERATOR rather than `record.cinemaSlots.size`, which materialises a `Seq` of
+    // pairs for every row. This runs once per film on a corpus-wide pass, and the number it wants
+    // is a count.
     def accept(row: StoredMovieRecord): Unit = {
-      val slots = row.record.cinemaSlots.size
+      val slots = row.record.data.keysIterator.count(source => Source.cinemaOf(source).isDefined)
       if (slots > max) max = slots
     }
 
@@ -75,7 +85,7 @@ object WorkerSlotFanoutMetrics {
   def gauge(registry: PrometheusRegistry): Gauge =
     Gauge.builder()
       .name(Name)
-      .help("Cinema slots carried by the WIDEST film in the country's movies corpus — the blast radius of one film's write. Every write path in the read-split is per-film, and the screenings change stream rings once per row written, so one venue changing one showtime costs the slot count of the film it changed: 3,327 for the widest US film against a ~53 average. A maximum, not an average, because the distribution is long-tailed and only the tail is expensive.")
+      .help("Cinema slots carried by the WIDEST film in the country's movies corpus — the blast radius of one film's write. Every write path in the read-split is per-film, and the screenings change stream rings once per row written, so one venue changing one showtime costs the slot count of the film it changed: about 3,327 for the widest US film against a ~53 average (measured 2026-09-04, when this counted metadata sources too, so both are a couple high). A maximum, not an average, because the distribution is long-tailed and only the tail is expensive.")
       .labelNames("country")
       .register(registry)
 }

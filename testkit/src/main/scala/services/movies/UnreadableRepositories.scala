@@ -39,6 +39,12 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   // dropped the screenings change stream and never persisted its resume token: the spec looked
   // like it was exercising the real repository and was quietly running without half of it. Only
   // the per-film READS are meant to fail here.
+  //
+  // `close` IS LOAD-BEARING, MEASURED, NOT ARGUED. A review reasoned it should go — a decorator
+  // tearing down a store its caller owns looks like a lifetime bug — and removing it turned
+  // `MovieRepositoryIntegrationSpec`'s screenings-resume case red: a decorator that swallows
+  // `close` leaves the underlying cursor open, and a stray cursor on the same collection is
+  // exactly what a resume-token test cannot survive. Both delegations stay.
   override def watch(onChange: String => Unit,
                      demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] =
     store.watch(onChange, demand)

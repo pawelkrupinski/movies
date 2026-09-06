@@ -61,10 +61,19 @@ class UptimeTagWriteRollbackIntegrationSpec extends AnyFlatSpec with Matchers wi
    */
   override protected def afterAll(): Unit = {
     monitor.close()
+    // NOTHING HERE MAY THROW. A cleanup that fails must not replace the suite's own result with
+    // its own, and must not skip `super.afterAll()` on the way out — an `afterAll` that throws
+    // reports as a suite-level abort, which reads exactly like a real failure and hides one. The
+    // per-call timeouts are well inside the loop's budget so a single hung drop cannot overrun it.
     try Eventually.eventually({
-      Await.result(db.drop().toFuture(), 30.seconds)
-      Await.result(db.listCollectionNames().toFuture(), 30.seconds) shouldBe empty
+      Await.result(db.drop().toFuture(), 5.seconds)
+      Await.result(db.listCollectionNames().toFuture(), 5.seconds) shouldBe empty
     }, timeoutMs = 20000, pollMs = 250)
+    catch {
+      case _: Throwable =>
+        // Say so rather than leaving a stray database for someone to find by counting.
+        info(s"could not confirm ${db.name} was dropped; sweep kinowo_isolated_* if it lingers")
+    }
     finally tools.IsolatedMongoDatabase.drop(db)
     super.afterAll()
   }
