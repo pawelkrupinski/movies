@@ -680,16 +680,29 @@ groups:
 
       # ---- Per-city served-film count swung suddenly (either direction) -----
       # The web exposes kinowo_web_movies_served{city,scope} — distinct films
-      # served per /:city/ page, sampled every minute from the real serving path
-      # (all future showings / showing tomorrow). This rule fires when a city's
-      # count deviates from its own trailing 1h average by >50% AND by >=4 films
-      # — in EITHER direction (abs()). The relative test catches the shape of a
-      # read-model outage (a malformed web_movies row empties the corpus → a city
-      # craters to 0); the absolute >=4 floor suppresses the noise of tiny-town
-      # cities where +-2 films is a normal day-to-day swing. It's inherently a
-      # TRANSITION ping (the 1h baseline catches up within ~an hour, so it
-      # self-resolves); the city-empty rule below is the companion that keeps
-      # paging while a city stays dark.
+      # served per /:city/ page, sampled every minute from the real serving path.
+      # This rule fires when a city's count deviates from its own trailing 1h
+      # average by >50% AND by >=4 films — in EITHER direction (abs()). The
+      # relative test catches the shape of a read-model outage (a malformed
+      # web_movies row empties the corpus → a city craters to 0); the absolute
+      # >=4 floor suppresses the noise of tiny-town cities where +-2 films is a
+      # normal day-to-day swing. It's inherently a TRANSITION ping (the 1h
+      # baseline catches up within ~an hour, so it self-resolves); the city-empty
+      # rule below is the companion that keeps paging while a city stays dark.
+      #
+      # scope="all" ONLY, and that selector is load-bearing. The other scope,
+      # "tomorrow", counts films showing on the NEXT LOCAL CALENDAR DAY, so every
+      # city's series steps to a different day's programme at local midnight and
+      # the 1h baseline spends the next hour averaging two unrelated days. On
+      # 2026-09-06 that paged a batch of DE cities at 00:31 CEST for a Sunday →
+      # Monday rollover into small-town Kinos that are simply shut on Mondays:
+      # bernkastel-kues 18 → 0, meppen 20 → 1, finsterwalde 14 → 3,
+      # marktredwitz 11 → 1 — the same four values those cities had printed at
+      # the same rollover one week earlier, while their scope="all" series never
+      # moved a film across either midnight. No threshold separates that from a
+      # real drop, because on this metric it IS the same event; only the calendar
+      # day on each side of the step differs, and the rule cannot ask.
+      # Guarded by worker deploy.GrafanaServedSwingScopeSpec.
       - uid: kinowo-movies-served-swing
         title: Films served per city swung suddenly
         condition: C
@@ -708,7 +721,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '(abs(kinowo_web_movies_served - avg_over_time(kinowo_web_movies_served[1h])) / clamp_min(avg_over_time(kinowo_web_movies_served[1h]), 1)) and (abs(kinowo_web_movies_served - avg_over_time(kinowo_web_movies_served[1h])) >= 4)'
+              expr: '(abs(kinowo_web_movies_served{scope="all"} - avg_over_time(kinowo_web_movies_served{scope="all"}[1h])) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and (abs(kinowo_web_movies_served{scope="all"} - avg_over_time(kinowo_web_movies_served{scope="all"}[1h])) >= 4)'
               instant: true
               range: false
               intervalMs: 1000
