@@ -100,7 +100,7 @@ class UptimeMonitor(
    *  no-op. The compound index keeps its own `Try` so a TTL that cannot be
    *  reconciled can't skip it. */
   private def ensureIndexes(c: MongoCollection[Document]): Unit = {
-    db.foreach(MongoTtlIndex.reconcile(_, c, "bucket", BucketTtlSeconds, "UptimeMonitor"))
+    MongoTtlIndex.reconcile(c, "bucket", BucketTtlSeconds, "UptimeMonitor")
 
     Try {
       Await.result(c.createIndex(

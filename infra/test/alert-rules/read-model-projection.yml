@@ -212,3 +212,62 @@ tests:
       - eval_time: 2h
         alertname: ReadModelFilmPruneBurst
         exp_alerts: []
+
+  # ---------------------------------------------------------------------------------------------
+  # TTL-INDEX RECONCILIATION. The gauge is always present and 0 when healthy, so the interesting
+  # assertion is that a healthy fleet is SILENT from both rules — the `absent()` companion must not
+  # fire merely because the value is zero.
+  # ---------------------------------------------------------------------------------------------
+  - interval: 1m
+    name: every TTL index matching the code is silent
+    input_series:
+      - series: 'kinowo_worker_ttl_index_mismatches{country="pl",instance="10.20.0.12:9091",job="kinowo-worker"}'
+        values: "0x70"
+      - series: 'kinowo_worker_ttl_index_mismatches{country="de",instance="10.20.0.12:9092",job="kinowo-worker"}'
+        values: "0x70"
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: TtlIndexUnreconciled
+        exp_alerts: []
+      # A ZERO IS A SAMPLE. If this fired, the rule would be testing presence rather than truth.
+      - eval_time: 65m
+        alertname: TtlIndexMetricAbsent
+        exp_alerts: []
+
+  - interval: 1m
+    name: an index the app could not reconcile fires
+    input_series:
+      - series: 'kinowo_worker_ttl_index_mismatches{country="pl",instance="10.20.0.12:9091",job="kinowo-worker"}'
+        values: "1x30"
+      - series: 'kinowo_worker_ttl_index_mismatches{country="de",instance="10.20.0.12:9092",job="kinowo-worker"}'
+        values: "0x30"
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: TtlIndexUnreconciled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "1 TTL index(es) do not match what the code asks for"
+              description: "A TTL index's `expireAfterSeconds` disagrees with the constant in the code AND the app could not rebuild it. THE COSTLY CASE IS AN INDEX THAT IS NOW ABSENT: the reconciler drops and recreates (`collMod` is not in `readWrite`), so a drop that succeeded and a create that failed leaves the collection reaping NOTHING and growing without bound -- check `detailCache-*` and `uptimeBuckets` sizes first. WHICH collection is in the worker log, not in this metric: `kubectl -n kinowo logs deploy/worker-pl | grep -i \"TTL index\"` names it along with both expiries. This class of drift was invisible until 2026-09-06, when `detailCache-cinema-city` was found still reaping at 6h a day after the code moved it to 2h, so treat a sustained reading here as real."
+      - eval_time: 25m
+        alertname: TtlIndexMetricAbsent
+        exp_alerts: []
+
+  - interval: 1m
+    name: the gauge going away fires the companion, not the comparison
+    input_series:
+      - series: 'up{job="kinowo-worker",instance="10.20.0.12:9091"}'
+        values: "1x70"
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: TtlIndexUnreconciled
+        exp_alerts: []
+      - eval_time: 65m
+        alertname: TtlIndexMetricAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "No worker is publishing the TTL-index reconciliation gauge"
+              description: "`kinowo_worker_ttl_index_mismatches` has no series, so `TtlIndexUnreconciled` cannot fire and nothing is watching whether the TTL constants in the code are the ones Mongo is enforcing. Either every worker is down -- TargetDown in monitoring-self.rules is the better alert then -- or `TtlIndexMetrics.register` has been dropped from `WorkerMetrics`, which TargetDown would NOT catch because the pod serves /metrics perfectly well without this family in it."

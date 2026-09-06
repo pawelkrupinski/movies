@@ -91,7 +91,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     val collection = sentinel("create")
     forget()
 
-    MongoTtlIndex.reconcile(database, collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
 
     expiryOf(collection, "at") shouldBe Some(86400L)
     sent("createIndexes") shouldBe 1
@@ -102,13 +102,13 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
 
   it should "send no collMod when the expiry already matches" in {
     val collection = sentinel("agrees")
-    MongoTtlIndex.reconcile(database, collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
     expiryOf(collection, "at") shouldBe Some(86400L)
 
     // Second call is the one under test: this is what every pod boot after the
     // first does, and it is where the ~300 rejected commands per rollout came from.
     forget()
-    MongoTtlIndex.reconcile(database, collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
 
     sent("listIndexes") shouldBe 1
     sent("collMod") shouldBe 0
@@ -116,7 +116,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     expiryOf(collection, "at") shouldBe Some(86400L)
   }
 
-  it should "reconcile an existing index whose expiry disagrees" in {
+  it should "reconcile an existing index whose expiry disagrees, by REBUILDING it" in {
     val collection = sentinel("disagrees")
     Await.result(collection.createIndex(
       Indexes.ascending("at"),
@@ -125,12 +125,30 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     expiryOf(collection, "at") shouldBe Some(100L)
 
     forget()
-    MongoTtlIndex.reconcile(database, collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
 
-    // collMod is the ONLY thing that can change an existing TTL, so it has to go
-    // out here — the read-back is what decides that, not a createIndex conflict.
-    sent("collMod") shouldBe 1
     expiryOf(collection, "at") shouldBe Some(86400L)
+    // DROP THEN CREATE, NOT collMod. `readWrite` carries dropIndex and createIndex and
+    // not collMod (asked of the server: db.getRole("readWrite", {showPrivileges:true})),
+    // so the rebuild is the only reconciliation `kinowo_app` can perform itself. A spec
+    // that accepted a collMod here would pass locally — where the test user is
+    // unrestricted — and describe something production cannot do.
+    withClue("the reconciler used collMod, which kinowo_app is not authorised for: ")(sent("collMod") shouldBe 0)
+    sent("dropIndexes")  shouldBe 1
+    sent("createIndexes") shouldBe 1
+    // The read-back after the rebuild is what would catch a drop that succeeded and a
+    // create that did not, so a reconciled index must leave nothing outstanding.
+    MongoTtlIndex.Mismatches.names should not contain collection.namespace.getCollectionName
+  }
+
+  it should "report a mismatch when the index cannot be reconciled at all" in {
+    // A collection that does not exist and cannot be created is the only way to reach
+    // the un-reconcilable branch without a restricted user: an invalid collection name
+    // fails both the read and the create.
+    val collection = database.getCollection[Document]("__integration_test_ttl_$bad$name")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+    MongoTtlIndex.Mismatches.names should contain (collection.namespace.getCollectionName)
+    MongoTtlIndex.Mismatches.count should be > 0
   }
 
   it should "ignore a compound index that merely mentions the field" in {
@@ -140,7 +158,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     ).toFuture(), 10.seconds)
 
     forget()
-    MongoTtlIndex.reconcile(database, collection, "at", 86400L, "spec")
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
 
     // A TTL index is single-field by definition; the compound one is not the index
     // being reconciled, so the single-field TTL still has to be CREATED.

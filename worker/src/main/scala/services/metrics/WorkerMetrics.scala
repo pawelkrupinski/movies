@@ -39,6 +39,10 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: Int) {
   // object shared by every country's wiring, so a `country` label would be a lie.
   StringPoolMetrics.register(registry)
 
+  // TTL indexes the reconciler could not bring into line — also process-level, and
+  // also a count rather than a labelled series, for the reason its own doc gives.
+  TtlIndexMetrics.register(registry)
+
   // In-process cache occupancy (`kinowo_worker_cache_*`), one labelled family for
   // every cache any country's wiring registers. Registered once here; the callback
   // reads whatever is in `cacheRegistrations` at scrape time, so a wiring built

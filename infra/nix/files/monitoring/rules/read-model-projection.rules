@@ -183,3 +183,49 @@ groups:
             monitoring-self.rules is also firing and is the better alert to read -- or the
             projector is no longer wired to `WorkerTaskMetrics`, which TargetDown would NOT catch
             because the pod is up and serving /metrics without this family in it.
+
+      # -------------------------------------------------------------------------------------------
+      # TTL INDEXES THAT DO NOT MATCH THE CODE. Separate from the projection rules above and in this
+      # file because it is the same shape: an app-published `kinowo_worker_*` gauge about whether
+      # the pipeline's own storage is configured the way the code says.
+      # -------------------------------------------------------------------------------------------
+      - alert: TtlIndexUnreconciled
+        # ZERO IS THE ONLY HEALTHY VALUE, so this is `> 0` and not a tuned threshold. The gauge is
+        # always present and reads 0 when every TTL index agrees with its constant, which is why it
+        # can be compared rather than tested for presence.
+        expr: max(kinowo_worker_ttl_index_mismatches) > 0
+        # TEN MINUTES: the reconciler runs at construction, so a rollout is the only time this can
+        # legitimately flicker while pods come up on a new constant and rebuild their indexes.
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} TTL index(es) do not match what the code asks for"
+          description: >-
+            A TTL index's `expireAfterSeconds` disagrees with the constant in the code AND the app
+            could not rebuild it. THE COSTLY CASE IS AN INDEX THAT IS NOW ABSENT: the reconciler
+            drops and recreates (`collMod` is not in `readWrite`), so a drop that succeeded and a
+            create that failed leaves the collection reaping NOTHING and growing without bound --
+            check `detailCache-*` and `uptimeBuckets` sizes first. WHICH collection is in the
+            worker log, not in this metric: `kubectl -n kinowo logs deploy/worker-pl | grep -i
+            "TTL index"` names it along with both expiries. This class of drift was invisible until
+            2026-09-06, when `detailCache-cinema-city` was found still reaping at 6h a day after
+            the code moved it to 2h, so treat a sustained reading here as real.
+
+      # THE COMPANION, in the shape this file and mongodb.rules use throughout: a comparison cannot
+      # fire when its series is missing, and a metric that has gone away looks exactly like health.
+      - alert: TtlIndexMetricAbsent
+        expr: absent(kinowo_worker_ttl_index_mismatches)
+        # ONE HOUR, matching ReadModelProjectionMetricsAbsent: longer than a full fleet rollout.
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "No worker is publishing the TTL-index reconciliation gauge"
+          description: >-
+            `kinowo_worker_ttl_index_mismatches` has no series, so `TtlIndexUnreconciled` cannot
+            fire and nothing is watching whether the TTL constants in the code are the ones Mongo
+            is enforcing. Either every worker is down -- TargetDown in monitoring-self.rules is the
+            better alert then -- or `TtlIndexMetrics.register` has been dropped from
+            `WorkerMetrics`, which TargetDown would NOT catch because the pod serves /metrics
+            perfectly well without this family in it.
