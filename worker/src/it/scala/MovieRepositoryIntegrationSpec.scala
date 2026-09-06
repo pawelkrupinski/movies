@@ -60,6 +60,35 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     ) finally client.close()
   }
 
+  /** Block until a change stream demonstrably DELIVERS, by making changes until one
+   *  comes back, then assert it did.
+   *
+   *  `watchChanges` / `watch` subscribe and return; the cursor opens asynchronously
+   *  (`MovieRepository.ensureWatching` hands the driver an `Observer` and the server-side
+   *  open completes later, in `onSubscribe`). So a write issued right after one of them
+   *  returns can beat the cursor open, and an event nobody was listening for is simply
+   *  gone — after which the latch the test is really about can only time out. A fixed
+   *  `Thread.sleep` is a guess at that window, and it makes a slow runner look exactly
+   *  like the bug the spec exists to catch.
+   *
+   *  `change(n)` MUST make a genuinely different write each pass — `n` is there to vary
+   *  it — or the loop stops owing itself an event and spins to the deadline.
+   *
+   *  `fired` is by-name and re-checked every pass; pass something that waits about a
+   *  second (`latch.await(1, TimeUnit.SECONDS)`), so the loop paces itself. */
+  private def awaitStreamLive(what: String, fired: => Boolean)(change: Int => Unit): Unit = {
+    val deadline = System.currentTimeMillis() + 60000
+    var passes   = 0
+    var live     = false
+    while (!live && System.currentTimeMillis() < deadline) {
+      passes += 1
+      change(passes)
+      live = fired
+    }
+    withClue(s"the change stream never delivered $what, so nothing below is testing " +
+             s"what it claims to: ")(live shouldBe true)
+  }
+
   // Purge at the START too, not only at the end: a run interrupted before its
   // `afterAll` (a killed `IntegrationTest/test`, a CI timeout, an OOM) leaves
   // its sentinels behind and nothing else removes them — they strand on /debug
@@ -475,20 +504,14 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // failure a BROKEN RESUME produces (a latch that times out), so the one bug this
       // spec exists to catch is indistinguishable from a slow runner. Writing a warm-up
       // slot until one comes back proves the stream is live, and costs nothing once it is.
-      val warmDeadline = System.currentTimeMillis() + 60000
-      var established  = false
-      var warmHour     = 0
-      while (!established && System.currentTimeMillis() < warmDeadline) {
-        // A FRESH HOUR EVERY PASS. The warm-up used to re-write the same showtime, which was
-        // a change only the first time round — harmless while Mongo rang for byte-identical
-        // rewrites too, and an infinite loop the moment it stopped. Each pass is now a real
-        // change, so each has an event owed and the loop can actually converge.
-        warmHour += 1
-        repo1.upsertSlot(filmWarm, "Multikino␟W", at(warmHour % 23 + 1))
-        established = gotWarm.await(1, TimeUnit.SECONDS)
+      // A FRESH HOUR EVERY PASS. The warm-up used to re-write the same showtime, which was
+      // a change only the first time round — harmless while Mongo rang for byte-identical
+      // rewrites too, and an infinite loop the moment it stopped. Each pass is now a real
+      // change, so each has an event owed and the loop can actually converge.
+      awaitStreamLive("a warm-up event, so nothing below is testing resumption",
+                      gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+        repo1.upsertSlot(filmWarm, "Multikino␟W", at(pass % 23 + 1))
       }
-      withClue("the screenings change stream never delivered a warm-up event, so nothing " +
-               "below is testing resumption: ")(established shouldBe true)
 
       repo1.upsertSlot(filmA, "Multikino␟A", at(10))
       gotA.await(15, TimeUnit.SECONDS) shouldBe true
@@ -661,17 +684,10 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // The film has to EXIST for the apply's `findById` to fan anything out, and the stream
       // has to be established before the burst — established by DELIVERY, not by a nap.
       repo.upsert(title, year, MovieRecord(imdbId = Some(Imdb)))
-      val deadline = System.currentTimeMillis() + 60000
-      var hour     = 0
-      var live     = false
-      while (!live && System.currentTimeMillis() < deadline) {
-        hour += 1
-        scr.upsertSlot(id, "Warm␟c", Seq(Showtime(LocalDateTime.of(2099, 1, 1, hour % 23 + 1, 0), None)))
-        live = warmed.await(1, TimeUnit.SECONDS)
-      }
-      withClue("the screenings change stream never delivered, so a low projection count would " +
-               "mean nothing was arriving rather than that it was being coalesced: ") {
-        live shouldBe true
+      awaitStreamLive("a warm-up event, so a low projection count below would mean nothing " +
+                      "was arriving rather than that it was being coalesced",
+                      warmed.await(1, TimeUnit.SECONDS)) { pass =>
+        scr.upsertSlot(id, "Warm␟c", Seq(Showtime(LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)))
       }
       dispatched.set(0); sink.reset()
 
@@ -943,15 +959,27 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       seen shouldBe 2
 
       // a screenings change fans out a (stitched) upsert on the movies change stream
-      val got    = new CountDownLatch(1)
-      val handle = repo.watchChanges(r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) got.countDown(), _ => ())
+      //
+      // The bell is RE-ARMED rather than a single latch, because the warm-up below has to
+      // ring it too — the callback filters on this film's id, and warming a different film
+      // would leave the id this test actually asserts on unproven. Ring it with a throwaway
+      // cinema key, so the `Multikino` slot chain the assertions above and below run on is
+      // untouched, then fit a fresh latch for the write that matters.
+      val bell   = new java.util.concurrent.atomic.AtomicReference(new CountDownLatch(1))
+      val handle = repo.watchChanges(
+        r => if (StoredMovieRecord.idOf(r, titleNormalizer) == id) bell.get().countDown(), _ => ())
       try {
-        Thread.sleep(1500)
+        awaitStreamLive("a warm-up fanout for the split-reads film",
+                        bell.get().await(1, TimeUnit.SECONDS)) { pass =>
+          scr.upsertSlot(id, "Warm␟c",
+            Seq(Showtime(java.time.LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)))
+        }
+        bell.set(new CountDownLatch(1))
         val after2 = after.copy(data = Map[Source, SourceData](Multikino ->
           after.data(Multikino).copy(showtimes = after.data(Multikino).showtimes :+
             Showtime(java.time.LocalDateTime.of(2026, 6, 1, 22, 0), Some("https://book/sr-3")))))
         repo.updateIfPresent(title, year, after, after2) // showtimes-only → screenings write → fanout
-        got.await(15, TimeUnit.SECONDS) shouldBe true
+        bell.get().await(15, TimeUnit.SECONDS) shouldBe true
       } finally handle.foreach(_.close())
 
       repo.delete(title, year)
