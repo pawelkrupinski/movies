@@ -142,31 +142,40 @@ class WebReadModel(reader: ReadModelReader) extends Stoppable with Logging {
   def movie(id: String): Option[ResolvedMovie] = Option(movies.get(id))
   def allMovies(): Seq[ResolvedMovie]           = movies.values.asScala.toSeq
 
-  /** Film→URL addressing for the whole corpus at once ([[FilmSlugs]] explains
-   *  why it can't be a per-title fold). Recomputed only when the corpus
-   *  actually changes: it walks every movie, and a city listing would otherwise
-   *  redo that work on every request. `lastModified` is the same stamp the
-   *  change streams already bump, so a stale map can't outlive an upsert. */
-  def filmSlugs: FilmSlugs = {
-    // VERSIONED BY THE SLUG CORPUS, NOT BY EVERY CHANGE. `FilmSlugs` walks and
-    // sorts the whole corpus, and it is a pure function of the
-    // (id, title, releaseYear) projection — precisely what `_globalFloor`
-    // tracks. Keyed on the model-wide stamp instead, a showtime edit anywhere
-    // discarded the map and the next listing render rebuilt every address in
-    // the corpus; screenings are the bulk of all events, so the memo almost
-    // never hit. The floor moves only when a film enters, leaves, or changes
-    // title/year — the only things that can re-address anything.
-    val stamp = _globalFloor.get()
-    val cached = _filmSlugs
-    if (cached != null && cached._1 == stamp) cached._2
-    else {
-      val fresh = FilmSlugs(allMovies())
-      _filmSlugs = (stamp, fresh)
-      fresh
+  /** An index that is a pure function of the (id, title, releaseYear) corpus,
+   *  rebuilt only when that corpus changes: it walks every movie, and a request
+   *  would otherwise redo that work every time.
+   *
+   *  VERSIONED BY THE FILM CORPUS, NOT BY EVERY CHANGE. `_globalFloor` moves
+   *  only when a film enters, leaves, or changes title/year — the only things
+   *  that can re-address anything. Keyed on the model-wide stamp instead, a
+   *  showtime edit anywhere discarded the map and the next render rebuilt every
+   *  address in the corpus; screenings are the bulk of all events, so the memo
+   *  almost never hit. */
+  private final class CorpusIndex[A](build: Seq[ResolvedMovie] => A) {
+    @volatile private var cached: (java.time.Instant, A) = null
+    def get: A = {
+      val stamp = _globalFloor.get()
+      val hit   = cached
+      if (hit != null && hit._1 == stamp) hit._2
+      else {
+        val fresh = build(allMovies())
+        cached = (stamp, fresh)
+        fresh
+      }
     }
   }
 
-  @volatile private var _filmSlugs: (java.time.Instant, FilmSlugs) = null
+  private val filmSlugsIndex  = new CorpusIndex(FilmSlugs(_))
+  private val filmTitlesIndex = new CorpusIndex(FilmTitles(_))
+
+  /** Film→URL addressing for the whole corpus at once ([[FilmSlugs]] explains
+   *  why it can't be a per-title fold). */
+  def filmSlugs: FilmSlugs = filmSlugsIndex.get
+
+  /** Title→film for the legacy `?title=` address ([[FilmTitles]] explains why
+   *  it is a fold, not a string match). */
+  def filmTitles: FilmTitles = filmTitlesIndex.get
   def screeningsForCity(citySlug: String): Seq[CityScreening] = {
     val current = bucket(citySlug)
     // A city that changed slug still has most of its rows projected under the

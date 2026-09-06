@@ -54,18 +54,21 @@ final class FilmSlugs private(private val idToSlug: Map[String, String],
 
 object FilmSlugs {
 
+  /** Newest first, then title, then id: total and stable, so the film that
+   *  keeps the bare slug never depends on the read model's iteration order. A
+   *  film with no year sorts last — it can't be qualified with one either, so
+   *  it is the worst candidate to hold a contested address. [[FilmTitles]]
+   *  lists a same-title pair in this order too, so both indexes agree on which
+   *  film a bare title means. */
+  private[readmodel] def newestFirst(m: ResolvedMovie): (Boolean, Int, String, String) =
+    (m.releaseYear.isEmpty, -m.releaseYear.getOrElse(0), m.title, m._id)
+
   def apply(movies: Seq[ResolvedMovie]): FilmSlugs = {
     // Bare fold per film, dropping those with no addressable slug at all.
     val folded: Seq[(ResolvedMovie, String)] =
       movies.flatMap(m => Option(tools.Slugify(m.title)).filter(_.nonEmpty).map(m -> _))
 
-    // Newest first, then title, then id: total and stable, so the film that
-    // keeps the bare slug never depends on the read model's iteration order. A
-    // film with no year sorts last — it can't be qualified with one either, so
-    // it is the worst candidate to hold a contested address.
-    val ordered = folded.sortBy { case (m, _) =>
-      (m.releaseYear.isEmpty, -m.releaseYear.getOrElse(0), m.title, m._id)
-    }
+    val ordered = folded.sortBy { case (m, _) => newestFirst(m) }
 
     val taken  = collection.mutable.Set.empty[String]
     val idTo   = collection.mutable.Map.empty[String, String]

@@ -23,6 +23,14 @@ object TestReadModel {
     ReadModelProjection.ratingsFor(record, title)
 
   def fromRecords(records: Seq[(String, Option[Int], MovieRecord)]): WebReadModel = {
+    val readModel = new WebReadModel(store(records))
+    readModel.reload()
+    readModel
+  }
+
+  /** The projected store alone, for a spec that wants its own [[WebReadModel]]
+   *  subclass over it (one that counts reads, say). Call `reload()` on it. */
+  def store(records: Seq[(String, Option[Int], MovieRecord)]): InMemoryReadModelRepository = {
     val store = new InMemoryReadModelRepository()
     records.foreach { case (title, year, record) =>
       val stored = StoredMovieRecord(title, year, record)
@@ -33,8 +41,6 @@ object TestReadModel {
         screenings.foreach(store.upsertScreening)
       }
     }
-    val readModel = new WebReadModel(store)
-    readModel.reload()
-    readModel
+    store
   }
 }

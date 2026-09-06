@@ -239,9 +239,13 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
     )
 
   def film(city: City, title: String): Option[FilmSchedule] = {
+    // Matched through the read model's title index rather than by folding every
+    // schedule's title per request; among the films the index names, the first
+    // in schedule order (earliest showtime) wins, as it always has.
+    val schedules = toSchedules(city)
     def lookup(t: String): Option[FilmSchedule] = {
-      val needle = normalizeTitle(t)
-      toSchedules(city).find(s => normalizeTitle(s.movie.title) == needle)
+      val ids = readModel.filmTitles.idsFor(t).toSet
+      if (ids.isEmpty) None else schedules.find(s => ids(s.resolved._id))
     }
     // Telegram (and some other chat apps) re-percent-encode a pasted URL whose
     // query already carries %XX escapes: our `%20` becomes `%2520`, `%C5%BC`
@@ -277,7 +281,9 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
       .orElse {
         readModelFallback(
           city,
-          readModel.allMovies().filter(m => matches(m._id, m.title)).minByOption(_.title),
+          // An address the index knows is one read; only an unknown one walks
+          // the corpus re-slugging titles — the safety net for a stale link.
+          addressed.fold(readModel.allMovies().filter(m => matches(m._id, m.title)).minByOption(_.title))(readModel.movie),
           reference = s"slug='$slug'"
         )
       }
@@ -296,10 +302,10 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
    *  None. Each hit is logged so the rate of "a link would have broken" is
    *  visible alongside the worker metrics. */
   private def knownMovieFallback(city: City, title: String, decoded: Option[String]): Option[FilmSchedule] = {
-    def byTitle(t: String): Option[ResolvedMovie] = {
-      val needle = normalizeTitle(t)
-      readModel.allMovies().find(m => normalizeTitle(m.title) == needle)
-    }
+    // Newest first, per `FilmTitles`: a same-title pair with no live schedule
+    // here resolves to the film that holds the bare slug.
+    def byTitle(t: String): Option[ResolvedMovie] =
+      readModel.filmTitles.idsFor(t).iterator.flatMap(readModel.movie).nextOption()
     readModelFallback(city, byTitle(title).orElse(decoded.flatMap(byTitle)), reference = s"title='$title'")
   }
 
@@ -313,8 +319,6 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
         s"(reprojection/rekey gap or ended run): $reference filmId=${movie._id}")
       filmSchedule(movie, cinemaFilmUrls = Seq.empty, showings = Seq.empty, city)
     }
-
-  private def normalizeTitle(title: String): String = TitleNormalizer.normalize(title)
 }
 
 object MovieControllerService {
