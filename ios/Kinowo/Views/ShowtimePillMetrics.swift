@@ -62,11 +62,27 @@ enum ShowtimePillMetrics {
     private static let formatWeight: CGFloat = 0.23
 
     /// Narrowest portrait screen width the two-pills-per-row guarantee is held
-    /// against. 390 pt — the iPhone 12/13/14 generation — is the floor going
-    /// forward; the 375 pt phones (SE, 8, X/XS/11 Pro, 12/13 mini) are
-    /// deliberately excluded (their pills wrap to one per row). Single source of
-    /// truth for the floor: `ShowtimePillMetricsTests` and the tuning screen's
-    /// fit readout both measure against this.
+    /// against — a hard, pinned invariant (`ShowtimePillMetricsTests`): two
+    /// canonical pills ("12:55 2D DUB" + "22:55 3D NAP") share one row in a
+    /// two-column portrait card on every supported phone.
+    ///
+    /// Android holds the same invariant in
+    /// `ShowtimeChipMetrics.ReferenceWidthDp` (360 dp), and the two numbers
+    /// differ on purpose. pt and dp are both ~160 logical px per inch, so
+    /// 390 pt and 360 dp ARE different physical widths — each is simply the
+    /// narrowest device its platform still supports. 390 pt is the iPhone
+    /// 12 / 13 / 14 / 16e base width (the 15 / 16 are 393 pt), the floor after the
+    /// 375 pt phones (SE, 8, X/XS/11 Pro, 12/13 mini) were deliberately dropped
+    /// from two-up (their pills wrap to one per row); 360 dp is the Galaxy S /
+    /// budget Android portrait width, which Android cannot drop. The roles
+    /// differ too: this is the width the fit test measures fixed-size pills
+    /// against, while Android's is the scale-1.0 anchor its chips grow from.
+    /// Aligning the numbers would change which devices each platform
+    /// guarantees, not unify anything. `ShowtimeChipMetrics.kt` carries the
+    /// twin of this block.
+    ///
+    /// Single source of truth for the floor: `ShowtimePillMetricsTests` and the
+    /// tuning screen's fit readout both measure against this.
     static let narrowestSupportedWidth: CGFloat = 390
 
     /// Rendered width of one pill: both insets, the time text, and —

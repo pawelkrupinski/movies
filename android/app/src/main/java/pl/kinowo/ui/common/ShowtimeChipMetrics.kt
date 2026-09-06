@@ -23,7 +23,23 @@ package pl.kinowo.ui.common
  * holds there too. Capped so tablets / foldables don't balloon the chips.
  */
 object ShowtimeChipMetrics {
-    /** The width (dp) the baseline chip values are tuned at — the 360 dp floor. */
+    /**
+     * The width (dp) the baseline chip values are tuned at — the 360 dp floor —
+     * and the reference the two-chips-per-row invariant is held against
+     * (`ShowtimeChipFitTest`, `ShowtimeChipMetricsTest`).
+     *
+     * iOS holds the same invariant in `ShowtimePillMetrics.narrowestSupportedWidth`
+     * (390 pt), and the two numbers differ on purpose. dp and pt are both ~160
+     * logical px per inch, so 360 dp and 390 pt ARE different physical widths —
+     * each is simply the narrowest device its platform still supports. 360 dp is
+     * the Galaxy S / budget Android portrait width, which Android cannot drop;
+     * 390 pt is the iPhone 12 / 13 / 14 / 16e base width, iOS's floor after the 375 pt
+     * phones were deliberately dropped from two-up. The roles differ too: this is
+     * the scale-1.0 anchor the chips grow from (never shrink), while iOS's is the
+     * width its fit test measures fixed-size pills against. Aligning the numbers
+     * would change which devices each platform guarantees, not unify anything.
+     * `ShowtimePillMetrics.swift` carries the twin of this block.
+     */
     const val ReferenceWidthDp = 360f
 
     /** Never shrink below the baseline (360 dp is the narrowest we support); the
