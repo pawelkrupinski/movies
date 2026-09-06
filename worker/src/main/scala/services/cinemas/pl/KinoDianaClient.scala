@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import tools.HttpFetch
 import models._
 import play.api.libs.json._

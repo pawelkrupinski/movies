@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import org.jsoup.nodes.Document
 import models.*
 import tools.HttpFetch

@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import models._
 import play.api.libs.json._
 import org.jsoup.Jsoup

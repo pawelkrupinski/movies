@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import scala.math.Ordering.Implicits.infixOrderingOps
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 

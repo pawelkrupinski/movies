@@ -1,4 +1,4 @@
-package services.cinemas.pl
+package services.cinemas.common
 
 import org.jsoup.nodes.{Document, Element}
 import services.movies.FormatTags
