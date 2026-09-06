@@ -12,8 +12,14 @@ package controllers
  *
  * The tag is WEAK (`W/"…"`). It is a content VERSION, not a hash of the body,
  * and the same one is stamped on the gzipped and the identity response — weak
- * is what that actually is. It is also the only kind Cloudflare forwards on
- * HTML: a strong one never reached the edge these policies are written for.
+ * is what that actually is.
+ *
+ * ⚠️ AND EVERY REVALIDATING POLICY CARRIES `no-transform`, or the tag reaches
+ * nobody. Cloudflare recompresses our gzip to brotli on `text/html` and drops
+ * the ETag rather than describe bytes it rewrote — measured on an uncached page
+ * on both domains, and weak was stripped exactly as strong had been.
+ * `no-transform` is what withdraws that permission; `MovieController.conditionalGzipped`
+ * has the numbers.
  */
 enum CachePolicy {
 

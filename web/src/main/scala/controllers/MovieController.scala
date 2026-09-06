@@ -453,9 +453,29 @@ class MovieController( cc: ControllerComponents,
       .truncatedTo(java.time.temporal.ChronoUnit.SECONDS)
     val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
       .format(lastMod.atOffset(java.time.ZoneOffset.UTC))
+    // `no-transform` IS WHAT LETS THE ETAG BELOW REACH ANYONE. Cloudflare deletes
+    // the ETag from every `text/html` response these two zones serve -- measured
+    // 2026-09-06 on an UNCACHED (`cf-cache-status: BYPASS`) page, so it is not a
+    // stale stored copy, and on BOTH domains; a weak tag was stripped exactly as a
+    // strong one was, while the JSON built by this same method came through
+    // untouched. The transform it is reserving the right to make is visible in the
+    // response: the origin sends `content-encoding: gzip` and the edge hands the
+    // client `content-encoding: br`, having recompressed the body. Bytes it rewrites
+    // are bytes no validator of ours can describe, so it drops ours rather than
+    // forward a lie. `no-transform` withdraws the permission (it also covers Email
+    // Obfuscation, Rocket Loader and Mirage -- none of which have anything to do
+    // here: the listing carries no email address and the edge body contains no
+    // `cdn-cgi` marker).
+    //
+    // THE TRADE, MEASURED on `/uk/manchester/`: a full fetch grows from 228,940
+    // bytes (edge brotli) to 287,531 (our gzip), +26%. A revalidation shrinks from
+    // 287,531 -- Cloudflare answers a conditional ONLY from an ETag, so with none to
+    // send, a refreshing browser was being handed the entire body under a 200 -- to
+    // a bodiless 304. Any client that asks twice is already ahead, and this page is
+    // one people come back to.
     val cacheControl: Seq[(String, String)] = policy match {
-      case CachePolicy.BrowserOnly         => Seq("Cache-Control" -> "private, no-cache")
-      case CachePolicy.RevalidatedAnywhere => Seq("Cache-Control" -> "public, max-age=0, must-revalidate")
+      case CachePolicy.BrowserOnly         => Seq("Cache-Control" -> "private, no-cache, no-transform")
+      case CachePolicy.RevalidatedAnywhere => Seq("Cache-Control" -> "public, max-age=0, must-revalidate, no-transform")
       case CachePolicy.Unset               => Nil
     }
     // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`

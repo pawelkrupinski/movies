@@ -94,7 +94,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     header("Last-Modified", result) shouldBe defined
     // No TTL: the per-city ETag is exact, so the edge revalidates rather than
     // trusting a clock for N seconds.
-    header("Cache-Control", result) shouldBe Some("public, max-age=0, must-revalidate")
+    header("Cache-Control", result) shouldBe Some("public, max-age=0, must-revalidate, no-transform")
   }
 
   it should "304 a refresh whose If-Modified-Since is current, with no body" in {
@@ -135,7 +135,7 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val result = ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))
 
     status(result) shouldBe OK
-    header("Cache-Control", result) shouldBe Some("private, no-cache")
+    header("Cache-Control", result) shouldBe Some("private, no-cache, no-transform")
   }
 
   it should "carry validators so that revalidation can come back empty" in {
@@ -246,6 +246,40 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     val etag = header("ETag", ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))).get
 
     etag should startWith ("W/\"")
+  }
+
+  // ── `no-transform`, without which the ETag above reaches nobody ────────────
+  //
+  // Cloudflare deletes the ETag from every text/html response these zones serve.
+  // Measured 2026-09-06 against an UNCACHED page (`cf-cache-status: BYPASS`, so
+  // not a stale stored copy) on BOTH domains: the origin sent
+  // `W/"45a95918-6a9d0554"` and the edge sent no ETag at all, while the JSON this
+  // same controller method builds came through with its tag intact. Making the tag
+  // weak did NOT fix it -- weak was stripped exactly as strong had been.
+  //
+  // What it is reserving the right to do is legible in the response: the origin
+  // sends `content-encoding: gzip`, the edge hands the client `content-encoding:
+  // br`. It recompresses the body, so no validator we write describes what it
+  // serves, so it drops ours. `no-transform` withdraws that permission.
+  "every cacheable response" should "forbid the edge transforming the body, or it drops the ETag" in {
+    val (ctrl, _) = buildController()
+
+    header("Cache-Control", ctrl.index("poznan")(gzipRequest("/poznan/"))).get should
+      include ("no-transform")
+    header("Cache-Control", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))).get should
+      include ("no-transform")
+    header("Cache-Control", ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))).get should
+      include ("no-transform")
+  }
+
+  it should "keep saying no-transform on the 304, which is the response that carries the win" in {
+    val (ctrl, _) = buildController()
+    val etag = header("ETag", ctrl.index("poznan")(gzipRequest("/poznan/"))).get
+
+    val refresh = ctrl.index("poznan")(
+      gzipRequest("/poznan/").withHeaders("If-None-Match" -> etag))
+    status(refresh) shouldBe NOT_MODIFIED
+    header("Cache-Control", refresh).get should include ("no-transform")
   }
 
   // ── Weak comparison, which is the one RFC 9110 mandates for If-None-Match ──

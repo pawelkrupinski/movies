@@ -46,7 +46,12 @@ class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
   // NO TTL. The listing carries a per-city ETag, so the edge revalidates
   // against the validator instead of trusting a clock — `s-maxage` would only
   // add a window in which a changed city page is served stale.
-  private val SharedCacheControl = "public, max-age=0, must-revalidate"
+  //
+  // AND `no-transform`, which is what lets that ETag survive the trip. Cloudflare
+  // recompresses our gzip to brotli on `text/html` and drops the validator rather
+  // than describe bytes it rewrote, so the revalidation this whole offer is built
+  // around had nothing to run on.
+  private val SharedCacheControl = "public, max-age=0, must-revalidate, no-transform"
 
   "The listing rendered for a request carrying a session" should "name nobody" in {
     val body = contentAsString(controller().index("poznan")(signedInRequest()))
@@ -100,7 +105,7 @@ class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
   "A filtered listing" should "stay out of the shared cache" in {
     header("Cache-Control", controller().index("poznan")(
       FakeRequest("GET", "/poznan/?cinema=Helios").withHeaders("Accept-Encoding" -> "gzip")))
-      .value shouldBe "private, no-cache"
+      .value shouldBe "private, no-cache, no-transform"
   }
 
   // The one response that DOES name a visitor is the one the page fetches, and it
