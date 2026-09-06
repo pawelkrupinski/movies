@@ -2,6 +2,7 @@ package services.enrichment
 
 import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
+import services.movies.SamePerson
 import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -356,32 +357,17 @@ object MetacriticClient {
   /** Could a page naming `theirs` be the film whose directors are `ours`?
    *
    *  Silent unless BOTH sides name somebody — a page that lists no director, or a
-   *  film we hold none for, is not evidence of anything and must not be rejected.
-   *  Names are compared by their word tokens so ordering and punctuation don't
-   *  matter ("Zhang Yimou" / "Yimou Zhang"), and one name's tokens CONTAINED in
-   *  another's counts, so a co-director credit still meets a single name. */
+   *  film we hold none for, is not evidence of anything and must not be rejected;
+   *  nor is a credit that folds away to nothing (a CJK name, which [[SamePerson]]
+   *  cannot read either way). Otherwise ANY of ours naming ANY of theirs is
+   *  agreement, so a co-director credit still meets a single name — and what
+   *  "naming" forgives (order, apostrophes, accents, initials, a feed's
+   *  truncation or one-letter miss) is [[SamePerson]]'s one answer, not a
+   *  Metacritic-only one. */
   def directorsCompatible(ours: Set[String], theirs: Set[String]): Boolean = {
-    // Fold the spelling before comparing. Rating sites and TMDB render the same
-    // person differently: Metacritic writes "Ken'ichirô Akimoto" where TMDB has
-    // "Kenichiro Akimoto" — an apostrophe that must not split the name in two, and
-    // a circumflex that must not make it a different word. Dropping apostrophes
-    // and folding diacritics first makes both read as {kenichiro, akimoto}.
-    def tokens(name: String): Set[String] = {
-      // `\u0142` is its own codepoint, not a base letter plus a mark, so NFD leaves it
-      // alone and "Micha\u0142" would never meet "Michal" \u2014 the same special case the
-      // corpus's own `TitleNormalizer` carries.
-      val folded = java.text.Normalizer
-        .normalize(name.toLowerCase.replace("'", "").replace("\u2019", ""), java.text.Normalizer.Form.NFD)
-        .replaceAll("\\p{M}", "")
-        .replace("\u0142", "l")
-      folded.split("[^\\p{L}\\p{N}]+").filter(_.length >= 2).toSet
-    }
-    if (ours.isEmpty || theirs.isEmpty) true
-    else {
-      val a = ours.map(tokens).filter(_.nonEmpty)
-      val b = theirs.map(tokens).filter(_.nonEmpty)
-      a.isEmpty || b.isEmpty || a.exists(x => b.exists(y => x.subsetOf(y) || y.subsetOf(x)))
-    }
+    val a = ours.map(SamePerson.tokens).filter(_.nonEmpty)
+    val b = theirs.map(SamePerson.tokens).filter(_.nonEmpty)
+    a.isEmpty || b.isEmpty || a.exists(x => b.exists(SamePerson.sameTokens(x, _)))
   }
 
   /** How far a probed page's release year may sit from the film's before we

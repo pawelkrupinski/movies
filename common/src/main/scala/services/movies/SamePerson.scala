@@ -14,6 +14,9 @@ import tools.{EditDistance, TextNormalization}
  * commits on 2026-09-05 taught the second one initials, surname-first credits,
  * truncations, transliterations and familiar forms; the first never heard of any of
  * them, so a search hit could be rejected by a name the sweep would have accepted.
+ * The four site matchers that judge a hit by its director — `MetacriticClient`,
+ * `FilmwebClient`, `OMDbClient`, `ImdbClient` — ask here too; each keeps only its
+ * own rule for what an EMPTY side means.
  *
  * The comparison is deliberately LOOSE. A missed match costs one row a re-check or a
  * search fallback; a false "different person" force-re-resolves a film that was

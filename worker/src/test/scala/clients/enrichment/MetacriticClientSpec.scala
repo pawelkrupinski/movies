@@ -637,6 +637,17 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     MetacriticClient.directorsCompatible(Set("Joel Coen"), Set("Joel Coen", "Ethan Coen"))  shouldBe true
   }
 
+  /** Real shapes from `SamePersonSpec`: a UK feed's one-letter miss ("Paul
+   *  Verhoven" from six venues), a truncated credit ("Michael Gottli"), a
+   *  familiar form ("Tom Donnelly") and an initial. A token-set comparison
+   *  called each a different director and threw the correct page away. */
+  it should "accept the same person misspelt by a letter, truncated, in a familiar form, or by an initial" in {
+    MetacriticClient.directorsCompatible(Set("Paul Verhoven"), Set("Paul Verhoeven"))                    shouldBe true
+    MetacriticClient.directorsCompatible(Set("Michael Gottli"), Set("Michael Gottlieb"))                  shouldBe true
+    MetacriticClient.directorsCompatible(Set("Thomas Michael Donnelly"), Set("Tom Donnelly"))             shouldBe true
+    MetacriticClient.directorsCompatible(Set("Alejandro G. Iñárritu"), Set("Alejandro González Iñárritu")) shouldBe true
+  }
+
   it should "stay silent when either side names nobody" in {
     // A page listing no director is not evidence of a different film, and neither
     // is a film we hold no director for. Rejecting on a gap would lose every
