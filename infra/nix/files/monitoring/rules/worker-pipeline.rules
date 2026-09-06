@@ -176,8 +176,15 @@ groups:
       # `deferred` IS EXCLUDED FROM THE DENOMINATOR TOO, and leaving it in was a bug for one day.
       # Excluding it from the numerator alone means a circuit-breaker storm -- thousands of tasks
       # refused untried, all landing in the denominator -- DILUTES the ratio and suppresses the
-      # alert at exactly the moment the pipeline is spinning hardest and achieving least. The
-      # denominator has to be the work that was actually attempted.
+      # alert at exactly the moment the pipeline is spinning hardest and achieving least.
+      #
+      # `skipped` STAYS IN, and the distinction is not "was the work attempted" -- on that reading
+      # `skipped` (data already fresh) would come out too. It is which way the outcome MOVES with
+      # the failure this alert is looking for. `deferred` spikes WITH it: the same upstream outage
+      # that opens a circuit is what makes handlers throw beside it, so counting it lets the
+      # symptom hide the disease. `skipped` is the healthy-idle baseline and moves the other way;
+      # dropping it would put a quiet country with two retries at a ratio of 1.0 and leave the
+      # whole alert leaning on the absolute floor below.
       - alert: WorkerTasksFailingRepeatedly
         expr: >-
           (

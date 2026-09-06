@@ -675,20 +675,26 @@ in
       # `mongod.log` reads as ~0 bytes and the disk fills behind it. That is the exact shape this
       # whole stanza exists to prevent, and `|| true` was hiding it.
       #
-      # THE GUARD ASKS `pgrep`, NOT `systemctl is-active`, and the difference is the whole point.
-      # The first attempt at this guard asked the UNIT, which answers a different question: mongod
-      # running while the unit is not `active` -- during restart backoff, or started by hand -- took
-      # the `exit 0` branch, so the file was renamed, the signal skipped, and the rotation broke
-      # silently. That is the same hole `|| true` left, reopened by the fix for it. Asking whether
-      # the PROCESS exists is asking the thing the next line acts on, and it drops a `pkgs.systemd`
-      # reference this tree uses nowhere else.
+      # SIGNAL FIRST, THEN ASK A DIFFERENT QUESTION ABOUT THE FAILURE. Two earlier attempts at this
+      # guard both failed the same way, and the reason is worth stating: `pgrep --exact mongod`
+      # guarding `pkill --exact mongod` asks the SAME question twice, so it cannot tell "mongod is
+      # not running" from "mongod no longer answers to that name" -- and the second is precisely the
+      # drift that breaks rotation forever. Guarding on `systemctl is-active` instead had the mirror
+      # flaw: a mongod alive but outside its unit took the quiet branch.
       #
-      # A process that legitimately is not there stays quiet -- mongod stopped for maintenance is
-      # not a rotation failure, there is nothing to signal, and the next start appends to the fresh
-      # file (`logAppend`). A process that IS there and does not take the signal fails the unit.
+      # So the signal is attempted unconditionally, and only its FAILURE is interpreted -- by the
+      # unit, which is a different oracle from the process name. Not signalled and the unit is up:
+      # the name has drifted, rotation is silently broken, fail the unit and let `SystemdUnitFailed`
+      # say so. Not signalled and the unit is down: mongod is genuinely stopped, there is nothing to
+      # signal, and the next start appends to the fresh file (`logAppend`). `pkill` also returns
+      # non-zero when it matched but could not signal, which lands in the loud branch, correctly.
+      #
+      # `config.systemd.package` rather than `pkgs.systemd`: it is the systemd this host actually
+      # runs, and the only spelling anything else in this tree uses.
       postrotate = ''
-        ${pkgs.procps}/bin/pgrep --exact mongod > /dev/null || exit 0
-        ${pkgs.procps}/bin/pkill -SIGUSR1 --exact mongod
+        ${pkgs.procps}/bin/pkill -SIGUSR1 --exact mongod && exit 0
+        ${config.systemd.package}/bin/systemctl is-active --quiet mongodb && exit 1
+        exit 0
       '';
     };
 
