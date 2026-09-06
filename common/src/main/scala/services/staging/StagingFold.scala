@@ -1,7 +1,7 @@
 package services.staging
 
 import models.MovieRecord
-import services.movies.{CacheKey, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
 
 /**
  * The PURE decision half of folding a newcomer's staging rows into `movies`,
@@ -62,17 +62,23 @@ object StagingFold {
    *  enrichment; a fold that merely merges into an existing `movies` row is not
    *  listed (that row already carries its ratings). */
   case class Plan(
-    moviesUpserts:  Seq[(CacheKey, MovieRecord)],
-    moviesDeletes:  Seq[CacheKey],
+    /** Each surviving film: the id it is stored under, the key it now answers to, and
+     *  the merged record. A yearless newcomer whose year TMDB concluded keeps its id and
+     *  changes key — a RETITLE, not a new document (see [[FilmId]]). */
+    moviesUpserts:  Seq[(FilmId, CacheKey, MovieRecord)],
+    moviesDeletes:  Seq[FilmId],
     stagingDeletes: Seq[StagingRecord],
     newPromotions:  Seq[(CacheKey, MovieRecord)],
-    /** Each retired `movies` key paired with the key it folded INTO — the same rows as
+    /** Each retired `movies` id paired with the id it folded INTO — the same rows as
      *  `moviesDeletes`, but attributed, so a caller can migrate the loser's side-collection
      *  rows onto the winner instead of orphaning them. Attribution has to happen here
      *  because only `planGroup` knows which cluster a loser belonged to; a group that
      *  produces several surviving rows has several different winners. */
-    retirements:    Seq[(CacheKey, CacheKey)] = Nil
-  )
+    retirements:    Seq[(FilmId, FilmId)] = Nil
+  ) {
+    /** The surviving rows by key, for callers that hand them on to the cache. */
+    def folded: Seq[(CacheKey, MovieRecord)] = moviesUpserts.map { case (_, k, r) => k -> r }
+  }
 
   /** The TMDB ids carried by a group's rows. A folder loads existing `movies` rows
    *  with these ids under ANY title and feeds them to `planGroup` too, so a
@@ -112,7 +118,10 @@ object StagingFold {
    *  shared tmdbId — the same partition the cache `canonicalizeBySanitize` settle
    *  runs over the whole corpus, applied here to the fold's neighbourhood. */
   def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord],
-                normalizer: TitleNormalizer, extraCinemaTitles: Seq[String] = Nil): Plan = {
+                normalizer: TitleNormalizer, extraCinemaTitles: Seq[String] = Nil,
+                // The id for a BRAND-NEW film. A caller with a store checks the candidate is
+                // not a live id there (`FilmId.fresh`'s `taken`); the pure default cannot.
+                fresh: CacheKey => FilmId = FilmId.fresh(_, _ => false)): Plan = {
     // Union the per-cinema staging rows to ONE row per (sanitize, year) key FIRST,
     // restoring the one-row-per-key invariant `clusterByFilm` assumes. Without it,
     // N separate YEARLESS cinema rows would each become a rule-4 singleton cluster
@@ -124,6 +133,10 @@ object StagingFold {
     }
     val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year, normalizer) -> r.record)
     val moviesKeys  = moviesByKey.map(_._1).toSet
+    // The id behind each existing key; two documents under one key (a legacy duplicate)
+    // resolve to the lower id, deterministically, and the other retires into it.
+    val idsByKey: Map[CacheKey, Seq[FilmId]] =
+      moviesRows.groupBy(r => CacheKey(r.title, r.year, normalizer)).view.mapValues(_.map(_.id).sortBy(_.value)).toMap
     // Union ACROSS the staging↔movies boundary too: `CacheKey` is case-insensitive,
     // so a staging "iron maiden" row and an already-promoted movies "Iron Maiden"
     // row share a key but sit in SEPARATE entries above. Left un-unioned they each
@@ -147,13 +160,19 @@ object StagingFold {
       // staging search title — movies stay a deterministic function of the corpus.
       // The existing `movies` rows this cluster folds INTO `canonKey`. Recorded per
       // cluster because that is the only place the loser→winner pairing is known.
-      val retired = cluster.map(_._1).distinct.filter(k => moviesKeys.contains(k) && k != canonKey)
-      (canonKey -> merged.copy(searchTitle = None), isNewFilm, retired.map(_ -> canonKey))
+      // The surviving id: the row already stored under the canonical key; else the
+      // best-ranked existing member's — its year or spelling changed, the film did not;
+      // else this is a brand-new film. Every other existing member retires into it.
+      val members  = cluster.map(_._1).distinct.filter(moviesKeys.contains)
+        .sortBy(FilmCanonicalizer.canonicalRank).flatMap(idsByKey(_))
+      val winnerId = idsByKey.get(canonKey).map(_.head).orElse(members.headOption).getOrElse(fresh(canonKey))
+      val retired  = members.filterNot(_ == winnerId).distinct
+      ((winnerId, canonKey, merged.copy(searchTitle = None)), isNewFilm, retired.map(_ -> winnerId))
     }
     val upserts       = planned.map(_._1)
-    val newPromotions = planned.collect { case (upsert, true, _) => upsert }
-    val canonicalKeys = upserts.map(_._1).toSet
-    val moviesDeletes = moviesByKey.map(_._1).distinct.filterNot(canonicalKeys.contains)
+    val newPromotions = planned.collect { case ((_, k, r), true, _) => k -> r }
+    val survivors     = upserts.map(_._1).toSet
+    val moviesDeletes = moviesRows.map(_.id).distinct.filterNot(survivors.contains)
     // Derived from `moviesDeletes`, never widening it: the deletes stay exactly what they
     // were, and this only says where each one's cinemas should go.
     val retiredSet    = moviesDeletes.toSet

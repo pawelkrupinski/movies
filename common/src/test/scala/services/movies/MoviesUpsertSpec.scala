@@ -28,7 +28,7 @@ class MoviesUpsertSpec extends AnyFlatSpec with Matchers {
   private val keepSlots: Map[Source, SourceData] => Map[Source, SourceData] = identity
 
   private def plan(stored: Try[Option[StoredMovieDto]], slotsLanded: Boolean = false) =
-    MoviesUpsert.plan(id, record, record.data, slotsLanded, keepSlots, stored, now)
+    MoviesUpsert.plan(id, id, record, record.data, slotsLanded, keepSlots, stored, now)
 
   "the movies write" should "go ahead when no document is stored" in {
     plan(Success(None)).unchanged shouldBe false
@@ -37,12 +37,12 @@ class MoviesUpsertSpec extends AnyFlatSpec with Matchers {
   it should "be skipped when the stored document already equals it, timestamps aside" in {
     // Stamped an hour ago, and with the slot marker `updateIfPresent` leaves behind — neither
     // may count as a difference, or the guard never fires on a film whose slots were patched.
-    val stored = StoredMovieDto.fromDomain(id, record, earlier).copy(slotsUpdatedAt = Some(earlier))
+    val stored = StoredMovieDto.fromDomain(id, id, record, earlier).copy(slotsUpdatedAt = Some(earlier))
     plan(Success(Some(stored))).unchanged shouldBe true
   }
 
   it should "go ahead when the stored document differs" in {
-    val stored = StoredMovieDto.fromDomain(id, record.copy(imdbRating = Some(7.4)), earlier)
+    val stored = StoredMovieDto.fromDomain(id, id, record.copy(imdbRating = Some(7.4)), earlier)
     plan(Success(Some(stored))).unchanged shouldBe false
   }
 
@@ -52,13 +52,13 @@ class MoviesUpsertSpec extends AnyFlatSpec with Matchers {
 
   "the document it writes" should "carry no slots once they have landed in movie_slots" in {
     plan(Success(None), slotsLanded = true).document shouldBe
-      StoredMovieDto.fromDomain(id, record.copy(data = Map.empty), now)
+      StoredMovieDto.fromDomain(id, id, record.copy(data = Map.empty), now)
   }
 
   it should "carry the slots in the repository's storage shape when they have not landed" in {
     val stripped: Map[Source, SourceData] => Map[Source, SourceData] = ScreeningsSplit.stripShowtimes
-    MoviesUpsert.plan(id, record, record.data, slotsLanded = false, stripped, Success(None), now).document shouldBe
-      StoredMovieDto.fromDomain(id, record.copy(data = stripped(record.data)), now)
-    plan(Success(None)).document shouldBe StoredMovieDto.fromDomain(id, record, now)
+    MoviesUpsert.plan(id, id, record, record.data, slotsLanded = false, stripped, Success(None), now).document shouldBe
+      StoredMovieDto.fromDomain(id, id, record.copy(data = stripped(record.data)), now)
+    plan(Success(None)).document shouldBe StoredMovieDto.fromDomain(id, id, record, now)
   }
 }

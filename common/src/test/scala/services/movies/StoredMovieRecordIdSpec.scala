@@ -29,7 +29,7 @@ class StoredMovieRecordIdSpec extends AnyFlatSpec with Matchers {
   it should "agree with fromStorage's round-trip (the id rebuilds to the same id)" in {
     val id      = StoredMovieRecord.idFor("Diuna", Some(2021), titleNormalizer)
     val rebuilt = StoredMovieRecord.fromStorage(id, MovieRecord(), titleNormalizer)
-    StoredMovieRecord.idOf(rebuilt, titleNormalizer) shouldBe id
+    rebuilt.id.value shouldBe id
   }
 
   it should "key each stored row on its own _id, so two docs never share a DOM id" in {
@@ -46,8 +46,8 @@ class StoredMovieRecordIdSpec extends AnyFlatSpec with Matchers {
       "zabriskiepoint|1970",
       MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Zabriskie Point (1970)")))), titleNormalizer)
 
-    StoredMovieRecord.idOf(baked, titleNormalizer) shouldBe "zabriskiepoint1970|1970"
-    StoredMovieRecord.idOf(clean, titleNormalizer) shouldBe "zabriskiepoint|1970"
-    StoredMovieRecord.idOf(baked, titleNormalizer) should not be StoredMovieRecord.idOf(clean, titleNormalizer)
+    baked.id.value shouldBe "zabriskiepoint1970|1970"
+    clean.id.value shouldBe "zabriskiepoint|1970"
+    baked.id.value should not be clean.id.value
   }
 }

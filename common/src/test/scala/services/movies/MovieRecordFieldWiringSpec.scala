@@ -134,7 +134,9 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
 
     // `slotsUpdatedAt` is stamped by the slot write itself, not by the patch, and `_id`
     // is the document's own key — everything else the storage shape holds must be here.
-    val notOnTheWire = persistedFields.filterNot(Set("slotsUpdatedAt")) diff emitted.toSeq
+    // `key` is the document's lookup key, written by the whole-document `upsert` (a
+    // retitle); a patch updates a row in place and never moves it.
+    val notOnTheWire = persistedFields.filterNot(Set("slotsUpdatedAt", "key")) diff emitted.toSeq
     withClue(s"a field is in MovieRecordPatch but never reaches Mongo (emitted: $emitted): ") {
       notOnTheWire shouldBe empty
     }

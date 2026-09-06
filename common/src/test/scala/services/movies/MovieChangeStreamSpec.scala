@@ -44,7 +44,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
   private def stream(source: HandFedSource) = new MovieChangeStream(
     source              = source,
     screenings          = None,
-    decode              = dto => Some(StoredMovieRecord(dto._id, None, MovieRecord(imdbId = dto.imdbId), persistedId = Some(dto._id))),
+    decode              = dto => Some(StoredMovieRecord(dto._id, None, MovieRecord(imdbId = dto.imdbId), id = FilmId(dto._id))),
     reread              = _ => None,
     resumeToken         = new ChangeStreamResumeToken("movies", database = None, enabled = false),
     changeStreamMetrics = ChangeStreamMetrics.noop,
@@ -66,8 +66,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(imdbId = Some("tt0000001")), Instant.EPOCH)))
 
       delivered.await(5, TimeUnit.SECONDS) shouldBe true
-      gotA.map(_.persistedId) shouldBe Seq(Some("film|2024"))
-      gotB.map(_.persistedId) shouldBe Seq(Some("film|2024"))
+      gotA.map(_.id) shouldBe Seq(FilmId("film|2024"))
+      gotB.map(_.id) shouldBe Seq(FilmId("film|2024"))
       gotA.head.record.imdbId shouldBe Some("tt0000001") // decoded through the injected decode, once
     } finally { handleA.close(); handleB.close(); under.close() }
 

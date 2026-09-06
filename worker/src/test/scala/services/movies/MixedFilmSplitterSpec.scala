@@ -209,7 +209,8 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
       screenings = Some(new InMemoryScreeningsRepository), slots = Some(new InMemorySlotsRepository),
       normalizer = titleNormalizer) {
       // The read COMPLETES and finds nothing — not a failure, so `readOk` stays true.
-      override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = (None, true)
+      override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean)   = (None, true)
+      override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = (None, true)
     }
     val cache   = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val staging = new InMemoryStagingRepository(normalizer = titleNormalizer)

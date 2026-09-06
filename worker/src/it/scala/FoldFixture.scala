@@ -97,7 +97,7 @@ object FoldFixture {
 
     /** The `movies` `_id`s currently in a sanitize group — what a fold left standing. */
     def filmIds(sanitize: String): Seq[String] =
-      Await.result(movies.find(Filters.regex("_id", s"^$sanitize\\|")).toFuture(), Timeout)
+      Await.result(movies.find(Filters.regex("key", s"^$sanitize\\|")).toFuture(), Timeout)
         .flatMap(_.get("_id").map(_.asString().getValue))
 
     /** Is this staging row still there? An assertion about what a fold decided means nothing

@@ -18,16 +18,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  collide, then hydrate. */
 class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
 
-  private def repositoryOf(rows: StoredMovieRecord*): MovieRepository = new MovieRepository {
-    val normalizer: TitleNormalizer = titleNormalizer
-    def enabled = true
-    def findAll() = rows.toSeq
-    def delete(t: String, y: Option[Int]) = ()
-    def deleteById(id: String) = ()
-    def upsert(t: String, y: Option[Int], e: MovieRecord) = ()
-    def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord) = false
-    override def close() = ()
-  }
+  private def repositoryOf(rows: StoredMovieRecord*): MovieRepository =
+    new StoredRowsRepository(rows.toSeq, titleNormalizer)
 
   // The rehydrate under test runs synchronously at cache construction, under the
   // rule set the cache HOLDS. Handing it the normalizer says so outright; this
@@ -121,16 +113,7 @@ class CacheRehydrateUnionSpec extends AnyFlatSpec with Matchers {
   // to the in-memory fold/settle. With retry enabled, boot waits Mongo out.
   private def flakeyRepository(row: StoredMovieRecord): MovieRepository = {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
-    new MovieRepository {
-      val normalizer: TitleNormalizer = titleNormalizer
-      def enabled = true
-      def findAll() = if (calls.getAndIncrement() == 0) Seq.empty else Seq(row)
-      def delete(t: String, y: Option[Int]) = ()
-      def deleteById(id: String) = ()
-      def upsert(t: String, y: Option[Int], e: MovieRecord) = ()
-      def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord) = false
-      override def close() = ()
-    }
+    new StoredRowsRepository(if (calls.getAndIncrement() == 0) Seq.empty else Seq(row), titleNormalizer)
   }
 
   "boot hydrate" should "retry an empty findAll (Mongo not ready) so quiescent rows still load" in {

@@ -76,7 +76,7 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
    *  succeeded. See the class doc for why. */
   def removeUnscreened(): Int = {
     val candidates = cache.entries.collect { case (k, e) if !e.cinemaData.values.exists(alive) => k }
-    val checked    = candidates.map(key => key -> repository.findByIdChecked(idOf(key)))
+    val checked    = candidates.map(key => key -> repository.findByKeyChecked(key))
 
     // An ABSENT row (`None`, read fine) is nothing to keep and nothing to lose: the cache
     // holds a key the corpus doesn't, so dropping it is the whole point of this pass.
@@ -130,7 +130,6 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
   /** The `_id` the delete would cascade against — the same formula
    *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by, so the
    *  record we corroborate against is exactly the one the delete would clear. */
-  private def idOf(key: CacheKey): String = StoredMovieRecord.idFor(key)
 
   private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"
 

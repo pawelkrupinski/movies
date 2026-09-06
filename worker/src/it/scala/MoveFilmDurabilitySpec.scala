@@ -1,5 +1,6 @@
 package services.movies
 
+import services.movies.FilmId
 import models.{Multikino, Showtime}
 import org.mongodb.scala.MongoClient
 import org.scalatest.flatspec.AnyFlatSpec
@@ -33,7 +34,7 @@ class MoveFilmDurabilitySpec extends AnyFlatSpec with Matchers {
       screenings.findForFilm("moveprobe|") should not be empty
 
       val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), normalizer = titleNormalizer)
-      repository.moveFilm("moveprobe|", "moveprobe|2026")
+      repository.moveFilm(FilmId("moveprobe|"), FilmId("moveprobe|2026"))
 
       withClue("the copy never landed, so the old rows must still be there: ")(
         screenings.findForFilm("moveprobe|") should not be empty)

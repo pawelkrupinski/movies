@@ -45,8 +45,8 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
     val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
-    val idA        = StoredMovieRecord.idFor(titleA, Some(2026), titleNormalizer)
-    val idB        = StoredMovieRecord.idFor(titleB, Some(2026), titleNormalizer)
+    val keyA       = CacheKey(titleA, Some(2026), titleNormalizer)
+    val keyB       = CacheKey(titleB, Some(2026), titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     try {
       // Row B FIRST, so by the time A arrives B is resident in the cache STRIPPED — its
@@ -59,16 +59,21 @@ class MergeScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
         data = Map[Source, SourceData](KinoMuranow -> SourceData(
           title = Some(titleB), showtimes = Seq(Showtime(when, None))))))
 
+      val idB = cache.idOf(keyB).getOrElse(fail("row B has no id"))
+
       // Row A: the duplicate arriving fresh — same tmdbId, different key, a DIFFERENT cinema.
       cache.put(CacheKey(titleA, Some(2026), titleNormalizer), MovieRecord(
         tmdbId = Some(9912),
         data = Map[Source, SourceData](Multikino -> SourceData(
           title = Some(titleA), showtimes = Seq(Showtime(when, None))))))
 
-      // Wherever the merge settled, both cinemas' showtimes must still be there.
-      val surviving = (screenings.findForFilm(idA) ++ screenings.findForFilm(idB))
+      // Wherever the merge settled, both cinemas' showtimes must still be there — under the
+      // survivor's id, which is B's: the film's EXISTING row keeps its id whichever key wins.
+      val survivor = cache.idOf(keyA).orElse(cache.idOf(keyB)).getOrElse(fail("no surviving row"))
+      survivor shouldBe idB
+      val surviving = screenings.findForFilm(survivor.value)
         .collect { case (slotKey, showtimes) if showtimes.nonEmpty => slotKey }.toSet
-      info(s"after merge: A($idA)=${screenings.findForFilm(idA).keySet} B($idB)=${screenings.findForFilm(idB).keySet}")
+      info(s"after merge: survivor=$survivor keyA=${cache.idOf(keyA)} keyB=${cache.idOf(keyB)} slots=${surviving}")
 
       withClue(s"a merge must union the two rows' cinemas, not delete the loser's showtimes — surviving=$surviving: ") {
         surviving should contain (Multikino.displayName)

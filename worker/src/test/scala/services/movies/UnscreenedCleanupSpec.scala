@@ -69,14 +69,14 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
     // Same rules as the repository it wraps — a fake that keyed differently from
     // its delegate would be a fake that disagrees with itself.
     val normalizer: services.movies.TitleNormalizer = delegate.normalizer
-    override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = (None, false)
+    override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean)   = (None, false)
+    override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = (None, false)
     def enabled: Boolean                                              = true
     def findAll(): Seq[StoredMovieRecord]                             = delegate.findAll()
-    def upsert(t: String, y: Option[Int], e: MovieRecord): Unit       = delegate.upsert(t, y, e)
-    def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean =
-      delegate.updateIfPresent(t, y, before, after)
-    def delete(t: String, y: Option[Int]): Unit                       = delegate.delete(t, y)
-    def deleteById(id: String): Unit                                  = delegate.deleteById(id)
+    def upsert(id: FilmId, t: String, y: Option[Int], e: MovieRecord): Unit = delegate.upsert(id, t, y, e)
+    def updateIfPresent(id: FilmId, t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean =
+      delegate.updateIfPresent(id, t, y, before, after)
+    def delete(id: FilmId): Unit                                      = delegate.delete(id)
     def close(): Unit                                                 = ()
   }
 

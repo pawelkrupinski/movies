@@ -2,7 +2,7 @@ package scripts
 
 import services.MongoConnection
 import tools.Env
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, StoredMovieRecord}
+import services.movies.{FilmId, MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, MovieRepository, StoredMovieRecord}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.tasks.MongoTaskQueue
 
@@ -146,7 +146,7 @@ object ReresolveSelfLockedRows {
       slots      = Some(new MongoSlotsRepository(Some(db))),
       normalizer = titleNormalizer)
 
-    val found = wanted.keys.toSeq.sorted.map(id => id -> repo.findById(id))
+    val found = wanted.keys.toSeq.sorted.map(id => id -> repo.findById(FilmId(id)))
     val (locked, skipped) = stillLocked(found, wanted)
 
     println(s"${locked.size} of ${wanted.size} row(s) still locked to the wrong film:")

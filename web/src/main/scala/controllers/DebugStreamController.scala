@@ -52,7 +52,7 @@ class DebugStreamController(
   private[controllers] def upsertFrame(row: StoredMovieRecord): String = {
     implicit val city: models.City = frameCity
     val html = views.html._debugRow(row, frameNormalizer).body
-    s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> StoredMovieRecord.idOf(row, frameNormalizer), "html" -> html))}\n\n"
+    s"data: ${Json.stringify(Json.obj("type" -> "upsert", "id" -> row.id.value, "html" -> html))}\n\n"
   }
 
   /** SSE frame for a deleted row: just the `_id`, so the page drops it. */
@@ -80,7 +80,7 @@ class DebugStreamController(
     val watches: Seq[AutoCloseable] = Seq(
       stack.movieRepository.watchChanges(
         onUpsert = row => { queue.offer(upsertFrame(row)); () },
-        onDelete = id  => { queue.offer(deleteFrame(id)); () }
+        onDelete = id  => { queue.offer(deleteFrame(id.value)); () }
       ),
       stack.stagingRepository.watchChanges(
         onUpsert = row => { queue.offer(stagingUpsertFrame(row)); () },

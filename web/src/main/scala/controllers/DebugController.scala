@@ -141,13 +141,13 @@ class DebugController(cc: ControllerComponents,
    *  inline (each iterates `Cinema.all` × day × showtime) built one giant `Html`
    *  string that OOM'd the view on the full corpus; serving them per-row on
    *  demand keeps the initial /debug render to the light data rows only. The `id`
-   *  is the row's Mongo `_id` (`StoredMovieRecord.idOf`), the same value the table
-   *  rows are keyed on. */
+   *  is the row's Mongo `_id` (its `FilmId`), the same value the table rows are
+   *  keyed on. */
   def debugDetails(id: String): Action[AnyContent] = Action { request =>
     devOnly {
       implicit val ec: scala.concurrent.ExecutionContext = cc.executionContext
       val stack = debugCountries.stackFor(debugCountries.resolve(request))
-      stack.movieRepository.findById(id) match {
+      stack.movieRepository.findById(services.movies.FilmId(id)) match {
         case Some(row) =>
           // The per-source enrichment log, joined on the tmdbId-keyed rating key.
           // Two bounded `_id in [...]` lookups (4 keys each), not the readers'

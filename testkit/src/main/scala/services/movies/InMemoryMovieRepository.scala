@@ -9,9 +9,9 @@ import scala.collection.mutable
  * needing a real Mongo cluster. Implements the `MovieRepository` trait so it slots
  * in wherever the production cache expects a repository.
  *
- * Indexed by the same normalized documentId formula as the production repository
- * (`normalizer.sanitize(title)|year`), so case + diacritic + whitespace
- * variants of the same title collapse to one row exactly as they do in Mongo.
+ * Stored by `FilmId` and looked up by the same normalized key formula as the
+ * production repository (`normalizer.sanitize(title)|year`), so case + diacritic +
+ * whitespace variants of the same title find one row exactly as they do in Mongo.
  *
  * Every upsert / delete is recorded in `upserts` / `deletes` in order so a
  * test can assert write-through behavior. Tests that don't care simply
@@ -67,14 +67,13 @@ class InMemoryMovieRepository(
   // attaches the cache AND the read-model projector); a single-watcher stub
   // would model only one and hide the multiplexing the real cursor now does.
   private val changes = new ChangeStreamFanout[StoredMovieRecord]("InMemoryMovieRepository")
-  private def notifyWatcher(t: String, y: Option[Int], e: MovieRecord): Unit = {
+  private def notifyWatcher(id: String, t: String, y: Option[Int], e: MovieRecord): Unit = {
     // Watchers get the record a READER would see, not the shrunken `movies` document —
     // the real change stream re-decodes the row and `decodeStitched` puts its slots and
     // showtimes back. A fake that dispatched the stripped record would have every
     // change-stream consumer (the cache, the read-model projector) see films with no
     // cinemas the moment the split was wired.
-    val id = idOf(t, y)
-    changes.dispatchUpsert(StoredMovieRecord.fromStorage(id, e.copy(data = stitchSides(
+    changes.dispatchUpsert(StoredMovieRecord.fromStorage(id, Some(keyOf(t, y)), e.copy(data = stitchSides(
       id, e.data,
       slots.map(_.findAll()).getOrElse(Map.empty),
       screenings.map(_.findAll()).getOrElse(Map.empty))), normalizer))
@@ -85,10 +84,10 @@ class InMemoryMovieRepository(
 
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
-    onDelete: String => Unit
-  ): Option[AutoCloseable] = Some(changes.register(onUpsert, onDelete))
+    onDelete: FilmId => Unit
+  ): Option[AutoCloseable] = Some(changes.register(onUpsert, id => onDelete(FilmId(id))))
 
-  seed.foreach { case (t, y, e) => store.put(idOf(t, y), StoredMovieRecord(t, y, e)) }
+  seed.foreach { case (t, y, e) => val id = idOf(t, y); store.put(id, StoredMovieRecord(t, y, e, FilmId(id))) }
 
   def enabled: Boolean = true
 
@@ -108,7 +107,7 @@ class InMemoryMovieRepository(
       // Stitch FIRST, derive after — `fromStorage` reads the row's title off its cinema
       // slots, and for a migrated film those are in `movie_slots`, not in the stored record.
       // Same order as `MongoMovieRepository.stitchRow`, and for the same reason.
-      StoredMovieRecord.fromStorage(id,
+      StoredMovieRecord.fromStorage(id, Some(s.key(normalizer)),
         s.record.copy(data = stitchSides(id, s.record.data, allSlots, allScreenings)), normalizer)
     }.toSeq
   }
@@ -131,8 +130,8 @@ class InMemoryMovieRepository(
       ScreeningsSplit.stitch(withSlots, allScreenings.getOrElse(id, Map.empty)))
   }
 
-  def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
-    val id = idOf(t, y)
+  def upsert(film: FilmId, t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
+    val id = film.value
     // Same order as `MongoMovieRepository.upsert`: re-stitch first (a record can arrive
     // stripped for cache residency, and `showtimesOf` would then drop showtimes that
     // `replaceFilm` proceeds to delete), then store the row WITHOUT showtimes and file
@@ -158,10 +157,10 @@ class InMemoryMovieRepository(
       if (slotsLanded) Map.empty[Source, SourceData]
       else if (screenings.isEmpty) restitched
       else ScreeningsSplit.stripShowtimes(restitched)
-    store.put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies)))
+    store.put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies), film))
     screenings.foreach(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.showtimesOf(restitched), stitch))
     upserts.append((t, y, e))
-    notifyWatcher(t, y, e)
+    notifyWatcher(id, t, y, e)
   }
 
   /** Carry a film's screenings AND slots across a re-key / fold. Both stores move, or a
@@ -172,8 +171,9 @@ class InMemoryMovieRepository(
    *  replace-and-delete with no verification at all, so every re-key spec passed against a
    *  move production performs far more carefully, and the one condition that made the real
    *  move destructive (an unreadable destination) could not be expressed here at all. */
-  override def moveFilm(oldId: String, newId: String): Boolean =
-    if (oldId == newId) true else lock.synchronized {
+  override def moveFilm(oldFilm: FilmId, newFilm: FilmId): Boolean =
+    if (oldFilm == newFilm) true else lock.synchronized {
+      val (oldId, newId) = (oldFilm.value, newFilm.value)
       val screeningsMoved = screenings.forall(s => SideCollectionMove.move[Seq[models.Showtime]](
         oldId, newId,
         read       = s.findForFilmChecked,
@@ -187,8 +187,8 @@ class InMemoryMovieRepository(
       screeningsMoved && slotsMoved
     }
 
-  def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
-    val id = idOf(t, y)
+  def updateIfPresent(film: FilmId, t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
+    val id = film.value
     store.get(id) match {
       case None => false
       case Some(stored) =>
@@ -222,28 +222,20 @@ class InMemoryMovieRepository(
             case (k, None)     => sl.deleteSlot(id, k)
           })
           val merged = patch.applyTo(stored.record)
-          store.put(id, StoredMovieRecord(t, y, merged))
+          store.put(id, StoredMovieRecord(t, y, merged, film))
           upserts.append((t, y, merged))
-          notifyWatcher(t, y, merged)
+          notifyWatcher(id, t, y, merged)
           true
         }
     }
   }
 
-  def delete(t: String, y: Option[Int]): Unit = lock.synchronized {
-    val id = idOf(t, y)
-    store.remove(id)
-    screenings.foreach(_.deleteFilm(id))   // the cascade the real repository owns
-    slots.foreach(_.deleteFilm(id))
-    deletes.append((t, y))
-    changes.dispatchDelete(id)
-  }
-
-  def deleteById(id: String): Unit = lock.synchronized {
-    if (store.remove(id).isDefined) {
-      screenings.foreach(_.deleteFilm(id))
+  def delete(film: FilmId): Unit = lock.synchronized {
+    val id = film.value
+    store.remove(id).foreach { removed =>
+      screenings.foreach(_.deleteFilm(id))   // the cascade the real repository owns
       slots.foreach(_.deleteFilm(id))
-      deletes.append((id, None))
+      deletes.append((removed.title, removed.year))
       changes.dispatchDelete(id)
     }
   }
@@ -259,7 +251,8 @@ class InMemoryMovieRepository(
    *  by design. A running cache is deliberately NOT notified: the point of the state is a
    *  cache whose view disagrees with the store. */
   def putEmbeddedOutOfBand(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
-    store.put(idOf(t, y), StoredMovieRecord(t, y, e)); ()
+    val id = idOf(t, y)
+    store.put(id, StoredMovieRecord(t, y, e, FilmId(id))); ()
   }
 
   /** Out-of-band edit: drop the `filmwebUrl` + `filmwebRating` for the row.
@@ -270,9 +263,17 @@ class InMemoryMovieRepository(
     store.get(id).foreach { s =>
       val updated = s.record.copy(filmwebUrl = None, filmwebRating = None)
       store.put(id, s.copy(record = updated))
-      notifyWatcher(t, y, updated)
+      notifyWatcher(id, t, y, updated)
     }
   }
 
-  private def idOf(t: String, y: Option[Int]): String = StoredMovieRecord.idFor(t, y, normalizer)
+  private def keyOf(t: String, y: Option[Int]): String = StoredMovieRecord.idFor(t, y, normalizer)
+
+  /** The id of the row stored under this key, else the key's legacy id — what an
+   *  out-of-band write (a seed, a simulated Mongo edit) files a row under when no row
+   *  holds the key yet, the same shape a document written before ids existed has. */
+  private def idOf(t: String, y: Option[Int]): String = {
+    val k = keyOf(t, y)
+    store.collectFirst { case (id, r) if r.key(normalizer) == k => id }.getOrElse(k)
+  }
 }

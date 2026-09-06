@@ -184,13 +184,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.put(key, mkEnrichment("tt-foo"))
     cache.get(key) should not be empty
 
-    cache.applyDelete(StoredMovieRecord.idFor("Foo", Some(2024), titleNormalizer))
+    cache.applyDelete(cache.idOf(cache.keyOf("Foo", Some(2024))).getOrElse(fail("row has no id")))
     cache.get(key) shouldBe None
 
     // A delete for an unknown id is a harmless no-op — it must not clear other rows.
     val barKey = cache.keyOf("Bar", Some(2024))
     cache.put(barKey, mkEnrichment("tt-bar"))
-    cache.applyDelete("does-not-exist|1900")
+    cache.applyDelete(FilmId("does-not-exist|1900"))
     cache.get(barKey) should not be empty
   }
 
@@ -242,12 +242,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // method, so we cover the on-demand admin-endpoint behaviour here:
   // (a) in-memory rows that aren't in Mongo get dropped, (b) repository-side edits
   // become visible, (c) the negative cache is orthogonal and survives.
-  "rehydrate" should "reap a mis-keyed movies orphan whose _id drifted from its display title" in {
-    // Two movies docs for one film: the canonical "zaplatani|2010" plus a stale
-    // "tangled|2010" first stored under the English title but now displaying (via
-    // its TMDB Polish title) as "Zaplątani". On read both re-derive the same
-    // display title → collapse to one CacheKey, so the cross-title settle never
-    // sees two rows; the orphan must be reaped on hydrate instead.
+  "rehydrate" should "reconcile two movies documents that collapse onto one key" in {
+    // Two movies docs for one film: "zaplatani|2010" plus a stale "tangled|2010" first
+    // stored under the English title but now displaying (via its TMDB Polish title) as
+    // "Zaplątani". On read both re-derive the same display title → collapse to one
+    // CacheKey, so the cross-title settle never sees two rows; the hydrate reconciles
+    // them instead: one id survives (the lower, deterministically), the other document
+    // goes, and the survivor is written under the shared key.
     val zaplSlots = Map[Source, SourceData](
       Tmdb      -> SourceData(title = Some("Zaplątani"), originalTitle = Some("Tangled"), releaseYear = Some(2010)),
       Multikino -> SourceData(title = Some("Zaplątani"), releaseYear = Some(2010)))
@@ -257,9 +258,10 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     ))
     new CaffeineMovieCache(repository, normalizer = titleNormalizer) // constructor hydrates → reaps the orphan
     val rows = repository.findAll()
-    withClue(s"expected ONE doc, got ${rows.map(r => (r.title, r.persistedId))}\n")(rows.size shouldBe 1)
-    rows.head.persistedId shouldBe Some("zaplatani|2010")
-    repository.deletes.map(_._1) should contain ("tangled|2010")
+    withClue(s"expected ONE doc, got ${rows.map(r => (r.title, r.id))}\n")(rows.size shouldBe 1)
+    rows.head.id shouldBe FilmId("tangled|2010")
+    rows.head.key(titleNormalizer) shouldBe "zaplatani|2010"
+    repository.deletes.map(_._1) should contain ("Zaplątani")
   }
 
   it should "drop in-memory rows that aren't in the repository" in {

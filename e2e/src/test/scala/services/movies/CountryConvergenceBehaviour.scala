@@ -251,7 +251,7 @@ abstract class CountryConvergenceBehaviour(
 
   private def cinemasByFilm(w: ArchiveReplayWiring): Map[String, Set[String]] =
     w.movieRepository.findAll().map(r =>
-      StoredMovieRecord.idOf(r, w.movieRepository.normalizer) -> r.record.cinemaData.keySet.map(_.displayName)).toMap
+      r.id.value -> r.record.cinemaData.keySet.map(_.displayName)).toMap
 
   /** How many showtimes each film is holding, per film id.
    *
@@ -269,7 +269,7 @@ abstract class CountryConvergenceBehaviour(
    *  compare two empty maps and pass on any corpus at all. */
   private def showtimesByFilm(w: ArchiveReplayWiring): Map[String, Int] =
     w.movieRepository.findAll().map(r =>
-      StoredMovieRecord.idOf(r, w.movieRepository.normalizer) ->
+      r.id.value ->
         r.record.cinemaData.values.map(ShowtimesDigest.slotShowtimeCount).sum).toMap
 
   /** Films that held showtimes in `before` and hold NONE in `after` — the shape a
@@ -1168,7 +1168,7 @@ abstract class CountryConvergenceBehaviour(
       val (w, _, _) = shared
       val normalizer = w.movieCache.normalizer
       val rows       = w.movieRepository.findAll()
-      val live       = rows.map(r => StoredMovieRecord.idOf(r, normalizer)).toSet
+      val live       = rows.map(r => r.id.value).toSet
       val slotRows   = w.slotsRepository.findAll()
       val screenRows = w.screeningsRepository.findAll()
 
@@ -1193,14 +1193,16 @@ abstract class CountryConvergenceBehaviour(
         screenOrphans shouldBe empty
       }
 
-      val drifted = rows.flatMap { r =>
-        r.persistedId.filter(_ != StoredMovieRecord.idFor(r.title, r.year, normalizer))
-          .map(id => s"$id -> ${StoredMovieRecord.idFor(r.title, r.year, normalizer)}")
-      }.sorted
-      withClue(s"${drifted.size} row(s) re-derive to an id other than the one they are stored " +
-               s"under, so a hydrate migrates them and a by-id lookup misses them: " +
-               s"${drifted.take(8).mkString(", ")}\n") {
-        drifted shouldBe empty
+      // One document per key. Ids are permanent and opaque now (`FilmId`), so a row whose
+      // display title drifted is simply retitled on its next write; what must never happen
+      // is two documents answering to one key — the hydrate would union them into one
+      // cache entry and reconcile the pair every boot.
+      val duplicated = rows.groupBy(r => StoredMovieRecord.idFor(r.title, r.year, normalizer))
+        .collect { case (key, rs) if rs.sizeIs > 1 => s"$key <- ${rs.map(_.id.value).sorted.mkString(", ")}" }
+        .toList.sorted
+      withClue(s"${duplicated.size} key(s) are stored as several `movies` documents: " +
+               s"${duplicated.take(8).mkString("; ")}\n") {
+        duplicated shouldBe empty
       }
     }
   }

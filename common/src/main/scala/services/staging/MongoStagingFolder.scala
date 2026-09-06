@@ -8,7 +8,7 @@ import org.reactivestreams.{Publisher, Subscriber, Subscription}
 import models.MovieRecord
 import play.api.Logging
 import services.MongoConnection
-import services.movies.{CacheKey, MovieCodecs, MovieRecordMerge, StoredMovieDto, StoredMovieRecord, TitleNormalizer}
+import services.movies.{CacheKey, MovieCodecs, MovieRecordMerge, StoredMovieDto, StoredMovieRecord, TitleNormalizer, FilmId}
 
 import java.time.Instant
 import scala.concurrent.Await
@@ -152,9 +152,8 @@ class MongoStagingFolder(
    *  Per film, and failures are logged rather than thrown: the fold itself has COMMITTED
    *  by now, so raising here would reschedule a fold that already happened. A film left
    *  incomplete is the pre-existing behaviour and the next scrape's upsert repairs it. */
-  private def completeSideCollections(folded: Seq[(CacheKey, MovieRecord)]): Unit =
-    folded.foreach { case (key, record) =>
-      val id = StoredMovieRecord.idFor(key)
+  private def completeSideCollections(folded: Seq[(FilmId, CacheKey, MovieRecord)]): Unit =
+    folded.foreach { case (id, key, record) =>
       // `upsert` REPLACES a film's side rows with what the record names: `replaceFilm`
       // upserts the payload and deletes every slot outside it. The folded record is the
       // group's plan — the staging rows plus whatever the RAW `movies` documents carried —
@@ -184,7 +183,7 @@ class MongoStagingFolder(
         // supposed to preserve. `union` takes the canonical's metadata and the union of
         // the boards, which is the rule the rest of the pipeline already merges by.
         val complete = existing.map(e => MovieRecordMerge.union(record, e.record)).getOrElse(record)
-        Try(movieRepository.upsert(key.cleanTitle, key.year, complete)).failed.foreach { e =>
+        Try(movieRepository.upsert(id, key.cleanTitle, key.year, complete)).failed.foreach { e =>
           logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but its " +
             s"slots/screenings write failed (${e.getClass.getSimpleName}: ${e.getMessage}) — the film holds " +
             "no showtimes until its next scrape rewrites it.")
@@ -208,10 +207,8 @@ class MongoStagingFolder(
    *  write has been verified, so a failed move strands a duplicate rather than destroying
    *  the only copy — the same rule `MovieCache.rekey` already follows for this exact reason.
    *  Failures are logged, not thrown: the fold has COMMITTED by the time this runs. */
-  private def migrateRetiredSideRows(retirements: Seq[(CacheKey, CacheKey)]): Unit =
-    retirements.foreach { case (retired, winner) =>
-      val from = StoredMovieRecord.idFor(retired)
-      val to   = StoredMovieRecord.idFor(winner)
+  private def migrateRetiredSideRows(retirements: Seq[(FilmId, FilmId)]): Unit =
+    retirements.foreach { case (from, to) =>
       if (from != to) Try(movieRepository.moveFilm(from, to)) match {
         case scala.util.Success(true)  =>
           logger.info(s"Staging fold: carried '$from' cinemas onto '$to' — a retirement is a re-key.")
@@ -254,7 +251,7 @@ class MongoStagingFolder(
    *  same choice `foldGroup` makes for a missing session. */
   private def stitchedCinemaTitles(rows: Seq[StoredMovieRecord]): Seq[String] =
     rows.flatMap { row =>
-      val id                 = StoredMovieRecord.idOf(row, normalizer)
+      val id                 = row.id
       val (stitched, readOk) = movieRepository.findByIdChecked(id)
       if (!readOk) throw new IllegalStateException(
         s"Staging fold could not read '$id' back through the storage split. Refusing to " +
@@ -303,8 +300,10 @@ class MongoStagingFolder(
       cleanTitle, normalizer)
     if (stagingRows.isEmpty) StagingFold.Plan(Nil, Nil, Nil, Nil)
     else {
-      // Movies `_id` = sanitize|year — match the sanitize group, any year.
-      val groupRows = await(movies.find(session, Filters.regex("_id", s"^$sanitize\\|")).toFuture())
+      // Movies `key` = sanitize|year — match the sanitize group, any year. (`_id` is the
+      // permanent film id; a document written before ids existed had its `key` backfilled
+      // from `_id` at boot — `MongoMovieRepository.ensureIndexes`.)
+      val groupRows = await(movies.find(session, Filters.regex("key", s"^$sanitize\\|")).toFuture())
         .map(StoredMovieDto.toDomain(_, normalizer))
       // Cross-title same-tmdbId siblings (any title, OUTSIDE this sanitize group),
       // so a cross-language duplicate already in `movies` merges at fold time (see
@@ -313,11 +312,14 @@ class MongoStagingFolder(
       val siblings = if (ids.isEmpty) Seq.empty
         else await(movies.find(session, Filters.and(
           Filters.in("tmdbId", ids.toSeq*),
-          Filters.not(Filters.regex("_id", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
+          Filters.not(Filters.regex("key", s"^$sanitize\\|")))).toFuture()).map(StoredMovieDto.toDomain(_, normalizer))
       val group = groupRows ++ siblings
-      val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(group))
-      plan.moviesUpserts.foreach { case (k, record) =>
-        val id = StoredMovieRecord.idFor(k)
+      // A brand-new film's id must not be a live document's — checked in THIS session, so
+      // the write below cannot replace a film the fold never read.
+      val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(group),
+        fresh = FilmId.fresh(_, taken = id => await(movies.countDocuments(session, Filters.eq("_id", id.value)).toFuture()) > 0))
+      plan.moviesUpserts.foreach { case (film, k, record) =>
+        val id = film.value
         // The SAME shape `MovieRepository.upsert` would have written. This write is
         // direct — the upserts and the staging deletes have to commit in one session
         // and the repository's write path is not session-aware — so the storage rule
@@ -331,7 +333,7 @@ class MongoStagingFolder(
         // `screenings`.
         val forStorage = record.copy(data = movieRepository.slotsForStorage(record.data))
         await(movies.replaceOne(session, Filters.eq("_id", id),
-          StoredMovieDto.fromDomain(id, forStorage, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
+          StoredMovieDto.fromDomain(id, StoredMovieRecord.idFor(k), forStorage, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
       }
       // Delete the retired `movies` rows ONLY — never their side-collection rows.
       //
@@ -352,15 +354,16 @@ class MongoStagingFolder(
       // `scripts.ReapOrphanedFilmRows` clears them without racing a re-key. Making the
       // fold side-aware means MIGRATING the loser's rows onto the winner, not deleting
       // them — a real change, not a delete.
-      plan.moviesDeletes.foreach(k =>
-        await(movies.deleteOne(session, Filters.eq("_id", StoredMovieRecord.idFor(k))).toFuture()))
+      plan.moviesDeletes.foreach(id =>
+        await(movies.deleteOne(session, Filters.eq("_id", id.value)).toFuture()))
       plan.stagingDeletes.foreach(r =>
         await(staging.deleteOne(session, Filters.eq("_id", r.id)).toFuture()))
       // These `movies` deletes bypass MovieRepository.delete (direct in-txn deleteOne),
       // so audit them here — the fold losers a group merge removes from the corpus.
-      if (plan.moviesDeletes.nonEmpty)
-        services.movies.RemovalAudit.filmsRemoved("staging-fold",
-          plan.moviesDeletes.map(k => s"${k.cleanTitle} (${k.year.getOrElse("—")})"), reason = s"folded-into='$sanitize'")
+      if (plan.moviesDeletes.nonEmpty) {
+        val retiredKeys = group.filter(r => plan.moviesDeletes.contains(r.id)).map(r => s"${r.title} (${r.year.getOrElse("—")})")
+        services.movies.RemovalAudit.filmsRemoved("staging-fold", retiredKeys, reason = s"folded-into='$sanitize'")
+      }
       logger.info(s"Folded staging group '$sanitize': ${stagingRows.size} row(s) → ${plan.moviesUpserts.size} movies row(s).")
       plan
     }

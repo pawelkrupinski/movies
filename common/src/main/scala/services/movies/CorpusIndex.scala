@@ -93,10 +93,15 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   private val keysByEdgeToken = mutable.Map.empty[String, mutable.Set[CacheKey]]
   private val runsByKey       = mutable.Map.empty[CacheKey, Seq[Seq[String]]]
   private val tmdbIdByKey     = mutable.Map.empty[CacheKey, Int]
+  /** The permanent [[FilmId]] behind each key, and back. A retitle moves a key between
+   *  ids' entries; the id itself never changes — see `FilmId`. */
+  private val idByKey         = mutable.Map.empty[CacheKey, FilmId]
+  private val keyById         = mutable.Map.empty[FilmId, CacheKey]
 
   /** Index `record` under `key`, replacing whatever that key contributed before. */
-  def put(key: CacheKey, record: MovieRecord): Unit = synchronized {
+  def put(key: CacheKey, record: MovieRecord, id: FilmId): Unit = synchronized {
     forget(key)
+    idByKey.update(key, id); keyById.update(id, key)
     rowsByNormalized.getOrElseUpdate(key.normalized, mutable.Map.empty).update(key, record)
     record.cinemaShowings.foreach { case (cinema, sd) =>
       sd.title.foreach { t =>
@@ -138,6 +143,10 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
 
   /** Drop everything `key` contributes. */
   def remove(key: CacheKey): Unit = synchronized(forget(key))
+
+  def idOf(key: CacheKey): Option[FilmId]  = synchronized(idByKey.get(key))
+  def keyOf(id: FilmId): Option[CacheKey]  = synchronized(keyById.get(id))
+  def holdsId(id: FilmId): Boolean         = synchronized(keyById.contains(id))
 
   /** Is any row keyed under this sanitized title? (the old `knownSanitized`) */
   def holdsTitle(normalized: String): Boolean =
@@ -230,6 +239,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       }
     }
     tmdbIdByKey -= key
+    idByKey.remove(key).foreach(keyById -= _)
     rowsByNormalized.get(key.normalized).foreach { rows =>
       rows -= key
       if (rows.isEmpty) rowsByNormalized -= key.normalized

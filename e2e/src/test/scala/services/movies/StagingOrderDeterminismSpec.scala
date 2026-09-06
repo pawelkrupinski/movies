@@ -70,8 +70,11 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // the concluded row. Both orders reach the same film state (a recorded miss, the
     // same slots); they differ only in whose inputs the miss names, which the next
     // look re-opens either way. So the miss is kept and its inputs are not compared.
+    // Nor the film id: it is minted from whichever key the row was FIRST created under,
+    // so it depends on arrival order by design (`FilmId`) — opaque, and compared by nothing.
     val record = w.movieRepository.findAll()
-      .map(r => r.copy(record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_ => services.resolution.TmdbAttempt.Legacy))))
+      .map(r => r.copy(id = FilmId("<order-dependent>"),
+                       record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_ => services.resolution.TmdbAttempt.Legacy))))
       .sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     val service = new MovieControllerService(w.webReadModel)
     val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now))
@@ -174,7 +177,10 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
 
   "Głos Hind Rajab, booted from just its cinemas" should
     "settle to one identical record regardless of arrival order" in {
-    def hind(rs: Seq[StoredMovieRecord]) = rs.filter(_.title.toLowerCase.contains("hind rajab"))
+    // Ids are opaque and depend on which key the row was FIRST created under — i.e. on
+    // arrival order, by design (`FilmId`); everything else about the row must not.
+    def hind(rs: Seq[StoredMovieRecord]) =
+      rs.filter(_.title.toLowerCase.contains("hind rajab")).map(_.copy(id = FilmId("<order-dependent>")))
     def shape(rs: Seq[StoredMovieRecord]) =
       hind(rs).map(x => (x.title, x.year, x.record.tmdbId, x.record.cinemaData.keySet)).mkString("\n  ")
     val ref = replaySubset(HindRajabCinemas, 700000L)

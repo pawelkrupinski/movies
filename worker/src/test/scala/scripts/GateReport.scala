@@ -96,7 +96,7 @@ object GateReport {
     else {
       val search = rec.searchTitle.map(_.trim).filter(_.nonEmpty).getOrElse(r.title)
       Some(Film(
-        id = r.persistedId.getOrElse(s"${r.title}|${r.year.map(_.toString).getOrElse("")}"),
+        id = r.id.value,
         title = r.title, search = search, year = r.year, tmdbId = rec.tmdbId,
         queries = (Seq(search, r.title) ++ stripVariants(r.title)).map(_.trim).filter(_.nonEmpty).distinct,
         cinemaSyn = rec.synopsisCinema.getOrElse(""), dirs = rec.director.toSet

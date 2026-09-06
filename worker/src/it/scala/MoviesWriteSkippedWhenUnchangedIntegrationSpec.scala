@@ -8,7 +8,7 @@ import org.mongodb.scala.{Document, ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
+import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord, FilmId}
 import tools.Env
 
 import scala.concurrent.Await
@@ -105,7 +105,7 @@ class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Ma
       withClue("a showtimes-only change belongs to `screenings`, not `movies`: ") {
         moviesWritesDuring(repository.upsert(title, year, moved)) shouldBe 0
       }
-      repository.findByIdChecked(id)._1.map(_.record.data.values.flatMap(_.showtimes).map(_.dateTime).toSet)
+      repository.findByIdChecked(FilmId(id))._1.map(_.record.data.values.flatMap(_.showtimes).map(_.dateTime).toSet)
         .getOrElse(Set.empty) shouldBe Set(when.plusDays(1), when.plusDays(1).plusHours(2))
 
       // …and the guard must not over-skip. A change to a field `movies` DOES own still
@@ -115,7 +115,7 @@ class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Ma
       withClue("a change to a field the movies document owns must still be written: ") {
         moviesWritesDuring(repository.upsert(title, year, rated)) should be > 0
       }
-      repository.findByIdChecked(id)._1.flatMap(_.record.imdbRating) shouldBe Some(7.4)
+      repository.findByIdChecked(FilmId(id))._1.flatMap(_.record.imdbRating) shouldBe Some(7.4)
     } finally repository.delete(title, year)
   }
 }

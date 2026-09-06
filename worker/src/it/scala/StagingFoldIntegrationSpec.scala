@@ -7,7 +7,7 @@ import org.mongodb.scala.model.Filters
 import org.mongodb.scala.{SingleObservableFuture, ObservableFuture}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{MongoSlotsRepository, StoredMovieRecord}
+import services.movies.{MongoSlotsRepository, StoredMovieRecord, FilmId}
 import services.staging.StagingRepository
 import tools.Env
 
@@ -82,7 +82,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
       fold.folder().foldGroup(title)
 
-      val survivors = Await.result(movies.find(Filters.regex("_id",
+      val survivors = Await.result(movies.find(Filters.regex("key",
         s"^${titleNormalizer.sanitize(title)}\\|")).toFuture(), 10.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
       survivors      should not be empty   // premise: the fold did run
@@ -136,14 +136,15 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
       fold.folder().foldGroup(newcomerTitle)
 
-      val folded = Await.result(movies.find(Filters.regex("_id",
+      // Rows are found by their `key` — the `_id` is the permanent film id (`FilmId`).
+      val folded = Await.result(movies.find(Filters.regex("key",
         s"^${titleNormalizer.sanitize(newcomerTitle)}\\|")).toFuture(), 10.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
       folded should not be empty   // premise: the fold really did graduate it
 
       folded.foreach { id =>
         withClue(s"$id graduated out of staging, but a reader sees a film with no showtimes: ") {
-          val (row, readOk) = repository.findByIdChecked(id)
+          val (row, readOk) = repository.findByIdChecked(FilmId(id))
           readOk shouldBe true
           row.map(_.record.cinemaData.values.map(_.showtimes.size).sum).getOrElse(0) should be > 0
         }
@@ -194,7 +195,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
         Await.result(staging.find(Filters.regex("_id",
           s".*${titleNormalizer.sanitize(oversizeTitle)}.*")).toFuture(), 30.seconds) shouldBe empty
       }
-      val folded = Await.result(fold.movies.find(Filters.regex("_id",
+      val folded = Await.result(fold.movies.find(Filters.regex("key",
         s"^${titleNormalizer.sanitize(oversizeTitle)}\\|")).toFuture(), 30.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
       withClue(
@@ -218,7 +219,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
    *  is one of the two things a missing row can mean, so the diagnosis needs the wider set
    *  beside the narrow one. */
   private def sentinelIds(fold: FoldFixture.Handles): Seq[String] =
-    Await.result(fold.movies.find(Filters.regex("_id",
+    Await.result(fold.movies.find(Filters.regex("key",
       s".*${titleNormalizer.sanitize(oversizeTitle)}.*")).toFuture(), 30.seconds)
       .flatMap(_.get("_id").map(_.asString().getValue))
 
@@ -342,7 +343,7 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
 
       fold.folder().foldGroup(blindTitle)
 
-      val survivors = Await.result(movies.find(Filters.regex("_id", s"^$blindSanitize\\|")).toFuture(), 10.seconds)
+      val survivors = Await.result(movies.find(Filters.regex("key", s"^$blindSanitize\\|")).toFuture(), 10.seconds)
         .flatMap(_.get("_id").map(_.asString().getValue))
       withClue(s"survivors=$survivors — the fold saw the film's two stored cinemas reporting " +
                s"'$blindTitle' and still keyed it on the single staging row's spelling: ") {
@@ -388,11 +389,12 @@ class StagingFoldIntegrationSpec extends AnyFlatSpec with Matchers {
       // Asserted on the EFFECT — which `movies` rows exist afterwards — not on the return
       // value, which carries only brand-new promotions and is empty on a re-fold.
       def foldedIds(fold: => Unit): Set[String] = {
-      Await.result(movies.deleteMany(Filters.regex("_id", s"^$anchor\\|")).toFuture(), 10.seconds)
+      Await.result(movies.deleteMany(Filters.regex("key", s"^$anchor\\|")).toFuture(), 10.seconds)
       stage()
       fold
-      Await.result(movies.find(Filters.regex("_id", s"^$anchor\\|")).toFuture(), 10.seconds)
-        .flatMap(_.get("_id").map(_.asString().getValue)).toSet
+      // Compared by KEY: the ids a fold mints depend on what it found, the keys do not.
+      Await.result(movies.find(Filters.regex("key", s"^$anchor\\|")).toFuture(), 10.seconds)
+        .flatMap(_.get("key").map(_.asString().getValue)).toSet
       }
 
       val unhinted = foldedIds(folder.foldGroup(hintTitle))

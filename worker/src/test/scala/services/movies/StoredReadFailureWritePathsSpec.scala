@@ -80,7 +80,7 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
     // The deferral above must be a deferral, not a new rule — a readable year still gets
     // the re-key AND the prior occupant folded in.
     withClue("the settle stopped re-keying onto the resolved year: ")(target.year shouldBe Some(2010))
-    val stored = repository.findById(StoredMovieRecord.idFor(target.cleanTitle, target.year, titleNormalizer))
+    val stored = repository.findByKeyChecked(target)._1
     stored.flatMap(_.record.imdbRating) shouldBe Some(7.7)
     stored.map(_.record.data.keySet - Tmdb) shouldBe Some(Set[Source](Multikino, Helios))
   }

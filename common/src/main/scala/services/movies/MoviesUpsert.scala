@@ -32,14 +32,14 @@ object MoviesUpsert {
    *                        `Failure` is "could not look" — and the two are NOT the same thing
    * @param now             the `updatedAt` to stamp
    */
-  def plan(id: String, record: MovieRecord, restitched: Map[Source, SourceData], slotsLanded: Boolean,
+  def plan(id: String, key: String, record: MovieRecord, restitched: Map[Source, SourceData], slotsLanded: Boolean,
            slotsForStorage: Map[Source, SourceData] => Map[Source, SourceData],
            stored: Try[Option[StoredMovieDto]], now: Instant): Plan = {
     // Under the read-split `movies` carries no showtimes (they go to `screenings`), and
     // once the slots have landed it carries no sourceData either — which is what shrinks
     // the document the change stream re-decodes on every write.
     val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else slotsForStorage(restitched)
-    val document      = StoredMovieDto.fromDomain(id, record.copy(data = dataForMovies), now)
+    val document      = StoredMovieDto.fromDomain(id, key, record.copy(data = dataForMovies), now)
     // Both timestamps are normalised away before comparing. `updatedAt` is stamped
     // `Instant.now()` on every call, so comparing it would make every document differ and
     // the guard dead on arrival. `slotsUpdatedAt` is subtler: `fromDomain` never sets it,

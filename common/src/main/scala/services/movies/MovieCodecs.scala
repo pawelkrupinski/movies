@@ -25,6 +25,11 @@ case class StoredTmdbAttempt(evidence: String, at: Instant)
 
 case class StoredMovieDto(
   _id:               String,
+  // The lookup key `sanitize(title)|year` — a FIELD, because `_id` is the permanent
+  // `FilmId` and a retitle moves the key, not the document. Optional on the wire: a
+  // document written before ids existed has none, and its `_id` IS its key
+  // (`StoredMovieRecord.fromStorage`); `MongoMovieRepository` backfills it at boot.
+  key:               Option[String],
   imdbId:            Option[String],
   imdbRating:        Option[Double],
   metascore:         Option[Int],
@@ -83,9 +88,15 @@ object StoredMovieDto {
   // truth (the title was pinned to whichever scrape wrote the row first); see
   // `toDomain`. The `id` still encodes both — the caller computes it via
   // `MovieRepository.documentId(title, year)` — so the cache key is unchanged.
+  def fromDomain(id: String, key: String, r: MovieRecord, updatedAt: Instant): StoredMovieDto =
+    fromDomain(id, r, updatedAt).copy(key = Some(key))
+
+  /** A document with no `key` of its own — the staging store's rows (keyed by cinema,
+   *  never looked up by film key) and the legacy shape the codec specs round-trip. */
   def fromDomain(id: String, r: MovieRecord, updatedAt: Instant): StoredMovieDto =
     StoredMovieDto(
       _id               = id,
+      key               = None,
       imdbId            = r.imdbId,
       imdbRating        = r.imdbRating,
       metascore         = r.metascore,
@@ -140,7 +151,7 @@ object StoredMovieDto {
     )
     // title + year are derived from the `_id` + `sourceData`, not stored — see
     // `StoredMovieRecord.fromStorage` (shared with the in-memory repository).
-    StoredMovieRecord.fromStorage(dto._id, record, normalizer)
+    StoredMovieRecord.fromStorage(dto._id, dto.key, record, normalizer)
   }
 }
 

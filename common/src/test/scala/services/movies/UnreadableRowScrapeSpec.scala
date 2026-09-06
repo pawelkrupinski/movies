@@ -36,25 +36,17 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
   /** Records what the cache writes back, and can be told to fail its per-row read — the
    *  one thing that separates "absent" from "unreadable". */
+  // EMPTY `findAll` — it returns `Seq.empty` on an incomplete scan, so the boot hydrate
+  // leaves the cache cold even though the corpus is full. That is not a contrivance: it
+  // is precisely the prod state, where the same decode failure broke the corpus scan AND
+  // the per-row read at once.
   private class Repo(rows: Seq[StoredMovieRecord], var readable: Boolean,
-                     var canMoveFilm: Boolean = true) extends MovieRepository {
-    override def moveFilm(oldId: String, newId: String): Boolean = oldId == newId || canMoveFilm
-    val normalizer: TitleNormalizer = titleNormalizer
-    val upserts = scala.collection.mutable.ListBuffer.empty[(String, MovieRecord)]
-    def enabled = true
-    // EMPTY — `findAll` returns `Seq.empty` on an incomplete scan, so the boot hydrate
-    // leaves the cache cold even though the corpus is full. That is not a contrivance:
-    // it is precisely the prod state, where the same decode failure broke the corpus scan
-    // AND the per-row read at once.
-    def findAll() = Seq.empty
-    override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) =
-      if (!readable) (None, false)
-      else (rows.find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id), true)
-    def delete(t: String, y: Option[Int]) = ()
-    def deleteById(id: String) = ()
-    def upsert(t: String, y: Option[Int], e: MovieRecord) = { upserts += ((t, e)); () }
-    def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord) = false
-    override def close() = ()
+                     var canMoveFilm: Boolean = true) extends StoredRowsRepository(Seq.empty, titleNormalizer) {
+    override def moveFilm(oldId: FilmId, newId: FilmId): Boolean = oldId == newId || canMoveFilm
+    override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
+      if (!readable) (None, false) else (rows.find(_.id == id), true)
+    override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
+      if (!readable) (None, false) else (rows.find(_.key(normalizer) == StoredMovieRecord.idFor(key)), true)
   }
 
   /** A cache whose row-update reports failure on demand — what a lost race looks like
@@ -85,8 +77,8 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
     // Nothing may be written. Any upsert here carries ONLY Multikino, and `upsert` hands
     // that to `screenings.replaceFilm`, whose `$nin` deletes Helios' showtimes.
-    withClue(s"wrote ${repo.upserts.map { case (t, r) => s"$t -> ${r.data.keySet}" }}: ")(
-      repo.upserts.filter { case (_, r) => !r.data.contains(Helios) } shouldBe empty)
+    withClue(s"wrote ${repo.upserts.map { case (_, t, r) => s"$t -> ${r.data.keySet}" }}: ")(
+      repo.upserts.filter { case (_, _, r) => !r.data.contains(Helios) } shouldBe empty)
     cache.skippedUnreadable.get() should be > 0L
   }
 
@@ -116,14 +108,21 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
       multikinoSlots should not be empty)
 
     // Mongo goes bad, then the venue republishes the same title WITH a year. The
-    // redirect picks the year-bearing key as canonical and asks for a re-key onto it;
-    // both defer, so nothing is written there — and nothing may be taken from here.
+    // redirect picks the year-bearing key as canonical and asks for a re-key onto it.
+    // A re-key is a RETITLE now — the film keeps its id, so no side-collection move is
+    // needed and an unmovable store cannot block it — and the resident row is what it
+    // retitles. Whichever key the film ends up under, the venue's slot must be on it.
     repo.readable    = false
     repo.canMoveFilm = false
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film", year = 2027)))
 
-    withClue(s"skipped=${cache.skippedUnreadable.get()}, holder=${cache.get(holder).map(_.data.keySet)}: ")(
-      multikinoSlots should not be empty)
+    val retitled = cache.keyOf("Live Film", Some(2027))
+    def slotsOn(key: CacheKey) = cache.get(key).toSeq.flatMap(_.data.keys.filter(Source.cinemaOf(_).contains(Multikino)))
+    withClue(s"skipped=${cache.skippedUnreadable.get()}, holder=${cache.get(holder).map(_.data.keySet)}, " +
+             s"retitled=${cache.get(retitled).map(_.data.keySet)}: ")(
+      (slotsOn(holder) ++ slotsOn(retitled)) should not be empty)
+    withClue("a retitle keeps the film's id: ")(
+      cache.idOf(retitled).orElse(cache.idOf(holder)) should not be empty)
   }
 
   // The other half of the contract: an unreadable read must not become a licence to stop
@@ -133,7 +132,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Brand New")))
 
-    repo.upserts.map(_._1)      should contain ("Brand New")
+    repo.upserts.map(_._2)      should contain ("Brand New")
     cache.skippedUnreadable.get() shouldBe 0L
   }
 
@@ -146,7 +145,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
     cache.rekey(CacheKey("Live Film", Some(2026), titleNormalizer), CacheKey("Live Film", Some(2027), titleNormalizer), identity, services.movies.RekeyReason.Canonicalize)
 
-    withClue(s"wrote ${repo.upserts.map { case (t, r) => s"$t -> ${r.data.keySet}" }}: ")(
+    withClue(s"wrote ${repo.upserts.map { case (_, t, r) => s"$t -> ${r.data.keySet}" }}: ")(
       repo.upserts shouldBe empty)
     cache.skippedUnreadable.get() should be > 0L
   }
@@ -157,7 +156,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
     cache.rekey(CacheKey("Live Film", Some(2026), titleNormalizer), CacheKey("Live Film", Some(2027), titleNormalizer), identity, services.movies.RekeyReason.Canonicalize)
 
-    val written = repo.upserts.map(_._2)
+    val written = repo.upserts.map(_._3)
     withClue(s"wrote ${written.map(_.data.keySet)}: ")(
       written.exists(r => r.data.contains(Helios) && r.data.contains(Multikino)) shouldBe true)
   }
@@ -169,7 +168,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film")))
 
-    val written = repo.upserts.map(_._2)
+    val written = repo.upserts.map(_._3)
     withClue(s"wrote ${written.map(_.data.keySet)}: ")(
       written.exists(_.data.contains(Helios)) shouldBe true)
   }

@@ -69,18 +69,25 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
       showtimeCount(screenings) should be > 0)
   }
 
-  // A RE-KEY: one row moves to a new key. Same rename, different call site.
-  "a re-key" should "carry the film's showtimes to the new key" in {
+  // A RE-KEY: one row moves to a new key. The film keeps its id, so its showtimes do
+  // not move at all — they stay filed under the id the retitled row still answers to.
+  "a re-key" should "leave the film's showtimes under its unchanged id" in {
     val (screenings, repository, cache) = fixture
-    cache.put(CacheKey("Beta", None, titleNormalizer), MovieRecord(data = withShowtime(Helios, "Beta")))
+    val before = CacheKey("Beta", None, titleNormalizer)
+    val after  = CacheKey("Beta", Some(2026), titleNormalizer)
+    cache.put(before, MovieRecord(data = withShowtime(Helios, "Beta")))
     showtimeCount(screenings) shouldBe 1
+    val id = cache.idOf(before).getOrElse(fail("the row has no id"))
 
-    cache.rekey(CacheKey("Beta", None, titleNormalizer), CacheKey("Beta", Some(2026), titleNormalizer), identity, services.movies.RekeyReason.Canonicalize)
+    cache.rekey(before, after, identity, services.movies.RekeyReason.Canonicalize)
 
     withClue(s"rows=${cache.snapshot().map(r => (r.title, r.year))} deletes=${repository.deletes.size}: ")(
       showtimeCount(screenings) should be > 0)
-    // …and specifically under the NEW id, not stranded under the old one.
-    screenings.findForFilm(StoredMovieRecord.idFor("Beta", Some(2026), titleNormalizer)).values.flatten should not be empty
+    cache.idOf(after)  shouldBe Some(id)
+    cache.idOf(before) shouldBe None
+    screenings.findForFilm(id.value).values.flatten should not be empty
+    repository.deletes shouldBe empty
+    repository.findByKeyChecked(after)._1.map(_.id) shouldBe Some(id)
   }
 
   // The showtimes must MERGE, not overwrite: a fold unions two cinemas, so the winner has

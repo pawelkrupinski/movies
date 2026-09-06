@@ -52,8 +52,8 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     val screenings = new MongoScreeningsRepository(Some(db))
     val slots      = new MongoSlotsRepository(Some(db))
     val repository = new MongoMovieRepository(Some(db), screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
-    val yearlessId = StoredMovieRecord.idFor(title, None, titleNormalizer)
-    val yearedId   = StoredMovieRecord.idFor(title, Some(2026), titleNormalizer)
+    val yearless   = CacheKey(title, None, titleNormalizer)
+    val yeared     = CacheKey(title, Some(2026), titleNormalizer)
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     try {
       // A yearless row, one cinema, real showtimes — the shape a scrape leaves behind
@@ -63,21 +63,20 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
         data = Map[Source, SourceData](Multikino -> SourceData(
           title = Some(s"$title (2026)"), showtimes = Seq(Showtime(when, None))))))
 
+      val id = cache.idOf(yearless).getOrElse(fail("the yearless row has no id"))
       withClue("premise — the yearless row's showtimes are stored under its own id: ")(
-        screenings.findForFilm(yearlessId).values.flatten should not be empty)
+        screenings.findForFilm(id.value).values.flatten should not be empty)
 
       // THE SETTLE. This is the 30-minute job.
       cache.backfillEmbeddedYears()
 
-      // Whatever key the film ended up under, its showtimes must still exist.
-      val movedTo  = if (screenings.findForFilm(yearedId).nonEmpty) yearedId else yearlessId
-      val surviving = screenings.findForFilm(yearedId).values.flatten.toSeq ++
-                      screenings.findForFilm(yearlessId).values.flatten.toSeq
-      info(s"after settle: yearless($yearlessId)=${screenings.findForFilm(yearlessId).values.flatten.size} " +
-           s"yeared($yearedId)=${screenings.findForFilm(yearedId).values.flatten.size} (settled at $movedTo)")
-
-      withClue("the film was re-keyed and its showtimes did not come with it: ")(
-        surviving should not be empty)
+      // The film keeps its id across the re-key, so its showtimes never move at all: they
+      // are still under the same id, which the yeared key now answers to.
+      info(s"after settle: id=$id yearless=${cache.idOf(yearless)} yeared=${cache.idOf(yeared)} " +
+           s"showtimes=${screenings.findForFilm(id.value).values.flatten.size}")
+      withClue("the re-key must be a retitle of the same id: ")(cache.idOf(yeared) shouldBe Some(id))
+      withClue("the film was re-keyed and its showtimes did not stay with it: ")(
+        screenings.findForFilm(id.value).values.flatten should not be empty)
     } finally cache.stop()
   }
 

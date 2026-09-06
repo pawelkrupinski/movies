@@ -382,4 +382,30 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
     back.title shouldBe "Wonka"     // from sourceData, not the stale column
     back.year  shouldBe Some(2023)  // from the _id, not the stale column
   }
+
+  // The `_id` is the permanent FilmId and the lookup key is its own field (see FilmId):
+  // a retitled row keeps its id and reads back under the NEW key; a document written
+  // before keys were stored has none, and its `_id` is its key.
+  "the key field" should "carry the lookup key apart from the id, so a retitle keeps the id" in {
+    val record = MovieRecord(tmdbId = Some(7), data = Map(Multikino -> SourceData(title = Some("Zaproszenie"), releaseYear = Some(2022))))
+    val dto    = StoredMovieDto.fromDomain("f0123456789abcdef", "zaproszenie|2022", record, Instant.now())
+    val back   = StoredMovieDto.toDomain(roundTrip(dto), titleNormalizer)
+    back.id                    shouldBe FilmId("f0123456789abcdef")
+    back.year                  shouldBe Some(2022)
+    back.key(titleNormalizer)  shouldBe "zaproszenie|2022"
+    // Retitled: same document id, a new key — the year now comes from the key.
+    val retitled = StoredMovieDto.toDomain(roundTrip(dto.copy(key = Some("zaproszenie|2023"))), titleNormalizer)
+    retitled.id   shouldBe back.id
+    retitled.year shouldBe Some(2023)
+  }
+
+  it should "read a document written before keys were stored as keyed by its _id" in {
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legacykey|2021", MovieRecord(), Instant.now()), EncoderContext.builder().build())
+    raw.remove("key")
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
+    back.id   shouldBe FilmId("legacykey|2021")
+    back.year shouldBe Some(2021)
+    back.key(titleNormalizer) shouldBe "legacykey|2021"
+  }
 }

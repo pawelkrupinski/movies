@@ -2,7 +2,7 @@ package services.staging
 
 import models.MovieRecord
 import play.api.Logging
-import services.movies.{CacheKey, MovieRepository, TitleNormalizer}
+import services.movies.{CacheKey, FilmId, MovieRepository, TitleNormalizer}
 
 /**
  * Folds a concluded newcomer's per-cinema staging rows into the merged `movies`
@@ -85,9 +85,13 @@ class InMemoryStagingFolder(
       val ids        = StagingFold.reconcileTmdbIds(stagingRows, groupRows)
       val siblings   = if (ids.isEmpty) Seq.empty
         else all.filter(r => r.record.tmdbId.exists(ids.contains) && normalizer.sanitize(r.title) != key)
-      val plan       = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer)
-      plan.moviesUpserts.foreach { case (k, record) => movieRepository.upsert(k.cleanTitle, k.year, record) }
-      plan.moviesDeletes.foreach(k => movieRepository.delete(k.cleanTitle, k.year))
+      val plan       = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer,
+        fresh = FilmId.fresh(_, taken = id => movieRepository.findByIdChecked(id)._1.isDefined))
+      // A retirement is a merge: carry the loser's side rows onto the winner before the
+      // loser goes — the same rule `MongoStagingFolder.migrateRetiredSideRows` follows.
+      plan.retirements.foreach { case (loser, winner) => movieRepository.moveFilm(loser, winner) }
+      plan.moviesUpserts.foreach { case (id, k, record) => movieRepository.upsert(id, k.cleanTitle, k.year, record) }
+      plan.moviesDeletes.foreach(movieRepository.delete)
       plan.stagingDeletes.foreach(stagingRepository.deleteRow)
       logger.info(s"Folded group '$cleanTitle': ${stagingRows.size} staging row(s) → ${plan.moviesUpserts.size} movies row(s).")
       plan.newPromotions

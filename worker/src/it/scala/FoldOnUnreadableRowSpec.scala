@@ -5,7 +5,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models.Multikino
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{StoredMovieRecord, UnreadableByIdMovieRepository}
+import services.movies.{StoredMovieRecord, UnreadableByIdMovieRepository, FilmId}
 
 /**
  * What the staging fold does when the storage underneath it does not answer — the branches
@@ -72,7 +72,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
     failing = false
     val completionWrites = new java.util.concurrent.atomic.AtomicInteger(0)
     val reads            = new java.util.concurrent.atomic.AtomicInteger(0)
-    override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = {
+    override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) = {
       val n   = reads.incrementAndGet()
       val out = if (n > 1) (None, false) else super.findByIdChecked(id)
       if (n == 1 && transientOnFirstAttempt) {
@@ -139,7 +139,7 @@ class FoldOnUnreadableRowSpec extends AnyFlatSpec with Matchers {
   private class UnmovableFilmRepository(raise: Boolean) extends UnreadableByIdMovieRepository {
     failing = false
     val attempts = new java.util.concurrent.atomic.AtomicInteger(0)
-    override def moveFilm(fromId: String, toId: String): Boolean = {
+    override def moveFilm(fromId: FilmId, toId: FilmId): Boolean = {
       attempts.incrementAndGet()
       if (raise) throw new RuntimeException("simulated side-collection move failure") else false
     }

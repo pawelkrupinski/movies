@@ -3,7 +3,7 @@ package services.movies
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import models.{MovieRecord, Showtime, Source, SourceData}
-import org.mongodb.scala.bson.{BsonDateTime, BsonNull}
+import org.mongodb.scala.bson.BsonDateTime
 import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Sorts, Updates}
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.bson.conversions.Bson
@@ -15,67 +15,63 @@ import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
 
-/** One persisted (title, year) → MovieRecord row. Used as the return type
- *  of `MovieRepository.findAll` and `MovieCache.snapshot` so callers iterate
- *  named fields instead of destructuring an anonymous 3-tuple.
+/** One persisted film row: its display `title` and `year` (together, its lookup
+ *  [[CacheKey]]), the record, and the [[FilmId]] it is stored under. Used as the return
+ *  type of `MovieRepository.findAll` and `MovieCache.snapshot` so callers iterate
+ *  named fields instead of destructuring an anonymous tuple.
  *
- *  `persistedId` carries the row's actual Mongo `_id` when it came from storage
- *  (set by [[StoredMovieRecord.fromStorage]]); `None` for rows synthesized
- *  in-memory (the cache snapshot, tests), where the canonical `idFor` form is
- *  the id. [[idOf]] prefers it so two distinct documents can never share a DOM
- *  id — see [[idOf]] for why re-deriving the id is not safe. */
-case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord, persistedId: Option[String] = None)
+ *  `id` is the row's Mongo `_id` — permanent, see [[FilmId]]. A row synthesised
+ *  without storage (tests, the odd in-memory construction) defaults to the legacy
+ *  form, its key, which is what every row stored before ids existed carries. */
+case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord, id: FilmId) {
+  /** The row's lookup key — `sanitize(title)|year` — as stored in the document's `key`
+   *  field. NOT the identity: a retitle changes it, the `id` stays. */
+  def key(normalizer: TitleNormalizer): String = StoredMovieRecord.idFor(title, year, normalizer)
+}
 
 object StoredMovieRecord {
-  /** The Mongo `_id` for a `(title, year)` row: `sanitize(title)|year`. The one
-   *  formula the repository keys rows by — exposed so the change stream and the
-   *  /debug live view can key DOM rows on the same id the store does. Matches
+  /** A row synthesised without storage: its id is the legacy form of its key. */
+  def apply(title: String, year: Option[Int], record: MovieRecord): StoredMovieRecord =
+    StoredMovieRecord(title, year, record, FilmId.legacy(title, year, TitleNormalizer.deployment))
+
+  /** The lookup KEY of a `(title, year)` row: `sanitize(title)|year` — the `key` field of
+   *  the document (and, for a row stored before ids existed, its `_id` too). Matches
    *  the in-memory `CacheKey` normalization (case/diacritic-folded). */
   def idFor(title: String, year: Option[Int], normalizer: TitleNormalizer): String =
     s"${normalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 
-  /** The same `_id`, for a caller that already holds the key. A [[CacheKey]]
-   *  carries the normalised form it was BUILT with, so this needs no normalizer
-   *  and cannot re-derive a different one: re-sanitizing `k.cleanTitle` with
-   *  today's rules would silently disagree with the key's own identity if the
-   *  two rule sets ever differed. Most callers are in this shape. */
+  /** The same key, for a caller that already holds it. A [[CacheKey]] carries the
+   *  normalised form it was BUILT with, so this needs no normalizer and cannot re-derive
+   *  a different one. */
   def idFor(k: CacheKey): String =
     s"${k.normalized}|${k.year.map(_.toString).getOrElse("")}"
 
-  /** The `_id` of a stored row. Prefers the actual `persistedId` over re-deriving
-   *  `idFor(title, year)`: the display `title` is derived from `sourceData`, so a
-   *  clean doc whose cinema reports the title WITH the year baked in (e.g.
-   *  "Zabriskie Point (1970)") re-sanitizes to a DIFFERENT prefix than its `_id`
-   *  — colliding with whatever doc that prefix actually belongs to. Two distinct
-   *  Mongo documents then render the same `data-id` and the /debug live view's
-   *  first-match DOM lookup opens whichever row is first. The persisted `_id` is
-   *  unique by construction, so keying on it keeps the rows independent. */
-  def idOf(row: StoredMovieRecord, normalizer: TitleNormalizer): String =
-    row.persistedId.getOrElse(idFor(row.title, row.year, normalizer))
-
-  /** Rebuild a stored row from its persisted `_id` and `MovieRecord`, deriving
-   *  the display `title` and `year` rather than reading pinned columns — used by
-   *  the Mongo codec (`MovieCodecs.toDomain`), whose BSON drops the `title`/
-   *  `year` fields. The `_id` is `sanitize(title)|year`: `sanitize` never emits
-   *  `|`, so the suffix is the year and the prefix is the cache key's sanitized
-   *  form. Every spelling in a row sanitizes to that prefix (the `CacheKey`
-   *  identity), so `displayTitle(prefix)` sanitizes back to it — the rebuilt key
-   *  recomputes to the same `_id`, no re-keying churn. (The in-memory repository keeps
-   *  the full record in memory and returns its title verbatim, so it needs no
-   *  recovery step; for realistic rows the two agree.)
+  /** Rebuild a stored row from its persisted `_id`, its `key` field (absent on a
+   *  document written before keys were stored — then the `_id` IS the key) and its
+   *  `MovieRecord`, deriving the display `title` and `year` rather than reading pinned
+   *  columns — used by the Mongo codec (`MovieCodecs.toDomain`), whose BSON drops the
+   *  `title`/`year` fields. The key is `sanitize(title)|year`: `sanitize` never emits
+   *  `|`, so the suffix is the year and the prefix is the cache key's sanitized form.
+   *  Every spelling in a row sanitizes to that prefix (the `CacheKey` identity), so
+   *  `displayTitle(prefix)` sanitizes back to it.
    *
    *  CALL IT WITH A COMPLETE RECORD. `displayTitle` names the film from its SLOTS,
    *  so a record whose slots have not been stitched back in yet has nothing to name
-   *  it with and falls through to the `_id` prefix — a real title only by accident
+   *  it with and falls through to the key prefix — a real title only by accident
    *  ("Interstellar"), otherwise a mangled "Thecabinetofdrcaligari". That is exactly
    *  the state `MovieCodecs.toDomain` decodes into now that the slots live in
    *  `movie_slots`, which is why `MongoMovieRepository.stitchSlots` calls this again
    *  once the record is whole. */
-  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord = {
-    val sep      = id.lastIndexOf('|')
-    val idPrefix = if (sep >= 0) id.substring(0, sep) else id
-    val year     = if (sep >= 0) id.substring(sep + 1).toIntOption else None
-    StoredMovieRecord(record.displayTitle(idPrefix, normalizer), year, record, persistedId = Some(id))
+  /** A document with no `key` field — written before ids existed, its `_id` is its key. */
+  def fromStorage(id: String, record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord =
+    fromStorage(id, None, record, normalizer)
+
+  def fromStorage(id: String, key: Option[String], record: MovieRecord, normalizer: TitleNormalizer): StoredMovieRecord = {
+    val k        = key.getOrElse(id)
+    val sep      = k.lastIndexOf('|')
+    val idPrefix = if (sep >= 0) k.substring(0, sep) else k
+    val year     = if (sep >= 0) k.substring(sep + 1).toIntOption else None
+    StoredMovieRecord(record.displayTitle(idPrefix, normalizer), year, record, FilmId(id))
   }
 }
 
@@ -138,7 +134,7 @@ trait MovieRepository {
    *  up front — rendering the whole corpus's details in one Twirl pass OOM'd the
    *  view. The default scans [[findAll]] (fine for the in-memory store);
    *  `MongoMovieRepository` overrides it with an indexed `_id` lookup. */
-  def findById(id: String): Option[StoredMovieRecord] = findByIdChecked(id)._1
+  def findById(id: FilmId): Option[StoredMovieRecord] = findByIdChecked(id)._1
 
   /** Like [[findById]] but says whether the READ succeeded, so `None` can be told from
    *  "could not look".
@@ -155,8 +151,16 @@ trait MovieRepository {
    *  fell to a third across every country.
    *
    *  The in-memory store cannot fail, so the default reports `true`. */
-  def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = {
-    (findAll().find(row => StoredMovieRecord.idOf(row, normalizer) == id), true)
+  def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
+    (findAll().find(_.id == id), true)
+
+  /** The row whose `key` field is this lookup key — a cold cache asking "is this
+   *  film stored?" before it knows the id. Same checked contract as
+   *  [[findByIdChecked]]. At most one row holds a key (the cache keeps its map by it);
+   *  the default scans [[findAll]], `MongoMovieRepository` uses the `key` index. */
+  def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = {
+    val k = StoredMovieRecord.idFor(key)
+    (findAll().find(_.key(normalizer) == k), true)
   }
 
   /** The country whose rules derive a row's `_id`. Defaulted so the in-memory and
@@ -234,29 +238,24 @@ trait MovieRepository {
 
   /** Remove every record matching the given (title, year). Best-effort —
    *  failures are logged, never thrown. */
-  def delete(title: String, year: Option[Int]): Unit
+  def delete(title: String, year: Option[Int]): Unit =
+    findByKeyChecked(CacheKey(title, year, normalizer))._1.foreach(row => delete(row.id))
 
-  /** Remove the record stored under this exact `_id`. Unlike [[delete]] (which
-   *  keys off `(title, year)` → `documentId`), this targets a row by its raw,
-   *  possibly NON-canonical `_id` — used to reap a mis-keyed orphan whose stored
-   *  `_id` no longer matches `idFor(displayTitle, year)` (a row first stored under
-   *  a cinema's original-language title whose display form later drifted to the
-   *  Polish one, leaving two `movies` docs for one film). Best-effort — failures
-   *  are logged, never thrown. */
-  def deleteById(id: String): Unit
+  /** Remove the film stored under this id, with its side-collection rows. Best-effort
+   *  — failures are logged, never thrown. */
+  def delete(id: FilmId): Unit
 
   /** Move a film's SIDE-COLLECTION rows (`screenings`, `movie_slots`) from one document
-   *  id to another — the re-key.
+   *  id to another — a MERGE of two documents that turned out to be one film (the
+   *  tmdbId fold, an imdbId fold, a staging retirement, the hydrate's duplicate
+   *  reconcile). A retitle never comes here: the film keeps its id (see [[FilmId]]).
    *
-   *  A re-key is a rename, not a departure: `foo|` becomes `foo|2026` the moment TMDB
-   *  concludes the year, and the film keeps screening throughout. But its showtimes are
-   *  filed under the OLD id, and nothing else moves them — `upsert` re-stitches from the
-   *  id it is writing TO, so at the new id it finds nothing and stores nothing, while the
-   *  old id is deleted with the old row. The showtimes are destroyed in between.
-   *
-   *  That is not hypothetical: the 30-minute `SettleReaper` re-keys continuously, and on
-   *  2026-07-27 prod shed ~10k upcoming showtimes per cycle in PL alone, films left
-   *  intact, rebuilt only by the next scrape — the sawtooth this method exists to end.
+   *  A merge loser is not a departure: its showtimes are filed under ITS id, and nothing
+   *  else moves them — `upsert` re-stitches from the id it is writing TO, so at the winner
+   *  it finds nothing and stores nothing, while the loser is deleted with its row. The
+   *  showtimes are destroyed in between. That is not hypothetical: when every re-key was
+   *  such a move, on 2026-07-27 prod shed ~10k upcoming showtimes per cycle in PL alone,
+   *  films left intact, rebuilt only by the next scrape — the sawtooth this method ended.
    *
    *  Rows already at `newId` are kept, with the moved ones taking precedence on a shared
    *  slot key (the same direction `rekey`'s record merge carries state forward).
@@ -267,10 +266,26 @@ trait MovieRepository {
    *  leave the film where it is and try again next pass; deleting `oldId` on the strength
    *  of a move that didn't land destroys the film's only copy. See [[SideCollectionMove]]
    *  for the rule. A store with no side collections has nothing to move and reports true. */
-  def moveFilm(oldId: String, newId: String): Boolean = true
+  def moveFilm(oldId: FilmId, newId: FilmId): Boolean = true
 
-  /** Write-through upsert. Best-effort — failures are logged, never thrown. */
-  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit
+  /** Write-through upsert of the film `id`, stored under the lookup key
+   *  `sanitize(title)|year`. The same id under a new key is a RETITLE — the document
+   *  stays, its `key` moves. Best-effort — failures are logged, never thrown. */
+  def upsert(id: FilmId, title: String, year: Option[Int], e: MovieRecord): Unit
+
+  /** Key-addressed upsert for callers that do not hold an id — seeding, and the odd
+   *  script. The row already stored under this key keeps its id; otherwise the row is
+   *  created under the key's LEGACY id (the key string itself, the shape every document
+   *  written before ids existed has), or a fresh id if a document already owns that
+   *  string. The cache never takes this path; it knows its ids. */
+  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = {
+    val key = CacheKey(title, year, normalizer)
+    val id  = findByKeyChecked(key)._1.map(_.id).getOrElse {
+      val taken: FilmId => Boolean = id => findByIdChecked(id)._1.isDefined
+      Some(FilmId.legacy(key)).filterNot(taken).getOrElse(FilmId.fresh(key, taken))
+    }
+    upsert(id, title, year, e)
+  }
 
   /** Update the row at `(title, year)` only if it currently exists. Returns
    *  true on update, false when no row matched (concurrent delete, or the
@@ -284,7 +299,11 @@ trait MovieRepository {
    *  clearing `filmwebUrl` while a stale-cache rating tick concurrently
    *  bumps `filmwebRating`) is therefore preserved instead of being
    *  clobbered by a full-document replace. */
-  def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean
+  def updateIfPresent(id: FilmId, title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean
+
+  /** Key-addressed [[updateIfPresent]] — see the key-addressed `upsert`. */
+  def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean =
+    findByKeyChecked(CacheKey(title, year, normalizer))._1.exists(row => updateIfPresent(row.id, title, year, before, after))
 
   /** Stream out-of-band changes to persisted rows as they happen, so the cache
    *  can apply each change incrementally instead of periodically reloading the
@@ -302,11 +321,11 @@ trait MovieRepository {
   /** Like [[watchUpserts]] but also surfaces out-of-band DELETEs (by `_id`), so
    *  a consumer that must reflect row *removal* sees it — the /debug live view,
    *  where a merge deletes the losing row and the row must disappear. `onDelete`
-   *  gets the raw `_id` (`sanitize(title)|year`, the [[StoredMovieRecord.idFor]]
-   *  form). Default: not supported (returns None), same as [[watchUpserts]]. */
+   *  gets the deleted row's id. Default: not supported (returns None), same as
+   *  [[watchUpserts]]. */
   def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
-    onDelete: String => Unit
+    onDelete: FilmId => Unit
   ): Option[AutoCloseable] = None
 
   /** Release any underlying resources. No-op when nothing to release. */
@@ -458,7 +477,7 @@ class MongoMovieRepository(
     if (storedSlots.isEmpty) r
     else {
       val stitched = r.record.copy(data = SlotsRepository.merge(r.record.data, storedSlots))
-      r.persistedId.fold(r.copy(record = stitched))(StoredMovieRecord.fromStorage(_, stitched, normalizer))
+      StoredMovieRecord.fromStorage(r.id.value, Some(r.key(normalizer)), stitched, normalizer)
     }
 
   /** Decode one stored row and re-inject its slots from `movie_slots` and its showtimes
@@ -645,9 +664,16 @@ class MongoMovieRepository(
    *  absent row from an unreadable one — see the trait doc for what conflating them
    *  costs. A row whose SLOT read failed counts as unreadable too: `decodeStitched`
    *  declines to build it, and that `None` means "could not look", not "no such film". */
-  override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) = coll match {
+  override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
+    findOneChecked(Filters.eq("_id", id.value), s"findById($id)")
+
+  /** Indexed lookup by the `key` field — see the trait. */
+  override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
+    findOneChecked(Filters.eq("key", StoredMovieRecord.idFor(key)), s"findByKey(${StoredMovieRecord.idFor(key)})")
+
+  private def findOneChecked(filter: Bson, what: String): (Option[StoredMovieRecord], Boolean) = coll match {
     case Some(c) =>
-      Try(Option(Await.result(c.find(Filters.eq("_id", id)).first().toFuture(), 10.seconds))) match {
+      Try(Option(Await.result(c.find(filter).first().toFuture(), 10.seconds))) match {
         case scala.util.Success(None)      => (None, true)   // genuinely absent
         case scala.util.Success(Some(dto)) =>
           decodeStitched(dto) match {
@@ -655,7 +681,7 @@ class MongoMovieRepository(
             case None           => (None, false)             // slots unreadable
           }
         case scala.util.Failure(exception) =>
-          logger.warn(s"MovieRepository.findById($id) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+          logger.warn(s"MovieRepository.$what failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
           (None, false)
       }
     case None => (None, true)
@@ -733,72 +759,44 @@ class MongoMovieRepository(
   override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean =
     scanStitched(_.foreach(f), withShowtimes = false)
 
-  /** Deletes by `_id` (the current `documentId` formula) OR by the legacy `title` +
-   *  `year` fields. Current documents no longer persist `title`/`year` (the `_id`
-   *  encodes both — see `StoredMovieDto`), so they're caught by the `_id`
-   *  branch. The legacy field branch still catches OLD-format documents whose `_id`
-   *  used a prior `documentId` formula but which carry the `title`/`year` columns —
-   *  `_id`-only would silently miss those orphans and they'd survive every
-   *  startup's merge. */
-  def delete(title: String, year: Option[Int]): Unit = coll.foreach { c =>
-    val yearFilter = year match {
-      case Some(y) => Filters.eq("year", y)
-      // year=None in the in-memory model lands as either BsonNull() or a
-      // missing field in legacy documents; cover both.
-      case None    => Filters.or(Filters.eq("year", BsonNull()), Filters.exists("year", false))
-    }
-    val filter = Filters.or(
-      Filters.eq("_id", documentId(title, year)),
-      Filters.and(Filters.eq("title", title), yearFilter)
-    )
+  /** Remove the film `id` with its side-collection rows. */
+  def delete(id: FilmId): Unit = coll.foreach { c =>
     Try {
-      val result = Await.result(c.deleteMany(filter).toFuture(), 10.seconds)
-      if (result.getDeletedCount > 0)
-        RemovalAudit.filmRemoved("movies.delete", documentId(title, year),
-          reason = if (result.getDeletedCount > 1) s"title+year (${result.getDeletedCount} docs)" else "title+year")
-      screenings.foreach(_.deleteFilm(documentId(title, year)))
-      slots.foreach(_.deleteFilm(documentId(title, year)))
+      val deleted = Await.result(c.deleteOne(Filters.eq("_id", id.value)).toFuture(), 10.seconds).getDeletedCount
+      if (deleted > 0) RemovalAudit.filmRemoved("movies.delete", id.value, reason = "by-id")
+      screenings.foreach(_.deleteFilm(id.value))
+      slots.foreach(_.deleteFilm(id.value))
       ()
     }.recover {
-      case exception: Throwable => logger.warn(s"MovieRepository.delete($title, $year) failed: ${exception.getMessage}")
+      case exception: Throwable => logger.warn(s"MovieRepository.delete($id) failed: ${exception.getMessage}")
     }
   }
 
-  def deleteById(id: String): Unit = coll.foreach { c =>
-    Try {
-      val deleted = Await.result(c.deleteOne(Filters.eq("_id", id)).toFuture(), 10.seconds).getDeletedCount
-      if (deleted > 0) RemovalAudit.filmRemoved("movies.deleteById", id, reason = "orphan-id-reap")
-      screenings.foreach(_.deleteFilm(id))
-      slots.foreach(_.deleteFilm(id))
-      ()
-    }.recover {
-      case exception: Throwable => logger.warn(s"MovieRepository.deleteById($id) failed: ${exception.getMessage}")
-    }
-  }
-
-  /** Carry a film's screenings + slots across a re-key, so the rename doesn't strand them
-   *  under an id that is about to be deleted. The read/verify/delete rule is
-   *  [[SideCollectionMove]]'s, shared with the in-memory fake so a re-key spec cannot pass
+  /** Carry a film's screenings + slots across a merge, so the loser's rows don't stay
+   *  stranded under an id that is about to be deleted. The read/verify/delete rule is
+   *  [[SideCollectionMove]]'s, shared with the in-memory fake so a merge spec cannot pass
    *  against rules production doesn't follow. See the trait doc for what it cost. */
-  override def moveFilm(oldId: String, newId: String): Boolean = if (oldId == newId) true else {
+  override def moveFilm(oldFilm: FilmId, newFilm: FilmId): Boolean = if (oldFilm == newFilm) true else {
+    val (oldId, newId) = (oldFilm.value, newFilm.value)
     val screeningsMoved = screenings.forall(s => SideCollectionMove.move[Seq[Showtime]](
       oldId, newId,
       read       = s.findForFilmChecked,
       replace    = (id, rows) => { s.replaceFilm(id, rows); true },
       deleteFilm = s.deleteFilm,
-      onSkip     = message => logger.warn(s"re-key $oldId -> $newId (screenings): $message."),
-      onMoved    = moved => logger.info(s"re-key $oldId -> $newId: carried $moved screenings slot(s) across.")))
+      onSkip     = message => logger.warn(s"merge $oldId -> $newId (screenings): $message."),
+      onMoved    = moved => logger.info(s"merge $oldId -> $newId: carried $moved screenings slot(s) across.")))
     val slotsMoved = slots.forall(sl => SideCollectionMove.move[SourceData](
       oldId, newId,
       read       = sl.findForFilmChecked,
       replace    = (id, rows) => sl.replaceFilm(id, rows),
       deleteFilm = sl.deleteFilm,
-      onSkip     = message => logger.warn(s"re-key $oldId -> $newId (slots): $message.")))
+      onSkip     = message => logger.warn(s"merge $oldId -> $newId (slots): $message.")))
     screeningsMoved && slotsMoved
   }
 
-  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
-    val id   = documentId(title, year)
+  def upsert(film: FilmId, title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
+    val id   = film.value
+    val key  = documentKey(title, year)
     // A whole-record write can carry slots STRIPPED for the cache; `showtimesOf` would
     // drop them and `replaceFilm` would DELETE their screenings. Re-stitch first.
     // …and a re-stitch whose READ failed under-reports the film: every slot it could not
@@ -864,7 +862,7 @@ class MongoMovieRepository(
     val stored = Try(Await.result(c.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds)).map(_.headOption)
     // What to write, and whether the stored document already equals it — the decision is
     // `MoviesUpsert`'s, so it is unit-tested apart from the three reads that feed it.
-    val plan = MoviesUpsert.plan(id, e, restitched, slotsLanded, slotsForStorage, stored, now)
+    val plan = MoviesUpsert.plan(id, key, e, restitched, slotsLanded, slotsForStorage, stored, now)
     Try {
       if (!plan.unchanged) Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, opts).toFuture(), 10.seconds)
       // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
@@ -906,10 +904,11 @@ class MongoMovieRepository(
     }
   }
 
-  def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = coll match {
+  def updateIfPresent(film: FilmId, title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = coll match {
     case None => false
     case Some(c) =>
-      val id = documentId(title, year)
+      val id  = film.value
+      val key = documentKey(title, year)
       // Showtime deltas → `screenings` (its authority under the split); from the
       // ORIGINAL records. Only when a screenings repo is wired.
       val ops = if (screenings.isDefined) ScreeningsSplit.slotOps(before.data, after.data)
@@ -961,7 +960,7 @@ class MongoMovieRepository(
               dottedReplaceRecord(current, patch) match {
                 case Some(merged) =>
                   Await.result(c.replaceOne(Filters.eq("_id", id),
-                    StoredMovieDto.fromDomain(id, merged, Instant.now()),
+                    StoredMovieDto.fromDomain(id, key, merged, Instant.now()),
                     new ReplaceOptions().upsert(false)).toFuture(), 10.seconds).getMatchedCount
                 case None => 0L
               }
@@ -1071,7 +1070,7 @@ class MongoMovieRepository(
       source              = MovieChangeStream.Source.ofCollection(c),
       screenings          = screenings,
       decode              = decodeStitched,
-      reread              = findById,
+      reread              = id => findById(FilmId(id)),
       // The shared cursor reopens (after a terminal error, and — the big win — after a WORKER
       // RESTART) from the last-seen token instead of "now", REPLAYING writes that landed while
       // this process was down — the gap the consumers' periodic backstops exist for. See
@@ -1088,8 +1087,8 @@ class MongoMovieRepository(
 
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
-    onDelete: String => Unit
-  ): Option[AutoCloseable] = changeStream.map(_.watch(onUpsert, onDelete))
+    onDelete: FilmId => Unit
+  ): Option[AutoCloseable] = changeStream.map(_.watch(onUpsert, id => onDelete(FilmId(id))))
 
   /** Whether the single shared change-stream cursor is currently running — for
    *  diagnostics/tests (it starts on the first listener, stops after the last). */
@@ -1100,26 +1099,26 @@ class MongoMovieRepository(
     clientOpt.foreach(_.close())
   }
 
-  /** Index `(title, year)` so [[delete]]'s `$or(_id, title+year)` filter resolves
-   *  by index union instead of a full collection scan. The stored documents no longer
-   *  carry `title`/`year` columns (the 2026-06-11 derived-title migration dropped
-   *  them), so for current rows the second `$or` branch matches nothing — but
-   *  without this index Mongo still COLLSCANs the whole collection to prove that
-   *  on every delete (~400ms / ~1100 documents examined per delete; the single largest
-   *  source of `movies` read-lock time in prod). With the index the branch is a
-   *  1-key IXSCAN. The index stays cheap (currently all-null entries, ~24KB) and
-   *  still catches any legacy stale-`_id` document that DOES carry the columns — the
-   *  delete-by-(title,year) safety net the change-stream regression depends on.
-   *  Idempotent + best-effort: a re-create is a no-op, a failure only logs. */
-  private def ensureIndexes(coll: MongoCollection[StoredMovieDto]): Unit =
+  /** The `key` index and its one-time backfill. Idempotent + best-effort: a re-create is
+   *  a no-op, a failure only logs. (The `(title, year)` index that used to serve
+   *  `delete`'s column-matching fallback is not created any more — nothing queries
+   *  those columns; the index left on prod is inert.) */
+  private def ensureIndexes(coll: MongoCollection[StoredMovieDto]): Unit = {
+    // The lookup key lives in its own field now that `_id` is the permanent `FilmId`
+    // (see [[FilmId]]). A document written before then has no `key` — its `_id` IS its
+    // key — so backfill it once, here, before anything queries by key: the staging fold's
+    // sanitize-group read and the cache's cold lookup both filter on `key`. Idempotent
+    // (only documents lacking the field) and a pipeline update, so one round trip.
     Try {
-      Await.result(
-        coll.createIndex(Indexes.ascending("title", "year"), new IndexOptions().background(true)).toFuture(),
-        10.seconds)
-      ()
+      Await.result(coll.createIndex(Indexes.ascending("key"), new IndexOptions().background(true)).toFuture(), 10.seconds)
+      val backfilled = Await.result(coll.updateMany(Filters.exists("key", false),
+        Seq(org.mongodb.scala.bson.collection.immutable.Document("$set" -> org.mongodb.scala.bson.collection.immutable.Document("key" -> "$_id")))).toFuture(), 60.seconds)
+      if (backfilled.getModifiedCount > 0)
+        logger.info(s"movies: backfilled `key` from `_id` on ${backfilled.getModifiedCount} document(s) written before film ids.")
     }.recover {
-      case exception: Throwable => logger.warn(s"movies (title, year) index creation failed: ${exception.getMessage}")
+      case exception: Throwable => logger.warn(s"movies `key` index/backfill failed: ${exception.getMessage}")
     }
+  }
 
   private def init(): (Option[MongoClient], Option[MongoDatabase], Option[MongoCollection[StoredMovieDto]]) =
     Env.get("MONGODB_URI") match {
@@ -1161,6 +1160,6 @@ class MongoMovieRepository(
   // muzeum" — both reported by different cinemas for the same film — each get
   // their own row, and only one can be updated per hourly refresh tick (the
   // tick walks the deduplicated Caffeine cache).
-  private def documentId(title: String, year: Option[Int]): String =
+  private def documentKey(title: String, year: Option[Int]): String =
     StoredMovieRecord.idFor(title, year, normalizer)
 }

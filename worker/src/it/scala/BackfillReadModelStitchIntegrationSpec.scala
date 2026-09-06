@@ -85,7 +85,7 @@ class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers w
     }
 
     val stitched = scripts.BackfillReadModel.corpusReader(db).findAll()
-      .find(r => StoredMovieRecord.idOf(r, titleNormalizer) == id)
+      .find(r => r.id.value == id)
 
     withClue(s"the reader `main` uses returned: ${stitched.map(_.record.data.view.mapValues(_.showtimes.size).toMap)}\n") {
       stitched.map(_.record.cinemaShowings.flatMap(_._2.showtimes)).getOrElse(Nil) should not be empty

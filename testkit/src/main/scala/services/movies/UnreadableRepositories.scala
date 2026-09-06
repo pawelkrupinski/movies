@@ -94,6 +94,8 @@ class UnwritableScreeningsRepository extends InMemoryScreeningsRepository {
 class UnreadableByIdMovieRepository(seed: Seq[(String, Option[Int], MovieRecord)] = Seq.empty)
   extends InMemoryMovieRepository(seed) {
   @volatile var failing: Boolean = true
-  override def findByIdChecked(id: String): (Option[StoredMovieRecord], Boolean) =
+  override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
     if (failing) (None, false) else super.findByIdChecked(id)
+  override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
+    if (failing) (None, false) else super.findByKeyChecked(key)
 }
