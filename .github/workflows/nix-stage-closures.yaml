@@ -166,6 +166,33 @@ jobs:
         working-directory: infra
         run: bash test/test_public_proxy.sh
 
+      # THE THIRD FILE `nix eval` CANNOT READ INTO, and the one that decides whether an alert is
+      # DELIVERED. Routing is first-match-wins and inhibition silences alerts outright, so both
+      # failure modes are a message that never arrives -- invisible until the incident it was
+      # supposed to cover. The script starts a real Alertmanager and asks it, rather than reading
+      # the YAML.
+      #
+      # IT WAS NOT RUN HERE UNTIL 2026-09-06 because it took twenty-five minutes: `amtool` was
+      # re-resolved through `nix shell` on each of its forty invocations. Resolving once put it at
+      # two and a half, which is what made adding it here reasonable — and it needed adding, since
+      # every case in it existed only for whoever remembered to run bin/check by hand.
+      - name: Alerts reach the receiver they claim, and silence only what they should
+        working-directory: infra
+        # PyYAML is the one dependency this script has that the runner image does not promise. It
+        # is installed rather than guarded, because the alternative — the script skipping its
+        # inhibit-rule check when the import fails — is the silent-skip this directory is written
+        # against.
+        run: |
+          python3 -c 'import yaml' 2>/dev/null || pip3 install --quiet --disable-pip-version-check pyyaml
+          bash test/test_alertmanager.sh
+
+      # Instant, pure-python, and the gate that decides whether the fleet applies its own closures:
+      # one missing "s" in its regex once turned a new secret into a host that refused every staged
+      # change until a person logged in. It runs in bin/check and ran nowhere else.
+      - name: The auto-apply classifier still refuses what it should
+        working-directory: infra
+        run: python3 test/test_auto_apply_classify.py
+
       - name: Every host in the flake evaluates
         working-directory: infra
         run: |
