@@ -6,7 +6,6 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{CinemaMovieAdded, EventBus, InProcessEventBus, StagingNewcomerDiverted}
-import services.titlerules.TitleRuleKey
 import tools.{DaemonExecutors, Env, PersonName, TextNormalization}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -326,36 +325,9 @@ class CaffeineMovieCache(
   def occupancy: services.metrics.CacheOccupancy =
     services.metrics.CacheOccupancy.of(positive, weighted = false)
 
-  // Partial-scrape guard thresholds (see `recordCinemaScrape`'s prune): a tick
-  // that returns fewer than `PruneFloorRatio` of the cinema's currently-held
-  // slots — and only when it already holds at least `MinSlotsForShrinkGuard`, so a
-  // small venue's ±1 swings never trip it — is treated as a degraded fetch and
-  // skips the prune. Half is a wide margin: cinemas don't shed most of their
-  // catalogue between two ticks, but a partial Cloudflare/session response can
-  // return a handful of a full board's rows.
-  private val MinSlotsForShrinkGuard = 8
-  private val PruneFloorRatio        = 0.5
-
-  // The DEPTH guard's engage-floor (its ratio is `PruneFloorRatio` above — one
-  // half-floor, measured valid on both axes, rather than two constants that mean
-  // the same thing). A cinema holding fewer upcoming showtimes than this is small
-  // enough that halving its board between ticks is a real schedule change, not a
-  // degraded fetch — the depth analogue of `MinSlotsForShrinkGuard`, and set to
-  // roughly that many slots' worth of screenings.
-  private val MinShowtimesForDepthGuard = 24
-
-  // The depth guard DISCARDS a tick, so it must not be able to freeze a venue
-  // forever. A board that genuinely halves — a screen closes, a summer schedule
-  // starts — would otherwise be rejected on every subsequent tick too, since each
-  // one is compared against the same stale stored total. Leaving stale FUTURE
-  // showtimes up is worse than showing too few: a user can act on a screening that
-  // is not happening. After this many CONSECUTIVE rejections the reduction is
-  // treated as real and allowed through. This does not reopen the incident: those
-  // degraded ticks were interspersed with healthy ones, each of which resets the
-  // count and restores the full board.
-  private val MaxConsecutiveDepthRejections = 3
-
-  /** Consecutive depth-guard rejections per cinema, reset by any tick that passes. */
+  // The thresholds behind the two scrape-health guards live with the guards in
+  // `ScrapeHealth`; this cache keeps only the one piece of state they need — how
+  // many ticks running the depth guard has rejected a venue.
   private val depthRejections = scala.collection.concurrent.TrieMap.empty[String, Int]
 
   // Fires the cold-mirror sync at most once, on the FIRST scrape (see
@@ -1191,45 +1163,31 @@ class CaffeineMovieCache(
     if (movies.isEmpty) return Seq.empty
 
     // DEPTH guard — the same "trust what we have" bail as above, on the axis
-    // neither that check nor the film-count shrink guard further down can see.
-    // A CHUNKED cinema is fetched one task per DATE, so a bad fetch window loses
-    // whole dates while every film still comes back on the dates that worked:
-    // breadth intact, depth collapsed. The shrink guard counts films and reads a
-    // full board; every slot is "touched" so the prune never even engages; and the
-    // thin showtime list simply REPLACES the full one (a cinema slot is rewritten
-    // wholesale). That is how the UK lost ~70% of its upcoming showtimes on
-    // 2026-07-27 while its film count ROSE — cinemas measured holding 18% of what
-    // a complete re-scrape found, restored in full by the next healthy run.
-    //
-    // Threshold from production: sampling complete chunked runs against the
-    // showtimes already stored for the same cinema, a HEALTHY tick reproduces the
-    // stored count to within a few percent (PL+DE: mean 1.04, sd 0.05, range
-    // 0.98-1.10), while the degraded UK ticks sat at 0.09-0.40. Reusing the shrink
-    // guard's half-floor therefore sits ~10 sd below normal variation — no realistic
-    // false positive — and still catches the incident with room to spare.
-    // `MinShowtimesForDepthGuard` keeps it off boards small enough for a halving to
-    // be real: a two-screen venue genuinely can go from three showings to one.
+    // neither that check nor the breadth guard below can see (a chunked fetch that
+    // lost whole dates). The verdict is `ScrapeHealth.depth`'s; this keeps the count
+    // of consecutive rejections per venue, which is the only state involved.
     //
     // Count via `slotShowtimeCount`, NOT `showtimes.size`: under the read-split every
     // resident slot has been through `stripForCache` and carries `Nil` showtimes, so a
-    // direct `.size` reads 0 for every cinema and the floor below never engages. That is
-    // production's shape and it made this guard dead code; the specs, which wire no
-    // screenings repository, kept their lists resident and passed regardless.
+    // direct `.size` reads 0 for every cinema and the floor never engages — which made
+    // this guard dead code in production while the specs, wiring no screenings
+    // repository, kept their lists resident and passed regardless.
     val knownCinemaShowtimes = corpusIndex.slotsOf(cinema).map { case (_, _, sd) =>
       ShowtimesDigest.slotShowtimeCount(sd) }.sum
     val batchShowtimes       = movies.iterator.map(_.showtimes.size).sum
-    if (knownCinemaShowtimes >= MinShowtimesForDepthGuard &&
-        batchShowtimes < knownCinemaShowtimes * PruneFloorRatio) {
-      val consecutive = depthRejections.updateWith(cinema.displayName)(n => Some(n.getOrElse(0) + 1)).getOrElse(1)
-      if (consecutive <= MaxConsecutiveDepthRejections) {
+    ScrapeHealth.depth(knownCinemaShowtimes, batchShowtimes, depthRejections.getOrElse(cinema.displayName, 0)) match {
+      case ScrapeHealth.Depth.Reject(consecutive) =>
+        depthRejections.put(cinema.displayName, consecutive)
         RemovalAudit.scrapeDepthGuarded(cinema.displayName, batchShowtimes, knownCinemaShowtimes, consecutive)
         return Seq.empty
-      }
-      // Sustained across several ticks — stop treating it as a bad fetch and let
-      // the smaller board land, rather than serving showtimes that no longer exist.
-      RemovalAudit.scrapeDepthAccepted(cinema.displayName, batchShowtimes, knownCinemaShowtimes, consecutive)
+      case ScrapeHealth.Depth.AcceptDegraded(consecutive) =>
+        // Sustained across several ticks — stop treating it as a bad fetch and let
+        // the smaller board land, rather than serving showtimes that no longer exist.
+        RemovalAudit.scrapeDepthAccepted(cinema.displayName, batchShowtimes, knownCinemaShowtimes, consecutive)
+        depthRejections.remove(cinema.displayName)
+      case ScrapeHealth.Depth.Healthy =>
+        depthRejections.remove(cinema.displayName)
     }
-    depthRejections.remove(cinema.displayName)
 
     // Cold-mirror guard (only matters when diversion is wired). The newcomer test
     // further down reads the in-memory mirror (`corpusIndex`, and through it the
@@ -1253,91 +1211,17 @@ class CaffeineMovieCache(
     if (staging.isDefined && coldMirrorSyncArmed.getAndSet(false)
         && positive.estimatedSize() == 0 && repository.findAll().nonEmpty) rehydrate()
 
-    // Carry the freshly-written `SourceData` slot alongside the public
-    // tuple so the prune below can identify "newly written this tick" by
-    // slot reference rather than by cache key — keys can shift mid-tick
-    // when a TMDB-stage rekey moves a row out from under us.
-    // Record in a deterministic (title, year) order regardless of the order the
-    // scraper handed movies over — several clients build their result from a
-    // `mutable.Map.toSeq` or a parallel detail-fetch whose iteration order
-    // varies run to run. That order leaks into which of two colliding title
-    // variants is recorded first and how cinema slots/showtimes merge, which
-    // made FilmScheduleEndToEndSpec's per-cinema counts + dub-slot assertions
-    // flaky. Sorting here makes the scrape→merge reproducible at no cost to
-    // production correctness.
-    // Per-cinema title cleanup, rule-driven and keyed by the cinema. A migrated
-    // client already applies these rules to `title` (carrying the pre-strip
-    // string in `rawTitle`), so this re-application is idempotent insurance; a
-    // client that emits a raw title with no inline cleanup gets cleaned here.
-    // Either way `displayTitle` is a pure function of the scraped title + the
-    // active rules. A key with no rules is an identity no-op. Display CASING is
-    // NOT applied here — the raw spelling is kept as provenance and so the
-    // `displayTitle` picker can rank on it (an all-caps variant signals low
-    // quality); casing is applied to the chosen title in `MovieRecord.displayTitle`.
-    val ruleKey = TitleRuleKey.of(cinema)
-    // Central format strip: peel a screen-format/language tag ("(Napisy PL)",
-    // "- 2D dubbing", "/napisy", "[2D DUB]") off EVERY cinema's title into the
-    // showings' `format`, so a film's dub/subtitle/2D editions fold onto ONE clean
-    // slot (each showing keeping its language) for every cinema — existing or new —
-    // with no per-client code. `FormatTags` strips only format words, so a programme
-    // prefix ("Kino Dostępne:"), a "+ event" suffix, or a Ukrainian screening keep
-    // their title and stay their own card (see FormatTags' Ukrainian guard).
-    def cleanAndFormat(cm: CinemaMovie): (String, List[String]) =
-      FormatTags.extractFormatTags(normalizer.cinemaClean(ruleKey, cm.movie.title))
-    val cleaned: CinemaMovie => String = cm => cleanAndFormat(cm)._1
-    // Badge each screening with its film's format tokens (unless the client already
-    // set one), BEFORE the same-title fold below unions them — then put EVERY
-    // token, the client's included, through `ScreeningTokens`. That second step is
-    // the one gate a source's own words pass to become a badge: it maps each
-    // spelling onto the shared vocabulary (`Audio Described` and `AD` onto one
-    // `AD`, `napisy` onto `NAP`) and drops what is not a screening attribute at
-    // all — a venue's `Wheelchair Accessible`, a `Parent & Baby Club`. Doing it
-    // here rather than per client is the same argument `FormatTags` makes: a
-    // hundred scrapers, one answer to what a badge says.
-    val formatted: Seq[CinemaMovie] = movies.map { cm =>
-      val tokens = cleanAndFormat(cm)._2
-      cm.copy(showtimes = cm.showtimes.map { st =>
-        st.copy(format = screeningTokens.normalize(if (st.format.isEmpty) tokens else st.format))
-      })
-    }
-
-    // A single cinema can report one film as several rows — one per screening
-    // page (Kino Nowe Horyzonty's per-event `op.s?id=…` URLs), or under two
-    // spellings that share the slot but differ by year (bare "Ojczyzna" +
-    // "Ojczyzna" (2024)) or by a canonical unification the `cleaned` title keeps
-    // apart (`&`↔`i`, the "Gwiezdne Wojny:" prefix). They all land on the SAME
-    // cinema slot: `CinemaShowing(cinema, sanitize(title))` with NO year (see
-    // `cinemaSlotKey`). Recording them one by one let the LAST win, keeping only
-    // its filmUrl + showtimes and silently dropping every other screening — and
-    // which row won depended on the scraper's emit order; worse, when two variants
-    // both survived to write the slot, each identical re-scrape overwrote it in
-    // turn — a permanent ping-pong that re-fired a change event + reprojection
-    // forever (ReScrapeIdempotencySpec). (The format/language class — napisy /
-    // dubbing / 2D — is already folded upstream by the `FormatTags` strip above,
-    // which makes those editions `cleaned`-equal; this fold catches the residual
-    // year / canonical collisions it can't.) Fold each cinema's same-slot rows
-    // into one by grouping at EXACTLY the slot-key `sanitize(title)` granularity —
-    // not `(cleaned, year)`, which is finer than the slot and so leaves same-slot
-    // variants un-folded. Union every screening's showtimes (deduped, ordered) so
-    // none is lost, and keep a deterministic representative for the scalar film
-    // fields (incl. the year the row keys on).
-    val slotGroupKey: CinemaMovie => String = cm => normalizer.sanitize(cleaned(cm))
-    val deduped: Seq[CinemaMovie] =
-      formatted.groupBy(slotGroupKey).toSeq
-        .sortBy { case (k, _) => k }
-        .map { case (_, group) =>
-          if (group.lengthCompare(1) == 0) group.head
-          else {
-            val rep = MovieRecordMerge.slotRepresentative(group)
-            // Dedup by *physical* screening identity (dateTime/room/format), not
-            // by the whole Showtime: a cinema that lists one film under several
-            // event pages (Kino Nowe Horyzonty's `op.s?id=…`) reports the same
-            // session with different per-event bookingUrls, and a plain
-            // `.distinct` kept each as a phantom duplicate whose order flipped
-            // with the scraper's emit order. See MovieRecordMerge.dedupShowtimes.
-            rep.copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
-          }
-        }
+    // The listing as this cache records it — titles cleaned by the venue's rules,
+    // every screening badged through the shared vocabulary, the venue's several rows
+    // for one film folded onto their one slot — in a deterministic order, so the
+    // scrape→record step is reproducible whatever order the scraper emitted rows in
+    // (`ScrapeListing`). The freshly-written `SourceData` slot rides alongside the
+    // public tuple below so the prune can identify "written this tick" by slot
+    // reference rather than by cache key — keys can shift mid-tick when a TMDB-stage
+    // rekey moves a row out from under us.
+    val prepared = ScrapeListing.prepare(cinema, movies, normalizer, screeningTokens)
+    val deduped  = prepared.movies
+    val cleaned  = prepared.cleaned
 
     // No `CollectionConverters` here any more: this method no longer walks Caffeine's
     // Java map at all — every question it used to answer by scanning it is a point
@@ -1348,18 +1232,8 @@ class CaffeineMovieCache(
     // their slots until a healthy tick, instead of flickering off the site. Generic
     // across cinemas; Multikino (Cloudflare + session wall) is the recurring victim.
     // The BREADTH half of the pair; the depth half bails at the top of this method.
-    val knownCinemaSlots = corpusIndex.slotsOf(cinema).size
-    val scrapeLooksPartial =
-      // A caller that KNOWS the listing is short says so, and that beats any inference:
-      // a chunked scrape reduced from some of its date-chunks returns most of the board
-      // (so the ratio below never engages) while silently omitting every film that only
-      // screens on a missing date. Those are the advance-booking titles — Met Opera, RBO
-      // season, NT Live, anniversary re-releases — and pruning them is what emptied UK
-      // venues on 2026-07-27. The reduce handler computes exactly this fact and used to
-      // throw it away.
-      !listingIsComplete || (
-        knownCinemaSlots >= MinSlotsForShrinkGuard &&
-        deduped.size < knownCinemaSlots * PruneFloorRatio)
+    val knownCinemaSlots   = corpusIndex.slotsOf(cinema).size
+    val scrapeLooksPartial = ScrapeHealth.looksPartial(knownCinemaSlots, deduped.size, listingIsComplete)
     // The divert gate's four questions, all POINT queries against `corpusIndex`.
     //
     // Each was a full walk of the corpus, rebuilt on every venue — see [[CorpusIndex]]
