@@ -43,7 +43,7 @@ class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
   private def signedInRequest(path: String = "/poznan/") =
     FakeRequest("GET", path).withSession("userId" -> "alice@example.com")
 
-  // NO TTL. The listing carries a strong per-city ETag, so the edge revalidates
+  // NO TTL. The listing carries a per-city ETag, so the edge revalidates
   // against the validator instead of trusting a clock — `s-maxage` would only
   // add a window in which a changed city page is served stale.
   private val SharedCacheControl = "public, max-age=0, must-revalidate"
@@ -123,9 +123,18 @@ class SharedCacheableListingSpec extends AnyFlatSpec with Matchers {
 
   // And it still has the validator that makes revalidation cheap — without an
   // ETag a shared cache answers a conditional with the whole body.
-  it should "carry the strong ETag that revalidation depends on" in {
+  //
+  // WEAK, and that is the point: this assertion used to read `startWith("\"")`
+  // with the comment "strong, not W/", and a strong tag is precisely what never
+  // reached the shared cache this spec is about. Measured 2026-09-06, Cloudflare
+  // dropped the ETag from `/uk/manchester/` outright while forwarding the one on
+  // `/uk/manchester/api/repertoire` untouched — it will not carry a promise about
+  // BYTES on something its HTML pipeline may rewrite. Weak is also honest here:
+  // the tag is a content version, not a hash of the body.
+  it should "carry the WEAK ETag that revalidation depends on" in {
     val etag = header("ETag", controller().index("poznan")(FakeRequest("GET", "/poznan/"))).value
-    etag should startWith ("\"")   // strong, not W/
+    etag should startWith ("W/\"")
+    etag should endWith ("\"")
   }
 
   // ── The gzip cache must key on the HOST too ────────────────────────────────

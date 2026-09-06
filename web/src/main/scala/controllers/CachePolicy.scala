@@ -5,10 +5,15 @@ package controllers
  * with one of the conditional responses `MovieController.conditionalGzipped`
  * builds.
  *
- * Every one of them carries a STRONG per-city ETag derived from
+ * Every one of them carries a per-city ETag derived from
  * `WebReadModel.lastModifiedFor`, and that is what makes the revalidating
  * policies exact rather than approximate: the validator moves when, and only
  * when, the bytes that city renders can have changed.
+ *
+ * The tag is WEAK (`W/"…"`). It is a content VERSION, not a hash of the body,
+ * and the same one is stamped on the gzipped and the identity response — weak
+ * is what that actually is. It is also the only kind Cloudflare forwards on
+ * HTML: a strong one never reached the edge these policies are written for.
  */
 enum CachePolicy {
 

@@ -495,10 +495,31 @@ class MovieController( cc: ControllerComponents,
     // counts as a different page. They used to: the blob learned about the host
     // (below) and the ETag did not, leaving both hosts' pages sharing a
     // validator that named only the path.
-    val etag = "\"" + Integer.toHexString(bodyKey.hashCode) + "-" + lastMod.getEpochSecond.toHexString + "\""
+    //
+    // ⚠️ WEAK (`W/`), AND IT HAS TO BE — Cloudflare strips a STRONG ETag off
+    // anything it serves as HTML. Measured 2026-09-06 on the same URL with the
+    // same `Accept-Encoding: gzip`: straight at the k3s node with Cloudflare
+    // bypassed, `/uk/manchester/` carried `etag: "7ea9812c-6a9cfc88"`; through
+    // the edge it carried none, while `/uk/manchester/api/repertoire` — this
+    // same line — kept its ETag both ways. The two bodies were byte-identical
+    // (3826089 bytes), so nothing had in fact been rewritten: the zone simply
+    // has an HTML-transforming feature on, and a strong validator is a promise
+    // about BYTES that Cloudflare will not forward when it reserves the right
+    // to change them. That is the whole reason fa7f5dd5a's ETag was not
+    // reaching the edge it was added for.
+    //
+    // `W/` is not a concession made to get past that — it is what this
+    // validator always was. It is `bodyKey.hashCode` + the read-model stamp, a
+    // CONTENT VERSION rather than a hash of the body, and since b84004f84 the
+    // filtered branch keeps no blob, so two responses sharing one validator can
+    // legitimately differ in which showtimes have already started. The same tag
+    // also goes on the gzipped AND the identity response below, which a strong
+    // validator is not permitted to do. Weak says all of that out loud.
+    val etag = "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + lastMod.getEpochSecond.toHexString + "\""
     val validators: Seq[(String, String)] = ("Last-Modified" -> httpDate) +: ("ETag" -> etag) +: cacheControl
 
-    if (request.headers.get("If-None-Match").contains(etag) || ifModifiedSinceCurrent(request, lastMod))
+    if (MovieController.offersValidator(request.headers.get("If-None-Match"), etag)
+        || ifModifiedSinceCurrent(request, lastMod))
       NotModified.withHeaders(validators*)
     else if (acceptsGzip(request) && cacheBody) {
       val bytes = responseCache.gzippedBody(bodyKey, lastMod)(body)
@@ -1140,6 +1161,36 @@ class MovieController( cc: ControllerComponents,
 }
 
 object MovieController {
+
+  private val OfferedEntityTag = """(?:[Ww]/)?("[^"]*")""".r
+
+  /** The opaque part of an entity tag — the quoted string, with any `W/` weakness
+   *  marker dropped. `W/"abc"` and `"abc"` both reduce to `"abc"`. */
+  private def opaqueTag(entityTag: String): String =
+    entityTag.trim.stripPrefix("W/").stripPrefix("w/")
+
+  /** Does the client's `If-None-Match` offer `etag`?
+   *
+   *  WEAK comparison, which is the one RFC 9110 §13.1.2 mandates for
+   *  `If-None-Match` — two tags match when their opaque parts are equal, whether
+   *  or not either carries the `W/` marker. Exact string equality was survivable
+   *  only while we emitted one spelling of one tag and nothing in the path
+   *  touched it; now that the validator IS weak, a cache is free to hand it back
+   *  bare, and answering that with a 200 would re-send the whole ~750 KB listing
+   *  to a client that already holds it.
+   *
+   *  The header is a LIST — a browser holding two variants of a URL offers both,
+   *  comma-separated — so every tag in it is considered, not just a header that
+   *  equals ours outright. Tags are matched by pattern rather than split on `,`
+   *  because a comma is a legal character inside the quoted part; a tag we fail
+   *  to parse simply does not match, which costs a body, never a wrong 304.
+   *
+   *  `*` matches any current representation, per the same section. */
+  def offersValidator(ifNoneMatch: Option[String], etag: String): Boolean =
+    ifNoneMatch.exists { header =>
+      header.trim == "*" ||
+        OfferedEntityTag.findAllMatchIn(header).exists(_.group(1) == opaqueTag(etag))
+    }
 
   /** The validator instant for a payload, floored at the start of the day it was
    *  rendered for.

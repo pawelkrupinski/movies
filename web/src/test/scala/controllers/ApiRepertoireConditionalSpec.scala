@@ -356,11 +356,17 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // apps' 0-byte 304s for ~750 KB payloads. `/api/catalog` was unaffected
   // because it already carried an ETag. These pin the missing half.
 
+  // The tag is WEAK. `conditionalGzipped` stamps one spelling on every payload it
+  // builds, and the HTML pages need `W/` to get past Cloudflare at all (see
+  // `MovieController.conditionalGzipped`); the JSON keeps the same spelling
+  // rather than being special-cased into a second one, and it is equally true of
+  // it — the tag is a read-model VERSION, not a hash of these bytes, and the same
+  // one goes on the gzipped and the identity response.
   it should "carry an ETag beside Last-Modified, so a cache can answer a conditional" in {
     val (ctrl, _) = buildController()
     val result = ctrl.apiRepertoire("poznan")(FakeRequest())
     val etag = header("ETag", result).value
-    etag should startWith ("\"")
+    etag should startWith ("W/\"")
     etag should endWith ("\"")
     header("Last-Modified", result) shouldBe defined
   }

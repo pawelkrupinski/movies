@@ -203,6 +203,85 @@ class PageCacheControllerSpec extends AnyFlatSpec with Matchers {
     header("ETag", own) should not be header("ETag", apex)
   }
 
+  // ── The ETag has to SURVIVE Cloudflare, not just leave the origin ──────────
+  //
+  // It did not. Measured 2026-09-06, same URL, same `Accept-Encoding: gzip`:
+  //
+  //   origin (curl --resolve, straight at the k3s node, Cloudflare bypassed)
+  //     etag: "7ea9812c-6a9cfc88"
+  //   edge (https://showtimes.cc/uk/manchester/)
+  //     <no etag at all>
+  //
+  // while `/uk/manchester/api/repertoire` — the SAME helper, the same one line
+  // that stamps the validator — kept its ETag at both. The bodies were
+  // byte-identical (3826089 bytes each way), so nothing had actually been
+  // rewritten. Cloudflare drops a STRONG ETag from anything it serves as HTML
+  // because its HTML pipeline (Email Obfuscation, Rocket Loader, minification)
+  // MAY rewrite the body, and a strong validator would then be a lie. It keeps a
+  // WEAK one, which promises only semantic equivalence.
+  //
+  // And weak is what this validator has always actually been. It is
+  // `bodyKey.hashCode` + the read-model stamp — a CONTENT VERSION, not a hash of
+  // the bytes — so `W/` states a fact rather than making a concession: two
+  // responses one second apart share a validator and can still differ in which
+  // showtimes have already started. The same tag is stamped on the gzipped and
+  // the identity response too, which a strong validator is not allowed to do.
+  "the validator" should "be a WEAK ETag, which is what reaches the client through Cloudflare" in {
+    val (ctrl, _) = buildController()
+    val etag = header("ETag", ctrl.index("poznan")(gzipRequest("/poznan/"))).get
+
+    etag should startWith ("W/\"")
+    etag should endWith ("\"")
+  }
+
+  it should "be weak on a filtered page too" in {
+    val (ctrl, _) = buildController()
+    val etag = header("ETag", ctrl.index("poznan")(gzipRequest("/poznan/?date=tomorrow"))).get
+
+    etag should startWith ("W/\"")
+  }
+
+  it should "be weak on the JSON payloads that share the helper" in {
+    val (ctrl, _) = buildController()
+    val etag = header("ETag", ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire"))).get
+
+    etag should startWith ("W/\"")
+  }
+
+  // ── Weak comparison, which is the one RFC 9110 mandates for If-None-Match ──
+  //
+  // Exact string equality was survivable while we only ever emitted one
+  // spelling of one tag. With a `W/` marker in play it stops being: an
+  // intermediary is allowed to hand the tag back bare, and a browser that has
+  // held two variants of a URL sends BOTH, comma-separated. Either one answered
+  // 200 with the whole ~750 KB body under a `contains` check.
+  "a conditional GET" should "304 when the tag comes back stripped of its weak marker" in {
+    val (ctrl, _) = buildController()
+    val etag = header("ETag", ctrl.index("poznan")(gzipRequest("/poznan/"))).get
+
+    val refresh = ctrl.index("poznan")(
+      gzipRequest("/poznan/").withHeaders("If-None-Match" -> etag.stripPrefix("W/")))
+    status(refresh) shouldBe NOT_MODIFIED
+    contentAsBytes(refresh).isEmpty shouldBe true
+  }
+
+  it should "304 when its tag is one of several the client offers" in {
+    val (ctrl, _) = buildController()
+    val etag = header("ETag", ctrl.index("poznan")(gzipRequest("/poznan/"))).get
+
+    val refresh = ctrl.index("poznan")(
+      gzipRequest("/poznan/").withHeaders("If-None-Match" -> s"""W/"stale-one", $etag, W/"stale-two""""))
+    status(refresh) shouldBe NOT_MODIFIED
+    contentAsBytes(refresh).isEmpty shouldBe true
+  }
+
+  it should "still serve the body when none of the offered tags is ours" in {
+    val (ctrl, _) = buildController()
+    val refresh = ctrl.index("poznan")(
+      gzipRequest("/poznan/").withHeaders("If-None-Match" -> """W/"stale-one", "stale-two""""))
+    status(refresh) shouldBe OK
+  }
+
   // ── The day the payload was cut for ────────────────────────────────────────
 
   "a zoned payload's validator" should "advance to the new day even when the model has not moved" in {
