@@ -51,9 +51,25 @@ right one**. The row is left unresolved, so it falls below
 film goes **invisible**. For a film with screenings that is *worse* than being
 wrong: a wrong poster still lists the showtimes, a pruned card 404s.
 
-Nothing in the pipeline reports this. The reaper logs a re-try, not an outcome,
-and one film is far below any prune-burst threshold — only the
-`kinowo.removal-audit` log names it (`reason=reconcile-prune`).
+**The gauge that finds them:**
+`kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}` — rows that
+fail `readyToProject` while their cinemas still list an upcoming showtime, i.e.
+exactly the population the projector prunes. It rides the shared
+`WorkerCorpusScan` pass, so it costs no reads of its own.
+
+Note the pairing: `subset="misresolved"` counts the sweep's **input** (rows whose
+venues contradict them), and `unresolved_with_showtimes` counts the **outcome**
+where it rejected a wrong film and found no right one. Every other census gauge
+gates on `readyToProject`, so before this series existed these rows dropped out
+of all of them without being counted anywhere — the reaper logs a re-try, not an
+outcome, one film is far below any prune-burst threshold, and only the
+`kinowo.removal-audit` log named it (`reason=reconcile-prune`).
+
+**It is not yet alerted on, deliberately.** A `> 0` rule would page from day one,
+because at least two rows sit in this state permanently and legitimately (the two
+below). The threshold needs a measured baseline from the gauge itself, the way
+`ReadModelFilmPruneBurst` was calibrated against its 16.9% worst-healthy
+reading — so: chart it, watch it, then set the rule.
 
 **Method, per flagged row:**
 

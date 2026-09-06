@@ -57,9 +57,12 @@ import scala.util.Try
  * are separate steps, and the second can fail on its own: the row is then left unresolved,
  * stops satisfying [[MovieRecord.readyToProject]], and the projector prunes its card — so
  * the film goes INVISIBLE, which for a row carrying screenings is worse than the wrong
- * poster it started with. Nothing here reports that. A re-try is logged, an outcome is
- * not, and one film sits far below the `ReadModelFilmPruneBurst` threshold; only the
- * `kinowo.removal-audit` log names it. A sweep run is therefore finished only once its
+ * poster it started with. Nothing HERE reports that — a re-try is logged, an outcome is
+ * not — so the population is counted by the census instead, as
+ * `kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}`
+ * ([[services.metrics.WorkerCorpusMetrics]]); its sibling `subset="misresolved"` counts
+ * this sweep's INPUT. Watch the pair: input falling while the other rises is the sweep
+ * trading wrong films for invisible ones. A sweep run is therefore finished only once its
  * outcomes have been checked film-by-film against what the venues publish — and for the
  * same reason, never clear a row's `tmdbId` to force a re-resolution, because the card is
  * pruned within minutes and this reaper will not revisit that key for up to a full period.

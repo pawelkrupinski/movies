@@ -4,7 +4,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.MovieRecord
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.metrics.CorpusMetricsFixtures.{repositoryOf, row}
+import services.metrics.CorpusMetricsFixtures.{clock, now, past, ready, repositoryOf, row, slot, tomorrow}
 import services.metrics.WorkerCorpusMetrics.{CorpusCounts, Subset}
 
 /**
@@ -49,13 +49,13 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
         models.Tmdb -> models.SourceData(title = Some("Lalka"), runtimeMinutes = Some(162)),
         models.KinoApollo -> models.SourceData(title = Some("Lalka"), runtimeMinutes = Some(147))))
 
-    val c = CorpusCounts.from(Seq(misresolved, corroborated))
+    val c = CorpusCounts.from(Seq(misresolved, corroborated), now)
     c.bySubset.toMap.apply(Subset.Misresolved) shouldBe 1
     c.total shouldBe 2
   }
 
   "CorpusCounts" should "tally each subset independently" in {
-    val c = CorpusCounts.from(corpus)
+    val c = CorpusCounts.from(corpus, now)
     c.total         shouldBe 5
     c.withTmdbId    shouldBe 3
     c.withImdbId    shouldBe 2
@@ -66,8 +66,35 @@ class WorkerCorpusMetricsSpec extends AnyFlatSpec with Matchers {
     c.withAnyRating shouldBe 3 // three records carry at least one of imdb/rt/mc/fw
   }
 
+  // The OUTCOME half of `misresolved`, and the half that used to be silent: the sweep
+  // rejects a wrong film, finds no right one, and leaves the row unresolved. It then
+  // fails `readyToProject`, the projector prunes its card, and the film is invisible
+  // on the site while its venues still sell tickets. Every other census gauge gates on
+  // `readyToProject`, so these rows drop out of all of them without being counted
+  // anywhere. Four needed hand repair on 2026-09-06 before this series existed.
+  "CorpusCounts" should "count an unresolved row whose cinemas are still screening it" in {
+    val invisible  = MovieRecord(data = Map[models.Source, models.SourceData](models.KinoApollo -> slot(tomorrow)))
+    val resolved   = ready(models.KinoApollo, 1321666, tomorrow)
+    // Unresolved too, but every showing has passed — legitimately gone, not invisible.
+    val playedOut  = MovieRecord(data = Map[models.Source, models.SourceData](models.KinoApollo -> slot(past)))
+
+    val c = CorpusCounts.from(Seq(invisible, resolved, playedOut), now)
+    c.bySubset.toMap.apply(Subset.UnresolvedWithShowtimes) shouldBe 1
+    c.total shouldBe 3
+  }
+
+  it should "publish the unresolved-yet-screening series through a real scan" in {
+    val registry = new PrometheusRegistry()
+    val metrics  = new WorkerCorpusMetrics(WorkerCorpusMetrics.gauge(registry), "pl", clock)
+    val invisible = MovieRecord(data = Map[models.Source, models.SourceData](models.KinoApollo -> slot(tomorrow)))
+
+    new WorkerCorpusScan(repositoryOf(rows(Seq(invisible, ready(models.KinoApollo, 1, tomorrow)))*), Seq(metrics)).sample()
+
+    gauge(render(registry), Subset.UnresolvedWithShowtimes) shouldBe Some(1.0)
+  }
+
   "an empty corpus" should "count zero everywhere" in {
-    CorpusCounts.from(Nil) shouldBe CorpusCounts.empty
+    CorpusCounts.from(Nil, now) shouldBe CorpusCounts.empty
   }
 
   "WorkerCorpusMetrics.sample" should "publish every subset onto the shared registry" in {
