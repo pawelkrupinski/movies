@@ -841,11 +841,7 @@ class MongoMovieRepository(
       // reads again and writes it. Not worth a transaction on the hottest write path.
       SlotsRepository.applyFilm(s, id, slotPayload)
     }
-    // Under the read-split `movies` carries no showtimes (they go to `screenings`), and
-    // once the slots have landed it carries no sourceData either — which is what shrinks
-    // the document the change stream re-decodes on every write.
-    val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else slotsForStorage(restitched)
-    val dto  = StoredMovieDto.fromDomain(id, e.copy(data = dataForMovies), Instant.now())
+    val now  = Instant.now()
     val opts = new ReplaceOptions().upsert(true)
     // The film document AS STORED, so a re-write that changes nothing can be skipped.
     //
@@ -862,22 +858,15 @@ class MongoMovieRepository(
     // check reuses nothing but reads a different collection. One indexed `_id` read to drop
     // a write, its oplog entry and its fanout is the same trade the slots guard already
     // makes here.
-    val storedDto = Try(Await.result(c.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds))
-      .toOption.flatMap(_.headOption)
-    // Both timestamps are normalised away before comparing. `updatedAt` is stamped
-    // `Instant.now()` on every call, so comparing it would make every document differ and
-    // the guard dead on arrival. `slotsUpdatedAt` is subtler: `fromDomain` never sets it,
-    // but `updateIfPresent`'s slot path does — so leaving it in would make the guard miss
-    // every film whose slots had ever been patched, which is most of them. Skipping the
-    // write PRESERVES the stored marker rather than clearing it, which is the harmless
-    // direction: it only helps the change stream classify a later write.
     //
-    // A read that FAILED yields None, which reads as "changed" and writes. A failed read is
-    // not evidence that the stored document matches.
-    val unchanged = storedDto.exists(stored =>
-      stored.copy(updatedAt = dto.updatedAt, slotsUpdatedAt = dto.slotsUpdatedAt) == dto)
+    // Handed on as the `Try` it is: a read that FAILED and a document that is ABSENT both
+    // write, but only one of them is "no such film", and the decision is where that is pinned.
+    val stored = Try(Await.result(c.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds)).map(_.headOption)
+    // What to write, and whether the stored document already equals it — the decision is
+    // `MoviesUpsert`'s, so it is unit-tested apart from the three reads that feed it.
+    val plan = MoviesUpsert.plan(id, e, restitched, slotsLanded, slotsForStorage, stored, now)
     Try {
-      if (!unchanged) Await.result(c.replaceOne(Filters.eq("_id", id), dto, opts).toFuture(), 10.seconds)
+      if (!plan.unchanged) Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, opts).toFuture(), 10.seconds)
       // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
       // is upsert PLUS a delete of every slot the record doesn't name, so it may only run on
       // a record we know is complete. When the re-stitch read failed we still write what this
