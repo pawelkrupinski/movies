@@ -470,6 +470,7 @@ struct FiltersSheet: View {
 
                 // Kina — the one cinema filter, over `prefs.disabledCinemas`.
                 // Sits above the name filters, mirroring the web's Filtry order.
+                // (Web's "Sale" room picker has no iOS equivalent.)
                 CinemaFilterSectionView(catalog: store.catalog, prefs: prefs)
 
                 NameFilterSection(title: "filtersheet.country_of_production", allEntries: allCountries, excluded: $excludedCountries)
