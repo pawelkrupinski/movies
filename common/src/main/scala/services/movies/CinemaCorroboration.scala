@@ -2,7 +2,6 @@ package services.movies
 
 import models.{MovieRecord, Tmdb}
 import services.resolution.TmdbBasis
-import tools.TextNormalization
 
 /**
  * Does a row's own resolution survive contact with what its CINEMAS published?
@@ -105,138 +104,9 @@ object CinemaCorroboration {
    *  mistake: a missed contradiction leaves one row uncorrected, while acting on a
    *  false one force-re-resolves a film that was already right. */
   private def namesAgree(record: MovieRecord, filmDirectors: Seq[String]): Option[Boolean] = {
-    val cinemaNames = record.cinemaDirector.map(nameTokens).filter(_.nonEmpty)
-    val filmNames   = filmDirectors.map(nameTokens).filter(_.nonEmpty)
+    val cinemaNames = record.cinemaDirector.map(SamePerson.tokens).filter(_.nonEmpty)
+    val filmNames   = filmDirectors.map(SamePerson.tokens).filter(_.nonEmpty)
     Option.when(cinemaNames.nonEmpty && filmNames.nonEmpty)(
-      cinemaNames.exists(c => filmNames.exists(f => samePerson(c, f))))
-  }
-
-  /** A credit as its SET of name tokens — case- and diacritic-folded, punctuation
-   *  dropped. A set rather than a string because the two sides do not agree on
-   *  ORDER: TMDB writes Hungarian and Japanese credits surname-first ("Enyedi
-   *  Ildikó", "Szabó István", "Pálfi György") where the cinemas write them
-   *  given-name-first. Comparing folded strings made every one of those a
-   *  contradiction — 191 of the 202 rows the first version of this flagged in prod
-   *  were correctly resolved films whose director had simply been written the other
-   *  way round.
-   *
-   *  Empty for a name that folds away entirely, which is how a CJK credit behaves:
-   *  "王家衛" and "Wong Kar Wai" are the same person and nothing here can know it,
-   *  so that comparison must abstain rather than guess. */
-  private def nameTokens(name: String): Seq[String] =
-    foldUndecomposed(TextNormalization.deburr(name)).toLowerCase.split("[^a-z0-9]+").filter(_.nonEmpty).toSeq
-
-  /** Letters NFD leaves alone because they are distinct letters rather than an
-   *  accented base, so `deburr` passes them through and the ASCII split below
-   *  simply DELETES them: "Fatih Akın" became "fatih ak" and read as a different
-   *  person from "Fatih Akin". Folded here rather than in `deburr`, which is
-   *  frozen — `TitleRuleKey` derives stored rule keys from it, and widening it
-   *  re-keys every title rule in prod. */
-  private def foldUndecomposed(s: String): String =
-    s.replace('ı', 'i').replace('İ', 'i')
-      .replace('ø', 'o').replace('Ø', 'o')
-      .replace('đ', 'd').replace('Đ', 'd')
-      .replace("ß", "ss")
-
-  /** One written-out credit standing for the other. Containment rather than
-   *  equality catches a name the venue joins and prefixes, and the length floor
-   *  keeps a short token from being swallowed by an unrelated longer one. */
-  private def joinedMatch(a: String, b: String): Boolean =
-    a == b || (a.length >= 8 && b.contains(a)) || (b.length >= 8 && a.contains(b))
-
-  /** Honorific suffixes, dropped before a credit is compared so they cannot pose
-   *  as the surname. Shared with `services.tasks.CrewConfirmation`, which drops them
-   *  before shortening a name for the same reason. */
-  private[services] val Suffixes = Set("jr", "sr", "ii", "iii", "iv")
-
-  /** Same SURNAME and a compatible first initial — the shape a familiar form
-   *  takes: "Tom Donnelly" for "Thomas Michael Donnelly", "Dave Derrick Jr." for
-   *  "David G. Derrick Jr.". Nicknames are not derivable from the formal name, so
-   *  no amount of prefix or edit distance reaches them; the surname carries the
-   *  identity and the initial guards it. "Andrzej Wajda" and "Andrzej Żuławski"
-   *  share a first name and NOT a surname, so they stay two people. */
-  private def sameFamiliarForm(a: Seq[String], b: Seq[String]): Boolean = {
-    val an = a.filterNot(Suffixes.contains)
-    val bn = b.filterNot(Suffixes.contains)
-    an.length >= 2 && bn.length >= 2 &&
-      sameToken(an.last, bn.last) &&
-      an.head.headOption == bn.head.headOption
-  }
-
-  /** One credit naming the same person as the other. Subset rather than equality
-   *  so a middle name present on one side only ("Neele Leana Vollmar" against
-   *  TMDB's "Neele Vollmar") is not a different director, and a single-letter token
-   *  matches the name it abbreviates so "Alejandro G. Iñárritu" and "Alejandro
-   *  González Iñárritu" are one person.
-   *
-   *  An initial only ever matches ALONGSIDE the rest of the credit — every other
-   *  token must still be accounted for — so "A. Wajda" cannot become "Louisa
-   *  Proske" on the strength of a shared letter. */
-  private def samePerson(a: Seq[String], b: Seq[String]): Boolean =
-    // Whole-string first: the two sides may split a name differently — a hyphenated
-    // surname ("Amrou Al-Kadhi" / "Amrou Alkadhi"), or a Tamil name written as one
-    // word with a given name TMDB omits ("Mathi Maran" / "Pugazhendhi Mathimaran").
-    // Token-wise both look like an extra word; written out one contains the other.
-    joinedMatch(a.mkString, b.mkString) || covers(a, b) || covers(b, a) ||
-      sameFamiliarForm(a, b) || DirectorAliases.sameDirector(a.mkString, b.mkString)
-
-  /** Every token of `narrow` accounted for by some token of `wide`. */
-  private def covers(narrow: Seq[String], wide: Seq[String]): Boolean =
-    narrow.forall(t => wide.exists(sameToken(t, _)))
-
-  /** One name token standing for another. Beyond equality this forgives the three
-   *  ways upstream feeds mangle a credit, none of which says a different person:
-   *
-   *    - an INITIAL for the name it abbreviates ("Alejandro G." / "González");
-   *    - a TRUNCATION, which arrives identically from every venue on a feed —
-   *      "Michael Gottli" from five Arc cinemas, "Pedro Almod" cut at the accent;
-   *    - a ONE-LETTER misspelling — "Paul Verhoven" for Verhoeven, from six
-   *      unrelated UK venues, so a feed's error rather than a venue's.
-   *
-   *  Every tolerance needs length to earn it — a prefix 5+, a one-letter miss 5+,
-   *  two edits 7+ — so "Bong Joon Ho" and "Bong Joon Il" stay two people. Erring
-   *  loose is deliberate: a missed contradiction costs one uncorrected row, while a
-   *  false one force-re-resolves a film that was already right. */
-  private def sameToken(a: String, b: String): Boolean =
-    a == b ||
-      (a.length == 1 && b.startsWith(a)) || (b.length == 1 && a.startsWith(b)) ||
-      (a.length >= 5 && b.startsWith(a)) || (b.length >= 5 && a.startsWith(b)) ||
-      (a.length >= 4 && b.length >= 4 && withinOneEdit(a, b)) ||
-      // Two transliterations of one long surname ("Tarkowski" / "Tarkovsky") sit two
-      // edits apart, and two DIFFERENT surnames that long rarely do.
-      (a.length >= 7 && b.length >= 7 && withinEdits(a, b, 2))
-
-  /** True when `a` and `b` are at most one insertion, deletion or substitution
-   *  apart. Bounded and allocation-free: the only distance that matters here is
-   *  "one", so a longer walk is abandoned as soon as a second difference shows. */
-  private def withinOneEdit(a: String, b: String): Boolean = withinEdits(a, b, 1)
-
-  /** True when `a` and `b` are at most `max` insertions, deletions or
-   *  substitutions apart — a real Levenshtein, not a single greedy walk. The
-   *  greedy version this replaces mis-scored a substitution that followed a
-   *  deletion, which is exactly the shape two transliterations take ("Sokourov"
-   *  against "Sokurow"). Names are short, so the full row-by-row table is cheaper
-   *  than reasoning about when a shortcut is safe. */
-  private def withinEdits(a: String, b: String, max: Int): Boolean = {
-    if (math.abs(a.length - b.length) > max) return false
-    var previous = Array.tabulate(b.length + 1)(identity)
-    var row      = new Array[Int](b.length + 1)
-    var i = 1
-    while (i <= a.length) {
-      row(0) = i
-      var best = row(0)
-      var j = 1
-      while (j <= b.length) {
-        val substitution = previous(j - 1) + (if (a.charAt(i - 1) == b.charAt(j - 1)) 0 else 1)
-        row(j) = math.min(math.min(row(j - 1) + 1, previous(j) + 1), substitution)
-        best   = math.min(best, row(j))
-        j += 1
-      }
-      // Every distance from here on is at least `best`, so a spent budget ends it.
-      if (best > max) return false
-      val swap = previous; previous = row; row = swap
-      i += 1
-    }
-    previous(b.length) <= max
+      cinemaNames.exists(c => filmNames.exists(f => SamePerson.sameTokens(c, f))))
   }
 }

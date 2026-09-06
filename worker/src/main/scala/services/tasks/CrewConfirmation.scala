@@ -2,7 +2,7 @@ package services.tasks
 
 import models.MovieRecord
 import play.api.Logging
-import services.movies.CinemaCorroboration
+import services.movies.{CinemaCorroboration, SamePerson}
 import services.movies.CinemaCorroboration.Contradiction
 
 /**
@@ -66,60 +66,17 @@ class CrewConfirmation(credits: CrewConfirmation.Credits) extends Logging {
    *
    *  Only ever reached when the full name found nobody, so it cannot change an
    *  answer TMDB already gave; and a name it resolves still has to be ABSENT from
-   *  the crew before anything acts. */
+   *  the crew before anything acts. Which names are safe to shorten — three or more
+   *  suffix-free tokens, never across a nobiliary particle — is
+   *  `SamePerson.withoutMiddleNames`'s rule, shared with the name comparison. */
   private def personIds(name: String): Seq[Int] =
     credits.personIds(name) match {
-      case Nil   => withoutMiddleNames(name).map(credits.personIds).getOrElse(Seq.empty)
+      case Nil   => SamePerson.withoutMiddleNames(name).map(credits.personIds).getOrElse(Seq.empty)
       case found => found
     }
-
-  /** "David Kerrick Hand" as "David Hand" — the first and last of three or more
-   *  SUFFIX-FREE tokens. Fewer than three has no middle name to drop.
-   *
-   *  Never across a NOBILIARY PARTICLE. "Lars von Trier" shortens to "Lars Trier",
-   *  which is a different person if TMDB has one at all — and a person TMDB does
-   *  answer for is exactly what turns an abstention into a confirmed contradiction,
-   *  so a wrong answer here force-re-resolves a row that was right. A middle NAME is
-   *  droppable; a particle is part of the surname. */
-  private def withoutMiddleNames(name: String): Option[String] = {
-    // Generational suffixes are dropped BEFORE first-and-last is taken, not treated
-    // as the surname: venues publish them ("David G. Derrick Jr."), and keeping the
-    // suffix as the last word yields "David Jr." — which discards the one token that
-    // identifies the person, and whoever TMDB returns for it is by construction off
-    // the film's crew, so a correct row gets force-re-resolved.
-    val words = name.split("\\s+").filter(_.nonEmpty)
-    val core  = words.filterNot(isSuffix)
-    // THREE suffix-free tokens, i.e. there is a middle name to drop. Two is not the
-    // same shape and must not be shortened: "Robert Downey Jr." minus its suffix is
-    // "Robert Downey", who is his FATHER — TMDB carries him (59874) and returns him
-    // FIRST, because `findPersonCandidates` ranks Directing ahead of Acting. That
-    // person is by construction off the film's crew, so the shortening would confirm
-    // a contradiction and force-re-resolve a correct row. Same for Cuba Gooding and
-    // Sammy Davis. Abstaining is the safe answer for a name with no middle to drop.
-    // No `!= name` guard: with three or more suffix-free tokens the two-token result
-    // can never equal the original, so it would be unreachable.
-    Option.when(core.length >= 3)(s"${core.head} ${core.last}")
-      .filterNot(_ => core.tail.dropRight(1).exists(isParticle))
-  }
-
-  /** Jr. / Sr. / II / III / IV — the same set `CinemaCorroboration` strips before
-   *  comparing credits, for the same reason: they are not the surname. */
-  private def isSuffix(word: String): Boolean =
-    CinemaCorroboration.Suffixes.contains(word.toLowerCase.stripSuffix("."))
-
-  /** The lowercase-by-convention words that bind a surname to its prefix. Compared
-   *  case-insensitively because venues capitalise inconsistently ("Von Trier"). */
-  private def isParticle(word: String): Boolean =
-    CrewConfirmation.Particles.contains(word.toLowerCase.stripSuffix("."))
 }
 
 object CrewConfirmation {
-  /** Nobiliary and patronymic particles: a middle word that belongs to the SURNAME
-   *  rather than being a middle name, so shortening across it renames the person. */
-  private val Particles: Set[String] = Set(
-    "von", "van", "de", "del", "della", "der", "den", "di", "da", "dos", "das",
-    "du", "la", "le", "el", "al", "bin", "ibn", "ben", "af", "av", "ter", "te", "zu")
-
   /** The two questions this asks TMDB, as a seam so a spec answers them directly
    *  and production wires them to the real client. */
   trait Credits {

@@ -54,27 +54,6 @@ object TitleCorroboration {
     if (!s.exists(c => Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CYRILLIC)) s
     else CyrillicToLatin.foldLeft(s.toLowerCase) { case (acc, (from, to)) => acc.replace(from, to) }
 
-  /** Levenshtein edit distance — used to fuzzy-match a cinema's spelling of a
-   *  foreign title against a director's filmography ("guru" ↔ "gourou"). Plain
-   *  two-row DP, O(a·b); titles are short so it's cheap. A pure function. */
-  def editDistance(a: String, b: String): Int = {
-    if (a.isEmpty) b.length
-    else if (b.isEmpty) a.length
-    else {
-      var prev = (0 to b.length).toArray
-      for (i <- 1 to a.length) {
-        val curr = new Array[Int](b.length + 1)
-        curr(0) = i
-        for (j <- 1 to b.length) {
-          val cost = if (a(i - 1) == b(j - 1)) 0 else 1
-          curr(j) = math.min(math.min(prev(j) + 1, curr(j - 1) + 1), prev(j - 1) + cost)
-        }
-        prev = curr
-      }
-      prev(b.length)
-    }
-  }
-
   /** The words in `s` long enough to identify a film, transliterated and folded. */
   def distinctiveTokens(s: String, sanitize: String => String): Set[String] =
     latinise(s).split("[^\\p{L}\\p{N}]+").iterator
@@ -96,7 +75,7 @@ object TitleCorroboration {
     val rightTokens = right.iterator.flatMap(distinctiveTokens(_, sanitize)).toSet
     left.iterator.flatMap(distinctiveTokens(_, sanitize)).exists { l =>
       rightTokens.contains(l) ||
-        (maxTokenEdits > 0 && rightTokens.exists(editDistance(l, _) <= maxTokenEdits))
+        (maxTokenEdits > 0 && rightTokens.exists(tools.EditDistance.between(l, _) <= maxTokenEdits))
     }
   }
 }
