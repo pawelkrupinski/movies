@@ -7,25 +7,14 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.zip.GZIPOutputStream
 
-import com.aayushatharva.brotli4j.Brotli4jLoader
-import com.aayushatharva.brotli4j.encoder.{BrotliOutputStream, Encoder}
-
-/** Caches the COMPRESSED bytes of the responses that are byte-identical
+/** Caches the GZIPPED bytes of the responses that are byte-identical
  *  for every client at a given cache version: the anonymous HTML pages
  *  (`/{city}/`, `/{city}/movies`) and the mobile JSON endpoints
  *  (`/{city}/api/repertoire`, `/{city}/api/details`). A hit skips BOTH the body
  *  build (Twirl render / JSON serialize) and the compression pass — measured at
  *  ~16 ms of server CPU per `/api/repertoire`, of which the compression alone is a
  *  large share. Caching the compressed bytes (not just the body string) is what
- *  captures that share, and it is what makes brotli affordable here at all: brotli
- *  costs meaningfully more CPU than gzip per pass, and this turns "per request"
- *  into "once per version".
- *
- *  ⚠️ KEYED BY PATH **AND ENCODING**, because one page now has two compressed
- *  spellings. Sharing one slot between them would serve brotli bytes under
- *  `Content-Encoding: gzip` to the next caller — a body the client cannot inflate,
- *  from a cache that looked like it hit. The two blobs are independent entries and
- *  each is charged to the same byte budget.
+ *  captures that share.
  *
  *  The cache is keyed by request path and versioned by
  *  `WebReadModel.lastModifiedFor(city)` — the same per-city validator the
@@ -63,27 +52,17 @@ class EncodedResponseCache(maxBytes: Long = EncodedResponseCache.DefaultMaxBytes
   private val entries = new java.util.LinkedHashMap[String, Entry](16, 0.75f, true)
   private var bytesHeld = 0L
 
-  /** `encoding`-compressed bytes for `key` at `version`. On a hit with a matching
-   *  version the cached bytes are returned and `renderBody` is never evaluated;
-   *  otherwise `renderBody` runs, its output is compressed, stored under `version`,
-   *  and returned.
-   *
-   *  NOTE THE MISS IS PER (path, encoding), SO A PAGE FETCHED BOTH WAYS RENDERS
-   *  TWICE. That is the deliberate half of the trade: holding one rendered string
-   *  and compressing it two ways would save the second render, at the cost of
-   *  keeping the uncompressed body — several megabytes of it, in the same heap as
-   *  the read model, for a second encoding almost nobody asks for. Virtually every
-   *  client takes brotli, so the gzip render happens for the rare client that
-   *  cannot, and the brotli one is what stays hot. */
-  def encodedBody(key: String, version: Instant, encoding: ContentEncoding)
-                 (renderBody: => String): ByteString = {
-    val slot = s"${encoding.token}\u001f$key"
-    val hit  = synchronized(Option(entries.get(slot)))
+  /** Gzipped bytes for `key` at `version`. On a hit with a matching version the
+   *  cached bytes are returned and `renderBody` is never evaluated; otherwise
+   *  `renderBody` runs, its output is gzipped, stored under `version`, and
+   *  returned. */
+  def gzippedBody(key: String, version: Instant)(renderBody: => String): ByteString = {
+    val hit = synchronized(Option(entries.get(key)))
     hit match {
       case Some(entry) if entry.version == version => entry.bytes
       case _ =>
-        val bytes = EncodedResponseCache.compress(encoding, renderBody)
-        store(slot, Entry(version, bytes))
+        val bytes = EncodedResponseCache.gzip(renderBody)
+        store(key, Entry(version, bytes))
         bytes
     }
   }
@@ -129,68 +108,14 @@ object EncodedResponseCache {
    *  several times over (so those deployments never evict), while the US — 55
    *  states, the largest 1.06 MB gzipped apiece — keeps its warm ones and lets the
    *  long tail a crawler touches fall out, instead of holding all of them against
-   *  the same heap the read model lives in.
-   *
-   *  A PAGE CAN NOW TAKE TWO ENTRIES, one per encoding, so that arithmetic is no
-   *  longer strictly one blob per path. It holds anyway, and by more than it used
-   *  to: brotli is about two thirds the size of the gzip those figures were
-   *  measured in, and essentially every client that asks takes brotli, so the gzip
-   *  slot is minted only for the rare client that cannot. The worst case is a page
-   *  fetched both ways, which is smaller than the two gzip copies this budget was
-   *  already sized to survive — and the LRU is what makes the worst case an
-   *  eviction rather than a leak. */
+   *  the same heap the read model lives in. */
   val DefaultMaxBytes: Long = 64L * 1024 * 1024
-
-  /** Brotli quality. NOT the library default of 11.
-   *
-   *  Measured on a real `/uk/manchester/` body (3,820,489 bytes of HTML), JIT and
-   *  native warmed, best of three:
-   *
-   *      gzip    300,431 B     125 ms
-   *      q=1     649,868 B      16 ms   (worse than gzip — brotli's window is tiny here)
-   *      q=4     229,805 B      17 ms
-   *      q=5     197,131 B      24 ms   ← chosen
-   *      q=6     191,109 B      36 ms
-   *      q=9     181,875 B     132 ms
-   *      q=11    157,323 B  16,506 ms
-   *
-   *  q=5 is 34% SMALLER THAN GZIP AND FIVE TIMES FASTER TO PRODUCE, so replacing
-   *  gzip with it costs nothing on either axis — an unusual position, and the
-   *  reason there is no trade to argue about below q=6.
-   *
-   *  It also beats what we lost. Cloudflare's edge brotli measured 228,940 B on
-   *  this page, which is q=4 to within a rounding error; `no-transform` gave that
-   *  up to get the ETag through, and this gets back more than it gave.
-   *
-   *  Above q=5 the curve turns: q=9 buys 8% for 5x the CPU, and q=11 buys 20% for
-   *  SIXTEEN SECONDS on the thread that renders — paid by whichever visitor
-   *  arrives first after a showtime moves, on a page that moves all day. */
-  val BrotliQuality = 5
-
-  def compress(encoding: ContentEncoding, s: String): ByteString = encoding match {
-    case ContentEncoding.Gzip   => gzip(s)
-    case ContentEncoding.Brotli => brotli(s)
-  }
 
   def gzip(s: String): ByteString = {
     val bos = new ByteArrayOutputStream()
     val gz  = new GZIPOutputStream(bos)
     try gz.write(s.getBytes(StandardCharsets.UTF_8))
     finally gz.close()
-    ByteString(bos.toByteArray)
-  }
-
-  /** ⚠️ `ensureAvailability` FIRST, EVERY TIME. It unpacks and links the JNI
-   *  native, is idempotent and cheap after the first call, and without it the
-   *  first `BrotliOutputStream` on a fresh JVM throws `UnsatisfiedLinkError` —
-   *  which surfaces as a 500 on one unlucky request rather than as a boot
-   *  failure, because nothing else touches brotli until a page is served. */
-  def brotli(s: String): ByteString = {
-    Brotli4jLoader.ensureAvailability()
-    val bos = new ByteArrayOutputStream()
-    val br  = new BrotliOutputStream(bos, new Encoder.Parameters().setQuality(BrotliQuality))
-    try br.write(s.getBytes(StandardCharsets.UTF_8))
-    finally br.close()
     ByteString(bos.toByteArray)
   }
 }

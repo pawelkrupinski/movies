@@ -152,9 +152,6 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
   // ── Gzip response cache ────────────────────────────────────────────────────
 
   private def gzipRequest(path: String) =
-    // NO `br` in here, deliberately: this helper is named for the encoding it is
-    // meant to exercise, and the controller now prefers brotli whenever a client
-    // offers it. A real browser's full header is used by the brotli tests instead.
     FakeRequest("GET", path).withHeaders("Accept-Encoding" -> "gzip, deflate")
 
   private def gunzip(bytes: org.apache.pekko.util.ByteString): String =

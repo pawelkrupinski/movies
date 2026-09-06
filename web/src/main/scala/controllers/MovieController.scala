@@ -377,85 +377,19 @@ class MovieController( cc: ControllerComponents,
   // so /debug orders staging rows by the same anchor the worker wrote.
   private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
 
-  /** The best compressed form this client accepts, or `None` for uncompressed.
+  /** Does this client take gzip — the ONE compressed form the origin offers.
    *
-   *  This was `Accept-Encoding contains "gzip"`, which could only answer one
-   *  question and answered it wrong for `gzip;q=0` — a refusal read as consent.
-   *  [[ContentEncoding.negotiate]] weighs what the client actually asked for, and
-   *  can now say `br`, which is the point: `no-transform` stopped Cloudflare
-   *  brotli-ing our gzip on the way out, so the origin does it or nobody does. */
-  /** ⚠️ GZIP ONLY, THOUGH WE CAN BUILD BROTLI AND BROTLI IS BETTER. Cloudflare
-   *  caches ONE variant per URL. It does not key on `Accept-Encoding`, so when the
-   *  origin answered br to the browsers that ask for it, the edge stored that one
-   *  copy — and then had to serve it to clients that cannot read br. `no-transform`
-   *  forbids re-compressing it to gzip, so what it did instead was DECOMPRESS and
-   *  send the body raw. Measured on the live edge, gzip-only clients:
-   *
-   *      /uk/manchester/                  3,789,572 B   (297,089 from the origin)
-   *      /uk/manchester/api/repertoire    1,470,154 B
-   *
-   *  OkHttp sends `Accept-Encoding: gzip` by default, so that second line is the
-   *  Android app's own listing fetch — 1.4 MB where it used to take about 200 KB.
-   *
-   *  So the origin offers exactly one encoding, and every client gets a body it can
-   *  read. Brotli stays built and tested and costs us nothing sitting here; what it
-   *  needs is an edge that keys its cache on the encoding, which this plan's cache
-   *  rules cannot express. */
-  /** Which encodings we may put on the wire, WHICH DEPENDS ON WHO CACHES THE
-   *  RESPONSE.
-   *
-   *  ⚠️ CLOUDFLARE KEEPS ONE COMPRESSED VARIANT PER URL AND CANNOT TELL br FROM
-   *  gzip. Measured on a static asset, which shows the collapse without any of our
-   *  own machinery in the way: `Accept-Encoding: gzip` and `Accept-Encoding: br,
-   *  gzip` both came back as the SAME stored gzip copy, while `identity` came back
-   *  as its own. Two buckets, compressed and not — not one per coding.
-   *
-   *  So on anything the edge caches, offering two codings means it stores whichever
-   *  we answered first and hands it to everyone. That is exactly what happened on
-   *  2026-09-06: it kept the br copy, could not re-compress it under `no-transform`,
-   *  and DECOMPRESSED it for gzip-only clients — 3,789,572 bytes where 297,089 was
-   *  right, and 1,470,154 on `/api/repertoire`, which is the Android app's own fetch.
-   *
-   *  `BrowserOnly` is the exception and the reason brotli is reachable at all: those
-   *  responses say `private, no-cache`, the edge answers them `cf-cache-status:
-   *  BYPASS`, and with no stored variant there is nothing to collapse. The origin's
-   *  negotiation is then the one that reaches the client.
-   *
-   *  ⚠️ THIS IS AN EXPERIMENT WITH A QUESTION IT HAS NOT YET ANSWERED: whether
-   *  Cloudflare forwards the client's real `Accept-Encoding` on a bypass, or
-   *  normalises it the way it does for a cacheable request. If it normalises, these
-   *  pages simply keep coming back gzip and nothing breaks — the failure mode is a
-   *  null result, not another regression, which is why it is being asked here and
-   *  not on the listings. */
-  private def servableEncodings(policy: CachePolicy): Set[ContentEncoding] = policy match {
-    // ⚠️ ANSWERED, AND THE ANSWER WAS NO. The experiment below this line used to
-    // give `BrowserOnly` brotli, on the reasoning that a response the edge answers
-    // `BYPASS` has no stored variant to collapse. Measured on the live edge
-    // 2026-09-06, `/uk/manchester/?date=tomorrow`:
-    //
-    //   client sending `gzip, deflate, br, zstd`   br,  194,136 B
-    //   client sending `gzip`                      NONE, 3,768,974 B
-    //
-    // So Cloudflare does not forward the client's `Accept-Encoding` even when it
-    // caches nothing: it asks the origin with its own, gets brotli, and then
-    // decompresses for a client that cannot read it. BYPASS removes the shared
-    // CACHE, not the rewriting.
-    //
-    // That closes the question for every policy, not just this one. Origin-side
-    // brotli is unreachable behind this zone at any cache setting, because the
-    // origin never sees who is really asking. It needs a cache key that includes
-    // the encoding (Enterprise), a Worker doing the negotiation at the edge, or
-    // not fronting these routes with Cloudflare.
-    //
-    // ⚠️ RE-ENABLING IS NOT JUST THIS LINE. A `cacheBody = false` route offered a
-    // second coding also needs a branch in `conditionalCompressed` that compresses
-    // without keeping a blob; there was one, and it went with the revert rather
-    // than sitting here unreachable.
-    case CachePolicy.BrowserOnly | CachePolicy.RevalidatedAnywhere => Set(ContentEncoding.Gzip)
-  }
-
-  private def bestEncoding(request: RequestHeader, policy: CachePolicy): Option[ContentEncoding] =
-    ContentEncoding.negotiate(request.headers.get("Accept-Encoding"), servableEncodings(policy))
+   *  ⚠️ NOT BROTLI, THOUGH IT WOULD BE A THIRD SMALLER. It was built here
+   *  (eb90279cd) and taken off the wire (cedfaa4f6, 6ef854b81), then deleted:
+   *  Cloudflare caches one variant per URL and does not forward the client's
+   *  real `Accept-Encoding` even on a `BYPASS` response. It asked the origin with
+   *  its own header, got br, and — barred by `no-transform` from re-compressing —
+   *  DECOMPRESSED for gzip-only clients: 3,789,572 B on `/uk/manchester/` where
+   *  297,089 was right, and 1,470,154 on `/api/repertoire`, the Android app's own
+   *  fetch. Offering a second coding needs an edge that keys its cache on the
+   *  encoding, which this zone cannot express. */
+  private def acceptsGzip(request: RequestHeader): Boolean =
+    AcceptEncoding.acceptsGzip(request.headers.get("Accept-Encoding"))
 
   // The plain HTML pages (`/{city}/`, `/{city}/movies`) are byte-identical for
   // EVERY visitor at a given cache version — signed in or not, which is the whole
@@ -498,13 +432,12 @@ class MovieController( cc: ControllerComponents,
    *  refresh revalidates cheaply and reuses its cached copy instead of
    *  re-downloading the body.
    *
-   *  Otherwise the body is served, compressed with the best encoding the client
-   *  accepts ([[ContentEncoding.negotiate]] — brotli for anything current, gzip
-   *  for anything that cannot take it) and held per (path, encoding) in the
-   *  versioned [[EncodedResponseCache]]. Naming the `Content-Encoding` ourselves is
-   *  also what keeps Play's `GzipFilter` off the response: it skips anything that
-   *  already declares one. A `cacheBody = false` caller, or a client that refuses
-   *  both encodings, gets the body uncompressed and the filter handles it instead.
+   *  Otherwise the body is served gzipped ([[AcceptEncoding.acceptsGzip]]) from
+   *  the versioned [[EncodedResponseCache]]. Naming the `Content-Encoding`
+   *  ourselves is also what keeps Play's `GzipFilter` off the response: it skips
+   *  anything that already declares one. A `cacheBody = false` caller, or a
+   *  client that refuses gzip, gets the body uncompressed and the filter handles
+   *  it instead.
    *
    *  `policy` decides what a cache may do with the result — see [[CachePolicy]] for
    *  the two, and for why every one of them carries `no-transform`. */
@@ -551,18 +484,12 @@ class MovieController( cc: ControllerComponents,
     // here: the listing carries no email address and the edge body contains no
     // `cdn-cgi` marker).
     //
-    // WHAT IT COST, AND WHY IT NO LONGER COSTS IT. Giving up the edge's brotli was
-    // worth it on its own: Cloudflare answers a conditional ONLY from an ETag, so
-    // with none to send, a refreshing browser was handed the entire body under a
-    // 200, and a revalidation went from 287,531 bytes to a bodiless 304. But the
-    // full fetch did grow, 228,940 -> 287,531, +26%.
-    //
-    // AND IT STILL COSTS IT. Building the brotli here instead was tried and had to
-    // be taken back out: the edge caches ONE variant per URL, so it stored the br
-    // copy and then handed gzip-only clients the DECOMPRESSED body, 3.8 MB of it.
-    // See `bestEncoding` -- the origin offers one encoding for that reason, and
-    // this +26% is the price of the ETag until the edge can key a cache on the
-    // encoding.
+    // WHAT IT COST. Giving up the edge's brotli was worth it on its own: Cloudflare
+    // answers a conditional ONLY from an ETag, so with none to send, a refreshing
+    // browser was handed the entire body under a 200, and a revalidation went from
+    // 287,531 bytes to a bodiless 304. But the full fetch did grow, 228,940 ->
+    // 287,531, +26% -- and building the brotli here instead could not get it back;
+    // see `acceptsGzip`.
     val cacheControl: Seq[(String, String)] = policy match {
       case CachePolicy.BrowserOnly         => Seq("Cache-Control" -> "private, no-cache, no-transform")
       case CachePolicy.RevalidatedAnywhere => Seq("Cache-Control" -> "public, max-age=0, must-revalidate, no-transform")
@@ -622,10 +549,10 @@ class MovieController( cc: ControllerComponents,
     // CONTENT VERSION rather than a hash of the body, and since b84004f84 the
     // filtered branch keeps no blob, so two responses sharing one validator can
     // legitimately differ in which showtimes have already started. The same tag
-    // also goes on all THREE representations below -- brotli, gzip and identity --
-    // which a strong validator is flatly not permitted to do, since a strong tag
-    // promises byte-equality and those three share no bytes at all. Weak says all
-    // of that out loud.
+    // also goes on BOTH representations below -- gzip and identity -- which a
+    // strong validator is flatly not permitted to do, since a strong tag promises
+    // byte-equality and the two share no bytes at all. Weak says all of that out
+    // loud.
     val etag = "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + lastMod.getEpochSecond.toHexString + "\""
     val validators: Seq[(String, String)] = ("Last-Modified" -> httpDate) +: ("ETag" -> etag) +: cacheControl
 
@@ -635,33 +562,30 @@ class MovieController( cc: ControllerComponents,
       // it a MUST, not a nicety -- a 304 "MUST generate any of the following header
       // fields that would have been sent in a 200 to the same request:
       // Content-Location, Date, ETag, and Vary". And this response needs it more
-      // than most: ONE weak validator now
-      // covers THREE representations of the page -- brotli, gzip and identity --
-      // which is legitimate precisely because it is weak, but it means a cache that
-      // stores this 304's headers without being told the response varies by
-      // `Accept-Encoding` can hand a brotli body to a client that asked for gzip.
+      // than most: ONE weak validator covers BOTH representations of the page --
+      // gzip and identity -- which is legitimate precisely because it is weak, but
+      // it means a cache that stores this 304's headers without being told the
+      // response varies by `Accept-Encoding` can hand a gzip body to a client
+      // that refused it.
       //
       // Measured on the live origin before this line existed: a 304 came back
       // `vary: Origin`, while the 200 beside it said `vary: Accept-Encoding,Origin`.
       // Cloudflare adds the missing token on the way out, so the edge looked
       // correct and the origin was not -- and nothing else in front of us would.
       NotModified.withHeaders((("Vary" -> vary) +: validators)*)
-    else bestEncoding(request, policy) match {
-      // Compressed HERE, and stamped `Content-Encoding` HERE, which is also what
+    else if (cacheBody && acceptsGzip(request)) {
+      // Gzipped HERE, and stamped `Content-Encoding` HERE, which is also what
       // keeps Play's GzipFilter off it: the filter skips any response that already
       // names an encoding. The uncached branch below deliberately names none, and
       // the filter gzips it on the way out.
-      case Some(encoding) if cacheBody =>
-        val bytes = responseCache.encodedBody(bodyKey, lastMod, encoding)(body)
-        Ok(bytes).as(contentType)
-          .withHeaders((Seq("Content-Encoding" -> encoding.token, "Vary" -> vary) ++ validators)*)
-
-      // Gzip on an uncached response, or a client that refuses everything: leave it
-      // uncompressed and let the GzipFilter handle it, which is what keeps a filter
-      // variant from minting a blob.
-      case _ =>
-        Ok(body).as(contentType).withHeaders((("Vary" -> vary) +: validators)*)
-    }
+      val bytes = responseCache.gzippedBody(bodyKey, lastMod)(body)
+      Ok(bytes).as(contentType)
+        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> vary) ++ validators)*)
+    } else
+      // An uncached response, or a client that refuses gzip: leave it uncompressed
+      // and let the GzipFilter handle it, which is what keeps a filter variant
+      // from minting a blob.
+      Ok(body).as(contentType).withHeaders((("Vary" -> vary) +: validators)*)
   }
 
   private val HtmlContentType = "text/html; charset=utf-8"

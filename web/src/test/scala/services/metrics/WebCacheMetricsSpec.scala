@@ -1,6 +1,6 @@
 package services.metrics
 
-import controllers.{ContentEncoding, EncodedResponseCache}
+import controllers.EncodedResponseCache
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -38,8 +38,8 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
     register(registry, "response" -> (() => cache.occupancy))
 
     // Everything cached AFTER the gauges were registered must still be counted.
-    cache.encodedBody("/california/", version, ContentEncoding.Gzip)("<html>california</html>")
-    cache.encodedBody("/texas/", version, ContentEncoding.Gzip)("<html>texas</html>")
+    cache.gzippedBody("/california/", version)("<html>california</html>")
+    cache.gzippedBody("/texas/", version)("<html>texas</html>")
 
     val text = PrometheusExposition.render(registry)
     sample(text, "kinowo_web_cache_entries", "response") shouldBe Some(2.0)
@@ -63,7 +63,7 @@ class WebCacheMetricsSpec extends AnyFlatSpec with Matchers {
     val cache  = new EncodedResponseCache(maxBytes = budget)
     val random = new scala.util.Random(7)
     (1 to 30).foreach { state =>
-      cache.encodedBody(s"/state-$state/", version, ContentEncoding.Gzip)(random.alphanumeric.take(8 * 1024).mkString)
+      cache.gzippedBody(s"/state-$state/", version)(random.alphanumeric.take(8 * 1024).mkString)
     }
     val registry = new PrometheusRegistry()
     register(registry, "response" -> (() => cache.occupancy))

@@ -11,20 +11,17 @@ package controllers
  * when, the bytes that city renders can have changed.
  *
  * The tag is WEAK (`W/"…"`). It is a content VERSION, not a hash of the body,
- * and the same one is stamped on all THREE representations — brotli, gzip and
- * identity — which share no bytes at all. A strong validator is not permitted to
- * do that; a weak one is, because the three are the same document.
+ * and the same one is stamped on both representations — gzip and identity —
+ * which share no bytes at all. A strong validator is not permitted to do that;
+ * a weak one is, because the two are the same document.
  *
  * ⚠️ AND EVERY REVALIDATING POLICY CARRIES `no-transform`, or the tag reaches
  * nobody. Cloudflare recompresses our gzip to brotli on `text/html` and drops
  * the ETag rather than describe bytes it rewrote — measured on an uncached page
  * on both domains, and weak was stripped exactly as strong had been.
- * `no-transform` is what withdraws that permission.
- *
- * The brotli that withdrawal gave up has NOT been replaced. Building it at the
- * origin was tried and reverted: the edge caches one variant per URL, so it kept
- * the br copy and served gzip-only clients the decompressed body. See
- * `MovieController.bestEncoding` for the measurements.
+ * `no-transform` is what withdraws that permission. The brotli that withdrawal
+ * gave up cannot be built at the origin either — see
+ * `MovieController.acceptsGzip` for why.
  */
 enum CachePolicy {
 

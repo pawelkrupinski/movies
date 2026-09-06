@@ -261,9 +261,6 @@ lazy val web = (project in file("web"))
       jsoup,                 // also used directly in views/helpers
       imageioWebp,           // webp ImageReader for the OG-card compositor
       sentryLogback,         // error reporting
-      brotli4j,              // origin-side `Content-Encoding: br` (EncodedResponseCache)
-      brotli4jLinux,         // …the native the container and CI load
-      brotli4jMacArm,        // …and the one a dev machine loads. Both, deliberately.
       scalatestPlay % Test
     ),
     // Test = src/test/scala (sbt default, now that PlayLayoutPlugin is off).
