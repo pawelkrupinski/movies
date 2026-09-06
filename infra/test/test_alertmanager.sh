@@ -37,8 +37,15 @@ failed=0
 # had to be filtered out of every comparison.
 if ! (command -v amtool && command -v alertmanager) >/dev/null 2>&1; then
   if command -v nix >/dev/null 2>&1; then
+    # `--inputs-from "$infra"` PINS THIS TO THE FLEET'S OWN NIXPKGS, and that is not tidiness.
+    # A bare `nixpkgs#…` resolves through the flake REGISTRY, which is unstable, while the fleet
+    # runs what infra/flake.lock pins — so this would validate the configuration against a
+    # different Alertmanager from the one production parses it with, and an unrelated change on
+    # the unstable side would turn `main` red on its own. That matters more since this became a
+    # CI gate: the `stage` job has `needs: evaluate`, so a red here stops every host in the fleet
+    # receiving closures until somebody notices it was the weather.
     am_pkg="$(nix --extra-experimental-features 'nix-command flakes' \
-      build --no-link --print-out-paths 'nixpkgs#prometheus-alertmanager' 2>/dev/null)"
+      build --no-link --print-out-paths --inputs-from "$infra" 'nixpkgs#prometheus-alertmanager' 2>/dev/null)"
     if [ -z "$am_pkg" ] || [ ! -x "$am_pkg/bin/amtool" ]; then
       echo "  FAILED could not obtain alertmanager from nixpkgs, so nothing here was checked."
       exit 1
@@ -222,6 +229,7 @@ fi
 step "inhibition (live Alertmanager)"
 
 am_dir="$(mktemp -d)"
+trap 'rm -rf "$am_dir"; rm -f "$rendered"' EXIT INT TERM
 am_config="$am_dir/alertmanager.yaml"
 : > "$am_dir/telegram"; : > "$am_dir/smtp"
 
@@ -244,7 +252,9 @@ am_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0))
 alertmanager --config.file="$am_config" --storage.path="$am_dir/data" \
   --web.listen-address="127.0.0.1:$am_port" --cluster.listen-address= > "$am_dir/log" 2>&1 &
 am_pid=$!
-trap 'kill "$am_pid" 2>/dev/null; rm -rf "$am_dir"; rm -f "$rendered"' EXIT
+# INT AND TERM AS WELL AS EXIT. A non-interactive bash killed by Ctrl-C does not run an EXIT trap,
+# so without these a cancelled run leaves an Alertmanager holding a port and a temp tree behind it.
+trap 'kill "$am_pid" 2>/dev/null; rm -rf "$am_dir"; rm -f "$rendered"' EXIT INT TERM
 
 if python3 "$here/inhibition_cases.py" "$am_port"; then
   :

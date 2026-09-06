@@ -24,19 +24,33 @@ set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 infra="$(cd "$here/.." && pwd)"
 
-if command -v promtool >/dev/null 2>&1; then
-  promtool() { command promtool "$@"; }
-elif command -v nix >/dev/null 2>&1; then
-  # `prometheus.cli` AND NOT `prometheus`. The server package ships `prometheus` and `migrate` only;
-  # promtool lives in the split `cli` output, and asking for the wrong one fails with "unable to
-  # execute 'promtool'" long after the download.
-  promtool() {
-    nix --extra-experimental-features 'nix-command flakes' shell 'nixpkgs#prometheus.cli' \
-      -c promtool "$@"
-  }
-else
-  echo "  FAILED neither promtool nor nix is on PATH, so the alerting rules were not checked."
-  exit 1
+# RESOLVED ONCE, ONTO PATH, AND FROM THE FLEET'S OWN NIXPKGS. Two things were wrong with wrapping
+# this in a function that ran `nix shell` per call, and test_alertmanager.sh had both:
+#
+#   - EVERY invocation re-resolved the flake. This script calls promtool a few dozen times across
+#     fourteen rule files, which is most of the eight minutes it takes in CI.
+#   - A bare `nixpkgs#…` resolves through the flake REGISTRY, which is unstable, while the fleet
+#     runs what infra/flake.lock pins. That validates the rules against a different promtool from
+#     the one production loads them with, and lets an unrelated change on the unstable side turn
+#     `main` red — which, since the `stage` job has `needs: evaluate`, also stops every host in
+#     the fleet receiving closures.
+#
+# `prometheus.cli` AND NOT `prometheus`: the server package ships `prometheus` and `migrate` only;
+# promtool lives in the split `cli` output, and asking for the wrong one fails with "unable to
+# execute 'promtool'" long after the download.
+if ! command -v promtool >/dev/null 2>&1; then
+  if command -v nix >/dev/null 2>&1; then
+    promtool_pkg="$(nix --extra-experimental-features 'nix-command flakes' \
+      build --no-link --print-out-paths --inputs-from "$infra" 'nixpkgs#prometheus.cli' 2>/dev/null)"
+    if [ -z "$promtool_pkg" ] || [ ! -x "$promtool_pkg/bin/promtool" ]; then
+      echo "  FAILED could not obtain promtool from the pinned nixpkgs, so the rules were not checked."
+      exit 1
+    fi
+    PATH="$promtool_pkg/bin:$PATH"
+  else
+    echo "  FAILED neither promtool nor nix is on PATH, so the alerting rules were not checked."
+    exit 1
+  fi
 fi
 
 failed=0

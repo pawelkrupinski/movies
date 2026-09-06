@@ -183,7 +183,7 @@ jobs:
         # inhibit-rule check when the import fails — is the silent-skip this directory is written
         # against.
         run: |
-          python3 -c 'import yaml' 2>/dev/null || pip3 install --quiet --disable-pip-version-check pyyaml
+          python3 -c 'import yaml' 2>/dev/null || pip3 install --quiet --disable-pip-version-check --break-system-packages pyyaml
           bash test/test_alertmanager.sh
 
       # Instant, pure-python, and the gate that decides whether the fleet applies its own closures:
