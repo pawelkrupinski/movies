@@ -21,7 +21,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * every cinema.
  *
  * `None` is not available as the signal here — `runTmdbStageSync` documents it as "TMDB has
- * no match", and `resolveTmdbOnce` turns that into `markMissing` + `tmdbNoMatch = true`.
+ * no match", and `resolveTmdbOnce` turns that into `markMissing` + `tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)`.
  * Poisoning a film as unmatched is a different wrong answer, so a failed read THROWS
  * instead: `resolveTmdbOnce` already wraps the stage in a `Try` and treats `Failure` as
  * "will retry", which is exactly the deferral this wants.

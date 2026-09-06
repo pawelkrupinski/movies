@@ -109,7 +109,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(shows)))
     rm.movieUpserts shouldBe empty  // still enriching
     // TMDB concludes as a definitive no-match → `tmdbNoMatch` → ready → projects.
-    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(shows).copy(tmdbNoMatch = true)))
+    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), unresolved(shows).copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))))
     rm.movieUpserts     should have size 1
     rm.screeningUpserts should have size 1
   }

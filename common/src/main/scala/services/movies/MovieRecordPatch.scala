@@ -1,6 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Source, SourceData}
+import services.resolution.TmdbAttempt
 
 /**
  * Field-level diff between two `MovieRecord` snapshots — the minimal set of
@@ -34,7 +35,7 @@ final case class MovieRecordPatch(
   metacriticUrl:     FieldUpdate[String]                    = FieldUpdate.NoChange,
   rottenTomatoesUrl: FieldUpdate[String]                    = FieldUpdate.NoChange,
   searchTitle:       FieldUpdate[String]                    = FieldUpdate.NoChange,
-  tmdbNoMatch:       FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
+  tmdbAttempt:       FieldUpdate[TmdbAttempt]               = FieldUpdate.NoChange,
   detailPending:     FieldUpdate[Boolean]                   = FieldUpdate.NoChange,
   // Whole-map, unlike `data`'s per-key diff: the per-cinema split exists because
   // different venues' scrapes write different slots concurrently, while the retained
@@ -53,7 +54,7 @@ final case class MovieRecordPatch(
     wikidataId == FieldUpdate.NoChange &&
     metacriticUrl == FieldUpdate.NoChange &&
     rottenTomatoesUrl == FieldUpdate.NoChange && searchTitle == FieldUpdate.NoChange &&
-    tmdbNoMatch == FieldUpdate.NoChange && detailPending == FieldUpdate.NoChange &&
+    tmdbAttempt == FieldUpdate.NoChange && detailPending == FieldUpdate.NoChange &&
     retainedSynopses == FieldUpdate.NoChange &&
     data.isEmpty
 
@@ -90,7 +91,7 @@ final case class MovieRecordPatch(
       metacriticUrl     = merge(metacriticUrl,     current.metacriticUrl),
       rottenTomatoesUrl = merge(rottenTomatoesUrl, current.rottenTomatoesUrl),
       searchTitle       = merge(searchTitle,       current.searchTitle),
-      tmdbNoMatch       = mergeFlag(tmdbNoMatch,   current.tmdbNoMatch),
+      tmdbAttempt       = merge(tmdbAttempt,       current.tmdbAttempt),
       detailPending     = mergeFlag(detailPending, current.detailPending),
       retainedSynopses  = retainedSynopses match {
                             case FieldUpdate.SetTo(v) => v
@@ -119,7 +120,7 @@ object MovieRecordPatch {
       metacriticUrl     = diffOpt(before.metacriticUrl,     after.metacriticUrl),
       rottenTomatoesUrl = diffOpt(before.rottenTomatoesUrl, after.rottenTomatoesUrl),
       searchTitle       = diffOpt(before.searchTitle,       after.searchTitle),
-      tmdbNoMatch       = diffFlag(before.tmdbNoMatch,       after.tmdbNoMatch),
+      tmdbAttempt       = diffOpt(before.tmdbAttempt,       after.tmdbAttempt),
       detailPending     = diffFlag(before.detailPending,     after.detailPending),
       retainedSynopses  = diffMap(before.retainedSynopses,  after.retainedSynopses),
       data              = diffData(before.data, after.data)

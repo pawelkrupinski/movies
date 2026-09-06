@@ -73,7 +73,7 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
     // an imdbId → rating + a resolved year, instead of waiting for the daily OMDb sweep.
     val (service, seen, freshness, queue) = fixture()
     service.announceResolvedNewMovie(
-      CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbNoMatch = true))
+      CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
 
     seen.toSeq should matchPattern { case Seq(ImdbIdMissing("Obscure Local Premiere", Some(2026), _)) => }
     waiting(queue) shouldBe 0L // no tmdbId/imdbId yet → nothing eligible; ratings follow once the id lands
@@ -82,7 +82,7 @@ class MovieServiceAnnounceResolvedSpec extends AnyFlatSpec with Matchers {
   it should "stay silent for a tmdbNoMatch promotion that ALREADY carries an imdbId (nothing to recover)" in {
     val (service, seen, _, queue) = fixture()
     service.announceResolvedNewMovie(
-      CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbNoMatch = true, imdbId = Some("tt9999999")))
+      CacheKey("Obscure Local Premiere", Some(2026), titleNormalizer), MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), imdbId = Some("tt9999999")))
 
     seen shouldBe empty
     waiting(queue) shouldBe 0L

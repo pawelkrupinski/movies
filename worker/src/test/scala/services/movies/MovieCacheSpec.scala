@@ -319,17 +319,6 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("X", Some(2024))).flatMap(_.imdbRating) shouldBe Some(9.5)
   }
 
-  it should "leave the negative cache alone" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
-    val key   = cache.keyOf("not-a-real-film", Some(2099))
-    cache.markMissing(key)
-    cache.isNegative(key) shouldBe true
-
-    cache.rehydrate()
-
-    cache.isNegative(key) shouldBe true
-  }
-
   // ── incremental change-stream sync (start()) ───────────────────────────────
   // Once started, the cache applies out-of-band Mongo writes the moment they
   // land via `repository.watchUpserts` — no full `findAll()` rehydrate. The
@@ -707,16 +696,6 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     cache.get(key) shouldBe None
     repository.deletes.toList shouldBe List(("X", Some(2024)))
-  }
-
-  "markMissing + isNegative" should "let callers track known-non-films without polluting the positive cache" in {
-    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
-    val key   = cache.keyOf("not-a-real-film", Some(2099))
-
-    cache.isNegative(key) shouldBe false
-    cache.markMissing(key)
-    cache.isNegative(key) shouldBe true
-    cache.get(key) shouldBe None  // negative cache never returns a positive value
   }
 
   // ── putIfPresent: no-resurrection writes ───────────────────────────────────

@@ -82,7 +82,7 @@ class DebugViewStagingSpec extends AnyFlatSpec with Matchers {
     val html = views.html.debug(
       Seq.empty, titleNormalizer,
       staging = Seq(StagingRecord(Helios, "Obscure One", Some(2026),
-        MovieRecord(tmdbNoMatch = true,
+        MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
           data = Map[Source, SourceData](Helios -> SourceData(title = Some("Obscure One")))), titleNormalizer))).body
     html should include ("""data-tmdb-done="true"""")
   }

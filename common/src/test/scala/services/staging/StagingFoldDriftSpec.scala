@@ -29,7 +29,7 @@ class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
   // deromanize fix shifted the title's sanitize to `toystory5`.
   private val staleId = "Mikro Bronowice|toystoryv|"
   private val record  = MovieRecord(
-    tmdbNoMatch = true,
+    tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
     searchTitle = Some("Toy Story 5- dubbing"),
     data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Toy Story 5- dubbing"))))
   private val row     = StagingRecord.fromStorage(staleId, record, titleNormalizer).getOrElse(fail(s"fromStorage($staleId) returned None"))
@@ -53,7 +53,7 @@ class StagingFoldDriftSpec extends AnyFlatSpec with Matchers {
 
   it should "still group an undecorated, non-drifting row by sanitized title" in {
     val plain   = StagingRecord(MikroBronowice, "Kumotry", Some(2026),
-      MovieRecord(tmdbNoMatch = true, data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Kumotry")))), titleNormalizer)
+      MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Kumotry")))), titleNormalizer)
     StagingFold.selectStagingGroup(Seq(plain), "Kumotry", titleNormalizer) shouldBe Seq(plain)
     StagingFold.selectStagingGroup(Seq(plain), "Something Else", titleNormalizer) shouldBe empty
   }

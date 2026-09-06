@@ -1,6 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Showtime, Source, SourceData}
+import services.resolution.TmdbAttempt
 import org.bson.{BsonReader, BsonWriter}
 import org.bson.codecs.configuration.CodecRegistries.{fromCodecs, fromProviders, fromRegistries}
 import org.bson.codecs.configuration.{CodecProvider, CodecRegistry}
@@ -19,6 +20,9 @@ import java.time.Instant
  * keys the wire map by `Source.displayName` to match the prior manual encoder
  * exactly; unknown keys on read are dropped silently (legacy cinema slots).
  */
+/** Wire form of [[services.resolution.TmdbAttempt]]. */
+case class StoredTmdbAttempt(evidence: String, at: Instant)
+
 case class StoredMovieDto(
   _id:               String,
   imdbId:            Option[String],
@@ -40,9 +44,15 @@ case class StoredMovieDto(
   metacriticUrl:     Option[String],
   rottenTomatoesUrl: Option[String],
   searchTitle:       Option[String],
-  // Optional on the wire so legacy documents (written before these existed) decode
-  // to None → default false; only persisted when true to keep documents lean.
+  // READ-ONLY, for documents written before `tmdbAttempt` existed: a `true` here
+  // decodes as a no-match attempt on unknown inputs (`TmdbAttempt.Legacy`), which
+  // the next look retries. Never written any more — `fromDomain` leaves it None.
   tmdbNoMatch:       Option[Boolean],
+  // The last TMDB search that found nothing — its input fingerprint and time.
+  // Optional on the wire so legacy documents decode to None.
+  tmdbAttempt:       Option[StoredTmdbAttempt],
+  // Optional on the wire so legacy documents (written before this existed) decode
+  // to None → default false; only persisted when true to keep documents lean.
   detailPending:     Option[Boolean],
   // Optional on the wire so a MIGRATED document decodes to None → empty map. Once
   // a film's slots have landed in `movie_slots`, the 2026-07 slot migration
@@ -88,7 +98,8 @@ object StoredMovieDto {
       metacriticUrl     = r.metacriticUrl,
       rottenTomatoesUrl = r.rottenTomatoesUrl,
       searchTitle       = r.searchTitle,
-      tmdbNoMatch       = Option.when(r.tmdbNoMatch)(true),
+      tmdbNoMatch       = None,
+      tmdbAttempt       = r.tmdbAttempt.map(a => StoredTmdbAttempt(a.evidence, a.at)),
       detailPending     = Option.when(r.detailPending)(true),
       // Always `Some` — the write shape is unchanged (an empty map still encodes as
       // `sourceData: {}`). Only READS tolerate the field's absence; dropping the
@@ -113,7 +124,8 @@ object StoredMovieDto {
       metacriticUrl     = dto.metacriticUrl,
       rottenTomatoesUrl = dto.rottenTomatoesUrl,
       searchTitle       = dto.searchTitle,
-      tmdbNoMatch       = dto.tmdbNoMatch.getOrElse(false),
+      tmdbAttempt       = dto.tmdbAttempt.map(a => TmdbAttempt(a.evidence, a.at))
+                            .orElse(Option.when(dto.tmdbNoMatch.contains(true))(TmdbAttempt.Legacy)),
       detailPending     = dto.detailPending.getOrElse(false),
       // Drop any legacy bare-Cinema slot a per-title CinemaShowing slot now
       // supersedes — pre-split rows (before commit 847f555f) keyed a cinema's
@@ -223,6 +235,7 @@ object MovieCodecs {
     fromProviders(
       sourceDataProvider,
       Macros.createCodecProviderIgnoreNone[Showtime](),
+      Macros.createCodecProvider[StoredTmdbAttempt](),
       Macros.createCodecProvider[StoredMovieDto](),
       // The `screenings` collection (showtimes split out of `movies`) — same
       // Showtime + LocalDateTime codecs as above.

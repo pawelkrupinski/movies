@@ -252,10 +252,27 @@ class MovieCodecsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "round-trip the tmdbNoMatch / detailPending conclusion markers when set" in {
-    val record = MovieRecord(imdbId = Some("tt0000004"), tmdbNoMatch = true, detailPending = true)
+    val record = MovieRecord(imdbId = Some("tt0000004"), tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), detailPending = true)
     val back = StoredMovieDto.toDomain(roundTrip(StoredMovieDto.fromDomain("conc|2025", record, Instant.now())), titleNormalizer)
     back.record.tmdbNoMatch   shouldBe true
     back.record.detailPending shouldBe true
+  }
+
+  it should "read a legacy tmdbNoMatch flag as a no-match attempt on unknown inputs, which the next look retries" in {
+    val record = MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Legacy"))))
+    val raw = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(raw), StoredMovieDto.fromDomain("legacy|2025", record, Instant.now()), EncoderContext.builder().build())
+    raw.put("tmdbNoMatch", org.bson.BsonBoolean.TRUE)   // a document written before attempts were recorded
+    val back = StoredMovieDto.toDomain(codec.decode(new BsonDocumentReader(raw), DecoderContext.builder().build()), titleNormalizer)
+    back.record.tmdbAttempt shouldBe Some(services.resolution.TmdbAttempt.Legacy)
+    back.record.tmdbNoMatch shouldBe true
+    // …and the flag itself is never written back.
+    val again = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(again), StoredMovieDto.fromDomain("legacy|2025", back.record, Instant.now()), EncoderContext.builder().build())
+    // The DTO codec writes an absent Option as `null`, which decodes as None again;
+    // what matters is that no `true` ever goes back out.
+    Option(again.get("tmdbNoMatch")).forall(_.isNull) shouldBe true
+    again.get("tmdbAttempt").isDocument shouldBe true
   }
 
   it should "default tmdbNoMatch / detailPending to false on a legacy document that lacks them" in {

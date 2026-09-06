@@ -7,7 +7,7 @@ import services.cinemas.CountryNames
 import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
-import services.resolution.{Candidate, Contradiction, FilmEvidence, ResolutionCache, ResolutionKeys, SearchTitles, TitleCorroboration, TmdbBasis, Verdict}
+import services.resolution.{Candidate, Contradiction, FilmEvidence, ResolutionCache, ResolutionKeys, SearchTitles, TitleCorroboration, TmdbAttempt, TmdbBasis, Verdict}
 import services.tasks.RatingTasks
 import tools.{DaemonExecutors, HttpStatusException}
 
@@ -108,7 +108,10 @@ class MovieService(
   staging:              services.staging.StagingRepository = services.staging.StagingRepository.empty,
   // Where the splitter reports the slots it re-diverted (`kinowo_worker_splits_total`).
   // Production wires `WorkerTaskMetrics`; unit specs and scripts leave it silent.
-  splitMetrics:         SplitMetrics = SplitMetrics.noop
+  splitMetrics:         SplitMetrics = SplitMetrics.noop,
+  // Stamps a no-match `TmdbAttempt` and judges whether a remembered one still
+  // stands (`TmdbAttempt.RetryAfter`). Injectable so a spec can age a miss.
+  clock:                java.time.Clock = java.time.Clock.systemUTC()
 ) extends Drainable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
@@ -286,16 +289,16 @@ class MovieService(
           }
         }
       case None =>
-        // Negative cache: short-circuit known misses — but ONLY when this event
-        // brings no new resolution signal. A later scrape that carries a director
-        // (Helios/Multikino) or originalTitle (the cinema's English title field)
-        // the prior attempt didn't have is worth retrying: `directorWalk` runs
-        // off the director hint, and a TMDB title search by originalTitle can
-        // hit where the Polish title missed. Without this carve-out, a row
-        // where the first-scraping cinema reports no director (CinemaCity,
-        // Charlie Monroe) stays trapped at tmdbId=None for the full 24h
-        // negative TTL — the Kurozając class of regression.
-        if (cache.isNegative(key) && originalTitle.isEmpty && director.isEmpty) false
+        // A remembered miss stands only while nothing it was reached on has changed:
+        // the row's `tmdbAttempt` fingerprints the cinemas' evidence and the derived
+        // search terms of the search that found nothing, and this event's hints are
+        // folded in before comparing. A director a later cinema brings, a Filmweb-
+        // supplied original title, a new venue's spelling — each changes the
+        // fingerprint and re-opens the row at once instead of waiting out a TTL (the
+        // Kurozając class of regression: a row whose first-scraping cinema reports
+        // no director stayed trapped for the full 24h). The same inputs within
+        // `TmdbAttempt.RetryAfter` are not searched again.
+        if (existing.flatMap(_.tmdbAttempt).exists(_.covers(attemptFingerprint(existing, originalTitle, director), clock.instant()))) false
         // A sibling row already knows this raw cinema title (via cinemaTitles)
         // AND has a tmdbId. `recordCinemaScrape`'s redirect has already
         // attached this cinema's slot to that sibling, so running TMDB again
@@ -319,6 +322,22 @@ class MovieService(
     }
   }
 
+  /** What a TMDB search for this row consumes — the cinemas' evidence with the
+   *  event's hints folded in, plus the derived search terms — as the fingerprint a
+   *  no-match is recorded under and later compared against. ONE definition for both
+   *  sides, or a miss could be recorded under one fingerprint and checked under
+   *  another. */
+  private def attemptFingerprint(row: Option[MovieRecord], originalTitle: Option[String], director: Option[String]): String =
+    TmdbAttempt.fingerprint(
+      row.fold(FilmEvidence.empty)(_.evidence)
+        .withDirectors(director.toSeq.flatMap(_.split(",")))
+        .withOriginalTitle(originalTitle),
+      row.toSeq.flatMap(_.resolverOriginalTitles))
+
+  /** The no-match record of what THIS search consumed, stamped now. */
+  private def attemptFor(row: MovieRecord, originalTitle: Option[String], director: Option[String]): TmdbAttempt =
+    TmdbAttempt(attemptFingerprint(Some(row), originalTitle, director), clock.instant())
+
   /** Reset a row to its scraped-only form ([[MovieRecord.scrapedOnly]]) and re-key it
    *  onto the SCRAPED year, returning the key to resolve against. The scraped year comes
    *  from the cinema slots (the stripped row's `resolvedYear` — its `tmdbYear` is gone),
@@ -332,8 +351,6 @@ class MovieService(
       case None      => rawKey
       case Some(row) =>
         val newKey = cache.keyOf(live.cleanTitle, row.scrapedOnly.resolvedYear)
-        cache.clearNegative(live)
-        cache.clearNegative(newKey)
         cache.rekey(live, newKey, _.scrapedOnly)
         newKey
     }
@@ -348,7 +365,7 @@ class MovieService(
    *      by the `EnrichmentReaper` (not on resolution); only a hit without an IMDb
    *      cross-reference publishes `ImdbIdMissing` so `ImdbIdResolver` recovers the
    *      id via IMDb's suggestion endpoint. Returns true.
-   *    - DEFINITIVE MISS: persist `tmdbNoMatch` so the row is `tmdbConcluded`
+   *    - DEFINITIVE MISS: persist a `tmdbAttempt` so the row is `tmdbConcluded`
    *      (→ released to the read model) and that survives a restart. The daily
    *      `retryUnresolvedTmdb` sweep still re-checks it later. Returns true.
    *    - TRANSIENT FAILURE (rate-limit / network blip): returns FALSE without
@@ -406,15 +423,17 @@ class MovieService(
         true
       case Success(None) =>
         logger.info(s"TMDB: '${key.cleanTitle}' (${key.year.getOrElse("?")}) → no match")
-        cache.markMissing(key)
-        // Conclude as a definitive miss AND fold a stranded yearless+idless
-        // sibling onto the now-concluded row in one write (same rationale as the
-        // hit path), instead of leaving it held back from the read model until
-        // a later settle.
+        // Conclude as a definitive miss — recording what the search consumed, so the
+        // next look knows whether anything changed — AND fold a stranded
+        // yearless+idless sibling onto the now-concluded row in one write (same
+        // rationale as the hit path), instead of leaving it held back from the read
+        // model until a later settle.
         val liveKey = cache.canonicalKeyFor(key).getOrElse(key)
+        def missed(record: MovieRecord): MovieRecord =
+          record.copy(tmdbAttempt = Some(attemptFor(record, origHint, directoryHint)))
         cache.get(liveKey) match {
-          case Some(record) => cache.settleResolved(liveKey, record.copy(tmdbNoMatch = true))
-          case None      => cache.putIfPresent(liveKey, _.copy(tmdbNoMatch = true))
+          case Some(record) => cache.settleResolved(liveKey, missed(record))
+          case None      => cache.putIfPresent(liveKey, missed)
         }
         true
       case Failure(exception) =>
@@ -429,7 +448,7 @@ class MovieService(
    *  the fold). Reuses the exact `lookupTmdb` + `buildResolvedRecord` the movies
    *  path runs, with hints derived from the row's own slots. Returns:
    *    - `Some(enriched)` on a HIT — `existing` + tmdbId + Tmdb slot;
-   *    - `Some(existing.copy(tmdbNoMatch = true))` on a DEFINITIVE MISS;
+   *    - `Some(existing.copy(tmdbAttempt = Some(…)))` on a DEFINITIVE MISS;
    *      (both conclude the row → ready to fold into `movies`)
    *    - `None` on a TRANSIENT failure — leave the row for the promoter to retry.
    *  Publishes no events: rating enrichment is set up on the merged `movies`
@@ -445,7 +464,7 @@ class MovieService(
         Some(resolved)
       case Success(None) =>
         logger.info(s"TMDB (staging): $label → no match")
-        Some(existing.copy(tmdbNoMatch = true))
+        Some(existing.copy(tmdbAttempt = Some(attemptFor(existing, origHint, directoryHint))))
       case Failure(exception) =>
         logger.warn(s"Staging TMDB resolve failed for $label: ${exception.getMessage}; will retry.")
         None
@@ -564,7 +583,7 @@ class MovieService(
         // `*Ratings` refreshers own AND every cinema slot — the same clobber the cold-cache
         // fix above prevented, from the other cause. THROW rather than return `None`:
         // `None` means "TMDB has no match" here, and `resolveTmdbOnce` turns that into
-        // `markMissing` + `tmdbNoMatch = true`, poisoning a film that is perfectly fine.
+        // a recorded no-match `tmdbAttempt`, poisoning a film that is perfectly fine.
         // Its `Try` already treats a Failure as "will retry", which is the deferral wanted.
         val (carryForward, readOk) = cache.storedChecked(writeKey)
         if (!readOk) throw new IllegalStateException(
@@ -790,13 +809,12 @@ class MovieService(
    *  the respective `*Ratings.refreshAll` walks — operator-triggered from the
    *  /tasks buttons, NOT scheduled — which do their own
    *  URL discovery; missing IMDb ids are recovered by the `ImdbIdMissing`
-   *  event fired from the TMDB stage at first resolution. Clears the negative
-   *  cache so previously-failed `(title, year)` lookups get one fresh shot. This
-   *  bulk form backs the operator `RefreshAllTmdb` button; the scheduled,
+   *  event fired from the TMDB stage at first resolution. Drops each row's
+   *  remembered miss so previously-failed `(title, year)` lookups get one fresh
+   *  shot. This bulk form backs the operator `RefreshAllTmdb` button; the scheduled,
    *  phase-spread re-try is owned by [[services.tasks.UnresolvedTmdbReaper]]
    *  (via [[retryResolve]]) so the backlog drains as a trickle, not a burst. */
   def retryUnresolvedTmdb(): Unit = {
-    cache.clearNegatives()
     // Pass each row's `data`-merged director + originalTitle as
     // hints. By the time the daily retry fires, the row has absorbed every
     // cinema's slot via `recordCinemaScrape`'s redirect — even if the cinema
@@ -808,13 +826,15 @@ class MovieService(
     // (→ TMDB) once their detail lands, and `DetailReaper` keeps that detail
     // enqueued — so this sweep only re-tries genuinely-stalled, detail-complete rows.
     val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty && !e.detailPending => (k, e) }
-    logger.info(s"TMDB retry: cleared negatives + re-dispatching ${targets.size} row(s) with missing tmdbId.")
-    targets.foreach { case (k, e) => dispatchWithHints(k, e) }
+    logger.info(s"TMDB retry: re-dispatching ${targets.size} row(s) with missing tmdbId, their remembered misses dropped.")
+    targets.foreach { case (k, e) =>
+      cache.putIfPresent(k, _.copy(tmdbAttempt = None))
+      dispatchWithHints(k, e)
+    }
   }
 
-  /** Re-attempt ONE still-unresolved row's TMDB resolution, clearing just that
-   *  row's negative marker first (the scoped form of [[retryUnresolvedTmdb]]'s
-   *  global `clearNegatives`). Driven by
+  /** Re-attempt ONE still-unresolved row's TMDB resolution, dropping just that
+   *  row's remembered miss first (the scoped form of [[retryUnresolvedTmdb]]). Driven by
    *  [[services.tasks.UnresolvedTmdbReaper]]'s phase-spread tick so the
    *  unresolved backlog re-tries as a flat trickle instead of a boot/period
    *  burst. No-op once the row has resolved or is awaiting detail (its detail
@@ -822,7 +842,7 @@ class MovieService(
   /** [[retryResolve]] addressed by `(title, year)`, for a caller outside `services`
    *  — `CacheKey` is `private[services]`, so the fixture harness cannot name a row
    *  any other way. Without it the only reachable re-resolve was the operator-scale
-   *  [[retryUnresolvedTmdb]], whose corpus-wide `clearNegatives` un-concludes every
+   *  [[retryUnresolvedTmdb]], whose corpus-wide miss-dropping un-concludes every
    *  unresolved row at once: in the e2e corpus that dropped ten decorated
    *  banner films ("Cinema Italia Oggi: Kochanie", "Kino bez barier: Pieśni lasu")
    *  out of the read model, because `readyToProject` needs `tmdbConcluded` and the
@@ -845,7 +865,7 @@ class MovieService(
 
   def retryResolve(key: CacheKey): Unit =
     cache.get(key).filter(e => e.tmdbId.isEmpty && !e.detailPending).foreach { e =>
-      cache.clearNegative(key)
+      cache.putIfPresent(key, _.copy(tmdbAttempt = None))
       dispatchWithHints(key, e)
     }
 
@@ -962,7 +982,7 @@ class MovieService(
     // own `MovieDetailsComplete`, so the triggering event's director varied with
     // arrival order (Helios/Multikino report a director, CinemaCity/Charlie
     // Monroe don't) — and a director-bearing trigger that failed verification
-    // poisoned the negative cache (`markMissing`) before a director-less trigger
+    // recorded a miss before a director-less trigger
     // could resolve the same row, so whether the film enriched hinged on which
     // event won the per-key `pending` race. Sourcing the hints from the row's
     // own slots (sorted) makes the resolution a deterministic function of the

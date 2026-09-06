@@ -35,7 +35,7 @@ class StagingStuckAlerterSpec extends AnyFlatSpec with Matchers {
   private def staged(cinema: Source, title: String, year: Option[Int],
                      tmdbId: Option[Int] = None, noMatch: Boolean = false)
   : (Source, String, Option[Int], MovieRecord) =
-    (cinema, title, year, MovieRecord(tmdbId = tmdbId, tmdbNoMatch = noMatch,
+    (cinema, title, year, MovieRecord(tmdbId = tmdbId, tmdbAttempt = Option.when(noMatch)(services.resolution.TmdbAttempt.Legacy),
       data = Map[Source, SourceData](cinema -> SourceData(title = Some(title), releaseYear = year))))
 
   private def newAlerter(repository: InMemoryStagingRepository, clock: MutableClock)

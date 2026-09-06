@@ -70,7 +70,7 @@ class CorpusIndexConsistencySpec extends AnyFlatSpec with Matchers {
 
     // A concluded row contributes ALIASES; concluding one must add them and dropping it
     // must take them away again, refcounted.
-    cache.putIfPresent(CacheKey("Third Film", Some(2026), normalizer), _.copy(tmdbNoMatch = true))
+    cache.putIfPresent(CacheKey("Third Film", Some(2026), normalizer), _.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
     stillAgrees(cache, "concluding a row")
 
     cache.invalidate(CacheKey("Third Film", Some(2026), normalizer))

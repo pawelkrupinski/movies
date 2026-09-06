@@ -183,7 +183,6 @@ class RatingRunCensusSpec extends AnyFlatSpec with Matchers {
     private[services] def keyOf(title: String, year: Option[Int]): CacheKey = CacheKey(title, year, titleNormalizer)
     private[services] def canonicalKeyFor(k: CacheKey): Option[CacheKey]    = Some(k)
     private[services] def get(k: CacheKey): Option[MovieRecord]             = rows.find(_._1 == k).map(_._2)
-    private[services] def isNegative(k: CacheKey): Boolean                  = false
     private[services] def entries: Seq[(CacheKey, MovieRecord)]             = rows
   }
 

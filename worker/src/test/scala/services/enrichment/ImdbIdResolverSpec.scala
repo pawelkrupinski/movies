@@ -171,7 +171,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     // A tmdbNoMatch film (no tmdbId → Letterboxd skipped) that IMDb's suggestion
     // endpoint doesn't index — the Malayalam/Indian long tail OMDb's English DB
     // covers. This is the rung that would previously only fire on the daily sweep.
-    val noTmdb = MovieRecord(tmdbNoMatch = true)
+    val noTmdb = MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
     val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Varavu", Some(2026), noTmdb))), normalizer = titleNormalizer)
     val omdb   = new OMDbClient(new StubGet(Seq("?t=" ->
       """{"Title":"Varavu","Year":"2026","imdbID":"tt37963237","Director":"Shaji Kailas","Response":"True"}""")),
@@ -184,7 +184,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
   }
 
   "the Cinemeta backstop" should "recover the imdbId via Cinemeta when every earlier rung (incl. OMDb) abstains" in {
-    val noTmdb = MovieRecord(tmdbNoMatch = true)
+    val noTmdb = MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
     val cache  = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Cactus Pears", Some(2026), noTmdb))), normalizer = titleNormalizer)
     val cinemeta = new CinemetaClient(new StubGet(Seq("search=" ->
       """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))

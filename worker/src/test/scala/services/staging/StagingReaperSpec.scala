@@ -79,7 +79,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
    *  `tmdb.findByImdbId` to resolve in reverse. It is the film that needs the
    *  recovery step most, and it was the one film the step skipped. */
   it should "enqueue StagingResolveImdbId for a row TMDB could not name" in {
-    val unnamed = listing("Stop Making Sense", None).copy(tmdbNoMatch = true)
+    val unnamed = listing("Stop Making Sense", None).copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
     val (queue, reaper, _, _) = fixture(("Stop Making Sense", None, unnamed))
     reaper.tick() shouldBe 1
     active(queue) shouldBe Seq(
@@ -89,7 +89,7 @@ class StagingReaperSpec extends AnyFlatSpec with Matchers {
   // …and still folds rather than looping once that attempt has been made, whatever
   // it found — the same one-shot guard the resolved case relies on.
   it should "fold a row TMDB could not name once IMDb recovery was attempted" in {
-    val unnamed = listing("Stop Making Sense", None).copy(tmdbNoMatch = true)
+    val unnamed = listing("Stop Making Sense", None).copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))
     val (queue, reaper, _, freshness) = fixture(("Stop Making Sense", None, unnamed))
     markImdbAttempted(freshness, "Stop Making Sense")
     reaper.tick() shouldBe 1

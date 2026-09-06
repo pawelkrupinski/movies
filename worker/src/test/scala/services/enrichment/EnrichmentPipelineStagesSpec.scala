@@ -71,17 +71,20 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "negative-cache a row TMDB can't match (no resolution)" in {
+  it should "record what a search that found nothing consumed, on the row it searched for" in {
     val emptyTmdb = new TmdbClient(
       http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")),
       apiKey = Some("stub")
     )
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val key     = cache.keyOf("Unknown Title", None)
+    cache.put(key, MovieRecord(data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Unknown Title")))))
     val service = new MovieService(cache, new InProcessEventBus(), emptyTmdb)
 
     service.onMovieDetailsComplete(MovieDetailsComplete("Unknown Title", None))
 
-    eventually(cache.isNegative(cache.keyOf("Unknown Title", None)) shouldBe true)
+    eventually(cache.get(key).flatMap(_.tmdbAttempt) should not be empty)
+    cache.get(key).exists(_.tmdbNoMatch) shouldBe true
   }
 
   it should "persist tmdbNoMatch on a definitive no-match so the held-back row becomes ready to project" in {
@@ -377,18 +380,18 @@ class EnrichmentPipelineStagesSpec extends AnyFlatSpec with Matchers {
 
   // ── Daily TMDB retry ──────────────────────────────────────────────────────
 
-  "retryUnresolvedTmdb" should "clear the negative cache so previously-failed lookups get another shot" in {
+  "retryUnresolvedTmdb" should "drop each row's remembered miss so previously-failed lookups get another shot" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val key   = cache.keyOf("Some Film", Some(2026))
-    cache.markMissing(key)
-    cache.isNegative(key) shouldBe true
+    cache.put(key, MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
 
     val service = new MovieService(
       cache, new InProcessEventBus(), new TmdbClient(http = new RoutingHttpFetch(Map("/search/movie" -> """{"results":[]}""")), apiKey = Some("stub"))
     )
 
     service.retryUnresolvedTmdb()
-    cache.isNegative(key) shouldBe false
+    service.stop()   // drain the inline resolve, which searches again and records a fresh miss
+    cache.get(key).flatMap(_.tmdbAttempt).map(_.at) should not be Some(java.time.Instant.EPOCH)
   }
 
   it should "NOT re-run the TMDB stage for rows missing MC or RT URLs (those are recovered by *Ratings.refreshAll)" in {

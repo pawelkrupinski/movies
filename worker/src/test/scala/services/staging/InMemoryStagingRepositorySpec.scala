@@ -51,14 +51,14 @@ class InMemoryStagingRepositorySpec extends AnyFlatSpec with Matchers {
     row.record.imdbId shouldBe Some("tt15047880")
   }
 
-  it should "preserve tmdbNoMatch=true when a re-scrape re-upserts a concluded newcomer row" in {
+  it should "preserve tmdbAttempt=Some(services.resolution.TmdbAttempt.Legacy) when a re-scrape re-upserts a concluded newcomer row" in {
     // The decorated-title half of the same bug ("Kino bez barier: Ministranci"):
-    // TMDB returns no match → the row is concluded with tmdbNoMatch=true. A
+    // TMDB returns no match → the row is concluded with tmdbAttempt=Some(services.resolution.TmdbAttempt.Legacy). A
     // re-scrape must not reset it to false, or the reaper never folds it.
     val repository = new InMemoryStagingRepository
     repository.upsert(Helios, "Kino bez barier: Ministranci", None, slot(Helios, "Kino bez barier: Ministranci", None))
     val concluded = repository.findAll().head
-    repository.upsertRow(concluded.copy(record = concluded.record.copy(tmdbNoMatch = true)))
+    repository.upsertRow(concluded.copy(record = concluded.record.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))))
 
     repository.upsert(Helios, "Kino bez barier: Ministranci", None, slot(Helios, "Kino bez barier: Ministranci", None))
 

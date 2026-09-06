@@ -6,6 +6,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.events.{InProcessEventBus, MovieDetailsComplete}
 import tools.GetOnlyHttpFetch
+import services.resolution.{FilmEvidence, TmdbAttempt}
+import java.time.{Clock, Instant, ZoneOffset}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /**
@@ -82,9 +84,16 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     director = Seq(Director)
   )
 
-  // ── Fix 1 — bus path: new director hint must bypass the negative cache ────
+  // ── A remembered miss stands only while its inputs stand ──────────────────
 
-  "needsTmdbResolution (bus path)" should "bypass the isNegative short-circuit when a fresh director hint arrives" in {
+  private def missOnNothing(at: Instant = Instant.now()): MovieRecord =
+    MovieRecord(tmdbAttempt = Some(TmdbAttempt.on(FilmEvidence.empty, Nil, at)))
+
+  private def silentTmdb: TmdbClient = new TmdbClient(http = new GetOnlyHttpFetch {
+    override def get(url: String): String = throw new RuntimeException(s"TMDB should not be called: $url")
+  }, apiKey = Some("stub"))
+
+  "needsTmdbResolution (bus path)" should "search again when a fresh director hint changes what would be searched" in {
     val repository  = new InMemoryMovieRepository()
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
@@ -92,14 +101,12 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     bus.subscribe(service.onMovieDetailsComplete)
 
     val key = cache.keyOf(Title, Year)
-    // Simulate the state a CC-first scrape leaves behind: cache says we've
-    // already tried this key and TMDB returned no hit.
-    cache.markMissing(key)
-    cache.isNegative(key) shouldBe true
+    // The state a CC-first scrape leaves behind: TMDB was asked with nothing but
+    // the title and found no hit, and the row remembers exactly that.
+    cache.put(key, missOnNothing())
 
-    // Helios-style event: same canonical key, but now carrying a director
-    // hint the prior attempt never had. With the bug this is dropped on the
-    // isNegative early-return; with the fix `directorWalk` resolves it.
+    // Helios-style event: same key, now carrying a director the prior attempt never
+    // had — a different fingerprint, so the miss no longer stands.
     bus.publish(MovieDetailsComplete(Title, Year, originalTitle = None, director = Some(Director)))
     service.stop()  // drains the inline executionContext pool — sync wait for resolveTmdbOnce to land
 
@@ -108,28 +115,38 @@ class MovieServiceTmdbHintsSpec extends AnyFlatSpec with Matchers {
     row.flatMap(_.imdbId) shouldBe Some(ImdbId)
   }
 
-  // Sanity: when the event carries no fresh hint, we DO still honour the
-  // negative cache. Without this the fix would turn every redundant
-  // scrape-tick into a TMDB hammer for known misses.
-  it should "still short-circuit on isNegative when the event carries no new hints" in {
-    val repository  = new InMemoryMovieRepository()
-    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+  it should "not search again for the same inputs within a day" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val bus   = new InProcessEventBus()
-    // Tmdb stub that throws on any access — proves we never tried.
-    val tmdb  = new TmdbClient(http = new GetOnlyHttpFetch {
-      override def get(url: String): String =
-        throw new RuntimeException(s"TMDB should not be called: $url")
-    }, apiKey = Some("stub"))
-    val service   = new MovieService(cache, bus, tmdb)
+    val service   = new MovieService(cache, bus, silentTmdb)
     bus.subscribe(service.onMovieDetailsComplete)
 
     val key = cache.keyOf(Title, Year)
-    cache.markMissing(key)
+    val miss = missOnNothing()
+    cache.put(key, miss)
 
-    // No director, no originalTitle — re-publish under the same conditions
-    // that produced the miss. Must short-circuit, NOT hammer TMDB.
+    // No director, no originalTitle — the very inputs the miss was reached on.
     noException should be thrownBy bus.publish(MovieDetailsComplete(Title, Year, None, None))
     service.stop()
+    cache.get(key).flatMap(_.tmdbAttempt) shouldBe miss.tmdbAttempt
+  }
+
+  it should "search again once the miss is a day old, and record the fresh one" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val bus   = new InProcessEventBus()
+    val later = Instant.parse("2026-09-07T12:00:00Z")
+    val emptyTmdb = new TmdbClient(http = new GetOnlyHttpFetch {
+      override def get(url: String): String = """{"results":[]}"""
+    }, apiKey = Some("stub"))
+    val service = new MovieService(cache, bus, emptyTmdb, clock = Clock.fixed(later, ZoneOffset.UTC))
+    bus.subscribe(service.onMovieDetailsComplete)
+
+    val key = cache.keyOf(Title, Year)
+    cache.put(key, missOnNothing(at = later.minus(TmdbAttempt.RetryAfter).minusSeconds(1)))
+
+    bus.publish(MovieDetailsComplete(Title, Year, None, None))
+    service.stop()
+    cache.get(key).flatMap(_.tmdbAttempt).map(_.at) shouldBe Some(later)
   }
 
   // ── Fix 2 — retry path: hints must be sourced from cinemaShowings ─────────

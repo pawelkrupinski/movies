@@ -85,7 +85,7 @@ period is 24h.
 **Audit completed 2026-09-06 — the answer is ZERO.** Across all five prod
 databases there is currently no row that fails `readyToProject` while carrying an
 upcoming showtime. The corpus holds 504 unresolved rows (PL 245, UK 103, US 100,
-DE 52, ES 4), and every one of them has concluded `tmdbNoMatch` with its cinema
+DE 52, ES 4), and every one of them has a recorded no-match `tmdbAttempt` with its cinema
 detail done — so they all satisfy `readyToProject` and are visible, carrying
 venue-supplied title, runtime and director instead of TMDB's.
 
@@ -104,7 +104,7 @@ spread, and four rows the sweep had left unresolved were repaired by hand:
 
 **How to re-run the audit.** Reach prod Mongo as `docs/white-cinema-investigations.md`
 describes, then per country database intersect two sets: rows in `movies` matching
-`tmdbId` absent AND (`tmdbNoMatch` not true OR `detailPending` true), against
+`tmdbId` absent AND (`tmdbAttempt` absent OR `detailPending` true), against
 `filmId`s in `screenings` having a `showtimes.dateTime` in the future. Slots live
 in `movie_slots` (keyed by `filmId`) since the storage split — `movies` documents
 carry no `data`/`sourceData` map any more, which is the trap that makes a naive
@@ -131,7 +131,7 @@ slot query return nothing.
   over-splitting a corpus where `splitsSoFar` is asserted to stay zero. Not
   attempted here for that reason.
 - **`it|1990`** (`kinowo_uk`, 33 upcoming screenings) — **the earlier claim that
-  this is invisible was WRONG.** The row carries `tmdbNoMatch=true` with detail
+  this is invisible was WRONG.** The row carries a no-match `tmdbAttempt` with detail
   done, so `readyToProject` holds and it IS in `web_movies` and on the site,
   listed from what the venues published (one of them supplies "It (1990)", 168
   min, Tommy Lee Wallace). TMDB carrying the 1990 miniseries as television costs

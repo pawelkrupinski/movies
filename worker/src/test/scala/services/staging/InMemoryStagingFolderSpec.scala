@@ -74,7 +74,7 @@ class InMemoryStagingFolderSpec extends AnyFlatSpec with Matchers {
     val staging = new InMemoryStagingRepository
     val movies  = new InMemoryMovieRepository
     staging.upsert(MikroBronowice, "Toy Story 5- dubbing", None,
-      MovieRecord(tmdbNoMatch = true, searchTitle = Some("Toy Story 5- dubbing"),
+      MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), searchTitle = Some("Toy Story 5- dubbing"),
         data = Map[Source, SourceData](MikroBronowice -> SourceData(title = Some("Toy Story 5- dubbing")))))
     val reaperTitle = staging.findAll().head.title   // what StagingReaper passes to the fold
 

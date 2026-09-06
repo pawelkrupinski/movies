@@ -66,6 +66,19 @@ final case class FilmEvidence(
       }
       .toSeq.groupBy(identity).view.mapValues(_.size).toMap
 
+  /** This evidence plus an original title an EVENT carried, ahead of the row's own
+   *  so it is the search hint, unless the row already holds it. */
+  def withOriginalTitle(hint: Option[String]): FilmEvidence =
+    hint.map(_.trim).filter(_.nonEmpty).filterNot(originalTitles.contains)
+      .fold(this)(t => copy(originalTitles = t +: originalTitles))
+
+  /** One string that is equal for equal evidence — the input to an attempt's
+   *  fingerprint (`TmdbAttempt`). Every field is already sorted or in a fixed
+   *  order, so this is a pure function of what the cinemas published. */
+  def canonical: String =
+    Seq(slotTitles, originalTitles, directors, cast, runtimes.map(_.toString), years.map(_.toString))
+      .map(_.mkString("\u001f")).mkString("\u001e")
+
   def isEmpty: Boolean =
     slotTitles.isEmpty && originalTitles.isEmpty && directors.isEmpty && cast.isEmpty && runtimes.isEmpty && years.isEmpty
 }

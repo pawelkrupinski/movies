@@ -1057,7 +1057,9 @@ class MongoMovieRepository(
     scalar("metacriticUrl",     p.metacriticUrl,     (s: String) => new org.mongodb.scala.bson.BsonString(s))
     scalar("rottenTomatoesUrl", p.rottenTomatoesUrl, (s: String) => new org.mongodb.scala.bson.BsonString(s))
     scalar("searchTitle",       p.searchTitle,       (s: String) => new org.mongodb.scala.bson.BsonString(s))
-    scalar("tmdbNoMatch",       p.tmdbNoMatch,       (b: Boolean) => new org.mongodb.scala.bson.BsonBoolean(b))
+    scalar("tmdbAttempt",       p.tmdbAttempt,       (a: services.resolution.TmdbAttempt) =>
+      new org.bson.BsonDocument("evidence", new org.mongodb.scala.bson.BsonString(a.evidence))
+        .append("at", BsonDateTime(a.at.toEpochMilli)))
     scalar("detailPending",     p.detailPending,     (b: Boolean) => new org.mongodb.scala.bson.BsonBoolean(b))
     scalar("retainedSynopses", p.retainedSynopses, (m: Map[Source, String]) => {
       val doc = new org.bson.BsonDocument()

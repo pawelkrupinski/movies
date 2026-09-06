@@ -223,7 +223,7 @@ object StagingRepository {
     fresh.copy(
       tmdbId      = fresh.tmdbId.orElse(existing.tmdbId),
       imdbId      = fresh.imdbId.orElse(existing.imdbId),
-      tmdbNoMatch = fresh.tmdbNoMatch || existing.tmdbNoMatch,
+      tmdbAttempt = fresh.tmdbAttempt.orElse(existing.tmdbAttempt),
       searchTitle = fresh.searchTitle.orElse(existing.searchTitle),
       data        = existing.data ++ fresh.data)
 

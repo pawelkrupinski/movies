@@ -79,7 +79,6 @@ trait MovieCacheReader {
    *  exists yet. */
   private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey]
   private[services] def get(key: CacheKey): Option[MovieRecord]
-  private[services] def isNegative(key: CacheKey): Boolean
   private[services] def entries: Seq[(CacheKey, MovieRecord)]
 }
 
@@ -109,17 +108,12 @@ trait MovieCache extends MovieCacheReader {
 
   /** Reload the positive cache from the repository: drop every in-memory positive
    *  entry, then `repository.findAll()` and put each row. Returns the number of
-   *  rows loaded. Leaves the negative cache (24h-TTL TMDB miss markers)
-   *  alone — negatives aren't persisted in Mongo, so they're orthogonal to
-   *  this reload. Used at construction and by the admin rehydrate endpoint. */
+   *  rows loaded. Used at construction and by the admin rehydrate endpoint. */
   def rehydrate(): Int
 
   // ── Internal write surface (services.* only) ─────────────────────────────
   private[services] def put(key: CacheKey, e: MovieRecord): Unit
   private[services] def putIfPresent(key: CacheKey, updater: MovieRecord => MovieRecord): Boolean
-  private[services] def markMissing(key: CacheKey): Unit
-  private[services] def clearNegatives(): Unit
-  private[services] def clearNegative(key: CacheKey): Unit
   /** Settle-path persistence for the title-embedded year: re-key every yearless
    *  row whose cinema-slot titles carry an unambiguous delimited `EmbeddedYear`
    *  ("Konwicki: Lawa (1989)", "Following (1998)") onto that year, and stamp the
@@ -332,9 +326,6 @@ class CaffeineMovieCache(
   def occupancy: services.metrics.CacheOccupancy =
     services.metrics.CacheOccupancy.of(positive, weighted = false)
 
-  private val negative: Cache[CacheKey, java.lang.Boolean] =
-    Caffeine.newBuilder().expireAfterWrite(24, TimeUnit.HOURS).build()
-
   // Partial-scrape guard thresholds (see `recordCinemaScrape`'s prune): a tick
   // that returns fewer than `PruneFloorRatio` of the cinema's currently-held
   // slots — and only when it already holds at least `MinSlotsForShrinkGuard`, so a
@@ -443,9 +434,6 @@ class CaffeineMovieCache(
 
   private[services] def get(key: CacheKey): Option[MovieRecord] =
     Option(positive.getIfPresent(key))
-
-  private[services] def isNegative(key: CacheKey): Boolean =
-    negative.getIfPresent(key) != null
 
   /** Persist a row at `key`. **Identity gate**: when `e` carries a `tmdbId`
    *  AND any other cache key already holds that same tmdbId, the write is
@@ -692,18 +680,10 @@ class CaffeineMovieCache(
     before: MovieRecord, beforeKey: CacheKey, after: MovieRecord, afterKey: CacheKey
   ): Unit = {
     val kinds = MergeRetrigger.changedEnrichments(before, beforeKey, after, afterKey)
-    // A queued re-resolve must not be short-circuited by the very marker it was
-    // queued to overcome. `MovieService.needsTmdbResolution` refuses a negative-cached
-    // key unless the event carries a CINEMA hint, and the input that most often earns
-    // a ResolveTmdb here is a Filmweb-discovered `originalTitle` — not a cinema hint,
-    // so the task ran and did nothing while the new evidence waited out the 24h TTL.
-    //
-    // Safe to clear HERE and nowhere else because this decision is EDGE-triggered: it
-    // fires only when an input actually changed, so it cannot re-arm every tick the way
-    // a "bypass whenever a derived title exists" rule inside `needsTmdbResolution`
-    // would — that level-triggered shape is the re-divert churn this codebase has
-    // already paid for once.
-    if (kinds.contains(RetriggerKind.ResolveTmdb)) clearNegative(afterKey)
+    // A queued re-resolve is not short-circuited by the miss it was queued to
+    // overcome: the row's `tmdbAttempt` fingerprints the inputs the miss was reached
+    // on, and an input that earns a ResolveTmdb here — a Filmweb-discovered
+    // `originalTitle`, a director — is exactly what changes that fingerprint.
     if (kinds.nonEmpty) retrigger.retrigger(afterKey, after, kinds)
   }
 
@@ -1086,26 +1066,6 @@ class CaffeineMovieCache(
     }
     }
   }
-
-  private[services] def markMissing(key: CacheKey): Unit =
-    negative.put(key, java.lang.Boolean.TRUE)
-
-  /** Drop all negative entries — used by the operator-triggered bulk TMDB retry
-   *  (`MovieService.retryUnresolvedTmdb`) to give every previously-failed key one
-   *  fresh shot. New misses re-populate the cache organically as they happen.
-   *  (The scheduled, phase-spread re-try clears negatives one row at a time via
-   *  `clearNegative` — see `UnresolvedTmdbReaper`.) */
-  private[services] def clearNegatives(): Unit = negative.invalidateAll()
-
-  /** Drop a single key's "missing" verdict. Called when a fresh cinema slot
-   *  changes a row's resolution inputs (a new title/director the TMDB stage
-   *  hadn't seen), so a `markMissing` recorded against the older, partial row
-   *  can't block the re-resolve the new data warrants. Mirrors what the daily
-   *  `clearNegatives` retry does, but scoped to the one row that just grew —
-   *  the difference between a film resolving this pass vs. staying blank until
-   *  the next daily sweep, when its first scraped cinema happened to fire the
-   *  TMDB stage before later cinemas (with the verifying director) arrived. */
-  private[services] def clearNegative(key: CacheKey): Unit = negative.invalidate(key)
 
   /** Drop a row from positive cache + Mongo — used by the TMDB stage to clear
    *  a stale row before re-keying it under a corrected (title, year). */
@@ -1712,17 +1672,12 @@ class CaffeineMovieCache(
                                 sd.title.exists(t => normalizer.sanitize(t) == norm) => src
             }.toSet)
           }
-          // A brand-new cinema observation grows what the TMDB stage can work
-          // with; drop any stale "missing" verdict so the imminent publish
-          // re-resolves against the grown row.
-          //
-          // Both gated on the write having LANDED. A skipped write leaves Caffeine
-          // without the row, so clearing its negative verdict and announcing it as new
-          // sends `MovieDetailsComplete` / `classify`'s `detailPending` write at a key
-          // nothing holds — and `MovieService` then finds no row and dispatches a full
-          // TMDB re-resolve against an empty one. Nothing was recorded this tick, so
-          // nothing downstream should be told that something was.
-          if (isNew && landed) clearNegative(key)
+          // Gated on the write having LANDED. A skipped write leaves Caffeine
+          // without the row, so announcing it as new sends `MovieDetailsComplete` /
+          // `classify`'s `detailPending` write at a key nothing holds — and
+          // `MovieService` then finds no row and dispatches a full TMDB re-resolve
+          // against an empty one. Nothing was recorded this tick, so nothing
+          // downstream should be told that something was.
           // Spare this title's existing slot from the prune below: we observed the
           // venue listing it, so the only thing the failed write proves is that the
           // write failed.

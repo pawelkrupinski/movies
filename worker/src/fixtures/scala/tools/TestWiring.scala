@@ -18,6 +18,10 @@ import scala.concurrent.duration._
  *  (controllerComponents, materializer, environmentMode) are gone — the worker
  *  is a plain `def main` app, not Play, so they no longer exist to override. */
 trait TestWiring extends WorkerWiring {
+  /** Pinned: a no-match `TmdbAttempt` carries the time it was stamped, and the
+   *  determinism specs compare whole records across arrival orders. */
+  override lazy val clock: java.time.Clock =
+    java.time.Clock.fixed(java.time.Instant.parse("2026-06-08T12:00:00Z"), java.time.ZoneOffset.UTC)
 
   // Scrape every city in tests, independent of any KINOWO_SCRAPE_CITIES the
   // local/CI env might set, so the recorded fixtures and the coverage spec
@@ -238,7 +242,7 @@ trait TestWiring extends WorkerWiring {
   def concludeEnrichment(): Unit =
     movieRepository.findAll().foreach { sr =>
       if (!sr.record.tmdbConcluded)
-        movieRepository.upsert(sr.title, sr.year, sr.record.copy(tmdbNoMatch = true))
+        movieRepository.upsert(sr.title, sr.year, sr.record.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
     }
 
   /** Boot the corpus to the shape production reaches ~20s in: scrape once, drain

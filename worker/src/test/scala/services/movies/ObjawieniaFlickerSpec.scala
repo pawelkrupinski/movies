@@ -223,7 +223,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
   "an unresolved row with a pending detail" should "stay held back until detail concludes" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository, normalizer = titleNormalizer)
     cache.put(cache.keyOf(Title, Some(2026)),
-      MovieRecord(tmdbNoMatch = true, detailPending = true, data = Map(slot(Helios, Some(2026)))))
+      MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), detailPending = true, data = Map(slot(Helios, Some(2026)))))
     projectedCinemas(cache) shouldBe empty
 
     cache.put(cache.keyOf(Title, None), MovieRecord(data = Map(slot(Multikino, None))))

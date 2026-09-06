@@ -60,7 +60,7 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     metacriticUrl     = Some("https://www.metacritic.com/movie/test"),
     rottenTomatoesUrl = Some("https://www.rottentomatoes.com/m/test"),
     searchTitle       = Some("Test"),
-    tmdbNoMatch       = true,
+    tmdbAttempt       = Some(services.resolution.TmdbAttempt("evidence-fingerprint", Instant.parse("2026-05-17T09:00:00Z"))),
     detailPending     = true,
     data              = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Test Original"))),
     retainedSynopses  = Map[Source, String](Helios -> "the longest synopsis this source ever published")
@@ -71,7 +71,9 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
    *  metadata, not a film field. */
   private def persistedFields: Seq[String] = StoredMovieDto
     .fromDomain("test|1900", everyFieldSet, Instant.now())
-    .productElementNames.toSeq.filterNot(Set("_id", "updatedAt"))
+    // `tmdbNoMatch` is read-only: a legacy flag the decoder turns into a
+    // `TmdbAttempt`, never written, so no patch or metric carries it.
+    .productElementNames.toSeq.filterNot(Set("_id", "updatedAt", "tmdbNoMatch"))
 
   private def unsetFieldsOf(record: MovieRecord): Seq[String] =
     record.productElementNames.zip(record.productIterator).collect {

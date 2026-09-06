@@ -85,7 +85,7 @@ class StoredDocumentCompatibilitySpec extends AnyFlatSpec with Matchers {
         filmwebUrl = Some("https://fw"), filmwebRating = Some(7.1), rottenTomatoes = Some(80),
         tmdbId = Some(1), wikidataId = Some("Q1"), metacriticUrl = Some("https://mc"),
         rottenTomatoesUrl = Some("https://rt"), searchTitle = Some("film"),
-        tmdbNoMatch = true, detailPending = true,
+        tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy), detailPending = true,
         data = Map[Source, SourceData](Tmdb -> SourceData(title = Some("Film"), showtimes = Seq(showtime))),
         retainedSynopses = Map[Source, String](Tmdb -> "kept")),
       Instant.parse("2026-07-27T12:00:00Z"))

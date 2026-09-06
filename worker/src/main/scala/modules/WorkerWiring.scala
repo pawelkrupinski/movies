@@ -689,10 +689,16 @@ class WorkerWiring(
    *  it. Overriding one `def` cannot drop the rest. */
   protected def resolveDispatcher: Option[services.movies.ResolveDispatcher] = Some(new QueueResolveDispatcher(taskQueue))
 
+  /** The one clock a no-match `TmdbAttempt` is stamped from — `MovieService` on the
+   *  movies path, `StagingSteps` on the staging path. The fixture harness pins it, so
+   *  a replayed corpus is byte-identical across arrival orders. */
+  lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
+
   lazy val movieService: MovieService = new MovieService(
     movieCache, eventBus, tmdbClient,
     dispatcher = resolveDispatcher,
     splitMetrics = taskMetrics,
+    clock = clock,
     tmdbIdCache = tmdbIdCache,
     // SAME store the rating handlers read, so the resolved → first-rating delay
     // (stamped here on resolution, observed there on first attempt) correlates.
@@ -1003,7 +1009,7 @@ class WorkerWiring(
   lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer, movieRepository)
   lazy val stagingSteps = new StagingSteps(
     stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
-    freshnessStore, screeningTokens)
+    freshnessStore, screeningTokens, clock)
   lazy val stagingHandlers: Seq[services.tasks.TaskHandler] = Seq(
     new StagingDetailHandler(stagingSteps),
     new StagingResolveTmdbHandler(stagingSteps),

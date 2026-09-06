@@ -149,7 +149,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
   it should "stamp a definitive no-match (tmdbNoMatch)" in {
     val (repository, anchor) = seeded(Helios, "Obscure", Some(2026))
     val enricher = new FakeDetailEnricher(Helios, "fake", Some(FilmDetail(synopsis = Some("x"))))
-    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r.copy(tmdbNoMatch = true)))
+    val s = steps(repository, Seq(enricher), (_, _, r) => Some(r.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))))
 
     s.fetchDetailFor(Helios, anchor)
     s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
@@ -188,7 +188,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
       val anchor = restricted.sanitize(row.title)
       anchor should not be row.id.split('|')(1)                          // precondition: the drift exists
 
-      val s = steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbNoMatch = true)))
+      val s = steps(repository, Seq.empty, (_, _, r) => Some(r.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))))
       s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
       s.resolveAndStamp(anchor) shouldBe StagingSteps.AlreadyDone        // concluded in place — would LOOP if duplicated
 
@@ -270,7 +270,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
     val (repository, anchor) = seeded(Multikino, "Stop Making Sense", None)
     var searchedFor = Option.empty[String]
     val s = steps(repository, Seq.empty,
-      resolve = (_, _, r) => Some(r.copy(tmdbNoMatch = true)),        // TMDB refuses to guess
+      resolve = (_, _, r) => Some(r.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))),        // TMDB refuses to guess
       recover = (search, _, _) => { searchedFor = Some(search); Some("tt0088178") })
 
     s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved          // concluded tmdbNoMatch
@@ -290,7 +290,7 @@ class StagingStepsSpec extends AnyFlatSpec with Matchers {
   it should "leave a film TMDB could not name concluded when IMDb cannot name it either" in {
     val (repository, anchor) = seeded(Multikino, "31. Festiwal Górski - zestaw 1", None)
     val s = steps(repository, Seq.empty,
-      resolve = (_, _, r) => Some(r.copy(tmdbNoMatch = true)), recover = (_, _, _) => None)
+      resolve = (_, _, r) => Some(r.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))), recover = (_, _, _) => None)
 
     s.resolveAndStamp(anchor) shouldBe StagingSteps.Resolved
     s.recoverImdbFor(anchor)

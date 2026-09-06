@@ -4,7 +4,7 @@ import models.{CinemaShowing, MovieRecord, Source, SourceData, Tmdb}
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
 import services.movies.{MovieRecordMerge, TitleNormalizer}
-import services.resolution.ResolutionKeys
+import services.resolution.{ResolutionKeys, TmdbAttempt}
 import services.tasks.StagingTaskKeys
 import services.cinemas.common.{DetailEnricher, DetailFetchOutcome}
 
@@ -38,7 +38,10 @@ class StagingSteps(
   // The country's badge vocabulary, for the detail-page `format` merged in
   // `enrichDetail` — the staging path writes through the repository rather than
   // the cache, so it carries its own copy of the same wiring.
-  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default
+  screeningTokens:   services.movies.ScreeningTokens = services.movies.ScreeningTokens.Default,
+  // Stamps a no-match `TmdbAttempt` on a staging row. The fixture harness fixes
+  // it, so a corpus settles to the same bytes whatever order the cinemas arrive in.
+  clock:             java.time.Clock = java.time.Clock.systemUTC()
 ) extends Logging {
   // The staging rows anchor under their repository's country rules — take them
   // from it rather than a second copy that could disagree.
@@ -209,7 +212,10 @@ class StagingSteps(
     val mergedHints = MovieRecordMerge.unionAll(group.map(r => r.record.copy(data = r.record.data - Tmdb)))
     resolveStaging(group.head.title, resolveYear, mergedHints) match {
       case None if giveUp =>
-        group.foreach(r => stagingRepository.upsertRow(r.copy(record = r.record.copy(tmdbNoMatch = true))))
+        group.foreach { r =>
+          val attempt = TmdbAttempt.on(r.record.evidence, r.record.resolverOriginalTitles, clock.instant())
+          stagingRepository.upsertRow(r.copy(record = r.record.copy(tmdbAttempt = Some(attempt))))
+        }
         logger.warn(s"Staging: giving up TMDB resolve for '${group.head.title}' (${resolveYear.getOrElse("?")}) after repeated failures — concluding as no-match (folds un-enriched).")
         Resolved
       case None => TransientFailure
@@ -219,7 +225,7 @@ class StagingSteps(
           val stamped = r.record.copy(
             tmdbId      = resolved.tmdbId,
             imdbId      = resolved.imdbId,
-            tmdbNoMatch = resolved.tmdbNoMatch,
+            tmdbAttempt = resolved.tmdbAttempt,
             data        = tmdbSlot.fold(r.record.data)(s => r.record.data + (Tmdb -> s)))
           stagingRepository.upsertRow(r.copy(record = stamped))
         }
@@ -312,7 +318,7 @@ class StagingSteps(
       val tries  = if (years.isEmpty) Seq(None) else years.map(Option(_))
       tries.iterator.flatMap(y => recoverImdbId(search, y, needy.record)).nextOption().foreach { id =>
         unidentified.foreach(r => stagingRepository.upsertRow(
-          r.copy(record = r.record.copy(imdbId = Some(id), tmdbNoMatch = false))))
+          r.copy(record = r.record.copy(imdbId = Some(id), tmdbAttempt = None))))
         logger.info(s"Staging: '${needy.title}' ← recovered imdbId=$id for a film TMDB could not name")
       }
     }

@@ -49,10 +49,14 @@ case class MovieRecord(
   // ── Enrichment-conclusion markers (persisted) ─────────────────────────────
   // Gate read-model projection: a row is published only once its enrichment
   // has *concluded* — cinema detail done (where deferred) AND TMDB reached a
-  // definitive answer (a hit, i.e. `tmdbId` set, or `tmdbNoMatch`). A purely
-  // transient TMDB failure leaves both false, so the row stays held back and
-  // keeps retrying. See `readyToProject`.
-  tmdbNoMatch:       Boolean          = false,
+  // definitive answer (a hit, i.e. `tmdbId` set, or a recorded no-match
+  // `tmdbAttempt`). A purely transient TMDB failure leaves both unset, so the row
+  // stays held back and keeps retrying. See `readyToProject`.
+  //
+  // `tmdbAttempt` is the last TMDB search that found nothing: WHAT it searched
+  // with and WHEN, so the next look can tell whether anything it would search
+  // with has changed (see `services.resolution.TmdbAttempt`). A hit clears it.
+  tmdbAttempt:       Option[services.resolution.TmdbAttempt] = None,
   detailPending:     Boolean          = false,
 
   // Per-source data from the most recent refresh. Cinemas contribute on
@@ -186,7 +190,7 @@ case class MovieRecord(
     imdbId = None, imdbRating = None, metascore = None,
     filmwebUrl = None, filmwebRating = None, rottenTomatoes = None,
     tmdbId = None, metacriticUrl = None, rottenTomatoesUrl = None,
-    searchTitle = None, tmdbNoMatch = false,
+    searchTitle = None, tmdbAttempt = None,
     data             = data.filter { case (source, _) => Source.cinemaOf(source).isDefined },
     retainedSynopses = retainedSynopses.filter { case (source, _) => Source.cinemaOf(source).isDefined }
   )
@@ -509,8 +513,11 @@ case class MovieRecord(
    *  film across two year-keys (the "Dzień objawienia" 2025-vs-2026 split). */
   def resolvedYear: Option[Int] = tmdbYear.orElse(releaseYear)
 
+  /** TMDB looked and found nothing, and nothing has resolved the row since. */
+  def tmdbNoMatch: Boolean = tmdbId.isEmpty && tmdbAttempt.isDefined
+
   /** TMDB enrichment has concluded — a hit (`tmdbId` set) or a definitive
-   *  no-match (`tmdbNoMatch`). A purely transient failure leaves both false, so
+   *  no-match (`tmdbNoMatch`). A purely transient failure leaves both unset, so
    *  the row stays held back (`readyToProject` false) and keeps retrying. */
   def tmdbConcluded: Boolean = tmdbId.isDefined || tmdbNoMatch
 

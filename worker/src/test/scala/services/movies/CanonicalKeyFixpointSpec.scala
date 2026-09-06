@@ -61,7 +61,7 @@ class CanonicalKeyFixpointSpec extends AnyFlatSpec with Matchers {
     reports.foreach(r => cache.recordCinemaScrape(r.cinema, Seq(r)))
     cache.canonicalizeBySanitize()
     // Mark concluded (no-TMDB), the state the real flapping films are in.
-    cache.snapshot().foreach(sr => cache.put(cache.keyOf(sr.title, sr.year), sr.record.copy(tmdbNoMatch = true)))
+    cache.snapshot().foreach(sr => cache.put(cache.keyOf(sr.title, sr.year), sr.record.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy))))
     cache.canonicalizeBySanitize()
     val settled = keys(cache)
     // Measured HERE — immediately after the settle and BEFORE the re-scrape tick, which

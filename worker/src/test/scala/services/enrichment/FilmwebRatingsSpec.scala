@@ -308,7 +308,7 @@ class FilmwebRatingsSpec extends AnyFlatSpec with Matchers {
     val captured = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
     val repository = new InMemoryMovieRepository(Seq(
       ("Ostatni konsjerż", None, MovieRecord(
-        tmdbNoMatch = true,
+        tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
         data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Ostatni konsjerż")))
       ))
     ))

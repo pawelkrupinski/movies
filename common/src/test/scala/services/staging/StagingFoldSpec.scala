@@ -280,13 +280,13 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
   // staging rows carrying resolution. These pin whether `planGroup` itself
   // discards the staging row's conclusion.
 
-  it should "preserve tmdbNoMatch=true through a fold (decorated title TMDB couldn't match)" in {
+  it should "preserve tmdbAttempt=Some(services.resolution.TmdbAttempt.Legacy) through a fold (decorated title TMDB couldn't match)" in {
     // "Kino bez barier: Ministranci (AD + CC + PJM)" / "Robin Hood: Koniec
     // legendy/Kino Cafe": the decorated title sanitizes to its own anchor, TMDB
-    // returns no match → the staging row is concluded with tmdbNoMatch=true. The
+    // returns no match → the staging row is concluded with tmdbAttempt=Some(services.resolution.TmdbAttempt.Legacy). The
     // folded `movies` row MUST stay concluded, else the reaper re-stages it forever.
     val concluded = StagingRecord(Helios, "Kino bez barier: Ministranci (AD + CC + PJM)", None,
-      MovieRecord(tmdbNoMatch = true,
+      MovieRecord(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy),
         data = Map[Source, SourceData](Helios -> SourceData(title = Some("Kino bez barier: Ministranci (AD + CC + PJM)")))), titleNormalizer)
 
     val plan = StagingFold.planGroup(Seq(concluded), moviesRows = Seq.empty, titleNormalizer)
