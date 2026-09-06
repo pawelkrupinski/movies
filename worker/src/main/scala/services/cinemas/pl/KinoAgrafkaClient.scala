@@ -8,7 +8,6 @@ import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 import services.cinemas.CountryNames
 
 /**
@@ -72,9 +71,6 @@ object KinoAgrafkaClient {
   val BaseUrl        = "https://kinoagrafka.pl"
   val RepertoireUrl  = s"$BaseUrl/rep.php"
 
-  // Matches "7 czerwca 2026 /niedziela/" — day, Polish genitive month, 4-digit year
-  private val DatePat = ScraperParse.DayMonthYearPat
-
   // A production year inside the country/year block ("Kanada/Belgia/Francja 2024").
   private val YearPat = """\b(?:19|20)\d{2}\b""".r
 
@@ -124,7 +120,7 @@ object KinoAgrafkaClient {
     document.select("h3, table.repertoire tbody tr").asScala.foreach { element =>
       element.tagName match {
         case "h3" =>
-          currentDate = parseDate(element.text.trim)
+          currentDate = ScraperParse.parseDayMonthYear(element.text)  // "7 czerwca 2026 /niedziela/"
         case "tr" =>
           currentDate.foreach { date =>
             val timeText  = Option(element.selectFirst("td.hour")).map(_.text.trim).getOrElse("")
@@ -149,12 +145,4 @@ object KinoAgrafkaClient {
     }
     slots.toSeq
   }
-
-  private def parseDate(text: String): Option[LocalDate] =
-    DatePat.findFirstMatchIn(text).flatMap { m =>
-      val day   = m.group(1).toInt
-      val month = ScraperParse.PolishMonths.get(m.group(2).toLowerCase)
-      val year  = Try(m.group(3).toInt).toOption
-      for (mo <- month; yr <- year; d <- Try(LocalDate.of(yr, mo, day)).toOption) yield d
-    }
 }

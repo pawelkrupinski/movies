@@ -9,7 +9,6 @@ import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Centrum CSW (Toruń) — the film screen of Centrum Sztuki Współczesnej
@@ -78,9 +77,6 @@ object KinoCentrumCswClient {
   val BaseUrl       = "https://csw.torun.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar/"
 
-  // "7 czerwca, niedziela" — day + genitive month + optional weekday suffix
-  private val DayMonthPat = ScraperParse.DayMonthPat
-
   private[cinemas] case class RawSlot(
     title:    String,
     eventUrl: String,
@@ -114,13 +110,5 @@ object KinoCentrumCswClient {
   /** "7 czerwca, niedziela" → LocalDate.
    *  If the date falls more than 60 days before today, assume next year. */
   private[cinemas] def parsePolishDate(text: String, today: LocalDate): Option[LocalDate] =
-    DayMonthPat.findFirstMatchIn(text).flatMap { m =>
-      ScraperParse.PolishMonths.get(m.group(2).toLowerCase).flatMap { month =>
-        Try {
-          val day  = m.group(1).toInt
-          val candidate = LocalDate.of(today.getYear, month, day)
-          if (candidate.isBefore(today.minusDays(60))) candidate.plusYears(1) else candidate
-        }.toOption
-      }
-    }
+    ScraperParse.parseDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today))
 }

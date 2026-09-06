@@ -9,7 +9,6 @@ import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino za Rogiem Cafe (Rzeszów) — a small independent cinema running a custom
@@ -76,10 +75,6 @@ object KinoZaRogiemCafeClient {
   val BaseUrl       = "https://kzrcafe.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar/"
 
-  // "09 czerwca 2026, 17:00"
-  private val FullDatePat =
-    """(\d{1,2})\s+([\p{L}]+)\s+(\d{4}),\s*(\d{1,2}:\d{2})""".r
-
   // "Dzisiaj, 11:00" or "Jutro, 17:30"
   private val RelativeDatePat = """(Dzisiaj|Jutro),\s*(\d{1,2}:\d{2})""".r
 
@@ -134,15 +129,10 @@ object KinoZaRogiemCafeClient {
       ScraperParse.parseHHmm(m.group(2)).map(base.atTime)
     }.orElse {
       // "09 czerwca 2026, 17:00"
-      FullDatePat.findFirstMatchIn(label).flatMap { m =>
-        for {
-          month <- ScraperParse.PolishMonths.get(m.group(2).toLowerCase)
-          day    = m.group(1).toInt
-          year   = m.group(3).toInt
-          date  <- Try(LocalDate.of(year, month, day)).toOption
-          time  <- ScraperParse.parseHHmm(m.group(4))
-        } yield LocalDateTime.of(date, time)
-      }
+      for {
+        date <- ScraperParse.parseDayMonthYear(label)
+        time <- ScraperParse.parseHHmm(label)
+      } yield date.atTime(time)
     }
   }
 }

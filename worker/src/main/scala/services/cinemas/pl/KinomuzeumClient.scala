@@ -114,17 +114,10 @@ class KinomuzeumClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.
 
 object KinomuzeumClient {
 
-  private val Months = Map("sty" -> 1, "lut" -> 2, "mar" -> 3, "kwi" -> 4, "maj" -> 5, "cze" -> 6,
-    "lip" -> 7, "sie" -> 8, "wrz" -> 9, "paź" -> 10, "lis" -> 11, "gru" -> 12)
-  private val DayMonthPat = """(\d{1,2})\s+([a-ząćęłńóśźż]{3})""".r
-
+  /** "10 cze" (abbreviated month) → an absolute date; year from `today`,
+   *  rolling forward when the month is already behind us. */
   def parseDate(raw: String, today: LocalDate): Option[LocalDate] =
-    DayMonthPat.findFirstMatchIn(raw.toLowerCase).flatMap { m =>
-      Months.get(m.group(2)).flatMap { mon =>
-        val year = if (mon < today.getMonthValue) today.getYear + 1 else today.getYear
-        Try(LocalDate.of(year, mon, m.group(1).toInt)).toOption
-      }
-    }
+    ScraperParse.parseDayMonth(raw).flatMap(ScraperParse.upcomingMonthDate(_, today))
 
   def parseTime(date: LocalDate, time: String): Option[LocalDateTime] =
     """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(time).flatMap(m => Try(date.atTime(m.group(1).toInt, m.group(2).toInt)).toOption)

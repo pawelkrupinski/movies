@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.SlotsToMovies
@@ -46,15 +47,6 @@ import scala.util.Try
  * before returning.
  */
 private[cinemas] object MsiScraper {
-
-  /** Abbreviated Polish month names as used by the MSI platform in event-time
-   *  anchors ("07 cze 17:00", "14 lis 20:00"). These are abbreviations, distinct
-   *  from the full genitive forms (`ScraperParse.PolishMonths`) used by other
-   *  scrapers. */
-  val PolishMonthsAbbrev: Map[String, Int] = Map(
-    "sty" -> 1, "lut" -> 2, "mar" -> 3, "kwi" -> 4, "maj" -> 5, "cze" -> 6,
-    "lip" -> 7, "sie" -> 8, "wrz" -> 9, "paź" -> 10, "lis" -> 11, "gru" -> 12
-  )
 
   // `\p{L}`, not `\w`: Java's `\w` is ASCII-only by default, so the one Polish
   // month abbreviation carrying a diacritic — "paź" — never matched, and every
@@ -264,7 +256,7 @@ private[cinemas] object MsiScraper {
   private def parseEventTime(text: String, ym: YearMonth): Option[LocalDateTime] =
     EventTimePat.findFirstMatchIn(text).flatMap { m =>
       val day   = m.group(1).toInt
-      val month = PolishMonthsAbbrev.get(m.group(2).toLowerCase)
+      val month = ScraperParse.polishMonthAbbrev(m.group(2))  // "07 cze 17:00"
       val hour  = m.group(3).toInt
       val min   = m.group(4).toInt
       month.flatMap { mo =>

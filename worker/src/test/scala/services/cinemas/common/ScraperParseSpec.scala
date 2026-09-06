@@ -147,6 +147,14 @@ class ScraperParseSpec extends AnyFlatSpec with Matchers {
     ScraperParse.upcomingDate(MonthDay.of(8, 25), today, grace = Period.ofWeeks(1)) shouldBe Some(LocalDate.of(2027, 8, 25))
   }
 
+  "upcomingMonthDate" should "keep the current month this year and roll any earlier month forward" in {
+    val today = LocalDate.of(2026, 9, 20)
+    ScraperParse.upcomingMonthDate(MonthDay.of(9, 1), today)  shouldBe Some(LocalDate.of(2026, 9, 1))
+    ScraperParse.upcomingMonthDate(MonthDay.of(9, 25), today) shouldBe Some(LocalDate.of(2026, 9, 25))
+    ScraperParse.upcomingMonthDate(MonthDay.of(8, 31), today) shouldBe Some(LocalDate.of(2027, 8, 31))
+    ScraperParse.upcomingMonthDate(MonthDay.of(1, 5), today)  shouldBe Some(LocalDate.of(2027, 1, 5))
+  }
+
   it should "return None for 29 February in a non-leap year rather than clamp it" in {
     ScraperParse.upcomingDate(MonthDay.of(2, 29), LocalDate.of(2026, 1, 10)) shouldBe None
   }

@@ -8,7 +8,6 @@ import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * OKF Iluzja (Kino Studyjne Iluzja), Częstochowa — the art-house screen of
@@ -87,13 +86,6 @@ object OkfIluzjaClient {
   val BaseUrl    = "https://okf.czest.pl"
   val WeeklyUrl  = s"$BaseUrl/repertuar/repertuar-tygodniowy/"
 
-  /** Polish genitive month names — reused from the shared map in [[ScraperParse]].
-   *  The h2 date header uses the same genitive form ("7 czerwca 2026"). */
-  private val PolishMonths: Map[String, Int] = ScraperParse.PolishMonths
-
-  // "7 czerwca 2026" — day, genitive month, year
-  private val DatePat = ScraperParse.DayMonthYearPat
-
   private[cinemas] case class RawSlot(
     title:    String,
     filmUrl:  String,
@@ -110,17 +102,9 @@ object OkfIluzjaClient {
       }
     }
 
-  /** Extract a `LocalDate` from the `h2.date-f` header of a day block. */
+  /** The `h2.date-f` header of a day block ("7 czerwca 2026") as a date. */
   private def parseBlockDate(block: org.jsoup.nodes.Element): Option[LocalDate] =
-    Option(block.selectFirst("h2.date-f")).flatMap { h2 =>
-      DatePat.findFirstMatchIn(h2.text.trim).flatMap { m =>
-        val day   = m.group(1).toInt
-        val month = PolishMonths.get(m.group(2).toLowerCase)
-        val year  = Try(m.group(3).toInt).toOption
-        for (mo <- month; yr <- year; date <- Try(LocalDate.of(yr, mo, day)).toOption)
-          yield date
-      }
-    }
+    Option(block.selectFirst("h2.date-f")).flatMap(h2 => ScraperParse.parseDayMonthYear(h2.text))
 
   /** Parse all `div.box` film cards inside one day block. */
   private def parseBoxes(block: org.jsoup.nodes.Element, date: LocalDate): Seq[RawSlot] =

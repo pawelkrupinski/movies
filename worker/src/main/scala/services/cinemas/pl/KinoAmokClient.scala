@@ -9,7 +9,6 @@ import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Amok (Gliwice) — studyjne cinema run by CSW Górnośląskie Centrum Kultury.
@@ -74,9 +73,6 @@ object KinoAmokClient {
   val BaseUrl        = "https://amok.gliwice.pl"
   val RepertoireUrl  = s"$BaseUrl/repertuar/"
 
-  // "7 czerwca" — day number + genitive month name.
-  private val DayMonthPat = ScraperParse.DayMonthPat
-
   private[cinemas] case class RawSlot(
     title:    String,
     dateTime: LocalDateTime,
@@ -136,14 +132,5 @@ object KinoAmokClient {
   /** "7 czerwca" / "13 stycznia" → LocalDate.
    *  If the resulting date would be more than 60 days in the past, assume next year. */
   private[cinemas] def parsePolishDate(text: String, today: LocalDate): Option[LocalDate] =
-    DayMonthPat.findFirstMatchIn(text).flatMap { m =>
-      ScraperParse.PolishMonths.get(m.group(2).toLowerCase).flatMap { month =>
-        Try {
-          val day  = m.group(1).toInt
-          val year = today.getYear
-          val candidate = LocalDate.of(year, month, day)
-          if (candidate.isBefore(today.minusDays(60))) candidate.plusYears(1) else candidate
-        }.toOption
-      }
-    }
+    ScraperParse.parseDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today))
 }

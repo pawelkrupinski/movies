@@ -142,6 +142,13 @@ private[cinemas] object ScraperParse {
       if (candidate.isBefore(today.minus(grace))) candidate.plusYears(1) else candidate
     }
 
+  /** [[upcomingDate]] at month granularity: this year for the current month
+    * and any later one, next year for an earlier month — for a calendar that
+    * only ever lists the current month onwards, where "5 sierpnia" seen in
+    * September can only mean next August. */
+  def upcomingMonthDate(dayMonth: MonthDay, today: LocalDate): Option[LocalDate] =
+    upcomingDate(dayMonth, today, grace = Period.ofDays(today.getDayOfMonth - 1))
+
   /** The URL inside a CSS `url(...)` value, unwrapping `'`, `"` or `&quot;`
     * quoting. `None` when `s` holds no `url(...)`. */
   def cssUrl(s: String): Option[String] =

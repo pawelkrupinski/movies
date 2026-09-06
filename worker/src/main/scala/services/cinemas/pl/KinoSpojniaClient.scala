@@ -1,11 +1,12 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -96,7 +97,7 @@ object KinoSpojniaClient {
         titleElement <- Option(t.selectFirst("a.tytul"))
         title    = titleElement.text.replace(' ', ' ').trim if title.nonEmpty
         timeStr <- Option(t.selectFirst("span.godzina")).map(_.text.trim)
-        time    <- Try(LocalTime.parse(timeStr)).toOption
+        time    <- ScraperParse.parseHHmm(timeStr)
         bookElement   = Option(t.selectFirst("a.kupbilet"))
         date    <- bookElement.flatMap(b => BookingDatePat.findFirstMatchIn(b.attr("href")))
                      .flatMap(m => Try(LocalDate.parse(m.group(1))).toOption)

@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import tools.HttpFetch
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, Period, ZoneId}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -124,9 +124,6 @@ object EkobiletClient {
    *  separator never appears in a title or URL. */
   private val KeySep = '\u001F'
 
-  // "10 cze" — day + abbreviated Polish month (shared map with the MSI scraper).
-  private val RowDate = ScraperParse.DayMonthPat
-
   // "DD.MM.YYYY" — the date strip's `data-date` attribute.
   private val PickerDate = """(\d{2})\.(\d{2})\.(\d{4})""".r
 
@@ -164,12 +161,12 @@ object EkobiletClient {
     Jsoup.parse(html, BaseUrl).select("div.event-buy[data-href]").asScala.toSeq.flatMap { row =>
       for {
         dateStr <- Option(row.selectFirst("strong.primary-color")).map(_.text.trim)
-        m       <- RowDate.findFirstMatchIn(dateStr)
-        month   <- MsiScraper.PolishMonthsAbbrev.get(m.group(2).toLowerCase)
-        time    <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScraperParse.parseHHmm(s.text))
-        date     = nextOccurrence(today, month, m.group(1).toInt)
-        dt      <- Try(LocalDateTime.of(date, time)).toOption
-      } yield Showtime(dt, Option(row.attr("data-href")).filter(_.nonEmpty))
+        dayMonth <- ScraperParse.parseDayMonth(dateStr)  // "10 cze"
+        time     <- Option(row.selectFirst("span.fw-bold")).flatMap(s => ScraperParse.parseHHmm(s.text))
+        // The next date with that month/day on or after `today`, so a December
+        // listing seen in January resolves to this year, not last.
+        date     <- ScraperParse.upcomingDate(dayMonth, today, grace = Period.ZERO)
+      } yield Showtime(date.atTime(time), Option(row.attr("data-href")).filter(_.nonEmpty))
     }.distinctBy(s => (s.dateTime, s.bookingUrl))
 
   /** Parse a film detail page into its (synopsis-only) `FilmDetail`. The synopsis
@@ -184,12 +181,4 @@ object EkobiletClient {
       synopsis = Option(document.selectFirst("#offcanvasRightInfo .offcanvas-body p"))
         .map(_.text.trim).filter(_.nonEmpty)
     )
-
-  /** The next date with the given month/day on or after `today` (so a December
-   *  listing seen in January resolves to this year, not last). */
-  private def nextOccurrence(today: LocalDate, month: Int, day: Int): LocalDate = {
-    val year = today.getYear
-    val thisYear = Try(LocalDate.of(year, month, day)).getOrElse(today)
-    if (thisYear.isBefore(today)) Try(LocalDate.of(year + 1, month, day)).getOrElse(thisYear) else thisYear
-  }
 }

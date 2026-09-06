@@ -9,7 +9,6 @@ import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Zorza (Rzeszów) — run by Regionalna Fundacja Filmowa. The cinema
@@ -82,8 +81,6 @@ object KinoZorzaClient {
   /** The three hall columns, in document order. */
   private val Halls = IndexedSeq("Sala widowiskowa", "Sala czerwona", "Sala niebieska")
 
-  private val DayMonthPat = """(\d{1,2})\.(\d{1,2})""".r
-
   private[cinemas] case class RawSlot(title: String, filmUrl: String, dateTime: LocalDateTime, hall: String)
 
   private[cinemas] def parseDocument(document: Document, today: LocalDate): Seq[RawSlot] = {
@@ -105,17 +102,7 @@ object KinoZorzaClient {
     * today is assumed to belong to next year (handles the December→January turn). */
   private def parseDate(dateDiv: Element, today: LocalDate): Option[LocalDate] = {
     val h3 = Option(dateDiv.selectFirst("h3")).map(_.text.trim).getOrElse("")
-    DayMonthPat.findFirstMatchIn(h3).flatMap { m =>
-      Try {
-        val day   = m.group(1).toInt
-        val month = m.group(2).toInt
-        val candidate = LocalDate.of(today.getYear, month, day)
-        if (candidate.isBefore(today.minusDays(60)))
-          candidate.plusYears(1)
-        else
-          candidate
-      }.toOption
-    }
+    ScraperParse.parseNumericDayMonth(h3).flatMap(ScraperParse.upcomingDate(_, today))
   }
 
   /** Parse all film rows in one day's `div.fullrepertoire-content`. */

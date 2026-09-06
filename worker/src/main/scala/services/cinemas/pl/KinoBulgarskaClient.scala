@@ -7,7 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
+import java.time.{LocalDate, LocalDateTime, LocalTime, Period, ZoneId}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -23,27 +23,16 @@ class KinoBulgarskaClient(http: HttpFetch, today: LocalDate = LocalDate.now(Zone
   private val TrailerIframePat =
     """<iframe[^>]+src="(https?://(?:www\.)?(?:youtube\.com|youtu\.be|player\.vimeo\.com|vimeo\.com)/[^"]+)"""".r
 
-  private val DatePat = ScraperParse.DayMonthPat
-
   private def normalizeTitle(raw: String): String = KinoBulgarskaClient.normalizeTitle(raw)
 
+  // Cinema dates in the page have no year. Roll forward to next year only when
+  // the parsed date is *substantially* in the past — the legitimate case is the
+  // year boundary (late December showing "13.01" means January of next year).
+  // A website viewed in mid-May still shows "13.05" / "14.05" entries from a
+  // day or two ago, and those are this year: six months' grace keeps them put
+  // while bumping January-viewed-from-late-June forward.
   private def parsePolishDate(text: String): Option[LocalDate] =
-    DatePat.findFirstMatchIn(text).flatMap { m =>
-      ScraperParse.PolishMonths.get(m.group(2)).map { month =>
-        val day       = m.group(1).toInt
-        val candidate = LocalDate.of(today.getYear, month, day)
-        // Cinema dates in the page have no year. Roll forward to next year
-        // only when the parsed date is *substantially* in the past —
-        // legitimate use case is the year-boundary (e.g. late December
-        // showing "13.01" — which means Jan 13 of next year). Don't roll
-        // recent past screenings forward: a website viewed in mid-May still
-        // shows "13.05" / "14.05" entries from a day or two ago, and those
-        // are this year, not next year. 6 months is the sweet spot:
-        // distant-past dates (like January viewed from late June) bump
-        // forward; nearby-past dates (yesterday, last week) stay put.
-        if (candidate.isBefore(today.minusMonths(6))) candidate.plusYears(1) else candidate
-      }
-    }
+    ScraperParse.parseDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today, grace = Period.ofMonths(6)))
 
   private val RuntimePat = """(\d+)\s*min""".r
 

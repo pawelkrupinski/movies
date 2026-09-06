@@ -7,9 +7,8 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kinoteatr Zbyszek (Dzierżoniowski Ośrodek Kultury, Dzierżoniów). Its
@@ -53,7 +52,6 @@ object KinoZbyszekClient {
 
   // The day-cell anchor carries the date as "26 Czerwiec 2026" — day, Polish
   // NOMINATIVE month name (capitalised), year.
-  private val DatePat = ScraperParse.DayMonthYearPat
 
   private case class RawSlot(
     title:     String,
@@ -85,16 +83,11 @@ object KinoZbyszekClient {
     }
   }
 
-  // The day's (year, month, day) from the cell anchor's `data-date`.
-  private def parseDate(day: Element): Option[(Int, Int, Int)] =
-    for {
-      raw   <- Option(day.selectFirst("a[data-date]")).map(_.attr("data-date"))
-      d     <- DatePat.findFirstMatchIn(raw)
-      month <- ScraperParse.PolishMonthsAnyCase.get(d.group(2).toLowerCase)
-    } yield (d.group(3).toInt, month, d.group(1).toInt)
+  // The day's date from the cell anchor's `data-date`.
+  private def parseDate(day: Element): Option[LocalDate] =
+    Option(day.selectFirst("a[data-date]")).map(_.attr("data-date")).flatMap(ScraperParse.parseDayMonthYear)
 
-  private def parseEvent(ev: Element, date: (Int, Int, Int)): Option[RawSlot] = {
-    val (year, month, dom) = date
+  private def parseEvent(ev: Element, date: LocalDate): Option[RawSlot] = {
     val rawTitle = ev.attr("data-title").trim
     // "KINO NIECZYNNE" is the cinema-closed placeholder (always `data-hours=00:00`,
     // no ticket); it isn't a film, so drop it.
@@ -102,10 +95,9 @@ object KinoZbyszekClient {
     else
       for {
         time <- ScraperParse.parseHHmm(ev.attr("data-hours"))
-        dt   <- Try(LocalDateTime.of(year, month, dom, time.getHour, time.getMinute)).toOption
       } yield RawSlot(
         title    = ScraperParse.sentenceCase(rawTitle),
-        dateTime = dt,
+        dateTime = date.atTime(time),
         booking  = Some(ev.attr("data-ticket").trim).filter(_.nonEmpty),
         filmUrl  = Some(ev.attr("abs:data-link")).filter(_.nonEmpty),
         poster   = Some(ev.attr("data-poster").trim).filter(_.nonEmpty),

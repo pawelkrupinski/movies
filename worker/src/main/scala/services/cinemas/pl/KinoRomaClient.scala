@@ -9,7 +9,6 @@ import services.cinemas.common.CinemaScraper
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Roma (Zabrze) — run by Miejski Ośrodek Kultury. The repertoire page at
@@ -75,7 +74,6 @@ object KinoRomaClient {
   val BaseUrl       = "https://www.kinoroma.zabrze.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar"
 
-  private val DayMonthPat = """(\d{1,2})\.(\d{1,2})""".r
   private val SlugPat     = """/repertuar/([^/?]+)""".r
   private val YearPat     = """\b(?:19|20)\d{2}\b""".r
 
@@ -111,12 +109,5 @@ object KinoRomaClient {
   /** "DD.MM" → LocalDate; if the date would be more than 60 days in the past,
    *  assume next year (handles December → January page-turn). */
   private[cinemas] def parseDate(text: String, today: LocalDate): Option[LocalDate] =
-    DayMonthPat.findFirstMatchIn(text).flatMap { m =>
-      Try {
-        val day   = m.group(1).toInt
-        val month = m.group(2).toInt
-        val candidate = LocalDate.of(today.getYear, month, day)
-        if (candidate.isBefore(today.minusDays(60))) candidate.plusYears(1) else candidate
-      }.toOption
-    }
+    ScraperParse.parseNumericDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today))
 }

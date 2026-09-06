@@ -1,11 +1,12 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, ParallelDetailFetch}
 import models._
 import org.jsoup.Jsoup
 import services.cinemas.common.CinemaScraper
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -81,7 +82,7 @@ object KinoJednoscClient {
     Jsoup.parse(html, BaseUrl).select("div.available-item").asScala.toSeq.flatMap { item =>
       for {
         date <- Option(item.selectFirst("span.date")).map(_.text.trim).flatMap(d => Try(LocalDate.parse(d)).toOption)
-        time <- Option(item.selectFirst("span.time")).map(_.text.trim).flatMap(t => Try(LocalTime.parse(t)).toOption)
+        time <- Option(item.selectFirst("span.time")).map(_.text.trim).flatMap(ScraperParse.parseHHmm)
       } yield {
         val booking = Option(item.selectFirst("a.button-success")).map(_.attr("abs:href")).filter(_.nonEmpty)
         Showtime(LocalDateTime.of(date, time), booking)

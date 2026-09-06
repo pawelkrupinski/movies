@@ -134,13 +134,11 @@ object MuranowClient {
       dStr  <- Option(day.selectFirst("span.cell-date-header__day-num")).map(_.text.trim)
       mName <- Option(day.selectFirst("span.cell-date-header__day-month")).map(_.text.trim.toLowerCase)
       d     <- Try(dStr.toInt).toOption
-      m     <- ScraperParse.PolishMonths.get(mName)
+      m     <- ScraperParse.polishMonth(mName)
     } yield java.time.LocalDate.of(headerYear, m, d)
 
   def parseTime(date: java.time.LocalDate, time: String): Option[LocalDateTime] =
-    """(\d{1,2}):(\d{2})""".r.findFirstMatchIn(time).flatMap { m =>
-      Try(date.atTime(m.group(1).toInt, m.group(2).toInt)).toOption
-    }
+    ScraperParse.parseHHmm(time).map(date.atTime)
 
   final case class Detail(
     runtimeMinutes: Option[Int],

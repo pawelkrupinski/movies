@@ -119,20 +119,11 @@ class IluzjonClient(http: HttpFetch, today: LocalDate = LocalDate.now(ZoneId.of(
 
 object IluzjonClient {
 
-  // The h3 uses the bare nominative ("5 Czerwiec") as well as the genitive, so
-  // the case-folded shared map handles both.
-  private val Months = ScraperParse.PolishMonthsAnyCase
-  private val DayMonthPat = """(\d{1,2})\s+([A-Za-ząćęłńóśźżĄĆĘŁŃÓŚŹŻ]+)""".r
-
-  /** "5 Czerwca - Piątek" → an absolute date; year from `today`, rolling forward
+  /** "5 Czerwca - Piątek" (the h3 uses the bare nominative "5 Czerwiec" as well
+   *  as the genitive) → an absolute date; year from `today`, rolling forward
    *  when the month is already behind us. */
   def parseDate(raw: String, today: LocalDate): Option[LocalDate] =
-    DayMonthPat.findFirstMatchIn(raw).flatMap { m =>
-      Months.get(m.group(2).toLowerCase).flatMap { mon =>
-        val year = if (mon < today.getMonthValue) today.getYear + 1 else today.getYear
-        Try(LocalDate.of(year, mon, m.group(1).toInt)).toOption
-      }
-    }
+    ScraperParse.parseDayMonth(raw).flatMap(ScraperParse.upcomingMonthDate(_, today))
 
   final case class Detail(
     runtimeMinutes: Option[Int],

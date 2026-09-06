@@ -10,7 +10,6 @@ import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcom
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import java.util.Locale
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Pod Baranami (Kraków) — historic arthouse cinema on Rynek Główny.
@@ -109,9 +108,6 @@ object KinoPodBaranamiClient {
   val BaseUrl       = "https://kinopodbaranami.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar.php"
 
-  // "7 czerwca" or "10 maja" — day + Polish genitive month name
-  private val DayMonthPat = ScraperParse.DayMonthPat
-
   // "(SMAK)" is Kino Pod Baranami's discussion-club programme tag ("Seans z
   // dyskusją"), appended to the film title for those screenings. It is not part
   // of the film's name: left in, "Dzień objawienia (SMAK)" sanitizes to a
@@ -132,16 +128,6 @@ object KinoPodBaranamiClient {
     bookingUrl:    Option[String]
   )
 
-  /** Infer year: if the date falls more than 60 days in the past relative to
-    * `today`, it must belong to next year (handles the December→January turn). */
-  private def guessYear(day: Int, month: Int, today: LocalDate): Int = {
-    val candidate = Try(LocalDate.of(today.getYear, month, day)).toOption
-    candidate match {
-      case Some(d) if d.isBefore(today.minusDays(60)) => today.getYear + 1
-      case _ => today.getYear
-    }
-  }
-
   private[cinemas] def parseDocument(html: String, today: LocalDate): Seq[RawSlot] = {
     val document = Jsoup.parse(html)
     val slots = collection.mutable.ArrayBuffer.empty[RawSlot]
@@ -152,14 +138,7 @@ object KinoPodBaranamiClient {
         case "p" if element.hasClass("rep_date") =>
           // "Niedziela 7 czerwca // Sunday, June 7"
           val text = element.text.trim
-          currentDate = DayMonthPat.findFirstMatchIn(text).flatMap { m =>
-            val day   = m.group(1).toInt
-            val month = ScraperParse.PolishMonths.get(m.group(2).toLowerCase)
-            month.flatMap { mo =>
-              val yr = guessYear(day, mo, today)
-              Try(LocalDate.of(yr, mo, day)).toOption
-            }
-          }
+          currentDate = ScraperParse.parseDayMonth(text).flatMap(ScraperParse.upcomingDate(_, today))
 
         case "ul" if element.hasClass("program_list") =>
           currentDate.foreach { date =>

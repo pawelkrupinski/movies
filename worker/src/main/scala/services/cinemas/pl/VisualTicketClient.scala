@@ -1,11 +1,12 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -81,7 +82,7 @@ object VisualTicketClient {
           rawDate  <- Option(item.attr("data-date")).filter(_.nonEmpty)
           rawTime  <- Option(item.attr("data-time")).filter(_.nonEmpty)
           date     <- Try(LocalDate.parse(rawDate)).toOption
-          time     <- Try(LocalTime.parse(rawTime)).toOption
+          time     <- ScraperParse.parseHHmm(rawTime)
           h3       <- Option(item.selectFirst("h3.event-title"))
           span     <- Option(h3.selectFirst("span[aria-hidden=true]"))
           rawTitle  = SeansFimowyRe.replaceFirstIn(span.text.trim, "").trim

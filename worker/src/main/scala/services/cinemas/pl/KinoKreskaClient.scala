@@ -81,7 +81,7 @@ object KinoKreskaClient {
       for {
         timeStr <- timeDivs.headOption.map(_.text.trim)
         dateStr <- timeDivs.drop(1).headOption.map(_.text.trim)
-        time    <- Try(java.time.LocalTime.parse(timeStr)).toOption
+        time    <- ScraperParse.parseHHmm(timeStr)
         date    <- Try(LocalDate.parse(dateStr)).toOption
         titleEl <- Option(li.selectFirst("a.std-link.std-link--hudge"))
         title    = titleEl.text.trim if title.nonEmpty

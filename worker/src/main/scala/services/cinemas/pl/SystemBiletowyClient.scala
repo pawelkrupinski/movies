@@ -47,8 +47,6 @@ class SystemBiletowyClient(http: HttpFetch, baseUrl: String, override val cinema
 object SystemBiletowyClient {
 
   // "12 czerwca 2026" — day, Polish genitive month, year (all present).
-  private val DatePat = ScraperParse.DayMonthYearPat
-
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String], format: List[String])
 
   def parse(html: String, cinema: Cinema, baseUrl: String, titles: TitleNormalizer): Seq[CinemaMovie] = {
@@ -66,13 +64,11 @@ object SystemBiletowyClient {
         titleElement <- Option(tr.selectFirst("td.title a"))
         titled   = clean(titleElement.text) if titled._1.nonEmpty
         dayText <- Option(tr.selectFirst("td.date span.day")).map(_.text)
-        d       <- DatePat.findFirstMatchIn(dayText)
-        month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
+        date    <- ScraperParse.parseDayMonthYear(dayText)
         time    <- Option(tr.selectFirst("td.date span.hour")).flatMap(h => ScraperParse.parseHHmm(h.text))
-        dt      <- Try(LocalDateTime.of(d.group(3).toInt, month, d.group(1).toInt, time.getHour, time.getMinute)).toOption
       } yield RawSlot(
         title    = titled._1,
-        dateTime = dt,
+        dateTime = date.atTime(time),
         booking  = Option(tr.selectFirst("td.link a[href]")).map(_.attr("abs:href"))
                      .filter(_.nonEmpty).orElse(Option(titleElement.attr("abs:href")).filter(_.nonEmpty)),
         format   = titled._2
@@ -88,13 +84,11 @@ object SystemBiletowyClient {
         titleElement <- Option(item.selectFirst("div.title a"))
         titled   = clean(titleElement.text) if titled._1.nonEmpty
         dateText <- Option(item.selectFirst("div.date")).map(_.text)
-        d       <- DatePat.findFirstMatchIn(dateText)
-        month   <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
+        date    <- ScraperParse.parseDayMonthYear(dateText)
         time    <- ScraperParse.parseHHmm(dateText)
-        dt      <- Try(LocalDateTime.of(d.group(3).toInt, month, d.group(1).toInt, time.getHour, time.getMinute)).toOption
       } yield RawSlot(
         title    = titled._1,
-        dateTime = dt,
+        dateTime = date.atTime(time),
         booking  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
         format   = titled._2
       )

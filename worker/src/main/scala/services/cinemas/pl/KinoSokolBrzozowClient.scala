@@ -10,7 +10,6 @@ import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Sokół (Brzozowski Dom Kultury, Brzozów). Its repertoire at
@@ -43,8 +42,6 @@ object KinoSokolBrzozowClient {
   val RepertoireUrl = s"$BaseUrl/kino/"
 
   // "12 czerwca 2026" → day, Polish genitive month, year.
-  private val DatePat = ScraperParse.DayMonthYearPat
-
   private case class RawSlot(title: String, dateTime: LocalDateTime, booking: Option[String],
                              filmUrl: Option[String], format: List[String])
 
@@ -72,13 +69,11 @@ object KinoSokolBrzozowClient {
       titleElement <- Option(ev.selectFirst(".wp_theatre_event_title a"))
       title    = titleElement.text.trim if title.nonEmpty
       dateText <- Option(ev.selectFirst(".wp_theatre_event_startdate")).map(_.text)
-      d        <- DatePat.findFirstMatchIn(dateText)
-      month    <- ScraperParse.PolishMonths.get(d.group(2).toLowerCase)
+      date     <- ScraperParse.parseDayMonthYear(dateText)
       time     <- Option(ev.selectFirst(".wp_theatre_event_starttime")).flatMap(t => ScraperParse.parseHHmm(t.text))
-      dt       <- Try(LocalDateTime.of(d.group(3).toInt, month, d.group(1).toInt, time.getHour, time.getMinute)).toOption
     } yield RawSlot(
       title    = title,
-      dateTime = dt,
+      dateTime = date.atTime(time),
       booking  = Option(ev.selectFirst("a.wp_theatre_event_tickets_url")).map(_.attr("abs:href")).filter(_.nonEmpty),
       filmUrl  = Option(titleElement.attr("abs:href")).filter(_.nonEmpty),
       // The venue line is this cinema's LANGUAGE VERSION, per screening — the
