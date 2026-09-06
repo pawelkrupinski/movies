@@ -111,6 +111,9 @@ route_is telegram-and-email alertname=WorkerQueueStalled severity=critical count
 route_is telegram-and-email alertname=WorkerQueueGrowingUnbounded severity=warning country=uk
 route_is telegram-and-email alertname=WorkerDown severity=critical country=de
 route_is telegram-and-email alertname=WorkerQueueMetricsAbsent severity=warning
+# The two rules that watch whether the movement ACHIEVES anything, added 2026-09-06.
+route_is telegram-and-email alertname=WorkerTasksFailingRepeatedly severity=warning country=pl
+route_is telegram-and-email alertname=WorkerTaskTypeUnhandled severity=warning country=de
 
 # AND NOTHING ELSE CHANGED. The email receiver is for the disk alerts alone; every other alert must
 # still land on plain Telegram, or "add email for the disks" has quietly become "add email".
@@ -122,6 +125,51 @@ route_is telegram alertname=JvmHeapHigh severity=warning host=k3s-worker-1
 # The dead-man's handle keeps its own receiver: it must not acquire `send_resolved`, and it must
 # not start arriving by email every day.
 route_is telegram-heartbeat alertname=MonitoringHeartbeat
+
+# ------------------------------------------------------------------------------------------------
+# INHIBITION, WHICH `amtool` CANNOT TEST AND WHICH SILENTLY DELETES ALERTS WHEN IT IS WRONG.
+#
+# `amtool config routes test` answers "where does this alert go"; there is no equivalent for "what
+# does this alert SILENCE". That gap hid a real one: `equal:` compares an ABSENT label to an absent
+# label as EQUAL, so an inhibit rule keyed on `host` whose source is not required to HAVE a host
+# matched every host-less alert on the fleet at once. Between 2026-09-05 and 2026-09-06 a single
+# OOM-killed worker would have muted every host-less warning we publish -- the `absent()` companions
+# included, which are the alerts that say nothing is watching any more.
+#
+# THE INVARIANT, checked mechanically rather than by reading: for every inhibit rule, at least one
+# of the labels in `equal:` must be PINNED NON-EMPTY by the rule's own `source_matchers`. That is
+# what stops the empty-matches-empty case, and it is a property of the document rather than of the
+# fleet, so it holds no matter which alerts happen to exist.
+step "inhibit rules pin their equal-labels on the source side"
+if ! python3 - "$rendered" <<'PY'
+import re, sys, yaml
+
+document = yaml.safe_load(open(sys.argv[1]))
+# `<label> =~ ".+"` or `<label> = "something"` -- either one requires the source to carry a value.
+present = re.compile(r'^\s*(\w+)\s*(=~|=)\s*"([^"]*)"\s*$')
+bad = 0
+for index, rule in enumerate(document.get("inhibit_rules", []), start=1):
+    equal = rule.get("equal", [])
+    if not equal:
+        continue
+    pinned = set()
+    for matcher in rule.get("source_matchers", []):
+        found = present.match(matcher)
+        if found and found.group(3) not in ("", ".*"):
+            pinned.add(found.group(1))
+    if not (pinned & set(equal)):
+        bad = 1
+        print(f"  FAILED inhibit rule #{index} joins on {equal} but its source_matchers "
+              f"{rule.get('source_matchers')} do not require any of those labels to be present.")
+        print( "         An alert missing that label would match every other alert missing it, and")
+        print( "         silence all of them. Add `<label> =~ \".+\"` to the source matchers.")
+if not bad:
+    print(f"  ok  {len(document.get('inhibit_rules', []))} inhibit rules all pin an equal-label on the source")
+sys.exit(bad)
+PY
+then
+  failed=1
+fi
 
 if ((failed)); then
   printf '\n\033[1;31mtest_alertmanager: FAILED\033[0m\n'

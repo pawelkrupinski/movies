@@ -90,18 +90,34 @@ route:
     # WHAT THE TWO PREFIXES ACTUALLY CATCH, listed because a regex is not a list and the answer
     # should not have to be re-derived: FilesystemSpaceLow/Critical, FilesystemInodesLow/Critical,
     # FilesystemWillFillWithin7Days, FilesystemReadOnly, FilesystemMetricsAbsent, WorkerDown,
-    # WorkerQueueStalled, WorkerQueueGrowingUnbounded, WorkerQueueMetricsAbsent. Eleven, and every
-    # one of them is meant. `FilesystemReadOnly` lives in host-health.rules rather than with the
-    # other six and is easy to miss when reading this — a root that has gone read-only is exactly
-    # the kind of thing worth a mailbox, so it is kept, deliberately rather than by accident.
+    # WorkerQueueStalled, WorkerQueueGrowingUnbounded, WorkerQueueMetricsAbsent,
+    # WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled. Thirteen, and every one of them is
+    # meant. `FilesystemReadOnly` lives in host-health.rules rather than with the other six and is
+    # easy to miss when reading this — a root that has gone read-only is exactly the kind of thing
+    # worth a mailbox, so it is kept, deliberately rather than by accident.
+    #
+    # THE PREFIX MEANS A NEW `Worker*` OR `Filesystem*` RULE EMAILS BY DEFAULT. That is the right
+    # default for these two families -- they are the ones whose failure is silent -- but it is a
+    # decision a rule inherits without saying so, so add the name above and a case in
+    # test_alertmanager.sh when you add one, or the list stops being the answer.
     #
     # THE `absent()` COMPANIONS MATCH TOO, deliberately: "nothing is watching any disk" and
     # "nothing is publishing queue metrics" belong with the alerts they cover rather than with the
     # fleet-wide noise.
+    #
+    # THESE TWO OVERRIDE `group_by`, and are the only routes that do. The root groups by
+    # `[host, alertname]`, which is right for a fleet whose alerts are about machines -- but it puts
+    # both of a host's filling volumes in one group, and all five countries' `WorkerDown` in
+    # another. The email SUBJECT is built from `.CommonLabels`, which holds only what every alert in
+    # the group agrees on, so a grouped pair silently dropped the very fields the subject exists to
+    # carry: the reader got "[FIRING] FilesystemSpaceLow on mongo-1" with no mountpoint, and
+    # "[FIRING] WorkerDown" with no country at all. Grouping by the two extra labels costs one more
+    # message in the genuinely-two-problems case and makes the subject always name the thing.
     - matchers:
         - alertname =~ "Filesystem.*|Worker.*"
         - severity = "critical"
       receiver: telegram-and-email
+      group_by: ["host", "alertname", "mountpoint", "country"]
       group_wait: 10s
       repeat_interval: 1h
 
@@ -109,6 +125,7 @@ route:
         - alertname =~ "Filesystem.*|Worker.*"
         - severity = "warning"
       receiver: telegram-and-email
+      group_by: ["host", "alertname", "mountpoint", "country"]
       group_interval: 15m
       repeat_interval: 12h
 
@@ -201,11 +218,14 @@ receivers:
         require_tls: true
         send_resolved: true
         headers:
-          # The SUBJECT is the whole message for anyone reading on a phone, so it carries the
-          # host and the mountpoint rather than a count of alerts.
+          # The SUBJECT is the whole message for anyone reading on a phone, so it names WHAT and
+          # WHERE rather than a count of alerts. `host` + `mountpoint` place a disk alert; `country`
+          # places a worker one, which has no host to name. The routes above group by all three so
+          # these are never empty for want of grouping.
           subject: >-
             [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}{{ if .CommonLabels.host }} on
-            {{ .CommonLabels.host }}{{ end }}{{ if .CommonLabels.mountpoint }}
+            {{ .CommonLabels.host }}{{ end }}{{ if .CommonLabels.country }}
+            ({{ .CommonLabels.country }}){{ end }}{{ if .CommonLabels.mountpoint }}
             ({{ .CommonLabels.mountpoint }}){{ end }}
         # PLAIN TEXT, not `html`. Alertmanager's default HTML template is a large document that
         # renders poorly in half the clients that receive it, and the descriptions in these rules
@@ -273,9 +293,16 @@ inhibit_rules:
   # source and target both match, which Alertmanager handles by refusing to inhibit -- correct, but
   # by accident rather than by design, and it is one upstream behaviour change away from silencing
   # half an outage.
+  # `host =~ ".+"` SAYS THE SAME THING AS `job = "node"` DIRECTLY. The paragraph above argues that a
+  # node target always carries a hostname, which is true and is an ASSUMPTION about the scrape
+  # config living two files away. Stating the requirement on the label the `equal:` actually uses
+  # costs nothing, survives a relabelling change that the argument would not, and lets the check in
+  # test_alertmanager.sh verify the property mechanically for every rule here rather than by
+  # reading.
   - source_matchers:
       - alertname = "TargetDown"
       - job = "node"
+      - host =~ ".+"
     target_matchers:
       - severity =~ "warning|critical"
       - alertname != "TargetDown"
@@ -291,11 +318,37 @@ inhibit_rules:
   # critical on /var/lib/mongodb would silence a warning on / of the same host, which is a different
   # disk and a different problem. Alerts with no `mountpoint` label match each other on the empty
   # value, so the memory pair still pairs up correctly.
+  #
+  # `host =~ ".+"` ON THE SOURCE IS THE SAME LOAD-BEARING GUARD THE RULE ABOVE SPELLS OUT, and it
+  # was missing here until 2026-09-06. Alertmanager compares an ABSENT label to an absent label as
+  # equal, so without it any critical that carries no `host` -- and this fleet has seven, including
+  # `WorkerDown` and `WorkerQueueStalled` -- matched EVERY host-less warning on the fleet and
+  # silenced it. One OOM-killed US worker would have muted `FilesystemMetricsAbsent`,
+  # `WorkerQueueMetricsAbsent` and every `CinemaScrape*` / `ReadModelProjection*` / `Web*` warning
+  # at once. Requiring the source to name a machine means only a machine's critical can silence a
+  # machine's warning; the application pairs are handled by the rule below, on their own label.
   - source_matchers:
       - severity = "critical"
+      - host =~ ".+"
     target_matchers:
       - severity = "warning"
     equal: ["host", "mountpoint"]
+
+  # THE SAME STATEMENT FOR THE APPLICATION ALERTS, which are scoped by COUNTRY rather than by host:
+  # the workers and the read-model projector run on k3s and carry `country`, never `host`. A queue
+  # that has stalled (critical) makes "the queue is growing" (warning) for the same country true by
+  # construction, and a worker that is down makes every other warning about that country's pipeline
+  # a restatement of it.
+  #
+  # THIS IS A SEPARATE RULE RATHER THAN A THIRD LABEL IN THE ONE ABOVE. `equal` is a conjunction, so
+  # adding `country` there would have required a critical to match on host AND country -- and no
+  # alert on this fleet carries both. Two rules, each scoped to the label its family actually has.
+  - source_matchers:
+      - severity = "critical"
+      - country =~ ".+"
+    target_matchers:
+      - severity = "warning"
+    equal: ["country"]
 
 # NO MUTE INTERVALS. There is no maintenance window on this fleet -- deploys are continuous and
 # reboots are occasional and by hand -- so a time-of-day mute would only ever suppress a real alert
