@@ -40,7 +40,7 @@ object Dependencies {
   // the ubuntu CI runners load, osx-aarch64 is what `sbt test` on the dev machine
   // loads. Dropping either gives a green build on one and a runtime failure on the
   // other, which is the whole trap.
-  private val brotli4jVersion      = "1.18.0"
+  private val brotli4jVersion      = "1.23.0"
 
   // ── Artifacts ──────────────────────────────────────────────────────────────
   val play             = "org.playframework"             %% "play"               % playVersion
