@@ -115,6 +115,7 @@ lazy val common = (project in file("common"))
       // DaemonExecutors, …) — the shared fakes live in `testkit`, not here, so
       // common's test surface stays lean and self-contained.
       scalatestPlay % Test,
+      scalatestScalaCheck % Test,
     )
   )
   .settings(unitReportSettings)
@@ -200,6 +201,7 @@ lazy val worker = (project in file("worker"))
       // Prometheus, scraped over the worker's NodePort) arrives via
       // `common`, which owns it for both apps — see its libraryDependencies.
       scalatestPlay % Test,
+      scalatestScalaCheck % Test,
     )
   )
   .settings(unitReportSettings)

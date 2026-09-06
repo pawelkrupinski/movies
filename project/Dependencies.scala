@@ -27,6 +27,12 @@ object Dependencies {
   // plain-`def main` worker (declares it directly — see build.sbt).
   private val logbackVersion       = "1.5.22"
   private val scalatestPlayVersion = "7.0.2"
+  // scalatest's ScalaCheck bridge (`ScalaCheckPropertyChecks`), for the
+  // `*PropertySpec`s that state the identity core's invariants as properties
+  // rather than one prod incident at a time. Test-only. The scalatestplus line
+  // is versioned after the scalatest it was built against (3.2.19); the 3.2.20
+  // scalatestplus-play pulls in evicts it upward, which the 3.2.x line allows.
+  private val scalatestScalaCheckVersion = "3.2.19.0"
   // Official Prometheus Java client (client_java 1.x) — the worker builds its
   // task-pipeline metrics with it (counters, gauges, a bucketed duration
   // histogram) and renders the text exposition via the exposition-formats
@@ -42,6 +48,7 @@ object Dependencies {
   val sentryLogback    = "io.sentry"                      %  "sentry-logback"     % sentryVersion
   val logbackClassic   = "ch.qos.logback"                %  "logback-classic"    % logbackVersion
   val scalatestPlay    = "org.scalatestplus.play"        %% "scalatestplus-play" % scalatestPlayVersion
+  val scalatestScalaCheck = "org.scalatestplus"          %% "scalacheck-1-18"    % scalatestScalaCheckVersion
   val prometheusCore   = "io.prometheus"                  %  "prometheus-metrics-core"               % prometheusVersion
   val prometheusText   = "io.prometheus"                  %  "prometheus-metrics-exposition-formats" % prometheusVersion
   val prometheusJvm    = "io.prometheus"                  %  "prometheus-metrics-instrumentation-jvm" % prometheusVersion
