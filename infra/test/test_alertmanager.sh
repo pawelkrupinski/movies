@@ -24,19 +24,30 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 infra="$(cd "$here/.." && pwd)"
 failed=0
 
-# `amtool` from PATH when it is there and from nixpkgs otherwise -- the same fallback
+# The tools from PATH when they are there and from nixpkgs otherwise -- the same fallback
 # test_alert_rules.sh uses for promtool, and for the same reason: a checker that quietly skips
 # itself is the failure mode this directory is written against.
-if command -v amtool >/dev/null 2>&1; then
-  amtool() { command amtool "$@"; }
-elif command -v nix >/dev/null 2>&1; then
-  amtool() {
-    nix --extra-experimental-features 'nix-command flakes' shell 'nixpkgs#prometheus-alertmanager' \
-      -c amtool "$@"
-  }
-else
-  echo "  FAILED neither amtool nor nix is on PATH, so the alertmanager config was not checked."
-  exit 1
+#
+# RESOLVED ONCE, ONTO PATH, rather than per invocation. This used to wrap `amtool` in a function
+# that ran `nix shell` EVERY time, and this script calls it about forty times: each call re-resolved
+# the flake, so a suite that does a few seconds of work took twenty-five minutes, and the live
+# Alertmanager below could not start inside any sane readiness budget because its own `nix shell`
+# was still resolving. `nix build --print-out-paths` gives the store path once; everything after
+# this line is an ordinary exec. It also removes the nix chatter that used to land on stderr and
+# had to be filtered out of every comparison.
+if ! (command -v amtool && command -v alertmanager) >/dev/null 2>&1; then
+  if command -v nix >/dev/null 2>&1; then
+    am_pkg="$(nix --extra-experimental-features 'nix-command flakes' \
+      build --no-link --print-out-paths 'nixpkgs#prometheus-alertmanager' 2>/dev/null)"
+    if [ -z "$am_pkg" ] || [ ! -x "$am_pkg/bin/amtool" ]; then
+      echo "  FAILED could not obtain alertmanager from nixpkgs, so nothing here was checked."
+      exit 1
+    fi
+    PATH="$am_pkg/bin:$PATH"
+  else
+    echo "  FAILED neither the alertmanager tools nor nix are on PATH, so nothing here was checked."
+    exit 1
+  fi
 fi
 
 rendered="$(mktemp)"
@@ -75,12 +86,12 @@ step "routing"
 route_is() {
   local want="$1"; shift
   local got
-  # STDOUT ONLY, AND THE LAST LINE OF IT. When amtool comes from `nix shell`rather than PATH, nix
-  # is free to write to stderr -- "SQLite database ... is busy" from a contended eval cache is the
-  # one that showed up, and folding it into the comparison turned five correct routes into five
-  # failures whose message contained the right answer. A checker that fails on the weather is worse
-  # than no checker. A genuine amtool failure still fails this: it prints nothing usable on stdout,
-  # so `got` ends up empty and cannot equal any expected receiver.
+  # STDOUT ONLY, AND THE LAST LINE OF IT. This was written when every call went through its own
+  # `nix shell`, which is free to write to stderr -- "SQLite database ... is busy" from a contended
+  # eval cache turned five correct routes into five failures whose message contained the right
+  # answer. The single resolution above removes that source, and the filter stays because a checker
+  # that fails on the weather is worse than no checker. A genuine amtool failure still fails this:
+  # it prints nothing usable on stdout, so `got` ends up empty and cannot equal any receiver.
   got="$(amtool config routes test --config.file "$rendered" "$@" 2>/dev/null | tail -1 | tr -d '[:space:]')"
   if [ "$got" = "$want" ]; then
     echo "  ok  $* -> $want"
@@ -190,6 +201,62 @@ PY
 then
   failed=1
 fi
+
+# ------------------------------------------------------------------------------------------------
+# INHIBITION, ASKED OF A RUNNING ALERTMANAGER RATHER THAN OF THE FILE.
+#
+# WHY THIS EXISTS. Two of the three most serious bugs this configuration has had were inhibition
+# SCOPING, and both were found by a person reading the file rather than by anything here: a
+# host-less critical silencing every host-less warning on the fleet, and then -- in the fix for it --
+# a `country`-scoped rule letting the WEB tier silence the WORKER tier. `amtool` answers "where does
+# this alert go" and has no equivalent for "what does this alert SILENCE", so the structural check
+# above is all the file could offer, and a structural check cannot see either of those.
+#
+# So this starts a real Alertmanager on the real config, posts real alerts at it, and reads back
+# which ones it suppressed. It is the only thing here that exercises `inhibit_rules` as behaviour.
+#
+# NOTHING LEAVES THE MACHINE. The receivers are rewritten to point at 127.0.0.1:1 (connection
+# refused, instantly) before this runs, so a notification that fires during the test cannot reach
+# Telegram or a mail relay. Inhibition is computed independently of delivery, so neutering the
+# receivers costs the test nothing.
+step "inhibition (live Alertmanager)"
+
+am_dir="$(mktemp -d)"
+am_config="$am_dir/alertmanager.yaml"
+: > "$am_dir/telegram"; : > "$am_dir/smtp"
+
+# The same substitution the render above does, but pointing every outbound leg at a dead local
+# port and the secret files at real (empty) ones, so the process starts and notifies nowhere.
+sed -e "s|@TELEGRAM_BOT_TOKEN_FILE@|$am_dir/telegram|g" \
+    -e 's|@SMTP_SMARTHOST@|127.0.0.1:1|g' \
+    -e 's|@SMTP_USERNAME@|dummy|g' \
+    -e "s|@SMTP_PASSWORD_FILE@|$am_dir/smtp|g" \
+    -e 's|@ALERT_EMAIL_FROM@|alerts@example.invalid|g' \
+    -e 's|@ALERT_EMAIL_TO@|operator@example.invalid|g' \
+    "$infra/nix/files/monitoring/alertmanager.yaml" \
+  | awk '{ print }
+         /^[[:space:]]*- bot_token_file:/ { match($0, /^[[:space:]]*/); print substr($0, 1, RLENGTH) "  api_url: http://127.0.0.1:1" }' \
+  > "$am_config"
+
+am_port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')"
+# `--cluster.listen-address=` disables gossip: with it on, startup spends ten seconds waiting for a
+# cluster of one to settle. Nothing here needs peers.
+alertmanager --config.file="$am_config" --storage.path="$am_dir/data" \
+  --web.listen-address="127.0.0.1:$am_port" --cluster.listen-address= > "$am_dir/log" 2>&1 &
+am_pid=$!
+trap 'kill "$am_pid" 2>/dev/null; rm -rf "$am_dir"; rm -f "$rendered"' EXIT
+
+if python3 "$here/inhibition_cases.py" "$am_port"; then
+  :
+else
+  echo "  FAILED inhibition behaved differently from the cases above."
+  echo "         alertmanager log tail:"
+  tail -5 "$am_dir/log" | sed 's/^/         /'
+  failed=1
+fi
+
+kill "$am_pid" 2>/dev/null
+wait "$am_pid" 2>/dev/null || true
 
 if ((failed)); then
   printf '\n\033[1;31mtest_alertmanager: FAILED\033[0m\n'
