@@ -131,4 +131,15 @@ final class LocalServerRepertoireTests: LocalServerTestCase {
         XCTAssertTrue(missing.isEmpty,
                       "cinemas with showings that the catalog does not list (the filter pill would never appear): \(missing)")
     }
+
+    // ── a path the server does not serve ─────────────────────────
+
+    /// 404, not 500. The fixture server's route table used to throw on an
+    /// in-city path it did not know, and the server reported that as a 500 —
+    /// which `fetch` reads as "bad server response" and points at whichever
+    /// endpoint a test was asking for, rather than at the route that was
+    /// never taught. That is how the `/api/cinemas` case above first failed.
+    func testAPathTheServerDoesNotServeIsNotFoundRatherThanAServerError() throws {
+        XCTAssertEqual(try status(of: City.apiURL(base: baseURL, slug: city, endpoint: "no-such-endpoint")), 404)
+    }
 }

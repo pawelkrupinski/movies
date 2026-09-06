@@ -47,31 +47,44 @@ class LocalServerTestCase: XCTestCase {
     }
 
     /// Synchronous GET of `url`, sent the way `RepertoireStore` /
-    /// `DetailsStore` send theirs (same User-Agent, cache bypass). Uses
+    /// `DetailsStore` send theirs (same User-Agent, cache bypass). A non-2xx
+    /// answer is `badServerResponse`, exactly as the stores treat it.
+    func fetch(_ url: URL) throws -> Fetched {
+        let (data, http) = try send(url)
+        guard let data, (200..<300).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return Fetched(data: data, response: http)
+    }
+
+    /// The status a GET of `url` gets, whatever it is — for asserting on the
+    /// answers `fetch` collapses: a route the server does not know must be a
+    /// 404, not a 500 that reads as the endpoint under test misbehaving.
+    func status(of url: URL) throws -> Int {
+        try send(url).response.statusCode
+    }
+
+    /// One round trip, however the server answered. Uses
     /// `URLSession.dataTask` + `DispatchSemaphore` rather than the async
     /// API because Swift 5.10's FoundationNetworking on Linux doesn't ship
     /// `URLSession.shared.data(for:)`. The completion-handler dataTask is
     /// present on both Darwin and Linux, so this one helper works in both
     /// CI containers.
-    func fetch(_ url: URL) throws -> Fetched {
+    private func send(_ url: URL) throws -> (data: Data?, response: HTTPURLResponse) {
         var request = URLRequest(url: url)
         request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
         request.cachePolicy = .reloadIgnoringLocalCacheData
 
         let semaphore = DispatchSemaphore(value: 0)
-        var captured: Result<Fetched, Error> = .failure(URLError(.badServerResponse))
+        var captured: Result<(data: Data?, response: HTTPURLResponse), Error> = .failure(URLError(.badServerResponse))
         URLSession.shared.dataTask(with: request) { data, response, error in
             defer { semaphore.signal() }
             if let error = error {
                 captured = .failure(error)
                 return
             }
-            guard let http = response as? HTTPURLResponse, let data = data,
-                  (200..<300).contains(http.statusCode) else {
-                captured = .failure(URLError(.badServerResponse))
-                return
-            }
-            captured = .success(Fetched(data: data, response: http))
+            guard let http = response as? HTTPURLResponse else { return }
+            captured = .success((data, http))
         }.resume()
         // Localhost over loopback; 30s is generous for any real fail mode.
         _ = semaphore.wait(timeout: .now() + .seconds(30))

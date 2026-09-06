@@ -2,7 +2,7 @@ package tools
 
 import testsupport.TestMessages.given
 
-import controllers.{ApiFilm, ApiFilmDetails}
+import controllers.{ApiCityCinemas, ApiFilm, ApiFilmDetails}
 import models.City
 import play.api.libs.json.Json
 
@@ -157,37 +157,46 @@ object FixtureServerMain {
       }
     }
 
-    val routes: PartialFunction[String, String] = {
-      // Bare `/` → the city-selection landing (hard-cut: not a repertoire page).
-      case p if landingPages.contains(p.takeWhile(_ != '?')) =>
-        landingPages(p.takeWhile(_ != '?'))
-      // Everything else under `/{city}/…`. Each route tolerates a `?…` suffix.
-      case p if resolve(p).isDefined =>
-        val (c, sub) = resolve(p).get
-        sub match {
-          case s if s == "/"     || s.startsWith("/?")     => indexPageFor(c)
-          case "/movies"                                    => indexPageFor(c)
-          case s if s.startsWith("/movies?") &&
-                     (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => browsePageFor(c)
-          case s if s.startsWith("/movies?")                => indexPageFor(c)
-          case "/movie-many"                                => manyCinemaFilmPageFor(c)
-          case s if s.startsWith("/movie/") =>
-            filmPageFor(c, s.stripPrefix("/movie/"))
-        }
+    // The page a `/{city}/…` sub-path renders, or None — so that an in-city path
+    // this table does not know is a 404, not a `MatchError` the server reports
+    // as a 500. That is how a mobile contract test asking for an API route this
+    // file had not been taught read as "bad server response" on 2026-09-06.
+    def pageFor(c: City, sub: String): Option[String] = sub match {
+      case s if s == "/"     || s.startsWith("/?")     => Some(indexPageFor(c))
+      case "/movies"                                    => Some(indexPageFor(c))
+      case s if s.startsWith("/movies?") &&
+                 (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => Some(browsePageFor(c))
+      case s if s.startsWith("/movies?")                => Some(indexPageFor(c))
+      case "/movie-many"                                => Some(manyCinemaFilmPageFor(c))
+      case s if s.startsWith("/movie/")                 => Some(filmPageFor(c, s.stripPrefix("/movie/")))
+      case _                                            => None
     }
 
-    // The two JSON endpoints the mobile apps consume — the Android `KinowoApi`
-    // and iOS `RepertoireStore` both decode these. Rendered from the same
-    // fixture schedules the HTML routes use, via the production `ApiFilm` /
-    // `ApiFilmDetails` projections, so a wire-shape drift in `MovieController`'s
-    // JSON is caught by the mobile LocalServer suites.
+    val routes: PartialFunction[String, String] = Function.unlift { p =>
+      // Bare `/` → the city-selection landing (hard-cut: not a repertoire page);
+      // everything else under `/{city}/…`. Each route tolerates a `?…` suffix.
+      landingPages.get(p.takeWhile(_ != '?'))
+        .orElse(resolve(p).flatMap { case (c, sub) => pageFor(c, sub) })
+    }
+
+    // The three JSON endpoints the mobile apps consume — the Android `KinowoApi`
+    // and iOS `RepertoireStore` / `DetailsStore` / cinema filter all decode
+    // these. Rendered from the same fixture schedules the HTML routes use, via
+    // the production `ApiFilm` / `ApiFilmDetails` / `ApiCityCinemas`
+    // projections, so a wire-shape drift in `MovieController`'s JSON is caught
+    // by the mobile LocalServer suites.
     def repertoireJsonFor(c: City): String = Json.toJson(schedulesFor(c).map(ApiFilm.from)).toString
     def detailsJsonFor(c: City): String =
       Json.toJson(schedulesFor(c).map(ApiFilmDetails.from).filter(ApiFilmDetails.hasContent)).toString
+    def cinemasJsonFor(c: City): String = Json.toJson(ApiCityCinemas.from(c)).toString
 
-    val jsonRoutes: PartialFunction[String, String] = {
-      case p if resolve(p).exists(_._2.startsWith("/api/repertoire")) => repertoireJsonFor(resolve(p).get._1)
-      case p if resolve(p).exists(_._2.startsWith("/api/details"))    => detailsJsonFor(resolve(p).get._1)
+    val jsonRoutes: PartialFunction[String, String] = Function.unlift { p =>
+      resolve(p).flatMap {
+        case (c, sub) if sub.startsWith("/api/repertoire") => Some(repertoireJsonFor(c))
+        case (c, sub) if sub.startsWith("/api/details")    => Some(detailsJsonFor(c))
+        case (c, sub) if sub.startsWith("/api/cinemas")    => Some(cinemasJsonFor(c))
+        case _                                             => None
+      }
     }
 
     val server = new TestHttpServer(routes, jsonRoutes = jsonRoutes)
