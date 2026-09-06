@@ -81,8 +81,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
       link.flatMap { a =>
         val title = a.attr("title").trim.replaceFirst("(?i)\\s*/\\s*(kino|film|z cyklu).*$", "").replaceAll("[„”\"“]", "").trim
         val dt    = DateTimePat.findFirstMatchIn(element.text).flatMap { m =>
-          Try(java.time.LocalDate.parse(m.group(1), java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))
-            .atTime(m.group(2).toInt, m.group(3).toInt)).toOption
+          ScraperParse.parseDate(m.group(1)).flatMap(d => Try(d.atTime(m.group(2).toInt, m.group(3).toInt)).toOption)
         }
         val poster = Option(element.selectFirst("figure.item-image img[src]")).map(_.attr("src")).filter(_.nonEmpty)
                        .map(u => if (u.startsWith("http")) u else s"$BaseUrl/${u.stripPrefix("/")}")

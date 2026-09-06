@@ -9,10 +9,8 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import tools.HttpFetch
 
-import java.time.{LocalDate, LocalDateTime, ZoneId}
-import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, ZoneId}
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 import services.movies.TitleNormalizer
 
 /**
@@ -83,8 +81,6 @@ object KinematografLodzClient {
   private val DayCountSelector    = "div.day-count"
   private val LeadingCountPat     = """^\s*(\d+)""".r
 
-  private val DateTimePat = """(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2})""".r
-  private val DateFmt     = DateTimeFormatter.ofPattern("dd.MM.yyyy")
   // The raw title carries `(YYYY)` and, for most films, a `, reż. Director`
   // suffix that `cleanTitle` strips for display. Both are TMDB-identity hints,
   // so extract them before the strip.
@@ -180,13 +176,7 @@ object KinematografLodzClient {
     val filmUrl = link.map(_.attr("href")).filter(_.nonEmpty)
 
     val dtText = Option(item.selectFirst("div.date-time")).map(_.text.trim).getOrElse("")
-    val dtOpt  = DateTimePat.findFirstMatchIn(dtText).flatMap { m =>
-      Try {
-        val date = LocalDate.parse(m.group(1), DateFmt)
-        val time = ScraperParse.parseHHmm(m.group(2))
-        time.map(LocalDateTime.of(date, _))
-      }.toOption.flatten
-    }
+    val dtOpt  = ScraperParse.parseDateTime(dtText)
 
     // Filter out past events (the CMS keeps the full year in the listing).
     val dtFiltered = dtOpt.filter(_.toLocalDate >= today)

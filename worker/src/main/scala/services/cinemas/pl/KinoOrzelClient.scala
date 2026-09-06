@@ -7,9 +7,7 @@ import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Orzeł — the art-house screen run by Miejskie Centrum Kultury in
@@ -59,7 +57,6 @@ object KinoOrzelClient {
   // so the non-greedy name group is anchored by the date that must follow the
   // separating dash — backtracking lands the split on the real date boundary.
   private val TitlePat     = """^Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*-\s*.+$""".r
-  private val DateTimeFmt  = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
   private case class RawSlot(filmId: String, title: String, dateTime: LocalDateTime, booking: String, poster: Option[String])
 
@@ -75,7 +72,7 @@ object KinoOrzelClient {
           val filmId    = h.group(1)
           val sessionId = h.group(2)
           val title     = t.group(1).trim
-          Try(LocalDateTime.parse(s"${t.group(2)} ${t.group(3)}", DateTimeFmt)).toOption
+          ScraperParse.parseDateTime(s"${t.group(2)} ${t.group(3)}")
             .filter(_ => title.nonEmpty)
             .map { dt =>
               val slug    = href.stripPrefix(s"/kino/$OrganizerId-").takeWhile(_ != '?')

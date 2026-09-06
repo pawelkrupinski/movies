@@ -7,7 +7,6 @@ import tools.{HttpFetch, ParallelDetailFetch}
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.format.DateTimeFormatter
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -32,7 +31,6 @@ class FalenicaClient(http: HttpFetch
   private val BaseUrl    = "https://stacjafalenica.pl"
   private val ListingUrl = s"$BaseUrl/repertuar/"
   private val SlugPat    = """/filmy/([^/"]+)/""".r
-  private val DateFmt    = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
   private case class Film(slug: String, title: String, format: List[String], runtime: Option[Int], director: Seq[String], poster: Option[String])
 
@@ -116,7 +114,7 @@ class FalenicaClient(http: HttpFetch
   private def parseShowtimes(document: org.jsoup.nodes.Document): Seq[Showtime] =
     document.select("div.terminy_list > div.row").asScala.toSeq.flatMap { row =>
       val dets = row.select("div.term_det").asScala.toSeq.map(_.text.trim)
-      val date = dets.flatMap(t => Try(java.time.LocalDate.parse(t, DateFmt)).toOption).headOption
+      val date = dets.flatMap(ScraperParse.parseDate).headOption
       val time = dets.flatMap(ScraperParse.parseHHmm).headOption
       val booking = Option(row.selectFirst("a.green_but[href]")).map(_.attr("href")).filter(_.nonEmpty)
       for { d <- date; t <- time } yield Showtime(d.atTime(t), booking, None, Nil)

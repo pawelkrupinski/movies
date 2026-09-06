@@ -8,7 +8,6 @@ import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime}
-import java.time.format.DateTimeFormatter
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -147,8 +146,6 @@ object KinoSfinksClient {
     !document.select(s"table.$ListingClass").isEmpty ||
       !document.select(s"div.$EmptyMarkerClass").isEmpty
 
-  private val DateFmt = DateTimeFormatter.ofPattern("dd-MM-yyyy")
-  private val DatePat = """(\d{2}-\d{2}-\d{4})""".r
   private val NextPagePat = """/wydarzenia-harmonogram-strona-\d+\.html""".r
   // The row's `onclick="location.href = ('/wydarzenie-…-szczegoly-….html')"`.
   private val DetailHrefPat = """location\.href\s*=\s*\(?\s*'([^']+szczegoly[^']+)'""".r
@@ -228,8 +225,7 @@ object KinoSfinksClient {
   private def cellDate(row: Element): Option[LocalDate] =
     row.select("td.info span.date-caption").asScala.iterator
       .map(_.text.trim)
-      .flatMap(t => DatePat.findFirstIn(t))
-      .flatMap(s => Try(LocalDate.parse(s, DateFmt)).toOption)
+      .flatMap(ScraperParse.parseDate)
       .nextOption()
 
   /** First `td.info` carrying an `HH:MM` start time, parsed. */

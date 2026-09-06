@@ -9,10 +9,8 @@ import tools.HttpFetch
 import services.movies.TitleNormalizer
 import services.cinemas.common.CinemaScraper
 
-import java.time.{LocalDate, LocalDateTime}
-import java.time.format.DateTimeFormatter
+import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Cyfrowe Kino (Środa Śląska, run by the Dom Kultury). Its listing at
@@ -48,7 +46,6 @@ object CyfroweKinoClient {
   val BaseUrl       = "https://dksrodaslaska.pl"
   val RepertoireUrl = s"$BaseUrl/aktualny-repertuar/"
 
-  private val DateFmt   = DateTimeFormatter.ofPattern("dd/MM/yyyy")
   private val ShortDate = """^\d{1,2}\.\d{1,2}$""".r            // "15.06" noise segment
   // Segments that are version / age-rating metadata, not part of the title.
   private val NoiseSeg  = """(?i)^(napisy|dubbing|dubbing i napisy|napisy i dubbing|lektor|2D|3D|od\s+lat\s+\d+|od\s+\d+\s+lat|b/o|\d+\+)$""".r
@@ -79,7 +76,7 @@ object CyfroweKinoClient {
   private def parseShowtimes(item: Element): Seq[Showtime] =
     item.select(".entry-showtime .st-item").asScala.toSeq.flatMap { st =>
       val date = Option(st.selectFirst(".st-title label")).map(_.text.trim)
-        .flatMap(t => Try(LocalDate.parse(t, DateFmt)).toOption)
+        .flatMap(ScraperParse.parseDate)
       date.toSeq.flatMap { d =>
         st.select("ul li").asScala.toSeq.flatMap { li =>
           ScraperParse.parseHHmm(li.text).map(t => Showtime(LocalDateTime.of(d, t), None))

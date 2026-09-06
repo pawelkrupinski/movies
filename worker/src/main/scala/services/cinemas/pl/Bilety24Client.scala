@@ -7,10 +7,7 @@ import tools.HttpFetch
 import org.jsoup.Jsoup
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper}
 
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Cinemas hosted on the Bilety24 platform (e.g. Kino Luna, Kino Elektronik).
@@ -53,7 +50,6 @@ object Bilety24Client {
 
   // Buy-button title: "Kup bilet - Film: <Title> - YYYY-MM-DD HH:MM - <City>"
   private val ButtonTitlePat = """Kup bilet - Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*-""".r
-  private val DateTimeFmt     = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
   private val RuntimePat      = """(\d+)\s*min""".r
 
   def parseEvent(html: String, cinema: Cinema, baseUrl: String, eventId: String, titles: TitleNormalizer): Option[CinemaMovie] = {
@@ -81,7 +77,7 @@ object Bilety24Client {
       // inactive/disabled buttons use href="#".
       if (href == "#") None
       else ButtonTitlePat.findFirstMatchIn(a.attr("title")).flatMap { m =>
-        Try(LocalDateTime.parse(s"${m.group(2)} ${m.group(3)}", DateTimeFmt)).toOption.map { dt =>
+        ScraperParse.parseDateTime(s"${m.group(2)} ${m.group(3)}").map { dt =>
           val booking = if (href.startsWith("http")) href else baseUrl + href
           val buttonFmt = Option(a.selectFirst("span.b24-button__format")).map(_.text.trim)
                           .filter(_.nonEmpty).map(_.split("\\s+").toList.filter(_.nonEmpty)).getOrElse(Nil)

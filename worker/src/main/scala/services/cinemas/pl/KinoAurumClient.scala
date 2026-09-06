@@ -1,12 +1,11 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import tools.HttpFetch
 import models._
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.util.Try
 
 /**
@@ -38,7 +37,6 @@ object KinoAurumClient {
   val SeanseUrl =
     s"https://firestore.googleapis.com/v1/projects/$Project/databases/(default)/documents/seanse?pageSize=300&key=$ApiKey"
 
-  private val Fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
   def parse(json: String, cinema: Cinema): Seq[CinemaMovie] = {
     val documents = (Try(Json.parse(json)).toOption.getOrElse(JsNull) \ "documents")
@@ -50,7 +48,7 @@ object KinoAurumClient {
         title <- (fields \ "film_tytul" \ "stringValue").asOpt[String].map(_.trim).filter(_.nonEmpty)
         date  <- (fields \ "data" \ "stringValue").asOpt[String]
         time  <- (fields \ "godzina" \ "stringValue").asOpt[String]
-        dt    <- Try(LocalDateTime.parse(s"$date $time", Fmt)).toOption
+        dt    <- ScraperParse.parseDateTime(s"$date $time")
       } yield (title, dt)
     }
 

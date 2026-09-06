@@ -6,7 +6,6 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.CinemaScraper
 
-import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -72,7 +71,6 @@ object KinoForumClient {
   val BaseUrl = "https://bok.bialystok.pl"
   val PageUrl = s"$BaseUrl/repertuar/"
 
-  private val DateFmt   = DateTimeFormatter.ofPattern("yyyy-MM-dd")
   private val RuntimeRe = """(\d+)""".r
 
   private case class RawSlot(
@@ -87,7 +85,7 @@ object KinoForumClient {
     * non-film event (no runtime) or lacks a parseable date/time/title. */
   private def parseRow(row: Element): Option[RawSlot] =
     for {
-      date  <- Try(LocalDate.parse(row.attr("data-date"), DateFmt)).toOption
+      date  <- ScraperParse.parseDate(row.attr("data-date"))
       time  <- ScraperParse.parseHHmm(row.attr("data-hour"))
       title <- Option(row.selectFirst(".repertoire-row__title h3 a")).map(_.text.trim).filter(_.nonEmpty)
       // Runtime presence is the film filter — exhibitions/meetings on the same

@@ -8,9 +8,7 @@ import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino SCK — Stargardzkie Centrum Kultury (Stargard). Its repertoire at
@@ -54,8 +52,6 @@ object SckStargardClient {
   val BaseUrl       = "https://sck.stargard.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar-kina/"
 
-  // The full datetime baked into each booking anchor: "2026-06-23 12:00:00".
-  private val SeanceDateTime = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
   private case class RawSlot(
     title:    String,
@@ -103,7 +99,7 @@ object SckStargardClient {
         .toList
 
       wrapper.select(".movie-seances a[data-seance_link]").asScala.toSeq.flatMap { anchor =>
-        Try(LocalDateTime.parse(anchor.attr("data-seance_link").trim, SeanceDateTime)).toOption.map { dt =>
+        ScraperParse.parseDateTime(anchor.attr("data-seance_link")).map { dt =>
           RawSlot(
             title    = filmTitle,
             dateTime = dt,

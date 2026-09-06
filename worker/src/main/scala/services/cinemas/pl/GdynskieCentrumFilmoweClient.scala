@@ -7,10 +7,8 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.{LocalDate, LocalDateTime}
-import java.time.format.DateTimeFormatter
+import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Gdyńskie Centrum Filmowe (Gdynia) — the city's art-house cinema, run by
@@ -66,8 +64,6 @@ object GdynskieCentrumFilmoweClient {
   val BaseUrl       = "https://gcf.org.pl"
   val RepertoireUrl = s"$BaseUrl/kino-studyjne/repertuar/"
 
-  private val DateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-  private val TimePat = """(\d{1,2}):(\d{2})""".r
 
   private[cinemas] case class RawSlot(
     title:   String,
@@ -138,8 +134,7 @@ object GdynskieCentrumFilmoweClient {
 
   private def parseDateTime(dateStr: String, hourStr: String): Option[LocalDateTime] =
     for {
-      date <- Try(LocalDate.parse(dateStr, DateFmt)).toOption
-      m    <- TimePat.findFirstMatchIn(hourStr)
-      time <- Try(java.time.LocalTime.of(m.group(1).toInt, m.group(2).toInt)).toOption
+      date <- ScraperParse.parseDate(dateStr)
+      time <- ScraperParse.parseHHmm(hourStr)
     } yield LocalDateTime.of(date, time)
 }

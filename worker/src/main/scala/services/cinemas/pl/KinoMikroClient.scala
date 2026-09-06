@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import tools.HttpFetch
 import models._
 import play.api.libs.json._
@@ -7,8 +8,6 @@ import org.jsoup.Jsoup
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, ScrapeHorizon}
 
 import java.time.{LocalDate, LocalDateTime, ZoneId}
-import java.time.format.DateTimeFormatter
-import scala.util.Try
 
 /**
  * Kino Mikro (kinomikro.pl) and its sister screen Mikro Bronowice share one
@@ -72,7 +71,6 @@ object KinoMikroClient {
 
 object KinoMikroParser {
   // `event_date` is rendered as `DD.MM.YYYY HH:mm` (e.g. "06.06.2026 18:00").
-  private val DateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
 
   // `event_description` is an HTML blob whose director line reads either
   // `<div>Reżyseria George Sluizer</div>` (no colon) or `<br>Reżyseria:
@@ -107,7 +105,7 @@ object KinoMikroParser {
         inst    <- (r \ "location_institution_name").asOpt[String] if inst == venueName
         title   <- (r \ "event_title").asOpt[String].map(_.trim).filter(_.nonEmpty)
         dateStr <- (r \ "event_date").asOpt[String]
-        dt      <- Try(LocalDateTime.parse(dateStr, DateFmt)).toOption
+        dt      <- ScraperParse.parseDateTime(dateStr)
       } yield {
         val booking = for {
           slug <- (r \ "slug").asOpt[String].filter(_.nonEmpty)

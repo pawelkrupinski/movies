@@ -1,12 +1,12 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
 import tools.HttpFetch
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.format.DateTimeFormatter
-import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.time.LocalDateTime
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 import services.cinemas.CountryNames
@@ -44,7 +44,6 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
   // Production redirects from /kino to /kino/ — request the canonical-shaped URL
   // directly. The FakeHttpFetch can't traverse a trailing slash to a file.
   private val PageUrl = "https://kinoapollo.pl/kino"
-  private val DateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
 
   // Every Jet-Engine dynamic link to the ticketing site has a label span. The
   // time link's label is `HH:MM`; the same event also renders a "Kup bilet"
@@ -270,7 +269,7 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
         kupOcc  <- sorted.find(o => o.offset > timeOcc.offset && !TimeOnlyPat.matches(o.label))
         date    <- dates.takeWhile { case (o, _) => o <= timeOcc.offset }.lastOption.map(_._2)
         title   <- titles.find { case (o, _) => o > timeOcc.offset && o < kupOcc.offset }.map(_._2)
-        dt      <- Try(LocalDateTime.of(LocalDate.parse(date, DateFmt), LocalTime.parse(timeOcc.label))).toOption
+        dt      <- ScraperParse.parseDateTime(s"$date ${timeOcc.label}")
       } yield {
         val cardEnd = sorted.lastOption.map(_.offset + 200).getOrElse(kupOcc.offset)
         val poster  = pickPoster(PosterPat.findAllIn(html.substring(timeOcc.offset, cardEnd)).toSeq)

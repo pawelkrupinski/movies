@@ -8,9 +8,7 @@ import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Dolnośląskie Centrum Filmowe (Wrocław). The repertoire page lists every
@@ -32,7 +30,6 @@ class DcfClient(http: HttpFetch
 
   // aria-label: "Tytuł; Miejsce: Sala Warszawa; Data: 05.06.2026 15:30"
   private val AriaPat = """^(.+?); Miejsce: (.+?); Data: (\d{2}\.\d{2}\.\d{4}) (\d{2}:\d{2})$""".r
-  private val DateTimeFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
   private val FilmIdPat   = """film-(\d+)""".r
 
   private case class RawSlot(dateTime: LocalDateTime, room: Option[String], bookingUrl: Option[String])
@@ -112,7 +109,7 @@ class DcfClient(http: HttpFetch
     block.select("div.repertoir__item").asScala.toSeq.flatMap { item =>
       val label = Option(item.selectFirst("a.link-absolute")).map(_.attr("aria-label")).getOrElse("")
       AriaPat.findFirstMatchIn(label).flatMap { m =>
-        Try(LocalDateTime.parse(s"${m.group(3)} ${m.group(4)}", DateTimeFmt)).toOption.map { dt =>
+        ScraperParse.parseDateTime(s"${m.group(3)} ${m.group(4)}").map { dt =>
           val room    = Some(m.group(2).trim).filter(_.nonEmpty)
           val showId  = Option(item.selectFirst("[data-target]")).map(_.attr("data-target"))
                           .flatMap(t => """#repertoir(\d+)""".r.findFirstMatchIn(t).map(_.group(1)))

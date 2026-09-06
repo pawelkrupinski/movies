@@ -9,9 +9,7 @@ import services.movies.TitleNormalizer
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Client for cinemas on the CURRENT bilety24.pl platform, whose venue pages now
@@ -82,7 +80,6 @@ object Bilety24OrganizerClient {
   // title="Film: <Title> - 2026-06-19 18:50 - Katowice" — the title may itself
   // contain " - ", so the non-greedy capture stops at the first " - <ISO date>".
   private val SlotPat = """(?s)Film:\s*(.+?)\s*-\s*(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})\s*-""".r
-  private val Fmt     = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
   // Trailing programme-strand markers Forum Bolesławiec glues with an underscore:
   // "_DKF" (Dyskusyjny Klub Filmowy), "_FKS" (Filmowy Klub Seniora).
@@ -102,7 +99,7 @@ object Bilety24OrganizerClient {
 
     val slots = document.select("a[title]").asScala.toSeq.flatMap { a =>
       SlotPat.findFirstMatchIn(a.attr("title")).flatMap { m =>
-        Try(LocalDateTime.parse(s"${m.group(2)} ${m.group(3)}", Fmt)).toOption.map { dt =>
+        ScraperParse.parseDateTime(s"${m.group(2)} ${m.group(3)}").map { dt =>
           // extractFormatTags (not stripFormatTags): the format/version word a
           // portal buries in the title — "Supergirl_dubbing", "…_3D" on Forum
           // Bolesławiec — is peeled so the variants merge into one film AND

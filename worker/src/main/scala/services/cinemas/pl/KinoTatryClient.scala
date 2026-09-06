@@ -9,7 +9,6 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import tools.{HttpFetch, ParallelDetailFetch}
 
-import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, ZoneId}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -72,8 +71,6 @@ object KinoTatryClient {
   val BaseUrl     = "https://kinotatrylodz.pl"
   val HomepageUrl = s"$BaseUrl/"
 
-  private val DateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-  private val DatePat    = """(\d{2}/\d{2}/\d{4})""".r
   private val TimePat    = """(\d{1,2}:\d{2})""".r
   private val YearPat    = """Premiera\D{0,12}(\d{4})""".r
 
@@ -114,8 +111,7 @@ object KinoTatryClient {
    *  holds `DD/MM/YYYY:`; the remaining text holds one or more `HH:MM` times. */
   private def slotTimes(li: Element, today: LocalDate): Seq[Showtime] = {
     val date = Option(li.selectFirst("strong")).map(_.text)
-      .flatMap(DatePat.findFirstMatchIn).map(_.group(1))
-      .flatMap(d => Try(LocalDate.parse(d, DateFormat)).toOption)
+      .flatMap(ScraperParse.parseDate)
       .filter(_ >= today)
     date.toSeq.flatMap { d =>
       TimePat.findAllMatchIn(li.ownText).flatMap(m => ScraperParse.parseHHmm(m.group(1)))

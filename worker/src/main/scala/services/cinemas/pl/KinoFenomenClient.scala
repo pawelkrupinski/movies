@@ -1,14 +1,13 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, SlotsToMovies}
 
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Fenomen — the art-house cinema of Wojewódzki Dom Kultury im. Józefa
@@ -94,7 +93,6 @@ object KinoFenomenClient {
   val BaseUrl    = "https://iframe639.biletyna.pl"
   val ListingUrl = s"$BaseUrl/?display=events"
 
-  private val DateFmt   = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
   // Format tag at the end of artist names: "(2D/napisy)", "(3D/dubbing)", etc.
   private val FormatPat = """\s*\((\d[Dd]/[^)]+)\)\s*$""".r
   // The `| reżyseria: <names> |` segment of the artist-link text; names are a
@@ -146,7 +144,7 @@ object KinoFenomenClient {
     val dt = for {
       d <- dateBold
       t <- timeBold
-      ldt <- Try(LocalDateTime.parse(s"$d $t", DateFmt)).toOption
+      ldt <- ScraperParse.parseDateTime(s"$d $t")
     } yield ldt
 
     // Raw title from the artist link — strip pipe-separated metadata + format tag.

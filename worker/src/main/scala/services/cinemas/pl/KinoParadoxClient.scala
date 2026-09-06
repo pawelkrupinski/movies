@@ -6,11 +6,9 @@ import tools.HttpFetch
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail}
 
-import java.time.{LocalDate, LocalDateTime}
-import java.time.format.DateTimeFormatter
+import java.time.LocalDateTime
 import java.util.Locale
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 
 /**
  * Kino Paradox (Kraków) — independent arthouse cinema. The venue publishes a
@@ -92,7 +90,6 @@ object KinoParadoxClient {
   val BaseUrl       = "https://kinoparadox.pl"
   val RepertoireUrl = s"$BaseUrl/repertuar/"
 
-  private val DateFmt = DateTimeFormatter.ofPattern("dd.MM.yyyy")
   private val YearPat = """\b(?:19|20)\d{2}\b""".r
   // A bare year slash-part ("2026"); used to tell the year part apart from the
   // countries part when neither carries a marker.
@@ -146,7 +143,7 @@ object KinoParadoxClient {
     val document = Jsoup.parse(html)
     document.select("div.list-item__content__row[data-date]").asScala.toSeq.flatMap { row =>
       val dateAttr = row.attr("data-date").trim
-      val date     = Try(LocalDate.parse(dateAttr, DateFmt)).toOption
+      val date     = ScraperParse.parseDate(dateAttr)
       val time     = Option(row.selectFirst("div.item-time")).flatMap(e => ScraperParse.parseHHmm(e.text.trim))
 
       // The title anchor contains both the text title and a nested img div;
