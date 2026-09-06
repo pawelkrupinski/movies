@@ -2,7 +2,7 @@ package services.enrichment
 
 import play.api.libs.json._
 import services.movies.SamePerson
-import services.resolution.TitleCorroboration
+import services.resolution.{TitleCorroboration, YearWindow}
 import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, SynopsisSimilarity, TextNormalization}
 
 import java.net.URLEncoder
@@ -350,7 +350,7 @@ class FilmwebClient(http: HttpFetch) {
    *  Olivia Wilde's 2026 film — 40 years apart, exact same title. */
   private[enrichment] def yearGateOk(c: Candidate, query: String, year: Option[Int], directors: Set[String]): Boolean =
     directorsOverlap(c.directors, directors) || year.isEmpty || !matchesByExactTitle(c, query) ||
-      c.year.forall(cy => math.abs(cy - year.get) <= 1)
+      !YearWindow.contradicts(year, c.year, YearTolerance)
 
   /** Strict director+year override: accepts a candidate even when its title
    *  doesn't match, provided the caller supplied directors AND a year, the
@@ -371,7 +371,7 @@ class FilmwebClient(http: HttpFetch) {
    *  answers the same question for TMDB's director-walk. */
   private[enrichment] def matchesByDirectorAndYear(c: Candidate, knownAs: Seq[String], year: Option[Int], directors: Set[String]): Boolean =
     directors.nonEmpty && c.directors.nonEmpty &&
-      year.exists(y => c.year.exists(cy => math.abs(cy - y) <= 1)) &&
+      YearWindow.agrees(year, c.year, YearTolerance).contains(true) &&
       directorsOverlap(c.directors, directors) &&
       TitleCorroboration.sharesDistinctiveToken(
         knownAs, c.title +: c.originalTitle.toSeq, deburr, maxTokenEdits = 1)
@@ -387,6 +387,9 @@ class FilmwebClient(http: HttpFetch) {
 object FilmwebClient {
   private val ApiBase        = "https://www.filmweb.pl/api/v1"
   private val MaxCandidates  = 5
+  /** How far a candidate's year may sit from the caller's and still be the same
+   *  film: Filmweb dates by Polish premiere, which can trail the origin year. */
+  private val YearTolerance  = 1
   // Canonical Filmweb URLs end in `-{id}` (optionally trailing slash):
   //   https://www.filmweb.pl/film/Title+Words-2024-12345
   //   https://www.filmweb.pl/film/Title-12345/

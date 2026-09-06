@@ -1,6 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
+import services.resolution.YearWindow
 import tools.HttpFetch
 
 import java.net.URLEncoder
@@ -99,9 +100,8 @@ class WikidataClient(http: HttpFetch) {
       val q = norm(queryTitle); val n = norm(l)
       val exact           = q.nonEmpty && q == n
       val titleContains   = q.nonEmpty && n.nonEmpty && (q.startsWith(n) || n.startsWith(q))
-      val yearMatch       = (for { y <- queryYear; py <- pubYear } yield math.abs(y - py) <= 1).getOrElse(false)
-      val yearContradicts = (for { y <- queryYear; py <- pubYear } yield math.abs(y - py) > 1).getOrElse(false)
-      (exact || (titleContains && yearMatch)) && !yearContradicts
+      val yearMatch       = YearWindow.agrees(queryYear, pubYear, YearTolerance).contains(true)
+      (exact || (titleContains && yearMatch)) && !YearWindow.contradicts(queryYear, pubYear, YearTolerance)
     }
 
   private def searchByFilmwebId(filmwebId: String): Seq[String] = {
@@ -141,6 +141,7 @@ class WikidataClient(http: HttpFetch) {
 
 object WikidataClient {
   private val ActionBase = "https://www.wikidata.org/w/api.php"
+  private val YearTolerance = 1
 
   /**
    * Wikidata's list separator, PERCENT-ENCODED.

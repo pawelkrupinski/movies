@@ -3,6 +3,7 @@ package services.enrichment
 import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
 import services.movies.SamePerson
+import services.resolution.YearWindow
 import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -383,11 +384,6 @@ object MetacriticClient {
    *  is not delicate. Shared by [[MetacriticClient]] and [[RottenTomatoesClient]]. */
   private val YearMatchTolerance = 15
 
-  /** True when the film's year and a probed page's year are compatible — i.e.
-   *  we have NO positive evidence they're different films. Only a conflict of
-   *  BOTH known years beyond [[YearMatchTolerance]] returns false; a missing
-   *  year on either side is treated as compatible (we never had grounds to
-   *  reject). Shared decision for Metacritic and Rotten Tomatoes slug probes. */
   /** Interleave `base` slug forms with their `<slug><sep><year>` variants, each
    *  year-suffixed form immediately BEFORE its bare form. No year → unchanged.
    *
@@ -405,11 +401,13 @@ object MetacriticClient {
   def yearSuffixedFirst(base: Seq[String], year: Option[Int], separator: Char): Seq[String] =
     year.fold(base)(y => base.flatMap(s => Seq(s"$s$separator$y", s)).distinct)
 
+  /** True when the film's year and a probed page's year are compatible — i.e.
+   *  we have NO positive evidence they're different films. Only a conflict of
+   *  BOTH known years beyond [[YearMatchTolerance]] returns false; a missing
+   *  year on either side is treated as compatible (we never had grounds to
+   *  reject). Shared decision for Metacritic and Rotten Tomatoes slug probes. */
   def yearsCompatible(filmYear: Option[Int], pageYear: Option[Int]): Boolean =
-    (filmYear, pageYear) match {
-      case (Some(f), Some(p)) => math.abs(f - p) <= YearMatchTolerance
-      case _                  => true
-    }
+    !YearWindow.contradicts(filmYear, pageYear, YearMatchTolerance)
 
   /** The stricter twin of [[yearsCompatible]]: the candidate must POSITIVELY
    *  agree, so a candidate that declines to name a year is rejected rather than
@@ -430,7 +428,7 @@ object MetacriticClient {
    *  is an oddity rather than the norm, and rejecting it would lose a real match
    *  for no gain ("keep an undated hit" in `MetacriticClientSpec`). */
   def yearConfirms(filmYear: Option[Int], candidateYear: Option[Int]): Boolean =
-    filmYear.isEmpty || candidateYear.exists(c => math.abs(c - filmYear.get) <= YearMatchTolerance)
+    filmYear.isEmpty || YearWindow.agrees(filmYear, candidateYear, YearMatchTolerance).contains(true)
 
   /** True when `title` starts with `query` and the *next* non-space character
    *  is punctuation — indicating a modifier suffix like " - Re-Release",

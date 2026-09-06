@@ -2,6 +2,7 @@ package services.enrichment
 
 import play.api.libs.json._
 import services.movies.SamePerson
+import services.resolution.YearWindow
 import tools.{Env, HttpFetch, TextNormalization}
 
 import java.net.URLEncoder
@@ -62,7 +63,7 @@ class OMDbClient(http: HttpFetch, apiKey: => Option[String] = OMDbClient.ApiKey)
       .flatMap(h => (h \ "imdbID").asOpt[String].filter(_.startsWith("tt"))).distinct.take(MaxCandidates)
     val matches = hits
       .flatMap(id => detail(id, key))
-      .filter(c => directorsOverlap(directors, c.directors) && !yearContradicts(c.year, year))
+      .filter(c => directorsOverlap(directors, c.directors) && !YearWindow.contradicts(year, c.year, YearTolerance))
       .map(_.imdbId).distinct
     // Accept ONLY when exactly one candidate's director corroborates — same
     // "never guess among several" rule as ImdbClient.disambiguateByDirector.
@@ -93,14 +94,11 @@ class OMDbClient(http: HttpFetch, apiKey: => Option[String] = OMDbClient.ApiKey)
     val exact          = norm(c.title) == norm(queryTitle)
     val dirOverlap     = directorsOverlap(directors, c.directors)
     val dirContradicts = directors.nonEmpty && c.directors.nonEmpty && !dirOverlap
-    val yearMatch      = (for { y <- year; cy <- c.year } yield math.abs(y - cy) <= 1).getOrElse(false)
+    val yearMatch      = YearWindow.agrees(year, c.year, YearTolerance).contains(true)
     val titleContains  = { val a = norm(queryTitle); val b = norm(c.title); a.nonEmpty && b.nonEmpty && (a.startsWith(b) || b.startsWith(a)) }
-    !dirContradicts && !(yearContradicts(c.year, year) && !exact) &&
+    !dirContradicts && !(YearWindow.contradicts(year, c.year, YearTolerance) && !exact) &&
       (exact || dirOverlap || (yearMatch && titleContains))
   }
-
-  private def yearContradicts(candYear: Option[Int], year: Option[Int]): Boolean =
-    (for { y <- year; cy <- candYear } yield math.abs(y - cy) > 1).getOrElse(false)
 
   private def titleUrl(title: String, year: Option[Int], key: String): String =
     s"$ApiBase?t=${enc(title)}&type=movie${year.map(y => s"&y=$y").getOrElse("")}&apikey=$key"
@@ -114,6 +112,7 @@ class OMDbClient(http: HttpFetch, apiKey: => Option[String] = OMDbClient.ApiKey)
 object OMDbClient {
   private val ApiBase       = "https://www.omdbapi.com/"
   private val MaxCandidates = 5
+  private val YearTolerance = 1
 
   /** Feature flag: the backfill is OFF whenever this is unset. */
   val ApiKey: Option[String] = Env.get("OMDB_API_KEY")

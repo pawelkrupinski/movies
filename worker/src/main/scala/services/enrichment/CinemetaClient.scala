@@ -1,6 +1,7 @@
 package services.enrichment
 
 import play.api.libs.json._
+import services.resolution.YearWindow
 import tools.HttpFetch
 
 import java.net.URLEncoder
@@ -52,18 +53,18 @@ class CinemetaClient(http: HttpFetch) {
     val q = norm(queryTitle); val n = norm(c.name)
     val exact         = q.nonEmpty && q == n
     val titleContains = q.nonEmpty && n.nonEmpty && (q.startsWith(n) || n.startsWith(q))
-    val yearMatch     = (for { y <- year; cy <- c.year } yield math.abs(y - cy) <= 1).getOrElse(false)
+    val yearMatch     = YearWindow.agrees(year, c.year, YearTolerance).contains(true)
     // A year off by >1 vetoes even an EXACT title — two different films share a
     // name often enough ("Alpha" 2015 vs 2026) that a title-only resolver must not
     // bind across a year gap. When either year is unknown there's nothing to
     // contradict, so an exact title still binds.
-    val yearContradicts = (for { y <- year; cy <- c.year } yield math.abs(y - cy) > 1).getOrElse(false)
-    (exact || (titleContains && yearMatch)) && !yearContradicts
+    (exact || (titleContains && yearMatch)) && !YearWindow.contradicts(year, c.year, YearTolerance)
   }
 }
 
 object CinemetaClient {
   private val Base = "https://v3-cinemeta.strem.io/catalog/movie/top"
+  private val YearTolerance = 1
 
   private final case class Candidate(imdbId: String, name: String, year: Option[Int])
 
