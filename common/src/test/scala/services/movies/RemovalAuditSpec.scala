@@ -36,8 +36,25 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
    *  version of this; `common`'s tests cannot reach testkit (it depends on `common`,
    *  and the reverse would be a project cycle), so the appender is repeated here.
    *  Keep the two in step. */
+  /** SLF4J answers a `getLogger` made while ANOTHER thread is mid-initialisation with a
+   *  `SubstituteLogger` placeholder, and ScalaTest starts suites in parallel -- so the
+   *  first spec to log after the JVM comes up can be handed the placeholder instead of
+   *  logback's logger, and a bare cast threw `ClassCastException` under
+   *  `common/testOnly services.movies.*` on 2026-09-06. Once initialisation completes
+   *  `getLogger` returns the real logger, so this waits for it; when it is already
+   *  done (every call but the first), the loop body never runs. */
+  private def logbackLogger(name: String): LogbackLogger = {
+    val deadline = System.nanoTime() + 5L * 1000000000L
+    var logger   = LoggerFactory.getLogger(name)
+    while (!logger.isInstanceOf[LogbackLogger] && System.nanoTime() < deadline) {
+      Thread.sleep(10)
+      logger = LoggerFactory.getLogger(name)
+    }
+    logger.asInstanceOf[LogbackLogger]
+  }
+
   private def capture(body: => Unit): Seq[ILoggingEvent] = {
-    val lg     = LoggerFactory.getLogger(RemovalAudit.LoggerName).asInstanceOf[LogbackLogger]
+    val lg     = logbackLogger(RemovalAudit.LoggerName)
     val events = new ConcurrentLinkedQueue[ILoggingEvent]()
     val app = new AppenderBase[ILoggingEvent] {
       override def append(event: ILoggingEvent): Unit = { events.add(event); () }

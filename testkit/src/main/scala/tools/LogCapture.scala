@@ -50,8 +50,25 @@ object LogCapture {
    * Events from OTHER threads are included, which is the honest answer for a global
    * logger; a caller that must pin an exact list uses [[thisThread]] instead.
    */
+  /** SLF4J answers a `getLogger` made while ANOTHER thread is mid-initialisation with a
+   *  `SubstituteLogger` placeholder, and ScalaTest starts suites in parallel -- so the
+   *  first spec to log after the JVM comes up can be handed the placeholder instead of
+   *  logback's logger, and a bare cast threw `ClassCastException` under
+   *  `common/testOnly services.movies.*` on 2026-09-06. Once initialisation completes
+   *  `getLogger` returns the real logger, so this waits for it; when it is already
+   *  done (every call but the first), the loop body never runs. */
+  private def logbackLogger(name: String): LogbackLogger = {
+    val deadline = System.nanoTime() + 5L * 1000000000L
+    var logger   = LoggerFactory.getLogger(name)
+    while (!logger.isInstanceOf[LogbackLogger] && System.nanoTime() < deadline) {
+      Thread.sleep(10)
+      logger = LoggerFactory.getLogger(name)
+    }
+    logger.asInstanceOf[LogbackLogger]
+  }
+
   def capture(loggerName: String, level: Option[Level] = None)(body: => Unit): Seq[ILoggingEvent] = {
-    val logger    = LoggerFactory.getLogger(loggerName).asInstanceOf[LogbackLogger]
+    val logger    = logbackLogger(loggerName)
     val collector = new CollectingAppender
     collector.setContext(logger.getLoggerContext)
     collector.start()
