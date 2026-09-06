@@ -668,7 +668,20 @@ in
       notifempty = true;
       create = "0600 mongodb mongodb";
       su = "mongodb mongodb";
-      postrotate = "${pkgs.procps}/bin/pkill -SIGUSR1 --exact mongod || true";
+      # SIGNAL ONLY IF MONGOD IS RUNNING, AND FAIL LOUDLY IF THE SIGNAL DOES NOT LAND. This read
+      # `pkill … || true` until 2026-09-06, which made the one failure that matters invisible: if
+      # the process name ever stops matching `--exact mongod`, logrotate renames the file, mongod
+      # keeps appending to the now-unlinked inode, and rotation is permanently broken while
+      # `mongod.log` reads as ~0 bytes and the disk fills behind it. That is the exact shape this
+      # whole stanza exists to prevent, and `|| true` was hiding it.
+      #
+      # The `is-active` guard keeps the legitimately-quiet case quiet: mongod stopped for
+      # maintenance is not a rotation failure, there is simply nothing to signal, and the next
+      # start opens the fresh file (`logAppend` appends to whatever is at the path).
+      postrotate = ''
+        ${pkgs.systemd}/bin/systemctl is-active --quiet mongodb || exit 0
+        ${pkgs.procps}/bin/pkill -SIGUSR1 --exact mongod
+      '';
     };
 
     # WITHOUT THIS THE ROTATION ABOVE CANNOT BE DEPLOYED, and the first attempt at it was backed
