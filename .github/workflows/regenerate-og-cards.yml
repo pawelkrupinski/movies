@@ -7,11 +7,12 @@ name: Regenerate OG share cards
 # under the deployment's wordmark + city line overlay — "Kinowo / Repertuar kin
 # w {locative}" for Poland — see `web/src/page/scala/tools/OgCardGenerator.scala`.
 #
-# Runs once PER deployed country — all four of them. Every country gets its `/`
+# Runs once PER deployed country — all five of them. Every country gets its `/`
 # landing card (`og-home{-code}.jpg`) and then its cities: 41 Polish, 79 UK, 158
-# German, 457 US. The sweep is a card per city, so the countries are a MATRIX
-# rather than sequential steps in one job: four legs in parallel, the US's ~40
-# minutes among them, instead of one job that would run past any sane timeout.
+# German, 468 US, 52 Spanish. The sweep is a card per city, so the countries are
+# a MATRIX rather than sequential steps in one job: five legs in parallel, the
+# US's ~40 minutes among them, instead of one job that would run past any sane
+# timeout.
 #
 # `Country.ogOrigin` points each leg at that country's own base URL (path prefix
 # included), and falls back to the DEPLOYED host for an undeployed country — so
@@ -45,12 +46,12 @@ permissions:
 jobs:
     # One leg per country: screenshot its landing card + every city card, and
     # hand the JPEGs to the `open-pr` job as an artifact. The legs do NOT commit
-    # — four jobs pushing to one branch would race each other, and the last one
+    # — five jobs pushing to one branch would race each other, and the last one
     # to finish would be the only country in the PR.
     generate:
         name: cards (${{ matrix.country }})
         strategy:
-            # One country's flaky screenshot must not cost the other three their
+            # One country's flaky screenshot must not cost the other four their
             # refresh.
             fail-fast: false
             matrix:
@@ -181,8 +182,8 @@ jobs:
                       Automated weekly refresh of the per-city Open Graph share
                       cards (`web/src/main/assets/img/og-{slug}.jpg`) from the live
                       prod repertoire, so the link previews don't freeze on one
-                      week's posters. Covers all four deployed countries — Poland,
-                      the UK, Germany and the US — landing card included.
+                      week's posters. Covers all five deployed countries — Poland,
+                      the UK, Germany, the US and Spain — landing card included.
 
                       Each card is a screenshot of that city's `/{slug}/` page (all
                       dates shown) under the deployment's overlay — "Kinowo /

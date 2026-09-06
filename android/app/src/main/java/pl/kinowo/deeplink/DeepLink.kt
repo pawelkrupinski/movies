@@ -43,7 +43,7 @@ data class DeepLink(
 ) {
     companion object {
         // Every public HOST the site answers on — a link on any of them opens the
-        // app. Two, not four: Poland owns kinowo.net, and the three Showtimes
+        // app. Two, not five: Poland owns kinowo.net, and the four Showtimes
         // countries share showtimes.cc, told apart by a leading path segment
         // rather than a subdomain. Mirrors the base-URL hosts of `Country.all`;
         // keep in sync when a country is added, alongside the AndroidManifest

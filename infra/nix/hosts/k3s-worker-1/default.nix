@@ -143,7 +143,7 @@
       #
       # The fallback also carries the apex ROOT files a crawler and the mobile OSes only ever fetch
       # from a host's root — /robots.txt, /sitemap.xml, /.well-known/* — which the app answers with
-      # front-door variants (a sitemap INDEX of the three mounted countries, not Poland's cities).
+      # front-door variants (a sitemap INDEX of the four mounted countries, not Poland's cities).
       "showtimes.cc" = {
         upstream = "127.0.0.1:30910";
         pathUpstreams = {

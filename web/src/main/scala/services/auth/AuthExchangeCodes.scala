@@ -11,7 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Two places need that. The native apps finish their OAuth flow in a system
  * browser and come back through a `kinowo://` deep link, which shares no cookie
  * jar with the page that signed in. And Poland is on `kinowo.net` while the
- * other three countries are on `showtimes.cc`: two registrable domains, so no
+ * other four countries are on `showtimes.cc`: two registrable domains, so no
  * cookie setting in existence spans them — a visitor switching country there has
  * to be handed over explicitly.
  *

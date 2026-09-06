@@ -34,7 +34,7 @@
             </intent-filter>
             <!-- App Links: verified links on either public host (incl. the
                  copy-to-clipboard filter links) open the app directly. TWO
-                 hosts, not four: Poland owns kinowo.net and the three Showtimes
+                 hosts, not five: Poland owns kinowo.net and the four Showtimes
                  countries share showtimes.cc, told apart by a leading country
                  segment (showtimes.cc/uk/kent/) rather than a subdomain — hence
                  the second pair of patterns, one path segment deeper. Scoped to

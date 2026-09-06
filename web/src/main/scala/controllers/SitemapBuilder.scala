@@ -72,7 +72,7 @@ object SitemapBuilder {
    *
    *  A crawler only ever reads `sitemap.xml` at a HOST's root, and the apex's
    *  root belongs to the country picker rather than to any one country — so the
-   *  three Showtimes countries under `showtimes.cc/{code}/` have no other way to
+   *  four Showtimes countries under `showtimes.cc/{code}/` have no other way to
    *  be discovered from the domain they actually live on. Poland is left out on
    *  purpose: it is a different host with its own root sitemap, and listing a
    *  cross-domain `<loc>` here would be ignored anyway — which is why the

@@ -68,7 +68,7 @@ jobs:
     # A one-row matrix rather than a bare `with:` block, so this caller and the shared
     # one stay the same SHAPE: `ConvergenceLegWiringSpec` reads both callers' matrix
     # rows and checks the sample/full pairing, the alias names, and the timeout budgets
-    # across all four countries at once. A US row written in a different shape would be
+    # across all five countries at once. A US row written in a different shape would be
     # a country the leg rules silently stopped covering.
     leg:
         name: ${{ matrix.country }}
@@ -82,7 +82,7 @@ jobs:
                     # budget is cancelled before it can record the tree that would have
                     # made it fast.
                     #
-                    # `heap` is the sbt JVM's `-Xmx`, and 10g against the other three's
+                    # `heap` is the sbt JVM's `-Xmx`, and 10g against the other four's
                     # 4g is the ceiling this country actually needs. A leg holds the whole
                     # country resident at once — the replayed corpus, the enrichment
                     # cache, and the read model it reloads once the boot has projected

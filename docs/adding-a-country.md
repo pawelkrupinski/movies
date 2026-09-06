@@ -95,13 +95,22 @@ those is expensive to change once a `Country` is switchable.
 ## 1. Model (`common/`)
 
 1. **`Country`** (`common/src/main/scala/models/Country.scala`) — add a
-   `case object` to the `Country` enum + `all`: `code`, `displayName`,
-   `language = Locale.forLanguageTag("<lang>-<REGION>")`, `mongoDb = "kinowo_<cc>"`,
-   `filmwebEnabled` (Filmweb is Polish-only → false elsewhere), `brandName`
-   ("Showtimes" outside PL), and `webUrl` — **start `None`** (not yet deployed),
-   flip to `Some("https://<cc>.showtimes.cc")` in phase 4. `cities` reads the
-   city list from phase 2. `webUrl = Some(...)` is what makes it `switchable`
-   (appears in the navbar country switcher) and self-serve its OG origin.
+   `case object` to the `Country` enum + `all`. Constructor fields: `code`,
+   `displayName`, `language = Locale.forLanguageTag("<lang>-<REGION>")`,
+   `mongoDb = "kinowo_<cc>"`, `filmwebEnabled` (Filmweb is Polish-only → false
+   elsewhere), `brandName` ("Showtimes" outside PL), `pathPrefix = "/<cc>"` (where
+   the deployment is mounted on the shared host), and `webOrigin` — **start
+   `None`** (not yet deployed), flip to `Some("https://showtimes.cc")` in phase 4.
+   `webUrl` is DERIVED (`webOrigin + pathPrefix`), never set. Body members:
+   `cities` reads the city list from phase 2; `versionTokens` names the
+   subtitled/dubbed pair the country's scrapers emit (§1.1 below); `voiceoverToken`
+   is abstract, so it must be answered — `None` where the sources name no
+   voice-over version; `cityGroups` stays at its `Nil` default for a flat picker
+   or overrides with the country's grouping tree (US states, German Länder, UK
+   nations). `homeOgImage` is derived (`og-home-<cc>.jpg`), so the asset has to
+   exist under `web/src/main/assets/img/` (phase 4). `webOrigin = Some(...)` is
+   what makes it `switchable` (appears in the navbar country switcher) and
+   self-serve its OG origin.
 2. **City roster** (`City.scala`) — the sealed `City` model. Two shapes:
    - **Hand-authored case objects** (like PL/UK): `case object X extends City(slug,
      CityLabels(...), lat, lon, ZoneId.of(...))` with `cinemas = Cinema.<city>`.
@@ -219,7 +228,7 @@ refuse to emit an unresolved duplicate within the new country (qualify by town,
 then region — 30 US venues needed it), and the roster object must separately
 check against every EXISTING country's names, which the generator cannot see
 (`UsRoster.claimedElsewhere`). `CountrySpec` asserts global uniqueness across all
-four countries as the backstop.
+five countries as the backstop.
 
 For a full-country sweep (DE), see `data/germany/README.md` + `scripts/`: crawl the
 source directory for every venue + its scraper id, geocode the cities
@@ -237,7 +246,7 @@ into a sibling's pod will OOM or throttle it.
 
 1. **`movies-gitops/worker/overlays/<cc>/`** — clone `overlays/de/`. The overlay
    carries only what genuinely differs: `KINOWO_COUNTRIES = "<cc>"`, the two
-   scrape-rate levers, the JVM heap, and a fixed `nodePort` (30900/30901/30902 are
+   scrape-rate levers, the JVM heap, and a fixed `nodePort` (30900–30904 are
    taken; take the next free one). Everything else comes from `../../base`. Drop
    `<cc>` from any sibling's `KINOWO_COUNTRIES`.
 2. **Almost nothing to provision** — the country reuses the existing
@@ -296,7 +305,7 @@ exception and stays on its own domain, mounted at the root.
 
 So a new country is: an overlay, one line in each of the two places that name its
 NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
-`webUrl` flip.
+`webOrigin` flip.
 
 1. **A kustomize overlay, `movies-gitops/web/overlays/<cc>/`** — copy
    `overlays/de/` and change **only** the three things a country is allowed to
@@ -307,7 +316,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    is never set here. CPU request: `500m` unless the roster is Poland-sized —
    memory stays at the base's 1Gi request+limit, which is the sizing proven not to
    OOM. Anything else you find yourself copying belongs in `base/` instead.
-2. **Allocate the next free NodePort.** The workers hold 30900–30902 and the web
+2. **Allocate the next free NodePort.** The workers hold 30900–30904 and the web
    tier 30910 (pl) / 30911 (de) / 30912 (uk) / 30913 (us) / 30914 (es), so a sixth takes 30915. It is
    **fixed, never allocated**: the Caddy vhost and the Prometheus target both name
    the number, so a Service re-created with a fresh port takes the site off the
@@ -338,7 +347,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
 
    ```
    S=$(readlink -f /var/lib/nixdeploy/staged-system)
-   grep -c '<cc>.showtimes.cc' $S/etc/caddy/caddy_config   # confirm you're activating the right closure
+   grep -c '127.0.0.1:<nodeport>' $S/etc/caddy/caddy_config   # confirm you're activating the right closure (the `/<cc>` path upstream)
    nix-env -p /nix/var/nix/profiles/system --set $S && $S/bin/switch-to-configuration switch
    ```
 
@@ -405,8 +414,9 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    neither discover the pod nor resolve cluster DNS; the NodePort is the only
    address that survives a rollout. The same file's `kinowo-worker` job needs the
    worker's target alongside it (phase 3).
-6. **Flip `Country.<Cc>.webUrl` → `Some("https://<cc>.showtimes.cc")`** — now
-   `switchable`. This one flag AUTO-adds the country to (a) the navbar country
+6. **Flip `Country.<Cc>.webOrigin` → `Some("https://showtimes.cc")`** (with
+   `pathPrefix = "/<cc>"` already set, `webUrl` derives to
+   `https://showtimes.cc/<cc>`) — now `switchable`. This one flag AUTO-adds the country to (a) the navbar country
    `<select>`, (b) the debug `?country=` switcher + the dev per-country `DebugStack`
    wiring, and (c) the `/api/catalog` mobile endpoint — all three iterate
    `Country.switchable`, so no separate edits. Then update the CountrySpec /
@@ -415,10 +425,10 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    catalog seeds** (`CatalogSeedSpec` rewrites `ios/…/catalog-seed.json` +
    `android/…/catalog-seed.json` — mobile then picks up the country + cities
    automatically).
-7. **Secrets need nothing new.** All three Deployments `envFrom` the one
+7. **Secrets need nothing new.** All five Deployments `envFrom` the one
    `kinowo/web-secrets` Secret in the cluster (`MONGODB_URI` at Mongo's private
    address, TMDB/OMDb, the OAuth client pairs, Sentry, the admin allowlist), so a
-   fourth country inherits it by existing — `movies-gitops/web/README.md` lists
+   sixth country inherits it by existing — `movies-gitops/web/README.md` lists
    the keys. Only a value genuinely specific to the new country would need adding,
    and the Secret is built from the repo-root `.env.local` and piped over SSH
    rather than passed as arguments, so no value ever reaches a process list.

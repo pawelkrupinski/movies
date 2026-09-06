@@ -15,16 +15,16 @@
   The AASA is served at each PUBLIC HOST's root,
   https://<host>/.well-known/apple-app-site-association — one identical file
   (same app ID, same path patterns) on kinowo.net and showtimes.cc, since they
-  run the same web binary + resources. There are only two hosts now: the three
+  run the same web binary + resources. There are only two hosts now: the four
   Showtimes countries share showtimes.cc and are told apart by a leading path
   segment (showtimes.cc/uk/...), not by a subdomain, so the file's path patterns
-  carry both shapes and the domain list carries neither uk. nor de. nor us.
+  carry both shapes and the domain list carries neither uk. nor de. nor us. nor es.
 -->
 <dict>
 	<!-- Universal Links: the OS fetches https://<host>/.well-known/
 	     apple-app-site-association for each associated domain and routes matching
 	     links (city, film, copy-to-clipboard filter links) into the app via
-	     onOpenURL. One entry per public HOST — two, not four, since the Showtimes
+	     onOpenURL. One entry per public HOST — two, not five, since the Showtimes
 	     countries share showtimes.cc. Mirror DeepLink.webHosts. -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
