@@ -7,6 +7,7 @@ import play.api.mvc._
 import play.api.Mode
 import services.movies.TitleNormalizer
 import services.readmodel.WebReadModel
+import tools.AsciiUrl
 
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
@@ -53,7 +54,7 @@ object ApiFilmDetails {
     // ran at projection time), so clients render them unconditionally.
     originalTitle = fs.resolved.originalTitle,
     synopsis      = fs.synopsis,
-    trailerURLs   = fs.resolved.trailerUrls,
+    trailerURLs   = fs.resolved.trailerUrls.map(AsciiUrl.encode),
   )
 
   def hasContent(d: ApiFilmDetails): Boolean =
@@ -98,21 +99,24 @@ object ApiFilm {
       // German diacritics, ß, and Cyrillic, and a Swift copy plus a Kotlin copy
       // would be two more places for it to drift from `tools.Slugify`.
       slug             = fs.slug.getOrElse(""),
-      posterURL        = fs.posterUrl,
-      fallbackPosterURLs = resolved.fallbackPosterUrls,
+      // Every URL below goes through AsciiUrl: the mobile models decode these
+      // fields as `URL`, and a strict parser fails the whole listing on one
+      // scraped poster link with a Polish letter in it.
+      posterURL        = fs.posterUrl.map(AsciiUrl.encode),
+      fallbackPosterURLs = resolved.fallbackPosterUrls.map(AsciiUrl.encode),
       runtimeMinutes   = fs.movie.runtimeMinutes,
       releaseYear      = fs.movie.releaseYear,
       genres           = fs.movie.genres,
       ageRating        = resolved.ageRating,
       ratings          = ApiRatings(
         imdb              = resolved.ratings.imdb,
-        imdbURL           = resolved.ratings.imdbUrl,
+        imdbURL           = resolved.ratings.imdbUrl.map(AsciiUrl.encode),
         metascore         = resolved.ratings.metascore,
-        metacriticURL     = Some(resolved.ratings.metacriticUrl),
+        metacriticURL     = Some(AsciiUrl.encode(resolved.ratings.metacriticUrl)),
         rottenTomatoes    = resolved.ratings.rottenTomatoes,
-        rottenTomatoesURL = Some(resolved.ratings.rottenTomatoesUrl),
+        rottenTomatoesURL = Some(AsciiUrl.encode(resolved.ratings.rottenTomatoesUrl)),
         filmweb           = resolved.ratings.filmweb,
-        filmwebURL        = Some(resolved.ratings.filmwebUrl)
+        filmwebURL        = Some(AsciiUrl.encode(resolved.ratings.filmwebUrl))
       ),
       countries        = fs.movie.countries,
       directors        = fs.director,
@@ -124,13 +128,13 @@ object ApiFilm {
           cinemas = cinemas.map { cs =>
             ApiCinemaShowings(
               cinema    = cs.cinema.displayName,
-              cinemaURL = cinemaUrlMap.get(cs.cinema.displayName),
+              cinemaURL = cinemaUrlMap.get(cs.cinema.displayName).map(AsciiUrl.encode),
               showtimes = cs.showtimes.map { st =>
                 ApiShowtime(
                   time       = CardFormat.time(st.dateTime),
                   format     = st.format.mkString(" "),
                   room       = st.room,
-                  bookingURL = st.bookingUrl
+                  bookingURL = st.bookingUrl.map(AsciiUrl.encode)
                 )
               }
             )
