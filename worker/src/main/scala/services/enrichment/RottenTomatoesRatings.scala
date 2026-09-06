@@ -104,17 +104,15 @@ class RottenTomatoesRatings(
       return None
     }
     fetched.flatMap(_._1) match {
-      case Some(score) =>
-        val commit = !e.rottenTomatoes.contains(score)
-        logger.info(s"RT: $label $url → Tomatometer $score" +
-          (if (commit) s" (was ${e.rottenTomatoes.getOrElse("—")})" else " (unchanged)"))
-        if (commit) { cache.putIfPresent(key, _.copy(rottenTomatoes = Some(score))); Some(s"$score%") }
-        else None
+      case Some(score) => persistIfMoved(key, url, "Tomatometer", e.rottenTomatoes, score, withTomatometer, badge)
       case None =>
         logger.info(s"RT: $label $url → no Tomatometer on page")
         None
     }
   }
+
+  private def withTomatometer(row: models.MovieRecord, score: Option[Int]): models.MovieRecord = row.copy(rottenTomatoes = score)
+  private def badge(score: Int): String = s"$score%"
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────
 
@@ -127,7 +125,7 @@ class RottenTomatoesRatings(
       scoreOf       = _.rottenTomatoes,
       rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
       fetchScore    = rt.scoreFor,
-      withScore     = (row, fresh) => row.copy(rottenTomatoes = fresh),
-      badge         = s => s"$s%"
+      withScore     = withTomatometer,
+      badge         = badge
     )
 }

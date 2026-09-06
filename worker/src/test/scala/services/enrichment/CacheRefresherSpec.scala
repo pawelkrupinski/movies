@@ -39,6 +39,15 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
     override protected def sourceName: String = "Fake"
     protected def refreshOne(key: CacheKey): Option[String] = None
 
+    private def withScore(row: MovieRecord, score: Option[Int]): MovieRecord = {
+      events.add(s"persist ${row.metacriticUrl.get}")
+      row.copy(metascore = score)
+    }
+    private def badge(score: Int): String = s"$score!"
+
+    def persist(key: CacheKey, url: String, stored: Option[Int], fresh: Int): Option[String] =
+      persistIfMoved(key, url, "score", stored, fresh, withScore, badge)
+
     private[services] def refreshAll(): BulkRefreshResult =
       refreshAllUrlThenScore[Int](
         walkLabel     = "Fake refresh",
@@ -56,8 +65,8 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
           events.add(s"fetch $url")
           scores.getOrElse(url, throw new RuntimeException(s"HTTP 503 $url"))
         },
-        withScore     = (row, fresh) => { events.add(s"persist ${row.metacriticUrl.get}"); row.copy(metascore = fresh) },
-        badge         = s => s"$s!"
+        withScore     = withScore,
+        badge         = badge
       )
   }
 
@@ -117,5 +126,21 @@ class CacheRefresherSpec extends AnyFlatSpec with Matchers {
     result.failed  shouldBe Some(1)
     result.changed shouldBe Some(1)
     result.message should include ("1 score(s) changed, 0 URL(s) newly discovered, 1 failed")
+  }
+
+  "persistIfMoved" should "write only a score that differs from the stored one, and answer with the badge it became" in {
+    val repository = new InMemoryMovieRepository(Seq(
+      ("F", None, MovieRecord(metacriticUrl = Some(urlA), metascore = Some(5)))))
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val key = cache.keyOf("F", None)
+    val refresher = new RecordingRefresher(cache, scores = Map.empty, discover = Map.empty)
+
+    refresher.persist(key, urlA, stored = Some(5), fresh = 5) shouldBe None
+    refresher.events.asScala shouldBe empty
+    cache.get(key).flatMap(_.metascore) shouldBe Some(5)
+
+    refresher.persist(key, urlA, stored = Some(5), fresh = 6) shouldBe Some("6!")
+    refresher.events.asScala.toSeq shouldBe Seq(s"persist $urlA")
+    cache.get(key).flatMap(_.metascore) shouldBe Some(6)
   }
 }

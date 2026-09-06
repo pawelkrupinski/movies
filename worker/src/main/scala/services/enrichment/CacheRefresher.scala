@@ -82,6 +82,22 @@ abstract class CacheRefresher(
    *  (the `modules` composition root) can kick one off. */
   def refreshAllNow(): BulkRefreshResult = refreshAll()
 
+  /** Per-row write of a score just read off the row's URL: persist it when it
+   *  differs from what the row holds and return the badge it became — the
+   *  displayed-value change the cadence keys on — else `None`. The updater
+   *  receives the LIVE cached row: that's the merge point for both a URL just
+   *  written and any other listener's concurrent update. */
+  protected def persistIfMoved[A](
+    key: CacheKey, url: String, noun: String, stored: Option[A], fresh: A,
+    withScore: (MovieRecord, Option[A]) => MovieRecord, badge: A => String
+  ): Option[String] = {
+    val commit = !stored.contains(fresh)
+    logger.info(s"$sourceName: '${key.cleanTitle}' (${key.year.getOrElse("?")}) $url → $noun $fresh" +
+      (if (commit) s" (was ${stored.getOrElse("—")})" else " (unchanged)"))
+    if (commit) { cache.putIfPresent(key, withScore(_, Some(fresh))); Some(badge(fresh)) }
+    else None
+  }
+
   /** Per-source concurrency cap for the parallel `refreshAll` walk (see
    *  [[tools.BoundedParallel]]). Default 8; override lower for an upstream that
    *  soft-blocks under load (Filmweb). */

@@ -140,17 +140,12 @@ class MetascoreRatings(
     }
 
   // Write a known score back, skipping the no-op when it's unchanged; returns the
-  // new displayed value (the badge text) iff it changed. The updater receives the
-  // live cached row — that's the merge point for both the URL we may have just
-  // written and any other listener's concurrent updates.
-  private def applyScore(key: CacheKey, e: models.MovieRecord, url: String, score: Int): Option[String] = {
-    val label  = s"'${key.cleanTitle}' (${key.year.getOrElse("?")})"
-    val commit = !e.metascore.contains(score)
-    logger.info(s"Metacritic: $label $url → metascore $score" +
-      (if (commit) s" (was ${e.metascore.getOrElse("—")})" else " (unchanged)"))
-    if (commit) { cache.putIfPresent(key, _.copy(metascore = Some(score))); Some(score.toString) }
-    else None
-  }
+  // new displayed value (the badge text) iff it changed.
+  private def applyScore(key: CacheKey, e: models.MovieRecord, url: String, score: Int): Option[String] =
+    persistIfMoved(key, url, "metascore", e.metascore, score, withMetascore, badge)
+
+  private def withMetascore(row: models.MovieRecord, score: Option[Int]): models.MovieRecord = row.copy(metascore = score)
+  private def badge(score: Int): String = score.toString
 
   // ── Full-corpus walk ───────────────────────────────────────────────────────
 
@@ -164,7 +159,7 @@ class MetascoreRatings(
       scoreOf       = _.metascore,
       rediscoverUrl = (key, row) => Success(resolveAndPersistUrl(key, row).isDefined),
       fetchScore    = metacritic.metascoreFor,
-      withScore     = (row, fresh) => row.copy(metascore = fresh),
-      badge         = _.toString
+      withScore     = withMetascore,
+      badge         = badge
     )
 }

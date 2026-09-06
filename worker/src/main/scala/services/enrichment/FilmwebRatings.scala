@@ -1,7 +1,7 @@
 package services.enrichment
 
 import clients.TmdbClient
-import models.{Filmweb, Source, SourceData}
+import models.{Filmweb, MovieRecord, Source, SourceData}
 import services.movies.{CacheKey, EmbeddedYear, MovieCache}
 import services.resolution.{ResolutionCache, ResolutionKeys}
 import services.tasks.BulkRefreshResult
@@ -149,12 +149,7 @@ class FilmwebRatings(
       case Some(rating) =>
         // Store at the precision the badge shows (`%.1f`): a sub-decimal vote
         // drift the user can't see isn't a change — see RatingDisplay.
-        val rounded = RatingDisplay.oneDecimal(rating)
-        val commit  = !e.filmwebRating.contains(rounded)
-        logger.info(s"Filmweb: $label $url → rating $rounded" +
-          (if (commit) s" (was ${e.filmwebRating.getOrElse("—")})" else " (unchanged)"))
-        if (commit) { cache.putIfPresent(key, _.copy(filmwebRating = Some(rounded))); Some(RatingDisplay.label(rounded)) }
-        else None
+        persistIfMoved(key, url, "rating", e.filmwebRating, RatingDisplay.oneDecimal(rating), withFilmwebRating, RatingDisplay.label)
       case None =>
         logger.info(s"Filmweb: $label $url → no rating on page")
         None
@@ -163,6 +158,8 @@ class FilmwebRatings(
       onImdbIdMissing(key.cleanTitle, key.year, e.originalTitle.getOrElse(cache.normalizer.apiQuery(key.cleanTitle)))
     change
   }
+
+  private def withFilmwebRating(row: MovieRecord, rating: Option[Double]): MovieRecord = row.copy(filmwebRating = rating)
 
   // Full URL discovery — only called when the row has no stored filmwebUrl.
   // Passes TMDB's originalTitle / englishTitle as `fallback` so non-Polish
@@ -281,7 +278,7 @@ class FilmwebRatings(
         cache.get(key).exists(_.filmwebUrl.isDefined && !row.filmwebUrl.isDefined)
       },
       fetchScore    = filmweb.ratingFor(_).map(RatingDisplay.oneDecimal),
-      withScore     = (row, fresh) => row.copy(filmwebRating = fresh),
+      withScore     = withFilmwebRating,
       badge         = RatingDisplay.label,
       changedNoun   = "rating(s)"
     )
