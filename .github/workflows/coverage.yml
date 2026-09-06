@@ -82,8 +82,25 @@ jobs:
             # this a warm run would report yesterday's hits plus today's — a
             # number that only ever goes up. (Seen locally: three run-ids from
             # one measured run plus two report-only sbt sessions.)
+            #
+            # The measurement FILES only — never the directory. The compiler's
+            # `-coverage-out` creates `scoverage-data` and writes the statement
+            # table `scoverage.coverage` into it, and it does that only when it
+            # compiles; the instrumented classes restored from the cache append
+            # their measurements to that same path and never create it. On an
+            # exact cache hit (an infra-only commit) zinc compiles nothing, so
+            # an `rm -rf` of the whole directory left every module's tests dying
+            # on `FileNotFoundException: …/common/target/scala-3.9.0/
+            # scoverage-data/scoverage.measurements…` — 134 red specs on run
+            # 34058606835, then `coverageAggregate` "succeeding" with no report.
+            # When zinc DOES recompile a module, the compiler drops the stale
+            # measurements itself and merges the table (Scala 3's
+            # InstrumentCoverage.runOn); this step is the no-recompile case's
+            # share of that. CoverageWorkflowSpec runs it against a fake tree.
             - name: Drop measurements from any earlier run
-              run: rm -rf */target/scala-*/scoverage-data target/scala-*/scoverage-data
+              run: |
+                  rm -f */target/scala-*/scoverage-data/scoverage.measurements.* \
+                        target/scala-*/scoverage-data/scoverage.measurements.*
 
             # The same modules and suites as ci.yml's `test` job (the alias skips
             # the e2e module, which is fanned out over its own shards there and
@@ -113,7 +130,16 @@ jobs:
                   rate() {  # $1 = scoverage.xml, $2 = attribute → "12.34%"
                       printf '%s%%' "$(sed -n 's/.*[[:space:]]'"$2"'="\([0-9.]*\)".*/\1/p' "$1" | head -n 1)"
                   }
-                  aggregate=$(ls target/scala-*/scoverage-report/scoverage.xml)
+                  # `coverageAggregate` exits 0 and writes NOTHING when no module
+                  # has scoverage-data to sum, so this is the first step that can
+                  # notice an instrumented run that measured nothing. Say so,
+                  # rather than dying on a bare `ls: cannot access`.
+                  aggregates=(target/scala-*/scoverage-report/scoverage.xml)
+                  aggregate=${aggregates[0]}
+                  if [ ! -f "$aggregate" ]; then
+                      echo "::error::No aggregate report at target/scala-*/scoverage-report/scoverage.xml. sbt coverageAggregate exits 0 without writing one when no module has scoverage-data to sum — look in the instrumented run's step for a FileNotFoundException under scoverage-data, or a module that was never instrumented."
+                      exit 1
+                  fi
                   {
                       echo "## Unit-test coverage"
                       echo

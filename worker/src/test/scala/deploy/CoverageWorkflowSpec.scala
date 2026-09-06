@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.nio.file.{Files, Path}
-import scala.sys.process.Process
+import scala.sys.process.{Process, ProcessLogger}
 
 /**
  * Coverage is measured, and it is measured OFF the deploy path.
@@ -62,11 +62,41 @@ class CoverageWorkflowSpec extends AnyFlatSpec with Matchers {
    * under `scoverage-data`, and the report sums them all. The directory lives
    * inside the cached `*\/target/scala-*`, so a warm runner that did not wipe it
    * would report the previous run's hits on top of this one's.
+   *
+   * But ONLY the measurements may go. The same directory holds the compile-time
+   * `scoverage.coverage` (the statement table the report is keyed on), and the
+   * instrumented classes restored from the cache write straight into it — the
+   * runtime never creates it. Whenever zinc recompiles a module the compiler
+   * recreates the directory and drops the stale measurements itself; on an
+   * exact cache hit it compiles NOTHING, so a step that `rm -rf`'d the whole
+   * directory left every restored module writing into a path that no longer
+   * existed: 134 specs red on `FileNotFoundException: …/common/target/
+   * scala-3.9.0/scoverage-data/scoverage.measurements…` (run 34058606835, an
+   * infra-only commit), then `coverageAggregate` "succeeded" with no report.
    */
-  it should "wipe the previous run's measurements before it measures" in {
+  it should "wipe the previous run's measurements before it measures — and nothing else in scoverage-data" in {
     val steps = job.linesIterator.map(_.trim).filter(_.startsWith("- name: ")).toVector
     steps.indexOf("- name: Drop measurements from any earlier run") should be < steps.indexOf("- name: Run the unit suites instrumented")
-    RepoFile.step(job, "Drop measurements from any earlier run") should include("rm -rf */target/scala-*/scoverage-data")
+
+    val root       = Files.createTempDirectory("coverage-wipe")
+    val moduleData = root.resolve("common/target/scala-3.9.0/scoverage-data")
+    val rootData   = root.resolve("target/scala-3.9.0/scoverage-data")
+    write(moduleData.resolve("scoverage.coverage"), "# Coverage data, format version: 3.0\n")
+    write(moduleData.resolve("scoverage.measurements.a1b2.17"), "1\n2\n")
+    write(moduleData.resolve("scoverage.measurements.a1b2.18"), "3\n")
+    write(rootData.resolve("scoverage.measurements.c3d4.1"), "9\n")
+    // A module the run never instruments (testkit, e2e) has no scoverage-data at
+    // all; the step must not trip over the unmatched glob.
+    Files.createDirectories(root.resolve("testkit/target/scala-3.9.0/classes"))
+    val script = root.resolve("wipe.sh")
+    Files.writeString(script, RepoFile.stepScript(coverageYml, "Drop measurements from any earlier run"))
+
+    Process(Seq("bash", "-eo", "pipefail", script.toString), root.toFile).! shouldBe 0
+
+    def names(dir: Path): Set[String] =
+      Option(dir.toFile.list()).map(_.toSet).getOrElse(fail(s"$dir was deleted, not emptied of measurements"))
+    names(moduleData) shouldBe Set("scoverage.coverage")
+    names(rootData) shouldBe Set.empty
   }
 
   it should "instrument the same suites ci.yml's test job runs, in a step that cannot fail the report" in {
@@ -149,5 +179,29 @@ class CoverageWorkflowSpec extends AnyFlatSpec with Matchers {
     written should include("| **aggregate** | **41.20%** | **30.50%** |")
     written should include("| common | 55.00% | 40.00% |")
     written should include("| worker | 38.12% | 27.90% |")
+  }
+
+  /**
+   * `coverageAggregate` exits 0 and writes nothing when it finds no
+   * scoverage-data — which is how run 34058606835 reached the summary at all —
+   * and the summary's bare `ls` then died with `ls: cannot access …` at exit 2.
+   * This step is the only place that notices, so it has to say what is missing
+   * and which step to look at, not leave the reader to decode an ls error.
+   */
+  it should "fail with a clear message, not a bare ls error, when the aggregate report is missing" in {
+    val root    = Files.createTempDirectory("coverage-summary-missing")
+    val summary = root.resolve("summary.md")
+    val script  = root.resolve("summary.sh")
+    Files.writeString(script, RepoFile.stepScript(coverageYml, "Coverage summary"))
+
+    val output = new StringBuilder
+    val logger = ProcessLogger(line => output.append(line).append('\n'))
+    val rc     = Process(Seq("bash", script.toString), root.toFile, "GITHUB_STEP_SUMMARY" -> summary.toString).!(logger)
+
+    rc should not be 0
+    output.toString should include("::error::")
+    output.toString should include("scoverage-report/scoverage.xml")
+    output.toString should include("coverageAggregate")
+    output.toString should not include "cannot access"
   }
 }
