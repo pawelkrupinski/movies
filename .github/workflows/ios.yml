@@ -4,11 +4,15 @@ on:
     pull_request:
         paths:
             - 'ios/**'
+            - 'mobile-version.txt'
+            - 'scripts/mobile-version-check.sh'
             - '.github/workflows/ios.yml'
     push:
         branches: [main]
         paths:
             - 'ios/**'
+            - 'mobile-version.txt'
+            - 'scripts/mobile-version-check.sh'
             - '.github/workflows/ios.yml'
     workflow_dispatch:
 
@@ -38,6 +42,12 @@ jobs:
         container: swift:5.10
         steps:
             - uses: actions/checkout@v5
+
+            # The Xcode project carries a COPY of mobile-version.txt (an Xcode
+            # project cannot read a file), and nothing in the build fails when
+            # the copy drifts — only the two store pages would. Fail here instead.
+            - name: Assert MARKETING_VERSION matches mobile-version.txt
+              run: scripts/mobile-version-check.sh
 
             - uses: actions/cache@v5
               with:

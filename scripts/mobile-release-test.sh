@@ -46,12 +46,24 @@ done
 VERSION="$(current_version)"
 check "iOS marketing version matches mobile-version.txt" "$VERSION" "$(ios_marketing_version)"
 check "iOS build number is the derived code" "$(version_code "$VERSION")" "$(ios_build_number)"
-# Every build configuration, not just the first: Debug and Release each carry their
-# own copy, and syncing one is how a release ships a stale Release version.
-check "every Xcode config carries the same marketing version" "1" \
-  "$(grep -c "MARKETING_VERSION = $VERSION;" "$REPO_ROOT/ios/Kinowo.xcodeproj/project.pbxproj" \
-     | awk -v n="$(grep -c 'MARKETING_VERSION = ' "$REPO_ROOT/ios/Kinowo.xcodeproj/project.pbxproj")" \
-       '{print ($1 == n) ? 1 : 0}')"
+# Every build configuration, not just the first: Kinowo and KinowoUITests each
+# carry a Debug and a Release copy, and syncing one is how a release ships a stale
+# Release version. The same script the iOS workflow runs, so CI and this spec
+# cannot disagree about what "in sync" means.
+CHECK="$HERE/mobile-version-check.sh"
+check "every Xcode config carries the shared marketing version" "0" \
+  "$("$CHECK" >/dev/null 2>&1; echo $?)"
+# ...and the check actually bites: one drifted copy, or one copy missing, fails it.
+SCRATCH="$(mktemp -d)"
+trap 'rm -rf "$SCRATCH"' EXIT
+awk -v v="$VERSION" '!done && index($0, "MARKETING_VERSION = " v ";") { sub(/= [^;]*;/, "= 0.0.1;"); done = 1 } 1' \
+  "$PBXPROJ" > "$SCRATCH/drifted.pbxproj"
+check "a single drifted MARKETING_VERSION fails the check" "1" \
+  "$("$CHECK" "$VERSION_FILE" "$SCRATCH/drifted.pbxproj" >/dev/null 2>&1; echo $?)"
+awk -v v="$VERSION" '!done && index($0, "MARKETING_VERSION = " v ";") { done = 1; next } 1' \
+  "$PBXPROJ" > "$SCRATCH/missing.pbxproj"
+check "a missing MARKETING_VERSION entry fails the check" "1" \
+  "$("$CHECK" "$VERSION_FILE" "$SCRATCH/missing.pbxproj" >/dev/null 2>&1; echo $?)"
 
 # Android must READ the file rather than carry its own literal — a literal is the
 # drift this whole mechanism removes.
