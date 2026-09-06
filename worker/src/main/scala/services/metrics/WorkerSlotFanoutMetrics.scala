@@ -2,7 +2,6 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.Source
 import services.movies.StoredMovieRecord
 
 /**
@@ -61,11 +60,12 @@ class WorkerSlotFanoutMetrics(widest: Gauge, countryCode: String) extends Corpus
     // that may be the CHEAP one, whose rows carry no showtimes at all, and a gauge that silently
     // reads zero on half the scans is worse than one that counts a slot whose showtimes are empty.
     //
-    // COUNTED OFF AN ITERATOR rather than `record.cinemaSlots.size`, which materialises a `Seq` of
-    // pairs for every row. This runs once per film on a corpus-wide pass, and the number it wants
-    // is a count.
+    // `cinemaSlotCount`, NOT `cinemaSlots.size`, which materialises a `Seq` of pairs for every row.
+    // This runs once per film on a corpus-wide pass, and the number it wants is a count. The
+    // predicate lives on `MovieRecord` beside `cinemaSlots` rather than being spelled out here, so
+    // the two cannot drift into disagreeing about what a cinema slot is.
     def accept(row: StoredMovieRecord): Unit = {
-      val slots = row.record.data.keysIterator.count(source => Source.cinemaOf(source).isDefined)
+      val slots = row.record.cinemaSlotCount
       if (slots > max) max = slots
     }
 

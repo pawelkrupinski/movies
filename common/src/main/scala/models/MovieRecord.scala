@@ -118,6 +118,13 @@ case class MovieRecord(
   def cinemaSlots: Seq[(Source, SourceData)] =
     data.iterator.filter { case (source, _) => Source.cinemaOf(source).isDefined }.toSeq
 
+  /** How many cinema slots this film carries, without building the pairs. Same predicate as
+   *  [[cinemaSlots]] and deliberately beside it: the corpus-scan gauge that wants only the COUNT
+   *  runs this once per film on every pass, and `cinemaSlots.size` materialises a `Seq` of pairs
+   *  to throw away. Two callers of one predicate belong in one place. */
+  def cinemaSlotCount: Int =
+    data.keysIterator.count(source => Source.cinemaOf(source).isDefined)
+
   /** Every cinema slot paired with its underlying [[Cinema]] (still multi-valued
    *  per venue — see [[cinemaSlots]]). */
   def cinemaShowings: Seq[(Cinema, SourceData)] =
