@@ -2,7 +2,7 @@ package controllers
 
 /**
  * Whether a client's `Accept-Encoding` lets us answer gzip — the one compressed
- * form the origin puts on the wire (see `MovieController.conditionalCompressed`
+ * form the origin puts on the wire (see `ConditionalResponse.serve`
  * for why it is the only one).
  *
  * ⚠️ ONLY THE CACHED RESPONSES ASK THIS. Everything else leaves the controller

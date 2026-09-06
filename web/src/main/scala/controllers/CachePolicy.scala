@@ -2,7 +2,7 @@ package controllers
 
 /**
  * What a cache — the visitor's browser, and Cloudflare in front of us — may do
- * with one of the conditional responses `MovieController.conditionalCompressed`
+ * with one of the conditional responses `ConditionalResponse.serve`
  * builds.
  *
  * Every one of them carries a per-city ETag derived from
@@ -21,7 +21,7 @@ package controllers
  * on both domains, and weak was stripped exactly as strong had been.
  * `no-transform` is what withdraws that permission. The brotli that withdrawal
  * gave up cannot be built at the origin either — see
- * `MovieController.acceptsGzip` for why.
+ * `AcceptEncoding` for why.
  */
 enum CachePolicy {
 
