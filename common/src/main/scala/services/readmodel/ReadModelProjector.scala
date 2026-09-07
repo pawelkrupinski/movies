@@ -251,6 +251,14 @@ class ReadModelProjector(
     // The source-row keys behind those cards — what `lastMetadata` is keyed by.
     val liveRowKeys = scala.collection.mutable.Set.empty[String]
     var reprojected = 0
+    // The cards as they are BEFORE this sweep. A ready row none of whose ids has a card
+    // is healed here, in the same pass, before anything is pruned: on 2026-09-07 the
+    // card id scheme changed under a live read model, the prune removed 509 Polish
+    // cards as orphans, and the scrapes took an hour to write the new ones — the
+    // ReadModelFilmPruneBurst alert. A prune must never leave a live film without a
+    // card, whatever id its old card carried.
+    val cardsBefore = if (reproject) Set.empty[String] else reader.findAllMovieIds().toSet
+    var healed = 0
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
     // scan still stitches. So the frequent, scheduled sweep no longer pulls the whole
@@ -260,12 +268,18 @@ class ReadModelProjector(
       if (reproject) movieRepository.foreachRecord else movieRepository.foreachRecordWithSlots
     val scanComplete = scan { row =>
       if (row.record.readyToProject) {
-        liveIds ++= ReadModelProjection.filmIds(row, normalizer)
+        val ids = ReadModelProjection.filmIds(row, normalizer)
+        liveIds ++= ids
         liveRowKeys += row.id.value
         if (reproject)
           try reprojected += project(row)
           catch { case exception: Throwable =>
             logger.warn(s"read-model $kind: a row failed to project, continuing: ${exception.getMessage}") }
+        else if (!ids.exists(cardsBefore))
+          // The slots-only scan carries no showtimes; read the row whole for its card.
+          try movieRepository.findById(row.id).foreach { whole => project(whole); healed += 1 }
+          catch { case exception: Throwable =>
+            logger.warn(s"read-model $kind: a card-less row failed to project, continuing: ${exception.getMessage}") }
       }
     }
     var prunedFilms      = 0
@@ -297,6 +311,7 @@ class ReadModelProjector(
     // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
+    if (healed > 0) logger.warn(s"read-model $kind sweep: projected $healed ready row(s) that had no card before the prune.")
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
   }

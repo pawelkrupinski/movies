@@ -519,6 +519,31 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     healer.stop(); again.stop()
   }
 
+  // The 2026-09-07 ReadModelFilmPruneBurst, replayed: live rows whose cards sit under ids
+  // the source no longer produces (an id scheme change; a restored database), and then
+  // the scheduled prune — with no boot heal in between. The prune must leave every live
+  // film with a card, whatever id its old card carried.
+  "the orphan prune" should "never leave a live film without a card, even when every card it has is stale" in {
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00"))))
+    val rows = repository.findAll()
+    // Cards under the OLD scheme's ids for both rows, and nothing under the new ones.
+    rows.foreach { row =>
+      val (card, screenings) = ReadModelProjection.project(row, titleNormalizer)
+      val old = s"${row.id.value}-old"
+      rm.upsertMovie(card.copy(_id = old))
+      screenings.foreach(s => rm.upsertScreening(s.copy(_id = s"$old|${s.city}|${s.cinema}", filmId = old)))
+    }
+    rm.findAllMovieIds().toSet shouldBe rows.map(r => s"${r.id.value}-old").toSet
+
+    projector.pruneOrphans()                       // straight to the prune: no start(), no boot heal
+
+    rm.findAllMovieIds().toSet shouldBe rows.flatMap(ReadModelProjection.filmIds(_, titleNormalizer)).toSet
+    rm.findAllScreenings().map(_.filmId).toSet shouldBe rows.map(_.id.value).toSet
+    projector.stop()
+  }
+
   "start" should "schedule the orphan prune but NOT a periodic reproject" in {
     val fakeScheduler = new CapturingScheduler
     val repository = new InMemoryMovieRepository()
