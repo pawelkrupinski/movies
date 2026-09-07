@@ -53,6 +53,7 @@ object JsLocale {
   private def showtime(locale: Locale): (String, JsObject) = locale.getLanguage match {
     case "pl" => "pl" -> Json.obj("one" -> "seans", "few" -> "seanse", "many" -> "seansów")
     case "es" => "en" -> Json.obj("one" -> "sesión", "other" -> "sesiones")
+    case "de" => "en" -> Json.obj("one" -> "Vorstellung", "other" -> "Vorstellungen")
     case _    => "en" -> Json.obj("one" -> "showing", "other" -> "showings")
   }
 

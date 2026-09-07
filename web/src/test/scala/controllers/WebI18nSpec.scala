@@ -75,6 +75,16 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     json should include("\"emptyRepertoire\":\"No listings.\"")
   }
 
+  // German and Spanish share the English one/other RULE but not its words — a
+  // German card counting "3 showings" was the English fallback showing through.
+  it should "carry the German word forms on the two-form rule" in {
+    val json = JsLocale.json(TestMessages.forLang("de"))
+    json should include("\"plural\":\"en\"")
+    json should include("\"one\":\"Vorstellung\"")
+    json should include("\"other\":\"Vorstellungen\"")
+    json should not include "showings"
+  }
+
   // The Polish plural rule shared.js implements, mirrored here so the category
   // boundaries (one / few / many) are pinned as a regression on the data that
   // drives it.
