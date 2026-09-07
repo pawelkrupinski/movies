@@ -6,6 +6,7 @@ import models.{Movie, MovieRecord, ResolvedRatings}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.readmodel.TestReadModel
+import testsupport.TestMessages
 
 /** Pins the share-preview view-model assembly extracted out of MovieController
  *  into [[OgCardAssembly]] — the og:description text and the city-card film
@@ -33,6 +34,21 @@ class OgCardAssemblySpec extends AnyFlatSpec with Matchers {
       rottenTomatoes = rt, rottenTomatoesUrl = "https://www.rottentomatoes.com/",
       filmweb = filmweb, filmwebUrl = "https://www.filmweb.pl/"
     )
+
+  // The card is drawn by a renderer that has no `Messages`, so the label used to
+  // be a literal in it — and every German, British, American and Spanish share
+  // card carried the Polish "Reżyseria:" under an og:locale that said otherwise.
+  "cardDirector" should "carry the deployment's own label, not Poland's" in {
+    val film = sched("Asteroid City").copy(director = Seq("Wes Anderson"))
+    OgCardAssembly.cardDirector(film)(using TestMessages.forLang("pl")) shouldBe Some("Reżyseria: Wes Anderson")
+    OgCardAssembly.cardDirector(film)(using TestMessages.forLang("de")) shouldBe Some("Regie: Wes Anderson")
+    OgCardAssembly.cardDirector(film)(using TestMessages.forLang("en")) shouldBe Some("Director: Wes Anderson")
+    OgCardAssembly.cardDirector(film)(using TestMessages.forLang("es")) shouldBe Some("Director: Wes Anderson")
+  }
+
+  it should "stay absent when the film has no director — no bare label on the card" in {
+    OgCardAssembly.cardDirector(sched("Asteroid City"))(using TestMessages.forLang("de")) shouldBe None
+  }
 
   "distinctByMovie" should "collapse a film's programme variant so its poster isn't repeated" in {
     // A base showing + its accessibility variant share an upstream search key

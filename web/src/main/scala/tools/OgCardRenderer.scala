@@ -147,19 +147,21 @@ object OgCardRenderer {
    *  rating pills from [[ratingBadges]]; `poster` is the decoded poster image or
    *  None (text-only card for films with no poster). `host` is the bare domain
    *  drawn in the footer — passed in rather than hardcoded so a UK card says
-   *  `showtimes.cc/uk`, which the literal it replaced did not. `director` (a
-   *  pre-joined "Name, Name" string) and `synopsis` fill the space below the
-   *  ratings — both optional, each omitted when absent. */
+   *  `showtimes.cc/uk`, which the literal it replaced did not. `directorLine`
+   *  (the caller's finished "Regie: Name, Name" — label included, because this
+   *  renderer has no `Messages` and a literal here printed Polish onto every
+   *  country's card) and `synopsis` fill the space below the ratings — both
+   *  optional, each omitted when absent. */
   def render(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],
-             host: String, director: Option[String] = None, synopsis: Option[String] = None): Array[Byte] =
-    toJpeg(renderImage(title, subtitle, badges, poster, host, director, synopsis))
+             host: String, directorLine: Option[String] = None, synopsis: Option[String] = None): Array[Byte] =
+    toJpeg(renderImage(title, subtitle, badges, poster, host, directorLine, synopsis))
 
   /** The film card as a raster, before it is encoded. Separate from [[render]]
    *  so what the card LOOKS like and what it is ENCODED as are two questions
    *  with two answers: the specs that sample pixels assert on this, and only the
    *  format test goes through the lossy encoder. */
   def renderImage(title: String, subtitle: String, badges: Seq[Badge], poster: Option[BufferedImage],
-                  host: String, director: Option[String] = None, synopsis: Option[String] = None): BufferedImage = {
+                  host: String, directorLine: Option[String] = None, synopsis: Option[String] = None): BufferedImage = {
     val img = new BufferedImage(Width, Height, BufferedImage.TYPE_INT_RGB)
     val g   = img.createGraphics()
     try {
@@ -205,13 +207,13 @@ object OgCardRenderer {
       // Keep the body copy just clear of the footer line (~its ascent).
       val bodyBottom = footerBaseline - 30
 
-      director.map(_.trim).filter(_.nonEmpty).foreach { d =>
+      directorLine.map(_.trim).filter(_.nonEmpty).foreach { d =>
         yPosition += 26
         g.setFont(regular.deriveFont(27f))
         g.setColor(SubCol)
         val dfm = g.getFontMetrics
         yPosition += dfm.getAscent
-        g.drawString(ellipsize(g, "Reżyseria: " + d, textW), textLeft, yPosition)
+        g.drawString(ellipsize(g, d, textW), textLeft, yPosition)
         yPosition += dfm.getDescent
       }
 

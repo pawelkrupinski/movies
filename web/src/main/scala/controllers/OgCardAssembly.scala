@@ -1,5 +1,6 @@
 package controllers
 
+import play.api.i18n.Messages
 import services.movies.TitleNormalizer
 
 /** View-model / payload assembly for the share-preview surfaces — the film
@@ -8,7 +9,8 @@ import services.movies.TitleNormalizer
  *  with HTTP concerns and this stays a pure, independently-testable mapping
  *  from a [[FilmSchedule]] to the renderer inputs ([[tools.OgCardService]] /
  *  [[tools.CityOgCardService]]). No injected collaborators — every method is a
- *  deterministic function of its arguments. */
+ *  deterministic function of its arguments, plus the deployment's `Messages`
+ *  where a line carries a word of its own. */
 object OgCardAssembly {
 
   /** Build the `og:description` / `twitter:description` text for the film
@@ -59,10 +61,17 @@ object OgCardAssembly {
     (film.movie.releaseYear.map(_.toString).toSeq ++ Seq(film.movie.genres.mkString(", ")).filter(_.nonEmpty))
       .mkString(" · ")
 
-  /** The directors as a single "Name, Name" string for the OG card's
-   *  "Reżyseria: …" line, or None when no director is known. */
-  def cardDirector(film: FilmSchedule): Option[String] =
-    Some(film.director.mkString(", ")).filter(_.nonEmpty)
+  /** The OG card's director line, label and all — "Reżyseria: Wes Anderson" in
+   *  Poland, "Regie: …" in Germany, "Director: …" in the English and Spanish
+   *  deployments. None when no director is known.
+   *
+   *  The label is composed HERE rather than inside the renderer because the
+   *  renderer draws pixels and has no `Messages`: a literal there printed the
+   *  Polish word onto every country's share card, under an `og:locale` that
+   *  said otherwise. The key is the detail page's own, so the card and the page
+   *  can't drift apart. */
+  def cardDirector(film: FilmSchedule)(implicit messages: Messages): Option[String] =
+    Some(film.director.mkString(", ")).filter(_.nonEmpty).map(d => s"${messages("detail.director")}: $d")
 
   /** Pick the city OG card's films so no poster shows twice. Drops a row whose
    *  EITHER (a) upstream search key — so a base showing and its "Poranki:" /

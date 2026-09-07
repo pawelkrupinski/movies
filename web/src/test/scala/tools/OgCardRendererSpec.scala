@@ -81,9 +81,9 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     // a 384 MiB old gen and one that does not.
     val badges = OgCardRenderer.ratingBadges(Some(8.8), Some(88), Some(91), Some(7.9))
     val image  = OgCardRenderer.renderImage("Incepcja", "2010 · Sci-Fi", badges, Some(noisyPoster()), "kinowo.net",
-                                            director = Some("Christopher Nolan"), synopsis = Some("A thief who steals corporate secrets."))
+                                            directorLine = Some("Reżyseria: Christopher Nolan"), synopsis = Some("A thief who steals corporate secrets."))
     val jpeg = OgCardRenderer.render("Incepcja", "2010 · Sci-Fi", badges, Some(noisyPoster()), "kinowo.net",
-                                     director = Some("Christopher Nolan"), synopsis = Some("A thief who steals corporate secrets."))
+                                     directorLine = Some("Reżyseria: Christopher Nolan"), synopsis = Some("A thief who steals corporate secrets."))
     val png = {
       val baos = new java.io.ByteArrayOutputStream()
       ImageIO.write(image, "png", baos)
@@ -242,7 +242,7 @@ class OgCardRendererSpec extends AnyFlatSpec with Matchers {
     val synopsis = (1 to 40).map(_ => "Bohaterka").mkString(" ")
     val withBody = (OgCardRenderer.renderImage(
       "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
-      Some(solidPoster(Color.RED)), "kinowo.net", director = Some("Christopher Nolan"), synopsis = Some(synopsis)))
+      Some(solidPoster(Color.RED)), "kinowo.net", directorLine = Some("Reżyseria: Christopher Nolan"), synopsis = Some(synopsis)))
     val without  = (OgCardRenderer.renderImage(
       "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
       Some(solidPoster(Color.RED)), "kinowo.net"))

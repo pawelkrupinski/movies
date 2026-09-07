@@ -798,7 +798,7 @@ class MovieController( cc: ControllerComponents,
             // card must be free to walk to a reachable fallback (see OgCardService).
             schedule.posterUrl.toSeq ++ schedule.resolved.fallbackPosterUrls,
             c.country.shareHost,
-            director = OgCardAssembly.cardDirector(schedule),
+            directorLine = OgCardAssembly.cardDirector(schedule),
             // The PNG card draws plain text — drop the markdown emphasis markers.
             synopsis = schedule.synopsis.map(tools.SynopsisMarkdown.strip)
           )
