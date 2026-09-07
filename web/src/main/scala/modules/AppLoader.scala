@@ -157,11 +157,12 @@ object AppLoader {
 }
 
 /**
- * Single wiring class. Every dependency the app needs is constructed here as a
- * `lazy val` (so the order in the file doesn't matter — references resolve on
- * first use) and side-effecting components (cache hydrate, change-stream
- * watches, event subscriptions) are forced at the bottom in the order they
- * need to fire.
+ * The Play-side composition root. Every dependency is a `lazy val` on `Wiring`
+ * (one `modules.webwiring.*` trait per area, so the order across files doesn't
+ * matter — references resolve on first use); this class adds the pieces only
+ * Play provides — the filter chain, the error handler and the router — and
+ * forces the side-effecting components (read-model hydrate, change-stream
+ * watches) at the bottom, in the order they need to fire.
  */
 class AppComponents(context: Context)
     extends BuiltInComponentsFromContext(context)
