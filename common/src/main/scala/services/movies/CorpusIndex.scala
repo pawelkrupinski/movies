@@ -91,6 +91,12 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  containment edge indexes exactly this per pass; the divert gate asks it per
    *  listing. `tmdbIdByKey` beside it, for the ambiguity refusal. */
   private val keysByEdgeToken = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  /** RESOLVED rows by their search-title key (`FilmCanonicalizer.searchKey` of the row's
+   *  own title) — the settle's search-title edge, answerable per listing. Resolved only:
+   *  an unresolved same-search row is the sanitize group's business, and two unresolved
+   *  strangers with one stripped title have nothing to prove they are one film. */
+  private val keysBySearch    = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  private val searchByKey     = mutable.Map.empty[CacheKey, String]
   private val runsByKey       = mutable.Map.empty[CacheKey, Seq[Seq[String]]]
   private val tmdbIdByKey     = mutable.Map.empty[CacheKey, Int]
   /** The permanent [[FilmId]] behind each key, and back. A retitle moves a key between
@@ -117,6 +123,11 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       record.tmdbTitleAliases.foreach { alias =>
         keysByAlias.getOrElseUpdate(normalizer.sanitize(alias), mutable.Set.empty) += key
       }
+    record.tmdbId.foreach { _ =>
+      val search = FilmCanonicalizer.searchKey(key.cleanTitle, normalizer)
+      keysBySearch.getOrElseUpdate(search, mutable.Set.empty) += key
+      searchByKey.update(key, search)
+    }
     record.tmdbId.foreach { id =>
       val runs = (record.tmdbTitleAliases + key.cleanTitle).iterator.map(TitleContainment.tokens).filter(_.nonEmpty).toSeq
       runsByKey.update(key, runs); tmdbIdByKey.update(key, id)
@@ -139,6 +150,16 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       val matched = candidates.iterator.filter(k => runsByKey.get(k).exists(_.exists(TitleContainment.decorates(_, whole)))).toSet
       if (matched.flatMap(tmdbIdByKey.get).sizeIs == 1) matched else Set.empty
     }
+  }
+
+  /** The resolved rows whose search-title key is `search` — the settle's search-title
+   *  edge asked at landing time. Empty unless the rows it names resolve to exactly one
+   *  film (the edge's remakes land in one component and split by tmdbId; a landing
+   *  cannot split, so it refuses the ambiguity). The caller still checks the cinema's
+   *  own evidence. */
+  def keysWithSearchKey(search: String): Set[CacheKey] = synchronized {
+    val matched = keysBySearch.get(search).map(_.toSet).getOrElse(Set.empty)
+    if (matched.flatMap(tmdbIdByKey.get).sizeIs == 1) matched else Set.empty
   }
 
   /** Drop everything `key` contributes. */
@@ -199,7 +220,8 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       keysByCinemaSlot = keysByCinemaSlot.map { case (slot, keys) => slot -> keys.toSet }.toMap,
       slotsByCinema    = slotsByCinema.map { case (c, slots) => c -> slots.keySet.toSet }.toMap,
       keysByAlias      = keysByAlias.map { case (a, keys) => a -> keys.toSet }.toMap,
-      runsByKey        = runsByKey.toMap)
+      runsByKey        = runsByKey.toMap,
+      keysBySearch     = keysBySearch.map { case (s, keys) => s -> keys.toSet }.toMap)
   }
 
   private def forget(key: CacheKey): Unit = {
@@ -231,6 +253,9 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
           }
         }
     }
+    searchByKey.remove(key).foreach { search =>
+      keysBySearch.get(search).foreach { keys => keys -= key; if (keys.isEmpty) keysBySearch -= search }
+    }
     runsByKey.remove(key).foreach { runs =>
       runs.foreach { run =>
         Seq(run.head, run.last).foreach { t =>
@@ -253,5 +278,6 @@ private[movies] object CorpusIndex {
                             keysByCinemaSlot: Map[(Cinema, String), Set[CacheKey]],
                             slotsByCinema: Map[Cinema, Set[(CacheKey, Source)]],
                             keysByAlias: Map[String, Set[CacheKey]],
-                            runsByKey: Map[CacheKey, Seq[Seq[String]]])
+                            runsByKey: Map[CacheKey, Seq[Seq[String]]],
+                            keysBySearch: Map[String, Set[CacheKey]])
 }

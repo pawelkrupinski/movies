@@ -20,6 +20,16 @@ object FilmCanonicalizer {
    *  same-normalised-title rows: prefer a row that carries a release year over
    *  a yearless one, then the lower year, then the cleanTitle. A pure function
    *  of the key, so the canonical never depends on write order. */
+  /** The search-title grouping key: the title with the decorations the search rules
+   *  strip removed, romanised, sanitized. The settle's search-title edge unions rows
+   *  by it; the scrape-time gate asks the corpus index the same question
+   *  (`CorpusIndex.keysWithSearchKey`), so a listing that equals a stored film under
+   *  this key lands on it instead of becoming a newcomer the edge folds a tick later.
+   *  Romanisation is confined to THIS key — never the stored key, the display title,
+   *  or the real TMDB query. */
+  def searchKey(title: String, normalizer: TitleNormalizer): String =
+    normalizer.sanitize(tools.TextNormalization.romanizeCyrillic(normalizer.apiQuery(title)))
+
   private[services] def canonicalRank(k: CacheKey): (Boolean, Int, String) =
     (k.year.isEmpty, k.year.getOrElse(Int.MaxValue), k.cleanTitle)
 
@@ -347,8 +357,7 @@ object FilmCanonicalizer {
     // grouping key — never the stored key, the display title, or the real TMDB
     // query (`apiQuery`), which stays in the original script. Exact-match gated,
     // so a lossy transliteration can only fail to fold, never mis-fold.
-    rows.indices.groupBy(i => normalizer.sanitize(
-        tools.TextNormalization.romanizeCyrillic(normalizer.apiQuery(rows(i)._1.cleanTitle))))
+    rows.indices.groupBy(i => searchKey(rows(i)._1.cleanTitle, normalizer))
       .valuesIterator.foreach(unionAllIndices)
     // title-CONTAINMENT edges — the complement of the search-title edge, for banners
     // `apiQuery` does NOT recognise ("WAJDA: re-wizje: Człowiek z marmuru",

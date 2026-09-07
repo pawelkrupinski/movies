@@ -1801,7 +1801,11 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "NOT redirect across scripts — Cyrillic and Latin normalise differently" in {
+  it should "land a Latin listing on the resolved Cyrillic row it romanises to — the settle's edge, at landing" in {
+    // Cyrillic and Latin sanitize differently, so no title redirect applies; but the
+    // settle's search-title edge romanises both to one key and folds them a tick
+    // later. The gate asks that question first, so the Latin listing lands on the
+    // resolved row under its own slot title and no second row is ever created.
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     cache.put(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026)),
               MovieRecord(imdbId = Some("tt17490712"), tmdbId = Some(931285)))
@@ -1810,10 +1814,10 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       cinemaMovie("Mortal Kombat II", Multikino, Some(2026), showtimes = Seq(showtime("2026-06-01T18:00")))
     ))
 
-    // No redirect — a fresh Latin row gets created, distinct from Cyrillic.
-    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))) shouldBe defined
-    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))).get.cinemaData.keySet shouldBe Set(Multikino)
-    cache.get(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026))) shouldBe defined
+    cache.get(cache.keyOf("Mortal Kombat II", Some(2026))) shouldBe empty
+    val row = cache.get(cache.keyOf("МОРТАЛ КОМБАТ ІІ", Some(2026))).getOrElse(fail("the Cyrillic row is gone"))
+    row.cinemaData.keySet shouldBe Set(Multikino)
+    row.cinemaData(Multikino).title shouldBe Some("Mortal Kombat II")
   }
 
   it should "NOT redirect when two existing rows could both be the target (ambiguous)" in {

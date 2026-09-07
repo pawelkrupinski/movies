@@ -58,4 +58,42 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
 
     staging.findAll().map(_.title) should contain ("The Hunger Games: Mockingjay Pt 2 (2026 Re-Release)")
   }
+
+  // The settle's OTHER cross-title edge, asked at landing: rows with one search-title
+  // key (the title with the decorations the search rules strip removed, romanised).
+  it should "land a Cyrillic listing on the resolved Latin row it romanises to" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val key     = CacheKey("Vaiana", Some(2026), titleNormalizer)
+    cache.put(key, MovieRecord(tmdbId = Some(1241982), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Vaiana"), originalTitle = Some("Moana 2"), releaseYear = Some(2026)),
+      (KinoMuza: Source) -> SourceData(title = Some("Vaiana"), releaseYear = Some(2026)))))
+
+    cache.recordCinemaScrape(Helios, Seq(scrape(Helios, "Ваяна")))
+
+    withClue(s"staging: ${staging.findAll().map(_.title)}\n") { staging.findAll() shouldBe empty }
+    val row = cache.get(key).getOrElse(fail("the film's row is gone"))
+    row.cinemaShowings.collectFirst { case (Helios, sd) => sd.title } shouldBe Some(Some("Ваяна"))
+  }
+
+  it should "land an edition whose stripped search title is the film's on the film's row" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val key     = CacheKey("Ojczyzna", Some(2026), titleNormalizer)
+    cache.put(key, MovieRecord(tmdbId = Some(1300001), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Ojczyzna"), originalTitle = Some("Ojczyzna"), releaseYear = Some(2026)),
+      (KinoMuza: Source) -> SourceData(title = Some("Ojczyzna"), releaseYear = Some(2026)))))
+    // The search rules strip the preview marker, so the settle would fold this row a
+    // tick later; a DIFFERENT film whose title merely shares the word (and does not
+    // carry it as a whole edge run, which would be the containment case) does not
+    // share the key and incubates as a newcomer.
+    FilmCanonicalizer.searchKey("Ojczyzna - pokaz przedpremierowy", titleNormalizer) shouldBe FilmCanonicalizer.searchKey("Ojczyzna", titleNormalizer)
+    FilmCanonicalizer.searchKey("Ojczyzny nie ma", titleNormalizer) should not be FilmCanonicalizer.searchKey("Ojczyzna", titleNormalizer)
+
+    cache.recordCinemaScrape(Helios, Seq(scrape(Helios, "Ojczyzna - pokaz przedpremierowy"), scrape(Helios, "Ojczyzny nie ma")))
+
+    staging.findAll().map(_.title) shouldBe Seq("Ojczyzny nie ma")
+    val row = cache.get(key).getOrElse(fail("the film's row is gone"))
+    row.cinemaShowings.collectFirst { case (Helios, sd) => sd.title } shouldBe Some(Some("Ojczyzna - pokaz przedpremierowy"))
+  }
 }

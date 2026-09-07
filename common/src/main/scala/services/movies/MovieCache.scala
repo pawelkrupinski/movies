@@ -1435,14 +1435,22 @@ class CaffeineMovieCache(
       // days for one film. The cinemas' own evidence still gets its veto, exactly as
       // the edge gives it: a listing whose venue describes a different film is not a
       // decoration of this one.
+      def notASecondFilm(k: CacheKey): Boolean =
+        Option(positive.getIfPresent(k)).forall(record => !MixedFilmDetector.wouldAddASecondFilm(
+          record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
       val decorationOf: Set[CacheKey] =
         if (sameTitledRows.nonEmpty) Set.empty
-        else corpusIndex.keysDecoratedBy(TitleContainment.tokens(displayTitle)).filter { k =>
-          Option(positive.getIfPresent(k)).forall(record => !MixedFilmDetector.wouldAddASecondFilm(
-            record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
-        }
+        else corpusIndex.keysDecoratedBy(TitleContainment.tokens(displayTitle)).filter(notASecondFilm)
+      // …or the same film under the search-title key — the settle's other cross-title
+      // edge: a Cyrillic listing ("Ваяна") romanising to the resolved Latin row, an
+      // edition whose stripped search title is the film's ("Ojczyzna - pokaz
+      // przedpremierowy"). Same veto, same ambiguity refusal, same reason: the settle
+      // would fold it a tick later, so land it now.
+      val sameSearchAs: Set[CacheKey] =
+        if (sameTitledRows.nonEmpty) Set.empty
+        else corpusIndex.keysWithSearchKey(FilmCanonicalizer.searchKey(displayTitle, normalizer)).filter(notASecondFilm)
       val divert       = diverting && ((!corpusIndex.holdsTitle(norm) && !corpusIndex.holdsAlias(norm) &&
-                         !corpusIndex.holdsCinemaSlot(cinema, norm) && decorationOf.isEmpty) || aDifferentFilm)
+                         !corpusIndex.holdsCinemaSlot(cinema, norm) && decorationOf.isEmpty && sameSearchAs.isEmpty) || aDifferentFilm)
       // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
       // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
       // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)
@@ -1515,7 +1523,10 @@ class CaffeineMovieCache(
               // …then the resolved film this listing decorates, ranked the way the
               // settle would rank the fold's survivor; only a listing nothing holds
               // starts a row of its own.
-              case None => keyHoldingCinemaSlot(norm).orElse(decorationOf.minByOption(canonicalRank)).getOrElse(primary)
+              case None => keyHoldingCinemaSlot(norm)
+                .orElse(decorationOf.minByOption(canonicalRank))
+                .orElse(sameSearchAs.minByOption(canonicalRank))
+                .getOrElse(primary)
             }
           }
           val existingOpt   = Option(positive.getIfPresent(key))
