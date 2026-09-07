@@ -2,23 +2,23 @@ package tools
 
 import play.api.Logging
 
+import java.util.concurrent.{Callable, ExecutionException, TimeUnit, TimeoutException}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.jdk.CollectionConverters._
 
-/** Parallel detail-page fetch with completion tracking.
+/** Parallel detail-page fetch, each fetch bounded by `timeout`.
  *
- *  Four cinema clients (Apollo, CharlieMonroe, Bulgarska, Pałacowe) share
- *  the same shape: spin up a virtual-thread EC, map each URL to a
- *  `Future(url -> fetchOne(url))`, `Future.sequence`, `Await.result`,
- *  shutdown. Before this extraction none of them logged progress, so a
- *  timeout surfaced in Sentry as a bare `TimeoutException` with no
- *  indication of how many URLs were involved or which ones were still
- *  in flight.
+ *  The cinema clients share the same shape: spin up a bounded virtual-thread
+ *  EC, map each URL to a `Future(url -> fetchOne(url))`, `Future.sequence`,
+ *  `Await.result`, shutdown. Before this extraction none of them logged
+ *  progress, so a timeout surfaced in Sentry as a bare `TimeoutException`
+ *  with no indication of how many URLs were involved or which ones hung.
  *
  *  Adds:
  *    - DEBUG log at the start with batch size
- *    - Per-URL completion tracking via a concurrent set
- *    - On timeout: WARN log naming completed/total count and the pending URLs
+ *    - A PER-FETCH timeout: a fetch that overruns loses only its own key
+ *    - WARN log naming how many of the batch timed out, and which URLs
  *    - DEBUG log on success with elapsed time */
 object ParallelDetailFetch extends Logging {
 
@@ -28,6 +28,14 @@ object ParallelDetailFetch extends Logging {
    *  while itself holding a scrape permit (sharing would self-deadlock). The
    *  cap stops a single cinema with 30+ films from spinning up 30+ parsing
    *  threads at once and spiking the (single) vCPU on a cold-start scrape.
+   *
+   *  `timeout` bounds EACH fetch from the moment it starts (not the batch: a
+   *  fetch queued behind the cap is not charged for the wait). A fetch that
+   *  overruns is interrupted and its key is simply absent from the result —
+   *  the rest of the batch returns. This used to be a batch deadline, then no
+   *  deadline at all on the reasoning that the HTTP layer bounds every request;
+   *  a fetch that hung past that bound then held the whole batch, and with it
+   *  the scrape permit the caller was sitting on.
    *
    *  The `fetch` function MUST swallow its own failures and return a default
    *  (e.g. `Try(http.get(url)).toOption.map(parse).getOrElse(empty)`): a
@@ -56,27 +64,31 @@ object ParallelDetailFetch extends Logging {
     if (distinct.isEmpty) return Map.empty
     logger.debug(s"$label: fetching ${distinct.size} detail pages (≤$maxConcurrent at once)")
     val executionContext = DaemonExecutors.boundedEC(label, maxConcurrent)
+    // The fetch itself runs on a second, uncapped virtual thread so the capped
+    // slot can time it out and move on; an overrunning fetch is interrupted and
+    // its (daemon) thread abandoned.
+    val fetchThreads = DaemonExecutors.virtualThreadExecutor(s"$label-fetch")
     val t0 = System.currentTimeMillis()
-    val completed = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+    val timedOut = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
     try {
       val futures = distinct.map { key =>
         val url = urlOf(key)
         Future {
-          val result = key -> fetch(url)
-          completed.add(url)
-          result
+          val attempt = fetchThreads.submit((() => fetch(url)): Callable[T])
+          try Some(key -> attempt.get(timeout.toMillis, TimeUnit.MILLISECONDS))
+          catch {
+            case _: TimeoutException     => attempt.cancel(true); timedOut.add(url); None
+            case e: ExecutionException   => throw e.getCause
+          }
         }(using executionContext)
       }
-      // No batch timeout: each `fetch` is bounded by the HTTP layer's own
-      // per-request timeout (and the caller's `fetch` swallows its failures),
-      // so the batch always settles. Per-call timing is recorded by the HTTP
-      // monitor instead of cut off here. `timeout` is kept on the signature for
-      // call-site compatibility but no longer gates the wait.
-      val _ = timeout
-      val result = Await.result(Future.sequence(futures)(using implicitly, executionContext), Duration.Inf).toMap
+      // Every fetch is bounded by `timeout` from its own start, so the batch
+      // settles within ceil(n / maxConcurrent) × timeout — no batch deadline needed.
+      val result = Await.result(Future.sequence(futures)(using implicitly, executionContext), Duration.Inf).flatten.toMap
       val elapsed = System.currentTimeMillis() - t0
-      logger.debug(s"$label: fetched ${result.size} detail pages in ${elapsed}ms")
+      if (timedOut.isEmpty) logger.debug(s"$label: fetched ${result.size} detail pages in ${elapsed}ms")
+      else logger.warn(s"$label: ${timedOut.size}/${distinct.size} detail pages timed out after $timeout (${elapsed}ms total): ${timedOut.asScala.mkString(", ")}")
       result
-    } finally executionContext.shutdown()
+    } finally { executionContext.shutdown(); fetchThreads.shutdown() }
   }
 }

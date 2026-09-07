@@ -22,15 +22,27 @@ class ParallelDetailFetchSpec extends AnyFlatSpec with Matchers {
     result shouldBe empty
   }
 
-  it should "wait for a slow fetch instead of cutting it off (no batch timeout)" in {
-    // The `timeout` arg is now ignored — each fetch runs to completion (bounded
-    // only by the HTTP layer), so a fetch slower than the old timeout still
-    // returns its result instead of throwing.
+  // `timeout` was accepted and then discarded (the wait was `Duration.Inf`), so one
+  // fetch hung past every HTTP bound held the whole batch — and with it the scrape
+  // permit the caller was sitting on. It now bounds EACH fetch from its own start: a
+  // fetch that overruns loses only its own key, the rest of the batch returns.
+  it should "drop only the key of a fetch that overruns the timeout and return the rest" in {
     val result = ParallelDetailFetch("test-slow", Seq("fast", "slow"), 100.millis) { url =>
-      if (url == "slow") Thread.sleep(400)
+      if (url == "slow") Thread.sleep(2000)
       url.toUpperCase
     }
-    result shouldBe Map("fast" -> "FAST", "slow" -> "SLOW")
+    result shouldBe Map("fast" -> "FAST")
+  }
+
+  it should "time each fetch from its own start, not the batch's (a queued fetch is not charged for the wait)" in {
+    // Serial (maxConcurrent = 1), each fetch 60ms, timeout 100ms: the fifth starts
+    // ~240ms after the batch did. A batch deadline would cut it off; a per-fetch
+    // one lets every one finish.
+    val result = ParallelDetailFetch("test-per-fetch", (1 to 5).map(_.toString), 100.millis, maxConcurrent = 1) { url =>
+      Thread.sleep(60)
+      url
+    }
+    result.keySet shouldBe (1 to 5).map(_.toString).toSet
   }
 
   it should "default the concurrency cap to 2" in {
@@ -102,6 +114,14 @@ class ParallelDetailFetchSpec extends AnyFlatSpec with Matchers {
     }
     result shouldBe Map("a" -> "ok", "b" -> "ok")
     fetched.get shouldBe 2
+  }
+
+  it should "fail only the key whose fetch overran the timeout" in {
+    val result = ParallelDetailFetch.keyed("test-keyed-timeout", Seq("hangs", "answers"), 100.millis)(k => s"https://x/$k") { url =>
+      if (url.endsWith("hangs")) Thread.sleep(2000)
+      url.length
+    }
+    result shouldBe Map("answers" -> 17)
   }
 
   it should "cap concurrent fetches at maxConcurrent regardless of key count" in {
