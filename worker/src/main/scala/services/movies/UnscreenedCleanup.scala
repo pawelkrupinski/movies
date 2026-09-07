@@ -127,10 +127,6 @@ class UnscreenedCleanup(cache: MovieCache, repository: MovieRepository) extends 
   private def alive(slot: SourceData): Boolean =
     slot.title.exists(_.trim.nonEmpty) || slot.showtimes.nonEmpty || slot.showtimesCount.exists(_ > 0)
 
-  /** The `_id` the delete would cascade against — the same formula
-   *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by, so the
-   *  record we corroborate against is exactly the one the delete would clear. */
-
   private def label(key: CacheKey): String = s"${key.cleanTitle} (${key.year.getOrElse("—")})"
 
   def start(): Unit = {

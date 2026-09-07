@@ -36,9 +36,7 @@ object SequelMarker {
     t.length == 4 && t.forall(_.isDigit) && { val y = t.toInt; y >= 1888 && y <= java.time.Year.now().getValue + 1 }
 
   def isOrdinal(t: String): Boolean =
-    (t.nonEmpty && t.length <= 2 && t.forall(_.isDigit)) ||
-      (t.forall(_.isDigit) && t.nonEmpty && !isYear(t)) ||
-      Roman.matches(t)
+    (t.nonEmpty && t.forall(_.isDigit) && !isYear(t)) || Roman.matches(t)
 
   /** True when `whole` (an edition's tokens, which contain `base`'s tokens as a
    *  prefix or suffix run) names a different film in `base`'s series. */

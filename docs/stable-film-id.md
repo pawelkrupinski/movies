@@ -66,13 +66,16 @@ rest is the key itself.
 1. DONE (743dd9f37) `FilmId` + `key` field; repository addressed by id; `rekey`
    stops moving side rows; staging fold plans by id. Legacy ids preserved, boot
    backfill of `key`.
-2. DONE `tmdbId` unique sparse index on `movies` — the write-time fold already
-   merges a duplicate; the index refuses the one a race lets through, and
-   `upsert` logs the refusal (the film keeps its previous document).
+2. DONE `tmdbId` unique PARTIAL index on `movies` (over documents whose
+   `tmdbId` is a number — sparse would index the codec's `null`) — the
+   write-time fold already merges a duplicate; the index refuses the one a race
+   lets through, and `upsert` logs the refusal (the film keeps its previous
+   document).
 3. DONE Read model `_id` = `FilmId`; a split variant is `<FilmId>~<variant>`.
-   `ReadModelProjector.start` re-projects the whole corpus before the first
-   prune when a majority of cards carry ids the source does not know (the
-   scheme change, or a restored database), so the site never goes blank.
+   At boot `ReadModelProjector.healMissingCards` projects every ready row that
+   has no card, before the first prune, so an id-scheme change or a restored
+   database never leaves the site short (the first version gated a whole-corpus
+   reproject on a majority of stale cards and did not fire at 44%).
 4. Landing-time gaps the settle-vs-scrape inventory named, closed one shared
    predicate at a time: `TitleContainment` (decorations), then
    `FilmCanonicalizer.searchKey` (the romanised search-title edge) asked through
