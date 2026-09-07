@@ -77,8 +77,9 @@ rest is the key itself.
    predicate at a time: `TitleContainment` (decorations), then
    `FilmCanonicalizer.searchKey` (the romanised search-title edge) asked through
    `CorpusIndex.keysWithSearchKey`, then the landing year window widened to the
-   settle's ±2 (nearest first). Still settle-only, by decision: the imdbId fold
-   of two TMDB records — a genuine merge of two resolutions, one pair on prod.
+   settle's ±2 (nearest first), then the imdbId fold asked at write time
+   (`MovieCache.putAs`, `MergeReason.ImdbIdentity`). Every edge the settle
+   knows is now asked when the screening lands; the settle is the self-heal.
 
 ## Measuring
 
