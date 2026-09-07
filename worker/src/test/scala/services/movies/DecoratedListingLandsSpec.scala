@@ -96,4 +96,22 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
     val row = cache.get(key).getOrElse(fail("the film's row is gone"))
     row.cinemaShowings.collectFirst { case (Helios, sd) => sd.title } shouldBe Some(Some("Ojczyzna - pokaz przedpremierowy"))
   }
+
+  // The settle's year window at landing: a venue's production year may sit two years
+  // before TMDB's release year (rule 2 of `clusterByFilm` attaches within ±2).
+  it should "land a listing two years off the resolved row's year on that row, as the settle would attach it" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val key     = CacheKey("Zawieście czerwone latarnie", Some(1991), titleNormalizer)
+    cache.put(key, MovieRecord(tmdbId = Some(10412), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Zawieście czerwone latarnie"), originalTitle = Some("Da hong deng long gao gao gua"), releaseYear = Some(1991)),
+      (KinoMuza: Source) -> SourceData(title = Some("Zawieście czerwone latarnie"), releaseYear = Some(1991)))))
+
+    cache.recordCinemaScrape(Helios, Seq(CinemaMovie(Movie(title = "Zawieście czerwone latarnie", releaseYear = Some(1989)), Helios,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil, showtimes = Nil)))
+
+    withClue(s"staging: ${staging.findAll().map(_.title)}\n") { staging.findAll() shouldBe empty }
+    cache.get(CacheKey("Zawieście czerwone latarnie", Some(1989), titleNormalizer)) shouldBe empty
+    cache.get(key).getOrElse(fail("row gone")).cinemaShowings.map(_._1).toSet shouldBe Set(KinoMuza, Helios)
+  }
 }

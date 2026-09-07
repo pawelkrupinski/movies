@@ -850,11 +850,16 @@ class CaffeineMovieCache(
     // so the only arm left to apply is the partition's: a key that matches by its own
     // normalised form belongs to `keyMatches`, never here.
     val aliasOnly  = corpusIndex.keysForAlias(norm).filterNot(_.normalized == norm).toSeq
+    // Nearest year first, out to ±2 — the settle's own window (`FilmCanonicalizer.
+    // clusterByFilm` rule 2): a venue reporting the PRODUCTION year two years before
+    // TMDB's release year ("Zawieście czerwone latarnie", 1989 vs 1991) used to land
+    // as its own row for the settle to attach a tick later.
     def nearest(cands: Seq[CacheKey]): Option[CacheKey] = primary.year match {
       case None    => chooseConcluded(cands, listingRuntime, cinema, norm)
       case Some(y) =>
-        chooseConcluded(cands.filter(_.year.contains(y)), listingRuntime, cinema, norm)
-          .orElse(chooseConcluded(cands.filter(_.year.exists(ky => math.abs(ky - y) <= 1)), listingRuntime, cinema, norm))
+        (0 to 2).iterator.map(distance =>
+          chooseConcluded(cands.filter(_.year.exists(ky => math.abs(ky - y) == distance)), listingRuntime, cinema, norm))
+          .collectFirst { case Some(k) => k }
     }
     nearest(keyMatches).orElse(nearest(aliasOnly))
   }
