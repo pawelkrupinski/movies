@@ -96,6 +96,12 @@ object FilmCanonicalizer {
   def clusterByFilm(group: Seq[(CacheKey, MovieRecord)], normalizer: TitleNormalizer): Seq[Seq[(CacheKey, MovieRecord)]] = {
     type Row = (CacheKey, MovieRecord)
     def rank(r: Row): (Boolean, Int, String) = canonicalRank(r._1)
+    // A resolved row beside the identity its cinemas published, read ONCE: every
+    // question below is `MixedFilmDetector`'s, and it asks about a group's main row
+    // against each sibling and about imdbId-sharing groups row by row, so reading the
+    // identity per question rebuilt one row's from its slots once per comparison.
+    case class Identified(row: Row, identity: Option[MixedFilmDetector.Group])
+    def differ(a: Identified, b: Identified): Boolean = MixedFilmDetector.describeDifferentFilms(a.identity, b.identity)
 
     // (1) Resolved rows → one cluster per distinct tmdbId. Sort the ids so the
     // cluster sequence is order-independent.
@@ -119,13 +125,13 @@ object FilmCanonicalizer {
     //
     // Keep the row the corpus would canonicalise onto and split off only what
     // contradicts it, so the partition is a pure function of the row set.
-    val resolved = group.filter(_._2.tmdbId.isDefined)
-    val byTmdbId: Seq[Seq[Row]] = resolved.groupBy(_._2.tmdbId.get).toSeq.sortBy(_._1)
+    val resolved: Seq[Identified] = group.filter(_._2.tmdbId.isDefined)
+      .map(row => Identified(row, MixedFilmDetector.publishedIdentity(row._2, normalizer)))
+    val byTmdbId: Seq[Seq[Identified]] = resolved.groupBy(_.row._2.tmdbId.get).toSeq.sortBy(_._1)
       .flatMap { case (_, rows) =>
-        val ordered = rows.sortBy(rank)
+        val ordered = rows.sortBy(r => rank(r.row))
         val main    = ordered.head
-        val (different, same) = ordered.tail.partition(r =>
-          MixedFilmDetector.describeDifferentFilms(main._2, r._2, normalizer))
+        val (different, same) = ordered.tail.partition(differ(main, _))
         (main +: same) +: different.map(Seq(_))
       }
     // …then fold together the tmdbId groups that share an IMDb id. One film can carry
@@ -143,24 +149,29 @@ object FilmCanonicalizer {
     // Guarded by the cinemas' OWN published evidence, exactly as the containment edge in
     // `groupByFilm` is: if two rows' venues describe different films, no id agreement may
     // merge them, or the fold and `MixedFilmSplitter` would chase each other forever.
+    //
+    // Union-find over the tmdbId groups; a component's root is always its lowest
+    // index, so the partition (and the order below) is independent of the order the
+    // pairs fold in. The pairs to consider are found by grouping the groups by imdbId
+    // — a group with no imdbId, or one nobody else carries, is never compared at all —
+    // rather than by testing every pair of groups for an id in common.
     val sameFilm = Array.tabulate(byTmdbId.length)(identity)
     def root(x: Int): Int = { var r = x; while (sameFilm(r) != r) r = sameFilm(r); r }
     def fold(a: Int, b: Int): Unit = {
       val (ra, rb) = (root(a), root(b))
       if (ra != rb) sameFilm(math.max(ra, rb)) = math.min(ra, rb)
     }
-    def imdbIds(rows: Seq[Row]): Set[String] = rows.flatMap(_._2.imdbId).toSet
-    for {
-      i <- byTmdbId.indices
-      j <- byTmdbId.indices
-      if i < j
-      if imdbIds(byTmdbId(i)).intersect(imdbIds(byTmdbId(j))).nonEmpty
-      if !byTmdbId(i).exists(a => byTmdbId(j).exists(b =>
-           MixedFilmDetector.describeDifferentFilms(a._2, b._2, normalizer)))
-    } fold(i, j)
+    val sharingAnImdbId: Seq[(Int, Int)] =
+      byTmdbId.indices.flatMap(i => byTmdbId(i).flatMap(_.row._2.imdbId).distinct.map(_ -> i))
+        .groupMap(_._1)(_._2).values
+        .flatMap(_.combinations(2).map { case Seq(i, j) => (i, j) })
+        .toSeq.distinct.sorted
+    sharingAnImdbId.foreach { case (i, j) =>
+      if (!byTmdbId(i).exists(a => byTmdbId(j).exists(differ(a, _)))) fold(i, j)
+    }
     val resolvedClusters: Seq[Cluster] =
       byTmdbId.indices.groupBy(root).toSeq.sortBy(_._1).map { case (_, indices) =>
-        val rows = indices.sorted.flatMap(byTmdbId)
+        val rows = indices.sorted.flatMap(byTmdbId).map(_.row)
         Cluster(refYear = rows.flatMap(_._2.tmdbYear).minOption, rows = rows)
       }
 

@@ -96,7 +96,7 @@ object MixedFilmDetector {
   ): Boolean = {
     val incomingTitle     = titleWords(originalTitle, normalizer)
     val incomingDirectors = directorKeys(director, normalizer)
-    incomingTitle.nonEmpty && identityGroups(record, normalizer).headOption.exists { main =>
+    incomingTitle.nonEmpty && publishedIdentity(record, normalizer).exists { main =>
       titlesDiffer(main.identity, incomingTitle) &&
         !sameDirector(main.directors, incomingDirectors) &&
         corroborated(main.runtimes, runtime.toSet, main.years, year.toSet)
@@ -122,10 +122,24 @@ object MixedFilmDetector {
    *  gets `false` where the stitched view gives `true`. Pinned in `MixedFilmDetectorSpec`,
    *  along with why it currently costs nothing. */
   def describeDifferentFilms(a: MovieRecord, b: MovieRecord, normalizer: TitleNormalizer): Boolean =
-    (identityGroups(a, normalizer).headOption, identityGroups(b, normalizer).headOption) match {
+    describeDifferentFilms(publishedIdentity(a, normalizer), publishedIdentity(b, normalizer))
+
+  /** [[describeDifferentFilms]] on identities already read by [[publishedIdentity]]. */
+  def describeDifferentFilms(a: Option[Group], b: Option[Group]): Boolean =
+    (a, b) match {
       case (Some(mainA), Some(mainB)) => conflicting(mainA, mainB)
       case _                          => false
     }
+
+  /** The identity a row's cinemas published for its MAIN film — the side every
+   *  cross-row question here compares, or `None` when they published nothing
+   *  comparable. Building it walks every slot's title through the normalizer, so a
+   *  caller asking about one row against many others (`clusterByFilm` compares a
+   *  tmdbId group's main row with every sibling, and every imdbId-sharing pair of
+   *  groups row by row) reads it once and asks the [[describeDifferentFilms]]
+   *  overload on the result. */
+  def publishedIdentity(record: MovieRecord, normalizer: TitleNormalizer): Option[Group] =
+    identityGroups(record, normalizer).headOption
 
   /** Do these two identities describe DIFFERENT films? */
   def conflicting(a: Group, b: Group): Boolean =

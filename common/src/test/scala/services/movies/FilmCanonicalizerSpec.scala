@@ -517,6 +517,31 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "read a row's published identity once, however many siblings it is compared against" in {
+    // `MixedFilmDetector` rebuilds a row's identity from its slots on every question, and
+    // the fold asks about a tmdbId group's main row against EVERY sibling (and about every
+    // cross-group pair sharing an imdbId) — so one row's identity was rebuilt once per
+    // comparison. Counted at the normalizer: a word only the main row's cinema publishes
+    // is sanitized the same number of times whether the row has one sibling or ten.
+    class CountingNormalizer extends TitleNormalizer(titleNormalizer.rules) {
+      var zebraphantHits = 0
+      override def sanitize(title: String): String = {
+        if (title == "Zebraphant") zebraphantHits += 1
+        super.sanitize(title)
+      }
+    }
+    def sanitizeHits(siblings: Int): Int = {
+      val counting = new CountingNormalizer
+      val main     = published("Ghost 2", 700, 2025, KinoMuza, "Zebraphant", 100)
+      // Same film — a differing original title agreeing on runtime is not a contradiction.
+      val rest     = (1 to siblings).map(i => published(s"Ghost 2 ($i)", 700, 2025, CinemaShowing(KinoMuzeumGdansk, s"v$i"), "Ghost Two", 100))
+      FilmCanonicalizer.clusterByFilm(main +: rest, counting) should have size 1
+      counting.zebraphantHits
+    }
+    sanitizeHits(1) should be > 0                 // the counter sees the identity being built at all
+    sanitizeHits(10) shouldBe sanitizeHits(1)
+  }
+
   it should "keep two rows sharing ONE tmdbId apart when their cinemas published different films" in {
     // The same refusal one rung down. A shared tmdbId is not permission to merge either:
     // a row can be holding an id that is not its film's, and merging a second row onto it
