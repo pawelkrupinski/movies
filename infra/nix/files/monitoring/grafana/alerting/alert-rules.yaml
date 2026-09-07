@@ -826,9 +826,17 @@ groups:
       # every country read DOUBLE. One 10m sample of that is all `max_over_time`
       # needs: the baseline stayed at 2x for the next six hours and all five
       # countries paged critical at 0.46-0.49 with nothing whatsoever wrong. The
-      # gauges were flat throughout (PL 39,102 slots, +-0.1%). A `Recreate` rollout
-      # is the same shape without a relabel, and `TtlIndexUnreconciled` in
-      # read-model-projection.rules already guards itself this way.
+      # gauges were flat throughout (PL 39,102 slots, +-0.1%).
+      #
+      # A ROLLOUT IS NOT THE HAZARD HERE, WHATEVER THE NEIGHBOURING RULES SAY: the
+      # worker Deployment is `replicas: 1` with `strategy: Recreate`, so the old
+      # pod is gone before the new one is scraped and two worker targets are never
+      # live at once. (The WEB tier is `RollingUpdate` with `maxSurge: 1` and does
+      # overlap — but no rule sums a web gauge across instances.) What produces a
+      # duplicate here is a change to the TARGET'S IDENTITY: a relabel, a NodePort
+      # move, the same worker listed twice in scrape-kinowo-apps.yaml. Prometheus
+      # answers under both names until the old one falls out of lookback, and it
+      # will do that on any day nobody is deploying anything.
       #
       # The relabel is the cheap half of the lesson. The expensive half is that
       # `max_over_time` LATCHES: any single poisoned sample, from any cause, is

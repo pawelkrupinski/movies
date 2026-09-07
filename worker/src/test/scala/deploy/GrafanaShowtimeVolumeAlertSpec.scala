@@ -129,9 +129,12 @@ class GrafanaShowtimeVolumeAlertSpec extends AnyFlatSpec with Matchers {
         s"'$expr' aggregates ${WorkerShowtimesMetrics.Name} without reducing the duplicate series " +
           "for a (country, city) first. Exactly ONE worker publishes a country's census, so a " +
           "second series for the same city is always the SAME census counted twice — which is " +
-          "what a `Recreate` rollout produces while both pods answer, and what renaming the " +
-          "workers' `instance` label produced on 2026-09-06 for the length of Prometheus's 5m " +
-          "lookback. That doubled ONE 10m sample, `max_over_time(...[6h:10m])` held it as the " +
+          "what any change to a target's IDENTITY produces: renaming the workers' `instance` " +
+          "label did it on 2026-09-06, for the length of Prometheus's 5m lookback, and a " +
+          "NodePort move or a worker listed twice in the scrape config would do the same. (Not " +
+          "a rollout — the worker Deployment is replicas:1 / Recreate, so two worker targets " +
+          "are never live at once.) That doubled ONE 10m sample, `max_over_time(...[6h:10m])` " +
+          "held it as the " +
           "baseline, and all five countries paged critical at ~0.49 for six hours against a " +
           "gauge that never moved. Reduce inside the sum — `sum by (country) (max by (country, " +
           "city) (...))` — so the numerator and the baseline are de-duplicated at the same " +

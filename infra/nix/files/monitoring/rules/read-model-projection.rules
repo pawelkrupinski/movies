@@ -106,14 +106,27 @@ groups:
       #
       # `max by (country)` OVER THE CORPUS, `sum by (country)` OVER THE PRUNES — the asymmetry is
       # deliberate and the two halves are different KINDS of number. Exactly one worker publishes a
-      # country's corpus census, so two series for it are the SAME census counted twice (a rollout
-      # with both pods answering, or a scrape relabel answered by Prometheus's 5m lookback — which
-      # is what doubled every country's gauge on 2026-09-06 and paged all five off
-      # kinowo-showtime-volume-collapsed for six hours). Summing them halves this ratio, and it
-      # halves it EXACTLY DURING A ROLLOUT, which is when the boot reconcile does its largest
-      # prune — so the failure would be a MISS, quietly, in the one window this rule most needs to
-      # be awake. The prune counter is the opposite: each process counts its own removals, so when
-      # two are alive their totals genuinely add, and `max` there would drop half the prunes.
+      # country's corpus census, so two series for it are the SAME census counted twice, while the
+      # prune counter is the opposite: each process counts its own removals, so when two are alive
+      # their totals genuinely add and `max` there would drop half the prunes.
+      #
+      # WHAT THAT DUPLICATE ACTUALLY COST, MEASURED, so the next reader does not over-read this.
+      # On 2026-09-06 18:26-18:30Z the `instance` relabel (21b381727) had Prometheus answering for
+      # every worker under both its old and new name until the old one fell out of lookback, and
+      # `sum by (country)` doubled the census for all five: PL 943 -> 1,886, UK 1,576 -> 3,152,
+      # US 2,267 -> 4,534, DE 1,848 -> 3,696, ES 191 -> 382. FOUR MINUTES. That is shorter than
+      # this rule's `for: 15m` and much shorter than its sibling's `for: 2h`, so THAT event could
+      # not have flipped either alert's state and did not — the only rule it actually paged was
+      # kinowo-showtime-volume-collapsed, whose `max_over_time` baseline latched the artefact for
+      # six hours. Here the bite is smaller and worth naming exactly: while it lasts, the ratio
+      # this rule tests is halved (which can reset a pending streak and delay a real page by up to
+      # `for:`), the `{{ $value }}` it reports is half the truth, and the sibling's summary names
+      # DOUBLE the invisible films — sending an operator after a row that does not exist. A
+      # duplicate that outlives the `for:` window, which a scrape config listing one worker twice
+      # would give you, turns all of that into an outright miss.
+      #
+      # NOT A ROLLOUT, whatever `TtlIndexUnreconciled` below used to say: the worker Deployment is
+      # `replicas: 1` with `strategy: Recreate`, so two worker targets are never live at once.
       #
       # 30%, from the measured week. Over the 7 days to 2026-09-05 the worst HEALTHY hour any
       # country reached was PL at 16.9% (DE 9.4%, ES 7.8%, US 4.6%, UK 3.7%), with p99s of
@@ -246,8 +259,10 @@ groups:
         # can be compared rather than tested for presence.
         # PER COUNTRY, because `max()` alone drops every label and an alert that cannot name the
         # pod cannot be acted on -- the collection is in that worker's log, and you have to know
-        # whose log to read. `max by (country)` also survives two workers scraping the same
-        # country during a rollout without double-firing.
+        # whose log to read. `max by (country)` also survives one worker being SCRAPED TWICE --
+        # under an old and a new `instance` name across a relabel, say -- without double-firing.
+        # (This used to say "two workers during a rollout", which cannot happen: the Deployment is
+        # `replicas: 1` with `strategy: Recreate`.)
         expr: max by (country) (kinowo_worker_ttl_index_mismatches) > 0
         # TEN MINUTES: the reconciler runs at construction, so a rollout is the only time this can
         # legitimately flicker while pods come up on a new constant and rebuild their indexes.
