@@ -47,6 +47,11 @@ import scala.util.control.NonFatal
  *                                    <fallback>"), ENTER fallback (or PROBE_FAILED
  *                                    if already on it) and back off the next primary
  *                                    re-probe.
+ *   - Primary THREW, the run has reached `fallbackAfter`, and the fallback has
+ *                                    nothing either → UNCOVERED: nobody is serving
+ *                                    this venue. Same state as a grace failure, but
+ *                                    it pages once per spell, because this is the one
+ *                                    outcome nothing else in the system reports.
  *   - Primary empty AND the fallback also empty/unavailable → the genuine-empty case
  *                                    (e.g. a dark late-night repertoire): record the
  *                                    primary's real outcome and do NOT start a
@@ -58,8 +63,8 @@ import scala.util.control.NonFatal
  * `nextPrimaryProbeAt`, serving the fallback directly; at that point we re-probe the
  * primary, recovering immediately if it's back, else extending the backoff
  * (exponential, capped). State + history persist via `FallbackStore` for
- * the /uptime/fallback page; `onEvent` fires on ENTER / PROBE_FAILED / RECOVERED
- * for alerting.
+ * the /uptime/fallback page; `onEvent` fires on ENTER / PROBE_FAILED / RECOVERED /
+ * UNCOVERED for alerting.
  *
  * `listingIsComplete` stays the PRIMARY's answer (via [[DelegatingCinemaScraper]])
  * even on a tick served from the fallback, where what we actually returned is the
