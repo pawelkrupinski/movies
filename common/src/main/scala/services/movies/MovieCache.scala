@@ -576,10 +576,9 @@ class CaffeineMovieCache(
     FilmCanonicalizer.canonicalRank(k)
 
   private[services] def canonicalKeyFor(key: CacheKey): Option[CacheKey] = {
-    import scala.jdk.CollectionConverters._
-    val target = key.normalized
-    val sameTitle = positive.asMap().asScala.keysIterator
-      .filter(k => k.normalized == target).toSeq
+    // The index's per-title map, not a walk of the whole cache: this runs up to four
+    // times per listing resolved, against a corpus of thousands.
+    val sameTitle = corpusIndex.entriesFor(key.normalized).map(_._1)
     // Prefer a row at this EXACT year. A same-title row at a DIFFERENT year is a
     // distinct film — a remake or re-release carrying the original's name
     // ("Zaproszenie" 2022 "The Invitation" vs 2026 "The Invite", "Diuna" 1984 vs
@@ -1953,13 +1952,8 @@ class CaffeineMovieCache(
       .exists(cluster => cluster.exists(_._1 == primary) && cluster.exists(_._1 == key))
   }
 
-  def hasResolvedSiblingByTitle(rawTitle: String): Boolean = {
-    import scala.jdk.CollectionConverters._
-    val normalizedRaw = normalizer.sanitize(rawTitle)
-    positive.asMap().asScala.iterator.exists { case (k, e) =>
-      e.tmdbId.isDefined && k.normalized == normalizedRaw
-    }
-  }
+  def hasResolvedSiblingByTitle(rawTitle: String): Boolean =
+    corpusIndex.entriesFor(normalizer.sanitize(rawTitle)).exists { case (_, e) => e.tmdbId.isDefined }
 
   def snapshot(): Seq[StoredMovieRecord] = {
     import scala.jdk.CollectionConverters._

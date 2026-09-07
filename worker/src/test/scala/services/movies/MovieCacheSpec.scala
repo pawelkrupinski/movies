@@ -7,6 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.time.LocalDateTime
+import scala.util.chaining._
 
 class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
@@ -1855,6 +1856,51 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
 
     cache.get(cache.keyOf("Wspinaczka", None)) shouldBe defined
     cache.snapshot().size shouldBe 3
+  }
+
+  // `canonicalKeyFor` is how a resolve reaches the LIVE row for a key: the row at
+  // this exact year when one exists, else the best-ranked same-title row, else none.
+  "canonicalKeyFor" should "prefer the same-title row at the exact year over a better-ranked one at another year" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val remake   = cache.keyOf("Diuna", Some(2021))
+    val original = cache.keyOf("Diuna", Some(1984))
+    cache.put(remake,   MovieRecord(tmdbId = Some(438631)))
+    cache.put(original, MovieRecord(tmdbId = Some(841)))
+
+    cache.canonicalKeyFor(cache.keyOf("Diuna", Some(1984))) shouldBe Some(original)
+    cache.canonicalKeyFor(cache.keyOf("Diuna", Some(2021))) shouldBe Some(remake)
+  }
+
+  it should "fall back to the best-ranked same-title row when no row holds the asked year" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val yearless = cache.keyOf("Wspinaczka", None)
+    val dated    = cache.keyOf("Wspinaczka", Some(2025))
+    cache.put(yearless, MovieRecord())
+    cache.put(dated,    MovieRecord(tmdbId = Some(7)))
+
+    // A yearless key whose row gained a resolved year reaches that row.
+    cache.canonicalKeyFor(cache.keyOf("wspinaczka", Some(2026))) shouldBe
+      Seq(yearless, dated).minBy(FilmCanonicalizer.canonicalRank).pipe(Some(_))
+  }
+
+  it should "answer None when no resident row carries the title" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    cache.put(cache.keyOf("Something else", Some(2024)), MovieRecord(tmdbId = Some(42)))
+
+    cache.canonicalKeyFor(cache.keyOf("Diuna", Some(2021))) shouldBe None
+  }
+
+  it should "forget a row the moment it is evicted" in {
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val key = cache.keyOf("Diuna", Some(2021))
+    cache.put(key, MovieRecord(tmdbId = Some(438631)))
+    cache.canonicalKeyFor(key) shouldBe Some(key)
+    cache.hasResolvedSiblingByTitle("Diuna") shouldBe true
+
+    cache.invalidate(key)
+
+    cache.canonicalKeyFor(key) shouldBe None
+    cache.hasResolvedSiblingByTitle("Diuna") shouldBe false
   }
 
   // `hasResolvedSiblingByTitle` is what `needsTmdbResolution` consults to skip
