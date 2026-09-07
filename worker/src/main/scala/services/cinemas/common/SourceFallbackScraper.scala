@@ -145,7 +145,7 @@ class SourceFallbackScraper(
     } else if (graceElapsed(previous, nowI)) {
       val (fwMovies, fwMs, fwServed) = tryFallback()
       if (fwServed) { enterFallback(previous, nowI, reason); monitor.recordFallbackSuccess(service, fwMs); fwMovies }
-      else { recordGraceFailure(previous, nowI, reason); keepPrimaryOutcome }
+      else { recordUncovered(previous, nowI, reason); keepPrimaryOutcome }
     } else {
       recordGraceFailure(previous, nowI, reason); keepPrimaryOutcome
     }
@@ -181,9 +181,48 @@ class SourceFallbackScraper(
    *  this is the first failure) without entering fallback. `active=false` so the
    *  /uptime page (which filters on `active`) ignores it, and no history/event is
    *  recorded — a grace failure is not a fallback transition. */
-  private def recordGraceFailure(previous: Option[FallbackState], nowI: Instant, reason: String): Unit = {
+  private def recordGraceFailure(previous: Option[FallbackState], nowI: Instant, reason: String): Unit =
+    store.put(stillFailing(previous.getOrElse(initialState), nowI, reason))
+
+  /** The primary has now been failing for the whole grace window AND the fallback
+   *  has nothing to serve either, so NOBODY is covering this venue — and nothing
+   *  else in the system says so. `/uptime` shows the same red row a ten-minute blip
+   *  gets; the country-level scrape-age alert goes quiet as soon as
+   *  `ScrapeFreshnessPolicy` parks the venue on the normal freshness window; and
+   *  ENTER, the only fallback page there was, by definition needs a fallback WITH
+   *  data. That is how ODEON Basingstoke scraped nothing for a week after Odeon
+   *  dropped its site id — the cinema had closed, so flicks.co.uk had no showtimes
+   *  to fall back to either, and the venue never left the grace window.
+   *
+   *  So it pages, ONCE per failing spell: repeated every tick the alert would be
+   *  worth nothing, and the state is otherwise the grace state — still
+   *  `active = false`, because we are not serving a fallback, we are serving
+   *  nothing. A primary success clears `failingSince` and so re-arms it. */
+  private def recordUncovered(previous: Option[FallbackState], nowI: Instant, reason: String): Unit = {
     val base = previous.getOrElse(initialState)
-    store.put(base.copy(
+    if (alreadyPagedUncovered(base)) recordGraceFailure(previous, nowI, reason)
+    else {
+      val event = FallbackEvent(nowI, FallbackEvent.Uncovered, reason)
+      val next  = stillFailing(base, nowI, reason)
+        .copy(history = (event :: base.history).take(FallbackState.MaxHistory))
+      store.put(next)
+      onEvent(next, event)
+    }
+  }
+
+  /** Have we already paged for THIS failing spell? The newest history entry is the
+   *  spell's own UNCOVERED only while the spell lasts: any later transition
+   *  (ENTER / PROBE_FAILED / RECOVERED) pushes itself in front, and a success clears
+   *  `failingSince`, so the next spell's entry cannot be mistaken for this one's. */
+  private def alreadyPagedUncovered(base: FallbackState): Boolean =
+    base.history.headOption.exists(entry =>
+      entry.event == FallbackEvent.Uncovered &&
+        base.failingSince.exists(since => !entry.at.isBefore(since)))
+
+  /** The persisted shape of "the primary is down and we are not on fallback",
+   *  shared by the silent grace ticks and the one that pages. */
+  private def stillFailing(base: FallbackState, nowI: Instant, reason: String): FallbackState =
+    base.copy(
       active              = false,
       fallbackSource = fallbackName, fallbackRef = fallbackRef(),
       failingSince        = base.failingSince.orElse(Some(nowI)),
@@ -192,8 +231,7 @@ class SourceFallbackScraper(
       lastPrimaryProbeAt  = Some(nowI),
       nextPrimaryProbeAt  = None,          // no backoff in the grace window — probe every tick
       updatedAt           = nowI
-    ))
-  }
+    )
 
   /** Cross from the grace window into fallback: the primary has now been failing
    *  for [[fallbackAfter]] and the fallback has data. Pages ENTER immediately — the

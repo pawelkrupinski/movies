@@ -173,6 +173,40 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers {
     h.bucket.fallback shouldBe false
     h.bucket.status   shouldBe "red"
     h.state.map(_.active) shouldBe Some(false)  // can't fall back with no Filmweb → stays in grace
+    // ...and it PAGES, because nothing else in the system will. It is not on
+    // fallback, so ENTER never fires; /uptime shows the red row a ten-minute blip
+    // gets; and the country scrape-age alert goes quiet once ScrapeFreshnessPolicy
+    // parks the venue. This page is the only thing that says "nobody is covering
+    // this cinema" — the state ODEON Basingstoke sat in for a week.
+    h.events.map(_._2.event) shouldBe List(FallbackEvent.Uncovered)
+    h.alerts should have size 1
+    h.alerts.head should include ("nothing to serve either")
+    h.alerts.head should include ("down 6h")
+  }
+
+  it should "page UNCOVERED once per failing spell, not on every tick it stays down" in {
+    val h = new Harness(Seq(Left(boom)), filmweb = None)
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute)
+    h.tickSwallowing()             // grace elapsed, nothing covers it → page
+    h.advance(1.hour); h.tickSwallowing()
+    h.advance(1.day);  h.tickSwallowing()
+    h.alerts should have size 1
+    h.state.map(_.history.size) shouldBe Some(1)
+  }
+
+  it should "re-arm the UNCOVERED page after the primary recovers and dies again" in {
+    val h = new Harness(Seq(Left(boom), Left(boom), Right(OneMovie), Left(boom)), filmweb = None)
+    h.tickSwallowing()
+    h.advance(6.hours + 1.minute)
+    h.tickSwallowing()                    // spell 1 → page
+    h.advance(1.minute)
+    h.scraper.fetch() shouldBe OneMovie   // recovered: the grace clock is cleared
+    h.advance(1.minute); h.tickSwallowing()   // spell 2 starts here, back inside the window
+    h.alerts should have size 1               // ...so no page yet
+    h.advance(6.hours + 1.minute)
+    h.tickSwallowing()                    // spell 2 elapses → page again
+    h.alerts should have size 2
   }
 
   // ---- once on fallback: existing backoff / recovery / paging semantics ----

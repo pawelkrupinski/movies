@@ -16,6 +16,11 @@ object FallbackEvent {
   val ProbeFailed = "PROBE_FAILED"
   /** Primary came back; fallback released. */
   val Recovered = "RECOVERED"
+  /** The primary has been failing for the whole grace window and the fallback has
+   *  nothing to serve either, so NOBODY is covering this venue. Distinct from
+   *  ENTER, which is the good outcome (something took over); this one is the shape
+   *  a venue that has closed — or lost its upstream id — leaves behind. */
+  val Uncovered = "UNCOVERED"
 }
 
 /**
