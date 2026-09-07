@@ -76,8 +76,9 @@ rest is the key itself.
 4. Landing-time gaps the settle-vs-scrape inventory named, closed one shared
    predicate at a time: `TitleContainment` (decorations), then
    `FilmCanonicalizer.searchKey` (the romanised search-title edge) asked through
-   `CorpusIndex.keysWithSearchKey`. Still settle-only: the imdbId fold of two
-   TMDB records (one pair on prod), the ±2-year attach (landing is ±1).
+   `CorpusIndex.keysWithSearchKey`, then the landing year window widened to the
+   settle's ±2 (nearest first). Still settle-only, by decision: the imdbId fold
+   of two TMDB records — a genuine merge of two resolutions, one pair on prod.
 
 ## Measuring
 
