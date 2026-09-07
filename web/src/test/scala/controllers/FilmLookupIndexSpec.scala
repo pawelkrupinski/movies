@@ -20,10 +20,12 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class FilmLookupIndexSpec extends AnyFlatSpec with Matchers {
 
-  /** A read model that counts corpus walks. */
+  /** A read model that counts corpus walks, and the films joined per lookup. */
   private class CountingReadModel(store: InMemoryReadModelRepository) extends WebReadModel(store) {
     val allMoviesCalls = new AtomicInteger(0)
+    val movieCalls     = new AtomicInteger(0)
     override def allMovies(): Seq[ResolvedMovie] = { allMoviesCalls.incrementAndGet(); super.allMovies() }
+    override def movie(id: String): Option[ResolvedMovie] = { movieCalls.incrementAndGet(); super.movie(id) }
   }
 
   private def showing(at: LocalDateTime) = Seq(Showtime(at, None, None, Nil))
@@ -47,7 +49,24 @@ class FilmLookupIndexSpec extends AnyFlatSpec with Matchers {
     val service = new MovieControllerService(readModel)
     service.film(Poznan, "Rocky 2").map(_.movie.title) shouldBe Some("Rocky 2")
     readModel.allMoviesCalls.set(0)
+    readModel.movieCalls.set(0)
     (service, readModel)
+  }
+
+  // A request for ONE film used to build the schedule of EVERY film in the city
+  // and pick its own out of the list: 2,000 joins for one card, ~4 ms a request
+  // on a 2,000-card city, on the page nothing caches. The index names the film;
+  // only that film's screenings are joined.
+  "film by slug" should "join only the addressed film, not the whole city" in {
+    val (service, readModel) = warmService()
+    service.filmBySlug(Poznan, "rocky-2").map(_.movie.title) shouldBe Some("Rocky 2")
+    readModel.movieCalls.get() shouldBe 1
+  }
+
+  "film by title" should "join only the films the title index names, not the whole city" in {
+    val (service, readModel) = warmService()
+    service.film(Poznan, "Rocky 2").map(_.movie.title) shouldBe Some("Rocky 2")
+    readModel.movieCalls.get() shouldBe 1
   }
 
   "film by title" should "resolve a roman-numeral spelling of an Arabic-numeral display title" in {

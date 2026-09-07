@@ -186,8 +186,18 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
    * yet (the movie-before-screenings write order can still be observed in the
    * reverse order over two independent change streams) simply contributes
    * nothing until the movie document arrives — no half-rendered card. */
-  def toSchedules(city: City, now: LocalDateTime): Seq[FilmSchedule] = {
-    readModel.screeningsForCity(city.slug).groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
+  def toSchedules(city: City, now: LocalDateTime): Seq[FilmSchedule] =
+    schedulesFor(city, readModel.screeningsForCity(city.slug), now)
+
+  /** The schedules of ONLY the films with these ids, in [[toSchedules]]' order — the
+   *  same join over the same rows, minus every film the caller did not ask for. A
+   *  request for one film used to build the whole city's list and pick its own out
+   *  of it: 2,000 joins for one card, ~4 ms a request on a 2,000-card city. */
+  private def schedulesFor(city: City, filmIds: Set[String]): Seq[FilmSchedule] =
+    schedulesFor(city, readModel.screeningsForCity(city.slug).filter(s => filmIds(s.filmId)), LocalDateTime.now(city.zoneId))
+
+  private def schedulesFor(city: City, cityScreenings: Seq[CityScreening], now: LocalDateTime): Seq[FilmSchedule] = {
+    cityScreenings.groupBy(_.filmId).toSeq.flatMap { case (filmId, screenings) =>
       readModel.movie(filmId).flatMap { resolved =>
         // Flatten this city's future showtimes. A film with no future showing in
         // this city drops out of its list view (its documents stay in the store).
@@ -245,11 +255,11 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
   def film(city: City, title: String): Option[FilmSchedule] = {
     // Matched through the read model's title index rather than by folding every
     // schedule's title per request; among the films the index names, the first
-    // in schedule order (earliest showtime) wins, as it always has.
-    val schedules = toSchedules(city)
+    // in schedule order (earliest showtime) wins, as it always has — and only
+    // those films are joined.
     def lookup(t: String): Option[FilmSchedule] = {
       val ids = readModel.filmTitles.idsFor(t).toSet
-      if (ids.isEmpty) None else schedules.find(s => ids(s.resolved._id))
+      if (ids.isEmpty) None else schedulesFor(city, ids).headOption
     }
     // Telegram (and some other chat apps) re-percent-encode a pasted URL whose
     // query already carries %XX escapes: our `%20` becomes `%2520`, `%C5%BC`
@@ -278,16 +288,16 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
    *  `toSchedules` orders by earliest showtime and that shifts through the day. */
   def filmBySlug(city: City, slug: String): Option[FilmSchedule] = {
     val addressed = readModel.filmSlugs.idFor(slug)
-    def matches(id: String, title: String): Boolean =
-      addressed.fold(tools.Slugify(title) == slug)(_ == id)
+    def reslugged(title: String): Boolean = tools.Slugify(title) == slug
 
-    toSchedules(city).filter(s => matches(s.resolved._id, s.movie.title)).minByOption(_.movie.title)
+    // An address the index knows joins ONE film; only an unknown one walks the
+    // city's schedules — and then the corpus — re-slugging titles, the safety
+    // net for a stale link.
+    addressed.fold(toSchedules(city).filter(s => reslugged(s.movie.title)).minByOption(_.movie.title))(id => schedulesFor(city, Set(id)).headOption)
       .orElse {
         readModelFallback(
           city,
-          // An address the index knows is one read; only an unknown one walks
-          // the corpus re-slugging titles — the safety net for a stale link.
-          addressed.fold(readModel.allMovies().filter(m => matches(m._id, m.title)).minByOption(_.title))(readModel.movie),
+          addressed.fold(readModel.allMovies().filter(m => reslugged(m.title)).minByOption(_.title))(readModel.movie),
           reference = s"slug='$slug'"
         )
       }
