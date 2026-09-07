@@ -33,9 +33,9 @@ import models.ResolvedMovie
  *  and one-to-one no matter what the corpus holds.
  *
  *  Assignment is deterministic — a pure function of the corpus, ordered by
- *  `(releaseYear desc, title, _id)` — so the same read model always produces
- *  the same addresses, and two web pods serve the same links. Films are
- *  identified by `_id` rather than title precisely because titles are what
+ *  `(releaseYear desc, title, tmdbId, _id)` — so the same read model always
+ *  produces the same addresses, and two web pods serve the same links. Films
+ *  are identified by `_id` rather than title precisely because titles are what
  *  collide here.
  */
 final class FilmSlugs private(private val idToSlug: Map[String, String],
@@ -54,14 +54,30 @@ final class FilmSlugs private(private val idToSlug: Map[String, String],
 
 object FilmSlugs {
 
-  /** Newest first, then title, then id: total and stable, so the film that
-   *  keeps the bare slug never depends on the read model's iteration order. A
-   *  film with no year sorts last — it can't be qualified with one either, so
-   *  it is the worst candidate to hold a contested address. [[FilmTitles]]
-   *  lists a same-title pair in this order too, so both indexes agree on which
-   *  film a bare title means. */
-  private[readmodel] def newestFirst(m: ResolvedMovie): (Boolean, Int, String, String) =
-    (m.releaseYear.isEmpty, -m.releaseYear.getOrElse(0), m.title, m._id)
+  /** Newest first, then title, then IMDb address, then film id: total and stable, so
+   *  the film that keeps the bare slug never depends on the read model's
+   *  iteration order. A film with no year sorts last — it can't be qualified
+   *  with one either, so it is the worst candidate to hold a contested address.
+   *  [[FilmTitles]] lists a same-title pair in this order too, so both indexes
+   *  agree on which film a bare title means.
+   *
+   *  WHY THE IMDb ADDRESS SITS BEFORE `_id`, which is the whole reason this is not
+   *  just the obvious three fields. Two films that share a title AND a year are
+   *  separated only by the last field, and since 2026-09-07 `_id` is an opaque
+   *  `FilmId` minted from whichever key the row was FIRST created under — a
+   *  function of arrival order, not of the film (see `docs/stable-film-id.md`).
+   *  That made the bare address flip between two same-titled films whenever a
+   *  worker rebuilt its corpus in a different order: a shared link would open a
+   *  different film, and every replay of one corpus disagreed with the last
+   *  (caught by the Polish order-independence leg on `lalka` / `lalka-2026`).
+   *  The IMDb address is the film's identity at the source, it is already on
+   *  the card, and it does not move, so it decides first — a film that has one
+   *  also outranks a film that has none, since an unresolved row is the worse
+   *  holder of a contested address. `_id` remains only as the total-order
+   *  backstop for a pair with neither a distinguishing year nor an IMDb id. */
+  private[readmodel] def newestFirst(m: ResolvedMovie): (Boolean, Int, String, Boolean, String, String) =
+    (m.releaseYear.isEmpty, -m.releaseYear.getOrElse(0), m.title,
+     m.ratings.imdbUrl.isEmpty, m.ratings.imdbUrl.getOrElse(""), m._id)
 
   def apply(movies: Seq[ResolvedMovie]): FilmSlugs = {
     // Bare fold per film, dropping those with no addressable slug at all.

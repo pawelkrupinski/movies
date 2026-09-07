@@ -24,6 +24,49 @@ class FilmSlugsSpec extends AnyFlatSpec with Matchers {
   private val invite     = movie("zaproszenie|2026", "Zaproszenie", Some(2026))
   private val jakubowska = movie("zaproszenie|1986", "Zaproszenie", Some(1986))
 
+  /** Same title, same year — separated only by the last tiebreak, which is where the
+   *  film id used to sit. Since the id became an opaque `FilmId` minted from arrival
+   *  order, that made the bare address flip between the two whenever a worker rebuilt
+   *  its corpus in a different order: a shared link opened a different film. Caught by
+   *  the Polish order-independence leg on `lalka` / `lalka-2026`, 2026-09-07. */
+  private def resolved(id: String, title: String, year: Option[Int], imdb: String): ResolvedMovie =
+    movie(id, title, year).copy(ratings = ResolvedRatings(None, Some(s"https://www.imdb.com/title/$imdb/"), None, "", None, "", None, ""))
+
+  private val lalkaA = resolved("f00aaaaaaaaaaaa", "Lalka", Some(2026), "tt0000111")
+  private val lalkaB = resolved("f00bbbbbbbbbbbb", "Lalka", Some(2026), "tt0000222")
+
+  "a same-title, same-year pair" should "keep the same addresses however the corpus was ordered" in {
+    val one   = FilmSlugs(Seq(lalkaA, lalkaB))
+    val other = FilmSlugs(Seq(lalkaB, lalkaA))
+
+    one.slugFor(lalkaA._id) shouldBe Some("lalka")
+    one.slugFor(lalkaB._id) shouldBe Some("lalka-2026")
+    other.slugFor(lalkaA._id) shouldBe one.slugFor(lalkaA._id)
+    other.slugFor(lalkaB._id) shouldBe one.slugFor(lalkaB._id)
+  }
+
+  it should "not move when the ids are re-minted in the other order, as a replay assigns them" in {
+    // The same two films, ids swapped — what a differently-ordered arrival produces.
+    val replayA = lalkaA.copy(_id = lalkaB._id)
+    val replayB = lalkaB.copy(_id = lalkaA._id)
+
+    val replay = FilmSlugs(Seq(replayA, replayB))
+
+    withClue("the film with the lower IMDb id keeps the bare address, whatever id it was minted: ") {
+      replay.slugFor(replayA._id) shouldBe Some("lalka")
+      replay.idFor("lalka")       shouldBe Some(replayA._id)
+    }
+  }
+
+  it should "prefer the film that has an IMDb id to one that has none" in {
+    val unresolved = movie("f00cccccccccccc", "Lalka", Some(2026))
+
+    val slugs = FilmSlugs(Seq(unresolved, lalkaA))
+
+    slugs.slugFor(lalkaA._id)     shouldBe Some("lalka")
+    slugs.slugFor(unresolved._id) shouldBe Some("lalka-2026")   // it has a year, so it qualifies with one
+  }
+
   "FilmSlugs" should "give every film in a same-title collision its own address" in {
     val slugs = FilmSlugs(Seq(invite, jakubowska))
 
