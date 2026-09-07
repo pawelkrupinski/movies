@@ -114,6 +114,17 @@ Same line, same `info` level, `context=main` unchanged. No warn or error since.
 ## Related
 
 `infra/nix/hosts/monitoring-1/default.nix` wires `fleet.k3sServer.oidc` (the API server
-trusting Google) and publishes `headlamp.kinowo.net`. Since 2026-09-07 that vhost also
-sits behind a Google sign-in at the proxy (`fleet.googleSso`) — a second, outer gate,
-unrelated to this binding.
+trusting Google, `:143-149`) and publishes `headlamp.kinowo.net` (`:233`).
+
+⚠️ **That vhost carries no `requireGoogleLogin`**, unlike `grafana.kinowo.net` (`:216`)
+and `logs.kinowo.net` (`:250`). An anonymous `GET https://headlamp.kinowo.net/` answers
+**200**, where those two answer 302 to Google. Headlamp is the only one of the three
+published names whose sign-in is the application's own OIDC rather than the fleet's
+oauth2-proxy door, and the allow-list enforcing it is therefore the Google project's
+TESTING-mode test-user list — held in a console, not in `fleet.googleSso.allowedEmails`.
+
+That is deliberate and the vhost comment argues for it: the proxy adds TLS and a name,
+and a service that authenticates its own users does not need the door. But it is worth
+stating alongside this binding, because it means the `User` subject here and that console
+list are the whole of the distance between the internet and cluster data. The edge gate
+that protects Grafana and the logs is not in this path.
