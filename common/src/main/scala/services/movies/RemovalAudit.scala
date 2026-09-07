@@ -59,6 +59,13 @@ object RemovalAudit {
    *  [[filmsRemoved]]: the ids name films that had ALREADY left the corpus, but a sweep
    *  that removes rows of a film the site is serving is exactly the incident this log is
    *  for, so the ids go on the record. */
+  def twinlessScreeningsRemoved(source: String, screenings: Long, filmIds: Iterable[String]): Unit = {
+    val all = filmIds.toSeq
+    if (all.nonEmpty)
+      logger.info(s"[$source] $screenings screenings row(s) removed whose movie_slots twin is gone, under " +
+        s"${all.size} film id(s): reason=twinless ids=[${sample(all)}]")
+  }
+
   def strandedSideRowsRemoved(source: String, screenings: Long, slots: Long, filmIds: Iterable[String]): Unit = {
     val all = filmIds.toSeq
     if (all.nonEmpty)

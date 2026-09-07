@@ -63,6 +63,33 @@ class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
     repository.findAll().map(_.id.value) shouldBe Seq(liveId)
   }
 
+  it should "remove a live film's screenings row whose movie_slots twin is gone, and keep its twinned rows" in {
+    val (repository, screenings, slots) = split()
+    val liveId = liveFilm(repository, "Live")
+    // A second venue's showtimes whose slot was dropped: projects nothing, inflates the census.
+    screenings.upsertSlot(liveId, "kino-x␟live", tomorrow)
+    screenings.rowIdsChecked()._1 should have size 2
+    slots.rowIdsChecked()._1      should have size 1
+
+    repository.deleteStrandedSideRows() shouldBe StrandedSideRows(screenings = 0, slots = 0, filmIds = Set.empty, twinless = 1)
+
+    screenings.rowIdsChecked() shouldBe slots.rowIdsChecked()
+    screenings.findForFilm(liveId).keySet shouldBe slots.findForFilm(liveId).keySet
+    repository.deleteStrandedSideRows() shouldBe StrandedSideRows.none
+  }
+
+  it should "remove no twinless row while the slot store's ids cannot be read" in {
+    val unreadableSlots = new InMemorySlotsRepository {
+      override def rowIdsChecked(): (Set[String], Boolean) = (Set.empty, false)
+    }
+    val (repository, screenings, _) = split(slots = unreadableSlots)
+    val liveId = liveFilm(repository, "Live")
+    screenings.upsertSlot(liveId, "kino-x␟live", tomorrow)
+
+    repository.deleteStrandedSideRows().twinless shouldBe 0
+    screenings.rowIdsChecked()._1 should have size 2
+  }
+
   it should "be a no-op once nothing is stranded, and against a store with no side collections" in {
     val (repository, screenings, slots) = split()
     liveFilm(repository, "Live")

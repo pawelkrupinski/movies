@@ -164,6 +164,15 @@ class InMemorySlotsRepository extends SlotsRepository {
 
   def filmIdsChecked(): (Set[String], Boolean) = (rows.all().keySet, true)
 
+  def rowIdsChecked(): (Set[String], Boolean) =
+    (rows.all().iterator.flatMap { case (filmId, byKey) => byKey.keysIterator.map(SlotKeyed.idOf(filmId, _)) }.toSet, true)
+
+  def deleteRows(ids: Set[String]): Long = {
+    val present = ids.filter(id => rows.forFilm(SlotKeyed.filmIdOf(id)).contains(id.drop(SlotKeyed.filmIdOf(id).length + 1)))
+    present.foreach(id => rows.delete(SlotKeyed.filmIdOf(id), id.drop(SlotKeyed.filmIdOf(id).length + 1)))
+    present.size.toLong
+  }
+
   def deleteFilms(filmIds: Set[String]): Long = {
     val removed = filmIds.toSeq.map(id => rows.forFilm(id).size.toLong).sum
     filmIds.foreach(rows.deleteFilm)
@@ -430,6 +439,12 @@ class MongoSlotsRepository(
 
   def filmIdsChecked(): (Set[String], Boolean) =
     coll.fold((Set.empty[String], true))(SlotKeyed.distinctFilmIdsChecked(_, "SlotsRepository", logger.warn(_)))
+
+  def rowIdsChecked(): (Set[String], Boolean) =
+    coll.fold((Set.empty[String], true))(SlotKeyed.rowIdsChecked(_, "SlotsRepository", logger.warn(_)))
+
+  def deleteRows(ids: Set[String]): Long =
+    coll.fold(0L)(SlotKeyed.deleteRows(_, ids, "SlotsRepository", logger.warn(_)))
 
   def deleteFilms(filmIds: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, "SlotsRepository", logger.warn(_)))

@@ -38,6 +38,8 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   /** A READ, so it fails like the others: the stranded-row sweep must skip this store,
    *  not clear it on the strength of an id list it never saw. */
   def filmIdsChecked(): (Set[String], Boolean)                                  = (Set.empty, false)
+  def rowIdsChecked(): (Set[String], Boolean)                                   = (Set.empty, false)
+  def deleteRows(ids: Set[String]): Long                                        = store.deleteRows(ids)
   // DELEGATED LIKE EVERY OTHER NON-READ. These two were missing until 2026-09-06, so decorating a
   // real Mongo store — which is the case this class documents itself as existing for — silently
   // dropped the screenings change stream and never persisted its resume token: the spec looked

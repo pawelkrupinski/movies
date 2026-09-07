@@ -1,7 +1,7 @@
 package services.movies
 
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.{Aggregates, Filters}
+import org.mongodb.scala.model.{Aggregates, Filters, Projections}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
 
 import scala.concurrent.Await
@@ -25,6 +25,14 @@ trait SlotKeyedRows {
    *  The batch counterpart of `deleteFilm`, for a caller holding a SET of films to clear
    *  that wants one round-trip rather than one per film. */
   def deleteFilms(filmIds: Set[String]): Long
+
+  /** Every row `_id` here (`filmId + IdSep + slotKey`), plus whether the read succeeded —
+   *  the id strings only, never the rows. The stranded sweep compares the two side
+   *  collections' id sets: a `screenings` row with no `movie_slots` twin projects nothing. */
+  def rowIdsChecked(): (Set[String], Boolean)
+
+  /** Drop the rows with exactly these `_id`s in one write; returns the rows removed. */
+  def deleteRows(ids: Set[String]): Long
 }
 
 /**
@@ -107,6 +115,29 @@ object SlotKeyed {
         warn(s"$label.filmIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
           "reporting the read as incomplete.")
         (Set.empty, false)
+    }
+
+  /** [[SlotKeyedRows.rowIdsChecked]] for a Mongo side collection: the `_id`s alone, projected
+   *  server-side, so the showtimes never cross the wire. Same failure contract as
+   *  [[distinctFilmIdsChecked]]. */
+  def rowIdsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit): (Set[String], Boolean) =
+    Try(Await.result(c.find[Document]().projection(Projections.include("_id")).toFuture(), 120.seconds)) match {
+      case Success(docs) =>
+        (docs.flatMap(_.get("_id")).collect { case id if id.isString => id.asString.getValue }.toSet, true)
+      case Failure(exception) =>
+        warn(s"$label.rowIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
+          "reporting the read as incomplete.")
+        (Set.empty, false)
+    }
+
+  /** [[SlotKeyedRows.deleteRows]] for a Mongo side collection: one `_id $in` delete. */
+  def deleteRows[T](c: MongoCollection[T], ids: Set[String], label: String, warn: String => Unit): Long =
+    if (ids.isEmpty) 0L
+    else Try(Await.result(c.deleteMany(Filters.in("_id", ids.toSeq*)).toFuture(), 60.seconds).getDeletedCount) match {
+      case Success(deleted) => deleted
+      case Failure(exception) =>
+        warn(s"$label.deleteRows(${ids.size} row(s)) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+        0L
     }
 
   /** [[SlotKeyedRows.deleteFilms]] for a Mongo side collection: one `filmId $in` delete.

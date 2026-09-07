@@ -65,7 +65,20 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
     val thread    = Thread.currentThread().getName
     lg.setLevel(Level.DEBUG)
     lg.addAppender(app)
-    try { body; events.iterator().asScala.toSeq.filter(_.getThreadName == thread) }
+    try {
+      // Positive control before believing a negative: `RemovalAudit`'s own logger is a
+      // Play `Logger` created at object init, and when that init raced SLF4J's the audit's
+      // first lines were replayed by the initialising thread — not this one — and filtered
+      // out below, so the first test read an empty capture (2026-09-07, under
+      // `common/testOnly services.movies.*`). Log a warm-up line through the SAME path
+      // and wait until it lands here on this thread; only then is a missing line a fact.
+      val deadline = System.nanoTime() + 5L * 1000000000L
+      def warmedUp = events.iterator().asScala.exists(e => e.getThreadName == thread && e.getFormattedMessage.contains("warm-up"))
+      while (!warmedUp && System.nanoTime() < deadline) { RemovalAudit.filmRemoved("warm-up", "warm-up", "warm-up"); Thread.sleep(10) }
+      events.clear()
+      body
+      events.iterator().asScala.toSeq.filter(_.getThreadName == thread)
+    }
     finally { lg.detachAppender(app); app.stop(); lg.setLevel(prevLevel) }
   }
 

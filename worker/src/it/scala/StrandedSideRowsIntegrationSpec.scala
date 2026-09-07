@@ -39,11 +39,13 @@ class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers {
         screenings.upsertSlot("deadboth|2020", slotKey("deadboth"), tomorrow)
         slots.upsertSlot("deadboth|2020", slotKey("deadboth"), SourceData(title = Some("deadboth")))
         screenings.upsertSlot("deadscreeningsonly|1986", slotKey("deadscreeningsonly"), tomorrow)
+        // A live film's screenings row whose movie_slots twin is gone.
+        screenings.upsertSlot(liveIds.head, "kino-x␟twinless", tomorrow)
 
         screenings.filmIdsChecked() shouldBe ((liveIds + "deadboth|2020" + "deadscreeningsonly|1986", true))
         slots.filmIdsChecked()      shouldBe ((liveIds + "deadboth|2020", true))
 
-        repository.deleteStrandedSideRows() shouldBe StrandedSideRows(screenings = 2, slots = 1,
+        repository.deleteStrandedSideRows() shouldBe StrandedSideRows(screenings = 2, slots = 1, twinless = 1,
           filmIds = Set("deadboth|2020", "deadscreeningsonly|1986"))
 
         screenings.filmIdsChecked() shouldBe ((liveIds, true))
