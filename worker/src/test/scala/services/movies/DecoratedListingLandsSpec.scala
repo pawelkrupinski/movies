@@ -114,4 +114,36 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
     cache.get(CacheKey("Zawieście czerwone latarnie", Some(1989), titleNormalizer)) shouldBe empty
     cache.get(key).getOrElse(fail("row gone")).cinemaShowings.map(_._1).toSet shouldBe Set(KinoMuza, Helios)
   }
+
+  // A one-word film title runs along the edge of many unrelated titles. Without
+  // evidence the listing must resolve on its own; with evidence the veto decides.
+  it should "not treat a listing as a decoration of a ONE-word film unless it carries evidence" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    cache.put(CacheKey("It", Some(2017), titleNormalizer), MovieRecord(tmdbId = Some(346364), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("It"), originalTitle = Some("It"), releaseYear = Some(2017), runtimeMinutes = Some(135)),
+      (KinoMuza: Source) -> SourceData(title = Some("It"), releaseYear = Some(2017)))))
+
+    cache.recordCinemaScrape(Helios, Seq(
+      scrape(Helios, "It Ends With Us"),                                                             // no evidence: incubates
+      CinemaMovie(Movie(title = "It Ends With Us", releaseYear = Some(2024)), Helios, posterUrl = None, filmUrl = None,
+        synopsis = None, cast = Nil, director = Nil, showtimes = Nil)))                            // evidence contradicts: incubates
+
+    staging.findAll().map(_.title).distinct shouldBe Seq("It Ends With Us")
+    cache.get(CacheKey("It", Some(2017), titleNormalizer)).map(_.cinemaShowings.map(_._1).toSet) shouldBe Some(Set(KinoMuza))
+  }
+
+  it should "still land a two-word film's banner variant without evidence" in {
+    val staging = new InMemoryStagingRepository
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
+    val key     = CacheKey("Toy Story", Some(2026), titleNormalizer)
+    cache.put(key, MovieRecord(tmdbId = Some(862), data = Map[Source, SourceData](
+      Tmdb -> SourceData(title = Some("Toy Story"), originalTitle = Some("Toy Story"), releaseYear = Some(2026)),
+      (KinoMuza: Source) -> SourceData(title = Some("Toy Story"), releaseYear = Some(2026)))))
+
+    cache.recordCinemaScrape(Helios, Seq(scrape(Helios, "Toddler Club: Toy Story")))
+
+    staging.findAll() shouldBe empty
+    cache.get(key).map(_.cinemaShowings.map(_._1).toSet) shouldBe Some(Set(KinoMuza, Helios))
+  }
 }

@@ -280,11 +280,13 @@ trait MovieRepository {
    *  string. The cache never takes this path; it knows its ids. */
   def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = {
     val key = CacheKey(title, year, normalizer)
-    val id  = findByKeyChecked(key)._1.map(_.id).getOrElse {
-      val taken: FilmId => Boolean = id => findByIdChecked(id)._1.isDefined
-      Some(FilmId.legacy(key)).filterNot(taken).getOrElse(FilmId.fresh(key, taken))
+    findByKeyChecked(key) match {
+      case (Some(row), _) => upsert(row.id, title, year, e)
+      case (None, true)   =>
+        val taken: FilmId => Boolean = id => findByIdChecked(id)._1.isDefined
+        upsert(Some(FilmId.legacy(key)).filterNot(taken).getOrElse(FilmId.fresh(key, taken)), title, year, e)
+      case (None, false)  => ()   // a failed read is not "absent": writing could make a second document
     }
-    upsert(id, title, year, e)
   }
 
   /** Update the row at `(title, year)` only if it currently exists. Returns

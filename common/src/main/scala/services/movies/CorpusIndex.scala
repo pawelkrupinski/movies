@@ -103,6 +103,11 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  ids' entries; the id itself never changes — see `FilmId`. */
   private val idByKey         = mutable.Map.empty[CacheKey, FilmId]
   private val keyById         = mutable.Map.empty[FilmId, CacheKey]
+  /** Resolved rows by tmdbId and by imdbId — the write-time identity gate's two
+   *  questions, answered without a scan of the whole resident map per write. */
+  private val keysByTmdbId    = mutable.Map.empty[Int, mutable.Set[CacheKey]]
+  private val keysByImdbId    = mutable.Map.empty[String, mutable.Set[CacheKey]]
+  private val imdbIdByKey     = mutable.Map.empty[CacheKey, String]
 
   /** Index `record` under `key`, replacing whatever that key contributed before. */
   def put(key: CacheKey, record: MovieRecord, id: FilmId): Unit = synchronized {
@@ -123,12 +128,15 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
       record.tmdbTitleAliases.foreach { alias =>
         keysByAlias.getOrElseUpdate(normalizer.sanitize(alias), mutable.Set.empty) += key
       }
-    record.tmdbId.foreach { _ =>
+    record.imdbId.foreach { imdb =>
+      keysByImdbId.getOrElseUpdate(imdb, mutable.Set.empty) += key
+      imdbIdByKey.update(key, imdb)
+    }
+    record.tmdbId.foreach { id =>
+      keysByTmdbId.getOrElseUpdate(id, mutable.Set.empty) += key
       val search = FilmCanonicalizer.searchKey(key.cleanTitle, normalizer)
       keysBySearch.getOrElseUpdate(search, mutable.Set.empty) += key
       searchByKey.update(key, search)
-    }
-    record.tmdbId.foreach { id =>
       val runs = (record.tmdbTitleAliases + key.cleanTitle).iterator.map(TitleContainment.tokens).filter(_.nonEmpty).toSeq
       runsByKey.update(key, runs); tmdbIdByKey.update(key, id)
       runs.foreach { run =>
@@ -143,11 +151,12 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
    *  no resolved title runs along an edge of it, when what it adds names another entry
    *  in the series, or when the runs it matches belong to MORE than one film (the
    *  edge's ambiguity refusal). The caller still checks the cinemas' own evidence. */
-  def keysDecoratedBy(whole: Seq[String]): Set[CacheKey] = synchronized {
+  def keysDecoratedBy(whole: Seq[String], minBaseTokens: Int = 1): Set[CacheKey] = synchronized {
     if (whole.isEmpty) Set.empty
     else {
       val candidates = keysByEdgeToken.getOrElse(whole.head, Set.empty) ++ keysByEdgeToken.getOrElse(whole.last, Set.empty)
-      val matched = candidates.iterator.filter(k => runsByKey.get(k).exists(_.exists(TitleContainment.decorates(_, whole)))).toSet
+      val matched = candidates.iterator.filter(k => runsByKey.get(k).exists(_.exists(run =>
+        run.lengthIs >= minBaseTokens && TitleContainment.decorates(run, whole)))).toSet
       if (matched.flatMap(tmdbIdByKey.get).sizeIs == 1) matched else Set.empty
     }
   }
@@ -166,6 +175,8 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   def remove(key: CacheKey): Unit = synchronized(forget(key))
 
   def idOf(key: CacheKey): Option[FilmId]  = synchronized(idByKey.get(key))
+  def keysWithTmdbId(id: Int): Set[CacheKey]      = synchronized(keysByTmdbId.get(id).map(_.toSet).getOrElse(Set.empty))
+  def keysWithImdbId(imdb: String): Set[CacheKey] = synchronized(keysByImdbId.get(imdb).map(_.toSet).getOrElse(Set.empty))
   def keyOf(id: FilmId): Option[CacheKey]  = synchronized(keyById.get(id))
   def holdsId(id: FilmId): Boolean         = synchronized(keyById.contains(id))
 
@@ -263,8 +274,14 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
         }
       }
     }
-    tmdbIdByKey -= key
-    idByKey.remove(key).foreach(keyById -= _)
+    tmdbIdByKey.remove(key).foreach { id =>
+      keysByTmdbId.get(id).foreach { keys => keys -= key; if (keys.isEmpty) keysByTmdbId -= id }
+    }
+    imdbIdByKey.remove(key).foreach { imdb =>
+      keysByImdbId.get(imdb).foreach { keys => keys -= key; if (keys.isEmpty) keysByImdbId -= imdb }
+    }
+    // Only this key's own id: `put` on another key may already have claimed the id.
+    idByKey.remove(key).foreach(id => if (keyById.get(id).contains(key)) keyById -= id)
     rowsByNormalized.get(key.normalized).foreach { rows =>
       rows -= key
       if (rows.isEmpty) rowsByNormalized -= key.normalized

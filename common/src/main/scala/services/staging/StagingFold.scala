@@ -164,9 +164,9 @@ object StagingFold {
       // best-ranked existing member's — its year or spelling changed, the film did not;
       // else this is a brand-new film. Every other existing member retires into it.
       val members  = cluster.map(_._1).distinct.filter(moviesKeys.contains)
-        .sortBy(FilmCanonicalizer.canonicalRank).flatMap(idsByKey(_))
-      val winnerId = idsByKey.get(canonKey).map(_.head).orElse(members.headOption).getOrElse(fresh(canonKey))
-      val retired  = members.filterNot(_ == winnerId).distinct
+        .flatMap(k => idsByKey(k).map(k -> _))
+      val winnerId = FilmCanonicalizer.survivor(members, canonKey).getOrElse(fresh(canonKey))
+      val retired  = members.map(_._2).filterNot(_ == winnerId).distinct
       ((winnerId, canonKey, merged.copy(searchTitle = None)), isNewFilm, retired.map(_ -> winnerId))
     }
     val upserts       = planned.map(_._1)

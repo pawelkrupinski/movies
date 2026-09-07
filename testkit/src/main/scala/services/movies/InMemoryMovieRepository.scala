@@ -130,6 +130,20 @@ class InMemoryMovieRepository(
       ScreeningsSplit.stitch(withSlots, allScreenings.getOrElse(id, Map.empty)))
   }
 
+  /** Key-addressed writes look the key up in the store DIRECTLY — never through the
+   *  checked reads a subclass may be failing on purpose. A spec's seed is an out-of-band
+   *  write to the storage itself, and must land whatever the fake is telling the cache
+   *  about its reads. */
+  override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
+    upsert(FilmId(idOf(t, y)), t, y, e)
+  }
+  override def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
+    updateIfPresent(FilmId(idOf(t, y)), t, y, before, after)
+  }
+  override def delete(t: String, y: Option[Int]): Unit = lock.synchronized {
+    delete(FilmId(idOf(t, y)))
+  }
+
   def upsert(film: FilmId, t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
     val id = film.value
     // Same order as `MongoMovieRepository.upsert`: re-stitch first (a record can arrive

@@ -20,6 +20,19 @@ object FilmCanonicalizer {
    *  same-normalised-title rows: prefer a row that carries a release year over
    *  a yearless one, then the lower year, then the cleanTitle. A pure function
    *  of the key, so the canonical never depends on write order. */
+  private[services] def canonicalRank(k: CacheKey): (Boolean, Int, String) =
+    (k.year.isEmpty, k.year.getOrElse(Int.MaxValue), k.cleanTitle)
+
+  /** The id a merged cluster keeps — THE one rule, asked by every fold (the settle's
+   *  `collapseCluster`, the write-time tmdbId/imdbId fold, a re-key onto a held key, the
+   *  staging fold): the row already stored under the canonical key, else the best-ranked
+   *  existing member; `None` only for a cluster with no stored member at all (a brand-new
+   *  film, whose caller mints an id). A canonical key no member holds is a RETITLE of the
+   *  survivor, never a new document — see `FilmId`. */
+  def survivor(members: Seq[(CacheKey, FilmId)], canonical: CacheKey): Option[FilmId] =
+    members.collectFirst { case (k, id) if k == canonical => id }
+      .orElse(members.sortBy { case (k, _) => canonicalRank(k) }.headOption.map(_._2))
+
   /** The search-title grouping key: the title with the decorations the search rules
    *  strip removed, romanised, sanitized. The settle's search-title edge unions rows
    *  by it; the scrape-time gate asks the corpus index the same question
@@ -29,9 +42,6 @@ object FilmCanonicalizer {
    *  or the real TMDB query. */
   def searchKey(title: String, normalizer: TitleNormalizer): String =
     normalizer.sanitize(tools.TextNormalization.romanizeCyrillic(normalizer.apiQuery(title)))
-
-  private[services] def canonicalRank(k: CacheKey): (Boolean, Int, String) =
-    (k.year.isEmpty, k.year.getOrElse(Int.MaxValue), k.cleanTitle)
 
   /** Year a cluster collapses to — TMDB's resolved year if any member carries
    *  one (all resolved members of a cluster share a tmdbId hence a tmdbYear),

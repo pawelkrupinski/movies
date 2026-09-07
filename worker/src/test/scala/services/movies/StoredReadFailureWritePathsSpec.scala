@@ -46,8 +46,15 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Zaplatani", Some(2010), rated(7.7, Multikino, "Zaplatani"))
     withClue("premise — the row must NOT be cache-resident, or the read under test never happens: ")(
       cache.get(CacheKey("Zaplatani", Some(2010), titleNormalizer)) shouldBe None)
+    // The yearless row IS resident — it is the row the TMDB stage just resolved, as in
+    // prod. (A cold key's first write reads the store to learn whether a document holds
+    // the key, and an unreadable store defers that write — `FilmIdentityWritesSpec`.)
+    repository.failing = false
+    cache.put(CacheKey("Zaplatani", None, titleNormalizer),
+      MovieRecord(data = Map[Source, SourceData](Helios -> SourceData(title = Some("Zaplatani")))))
+    repository.failing = true
 
-    // A yearless row for the same film resolves, and settles onto 2010.
+    // The yearless row resolves, and settles onto 2010.
     val resolved = MovieRecord(tmdbId = Some(TmdbId), data = Map[Source, SourceData](
       Helios -> SourceData(title = Some("Zaplatani")),
       Tmdb   -> SourceData(title = Some("Zaplatani"), releaseYear = Some(2010))))
@@ -98,10 +105,18 @@ class StoredReadFailureWritePathsSpec extends AnyFlatSpec with Matchers {
    */
   "the same-tmdbId fold" should "not depend on a repository read at all" in {
     val repository = new UnreadableByIdMovieRepository()
+    repository.failing = false
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
+    // Both rows resident — a COLD key's first write does read the store (it must know
+    // whether a document already holds the key, or it would mint a second one; an
+    // unreadable store defers that write, see `FilmIdentityWritesSpec`). The fold under
+    // test is what happens once the rows are there.
     cache.put(CacheKey("Zaplatani", Some(2010), titleNormalizer), rated(7.7, Multikino, "Zaplatani"))
-    // A second spelling of the same film arrives with the same tmdbId — the fold's trigger.
+    cache.put(CacheKey("Tangled", Some(2010), titleNormalizer), rated(7.7, Helios, "Tangled").copy(tmdbId = None))
+    repository.failing = true
+    // The second spelling resolves to the same tmdbId — the fold's trigger — with every
+    // by-id read failing.
     cache.put(CacheKey("Tangled", Some(2010), titleNormalizer), rated(7.7, Helios, "Tangled"))
 
     repository.failing = false

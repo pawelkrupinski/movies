@@ -299,10 +299,27 @@ class CaffeineMovieCache(
   /** The permanent id behind `key`: the one the index holds, else the stored row's, else
    *  a fresh one for a row this cache is about to create. Ids are never re-derived from
    *  a key — see [[FilmId]]. */
-  private def idFor(key: CacheKey): FilmId =
-    corpusIndex.idOf(key)
-      .orElse(repository.findByKeyChecked(key)._1.map(_.id))
-      .getOrElse(FilmId.fresh(key, corpusIndex.holdsId))
+  private def idFor(key: CacheKey): Option[FilmId] =
+    corpusIndex.idOf(key).orElse(repository.findByKeyChecked(key) match {
+      case (Some(row), _) => Some(row.id)
+      case (None, true)   => Some(FilmId.fresh(key, corpusIndex.holdsId))
+      // The store could not say whether a document holds this key. Minting an id
+      // here would write a SECOND document for the key once the store recovers
+      // (a failed read is not "absent") — the caller defers instead.
+      case (None, false)  => None
+    })
+
+  /** The id of a RESIDENT row. Every write into `positive` goes through `store`, which
+   *  indexes the id, so a resident row without one is a broken funnel — say so, rather
+   *  than mint an id for a row that has a document. */
+  private def residentIdOf(key: CacheKey): FilmId =
+    corpusIndex.idOf(key).getOrElse(throw new IllegalStateException(s"resident row '${key.cleanTitle}' (${key.year.getOrElse("—")}) has no film id"))
+
+  private def deferUnreadable(what: String, key: CacheKey): Unit = {
+    logger.warn(s"Deferring $what of '${key.cleanTitle}' (${key.year.getOrElse("—")}): the store could not say " +
+      "whether a document already holds the key, and writing would risk a second one.")
+    skippedUnreadable.incrementAndGet(); ()
+  }
 
   private[services] def idOf(key: CacheKey): Option[FilmId] = corpusIndex.idOf(key)
 
@@ -436,7 +453,8 @@ class CaffeineMovieCache(
    *  This is the only persist path in the codebase — `MovieRepository.upsert` is
    *  called from nowhere else — so the gate is the chokepoint that prevents
    *  new tmdbId-duplicates from ever being written. */
-  private[services] def put(key: CacheKey, e: MovieRecord): Unit = putAs(key, e, idFor(key))
+  private[services] def put(key: CacheKey, e: MovieRecord): Unit =
+    idFor(key).fold(deferUnreadable("write", key))(putAs(key, e, _))
 
   /** [[put]] for a caller that holds the row's id — a retitle, where the index no
    *  longer maps the new key and a lookup would mint a fresh id for a film that has one. */
@@ -444,14 +462,19 @@ class CaffeineMovieCache(
     case Some(tid) =>
       tmdbLockFor(tid).synchronized {
         siblingKeyByTmdb(tid, excluding = key) match {
-          case Some(siblingKey) => foldDeterministically(key, e, siblingKey, MergeReason.TmdbIdentity)
+          case Some(siblingKey) => foldDeterministically(key, e, id, siblingKey, MergeReason.TmdbIdentity)
           case None =>
             // The settle's imdbId edge, at write time: the same IMDb id under another
             // tmdbId is one film TMDB holds twice — unless the cinemas describe two
-            // films, the edge's own veto.
+            // films, the edge's own veto. The sibling's tmdbId is locked too, in id
+            // order, so a concurrent write under it cannot race this fold.
             siblingKeyByImdb(e, excluding = key) match {
-              case Some(siblingKey) => foldDeterministically(key, e, siblingKey, MergeReason.ImdbIdentity)
-              case None             => persist(key, e, id)
+              case Some(siblingKey) =>
+                val siblingTmdb = get(siblingKey).flatMap(_.tmdbId).getOrElse(tid)
+                withTmdbLocks(Seq(tid, siblingTmdb).filter(_ != tid)) {
+                  foldDeterministically(key, e, id, siblingKey, MergeReason.ImdbIdentity)
+                }
+              case None => persist(key, e, id)
             }
         }
       }
@@ -459,12 +482,20 @@ class CaffeineMovieCache(
       persist(key, e, id)
   }
 
+  /** Nested per-tmdbId locks in ascending id order (the caller already holds the
+   *  incoming row's), so two writers folding the same pair cannot deadlock. */
+  private def withTmdbLocks[A](ids: Seq[Int])(body: => A): A = ids.sorted match {
+    case Seq()        => body
+    case head +: rest => tmdbLockFor(head).synchronized(withTmdbLocks(rest)(body))
+  }
+
   // Strip only when the read-split is active (showtimes live in `screenings`); without it
   // the cache must keep showtimes — there's nowhere else to hold them.
   private def forCache(r: MovieRecord): MovieRecord =
     if (repository.hasScreenings) ShowtimesDigest.stripForCache(r) else r
 
-  private def persist(key: CacheKey, e: MovieRecord): Unit = persist(key, e, idFor(key))
+  private def persist(key: CacheKey, e: MovieRecord): Unit =
+    idFor(key).fold(deferUnreadable("write", key))(persist(key, e, _))
 
   private def persist(key: CacheKey, e: MovieRecord, id: FilmId): Unit = {
     val clean = withoutZeroRatings(e)
@@ -499,25 +530,19 @@ class CaffeineMovieCache(
    *  stable across JVM builds / platforms. Pick the canonical-rank minimum so
    *  the chosen sibling — and therefore the fold result — is a pure function of
    *  the cache contents, not iteration order. */
-  private def siblingKeyByTmdb(tid: Int, excluding: CacheKey): Option[CacheKey] = {
-    import scala.jdk.CollectionConverters._
-    positive.asMap().asScala.iterator
-      .collect { case (k, v) if k != excluding && v.tmdbId.contains(tid) => k }
-      .minByOption(canonicalRank)
-  }
+  private def siblingKeyByTmdb(tid: Int, excluding: CacheKey): Option[CacheKey] =
+    (corpusIndex.keysWithTmdbId(tid) - excluding).minByOption(canonicalRank)
 
   /** A resolved row under a DIFFERENT tmdbId that carries this record's imdbId, and
    *  whose cinemas do not describe a different film — the row the settle's imdbId edge
    *  would union this one with. */
-  private def siblingKeyByImdb(e: MovieRecord, excluding: CacheKey): Option[CacheKey] = {
-    import scala.jdk.CollectionConverters._
+  private def siblingKeyByImdb(e: MovieRecord, excluding: CacheKey): Option[CacheKey] =
     e.imdbId.flatMap { imdb =>
-      positive.asMap().asScala.iterator
-        .collect { case (k, v) if k != excluding && v.imdbId.contains(imdb) && v.tmdbId.isDefined && v.tmdbId != e.tmdbId &&
-                                  !MixedFilmDetector.describeDifferentFilms(v, e, normalizer) => k }
+      (corpusIndex.keysWithImdbId(imdb) - excluding).iterator
+        .filter { k => get(k).exists(v => v.tmdbId.isDefined && v.tmdbId != e.tmdbId &&
+                                            !MixedFilmDetector.describeDifferentFilms(v, e, normalizer)) }
         .minByOption(canonicalRank)
     }
-  }
 
   /** Total order picking the canonical (surviving) key among same-tmdbId,
    *  same-normalised-title rows — see `FilmCanonicalizer.canonicalRank` for the
@@ -666,11 +691,12 @@ class CaffeineMovieCache(
         // the film's only copy. A victim left behind is a duplicate row the next pass folds
         // again (and `scripts.ReapOrphanedFilmRows` clears), which is the recoverable
         // direction.
-        val survivorKey = sorted.map(_._1).find(_ == canonical).getOrElse(sorted.head._1)
-        val survivorId  = idFor(survivorKey)
+        val members     = keys.map(k => k -> residentIdOf(k))
+        val survivorId  = FilmCanonicalizer.survivor(members, canonical).get   // members is non-empty
+        val survivorKey = members.collectFirst { case (k, id) if id == survivorId => k }.get
         val victims     = keys.filterNot(_ == survivorKey)
         val (moved, stranded) = victims.partition(v =>
-          repository.moveFilm(idFor(v), survivorId))
+          repository.moveFilm(residentIdOf(v), survivorId))
         if (stranded.nonEmpty)
           logger.warn(s"canonicalize '${canonical.cleanTitle}': keeping ${stranded.size} row(s) whose " +
             "cinemas could not be carried onto the winner — they fold again on the next pass.")
@@ -975,7 +1001,7 @@ class CaffeineMovieCache(
    *  first; enrichment-thread arrival order (which varies across machines, and
    *  used to flip the canonical here, drifting the whole-corpus snapshot
    *  between arm64 dev boxes and amd64 CI) no longer matters. */
-  private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, siblingKey: CacheKey, reason: MergeReason): Unit = {
+  private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, newId: FilmId, siblingKey: CacheKey, reason: MergeReason): Unit = {
     // `stored` (cache-or-Mongo): a cold/evicted sibling read EMPTY would be merged
     // as absent, then full-replaced and its Mongo doc deleted — losing the ratings
     // the `*Ratings` refreshers wrote onto it.
@@ -1007,19 +1033,30 @@ class CaffeineMovieCache(
     // The victim is deleted BY ID, never through `invalidate(newKey)`: when the incoming
     // key is the canonical one, the survivor is about to be stored under it, and a
     // key-addressed delete after the write would take the survivor with it.
-    val survivorId = idFor(siblingKey)
-    val victimIds  = if (newKey == siblingKey) Nil else corpusIndex.idOf(newKey).filter(_ != survivorId).toSeq
+    // The incoming row's own id is a victim too whenever it is not the survivor: it may
+    // have a document (a retitle arriving here, a cold key `idFor` found in the store)
+    // whose side rows must reach the survivor — a brand-new id simply has nothing to move.
+    val survivorId = residentIdOf(siblingKey)
+    val victimIds  = (Seq(newId) ++ corpusIndex.idOf(newKey)).distinct.filter(_ != survivorId)
     val (moved, stranded) = victimIds.partition(repository.moveFilm(_, survivorId))
+    if (stranded.nonEmpty) {
+      // A move that did not land defers the WHOLE fold, as `rekey` does: writing the
+      // survivor under the incoming key would drop the stranded document out of the
+      // index while it still holds the key — two documents, one key, and nothing left
+      // to fold it on the next pass.
+      logger.warn(s"Deferring fold of '${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}) into " +
+        s"'${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}): its screenings/slots could not be carried " +
+        "onto the survivor; the rows stay as they are and the settle asks again.")
+      skippedUnreadable.incrementAndGet()
+      return
+    }
     moved.foreach(repository.delete)
-    if (moved.nonEmpty) evict(newKey)
+    if (corpusIndex.idOf(newKey).exists(moved.contains)) evict(newKey)
     if (canonical != siblingKey) evict(siblingKey)
     persist(canonical, merged, survivorId)
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
     retriggerChangedEnrichments(siblingRecord, siblingKey, merged, canonical)
-    if (stranded.nonEmpty)
-      logger.warn(s"Fold into '${canonical.cleanTitle}': keeping ${stranded.size} duplicate row(s) whose " +
-        "cinemas could not be carried across — they fold again on the next pass.")
     // Counted whether the incoming key had a stored row of its own or was a fresh write
     // that never became one: either way a would-be duplicate was folded at write time.
     if (newKey != siblingKey) {
@@ -1079,7 +1116,7 @@ class CaffeineMovieCache(
     else {
     // `computeIfPresent` writes inside Caffeine's own lock, so it cannot go through
     // `store`; index the value it produced instead. Same contract, one line later.
-    val id = corpusIndex.idOf(key).getOrElse(idFor(key))
+    val id = residentIdOf(key)
     corpusIndex.put(key, updated, id)
     val prior     = before.get()
     val fullAfter = full.get()
@@ -1144,7 +1181,11 @@ class CaffeineMovieCache(
       // `upsert` prunes every one of the film's showtimes. Defer instead — the row stays
       // at `oldKey`, nothing is invalidated, and the settle that asked for this re-key
       // runs again on its next tick. See [[MovieRepository.findByIdChecked]].
-      storedChecked(oldKey) match {
+      val (storedRow, readOk) = get(oldKey) match {
+        case Some(resident) => (Some(StoredMovieRecord(oldKey.cleanTitle, oldKey.year, resident, residentIdOf(oldKey))), true)
+        case None           => findStoredChecked(oldKey)
+      }
+      (storedRow.map(_.record), readOk) match {
         case (_, false) =>
           logger.warn(s"Deferring re-key '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("—")}) → " +
             s"'${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}): the stored row could not be READ, " +
@@ -1159,16 +1200,17 @@ class CaffeineMovieCache(
           // still a merge is a DIFFERENT film already holding `newKey` — then this row
           // folds into it the way every same-film duplicate does, through `put`'s
           // identity gate, and the loser's side rows are carried across first.
-          val id = corpusIndex.idOf(oldKey).getOrElse(idFor(oldKey))
+          val id = corpusIndex.idOf(oldKey).orElse(storedRow.map(_.id)).getOrElse(FilmId.fresh(oldKey, corpusIndex.holdsId))
           corpusIndex.idOf(newKey).filter(_ != id) match {
             case Some(holder) if oldKey != newKey =>
               if (repository.moveFilm(id, holder)) {
-                // A MERGE, not a retitle: the holder keeps its id, and its record — the
-                // ratings and resolution it owns — is unioned with the moved row's, never
-                // replaced by it. (It was replaced, silently, before 2026-09-07.)
-                val merged = get(newKey).fold(updated)(holderRecord => MovieRecordMerge.unionAll(Seq(updated, holderRecord)))
+                // A MERGE, not a retitle: the holder keeps its id, and the two records are
+                // merged the way every fold merges — `canonical` picks the union base by
+                // runtime corroboration when the tmdbIds differ — never one written over
+                // the other. (The holder's record was replaced, silently, before 2026-09-07.)
+                val merged = get(newKey).fold(updated)(holderRecord =>
+                  FilmCanonicalizer.canonical(Seq(newKey -> holderRecord, oldKey -> updated), normalizer)._2)
                 invalidate(oldKey)
-                mergeMetrics.recordRekey(reason)
                 mergeMetrics.recordMerge(MergeReason.Canonicalize, 1)
                 putAs(newKey, merged, holder)
               } else {
@@ -1470,9 +1512,17 @@ class CaffeineMovieCache(
       def notASecondFilm(k: CacheKey): Boolean =
         Option(positive.getIfPresent(k)).forall(record => !MixedFilmDetector.wouldAddASecondFilm(
           record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
+      // A one-word film title runs along the edge of many unrelated titles ("It" →
+      // "It Ends With Us", "Her" → "Her Story"), and the veto can only refuse on
+      // evidence the listing carries. The settle's edge folds such a row only after it
+      // FAILED to resolve on its own; this gate runs before any resolution, so without
+      // evidence it asks for a two-word base and lets the listing resolve itself.
+      val listingCarriesEvidence = cm.movie.releaseYear.isDefined || cm.movie.runtimeMinutes.isDefined ||
+                                   cm.movie.originalTitle.isDefined || cm.director.nonEmpty
       val decorationOf: Set[CacheKey] =
         if (sameTitledRows.nonEmpty) Set.empty
-        else corpusIndex.keysDecoratedBy(TitleContainment.tokens(displayTitle)).filter(notASecondFilm)
+        else corpusIndex.keysDecoratedBy(TitleContainment.tokens(displayTitle),
+          minBaseTokens = if (listingCarriesEvidence) 1 else 2).filter(notASecondFilm)
       // …or the same film under the search-title key — the settle's other cross-title
       // edge: a Cyrillic listing ("Ваяна") romanising to the resolved Latin row, an
       // edition whose stripped search title is the film's ("Ojczyzna - pokaz
