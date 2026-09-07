@@ -20,6 +20,9 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     anotherEntry("Blade Runner",     "Blade Runner 2049")                               shouldBe true
     anotherEntry("Star Wars",        "Star Wars: Episode IV")                           shouldBe true
     anotherEntry("Szybcy i wściekli", "Szybcy i wściekli: część 8")                     shouldBe true
+    anotherEntry("Dune",             "Dune: Part Two")                                  shouldBe true
+    anotherEntry("Diuna",            "Diuna: Część druga")                               shouldBe true
+    anotherEntry("Wicked",           "Wicked: Part Three")                               shouldBe true
   }
 
   it should "let a decorated screening of the same film fold" in {

@@ -18,7 +18,9 @@ package services.movies
  *   - the token right AFTER the base run is an ordinal — a small number ("Toy Story"
  *     inside "Toy Story 5") or a roman numeral ("Rocky" inside "Rocky II");
  *   - a part marker anywhere among the extra tokens is followed by one ("Pt 2",
- *     "Part II", "Chapter 3", "Część 2").
+ *     "Part II", "Chapter 3", "Część 2") — or by a spelled-out one ("Part Two",
+ *     "Część druga"), which only counts after a marker: a bare word after the base
+ *     ("Toy Story Two"?) is not a shape the catalogue uses.
  * A four-digit year is NOT an ordinal ("Casablanca 1942" is Casablanca; "Blade
  * Runner 2049" is not a plausible year, so it still counts). A number BEFORE the base
  * ("Cineworld 30: The Matrix") is a banner, not a sequel, and folds as before.
@@ -30,6 +32,15 @@ object SequelMarker {
         "czesc", "cz", "teil", "parte", "capitulo", "kapitel", "partie")
 
   private val Roman = "^(ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii)$".r
+
+  /** Spelled-out ordinals, English and the catalogue's other languages, sanitized
+   *  (no diacritics) the way `TitleContainment.tokens` hands them over. */
+  private val WordOrdinals: Set[String] =
+    Set("one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "second", "third", "fourth", "fifth",
+        "druga", "trzecia", "czwarta", "piata", "drugi", "trzeci", "czwarty",
+        "zwei", "drei", "vier", "zweiter", "dritter",
+        "dos", "tres", "cuatro", "segunda", "tercera")
 
   /** A plausible release year is a year, never an ordinal. */
   private def isYear(t: String): Boolean =
@@ -47,7 +58,7 @@ object SequelMarker {
       else Nil
     val ordinalRightAfterBase = whole.startsWith(base) && extras.headOption.exists(isOrdinal)
     val partThenOrdinal = extras.sliding(2).exists {
-      case Seq(marker, ordinal) => PartMarkers.contains(marker) && isOrdinal(ordinal)
+      case Seq(marker, ordinal) => PartMarkers.contains(marker) && (isOrdinal(ordinal) || WordOrdinals.contains(ordinal))
       case _                    => false
     }
     ordinalRightAfterBase || partThenOrdinal
