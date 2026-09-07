@@ -256,6 +256,22 @@ groups:
       # around a bug and permanently excused the largest country. 3% is ~14x the post-fix floor and
       # well under half the incident it exists for.
       #
+      # THE MECHANISM, since knowing it is what says the old baseline cannot come back. Per
+      # 95737a5f1's own message the card id used to be re-derived as `sanitize(title)|resolvedYear`,
+      # so two DISTINCT source rows could compute the SAME card id. The worker gauge counts one
+      # film per source row; the web gauge joins its screenings to cards BY THAT ID. A collision
+      # therefore cost the web a card permanently while the worker went on counting both rows --
+      # a standing, invisible gap rather than a lag. The id is now the row's FilmId (a variant is
+      # the film id plus its variant title), and two rows cannot collide on that, so the CLASS is
+      # gone and not merely its instances.
+      #
+      # DO NOT PREDICT THIS RATIO FROM CORPUS SIZE, tempting as the US number makes it. The pre-fix
+      # gap did not order by corpus at all: DE held the second-largest corpus (1,848 rows) and the
+      # third-SMALLEST gap (0.3%), while the UK on 1,576 rows ran six times that at 1.8%. Collisions
+      # track title-and-year DENSITY -- re-releases, encore screenings, a language whose titles
+      # cluster -- not row count. A country whose gap looks wrong for its size is telling you
+      # something about its titles, not about its volume.
+      #
       # THE CALIBRATION IS THIN AND SHOULD BE REDONE. It rests on roughly six hours of post-fix
       # baseline, taken while PL was still mid-incident. Re-run the backtest once PL has closed and
       # tighten or loosen from a full week. The direction of the error matters more than its size:
