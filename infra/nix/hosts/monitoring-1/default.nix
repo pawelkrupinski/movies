@@ -130,22 +130,17 @@ in
   # apply; `AutoApplyBlocked` in nixos-deploy.rules says so within a day if it does.
   fleet.autoApply.restartableUnits = [ "alertmanager.service" "grafana.service" "prometheus.service" ];
 
-  # WHO THIS API SERVER WILL BELIEVE BESIDES ITS OWN CERTIFICATES. Headlamp
-  # (movies-gitops/headlamp/) logs a person in with Google and then presents that token to the
-  # API; without this the token is not an identity here and the UI reports "the cluster did not
-  # accept your sign-in" after a login that otherwise succeeded.
+  # THIS API SERVER BELIEVES ONLY ITS OWN CERTIFICATES AGAIN. `fleet.k3sServer.oidc` stood here
+  # until 2026-09-07, so that Headlamp could log a person in with Google and present that token to
+  # the API as a Kubernetes subject in their own right. Sign-in has moved out to the fleet's
+  # oauth2-proxy door, which admits people to a UI rather than to Kubernetes, so nothing presents
+  # a Google token here any more and trusting the issuer would widen the box that holds etcd for
+  # no remaining caller.
   #
-  # THE WIDENING IS BOUNDED TWICE OVER, which is what makes it acceptable on the box that also
-  # holds etcd. Google will only mint a token for this client to an account on the project's
-  # TEST-USER list -- an allow-list enforced before a request reaches the cluster -- and an
-  # authenticated subject still has no permission until a ClusterRoleBinding names it. The one
-  # that exists grants read-only, with `secrets` withheld.
-  fleet.k3sServer.oidc = {
-    issuerUrl = "https://accounts.google.com";
-    # Not a secret: a client id travels in every authorisation URL. The secret half is in the
-    # `headlamp-oidc` Kubernetes Secret.
-    clientId  = "283216110679-ur705ei6rk5hlaukm13rrfioe45ltite.apps.googleusercontent.com";
-  };
+  # ⚠️ THIS IS THE HALF THAT HAS TO COME BACK FIRST if per-person cluster identity is ever wanted
+  # again. Restoring the `User` subject in movies-gitops/headlamp/rbac.yaml achieves nothing on its
+  # own -- with no trusted issuer the name matches nobody. The k3s option and its `oidc:` username
+  # prefix went with it; see docs/headlamp-serviceaccount-subject.md in the app repo.
 
   # CADDY RELOADS RATHER THAN RESTARTS, which is why it is here and not in the list above.
   # `caddy.service` reports `CanReload=yes` with an `ExecReload` of `caddy reload --force`, so a
@@ -163,11 +158,18 @@ in
   # switch-to-configuration wants a bounce, a person takes that brief 502 knowingly.
   fleet.autoApply.reloadableUnits = [ "caddy.service" ];
 
-  # WHO MAY OPEN ANYTHING THIS HOST PUBLISHES. See roles/google-sso.nix for why the sign-in lives on
-  # one name and why the client is Headlamp's rather than a second one.
+  # WHO MAY OPEN ANYTHING THIS HOST PUBLISHES -- and since 2026-09-07 that is the WHOLE of the
+  # answer, for all three published names. See roles/google-sso.nix for why the sign-in lives on one
+  # name and one callback.
+  #
+  # THE CLIENT ID IS SPELLED OUT HERE rather than read from `fleet.k3sServer.oidc`, which used to
+  # hold it: the API server no longer trusts Google, so that option is gone and this is the last
+  # consumer of the client. It is the same Google client either way -- not a secret, a client id
+  # travels in every authorisation URL, and the secret half is in this host's sops file under
+  # `google-sso/client-secret`.
   fleet.googleSso = {
     enable = true;
-    clientId = config.fleet.k3sServer.oidc.clientId;
+    clientId = "283216110679-ur705ei6rk5hlaukm13rrfioe45ltite.apps.googleusercontent.com";
     authHostName = "auth.kinowo.net";
     cookieDomain = ".kinowo.net";
     allowedEmails = [ "pawel.krupinski@gmail.com" ];
@@ -197,10 +199,21 @@ in
     };
   };
 
-  # PUBLIC HTTPS FOR THE THREE THINGS A PERSON OPENS IN A BROWSER. See roles/public-proxy.nix for
-  # why nothing else is published: Grafana and Headlamp authenticate their own users, so their
-  # login IS the security boundary and the proxy adds TLS and a name. VictoriaLogs has no login,
-  # so it is the one vhost the proxy authenticates itself -- and only its read paths are published.
+  # PUBLIC HTTPS FOR THE THREE THINGS A PERSON OPENS IN A BROWSER, and since 2026-09-07 ONE DOOR IN
+  # FRONT OF ALL OF THEM. Every published name below carries `requireGoogleLogin`, so the proxy --
+  # not the application behind it -- is what decides whether a request belongs to somebody.
+  #
+  # THAT WAS NOT ALWAYS THE RULE, and the older comments here argued the opposite: that the proxy
+  # adds TLS and a name, and a service authenticating its own users needs no door. Grafana's own
+  # login was a shared password, Headlamp's was Google OIDC, VictoriaLogs had none at all -- three
+  # answers to one question, each revoked in a different place. They are one answer now:
+  # `fleet.googleSso.allowedEmails` above, enforced at `auth.kinowo.net`.
+  #
+  # WHAT THE DOOR DOES NOT DO is decide what a person may then SEE. That still differs per service
+  # and cannot be unified away: Grafana takes the forwarded email as a per-user account, Headlamp
+  # answers everyone with one read-only ServiceAccount, and VictoriaLogs has no notion of a user, so
+  # its bound is the `/select`-only path list. See roles/public-proxy.nix for why nothing else here
+  # is published at all.
   fleet.publicProxy = {
     enable = true;
     acmeEmail = "pawel@bitcashier.io";
@@ -220,23 +233,36 @@ in
       # of its own for the obvious reason: it is what a person is sent to in order to GET one.
       "auth.kinowo.net".upstream = config.fleet.googleSso.listenAddress;
 
-      # THE SECOND THING PUBLISHED HERE, and it clears the same bar the comment above sets:
-      # the proxy adds TLS and a name, not authentication, so only a service that
-      # authenticates its own users belongs on it. Headlamp does Google OIDC -- and the
-      # Google project is in TESTING mode, so its test-user list is an allow-list enforced
-      # before a request reaches the cluster at all.
+      # THE KUBERNETES UI, and as of 2026-09-07 the vhost where this door stopped being belt-and-
+      # braces and became the ONLY thing holding the line. Headlamp used to do its own Google OIDC
+      # and hand the person's token to the API server, which made it a Kubernetes subject with
+      # read-only RBAC of its own; that was removed in favour of one sign-in for the fleet, so the
+      # backend now answers every request with a single ServiceAccount
+      # (`-unsafe-use-service-account-token`, movies-gitops/headlamp/deployment.yaml).
+      #
+      # ⚠️ SO `requireGoogleLogin` HERE IS LOAD-BEARING IN A WAY THE OTHER TWO ARE NOT. Delete it
+      # and Headlamp is not merely public -- it serves the whole read-only cluster view to anyone
+      # who asks, with no second gate anywhere behind it. Grafana would still demand a login and
+      # VictoriaLogs would still only expose `/select`; this one has nothing left underneath.
+      #
+      # ⚠️ AND IT ONLY GUARDS THE PUBLIC PATH. The upstream is a ClusterIP with no NetworkPolicy in
+      # front of it, so any pod k3s schedules can reach Headlamp directly and read the cluster
+      # without passing this door at all. That is the accepted cost of the unification, recorded
+      # rather than discovered: docs/headlamp-serviceaccount-subject.md in the app repo measures it.
       #
       # THE UPSTREAM IS A CLUSTER SERVICE, not a host port. This machine is a k3s node, so
       # kube-proxy makes the ClusterIP routable from the host and Headlamp needs no NodePort
       # on every node's interfaces. The address is PINNED in
       # movies-gitops/headlamp/deployment.yaml precisely so this line can name it.
-      "headlamp.kinowo.net".upstream = "10.43.165.84:80";
+      "headlamp.kinowo.net" = {
+        upstream = "10.43.165.84:80";
+        requireGoogleLogin = true;
+      };
 
-      # THE FLEET'S LOGS, IN A BROWSER, and the one vhost that does NOT clear the bar the two
-      # above set: VictoriaLogs has no authentication of its own (roles/victoria-logs.nix says so
-      # at length, and until this vhost the bind address was the whole of its access control).
-      # So the proxy supplies the login -- a single bcrypt-hashed password, sealed in this host's
-      # sops file -- and publishes ONLY `/select`, which is vmui and the LogsQL query API.
+      # THE FLEET'S LOGS, IN A BROWSER. VictoriaLogs has no authentication of its own
+      # (roles/victoria-logs.nix says so at length, and until this vhost the bind address was the
+      # whole of its access control), so the proxy supplies the login and publishes ONLY `/select`,
+      # which is vmui and the LogsQL query API.
       # `/insert`, `/delete`, `/internal`, `/metrics` and the flags page answer 404 here; the
       # password guards a surface that can read logs, not one that can write or erase them.
       #
