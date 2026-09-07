@@ -113,10 +113,14 @@ class InMemoryMovieRepository(
   // non-determinism — because the fake's title could never drift and was always
   // deterministic where Mongo's re-derivation isn't. The fake differs from Mongo
   // only at the infra boundary (a HashMap, not BSON), never in read semantics.
-  def findAll(): Seq[StoredMovieRecord] = lock.synchronized {
+  def findAll(): Seq[StoredMovieRecord] = readRows(_ => true)
+
+  /** The rows whose id passes `wanted`, stitched and re-derived — the filter runs BEFORE the
+   *  read-side work, as a Mongo filter does, so a range read pays for its matches only. */
+  private def readRows(wanted: String => Boolean): Seq[StoredMovieRecord] = lock.synchronized {
     val allScreenings = screenings.map(_.findAll()).getOrElse(Map.empty)
     val allSlots      = slots.map(_.findAll()).getOrElse(Map.empty)
-    store.iterator.map { case (id, s) =>
+    store.iterator.filter { case (id, _) => wanted(id) }.map { case (id, s) =>
       // Stitch FIRST, derive after — `fromStorage` reads the row's title off its cinema
       // slots, and for a migrated film those are in `movie_slots`, not in the stored record.
       // Same order as `MongoMovieRepository.stitchRow`, and for the same reason.
@@ -281,7 +285,7 @@ class InMemoryMovieRepository(
 
   /** The same range read as Mongo's, over the stamp kept above: strictly after `since`. */
   override def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): Boolean = {
-    findAll().filter(r => updatedAtById.get(r.id.value).exists(_.isAfter(since))).foreach(f)
+    readRows(id => updatedAtById.get(id).exists(_.isAfter(since))).foreach(f)
     true
   }
 

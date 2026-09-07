@@ -3,7 +3,7 @@ package services.readmodel
 import models.{CityScreening, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
-import services.movies.{MovieRepository, StoredMovieRecord}
+import services.movies.{ChangeStreamLiveness, MovieRepository, StoredMovieRecord}
 import tools.{DaemonExecutors, Env}
 
 import java.util.concurrent.TimeUnit
@@ -333,6 +333,34 @@ class ReadModelProjector(
         prunedScreenings += 1
       }
     }
+    // THE SELF-HEAL FOR A SILENT CHANGE STREAM (prune only). A terminal cursor error reopens
+    // itself; a cursor that is open and delivering nothing — a server-side stall, a stale
+    // resume position after a migration — reopens nothing, and this sweep healed a MISSING card
+    // or venue but never re-projected a CHANGED row, so the site served stale ratings and
+    // showtimes until someone restarted the worker. Every row written after the `movies`
+    // cursor's last delivered event is what that cursor has failed to deliver; re-project
+    // exactly those. Bounded to the rows that moved: `updatedAt` is indexed, and in steady
+    // state — a live cursor delivers a write within seconds — the read returns nothing.
+    // Whole rows (showtimes included) from a full stitch, so the projection is the one the
+    // stream would have made. Independent of `scanComplete`: it is its own bounded read, and a
+    // stale card is a stale card whether or not the prune could run.
+    // While the cursor STAYS dead the same rows are re-read every sweep (the floor does not
+    // move until something is delivered); the projection diff makes those writes no-ops, and
+    // the alert on the cursor's age is what ends the state.
+    var caughtUp = 0
+    if (!reproject) {
+      val since = movieRepository.changeStreamLiveness.lastDeliveredOrOpened(ChangeStreamLiveness.Movies)
+      movieRepository.foreachRecordUpdatedSince(since) { row =>
+        if (row.record.readyToProject)
+          try { project(ReadModelProjection.partition(row, normalizer)); caughtUp += 1 }
+          catch { case exception: Throwable =>
+            logger.warn(s"read-model $kind: a row written since the change stream last delivered failed to project, continuing: ${exception.getMessage}") }
+      }
+      metrics.recordCatchUp(caughtUp)
+      if (caughtUp > 0)
+        logger.warn(s"read-model $kind sweep: re-projected $caughtUp row(s) written since the movies change stream last " +
+          s"delivered ($since) — the cursor is open but not delivering them.")
+    }
     // Measurement (prune only): a `prune` sweep with didWork=true is the deletes/re-keys
     // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
@@ -349,7 +377,8 @@ class ReadModelProjector(
    *  would not). Mirrors `scripts.BackfillReadModel`. */
   def reconcile(): Unit = sweep(reproject = true)
 
-  /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows. */
+  /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows, and
+   *  for the rows a silent change stream failed to deliver (see `sweep`). */
   def pruneOrphans(): Unit = sweep(reproject = false)
 
   def start(): Unit = if (enabled) {

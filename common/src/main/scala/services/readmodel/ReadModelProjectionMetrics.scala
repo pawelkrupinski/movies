@@ -57,6 +57,13 @@ trait ReadModelProjectionMetrics {
    *  is metered now; the full re-projection was retired, and with it its did_work
    *  gate.) `kind` is always `prune`; the label is kept for metric-shape stability. */
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit
+
+  /** One prune sweep re-projected `rows` source rows written AFTER the `movies` change-stream
+   *  cursor's last delivered event — the catch-up for a cursor that is open and silent. Zero
+   *  on every sweep is the healthy reading: a live cursor delivers a write within seconds, so
+   *  nothing is ever newer than its last delivery. A sustained rate here is the read-model
+   *  side of `ChangeStreamMoviesCursorSilent`. Fed from [[ReadModelProjector.sweep]]. */
+  def recordCatchUp(rows: Int): Unit
 }
 
 object ReadModelProjectionMetrics {
@@ -81,5 +88,6 @@ object ReadModelProjectionMetrics {
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
+    def recordCatchUp(rows: Int): Unit                              = ()
   }
 }

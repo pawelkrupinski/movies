@@ -55,6 +55,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
     def recordMetadataProjection(reused: Boolean): Unit          = if (reused) metadataReused += 1 else metadataRecomputed += 1
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
+    val caughtUp = scala.collection.mutable.Buffer.empty[Int]
+    def recordCatchUp(rows: Int): Unit                             = caughtUp += rows
   }
 
   /** CPU clock that advances by a FIXED amount per reading, so a test can assert the
@@ -368,6 +370,47 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.delete("Foo", Some(2024))
     projector.pruneOrphans()
     rm.movieDeletes should contain(fid)
+  }
+
+  // THE SELF-HEAL FOR A SILENT CHANGE STREAM. A cursor that is open and delivering nothing
+  // reopens nothing; the prune sweep healed a MISSING card or venue but never re-projected a
+  // CHANGED row, so the site served stale ratings and showtimes until a restart. The sweep
+  // now re-projects every row written after the movies cursor's last delivery — bounded to
+  // the rows that moved, never the corpus.
+  "the prune sweep" should "re-project a row written after the movies cursor's last delivery" in {
+    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
+    val repository = new InMemoryMovieRepository(clock = clock)
+    val rm         = new InMemoryReadModelRepository()
+    val m          = new RecordingMetrics()
+    val projector  = new ReadModelProjector(repository, rm, rm, m)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))   // delivered at t0
+    projector.reconcile()
+    rm.movieUpserts should have size 1
+
+    // The store changes after the last delivery and the cursor says nothing — the stall.
+    clock.advanceSeconds(60)
+    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
+    projector.pruneOrphans()
+
+    withClue("the changed row must be re-projected by the sweep: ") {
+      rm.movieUpserts should have size 2
+      rm.movieUpserts.last.ratings.imdb shouldBe Some(9.9)
+    }
+    m.caughtUp shouldBe Seq(1)
+  }
+
+  it should "not re-project a changed row the cursor did deliver" in {
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()
+    projector.start()                                        // subscribed: the next write is DELIVERED
+    try {
+      repository.upsert("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
+      rm.movieUpserts should have size 2                     // projected off the stream
+      val before = rm.movieUpserts.size
+      projector.pruneOrphans()
+      rm.movieUpserts should have size before                // the sweep read nothing to catch up
+    } finally projector.stop()
   }
 
   // Only the PRUNE sweep is metered now — the reproject's did_work gate was retired, so

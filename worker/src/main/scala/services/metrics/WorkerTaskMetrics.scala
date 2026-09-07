@@ -81,6 +81,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
   def recordWrite(target: String, op: String, count: Int): Unit = series.recordWrite(countryCode, target, op, count)
   def recordFilmPruned(count: Int): Unit                        = series.recordFilmPruned(countryCode, count)
+  def recordCatchUp(rows: Int): Unit                            = series.recordCatchUp(countryCode, rows)
   def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit =
     series.recordProject(countryCode, wallSeconds, cpuSeconds)
   def recordMetadataProjection(reused: Boolean): Unit           = series.recordMetadataProjection(countryCode, reused)
@@ -241,6 +242,12 @@ object WorkerTaskMetrics {
       .labelNames("country")
       .register(registry)
 
+    private val readModelCatchUpRows = Counter.builder()
+      .name("kinowo_worker_readmodel_catchup_rows")
+      .help("Source rows the read-model prune sweep re-projected because they were written AFTER the movies change-stream cursor's last delivered event, by country, since boot. The catch-up for a cursor that is open and silent: a live cursor delivers a write within seconds, so this stays at zero; a sustained rate is the read-model side of ChangeStreamMoviesCursorSilent and means the site was up to 30 minutes stale between sweeps.")
+      .labelNames("country")
+      .register(registry)
+
     private val readModelProjectDuration = Histogram.builder()
       .name("kinowo_worker_readmodel_project_duration_seconds")
       .help("Wall-clock of one pure ReadModelProjection.projectAll per source row since boot, by country — the LATENCY signal (percentiles, the duration heatmap). NOT a CPU share: concurrent projections make rate(_sum) exceed one core-second per second, and steal on a throttled box inflates it further. Use kinowo_worker_readmodel_project_cpu_seconds_total for CPU attribution.")
@@ -345,6 +352,7 @@ object WorkerTaskMetrics {
         ReadModelProjectionMetrics.Targets.foreach(t =>
           ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
         readModelFilmsPruned.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
+        readModelCatchUpRows.labelValues(c).inc(0.0) // ditto — zero is the healthy reading, so it must be drawn
         readModelProjectCalls.labelValues(c).inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
         readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
         readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
@@ -386,6 +394,9 @@ object WorkerTaskMetrics {
 
     def recordFilmPruned(country: String, count: Int): Unit =
       if (count > 0) readModelFilmsPruned.labelValues(country).inc(count.toDouble)
+
+    def recordCatchUp(country: String, rows: Int): Unit =
+      if (rows > 0) readModelCatchUpRows.labelValues(country).inc(rows.toDouble)
 
     def recordProject(country: String, wallSeconds: Double, cpuSeconds: Double): Unit = {
       readModelProjectDuration.labelValues(country).observe(math.max(0.0, wallSeconds))

@@ -1449,8 +1449,8 @@
         },
         {
           "id": 52,
-          "title": "Worker — cache backstop rehydrate: rows the change stream missed (per min)",
-          "description": "What the MovieCache's periodic full-reload backstop caught that the INCREMENTAL change stream did not deliver, by kind: changed = a cached value that differed from Mongo (a missed upsert), deleted = a key gone from Mongo the delete-apply never dropped. With resume-token persistence + cache delete-apply this should sit at ~0 in steady state, and a rate flat at 0 is the evidence the 30-min rehydrate could be retired; anything sustained above 0 means the change-stream path — the same path the read-model projector and every panel derived from it trust — is losing writes. NOTE: the one-time BOOT hydrate counts EVERY row as changed, so read the steady state after a restart, not the spike at it.",
+          "title": "Worker — backstops: rows the change stream missed (per min)",
+          "description": "What the two periodic backstops caught that the INCREMENTAL change stream did not deliver. The MovieCache's full-reload rehydrate, by kind: changed = a cached value that differed from Mongo (a missed upsert), deleted = a key gone from Mongo the delete-apply never dropped. And the read-model prune sweep's catch-up (kinowo_worker_readmodel_catchup_rows_total): source rows written AFTER the movies cursor's last delivered event, re-projected every 30 minutes because an open-but-silent cursor never will — the self-heal behind ChangeStreamMoviesCursorSilent, and zero whenever the stream is alive. With resume-token persistence + cache delete-apply this should sit at ~0 in steady state, and a rate flat at 0 is the evidence the 30-min rehydrate could be retired; anything sustained above 0 means the change-stream path — the same path the read-model projector and every panel derived from it trust — is losing writes. NOTE: the one-time BOOT hydrate counts EVERY row as changed, so read the steady state after a restart, not the spike at it.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1479,6 +1479,15 @@
               "refId": "A",
               "expr": "sum by (kind) (rate(kinowo_worker_cache_rehydrate_changes_total{country=~\"$country\"}[$__rate_interval])) * 60",
               "legendFormat": "{{kind}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "B",
+              "expr": "sum by (country) (rate(kinowo_worker_readmodel_catchup_rows_total{country=~\"$country\"}[$__rate_interval])) * 60",
+              "legendFormat": "read-model catch-up {{country}}",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"
@@ -1606,7 +1615,7 @@
         {
           "id": 107,
           "title": "Worker — change-stream silence: minutes since each cursor last delivered, by country",
-          "description": "Minutes since each of the worker's three change-stream cursors (movies, screenings, movie_slots) last DELIVERED an event, from kinowo_worker_change_stream_last_event_age_seconds — recomputed on every scrape, so an open-but-silent cursor climbs in a straight diagonal. This is the panel the two event-rate panels above cannot be: a stalled cursor and a quiet night both read as a flat rate there, and a stream left dead by a Mongo migration once sat behind them for hours while the site served stale ratings and showtimes. Healthy is a sawtooth that resets within one scrape sweep (1h pl, 7h uk/es, 10h de, 14h us) while writes are happening; a diagonal past 2x that window on the movies cursor while the corpus census is moving is what ChangeStreamMoviesCursorSilent pages on.",
+          "description": "Minutes since each of the worker's three change-stream cursors (movies, screenings, movie_slots) last DELIVERED an event, from kinowo_worker_change_stream_last_event_age_seconds — recomputed on every scrape, so an open-but-silent cursor climbs in a straight diagonal. This is the panel the two event-rate panels above cannot be: a stalled cursor and a quiet night both read as a flat rate there, and a stream left dead by a Mongo migration once sat behind them for hours while the site served stale ratings and showtimes. Healthy is a sawtooth that resets within one scrape sweep (1h pl, 7h uk/es, 10h de, 14h us) while writes are happening; a diagonal past 2x that window on the movies cursor while the corpus census is moving is what ChangeStreamMoviesCursorSilent pages on. The read-model prune sweep re-projects the rows written since the movies cursor's last delivery (kinowo_worker_readmodel_catchup_rows_total, on the backstops panel), so the site self-heals every 30 minutes even while this climbs.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",

@@ -97,6 +97,13 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     later should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} 180.0""")
   }
 
+  it should "count the rows the read-model sweep re-projected behind a silent change stream" in {
+    val (m, series) = newPl()
+    m.recordCatchUp(3)
+    m.recordCatchUp(0)   // a quiet sweep adds nothing, and the series exists from boot regardless
+    scrapePl(series) should include ("""kinowo_worker_readmodel_catchup_rows_total{country="pl"} 3""")
+  }
+
   "WorkerTaskMetrics" should "count enqueues by type and result" in {
     val (m, series) = newPl()
     m.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
