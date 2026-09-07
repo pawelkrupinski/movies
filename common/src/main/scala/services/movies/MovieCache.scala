@@ -1163,9 +1163,14 @@ class CaffeineMovieCache(
           corpusIndex.idOf(newKey).filter(_ != id) match {
             case Some(holder) if oldKey != newKey =>
               if (repository.moveFilm(id, holder)) {
+                // A MERGE, not a retitle: the holder keeps its id, and its record — the
+                // ratings and resolution it owns — is unioned with the moved row's, never
+                // replaced by it. (It was replaced, silently, before 2026-09-07.)
+                val merged = get(newKey).fold(updated)(holderRecord => MovieRecordMerge.unionAll(Seq(updated, holderRecord)))
                 invalidate(oldKey)
                 mergeMetrics.recordRekey(reason)
-                put(newKey, updated)
+                mergeMetrics.recordMerge(MergeReason.Canonicalize, 1)
+                putAs(newKey, merged, holder)
               } else {
                 logger.warn(s"Deferring re-key '${oldKey.cleanTitle}' (${oldKey.year.getOrElse("—")}) → " +
                   s"'${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}): another row holds the new key and " +

@@ -131,4 +131,27 @@ class SettlePreservesShowtimesSpec extends AnyFlatSpec with Matchers {
     // the re-spelling still happened
     cache.snapshot().map(_.title) shouldBe Seq("Zoo")
   }
+
+  // A re-key onto a key ANOTHER row holds is a merge: the holder keeps its id and its
+  // own ratings; the moved row's cinemas join it. Before 2026-09-07 the moved row's
+  // record was written over the holder's, and the holder's ratings went with it.
+  "a re-key onto a held key" should "union the two records under the holder's id" in {
+    val (screenings, repository, cache) = fixture
+    val moved  = CacheKey("Delta", None, titleNormalizer)
+    val holder = CacheKey("Delta", Some(2026), titleNormalizer)
+    cache.put(holder, MovieRecord(imdbRating = Some(7.7), tmdbId = Some(777), data = withShowtime(KinoMuza, "Delta")))
+    cache.put(moved,  MovieRecord(data = withShowtime(Helios, "Delta")))
+    val holderId = cache.idOf(holder).getOrElse(fail("holder has no id"))
+
+    cache.rekey(moved, holder, identity, services.movies.RekeyReason.EmbeddedYear)
+
+    cache.idOf(holder) shouldBe Some(holderId)
+    cache.idOf(moved)  shouldBe None
+    val merged = cache.get(holder).getOrElse(fail("holder gone"))
+    merged.imdbRating shouldBe Some(7.7)
+    merged.tmdbId     shouldBe Some(777)
+    merged.cinemaShowings.map(_._1).toSet shouldBe Set(KinoMuza, Helios)
+    screenings.findForFilm(holderId.value).keySet should have size 2
+    repository.findAll().map(_.id) shouldBe Seq(holderId)
+  }
 }
