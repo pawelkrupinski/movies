@@ -978,10 +978,13 @@ abstract class CountryConvergenceBehaviour(
     // allocates the corpus, so it is the step that has to be one-at-a-time.
     comparison.submit((seed - OrderSeed).toInt) { () =>
       PhaseTimer.timed(scope, "replayReloadReadModel")(w.webReadModel.reload())
-      val records = w.movieRepository.findAll().sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
-      val screenings = w.screeningsRepository.findAll()
+      // Compared on the film's stored key, never its id — the id follows arrival
+      // order by design (see [[OrderIndependentIds]]).
+      val ids = OrderIndependentIds(w.movieRepository.findAll(), w.titleNormalizer)
+      val records = ids.stableRecords.sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+      val screenings = ids.screenings(w.screeningsRepository.findAll())
       val service = new MovieControllerService(w.webReadModel)
-      val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt))
+      val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt)).map(ids.row)
       ReplayCorpus(records, screenings, rows)
     }
   }

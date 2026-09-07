@@ -70,17 +70,14 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // the concluded row. Both orders reach the same film state (a recorded miss, the
     // same slots); they differ only in whose inputs the miss names, which the next
     // look re-opens either way. So the miss is kept and its inputs are not compared.
-    // Nor the film id: it is minted from whichever key the row was FIRST created under,
-    // so it depends on arrival order by design (`FilmId`) — opaque, and compared by nothing.
-    val record = w.movieRepository.findAll()
-      .map(r => r.copy(id = FilmId("<order-dependent>"),
-                       record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_ => services.resolution.TmdbAttempt.Legacy))))
+    // Nor the film id: it follows arrival order by design, so films are compared on
+    // their stored key instead (see [[OrderIndependentIds]]).
+    val ids = OrderIndependentIds(w.movieRepository.findAll(), w.titleNormalizer)
+    val record = ids.stableRecords
+      .map(r => r.copy(record = r.record.copy(tmdbAttempt = r.record.tmdbAttempt.map(_ => services.resolution.TmdbAttempt.Legacy))))
       .sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
     val service = new MovieControllerService(w.webReadModel)
-    // The card id is the row's FilmId — order-dependent by design (see `record` above) —
-    // so it is blanked here too; everything else about a rendered row must not move.
-    val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now))
-      .map(s => s.copy(resolved = s.resolved.copy(_id = "<order-dependent>")))
+    val rows = City.all.sortBy(_.slug).flatMap(c => service.toSchedules(c, Now)).map(ids.row)
     (record, rows)
   }
 
@@ -183,7 +180,7 @@ class StagingOrderDeterminismSpec extends AnyFlatSpec with Matchers {
     // Ids are opaque and depend on which key the row was FIRST created under — i.e. on
     // arrival order, by design (`FilmId`); everything else about the row must not.
     def hind(rs: Seq[StoredMovieRecord]) =
-      rs.filter(_.title.toLowerCase.contains("hind rajab")).map(_.copy(id = FilmId("<order-dependent>")))
+      OrderIndependentIds(rs.filter(_.title.toLowerCase.contains("hind rajab")), TitleNormalizer.forCountry(Country.Poland)).stableRecords
     def shape(rs: Seq[StoredMovieRecord]) =
       hind(rs).map(x => (x.title, x.year, x.record.tmdbId, x.record.cinemaData.keySet)).mkString("\n  ")
     val ref = replaySubset(HindRajabCinemas, 700000L)
