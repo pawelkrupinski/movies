@@ -15,7 +15,9 @@ import scala.sys.process.{Process, ProcessLogger}
  * account's 20-runner budget (CiRunnerBudgetSpec), and main.yml's deploy
  * `needs` the WHOLE of ci.yml, so an instrumented run there holds every deploy
  * for the ~2× it takes even with `continue-on-error`. coverage.yml therefore
- * runs when `Main` has COMPLETED, deploy included, and the runners are idle.
+ * runs when `Main` has SUCCEEDED, deploy included, and the runners are idle —
+ * succeeded and not merely completed, because a cancelled Main means a newer
+ * one is mid-flight and the runners are anything but.
  *
  * This spec locks that shape — the trigger, the cache isolation, the module
  * set — and RUNS the summary step's shell against a fabricated report, since
@@ -43,6 +45,43 @@ class CoverageWorkflowSpec extends AnyFlatSpec with Matchers {
     withClue("a push/PR trigger is a 21st concurrent job — see CiRunnerBudgetSpec: ") {
       triggers should not include "push:"
       triggers should not include "pull_request:"
+    }
+  }
+
+  /**
+   * `types: [completed]` alone does NOT mean "after the main build". `completed`
+   * is finished by ANY route, so coverage fired on failed and cancelled Main runs
+   * too — three superseded commits in the morning of 2026-09-07 (Main `0fe0eab15`
+   * failed 07:00, `5d9c04ee2` cancelled 07:19, `41ff5be5b` cancelled 09:04, each
+   * starting a coverage run the same minute).
+   *
+   * A CANCELLATION IS THE EXPENSIVE ONE. main.yml cancels an in-flight run when a
+   * newer commit lands, so "Main was cancelled" means a newer Main is running right
+   * now: coverage then starts at the exact moment the runners are busiest, to
+   * measure a commit that will never deploy. The workflow's own header promises it
+   * contends with nothing.
+   *
+   * `workflow_run` has no "succeeded" event type, so the conclusion has to be
+   * checked on the job. That makes the `if:` part of the trigger contract, not an
+   * implementation detail, which is why it is pinned here beside the `on:` block.
+   */
+  it should "skip a Main that failed or was cancelled, and still run on demand" in {
+    val condition = job.linesIterator.map(_.trim).find(_.startsWith("if:"))
+      .getOrElse(fail(
+        "the coverage job has no `if:`. `types: [completed]` fires on failure and " +
+          "cancellation too, and a cancelled Main means a NEWER Main is running — so " +
+          "coverage starts when the runners are busiest, to measure a commit that will " +
+          "never deploy. Gate the job on the triggering run's conclusion."))
+
+    withClue(s"'$condition' does not require the triggering run to have SUCCEEDED: ") {
+      condition should include("github.event.workflow_run.conclusion == 'success'")
+    }
+    withClue(
+      s"'$condition' would also skip a manual run: `workflow_dispatch` carries no " +
+        "`workflow_run` payload, so its conclusion is empty and a bare conclusion check " +
+        "is false. Let the event name through. "
+    ) {
+      condition should include("github.event_name != 'workflow_run'")
     }
   }
 

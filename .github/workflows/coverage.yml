@@ -9,9 +9,22 @@ name: Coverage
 # — a 21st job queues, and CiRunnerBudgetSpec fails the build that adds one —
 # and (b) the thing main.yml's deploy `needs`, so even a `continue-on-error`
 # job there would hold every deploy until coverage finished. Coverage gates
-# nothing, so it must contend with nothing: it runs AFTER `Main` has completed
+# nothing, so it must contend with nothing: it runs AFTER `Main` has SUCCEEDED
 # (deploy included), when the account's runners are idle, and on demand.
 # CoverageWorkflowSpec locks that trigger shape.
+#
+# `types: [completed]` IS NOT "after the main build" ON ITS OWN, and the `if:`
+# on the job below is the other half of the trigger. `completed` means finished
+# by any route — success, failure, or cancelled — and on 2026-09-07 that had
+# coverage measuring three superseded commits in one morning: Main `0fe0eab15`
+# FAILED at 07:00 and coverage started at 07:00; Main `5d9c04ee2` was CANCELLED
+# at 07:19 and coverage started at 07:19; Main `41ff5be5b` was cancelled at
+# 09:04 and coverage started at 09:04. A cancellation is the worst of the three,
+# because main.yml cancels in-progress runs on a newer push: the cancellation
+# means a NEWER Main is running right now, so this fires exactly when the
+# runners are busiest, to measure a commit nobody will deploy. That is the
+# precise opposite of the paragraph above, and the trigger alone cannot express
+# it — `workflow_run` has no "succeeded" type.
 #
 # One report per push to main is plenty. A newer run supersedes an older one
 # still in flight rather than queueing behind it — the newer commit's number is
@@ -28,6 +41,12 @@ concurrency:
 
 jobs:
     coverage:
+        # The second half of the trigger — see the header. A skipped run still
+        # appears in the run list but claims no runner, which is the whole point.
+        # `github.event_name` rather than a null-check on the conclusion, so a
+        # `workflow_dispatch` (which has no `workflow_run` payload at all) still
+        # runs on demand.
+        if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
         runs-on: ubuntu-latest
         # ~2× the `test` job's instrumented-free run, plus a cold zinc cache on
         # its own key; the ceiling is a guard against a hung sbt, not a target.
