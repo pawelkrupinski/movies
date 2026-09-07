@@ -231,3 +231,12 @@ GET     /sitemap.xml                controllers.MovieController.sitemap
 
 # ── Static assets ─────────────────────────────────────────────────────────────
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
+
+# ── City address without its trailing slash ───────────────────────────────────
+# LAST ON PURPOSE. `/:city` matches EVERY single-segment path, `/health`,
+# `/metrics`, `/robots.txt` and `/sitemap.xml` among them; Play matches top-down,
+# so the literal routes above keep answering themselves only while this line
+# stays below them. Everything else that reaches it is either a city — 301'd
+# onto the canonical `/{city}/` the sitemap and the canonical tag advertise — or
+# an unknown slug, which 404s rather than being bounced one hop first.
+GET     /:city                      controllers.MovieController.indexNoTrailingSlash(city: String)

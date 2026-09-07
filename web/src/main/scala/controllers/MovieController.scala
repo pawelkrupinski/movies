@@ -680,18 +680,39 @@ class MovieController( cc: ControllerComponents,
    *  The sub-path form takes the whole remainder rather than a `:slug` because
    *  the rename moved `/film/og-image` too, and one wildcard covers both. */
   def filmLegacy(city: String): Action[AnyContent] = Action { request =>
-    movedToRenamedPath(city, "movie", request)
+    movedToCityPath(city, "movie", request)
   }
 
   def filmSubPathLegacy(city: String, rest: String): Action[AnyContent] = Action { request =>
-    movedToRenamedPath(city, s"movie/$rest", request)
+    movedToCityPath(city, s"movie/$rest", request)
   }
 
   def browseLegacy(city: String): Action[AnyContent] = Action { request =>
-    movedToRenamedPath(city, "movies", request)
+    movedToCityPath(city, "movies", request)
   }
 
-  /** 301 onto `/{prefix}/{city}/{tail}`, query string intact.
+  /** `/{city}` — the canonical listing address minus its trailing slash.
+   *
+   *  The routes file binds the listing at `/{city}/` only, so the slash-less
+   *  spelling 404'd. Nothing this app mints carries it — the sitemap, the
+   *  canonical tag and every internal link all end in `/` — but crawlers and
+   *  people typing a city by hand do: Googlebot asked showtimes.cc for
+   *  `/de/karlsruhe`, got a 404, and `/de/karlsruhe/` was 200 the whole time.
+   *  That spends crawl budget on an error and drops whatever link pointed
+   *  there, so the two spellings are folded together with a 301 onto the one
+   *  everything else advertises.
+   *
+   *  An unknown slug still 404s, because `movedToCityPath` resolves through
+   *  `withCity` — the route is a catch-all for any single top-level segment, so
+   *  without that every mistyped path would 301 onto a URL that 404s one hop
+   *  later. */
+  def indexNoTrailingSlash(city: String): Action[AnyContent] = Action { request =>
+    movedToCityPath(city, "", request)
+  }
+
+  /** 301 onto `/{prefix}/{city}/{tail}`, query string intact — the shared shape
+   *  of every redirect here that lands a non-canonical address on its canonical
+   *  one. An empty `tail` is the city listing itself.
    *
    *  Resolved through `withCity` so the mount prefix comes off the CITY, the
    *  same way every other URL builder here gets it — Play strips
@@ -704,7 +725,7 @@ class MovieController( cc: ControllerComponents,
    *  (including the legacy Polish `kraj`/`rezyser`/… spellings) and the shared
    *  filter links all live there, and dropping them would answer 200 with the
    *  wrong content — the failure mode nobody reports. */
-  private def movedToRenamedPath(city: String, tail: String, request: RequestHeader): Result =
+  private def movedToCityPath(city: String, tail: String, request: RequestHeader): Result =
     withCity(city) { c =>
       val path = s"${c.country.pathPrefix}/${c.slug}/$tail"
       MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}")
