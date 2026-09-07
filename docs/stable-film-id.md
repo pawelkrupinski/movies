@@ -59,7 +59,9 @@ rest is the key itself.
 - Ids are minted from the key a row is first created under, so a replay of the
   same arrivals assigns the same ids, and two replays in different orders may
   id one film differently. Opaque means nothing may care; the determinism specs
-  compare everything but the id.
+  (`StagingOrderDeterminismSpec`, the convergence leg's order-independence case)
+  compare films on their stored key through `OrderIndependentIds`, which re-keys
+  the records, the screenings map and the rendered rows' card ids alike.
 
 ## Phases
 
