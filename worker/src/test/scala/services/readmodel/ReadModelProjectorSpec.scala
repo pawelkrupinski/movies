@@ -493,9 +493,12 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   "start" should "project a split row one of whose variant cards is missing" in {
     // A row screened under two shown titles fans out into two cards. When only one
     // of them exists at boot — a restored database, or the id scheme moving under the
-    // variant suffix — the row has no card under one of its ids and is healed whole:
-    // `filmIds` is asked per row, and a row is healed when NONE of its ids has a card,
-    // so a row with ONE surviving card is deliberately left to the change stream.
+    // variant suffix — the row is healed whole: `filmIds` is asked per row, and a row
+    // is healed when ANY of its ids has no card. The first version healed only rows
+    // with NO card at all, and on 2026-09-07 that left every decorated listing (a
+    // "35 lat po premierze …" banner, a "przedpremiera" screening) whose variant card
+    // the prune had removed unserved for hours while the plain card survived:
+    // Warszawa was 45 films short four hours after the rollout.
     val (projector, repository, rm) = fixture()
     val twoTitles = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino  -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
@@ -509,14 +512,41 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.movieUpserts.map(_._id).toSet shouldBe ids.toSet
     projector.stop()
 
-    // One variant card gone: the row still has a card, so boot leaves it alone.
+    // One variant card gone: the row is projected whole, and the missing card comes back.
     val (again, _, _) = fixture()
     val partial = new InMemoryReadModelRepository()
     val healer  = new ReadModelProjector(repository, partial, partial)
     partial.upsertMovie(rm.movieUpserts.find(_._id == ids.head).get)
     healer.start()
-    partial.movieUpserts.map(_._id) shouldBe Seq(ids.head)
+    partial.findAllMovieIds().toSet shouldBe ids.toSet
+    partial.findAllScreenings().map(_.filmId).toSet shouldBe ids.toSet
     healer.stop(); again.stop()
+  }
+
+  // The same gap inside the scheduled sweep: the prune that removed a variant card as
+  // an orphan under its old id must put it back under its new one in the SAME pass,
+  // however healthy the row's plain card is — the change stream only re-creates the
+  // rows a scrape happens to rewrite.
+  "the orphan prune" should "restore a split row's missing variant card and its screenings" in {
+    val (projector, repository, rm) = fixture()
+    val twoTitles = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino  -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
+      KinoMuranow -> SourceData(title = Some("35 lat po premierze: Foo"), showtimes = Seq(at("2026-06-13T20:00")))))
+    repository.upsert("Foo", Some(2024), twoTitles)
+    val row     = repository.findAll().head
+    val ids     = ReadModelProjection.filmIds(row, titleNormalizer)
+    val variant = ids.find(_.contains("~")).get
+    projector.onMovieUpsert(row)
+    rm.findAllMovieIds().toSet shouldBe ids.toSet
+    rm.deleteMovie(variant)
+    rm.findAllScreenings().filter(_.filmId == variant).foreach(s => rm.deleteScreening(s._id))
+    rm.findAllMovieIds().toSet shouldBe (ids.toSet - variant)
+
+    projector.pruneOrphans()
+
+    rm.findAllMovieIds().toSet shouldBe ids.toSet
+    rm.findAllScreenings().map(_.filmId).toSet shouldBe ids.toSet
+    projector.stop()
   }
 
   // The 2026-09-07 ReadModelFilmPruneBurst, replayed: live rows whose cards sit under ids
