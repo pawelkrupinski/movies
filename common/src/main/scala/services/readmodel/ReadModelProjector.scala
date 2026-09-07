@@ -269,6 +269,13 @@ class ReadModelProjector(
     val (cardsBeforeSeq, cardsRead) = if (reproject) (Seq.empty[String], true) else reader.findAllMovieIdsChecked()
     val cardsBefore = cardsBeforeSeq.toSet
     if (!reproject && !cardsRead) logger.warn(s"read-model $kind: the card ids could not be read — no row is healed this tick.")
+    // The screenings rows as they are before this sweep, read once for the venue heal and
+    // the prune alike. A venue the source lists (a cinema slot) with no row here is healed
+    // like a missing card: a slot written after the row's last projection stayed invisible
+    // while nothing else touched the row. A read that fails heals no venue this tick.
+    val screeningRefsBefore: Option[Seq[ScreeningRef]] =
+      if (reproject) None else Try(reader.findAllScreeningRefs()).toOption
+    val screeningsBefore = screeningRefsBefore.map(_.map(_._id).toSet)
     var healed = 0
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
@@ -286,11 +293,15 @@ class ReadModelProjector(
           try reprojected += project(row)
           catch { case exception: Throwable =>
             logger.warn(s"read-model $kind: a row failed to project, continuing: ${exception.getMessage}") }
-        else if (cardsRead && !ids.forall(cardsBefore))
-          // The slots-only scan carries no showtimes; read the row whole for its card.
-          try healCards(row.id, ids.filterNot(cardsBefore)).foreach(_ => healed += 1)
-          catch { case exception: Throwable =>
-            logger.warn(s"read-model $kind: a card-less row failed to project, continuing: ${exception.getMessage}") }
+        else if (cardsRead) {
+          val absentCards  = ids.filterNot(cardsBefore)
+          val absentVenues = screeningsBefore.fold(Seq.empty[String])(has => ReadModelProjection.screeningIds(row, normalizer).filterNot(has))
+          if (absentCards.nonEmpty || absentVenues.nonEmpty)
+            // The slots-only scan carries no showtimes; read the row whole for its projection.
+            try heal(row.id, absentCards, absentVenues).foreach(_ => healed += 1)
+            catch { case exception: Throwable =>
+              logger.warn(s"read-model $kind: a row missing a projection failed to project, continuing: ${exception.getMessage}") }
+        }
       }
     }
     var prunedFilms      = 0
@@ -311,7 +322,7 @@ class ReadModelProjector(
       // COMPLETE scan — on a truncated one `liveRowKeys` is partial and this would evict
       // live rows' metadata, costing a needless recompute each.
       lastMetadata.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
-      reader.findAllScreeningRefs().iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
+      screeningRefsBefore.getOrElse(reader.findAllScreeningRefs()).iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
         writer.deleteScreening(ref._id)
         metrics.recordWrite(Target.Screening, Op.Delete, 1)
         lastScreenings.updateWith(ref.filmId)(_.map(_ - ref._id).filter(_.nonEmpty))
@@ -322,7 +333,7 @@ class ReadModelProjector(
     // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
     val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
-    if (healed > 0) logger.warn(s"read-model $kind sweep: projected $healed ready row(s) missing a card before the prune.")
+    if (healed > 0) logger.warn(s"read-model $kind sweep: projected $healed ready row(s) missing a card or a venue before the prune.")
     logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
       s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
   }
@@ -382,31 +393,35 @@ class ReadModelProjector(
   private def healMissingCards(): Unit = Try {
     val (cardsSeq, cardsRead) = reader.findAllMovieIdsChecked()
     val cards = cardsSeq.toSet
+    val venues = Try(reader.findAllScreeningRefs().map(_._id).toSet).toOption
     // The check reads slots only (ids derive from the slot titles, never from a
     // showtime); the few rows it names are then read whole, showtimes included. An
     // incomplete card read heals nothing: "no cards" and "could not read" differ.
-    val missing = scala.collection.mutable.ListBuffer.empty[(services.movies.FilmId, Seq[String])]
+    val missing = scala.collection.mutable.ListBuffer.empty[(services.movies.FilmId, Seq[String], Seq[String])]
     val complete = cardsRead && movieRepository.foreachRecordWithSlots { row =>
       if (row.record.readyToProject) {
-        val absent = ReadModelProjection.filmIds(row, normalizer).filterNot(cards)
-        if (absent.nonEmpty) missing += row.id -> absent
+        val absentCards  = ReadModelProjection.filmIds(row, normalizer).filterNot(cards)
+        val absentVenues = venues.fold(Seq.empty[String])(has => ReadModelProjection.screeningIds(row, normalizer).filterNot(has))
+        if (absentCards.nonEmpty || absentVenues.nonEmpty) missing += ((row.id, absentCards, absentVenues))
       }
     }
     if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
     var healed = 0
-    missing.foreach { case (id, absent) => lock.synchronized(healCards(id, absent)).foreach(_ => healed += 1) }
+    missing.foreach { case (id, absentCards, absentVenues) => lock.synchronized(heal(id, absentCards, absentVenues)).foreach(_ => healed += 1) }
     if (healed > 0)
-      logger.warn(s"read model: projected $healed ready row(s) missing a card at boot" +
+      logger.warn(s"read model: projected $healed ready row(s) missing a card or a venue at boot" +
         (if (complete) "" else " (source scan incomplete — the rest heal on their next change)") + ".")
   }.recover { case exception => logger.warn(s"read-model missing-card check failed, skipped: ${exception.getMessage}") }
 
-  /** Caller holds `lock`. Re-project a row whose cards under `absent` are known to be
-   *  missing from the read model. What this process remembers about those cards is
-   *  dropped first: the memo says "already written", the read model says otherwise,
-   *  and the read model is the truth — trusting the memo would skip the very write
-   *  the heal exists for. Returns the row when it could be read whole. */
-  private def healCards(id: services.movies.FilmId, absent: Seq[String]): Option[StoredMovieRecord] = {
-    absent.foreach(forgetCard)
+  /** Caller holds `lock`. Re-project a row whose cards under `absentCards` and whose
+   *  screenings rows under `absentVenues` are known to be missing from the read model.
+   *  What this process remembers about them is dropped first: the memo says "already
+   *  written", the read model says otherwise, and the read model is the truth —
+   *  trusting the memo would skip the very write the heal exists for. Returns the row
+   *  when it could be read whole. */
+  private def heal(id: services.movies.FilmId, absentCards: Seq[String], absentVenues: Seq[String]): Option[StoredMovieRecord] = {
+    absentCards.foreach(forgetCard)
+    absentVenues.foreach(forgetScreening)
     movieRepository.findById(id).map { whole => project(whole); whole }
   }
 
@@ -414,6 +429,11 @@ class ReadModelProjector(
     lastMovie.remove(filmId)
     lastScreenings.remove(filmId)
   }
+
+  /** Drop one screenings row from the memo, by its id — its film is whichever memo
+   *  entry holds the id, so the card id need not be parsed out of it. */
+  private def forgetScreening(screeningId: String): Unit =
+    lastScreenings.mapValuesInPlace((_, byId) => byId - screeningId).filterInPlace((_, byId) => byId.nonEmpty)
 
   def stop(): Unit = {
     watchHandle.foreach(h => Try(h.close()))

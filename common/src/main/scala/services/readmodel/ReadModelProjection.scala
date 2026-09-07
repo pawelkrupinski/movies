@@ -168,6 +168,23 @@ object ReadModelProjection {
     else groups.map { case (_, sources) => variantFilmId(stored, sources, normalizer) }
   }
 
+  /** Every `web_screenings` id a row's cinema slots could project to, one per
+   *  (variant card, city, cinema) — the ids [[screeningsFor]] would emit if each slot
+   *  had showtimes, so it can be asked of a slots-only row. The heals use it to find a
+   *  venue the source lists but the read model lacks: a slot written after the row's
+   *  last projection stayed invisible while nothing else touched the row (Palace
+   *  Cinema Kent, 2026-09-07). A slot that turns out to carry no showtimes projects
+   *  nothing, so over-asking costs one idempotent re-projection, never a wrong row. */
+  def screeningIds(stored: StoredMovieRecord, normalizer: TitleNormalizer): Seq[String] = {
+    def idsFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[String] =
+      showings.flatMap { case (cinema, _) => City.forCinema(cinema).map(city => s"$fid|${city.slug}|${cinema.displayName}") }
+    val groups = variants(stored, normalizer)
+    if (groups.sizeIs <= 1) idsFor(stored.record.cinemaShowings, filmId(stored, normalizer))
+    else groups.flatMap { case (_, sources) =>
+      idsFor(stored.record.scopedToSources(sources).cinemaShowings, variantFilmId(stored, sources, normalizer))
+    }
+  }
+
   /** The split projection for a row: one `(ResolvedMovie, screenings)` per
    *  display-title variant. A row whose cinemas all report one title-key (the
    *  overwhelming common case), or a TMDB-only row with no cinema slots, yields

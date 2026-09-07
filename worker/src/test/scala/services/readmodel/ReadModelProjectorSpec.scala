@@ -549,6 +549,47 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // A venue the source lists but the read model lacks: a `movie_slots` row written after
+  // the film's last projection (Palace Cinema Kent, 2026-09-07) — the projection needs
+  // the slot to emit that venue, and nothing touched the row again. Both heals ask for
+  // every screenings row a row's slots project to, not only for its cards.
+  private def screenedInTwoCities(): (ReadModelProjector, InMemoryMovieRepository, InMemoryReadModelRepository, StoredMovieRecord, Seq[String]) = {
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
+      KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-13T20:00"))))))
+    val row = repository.findAll().head
+    val ids = ReadModelProjection.screeningIds(row, titleNormalizer)
+    ids should have size 2
+    (projector, repository, rm, row, ids)
+  }
+
+  "the orphan prune" should "restore a venue's screenings row the read model lacks while the card is healthy" in {
+    val (projector, _, rm, row, ids) = screenedInTwoCities()
+    projector.onMovieUpsert(row)
+    rm.findAllScreenings().map(_._id).toSet shouldBe ids.toSet
+    rm.deleteScreening(ids.last)                      // the venue's row vanishes; the card stays
+
+    projector.pruneOrphans()
+
+    rm.findAllScreenings().map(_._id).toSet shouldBe ids.toSet
+    projector.stop()
+  }
+
+  "start" should "project a row one of whose venues has no screenings row" in {
+    val (projector, repository, rm, row, ids) = screenedInTwoCities()
+    projector.onMovieUpsert(row); projector.stop()
+    val partial = new InMemoryReadModelRepository()
+    rm.findAllMovies().foreach(partial.upsertMovie)
+    rm.findAllScreenings().filter(_._id == ids.head).foreach(partial.upsertScreening)   // one venue short
+    val healer = new ReadModelProjector(repository, partial, partial)
+
+    healer.start()
+
+    partial.findAllScreenings().map(_._id).toSet shouldBe ids.toSet
+    healer.stop()
+  }
+
   // The 2026-09-07 ReadModelFilmPruneBurst, replayed: live rows whose cards sit under ids
   // the source no longer produces (an id scheme change; a restored database), and then
   // the scheduled prune — with no boot heal in between. The prune must leave every live
