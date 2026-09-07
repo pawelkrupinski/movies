@@ -437,6 +437,22 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     reaper.tick() shouldBe 0
   }
 
+  // The backlog gauge used to fail OPEN: a count Mongo could not answer came back as 0,
+  // which is the reading of an EMPTY queue — so the one moment the queue's state was
+  // unknown was the moment the reaper admitted its whole budget on top of it. Unknown
+  // must admit nothing; the next tick re-reads.
+  it should "admit NOTHING when the waiting count cannot be read (unknown is not empty)" in {
+    val scrapers = Seq(Multikino, KinoApollo, KinoMuza).map(c => new FakeScraper(c, movieAt(c)))
+    val unreadable = new InMemoryTaskQueue {
+      override def waitingCount(taskType: TaskType): Int = throw new RuntimeException("mongo down")
+    }
+    val reaper = new ScrapeReaper(scrapers, unreadable, new InMemoryFreshnessStore,
+      maxEnqueuePerTick = Int.MaxValue, maxOutstandingScrapeTasks = 20)
+
+    reaper.tick() shouldBe 0
+    unreadable.countByState() shouldBe empty
+  }
+
   // Parse-wave smoothing: a healthy tick's due batch otherwise hits the queue at one
   // instant, so the scrapes fetch in parallel and their payloads PARSE together — a
   // CPU spike that floors the shared-CPU credit balance. `planSlices` splits the

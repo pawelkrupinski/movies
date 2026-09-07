@@ -198,7 +198,12 @@ trait TaskQueue {
    *  backlog gauge for the reaper's throttle backoff: while CPU-credit throttled,
    *  the reaper must not pile new work on an undrained queue (that pins the pool
    *  permanently busy with no idle gap to rebuild credit — the 2026-06-24 spiral).
-   *  See [[services.tasks.ScrapeReaper]]. */
+   *  See [[services.tasks.ScrapeReaper]].
+   *
+   *  THROWS when the count cannot be read. A failed read is not a reading: answering
+   *  0 made an unreachable Mongo look like an empty queue, the one state in which a
+   *  throttle admits everything. Callers treat "unknown" as its own case (the reaper
+   *  admits nothing that tick), never as 0. */
   def waitingCount(taskType: TaskType): Int
 
   /** Read-only snapshot for the monitoring page: per-state counts plus the live

@@ -264,10 +264,21 @@ class ScrapeReaper(
     // admitting against room it has already committed. Prod showed exactly that shape —
     // ScrapeCinema=13 waiting with ScrapeChunk=0, ~470 tasks of pending fan-out read as 13.
     val perVenue = math.max(1, tasksPerVenue)
-    val outstanding =
+    // A backlog that cannot be READ is not an empty backlog. `waitingCount` throws on a
+    // failed read (it used to answer 0 — the reading of an empty queue, so a Mongo blip
+    // was the one moment the whole budget got admitted on top of an unknown pile).
+    // Unknown admits nothing; the next tick re-reads, and the same Mongo would have
+    // failed the enqueues anyway.
+    val outstanding = Try(
       queue.waitingCount(TaskType.ScrapeChunk) +
       queue.waitingCount(TaskType.ScrapeChunkReduce) +
       queue.waitingCount(TaskType.ScrapeCinema) * perVenue
+    ) match {
+      case scala.util.Success(count) => count
+      case scala.util.Failure(exception) =>
+        logger.warn(s"ScrapeReaper: waiting count unreadable (${exception.getMessage}) — admitting nothing this tick.")
+        return 0
+    }
 
     /** Venues admissible under a budget expressed in TASKS. Integer division floors, so
      *  room smaller than one venue's fan-out admits nothing rather than overshooting. */

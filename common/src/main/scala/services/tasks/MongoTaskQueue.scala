@@ -236,17 +236,18 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
   }
 
   // Counts via the {state, submittedAt} index prefix, then filters taskType over
-  // the bounded waiting set — cheap (waiting ≤ corpus). On a read failure report 0
-  // so the reaper fails OPEN (enqueues its trickle) rather than wedging scrapes on
-  // a transient Mongo blip.
+  // the bounded waiting set — cheap (waiting ≤ corpus). A read failure PROPAGATES:
+  // it used to answer 0, which is the reading of an empty queue, so the one moment
+  // the backlog was unknown was the moment the reaper admitted its whole budget on
+  // top of it. The caller decides what an unknown backlog means (see the trait).
   override def waitingCount(taskType: TaskType): Int = coll match {
     case None => 0
     case Some(c) =>
-      Try(Await.result(
+      Await.result(
         c.countDocuments(Filters.and(
           Filters.eq("state", TaskState.Waiting),
           Filters.eq("taskType", taskType.name))).toFuture(),
-        10.seconds)).toOption.fold(0)(_.toInt)
+        10.seconds).toInt
   }
 
   override def monitor(activeLimit: Int): QueueSnapshot = coll match {

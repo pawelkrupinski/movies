@@ -31,4 +31,10 @@ class MongoTaskQueueUnreachableSpec extends AnyFlatSpec with Matchers with Befor
       case EnqueueResult.Failed(_) =>
     }
   }
+
+  // A count that could not be read used to come back as 0 — indistinguishable from
+  // an empty queue, which is exactly the answer that lets the reaper pile on more work.
+  "MongoTaskQueue.waitingCount" should "throw on a Mongo failure rather than answer 0" in {
+    an[Exception] should be thrownBy queue.waitingCount(TaskType.ScrapeCinema)
+  }
 }
