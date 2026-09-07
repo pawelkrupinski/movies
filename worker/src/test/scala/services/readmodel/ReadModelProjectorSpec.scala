@@ -544,6 +544,47 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  "a card read that did not complete" should "heal nothing and prune nothing" in {
+    // "No cards" and "could not read the cards" are different facts: on the second, a
+    // heal that trusted the empty answer would re-project every row (a boot burst), and
+    // a prune would delete every card. Both stand down.
+    val repository = new InMemoryMovieRepository()
+    val blind = new InMemoryReadModelRepository() {
+      override def findAllMovieIdsChecked(): (Seq[String], Boolean) = (Seq.empty, false)
+      override def findAllMovieIds(): Seq[String] = Seq.empty
+    }
+    val projector = new ReadModelProjector(repository, blind, blind)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    blind.upsertMovie(ReadModelProjection.project(repository.findAll().head, titleNormalizer)._1)
+    val before = blind.movieUpserts.size
+
+    projector.start()                                // boot heal: cannot see the cards → nothing
+    projector.pruneOrphans()                         // sweep heal + prune: the same
+    blind.movieUpserts should have size before
+    blind.movieDeletes shouldBe empty
+    projector.stop()
+  }
+
+  "a screenings write that throws" should "leave the card un-remembered so the next projection retries it" in {
+    val repository = new InMemoryMovieRepository()
+    val flaky = new InMemoryReadModelRepository() {
+      var failOnce = true
+      override def upsertScreening(s: CityScreening): Unit =
+        if (failOnce) { failOnce = false; throw new RuntimeException("simulated screenings write failure") }
+        else super.upsertScreening(s)
+    }
+    val projector = new ReadModelProjector(repository, flaky, flaky)
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    val row = repository.findAll().head
+
+    intercept[RuntimeException](projector.onMovieUpsert(row))
+    flaky.screeningUpserts shouldBe empty
+
+    projector.onMovieUpsert(row)                     // the same row again: the card's hash was not remembered
+    flaky.screeningUpserts should not be empty
+    projector.stop()
+  }
+
   "start" should "schedule the orphan prune but NOT a periodic reproject" in {
     val fakeScheduler = new CapturingScheduler
     val repository = new InMemoryMovieRepository()

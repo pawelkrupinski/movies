@@ -123,13 +123,17 @@ class ReadModelProjector(
     )
     var written = 0
     variants.foreach { case (movie, screenings) =>
-      if (!lastMovie.get(movie._id).contains(movie.##)) {
+      val changed = !lastMovie.get(movie._id).contains(movie.##)
+      if (changed) {
         writer.upsertMovie(movie)
         metrics.recordWrite(Target.Movie, Op.Upsert, 1)
-        lastMovie.update(movie._id, movie.##)
         written += 1
       }
       written += diffScreenings(movie._id, screenings)
+      // Remembered only once the screenings are written too: a throw in the screenings
+      // write used to leave the card's hash "current", so the screenings were never
+      // retried until the row changed again.
+      if (changed) lastMovie.update(movie._id, movie.##)
     }
     written
   }
@@ -257,7 +261,12 @@ class ReadModelProjector(
     // cards as orphans, and the scrapes took an hour to write the new ones — the
     // ReadModelFilmPruneBurst alert. A prune must never leave a live film without a
     // card, whatever id its old card carried.
-    val cardsBefore = if (reproject) Set.empty[String] else reader.findAllMovieIds().toSet
+    // …and only when that read was COMPLETE: an incomplete keyset scan answers "no cards",
+    // and healing on that answer would re-project every row (the boot burst this design
+    // avoids). A prune that cannot see the cards heals nothing this tick.
+    val (cardsBeforeSeq, cardsRead) = if (reproject) (Seq.empty[String], true) else reader.findAllMovieIdsChecked()
+    val cardsBefore = cardsBeforeSeq.toSet
+    if (!reproject && !cardsRead) logger.warn(s"read-model $kind: the card ids could not be read — no row is healed this tick.")
     var healed = 0
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
@@ -275,7 +284,7 @@ class ReadModelProjector(
           try reprojected += project(row)
           catch { case exception: Throwable =>
             logger.warn(s"read-model $kind: a row failed to project, continuing: ${exception.getMessage}") }
-        else if (!ids.exists(cardsBefore))
+        else if (cardsRead && !ids.exists(cardsBefore))
           // The slots-only scan carries no showtimes; read the row whole for its card.
           try movieRepository.findById(row.id).foreach { whole => project(whole); healed += 1 }
           catch { case exception: Throwable =>
@@ -366,13 +375,16 @@ class ReadModelProjector(
    *  which ready rows have no card at all? Those are projected; everything else is
    *  left to the diffing change-stream path. */
   private def healMissingCards(): Unit = Try {
-    val cards   = reader.findAllMovieIds().toSet
+    val (cardsSeq, cardsRead) = reader.findAllMovieIdsChecked()
+    val cards = cardsSeq.toSet
     // The check reads slots only (ids derive from the slot titles, never from a
-    // showtime); the few rows it names are then read whole, showtimes included.
+    // showtime); the few rows it names are then read whole, showtimes included. An
+    // incomplete card read heals nothing: "no cards" and "could not read" differ.
     val missing = scala.collection.mutable.ListBuffer.empty[services.movies.FilmId]
-    val complete = movieRepository.foreachRecordWithSlots { row =>
+    val complete = cardsRead && movieRepository.foreachRecordWithSlots { row =>
       if (row.record.readyToProject && !ReadModelProjection.filmIds(row, normalizer).exists(cards)) missing += row.id
     }
+    if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
     var healed = 0
     missing.foreach(id => movieRepository.findById(id).foreach { row => lock.synchronized(project(row)); healed += 1 })
     if (healed > 0)

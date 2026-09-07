@@ -47,7 +47,13 @@ trait ReadModelReader {
    *  payload. Default derives from [[findAllMovies]] (fine for the in-memory
    *  store); the Mongo store projects `{_id}` so the worker's 30-min reconcile
    *  never decodes the whole `web_movies` collection just to diff ids. */
-  def findAllMovieIds(): Seq[String] = findAllMovies().map(_._id)
+  def findAllMovieIds(): Seq[String] = findAllMovieIdsChecked()._1
+
+  /** Like [[findAllMovieIds]] but says whether the READ was complete. An incomplete
+   *  keyset scan returns empty, and "no cards" is a very different fact from "could not
+   *  read the cards": a heal that trusted the empty answer would re-project the whole
+   *  corpus. The in-memory store cannot fail, so the default reports `true`. */
+  def findAllMovieIdsChecked(): (Seq[String], Boolean) = (findAllMovies().map(_._id), true)
 
   /** The (`_id`, `filmId`) of every read-model screening — the prune deletes a
    *  screening whose `filmId` is no longer live and reads no other field. Default

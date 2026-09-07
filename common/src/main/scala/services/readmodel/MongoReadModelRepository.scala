@@ -152,7 +152,14 @@ class MongoReadModelRepository(
     collection: Option[MongoCollection[?]],
     label:      String,
     projection: org.bson.conversions.Bson
-  )(decode: BsonDocument => A): Seq[A] = collection match {
+  )(decode: BsonDocument => A): Seq[A] =
+    pagedIdsChecked(collection, label, projection)(decode)._1
+
+  private def pagedIdsChecked[A](
+    collection: Option[MongoCollection[?]],
+    label:      String,
+    projection: org.bson.conversions.Bson
+  )(decode: BsonDocument => A): (Seq[A], Boolean) = collection match {
     case Some(c) =>
       val buf = Vector.newBuilder[A]
       val complete = KeysetScan.scan[BsonDocument](
@@ -171,12 +178,14 @@ class MongoReadModelRepository(
           logger.warn(s"$label keyset scan failed after retries: ${exception.getClass.getSimpleName}: " +
             s"${exception.getMessage} — returning empty, so this tick's prune will under-delete rather than over-delete")
       )(batch => buf ++= batch.map(decode))
-      if (complete) buf.result() else Seq.empty
-    case None => Seq.empty
+      (if (complete) buf.result() else Seq.empty, complete)
+    case None => (Seq.empty, true)
   }
 
-  override def findAllMovieIds(): Seq[String] =
-    pagedIds(movies, "ReadModelRepository.findAllMovieIds", Projections.include("_id"))(_.getString("_id").getValue)
+  override def findAllMovieIds(): Seq[String] = findAllMovieIdsChecked()._1
+
+  override def findAllMovieIdsChecked(): (Seq[String], Boolean) =
+    pagedIdsChecked(movies, "ReadModelRepository.findAllMovieIds", Projections.include("_id"))(_.getString("_id").getValue)
 
   override def findAllScreeningRefs(): Seq[ScreeningRef] =
     pagedIds(screenings, "ReadModelRepository.findAllScreeningRefs", Projections.include("_id", "filmId"))(d =>
