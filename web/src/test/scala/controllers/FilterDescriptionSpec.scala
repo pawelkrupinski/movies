@@ -304,19 +304,6 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
       FilterDescription.defaultTitle(London)
   }
 
-  // Germany's version tokens are its own (`OmU`/`DF`), and its copy has never
-  // been translated, so the English phrases are reached through a German
-  // deployment rather than a British one.
-  it should "phrase the German version tokens in English" in {
-    val berlin = Country.Germany.bySlug("berlin")
-    FilterDescription.forIndex(berlin, Map("dim" -> Seq("3D"), "lang" -> Seq("OmU")), schedules).title shouldBe
-      "Showtimes — films 3D, with subtitles"
-    FilterDescription.forIndex(berlin, Map("lang" -> Seq("DF")), schedules).title shouldBe "Showtimes — films with dubbing"
-    // Poland's pair means nothing here.
-    FilterDescription.forIndex(berlin, Map("lang" -> Seq("NAP")), schedules).title shouldBe
-      FilterDescription.defaultTitle(berlin)
-  }
-
   it should "wrap the search query in English double quotes" in {
     FilterDescription.forIndex(London, Map("q" -> Seq("Dune")), schedules).title shouldBe "Showtimes — films “Dune”"
   }
@@ -391,17 +378,69 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     FilterDescription.forIndex(Madrid, Map("director" -> Seq("David Frankel")), schedules).title shouldBe "Showtimes — películas dir. David Frankel"
   }
 
-  /** Germany is deliberately NOT translated here and reads English — the Spain
-   *  change added a third language rather than a general i18n layer, and
-   *  smuggling German copy into it would have been an unreviewed change to a
-   *  live country. Pinned so the gap is a decision on the record, not a
-   *  discovery someone makes from a German share card. */
-  "a German city" should "still read the English copy, unchanged by the Spanish branch" in {
-    val berlin = Country.Germany.bySlug("berlin")
-    FilterDescription.cityHeading(berlin) shouldBe "Cinema listings in Berlin"
+  // ── German deployment (a German city → de-DE language) ────────────────────
+  // Germany ran on the English fallback for its whole life so far: a document
+  // that declares `lang="de"` and an `og:locale` of `de_DE`, then titles itself
+  // "Cinema listings in Berlin" — in the tab, in the meta description, in the
+  // city's structured data and on the share card. These pin the fourth
+  // language end to end.
+
+  private val Berlin: City = Country.Germany.bySlug("berlin")
+
+  "cityHeading" should "read the German caption, not the English fallback" in {
+    FilterDescription.cityHeading(Berlin) shouldBe "Kinoprogramm in Berlin"
+    FilterDescription.cityHeading(Berlin) should not include "Cinema listings"
   }
 
-  it should "phrase cinema filters with the English 'at' / 'without' prepositions" in {
+  "FilterDescription for a German city" should "produce the German default title + description" in {
+    FilterDescription.defaultTitle(Berlin) shouldBe "Kinoprogramm in Berlin – Spielzeiten heute | Showtimes"
+    val d = FilterDescription.defaultDescription(Berlin)
+    d should include ("Das Kinoprogramm aller Kinos in Berlin")
+    d should include ("Spielzeiten heute")
+    d should not include "Filmweb"      // Filmweb is Polish-only
+    d should not include "today"
+    d.length should be <= FilterDescription.MaxDescription
+  }
+
+  // Germany's version pair is its own (`OmU`/`DF`) — the tokens the Filtry
+  // radios render from, and the ones a German URL can carry.
+  it should "phrase date / dim / lang / imax / from filters in German" in {
+    FilterDescription.forIndex(Berlin, Map("date" -> Seq("tomorrow")), schedules).title shouldBe "Showtimes — Filme morgen"
+    FilterDescription.forIndex(Berlin, Map("date" -> Seq("week")), schedules).title shouldBe "Showtimes — Filme diese Woche"
+    FilterDescription.forIndex(Berlin, Map("dim" -> Seq("3D"), "lang" -> Seq("OmU")), schedules).title shouldBe "Showtimes — Filme 3D, mit Untertiteln"
+    FilterDescription.forIndex(Berlin, Map("lang" -> Seq("DF")), schedules).title shouldBe "Showtimes — Filme synchronisiert"
+    FilterDescription.forIndex(Berlin, Map("imax" -> Seq("1")), schedules).title shouldBe "Showtimes — Filme IMAX"
+    FilterDescription.forIndex(Berlin, Map("from" -> Seq("18:30")), schedules).title shouldBe "Showtimes — Filme ab 18:30"
+    // Poland's pair means nothing here — nothing left to name, so the title
+    // falls back to the unfiltered default.
+    FilterDescription.forIndex(Berlin, Map("lang" -> Seq("NAP")), schedules).title shouldBe
+      FilterDescription.defaultTitle(Berlin)
+  }
+
+  it should "wrap the search query in German quotes" in {
+    FilterDescription.forIndex(Berlin, Map("q" -> Seq("Dune")), schedules).title shouldBe "Showtimes — Filme „Dune“"
+  }
+
+  it should "phrase genre / country / director / room filters in German" in {
+    FilterDescription.forIndex(Berlin, Map("genre" -> Seq("Komedia")), schedules).title shouldBe "Showtimes — Filme aus dem Genre Komedia"
+    FilterDescription.forIndex(Berlin, Map("genre" -> Seq("Animacja", "Komedia")), schedules).title shouldBe "Showtimes — Filme ohne die Genres Dramat"
+    FilterDescription.forIndex(Berlin, Map("country" -> Seq("Japonia")), schedules).title shouldBe "Showtimes — Filme aus Japonia"
+    FilterDescription.forIndex(Berlin, Map("director" -> Seq("David Frankel")), schedules).title shouldBe "Showtimes — Filme Regie: David Frankel"
+    // German venues name their own rooms "Saal 3" / "Kino 1", so the preposition
+    // carries no noun of its own — "in Saal Saal 3" is what one would produce.
+    FilterDescription.forIndex(Berlin, Map("room" -> Seq("Multikino Stary Browar|Sala 5")), schedules)
+      .title shouldBe "Showtimes — Filme in Sala 5"
+  }
+
+  it should "phrase cinema filters with the German 'im' / 'ohne' prepositions" in {
+    val cinemas = Berlin.cinemaDisplayNames
+    FilterDescription.forIndex(Berlin, Map("cinema" -> Seq(cinemas.head)), schedules)
+      .title should startWith ("Showtimes — Filme im ")
+    FilterDescription.forIndex(Berlin, Map("cinema" -> cinemas.tail), schedules)
+      .title should startWith ("Showtimes — Filme ohne ")
+  }
+
+  "cinema filters for a UK city" should "use the English 'at' / 'without' prepositions" in {
     val cinemas = London.cinemaDisplayNames
     // Include just the first cinema → smaller included side → "at <pill>".
     FilterDescription.forIndex(London, Map("cinema" -> Seq(cinemas.head)), schedules)
