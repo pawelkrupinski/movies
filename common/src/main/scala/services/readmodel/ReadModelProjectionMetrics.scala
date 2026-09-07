@@ -64,6 +64,13 @@ trait ReadModelProjectionMetrics {
    *  nothing is ever newer than its last delivery. A sustained rate here is the read-model
    *  side of `ChangeStreamMoviesCursorSilent`. Fed from [[ReadModelProjector.sweep]]. */
   def recordCatchUp(rows: Int): Unit
+
+  /** One card document written, by what moved it: `changed` is the set of card parts
+   *  ([[ReadModelProjectionMetrics.CardPart]]) that differ from the card written before,
+   *  empty for a card that had none. The single-part share per part says what actually
+   *  churns the cards — the `synopsis-by-city` line is the one number behind the proposal
+   *  to move that map to its own collection. */
+  def recordCardWrite(changed: Set[String]): Unit
 }
 
 object ReadModelProjectionMetrics {
@@ -76,11 +83,25 @@ object ReadModelProjectionMetrics {
   object ReconcileKind { val Prune = "prune" }
   /** `outcome` label values for the metadata-projection counter. */
   object MetadataOutcome { val Reused = "reused"; val Recomputed = "recomputed" }
+  /** The parts of a card a rewrite can move, each a group of fields that change together. */
+  object CardPart {
+    val Title = "title"; val Poster = "poster"; val Facts = "facts"; val Synopsis = "synopsis"
+    val SynopsisByCity = "synopsis-by-city"; val Ratings = "ratings"; val Trailers = "trailers"; val AgeRating = "age-rating"
+  }
+  /** The `cause` of a card write: `new`, the one part that moved, or `multiple`. */
+  object CardWriteCause { val New = "new"; val Multiple = "multiple" }
 
   val Targets: Seq[String]        = Seq(Target.Movie, Target.Screening)
   val Ops:     Seq[String]        = Seq(Op.Upsert, Op.Delete)
   val ReconcileKinds: Seq[String] = Seq(ReconcileKind.Prune)
   val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
+  val CardParts: Seq[String] = Seq(CardPart.Title, CardPart.Poster, CardPart.Facts, CardPart.Synopsis,
+    CardPart.SynopsisByCity, CardPart.Ratings, CardPart.Trailers, CardPart.AgeRating)
+  val CardWriteCauses: Seq[String] = Seq(CardWriteCause.New, CardWriteCause.Multiple) ++ CardParts
+
+  /** The cause label of a write that moved `changed`. */
+  def cardWriteCause(changed: Set[String]): String =
+    if (changed.isEmpty) CardWriteCause.New else if (changed.sizeIs == 1) changed.head else CardWriteCause.Multiple
 
   val noop: ReadModelProjectionMetrics = new ReadModelProjectionMetrics {
     def recordWrite(target: String, op: String, count: Int): Unit = ()
@@ -89,5 +110,6 @@ object ReadModelProjectionMetrics {
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()
+    def recordCardWrite(changed: Set[String]): Unit                 = ()
   }
 }

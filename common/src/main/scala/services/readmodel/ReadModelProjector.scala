@@ -66,7 +66,8 @@ class ReadModelProjector(
   // is a pure duplicate we don't need to keep inflated). A 32-bit hash collision
   // (astronomically rare) would skip one genuine write, leaving a stale doc until the
   // row's next real change re-projects it — self-healing, never permanently wrong.
-  private val lastMovie      = scala.collection.mutable.Map.empty[String, Int]
+  // Per card: a hash per PART of what was last written, so a rewrite can name what moved.
+  private val lastMovie      = scala.collection.mutable.Map.empty[String, CardHash]
   private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, Int]]
   // Metadata-reuse cache (optimisation #1): per SOURCE ROW (keyed by the anchor
   // `ReadModelProjection.filmId`, stable across the display-title split), the
@@ -124,17 +125,20 @@ class ReadModelProjector(
     )
     var written = 0
     variants.foreach { case (movie, screenings) =>
-      val changed = !lastMovie.get(movie._id).contains(movie.##)
+      val hash    = CardHash.of(movie)
+      val before  = lastMovie.get(movie._id)
+      val changed = !before.contains(hash)
       if (changed) {
         writer.upsertMovie(movie)
         metrics.recordWrite(Target.Movie, Op.Upsert, 1)
+        metrics.recordCardWrite(before.fold(Set.empty[String])(_.partsDifferingFrom(hash)))
         written += 1
       }
       written += diffScreenings(movie._id, screenings)
       // Remembered only once the screenings are written too: a throw in the screenings
       // write used to leave the card's hash "current", so the screenings were never
       // retried until the row changed again.
-      if (changed) lastMovie.update(movie._id, movie.##)
+      if (changed) lastMovie.update(movie._id, hash)
     }
     written
   }
@@ -388,7 +392,7 @@ class ReadModelProjector(
     // Seed the last-projection state from the derived collections, so a restart
     // doesn't rewrite documents that are already correct.
     lock.synchronized {
-      reader.findAllMovies().foreach(m => lastMovie.update(m._id, m.##))
+      reader.findAllMovies().foreach(m => lastMovie.update(m._id, CardHash.of(m)))
       reader.findAllScreenings().groupBy(_.filmId).foreach { case (fid, ss) =>
         lastScreenings.update(fid, ss.map(s => s._id -> s.##).toMap)
       }
@@ -476,4 +480,25 @@ class ReadModelProjector(
     watchHandle.foreach(h => Try(h.close()))
     scheduler.shutdown()
   }
+}
+
+/** What the projector remembers about a written card: one hash per part, so the next
+ *  write can name the parts that moved ([[ReadModelProjectionMetrics.CardPart]]). Equal
+ *  when every part is equal, which is exactly "the card did not change". */
+private[readmodel] final case class CardHash(parts: Map[String, Int]) {
+  def partsDifferingFrom(other: CardHash): Set[String] =
+    parts.collect { case (part, h) if !other.parts.get(part).contains(h) => part }.toSet
+}
+
+private[readmodel] object CardHash {
+  import ReadModelProjectionMetrics.CardPart
+  def of(m: ResolvedMovie): CardHash = CardHash(Map(
+    CardPart.Title          -> (m.title, m.originalTitle).##,
+    CardPart.Poster         -> (m.posterUrl, m.fallbackPosterUrls).##,
+    CardPart.Facts          -> (m.runtimeMinutes, m.releaseYear, m.genres, m.countries, m.directors, m.cast).##,
+    CardPart.Synopsis       -> m.synopsis.##,
+    CardPart.SynopsisByCity -> m.synopsisByCity.##,
+    CardPart.Ratings        -> (m.ratings, m.weightedRating).##,
+    CardPart.Trailers       -> m.trailerUrls.##,
+    CardPart.AgeRating      -> m.ageRating.##))
 }

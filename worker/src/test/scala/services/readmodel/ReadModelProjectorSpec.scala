@@ -58,6 +58,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
     val caughtUp = scala.collection.mutable.Buffer.empty[Int]
     def recordCatchUp(rows: Int): Unit                             = caughtUp += rows
+    val cardWrites = scala.collection.mutable.Buffer.empty[Set[String]]
+    def recordCardWrite(changed: Set[String]): Unit                = cardWrites += changed
   }
 
   /** CPU clock that advances by a FIXED amount per reading, so a test can assert the
@@ -79,6 +81,38 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
       null
     }
     def runAll(): Unit = scheduled.foreach(_.run())
+  }
+
+  // Whether splitting `synopsisByCity` off the card would spare any rewrites is a question
+  // of how many card writes move ONLY that map. The projector names the parts each write moved.
+  "a card write" should "be metered by the parts of the card that moved" in {
+    val (projector, repository, rm) = fixture()
+    val m = new RecordingMetrics()
+    val metered = new ReadModelProjector(repository, rm, rm, m)
+    def withSynopsis(rating: Option[Double], blurb: String) =
+      MovieRecord(imdbRating = rating, tmdbId = Some(1), data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("Foo"), synopsis = Some(blurb), showtimes = Seq(at("2026-06-12T20:00"))),
+        Tmdb      -> SourceData(title = Some("Foo"), synopsis = Some("the shared blurb"))))
+    repository.upsert("Foo", Some(2024), withSynopsis(Some(8.0), "Poznań's own blurb"))
+    metered.onMovieUpsert(repository.findAll().head)
+    m.cardWrites shouldBe Seq(Set.empty)                                                       // new: no card before
+
+    repository.upsert("Foo", Some(2024), withSynopsis(Some(8.0), "Poznań's REVISED blurb"))   // only the city text moved
+    metered.onMovieUpsert(repository.findAll().head)
+    m.cardWrites.last shouldBe Set("synopsis-by-city")
+
+    repository.upsert("Foo", Some(2024), withSynopsis(Some(9.1), "Poznań's REVISED blurb"))   // a rating moved
+    metered.onMovieUpsert(repository.findAll().head)
+    m.cardWrites.last shouldBe Set("ratings")
+
+    repository.upsert("Foo", Some(2024), withSynopsis(Some(7.2), "Poznań's THIRD blurb"))     // both moved
+    metered.onMovieUpsert(repository.findAll().head)
+    m.cardWrites.last shouldBe Set("ratings", "synopsis-by-city")
+    ReadModelProjectionMetrics.cardWriteCause(m.cardWrites.last) shouldBe "multiple"
+
+    metered.onMovieUpsert(repository.findAll().head)                                          // nothing moved
+    m.cardWrites should have size 4
+    projector.stop(); metered.stop()
   }
 
   "the first projection of a row" should "write the movie document before its screenings" in {

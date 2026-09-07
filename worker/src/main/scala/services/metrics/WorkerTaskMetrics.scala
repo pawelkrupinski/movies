@@ -82,6 +82,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordWrite(target: String, op: String, count: Int): Unit = series.recordWrite(countryCode, target, op, count)
   def recordFilmPruned(count: Int): Unit                        = series.recordFilmPruned(countryCode, count)
   def recordCatchUp(rows: Int): Unit                            = series.recordCatchUp(countryCode, rows)
+  def recordCardWrite(changed: Set[String]): Unit               = series.recordCardWrite(countryCode, changed)
   def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit =
     series.recordProject(countryCode, wallSeconds, cpuSeconds)
   def recordMetadataProjection(reused: Boolean): Unit           = series.recordMetadataProjection(countryCode, reused)
@@ -248,6 +249,18 @@ object WorkerTaskMetrics {
       .labelNames("country")
       .register(registry)
 
+    private val readModelCardWrites = Counter.builder()
+      .name("kinowo_worker_readmodel_card_writes")
+      .help("web_movies card documents written since boot, by country and cause. new=no card existed; one of title|poster|facts|synopsis|synopsis-by-city|ratings|trailers|age-rating=exactly that part of the card moved (facts = runtime, year, genres, countries, directors, cast); multiple=more than one part moved (see readmodel_card_rewrite_parts for which). The synopsis-by-city line answers whether moving that map (44% of card bytes in the fixture read model) to its own collection would spare the read model any card rewrites: near zero means the split saves bytes per document but not writes.")
+      .labelNames("country", "cause")
+      .register(registry)
+
+    private val readModelCardRewriteParts = Counter.builder()
+      .name("kinowo_worker_readmodel_card_rewrite_parts")
+      .help("Card parts that differed from the card written before, one increment per part per rewrite, by country and part — the decomposition of readmodel_card_writes{cause=multiple}. A rewrite that moved ratings and the poster counts once under each.")
+      .labelNames("country", "part")
+      .register(registry)
+
     private val readModelProjectDuration = Histogram.builder()
       .name("kinowo_worker_readmodel_project_duration_seconds")
       .help("Wall-clock of one pure ReadModelProjection.projectAll per source row since boot, by country — the LATENCY signal (percentiles, the duration heatmap). NOT a CPU share: concurrent projections make rate(_sum) exceed one core-second per second, and steal on a throttled box inflates it further. Use kinowo_worker_readmodel_project_cpu_seconds_total for CPU attribution.")
@@ -397,6 +410,11 @@ object WorkerTaskMetrics {
 
     def recordCatchUp(country: String, rows: Int): Unit =
       if (rows > 0) readModelCatchUpRows.labelValues(country).inc(rows.toDouble)
+
+    def recordCardWrite(country: String, changed: Set[String]): Unit = {
+      readModelCardWrites.labelValues(country, ReadModelProjectionMetrics.cardWriteCause(changed)).inc()
+      changed.foreach(part => readModelCardRewriteParts.labelValues(country, part).inc())
+    }
 
     def recordProject(country: String, wallSeconds: Double, cpuSeconds: Double): Unit = {
       readModelProjectDuration.labelValues(country).observe(math.max(0.0, wallSeconds))
