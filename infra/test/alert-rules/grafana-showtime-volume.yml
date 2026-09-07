@@ -1,0 +1,103 @@
+# THE ONE GRAFANA-MANAGED ALERT THAT IS EVALUATED HERE RATHER THAN READ.
+#
+# Every other suite in this directory tests a file under nix/files/monitoring/rules/, which
+# Prometheus itself loads. `kinowo-showtime-volume-collapsed` lives in Grafana's provisioning
+# (grafana/alerting/alert-rules.yaml) instead, so promtool cannot load it as a rule and there is no
+# `alert_rule_test` to write -- but its `expr` is ordinary PromQL against the same datasource, and
+# `promql_expr_test` will evaluate it. That is enough to pin the only thing that has ever been
+# wrong with it: WHAT NUMBER THE EXPRESSION PRODUCES for a given set of series.
+#
+# `rule_files:` is therefore deliberately empty. The expression is duplicated from alert-rules.yaml
+# and GrafanaShowtimeVolumeAlertSpec fails if the two ever drift apart, so this file cannot quietly
+# go on testing an expression production no longer runs.
+#
+# WHY THIS SUITE EXISTS. On 2026-09-06 all five countries paged `critical` at 0.46-0.49 with
+# nothing wrong: 21b381727 renamed the workers' `instance` label from `10.20.0.12:3090x` to
+# `kinowo-worker-<cc>`, and for the length of Prometheus's 5m lookback the old series still
+# answered alongside the new one. `sum by (country)` added the two, one 10m sample of the doubled
+# total entered `max_over_time(...[6h:10m])`, and the ratio sat at a half for the next six hours --
+# resolving at 00:31Z, exactly when the poisoned sample aged out of the window. The gauge itself
+# never moved (PL held 39,102 slots +-0.1% throughout).
+#
+# The commit was right that no rule SELECTED on the raw host:port. What it could not see is that a
+# label rename transiently DOUBLES any `sum` that does not group by the renamed label -- and that a
+# `max_over_time` baseline turns four minutes of that into a six-hour page.
+rule_files: []
+
+evaluation_interval: 1m
+
+tests:
+  # ── THE RELABEL, REPLAYED ───────────────────────────────────────────────────────────────────────
+  # One city, one worker, a flat 1,000 upcoming slots throughout -- nothing is lost at any point.
+  # The old-instance series stops at t=30m and the new-instance series starts at t=28m, so the raw
+  # overlap is 3 minutes and Prometheus's 5m lookback stretches it to ~8. A 6h window at 10m steps
+  # samples t=30m squarely inside it.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_showtimes{country="pl",city="poznan",instance="10.20.0.12:30900",job="kinowo-worker"}'
+        values: '1000x30'
+      - series: 'kinowo_worker_showtimes{country="pl",city="poznan",instance="kinowo-worker-pl",job="kinowo-worker"}'
+        values: '_x27 1000x90'
+    promql_expr_test:
+      # THE BUG, PINNED AT ITS SOURCE: a bare `sum by (country)` counts one census twice while both
+      # names for the same target are live. This is the sample that poisoned the baseline.
+      - expr: 'sum by (country) (kinowo_worker_showtimes)'
+        eval_time: 30m
+        exp_samples:
+          - labels: '{country="pl"}'
+            value: 2000
+
+      # The de-duplicated numerator is the truth the whole time -- during the overlap and after it.
+      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes))'
+        eval_time: 30m
+        exp_samples:
+          - labels: '{country="pl"}'
+            value: 1000
+      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes))'
+        eval_time: 90m
+        exp_samples:
+          - labels: '{country="pl"}'
+            value: 1000
+
+      # THE RULE ITSELF, an hour after the rename, with the old series long gone. This is what
+      # paged: half, against a threshold of 0.6, for a country that had lost nothing at all.
+      - expr: 'sum by (country) (kinowo_worker_showtimes) / clamp_min(max_over_time(sum by (country) (kinowo_worker_showtimes)[6h:10m]), 1)'
+        eval_time: 90m
+        exp_samples:
+          - labels: '{country="pl"}'
+            value: 0.5
+
+      # AND THE RULE AS IT NOW READS: a flat 1.0, because the doubled sample never entered the
+      # baseline. Exactly 1 and not merely "above 0.6" -- the point is that the artefact is gone,
+      # not that it was trimmed back under the threshold.
+      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) / clamp_min(max_over_time(sum by (country) (max by (country, city) (kinowo_worker_showtimes))[6h:10m]), 1)'
+        eval_time: 90m
+        exp_samples:
+          - labels: '{country="pl"}'
+            value: 1
+
+  # ── AND IT STILL SEES A REAL COLLAPSE ───────────────────────────────────────────────────────────
+  # The de-duplication must not be able to hide a loss, which is the way a fix like this goes wrong:
+  # `max by (country, city)` reduces series that are duplicates of each other, never cities that are
+  # duplicates of nothing. Two cities, both scraped under the new instance name; the second loses
+  # nine tenths of its slots at t=60m, taking the country from 2,000 to 1,100.
+  #
+  # 0.55 is the 2026-07-27 UK shape at country scale -- the incident this rule was written for was a
+  # fall to 0.09 -- and it has to be below the 0.6 threshold on the DE-DUPLICATED expression.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_showtimes{country="uk",city="london",instance="kinowo-worker-uk",job="kinowo-worker"}'
+        values: '1000x180'
+      - series: 'kinowo_worker_showtimes{country="uk",city="manchester",instance="kinowo-worker-uk",job="kinowo-worker"}'
+        values: '1000x59 100x121'
+    promql_expr_test:
+      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) / clamp_min(max_over_time(sum by (country) (max by (country, city) (kinowo_worker_showtimes))[6h:10m]), 1)'
+        eval_time: 55m
+        exp_samples:
+          - labels: '{country="uk"}'
+            value: 1
+      - expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) / clamp_min(max_over_time(sum by (country) (max by (country, city) (kinowo_worker_showtimes))[6h:10m]), 1)'
+        eval_time: 90m
+        exp_samples:
+          - labels: '{country="uk"}'
+            value: 0.55

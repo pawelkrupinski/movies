@@ -395,7 +395,7 @@
     {
       "id": 41,
       "title": "kinowo — total upcoming showtimes per country (all cities)",
-      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city — sum(kinowo_worker_showtimes), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero.",
+      "description": "The general total of individual upcoming showtimes (single dated slots) the source `movies` collection would serve across every city — sum by (country) (max by (country, city) (kinowo_worker_showtimes)), sampled off-band every 5 min by WorkerShowtimesMetrics through the REAL projection path, gated on the same readyToProject rule the projector writes by, counting only slots still in the future in each city's own zone. The slot-volume complement to the films-served panels above: films can hold steady while showtime volume swings (a chain adds evening slots, a venue drops a screen). A cliff here with the film count flat means slots were lost without a whole film disappearing. NOTE — this gauge is census-fed: a corpus scan that could not read every row publishes NOTHING, so the series holds its last complete value instead of dipping. A flat line here is only trustworthy while \"corpus census: passes that could not read the whole corpus\" sits at zero. The inner max de-duplicates: one worker publishes a country's census, so two series for one (country, city) are the same census counted twice \u2014 a bare sum drew every country at DOUBLE for four minutes on 2026-09-06, when the workers' instance label was renamed, and kinowo-showtime-volume-collapsed then paged off that peak for six hours.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -422,7 +422,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (country) (kinowo_worker_showtimes{country=~\"$country\"})",
+          "expr": "sum by (country) (max by (country, city) (kinowo_worker_showtimes{country=~\"$country\"}))",
           "legendFormat": "{{country}}",
           "datasource": {
             "type": "prometheus",

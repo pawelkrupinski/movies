@@ -816,6 +816,26 @@ groups:
       # losses. The peak of the window is therefore the trustworthy sample, and an
       # averaged baseline would be dragged down by exactly that noise.
       #
+      # THE INNER `max by (country, city)` IS WHAT MAKES THAT BASELINE SAFE TO
+      # TRUST, and it is not decoration. Exactly one worker publishes a country's
+      # census, so two series for one (country, city) are always the SAME census
+      # counted twice — and a bare `sum by (country)` adds them. That happened on
+      # 2026-09-06: renaming the workers' `instance` label from `10.20.0.12:3090x`
+      # to `kinowo-worker-<cc>` (21b381727) gave every series a new identity while
+      # Prometheus's 5m lookback still answered for the old one, so for ~4 minutes
+      # every country read DOUBLE. One 10m sample of that is all `max_over_time`
+      # needs: the baseline stayed at 2x for the next six hours and all five
+      # countries paged critical at 0.46-0.49 with nothing whatsoever wrong. The
+      # gauges were flat throughout (PL 39,102 slots, +-0.1%). A `Recreate` rollout
+      # is the same shape without a relabel, and `TtlIndexUnreconciled` in
+      # read-model-projection.rules already guards itself this way.
+      #
+      # The relabel is the cheap half of the lesson. The expensive half is that
+      # `max_over_time` LATCHES: any single poisoned sample, from any cause, is
+      # this rule's truth for a full six hours. So the numerator and the baseline
+      # must be de-duplicated at the SAME depth -- inside the sum, per city, before
+      # anything aggregates -- and not by trimming the outlier afterwards.
+      #
       # WHAT THIS RULE CAN NO LONGER SEE: a truncated corpus pass. It used to
       # publish what it had read, so a read fault dragged the gauge down and this
       # ratio with it. WorkerShowtimesMetrics.publish() now gates on scanComplete
@@ -843,7 +863,7 @@ groups:
           severity: critical
         annotations:
           summary: '{{ $labels.country }} is serving under 60% of its 6h peak showtime volume'
-          description: 'sum by (country) (kinowo_worker_showtimes) for "{{ $labels.country }}" has been below 60% of its own 6h peak for 30m — upcoming showtimes are disappearing without whole films disappearing with them, so the film-count alerts stay green. Check the "total upcoming showtimes served" panel on the Fly-health dashboard scoped to this country, compare kinowo_worker_corpus_movies (flat corpus + falling slots = the slots are being lost in projection/storage, not in scraping), and check the worker''s removal audit for scrape-prune / reproject-trim bursts. See project_uk_slot_volume_collapse.'
+          description: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) for "{{ $labels.country }}" has been below 60% of its own 6h peak for 30m — upcoming showtimes are disappearing without whole films disappearing with them, so the film-count alerts stay green. Check the "total upcoming showtimes served" panel on the Fly-health dashboard scoped to this country, compare kinowo_worker_corpus_movies (flat corpus + falling slots = the slots are being lost in projection/storage, not in scraping), and check the worker''s removal audit for scrape-prune / reproject-trim bursts. See project_uk_slot_volume_collapse.'
         data:
           - refId: A
             relativeTimeRange: { from: 21600, to: 0 }
@@ -851,7 +871,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: 'sum by (country) (kinowo_worker_showtimes) / clamp_min(max_over_time(sum by (country) (kinowo_worker_showtimes)[6h:10m]), 1)'
+              expr: 'sum by (country) (max by (country, city) (kinowo_worker_showtimes)) / clamp_min(max_over_time(sum by (country) (max by (country, city) (kinowo_worker_showtimes))[6h:10m]), 1)'
               instant: true
               range: false
               intervalMs: 1000

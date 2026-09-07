@@ -2,6 +2,7 @@ package deploy
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.metrics.WorkerShowtimesMetrics
 
 /**
  * Guards the alert coverage over SLOT VOLUME, the axis the film-count alerts
@@ -42,12 +43,31 @@ import org.scalatest.matchers.should.Matchers
  *
  * The threshold and window numbers themselves are deliberately NOT pinned here
  * (tuning them is an alerting-noise judgement, not a drift bug) — only that a
- * slot-volume rule exists, is per country, and cannot be blinded by a slow
- * bleed.
+ * slot-volume rule exists, is per country, cannot be blinded by a slow bleed,
+ * and cannot be fooled by the same census counted twice.
+ *
+ * 2026-09-06 is why that last one is here. Renaming the workers' `instance`
+ * label left the old series answering beside the new one for the length of
+ * Prometheus's 5m lookback; `sum by (country)` added them; one 10m sample of
+ * the doubled total entered `max_over_time(...[6h:10m])`; and all five
+ * countries paged `critical` at 0.46-0.49 for six hours while the gauge sat
+ * flat (PL 39,102 slots, ±0.1%). Exactly one worker publishes a country's
+ * census, so two series for one (country, city) are never two censuses — the
+ * de-duplication belongs INSIDE the sum, where it protects the numerator and
+ * the baseline at the same depth.
+ *
+ * What the number the expression PRODUCES does, for the relabel and for a real
+ * collapse, is pinned by feeding it series in
+ * `infra/test/alert-rules/grafana-showtime-volume.yml` — promtool cannot load a
+ * Grafana-managed rule, but it will evaluate its `expr`. The last test here is
+ * what stops that suite testing an expression production no longer runs.
  */
 class GrafanaShowtimeVolumeAlertSpec extends AnyFlatSpec with Matchers {
 
   private val AlertRules = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
+
+  /** The promtool suite that EVALUATES this rule's expression, rather than reading it. */
+  private val PromtoolSuite = "infra/test/alert-rules/grafana-showtime-volume.yml"
 
   private lazy val alertRules = RepoFile.read(AlertRules)
 
@@ -99,6 +119,42 @@ class GrafanaShowtimeVolumeAlertSpec extends AnyFlatSpec with Matchers {
       ) {
         windows should not be empty
         windows.max should be >= 6
+      }
+    }
+  }
+
+  it should "count one country's census once, however many targets are publishing it" in {
+    showtimeExpressions.foreach { expr =>
+      withClue(
+        s"'$expr' aggregates ${WorkerShowtimesMetrics.Name} without reducing the duplicate series " +
+          "for a (country, city) first. Exactly ONE worker publishes a country's census, so a " +
+          "second series for the same city is always the SAME census counted twice — which is " +
+          "what a `Recreate` rollout produces while both pods answer, and what renaming the " +
+          "workers' `instance` label produced on 2026-09-06 for the length of Prometheus's 5m " +
+          "lookback. That doubled ONE 10m sample, `max_over_time(...[6h:10m])` held it as the " +
+          "baseline, and all five countries paged critical at ~0.49 for six hours against a " +
+          "gauge that never moved. Reduce inside the sum — `sum by (country) (max by (country, " +
+          "city) (...))` — so the numerator and the baseline are de-duplicated at the same " +
+          "depth; trimming the outlier out of the baseline afterwards leaves the numerator wrong " +
+          "and the next artefact unguarded. "
+      ) {
+        expr should include(s"max by (country, city) (${WorkerShowtimesMetrics.Name}")
+      }
+    }
+  }
+
+  it should "be evaluated, not merely read, by the promtool suite that claims to test it" in {
+    val suite = RepoFile.read(PromtoolSuite)
+
+    showtimeExpressions.foreach { expr =>
+      withClue(
+        s"$PromtoolSuite does not contain '$expr' verbatim, so it is pinning the value of some " +
+          "OTHER expression than the one Grafana evaluates — and every case in it can pass while " +
+          "the live rule is broken. Every assertion in this file reads the expression; only that " +
+          "suite feeds it series and asks what number comes out, which is the only thing that " +
+          "has ever actually been wrong with this rule. Copy the expression across. "
+      ) {
+        suite should include(expr)
       }
     }
   }
