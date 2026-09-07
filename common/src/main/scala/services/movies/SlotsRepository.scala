@@ -105,7 +105,7 @@ trait SlotsRepository {
   /** Drop one slot (it left the film's listings). */
   def deleteSlot(filmId: String, slotKey: String): Unit
 
-  /** Drop all of a film's slots (the film was deleted / re-keyed). */
+  /** Drop all of a film's slots (the film was deleted, or merged away). */
   def deleteFilm(filmId: String): Unit
 
   // Deliberately NO `watch`. `screenings` has one because a showtimes-only change

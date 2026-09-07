@@ -89,7 +89,7 @@ trait ScreeningsRepository {
   /** Drop one slot's screenings (the slot left the film's listings). */
   def deleteSlot(filmId: String, slotKey: String): Unit
 
-  /** Drop all of a film's screenings (the film was deleted / re-keyed). */
+  /** Drop all of a film's screenings (the film was deleted, or merged away). */
   def deleteFilm(filmId: String): Unit
 
   /** Push: ring `onChange(filmId)` whenever a film's screenings actually change, so

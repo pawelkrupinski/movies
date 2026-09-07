@@ -444,8 +444,15 @@ class CaffeineMovieCache(
     case Some(tid) =>
       tmdbLockFor(tid).synchronized {
         siblingKeyByTmdb(tid, excluding = key) match {
-          case Some(siblingKey) => foldDeterministically(key, e, siblingKey)
-          case None             => persist(key, e, id)
+          case Some(siblingKey) => foldDeterministically(key, e, siblingKey, MergeReason.TmdbIdentity)
+          case None =>
+            // The settle's imdbId edge, at write time: the same IMDb id under another
+            // tmdbId is one film TMDB holds twice — unless the cinemas describe two
+            // films, the edge's own veto.
+            siblingKeyByImdb(e, excluding = key) match {
+              case Some(siblingKey) => foldDeterministically(key, e, siblingKey, MergeReason.ImdbIdentity)
+              case None             => persist(key, e, id)
+            }
         }
       }
     case None =>
@@ -497,6 +504,19 @@ class CaffeineMovieCache(
     positive.asMap().asScala.iterator
       .collect { case (k, v) if k != excluding && v.tmdbId.contains(tid) => k }
       .minByOption(canonicalRank)
+  }
+
+  /** A resolved row under a DIFFERENT tmdbId that carries this record's imdbId, and
+   *  whose cinemas do not describe a different film — the row the settle's imdbId edge
+   *  would union this one with. */
+  private def siblingKeyByImdb(e: MovieRecord, excluding: CacheKey): Option[CacheKey] = {
+    import scala.jdk.CollectionConverters._
+    e.imdbId.flatMap { imdb =>
+      positive.asMap().asScala.iterator
+        .collect { case (k, v) if k != excluding && v.imdbId.contains(imdb) && v.tmdbId.isDefined && v.tmdbId != e.tmdbId &&
+                                  !MixedFilmDetector.describeDifferentFilms(v, e, normalizer) => k }
+        .minByOption(canonicalRank)
+    }
   }
 
   /** Total order picking the canonical (surviving) key among same-tmdbId,
@@ -955,7 +975,7 @@ class CaffeineMovieCache(
    *  first; enrichment-thread arrival order (which varies across machines, and
    *  used to flip the canonical here, drifting the whole-corpus snapshot
    *  between arm64 dev boxes and amd64 CI) no longer matters. */
-  private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, siblingKey: CacheKey): Unit = {
+  private def foldDeterministically(newKey: CacheKey, newRecord: MovieRecord, siblingKey: CacheKey, reason: MergeReason): Unit = {
     // `stored` (cache-or-Mongo): a cold/evicted sibling read EMPTY would be merged
     // as absent, then full-replaced and its Mongo doc deleted — losing the ratings
     // the `*Ratings` refreshers wrote onto it.
@@ -977,7 +997,7 @@ class CaffeineMovieCache(
     // too: the losing row's showtimes are filed under ITS id, while the record we are about
     // to write holds that row STRIPPED (cache residency), so `upsert`'s re-stitch — which
     // looks under the id it is WRITING to — would find nothing and store nothing, and the
-    // delete would then destroy the only copy. Same rule as the re-key in
+    // delete would then destroy the only copy. Same rule as the merge arm of
     // `MovieCache.rekey`; a `movies` row disappearing almost never means the film left.
     // Only a victim whose rows actually reached the survivor is deleted — `moveFilm`
     // reports false when a read or write it depended on didn't happen, and the delete
@@ -1003,9 +1023,11 @@ class CaffeineMovieCache(
     // Counted whether the incoming key had a stored row of its own or was a fresh write
     // that never became one: either way a would-be duplicate was folded at write time.
     if (newKey != siblingKey) {
-      mergeMetrics.recordMerge(MergeReason.TmdbIdentity, 1)
+      mergeMetrics.recordMerge(reason, 1)
+      val shared = if (reason == MergeReason.ImdbIdentity) s"same imdbId=${newRecord.imdbId.getOrElse("?")}, tmdbId ${merged.tmdbId.getOrElse("?")} kept"
+                   else s"same tmdbId=${newRecord.tmdbId.get}"
       logger.info(s"Folded duplicate '${newKey.cleanTitle}' (${newKey.year.getOrElse("—")}) " +
-                  s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — same tmdbId=${newRecord.tmdbId.get}" +
+                  s"into '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}) — $shared" +
                   (if (moved.nonEmpty) ", its stored row retired." else "."))
     }
   }

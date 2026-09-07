@@ -308,7 +308,7 @@ class ReadModelProjector(
    *  would not). Mirrors `scripts.BackfillReadModel`. */
   def reconcile(): Unit = sweep(reproject = true)
 
-  /** Cheap id-only orphan prune — the frequent backstop for deleted/re-keyed rows. */
+  /** Cheap id-only orphan prune — the frequent backstop for deleted / merged-away rows. */
   def pruneOrphans(): Unit = sweep(reproject = false)
 
   def start(): Unit = if (enabled) {

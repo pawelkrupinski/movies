@@ -456,7 +456,7 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   private def mkResolved(tmdbId: Int,
                          cinemaSlots: Map[Cinema, SourceData] = Map.empty): MovieRecord =
     MovieRecord(
-      imdbId         = Some("tt-anything"),
+      imdbId         = Some(s"tt$tmdbId"),   // one IMDb id per film: a shared one is the imdbId fold
       imdbRating     = Some(8.0),
       tmdbId         = Some(tmdbId),
       data           = cinemaSlots.map { case (c, sd) => (c: Source) -> sd } +

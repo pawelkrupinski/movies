@@ -21,6 +21,11 @@ object MergeReason {
    *  yearless+idless same-title strays (plus any prior occupant of the resolved
    *  year) fold onto it in one write. */
   case object ResolvedSettle extends MergeReason { val label = "resolved-settle" }
+  /** `MovieCache.foldDeterministically` — a freshly-written row shares an imdbId with
+   *  an existing one under a DIFFERENT tmdbId: TMDB holding one film twice. The
+   *  settle's imdbId edge, asked at write time; the survivor's tmdbId is the one the
+   *  cinemas' runtimes corroborate (`FilmCanonicalizer.mergeOrder`). */
+  case object ImdbIdentity   extends MergeReason { val label = "imdb-identity"   }
   /** `MovieCache.foldDeterministically` — a freshly-written row shares a tmdbId
    *  with an existing one; the runtime identity gate folds the lower-rank loser
    *  into the canonical at `put` time, before any settle pass. */
@@ -29,7 +34,7 @@ object MergeReason {
    *  (e.g. on cache rehydration after a key collision). Pairs with the splits counter. */
   case object NormalizeRebuild extends MergeReason { val label = "normalize-rebuild" }
 
-  val all: Seq[MergeReason] = Seq(Canonicalize, ResolvedSettle, TmdbIdentity, NormalizeRebuild)
+  val all: Seq[MergeReason] = Seq(Canonicalize, ResolvedSettle, TmdbIdentity, ImdbIdentity, NormalizeRebuild)
 }
 
 /**

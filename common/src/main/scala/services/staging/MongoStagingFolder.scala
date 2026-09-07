@@ -211,7 +211,7 @@ class MongoStagingFolder(
     retirements.foreach { case (from, to) =>
       if (from != to) Try(movieRepository.moveFilm(from, to)) match {
         case scala.util.Success(true)  =>
-          logger.info(s"Staging fold: carried '$from' cinemas onto '$to' — a retirement is a re-key.")
+          logger.info(s"Staging fold: carried '$from' cinemas onto '$to' — a retirement is a merge.")
         case scala.util.Success(false) =>
           logger.warn(s"Staging fold: could not carry '$from' cinemas onto '$to' (a read or write " +
             "did not happen) — the rows stay under the old id, where they remain the only copy.")
