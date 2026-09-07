@@ -157,6 +157,28 @@ tests:
               summary: "es has 1 film(s) screening but invisible on the site"
               description: "`kinowo_worker_corpus_movies{subset=\"unresolved_with_showtimes\"}` counts rows that fail `readyToProject` while their cinemas still list an UPCOMING showtime, so the read model prunes their cards and the films 404 while tickets are on sale. Read the worker\'s `kinowo.removal-audit` log to name them (`reason=reconcile-prune`), then for each row compare the CINEMA slots\' director and runtime against the film it resolved to and search TMDB for the title the venues actually publish. Write the correct `tmdbId` and TMDB slot directly -- do NOT clear `tmdbId` to force a re-resolve, because that prunes the card within minutes and `UnresolvedTmdbReaper` will not revisit the key for up to 24h. Its sibling `subset=\"misresolved\"` counts the sweep\'s INPUT: that falling while this rises is the sweep trading wrong films for invisible ones. Full method in `docs/misresolution-sweep.md`."
 
+  # THE SAME ONE ROW, WHILE TWO TARGETS ARE ANSWERING FOR THE SAME WORKER — a rollout with both
+  # pods up, or a scrape relabel that Prometheus's 5m lookback answers under both names, which is
+  # what doubled every country's gauges on 2026-09-06. It is ONE census published twice, so the
+  # count the operator is sent to look for must still be 1. Under `sum by (country)` this said
+  # "es has 2 film(s) screening but invisible" and sent them hunting for a row that does not exist.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_corpus_movies{country="es",job="kinowo-worker",instance="10.20.0.12:30904",subset="unresolved_with_showtimes"}'
+        values: '1x240'
+      - series: 'kinowo_worker_corpus_movies{country="es",job="kinowo-worker",instance="kinowo-worker-es",subset="unresolved_with_showtimes"}'
+        values: '1x240'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: ReadModelFilmsInvisibleWithScreenings
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: es
+            exp_annotations:
+              summary: "es has 1 film(s) screening but invisible on the site"
+              description: "`kinowo_worker_corpus_movies{subset=\"unresolved_with_showtimes\"}` counts rows that fail `readyToProject` while their cinemas still list an UPCOMING showtime, so the read model prunes their cards and the films 404 while tickets are on sale. Read the worker\'s `kinowo.removal-audit` log to name them (`reason=reconcile-prune`), then for each row compare the CINEMA slots\' director and runtime against the film it resolved to and search TMDB for the title the venues actually publish. Write the correct `tmdbId` and TMDB slot directly -- do NOT clear `tmdbId` to force a re-resolve, because that prunes the card within minutes and `UnresolvedTmdbReaper` will not revisit the key for up to 24h. Its sibling `subset=\"misresolved\"` counts the sweep\'s INPUT: that falling while this rises is the sweep trading wrong films for invisible ones. Full method in `docs/misresolution-sweep.md`."
+
   # A row that goes invisible and is repaired 30 minutes later: never reaches `for: 2h`.
   - interval: 1m
     input_series:
@@ -182,6 +204,32 @@ tests:
       - eval_time: 20m
         alertname: ReadModelFilmPruneBurst
         exp_alerts: []
+      - eval_time: 2h
+        alertname: ReadModelFilmPruneBurst
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              country: pl
+            exp_annotations:
+              summary: "pl dropped 48% of its films from the read model in an hour"
+              description: "`kinowo_worker_readmodel_films_pruned_total` has removed more than 30% of `corpus_movies{subset=\"total\"}` for this country within an hour, so schedules are disappearing from the site with the films that carried them. The worst healthy hour measured over the week to 2026-09-05 was 16.9%. Read the worker's `kinowo.removal-audit` log first -- it names every card removed with its screening count and a reason (reconcile-prune / scrape-prune) -- then check whether a backfill or reprojection script is running against this country, whether a city slug was renamed (which re-keys every CityScreening and orphans the old ones), and whether the source `movies` rows still exist: a prune whose rows are intact is a projection fault, and a prune that follows rows actually vanishing is a scrape or cleanup fault."
+
+  # THE SAME BURST, DURING A ROLLOUT. Identical prunes and an identical 1,000-film corpus, but two
+  # targets are publishing that corpus at once. This is the case the rule has to survive, because a
+  # rollout is exactly WHEN the largest prune happens -- the boot reconcile sweep runs minutes after
+  # a pod comes up, and on 2026-09-07 one took 509 of PL's 943 cards. Under `sum by (country)` the
+  # denominator read 2,000, the ratio halved to 24%, and this rule went quiet at the only moment it
+  # was needed. The prune counter is deliberately still summed: two live processes each count their
+  # own removals, and those genuinely add.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="pl",job="kinowo-worker",instance="kinowo-worker-pl"}'
+        values: '0+8x180'
+      - series: 'kinowo_worker_corpus_movies{country="pl",job="kinowo-worker",instance="10.20.0.12:30900",subset="total"}'
+        values: '1000x180'
+      - series: 'kinowo_worker_corpus_movies{country="pl",job="kinowo-worker",instance="kinowo-worker-pl",subset="total"}'
+        values: '1000x180'
+    alert_rule_test:
       - eval_time: 2h
         alertname: ReadModelFilmPruneBurst
         exp_alerts:

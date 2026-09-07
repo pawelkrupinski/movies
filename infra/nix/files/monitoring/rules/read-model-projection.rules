@@ -104,6 +104,17 @@ groups:
       # mean the same thing everywhere: the share of a country's films that left the read model
       # in an hour.
       #
+      # `max by (country)` OVER THE CORPUS, `sum by (country)` OVER THE PRUNES — the asymmetry is
+      # deliberate and the two halves are different KINDS of number. Exactly one worker publishes a
+      # country's corpus census, so two series for it are the SAME census counted twice (a rollout
+      # with both pods answering, or a scrape relabel answered by Prometheus's 5m lookback — which
+      # is what doubled every country's gauge on 2026-09-06 and paged all five off
+      # kinowo-showtime-volume-collapsed for six hours). Summing them halves this ratio, and it
+      # halves it EXACTLY DURING A ROLLOUT, which is when the boot reconcile does its largest
+      # prune — so the failure would be a MISS, quietly, in the one window this rule most needs to
+      # be awake. The prune counter is the opposite: each process counts its own removals, so when
+      # two are alive their totals genuinely add, and `max` there would drop half the prunes.
+      #
       # 30%, from the measured week. Over the 7 days to 2026-09-05 the worst HEALTHY hour any
       # country reached was PL at 16.9% (DE 9.4%, ES 7.8%, US 4.6%, UK 3.7%), with p99s of
       # 1.0-5.4% -- so 30% sits at ~1.8x the worst real sample and far above every typical one.
@@ -152,7 +163,7 @@ groups:
       # after two hours is waiting a day, not a tick.
       - alert: ReadModelFilmsInvisibleWithScreenings
         expr: >-
-          sum by (country) (kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}) > 0
+          max by (country) (kinowo_worker_corpus_movies{subset="unresolved_with_showtimes"}) > 0
         for: 2h
         labels:
           severity: warning
@@ -176,10 +187,10 @@ groups:
           (
             (
               sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[1h]))
-              / sum by (country) (kinowo_worker_corpus_movies{subset="total"})
+              / max by (country) (kinowo_worker_corpus_movies{subset="total"})
             ) > 0.3
           )
-          and on (country) (sum by (country) (kinowo_worker_corpus_movies{subset="total"}) > 0)
+          and on (country) (max by (country) (kinowo_worker_corpus_movies{subset="total"}) > 0)
         # The increase window is already an hour, so this is not waiting for the condition to be
         # real -- it is confirming the ratio is not a single scrape-boundary sample.
         for: 15m
