@@ -6,6 +6,7 @@ import play.api.Logging
 import services.Stoppable
 import services.cinemas.CountryNames
 import services.events.{CinemaMovieAdded, EventBus, InProcessEventBus, StagingNewcomerDiverted}
+import services.resolution.YearWindow
 import tools.{DaemonExecutors, Env, PersonName, TextNormalization}
 
 import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
@@ -879,12 +880,13 @@ class CaffeineMovieCache(
    *  (`CinemaScrapeRunner.classify` short-circuits on `tmdbConcluded`) and no
    *  held-back variant is spawned beside it. None when no concluded match exists.
    *
-   *  Year matching mirrors `clusterByFilm`'s ±1 adjacency, so the duplicate
-   *  `canonicalizeBySanitize` would later fold is never spawned: a yearless scrape lands
-   *  on any concluded same-title row; a year-bearing scrape prefers the concluded
-   *  row at the SAME year, else the nearest within ±1 (a cinema reporting the
-   *  production year 2025 lands on the row TMDB resolved to the release year
-   *  2026 — the "two copies of Kumotry" bug). Ties break on `canonicalRank`.
+   *  Year matching mirrors `clusterByFilm`'s rule 2 — the same
+   *  `YearWindow.ProductionToRelease` — so the duplicate `canonicalizeBySanitize`
+   *  would later fold is never spawned: a yearless scrape lands on any concluded
+   *  same-title row; a year-bearing scrape prefers the concluded row at the SAME
+   *  year, else the nearest within the window (a cinema reporting the production
+   *  year 2025 lands on the row TMDB resolved to the release year 2026 — the "two
+   *  copies of Kumotry" bug). Ties break on `canonicalRank`.
    *
    *  `listingRuntime` is the runtime THIS listing published, and `cinema` the venue
    *  publishing it. Both are only consulted when the candidates turn out to be more
@@ -939,15 +941,16 @@ class CaffeineMovieCache(
     // so the only arm left to apply is the partition's: a key that matches by its own
     // normalised form belongs to `keyMatches`, never here.
     val aliasOnly  = corpusIndex.keysForAlias(norm).filterNot(_.normalized == norm).toSeq
-    // Nearest year first, out to ±2 — the settle's own window (`FilmCanonicalizer.
-    // clusterByFilm` rule 2): a venue reporting the PRODUCTION year two years before
+    // Nearest year first, out to `YearWindow.ProductionToRelease` — the settle's own
+    // window (`FilmCanonicalizer.clusterByFilm` rule 2), read from the same place so
+    // the two cannot drift: a venue reporting the PRODUCTION year two years before
     // TMDB's release year ("Zawieście czerwone latarnie", 1989 vs 1991) used to land
     // as its own row for the settle to attach a tick later.
     def nearest(cands: Seq[CacheKey]): Option[CacheKey] = primary.year match {
       case None    => chooseConcluded(cands, listingRuntime, cinema, norm)
       case Some(y) =>
-        (0 to 2).iterator.map(distance =>
-          chooseConcluded(cands.filter(_.year.exists(ky => math.abs(ky - y) == distance)), listingRuntime, cinema, norm))
+        (0 to YearWindow.ProductionToRelease).iterator.map(distance =>
+          chooseConcluded(cands.filter(_.year.exists(YearWindow.distance(_, y) == distance)), listingRuntime, cinema, norm))
           .collectFirst { case Some(k) => k }
     }
     nearest(keyMatches).orElse(nearest(aliasOnly))

@@ -1,6 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Tmdb}
+import services.resolution.YearWindow
 
 /**
  * Pure collapse of a cluster of same-film rows into the single canonical
@@ -62,7 +63,8 @@ object FilmCanonicalizer {
       .orElse(cluster.flatMap { case (k, _) => k.year }.minOption)
 
   /** One per-film cluster within a `sanitize(title)` group — its member rows and
-   *  the reference year used for ±1 adjacency. `minRank` is the cluster's
+   *  the reference year an unresolved row's year is measured against (rule 2,
+   *  `YearWindow.ProductionToRelease`). `minRank` is the cluster's
    *  smallest `canonicalRank`, the deterministic tie-break for "which cluster is
    *  canonical / nearest". */
   private case class Cluster(refYear: Option[Int], rows: Seq[(CacheKey, MovieRecord)]) {
@@ -179,25 +181,26 @@ object FilmCanonicalizer {
     val (yeared, yearless) = unresolved.partition(_._1.year.isDefined)
 
     // (2) Year-bearing unresolved rows attach to the NEAREST resolved cluster
-    // within ±2 of its tmdbYear. The ±1 window this widened from was too tight:
-    // Kino Muzeum reports "Zawieście czerwone latarnie" at its 1989 PRODUCTION
-    // year while TMDB resolved the film to its 1991 release — two years off — so
-    // the unresolved 1989 row orphaned into its own cluster and only merged when
-    // its own TMDB lookup happened to land before this pass (a race that left the
-    // corpus, and the rendered snapshot, nondeterministic). ±2 covers the usual
-    // production-vs-release gap; staying bounded (not "nearest at any distance")
-    // keeps a genuinely different same-title film still awaiting its tmdbId — a
-    // remake decades apart — from being swallowed into the wrong cluster. Pick the
-    // nearest by |year − tmdbYear|, ties on the cluster's smallest canonicalRank
-    // then index, so the attachment is a pure function of the row set, not arrival
-    // order. Iterate in canonicalRank order for the same reason.
+    // within `YearWindow.ProductionToRelease` of its tmdbYear. The ±1 window this
+    // widened from was too tight: Kino Muzeum reports "Zawieście czerwone latarnie"
+    // at its 1989 PRODUCTION year while TMDB resolved the film to its 1991 release
+    // — two years off — so the unresolved 1989 row orphaned into its own cluster
+    // and only merged when its own TMDB lookup happened to land before this pass
+    // (a race that left the corpus, and the rendered snapshot, nondeterministic).
+    // ±2 covers the usual production-vs-release gap; staying bounded (not "nearest
+    // at any distance") keeps a genuinely different same-title film still awaiting
+    // its tmdbId — a remake decades apart — from being swallowed into the wrong
+    // cluster. Pick the nearest by |year − tmdbYear|, ties on the cluster's
+    // smallest canonicalRank then index, so the attachment is a pure function of
+    // the row set, not arrival order. Iterate in canonicalRank order for the same
+    // reason.
     val adjacent = scala.collection.mutable.LinkedHashMap.empty[Int, scala.collection.mutable.ListBuffer[Row]]
     val orphans  = scala.collection.mutable.ListBuffer.empty[Row]
     yeared.sortBy(rank).foreach { row =>
       val year = row._1.year.get
       resolvedClusters.zipWithIndex
-        .filter { case (c, _) => c.refYear.exists(ry => math.abs(year - ry) <= 2) }
-        .minByOption { case (c, index) => (math.abs(year - c.refYear.get), c.minRank, index) } match {
+        .filter { case (c, _) => YearWindow.agrees(Some(year), c.refYear, YearWindow.ProductionToRelease).contains(true) }
+        .minByOption { case (c, index) => (YearWindow.distance(year, c.refYear.get), c.minRank, index) } match {
         case Some((_, index)) => adjacent.getOrElseUpdate(index, scala.collection.mutable.ListBuffer.empty) += row
         case None           => orphans += row
       }
@@ -206,18 +209,19 @@ object FilmCanonicalizer {
       c.copy(rows = c.rows ++ adjacent.getOrElse(index, Nil).toSeq)
     }
 
-    // (3) Orphaned year-bearing rows → greedy 2-year windows from the lowest
-    // distinct year. {y, y+1} absorbs every orphan at y or y+1; the next window
-    // opens at the next distinct year > y+1.
+    // (3) Orphaned year-bearing rows → greedy windows from the lowest distinct
+    // year, each `YearWindow.PublishedAdjacency` wide: {y, y+1} absorbs every
+    // orphan at y or y+1; the next window opens at the next distinct year > y+1.
     val orphanRows  = orphans.toSeq
     val orphanYears = orphanRows.map(_._1.year.get).distinct.sorted
     val windowClusters = scala.collection.mutable.ListBuffer.empty[Cluster]
     var remaining = orphanYears
     while (remaining.nonEmpty) {
       val lo    = remaining.head
-      val inWin = orphanRows.filter(r => r._1.year.get == lo || r._1.year.get == lo + 1)
+      val hi    = lo + YearWindow.PublishedAdjacency
+      val inWin = orphanRows.filter(r => r._1.year.get >= lo && r._1.year.get <= hi)
       windowClusters += Cluster(refYear = Some(lo), rows = inWin)
-      remaining = remaining.dropWhile(_ <= lo + 1)
+      remaining = remaining.dropWhile(_ <= hi)
     }
 
     val seeded: Seq[Cluster] = resolvedWithAdjacent ++ windowClusters.toSeq

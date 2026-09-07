@@ -1,6 +1,7 @@
 package services.movies
 
 import models.{MovieRecord, Source, SourceData}
+import services.resolution.YearWindow
 
 /**
  * Decides whether one `movies` row is actually holding TWO DIFFERENT FILMS, and
@@ -259,11 +260,7 @@ object MixedFilmDetector {
    *  older than the Icelandic one; Ozon's "L'étranger" runs 120 where Brandt
    *  Andersen's runs 103. One film named in two languages agrees on both. A side
    *  that published neither cannot corroborate, and so cannot trigger a split. */
-  private def corroborated(aRuntimes: Set[Int], bRuntimes: Set[Int], aYears: Set[Int], bYears: Set[Int]): Boolean = {
-    def bothPublished(a: Set[Int], b: Set[Int]) = a.nonEmpty && b.nonEmpty
-    def allDiffer(a: Set[Int], b: Set[Int], tolerance: Int) =
-      bothPublished(a, b) && a.forall(x => b.forall(y => math.abs(x - y) > tolerance))
-
+  private def corroborated(aRuntimes: Set[Int], bRuntimes: Set[Int], aYears: Set[Int], bYears: Set[Int]): Boolean =
     // RUNTIME is the authority whenever both sides published one, and its verdict
     // is final — including a verdict of "same film", which is why the year is not
     // consulted alongside it.
@@ -275,9 +272,9 @@ object MixedFilmDetector {
     // row — while both slots agreed on 113 minutes, which is what actually settles
     // it. The year still speaks when runtime cannot: "Joanna d'Arc"'s two films are
     // 26 years apart and only one of its cinemas publishes a runtime at all.
-    if (bothPublished(aRuntimes, bRuntimes)) allDiffer(aRuntimes, bRuntimes, RuntimeAgreementMinutes)
-    else allDiffer(aYears, bYears, 1)
-  }
+    if (aRuntimes.nonEmpty && bRuntimes.nonEmpty)
+      aRuntimes.forall(x => bRuntimes.forall(y => math.abs(x - y) > RuntimeAgreementMinutes))
+    else YearWindow.contradicts(aYears, bYears, YearWindow.PublishedAdjacency)
 
   /** An original title as its distinctive WORDS.
    *

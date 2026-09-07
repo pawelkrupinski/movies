@@ -39,4 +39,25 @@ class YearWindowSpec extends AnyFlatSpec with Matchers {
     YearWindow.contradicts(Seq(2021, 2026), Some(2018), 1) shouldBe true
     YearWindow.contradicts(Seq(2019, 2026), Some(2020), 1) shouldBe false
   }
+
+  "agrees between two sets" should "agree on any pair within the window and contradict only when every pair is outside it" in {
+    YearWindow.agrees(Set(1999), Set(2000), 1)         shouldBe Some(true)
+    YearWindow.agrees(Set(1999), Set(2001), 1)         shouldBe Some(false)
+    YearWindow.agrees(Set(1999, 2025), Set(2026), 1)   shouldBe Some(true)
+    YearWindow.contradicts(Set(1999), Set(2025), 1)    shouldBe true
+    YearWindow.contradicts(Set(1999), Set(2000), 1)    shouldBe false
+  }
+
+  it should "stay silent when either side published nothing" in {
+    YearWindow.agrees(Set.empty[Int], Set(2026), 1)      shouldBe None
+    YearWindow.agrees(Set(2026), Set.empty[Int], 1)      shouldBe None
+    YearWindow.contradicts(Set.empty[Int], Set(2026), 1) shouldBe false
+    YearWindow.contradicts(Set(2026), Set.empty[Int], 1) shouldBe false
+  }
+
+  "distance" should "be the absolute gap, either way round" in {
+    YearWindow.distance(1989, 1991) shouldBe 2
+    YearWindow.distance(1991, 1989) shouldBe 2
+    YearWindow.distance(2026, 2026) shouldBe 0
+  }
 }
