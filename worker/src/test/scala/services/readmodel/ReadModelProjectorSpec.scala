@@ -297,13 +297,31 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // seeds state + installs the watch but defers the reconcile to the first scheduled
   // tick — so no source row is projected synchronously. (Before, the boot reconcile
   // projected "Foo" at start(), making movieUpserts size 1 and failing this.)
-  "start" should "not reconcile synchronously (defer the full scan off the boot path)" in {
+  "start" should "project only the ready rows that have no card, never the corpus" in {
+    // A carded row is left to the diffing change-stream path; a row with no card at
+    // all — the 2026-09-07 id-scheme rollout, or a restored database — is projected
+    // before the first prune can delete whatever it had under an old id. In steady
+    // state nothing is missing and boot projects nothing (the boot CPU-credit drain
+    // a whole-corpus reconcile used to be).
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()                       // Foo carded
+    repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00"))))
+    val before = rm.movieUpserts.size
     projector.start()
-    rm.movieUpserts     shouldBe empty
-    rm.screeningUpserts shouldBe empty
+    // Bar healed (the helper's slot title is "Foo" for every row, so compare ids — a
+    // key-addressed upsert files a new row under its legacy id), Foo untouched.
+    rm.movieUpserts.drop(before).map(_._id) shouldBe Seq("bar|2024")
+    rm.screeningUpserts.drop(before).map(_.filmId).distinct shouldBe Seq("bar|2024")
     projector.stop()
+
+    val (steady, repository2, rm2) = fixture()
+    repository2.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    steady.reconcile()
+    val carded = rm2.movieUpserts.size
+    steady.start()
+    rm2.movieUpserts should have size carded   // nothing missing → nothing projected at boot
+    steady.stop()
   }
 
   "reconcile" should "prune derived documents whose source film vanished" in {
@@ -479,11 +497,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val projector = new ReadModelProjector(repository, rm, rm, scheduler = fakeScheduler)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.start()
+    val healedAtBoot = rm.movieUpserts.size       // Foo had no card, so the boot heal wrote it
 
     fakeScheduler.scheduled should have size 1   // only the prune, never the reproject
-    fakeScheduler.runAll()                        // a scheduled reproject WOULD project Foo here
-    rm.movieUpserts     shouldBe empty            // prune re-projects nothing
-    rm.screeningUpserts shouldBe empty
+    fakeScheduler.runAll()                        // a scheduled reproject WOULD rewrite Foo here
+    rm.movieUpserts     should have size healedAtBoot   // prune re-projects nothing
     projector.stop()
   }
 

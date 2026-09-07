@@ -312,7 +312,6 @@ class ReadModelProjector(
   def pruneOrphans(): Unit = sweep(reproject = false)
 
   def start(): Unit = if (enabled) {
-    healWhenIdsDisagree()
     // Seed the last-projection state from the derived collections, so a restart
     // doesn't rewrite documents that are already correct.
     lock.synchronized {
@@ -321,6 +320,7 @@ class ReadModelProjector(
         lastScreenings.update(fid, ss.map(s => s._id -> s.##).toMap)
       }
     }
+    healMissingCards()
     // The change-stream watch covers live changes from now on (and, via the persisted
     // resume token, replays every upsert missed while the worker was down); the seeded
     // state above means incremental writes are no-ops for already-correct documents. Only
@@ -336,30 +336,34 @@ class ReadModelProjector(
       s"${if (watchHandle.isDefined) "active" else "unavailable — orphan-prune only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
 
-  /** Rebuild the read model wholesale when it disagrees with the source about what a
-   *  film's id IS — the id scheme changed under it (the 2026-09 move from
-   *  `sanitize(title)|resolvedYear` to the row's permanent `FilmId`), or someone
-   *  restored a database from before it. The scheduled prune would otherwise delete
-   *  every card as an orphan while the change stream re-created only the rows that
-   *  happen to change: a served site emptying out over an afternoon. One full
-   *  reproject writes the new cards BEFORE the same sweep prunes the old ones (see
-   *  `sweep`), so the site is never blank. Gated on a MAJORITY of cards being stale,
-   *  which no ordinary drift reaches; the ordinary case costs one id-only read. */
-  private def healWhenIdsDisagree(): Unit = Try {
-    val cards = reader.findAllMovieIds().toSet
-    if (cards.nonEmpty) {
-      val live = scala.collection.mutable.Set.empty[String]
-      val complete = movieRepository.foreachRecordWithSlots { row =>
-        if (row.record.readyToProject) live ++= ReadModelProjection.filmIds(row, normalizer)
-      }
-      val stale = cards.count(!live.contains(_))
-      if (complete && live.nonEmpty && stale * 2 > cards.size) {
-        logger.warn(s"read model: $stale of ${cards.size} card id(s) are unknown to the source — the id scheme " +
-          "changed; re-projecting the whole corpus before the first prune so the site never goes blank.")
-        reconcile()
-      }
+  /** Project, at boot, every ready row that has NO card — before the first prune can
+   *  delete the card it has under an old id.
+   *
+   *  A row's card id can change under a running read model: the id scheme moved
+   *  (2026-09, from `sanitize(title)|resolvedYear` to the row's permanent `FilmId`), or
+   *  a database was restored from before that. The scheduled prune then deletes the
+   *  old-id cards as orphans, while the change stream re-creates only the rows a
+   *  scrape happens to rewrite — so the served site runs short until every venue has
+   *  been scraped again. The first version of this check gated a whole-corpus
+   *  reproject on a MAJORITY of cards being stale, and the 2026-09-07 rollout came in
+   *  under it (509 of 1,156 Polish cards): Poznań served ~10% fewer films for the
+   *  better part of an hour. The exact question is cheaper and has no threshold:
+   *  which ready rows have no card at all? Those are projected; everything else is
+   *  left to the diffing change-stream path. */
+  private def healMissingCards(): Unit = Try {
+    val cards   = reader.findAllMovieIds().toSet
+    // The check reads slots only (ids derive from the slot titles, never from a
+    // showtime); the few rows it names are then read whole, showtimes included.
+    val missing = scala.collection.mutable.ListBuffer.empty[services.movies.FilmId]
+    val complete = movieRepository.foreachRecordWithSlots { row =>
+      if (row.record.readyToProject && !ReadModelProjection.filmIds(row, normalizer).exists(cards)) missing += row.id
     }
-  }.recover { case exception => logger.warn(s"read-model id-scheme check failed, skipped: ${exception.getMessage}") }
+    var healed = 0
+    missing.foreach(id => movieRepository.findById(id).foreach { row => lock.synchronized(project(row)); healed += 1 })
+    if (healed > 0)
+      logger.warn(s"read model: projected $healed ready row(s) that had no card at boot" +
+        (if (complete) "" else " (source scan incomplete — the rest heal on their next change)") + ".")
+  }.recover { case exception => logger.warn(s"read-model missing-card check failed, skipped: ${exception.getMessage}") }
 
   def stop(): Unit = {
     watchHandle.foreach(h => Try(h.close()))
