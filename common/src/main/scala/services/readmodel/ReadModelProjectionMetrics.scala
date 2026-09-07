@@ -23,7 +23,16 @@ package services.readmodel
  */
 trait ReadModelProjectionMetrics {
   def recordWrite(target: String, op: String, count: Int): Unit
-  def recordFilmPruned(count: Int): Unit
+  /** A card the PRUNE removed — what the incremental path failed to take back, by
+   *  [[ReadModelProjectionMetrics.PruneReason]]. The rule is that this stays at zero:
+   *  the change-stream path retires every card it no longer produces, so a pruned card
+   *  is a projection defect to chase by its reason, never accepted churn. */
+  def recordFilmPruned(reason: String, count: Int): Unit
+
+  /** A card the CHANGE-STREAM path retired because the row no longer produces it —
+   *  a variant whose listing vanished, a row deleted or merged away, a row that lost
+   *  its readiness — by [[ReadModelProjectionMetrics.RetireReason]]. */
+  def recordCardRetired(reason: String): Unit
 
   /** One `ReadModelProjection.projectAll` ran for a source row. Fed from
    *  [[ReadModelProjector.project]]; `..._calls_total` is how many rows were projected.
@@ -81,6 +90,11 @@ object ReadModelProjectionMetrics {
   /** `kind` label values for the reconcile-sweep counter. Only the prune is metered
    *  now (the full reproject was retired). */
   object ReconcileKind { val Prune = "prune" }
+  /** Why the prune still found a card: its row is gone, or the row lives but no longer
+   *  projects to that id (a variant whose listing vanished). */
+  object PruneReason  { val RowGone = "row-gone"; val VariantGone = "variant-gone" }
+  /** Why the change-stream path retired a card on its own. */
+  object RetireReason { val VariantGone = "variant-gone"; val RowDeleted = "row-deleted"; val RowUnready = "row-unready" }
   /** `outcome` label values for the metadata-projection counter. */
   object MetadataOutcome { val Reused = "reused"; val Recomputed = "recomputed" }
   /** The parts of a card a rewrite can move, each a group of fields that change together. */
@@ -94,6 +108,8 @@ object ReadModelProjectionMetrics {
   val Targets: Seq[String]        = Seq(Target.Movie, Target.Screening)
   val Ops:     Seq[String]        = Seq(Op.Upsert, Op.Delete)
   val ReconcileKinds: Seq[String] = Seq(ReconcileKind.Prune)
+  val PruneReasons:  Seq[String]  = Seq(PruneReason.RowGone, PruneReason.VariantGone)
+  val RetireReasons: Seq[String]  = Seq(RetireReason.VariantGone, RetireReason.RowDeleted, RetireReason.RowUnready)
   val MetadataOutcomes: Seq[String] = Seq(MetadataOutcome.Reused, MetadataOutcome.Recomputed)
   val CardParts: Seq[String] = Seq(CardPart.Title, CardPart.Poster, CardPart.Facts, CardPart.Synopsis,
     CardPart.SynopsisByCity, CardPart.Ratings, CardPart.Trailers, CardPart.AgeRating)
@@ -105,7 +121,8 @@ object ReadModelProjectionMetrics {
 
   val noop: ReadModelProjectionMetrics = new ReadModelProjectionMetrics {
     def recordWrite(target: String, op: String, count: Int): Unit = ()
-    def recordFilmPruned(count: Int): Unit                        = ()
+    def recordFilmPruned(reason: String, count: Int): Unit        = ()
+    def recordCardRetired(reason: String): Unit                   = ()
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()

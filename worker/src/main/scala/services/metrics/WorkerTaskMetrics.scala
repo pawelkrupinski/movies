@@ -80,7 +80,8 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
 
   // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
   def recordWrite(target: String, op: String, count: Int): Unit = series.recordWrite(countryCode, target, op, count)
-  def recordFilmPruned(count: Int): Unit                        = series.recordFilmPruned(countryCode, count)
+  def recordFilmPruned(reason: String, count: Int): Unit        = series.recordFilmPruned(countryCode, reason, count)
+  def recordCardRetired(reason: String): Unit                   = series.recordCardRetired(countryCode, reason)
   def recordCatchUp(rows: Int): Unit                            = series.recordCatchUp(countryCode, rows)
   def recordCardWrite(changed: Set[String]): Unit               = series.recordCardWrite(countryCode, changed)
   def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit =
@@ -239,8 +240,14 @@ object WorkerTaskMetrics {
 
     private val readModelFilmsPruned = Counter.builder()
       .name("kinowo_worker_readmodel_films_pruned")
-      .help("Films whose derived documents were removed from the read model during reconcile since boot, by country — a source row that vanished or was re-keyed (its filmId changed). The event that can briefly 404 a film deep-link until the new key propagates to the web; pair with kinowo_worker_merges_total for the re-key cause.")
-      .labelNames("country")
+      .help("Cards the read-model PRUNE sweep removed since boot, by country and reason: row-gone = no movies document projects to that id any more; variant-gone = the row lives but no longer projects to that variant id (a decorated listing that vanished). The rule (2026-09-07) is that this stays at ZERO — the change-stream path retires every card it no longer produces (see readmodel_cards_retired) — so a sustained rate is a projection defect to chase by its reason, never accepted churn. Pair with kinowo_worker_merges_total for a row-gone cause.")
+      .labelNames("country", "reason")
+      .register(registry)
+
+    private val readModelCardsRetired = Counter.builder()
+      .name("kinowo_worker_readmodel_cards_retired")
+      .help("Cards the read-model CHANGE-STREAM path retired on its own since boot, by country and reason: variant-gone = a re-projected row no longer produces that variant card (its decorated listing vanished); row-deleted = the row was deleted or merged away (a delete event); row-unready = a re-projected row lost its readiness. These are the removals the prune used to do 30 minutes late; the prune counter is what is LEFT after them.")
+      .labelNames("country", "reason")
       .register(registry)
 
     private val readModelCatchUpRows = Counter.builder()
@@ -364,7 +371,10 @@ object WorkerTaskMetrics {
         splits.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
         ReadModelProjectionMetrics.Targets.foreach(t =>
           ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
-        readModelFilmsPruned.labelValues(c).inc(0.0) // materialize the series at 0 so Grafana draws a continuous line
+        // Materialize at 0 so Grafana draws a continuous line — and for the prune, so the
+        // line that MUST stay at zero is visibly at zero rather than absent (the rule).
+        ReadModelProjectionMetrics.PruneReasons.foreach(r => readModelFilmsPruned.labelValues(c, r).inc(0.0))
+        ReadModelProjectionMetrics.RetireReasons.foreach(r => readModelCardsRetired.labelValues(c, r).inc(0.0))
         readModelCatchUpRows.labelValues(c).inc(0.0) // ditto — zero is the healthy reading, so it must be drawn
         readModelProjectCalls.labelValues(c).inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
         readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
@@ -405,8 +415,11 @@ object WorkerTaskMetrics {
     def recordWrite(country: String, target: String, op: String, count: Int): Unit =
       if (count > 0) readModelWrites.labelValues(country, target, op).inc(count.toDouble)
 
-    def recordFilmPruned(country: String, count: Int): Unit =
-      if (count > 0) readModelFilmsPruned.labelValues(country).inc(count.toDouble)
+    def recordFilmPruned(country: String, reason: String, count: Int): Unit =
+      if (count > 0) readModelFilmsPruned.labelValues(country, reason).inc(count.toDouble)
+
+    def recordCardRetired(country: String, reason: String): Unit =
+      readModelCardsRetired.labelValues(country, reason).inc()
 
     def recordCatchUp(country: String, rows: Int): Unit =
       if (rows > 0) readModelCatchUpRows.labelValues(country).inc(rows.toDouble)

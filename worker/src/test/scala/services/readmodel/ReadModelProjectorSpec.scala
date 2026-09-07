@@ -49,7 +49,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     var metadataRecomputed = 0
     def projectCalls: Int = projectDurations.size
     def recordWrite(target: String, op: String, count: Int): Unit = writes((target, op)) += count
-    def recordFilmPruned(count: Int): Unit                        = prunes += count
+    val pruneReasons = scala.collection.mutable.Buffer.empty[String]
+    def recordFilmPruned(reason: String, count: Int): Unit        = { prunes += count; pruneReasons += reason }
+    val retired = scala.collection.mutable.Buffer.empty[String]
+    def recordCardRetired(reason: String): Unit                   = retired += reason
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = {
       projectDurations  += wallSeconds
       projectCpuSeconds += cpuSeconds

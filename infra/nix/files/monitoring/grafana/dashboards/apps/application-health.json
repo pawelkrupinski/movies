@@ -1401,8 +1401,8 @@
         },
         {
           "id": 51,
-          "title": "Worker — read-model prunes: films removed & sweeps that removed something (per min)",
-          "description": "The DELETION side of the read model, which the size gauges above cannot show: they tell you the corpus is smaller, never which mechanism shrank it. films-pruned = derived documents removed during reconcile because their source row vanished or was re-keyed (kinowo_worker_readmodel_films_pruned — the event that can briefly 404 a film deep-link until the new key propagates; pair with the merges/splits panel for the re-key cause). prune sweeps that removed something = kinowo_worker_readmodel_reconcile_sweeps{did_work=\"true\"}, the cheap id-only orphan prune actually finding orphans — deletes and re-keys the change stream cannot deliver. A burst here under a flat film count is the shape a slot/showtime loss makes now that slots live in movie_slots and the read model is projected from them.",
+          "title": "Worker — read-model removals: retired by the stream vs left to the prune (per min)",
+          "description": "Cards leaving the read model, by the path that removed them. THE RULE (2026-09-07): the prune is a NO-OP — the change-stream path retires every card it no longer produces (kinowo_worker_readmodel_cards_retired_total: variant-gone = a re-projected row stopped producing that decorated-listing card, row-deleted = the row was deleted or merged away, row-unready = the row lost its readiness), so the prune lines (kinowo_worker_readmodel_films_pruned_total, by reason) must sit at ZERO. Any sustained prune rate is a projection defect to chase by its reason — row-gone = no row projects to that id, variant-gone = the row lives but no longer produces that variant — never accepted churn, and it is also the gap the worker census and the web disagree across until the sweep runs. 'sweeps that removed something' is the same statement per sweep rather than per card.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1424,13 +1424,41 @@
                 "fillOpacity": 10
               }
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byRegexp",
+                  "options": "retired by the stream:.*"
+                },
+                "properties": [
+                  {
+                    "id": "custom.lineStyle",
+                    "value": {
+                      "fill": "dash",
+                      "dash": [
+                        6,
+                        4
+                      ]
+                    }
+                  }
+                ]
+              }
+            ]
           },
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(rate(kinowo_worker_readmodel_films_pruned_total{country=~\"$country\"}[$__rate_interval])) * 60",
-              "legendFormat": "films pruned",
+              "expr": "sum by (reason) (rate(kinowo_worker_readmodel_films_pruned_total{country=~\"$country\"}[$__rate_interval])) * 60",
+              "legendFormat": "PRUNED (must be 0): {{reason}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "C",
+              "expr": "sum by (reason) (rate(kinowo_worker_readmodel_cards_retired_total{country=~\"$country\"}[$__rate_interval])) * 60",
+              "legendFormat": "retired by the stream: {{reason}}",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"

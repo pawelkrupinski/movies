@@ -56,7 +56,7 @@ class ReadModelProjector(
   // it rather than accepting a second, separately-wired copy that could disagree.
   private val normalizer: services.movies.TitleNormalizer = movieRepository.normalizer
 
-  import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
+  import ReadModelProjectionMetrics.{Op, PruneReason, ReconcileKind, RetireReason, Target}
 
   // Diff state for minimal writes: the CONTENT HASH of the last-projected document per
   // film (and per screening), NOT the full document. The projection is deterministic, so
@@ -68,6 +68,10 @@ class ReadModelProjector(
   // row's next real change re-projects it — self-healing, never permanently wrong.
   // Per card: a hash per PART of what was last written, so a rewrite can name what moved.
   private val lastMovie      = scala.collection.mutable.Map.empty[String, CardHash]
+  // Per SOURCE ROW: the card ids its last projection produced. What lets a re-projection
+  // retire the variant card a vanished listing no longer earns, and a delete event retire
+  // every card of a row that was merged away — so the prune finds nothing (the rule).
+  private val lastCardsByRow = scala.collection.mutable.Map.empty[String, Set[String]]
   private val lastScreenings = scala.collection.mutable.Map.empty[String, Map[String, Int]]
   // Metadata-reuse cache (optimisation #1): per SOURCE ROW (keyed by the anchor
   // `ReadModelProjection.filmId`, stable across the display-title split), the
@@ -98,6 +102,17 @@ class ReadModelProjector(
   def onMovieUpsert(stored: StoredMovieRecord): Unit =
     lock.synchronized { project(ReadModelProjection.partition(stored, normalizer)); () }
 
+  /** A row deleted or merged away: every card it produced goes with it, now — not at the
+   *  next prune. The cards are what this process remembers producing for the row, plus
+   *  anything in the read model under the row's id (a card a previous process wrote). */
+  def onMovieDelete(id: services.movies.FilmId): Unit = lock.synchronized {
+    val remembered = lastCardsByRow.getOrElse(id.value, Set.empty)
+    val underId    = lastMovie.keysIterator.filter(card => card == id.value || card.startsWith(id.value + "~")).toSet
+    (remembered ++ underId).foreach(retireCard(_, RetireReason.RowDeleted))
+    lastCardsByRow.remove(id.value)
+    ()
+  }
+
   // Caller holds `lock`. Project the row and write only what changed, movie
   // document before screenings. A row whose enrichment hasn't concluded
   // (`readyToProject` false) is held back — publishing the pre-enrichment,
@@ -108,7 +123,12 @@ class ReadModelProjector(
    *  reconcile sweep sums this to know whether a full re-projection caught
    *  anything the change stream missed. */
   private def project(partition: ReadModelProjection.Partition): Int = {
-    if (!partition.stored.record.readyToProject) return 0
+    val rowId = partition.stored.id.value
+    if (!partition.stored.record.readyToProject) {
+      // A row that lost its readiness takes its cards with it (the prune would, later).
+      lastCardsByRow.remove(rowId).foreach(_.foreach(retireCard(_, RetireReason.RowUnready)))
+      return 0
+    }
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
     // exactly one. Each variant card is diffed and written independently. Measure the
@@ -140,7 +160,18 @@ class ReadModelProjector(
       // retried until the row changed again.
       if (changed) lastMovie.update(movie._id, hash)
     }
+    // A variant card this row produced last time and no longer does — its decorated
+    // listing vanished — is retired here, by the path that knows, not by the prune.
+    val produced = variants.map(_._1._id).toSet
+    lastCardsByRow.get(rowId).foreach(before => (before -- produced).foreach(retireCard(_, RetireReason.VariantGone)))
+    lastCardsByRow.update(rowId, produced)
     written
+  }
+
+  /** Caller holds `lock`. Remove one card and its screenings on the change-stream path. */
+  private def retireCard(cardId: String, reason: String): Unit = {
+    removeCard(cardId, audit = s"stream-$reason")
+    metrics.recordCardRetired(reason)
   }
 
   // Caller holds `lock`. Project the row, REUSING the cached `ResolvedMovie` metadata when
@@ -207,17 +238,23 @@ class ReadModelProjector(
   // Only `reconcile` calls this — a film whose source row vanished or was re-keyed
   // (its filmId changed) is dropped wholesale. `recordFilmPruned` is the link-break
   // signal; the document deletes are also counted as reprojection writes.
-  private def deleteFilm(filmId: String): Unit = {
+  private def deleteFilm(filmId: String, reason: String): Unit = {
+    removeCard(filmId, audit = "reconcile-prune")
+    metrics.recordFilmPruned(reason, 1)
+  }
+
+  /** Caller holds `lock`. Remove a card and the screenings this process remembers for
+   *  it; `audit` names the path on the removal-audit line. */
+  private def removeCard(filmId: String, audit: String): Unit = {
     writer.deleteMovie(filmId)
     val screeningIds = lastScreenings.getOrElse(filmId, Map.empty).keys.toSeq
     screeningIds.foreach(writer.deleteScreening)
     // The point a film actually leaves the served site (web_movies + its
     // web_screenings). During a "cards vanish" episode this names every dropped
     // filmId, one INFO line each — the read-model half of the removal audit.
-    services.movies.RemovalAudit.cardRemoved(filmId, screeningIds.size, reason = "reconcile-prune")
+    services.movies.RemovalAudit.cardRemoved(filmId, screeningIds.size, reason = audit)
     metrics.recordWrite(Target.Movie, Op.Delete, 1)
     if (screeningIds.nonEmpty) metrics.recordWrite(Target.Screening, Op.Delete, screeningIds.size)
-    metrics.recordFilmPruned(1)
     forgetCard(filmId)
     // NOT evicted here: `lastMetadata` is keyed by SOURCE ROW id, and `filmId` is a projected
     // CARD id — several rows can collapse onto one card, so there is no card→row mapping to
@@ -297,6 +334,7 @@ class ReadModelProjector(
         val ids = partition.filmIds
         liveIds ++= ids
         liveRowKeys += row.id.value
+        if (!lastCardsByRow.contains(row.id.value)) lastCardsByRow.update(row.id.value, ids.toSet)
         if (reproject)
           try reprojected += project(partition)
           catch { case exception: Throwable =>
@@ -325,11 +363,16 @@ class ReadModelProjector(
         "skipping the prune this tick to avoid deleting live read-model rows; will retry next tick.")
     } else {
       // Prune off id-only projections — the prune reads ids/filmIds, never payloads.
-      reader.findAllMovieIds().iterator.filterNot(liveIds).foreach { id => deleteFilm(id); prunedFilms += 1 }
+      reader.findAllMovieIds().iterator.filterNot(liveIds).foreach { id =>
+        val rowOfCard = id.takeWhile(_ != '~')
+        deleteFilm(id, if (liveRowKeys(rowOfCard)) PruneReason.VariantGone else PruneReason.RowGone)
+        prunedFilms += 1
+      }
       // Drop metadata cached for source rows that no longer exist. Only reachable on a
       // COMPLETE scan — on a truncated one `liveRowKeys` is partial and this would evict
       // live rows' metadata, costing a needless recompute each.
       lastMetadata.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
+      lastCardsByRow.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
       screeningRefsBefore.getOrElse(reader.findAllScreeningRefs()).iterator.filterNot(ref => liveIds(ref.filmId)).foreach { ref =>
         writer.deleteScreening(ref._id)
         metrics.recordWrite(Target.Screening, Op.Delete, 1)
@@ -402,7 +445,7 @@ class ReadModelProjector(
     // resume token, replays every upsert missed while the worker was down); the seeded
     // state above means incremental writes are no-ops for already-correct documents. Only
     // the cheap orphan prune is scheduled — the full reproject was retired (see class doc).
-    watchHandle = movieRepository.watchUpserts(onMovieUpsert)
+    watchHandle = movieRepository.watchChanges(onMovieUpsert, onMovieDelete)
     // Cheap orphan prune: frequent, no per-row re-projection (can't spike CPU). Deferred
     // off the boot path so it doesn't compete with boot hydrate + the first scrape.
     scheduler.scheduleAtFixedRate(
@@ -441,6 +484,7 @@ class ReadModelProjector(
     val complete = cardsRead && movieRepository.foreachRecordWithSlots { row =>
       if (row.record.readyToProject) {
         val partition    = ReadModelProjection.partition(row, normalizer)
+        lastCardsByRow.update(row.id.value, partition.filmIds.toSet)
         val absentCards  = partition.filmIds.filterNot(cards)
         val absentVenues = venues.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
         if (absentCards.nonEmpty || absentVenues.nonEmpty) missing += ((row.id, absentCards, absentVenues))
