@@ -87,12 +87,25 @@ route:
     # MUST stay above the severity routes: first match wins, and a route that matched `severity`
     # first would never reach these.
     #
-    # WHAT THE TWO PREFIXES ACTUALLY CATCH, listed because a regex is not a list and the answer
+    # WHAT THE MATCHER ACTUALLY CATCHES, listed because a regex is not a list and the answer
     # should not have to be re-derived: FilesystemSpaceLow/Critical, FilesystemInodesLow/Critical,
     # FilesystemWillFillWithin7Days, FilesystemReadOnly, FilesystemMetricsAbsent, WorkerDown,
     # WorkerQueueStalled, WorkerQueueGrowingUnbounded, WorkerQueueMetricsAbsent,
-    # WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled. Thirteen, and every one of them is
-    # meant. `FilesystemReadOnly` lives in host-health.rules rather than with the other six and is
+    # WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, plus the two named in full below.
+    # Fifteen, and every one of them is meant.
+    #
+    # THE TWO READ-MODEL NAMES ARE SPELLED OUT, NOT GIVEN A `ReadModel.*` PREFIX, and the asymmetry
+    # with the two families above is the point. A prefix is right for Filesystem and Worker because
+    # EVERY rule in those families has the silent-failure property that earns a mailbox. It is wrong
+    # for ReadModel, where six of the eight rules watch the pipeline's own movement and belong in
+    # the chat stream with everything else -- a prefix would enrol them without anyone deciding to.
+    #
+    # WHAT EARNS THESE TWO THE MAILBOX is the same property the Worker note below describes, in its
+    # sharpest form yet. On 2026-09-07 a prune deleted 509 cards, ReadModelFilmPruneBurst fired for
+    # 25 minutes and RESOLVED correctly on its own terms, and the hole stayed open for four and a
+    # half hours with the site quietly serving a short catalogue. Nothing 500s, nothing goes down,
+    # and the one signal that existed had already stood down. That is precisely the shape a chat
+    # channel scrolls past. `FilesystemReadOnly` lives in host-health.rules rather than with the other six and is
     # easy to miss when reading this — a root that has gone read-only is exactly the kind of thing
     # worth a mailbox, so it is kept, deliberately rather than by accident.
     #
@@ -115,14 +128,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*"
+        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*"
+        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m

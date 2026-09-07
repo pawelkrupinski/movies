@@ -133,6 +133,23 @@ route_is telegram-and-email alertname=WorkerQueueMetricsAbsent severity=warning
 route_is telegram-and-email alertname=WorkerTasksFailingRepeatedly severity=warning country=pl
 route_is telegram-and-email alertname=WorkerTaskTypeUnhandled severity=warning country=de
 
+# THE READ-MODEL GAP EARNS THE MAILBOX FOR THE SAME REASON AND MORE SHARPLY. On 2026-09-07 a prune
+# left 509 cards missing, the prune-RATE alert fired for 25 minutes and resolved correctly on its
+# own terms, and the site served a short catalogue for four and a half hours with nothing down and
+# nothing 500ing. Named in full rather than by a `ReadModel.*` prefix, because the other six rules
+# in that file watch the pipeline's movement and belong in the chat stream.
+route_is telegram-and-email alertname=ReadModelServingShortOfCorpus severity=warning country=pl
+# The absent() companion goes with the alert it covers, as the disk and queue ones do, and carries
+# no country label -- "one side of the census has stopped publishing" is fleet-wide.
+route_is telegram-and-email alertname=ReadModelServedGaugesAbsent severity=warning
+
+# THE REST OF THE READ-MODEL FAMILY MUST *NOT* HAVE FOLLOWED THEM INTO THE MAILBOX. This is the
+# assertion that fails if somebody later replaces the two names above with a `ReadModel.*` prefix,
+# which is the tempting simplification and the wrong one.
+route_is telegram alertname=ReadModelFilmPruneBurst severity=warning country=pl
+route_is telegram alertname=ReadModelProjectionTriggerUnaccounted severity=warning country=us
+route_is telegram alertname=ReadModelFilmsInvisibleWithScreenings severity=warning country=de
+
 # AND NOTHING ELSE CHANGED. The email receiver is for the disk alerts alone; every other alert must
 # still land on plain Telegram, or "add email for the disks" has quietly become "add email".
 route_is telegram alertname=MongodNotRunning severity=critical host=mongo-1
