@@ -191,21 +191,23 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     m.releaseYear shouldBe Some(2026)
   }
 
-  it should "key the film id by the resolved (TMDB) year, not the source _id's raw year" in {
-    // The source row was scrape-keyed by the cinema-reported year (2025) before
-    // TMDB resolved it to 2026. The read-model id (and its screenings' filmId)
-    // must follow the *resolved* year — the same notion the displayed
-    // `releaseYear` uses — so that a later re-key of the source `_id` onto the
-    // TMDB year can't leave a second, differently-keyed copy of the film behind
-    // (the duplicate-card bug). Both `kumotry|2025` and `kumotry|2026` source
-    // rows then project to the one id `kumotry|2026`.
+  it should "key the card by the row's permanent id, whatever its title or year say" in {
+    // The row was scrape-keyed by the cinema-reported year (2025) before TMDB resolved
+    // it to 2026, and its key will move to 2026 when the settle re-keys it. The card
+    // must not move with it: its id is the row's `FilmId`, so the re-key (a retitle
+    // now) re-projects the SAME documents with the new year instead of pruning the
+    // card and its screenings and writing them again under a new id.
     val record = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino -> SourceData(title = Some("Kumotry"), releaseYear = Some(2025),
         showtimes = Seq(at("2026-06-12T18:00"))),
       Tmdb      -> SourceData(title = Some("Kumotry"), releaseYear = Some(2026))))
-    val (m, ss) = ReadModelProjection.project(StoredMovieRecord.fromStorage("kumotry|2025", record, titleNormalizer), titleNormalizer)
-    m._id shouldBe "kumotry|2026"
-    ss.map(_.filmId).distinct shouldBe Seq("kumotry|2026")
+    val stored  = StoredMovieRecord.fromStorage("f0123456789abcdef", Some("kumotry|2025"), record, titleNormalizer)
+    val (m, ss) = ReadModelProjection.project(stored, titleNormalizer)
+    m._id shouldBe "f0123456789abcdef"
+    m.releaseYear shouldBe Some(2026)
+    ss.map(_.filmId).distinct shouldBe Seq("f0123456789abcdef")
+    // A row created before ids existed carries its old key as its id — still opaque here.
+    ReadModelProjection.filmId(StoredMovieRecord.fromStorage("kumotry|2025", record, titleNormalizer), titleNormalizer) shouldBe "kumotry|2025"
   }
 
   // One film, one stored record (one tmdbId), screened under two different shown
@@ -234,8 +236,10 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
   "projectAll" should "split one record into a card per shown title" in {
     val cards = ReadModelProjection.projectAll(twoTitleStored, titleNormalizer)
     cards.map(_._1.title) should contain theSameElementsAs Seq("Iwan Groźny", "Иван Грозный")
+    // The variant carrying the row's own title keeps the plain film id — the card an
+    // unsplit film already had — and the other is that id plus its variant title.
     ReadModelProjection.filmIds(twoTitleStored, titleNormalizer) should contain theSameElementsAs
-      Seq("iwangrozny|1944", s"${titleNormalizer.sanitize("Иван Грозный")}|1944")
+      Seq("iwangrozny|1944", s"iwangrozny|1944~${titleNormalizer.sanitize("Иван Грозный")}")
   }
 
   "screeningsAll" should "return exactly projectAll's screenings (metadata-free), for single- and multi-variant rows" in {
@@ -276,14 +280,28 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
    *  title — so it belongs to a country, not to the process. Before the projection
    *  took its normalizer as a parameter it folded with whatever was global, which on
    *  a multi-country worker meant Poland's rules for every country's read model. */
-  "filmId" should "fold the title with the country whose rules are passed, not a global" in {
+  "filmId" should "not depend on any country's title rules — it is the row's id" in {
     val stored = StoredMovieRecord("Minions & Monster", Some(2026),
       MovieRecord(data = Map[models.Source, models.SourceData](
         models.Multikino -> models.SourceData(title = Some("Minions & Monster"), releaseYear = Some(2026)))))
     val pl = ReadModelProjection.filmId(stored, TitleNormalizer.forCountry(models.Country.Poland))
     val de = ReadModelProjection.filmId(stored, TitleNormalizer.forCountry(models.Country.Germany))
-    assert(pl.startsWith("minionsimonster|"))
-    assert(de.startsWith("minionsmonster|"))
+    pl shouldBe stored.id.value
+    de shouldBe stored.id.value
+  }
+
+  it should "fold a VARIANT's suffix with the country whose rules are passed, not a global" in {
+    // Only the split variant's suffix reads a title, and it must read it with the
+    // country's own rules — a multi-country worker once meant Poland's rules for every
+    // country's read model.
+    val record = MovieRecord(tmdbId = Some(9), data = Map[models.Source, models.SourceData](
+      models.Multikino -> models.SourceData(title = Some("Minions"), releaseYear = Some(2026)),
+      models.Helios    -> models.SourceData(title = Some("Minions & Monster"), releaseYear = Some(2026))))
+    val stored = StoredMovieRecord.fromStorage("fminions", Some("minions|2026"), record, titleNormalizer)
+    val pl = ReadModelProjection.filmIds(stored, TitleNormalizer.forCountry(models.Country.Poland))
+    val de = ReadModelProjection.filmIds(stored, TitleNormalizer.forCountry(models.Country.Germany))
+    pl should contain ("fminions~minionsimonster")
+    de should contain ("fminions~minionsmonster")
   }
 
 }

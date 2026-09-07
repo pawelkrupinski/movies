@@ -22,18 +22,17 @@ import services.movies.{StoredMovieRecord, TitleNormalizer, TrailerEmbed}
  */
 object ReadModelProjection {
 
-  /** The film identity — `sanitize(title)|year`, where `year` is the film's
-   *  RESOLVED (TMDB-authoritative) year, the same notion the served
-   *  `releaseYear` uses. Keying on the resolved year — NOT the source `_id`'s
-   *  raw cinema-reported year, which a scrape pins before enrichment and which
-   *  disagrees venue-to-venue — means a film maps to ONE stable read-model id
-   *  even while the source holds it under several raw-year keys (the worker
-   *  cache churns same-tmdbId year variants faster than `settle` collapses
-   *  them). So the same physical film never splits into two cards: source rows
-   *  `kumotry|2025` and `kumotry|2026` both project to `kumotry|2026`, and their
-   *  screenings (whose `_id` embeds this id) collapse onto the one film. */
-  def filmId(stored: StoredMovieRecord, normalizer: TitleNormalizer): String =
-    s"${normalizer.sanitize(stored.title)}|${stored.record.resolvedYear.map(_.toString).getOrElse("")}"
+  /** The film identity: the source row's permanent [[services.movies.FilmId]], as is.
+   *
+   *  It used to be re-derived here as `sanitize(title)|resolvedYear`, which made the
+   *  card follow the row's spelling: every settle that re-spelled a title — the slot
+   *  vote flipping between two decorated Cineworld listings, a shouting variant winning
+   *  for a tick — pruned the card and its screenings and wrote them again under a new
+   *  id, ~290 prunes a day. The row's id never changes, so neither does the card's:
+   *  a retitle now re-projects the same documents with a new title. (The resolved-year
+   *  trick that collapsed a not-yet-settled `kumotry|2025` + `kumotry|2026` pair onto
+   *  one card is not needed any more — a row that concludes its year keeps its id.) */
+  def filmId(stored: StoredMovieRecord, normalizer: TitleNormalizer): String = stored.id.value
 
   /** A cheap content hash over EXACTLY the inputs the projected METADATA depends on —
    *  everything the row carries EXCEPT `SourceData.showtimes`. The metadata half of a
@@ -198,13 +197,17 @@ object ReadModelProjection {
     }
   }
 
-  /** The film id for one display-title variant: `sanitize(variantTitle)|year`,
-   *  where the variant title is derived from only that group's slots (so two
-   *  groups never collide — distinct sanitize keys) and the year is the shared
-   *  resolved year. */
+  /** The film id for one display-title variant. The variant that carries the row's
+   *  own title keeps the plain film id — so the card an unsplit film already has is
+   *  unchanged the moment a second variant (a banner-prefixed listing) joins — and
+   *  every other variant is the film id plus its sanitized variant title, which two
+   *  groups never share. `~` is not a character `sanitize` emits, nor one any read-model
+   *  id composition uses (`|` joins city and cinema onto a screening id). */
   private def variantFilmId(stored: StoredMovieRecord, sources: Set[Source], normalizer: TitleNormalizer): String = {
-    val scoped = stored.record.scopedToSources(sources)
-    s"${normalizer.sanitize(scoped.displayTitle(stored.title, normalizer))}|${stored.record.resolvedYear.map(_.toString).getOrElse("")}"
+    val scoped  = stored.record.scopedToSources(sources)
+    val variant = normalizer.sanitize(scoped.displayTitle(stored.title, normalizer))
+    if (variant == normalizer.sanitize(stored.title)) filmId(stored, normalizer)
+    else s"${filmId(stored, normalizer)}~$variant"
   }
 
   /** Project one display-title variant. Shared facts (poster, year, genres,
@@ -216,7 +219,7 @@ object ReadModelProjection {
     val r      = stored.record
     val scoped = r.scopedToSources(sources)
     val title  = scoped.displayTitle(stored.title, normalizer)
-    val fid    = s"${normalizer.sanitize(title)}|${r.resolvedYear.map(_.toString).getOrElse("")}"
+    val fid    = variantFilmId(stored, sources, normalizer)
     val movie  = resolve(stored, normalizer).copy(
       _id            = fid,
       title          = title,

@@ -22,18 +22,26 @@ object TestReadModel {
   def ratings(title: String, record: MovieRecord): models.ResolvedRatings =
     ReadModelProjection.ratingsFor(record, title)
 
-  def fromRecords(records: Seq[(String, Option[Int], MovieRecord)]): WebReadModel = {
-    val readModel = new WebReadModel(store(records))
+  def fromRecords(records: Seq[(String, Option[Int], MovieRecord)]): WebReadModel =
+    fromRows(records.map { case (title, year, record) => StoredMovieRecord(title, year, record) })
+
+  /** From stored rows AS THEY ARE — ids included. A card is keyed by its row's
+   *  `FilmId`, so a spec that matches rendered rows back to cache rows must project
+   *  the cache's own rows, not rebuild them from (title, year, record). */
+  def fromRows(rows: Seq[StoredMovieRecord]): WebReadModel = {
+    val readModel = new WebReadModel(storeRows(rows))
     readModel.reload()
     readModel
   }
 
   /** The projected store alone, for a spec that wants its own [[WebReadModel]]
    *  subclass over it (one that counts reads, say). Call `reload()` on it. */
-  def store(records: Seq[(String, Option[Int], MovieRecord)]): InMemoryReadModelRepository = {
+  def store(records: Seq[(String, Option[Int], MovieRecord)]): InMemoryReadModelRepository =
+    storeRows(records.map { case (title, year, record) => StoredMovieRecord(title, year, record) })
+
+  def storeRows(rows: Seq[StoredMovieRecord]): InMemoryReadModelRepository = {
     val store = new InMemoryReadModelRepository()
-    records.foreach { case (title, year, record) =>
-      val stored = StoredMovieRecord(title, year, record)
+    rows.foreach { stored =>
       // Split-aware: a multi-title record fans out into one card per shown title,
       // exactly as the worker's projector publishes it.
       ReadModelProjection.projectAll(stored, titleNormalizer).foreach { case (movie, screenings) =>

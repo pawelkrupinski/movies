@@ -161,8 +161,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       // still vanishes from the schedule output, the bug is in the
       // read path itself, not in the data.
       // Project the cache into the read model and serve from it, as the web does.
-      val readModel = services.readmodel.TestReadModel.fromRecords(
-        cache.snapshot().map(r => (r.title, r.year, r.record)))
+      val readModel = services.readmodel.TestReadModel.fromRows(cache.snapshot())
       val ctrl = new MovieControllerService(readModel)
       val firstShowtime: java.time.LocalDateTime =
         cache.snapshot().filter(r => isPrada(r.record))

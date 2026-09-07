@@ -312,6 +312,7 @@ class ReadModelProjector(
   def pruneOrphans(): Unit = sweep(reproject = false)
 
   def start(): Unit = if (enabled) {
+    healWhenIdsDisagree()
     // Seed the last-projection state from the derived collections, so a restart
     // doesn't rewrite documents that are already correct.
     lock.synchronized {
@@ -334,6 +335,31 @@ class ReadModelProjector(
       s"no periodic reproject (retired); change-stream watch " +
       s"${if (watchHandle.isDefined) "active" else "unavailable — orphan-prune only"}.")
   } else logger.info("ReadModelProjector disabled (read model or movies repository not enabled).")
+
+  /** Rebuild the read model wholesale when it disagrees with the source about what a
+   *  film's id IS — the id scheme changed under it (the 2026-09 move from
+   *  `sanitize(title)|resolvedYear` to the row's permanent `FilmId`), or someone
+   *  restored a database from before it. The scheduled prune would otherwise delete
+   *  every card as an orphan while the change stream re-created only the rows that
+   *  happen to change: a served site emptying out over an afternoon. One full
+   *  reproject writes the new cards BEFORE the same sweep prunes the old ones (see
+   *  `sweep`), so the site is never blank. Gated on a MAJORITY of cards being stale,
+   *  which no ordinary drift reaches; the ordinary case costs one id-only read. */
+  private def healWhenIdsDisagree(): Unit = Try {
+    val cards = reader.findAllMovieIds().toSet
+    if (cards.nonEmpty) {
+      val live = scala.collection.mutable.Set.empty[String]
+      val complete = movieRepository.foreachRecordWithSlots { row =>
+        if (row.record.readyToProject) live ++= ReadModelProjection.filmIds(row, normalizer)
+      }
+      val stale = cards.count(!live.contains(_))
+      if (complete && live.nonEmpty && stale * 2 > cards.size) {
+        logger.warn(s"read model: $stale of ${cards.size} card id(s) are unknown to the source — the id scheme " +
+          "changed; re-projecting the whole corpus before the first prune so the site never goes blank.")
+        reconcile()
+      }
+    }
+  }.recover { case exception => logger.warn(s"read-model id-scheme check failed, skipped: ${exception.getMessage}") }
 
   def stop(): Unit = {
     watchHandle.foreach(h => Try(h.close()))
