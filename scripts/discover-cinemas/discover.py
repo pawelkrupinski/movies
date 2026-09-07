@@ -132,15 +132,27 @@ def parse_uk_cities(city_text: str) -> list[City]:
 
     cities = []
     for obj in uk_objs:
-        # case object <obj> extends City("slug", CityLabels(...), <lat>, <lon>, ...) { ... val cinemas = Cinema.<group> ... }
+        # Two declaration shapes, and this has to read BOTH:
+        #   case object <obj> extends City("slug", CityLabels(...), <lat>, <lon>, ZoneId.of(...)) {
+        #   case object <obj> extends UkCity("slug", CityLabels(...), <lat>, <lon>) {
+        # The second is what every UK city is today — they were folded onto a
+        # `sealed abstract class UkCity` that supplies Europe/London once instead
+        # of 79 times, so the argument list ENDS at the longitude. Matching only
+        # the first form is what killed the scheduled run on 2026-09-07 with
+        # "could not parse City case object London". Longitude is therefore
+        # followed by a comma OR the closing paren, and the class name is
+        # `City` or a `<Xx>City` prefix, so a future DeCity/EsCity lands here too.
         cm = re.search(
-            rf'case object {obj} extends City\(\s*"([^"]+)",\s*CityLabels\([^)]*\),\s*'
-            rf"(-?\d+\.?\d*),\s*(-?\d+\.?\d*),",
+            rf'case object {obj} extends \w*City\(\s*"([^"]+)",\s*CityLabels\([^)]*\),\s*'
+            rf"(-?\d+\.?\d*),\s*(-?\d+\.?\d*)\s*[,)]",
             city_text,
         )
-        gm = re.search(rf"case object {obj} extends City\(.*?Cinema\.(\w+)", city_text, re.S)
+        gm = re.search(rf"case object {obj} extends \w*City\(.*?Cinema\.(\w+)", city_text, re.S)
         if not cm or not gm:
-            raise SystemExit(f"could not parse City case object {obj}")
+            raise SystemExit(
+                f"could not parse City case object {obj}. Expected `extends City(` or "
+                f"`extends <Country>City(` followed by a quoted slug, CityLabels(...), "
+                f"latitude and longitude — check whether City.scala changed shape.")
         cities.append(City(obj, cm.group(1), float(cm.group(2)), float(cm.group(3)), gm.group(1)))
     return cities
 

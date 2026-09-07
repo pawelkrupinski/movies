@@ -9,18 +9,32 @@ import discover as d
 
 
 # Minimal but structurally faithful fixtures ----------------------------------
+#
+# THE UK CITIES DECLARE `extends UkCity` AND CARRY NO ZoneId, which is not a
+# stylistic choice in this fixture — it is the shape City.scala actually has, and
+# copying it is the whole job of this file. The 79 UK objects were folded onto a
+# `sealed abstract class UkCity(slug, labels, lat, lon)` that supplies
+# `ZoneId.of("Europe/London")` for all of them, so their argument list now ENDS at
+# the longitude. This fixture kept the pre-refactor `extends City(..., ZoneId...)`
+# form, so every test here passed against a shape production no longer emits and
+# the scheduled `Discover UK cinemas` run died on 2026-09-07 with "could not parse
+# City case object London" — its first failure in five weeks of green.
+#
+# Poznan is left in the OLD form deliberately: PL cities really do still declare
+# `extends City(...)` with their own ZoneId, so the parser has to accept both, and
+# a fixture that converted everything would stop proving that.
 CITY_SCALA = '''
-case object London extends City("london",
-  CityLabels("London", "London", "London"), 51.5074, -0.1278, ZoneId.of("Europe/London")) {
+case object London extends UkCity("london",
+  CityLabels("London", "London", "London"), 51.5074, -0.1278) {
   val cinemas: Seq[Cinema] = Cinema.london
   override val areas: Seq[CinemaAreaGroup] = Cinema.londonAreas
 }
-case object Cardiff extends City("cardiff",
-  CityLabels("Cardiff", "Cardiff", "Cardiff"), 51.4816, -3.1791, ZoneId.of("Europe/London")) {
+case object Cardiff extends UkCity("cardiff",
+  CityLabels("Cardiff", "Cardiff", "Cardiff"), 51.4816, -3.1791) {
   val cinemas: Seq[Cinema] = Cinema.cardiff
 }
-case object Manchester extends City("manchester",
-  CityLabels("Manchester", "Manchester", "Manchester"), 53.4808, -2.2426, ZoneId.of("Europe/London")) {
+case object Manchester extends UkCity("manchester",
+  CityLabels("Manchester", "Manchester", "Manchester"), 53.4808, -2.2426) {
   val cinemas: Seq[Cinema] = Cinema.manchester
 }
 case object Poznan extends City("poznan",
