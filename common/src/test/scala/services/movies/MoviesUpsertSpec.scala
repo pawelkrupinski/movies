@@ -34,10 +34,9 @@ class MoviesUpsertSpec extends AnyFlatSpec with Matchers {
     plan(Success(None)).unchanged shouldBe false
   }
 
-  it should "be skipped when the stored document already equals it, timestamps aside" in {
-    // Stamped an hour ago, and with the slot marker `updateIfPresent` leaves behind — neither
-    // may count as a difference, or the guard never fires on a film whose slots were patched.
-    val stored = StoredMovieDto.fromDomain(id, id, record, earlier).copy(slotsUpdatedAt = Some(earlier))
+  it should "be skipped when the stored document already equals it, the timestamp aside" in {
+    // Stamped an hour ago — that must not count as a difference, or the guard never fires.
+    val stored = StoredMovieDto.fromDomain(id, id, record, earlier)
     plan(Success(Some(stored))).unchanged shouldBe true
   }
 

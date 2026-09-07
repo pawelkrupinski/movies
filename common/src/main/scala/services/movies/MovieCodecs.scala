@@ -71,14 +71,11 @@ case class StoredMovieDto(
   // `Source.displayName` like `sourceData`. Optional so legacy documents decode
   // to None → empty map; omitted when empty to keep documents lean.
   retainedSynopses:  Option[Map[String, String]],
-  updatedAt:         Instant,
-  // Bumped when the film's cinema slots changed. Those slots live in `movie_slots`
-  // now, so a slot-only change would otherwise reach the change stream as a bare
-  // `updatedAt` bump — indistinguishable from the no-op writes `updated_at_only`
-  // exists to catch. This marker keeps the two apart: a real slot change classifies
-  // as `source_data`, and the redundant-write canary stays meaningful. Optional so
-  // legacy documents decode to None.
-  slotsUpdatedAt:    Option[Instant] = None
+  // The only timestamp. A `slotsUpdatedAt` marker used to sit beside it — stamped by a
+  // slots-only patch that had to touch `movies` while `movie_slots` had no cursor of its
+  // own — and prod documents still carry it; the codec skips a field it does not name
+  // (pinned by `MovieRecordFieldWiringSpec`).
+  updatedAt:         Instant
 )
 
 object StoredMovieDto {

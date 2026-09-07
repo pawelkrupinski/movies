@@ -66,9 +66,10 @@ object SlotKeyed {
    *  change stream, and buys `ReadModelProjector` a stitch read plus a full projection OF THE
    *  SAME FILM. Measured on prod 2026-09-04: a newly-folded German release attached to 298
    *  venues produced six bursts of 298 writes, 297 of them redundant, consecutive versions of a
-   *  row differing only in `updatedAt`. In `movie_slots` nothing watches the collection, so the
-   *  cost is bytes rather than projections — but the rows are whole `SourceData` documents
-   *  (title, synopsis, cast, poster), so it is MORE bytes, on the same film, at the same rate.
+   *  row differing only in `updatedAt`. `movie_slots` has its own cursor on the same projector
+   *  now (see [[SideCollectionWatch]]), so a redundant row there buys the same projection — and
+   *  the rows are whole `SourceData` documents (title, synopsis, cast, poster), so it is MORE
+   *  bytes, on the same film, at the same rate.
    *
    *  `readComplete = false` returns EVERYTHING: a read that did not see the film cannot say
    *  which of its rows are unchanged, and writing a row that did not need it is the harmless

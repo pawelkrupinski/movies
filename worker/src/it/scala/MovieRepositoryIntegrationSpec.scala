@@ -1286,11 +1286,12 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     } finally { raw.delete(title, year); slots.deleteFilm(id); client.close() }
   }
 
-  // The projector only learns a film changed from the `movies` change stream. Once slots
-  // moved out, a metadata-only change writes nothing but `movie_slots` — and `movie_slots`
-  // has no watcher on purpose, since a second stream would fan out twice for one logical
-  // change. So the write has to touch `movies` anyway, or the read model silently stops
-  // updating for every title/poster/synopsis edit. It did; this is the guard.
+  // Once slots moved out, a metadata-only change writes nothing but `movie_slots` — and the
+  // read model must still hear about it, or it silently stops updating for every title/
+  // poster/synopsis edit. The `movie_slots` cursor carries it now; the write used to touch
+  // `movies` instead, as a stand-in for the watcher that collection did not have, and the
+  // two together fanned one logical change out twice. This pins BOTH halves: the change
+  // arrives, and it arrives exactly once.
   it should "still fan out a change event when only the slots changed" in {
     import services.movies.{MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
     import java.util.concurrent.{CountDownLatch, TimeUnit}
@@ -1330,8 +1331,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
         val after = base.copy(data = Map[Source, SourceData](Multikino -> slot.copy(posterUrl = Some("https://poster/f2.png"))))
         split.updateIfPresent(title, year, base, after) shouldBe true
         got.await(15, TimeUnit.SECONDS) shouldBe true
-        // …and EXACTLY once. One logical change must not re-project twice: that is why
-        // `movie_slots` has no watcher of its own and the write touches `movies` instead.
+        // …and EXACTLY once. One logical change must not re-project twice: the slots cursor
+        // is its only channel now, and `movies` is left untouched by a slots-only patch.
         Thread.sleep(3000)   // leave room for a second event to arrive if one were coming
         fanouts.get() shouldBe 1
       } finally handle.foreach(_.close())

@@ -23,6 +23,8 @@ tests:
         values: '0+2.4x180'
       - series: 'kinowo_worker_screenings_change_events_total{country="de",job="kinowo-worker",op="update"}'
         values: '0+0x180'
+      - series: 'kinowo_worker_movie_slots_change_events_total{country="de",job="kinowo-worker",op="update"}'
+        values: '0+0x180'
     alert_rule_test:
       # `for: 1h` -- a worker rollout restarts both cursors and both counters, and the fleet
       # redeployed five times in four hours the day this was written.
@@ -37,7 +39,7 @@ tests:
               country: de
             exp_annotations:
               summary: "de is projecting 2.00/s more than its change streams can explain"
-              description: "`readmodel_project_calls_total` is running more than 3x the combined rate of the two cursors that are supposed to drive it, so something is projecting rows that no metered change-stream event asked for. Panel 47 on the application dashboard plots all three series together and panel 48 draws the sum. Check, in order: whether a THIRD trigger has been added and not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether `ReadModelProjector.reconcile` is being called by something other than a backfill script (the scheduled sweep re-projects nothing and logs \"reprojected 0 doc(s)\", so its log line settles that in one grep); and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
+              description: "`readmodel_project_calls_total` is running more than 3x the combined rate of the three cursors that are supposed to drive it, so something is projecting rows that no metered change-stream event asked for. Panel 47 on the application dashboard plots all four series together and panel 48 draws the sum. Check, in order: whether a FOURTH trigger has been added and not metered (that is what this rule exists to catch -- the `screenings` cursor itself was unmetered until 2026-09-05 and cost an evening); whether `ReadModelProjector.reconcile` is being called by something other than a backfill script (the scheduled sweep re-projects nothing and logs \"reprojected 0 doc(s)\", so its log line settles that in one grep); and whether a cursor is reopening in a loop, which replays its resume token and inflates projections without inflating the event counters proportionally."
 
   # THE SAME EVENING, ONCE THE SECOND CURSOR IS COUNTED. Identical projection rate, but the
   # screenings cursor now reports the ~2 events/s that were driving it. One event, one projection:
@@ -51,6 +53,8 @@ tests:
         values: '0+2.4x180'
       - series: 'kinowo_worker_screenings_change_events_total{country="de",job="kinowo-worker",op="update"}'
         values: '0+118x180'
+      - series: 'kinowo_worker_movie_slots_change_events_total{country="de",job="kinowo-worker",op="update"}'
+        values: '0+0x180'
     alert_rule_test:
       - eval_time: 2h
         alertname: ReadModelProjectionTriggerUnaccounted
@@ -68,6 +72,8 @@ tests:
         values: '0+6x180'
       - series: 'kinowo_worker_screenings_change_events_total{country="us",job="kinowo-worker",op="update"}'
         values: '0+6000x180'
+      - series: 'kinowo_worker_movie_slots_change_events_total{country="us",job="kinowo-worker",op="update"}'
+        values: '0+0x180'
     alert_rule_test:
       - eval_time: 2h
         alertname: ReadModelProjectionTriggerUnaccounted
@@ -85,12 +91,14 @@ tests:
         values: '0+0x180'
       - series: 'kinowo_worker_screenings_change_events_total{country="pl",job="kinowo-worker",op="update"}'
         values: '0+0x180'
+      - series: 'kinowo_worker_movie_slots_change_events_total{country="pl",job="kinowo-worker",op="update"}'
+        values: '0+0x180'
     alert_rule_test:
       - eval_time: 2h
         alertname: ReadModelProjectionTriggerUnaccounted
         exp_alerts: []
 
-  # A BUSY, HEALTHY WORKER. US at ~1.3 projections/s, fully accounted for by its two cursors, with
+  # A BUSY, HEALTHY WORKER. US at ~1.3 projections/s, fully accounted for by its cursors, with
   # the ratio sitting slightly under 1 the way a reopened cursor's replay leaves it. Well above the
   # floor, so only the ratio keeps it quiet.
   - interval: 1m
@@ -101,6 +109,8 @@ tests:
         values: '0+6x180'
       - series: 'kinowo_worker_screenings_change_events_total{country="us",job="kinowo-worker",op="update"}'
         values: '0+90x180'
+      - series: 'kinowo_worker_movie_slots_change_events_total{country="us",job="kinowo-worker",op="update"}'
+        values: '0+0x180'
     alert_rule_test:
       - eval_time: 2h
         alertname: ReadModelProjectionTriggerUnaccounted

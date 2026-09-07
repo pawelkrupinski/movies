@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScreeningsMetrics, SplitMetrics}
+import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
@@ -97,6 +97,15 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordChangeEvent(op: String): Unit = series.recordScreeningsChangeEvent(countryCode, op)
   def recordWrite(outcome: String, count: Int): Unit = series.recordScreeningsWrite(countryCode, outcome, count)
   def recordCoalescedChange(): Unit = series.recordScreeningsCoalesced(countryCode)
+
+  // ── SideCollectionChangeMetrics for `movie_slots` ───────────────────────────
+  // A separate object rather than a third mixin: the slots cursor answers the same two
+  // questions as the screenings one, so its trait has the same two methods, and one class
+  // cannot route the same signature to two counters.
+  val slotsChangeMetrics: SideCollectionChangeMetrics = new SideCollectionChangeMetrics {
+    def recordChangeEvent(op: String): Unit = series.recordSlotsChangeEvent(countryCode, op)
+    def recordCoalescedChange(): Unit       = series.recordSlotsCoalesced(countryCode)
+  }
 
   // ── Task lifecycle ──────────────────────────────────────────────────────────
   def recordEnqueue(taskType: TaskType, result: String): Unit = series.recordEnqueue(countryCode, taskType, result)
@@ -287,6 +296,18 @@ object WorkerTaskMetrics {
       .labelNames("country")
       .register(registry)
 
+    private val slotsChangeEvents = Counter.builder()
+      .name("kinowo_worker_movie_slots_change_events")
+      .help("movie_slots change-stream events the THIRD cursor consumed since boot, by country and op (insert|update|replace|delete). One event per changed slot DOCUMENT — one per (film, cinema slot) — and each ring costs a stitch read plus a full projection, like the screenings cursor it mirrors. A venue's slot lands WITHOUT a movies write whenever the film document is unchanged (the usual case under the split), and the projection cannot emit that venue's row until the slot exists; before this cursor 63 UK and 33 PL (film, venue) pairs whose slot landed after the film's last projection were never projected again (prod, 2026-09-07). Read readmodel_project_calls_total against the SUM of this, screenings_change_events and movie_change_events.")
+      .labelNames("country", "op")
+      .register(registry)
+
+    private val slotsCoalesced = Counter.builder()
+      .name("kinowo_worker_movie_slots_coalesced_changes")
+      .help("movie_slots change events that rode an apply already queued for their film instead of buying their own, by country — the slots twin of screenings_coalesced_changes, and the two cursors share ONE pending set, so a film's screenings row and slot row arriving together are one re-read. All GENUINE changes; no write guard can remove them.")
+      .labelNames("country")
+      .register(registry)
+
     seed()
 
     /** Materialize every series at 0 for every country so it exists from boot (no
@@ -321,6 +342,8 @@ object WorkerTaskMetrics {
         ChangeStreamMetrics.Ops.foreach(o => screeningsChangeEvents.labelValues(c, o))
         ScreeningsMetrics.Outcomes.foreach(o => screeningsWrites.labelValues(c, o))
         screeningsCoalesced.labelValues(c)
+        ChangeStreamMetrics.Ops.foreach(o => slotsChangeEvents.labelValues(c, o))
+        slotsCoalesced.labelValues(c)
         ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(c, k))
       }
       poolSizeGauge.set(poolSize.toDouble)
@@ -378,6 +401,10 @@ object WorkerTaskMetrics {
     def recordScreeningsWrite(country: String, outcome: String, count: Int): Unit =
       if (count > 0) screeningsWrites.labelValues(country, outcome).inc(count.toDouble)
     def recordScreeningsCoalesced(country: String): Unit = screeningsCoalesced.labelValues(country).inc()
+
+    // ── SideCollectionChangeMetrics for `movie_slots` ──────────────────────────
+    def recordSlotsChangeEvent(country: String, op: String): Unit = slotsChangeEvents.labelValues(country, op).inc()
+    def recordSlotsCoalesced(country: String): Unit               = slotsCoalesced.labelValues(country).inc()
 
     def recordEnqueue(country: String, taskType: TaskType, result: String): Unit =
       enqueued.labelValues(country, taskType.name, result).inc()

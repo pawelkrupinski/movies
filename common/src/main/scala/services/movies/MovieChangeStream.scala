@@ -31,20 +31,32 @@ import scala.util.Try
  * Decode once here, dispatch to all. The cursor starts on the first listener and
  * stops when the last one detaches.
  *
+ * THREE CURSORS, ONE FAN-OUT. Under the read-split a film is three collections, and a
+ * write to any of them must reach the same listeners: `movies` (the film itself),
+ * `screenings` (a showtime change writes only there) and `movie_slots` (a venue's slot —
+ * which lands WITHOUT a `movies` write whenever the film document is unchanged, the
+ * usual case, and which the projection needs before it can emit that venue's row at
+ * all). The two side cursors ring with a film id; the apply re-reads the film (`reread`
+ * already stitches) and dispatches it as an upsert. Measured before the third cursor
+ * (prod, 2026-09-07): 63 UK and 33 PL (film, venue) pairs whose slot row landed after
+ * the film's last projection and were never projected again.
+ *
  * `source` is the seam: production opens the collection's cursor
  * ([[MovieChangeStream.Source.ofCollection]]); a spec pushes events by hand.
  * `decode` turns a delivered post-image into the row consumers get (the repository's
  * stitched decode — showtimes and slots live in their own collections), and `reread`
- * re-reads a film by id after one of ITS `screenings` documents changed.
+ * re-reads a film by id after one of ITS side-collection rows changed.
  */
 final class MovieChangeStream(
   source:              MovieChangeStream.Source,
   screenings:          Option[ScreeningsRepository],
+  slots:               Option[SlotsRepository],
   decode:              StoredMovieDto => Option[StoredMovieRecord],
   reread:              String => Option[StoredMovieRecord],
   resumeToken:         ChangeStreamResumeToken,
   changeStreamMetrics: ChangeStreamMetrics,
-  screeningsMetrics:   ScreeningsMetrics,
+  screeningsMetrics:   SideCollectionChangeMetrics,
+  slotsMetrics:        SideCollectionChangeMetrics,
   changeDemandWindow:  Int
 ) extends Logging with AutoCloseable {
 
@@ -64,19 +76,15 @@ final class MovieChangeStream(
   // cursor stalls; `applyBacklog` is the invariant made observable.
   private val changeApply  = tools.DaemonExecutors.singleThreadExecutor("movie-change-apply")
   private val backlog      = new AtomicInteger(0)
-  // Demand windows: one per cursor, since each is a separate subscription. Both drain
-  // into `changeApply`, so the queue is capped at the sum of the two windows.
-  private val moviesDemand     = new ChangeStreamDemand(changeDemandWindow)
-  private val screeningsDemand = new ChangeStreamDemand(changeDemandWindow)
-  // Read-split only: a second cursor on `screenings`. A showtime change writes only
-  // `screenings` (movies stays put), so without this the projector would never see it.
-  private val screeningsWatch = new AtomicReference[Option[AutoCloseable]](None)
+  // Demand windows: one per cursor, since each is a separate subscription. All drain
+  // into `changeApply`, so the queue is capped at the sum of the windows.
+  private val moviesDemand = new ChangeStreamDemand(changeDemandWindow)
 
   /** Change events handed to the apply thread but not yet applied — the depth of the
-   *  queue that used to be the leak. Bounded by the two demand windows; before
-   *  backpressure it was bounded only by heap. Public because it is the observable form
-   *  of that invariant: the integration spec asserts on it, and it is the number worth
-   *  putting behind a gauge if this ever needs watching in prod. */
+   *  queue that used to be the leak. Bounded by the demand windows; before backpressure
+   *  it was bounded only by heap. Public because it is the observable form of that
+   *  invariant: the integration spec asserts on it, and it is the number worth putting
+   *  behind a gauge if this ever needs watching in prod. */
   def applyBacklog: Int = backlog.get()
 
   /** Enqueue one change-stream apply: count it into the backlog, and release a unit of
@@ -90,46 +98,69 @@ final class MovieChangeStream(
     }
   }
 
-  // Film ids with a screenings apply already QUEUED AND NOT YET STARTED. The set is the
-  // whole coalescing mechanism — see `applyScreeningsChange`.
-  private val screeningsApplyPending = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+  // Film ids with a side-collection apply already QUEUED AND NOT YET STARTED. The set is
+  // the whole coalescing mechanism — see `SideCursor.applyChange`. ONE set for both side
+  // cursors: a film's screenings row and its slot row arriving together are one re-read.
+  private val sideApplyPending = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
 
-  /** One `screenings` change: re-read the film (stitched) and fan it out, COALESCING the
-   *  events that name a film an apply is already queued for.
-   *
-   *  Why coalescing is the point rather than a nicety. The screenings cursor rings once per
-   *  changed screenings DOCUMENT, i.e. once per (film, cinema slot) — so a film that really
-   *  does change at every venue rings once per venue, and every ring costs a blocking stitch
-   *  read plus a full re-projection OF THE SAME FILM. The widest US film carries 3,327 slots.
-   *  Dropping the redundant WRITES (see `ScreeningsSplit.changedSlots`) removed the rows
-   *  that never moved; it cannot remove these, because these rows genuinely did move. The
-   *  answer is that the apply does not need to run per row: it re-reads the film's CURRENT
-   *  state, so one read after the last of a burst sees everything the burst did.
-   *
-   *  Correctness rests on the ORDER of `remove` and the read: the id is removed BEFORE the
-   *  re-read, so an event that lands while we are reading finds the set clear, enqueues its
-   *  own apply, and gets a read that is guaranteed to be after its own write. Removing after
-   *  the read would let exactly that event be swallowed by an apply that could not have seen
-   *  it. The cost of the safe order is at most one extra apply per burst.
-   *
-   *  A COALESCED EVENT MUST STILL RELEASE ITS DEMAND. Every delivered event owes the cursor
-   *  one `applied()` or the window closes and the stream stalls for good ([[ChangeStreamDemand]]),
-   *  and an event that rides an already-queued apply never reaches that task's `finally`.
-   *
-   *  AFTER `close()` an enqueue is dropped on the floor (`dropRejectedAfterShutdown`), so the id
-   *  stays in the set and its demand is never released. That is deliberate, not an oversight: the
-   *  only reachable case is a repository being discarded, whose cursor nobody is waiting on any
-   *  more. Anything that resurrects a closed repository would have to clear the set first. */
-  private def applyScreeningsChange(filmId: String): Unit =
-    if (screeningsApplyPending.add(filmId))
-      applyOffLoop(screeningsDemand) {
-        screeningsApplyPending.remove(filmId)
-        reread(filmId).foreach(movieChanges.dispatchUpsert)
+  /** One side-collection cursor — `screenings` or `movie_slots` — with its own demand
+   *  window and its own coalescing counter, ringing into the shared apply. */
+  private final class SideCursor(
+    metrics: SideCollectionChangeMetrics,
+    open:    (String => Unit, ChangeStreamDemand) => Option[AutoCloseable]
+  ) {
+    val demand = new ChangeStreamDemand(changeDemandWindow)
+    private val handle = new AtomicReference[Option[AutoCloseable]](None)
+
+    // The re-read is a BLOCKING read, so it (and the fanout) run on `changeApply`, never
+    // on this cursor's I/O event loop.
+    def ensureOpen(): Unit = if (handle.get().isEmpty) handle.set(open(applyChange, demand))
+    def close(): Unit      = handle.getAndSet(None).foreach(h => Try(h.close()))
+
+    /** One side-collection change: re-read the film (stitched) and fan it out, COALESCING
+     *  the events that name a film an apply is already queued for.
+     *
+     *  Why coalescing is the point rather than a nicety. A side cursor rings once per changed
+     *  DOCUMENT, i.e. once per (film, cinema slot) — so a film that really does change at
+     *  every venue rings once per venue, and every ring costs a blocking stitch read plus a
+     *  full re-projection OF THE SAME FILM. The widest US film carries 3,327 slots. Dropping
+     *  the redundant WRITES (see `SlotKeyed.changedRows`) removed the rows that never moved;
+     *  it cannot remove these, because these rows genuinely did move. The answer is that the
+     *  apply does not need to run per row: it re-reads the film's CURRENT state, so one read
+     *  after the last of a burst sees everything the burst did.
+     *
+     *  Correctness rests on the ORDER of `remove` and the read: the id is removed BEFORE the
+     *  re-read, so an event that lands while we are reading finds the set clear, enqueues its
+     *  own apply, and gets a read that is guaranteed to be after its own write. Removing after
+     *  the read would let exactly that event be swallowed by an apply that could not have seen
+     *  it. The cost of the safe order is at most one extra apply per burst.
+     *
+     *  A COALESCED EVENT MUST STILL RELEASE ITS DEMAND. Every delivered event owes its cursor
+     *  one `applied()` or the window closes and the stream stalls for good ([[ChangeStreamDemand]]),
+     *  and an event that rides an already-queued apply never reaches that task's `finally`. It
+     *  releases ITS OWN cursor's demand, whichever cursor queued the apply it rides.
+     *
+     *  AFTER `close()` an enqueue is dropped on the floor (`dropRejectedAfterShutdown`), so the id
+     *  stays in the set and its demand is never released. That is deliberate, not an oversight: the
+     *  only reachable case is a repository being discarded, whose cursor nobody is waiting on any
+     *  more. Anything that resurrects a closed repository would have to clear the set first. */
+    private def applyChange(filmId: String): Unit =
+      if (sideApplyPending.add(filmId))
+        applyOffLoop(demand) {
+          sideApplyPending.remove(filmId)
+          reread(filmId).foreach(movieChanges.dispatchUpsert)
+        }
+      else {
+        metrics.recordCoalescedChange()
+        demand.applied()
       }
-    else {
-      screeningsMetrics.recordCoalescedChange()
-      screeningsDemand.applied()
-    }
+  }
+
+  // Read-split only: a showtime change writes only `screenings` and a venue's slot only
+  // `movie_slots` (movies stays put), so without these the projector would never see either.
+  private val sideCursors: Seq[SideCursor] = Seq(
+    new SideCursor(screeningsMetrics, (onChange, demand) => screenings.flatMap(_.watch(onChange, demand))),
+    new SideCursor(slotsMetrics,      (onChange, demand) => slots.flatMap(_.watch(onChange, demand))))
 
   // A change stream's onError is TERMINAL — nothing brings the cursor back on its own, and
   // `ensureWatching` only runs on REGISTRATION, which the worker does twice at boot and never
@@ -203,12 +234,8 @@ final class MovieChangeStream(
       })
       logger.info(s"MongoMovieRepository: watching change stream (shared by all listeners)" +
         s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
-      // Also watch `screenings`: a showtime change fires there, not on `movies`.
-      // Re-read + stitch (`reread` already stitches) + fan out so the projector
-      // re-projects the film — the re-read is a BLOCKING read, so run it (and the
-      // fanout) on `changeApply`, never on the screenings cursor's I/O event loop.
-      if (screeningsWatch.get().isEmpty)
-        screeningsWatch.set(screenings.flatMap(_.watch(applyScreeningsChange, screeningsDemand)))
+      // Also watch the side collections: a showtime or slot change fires there, not on `movies`.
+      sideCursors.foreach(_.ensureOpen())
     }
   }
 
@@ -221,7 +248,7 @@ final class MovieChangeStream(
       resumeToken.save(force = true)
       Option(changeSub.getAndSet(null)).foreach(_.unsubscribe())
       moviesDemand.closed()
-      screeningsWatch.getAndSet(None).foreach(h => Try(h.close()))
+      sideCursors.foreach(_.close())
     }
   }
 
@@ -245,10 +272,10 @@ final class MovieChangeStream(
   }.recover { case exception => logger.warn(s"change-stream metrics failed: ${exception.getMessage}") }.getOrElse(())
 
   /** Tear the subscription down for good: no more reopens, the final resume position
-   *  persisted synchronously, both demand windows closed, the apply thread stopped. */
+   *  persisted synchronously, every demand window closed, the apply thread stopped. */
   override def close(): Unit = {
     changeReopen.close(); resumeToken.save(force = true)
-    moviesDemand.closed(); screeningsDemand.closed()
+    moviesDemand.closed(); sideCursors.foreach(_.demand.closed())
     changeApply.shutdown()
   }
 }

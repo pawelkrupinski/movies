@@ -86,6 +86,8 @@ final class CountingSlotsRepository(underlying: SlotsRepository) extends SlotsRe
   def deleteFilm(filmId: String): Unit                  = underlying.deleteFilm(filmId)
   def filmIdsChecked(): (Set[String], Boolean)          = underlying.filmIdsChecked()
   def deleteFilms(filmIds: Set[String]): Long           = underlying.deleteFilms(filmIds)
+  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    underlying.watch(onChange, demand)
   override def close(): Unit                            = underlying.close()
 
   def reset(): Unit = { replaceFilmCalls.set(0); batchReadCalls.set(0); findAllCalls.set(0) }

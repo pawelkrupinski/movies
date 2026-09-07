@@ -98,6 +98,20 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The `slotsUpdatedAt` marker was retired when `movie_slots` got a cursor of its own, but
+  // the documents it was stamped onto are still in prod. A stored field the DTO no longer
+  // names has to be SKIPPED on decode, not fatal: a decode failure here kills the whole
+  // keyset batch and aborts every fold that loads the row (the `sourceData` incident above).
+  it should "decode a legacy document that still carries the retired slotsUpdatedAt marker" in {
+    val out = new BsonDocument()
+    codec.encode(new BsonDocumentWriter(out),
+      StoredMovieDto.fromDomain("test|1900", everyFieldSet, Instant.parse("2026-05-17T10:00:00Z")),
+      EncoderContext.builder().build())
+    out.put("slotsUpdatedAt", new org.bson.BsonDateTime(Instant.parse("2026-08-30T08:41:00Z").toEpochMilli))
+    val back = codec.decode(new BsonDocumentReader(out), DecoderContext.builder().build())
+    StoredMovieDto.toDomain(back, titleNormalizer).record shouldBe everyFieldSet
+  }
+
   "MovieRecordPatch" should "carry every MovieRecord field onto an empty record" in {
     // `diff` + `applyTo` IS the contract — "the minimal set of per-field updates needed
     // to turn `before` into `after`" — so a field the patch forgot cannot satisfy it.
@@ -132,11 +146,10 @@ class MovieRecordFieldWiringSpec extends AnyFlatSpec with Matchers {
       .flatMap(op => op.asDocument().keySet.asScala)
       .map(_.takeWhile(_ != '.')).toSet
 
-    // `slotsUpdatedAt` is stamped by the slot write itself, not by the patch, and `_id`
-    // is the document's own key — everything else the storage shape holds must be here.
-    // `key` is the document's lookup key, written by the whole-document `upsert` (a
-    // retitle); a patch updates a row in place and never moves it.
-    val notOnTheWire = persistedFields.filterNot(Set("slotsUpdatedAt", "key")) diff emitted.toSeq
+    // `_id` is the document's own key, and `key` is its lookup key, written by the
+    // whole-document `upsert` (a retitle); a patch updates a row in place and never moves
+    // it. Everything else the storage shape holds must be here.
+    val notOnTheWire = persistedFields.filterNot(_ == "key") diff emitted.toSeq
     withClue(s"a field is in MovieRecordPatch but never reaches Mongo (emitted: $emitted): ") {
       notOnTheWire shouldBe empty
     }

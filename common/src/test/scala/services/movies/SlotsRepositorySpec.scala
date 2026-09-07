@@ -140,6 +140,41 @@ class SlotsRepositorySpec extends AnyFlatSpec with Matchers {
       Set(slotB)
   }
 
+  // THE CONTRACT `watch` OWES, in the same words as the screenings twin's: a genuine change
+  // rings, a no-op write does not. The ring is what carries a slot that lands after the
+  // film's last projection to the read model (prod, 2026-09-07 — nothing watched this
+  // collection); the no-op guard is what keeps a wide release's unchanged rows from buying
+  // a re-projection each.
+  "watch" should "ring on a genuine change, NOT on an identical rewrite, and stop after close" in {
+    val r     = repo
+    val rings = new java.util.concurrent.atomic.AtomicInteger(0)
+    val last  = new java.util.concurrent.atomic.AtomicReference[String]("")
+    val handle = r.watch(filmId => { rings.incrementAndGet(); last.set(filmId) }).get
+
+    r.upsertSlot("f1", "a", sd("A"))
+    rings.get() shouldBe 1
+    last.get()  shouldBe "f1"
+
+    r.upsertSlot("f1", "a", sd("A"))              // identical → no-op, must not ring
+    rings.get() shouldBe 1
+
+    r.upsertSlot("f1", "a", sd("A", Some("p")))   // changed → rings
+    rings.get() shouldBe 2
+
+    r.replaceFilm("f1", Map("a" -> sd("A", Some("p")))) // the whole film, unchanged → no ring
+    rings.get() shouldBe 2
+
+    r.deleteSlot("f1", "absent")                  // nothing to delete → no ring
+    rings.get() shouldBe 2
+
+    r.deleteFilm("f1")                            // the film goes → rings
+    rings.get() shouldBe 3
+
+    handle.close()
+    r.upsertSlot("f1", "b", sd("B"))              // unsubscribed → no more rings
+    rings.get() shouldBe 3
+  }
+
   // The per-film read's failure signal. An in-memory read cannot fail, so this pins the
   // contract's shape; MovieRepositoryIntegrationSpec pins the Mongo side's `false`.
   "findForFilmChecked" should "report a genuinely slot-less film as a COMPLETE empty read" in {

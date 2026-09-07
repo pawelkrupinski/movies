@@ -452,7 +452,10 @@ class MongoMovieRepository(
   // Separate from `changeStreamMetrics` (which is the `movies` cursor's) because they are
   // two different streams answering two different questions; the worker happens to satisfy
   // both with one object. See [[ScreeningsMetrics]].
-  screeningsMetrics: ScreeningsMetrics = ScreeningsMetrics.noop
+  screeningsMetrics: ScreeningsMetrics = ScreeningsMetrics.noop,
+  // The same for the SLOTS cursor — the third stream on the same projector, counted under
+  // its own collection label. See [[SideCollectionChangeMetrics]].
+  slotsMetrics: SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop
 ) extends MovieRepository with KeyAddressedMovieWrites with Logging {
 
 
@@ -990,15 +993,14 @@ class MongoMovieRepository(
         // MongoDB update-operator paths treat '.' as a nesting separator, so a
         // per-source `$set` on `sourceData.<displayName>` is rejected when a source's
         // displayName has a dot ("Helios Ostrów Wlkp."); fall back to a conditional
-        // full-document replace there. `None` movies patch = a screenings-only change.
-        // A slots-only change must still TOUCH `movies`. That document is the single
-        // change-notification channel the projector listens on, and `movie_slots`
-        // deliberately has no watcher of its own: a second stream would fan out a second
-        // time for one logical change and double the projections. `patchToUpdate` always
-        // bumps `updatedAt`, so an otherwise-empty patch becomes exactly the one-field
-        // write that fires one event — the same count as before the split, not one more.
+        // full-document replace there. `None` movies patch = a side-collection-only change:
+        // `screenings` and `movie_slots` each have a cursor of their own on the same fan-out
+        // (see `MovieChangeStream`), so `movies` is left alone. A slots-only change used to
+        // TOUCH `movies` anyway — a one-field `updatedAt` bump standing in for the watcher
+        // `movie_slots` did not have — and once it had one that bump fanned the same change
+        // out twice, which is the double projection the old arrangement existed to avoid.
         val moviesMatched: Option[Long] =
-          if (patch.isEmpty && slotWrites.isEmpty) None
+          if (patch.isEmpty) None
           else Some(
             if (patch.data.keysIterator.exists(_.displayName.contains('.'))) {
               // Can't drive the field-level diff (the dotted `$set` path is rejected), so
@@ -1018,20 +1020,12 @@ class MongoMovieRepository(
                 case None => 0L
               }
             } else {
-              // Mark the write as a SLOT change, not a bare `updatedAt` bump. Without this
-              // the change stream cannot tell it from the no-op writes `updated_at_only`
-              // exists to catch, and the split would silently retire that canary while
-              // driving `source_data` to zero on the dashboard.
-              val update =
-                if (slotWrites.isEmpty) patchToUpdate(patch)
-                else Updates.combine(patchToUpdate(patch),
-                  Updates.set("slotsUpdatedAt", BsonDateTime(Instant.now().toEpochMilli)))
-              Await.result(c.updateOne(Filters.eq("_id", id), update, new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
+              Await.result(c.updateOne(Filters.eq("_id", id), patchToUpdate(patch), new UpdateOptions().upsert(false)).toFuture(), 10.seconds)
                 .getMatchedCount
             })
-        // Present when the movies write matched, OR a screenings-only change (no movies
+        // Present when the movies write matched, OR a side-collection-only change (no movies
         // write, None); false only on Some(0) — the row is absent, so don't apply the
-        // screenings deltas (no orphan screenings) and report not-present.
+        // side-collection deltas (no orphan rows) and report not-present.
         val present = moviesMatched.forall(_ > 0)
         if (present) screenings.foreach { s =>
           ops.foreach {
@@ -1122,15 +1116,18 @@ class MongoMovieRepository(
     new MovieChangeStream(
       source              = MovieChangeStream.Source.ofCollection(c),
       screenings          = screenings,
+      slots               = slots,
       decode              = decodeStitched,
       reread              = id => findById(FilmId(id)),
       // The shared cursor reopens (after a terminal error, and — the big win — after a WORKER
       // RESTART) from the last-seen token instead of "now", REPLAYING writes that landed while
       // this process was down — the gap the consumers' periodic backstops exist for. See
-      // [[ChangeStreamResumeToken]]; the `screenings` stream persists its own sibling token.
+      // [[ChangeStreamResumeToken]]; the `screenings` and `movie_slots` streams each persist
+      // their own sibling token.
       resumeToken         = new ChangeStreamResumeToken("movies", database, persistResumeToken),
       changeStreamMetrics = changeStreamMetrics,
       screeningsMetrics   = screeningsMetrics,
+      slotsMetrics        = slotsMetrics,
       changeDemandWindow  = changeDemandWindow)
   }
 

@@ -26,7 +26,11 @@ trait CorpusWiring { self: WorkerWiring =>
   // unbounded executor (one poster URL was resident 10,848 times in the 2026-07-27 UK
   // OOM dump).
   lazy val slotsRepository: SlotsRepository =
-    new MongoSlotsRepository(mongoConnection.database)
+    // Its own persisted resume token and its own counters, like `screenings`: a venue's slot
+    // lands without a `movies` write whenever the film document is unchanged, so this is the
+    // third cursor on the projector and a restart must replay it too.
+    new MongoSlotsRepository(mongoConnection.database, persistResumeToken = true,
+      metrics = taskMetrics.slotsChangeMetrics)
   /** This wiring's country's title rules — the ONE instance every component below
    *  keys through, so a worker running several countries cannot fold one country's
    *  titles with another's. Passing it explicitly (rather than letting each
@@ -38,7 +42,7 @@ trait CorpusWiring { self: WorkerWiring =>
 
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     mongoConnection.database, fallbackToOwnInit = false, changeStreamMetrics = taskMetrics,
-    screeningsMetrics = taskMetrics,
+    screeningsMetrics = taskMetrics, slotsMetrics = taskMetrics.slotsChangeMetrics,
     normalizer = titleNormalizer,
     screenings = Some(screeningsRepository),
     slots = Some(slotsRepository),

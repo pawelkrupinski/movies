@@ -108,58 +108,72 @@ trait SlotsRepository extends SlotKeyedRows {
   /** Drop all of a film's slots (the film was deleted, or merged away). */
   def deleteFilm(filmId: String): Unit
 
-  // Deliberately NO `watch`. `screenings` has one because a showtimes-only change
-  // touches nothing else, so without it the projector would never hear about it. Slots
-  // are different: every slot write is accompanied by a `movies` write (see
-  // `MovieRepository.updateIfPresent`, which touches `movies` precisely so one event
-  // fires). A second stream here would fan out a SECOND time for one logical change and
-  // double the re-projections — the opposite of what this split is for.
+  /** Push: ring `onChange(filmId)` whenever a film's slots actually change, so the
+   *  change-stream fanout can re-read + re-dispatch that film. A no-op write (an
+   *  identical slot) does NOT ring — the same contract as `ScreeningsRepository.watch`.
+   *  Returns a handle to stop watching, or None when this impl can't push.
+   *
+   *  This collection deliberately had no cursor once, on the reasoning that every slot
+   *  write rides a `movies` write and a second stream would fan one logical change out
+   *  twice. Prod disproved the premise (2026-09-07): `MovieRepository.upsert` skips the
+   *  `movies` write when the document is unchanged — and under the split the document
+   *  carries neither slots nor showtimes, so it usually IS unchanged — while `movie_slots`
+   *  still takes the row. A slot that lands after the film's last projection therefore had
+   *  no event at all: 63 (film, venue) pairs in the UK and 33 in PL whose venue never
+   *  reached the site. The double fan-out the old comment feared is what
+   *  `MovieChangeStream` coalesces: events on one film share one queued re-read.
+   *
+   *  `demand` bounds how far the cursor may run ahead of the caller's apply — the caller
+   *  owns it, because the caller is what decides when an event is APPLIED. Impls that ring
+   *  listeners synchronously have no backlog and can ignore it. */
+  def watch(onChange: String => Unit,
+            demand:   ChangeStreamDemand = ChangeStreamDemand.unbounded): Option[AutoCloseable] = None
 
   def close(): Unit = ()
 }
 
 /**
  * In-memory `SlotsRepository` for tests and Mongo-less dev. Mirrors
- * [[MongoSlotsRepository]]'s semantics: idempotent per-slot writes and per-film
- * grouping. Neither store holds business logic — both just store — so neither can
- * drift from the other's understanding of the rules.
+ * [[MongoSlotsRepository]]'s semantics: idempotent per-slot writes, per-film grouping,
+ * and a change ring that fires only on a real change — all of it [[InMemorySlotRows]],
+ * the store its `screenings` twin is built on too. Neither store holds business logic —
+ * both just store — so neither can drift from the other's understanding of the rules.
  */
 class InMemorySlotsRepository extends SlotsRepository {
 
-  private val byFilm = scala.collection.mutable.Map.empty[String, Map[String, SourceData]]
-  private val lock   = new Object
+  private val rows = new InMemorySlotRows[SourceData]
 
   // An in-memory read cannot fail, so the checked form always reports complete.
-  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) =
-    (lock.synchronized(byFilm.getOrElse(filmId, Map.empty)), true)
+  def findForFilmChecked(filmId: String): (Map[String, SourceData], Boolean) = (rows.forFilm(filmId), true)
 
-  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) =
-    (lock.synchronized(byFilm.toMap), true)   // an in-memory scan cannot fail
+  def findAllChecked(): (Map[String, Map[String, SourceData]], Boolean) = (rows.all(), true)   // an in-memory scan cannot fail
 
   // `stored` is ignored: this store's rows are already in memory, so re-reading them is
   // free and the parameter exists only to honour the trait (see the screenings twin).
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
                   stored: Option[Map[String, SourceData]] = None): Boolean = {
-    lock.synchronized { if (slots.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, slots) }
+    rows.replaceFilm(filmId, slots)
     true   // an in-memory store cannot fail to write
   }
 
-  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = lock.synchronized {
-    byFilm.update(filmId, byFilm.getOrElse(filmId, Map.empty) + (slotKey -> slot))
+  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = rows.upsert(filmId, slotKey, slot)
+
+  def deleteSlot(filmId: String, slotKey: String): Unit = rows.delete(filmId, slotKey)
+
+  def deleteFilm(filmId: String): Unit = rows.deleteFilm(filmId)
+
+  def filmIdsChecked(): (Set[String], Boolean) = (rows.all().keySet, true)
+
+  def deleteFilms(filmIds: Set[String]): Long = {
+    val removed = filmIds.toSeq.map(id => rows.forFilm(id).size.toLong).sum
+    filmIds.foreach(rows.deleteFilm)
+    removed
   }
 
-  def deleteSlot(filmId: String, slotKey: String): Unit = lock.synchronized {
-    val next = byFilm.getOrElse(filmId, Map.empty) - slotKey
-    if (next.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, next)
-    ()
-  }
-
-  def deleteFilm(filmId: String): Unit = lock.synchronized { byFilm.remove(filmId); () }
-
-  def filmIdsChecked(): (Set[String], Boolean) = (lock.synchronized(byFilm.keySet.toSet), true)
-
-  def deleteFilms(filmIds: Set[String]): Long =
-    lock.synchronized(filmIds.toSeq.flatMap(byFilm.remove).map(_.size.toLong).sum)
+  // Rings listeners synchronously, so there is no queue and nothing for `demand` to
+  // bound — it is accepted only to honour the trait's contract.
+  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    Some(rows.watch(onChange))
 }
 
 object SlotsRepository {
@@ -267,7 +281,14 @@ class MongoSlotsRepository(
   // the page is smaller. Injectable so tests can force multiple pages.
   findAllBatchSize:     Int            = 250,
   findAllBatchAttempts: Int            = 4,
-  findAllBatchBackoff:  FiniteDuration = 500.millis
+  findAllBatchBackoff:  FiniteDuration = 500.millis,
+  // Persist THIS stream's resume token so a restart replays slot changes that landed while
+  // down — like `screenings`, and for the same reason: a slot write need not touch `movies`.
+  // ON only in the worker (the durable mirror); OFF for web /debug + scripts.
+  persistResumeToken:   Boolean        = false,
+  // What this store's cursor delivers, and what the apply coalesced away. The worker passes
+  // the Prometheus sink; everything else keeps the no-op. See [[SideCollectionChangeMetrics]].
+  metrics:              SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop
 ) extends SlotsRepository with Logging {
   import SlotKeyed.idOf
 
@@ -277,6 +298,8 @@ class MongoSlotsRepository(
     Try(Await.result(c.createIndex(Indexes.ascending("filmId")).toFuture(), 10.seconds))
     c
   }
+
+  private val resumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, sharedDb, persistResumeToken)
 
   /** A FAILED read reports `false` rather than passing an empty map off as "this film has
    *  no cinemas" — see the trait doc for what believing that emptiness costs. Logged too:
@@ -345,9 +368,9 @@ class MongoSlotsRepository(
       // Rewrite only the rows that MOVED — the same guard `MongoScreeningsRepository.replaceFilm`
       // carries, and for the same reason one collection over: this method is film-wide while its
       // caller's change is one venue, so a wide release rewrote every row it had with nothing but
-      // a fresh `updatedAt`. Nothing watches `movie_slots`, so the cost here is bytes rather than
-      // re-projections — but these rows are whole `SourceData` documents (title, synopsis, cast,
-      // poster), so it is MORE bytes than the screenings rewrite it mirrors.
+      // a fresh `updatedAt`. Each of those rewrites rings this collection's cursor and buys a
+      // re-projection exactly as a screenings rewrite does — and these rows are whole `SourceData`
+      // documents (title, synopsis, cast, poster), so it is MORE bytes for the same projection.
       //
       // The DELETE vector is unaffected: it is derived from `slots.keySet` (what the film should
       // end up with), never from the subset being written.
@@ -410,4 +433,15 @@ class MongoSlotsRepository(
 
   def deleteFilms(filmIds: Set[String]): Long =
     coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, "SlotsRepository", logger.warn(_)))
+
+  /** Watch `movie_slots`; ring `onChange(filmId)` for every change. The cursor itself is
+   *  [[SideCollectionWatch]], shared with `screenings`, under this collection's own
+   *  persisted resume token. */
+  private lazy val changes: Option[SideCollectionWatch[StoredSlotDto]] =
+    coll.map(c => new SideCollectionWatch(SlotsRepository.Collection, c, _.filmId, resumeToken, metrics))
+
+  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    changes.map(_.watch(onChange, demand))
+
+  override def close(): Unit = resumeToken.save(force = true)
 }

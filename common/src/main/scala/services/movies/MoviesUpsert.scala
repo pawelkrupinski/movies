@@ -40,18 +40,15 @@ object MoviesUpsert {
     // the document the change stream re-decodes on every write.
     val dataForMovies = if (slotsLanded) Map.empty[Source, SourceData] else slotsForStorage(restitched)
     val document      = StoredMovieDto.fromDomain(id, key, record.copy(data = dataForMovies), now)
-    // Both timestamps are normalised away before comparing. `updatedAt` is stamped
+    // The timestamp is normalised away before comparing: `updatedAt` is stamped
     // `Instant.now()` on every call, so comparing it would make every document differ and
-    // the guard dead on arrival. `slotsUpdatedAt` is subtler: `fromDomain` never sets it,
-    // but `updateIfPresent`'s slot path does — so leaving it in would make the guard miss
-    // every film whose slots had ever been patched, which is most of them. Skipping the
-    // write PRESERVES the stored marker rather than clearing it, which is the harmless
-    // direction: it only helps the change stream classify a later write.
+    // the guard dead on arrival. (A retired `slotsUpdatedAt` marker on a legacy document is
+    // not decoded at all, so it cannot make one differ either.)
     //
     // A read that FAILED reads as "changed" and writes. A failed read is not evidence that
     // the stored document matches — and an absent document is not evidence either.
     val unchanged = stored.toOption.flatten.exists(existing =>
-      existing.copy(updatedAt = document.updatedAt, slotsUpdatedAt = document.slotsUpdatedAt) == document)
+      existing.copy(updatedAt = document.updatedAt) == document)
     Plan(document, unchanged)
   }
 }
