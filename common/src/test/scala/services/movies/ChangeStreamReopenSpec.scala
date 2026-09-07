@@ -2,6 +2,7 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.RecordingSchedule
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -13,19 +14,11 @@ import scala.concurrent.duration._
  */
 class ChangeStreamReopenSpec extends AnyFlatSpec with Matchers {
 
-  /** Records what was scheduled instead of sleeping; `fire()` runs the pending body. */
-  private final class Clock {
-    val delays = mutable.Buffer.empty[FiniteDuration]
-    private val queued = mutable.Queue.empty[() => Unit]
-    val schedule: (FiniteDuration, () => Unit) => Unit = (d, run) => { delays += d; queued.enqueue(run) }
-    def fire(): Unit = while (queued.nonEmpty) queued.dequeue().apply()
-  }
-
-  private def driver(clock: Clock, opens: mutable.Buffer[Int], delays: Seq[FiniteDuration] = Seq(1.second, 5.seconds)) =
+  private def driver(clock: RecordingSchedule, opens: mutable.Buffer[Int], delays: Seq[FiniteDuration] = Seq(1.second, 5.seconds)) =
     new ChangeStreamReopen("test", () => { opens += opens.size; () }, clock.schedule, delays)
 
   "ChangeStreamReopen" should "reopen the cursor after a terminal error" in {
-    val clock = new Clock; val opens = mutable.Buffer.empty[Int]
+    val clock = new RecordingSchedule; val opens = mutable.Buffer.empty[Int]
     val reopen = driver(clock, opens)
     reopen.failed()
     opens shouldBe empty // scheduled, not immediate
@@ -34,7 +27,7 @@ class ChangeStreamReopenSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "back off across consecutive failures and cap at the last delay" in {
-    val clock = new Clock; val opens = mutable.Buffer.empty[Int]
+    val clock = new RecordingSchedule; val opens = mutable.Buffer.empty[Int]
     val reopen = driver(clock, opens)
     (1 to 4).foreach(_ => { reopen.failed(); clock.fire() })
     clock.delays shouldBe Seq(1.second, 5.seconds, 5.seconds, 5.seconds)
@@ -45,7 +38,7 @@ class ChangeStreamReopenSpec extends AnyFlatSpec with Matchers {
   // resets the backoff — otherwise a permanently-broken stream would retry at the shortest
   // delay for ever.
   it should "reset the backoff only once the stream delivers an event" in {
-    val clock = new Clock; val opens = mutable.Buffer.empty[Int]
+    val clock = new RecordingSchedule; val opens = mutable.Buffer.empty[Int]
     val reopen = driver(clock, opens)
     reopen.failed(); clock.fire()
     reopen.failed(); clock.fire()
@@ -55,7 +48,7 @@ class ChangeStreamReopenSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "collapse a double report of the same death into one reopen" in {
-    val clock = new Clock; val opens = mutable.Buffer.empty[Int]
+    val clock = new RecordingSchedule; val opens = mutable.Buffer.empty[Int]
     val reopen = driver(clock, opens)
     reopen.failed() // onError
     reopen.failed() // onComplete for the same cursor
@@ -64,7 +57,7 @@ class ChangeStreamReopenSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stop reopening once closed" in {
-    val clock = new Clock; val opens = mutable.Buffer.empty[Int]
+    val clock = new RecordingSchedule; val opens = mutable.Buffer.empty[Int]
     val reopen = driver(clock, opens)
     reopen.failed()
     reopen.close()
@@ -76,7 +69,7 @@ class ChangeStreamReopenSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "retry when the reopen itself throws" in {
-    val clock = new Clock
+    val clock = new RecordingSchedule
     var attempts = 0
     val reopen = new ChangeStreamReopen("test",
       () => { attempts += 1; if (attempts == 1) throw new IllegalStateException("mongo down") },

@@ -2,16 +2,15 @@ package services.tasks
 
 import com.mongodb.{MongoWriteException, WriteConcern}
 import com.mongodb.client.model.{IndexOptions => JIndexOptions}
-import com.mongodb.client.model.changestream.{ChangeStreamDocument, OperationType}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, Observer, ObservableFuture, SingleObservableFuture, Subscription, documentToUntypedDocument}
+import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
 import org.mongodb.scala.bson.BsonString
 import org.mongodb.scala.model.{Accumulators, Aggregates, Filters, FindOneAndUpdateOptions, Indexes, ReturnDocument, Updates}
 
 import play.api.Logging
+import services.movies.ChangeStreamReopen
 
 import java.time.Instant
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
@@ -288,24 +287,17 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
    *  of writes to `tasks` — down this cursor. Each instance's doorbell then decodes
    *  only actual new work (in a prod sample, ~527 of 1811 task events/15min), not
    *  every lifecycle write it would immediately discard. The client-side INSERT
-   *  guard below is kept as defence-in-depth. Mirrors
-   *  [[services.movies.MovieRepository.watchUpserts]]: the driver auto-resumes across
-   *  transient blips, and on a standalone (non-replica-set) Mongo the stream just
-   *  errors out and the pool falls back to its backstop. */
+   *  guard in [[TaskInsertStream]] is kept as defence-in-depth. The subscription
+   *  itself — and its reopen after a terminal error, which is what keeps this node's
+   *  workers woken across a Mongo blip — lives in [[TaskInsertStream]]. */
   override def watchWaiting(onWaiting: () => Unit): Option[AutoCloseable] = coll.map { c =>
-    val subRef = new AtomicReference[Subscription]()
-    c.watch(Seq(Aggregates.filter(Filters.eq("operationType", "insert")))).subscribe(new Observer[ChangeStreamDocument[Document]] {
-      override def onSubscribe(s: Subscription): Unit = { subRef.set(s); s.request(Long.MaxValue) }
-      override def onNext(change: ChangeStreamDocument[Document]): Unit =
-        if (change.getOperationType == OperationType.INSERT)
-          try onWaiting()
-          catch { case exception: Throwable => logger.warn(s"Task queue doorbell ring failed: ${exception.getMessage}") }
-      override def onError(e: Throwable): Unit =
-        logger.warn(s"Task queue change stream ended (${e.getMessage}) — worker pool falls back to its idle backstop.")
-      override def onComplete(): Unit = ()
-    })
+    val stream = new TaskInsertStream(
+      open      = c.watch(Seq(Aggregates.filter(Filters.eq("operationType", "insert")))).subscribe(_),
+      onWaiting = onWaiting,
+      schedule  = ChangeStreamReopen.daemonSchedule("MongoTaskQueue"))
+    stream.start()
     logger.info("MongoTaskQueue: watching change stream to wake workers on new tasks.")
-    new AutoCloseable { override def close(): Unit = Option(subRef.get()).foreach(_.unsubscribe()) }
+    stream
   }
 
   private def toSummary(document: Document): TaskSummary = TaskSummary(

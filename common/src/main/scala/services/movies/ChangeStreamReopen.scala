@@ -77,9 +77,15 @@ object ChangeStreamReopen {
 
   /** Production wiring: a shared daemon scheduler thread per driver. The scheduled body
    *  only re-subscribes a cursor, so it never blocks the scheduler for long. */
-  def onDaemonScheduler(name: String, reopen: () => Unit): ChangeStreamReopen = {
+  def onDaemonScheduler(name: String, reopen: () => Unit): ChangeStreamReopen =
+    new ChangeStreamReopen(name, reopen, daemonSchedule(name))
+
+  /** The production `schedule` on its own, for a stream that builds its
+   *  [[ChangeStreamReopen]] itself (the reopen closes over the stream's own
+   *  subscribe, so it cannot be handed in from outside — see
+   *  [[services.tasks.TaskInsertStream]]). */
+  def daemonSchedule(name: String): (FiniteDuration, () => Unit) => Unit = {
     val scheduler = tools.DaemonExecutors.scheduler(s"$name-reopen")
-    new ChangeStreamReopen(name, reopen,
-      (delay, run) => { scheduler.schedule((() => run()): Runnable, delay.toMillis, TimeUnit.MILLISECONDS); () })
+    (delay, run) => { scheduler.schedule((() => run()): Runnable, delay.toMillis, TimeUnit.MILLISECONDS); () }
   }
 }
