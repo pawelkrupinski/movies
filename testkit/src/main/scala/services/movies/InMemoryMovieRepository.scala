@@ -39,7 +39,10 @@ class InMemoryMovieRepository(
   // The country whose rules derive a row's `_id`, mirroring `MongoMovieRepository`.
   // Last and defaulted so the positional constructions are unchanged; a spec that
   // is ABOUT country scoping passes its own instance instead of swapping a global.
-  override val normalizer: services.movies.TitleNormalizer = services.movies.TitleNormalizer.deployment
+  override val normalizer: services.movies.TitleNormalizer = services.movies.TitleNormalizer.deployment,
+  // Stamps a write's `updatedAt` and a delivery's instant, exactly as production stamps them
+  // from the wall clock — injected so a spec about AGES can move time by hand.
+  clock: java.time.Clock = java.time.Clock.systemUTC()
 ) extends MovieRepository with KeyAddressedMovieWrites {
   // Fold titles with the rules the corpus was keyed under, not a process default.
 
@@ -67,7 +70,10 @@ class InMemoryMovieRepository(
   // attaches the cache AND the read-model projector); a single-watcher stub
   // would model only one and hide the multiplexing the real cursor now does.
   private val changes = new ChangeStreamFanout[StoredMovieRecord]("InMemoryMovieRepository")
+  // Every dispatch below is a `movies` delivery, the same way the real cursor's `onNext` is.
+  override val changeStreamLiveness: ChangeStreamLiveness = new ChangeStreamLiveness(clock)
   private def notifyWatcher(id: String, t: String, y: Option[Int], e: MovieRecord): Unit = {
+    changeStreamLiveness.delivered(ChangeStreamLiveness.Movies)
     // Watchers get the record a READER would see, not the shrunken `movies` document —
     // the real change stream re-decodes the row and `decodeStitched` puts its slots and
     // showtimes back. A fake that dispatched the stripped record would have every
@@ -253,6 +259,7 @@ class InMemoryMovieRepository(
       screenings.foreach(_.deleteFilm(id))   // the cascade the real repository owns
       slots.foreach(_.deleteFilm(id))
       deletes.append((removed.title, removed.year))
+      changeStreamLiveness.delivered(ChangeStreamLiveness.Movies)
       changes.dispatchDelete(id)
     }
   }

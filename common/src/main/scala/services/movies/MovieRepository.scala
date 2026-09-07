@@ -316,6 +316,15 @@ trait MovieRepository {
     onDelete: FilmId => Unit
   ): Option[AutoCloseable] = None
 
+  /** When each change-stream cursor last DELIVERED an event — see [[ChangeStreamLiveness]].
+   *  The worker's `/metrics` ages every cursor off it, and the read-model prune sweep uses
+   *  the `movies` cursor's instant as the floor of what a silent stream may have missed.
+   *  Default: a repository with no stream, whose cursors age from creation and are never
+   *  stamped — [[MongoMovieRepository]] and [[InMemoryMovieRepository]] each answer with the
+   *  stream's own. */
+  def changeStreamLiveness: ChangeStreamLiveness = unwatchedLiveness
+  private lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched()
+
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
 }
@@ -1143,6 +1152,9 @@ class MongoMovieRepository(
   /** Whether the single shared change-stream cursor is currently running — for
    *  diagnostics/tests (it starts on the first listener, stops after the last). */
   def isWatchingChangeStream: Boolean = changeStream.exists(_.isWatching)
+
+  override def changeStreamLiveness: ChangeStreamLiveness =
+    changeStream.fold(super.changeStreamLiveness)(_.liveness)
 
   def close(): Unit = {
     changeStream.foreach(_.close())

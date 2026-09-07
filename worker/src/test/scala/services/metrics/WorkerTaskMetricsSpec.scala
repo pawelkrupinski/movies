@@ -3,7 +3,7 @@ package services.metrics
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.WorkerTaskMetrics.CountryQueueSample
-import services.movies.MergeReason
+import services.movies.{ChangeStreamLiveness, MergeReason}
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, Task, TaskState, TaskSummary, TaskType}
 
@@ -44,7 +44,7 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
                        snapshot: QueueSnapshot = emptySnapshot,
                        staging: Map[StagingStep, Int] = noStaging,
                       ): String =
-    series.scrape(Seq(CountryQueueSample("pl", snapshot, staging)), now)
+    series.scrape(Seq(CountryQueueSample("pl", snapshot, staging, ChangeStreamLiveness.unwatched())), now)
 
   it should "tag every task-pipeline series with the emitting country" in {
     val (m, series) = newPl()
@@ -68,12 +68,33 @@ class WorkerTaskMetricsSpec extends AnyFlatSpec with Matchers {
     uk.recordEnqueue(TaskType.ScrapeCinema, WorkerTaskMetrics.EnqueueResult.Added)
 
     val out = series.scrape(Seq(
-      CountryQueueSample("pl", emptySnapshot, noStaging),
-      CountryQueueSample("uk", emptySnapshot, noStaging)), now)
+      CountryQueueSample("pl", emptySnapshot, noStaging, ChangeStreamLiveness.unwatched()),
+      CountryQueueSample("uk", emptySnapshot, noStaging, ChangeStreamLiveness.unwatched())), now)
 
     out should include ("""kinowo_worker_tasks_enqueued_total{country="pl",result="added",task_type="ScrapeCinema"} 2""")
     out should include ("""kinowo_worker_tasks_enqueued_total{country="uk",result="added",task_type="ScrapeCinema"} 1""")
     // Per-country throttle: pl backing off, uk not.
+  }
+
+  // THE SILENT CURSOR. The change-event counters read the same for a stalled cursor and a
+  // quiet night; the age of the last delivered event is what separates them, and it must be
+  // recomputed on every scrape so that a stall draws a diagonal rather than a frozen value.
+  it should "age every change-stream cursor off its last delivered event, at scrape time" in {
+    val (_, series) = newPl()
+    val clock    = new tools.MutableClock(now.minusSeconds(600))
+    val liveness = new ChangeStreamLiveness(clock)                  // "booted" 600s before `now`
+    clock.advanceSeconds(480)
+    liveness.delivered(ChangeStreamLiveness.Movies)                 // the movies cursor delivered 120s before `now`
+
+    val out = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, liveness)), now)
+    out should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} 120.0""")
+    // A cursor that never delivered ages from the boot, not from zero — "never" is the loudest silence.
+    out should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movie_slots",country="pl"} 600.0""")
+    out should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="screenings",country="pl"} 600.0""")
+
+    // Nothing delivered since: the next scrape reads a LARGER age, not the same one.
+    val later = series.scrape(Seq(CountryQueueSample("pl", emptySnapshot, noStaging, liveness)), now.plusSeconds(60))
+    later should include ("""kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} 180.0""")
   }
 
   "WorkerTaskMetrics" should "count enqueues by type and result" in {

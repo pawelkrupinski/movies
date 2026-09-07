@@ -1602,6 +1602,45 @@
               }
             }
           ]
+        },
+        {
+          "id": 107,
+          "title": "Worker — change-stream silence: minutes since each cursor last delivered, by country",
+          "description": "Minutes since each of the worker's three change-stream cursors (movies, screenings, movie_slots) last DELIVERED an event, from kinowo_worker_change_stream_last_event_age_seconds — recomputed on every scrape, so an open-but-silent cursor climbs in a straight diagonal. This is the panel the two event-rate panels above cannot be: a stalled cursor and a quiet night both read as a flat rate there, and a stream left dead by a Mongo migration once sat behind them for hours while the site served stale ratings and showtimes. Healthy is a sawtooth that resets within one scrape sweep (1h pl, 7h uk/es, 10h de, 14h us) while writes are happening; a diagonal past 2x that window on the movies cursor while the corpus census is moving is what ChangeStreamMoviesCursorSilent pages on.",
+          "type": "timeseries",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 24,
+            "x": 0,
+            "y": 186
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "m",
+              "min": 0,
+              "custom": {
+                "spanNulls": 300000,
+                "drawStyle": "line",
+                "fillOpacity": 0
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (country, collection) (kinowo_worker_change_stream_last_event_age_seconds{country=~\"$country\"}) / 60",
+              "legendFormat": "{{country}} {{collection}}",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            }
+          ]
         }
       ],
       "gridPos": {

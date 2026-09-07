@@ -3,7 +3,7 @@ package services.metrics
 import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
-import services.movies.{CacheSyncMetrics, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
+import services.movies.{CacheSyncMetrics, ChangeStreamLiveness, ChangeStreamMetrics, MergeMetrics, MergeReason, RekeyReason, ScreeningsMetrics, SideCollectionChangeMetrics, SplitMetrics}
 import services.readmodel.ReadModelProjectionMetrics
 import services.staging.StagingStep
 import services.tasks.{QueueSnapshot, RatingLatencyMetrics, Task, TaskState, TaskType}
@@ -117,8 +117,11 @@ object WorkerTaskMetrics {
 
   /** The per-country queue/staging sample [[Series.scrape]] folds into the gauges
    *  for one country on each scrape. `snapshot` is that country's live queue
-   *  monitor, `stagingByStep` its `StagingReaper.stepCounts()`. */
-  case class CountryQueueSample(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int])
+   *  monitor, `stagingByStep` its `StagingReaper.stepCounts()`, and
+   *  `changeStreamLiveness` the repository's record of when each change-stream cursor
+   *  last delivered — read at scrape time, so a silent cursor's age keeps climbing. */
+  case class CountryQueueSample(countryCode: String, snapshot: QueueSnapshot, stagingByStep: Map[StagingStep, Int],
+                                changeStreamLiveness: ChangeStreamLiveness)
 
   /**
    * The registered-once metric objects, SHARED across every country's
@@ -195,6 +198,17 @@ object WorkerTaskMetrics {
       .name("kinowo_worker_staging_movies")
       .help("Incubating films currently in pending_movies, by country and the step each needs next (detail → resolve_tmdb → resolve_imdb → fold). Distinct films (a film's cinema rows count once); sum = total movies in staging.")
       .labelNames("country", "step")
+      .register(registry)
+
+    // A GAUGE COMPUTED AT SCRAPE TIME, never a stored age: the value is `now - lastDelivered`
+    // on every scrape, so a cursor that stalls draws a straight diagonal instead of freezing
+    // at whatever it last said. The event COUNTERS beside it cannot tell a stalled cursor
+    // from a quiet night — both are a flat rate — and a dead stream after a Mongo migration
+    // once sat behind them for hours. See [[services.movies.ChangeStreamLiveness]].
+    private val changeStreamLastEventAge = Gauge.builder()
+      .name("kinowo_worker_change_stream_last_event_age_seconds")
+      .help("Seconds since each change-stream cursor (collection=movies|screenings|movie_slots) last DELIVERED an event to the worker, by country; since boot when it never has. Recomputed on every scrape, so an open-but-silent cursor climbs in a straight line. Read against the country's scrape cadence: the movies cursor is quiet for at most one sweep while ratings and scrapes are being written; longer than that with kinowo_worker_corpus_movies moving means the stream is not delivering the writes.")
+      .labelNames("country", "collection")
       .register(registry)
 
     private val merges = Counter.builder()
@@ -345,6 +359,7 @@ object WorkerTaskMetrics {
         ChangeStreamMetrics.Ops.foreach(o => slotsChangeEvents.labelValues(c, o))
         slotsCoalesced.labelValues(c)
         ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(c, k))
+        ChangeStreamLiveness.Collections.foreach(coll => changeStreamLastEventAge.labelValues(c, coll).set(0.0))
       }
       poolSizeGauge.set(poolSize.toDouble)
     }
@@ -427,6 +442,8 @@ object WorkerTaskMetrics {
       samples.foreach { s =>
         refreshQueueGauges(s.countryCode, s.snapshot, now)
         StagingStep.all.foreach(step => stagingMovies.labelValues(s.countryCode, step.label).set(s.stagingByStep.getOrElse(step, 0).toDouble))
+        ChangeStreamLiveness.Collections.foreach(coll =>
+          changeStreamLastEventAge.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.ageSeconds(coll, now)))
       }
       PrometheusExposition.render(registry)
     }

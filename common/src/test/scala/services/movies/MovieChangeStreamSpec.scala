@@ -7,7 +7,7 @@ import org.mongodb.scala.{Observer, Subscription}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.{Instant, LocalDateTime}
+import java.time.{Clock, Instant, LocalDateTime}
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 import java.util.concurrent.atomic.AtomicInteger
 import scala.collection.mutable
@@ -65,7 +65,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     decode:            StoredMovieDto => Option[StoredMovieRecord] = decodeOf,
     reread:            String => Option[StoredMovieRecord] = _ => None,
     screeningsMetrics: SideCollectionChangeMetrics         = ScreeningsMetrics.noop,
-    slotsMetrics:      SideCollectionChangeMetrics         = SideCollectionChangeMetrics.noop
+    slotsMetrics:      SideCollectionChangeMetrics         = SideCollectionChangeMetrics.noop,
+    clock:             Clock                               = Clock.systemUTC()
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
@@ -76,7 +77,8 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     changeStreamMetrics = ChangeStreamMetrics.noop,
     screeningsMetrics   = screeningsMetrics,
     slotsMetrics        = slotsMetrics,
-    changeDemandWindow  = ChangeStreamDemand.DefaultWindow)
+    changeDemandWindow  = ChangeStreamDemand.DefaultWindow,
+    clock               = clock)
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each decoded upsert out to both" in {
     val source = new HandFedSource
@@ -181,6 +183,47 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       dispatched.get()           shouldBe 2          // the gated movies upsert + that one re-read
       slotsSeen.coalesced.get()  shouldBe Burst - 1  // every slot event after the first rode the queued apply
       screeningsSeen.coalesced.get() shouldBe 1      // …and so did the screenings event, counted on ITS cursor
+    } finally { handle.close(); under.close() }
+  }
+  // THE SILENT CURSOR. A terminal error is reopened on a backoff; a cursor that is OPEN and
+  // delivering nothing — a server-side stall, a stale resume position — was detected by nothing:
+  // the event counters simply stop moving, which is also what a quiet night looks like. The age
+  // of the last DELIVERED event is the signal that tells the two apart, per cursor, and it must
+  // keep growing while nothing arrives.
+  it should "age each cursor from its last delivered event, growing while silent and reset by a delivery" in {
+    import ChangeStreamLiveness.{Movies, Slots}
+    val source = new HandFedSource
+    val slots  = new InMemorySlotsRepository
+    val clock  = new tools.MutableClock(Instant.parse("2026-09-07T10:00:00Z"))
+    val opened = clock.instant()
+    val under  = stream(source, slots = Some(slots), clock = clock,
+      reread = id => Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id))))
+    val delivered = new java.util.concurrent.LinkedBlockingQueue[StoredMovieRecord]()
+
+    val handle = under.watch(delivered.put, _ => ())
+    try {
+      // Nothing delivered yet: the age counts from the stream's creation, not from zero.
+      under.liveness.lastDelivered(Movies) shouldBe None
+      under.liveness.ageSeconds(Movies, opened.plusSeconds(90)) shouldBe 90.0
+
+      clock.advanceSeconds(60)
+      source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+      delivered.poll(5, TimeUnit.SECONDS) should not be null
+
+      under.liveness.lastDelivered(Movies) shouldBe Some(opened.plusSeconds(60))
+      under.liveness.ageSeconds(Movies, opened.plusSeconds(60))  shouldBe 0.0
+      under.liveness.ageSeconds(Movies, opened.plusSeconds(600)) shouldBe 540.0 // silent since → still growing
+      // The slots cursor delivered nothing, so its age is the movies delivery's neighbour only
+      // by coincidence of the clock — it counts from the open, per cursor.
+      under.liveness.lastDelivered(Slots) shouldBe None
+      under.liveness.ageSeconds(Slots, opened.plusSeconds(600)) shouldBe 600.0
+
+      clock.advanceSeconds(300)
+      slots.upsertSlot("film|2024", "Kino␟film", SourceData(title = Some("Film")))
+      delivered.poll(5, TimeUnit.SECONDS) should not be null
+
+      under.liveness.lastDelivered(Slots)  shouldBe Some(opened.plusSeconds(360))
+      under.liveness.lastDelivered(Movies) shouldBe Some(opened.plusSeconds(60)) // a slot delivery is not a movies one
     } finally { handle.close(); under.close() }
   }
 }

@@ -5,18 +5,11 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.{Clock, Instant, ZoneId, ZoneOffset}
+import tools.MutableClock
+
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.{CountDownLatch, Executors, TimeUnit}
-
-/** A clock the test can advance, to drive [[ResolutionStore]]'s 24h expiry. */
-private class MutableClock(start: Instant) extends Clock {
-  @volatile private var now: Instant = start
-  def advance(d: java.time.Duration): Unit = now = now.plus(d)
-  override def instant(): Instant = now
-  override def getZone: ZoneId = ZoneOffset.UTC
-  override def withZone(zone: ZoneId): Clock = this
-}
 
 class ResolutionCacheSpec extends AnyFlatSpec with Matchers {
 

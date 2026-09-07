@@ -57,8 +57,17 @@ final class MovieChangeStream(
   changeStreamMetrics: ChangeStreamMetrics,
   screeningsMetrics:   SideCollectionChangeMetrics,
   slotsMetrics:        SideCollectionChangeMetrics,
-  changeDemandWindow:  Int
+  changeDemandWindow:  Int,
+  // Stamps the instant of each delivered event — injected so a spec can assert an AGE to the
+  // second; production never passes it.
+  clock:               java.time.Clock = java.time.Clock.systemUTC()
 ) extends Logging with AutoCloseable {
+
+  /** When each cursor last DELIVERED an event — the liveness signal an open-but-silent
+   *  cursor has no other way of giving. Stamped on the driver's `onNext`, before the apply
+   *  and before coalescing, so it says what the CURSOR did, not what the apply thread got
+   *  round to. See [[ChangeStreamLiveness]]. */
+  val liveness = new ChangeStreamLiveness(clock)
 
   private val movieChanges = new ChangeStreamFanout[StoredMovieRecord]("MovieRepository")
   private val changeSub    = new AtomicReference[Subscription]()
@@ -106,8 +115,9 @@ final class MovieChangeStream(
   /** One side-collection cursor — `screenings` or `movie_slots` — with its own demand
    *  window and its own coalescing counter, ringing into the shared apply. */
   private final class SideCursor(
-    metrics: SideCollectionChangeMetrics,
-    open:    (String => Unit, ChangeStreamDemand) => Option[AutoCloseable]
+    collection: String,
+    metrics:    SideCollectionChangeMetrics,
+    open:       (String => Unit, ChangeStreamDemand) => Option[AutoCloseable]
   ) {
     val demand = new ChangeStreamDemand(changeDemandWindow)
     private val handle = new AtomicReference[Option[AutoCloseable]](None)
@@ -144,7 +154,8 @@ final class MovieChangeStream(
      *  stays in the set and its demand is never released. That is deliberate, not an oversight: the
      *  only reachable case is a repository being discarded, whose cursor nobody is waiting on any
      *  more. Anything that resurrects a closed repository would have to clear the set first. */
-    private def applyChange(filmId: String): Unit =
+    private def applyChange(filmId: String): Unit = {
+      liveness.delivered(collection)
       if (sideApplyPending.add(filmId))
         applyOffLoop(demand) {
           sideApplyPending.remove(filmId)
@@ -154,13 +165,16 @@ final class MovieChangeStream(
         metrics.recordCoalescedChange()
         demand.applied()
       }
+    }
   }
 
   // Read-split only: a showtime change writes only `screenings` and a venue's slot only
   // `movie_slots` (movies stays put), so without these the projector would never see either.
   private val sideCursors: Seq[SideCursor] = Seq(
-    new SideCursor(screeningsMetrics, (onChange, demand) => screenings.flatMap(_.watch(onChange, demand))),
-    new SideCursor(slotsMetrics,      (onChange, demand) => slots.flatMap(_.watch(onChange, demand))))
+    new SideCursor(ChangeStreamLiveness.Screenings, screeningsMetrics,
+      (onChange, demand) => screenings.flatMap(_.watch(onChange, demand))),
+    new SideCursor(ChangeStreamLiveness.Slots, slotsMetrics,
+      (onChange, demand) => slots.flatMap(_.watch(onChange, demand))))
 
   // A change stream's onError is TERMINAL — nothing brings the cursor back on its own, and
   // `ensureWatching` only runs on REGISTRATION, which the worker does twice at boot and never
@@ -193,6 +207,7 @@ final class MovieChangeStream(
         override def onSubscribe(s: Subscription): Unit = { changeSub.set(s); moviesDemand.opened(s) }
         override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit = {
           changeReopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
+          liveness.delivered(ChangeStreamLiveness.Movies)
           recordChangeMetrics(change)
           // Advance the resume position BEFORE fanning out, so a consumer signal (a
           // downstream latch / write) can never observe an event before the token moves.
