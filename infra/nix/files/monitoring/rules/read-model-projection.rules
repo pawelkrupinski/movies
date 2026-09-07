@@ -43,6 +43,11 @@
 # target), not from the application, so it is true by construction.
 groups:
   - name: read-model-projection
+    # EVALUATED EVERY 15 SECONDS, PINNED HERE rather than inherited. It matches the global
+    # `evaluation_interval` today, and the rule below expects the two served-films gauges to
+    # agree EXACTLY -- a rule stated as "zero, continuously" should not silently start being
+    # asked once every few minutes because someone widened the global to spare the box work.
+    interval: 15s
     rules:
       # -----------------------------------------------------------------------------------------
       # THE PROJECTOR IS RUNNING FAR AHEAD OF ANYTHING THAT COULD BE TRIGGERING IT.
@@ -311,6 +316,82 @@ groups:
       # and stays positive, so a clamped denominator there really did report "pl dropped 4200% of
       # its films". The guard is kept for the 0/0 NaN and to keep the two rules reading alike; it
       # is not what makes a census outage safe here. The DIRECTION is.
+      # THE TWO SIDES MUST AGREE EXACTLY (Paweł, 2026-09-07). The rule above tolerates 3%
+      # because it is the PAGE for a visibly short site; this one is the standing expectation
+      # that the number of films the corpus would serve and the number the site serves are the
+      # SAME NUMBER, in both directions, and that any daylight between them is a defect to fix
+      # rather than a band to widen. It is the serving-side statement of the read-model rule in
+      # `docs/read-model-convergence.md`: every update path leaves the read model in the state a
+      # settle would produce, so there is nothing for the prune -- or for a tolerance -- to cover.
+      #
+      # WHY BOTH DIRECTIONS. Worker above web is the hole the rule above pages for. Web above
+      # worker is the opposite defect and used to be invisible: a card the site serves that no
+      # source row backs any more -- exactly what the prune removed 80 times a day until the
+      # projector learned to retire its own cards (8e0620abc). Measured 2026-09-07T20:5xZ:
+      # pl +10, uk +3, de -6, es 0, us 0, so DE's disagreement was only ever visible this way.
+      #
+      # SUM OF PER-CITY ABSOLUTE DIFFERENCES, not the absolute value of the summed difference.
+      # A film attributed to Kraków by one side and Katowice by the other is two per-city errors
+      # that cancel to zero at country level, and reading the country net as health is a mistake
+      # already made once on this pair (2026-09-07: a positive-only per-city sum reported 56
+      # cards short where the true net was 35, and the net in turn hid 20 cities serving MORE
+      # than the census counted). Per city, then summed, is the only form that cannot cancel.
+      #
+      # THE `> 0` GUARD IS LOAD-BEARING HERE, unlike in the sibling below. That rule is saved by
+      # the DIRECTION of its subtraction -- a census reading 0 against a serving site gives a
+      # negative, which no positive threshold clears. `abs()` destroys exactly that protection:
+      # a worker whose census could not be read would show every served film as a difference and
+      # page for a monitoring gap. So this rule refuses to speak unless BOTH sides are reporting.
+      #
+      # `for: 20m` IS FOUR CENSUS REFRESHES. The worker side is recomputed off the shared corpus
+      # scan every 5 minutes (`WorkerCorpusScan`, KINOWO_CORPUS_SCAN_SECONDS) while the web side
+      # is live off its change streams, so the pair is legitimately out of step for up to one
+      # scan -- and a film whose last showtime passes between the two evaluations flips on one
+      # side first. Twenty minutes is past any of that and still less than half the 45 minutes
+      # the page below waits. WARNING, not critical: a handful of cards is a defect worth a
+      # working day, not a night. The page below is what fires when the site is visibly short.
+      #
+      # IF THIS IS LIT AND THE COUNT IS SMALL, do not raise the threshold -- there is nothing to
+      # raise it to. Find the cards with the per-city query in the annotation, then read
+      # `kinowo_worker_readmodel_films_pruned_total{reason}`: a non-zero prune is the projector
+      # failing to retire a card the incremental path should have taken back, which is the
+      # defect this rule exists to surface.
+      - alert: ReadModelServingDiffersFromCorpus
+        expr: >-
+          (
+            sum by (country) (
+              abs(
+                max by (country, city) (kinowo_worker_movies_served{scope="all"})
+                - max by (country, city) (kinowo_web_movies_served{scope="all"})
+              )
+            ) > 0
+          )
+          and on (country) (
+            sum by (country) (max by (country, city) (kinowo_worker_movies_served{scope="all"})) > 0
+          )
+          and on (country) (
+            sum by (country) (max by (country, city) (kinowo_web_movies_served{scope="all"})) > 0
+          )
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: the corpus and the site disagree on {{ $value }} film-in-a-city, expected 0"
+          description: >-
+            `kinowo_worker_movies_served{scope="all"}` is the films this country's corpus WOULD
+            serve and `kinowo_web_movies_served{scope="all"}` is what the site IS serving; summed
+            per city as absolute differences they must be the SAME NUMBER, and they have differed
+            for 20 minutes. Either direction is a defect: the site short of the corpus is a card
+            that should be there and is not, the site ahead of it is a card no source row backs.
+            Find them with
+            `max by (city) (kinowo_worker_movies_served{country="{{ $labels.country }}",scope="all"})
+            - max by (city) (kinowo_web_movies_served{country="{{ $labels.country }}",scope="all"})`
+            (read the sign per city -- they cancel at country level), then
+            `kinowo_worker_readmodel_films_pruned_total{country="{{ $labels.country }}"}` by reason:
+            a prune that removed anything is the incremental path failing to retire a card it
+            stopped producing, which `docs/read-model-convergence.md` says must never happen. Do
+            not widen this rule to make it quiet -- zero is the whole statement.
+
       - alert: ReadModelServingShortOfCorpus
         expr: >-
           (
