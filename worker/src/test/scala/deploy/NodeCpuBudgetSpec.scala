@@ -29,6 +29,24 @@ import org.scalatest.matchers.should.Matchers
  * So the invariant is not "the requests fit". It is "the requests fit WITH THE
  * LARGEST SURGE POD ON TOP", which is what a deploy actually needs.
  *
+ * WHY THE LARGEST SURGE POD AND NOT THE SUM OF ALL FIVE. Every web Deployment reads
+ * its image tag from ONE line in `web/base/all.yaml`, so image-automation bumps all
+ * five countries at once and five surge pods are requested simultaneously against
+ * room for about two. In `kubectl get events` that looks like an incident -- three
+ * countries sitting in `FailedScheduling: Insufficient memory` for a minute or two,
+ * on every one of the ~15 deploys a day this fleet does -- and it is FINE. Each
+ * country's surge is independent: whichever fits is placed, its old replica retires
+ * and hands the request straight back, and the next country goes. The rollout drains
+ * one at a time and finishes; 2026-09-07 timed a full five-country roll at ~150s.
+ *
+ * What is NOT fine is one country whose surge pod does not fit, because the free
+ * space never grows. With every pod at its steady state there is no later moment
+ * with more room than there is right now, so a country that cannot be placed today
+ * can never be placed, and `maxUnavailable: 0` leaves it Pending forever rather than
+ * failing loudly. Crawling recovers by itself; that does not. Hence `max`: the
+ * largest single web pod is the one that must fit, and the sum of all five is a
+ * concurrency this node was never asked to provide.
+ *
  * The numbers themselves are measured rather than chosen — `max_over_time` of
  * each pod's own `process_cpu_seconds_total` over 24h — and the reasoning for
  * each sits beside it in its overlay.

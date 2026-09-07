@@ -25,6 +25,24 @@ import org.scalatest.matchers.should.Matchers
  * fit WITH THE LARGEST SURGE POD ON TOP. If a country genuinely needs more heap,
  * this spec is the thing that says the memory has to come from somewhere —
  * another pod's over-ask, or another node.
+ *
+ * WHY THE LARGEST SURGE POD AND NOT THE SUM OF ALL FIVE. Every web Deployment reads
+ * its image tag from ONE line in `web/base/all.yaml`, so image-automation bumps all
+ * five countries at once and five surge pods are requested simultaneously against
+ * room for about two. In `kubectl get events` that looks like an incident -- three
+ * countries sitting in `FailedScheduling: Insufficient memory` for a minute or two,
+ * on every one of the ~15 deploys a day this fleet does -- and it is FINE. Each
+ * country's surge is independent: whichever fits is placed, its old replica retires
+ * and hands the request straight back, and the next country goes. The rollout drains
+ * one at a time and finishes; 2026-09-07 timed a full five-country roll at ~150s.
+ *
+ * What is NOT fine is one country whose surge pod does not fit, because the free
+ * space never grows. With every pod at its steady state there is no later moment
+ * with more room than there is right now, so a country that cannot be placed today
+ * can never be placed, and `maxUnavailable: 0` leaves it Pending forever rather than
+ * failing loudly. Crawling recovers by itself; that does not. Hence `max`: the
+ * largest single web pod is the one that must fit, and the sum of all five is a
+ * concurrency this node was never asked to provide.
  */
 class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
@@ -92,6 +110,60 @@ class NodeMemoryBudgetSpec extends AnyFlatSpec with Matchers {
 
     info(f"requests ${total}Mi + surge ${surge}Mi = ${total + surge}Mi of ${ceiling}Mi " +
          f"(${100.0 * (total + surge) / ceiling}%.1f%%, ${ceiling - total - surge}Mi spare)")
+  }
+
+  /** What each deployment's RSS actually PEAKED at, in mebibytes, over the seven days to
+   *  2026-09-07 — the measurement every request in these overlays is now derived from.
+   *
+   *  `max_over_time(process_resident_memory_bytes[7d])` per pod, off the fleet Prometheus.
+   *  PROCESS RSS RATHER THAN THE CGROUP WORKING SET, because this cluster scrapes no cAdvisor:
+   *  there is no `container_memory_*` series to ask, and the JVM exporter is the only per-pod
+   *  memory signal that exists. It is a fair proxy and a conservative one — the kubelet's own
+   *  `stats/summary` put working set 5-30Mi ABOVE RSS on every pod the day this was taken, so a
+   *  request sized off these numbers errs high, not low.
+   *
+   *  The `instance` labels (`kinowo-web-<cc>`) survive rollouts, so a 7d window spans the ~15
+   *  deploys a day this fleet does rather than one pod's lifetime. */
+  private val MeasuredPeakMib = Map(
+    ("web", "pl") ->  881, ("worker", "pl") ->  800,
+    ("web", "de") ->  813, ("worker", "de") ->  963,
+    ("web", "uk") ->  816, ("worker", "uk") ->  781,
+    ("web", "es") ->  762, ("worker", "es") ->  757,
+    ("web", "us") -> 1716, ("worker", "us") -> 1647,
+  )
+
+  /** How far above its measured peak a request may sit. `-Xms` equals `-Xmx` on every deployment
+   *  here, so the heap is committed at boot and RSS barely drifts — 40% over a seven-day peak is
+   *  a generous safety factor for a footprint that does not grow into anything. */
+  private val PeakHeadroomCeiling = 1.4
+
+  // A REQUEST IS A CLAIM ON THE SCARCEST THING THIS NODE HAS, and the two ways to get one wrong
+  // point in opposite directions.
+  //
+  // UNDER the peak, and the pod spends its life above its own request. Every kinowo pod is
+  // `Burstable` — CPU is requested and never limited, which is enough to disqualify Guaranteed —
+  // and the kubelet evicts Burstable pods in order of how far past their request they have gone.
+  // A pod sized under its peak is volunteering to be the first one killed under node pressure.
+  //
+  // OVER it by too much, and the memory is reserved out of the rolling-update surge budget and
+  // then never touched. That is exactly how `worker-de` came to hold 1536Mi against a 963Mi peak
+  // while the largest web pod had 256Mi of room to roll into — a 573Mi over-ask on a node whose
+  // entire remaining headroom was smaller than that.
+  "every deployment's memory request" should "sit above its measured peak without hoarding the surge budget" in {
+    Tiers.foreach { tier =>
+      Countries.foreach { cc =>
+        val peak    = MeasuredPeakMib((tier, cc))
+        val request = requestedMib(tier, cc)
+        withClue(
+          s"$tier/$cc requests ${request}Mi against a measured ${peak}Mi peak. Below the peak the " +
+          "pod is the first thing evicted when the node comes under pressure; above " +
+          f"${PeakHeadroomCeiling}%.2fx it is holding surge budget it has never used: ") {
+          request should be >= peak
+          request.toDouble should be <= peak * PeakHeadroomCeiling
+        }
+        info(f"$tier/$cc: ${request}Mi request / ${peak}Mi peak = ${request.toDouble / peak}%.2fx")
+      }
+    }
   }
 
   /** The JAVA_OPTS a tier+country actually boots with: its overlay's where it
