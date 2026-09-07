@@ -384,13 +384,17 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
       fail(s"Read-model snapshot didn't exist — wrote $snapshotPath. Review, commit, and re-run.")
     }
     val expected = new String(Files.readAllBytes(snapshotPath), StandardCharsets.UTF_8)
+    // Compared up to film ids: an id follows which spelling of the film the parallel
+    // scrape landed first ("Takie jest życie" arrives under fourteen), and that is
+    // opaque by design — the checked-in file keeps whichever ids it was captured with.
+    def modIds(json: String) = ReadModelSnapshot.render(ReadModelSnapshot.orderIndependent(ReadModelSnapshot.parse(json)))
     withClue(
       "Read-model snapshot mismatch — the fixture page-test servers would serve stale data.\n" +
         "To regenerate after an intentional pipeline/fixture change:\n" +
         s"  rm $snapshotPath && sbt 'e2e/testOnly services.movies.FilmScheduleEndToEndSpec'\n" +
         "(also regenerate expected-*.html / expected-schedules.txt if the rendered output changed)\n"
     ) {
-      actual shouldBe expected
+      modIds(actual) shouldBe modIds(expected)
     }
   }
 
