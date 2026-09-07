@@ -109,6 +109,11 @@ each a pure extraction the landing specs pin before and after:
    `backfillEmbeddedYears` — leaving the cache the resident corpus, its index, the
    identity gate and the locks.
 
+## The read model converges without the prune
+
+The same rule one layer down: every update path must leave the read model in the state a
+settle would produce, so the prune is a no-op — see `docs/read-model-convergence.md`.
+
 ## Measuring
 
 `kinowo_worker_merges_total` / `kinowo_worker_rekeys_total` by reason, and the
