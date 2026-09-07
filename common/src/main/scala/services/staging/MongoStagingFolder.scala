@@ -333,7 +333,7 @@ class MongoStagingFolder(
         // `screenings`.
         val forStorage = record.copy(data = movieRepository.slotsForStorage(record.data))
         await(movies.replaceOne(session, Filters.eq("_id", id),
-          StoredMovieDto.fromDomain(id, StoredMovieRecord.idFor(k), forStorage, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
+          StoredMovieDto.fromDomain(id, StoredMovieRecord.keyFor(k), forStorage, Instant.now()), new ReplaceOptions().upsert(true)).toFuture())
       }
       // Delete the retired `movies` rows ONLY — never their side-collection rows.
       //

@@ -319,7 +319,7 @@ class MovieCacheSettleSpec extends AnyFlatSpec with Matchers {
       def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { retriggered += kinds; () }
     }, normalizer = titleNormalizer)
     settled.snapshot().foreach { r =>
-      val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.idFor(r.title, r.year, titleNormalizer), r.record, titleNormalizer)
+      val recovered = StoredMovieRecord.fromStorage(StoredMovieRecord.keyFor(r.title, r.year, titleNormalizer), r.record, titleNormalizer)
       rebooted.put(CacheKey(recovered.title, recovered.year, titleNormalizer), r.record)
     }
     val before = rebooted.snapshot().map(r => (r.title, r.year)).toSet

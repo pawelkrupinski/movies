@@ -1197,7 +1197,7 @@ abstract class CountryConvergenceBehaviour(
       // display title drifted is simply retitled on its next write; what must never happen
       // is two documents answering to one key — the hydrate would union them into one
       // cache entry and reconcile the pair every boot.
-      val duplicated = rows.groupBy(r => StoredMovieRecord.idFor(r.title, r.year, normalizer))
+      val duplicated = rows.groupBy(r => StoredMovieRecord.keyFor(r.title, r.year, normalizer))
         .collect { case (key, rs) if rs.sizeIs > 1 => s"$key <- ${rs.map(_.id.value).sorted.mkString(", ")}" }
         .toList.sorted
       withClue(s"${duplicated.size} key(s) are stored as several `movies` documents: " +

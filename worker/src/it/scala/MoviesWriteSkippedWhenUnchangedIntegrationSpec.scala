@@ -79,7 +79,7 @@ class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Ma
   }
 
   "an upsert that changes nothing" should "not rewrite the film's movies document" in {
-    val id     = StoredMovieRecord.idFor(title, year, titleNormalizer)
+    val id     = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     val record = recordShowing(when)
     try {
       // The film does not exist yet, so this one has to write it.

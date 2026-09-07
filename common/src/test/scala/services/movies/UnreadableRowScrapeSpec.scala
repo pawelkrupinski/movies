@@ -46,7 +46,7 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     override def findByIdChecked(id: FilmId): (Option[StoredMovieRecord], Boolean) =
       if (!readable) (None, false) else (rows.find(_.id == id), true)
     override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
-      if (!readable) (None, false) else (rows.find(_.key(normalizer) == StoredMovieRecord.idFor(key)), true)
+      if (!readable) (None, false) else (rows.find(_.key(normalizer) == StoredMovieRecord.keyFor(key)), true)
   }
 
   /** A cache whose row-update reports failure on demand — what a lost race looks like

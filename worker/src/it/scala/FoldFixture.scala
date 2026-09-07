@@ -75,7 +75,7 @@ object FoldFixture {
      *  prod's corpus is converging to and the one that makes the fold blind to the film's
      *  cinemas unless it reads them back from `movie_slots`. Returns its `_id`. */
     def seedMigratedFilm(title: String, year: Option[Int], tmdbId: Int): String = {
-      val id = StoredMovieRecord.idFor(title, year, titleNormalizer)
+      val id = StoredMovieRecord.keyFor(title, year, titleNormalizer)
       Await.result(movies.replaceOne(Filters.eq("_id", id),
         Document("_id" -> id, "tmdbId" -> tmdbId, "sourceData" -> Document(), "updatedAt" -> now),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), Timeout)

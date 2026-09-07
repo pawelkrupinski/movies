@@ -37,8 +37,8 @@ class SanitizeNeverEmptySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "give such a film a real `_id`, not a bare year" in {
-    StoredMovieRecord.idFor(whollyBanner, Some(1957), SingleCountryNormalizer.titleNormalizer) should not be "|1957"
-    StoredMovieRecord.idFor(whollyBanner, Some(1957), SingleCountryNormalizer.titleNormalizer) shouldBe s"${sanitize(whollyBanner)}|1957"
+    StoredMovieRecord.keyFor(whollyBanner, Some(1957), SingleCountryNormalizer.titleNormalizer) should not be "|1957"
+    StoredMovieRecord.keyFor(whollyBanner, Some(1957), SingleCountryNormalizer.titleNormalizer) shouldBe s"${sanitize(whollyBanner)}|1957"
   }
 
   // The fallback is the RAW title's key — deburred, lower-cased, punctuation stripped —

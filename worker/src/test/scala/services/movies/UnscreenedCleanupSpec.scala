@@ -50,7 +50,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   /** The `_id` the cleanup's delete would cascade against — the same formula
    *  `MovieCache.invalidate` → `MovieRepository.delete` keys the row by. */
   private def filmId(title: String, year: Option[Int]): String =
-    StoredMovieRecord.idFor(title, year, titleNormalizer)
+    StoredMovieRecord.keyFor(title, year, titleNormalizer)
 
   /** Production's storage shape: showtimes in `screenings`, per-cinema slots in
    *  `movie_slots`. The corroborating read has to stitch both back, so a fake wired

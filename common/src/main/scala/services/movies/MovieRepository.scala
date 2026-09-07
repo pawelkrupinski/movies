@@ -26,7 +26,7 @@ import scala.util.Try
 case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord, id: FilmId) {
   /** The row's lookup key — `sanitize(title)|year` — as stored in the document's `key`
    *  field. NOT the identity: a retitle changes it, the `id` stays. */
-  def key(normalizer: TitleNormalizer): String = StoredMovieRecord.idFor(title, year, normalizer)
+  def key(normalizer: TitleNormalizer): String = StoredMovieRecord.keyFor(title, year, normalizer)
 }
 
 object StoredMovieRecord {
@@ -37,13 +37,13 @@ object StoredMovieRecord {
   /** The lookup KEY of a `(title, year)` row: `sanitize(title)|year` — the `key` field of
    *  the document (and, for a row stored before ids existed, its `_id` too). Matches
    *  the in-memory `CacheKey` normalization (case/diacritic-folded). */
-  def idFor(title: String, year: Option[Int], normalizer: TitleNormalizer): String =
+  def keyFor(title: String, year: Option[Int], normalizer: TitleNormalizer): String =
     s"${normalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
 
   /** The same key, for a caller that already holds it. A [[CacheKey]] carries the
    *  normalised form it was BUILT with, so this needs no normalizer and cannot re-derive
    *  a different one. */
-  def idFor(k: CacheKey): String =
+  def keyFor(k: CacheKey): String =
     s"${k.normalized}|${k.year.map(_.toString).getOrElse("")}"
 
   /** Rebuild a stored row from its persisted `_id`, its `key` field (absent on a
@@ -159,7 +159,7 @@ trait MovieRepository {
    *  [[findByIdChecked]]. At most one row holds a key (the cache keeps its map by it);
    *  the default scans [[findAll]], `MongoMovieRepository` uses the `key` index. */
   def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) = {
-    val k = StoredMovieRecord.idFor(key)
+    val k = StoredMovieRecord.keyFor(key)
     (findAll().find(_.key(normalizer) == k), true)
   }
 
@@ -669,7 +669,7 @@ class MongoMovieRepository(
 
   /** Indexed lookup by the `key` field — see the trait. */
   override def findByKeyChecked(key: CacheKey): (Option[StoredMovieRecord], Boolean) =
-    findOneChecked(Filters.eq("key", StoredMovieRecord.idFor(key)), s"findByKey(${StoredMovieRecord.idFor(key)})")
+    findOneChecked(Filters.eq("key", StoredMovieRecord.keyFor(key)), s"findByKey(${StoredMovieRecord.keyFor(key)})")
 
   private def findOneChecked(filter: Bson, what: String): (Option[StoredMovieRecord], Boolean) = coll match {
     case Some(c) =>
@@ -1196,5 +1196,5 @@ class MongoMovieRepository(
   // their own row, and only one can be updated per hourly refresh tick (the
   // tick walks the deduplicated Caffeine cache).
   private def documentKey(title: String, year: Option[Int]): String =
-    StoredMovieRecord.idFor(title, year, normalizer)
+    StoredMovieRecord.keyFor(title, year, normalizer)
 }

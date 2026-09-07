@@ -61,7 +61,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
     val repository = new MongoMovieRepository(Some(db),
       screenings = Some(counting), slots = Some(new MongoSlotsRepository(Some(db))),
       normalizer = titleNormalizer)
-    val id         = StoredMovieRecord.idFor(title, year, titleNormalizer)
+    val id         = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     val record     = recordShowing(when)
     try {
       // The rows do not exist yet, so this one has to write them.

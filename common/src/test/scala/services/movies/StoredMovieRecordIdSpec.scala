@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * `StoredMovieRecord.idFor` is the one `_id` formula the repository, the change
+ * `StoredMovieRecord.keyFor` is the one lookup-key formula the repository, the change
  * stream, and the /debug live view all key rows on. The load-bearing property:
  * case- and diacritic-only variants of the same title fold to ONE id, so a
  * merge collapses them to a single row (and the live view's per-id DOM lookup
@@ -15,19 +15,19 @@ import org.scalatest.matchers.should.Matchers
  */
 class StoredMovieRecordIdSpec extends AnyFlatSpec with Matchers {
 
-  "idFor" should "be sanitize(title)|year" in {
-    StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer) shouldBe "belle|2021"
-    StoredMovieRecord.idFor("Belle", None, titleNormalizer)       shouldBe "belle|"
+  "keyFor" should "be sanitize(title)|year" in {
+    StoredMovieRecord.keyFor("Belle", Some(2021), titleNormalizer) shouldBe "belle|2021"
+    StoredMovieRecord.keyFor("Belle", None, titleNormalizer)       shouldBe "belle|"
   }
 
   it should "fold case + diacritic variants of the same title to one id" in {
-    val a = StoredMovieRecord.idFor("Tom i Jerry: Przygoda w muzeum", Some(2024), titleNormalizer)
-    val b = StoredMovieRecord.idFor("tom i jerry: przygoda w muzeum", Some(2024), titleNormalizer)
+    val a = StoredMovieRecord.keyFor("Tom i Jerry: Przygoda w muzeum", Some(2024), titleNormalizer)
+    val b = StoredMovieRecord.keyFor("tom i jerry: przygoda w muzeum", Some(2024), titleNormalizer)
     a shouldBe b
   }
 
   it should "agree with fromStorage's round-trip (the id rebuilds to the same id)" in {
-    val id      = StoredMovieRecord.idFor("Diuna", Some(2021), titleNormalizer)
+    val id      = StoredMovieRecord.keyFor("Diuna", Some(2021), titleNormalizer)
     val rebuilt = StoredMovieRecord.fromStorage(id, MovieRecord(), titleNormalizer)
     rebuilt.id.value shouldBe id
   }

@@ -48,7 +48,7 @@ class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers w
 
   private val Title = "Backfill Stitch Probe"
   private val Year  = Some(1904)
-  private val id    = StoredMovieRecord.idFor(Title, Year, titleNormalizer)
+  private val id    = StoredMovieRecord.keyFor(Title, Year, titleNormalizer)
 
   private val screeningsRepository = new MongoScreeningsRepository(Some(db))
   private val slotsRepository      = new MongoSlotsRepository(Some(db))

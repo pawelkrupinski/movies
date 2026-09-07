@@ -90,7 +90,7 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
   // that suite asserts, deleted from under it. Hence [[tools.IntegrationCorpusDatabase]].
   it should "settle its own corpus, not the database the other suites share" in {
     val neighbourTitle = "__neighbour-corpus-sentinel__"
-    val neighbours     = Seq(Some(2025), Some(2026)).map(y => StoredMovieRecord.idFor(neighbourTitle, y, titleNormalizer))
+    val neighbours     = Seq(Some(2025), Some(2026)).map(y => StoredMovieRecord.keyFor(neighbourTitle, y, titleNormalizer))
     val client = MongoClient(uri)
     // The SHARED database — deliberately not this suite's own.
     val shared = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("movies")

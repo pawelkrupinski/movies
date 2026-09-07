@@ -31,13 +31,13 @@ object FilmId {
    *  id already — the corpus index in the cache, a lookup in the fold's transaction. */
   def fresh(key: CacheKey, taken: FilmId => Boolean): FilmId =
     Iterator.from(0)
-      .map(nonce => FilmId("f" + tools.Digest.sha1Hex(StoredMovieRecord.idFor(key) + (if (nonce == 0) "" else s"#$nonce")).take(15)))
+      .map(nonce => FilmId("f" + tools.Digest.sha1Hex(StoredMovieRecord.keyFor(key) + (if (nonce == 0) "" else s"#$nonce")).take(15)))
       .dropWhile(taken)
       .next()
 
   /** The id a row created BEFORE ids existed carries: its old `_id`, which was the
    *  key. Also what an in-memory row synthesised without storage answers to. */
-  def legacy(key: CacheKey): FilmId = FilmId(StoredMovieRecord.idFor(key))
+  def legacy(key: CacheKey): FilmId = FilmId(StoredMovieRecord.keyFor(key))
   def legacy(title: String, year: Option[Int], normalizer: TitleNormalizer): FilmId =
-    FilmId(StoredMovieRecord.idFor(title, year, normalizer))
+    FilmId(StoredMovieRecord.keyFor(title, year, normalizer))
 }

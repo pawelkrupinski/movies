@@ -69,9 +69,9 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     frames should have size 1
     val message = Json.parse(frames.head.stripPrefix("data: ").trim)
     (message \ "type").as[String] shouldBe "upsert"
-    (message \ "id").as[String]   shouldBe StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer)
+    (message \ "id").as[String]   shouldBe StoredMovieRecord.keyFor("Belle", Some(2021), titleNormalizer)
     val html = (message \ "html").as[String]
-    html should include("""data-id="""" + StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer))
+    html should include("""data-id="""" + StoredMovieRecord.keyFor("Belle", Some(2021), titleNormalizer))
     html should include("Belle")
     html should include("class=\"reenrich\"") // the row's re-enrich button is present
   }
@@ -87,7 +87,7 @@ class DebugStreamControllerSpec extends AnyFlatSpec with Matchers with BeforeAnd
     frames should have size 1
     val message = Json.parse(frames.head.stripPrefix("data: ").trim)
     (message \ "type").as[String] shouldBe "delete"
-    (message \ "id").as[String]   shouldBe StoredMovieRecord.idFor("Belle", Some(2021), titleNormalizer)
+    (message \ "id").as[String]   shouldBe StoredMovieRecord.keyFor("Belle", Some(2021), titleNormalizer)
   }
 
   it should "emit nothing while the collection is idle" in {

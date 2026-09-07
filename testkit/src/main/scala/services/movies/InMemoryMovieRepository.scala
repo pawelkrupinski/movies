@@ -267,7 +267,7 @@ class InMemoryMovieRepository(
     }
   }
 
-  private def keyOf(t: String, y: Option[Int]): String = StoredMovieRecord.idFor(t, y, normalizer)
+  private def keyOf(t: String, y: Option[Int]): String = StoredMovieRecord.keyFor(t, y, normalizer)
 
   /** The id of the row stored under this key, else the key's legacy id — what an
    *  out-of-band write (a seed, a simulated Mongo edit) files a row under when no row

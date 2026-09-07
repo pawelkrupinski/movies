@@ -1149,7 +1149,7 @@ class CaffeineMovieCache(
               if (oldKey != newKey) {
                 evict(oldKey)
                 mergeMetrics.recordRekey(reason)
-                logger.info(s"retitle ${StoredMovieRecord.idFor(oldKey)} -> ${StoredMovieRecord.idFor(newKey)} ($id, $reason)")
+                logger.info(s"retitle ${StoredMovieRecord.keyFor(oldKey)} -> ${StoredMovieRecord.keyFor(newKey)} ($id, $reason)")
               }
               putAs(newKey, updated, id)
           }

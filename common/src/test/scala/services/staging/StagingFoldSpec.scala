@@ -29,7 +29,7 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
   private def settleIsANoOpAfterFold(plan: StagingFold.Plan): Unit = {
     val retriggered = scala.collection.mutable.ListBuffer.empty[Set[RetriggerKind]]
     val rows = plan.moviesUpserts.map { case (id, k, rec) =>
-      StoredMovieRecord.fromStorage(id.value, Some(StoredMovieRecord.idFor(k)), rec, titleNormalizer)
+      StoredMovieRecord.fromStorage(id.value, Some(StoredMovieRecord.keyFor(k)), rec, titleNormalizer)
     }
     val cache = new CaffeineMovieCache(repoOf(rows*), retrigger = new EnrichmentRetrigger {
       def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit = { retriggered += kinds; () }
