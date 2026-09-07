@@ -1545,50 +1545,14 @@ class CaffeineMovieCache(
       // row. Needs a differing original title CORROBORATED by runtime or year, so a
       // cinema that merely prints the Polish title in `originalTitle` — common on
       // the smaller sites — is waved through (see `MixedFilmDetector`).
-      val sameTitledRows = corpusIndex.rowsFor(norm)
-      val aDifferentFilm = staging.isDefined && sameTitledRows.nonEmpty && sameTitledRows.forall(record =>
-        MixedFilmDetector.wouldAddASecondFilm(
-          record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
-      // …or a DECORATED listing of a resolved film: the film's title runs along an edge
-      // of this one ("gb Fallen Angels by Noël Coward.", "Toddler Club: Toy Story 5").
-      // The settle's containment edge has always folded such a row onto its film; the
-      // gate asking the SAME question (`TitleContainment`, through the index) lands the
-      // slot on the film's row instead, so there is no row to fold. Without it every
-      // venue's first scrape of a chain's banner variant was a newcomer — diverted,
-      // resolved to the film already in `movies`, folded, re-keyed: 92 times in nine
-      // days for one film. The cinemas' own evidence still gets its veto, exactly as
-      // the edge gives it: a listing whose venue describes a different film is not a
-      // decoration of this one.
-      def notASecondFilm(k: CacheKey): Boolean =
-        Option(positive.getIfPresent(k)).forall(record => !MixedFilmDetector.wouldAddASecondFilm(
-          record, cm.movie.originalTitle, cm.movie.runtimeMinutes, cm.movie.releaseYear, cm.director, normalizer))
-      // A one-word film title runs along the edge of many unrelated titles ("It" →
-      // "It Ends With Us", "Her" → "Her Story"), and the veto can only refuse on
-      // evidence the listing carries. The settle's edge folds such a row only after it
-      // FAILED to resolve on its own; this gate runs before any resolution, so without
-      // evidence it asks for a two-word base and lets the listing resolve itself.
-      val listingCarriesEvidence = cm.movie.releaseYear.isDefined || cm.movie.runtimeMinutes.isDefined ||
-                                   cm.movie.originalTitle.isDefined || cm.director.nonEmpty
-      val decorationOf: Set[CacheKey] =
-        if (sameTitledRows.nonEmpty) Set.empty
-        else corpusIndex.keysDecoratedBy(TitleContainment.tokens(displayTitle),
-          minBaseTokens = if (listingCarriesEvidence) 1 else 2).filter(notASecondFilm)
-      // …or the same film under the search-title key — the settle's other cross-title
-      // edge: a Cyrillic listing ("Ваяна") romanising to the resolved Latin row, an
-      // edition whose stripped search title is the film's ("Ojczyzna - pokaz
-      // przedpremierowy"). Same veto, same ambiguity refusal, same reason: the settle
-      // would fold it a tick later, so land it now.
-      val sameSearchAs: Set[CacheKey] =
-        if (sameTitledRows.nonEmpty) Set.empty
-        else corpusIndex.keysWithSearchKey(FilmCanonicalizer.searchKey(displayTitle, normalizer)).filter(notASecondFilm)
-      val divert       = diverting && ((!corpusIndex.holdsTitle(norm) && !corpusIndex.holdsAlias(norm) &&
-                         !corpusIndex.holdsCinemaSlot(cinema, norm) && decorationOf.isEmpty && sameSearchAs.isEmpty) || aDifferentFilm)
-      // Lock on the row's NORMALISED cleanTitle — `withTitleLock` keys by
-      // `sanitize`, the SAME normalised key the TMDB stage and `rekey` acquire.
-      // Serialises every read-modify-write on the row (scrape, rekey, TMDB put)
-      // against each other so a concurrent (production-style) scrape can't race
-      // into lost cinema slots. Different films (different normalised cleanTitle)
-      // still don't contend.
+      // The corpus's answers for this listing — every question the settle would ask a
+      // tick later, asked now (see `ListingLanding`).
+      val landing = ListingLanding.ask(corpusIndex, k => Option(positive.getIfPresent(k)),
+        ListingLanding.Listing(displayTitle, cinema, cm.movie.originalTitle, cm.movie.runtimeMinutes,
+          cm.movie.releaseYear, cm.director), normalizer, diverting)
+      val sameTitledRows = landing.sameTitledRows
+      val aDifferentFilm = landing.aDifferentFilm
+      val divert         = landing.divert(diverting)
       withTitleLock(primary.cleanTitle) {
         if (divert) {
           // NEWCOMER → staging. Build the slot off this cinema's PRIOR staging
@@ -1655,10 +1619,7 @@ class CaffeineMovieCache(
               // …then the resolved film this listing decorates, ranked the way the
               // settle would rank the fold's survivor; only a listing nothing holds
               // starts a row of its own.
-              case None => keyHoldingCinemaSlot(norm)
-                .orElse(decorationOf.minByOption(canonicalRank))
-                .orElse(sameSearchAs.minByOption(canonicalRank))
-                .getOrElse(primary)
+              case None => keyHoldingCinemaSlot(norm).orElse(landing.fallbackKey).getOrElse(primary)
             }
           }
           val existingOpt   = Option(positive.getIfPresent(key))
