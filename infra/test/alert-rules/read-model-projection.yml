@@ -193,6 +193,156 @@ tests:
         exp_alerts: []
 
   # ---------------------------------------------------------------------------------------------
+  # THE HOLE THE BURST LEAVES BEHIND -- 2026-09-07 replayed at PL's real numbers. The corpus says
+  # 435 films for warszawa and the web serves 435, until 04:06Z takes it to 322 (26% short). The
+  # prune stops immediately; the SHORTFALL does not. This is the case ReadModelFilmPruneBurst
+  # cannot cover: it cleared 25 minutes in, with 84 cards still missing.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="pl",city="warszawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '435x300'
+      - series: 'kinowo_web_movies_served{country="pl",city="warszawa",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
+        values: '435x60 322x240'
+    alert_rule_test:
+      # Nothing before the loss, and nothing yet 30 minutes into it -- `for: 45m` is deliberately
+      # longer than the one prune tick the projection path calls a legitimate disagreement.
+      - eval_time: 50m
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts: []
+      - eval_time: 85m
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts: []
+      # And still lit hours later, which is the whole point: the prune ended at minute 60.
+      - eval_time: 4h
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              country: pl
+            exp_annotations:
+              summary: "pl is serving 25.98% fewer films than its corpus holds"
+              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; they have disagreed by more than 3% for 45 minutes, so cards that should be on the site are missing and their schedules with them. Unlike ReadModelFilmPruneBurst this watches the HOLE rather than the event that made it, so it stays lit until the read model is whole again -- on 2026-09-07 the burst alert cleared with 84 cards still gone. Find WHICH cards per city with `max by (city) (kinowo_worker_movies_served{country=\"pl\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"pl\",scope=\"all\"})`, then read the worker\'s `kinowo.removal-audit` log for what removed them. The known shape is a reconcile prune whose cards the boot heal then declines to re-project: the 2026-09-07 one deleted VARIANT cards (`<filmId>~<variant>`, the decorated listings like \"Poranek dla dzieci: Pucio\") while each film\'s plain card survived, and a heal that only projected rows with NO card skipped every one of them. If this is firing during a deliberate projection change, it is telling you the change has not finished landing."
+
+  # THE POST-FIX FLOOR, WHICH MUST STAY SILENT. Every country sat between 0.00% and 0.22% once the
+  # stable-film-id re-key landed on 2026-09-07T00:00Z. US at its measured floor: 30,945 corpus
+  # against 30,829 served, a gap of 116. That is 0.37% -- lag, not a hole -- and the threshold has
+  # to have room above it. (Calibrating instead on the WEEK BEFORE, when this ratio ran to a US
+  # p99 of 16%, would have sized the rule around a defect that has since been fixed.)
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="us",city="new-york",instance="kinowo-worker-us",job="kinowo-worker",scope="all"}'
+        values: '30945x300'
+      - series: 'kinowo_web_movies_served{country="us",city="new-york",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
+        values: '30829x300'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts: []
+
+  # A CENSUS THAT READS ZERO MUST NOT PAGE. `WorkerCorpusMetrics` seeds every gauge at 0 on boot
+  # and publishes nothing on a scan that could not read the whole corpus, so a restart into a
+  # failing read leaves the worker side at a genuine 0 while the web serves a full city. What
+  # makes that safe is the DIRECTION of the subtraction, not the guard: corpus minus served is
+  # -435 here, and no negative clears the threshold. Pinned because it is the case an author
+  # reaching for `clamp_min` would assume needs protecting, and it does not -- see the rule's own
+  # comment. `kinowo-corpus-census-stuck` owns the census outage itself.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="pl",city="warszawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '0x300'
+      - series: 'kinowo_web_movies_served{country="pl",city="warszawa",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
+        values: '435x300'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts: []
+
+  # THE OTHER DIRECTION, WHICH MUST PAGE AND LOUDLY: the corpus is intact and the web is serving
+  # NOTHING. The ratio is a clean 1.0 and this rule says so. TargetDown is the better alert when
+  # the tier is actually down, but the tier can serve /metrics and an empty corpus perfectly well
+  # -- a malformed read-model row emptying `web_movies` is a shape this repo has hit twice -- and
+  # then nothing else here notices. This is the case that makes it `critical`.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="pl",city="warszawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '435x300'
+      - series: 'kinowo_web_movies_served{country="pl",city="warszawa",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
+        values: '0x300'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              country: pl
+            exp_annotations:
+              summary: "pl is serving 100% fewer films than its corpus holds"
+              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; they have disagreed by more than 3% for 45 minutes, so cards that should be on the site are missing and their schedules with them. Unlike ReadModelFilmPruneBurst this watches the HOLE rather than the event that made it, so it stays lit until the read model is whole again -- on 2026-09-07 the burst alert cleared with 84 cards still gone. Find WHICH cards per city with `max by (city) (kinowo_worker_movies_served{country=\"pl\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"pl\",scope=\"all\"})`, then read the worker\'s `kinowo.removal-audit` log for what removed them. The known shape is a reconcile prune whose cards the boot heal then declines to re-project: the 2026-09-07 one deleted VARIANT cards (`<filmId>~<variant>`, the decorated listings like \"Poranek dla dzieci: Pucio\") while each film\'s plain card survived, and a heal that only projected rows with NO card skipped every one of them. If this is firing during a deliberate projection change, it is telling you the change has not finished landing."
+
+  # A REAL SHORTFALL DURING A WEB ROLLING DEPLOY, which is the case that makes `max by` matter
+  # MORE on the web side than on the worker side. The worker Deployment is `replicas: 1` /
+  # `Recreate` and never overlaps, but the WEB Deployment is `RollingUpdate` with `maxSurge: 1`,
+  # so two web pods really do publish this gauge at once, every deploy. Summed, the 322 the site
+  # is actually serving reads as 644 against a corpus of 435 -- a NEGATIVE shortfall, silently
+  # under threshold. So the un-de-duplicated form does not merely mis-report here, it MISSES a
+  # 26% hole for as long as the deploy takes, and a deploy is exactly when one is most likely.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="pl",city="warszawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '435x300'
+      - series: 'kinowo_web_movies_served{country="pl",city="warszawa",instance="kinowo-web-pl-old",job="kinowo-web",scope="all"}'
+        values: '322x300'
+      - series: 'kinowo_web_movies_served{country="pl",city="warszawa",instance="kinowo-web-pl-new",job="kinowo-web",scope="all"}'
+        values: '322x300'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              country: pl
+            exp_annotations:
+              summary: "pl is serving 25.98% fewer films than its corpus holds"
+              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; they have disagreed by more than 3% for 45 minutes, so cards that should be on the site are missing and their schedules with them. Unlike ReadModelFilmPruneBurst this watches the HOLE rather than the event that made it, so it stays lit until the read model is whole again -- on 2026-09-07 the burst alert cleared with 84 cards still gone. Find WHICH cards per city with `max by (city) (kinowo_worker_movies_served{country=\"pl\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"pl\",scope=\"all\"})`, then read the worker\'s `kinowo.removal-audit` log for what removed them. The known shape is a reconcile prune whose cards the boot heal then declines to re-project: the 2026-09-07 one deleted VARIANT cards (`<filmId>~<variant>`, the decorated listings like \"Poranek dla dzieci: Pucio\") while each film\'s plain card survived, and a heal that only projected rows with NO card skipped every one of them. If this is firing during a deliberate projection change, it is telling you the change has not finished landing."
+
+  # ONE WORKER SCRAPED TWICE must not read as the corpus doubling and the web being half short.
+  # Same relabel shape as the cases above; `max by (country, city)` on BOTH sides is what holds.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="pl",city="warszawa",instance="10.20.0.12:30900",job="kinowo-worker",scope="all"}'
+        values: '435x300'
+      - series: 'kinowo_worker_movies_served{country="pl",city="warszawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '435x300'
+      - series: 'kinowo_web_movies_served{country="pl",city="warszawa",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
+        values: '435x300'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts: []
+
+  # AND THE COMPANION: lose the WEB side and the subtraction goes silent, which is the dangerous
+  # direction -- a site serving nothing looks exactly like a site serving everything.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="pl",city="warszawa",instance="kinowo-worker-pl",job="kinowo-worker",scope="all"}'
+        values: '435x300'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ReadModelServingShortOfCorpus
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: ReadModelServedGaugesAbsent
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: ReadModelServedGaugesAbsent
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "One side of the read-model drift comparison has stopped publishing"
+              description: "Either `kinowo_worker_movies_served` or `kinowo_web_movies_served` has no series from any country, so ReadModelServingShortOfCorpus cannot fire -- its subtraction drops unmatched pairs and goes SILENT rather than loud. Whichever side is missing, the site is unwatched for cards that should be there and are not. If the WEB gauge is the one gone, check TargetDown in monitoring-self.rules first: a web tier that is down is the better alert to read. If the gauge is missing while the pod serves /metrics happily, the collector has been unwired from the tier\'s metrics registry, which TargetDown cannot see."
+
+  # ---------------------------------------------------------------------------------------------
   # THE PRUNE BURST. A 1,000-film corpus losing 8 films a minute is 480 in the increase window --
   # 48%, well past the threshold, and the shape of a backfill eating a country's read model.
   - interval: 1m

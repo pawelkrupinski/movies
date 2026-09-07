@@ -224,6 +224,94 @@ groups:
             a prune that follows rows actually vanishing is a scrape or cleanup fault.
 
       # -----------------------------------------------------------------------------------------
+      # THE SITE IS SERVING FEWER FILMS THAN THE CORPUS SAYS IT SHOULD.
+      #
+      # Every rule above watches an EVENT -- a prune rate, a projection rate, a row that will not
+      # resolve. This one watches the RESULT, and 2026-09-07 is why it has to exist separately.
+      # A boot reconcile removed ~500 PL cards at 04:06Z; ReadModelFilmPruneBurst caught the prune
+      # and cleared 25 minutes later, because the prunes had stopped. THE HOLE HAD NOT CLOSED. It
+      # was still 84 cards wide when that alert resolved, 71 four hours later, and nothing anywhere
+      # was watching it -- the film-count rules compare a city against its own recent past, which
+      # by then included the loss. An alert on the cause cannot tell you the effect is over.
+      #
+      # THE TWO GAUGES ARE BUILT TO BE SUBTRACTED, and that is not an assumption -- it is what
+      # `kinowo_worker_movies_served`'s own HELP text says it is for ("the projection-side mirror
+      # of the web's kinowo_web_movies_served, for spotting read-model drift"). Verified on prod
+      # rather than taken on trust: identical `isUpcoming` predicate in each city's own zone,
+      # identical scope split, identical city roster wired from the same source, and an identical
+      # published city count on both sides (us 468, de 158, uk 79, es 52, pl 41 -- no unmatched
+      # series in either direction). The worker counts what the corpus WOULD serve; the web counts
+      # what it IS serving. The difference is cards that should exist and do not.
+      #
+      # 3%, AND THE BACKTEST THAT NEARLY GOT THIS WRONG. Over the 7 days to 2026-09-06 this ratio
+      # sat at a US median of 4.7% and a p99 of 16.0%, against PL's 0.16% -- overlapping PL's
+      # 15.25% incident outright, which says no single threshold can work and the rule needs a
+      # per-country table with a ~25% US carve-out. That reading was wrong, and the shape of the
+      # mistake is worth keeping: THE US BASELINE WAS ITSELF THE DEFECT. The ratio decayed
+      # monotonically all week (us 18.9% -> 3.3%, uk 4.4% -> 1.8%, de 3.5% -> 0.4%) and stepped to
+      # a floor for every country at once when the stable-film-id re-key landed around
+      # 2026-09-07T00:00Z: de 0.02%, es 0.00%, pl 0.22%, uk 0.21%, us 0.08%. Those ~1,000 US cards
+      # were real ones the web was not serving -- the WEB side rose 720 to meet the worker, the
+      # worker did not fall to meet the web. Calibrating on the week would have sized this rule
+      # around a bug and permanently excused the largest country. 3% is ~14x the post-fix floor and
+      # well under half the incident it exists for.
+      #
+      # THE CALIBRATION IS THIN AND SHOULD BE REDONE. It rests on roughly six hours of post-fix
+      # baseline, taken while PL was still mid-incident. Re-run the backtest once PL has closed and
+      # tighten or loosen from a full week. The direction of the error matters more than its size:
+      # too tight pages during a projection change of ours, too loose is another four hours nobody
+      # hears about.
+      #
+      # `for: 45m` because the author of the projection path puts the legitimate disagreement at
+      # one prune tick (30 min) even across a change of theirs -- the boot heal runs before the
+      # first prune -- so anything still here at 45 minutes is a hole, not a lag.
+      #
+      # THE `and on (country)` GUARD IS DEFENSIVE SYMMETRY, NOT LOAD-BEARING -- said plainly here
+      # because the obvious reading of it is wrong. A zero census does NOT page this rule even
+      # without the guard: this numerator is corpus MINUS served, so a worker side that reads 0
+      # while the web still serves 435 gives -435, and no negative clears a `> 0.03` threshold.
+      # Measured, not reasoned: the same shape through `clamp_min(..., 1)` evaluates to -435 too.
+      # That is the opposite of ReadModelFilmPruneBurst above, whose numerator is a prune COUNT
+      # and stays positive, so a clamped denominator there really did report "pl dropped 4200% of
+      # its films". The guard is kept for the 0/0 NaN and to keep the two rules reading alike; it
+      # is not what makes a census outage safe here. The DIRECTION is.
+      - alert: ReadModelServingShortOfCorpus
+        expr: >-
+          (
+            (
+              (
+                sum by (country) (max by (country, city) (kinowo_worker_movies_served{scope="all"}))
+                - sum by (country) (max by (country, city) (kinowo_web_movies_served{scope="all"}))
+              )
+              / sum by (country) (max by (country, city) (kinowo_worker_movies_served{scope="all"}))
+            ) > 0.03
+          )
+          and on (country) (
+            sum by (country) (max by (country, city) (kinowo_worker_movies_served{scope="all"})) > 0
+          )
+        for: 45m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.country }} is serving {{ $value | humanizePercentage }} fewer films than its corpus holds"
+          description: >-
+            `kinowo_worker_movies_served{scope="all"}` is the films this country's corpus WOULD
+            serve and `kinowo_web_movies_served{scope="all"}` is what the site IS serving; they
+            have disagreed by more than 3% for 45 minutes, so cards that should be on the site are
+            missing and their schedules with them. Unlike ReadModelFilmPruneBurst this watches the
+            HOLE rather than the event that made it, so it stays lit until the read model is whole
+            again -- on 2026-09-07 the burst alert cleared with 84 cards still gone. Find WHICH
+            cards per city with
+            `max by (city) (kinowo_worker_movies_served{country="{{ $labels.country }}",scope="all"})
+            - max by (city) (kinowo_web_movies_served{country="{{ $labels.country }}",scope="all"})`,
+            then read the worker's `kinowo.removal-audit` log for what removed them. The known
+            shape is a reconcile prune whose cards the boot heal then declines to re-project: the
+            2026-09-07 one deleted VARIANT cards (`<filmId>~<variant>`, the decorated listings like
+            "Poranek dla dzieci: Pucio") while each film's plain card survived, and a heal that
+            only projected rows with NO card skipped every one of them. If this is firing during a
+            deliberate projection change, it is telling you the change has not finished landing.
+
+      # -----------------------------------------------------------------------------------------
       # THE COMPANION, in the shape mongodb.rules and cinema-scrape.rules use throughout: a rule
       # that can only fire on a series has to be paired with one that fires on the series'
       # ABSENCE, or the monitoring's own failure looks exactly like health. The rule above is
@@ -247,6 +335,34 @@ groups:
             monitoring-self.rules is also firing and is the better alert to read -- or the
             projector is no longer wired to `WorkerTaskMetrics`, which TargetDown would NOT catch
             because the pod is up and serving /metrics without this family in it.
+
+      # -----------------------------------------------------------------------------------------
+      # ITS OWN COMPANION, and it needs a separate one: ReadModelServingShortOfCorpus is a
+      # SUBTRACTION, and a binary operator drops every pair it cannot match. Lose either gauge and
+      # the rule does not report an infinite shortfall -- it reports nothing at all, which is the
+      # exact failure it was written to end. Losing the WEB side is the dangerous direction: the
+      # site serving nothing would look identical to the site serving everything.
+      #
+      # `absent()` over each metric separately so the summary names WHICH side went, and over the
+      # whole metric rather than per country, matching ReadModelProjectionMetricsAbsent above.
+      - alert: ReadModelServedGaugesAbsent
+        expr: >-
+          absent(kinowo_worker_movies_served) or absent(kinowo_web_movies_served)
+        # ONE HOUR, matching its siblings: longer than a full fleet rollout.
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "One side of the read-model drift comparison has stopped publishing"
+          description: >-
+            Either `kinowo_worker_movies_served` or `kinowo_web_movies_served` has no series from
+            any country, so ReadModelServingShortOfCorpus cannot fire -- its subtraction drops
+            unmatched pairs and goes SILENT rather than loud. Whichever side is missing, the site
+            is unwatched for cards that should be there and are not. If the WEB gauge is the one
+            gone, check TargetDown in monitoring-self.rules first: a web tier that is down is the
+            better alert to read. If the gauge is missing while the pod serves /metrics happily,
+            the collector has been unwired from the tier's metrics registry, which TargetDown
+            cannot see.
 
       # -------------------------------------------------------------------------------------------
       # TTL INDEXES THAT DO NOT MATCH THE CODE. Separate from the projection rules above and in this
