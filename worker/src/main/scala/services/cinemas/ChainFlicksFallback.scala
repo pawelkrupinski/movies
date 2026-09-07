@@ -273,7 +273,6 @@ object ChainFlicksFallback {
     OdeonCinemaActon -> "odeon-cinema-acton",
     OdeonCinemaAndover -> "odeon-cinema-andover",
     OdeonCinemaAylesbury -> "odeon-cinema-aylesbury",
-    OdeonCinemaBasingstoke -> "odeon-cinema-basingstoke",
     OdeonCinemaBath -> "odeon-cinema-bath",
     OdeonCinemaBeckenham -> "odeon-cinema-beckenham",
     OdeonCinemaBelfast -> "odeon-cinema-belfast",

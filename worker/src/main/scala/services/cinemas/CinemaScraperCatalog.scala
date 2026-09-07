@@ -1168,7 +1168,6 @@ class CinemaScraperCatalog(
     flicks("harbour-lights-picturehouse-southampton", HarbourLightsPicturehouse),
     flicks("hythe-moviola-cinema", HytheMoviolaCinema),
     flicks("no-6-cinema-portsmouth", No6CinemaPortsmouth),
-    odeon("800", OdeonCinemaBasingstoke),
     odeon("948", OdeonCinemaPortSolent),
     flicks("reel-cinema-fareham", ReelCinemaFareham),
     showcase("X0XV2", ShowcaseDeLuxSouthampton),

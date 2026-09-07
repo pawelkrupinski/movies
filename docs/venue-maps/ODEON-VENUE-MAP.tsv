@@ -1,7 +1,13 @@
 # Odeon ocapi `siteId` -> models.Cinema case object, from the live /ocapi/v1/sites
-# roster (113 venues, harvested 2026-07-27). The 11 UNMATCHED rows are Republic-
-# of-Ireland Odeon venues we don't model (no Odeon* case object). All 102 UK/NI
+# roster (112 venues, re-harvested 2026-09-07). The 11 UNMATCHED rows are Republic-
+# of-Ireland Odeon venues we don't model (no Odeon* case object). All 101 UK/NI
 # case objects matched 1:1.
+#
+# This file is the SOURCE OF TRUTH for which siteIds the catalogue may wire:
+# OdeonVenueMapSpec asserts the two agree, so a venue Odeon drops from its estate
+# fails the build instead of 400ing in production until somebody reads /uptime.
+# Site 800 (Basingstoke) was dropped on the 2026-09-07 re-harvest — the cinema
+# closed on 31 Aug 2026 and Vista now answers `Invalid site identifier 800`.
 # siteId	apiName	matchedScalaCaseObject	ourDisplayName
 017	Birmingham New Street	OdeonBirminghamNewStreet	Odeon Birmingham New Street
 019	Kilmarnock	OdeonCinemaKilmarnock	Odeon Cinema Kilmarnock
@@ -71,7 +77,6 @@
 759	Swadlincote	OdeonCinemaSwadlincote	Odeon Cinema Swadlincote
 760	Llanelli	OdeonCinemaLlanelli	Odeon Cinema Llanelli
 761	West Bromwich	OdeonCinemaWestBromwich	Odeon Cinema West Bromwich
-800	Basingstoke	OdeonCinemaBasingstoke	Odeon Cinema Basingstoke
 806	Harrogate	OdeonCinemaHarrogate	Odeon Cinema Harrogate
 824	Brighton	OdeonCinemaBrighton	Odeon Cinema Brighton
 838	Swiss Cottage	OdeonLuxeSwissCottage	Odeon Luxe Swiss Cottage

@@ -526,7 +526,6 @@ private[models] object VenueTowns {
     ("Odeon Cinema Acton", "London"),
     ("Odeon Cinema Andover", "Andover"),
     ("Odeon Cinema Aylesbury", "Aylesbury"),
-    ("Odeon Cinema Basingstoke", "Basingstoke"),
     ("Odeon Cinema Bath", "Bath"),
     ("Odeon Cinema Beckenham", "London"),
     ("Odeon Cinema Belfast", "Belfast"),

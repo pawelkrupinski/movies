@@ -3519,15 +3519,6 @@
   "lon": -0.81025
  },
  {
-  "flicksSlug": "odeon-cinema-basingstoke",
-  "cinemaObject": "OdeonCinemaBasingstoke",
-  "displayName": "Odeon Cinema Basingstoke",
-  "town": "Basingstoke",
-  "address": "Basingstoke Leisure Park, Churchill Way West, West Ham, Basingstoke RG22 6PG",
-  "lat": 51.265522,
-  "lon": -1.1185893
- },
- {
   "flicksSlug": "odeon-cinema-bath",
   "cinemaObject": "OdeonCinemaBath",
   "displayName": "Odeon Cinema Bath",

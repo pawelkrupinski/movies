@@ -37,7 +37,10 @@ import java.time.{LocalDate, ZoneId}
  */
 class OdeonClient(
   http:                HttpFetch,
-  siteId:              String,
+  // Exposed so `OdeonVenueMapSpec` can hold the wired ids against the checked-in
+  // roster in `docs/venue-maps/ODEON-VENUE-MAP.tsv` — a site Odeon retires from
+  // its estate then fails the build rather than 400ing in production unnoticed.
+  val siteId:          String,
   override val cinema: Cinema,
   authToken:           () => Option[String],
   today:               LocalDate = LocalDate.now(ZoneId.of("Europe/London"))

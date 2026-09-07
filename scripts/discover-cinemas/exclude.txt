@@ -16,3 +16,4 @@ curzon-canterbury               # Curzon Canterbury Westgate closed 2 Jul 2026 (
 curzon-cinema-sheffield         # permanently closed 29 Jun 2026 (falling admissions)
 omniplex-armagh                 # permanently closed 25 Jan 2026 (lease not renewed)
 vue-cinemas-shepherd-s-bush     # dead-slug duplicate of vue-cinemas-westfield-shepherd-s-bush (real venue, wired & green)
+odeon-cinema-basingstoke        # permanently closed 31 Aug 2026 (dropped from Odeon's own Vista estate)
