@@ -67,9 +67,10 @@ class WorkerWiringEagernessSpec extends AnyFlatSpec with Matchers {
     override lazy val taskWorker              = sentinel("taskWorker")
     override lazy val workerHeartbeat         = sentinel("workerHeartbeat")
     override lazy val livenessWatchdog        = sentinel("livenessWatchdog")
-    // Staging
+    // Staging. `stagingFolder` is not pinned: it is a constructor collaborator of
+    // `foldOnStagingEnriched`, one of the bus subscriptions construction registers,
+    // and building it is a handful of field reads (no I/O, no thread).
     override lazy val stagingHandlers         = sentinel("stagingHandlers")
-    override lazy val stagingFolder           = sentinel("stagingFolder")
     // Alerting
     override protected lazy val stagingStuckAlerter   = sentinel("stagingStuckAlerter")
     override protected lazy val filmwebDropAlerter    = sentinel("filmwebDropAlerter")

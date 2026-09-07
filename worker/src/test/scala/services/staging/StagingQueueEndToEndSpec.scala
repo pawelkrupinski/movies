@@ -34,12 +34,13 @@ class StagingQueueEndToEndSpec extends AnyFlatSpec with Matchers {
     val movies    = new InMemoryMovieRepository
     val queue     = new InMemoryTaskQueue
     val bus       = new InProcessEventBus
-    val folder    = new InMemoryStagingFolder(staging, movies)
-    // Wired the production way (see WorkerWiring): the fold returns the brand-new
-    // films it introduced, and the subscriber schedules their ratings. Here we
-    // capture the keys to prove the newcomer graduates as a promotion.
+    // Wired the production way (see WorkerWiring): the fold subscriber folds on the
+    // event and announces the brand-new films it introduced, which production
+    // turns into rating enqueues. Here we capture the keys to prove the newcomer
+    // graduates as a promotion.
     val promoted  = ListBuffer.empty[CacheKey]
-    bus.subscribe { case StagingFilmEnriched(t) => promoted ++= folder.foldGroup(t).map(_._1) }
+    bus.subscribe(new FoldOnStagingEnriched(
+      new InMemoryStagingFolder(staging, movies), staging, (key, _) => promoted += key).onStagingFilmEnriched)
 
     // A deferred-detail cinema (Helios) scrapes the film bare with a filmUrl; its
     // detail page supplies a director hint; TMDB resolves to a tmdbId but ships no

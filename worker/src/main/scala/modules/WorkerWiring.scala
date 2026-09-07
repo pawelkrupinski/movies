@@ -4,7 +4,7 @@ import org.mongodb.scala.MongoClient
 import models.Country
 import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, StagingWiring, TaskQueueWiring}
 import services.cinemas.common.CinemaClientMarkers
-import services.events.{EventBus, InProcessEventBus, StagingFilmEnriched}
+import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
 import services.{Drainable, MongoConnection, UptimeMonitor}
 import services.cadence.RatingCadence
@@ -156,21 +156,10 @@ class WorkerWiring(
   eventBus.subscribe(imdbIdResolver.onImdbIdMissing)
   // One detail enqueuer per deferred-detail cinema.
   detailEnqueuers.foreach(e => eventBus.subscribe(e.onCinemaMovieAdded))
-  // A concluded newcomer folds (group-scoped, settling as it goes) into `movies`
-  // the moment the StagingFold handler publishes. Each BRAND-NEW film the fold
-  // introduces (no pre-existing `movies` row merged in) re-publishes its resolution
-  // outcome so a TMDB-only hit kicks IMDb-id recovery, AND immediately enqueues its
-  // now-eligible rating tasks (`announceResolvedNewMovie` → `ratingEnqueuer`) so a
-  // newcomer's ratings don't wait for the reaper's next tick — a trickle, not the
-  // corpus-wide burst the reaper's cap smooths. A merge into an existing row keeps
-  // that row's ratings, so it's left untouched.
-  eventBus.subscribe { case StagingFilmEnriched(title) =>
-    // Name the group's rows so the fold reads those instead of the whole collection.
-    stagingFolder.foldGroup(title, Some(stagingRepository.findByAnchor(
-      titleNormalizer.sanitize(title)).map(_.id).toSet)).foreach { case (key, record) =>
-      movieService.announceResolvedNewMovie(key, record)
-    }
-  }
+  // A concluded newcomer folds into `movies` the moment the StagingFold handler
+  // publishes — which rows are folded and what is announced afterwards is
+  // `FoldOnStagingEnriched`'s decision (see its doc), not this root's.
+  eventBus.subscribe(foldOnStagingEnriched.onStagingFilmEnriched)
   // The reaper advances the staging chain (detail → resolve → imdb → fold) one
   // step per finished staging task, and kicks a brand-new newcomer's first step
   // the moment it's diverted into `pending_movies` — so the whole chain runs off

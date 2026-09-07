@@ -5,7 +5,8 @@ import org.scalatest.matchers.should.Matchers
 
 import models.Country
 import services.MongoConnection
-import services.events.ImdbIdMissing
+import services.events.{ImdbIdMissing, StagingFilmEnriched}
+import services.staging.FoldOnStagingEnriched
 import services.tasks.{ScrapeReaper, TaskType, UnresolvedTmdbReaper}
 import services.metrics.{PrometheusExposition, WorkerHttpMetrics}
 import tools.{ExecutionBudget, GetOnlyHttpFetch, HttpFetch, SharedExecutionBudget, TestWiring}
@@ -56,6 +57,24 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       new MongoConnection(uri = None, dbName = "unused", required = false)
     def dbNameForTest: String              = mongoDbName
     def defaultScrapeCitiesForTest: Set[String] = scrapeCitiesDefault
+  }
+
+  // The fold-on-conclusion policy lives in `FoldOnStagingEnriched` (its own spec);
+  // what the root owes is the SUBSCRIPTION. A spy stands in for the real subscriber
+  // so the assertion is exactly "publishing the event reaches it", with no fold run.
+  class FoldSpyWiring extends TestWiring {
+    val folded = scala.collection.mutable.ListBuffer.empty[String]
+    override lazy val foldOnStagingEnriched: FoldOnStagingEnriched =
+      new FoldOnStagingEnriched(stagingFolder, stagingRepository, (_, _) => ()) {
+        override def fold(title: String) = { folded += title; Seq.empty }
+      }
+  }
+
+  "Constructing WorkerWiring" should "subscribe the staging fold to StagingFilmEnriched" in {
+    val wiring = new FoldSpyWiring
+    wiring.eventBus.publish(StagingFilmEnriched("Newcomer"))
+    wiring.folded shouldBe Seq("Newcomer")
+    wiring.stop()
   }
 
   "WorkerWiring.start()" should "boot both the scrape and the enrichment cascade" in {

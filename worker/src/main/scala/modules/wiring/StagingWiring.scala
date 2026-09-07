@@ -2,7 +2,7 @@ package modules.wiring
 
 import modules.WorkerWiring
 import services.events.StagingFilmEnriched
-import services.staging.{MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
+import services.staging.{FoldOnStagingEnriched, MongoStagingFolder, MongoStagingRepository, StagingDetailHandler, StagingFoldHandler, StagingFolder, StagingReaper, StagingRepository, StagingResolveImdbIdHandler, StagingResolveTmdbHandler, StagingSteps}
 import services.tasks.TaskHandler
 import tools.Env
 
@@ -16,13 +16,20 @@ import scala.concurrent.duration.FiniteDuration
  *  every other task. `StagingSteps` holds the shared logic (detail-enrich,
  *  cache-free `resolveStagingRecord`, IMDb recovery); `StagingReaper` chains the
  *  steps (off `TaskFinished`) and is the periodic backstop. On the fold step a
- *  `StagingFilmEnriched` event drives the transactional folder, which merges the
- *  concluded film into `movies` and deletes its staging rows. */
+ *  `StagingFilmEnriched` event drives the transactional folder (through
+ *  `FoldOnStagingEnriched`, subscribed in the root), which merges the concluded
+ *  film into `movies` and deletes its staging rows. */
 trait StagingWiring { self: WorkerWiring =>
 
   lazy val stagingRepository: StagingRepository =
     new MongoStagingRepository(mongoConnection.database, normalizer = titleNormalizer)
   lazy val stagingFolder: StagingFolder = new MongoStagingFolder(mongoConnection, titleNormalizer, movieRepository)
+  // What a concluded newcomer's `StagingFilmEnriched` does: the group-scoped fold,
+  // then `announceResolvedNewMovie` for each brand-new film it introduced (resolution
+  // outcome re-published, ratings enqueued). The decision is the class's; this is
+  // only its collaborators.
+  lazy val foldOnStagingEnriched =
+    new FoldOnStagingEnriched(stagingFolder, stagingRepository, movieService.announceResolvedNewMovie)
   lazy val stagingSteps = new StagingSteps(
     stagingRepository, detailEnrichers, movieService.resolveStagingRecord, imdbIdResolver.findIdFor,
     freshnessStore, screeningTokens, clock)
