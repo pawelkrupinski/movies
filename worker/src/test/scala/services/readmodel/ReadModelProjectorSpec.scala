@@ -490,6 +490,35 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // via a fake scheduler: a live source row absent from the read model would be PROJECTED
   // by a scheduled reproject (movieUpserts size 1), but the prune re-projects nothing, so
   // running every scheduled task leaves the read model untouched.
+  "start" should "project a split row one of whose variant cards is missing" in {
+    // A row screened under two shown titles fans out into two cards. When only one
+    // of them exists at boot — a restored database, or the id scheme moving under the
+    // variant suffix — the row has no card under one of its ids and is healed whole:
+    // `filmIds` is asked per row, and a row is healed when NONE of its ids has a card,
+    // so a row with ONE surviving card is deliberately left to the change stream.
+    val (projector, repository, rm) = fixture()
+    val twoTitles = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino  -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
+      KinoMuranow -> SourceData(title = Some("Фу"), showtimes = Seq(at("2026-06-13T20:00")))))
+    repository.upsert("Foo", Some(2024), twoTitles)
+    val row = repository.findAll().head
+    val ids = ReadModelProjection.filmIds(row, titleNormalizer)
+    ids should have size 2
+
+    projector.start()                                       // nothing carded → both cards written
+    rm.movieUpserts.map(_._id).toSet shouldBe ids.toSet
+    projector.stop()
+
+    // One variant card gone: the row still has a card, so boot leaves it alone.
+    val (again, _, _) = fixture()
+    val partial = new InMemoryReadModelRepository()
+    val healer  = new ReadModelProjector(repository, partial, partial)
+    partial.upsertMovie(rm.movieUpserts.find(_._id == ids.head).get)
+    healer.start()
+    partial.movieUpserts.map(_._id) shouldBe Seq(ids.head)
+    healer.stop(); again.stop()
+  }
+
   "start" should "schedule the orphan prune but NOT a periodic reproject" in {
     val fakeScheduler = new CapturingScheduler
     val repository = new InMemoryMovieRepository()
