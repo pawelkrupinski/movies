@@ -10,7 +10,7 @@ hostnames onto two domains this project owns:
 | `showtimes-de.fly.dev` | `showtimes.cc/de` | Germany |
 | — | `showtimes.cc` | the brand front door: a country picker, Poland included |
 | `grafana.2-28-52-210.sslip.io` | `grafana.kinowo.net` | Grafana (sslip name RETIRED 2026-09-01 — see below) |
-| — (ssh tunnel to 10.20.0.11:9428) | `logs.kinowo.net` | VictoriaLogs vmui + LogsQL API (`/select` only; Caddy `basicAuth`, hash in `monitoring-1.yaml` sops) |
+| — (ssh tunnel to 10.20.0.11:9428) | `logs.kinowo.net` | VictoriaLogs vmui + LogsQL API (`/select` only; Google sign-in via `auth.kinowo.net`) |
 
 `docs/adding-a-country.md` and `docs/restoring-a-country.md` cover the country
 dimension. This file covers the HOST dimension, and exists mainly for its
@@ -28,7 +28,8 @@ ordering — several of the steps below are only safe in one sequence.
    kinowo.net        A  2.28.47.31    # k3s-worker-1 — the web pods
    www.kinowo.net    A  2.28.47.31
    grafana.kinowo.net A 128.140.49.167 # monitoring-1 — NOT the same host
-   logs.kinowo.net    A 128.140.49.167 # monitoring-1 — VictoriaLogs' own UI, behind Caddy basic auth
+   logs.kinowo.net    A 128.140.49.167 # monitoring-1 — VictoriaLogs' own UI
+   auth.kinowo.net    A 128.140.49.167 # monitoring-1 — the Google sign-in for both of the above
    showtimes.cc      A  2.28.47.31
    www.showtimes.cc  A  2.28.47.31
    uk.showtimes.cc   A  2.28.47.31    # NOT how the UK is served — see below

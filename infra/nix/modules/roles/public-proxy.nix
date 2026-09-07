@@ -5,16 +5,15 @@
 # WHAT IT PUBLISHES. Two different things on two different hosts, and the distinction is worth
 # keeping straight:
 #
-#   monitoring-1   Grafana and Headlamp, which authenticate their own users, and VictoriaLogs,
-#                  which does not. Of the three things a reverse proxy can do -- terminate TLS,
-#                  route, and authenticate -- a service with a login of its own needs only the first
-#                  two, and that is the bar Grafana and Headlamp clear. VictoriaLogs is the one
-#                  exception, published under `basicAuth` and restricted to its READ paths
-#                  (`pathUpstreams` with no `upstream`, so everything outside `/select` is a 404):
-#                  a shared password over TLS in front of a query-only surface is a smaller thing
-#                  than the same password in front of an API that can also ingest and delete.
-#                  Prometheus, Alertmanager, the k3s apiserver, node_exporter and mongod stay
-#                  private -- each of those IS an admin API, and for them the answer remains
+#   monitoring-1   Grafana, Headlamp and VictoriaLogs. Of the three things a reverse proxy can do
+#                  -- terminate TLS, route, and authenticate -- the first two are all a service
+#                  with its own login needs, which is the bar Grafana and Headlamp clear.
+#                  VictoriaLogs authenticates nobody, so the proxy does the third for it: Google,
+#                  via `requireGoogleLogin` and roles/google-sso.nix. It is still restricted to its
+#                  READ paths (`pathUpstreams` with no `upstream`, so everything outside `/select`
+#                  is a 404), because a door is not a reason to publish an API that can ingest and
+#                  delete. Prometheus, Alertmanager, the k3s apiserver, node_exporter and mongod
+#                  stay private -- each of those IS an admin API, and for them the answer remains
 #                  `ssh -N -L <port>:10.20.0.11:<port> root@<host>`, which needs no open port.
 #
 #   k3s-worker-1   the PRODUCT: kinowo.net, the showtimes.cc apex, and the per-country path
@@ -74,7 +73,7 @@ in
 
               May stay null when `pathUpstreams` is set: the vhost then publishes ONLY those
               prefixes and answers 404 to everything else. That is how a service is exposed by its
-              read paths alone -- see `basicAuth`.
+              read paths alone -- see `requireGoogleLogin`.
             '';
           };
 
@@ -84,47 +83,18 @@ in
             description = ''
               Admit only a signed-in Google account from `fleet.googleSso.allowedEmails`.
 
-              THE THIRD THING A PROXY CAN DO, done properly rather than with a shared password.
-              `basicAuth` below asks whether the request knows a string; this asks WHO is asking,
-              and the answer can be revoked for one person, carries whatever second factor the
-              account has, and is logged by Google rather than by nobody.
+              THE THIRD THING A PROXY CAN DO. This asks WHO is asking, so the answer can be
+              revoked for one person, carries whatever second factor the account has, and is
+              logged by Google rather than by nobody. It replaced a shared `basicAuth` option on
+              2026-09-07, which answered only "does this request know the string" -- that option
+              is gone rather than left beside this one, because leaving it would have invited the
+              weaker door to be reached for again.
 
               THE SIGN-IN ITSELF MUST NOT REQUIRE SIGNING IN, which is the one way this arrangement
               deadlocks: `/oauth2/*` is served by the proxy and is excluded, in written order, by
               the `route` the emission below wraps everything in. Without that `route` the exclusion
               depends on where Caddy happens to sort `forward_auth` against `handle`, and the
               symptom of losing that race is a redirect loop between the door and the doorbell.
-            '';
-          };
-
-          basicAuth = lib.mkOption {
-            type = lib.types.nullOr (lib.types.submodule {
-              options = {
-                user = lib.mkOption { type = lib.types.str; description = "The one username the vhost accepts."; };
-                passwordHashFile = lib.mkOption {
-                  type = lib.types.str;
-                  description = ''
-                    Path ON THE HOST to a file holding the bcrypt hash of the password (`caddy
-                    hash-password` or `htpasswd -nbB`), readable by caddy -- a sops-nix secret with
-                    `owner = "caddy"`. Never a store path: the hash is a credential.
-                  '';
-                };
-              };
-            });
-            default = null;
-            description = ''
-              Put a login in front of the whole vhost, for a service that has none of its own.
-
-              THIS IS THE THIRD THING A PROXY CAN DO, and the header explains why it is used
-              sparingly: it is a shared password, and it is only an acceptable boundary in front of
-              a surface that can READ and nothing else. Pair it with `pathUpstreams` and a null
-              `upstream`, so the paths that mutate the service are not published at all -- then
-              the password guards a query API, not an admin one.
-
-              The hash is read at Caddy's provision time through the `{file.<path>}` placeholder,
-              NOT baked into the Caddyfile: the Caddyfile is in the store, and the store is
-              world-readable. Reading it at provision time also means a `caddy reload` picks up a
-              rotated hash with no restart, so this stays within what auto-apply may reload.
             '';
           };
 
@@ -321,16 +291,6 @@ in
             then ''reverse_proxy ${v.upstream}''
             else ''respond 404'';
 
-          # THE LOGIN, when the vhost has one. `basic_auth` sorts AFTER `redir` in Caddy's directive
-          # order and BEFORE every `handle`, so a bare-prefix redirect answers without credentials
-          # (it reveals nothing) and nothing that reaches an upstream does. The hash is a runtime
-          # placeholder, for the reasons on the option.
-          authBlock = lib.optionalString (v.basicAuth != null) ''
-            basic_auth {
-              ${v.basicAuth.user} {file.${v.basicAuth.passwordHashFile}}
-            }
-          '';
-
           # GOOGLE, ASKED ON EVERY REQUEST THAT IS NOT THE SIGN-IN ITSELF.
           #
           # `forward_auth` sends the request's headers to oauth2-proxy's `/oauth2/auth`, which
@@ -421,7 +381,6 @@ in
         in {
         extraConfig = ''
           ${tlsBlock}
-          ${authBlock}
           ${served}
 
           # HSTS. Deliberately modest -- one week, no preload, no includeSubDomains. Preload is a
