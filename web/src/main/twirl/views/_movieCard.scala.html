@@ -5,12 +5,8 @@
   <div class="poster-wrap">
     <button type="button" class="hide-btn" title="@messages("card.hide")">✕</button>
     <a href="@FilmHref.forSlug(slug, movie.title)" style="display:block;height:100%">
-      @* `data-fallbacks` is a pipe-separated chain of poster URLs the
-         inline onerror tries when the primary 404/403s — every
-         non-primary poster we know about, in source-priority order
-         (Cinema City after Multikino, then other cinemas, then TMDB,
-         then IMDb). Shared with `_planCard` via `_moviePoster` so the
-         retry chain stays in one place. *@
+      @* Poster + its onerror fallback chain; `_moviePoster` documents the
+         `data-fallbacks` contract and is shared with the detail page. *@
       @_moviePoster(movie, posterUrl, resolved.fallbackPosterUrls)
     </a>
   </div>

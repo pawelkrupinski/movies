@@ -1932,6 +1932,72 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // The fallback chain is ~1.3 KB per poster, and the page used to carry it
+  // TWICE on every img — `data-fallbacks` (consumed as the onerror walked
+  // it) plus `data-original-fallbacks` (the pristine copy the backoff retry
+  // rewound from). Together that was 17–27% of a city page. The chain is
+  // now emitted once and never mutated; the walk keeps its place in a
+  // `data-fallback-index` cursor the retry resets.
+
+  private val fallbackChainAttributes =
+    "document.querySelectorAll('.poster-wrap img[data-original-fallbacks]').length"
+
+  it should "emit the fallback chain once per poster on the repertoire page" in {
+    onPath("/") { page =>
+      page.evalInt("document.querySelectorAll('.poster-wrap img[data-fallbacks]').length") should be > 0
+      page.evalInt(fallbackChainAttributes) shouldBe 0
+    }
+  }
+
+  it should "emit the fallback chain once on the detail-page poster" in {
+    onPath(filmTarget) { page =>
+      page.evalInt("document.querySelectorAll('.poster-img[data-fallbacks]').length") shouldBe 1
+      page.evalInt(fallbackChainAttributes) shouldBe 0
+    }
+  }
+
+  // Drives the inline onerror by hand on a detached clone of a real poster
+  // — the clone keeps the compiled handler and the `.no-poster` sibling the
+  // handler toggles — so no real network failure walks the chain underneath
+  // the assertions. The chain must survive the walk intact: it is the only
+  // copy, and the backoff retry rewinds by resetting the cursor.
+  it should "walk the chain on error, keep it intact, and rewind it on retry" in {
+    onPath("/") { page =>
+      val steps = page.evalString(
+        """(() => {
+          |  const real = document.querySelector('.poster-wrap img[data-fallbacks]');
+          |  const img = real.cloneNode(false);
+          |  const placeholder = document.createElement('div');
+          |  const wrap = document.createElement('div');
+          |  wrap.appendChild(img); wrap.appendChild(placeholder);
+          |  const onError = img.onerror;
+          |  img.onerror = null;
+          |  ['data-retry-attempt', 'data-retry-gen', 'data-fallback-index'].forEach(a => img.removeAttribute(a));
+          |  img.dataset.originalSrc = 'https://p.example/primary.jpg';
+          |  img.dataset.fallbacks = 'https://a.example/1.jpg|https://b.example/2.jpg';
+          |  img.setAttribute('src', img.dataset.originalSrc);
+          |  const steps = [];
+          |  onError.call(img); steps.push(img.getAttribute('src'));
+          |  onError.call(img); steps.push(img.getAttribute('src'));
+          |  onError.call(img); steps.push(img.style.display + '/' + placeholder.style.display + '/' + img.dataset.retryAttempt);
+          |  cancelPosterRetry(img);
+          |  restartPosterChain(img);
+          |  steps.push(img.getAttribute('src') + '/' + (img.style.display || 'shown'));
+          |  onError.call(img); steps.push(img.getAttribute('src'));
+          |  steps.push(img.getAttribute('data-fallbacks'));
+          |  return steps.join(' ');
+          |})()""".stripMargin)
+      steps shouldBe Seq(
+        "https://a.example/1.jpg",
+        "https://b.example/2.jpg",
+        "none/flex/1",
+        "https://p.example/primary.jpg?_kinowo_t=1/shown",
+        "https://a.example/1.jpg?_kinowo_t=1",
+        "https://a.example/1.jpg|https://b.example/2.jpg",
+      ).mkString(" ")
+    }
+  }
+
   // ── Image uptime tracker: origin host + primary/fallback ──────────────────
   //
   // The tracker used to post `new URL(src).host`, which is `images.weserv.nl`

@@ -1,13 +1,21 @@
 @import models.Movie
-@(movie: Movie, posterUrl: Option[String], fallbackPosterUrls: Seq[String])(implicit messages: play.api.i18n.Messages)
-@* Poster `<img>` + onerror fallback chain, factored out so both
-   `_movieCard` (wraps it in an `<a>` → /movie) and `_planCard` (no
-   wrapper — clicks toggle selection) can share the same markup and
-   keep the retry chain in one place. *@
+@(movie: Movie, posterUrl: Option[String], fallbackPosterUrls: Seq[String], aboveTheFold: Boolean = false)(implicit messages: play.api.i18n.Messages)
+@* Poster `<img>` + onerror fallback chain, shared by `_movieCard` (lazy,
+   wrapped in an `<a>` → /movie) and `_filmDetailContent` (`aboveTheFold`:
+   the one poster the detail page is about, fetched eagerly) so the retry
+   chain lives in one place.
+
+   `data-fallbacks` is the pipe-separated chain of poster URLs to try when
+   the primary 404/403s — every non-primary poster we know about, in
+   source-priority order. It is emitted ONCE and never rewritten: the
+   handler keeps its place in a `data-fallback-index` cursor, which is
+   what lets shared.js's backoff retry rewind the whole chain without a
+   second copy of it (the chain is ~1.3 KB per poster; carrying it twice
+   was a fifth of a city page). *@
 @posterUrl match {
   case Some(url) => {
     @defining(fallbackPosterUrls.map(tools.PosterProxy.proxy).mkString("|")) { fallbacks =>
-      <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" loading="lazy" decoding="async" data-original-src="@tools.PosterProxy.proxy(url)"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks" data-original-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean);if(fb.length){var g=this.dataset.retryGen||'0',u=fb.shift();this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;if(fb.length){this.dataset.fallbacks=fb.join('|')}else{this.removeAttribute('data-fallbacks')}return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
+      <img src="@tools.PosterProxy.proxy(url)" alt="@movie.title" @if(aboveTheFold){class="poster-img" fetchpriority="high"} else {loading="lazy"} decoding="async" data-original-src="@tools.PosterProxy.proxy(url)"@if(fallbacks.nonEmpty){ data-fallbacks="@fallbacks"} onerror="var fb=(this.dataset.fallbacks||'').split('|').filter(Boolean),i=+(this.dataset.fallbackIndex||0);if(i<fb.length){var g=this.dataset.retryGen||'0',u=fb[i];this.dataset.fallbackIndex=i+1;this.src=g==='0'?u:u+(u.indexOf('?')===-1?'?':'&amp;')+'_kinowo_t='+g;return}this.style.display='none';this.nextElementSibling.style.display='flex';if(typeof schedulePosterRetry==='function')schedulePosterRetry(this)">
     }
     <div class="no-poster" style="display:none">@messages("poster.missing")</div>
   }

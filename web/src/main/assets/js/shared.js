@@ -2305,13 +2305,13 @@
   function restartPosterChain(img) {
     var gen = (parseInt(img.dataset.retryGen || '0', 10)) + 1;
     img.dataset.retryGen = String(gen);
-    var original = img.dataset.originalSrc;
-    var originalFb = img.dataset.originalFallbacks || '';
-    if (originalFb) img.dataset.fallbacks = originalFb;
-    else img.removeAttribute('data-fallbacks');
+    // The chain in data-fallbacks is never consumed — the inline onerror
+    // walks it through the data-fallback-index cursor — so rewinding is
+    // just resetting the cursor.
+    delete img.dataset.fallbackIndex;
     img.style.display = '';
     img.nextElementSibling.style.display = 'none';
-    img.src = _posterCacheBust(original, gen);
+    img.src = _posterCacheBust(img.dataset.originalSrc, gen);
   }
 
   function cancelPosterRetry(img) {
