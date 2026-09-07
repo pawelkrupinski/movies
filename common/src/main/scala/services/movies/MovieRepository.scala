@@ -911,8 +911,8 @@ class MongoMovieRepository(
         // value and the next refresh will persist it.
         logger.debug(s"MovieRepository.upsert($title, $year) skipped — Mongo client closing.")
       case exception: Throwable if isDuplicateKey(exception) =>
-        logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds " +
-          s"tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document (${exception.getMessage})")
+        logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
+          s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document (${exception.getMessage})")
       case exception: Throwable =>
         logger.warn(s"MovieRepository.upsert($title, $year) failed: ${exception.getMessage}")
     }
@@ -1126,7 +1126,6 @@ class MongoMovieRepository(
     // sanitize-group read and the cache's cold lookup both filter on `key`. Idempotent
     // (only documents lacking the field) and a pipeline update, so one round trip.
     Try {
-      Await.result(coll.createIndex(Indexes.ascending("key"), new IndexOptions().background(true)).toFuture(), 10.seconds)
       val backfilled = Await.result(coll.updateMany(Filters.exists("key", false),
         Seq(org.mongodb.scala.bson.collection.immutable.Document("$set" -> org.mongodb.scala.bson.collection.immutable.Document("key" -> "$_id")))).toFuture(), 60.seconds)
       if (backfilled.getModifiedCount > 0)
@@ -1146,21 +1145,34 @@ class MongoMovieRepository(
     // row would collide on it (found by the integration suite, not production).
     // `createIndex` cannot alter an existing index's options, so a conflicting earlier
     // definition is dropped and rebuilt — the same rule `MongoTtlIndex.reconcile` follows.
+    uniqueIndex(coll, "tmdbId", new IndexOptions().unique(true).background(true)
+      .partialFilterExpression(org.mongodb.scala.bson.collection.immutable.Document(
+        "tmdbId" -> org.mongodb.scala.bson.collection.immutable.Document("$type" -> "number"))))
+    // One document per stored key: the key is the lookup identity now, and the cache
+    // refuses a second row under a key another film holds (`MovieCache.persist`); this
+    // is the store refusing the one a race lets through. Measured 2026-09-07: zero
+    // duplicate keys in any country, so the index builds clean. Every document has
+    // the field after the backfill above, so plain unique — no partial filter.
+    uniqueIndex(coll, "key", new IndexOptions().unique(true).background(true))
+  }
+
+  /** Create a unique index on `field`, rebuilding it when an earlier definition of the
+   *  same name carries different options: `createIndex` cannot alter an existing
+   *  index (IndexOptionsConflict, code 85), so the old one is dropped first — the
+   *  same rule `MongoTtlIndex.reconcile` follows. A failure is logged, never fatal:
+   *  the film store works without the index, it merely stops refusing duplicates. */
+  private def uniqueIndex(coll: MongoCollection[StoredMovieDto], field: String, options: IndexOptions): Unit =
     Try {
-      val options = new IndexOptions().unique(true).background(true)
-        .partialFilterExpression(org.mongodb.scala.bson.collection.immutable.Document(
-          "tmdbId" -> org.mongodb.scala.bson.collection.immutable.Document("$type" -> "number")))
-      def create() = Await.result(coll.createIndex(Indexes.ascending("tmdbId"), options).toFuture(), 30.seconds)
+      def create() = Await.result(coll.createIndex(Indexes.ascending(field), options).toFuture(), 30.seconds)
       Try(create()).recover {
         case exception: com.mongodb.MongoCommandException if exception.getErrorCode == 85 =>   // IndexOptionsConflict
-          Await.result(coll.dropIndex("tmdbId_1").toFuture(), 30.seconds)
+          Await.result(coll.dropIndex(s"${field}_1").toFuture(), 30.seconds)
           create()
       }.get
       ()
     }.recover {
-      case exception: Throwable => logger.warn(s"movies unique `tmdbId` index creation failed: ${exception.getMessage}")
+      case exception: Throwable => logger.warn(s"movies unique `$field` index creation failed: ${exception.getMessage}")
     }
-  }
 
   /** Mongo's duplicate-key error — a second document claiming a tmdbId the unique index
    *  already holds. */

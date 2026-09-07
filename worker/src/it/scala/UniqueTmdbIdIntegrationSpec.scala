@@ -45,4 +45,25 @@ class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers {
         repository.findAll().count(_.record.tmdbId.isEmpty) shouldBe 2
       } finally repository.close()
     }
+
+  // The stored key is the lookup identity (see `FilmId`): one document per key, the
+  // cache refuses a second at write time and the store refuses the one a race lets by.
+  it should "refuse a second document under a key another film already holds" in
+    tools.IntegrationCorpusDatabase.withDatabase(uri, "unique-key") { db =>
+      val repository = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
+      try {
+        repository.enabled shouldBe true
+        val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), 10.seconds)
+        withClue(s"indexes: ${indexes.map(_.toJson())}\n") {
+          indexes.exists(i => i.get("key").exists(_.asDocument().containsKey("key")) &&
+                              i.get("unique").exists(_.asBoolean().getValue)) shouldBe true
+        }
+        val key = CacheKey("__unique-key-probe__", Some(2026), titleNormalizer)
+        repository.upsert(FilmId("f-first"),  key, MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](Multikino -> SourceData(title = Some("__unique-key-probe__")))))
+        repository.upsert(FilmId("f-second"), key, MovieRecord(tmdbId = Some(2), data = Map[Source, SourceData](Multikino -> SourceData(title = Some("__unique-key-probe__")))))
+
+        val stored = repository.findAll()
+        withClue(s"stored: ${stored.map(r => (r.id, r.storedKey))}\n")(stored.map(_.id) shouldBe Seq(FilmId("f-first")))
+      } finally repository.close()
+    }
 }
