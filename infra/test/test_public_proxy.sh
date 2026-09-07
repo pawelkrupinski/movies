@@ -39,11 +39,24 @@ fi
 
 # `type -P` and NOT `command -v`, which also finds shell FUNCTIONS -- so the obvious spelling of
 # this helper reports itself as already on PATH and then fails to exec.
-if caddy_bin="$(type -P caddy)"; then caddy_cmd=("$caddy_bin")
-else caddy_cmd=(nix "${nix_flags[@]}" shell 'nixpkgs#caddy' -c caddy); fi
+#
+# THE BINARY IS RESOLVED NOW, NOT WHEN THE SERVER IS STARTED. `nix shell` evaluates before it
+# execs, and on a cold store that is slow -- so a `caddy_cmd` with nix still in it would spend the
+# readiness window below fetching rather than listening, and every case in this file would then
+# answer 000 with an EMPTY caddy.log, because nothing had got as far as writing one. That is a
+# green laptop and a red CI, and it is what happened on 2026-09-07.
+if caddy_bin="$(type -P caddy)"; then :
+else
+  echo "==> fetching caddy (not on PATH)"
+  caddy_bin="$(nix "${nix_flags[@]}" build --no-link --print-out-paths 'nixpkgs#caddy' 2>/dev/null)/bin/caddy"
+fi
+if [ ! -x "$caddy_bin" ]; then
+  echo "  FAILED could not find a caddy binary to run"; exit 1
+fi
+caddy_cmd=("$caddy_bin")
 
 work="$(mktemp -d)"
-trap 'kill %1 %2 2>/dev/null; wait 2>/dev/null; rm -rf "$work"' EXIT
+trap 'kill %1 2>/dev/null; wait 2>/dev/null; rm -rf "$work"' EXIT
 
 echo "==> rendering showtimes.cc's vhost out of k3s-worker-1"
 vhost="$(nix "${nix_flags[@]}" eval --raw \
@@ -90,17 +103,56 @@ case "$logs_vhost" in
   *) echo "  ok  ...and no shared password is left beside it" ;;
 esac
 
+# THE STAND-IN FOR oauth2-proxy, AS A SITE IN THE SAME FILE RATHER THAN A SECOND PROCESS.
+#
+# It plays both halves of what `forward_auth` consumes: 202 when the request carries
+# `X-Test-Session`, 401 when it does not.
+#
+# ONE PROCESS, because a second server here first appeared as a CI-only failure where EVERY case in
+# this file answered 000 -- the throttle ones included, which have nothing to do with the login --
+# with an empty `caddy.log`, i.e. nothing had started. The precise mechanism was never pinned down:
+# it did not reproduce on a laptop even with caddy off PATH, which points at the cold nix store a
+# runner has and a warm one not being the same thing at all. So this does not rely on having
+# diagnosed it. There is one server, its binary is resolved before the clock starts (see the top of
+# the file), and if it is not listening the run says SO rather than blaming twenty-five rules.
+stub_port=4180
+stub_site='
+handle /oauth2/auth {
+  @signedIn header X-Test-Session yes
+  handle @signedIn {
+    respond 202
+  }
+  respond 401
+}
+handle /oauth2/* {
+  respond "OAUTH2PROXY-PAGE" 200
+}
+'
+
 # `auto_https off` and a plain port, because the rule under test is about matching, not TLS -- and
 # a test that had to obtain a certificate could not run offline.
 { echo "{ auto_https off"; echo "  admin off"; echo "}"
   echo ":$port {"; echo "$vhost"; echo "}"
-  echo ":$logs_port {"; echo "$logs_vhost"; echo "}"; } > "$work/Caddyfile"
+  echo ":$logs_port {"; echo "$logs_vhost"; echo "}"
+  echo ":$stub_port {"; echo "$stub_site"; echo "}"; } > "$work/Caddyfile"
 
 "${caddy_cmd[@]}" run --config "$work/Caddyfile" --adapter caddyfile >"$work/caddy.log" 2>&1 &
-for _ in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:$port/" && break
+# AND IF IT NEVER COMES UP, SAY THAT AND STOP. Without this the run continues into every case in
+# the file, each reporting `000`, and the output then describes twenty-five broken rules rather
+# than one server that is not listening -- which is slower to read and much slower to believe. The
+# window is generous because it costs nothing when the server is healthy: the loop exits on the
+# first successful connection.
+serving=0
+for _ in $(seq 1 150); do
+  if curl -s -o /dev/null "http://127.0.0.1:$port/"; then serving=1; break; fi
   sleep 0.2
 done
+if [ "$serving" != 1 ]; then
+  echo "  FAILED caddy never listened on 127.0.0.1:$port, so nothing below was actually tested."
+  echo "         caddy log:"; sed 's/^/           /' "$work/caddy.log" | tail -20
+  echo "         config:";    sed 's/^/           /' "$work/Caddyfile" | head -20
+  exit 1
+fi
 
 META='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 (compatible; meta-externalagent/1.1 (+https://developers.facebook.com/docs/sharing/webmasters/crawler))'
 PREVIEW='facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'
@@ -157,30 +209,6 @@ logs_check() { # <expected status> <curl auth args or -> <path> <what it proves>
 #
 # And with a session in hand, the path restrictions must still hold: signing in buys READING the
 # logs, never writing or erasing them.
-cat > "$work/StubAuth" <<STUB
-{
-	auto_https off
-	admin off
-}
-:4180 {
-	handle /oauth2/auth {
-		@signedIn header X-Test-Session yes
-		handle @signedIn {
-			respond 202
-		}
-		respond 401
-	}
-	handle /oauth2/* {
-		respond "OAUTH2PROXY-PAGE" 200
-	}
-}
-STUB
-"${caddy_cmd[@]}" run --config "$work/StubAuth" --adapter caddyfile >"$work/stub.log" 2>&1 &
-for _ in $(seq 1 50); do
-  curl -s -o /dev/null "http://127.0.0.1:4180/oauth2/x" && break
-  sleep 0.2
-done
-
 logs_check() { # <expected status> <"in"|"out"> <path> <what it proves>
   local want="$1" session="$2" path="$3" why="$4" got
   if [ "$session" = "in" ]; then
