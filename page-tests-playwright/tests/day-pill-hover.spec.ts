@@ -11,6 +11,11 @@ import { gotoAndWaitForCards } from './helpers';
 const HOVER_BLUE = 'rgb(58, 58, 110)';   // #3a3a6e — the dark hover background
 
 test('day-pill hover styling applies only to hover-capable (non-touch) pointers', async ({ page }) => {
+  // `?date=anytime` is the WHOLE repertoire in one document. On a contended CI
+  // runner a WebKit phone profile spent 35s just reaching DOMContentLoaded on it
+  // (webkit-iphone-se, 2026-09-07) and tripped the 30s budget before the first
+  // assertion — the same shape `filtry-cinemas` marks slow for.
+  test.slow();
   await gotoAndWaitForCards(page, '/poznan/?date=anytime');
 
   const hoverCapable = await page.evaluate(() =>
