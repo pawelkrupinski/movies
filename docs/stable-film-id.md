@@ -63,17 +63,21 @@ rest is the key itself.
 
 ## Phases
 
-1. `FilmId` + `key` field; repository addressed by id; `rekey` stops moving
-   side rows; staging fold plans by id. Legacy ids preserved, boot backfill of
-   `key`. (this document's commit series)
-2. `tmdbId` unique sparse index on `movies` — the write-time fold already
-   merges a duplicate; the index is the safety net.
-3. Read model `_id` = `FilmId` (`ReadModelProjection.filmId` today re-derives
-   `sanitize(title)|resolvedYear`). Insert-then-prune on the reconcile, and a
-   whole-corpus reprojection on deploy.
-4. Delete what this displaced: the hydrate-time orphan reap, `applyDelete`'s
-   id→key search, the determinism specs that pin key moves, `RekeyReason`
-   metrics become retitle counts.
+1. DONE (743dd9f37) `FilmId` + `key` field; repository addressed by id; `rekey`
+   stops moving side rows; staging fold plans by id. Legacy ids preserved, boot
+   backfill of `key`.
+2. DONE `tmdbId` unique sparse index on `movies` — the write-time fold already
+   merges a duplicate; the index refuses the one a race lets through, and
+   `upsert` logs the refusal (the film keeps its previous document).
+3. DONE Read model `_id` = `FilmId`; a split variant is `<FilmId>~<variant>`.
+   `ReadModelProjector.start` re-projects the whole corpus before the first
+   prune when a majority of cards carry ids the source does not know (the
+   scheme change, or a restored database), so the site never goes blank.
+4. Landing-time gaps the settle-vs-scrape inventory named, closed one shared
+   predicate at a time: `TitleContainment` (decorations), then
+   `FilmCanonicalizer.searchKey` (the romanised search-title edge) asked through
+   `CorpusIndex.keysWithSearchKey`. Still settle-only: the imdbId fold of two
+   TMDB records (one pair on prod), the ±2-year attach (landing is ±1).
 
 ## Measuring
 

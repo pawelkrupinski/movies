@@ -899,6 +899,9 @@ class MongoMovieRepository(
         // was still mid-write. Harmless: the in-memory cache already has the
         // value and the next refresh will persist it.
         logger.debug(s"MovieRepository.upsert($title, $year) skipped — Mongo client closing.")
+      case exception: Throwable if isDuplicateKey(exception) =>
+        logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds " +
+          s"tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document (${exception.getMessage})")
       case exception: Throwable =>
         logger.warn(s"MovieRepository.upsert($title, $year) failed: ${exception.getMessage}")
     }
@@ -1118,7 +1121,39 @@ class MongoMovieRepository(
     }.recover {
       case exception: Throwable => logger.warn(s"movies `key` index/backfill failed: ${exception.getMessage}")
     }
+    // One document per film: `tmdbId` unique over the documents that HAVE one. The
+    // write-time fold (`MovieCache.put`) already merges a duplicate before it is written;
+    // this is the store refusing the one that slips past a race, so the settle never has
+    // a same-tmdbId pair to merge. A refused write is logged by `upsert` and the film
+    // keeps its previous document until the next scrape writes it again. Measured
+    // 2026-09-06: zero duplicate tmdbIds in any country, so the index builds clean.
+    //
+    // PARTIAL on `tmdbId` being a number, not SPARSE: the codec writes an absent option
+    // as `tmdbId: null`, and a sparse index indexes null as a value — every unresolved
+    // row would collide on it (found by the integration suite, not production).
+    // `createIndex` cannot alter an existing index's options, so a conflicting earlier
+    // definition is dropped and rebuilt — the same rule `MongoTtlIndex.reconcile` follows.
+    Try {
+      val options = new IndexOptions().unique(true).background(true)
+        .partialFilterExpression(org.mongodb.scala.bson.collection.immutable.Document(
+          "tmdbId" -> org.mongodb.scala.bson.collection.immutable.Document("$type" -> "number")))
+      def create() = Await.result(coll.createIndex(Indexes.ascending("tmdbId"), options).toFuture(), 30.seconds)
+      Try(create()).recover {
+        case exception: com.mongodb.MongoCommandException if exception.getErrorCode == 85 =>   // IndexOptionsConflict
+          Await.result(coll.dropIndex("tmdbId_1").toFuture(), 30.seconds)
+          create()
+      }.get
+      ()
+    }.recover {
+      case exception: Throwable => logger.warn(s"movies unique `tmdbId` index creation failed: ${exception.getMessage}")
+    }
   }
+
+  /** Mongo's duplicate-key error — a second document claiming a tmdbId the unique index
+   *  already holds. */
+  private def isDuplicateKey(exception: Throwable): Boolean =
+    exception.isInstanceOf[com.mongodb.MongoWriteException] &&
+      exception.asInstanceOf[com.mongodb.MongoWriteException].getError.getCategory == com.mongodb.ErrorCategory.DUPLICATE_KEY
 
   private def init(): (Option[MongoClient], Option[MongoDatabase], Option[MongoCollection[StoredMovieDto]]) =
     Env.get("MONGODB_URI") match {

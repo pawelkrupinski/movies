@@ -95,9 +95,10 @@ class RekeyScreeningsIntegrationSpec extends AnyFlatSpec with Matchers {
     // The SHARED database — deliberately not this suite's own.
     val shared = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).getCollection("movies")
     try {
-      // Two year-variants of one film under a single tmdbId: the shape a settle collapses.
+      // Two unresolved year-variants of one title: the ±1-year shape a settle collapses.
+      // (Not one tmdbId twice — the store's unique `tmdbId` index refuses that now.)
       neighbours.foreach(id => Await.result(shared.replaceOne(Filters.eq("_id", id),
-        org.mongodb.scala.Document("_id" -> id, "tmdbId" -> 9913,
+        org.mongodb.scala.Document("_id" -> id, "key" -> id,
           "sourceData" -> org.mongodb.scala.Document(),
           "updatedAt" -> java.util.Date.from(java.time.Instant.now())),
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), 10.seconds))
