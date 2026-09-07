@@ -149,6 +149,45 @@ in
       description = "Grafana's own default. Kept in step with fleet.prometheus.grafanaPort by an assertion there.";
     };
 
+    proxyAuth = lib.mkOption {
+      type = lib.types.nullOr (lib.types.submodule {
+        options = {
+          enable = lib.mkEnableOption "trusting a front proxy to say who the visitor is";
+          headerName = lib.mkOption {
+            type = lib.types.str;
+            default = "X-Auth-Request-Email";
+            description = "The header the proxy puts the verified address in.";
+          };
+          whitelist = lib.mkOption {
+            type = lib.types.str;
+            description = ''
+              The ONE address that header is believed from.
+
+              ⚠️ THIS IS THE WHOLE SECURITY OF THE ARRANGEMENT. `auth.proxy` makes an ordinary
+              request header into an identity, so anything able to reach Grafana's port can BE
+              anyone by claiming to be them -- and this host's port is on the private subnet, which
+              includes every pod k3s will ever schedule on these two machines. Naming the proxy's
+              own address is what turns "anyone on the network" into "the process in front".
+            '';
+          };
+        };
+      });
+      default = null;
+      description = ''
+        Accept an identity established by the reverse proxy instead of asking for a password.
+
+        FOR THE CASE WHERE THE PROXY ALREADY CHECKED, and only that case: roles/google-sso.nix puts
+        a Google sign-in in front of this vhost, so by the time a request arrives here the visitor
+        has proven who they are to Google and been matched against an allow-list. A second login
+        would be asking a question that has been answered.
+
+        THE ADMIN PASSWORD KEEPS WORKING. `auth.proxy` adds a way in, it does not remove the
+        existing one -- which matters because the front door is now something that can break
+        independently of Grafana, and `adminPasswordFile` is what gets a person in over an ssh
+        tunnel when it does.
+      '';
+    };
+
     rootUrl = lib.mkOption {
       type = lib.types.str;
       default = "http://monitoring-1.kinowo.internal:3000";
@@ -289,6 +328,23 @@ in
         };
         "auth.anonymous".enabled = false;
         users.allow_sign_up = false;
+
+        # SEE `proxyAuth`. `auto_sign_up` is what makes the first visit work at all: the account
+        # does not exist in Grafana's sqlite until somebody arrives, and without this the sign-in
+        # succeeds and lands on "user not found". `sync_ttl` is how long a session is taken on
+        # trust before the header is read again.
+      }
+      // lib.optionalAttrs (cfg.proxyAuth != null && cfg.proxyAuth.enable) {
+        "auth.proxy" = {
+          enabled = true;
+          header_name = cfg.proxyAuth.headerName;
+          header_property = "email";
+          auto_sign_up = true;
+          sync_ttl = 60;
+          whitelist = cfg.proxyAuth.whitelist;
+        };
+      }
+      // {
 
         server = {
           http_addr = cfg.listenAddress;

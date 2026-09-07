@@ -43,7 +43,7 @@ if caddy_bin="$(type -P caddy)"; then caddy_cmd=("$caddy_bin")
 else caddy_cmd=(nix "${nix_flags[@]}" shell 'nixpkgs#caddy' -c caddy); fi
 
 work="$(mktemp -d)"
-trap 'kill %1 2>/dev/null; wait 2>/dev/null; rm -rf "$work"' EXIT
+trap 'kill %1 %2 2>/dev/null; wait 2>/dev/null; rm -rf "$work"' EXIT
 
 echo "==> rendering showtimes.cc's vhost out of k3s-worker-1"
 vhost="$(nix "${nix_flags[@]}" eval --raw \
@@ -78,16 +78,17 @@ if [ -z "$logs_vhost" ]; then
   echo "  FAILED could not evaluate the vhost:"; sed 's/^/    /' "$work/eval.err" | tail -5; exit 1
 fi
 
-# THE HASH FILE IS A sops SECRET UNDER /run/secrets ON THE HOST, so it is asserted for and then
-# pointed at a hash of a password this test knows. The `{file.…}` placeholder is what is under
-# test as much as the directive: it is how the hash stays out of the store, and it is read at
-# provision time by THIS caddy, so a placeholder that Caddy stopped honouring would fail here.
+# THE DOOR IS GOOGLE'S, NOT A SHARED PASSWORD. Asserted on the rendered vhost so that a change
+# which quietly drops the check -- or reverts it to `basic_auth` -- fails here rather than being
+# noticed by nobody.
 case "$logs_vhost" in
-  *"basic_auth"*"{file./run/secrets/"*) echo "  ok  the vhost has a login whose hash is read from a secret file" ;;
-  *) echo "  FAILED expected basic_auth with a {file./run/secrets/…} hash in logs.kinowo.net's vhost"; failed=1 ;;
+  *"forward_auth"*) echo "  ok  the vhost asks a sign-in proxy who the visitor is" ;;
+  *) echo "  FAILED expected a forward_auth in logs.kinowo.net's vhost"; failed=1 ;;
 esac
-"${caddy_cmd[@]}" hash-password --plaintext 'open-sesame' > "$work/hash"
-logs_vhost="$(printf '%s\n' "$logs_vhost" | sed "s#{file\./run/secrets/[^}]*}#{file.$work/hash}#")"
+case "$logs_vhost" in
+  *"basic_auth"*) echo "  FAILED logs.kinowo.net still carries a shared password"; failed=1 ;;
+  *) echo "  ok  ...and no shared password is left beside it" ;;
+esac
 
 # `auto_https off` and a plain port, because the rule under test is about matching, not TLS -- and
 # a test that had to obtain a certificate could not run offline.
@@ -138,23 +139,92 @@ logs_check() { # <expected status> <curl auth args or -> <path> <what it proves>
   else printf '  FAILED %s\n         %s -> %s, wanted %s\n' "$why" "$path" "$got" "$want"; failed=1; fi
 }
 
-echo "==> what logs.kinowo.net answers"
-logs_check 401 -                    "/select/vmui/"            "no credentials: the UI is not served"
-logs_check 401 "pawel:wrong"        "/select/vmui/"            "a wrong password is a 401, not a 502"
-logs_check 401 "someone:open-sesame" "/select/vmui/"           "the right password under another name is still a 401"
-logs_check 502 "pawel:open-sesame"  "/select/vmui/"            "the right credentials reach VictoriaLogs (502: no store on this laptop)"
-logs_check 502 "pawel:open-sesame"  "/select/logsql/query?query=*" "...and so does the query API the UI calls"
-logs_check 404 "pawel:open-sesame"  "/insert/jsonline"         "ingest is NOT published, even authenticated"
-logs_check 404 "pawel:open-sesame"  "/delete/run_task"         "deletion is NOT published, even authenticated"
-logs_check 404 "pawel:open-sesame"  "/metrics"                 "the store's own metrics stay private"
-logs_check 404 "pawel:open-sesame"  "/internal/force_flush"    "...and its internal endpoints"
-logs_check 401 -                    "/insert/jsonline"         "an unpublished path still asks for a login first, so it cannot be enumerated"
+# ------------------------------------------------------------------------------------------------
+# THE GOOGLE DOOR, AND THE TWO WAYS IT GOES WRONG WITHOUT LOOKING WRONG
+# ------------------------------------------------------------------------------------------------
+#
+# oauth2-proxy is STOOD IN FOR rather than run, because what is under test is Caddy's arrangement of
+# the check and not Google's answer to it. The stub plays both parts a session can be in: it says
+# 202 when the request carries `X-Test-Session`, and 401 when it does not, which is exactly the
+# contract `forward_auth` consumes. That is enough to tell apart:
+#
+#   1. THE LOOP. If the check also covered `/oauth2/*`, the redirect it issues would point at a
+#      path that is itself redirected, and a browser would bounce between the door and the doorbell
+#      until it gave up. The `route` wrapper in roles/public-proxy.nix is what prevents that, and
+#      it CANNOT be seen in the rendered config -- it is a property of Caddy's directive order.
+#   2. THE DEAD END. A bare 401 is a correct answer and a useless one for a person; the point is to
+#      be sent to Google with the page you wanted preserved, so you arrive back at it.
+#
+# And with a session in hand, the path restrictions must still hold: signing in buys READING the
+# logs, never writing or erasing them.
+cat > "$work/StubAuth" <<STUB
+{
+	auto_https off
+	admin off
+}
+:4180 {
+	handle /oauth2/auth {
+		@signedIn header X-Test-Session yes
+		handle @signedIn {
+			respond 202
+		}
+		respond 401
+	}
+	handle /oauth2/* {
+		respond "OAUTH2PROXY-PAGE" 200
+	}
+}
+STUB
+"${caddy_cmd[@]}" run --config "$work/StubAuth" --adapter caddyfile >"$work/stub.log" 2>&1 &
+for _ in $(seq 1 50); do
+  curl -s -o /dev/null "http://127.0.0.1:4180/oauth2/x" && break
+  sleep 0.2
+done
 
-echo "==> where the bare paths go"
-loc="$(curl -s -o /dev/null -D - "http://127.0.0.1:$logs_port/" | tr -d '\r' | awk -F': ' '/^[Ll]ocation/{print $2}')"
+logs_check() { # <expected status> <"in"|"out"> <path> <what it proves>
+  local want="$1" session="$2" path="$3" why="$4" got
+  if [ "$session" = "in" ]; then
+    got="$(curl -s -o /dev/null -H "X-Test-Session: yes" -w '%{http_code}' "http://127.0.0.1:$logs_port$path")"
+  else
+    got="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$logs_port$path")"
+  fi
+  if [ "$got" = "$want" ]; then printf '  ok  %s\n' "$why"
+  else printf '  FAILED %s\n         %s -> %s, wanted %s\n' "$why" "$path" "$got" "$want"; failed=1; fi
+}
+
+echo "==> with no Google session"
+logs_check 302 out "/select/vmui/" "the UI is not served, you are sent to sign in"
+logs_check 302 out "/"             "...and so is the bare root"
+logs_check 302 out "/insert/jsonline" "an unpublished path asks for a login FIRST, so it cannot be enumerated"
+
+loc="$(curl -s -o /dev/null -D - "http://127.0.0.1:$logs_port/select/vmui/" | tr -d '\r' | awk -F': ' '/^[Ll]ocation/{print $2}')"
+case "$loc" in
+  */oauth2/start*rd=*) echo "  ok  the redirect carries the page you asked for, so you land back on it" ;;
+  *) echo "  FAILED sign-in redirect was '$loc', wanted /oauth2/start with an rd="; failed=1 ;;
+esac
+
+echo "==> the sign-in flow is NOT itself behind the check"
+logs_check 200 out "/oauth2/start"    "the door does not require having gone through the door"
+logs_check 200 out "/oauth2/callback" "...and neither does the callback Google returns to"
+if [ "$(curl -s --max-time 5 "http://127.0.0.1:$logs_port/oauth2/start")" = "OAUTH2PROXY-PAGE" ]; then
+  echo "  ok  /oauth2/* reaches the sign-in proxy, not the store behind it"
+else
+  echo "  FAILED /oauth2/start did not reach the proxy"; failed=1
+fi
+
+echo "==> signed in, what the session actually buys"
+logs_check 502 in "/select/vmui/"             "the UI is reached (502: no store on this laptop)"
+logs_check 502 in "/select/logsql/query?query=*" "...and so is the query API the UI calls"
+logs_check 404 in "/insert/jsonline"          "ingest is NOT published, even signed in"
+logs_check 404 in "/delete/run_task"          "deletion is NOT published, even signed in"
+logs_check 404 in "/metrics"                  "the store's own metrics stay private"
+logs_check 404 in "/internal/force_flush"     "...and its internal endpoints"
+
+echo "==> where the bare paths go, once you are through the door"
+loc="$(curl -s -o /dev/null -D - -H "X-Test-Session: yes" "http://127.0.0.1:$logs_port/" | tr -d '\r' | awk -F': ' '/^[Ll]ocation/{print $2}')"
 if [ "$loc" = "/select/vmui/" ]; then echo "  ok  / redirects to the UI"
 else echo "  FAILED / redirected to '$loc', wanted /select/vmui/"; failed=1; fi
-loc="$(curl -s -o /dev/null -D - "http://127.0.0.1:$logs_port/select" | tr -d '\r' | awk -F': ' '/^[Ll]ocation/{print $2}')"
+loc="$(curl -s -o /dev/null -D - -H "X-Test-Session: yes" "http://127.0.0.1:$logs_port/select" | tr -d '\r' | awk -F': ' '/^[Ll]ocation/{print $2}')"
 if [ "$loc" = "/select/" ]; then echo "  ok  /select without its slash is redirected, not 404'd"
 else echo "  FAILED /select redirected to '$loc', wanted /select/"; failed=1; fi
 

@@ -34,6 +34,14 @@
 
 let
   cfg = config.fleet.publicProxy;
+
+  # READ OFF THE SSO ROLE RATHER THAN REPEATED HERE, so the port and the prefix have one home. A
+  # vhost that asks for `requireGoogleLogin` on a host where that role is off is caught by the
+  # assertion below rather than by a 502 at the door.
+  googleSso = {
+    listenAddress = config.fleet.googleSso.listenAddress;
+    proxyPrefix = "/oauth2";
+  };
 in
 {
   options.fleet.publicProxy = {
@@ -67,6 +75,25 @@ in
               May stay null when `pathUpstreams` is set: the vhost then publishes ONLY those
               prefixes and answers 404 to everything else. That is how a service is exposed by its
               read paths alone -- see `basicAuth`.
+            '';
+          };
+
+          requireGoogleLogin = lib.mkOption {
+            type = lib.types.bool;
+            default = false;
+            description = ''
+              Admit only a signed-in Google account from `fleet.googleSso.allowedEmails`.
+
+              THE THIRD THING A PROXY CAN DO, done properly rather than with a shared password.
+              `basicAuth` below asks whether the request knows a string; this asks WHO is asking,
+              and the answer can be revoked for one person, carries whatever second factor the
+              account has, and is logged by Google rather than by nobody.
+
+              THE SIGN-IN ITSELF MUST NOT REQUIRE SIGNING IN, which is the one way this arrangement
+              deadlocks: `/oauth2/*` is served by the proxy and is excluded, in written order, by
+              the `route` the emission below wraps everything in. Without that `route` the exclusion
+              depends on where Caddy happens to sort `forward_auth` against `handle`, and the
+              symptom of losing that race is a redirect loop between the door and the doorbell.
             '';
           };
 
@@ -252,6 +279,16 @@ in
       assertion = !(v.upstream != null && v.redirectTo != null)
         && (v.upstream != null || v.redirectTo != null || v.pathUpstreams != { });
       message = "fleet.publicProxy.vhosts.\"${host}\" must set `upstream`, `redirectTo`, or at least one `pathUpstreams` entry -- and never both `upstream` and `redirectTo`.";
+    }) cfg.vhosts
+    ++ lib.mapAttrsToList (host: v: {
+      # A vhost cannot ask for a door this host is not running. Without this the emission is
+      # syntactically fine and every request to that name gets a 502 from a `forward_auth` pointed
+      # at a port with nothing behind it -- which reads as "the app is down", not "the login is".
+      assertion = !v.requireGoogleLogin || config.fleet.googleSso.enable;
+      message = ''
+        fleet.publicProxy.vhosts."${host}" sets `requireGoogleLogin`, but this host does not enable
+        `fleet.googleSso`, so there is nothing at ${googleSso.listenAddress} to ask.
+      '';
     }) cfg.vhosts;
 
     security.acme = {
@@ -294,6 +331,32 @@ in
             }
           '';
 
+          # GOOGLE, ASKED ON EVERY REQUEST THAT IS NOT THE SIGN-IN ITSELF.
+          #
+          # `forward_auth` sends the request's headers to oauth2-proxy's `/oauth2/auth`, which
+          # answers 202 for a valid session and 401 otherwise, and copies the identity it returns
+          # onto the request that then goes upstream -- which is how Grafana learns who signed in
+          # without a second login.
+          #
+          # THE 401 IS TURNED INTO A REDIRECT rather than shown. The default would hand a browser a
+          # bare 401 body, which is a dead end for a person; `/oauth2/start` with the original URL
+          # in `rd` sends them to Google and back to the page they asked for.
+          googleLoginBlock = lib.optionalString v.requireGoogleLogin ''
+            handle ${googleSso.proxyPrefix}/* {
+              reverse_proxy ${googleSso.listenAddress}
+            }
+
+            forward_auth ${googleSso.listenAddress} {
+              uri ${googleSso.proxyPrefix}/auth
+              copy_headers X-Auth-Request-Email X-Auth-Request-User
+
+              @needsLogin status 401
+              handle_response @needsLogin {
+                redir * ${googleSso.proxyPrefix}/start?rd={scheme}://{host}{uri}
+              }
+            }
+          '';
+
           # THE FACETED-LISTING THROTTLE, emitted as the FIRST `handle` so it wins over the
           # per-country ones. `handle` blocks at one level are mutually exclusive and evaluated in
           # written order, which is the only reason this reads top-to-bottom while everything else
@@ -328,20 +391,38 @@ in
           # ACME machinery simply does not run for it -- there is no renewal to fail.
           tlsBlock = lib.optionalString (v.originCertificate != null)
             "tls ${v.originCertificate.certFile} ${v.originCertificate.keyFile}";
+          # WHAT THE VHOST SERVES ONCE THE DOOR HAS BEEN ANSWERED.
+          body = ''
+            ${v.extraConfig}
+            ${throttleBlock}
+            ${if v.pathUpstreams == { }
+              then fallback
+              else ''
+                ${pathBlocks}
+                handle {
+                  ${fallback}
+                }
+              ''}
+          '';
+
+          # `route` ONLY WHEN GOOGLE IS IN FRONT, and the asymmetry is deliberate rather than
+          # untidy. Caddy sorts directives into its own canonical order, which is what lets the
+          # rest of this module write a `redir` after a `reverse_proxy` and still have it win --
+          # several vhosts rely on that. The Google case is the one place where the order MUST be
+          # the written one, because `/oauth2/*` has to be claimed before the check that would
+          # send it to `/oauth2/*`. Wrapping only that case keeps the existing behaviour of every
+          # other vhost exactly as it was.
+          served = if v.requireGoogleLogin then ''
+            route {
+              ${googleLoginBlock}
+              ${body}
+            }
+          '' else body;
         in {
         extraConfig = ''
           ${tlsBlock}
           ${authBlock}
-          ${v.extraConfig}
-          ${throttleBlock}
-          ${if v.pathUpstreams == { }
-            then fallback
-            else ''
-              ${pathBlocks}
-              handle {
-                ${fallback}
-              }
-            ''}
+          ${served}
 
           # HSTS. Deliberately modest -- one week, no preload, no includeSubDomains. Preload is a
           # one-way door (removal takes months and ships with the browser), and includeSubDomains

@@ -21,6 +21,7 @@ in
   imports = [
     ./disko.nix
     ../../modules/roles/public-proxy.nix
+    ../../modules/roles/google-sso.nix
     ../../modules/roles/k8s-deploy.nix
     ../../modules/roles/prometheus.nix
     ../../modules/roles/grafana.nix
@@ -162,6 +163,16 @@ in
   # switch-to-configuration wants a bounce, a person takes that brief 502 knowingly.
   fleet.autoApply.reloadableUnits = [ "caddy.service" ];
 
+  # WHO MAY OPEN ANYTHING THIS HOST PUBLISHES. See roles/google-sso.nix for why the sign-in lives on
+  # one name and why the client is Headlamp's rather than a second one.
+  fleet.googleSso = {
+    enable = true;
+    clientId = config.fleet.k3sServer.oidc.clientId;
+    authHostName = "auth.kinowo.net";
+    cookieDomain = ".kinowo.net";
+    allowedEmails = [ "pawel.krupinski@gmail.com" ];
+  };
+
   fleet.grafana = {
     enable = true;
 
@@ -169,6 +180,21 @@ in
     # notifications from root_url, so behind a proxy a wrong value here does not fail loudly -- it
     # sends people to http://localhost:3000, from an email, and looks like the alert is broken.
     rootUrl = "https://grafana.kinowo.net/";
+
+    # SIGNED IN ALREADY, BY THE TIME GRAFANA SEES THE REQUEST. Caddy admits nobody to this vhost
+    # without a Google session (`requireGoogleLogin` below), and hands Grafana the address that
+    # session belongs to, so asking for a second password here would be theatre.
+    #
+    # ⚠️ THIS IS A HEADER GRAFANA BELIEVES, which is only safe because of where it will accept it
+    # from. `proxyWhitelist` is the one address Caddy speaks from; a request arriving at
+    # 10.20.0.11:3000 from anywhere else -- and every pod k3s schedules on these two machines can
+    # reach that port -- is NOT admitted by the header, no matter what it claims. Without that
+    # bound this option is a way to become admin by asking.
+    proxyAuth = {
+      enable = true;
+      headerName = "X-Auth-Request-Email";
+      whitelist = config.fleet.privateAddress;
+    };
   };
 
   # PUBLIC HTTPS FOR THE THREE THINGS A PERSON OPENS IN A BROWSER. See roles/public-proxy.nix for
@@ -183,7 +209,16 @@ in
       # not having a domain (see roles/public-proxy.nix), and it carried a real cost: sslip.io is a
       # SHARED registered domain, so Let's Encrypt's per-domain rate limit is consumed by everyone
       # using it and an issuance here could fail for reasons that have nothing to do with this fleet.
-      "grafana.kinowo.net".upstream = "10.20.0.11:3000";
+      "grafana.kinowo.net" = {
+        upstream = "10.20.0.11:3000";
+        # Grafana authenticates its own users and could stand behind a proxy that only does TLS --
+        # but its login is a shared password too, and this one asks WHO rather than WHAT.
+        requireGoogleLogin = true;
+      };
+
+      # THE SIGN-IN ITSELF, and the only redirect URI registered with Google. It carries no login
+      # of its own for the obvious reason: it is what a person is sent to in order to GET one.
+      "auth.kinowo.net".upstream = config.fleet.googleSso.listenAddress;
 
       # THE SECOND THING PUBLISHED HERE, and it clears the same bar the comment above sets:
       # the proxy adds TLS and a name, not authentication, so only a service that
@@ -208,10 +243,11 @@ in
       # The Grafana datasource is unchanged and still the everyday path; this is for VictoriaLogs'
       # own UI -- its query builder, field stats and hit histograms -- without an ssh tunnel.
       "logs.kinowo.net" = {
-        basicAuth = {
-          user = "pawel";
-          passwordHashFile = config.sops.secrets."victoria-logs/basic-auth-hash".path;
-        };
+        # WAS A SHARED PASSWORD, until 2026-09-07. `basicAuth` answered "does this request know the
+        # string", which says nothing about who used it, cannot be withdrawn from one person, and
+        # never expires. Google answers "is this Paweł's account" -- revocable, second-factored,
+        # and logged somewhere other than here.
+        requireGoogleLogin = true;
         pathUpstreams."/select" =
           "${config.fleet.victoriaLogs.listenAddress}:${toString config.fleet.victoriaLogs.port}";
         # The store's own `/` is a bare index of links, most of them to paths this vhost 404s.
@@ -295,11 +331,6 @@ in
 
   sops.defaultSopsFile = ../../secrets/monitoring-1.yaml;
 
-  # THE logs.kinowo.net PASSWORD, as a bcrypt hash, readable by caddy alone. Rotating it is
-  # `htpasswd -nbB pawel <new>` into this key and a `caddy reload` -- the hash is read at provision
-  # time (see `basicAuth` in roles/public-proxy.nix), so no restart. The plaintext lives in the
-  # operator's .env.local as LOGS_KINOWO_NET_BASIC_AUTH.
-  sops.secrets."victoria-logs/basic-auth-hash" = { owner = "caddy"; mode = "0400"; };
 
   system.stateVersion = "26.05";
 }
