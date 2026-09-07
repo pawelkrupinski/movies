@@ -94,7 +94,8 @@ class ReadModelProjector(
   def enabled: Boolean = writer.enabled && movieRepository.enabled
 
   /** Apply one source-row change from the change stream. */
-  def onMovieUpsert(stored: StoredMovieRecord): Unit = lock.synchronized { project(stored); () }
+  def onMovieUpsert(stored: StoredMovieRecord): Unit =
+    lock.synchronized { project(ReadModelProjection.partition(stored, normalizer)); () }
 
   // Caller holds `lock`. Project the row and write only what changed, movie
   // document before screenings. A row whose enrichment hasn't concluded
@@ -105,8 +106,8 @@ class ReadModelProjector(
    *  0 when the projection was byte-identical to what's already stored. The
    *  reconcile sweep sums this to know whether a full re-projection caught
    *  anything the change stream missed. */
-  private def project(stored: StoredMovieRecord): Int = {
-    if (!stored.record.readyToProject) return 0
+  private def project(partition: ReadModelProjection.Partition): Int = {
+    if (!partition.stored.record.readyToProject) return 0
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
     // exactly one. Each variant card is diffed and written independently. Measure the
@@ -116,7 +117,7 @@ class ReadModelProjector(
     // be compared against process CPU is the CPU one — see `recordProject`.
     val wallStart = System.nanoTime()
     val cpuStart  = cpuClock.nanos()
-    val variants  = projectReusingMetadata(stored)
+    val variants  = projectReusingMetadata(partition)
     metrics.recordProject(
       wallSeconds = (System.nanoTime() - wallStart) / 1e9,
       cpuSeconds  = (cpuClock.nanos() - cpuStart) / 1e9
@@ -143,12 +144,13 @@ class ReadModelProjector(
   // cinema — the overwhelming common case under reproject/enrich showtime churn). Correctness:
   // an unchanged `metadataHash` guarantees an unchanged metadata output AND an unchanged
   // display-title variant partition (the hash covers the whole record bar showtimes, and no
-  // metadata accessor reads showtimes), so `screeningsAll` — which re-runs the SAME `variants`
-  // split in the SAME order — lines up 1:1 with the cached movie(s). The size guard is a
+  // metadata accessor reads showtimes), so `screeningsAll` — the SAME partition's variants in
+  // the SAME order — lines up 1:1 with the cached movie(s). The size guard is a
   // belt-and-suspenders fallback to a full re-projection: it can never pair a movie with the
-  // wrong screenings. `screeningsAll` is byte-identical to `projectAll(...).map(_._2)` but skips
+  // wrong screenings. `screeningsAll` is byte-identical to `projectAll.map(_._2)` but skips
   // the resolve/synopsisByCity/ratings work — that skip is the whole optimisation.
-  private def projectReusingMetadata(stored: StoredMovieRecord): Seq[(ResolvedMovie, Seq[CityScreening])] = {
+  private def projectReusingMetadata(partition: ReadModelProjection.Partition): Seq[(ResolvedMovie, Seq[CityScreening])] = {
+    val stored = partition.stored
     // Keyed by the SOURCE ROW (`persistedId`, unique per `movies` document), NOT by the
     // projected `ReadModelProjection.filmId`: that id keys on `resolvedYear` and so
     // deliberately COLLAPSES several source rows onto one card (`kumotry|2025` and
@@ -161,17 +163,17 @@ class ReadModelProjector(
     val hash   = ReadModelProjection.metadataHash(stored)
     lastMetadata.get(rowKey) match {
       case Some((cachedHash, movies)) if cachedHash == hash =>
-        val screenings = ReadModelProjection.screeningsAll(stored, normalizer)
+        val screenings = partition.screeningsAll
         if (screenings.sizeIs == movies.size) {
           metrics.recordMetadataProjection(reused = true)
           movies.zip(screenings)
-        } else recomputeMetadata(rowKey, hash, stored)
-      case _ => recomputeMetadata(rowKey, hash, stored)
+        } else recomputeMetadata(rowKey, hash, partition)
+      case _ => recomputeMetadata(rowKey, hash, partition)
     }
   }
 
-  private def recomputeMetadata(rowKey: String, hash: Int, stored: StoredMovieRecord): Seq[(ResolvedMovie, Seq[CityScreening])] = {
-    val variants = ReadModelProjection.projectAll(stored, normalizer)
+  private def recomputeMetadata(rowKey: String, hash: Int, partition: ReadModelProjection.Partition): Seq[(ResolvedMovie, Seq[CityScreening])] = {
+    val variants = partition.projectAll
     lastMetadata.update(rowKey, hash -> variants.map(_._1))
     metrics.recordMetadataProjection(reused = false)
     variants
@@ -286,16 +288,18 @@ class ReadModelProjector(
       if (reproject) movieRepository.foreachRecord else movieRepository.foreachRecordWithSlots
     val scanComplete = scan { row =>
       if (row.record.readyToProject) {
-        val ids = ReadModelProjection.filmIds(row, normalizer)
+        // Card ids, venue ids and the projection all come off ONE partition of the row.
+        val partition = ReadModelProjection.partition(row, normalizer)
+        val ids = partition.filmIds
         liveIds ++= ids
         liveRowKeys += row.id.value
         if (reproject)
-          try reprojected += project(row)
+          try reprojected += project(partition)
           catch { case exception: Throwable =>
             logger.warn(s"read-model $kind: a row failed to project, continuing: ${exception.getMessage}") }
         else if (cardsRead) {
           val absentCards  = ids.filterNot(cardsBefore)
-          val absentVenues = screeningsBefore.fold(Seq.empty[String])(has => ReadModelProjection.screeningIds(row, normalizer).filterNot(has))
+          val absentVenues = screeningsBefore.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
           if (absentCards.nonEmpty || absentVenues.nonEmpty)
             // The slots-only scan carries no showtimes; read the row whole for its projection.
             try heal(row.id, absentCards, absentVenues).foreach(_ => healed += 1)
@@ -400,8 +404,9 @@ class ReadModelProjector(
     val missing = scala.collection.mutable.ListBuffer.empty[(services.movies.FilmId, Seq[String], Seq[String])]
     val complete = cardsRead && movieRepository.foreachRecordWithSlots { row =>
       if (row.record.readyToProject) {
-        val absentCards  = ReadModelProjection.filmIds(row, normalizer).filterNot(cards)
-        val absentVenues = venues.fold(Seq.empty[String])(has => ReadModelProjection.screeningIds(row, normalizer).filterNot(has))
+        val partition    = ReadModelProjection.partition(row, normalizer)
+        val absentCards  = partition.filmIds.filterNot(cards)
+        val absentVenues = venues.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
         if (absentCards.nonEmpty || absentVenues.nonEmpty) missing += ((row.id, absentCards, absentVenues))
       }
     }
@@ -422,7 +427,7 @@ class ReadModelProjector(
   private def heal(id: services.movies.FilmId, absentCards: Seq[String], absentVenues: Seq[String]): Option[StoredMovieRecord] = {
     absentCards.foreach(forgetCard)
     absentVenues.foreach(forgetScreening)
-    movieRepository.findById(id).map { whole => project(whole); whole }
+    movieRepository.findById(id).map { whole => project(ReadModelProjection.partition(whole, normalizer)); whole }
   }
 
   private def forgetCard(filmId: String): Unit = {

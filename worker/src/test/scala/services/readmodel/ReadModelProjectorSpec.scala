@@ -671,4 +671,52 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.stop()
   }
 
+  // ── One display-title partition per row per sweep ─────────────────────────────
+
+  /** Counts how often ONE slot title is sanitized. The display-title partition
+   *  (`ReadModelProjection.variants`) is the only projection step that sanitizes a
+   *  slot's reported title, so the count is the number of times a row was partitioned —
+   *  immune to the sanitizing the repository does on the row's own key. */
+  private class SlotTitleCountingNormalizer(slotTitle: String) extends services.movies.TitleNormalizer(titleNormalizer.rules) {
+    var hits = 0
+    override def sanitize(title: String): String = {
+      if (title == slotTitle) hits += 1
+      super.sanitize(title)
+    }
+  }
+  private def hitsOf(counting: SlotTitleCountingNormalizer)(work: => Any): Int = {
+    val before = counting.hits
+    work
+    counting.hits - before
+  }
+
+  "a sweep" should "partition a row's slots by display title once, not once per question it asks" in {
+    // The prune asks a row for its card ids AND its screening ids; the reproject asks
+    // for its card ids AND projects it. Each answer used to re-partition the row's
+    // slots by sanitized title, so one row was partitioned twice per sweep.
+    val banner    = "35 lat po premierze: Foo"
+    val counting  = new SlotTitleCountingNormalizer(banner)
+    val repository = new InMemoryMovieRepository(normalizer = counting)
+    val rm        = new InMemoryReadModelRepository()
+    val projector = new ReadModelProjector(repository, rm, rm)
+    repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
+      KinoMuranow -> SourceData(title = Some(banner), showtimes = Seq(at("2026-06-13T20:00"))))))
+    val row = repository.findAll().head
+    val onePartition  = hitsOf(counting)(ReadModelProjection.filmIds(row, counting))
+    val oneProjection = hitsOf(counting)(ReadModelProjection.projectAll(row, counting))
+    onePartition should be > 0                                              // the counter sees the partition at all
+
+    // The scan itself re-derives each row's display title (`StoredMovieRecord.fromStorage`)
+    // — the repository's cost, measured apart so a sweep is charged only for what the
+    // projection asks on top of it.
+    val slotsScan = hitsOf(counting)(repository.foreachRecordWithSlots(_ => ()))
+    val wholeScan = hitsOf(counting)(repository.foreachRecord(_ => ()))
+
+    hitsOf(counting)(projector.onMovieUpsert(row)) shouldBe oneProjection               // the change stream: project once
+    hitsOf(counting)(projector.pruneOrphans())     shouldBe slotsScan + onePartition    // card ids + venue ids: one partition
+    hitsOf(counting)(projector.reconcile())        shouldBe wholeScan + onePartition    // card ids + a metadata-reusing projection: one partition
+    projector.stop()
+  }
+
 }

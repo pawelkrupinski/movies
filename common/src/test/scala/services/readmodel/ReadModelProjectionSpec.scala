@@ -242,6 +242,25 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
       Seq("iwangrozny|1944", s"iwangrozny|1944~${titleNormalizer.sanitize("Иван Грозный")}")
   }
 
+  "partition" should "answer every question of a row from one derivation of its variants" in {
+    // The projector asks a row for its card ids, its screening ids and its projection in
+    // one sweep; each answer used to re-partition the slots. Counted at the normalizer:
+    // once the partition is built, the ids are read off it without sanitizing anything.
+    class CountingNormalizer extends TitleNormalizer(titleNormalizer.rules) {
+      var calls = 0
+      override def sanitize(title: String): String = { calls += 1; super.sanitize(title) }
+    }
+    val counting  = new CountingNormalizer
+    val partition = ReadModelProjection.partition(twoTitleStored, counting)
+    val built     = counting.calls
+    built should be > 0
+    partition.filmIds      shouldBe ReadModelProjection.filmIds(twoTitleStored, titleNormalizer)
+    partition.screeningIds shouldBe ReadModelProjection.screeningIds(twoTitleStored, titleNormalizer)
+    counting.calls shouldBe built
+    partition.projectAll    shouldBe ReadModelProjection.projectAll(twoTitleStored, titleNormalizer)
+    partition.screeningsAll shouldBe ReadModelProjection.screeningsAll(twoTitleStored, titleNormalizer)
+  }
+
   "screeningsAll" should "return exactly projectAll's screenings (metadata-free), for single- and multi-variant rows" in {
     // The source-films census counts off screeningsAll instead of projectAll to skip
     // the unused ResolvedMovie work; the counts only stay identical if the screenings do.
