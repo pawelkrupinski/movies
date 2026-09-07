@@ -33,14 +33,16 @@ package services.movies
  *    approaches 1 on a wide release. This is the number that stays useful after
  *    `unchanged` has done its work, because these events are genuine changes.
  *
+ * The change-stream half — `recordChangeEvent` and `recordCoalescedChange` — is
+ * [[SideCollectionChangeMetrics]], shared with the `movie_slots` cursor that rings the same
+ * projector; only the write counters are this store's own.
+ *
  * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]]; the web,
  * scripts and unit tests use [[ScreeningsMetrics.noop]]. Mirrors [[ChangeStreamMetrics]]
  * and [[services.readmodel.ReadModelProjectionMetrics]].
  */
-trait ScreeningsMetrics {
-  def recordChangeEvent(op: String): Unit
+trait ScreeningsMetrics extends SideCollectionChangeMetrics {
   def recordWrite(outcome: String, count: Int): Unit
-  def recordCoalescedChange(): Unit
 }
 
 object ScreeningsMetrics {

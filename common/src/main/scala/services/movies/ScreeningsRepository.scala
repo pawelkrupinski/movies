@@ -2,19 +2,15 @@ package services.movies
 
 import com.mongodb.WriteConcern
 import com.mongodb.client.model.ReplaceOptions
-import com.mongodb.client.model.changestream.ChangeStreamDocument
 import models.Showtime
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.{BulkWriteOptions, DeleteManyModel, Filters, Indexes, ReplaceOneModel, Sorts}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, Observer, SingleObservableFuture, Subscription}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import play.api.Logging
 
 import java.time.Instant
-import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.Await
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -110,73 +106,40 @@ trait ScreeningsRepository extends SlotKeyedRows {
 /**
  * In-memory `ScreeningsRepository` for tests and Mongo-less dev. Mirrors
  * [[MongoScreeningsRepository]]'s semantics: idempotent per-slot writes, per-film
- * grouping, and a change ring that fires only on a real change. One monitor guards
- * all mutations — fine at test/dev scale.
+ * grouping, and a change ring that fires only on a real change — all of it
+ * [[InMemorySlotRows]], the store its `movie_slots` twin is built on too.
  */
 class InMemoryScreeningsRepository extends ScreeningsRepository {
 
-  // filmId -> (slotKey -> showtimes)
-  private val byFilm    = scala.collection.mutable.Map.empty[String, Map[String, Seq[Showtime]]]
-  private val lock      = new Object
-  private val listeners = new CopyOnWriteArrayList[String => Unit]()
+  private val rows = new InMemorySlotRows[Seq[Showtime]]
 
-  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) =
-    (lock.synchronized(byFilm.getOrElse(filmId, Map.empty)), true)
+  def findForFilmChecked(filmId: String): (Map[String, Seq[Showtime]], Boolean) = (rows.forFilm(filmId), true)
 
-  def findAll(): Map[String, Map[String, Seq[Showtime]]] =
-    lock.synchronized(byFilm.toMap)
+  def findAll(): Map[String, Map[String, Seq[Showtime]]] = rows.all()
 
   // `stored` is ignored: this store's rows are already in memory, so re-reading them is free
   // and the parameter exists only to honour the trait.
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit = {
-    val changed = lock.synchronized {
-      if (byFilm.getOrElse(filmId, Map.empty) == slots) false
-      else { if (slots.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, slots); true }
-    }
-    if (changed) ring(filmId)
-  }
+                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit = rows.replaceFilm(filmId, slots)
 
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = {
-    val changed = lock.synchronized {
-      val cur = byFilm.getOrElse(filmId, Map.empty)
-      if (cur.get(slotKey).contains(showtimes)) false
-      else { byFilm.update(filmId, cur + (slotKey -> showtimes)); true }
-    }
-    if (changed) ring(filmId)
-  }
+  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = rows.upsert(filmId, slotKey, showtimes)
 
-  def deleteSlot(filmId: String, slotKey: String): Unit = {
-    val changed = lock.synchronized {
-      val cur = byFilm.getOrElse(filmId, Map.empty)
-      if (!cur.contains(slotKey)) false
-      else { val next = cur - slotKey; if (next.isEmpty) byFilm.remove(filmId) else byFilm.update(filmId, next); true }
-    }
-    if (changed) ring(filmId)
-  }
+  def deleteSlot(filmId: String, slotKey: String): Unit = rows.delete(filmId, slotKey)
 
-  def deleteFilm(filmId: String): Unit = {
-    val changed = lock.synchronized(byFilm.remove(filmId).isDefined)
-    if (changed) ring(filmId)
-  }
+  def deleteFilm(filmId: String): Unit = rows.deleteFilm(filmId)
 
-  def filmIdsChecked(): (Set[String], Boolean) = (lock.synchronized(byFilm.keySet.toSet), true)
+  def filmIdsChecked(): (Set[String], Boolean) = (rows.all().keySet, true)
 
   def deleteFilms(filmIds: Set[String]): Long = {
-    val removed = lock.synchronized(filmIds.toSeq.flatMap(id => byFilm.remove(id).map(id -> _.size)))
-    removed.foreach { case (id, _) => ring(id) }
-    removed.map(_._2.toLong).sum
+    val removed = filmIds.toSeq.map(id => rows.forFilm(id).size.toLong).sum
+    filmIds.foreach(rows.deleteFilm)
+    removed
   }
 
-  // Rings listeners synchronously (see `ring`), so there is no queue and nothing for
-  // `demand` to bound — it is accepted only to honour the trait's contract.
-  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] = {
-    listeners.add(onChange)
-    Some(new AutoCloseable { override def close(): Unit = { listeners.remove(onChange); () } })
-  }
-
-  // Ring outside the lock, only for genuine changes (see the per-method guards).
-  private def ring(filmId: String): Unit = listeners.asScala.foreach(_(filmId))
+  // Rings listeners synchronously, so there is no queue and nothing for `demand` to
+  // bound — it is accepted only to honour the trait's contract.
+  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    Some(rows.watch(onChange))
 }
 
 object ScreeningsRepository {
@@ -254,7 +217,7 @@ class MongoScreeningsRepository(
     c
   }
 
-  private val resumeToken = new ChangeStreamResumeToken("screenings", sharedDb, persistResumeToken)
+  private val resumeToken = new ChangeStreamResumeToken(ScreeningsRepository.Collection, sharedDb, persistResumeToken)
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
@@ -421,66 +384,15 @@ class MongoScreeningsRepository(
     Await.result(c.deleteOne(Filters.eq("_id", idOf(filmId, slotKey))).toFuture(), 10.seconds); ()
   }
 
-  /** Watch the `screenings` collection; ring `onChange(filmId)` for every change
-   *  (insert/update/replace carry the doc's `filmId`; a delete carries only the
-   *  composite `_id`, from which the `filmId` prefix is parsed). The caller re-reads
-   *  + stitches the film. Requires a replica set (like the movies stream). */
-  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] = coll.map { c =>
-    val subRef = new AtomicReference[Subscription]()
-    // A terminal error is the END of a cursor — the driver never brings it back, and unlike
-    // the movies stream there is not even a later registration to re-open this one. Without
-    // this driver a single blip left every showtime change unseen until the process restarted.
-    def open(): Unit = {
-      // Resume from the last persisted token (a restart / prior terminal error) so showtime
-      // changes that landed while down are replayed; else open at "now".
-      val resumeFrom = resumeToken.load()
-      val base       = c.watch()
-      resumeFrom.fold(base)(t => base.resumeAfter(Document(t)))
-        .subscribe(new Observer[ChangeStreamDocument[StoredScreeningsDto]] {
-          override def onSubscribe(s: Subscription): Unit = { subRef.set(s); demand.opened(s) }
-          override def onNext(change: ChangeStreamDocument[StoredScreeningsDto]): Unit = {
-            reopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
-            // Count the event BEFORE anything can drop it: an event the caller's `onChange`
-            // throws on, or one the resume-token save fails behind, still cost a projection.
-            metrics.recordChangeEvent(
-              ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse("")))
-            // Advance the resume position BEFORE ringing onChange, so a re-stitch can never
-            // observe the change before the token moves past it.
-            resumeToken.advance(change.getResumeToken)
-            val filmId = Option(change.getFullDocument).map(_.filmId).orElse(
-              Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-                .map(v => if (v.isString) v.asString.getValue else v.toString)
-                .map(_.takeWhile(_ != IdSep))) // delete carries no post-image — split the _id
-            filmId.foreach(fid => try onChange(fid)
-              catch { case e: Throwable => logger.warn(s"screenings watch onChange($fid) failed: ${e.getMessage}") })
-            resumeToken.save(force = false) // time-throttled, fire-and-forget
-          }
-          override def onError(e: Throwable): Unit = {
-            if (ChangeStreamResumeToken.isInvalid(e)) {
-              logger.warn(s"screenings change stream: resume token invalid (${e.getMessage}) — clearing it; " +
-                "the next open starts fresh and the backstop resyncs the gap.")
-              resumeToken.clear()
-            } else
-              logger.warn(s"screenings change stream ended (${e.getMessage}) — a reopen resumes from the " +
-                "persisted token; the backstop covers the meantime.")
-            subRef.set(null)
-            demand.closed()
-            reopen.failed()
-          }
-          override def onComplete(): Unit = { subRef.set(null); demand.closed(); reopen.failed() }
-        })
-      logger.info(s"MongoScreeningsRepository: watching screenings change stream" +
-        s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
-    }
-    lazy val reopen: ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler("screenings", () => open())
-    open()
-    new AutoCloseable { override def close(): Unit = {
-      reopen.close()
-      resumeToken.save(force = true) // final position synchronously so the next process resumes here
-      demand.closed()
-      Option(subRef.get()).foreach(_.unsubscribe())
-    } }
-  }
+  /** Watch the `screenings` collection; ring `onChange(filmId)` for every change. The
+   *  caller re-reads + stitches the film. The cursor itself — resume token, demand,
+   *  reopen, metrics, the delete's `_id` parse — is [[SideCollectionWatch]], shared with
+   *  `movie_slots`. */
+  private lazy val changes: Option[SideCollectionWatch[StoredScreeningsDto]] =
+    coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics))
+
+  override def watch(onChange: String => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
+    changes.map(_.watch(onChange, demand))
 
   override def close(): Unit = resumeToken.save(force = true)
 }
