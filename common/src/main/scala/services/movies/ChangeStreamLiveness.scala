@@ -29,7 +29,16 @@ final class ChangeStreamLiveness(clock: Clock = Clock.systemUTC()) {
   /** When this instance was created — the floor every never-delivered cursor ages from. */
   val openedAt: Instant = clock.instant()
 
-  private val last = new ConcurrentHashMap[String, Instant]()
+  private val last       = new ConcurrentHashMap[String, Instant]()
+  private val subscribed = new ConcurrentHashMap[String, Instant]()
+
+  /** A cursor on `collection` subscribed (the driver's `onSubscribe`, or a fake's register).
+   *  Until then nothing was promised: a repository with no change stream at all — a test
+   *  wiring, a Mongo-less boot — has nothing to catch up on, only nothing to deliver. */
+  def watching(collection: String): Unit = { subscribed.put(collection, clock.instant()); () }
+
+  /** Whether a cursor on `collection` has ever subscribed in this process. */
+  def isWatching(collection: String): Boolean = subscribed.containsKey(collection)
 
   /** One event was DELIVERED by `collection`'s cursor (the driver's `onNext`), whatever
    *  it carried and whatever the apply does with it. */

@@ -346,10 +346,13 @@ class ReadModelProjector(
     // stale card is a stale card whether or not the prune could run.
     // While the cursor STAYS dead the same rows are re-read every sweep (the floor does not
     // move until something is delivered); the projection diff makes those writes no-ops, and
-    // the alert on the cursor's age is what ends the state.
+    // the alert on the cursor's age is what ends the state. Only while a movies cursor is
+    // SUBSCRIBED: a repository that never opened one (a test wiring, a Mongo-less boot) has
+    // promised no deliveries, and the prune must stay the id-only sweep it is there.
     var caughtUp = 0
-    if (!reproject) {
-      val since = movieRepository.changeStreamLiveness.lastDeliveredOrOpened(ChangeStreamLiveness.Movies)
+    val liveness = movieRepository.changeStreamLiveness
+    if (!reproject && liveness.isWatching(ChangeStreamLiveness.Movies)) {
+      val since = liveness.lastDeliveredOrOpened(ChangeStreamLiveness.Movies)
       movieRepository.foreachRecordUpdatedSince(since) { row =>
         if (row.record.readyToProject)
           try { project(ReadModelProjection.partition(row, normalizer)); caughtUp += 1 }

@@ -204,7 +204,9 @@ final class MovieChangeStream(
       // error) so events missed while down are replayed; else open at "now".
       val resumeFrom = resumeToken.load()
       source.open(resumeFrom, new Observer[ChangeStreamDocument[StoredMovieDto]] {
-        override def onSubscribe(s: Subscription): Unit = { changeSub.set(s); moviesDemand.opened(s) }
+        override def onSubscribe(s: Subscription): Unit = {
+          changeSub.set(s); moviesDemand.opened(s); liveness.watching(ChangeStreamLiveness.Movies)
+        }
         override def onNext(change: ChangeStreamDocument[StoredMovieDto]): Unit = {
           changeReopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
           liveness.delivered(ChangeStreamLiveness.Movies)

@@ -98,7 +98,10 @@ class InMemoryMovieRepository(
   override def watchChanges(
     onUpsert: StoredMovieRecord => Unit,
     onDelete: FilmId => Unit
-  ): Option[AutoCloseable] = Some(changes.register(onUpsert, id => onDelete(FilmId(id))))
+  ): Option[AutoCloseable] = {
+    changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
+    Some(changes.register(onUpsert, id => onDelete(FilmId(id))))
+  }
 
   seed.foreach { case (t, y, e) => val id = idOf(t, y); put(id, StoredMovieRecord(t, y, e, FilmId(id), Some(keyOf(t, y)))) }
 

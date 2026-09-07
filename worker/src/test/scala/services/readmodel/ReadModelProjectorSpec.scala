@@ -1,5 +1,6 @@
 package services.readmodel
 
+import services.movies.ChangeStreamLiveness
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
@@ -390,6 +391,12 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // The store changes after the last delivery and the cursor says nothing — the stall.
     clock.advanceSeconds(60)
     repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
+    // Nothing subscribed to the cursor: nothing was promised, the sweep stays id-only.
+    projector.pruneOrphans()
+    rm.movieUpserts should have size 1
+    m.caughtUp shouldBe empty                                              // not even metered: no cursor, no catch-up
+
+    repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)   // a cursor is open — and silent
     projector.pruneOrphans()
 
     withClue("the changed row must be re-projected by the sweep: ") {
