@@ -204,6 +204,20 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
     MixedFilmDetector.strays(record, titleNormalizer) should have size 1
   }
 
+  // The year arm's EDGE: two cinemas' years for ONE film sit at most a year apart
+  // (`YearWindow.PublishedAdjacency` — a festival year beside a release year), so
+  // differing titles a year apart are one film and two years apart are two.
+  it should "read differing titles a year apart as one film, and two years apart as two" in {
+    def record(icelandicYear: Int) = MovieRecord(data = Map[Source, SourceData](
+      KinoMuranow -> slot(Seq.empty, Some("Joan of Arc"), None).copy(releaseYear = Some(1999)),
+      Helios      -> slot(Seq.empty, Some("Jóhanna af Örk"), None).copy(releaseYear = Some(icelandicYear))))
+
+    MixedFilmDetector.strays(record(2000), titleNormalizer) shouldBe empty
+    MixedFilmDetector.strays(record(1998), titleNormalizer) shouldBe empty
+    MixedFilmDetector.strays(record(2001), titleNormalizer) should have size 1
+    MixedFilmDetector.strays(record(1997), titleNormalizer) should have size 1
+  }
+
   /** A cinema can publish a runtime that is simply WRONG, and a wrong runtime beside
    *  a translated title is corroboration that looks impeccable. Production, 2026-08-29:
    *  forty cinemas list "Twoje imię" as "Kimi no na wa" at 110 minutes, Kino Nowe

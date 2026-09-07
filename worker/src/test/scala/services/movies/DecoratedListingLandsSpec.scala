@@ -97,22 +97,37 @@ class DecoratedListingLandsSpec extends AnyFlatSpec with Matchers {
     row.cinemaShowings.collectFirst { case (Helios, sd) => sd.title } shouldBe Some(Some("Ojczyzna - pokaz przedpremierowy"))
   }
 
-  // The settle's year window at landing: a venue's production year may sit two years
-  // before TMDB's release year (rule 2 of `clusterByFilm` attaches within ±2).
-  it should "land a listing two years off the resolved row's year on that row, as the settle would attach it" in {
+  /** "Zawieście czerwone latarnie" resolved to its 1991 release year, then scraped by
+   *  Helios at `cinemaYear`: every row afterwards as (year, cinemas), and what reached
+   *  staging. */
+  private def rowsAfterScrapeAt(cinemaYear: Int): (Set[(Option[Int], Set[Source])], Seq[String]) = {
     val staging = new InMemoryStagingRepository
     val cache   = new CaffeineMovieCache(new InMemoryMovieRepository, staging = Some(staging), normalizer = titleNormalizer)
-    val key     = CacheKey("Zawieście czerwone latarnie", Some(1991), titleNormalizer)
-    cache.put(key, MovieRecord(tmdbId = Some(10412), data = Map[Source, SourceData](
+    cache.put(CacheKey("Zawieście czerwone latarnie", Some(1991), titleNormalizer), MovieRecord(tmdbId = Some(10412), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("Zawieście czerwone latarnie"), originalTitle = Some("Da hong deng long gao gao gua"), releaseYear = Some(1991)),
       (KinoMuza: Source) -> SourceData(title = Some("Zawieście czerwone latarnie"), releaseYear = Some(1991)))))
 
-    cache.recordCinemaScrape(Helios, Seq(CinemaMovie(Movie(title = "Zawieście czerwone latarnie", releaseYear = Some(1989)), Helios,
+    cache.recordCinemaScrape(Helios, Seq(CinemaMovie(Movie(title = "Zawieście czerwone latarnie", releaseYear = Some(cinemaYear)), Helios,
       posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Nil, showtimes = Nil)))
 
-    withClue(s"staging: ${staging.findAll().map(_.title)}\n") { staging.findAll() shouldBe empty }
-    cache.get(CacheKey("Zawieście czerwone latarnie", Some(1989), titleNormalizer)) shouldBe empty
-    cache.get(key).getOrElse(fail("row gone")).cinemaShowings.map(_._1).toSet shouldBe Set(KinoMuza, Helios)
+    (cache.snapshot().map(r => r.year -> r.record.cinemaShowings.map(_._1).toSet).toSet, staging.findAll().map(_.title))
+  }
+
+  // The settle's year window at landing: a venue's production year may sit two years
+  // before TMDB's release year (rule 2 of `clusterByFilm` attaches within ±2).
+  it should "land a listing two years off the resolved row's year on that row, as the settle would attach it" in {
+    val (rows, staged) = rowsAfterScrapeAt(1989)
+    withClue(s"staging: $staged\n") { staged shouldBe empty }
+    rows shouldBe Set(Some(1991) -> Set[Source](KinoMuza, Helios))
+  }
+
+  // …and the window's EDGE: three years off is past `YearWindow.ProductionToRelease`,
+  // the settle would not attach it, so the landing must not either — the listing gets
+  // a row of its own. Pinned beside `FilmCanonicalizerSpec`'s edge so the two sides of
+  // the seam can only move together.
+  it should "not land a listing three years off the resolved row's year, exactly where the settle would not attach it" in {
+    val (rows, _) = rowsAfterScrapeAt(1988)
+    rows shouldBe Set(Some(1991) -> Set[Source](KinoMuza), Some(1988) -> Set[Source](Helios))
   }
 
   // A one-word film title runs along the edge of many unrelated titles. Without

@@ -134,6 +134,24 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // The window's EDGE, pinned so it can only move on purpose: two years off attaches,
+  // three does not. `YearWindow.ProductionToRelease` owns the number, and
+  // `MovieCache.concludedKeyFor` reads the same one so a listing lands exactly where
+  // the settle would attach it (`DecoratedListingLandsSpec` pins that side).
+  it should "attach an unresolved row at the edge of the year window and orphan one just past it" in {
+    def clustersFor(cinemaYear: Int) = FilmCanonicalizer.clusterByFilm(Seq(
+      resolved  ("Zawieście czerwone latarnie", tmdbId = 31273, tmdbYear = 1991, cinema = KinoMuza),
+      unresolved("Zawieście czerwone latarnie", Some(cinemaYear), cinema = KinoMuzeumGdansk)), titleNormalizer)
+    withClue("two years off, either side: ") {
+      clustersFor(1989) should have size 1
+      clustersFor(1993) should have size 1
+    }
+    withClue("three years off, either side: ") {
+      clustersFor(1988) should have size 2
+      clustersFor(1994) should have size 2
+    }
+  }
+
   it should "still keep two DISTINCT resolved tmdbIds far apart as separate films" in {
     // The over-merge guard: a real remake carrying the same title (each resolved
     // to its OWN tmdbId, years far apart) must stay two clusters. The fold above
