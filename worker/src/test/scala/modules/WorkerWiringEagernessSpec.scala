@@ -44,6 +44,7 @@ class WorkerWiringEagernessSpec extends AnyFlatSpec with Matchers {
     override lazy val detailReaper            = sentinel("detailReaper")
     // Movies corpus
     override lazy val unscreenedCleanup       = sentinel("unscreenedCleanup")
+    override lazy val strandedSideRowsCleanup = sentinel("strandedSideRowsCleanup")
     // Resolution
     override lazy val crewConfirmation        = sentinel("crewConfirmation")
     override lazy val unresolvedTmdbReaper    = sentinel("unresolvedTmdbReaper")

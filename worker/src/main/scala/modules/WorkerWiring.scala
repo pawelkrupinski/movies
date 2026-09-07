@@ -204,6 +204,7 @@ class WorkerWiring(
     // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
     // backstop); refreshOneSync, which the handlers call, needs no start().
     unscreenedCleanup.start()
+    strandedSideRowsCleanup.start()
     // Tag each cinema with its scraper-client marker (shared platform client vs a
     // bespoke one) plus the FtFW chip if it's already in Filmweb fallback at boot
     // (transitions only fire on change, so an in-flight fallback would otherwise go
@@ -278,6 +279,7 @@ class WorkerWiring(
     freshnessStore.close()
     cascadeDrainOrder.foreach(_.stop())
     unscreenedCleanup.stop()
+    strandedSideRowsCleanup.stop()
     readModelProjector.stop()
     movieCache.stop()
     readModelRepository.close()
