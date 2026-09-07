@@ -100,7 +100,6 @@ card.hide=Film ausblenden
 film.titleSuffix=– Spielzeiten {0} | {1}
 
 # ── Film page back-nav ──────────────────────────────────────────────────────
-back.films=Filme
 back.back=Zurück
 back.repertoire=Programm
 

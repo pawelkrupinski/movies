@@ -100,7 +100,6 @@ card.hide=Hide film
 film.titleSuffix=– showtimes {0} | {1}
 
 # ── Film page back-nav ──────────────────────────────────────────────────────
-back.films=Films
 back.back=Back
 back.repertoire=Listings
 

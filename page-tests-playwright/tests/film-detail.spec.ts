@@ -94,11 +94,11 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
 
   // Parameterised across the navbar destinations so the label + href
   // pair stays in lockstep — adding a new section that links into
-  // /movie means adding a row here AND the path → label entry in
-  // film.scala.html's `LABELS` map.
+  // /movie means adding a row here AND its path → label branch in
+  // film.scala.html's back-link rewrite.
   for (const { from, label } of [
-    { from: '/poznan/',      label: 'Filmy' },
-    { from: '/poznan/movies', label: 'Filmy' },
+    { from: '/poznan/',      label: 'Poznań' },
+    { from: '/poznan/movies', label: 'Poznań' },
   ]) {
     test(`the ← back link reads "${label}" and returns to ${from} when that was the referrer`, async ({ page }) => {
       // Land on the source page first so document.referrer is set when

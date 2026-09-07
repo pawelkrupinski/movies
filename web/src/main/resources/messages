@@ -106,7 +106,6 @@ card.hide=Ukryj film
 film.titleSuffix=– godziny seansów {0} | {1}
 
 # ── Film page back-nav ──────────────────────────────────────────────────────
-back.films=Filmy
 back.back=Wstecz
 back.repertoire=Repertuar
 

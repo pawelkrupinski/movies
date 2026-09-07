@@ -62,14 +62,14 @@
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
-  @* `href="/"` and the "Filmy" label are the SSR fallback for when
+  @* `href="/"` and the city's own name are the SSR fallback for when
      `document.referrer` is unavailable (direct navigation, opened in a
      new tab, privacy-mode browsers that strip referrer). The inline
      boot script below rewrites both when the user actually came from
      another page on this app — same-origin referrers carry the back
      URL verbatim so query-string filter state (`?date=2026-05-30`,
      `?cinema=Multikino`, etc.) survives the round-trip. *@
-  <a id="back-link" href="@routes.MovieController.index(city.slug)" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">@messages("back.films")</span></a>
+  <a id="back-link" href="@routes.MovieController.index(city.slug)" class="back-link"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 1L3 6l5 5"/></svg><span id="back-link-label">@city.labels.nominative</span></a>
   <div>
     @_authMenu(oauthProviders, "auth.loginLong")
   </div>
@@ -181,7 +181,7 @@
 
   // ── Back link: rewrite to the page the user came from ──────────────────────
   //
-  // Default href ("/") + label ("Repertuar") in the SSR markup is what
+  // Default href ("/") + label (the city's name) in the SSR markup is what
   // ships to bots, to people opening /movie in a fresh tab from an
   // external link, and to anyone on a browser that strips the referrer.
   // When the referrer IS a same-origin page we keep the user's path
@@ -197,8 +197,10 @@
     var url;
     try { url = new URL(ref); } catch (e) { return; }
     if (url.origin !== window.location.origin) return;
-    // Strip the leading `/{city}/` prefix so the label map (which keys on the
-    // in-city path) matches regardless of which city the referrer was on.
+    // Strip THIS city's `/{country}/{city}` prefix so the path test below keys
+    // on the in-city path. A referrer from another city keeps its own prefix,
+    // misses the test and reads "Wstecz" — which is what we want: the SSR
+    // label names this city, not the one the arrow would return to.
     var cityPrefix = '@{city.country.pathPrefix}/@city.slug';
     var p = url.pathname;
     if (p === cityPrefix || p === cityPrefix + '/') p = '/';
@@ -207,20 +209,17 @@
     // listing (aliases `/{city}/`), not the per-film detail page.
     if (p === '/movie') return;
 
-    // Map known internal paths to their navbar labels. When adding a new
-    // section that links into /movie, add it here so the back arrow reads
-    // correctly — anything not in the map falls through to "Wstecz".
-    // `/` and `/movies` are aliases for the main listing, so both label
-    // as "Filmy" (matches the navbar tab).
-    var LABELS = { '/': '@messages("back.films")', '/movies': '@messages("back.films")' };
-    var label = LABELS[p];
-    if (!label) {
-      if (p.indexOf('/movies/') === 0) label = '@messages("back.films")';
-      else label = '@messages("back.back")';
-    }
+    // `/` and `/movies` (and any `/movies/…` sub-path) are aliases for the
+    // city's own listing, so the arrow keeps the SSR label — the city name.
+    // Reading it back off the span rather than re-rendering it here keeps the
+    // two spellings from drifting, and keeps a city name carrying a quote out
+    // of this JS string literal. Any other internal section reads "Wstecz";
+    // when one deserves a name of its own, branch on its path here.
+    var labEl = document.getElementById('back-link-label');
+    var isListing = p === '/' || p === '/movies' || p.indexOf('/movies/') === 0;
+    var label = isListing ? (labEl ? labEl.textContent : '') : '@messages("back.back")';
 
     var link  = document.getElementById('back-link');
-    var labEl = document.getElementById('back-link-label');
     if (link)  link.setAttribute('href', url.pathname + url.search + url.hash);
     if (labEl) labEl.textContent = label;
   })();

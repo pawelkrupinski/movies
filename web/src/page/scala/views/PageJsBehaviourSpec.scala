@@ -1645,6 +1645,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // The back arrow names the city whose repertoire it returns to ("‹ Poznań"),
+  // not a generic "Filmy". Opened directly (no referrer), so this is the SSR
+  // label the inline rewrite leaves alone.
+  "the /movie back link" should "read the city's own name" in {
+    onPath(filmTarget) { page =>
+      page.evalString("document.getElementById('back-link-label').textContent") shouldBe
+        city.labels.nominative
+    }
+  }
+
   // ── /movie page mobile sweep ──────────────────────────────────────────────
   //
   // /movie has its own stylesheet block (no `_sharedStyles`) — the
