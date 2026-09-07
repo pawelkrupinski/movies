@@ -48,7 +48,9 @@ trait TaskHandler {
  * observe — not the normal wakeup path. `retryBackoff` is the pause after a task
  * goes back to the queue (`Reschedule`/failure/no-handler) so a perpetually
  * failing task retries at ~`retryBackoff` cadence rather than hot-spinning; that
- * pause deliberately ignores the doorbell.
+ * pause deliberately ignores the doorbell. Each retry is also held back on the
+ * per-task exponential backoff (`retryBackoffFor`), and after `maxAttempts` the
+ * task is dropped for good (`exhaust`) — the pool never retries anything for ever.
  *
  * `processingTimeout` is the lease length: any task left in `worked_on` longer
  * than this — a crashed worker, a handler that hung, a fetch stuck past its own
@@ -71,6 +73,7 @@ class TaskWorker(
   idleBackstop:      FiniteDuration = 30.seconds,
   poolSize:          Int            = TaskWorker.DefaultPoolSize,
   reapInterval:      FiniteDuration = 30.seconds,
+  maxAttempts:       Int            = TaskWorker.DefaultMaxAttempts,
   // Invoked with the task the instant it completes successfully (Done/Skipped),
   // never on a reschedule. The composition root wires this to publish a
   // `TaskFinished` event so consumers (e.g. StagingReaper) can chain follow-up
@@ -203,9 +206,12 @@ class TaskWorker(
         case Success(Done)    => completeWith(task, workerId, Outcome.Done, millis)
         case Success(Skipped) => completeWith(task, workerId, Outcome.Skipped, millis)
         case Success(Reschedule(err)) =>
-          queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
-          observer.onFinished(task, Outcome.Rescheduled, millis)
-          PollResult.Returned
+          if (task.attempts >= maxAttempts) exhaust(task, workerId, err, millis)
+          else {
+            queue.release(task.id, workerId, err, Some(backoffUntil(task.attempts)))
+            observer.onFinished(task, Outcome.Rescheduled, millis)
+            PollResult.Returned
+          }
         // No work was attempted, so no backoff is owed and no attempt is charged:
         // hold the task until the precondition is due to clear (the handler knows
         // when — e.g. the circuit's own half-open instant) and hand back the
@@ -218,10 +224,30 @@ class TaskWorker(
           PollResult.Returned
         case Failure(exception) =>
           logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} failed: ${exception.getMessage}")
-          queue.release(task.id, workerId, Some(exception.getMessage), Some(backoffUntil(task.attempts)))
-          observer.onFinished(task, Outcome.Failed, millis)
-          PollResult.Returned
+          if (task.attempts >= maxAttempts) exhaust(task, workerId, Some(exception.getMessage), millis)
+          else {
+            queue.release(task.id, workerId, Some(exception.getMessage), Some(backoffUntil(task.attempts)))
+            observer.onFinished(task, Outcome.Failed, millis)
+            PollResult.Returned
+          }
       }
+  }
+
+  /** The terminal state of a task that never succeeded: past `maxAttempts` it is
+   *  DROPPED — removed from the queue without success — logged once with its last
+   *  error, and metered as `exhausted`. Before this a failing task rode the 30-minute
+   *  backoff for the life of the deployment. The queue keeps no tombstone (an active
+   *  dedup entry that never cleared would block the key for ever, turning a transient
+   *  outage into a permanent hole), so the reapers remain the retry-forever loop, at
+   *  their own cadence: one that still finds the work due re-enqueues it fresh. A
+   *  `Deferred` never reaches here — it refunds its attempt, so a circuit-open host
+   *  cannot exhaust a task it never let run. Not `completeWith`: the chain hook fires
+   *  on success only. */
+  private def exhaust(task: Task, workerId: String, error: Option[String], handleMillis: Long): PollResult = {
+    logger.warn(s"Task ${task.taskType.name}/${task.dedupKey} exhausted ${task.attempts} attempts — dropping it (last error: ${error.getOrElse("none")}).")
+    queue.complete(task.id, workerId)
+    observer.onFinished(task, Outcome.Exhausted, handleMillis)
+    PollResult.Completed
   }
 
   /** Tombstone a finished task (Done/Skipped), fire the chain hook, and record
@@ -257,8 +283,16 @@ object TaskWorker {
    *  different shape. */
   val DefaultPoolSize: Int = 4
 
+  /** How many claims a task gets before the pool gives up on it (see `exhaust`). The
+   *  backoff curve reaches its 30-minute cap at attempt 10, so 12 is ~2.3 hours of
+   *  retrying — comfortably past the staging handlers' own give-up budgets (6), which
+   *  therefore still conclude on their own terms, and long enough that an upstream
+   *  outage of an hour or two never drops anything. */
+  val DefaultMaxAttempts: Int = 12
+
   /** Exponential backoff a transiently-failing task is held back before re-claim:
-   *  5s, 10s, 20s, 40s, … doubling per attempt, capped at 30 min. Keyed on
+   *  5s, 10s, 20s, 40s, … doubling per attempt, capped at 30 min — and cut off for
+   *  good at `maxAttempts` (see `exhaust`). Keyed on
    *  `attempts` (incremented on each claim, so the first failure ⇒ attempts=1 ⇒
    *  5s). This is the per-task version of what the inline `scheduleTmdbRetry`
    *  used to do for TMDB — now applied to every task type, so a rate-limited
@@ -273,7 +307,7 @@ object TaskWorker {
   private[tasks] sealed trait PollResult
   private[tasks] object PollResult {
     case object Idle      extends PollResult // nothing waiting to claim
-    case object Completed extends PollResult // handler finished (Done/Skipped) — claim the next immediately
+    case object Completed extends PollResult // task left the queue (Done/Skipped/exhausted) — claim the next immediately
     case object Returned  extends PollResult // task went back to the queue — back off one retry interval
   }
 }

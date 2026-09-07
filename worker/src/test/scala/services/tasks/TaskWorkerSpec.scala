@@ -5,6 +5,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Seconds, Span}
 
+import services.metrics.{TaskObserver, WorkerTaskMetrics}
+
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicInteger
 import scala.concurrent.duration._
@@ -107,6 +109,50 @@ class TaskWorkerSpec extends AnyFlatSpec with Matchers with Eventually {
     TaskWorker.retryBackoffFor(3)   shouldBe 20.seconds
     TaskWorker.retryBackoffFor(10)  shouldBe 30.minutes  // capped
     TaskWorker.retryBackoffFor(100) shouldBe 30.minutes  // stays capped, no shift overflow
+  }
+
+  // A task that failed every time used to be retried FOREVER: the backoff caps at 30
+  // minutes, but nothing ever gave up, so a permanently-broken task rode the queue for
+  // the life of the deployment. Past `maxAttempts` it is dropped and metered as
+  // `exhausted`; a reaper that still finds the work due re-creates it fresh.
+  private def exhaustedBy(handler: TaskHandler): (InMemoryTaskQueue, Seq[String], PollResult) = {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
+    // Walk the task to one attempt short of the cap with bare claim/release cycles.
+    (1 until 3).foreach { _ => val t = q.claim("w9", 1.minute).get; q.release(t.id, "w9") }
+    val outcomes = scala.collection.mutable.Buffer.empty[String]
+    val observer = new TaskObserver {
+      def onStarted(task: Task): Unit = ()
+      def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = outcomes += outcome
+    }
+    val w = new TaskWorker(q, Seq(handler), maxAttempts = 3, observer = observer)
+    val result = w.claimAndRun("w0")
+    (q, outcomes.toSeq, result)
+  }
+
+  it should "drop a task that has exhausted its attempts on Reschedule instead of retrying again" in {
+    val (q, outcomes, result) = exhaustedBy(new RecordingHandler(ImdbRating, HandlerOutcome.Reschedule(Some("still broken"))))
+    result shouldBe PollResult.Completed
+    q.countByState() shouldBe empty                      // gone — not waiting for a 13th try
+    outcomes shouldBe Seq(WorkerTaskMetrics.Outcome.Exhausted)
+  }
+
+  it should "drop a task that has exhausted its attempts when the handler throws" in {
+    val (q, outcomes, _) = exhaustedBy(new TaskHandler {
+      val taskType = ImdbRating
+      def handle(task: Task) = throw new RuntimeException("kaboom")
+    })
+    q.countByState() shouldBe empty
+    outcomes shouldBe Seq(WorkerTaskMetrics.Outcome.Exhausted)
+  }
+
+  it should "keep rescheduling below the attempt cap" in {
+    val q = new InMemoryTaskQueue
+    q.enqueue(ImdbRating, "imdb|x", submittedAt = t0)
+    val t = q.claim("w9", 1.minute).get; q.release(t.id, "w9")   // attempts = 1, cap is 3
+    val w = new TaskWorker(q, Seq(new RecordingHandler(ImdbRating, HandlerOutcome.Reschedule(Some("later")))), maxAttempts = 3)
+    w.claimAndRun("w0") shouldBe PollResult.Returned                  // attempt 2 of 3 — still retried
+    q.countByState().getOrElse(TaskState.Waiting, 0L) shouldBe 1L
   }
 
   it should "return a task to waiting when the handler throws" in {

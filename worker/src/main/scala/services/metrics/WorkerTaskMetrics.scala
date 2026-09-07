@@ -430,9 +430,13 @@ object WorkerTaskMetrics {
     val Deferred    = "deferred"
     val Failed      = "failed"
     val NoHandler   = "no_handler"
+    // Dropped after `maxAttempts` failures — the terminal state of a task that never
+    // succeeded. The one outcome that means work was LOST at this pool: a reaper may
+    // re-create it, but nothing here will run it again.
+    val Exhausted   = "exhausted"
   }
   val Outcomes: Seq[String] =
-    Seq(Outcome.Done, Outcome.Skipped, Outcome.Rescheduled, Outcome.Deferred, Outcome.Failed, Outcome.NoHandler)
+    Seq(Outcome.Done, Outcome.Skipped, Outcome.Rescheduled, Outcome.Deferred, Outcome.Failed, Outcome.NoHandler, Outcome.Exhausted)
 
   // `failed` = the queue could not answer (a Mongo error, not a duplicate key): the
   // task was NOT queued and its caller only learns so from this series.
