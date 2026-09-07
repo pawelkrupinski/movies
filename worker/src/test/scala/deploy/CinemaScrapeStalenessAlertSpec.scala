@@ -67,10 +67,7 @@ class CinemaScrapeStalenessAlertSpec extends AnyFlatSpec with Matchers {
 
   /** The per-country age thresholds the rule file actually spells, in seconds. */
   private lazy val thresholds: Map[String, Long] =
-    """kinowo_worker_cinema_scrape_oldest_age_seconds\{country="([a-z]+)"\}\s*>\s*(\d+)""".r
-      .findAllMatchIn(rules)
-      .map(m => m.group(1) -> m.group(2).toLong)
-      .toMap
+    RepoFile.perCountryThresholds(rules, "kinowo_worker_cinema_scrape_oldest_age_seconds")
 
   "the fleet" should "deploy at least one worker to watch" in {
     // Guards the guard: an empty overlay directory would make every per-country

@@ -533,3 +533,74 @@ tests:
             exp_annotations:
               summary: "No worker is publishing the TTL-index reconciliation gauge"
               description: "`kinowo_worker_ttl_index_mismatches` has no series, so `TtlIndexUnreconciled` cannot fire and nothing is watching whether the TTL constants in the code are the ones Mongo is enforcing. Either every worker is down -- TargetDown in monitoring-self.rules is the better alert then -- or `TtlIndexMetrics.register` has been dropped from `WorkerMetrics`, which TargetDown would NOT catch because the pod serves /metrics perfectly well without this family in it."
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  # THE SILENT MOVIES CURSOR. Three countries, one alert: PL is 2h30 past its last delivery (over
+  # its 7200s line) while its corpus census moves every minute -- the shape of a dead stream; the
+  # US is at the same 9000s, which is nowhere near its own 100800s line (PL's sweep is an hour,
+  # the US's fourteen) and must stay quiet; DE is at 6h over nothing: its census has not moved in
+  # the window, which is a quiet night, not a stall. The `for: 30m` holds PL back at twenty
+  # minutes and releases it at the hour.
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a movies cursor silent past two sweeps while the corpus moves fires, per country
+    input_series:
+      - series: 'kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl",job="kinowo-worker"}'
+        values: '9000+0x120'
+      - series: 'kinowo_worker_corpus_movies{country="pl",job="kinowo-worker",subset="total"}'
+        values: '1000+1x120'
+      - series: 'kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="us",job="kinowo-worker"}'
+        values: '9000+0x120'
+      - series: 'kinowo_worker_corpus_movies{country="us",job="kinowo-worker",subset="total"}'
+        values: '5000+1x120'
+      - series: 'kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="de",job="kinowo-worker"}'
+        values: '90000+0x120'
+      - series: 'kinowo_worker_corpus_movies{country="de",job="kinowo-worker",subset="total"}'
+        values: '2000+0x120'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ChangeStreamMoviesCursorSilent
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: ChangeStreamMoviesCursorSilent
+        exp_alerts:
+          - exp_labels:
+              collection: movies
+              country: pl
+              job: kinowo-worker
+              severity: warning
+            exp_annotations:
+              summary: "pl's movies change stream has delivered nothing for 2h 30m 0s while the collection kept changing"
+              description: >-
+                The worker's `movies` change-stream cursor in "pl" is open but has not
+                delivered an event for more than 2x that country's KINOWO_SCRAPE_FRESHNESS_MINUTES
+                sweep, while the corpus census (`kinowo_worker_corpus_movies`) shows the collection
+                changed within the last hour -- writes the cursor should have delivered within seconds.
+                A terminal cursor error reopens itself; this is the silent kind (a stalled server-side
+                cursor, a stale resume token after a migration), which nothing reopens. Restart the
+                worker: `kubectl -n kinowo rollout restart deploy/worker-pl`
+                reopens every cursor from its persisted token. Until then the read-model prune sweep
+                re-projects the rows written since the last delivery every 30 minutes
+                (`kinowo_worker_readmodel_catchup_rows_total`), so the site is at most half an hour
+                stale. Check the two side cursors on the change-stream silence panel of the application
+                dashboard: all three silent points at Mongo, one silent points at that cursor.
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  # THE SIDE CURSORS DO NOT COUNT, AND A HEALTHY SAWTOOTH DOES NOT FIRE. The `screenings` cursor
+  # can legitimately go quiet for a whole sweep; only the `movies` collection is compared against
+  # the census of the `movies` collection. PL's movies cursor here delivered 40 minutes ago --
+  # under its 7200s line -- while the census moves, which is a working stream.
+  # ──────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    name: a quiet side cursor and a movies cursor within its sweep are both silent
+    input_series:
+      - series: 'kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl",job="kinowo-worker"}'
+        values: '2400+0x120'
+      - series: 'kinowo_worker_change_stream_last_event_age_seconds{collection="screenings",country="pl",job="kinowo-worker"}'
+        values: '20000+60x120'
+      - series: 'kinowo_worker_corpus_movies{country="pl",job="kinowo-worker",subset="total"}'
+        values: '1000+1x120'
+    alert_rule_test:
+      - eval_time: 1h
+        alertname: ChangeStreamMoviesCursorSilent
+        exp_alerts: []

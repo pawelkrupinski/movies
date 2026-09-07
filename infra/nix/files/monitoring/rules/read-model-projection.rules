@@ -451,3 +451,74 @@ groups:
             better alert then -- or `TtlIndexMetrics.register` has been dropped from
             `WorkerMetrics`, which TargetDown would NOT catch because the pod serves /metrics
             perfectly well without this family in it.
+
+      # -------------------------------------------------------------------------------------------
+      # THE MOVIES CURSOR IS OPEN AND DELIVERING NOTHING WHILE THE COLLECTION KEEPS CHANGING.
+      #
+      # Every rule above reads the projector's INPUT RATE, and a rate cannot tell a stalled cursor
+      # from a quiet night: both are a flat line at zero. A terminal cursor error is reopened on a
+      # backoff by the app itself; a cursor that is open and silent -- a server-side stall, a stale
+      # resume position the server accepted after a migration -- errors nothing, reopens nothing,
+      # and the site serves stale ratings and showtimes until someone notices. That happened after
+      # a Mongo migration: the worker's stream sat dead for hours behind green panels. The gauge
+      # this reads is the AGE of the last event the cursor actually delivered, recomputed on every
+      # scrape (`kinowo_worker_change_stream_last_event_age_seconds{collection="movies"}`), so a
+      # stall draws a straight diagonal rather than a frozen value.
+      #
+      # TWO CONDITIONS, BOTH REQUIRED. The age alone fires on a genuinely quiet collection; the
+      # `and` against `changes(kinowo_worker_corpus_movies[1h])` demands that the census of the
+      # `movies` collection MOVED in the last hour -- a film added, a rating landed -- which is a
+      # write the cursor should have delivered within seconds. A cursor two full sweeps behind a
+      # collection that changed an hour ago is not quiet, it is dead. The census is off-band and
+      # reads Mongo directly, which is what makes it independent evidence.
+      #
+      # 2x THE COUNTRY'S SCRAPE CADENCE, ONE CLAUSE PER COUNTRY, for the same reason
+      # cinema-scrape.rules spells its thresholds out: PL sweeps every hour and the US every
+      # fourteen, and PromQL cannot read a ConfigMap. Within ONE sweep every venue is scraped and a
+      # film whose metadata or slots changed is written to `movies`; two sweeps with nothing
+      # delivered is past anything a healthy stream does. The literals are 2 x
+      # KINOWO_SCRAPE_FRESHNESS_MINUTES in seconds, generated and asserted by
+      # `ChangeStreamSilenceAlertSpec` in the application repository; a country without a clause is
+      # unwatched, and that spec fails by name when an overlay has no clause here.
+      #
+      # THE SELF-HEAL IS ALREADY RUNNING when this fires: every 30 minutes the read-model prune
+      # sweep re-projects the rows written since the cursor's last delivery
+      # (`kinowo_worker_readmodel_catchup_rows_total`), so the site is at most half an hour stale
+      # while the alert is red. The fix is to restart the worker so the cursor reopens; the point
+      # of the alert is that nobody should learn about a dead stream from a stale film page.
+      #
+      # NO SEPARATE absent() COMPANION: the gauge is registered on the same series as
+      # `kinowo_worker_readmodel_project_calls_total`, so `ReadModelProjectionMetricsAbsent`
+      # already fires when this family goes missing.
+      # -------------------------------------------------------------------------------------------
+      - alert: ChangeStreamMoviesCursorSilent
+        expr: >-
+          (
+            kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="de"} > 72000
+            or kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="es"} > 50400
+            or kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="pl"} > 7200
+            or kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="uk"} > 50400
+            or kinowo_worker_change_stream_last_event_age_seconds{collection="movies",country="us"} > 100800
+          )
+          and on (country)
+          (sum by (country) (changes(kinowo_worker_corpus_movies[1h])) > 0)
+        # THIRTY MINUTES filters scrape jitter, not a restart: the age restarts from zero at boot
+        # (it counts from the process start until the first delivery), so a rollout cannot spike it.
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s movies change stream has delivered nothing for {{ $value | humanizeDuration }} while the collection kept changing"
+          description: >-
+            The worker's `movies` change-stream cursor in "{{ $labels.country }}" is open but has not
+            delivered an event for more than 2x that country's KINOWO_SCRAPE_FRESHNESS_MINUTES
+            sweep, while the corpus census (`kinowo_worker_corpus_movies`) shows the collection
+            changed within the last hour -- writes the cursor should have delivered within seconds.
+            A terminal cursor error reopens itself; this is the silent kind (a stalled server-side
+            cursor, a stale resume token after a migration), which nothing reopens. Restart the
+            worker: `kubectl -n kinowo rollout restart deploy/worker-{{ $labels.country }}`
+            reopens every cursor from its persisted token. Until then the read-model prune sweep
+            re-projects the rows written since the last delivery every 30 minutes
+            (`kinowo_worker_readmodel_catchup_rows_total`), so the site is at most half an hour
+            stale. Check the two side cursors on the change-stream silence panel of the application
+            dashboard: all three silent points at Mongo, one silent points at that cursor.
