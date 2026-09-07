@@ -265,12 +265,25 @@ groups:
       # the film id plus its variant title), and two rows cannot collide on that, so the CLASS is
       # gone and not merely its instances.
       #
-      # DO NOT PREDICT THIS RATIO FROM CORPUS SIZE, tempting as the US number makes it. The pre-fix
-      # gap did not order by corpus at all: DE held the second-largest corpus (1,848 rows) and the
-      # third-SMALLEST gap (0.3%), while the UK on 1,576 rows ran six times that at 1.8%. Collisions
-      # track title-and-year DENSITY -- re-releases, encore screenings, a language whose titles
-      # cluster -- not row count. A country whose gap looks wrong for its size is telling you
-      # something about its titles, not about its volume.
+      # DO NOT PREDICT THIS RATIO FROM CORPUS SIZE, tempting as the US number makes it. Measured at
+      # one instant, 2026-09-06T12:00Z: DE held the second-LARGEST corpus at 1,835 rows and the
+      # second-smallest gap at 0.32%, while the UK on 249 FEWER rows (1,586) ran 5.7x that at
+      # 1.83%. The pair inverts at 2026-08-31 too, so it is not an artefact of a single sample.
+      #
+      # WHY DE AND UK INVERT IS NOT ESTABLISHED, and this comment deliberately stops short of
+      # saying. The obvious guess is that collisions track title-and-year DENSITY rather than row
+      # count -- an English title space full of re-releases and encore screenings colliding more
+      # than a German-localised one -- but that is an inference from one inverted pair and it is
+      # NOT measured. It was put to the corpus and came back inconclusive: no country has a single
+      # colliding `key` group left to count, because the write path now MERGES a row whose key
+      # another row already holds (a8d381113), so the fix erases the evidence its own diagnosis
+      # would need. Grouping on sanitised title alone, ignoring year, found reuse only in DE and PL
+      # and none in UK or US -- which if anything leans against the density guess. Settling it
+      # needs a pre-migration snapshot of `movies`, which does not exist.
+      #
+      # What survives is the instruction, which does not depend on the cause: a country whose gap
+      # looks wrong for its size is not a measurement error to be explained away, and corpus size
+      # is not a proxy for expected drift.
       #
       # THE CALIBRATION IS THIN AND SHOULD BE REDONE. It rests on roughly six hours of post-fix
       # baseline, taken while PL was still mid-incident. Re-run the backtest once PL has closed and
