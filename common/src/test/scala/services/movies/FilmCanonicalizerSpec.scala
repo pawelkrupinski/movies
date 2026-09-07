@@ -44,6 +44,18 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       )
     )
 
+  /** A resolved row whose cinema PUBLISHED an original title and a runtime — the
+   *  evidence `MixedFilmDetector` reads when the fold asks whether two rows describe
+   *  different films. */
+  private def published(title: String, tmdbId: Int, tmdbYear: Int, cinema: Source,
+                        originalTitle: String, runtime: Int, imdbId: Option[String] = None): (CacheKey, MovieRecord) =
+    key(title, Some(tmdbYear)) -> MovieRecord(
+      tmdbId = Some(tmdbId), imdbId = imdbId,
+      data = Map[Source, SourceData](
+        Tmdb   -> SourceData(releaseYear = Some(tmdbYear)),
+        cinema -> SourceData(title = Some(title), releaseYear = Some(tmdbYear),
+                             originalTitle = Some(originalTitle), runtimeMinutes = Some(runtime))))
+
   "canonical" should "collapse a ±1-year unresolved + resolved cluster onto the resolved year and unioned cinemas" in {
     // Helios resolved the film to TMDB year 2026; Multikino stranded a 2025
     // (production-year) unresolved row beside it.
@@ -463,21 +475,46 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // The refuse-on-contradiction guard, the same one the containment edge carries: an
     // id agreement may never merge what `MixedFilmSplitter` would split straight back
     // out, or the two chase each other and the settle never reaches a fixpoint.
-    def published(title: String, tmdbId: Int, tmdbYear: Int, cinema: Source,
-                  originalTitle: String, runtime: Int): (CacheKey, MovieRecord) =
-      key(title, Some(tmdbYear)) -> MovieRecord(
-        tmdbId = Some(tmdbId), imdbId = Some("tt43683692"),
-        data = Map[Source, SourceData](
-          Tmdb   -> SourceData(releaseYear = Some(tmdbYear)),
-          cinema -> SourceData(title = Some(title), releaseYear = Some(tmdbYear),
-                               originalTitle = Some(originalTitle), runtimeMinutes = Some(runtime))))
-
     val components = FilmCanonicalizer.groupByFilm(Seq(
-      published("Joanna d'Arc", 1, 1999, KinoMuza,          "Joan of Arc",    160),
-      published("Joanna d'Arc", 2, 2025, KinoMuzeumGdansk,  "Johanna af Ork", 108)
+      published("Joanna d'Arc", 1, 1999, KinoMuza,         "Joan of Arc",    160, imdbId = Some("tt43683692")),
+      published("Joanna d'Arc", 2, 2025, KinoMuzeumGdansk, "Johanna af Ork", 108, imdbId = Some("tt43683692"))
     ), titleNormalizer)
     components should have size 1
     FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2
+  }
+
+  it should "fold imdbId-sharing tmdbIds transitively, veto on published evidence, and leave the rest alone — one pinned partition" in {
+    // A realistic component pinned IN FULL — cluster order and member order — so the
+    // imdbId step of the fold can be rewritten against a byte-exact expectation. Mixed
+    // evidence: tmdbIds 100 and 200 share tt1; 200 also carries tt2 (one film TMDB holds
+    // twice, its rows resolved to different IMDb records on different days), which 300
+    // shares — so 100 and 300 are one film ONLY through 200, a union the fold has to be
+    // transitive to find. 400 carries no imdbId. 500 and 600 share tt3 but their cinemas
+    // published different films (the veto above). A year-bearing unresolved row attaches
+    // to the folded cluster (rule 2, 2024 within ±2 of its 2025 reference year); a
+    // yearless one stands alone because the group holds several films (rule 4).
+    val a  = withImdb(resolved("Ghost 2",  tmdbId = 100, tmdbYear = 2025, cinema = KinoMuza),         "tt1")
+    val b  = withImdb(resolved("Ghost 2",  tmdbId = 200, tmdbYear = 2026, cinema = KinoMuzeumGdansk), "tt1")
+    val b2 = withImdb(resolved("Ghost II", tmdbId = 200, tmdbYear = 2026, cinema = Helios),           "tt2")
+    val c  = withImdb(resolved("Ghost 2",  tmdbId = 300, tmdbYear = 2027, cinema = Multikino),        "tt2")
+    val d  = resolved("Ghost 2", tmdbId = 400, tmdbYear = 2019, cinema = Kinoteka)
+    val e  = published("Ghost 2", 500, 2020, KinoPort, "Ghost Two",      100, imdbId = Some("tt3"))
+    val f  = published("Ghost 2", 600, 2021, KinoZak,  "Spectre Second", 130, imdbId = Some("tt3"))
+    val g  = unresolved("Ghost 2", Some(2024), cinema = KinoSpektrum)
+    val h  = unresolved("GHOST 2", None,       cinema = KinoIkm)
+    val rows = Seq(h, f, c, b2, a, e, d, g, b)   // deliberately scrambled
+
+    val expected = Seq(Seq(a, b, b2, c, g), Seq(d), Seq(e), Seq(f), Seq(h)).map(_.map(_._1))
+    FilmCanonicalizer.clusterByFilm(rows, titleNormalizer).map(_.map(_._1)) shouldBe expected
+
+    // Every rank here is distinct, so not just the membership but the whole partition —
+    // cluster order and member order — is a pure function of the row SET.
+    (1 to 25).foreach { seed =>
+      val shuffled = new scala.util.Random(seed).shuffle(rows)
+      withClue(s"seed $seed, order ${shuffled.map(_._1.cleanTitle)}: ") {
+        FilmCanonicalizer.clusterByFilm(shuffled, titleNormalizer).map(_.map(_._1)) shouldBe expected
+      }
+    }
   }
 
   it should "keep two rows sharing ONE tmdbId apart when their cinemas published different films" in {
@@ -487,17 +524,9 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     // listing of a different 2026 film that way, and the merged row then had a venue naming
     // each film. The evidence is `MixedFilmDetector`'s, so a Polish title beside a foreign
     // original (73 of 572 PL films) still merges; only a CORROBORATED contradiction splits.
-    def published(title: String, cinema: Source, originalTitle: String, runtime: Int): (CacheKey, MovieRecord) =
-      key(title, Some(2026)) -> MovieRecord(
-        tmdbId = Some(1646379),
-        data = Map[Source, SourceData](
-          Tmdb   -> SourceData(releaseYear = Some(2026)),
-          cinema -> SourceData(title = Some(title), releaseYear = Some(2026),
-                               originalTitle = Some(originalTitle), runtimeMinutes = Some(runtime))))
-
     val components = FilmCanonicalizer.groupByFilm(Seq(
-      published("Mistyczka",                    KinoMuza,         "Mistyczka",             87),
-      published("DOBRE Kino - Maryja. Matka Papieża", KinoMuzeumGdansk, "Maryja. Matka Papieża", 62)
+      published("Mistyczka",                          1646379, 2026, KinoMuza,         "Mistyczka",             87),
+      published("DOBRE Kino - Maryja. Matka Papieża", 1646379, 2026, KinoMuzeumGdansk, "Maryja. Matka Papieża", 62)
     ), titleNormalizer)
     components should have size 1                                  // the shared tmdbId links them
     FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2
