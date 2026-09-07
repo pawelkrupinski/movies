@@ -257,6 +257,13 @@ class InMemoryMovieRepository(
     }
   }
 
+  /** The SAME sweep `MongoMovieRepository` runs — `StrandedSideRows.sweep` decides what is
+   *  stranded and what a failed read forbids; this store only supplies its live ids. An
+   *  in-memory scan cannot stop short, so it is always complete. */
+  override def deleteStrandedSideRows(): StrandedSideRows = lock.synchronized {
+    StrandedSideRows.sweep(screenings, slots, liveIds = () => Some(store.keySet.toSet))
+  }
+
   def close(): Unit = ()
 
   /** Out-of-band write straight to the store, bypassing `upsert`'s split routing AND the

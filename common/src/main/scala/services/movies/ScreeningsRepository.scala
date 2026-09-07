@@ -35,7 +35,7 @@ import scala.util.{Failure, Success, Try}
  * (tests / Mongo-less dev). There is no business logic here — both just store — so
  * neither needs to re-implement any rule.
  */
-trait ScreeningsRepository {
+trait ScreeningsRepository extends SlotKeyedRows {
 
   /** Every slot's showtimes for one film: `slotKey -> showtimes`. Empty when the
    *  film has no recorded screenings — OR when the read failed, which callers that
@@ -158,6 +158,14 @@ class InMemoryScreeningsRepository extends ScreeningsRepository {
   def deleteFilm(filmId: String): Unit = {
     val changed = lock.synchronized(byFilm.remove(filmId).isDefined)
     if (changed) ring(filmId)
+  }
+
+  def filmIdsChecked(): (Set[String], Boolean) = (lock.synchronized(byFilm.keySet.toSet), true)
+
+  def deleteFilms(filmIds: Set[String]): Long = {
+    val removed = lock.synchronized(filmIds.toSeq.flatMap(id => byFilm.remove(id).map(id -> _.size)))
+    removed.foreach { case (id, _) => ring(id) }
+    removed.map(_._2.toLong).sum
   }
 
   // Rings listeners synchronously (see `ring`), so there is no queue and nothing for
@@ -397,6 +405,12 @@ class MongoScreeningsRepository(
         RemovalAudit.screeningsCleared("screenings.deleteFilm", filmId, deleted.toInt, whole = true, reason = "film-deleted")
     }.recover { case e => logger.warn(s"ScreeningsRepository.deleteFilm($filmId) failed: ${e.getMessage}") }
   }
+
+  def filmIdsChecked(): (Set[String], Boolean) =
+    coll.fold((Set.empty[String], true))(SlotKeyed.distinctFilmIdsChecked(_, "ScreeningsRepository", logger.warn(_)))
+
+  def deleteFilms(filmIds: Set[String]): Long =
+    coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, "ScreeningsRepository", logger.warn(_)))
 
   private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, st: Seq[Showtime]): Unit = {
     val dto = StoredScreeningsDto(idOf(filmId, slotKey), filmId, slotKey, st, Instant.now())

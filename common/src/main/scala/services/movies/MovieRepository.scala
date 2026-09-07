@@ -4,8 +4,8 @@ import com.mongodb.WriteConcern
 import com.mongodb.client.model.{ReplaceOptions, UpdateOptions}
 import models.{MovieRecord, Showtime, Source, SourceData}
 import org.mongodb.scala.bson.BsonDateTime
-import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Sorts, Updates}
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
+import org.mongodb.scala.model.{Aggregates, Filters, IndexOptions, Indexes, Projections, Sorts, Updates}
+import org.mongodb.scala.{Document, MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.bson.conversions.Bson
 import play.api.Logging
 import tools.Env
@@ -271,6 +271,15 @@ trait MovieRepository {
    *  of a move that didn't land destroys the film's only copy. See [[SideCollectionMove]]
    *  for the rule. A store with no side collections has nothing to move and reports true. */
   def moveFilm(oldId: FilmId, newId: FilmId): Boolean = true
+
+  /** Remove every side-collection row (`screenings`, `movie_slots`) whose film has no
+   *  document in this store any more — the leftovers of deletes and merges from before
+   *  [[delete]] cascaded and [[moveFilm]] carried rows, which nothing else ever clears.
+   *  The rule, its refusals (an incomplete or empty corpus scan deletes nothing) and the
+   *  reason it exists are [[StrandedSideRows]]'s, shared with the in-memory fake.
+   *  Best-effort; returns what was removed. A store with no side collections has
+   *  nothing stranded and reports [[StrandedSideRows.none]]. */
+  def deleteStrandedSideRows(): StrandedSideRows = StrandedSideRows.none
 
   /** Write-through upsert of the film `id`, stored under the lookup key
    *  `sanitize(title)|year`. The same id under a new key is a RETITLE — the document
@@ -779,6 +788,34 @@ class MongoMovieRepository(
     }.recover {
       case exception: Throwable => logger.warn(s"MovieRepository.delete($id) failed: ${exception.getMessage}")
     }
+  }
+
+  /** The sweep is [[StrandedSideRows.sweep]]'s; this store only supplies the live `_id`
+   *  set, read through the same keyset paging as every other corpus scan but projected
+   *  to `_id` alone — a few thousand short strings, not the documents. `None` when a page
+   *  still failed after its retries, which the sweep treats as "delete nothing". */
+  override def deleteStrandedSideRows(): StrandedSideRows =
+    StrandedSideRows.sweep(screenings, slots, liveIds = () => liveIdsChecked())
+
+  private def liveIdsChecked(): Option[Set[String]] = coll.flatMap { c =>
+    val ids = Set.newBuilder[String]
+    val complete = KeysetScan.scan[String](
+      label          = "MovieRepository id keyset batch",
+      batchSize      = findAllBatchSize,
+      maxAttempts    = foreachRecordBatchAttempts,
+      initialBackoff = foreachRecordBatchBackoff,
+      keyOf          = identity,
+      fetchPage      = (afterId, limit) => {
+        val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+        Await.result(c.find[Document](filter).projection(Projections.include("_id"))
+          .sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+          .map(_("_id").asString.getValue)
+      },
+      onIncomplete   = exception =>
+        logger.warn(s"MovieRepository id keyset scan failed after retries: " +
+          s"${exception.getClass.getSimpleName}: ${exception.getMessage} — scan incomplete")
+    )(ids ++= _)
+    if (complete) Some(ids.result()) else None
   }
 
   /** Carry a film's screenings + slots across a merge, so the loser's rows don't stay

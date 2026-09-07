@@ -54,6 +54,18 @@ object RemovalAudit {
     if (all.nonEmpty) logger.info(s"[$source] ${all.size} film(s) removed: reason=$reason ids=[${sample(all)}]")
   }
 
+  /** Side-collection rows (`screenings`, `movie_slots`) removed because their film has
+   *  no `movies` document any more — the daily stranded-row sweep. Batch-level INFO like
+   *  [[filmsRemoved]]: the ids name films that had ALREADY left the corpus, but a sweep
+   *  that removes rows of a film the site is serving is exactly the incident this log is
+   *  for, so the ids go on the record. */
+  def strandedSideRowsRemoved(source: String, screenings: Long, slots: Long, filmIds: Iterable[String]): Unit = {
+    val all = filmIds.toSeq
+    if (all.nonEmpty)
+      logger.info(s"[$source] $screenings screenings row(s) + $slots slot row(s) removed under ${all.size} " +
+        s"film id(s) with no movies document: reason=stranded ids=[${sample(all)}]")
+  }
+
   /** A read-model card (`web_movies` doc + its `web_screenings`) removed — the
    *  point at which a film actually leaves the served site. */
   def cardRemoved(filmId: String, screenings: Int, reason: String): Unit =

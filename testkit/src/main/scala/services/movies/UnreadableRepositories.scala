@@ -34,6 +34,10 @@ class UnreadableScreeningsRepository(store: ScreeningsRepository = new InMemoryS
   def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = store.upsertSlot(filmId, slotKey, showtimes)
   def deleteSlot(filmId: String, slotKey: String): Unit                         = store.deleteSlot(filmId, slotKey)
   def deleteFilm(filmId: String): Unit                                          = store.deleteFilm(filmId)
+  def deleteFilms(filmIds: Set[String]): Long                                   = store.deleteFilms(filmIds)
+  /** A READ, so it fails like the others: the stranded-row sweep must skip this store,
+   *  not clear it on the strength of an id list it never saw. */
+  def filmIdsChecked(): (Set[String], Boolean)                                  = (Set.empty, false)
   // DELEGATED LIKE EVERY OTHER NON-READ. These two were missing until 2026-09-06, so decorating a
   // real Mongo store — which is the case this class documents itself as existing for — silently
   // dropped the screenings change stream and never persisted its resume token: the spec looked

@@ -40,7 +40,7 @@ import scala.util.Try
  * There is no business logic in either — both just store — so neither can drift from
  * the other's understanding of the rules.
  */
-trait SlotsRepository {
+trait SlotsRepository extends SlotKeyedRows {
 
   /** Every slot of one film: `slotKey -> slot`. Empty when the film has none.
    *
@@ -155,6 +155,11 @@ class InMemorySlotsRepository extends SlotsRepository {
   }
 
   def deleteFilm(filmId: String): Unit = lock.synchronized { byFilm.remove(filmId); () }
+
+  def filmIdsChecked(): (Set[String], Boolean) = (lock.synchronized(byFilm.keySet.toSet), true)
+
+  def deleteFilms(filmIds: Set[String]): Long =
+    lock.synchronized(filmIds.toSeq.flatMap(byFilm.remove).map(_.size.toLong).sum)
 }
 
 object SlotsRepository {
@@ -400,4 +405,9 @@ class MongoSlotsRepository(
     }.recover { case e => logger.warn(s"SlotsRepository.deleteFilm($filmId) failed: ${e.getMessage}") }
   }
 
+  def filmIdsChecked(): (Set[String], Boolean) =
+    coll.fold((Set.empty[String], true))(SlotKeyed.distinctFilmIdsChecked(_, "SlotsRepository", logger.warn(_)))
+
+  def deleteFilms(filmIds: Set[String]): Long =
+    coll.fold(0L)(SlotKeyed.deleteFilms(_, filmIds, "SlotsRepository", logger.warn(_)))
 }

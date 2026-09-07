@@ -1,7 +1,31 @@
 package services.movies
 
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Filters
+import org.mongodb.scala.model.{Aggregates, Filters}
+import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util.{Failure, Success, Try}
+
+/**
+ * The film-level questions every slot-keyed side collection answers — the seam
+ * [[StrandedSideRows]] sweeps through. Both [[ScreeningsRepository]] and
+ * [[SlotsRepository]] extend it, so a sweep asks the same two questions of each store
+ * and the rule deciding what is stranded lives once, above both.
+ */
+trait SlotKeyedRows {
+  /** The DISTINCT `filmId`s with at least one row here, plus whether the read succeeded.
+   *  `(Set.empty, false)` is "could not tell" — a caller deleting on this store's behalf
+   *  must skip it, not treat it as empty. Never a full document read: `screenings` is
+   *  129 MB fleet-wide, and the answer is a few thousand short strings. */
+  def filmIdsChecked(): (Set[String], Boolean)
+
+  /** Drop every row of every film in `filmIds` in one write; returns the rows removed.
+   *  The batch counterpart of `deleteFilm`, for a caller holding a SET of films to clear
+   *  that wants one round-trip rather than one per film. */
+  def deleteFilms(filmIds: Set[String]): Long
+}
 
 /**
  * The addressing shape shared by every side collection split out of `movies` and
@@ -68,4 +92,31 @@ object SlotKeyed {
    *  is unit-tested directly. */
   def staleSlotsFilter(filmId: String, keep: Set[String]): Bson =
     Filters.and(Filters.eq("filmId", filmId), Filters.nin[String]("slotKey", keep.toSeq*))
+
+  /** [[SlotKeyedRows.filmIdsChecked]] for a Mongo side collection: a `$group` on `filmId`,
+   *  which the `filmId` index serves as a DISTINCT_SCAN, so neither the documents nor the
+   *  showtimes they carry cross the wire. Shared by both Mongo stores so the two cannot
+   *  answer the sweep's question differently. A failed read reports `false` and is logged
+   *  through `warn` under the caller's label. */
+  def distinctFilmIdsChecked[T](c: MongoCollection[T], label: String, warn: String => Unit): (Set[String], Boolean) =
+    Try(Await.result(c.aggregate[Document](Seq(Aggregates.group("$filmId"))).toFuture(), 60.seconds)) match {
+      case Success(groups) =>
+        (groups.flatMap(_.get("_id")).collect { case id if id.isString => id.asString.getValue }.toSet, true)
+      case Failure(exception) =>
+        warn(s"$label.filmIds failed: ${exception.getClass.getSimpleName}: ${exception.getMessage} — " +
+          "reporting the read as incomplete.")
+        (Set.empty, false)
+    }
+
+  /** [[SlotKeyedRows.deleteFilms]] for a Mongo side collection: one `filmId $in` delete.
+   *  Best-effort like every other side-collection write — a failure is logged through
+   *  `warn` and reported as 0 rows. An empty set writes nothing. */
+  def deleteFilms[T](c: MongoCollection[T], filmIds: Set[String], label: String, warn: String => Unit): Long =
+    if (filmIds.isEmpty) 0L
+    else Try(Await.result(c.deleteMany(Filters.in("filmId", filmIds.toSeq*)).toFuture(), 60.seconds).getDeletedCount) match {
+      case Success(deleted) => deleted
+      case Failure(exception) =>
+        warn(s"$label.deleteFilms(${filmIds.size} film(s)) failed: ${exception.getClass.getSimpleName}: ${exception.getMessage}")
+        0L
+    }
 }
