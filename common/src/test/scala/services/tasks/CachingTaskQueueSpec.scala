@@ -47,6 +47,22 @@ class CachingTaskQueueSpec extends AnyFlatSpec with Matchers {
     delegate.enqueueCalls shouldBe 2 // completion evicted the key → a real re-enqueue
   }
 
+  // A failed write says nothing about whether the key is active, so remembering it as
+  // active would turn one Mongo blip into `ttl` of every re-enqueue being served
+  // "Duplicate" from memory — the task lost for three minutes with no round-trip at all.
+  it should "NOT remember a key whose enqueue FAILED — the next enqueue must hit the delegate" in {
+    val delegate = new CountingQueue {
+      var failNext = true
+      override def enqueue(taskType: TaskType, dedupKey: String, payload: Map[String, String], submittedAt: Instant, notBefore: Option[Instant]): EnqueueResult =
+        if (failNext) { failNext = false; enqueueCalls += 1; EnqueueResult.Failed("mongo down") }
+        else super.enqueue(taskType, dedupKey, payload, submittedAt, notBefore)
+    }
+    val q = new CachingTaskQueue(delegate)
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0) shouldBe EnqueueResult.Failed("mongo down")
+    q.enqueue(ScrapeCinema, "scrape|x", submittedAt = t0) shouldBe EnqueueResult.Added
+    delegate.enqueueCalls shouldBe 2 // the failure was not cached as "active"
+  }
+
   it should "pass claim / waitingCount / monitor / complete through to the delegate" in {
     val delegate = new CountingQueue
     val q = new CachingTaskQueue(delegate)

@@ -434,8 +434,10 @@ object WorkerTaskMetrics {
   val Outcomes: Seq[String] =
     Seq(Outcome.Done, Outcome.Skipped, Outcome.Rescheduled, Outcome.Deferred, Outcome.Failed, Outcome.NoHandler)
 
-  object EnqueueResult { val Added = "added"; val Deduped = "deduped" }
-  val EnqueueResults: Seq[String] = Seq(EnqueueResult.Added, EnqueueResult.Deduped)
+  // `failed` = the queue could not answer (a Mongo error, not a duplicate key): the
+  // task was NOT queued and its caller only learns so from this series.
+  object EnqueueResult { val Added = "added"; val Deduped = "deduped"; val Failed = "failed" }
+  val EnqueueResults: Seq[String] = Seq(EnqueueResult.Added, EnqueueResult.Deduped, EnqueueResult.Failed)
 
   private val QueueStates: Seq[String] = Seq(TaskState.Waiting, TaskState.WorkedOn)
 

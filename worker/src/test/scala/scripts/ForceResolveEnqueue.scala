@@ -19,8 +19,8 @@ import services.tasks.{EnqueueResult, EnrichTaskKeys, TaskQueue, TaskType}
 object ForceResolveEnqueue {
 
   /** How the queue answered, counted. */
-  case class Enqueued(added: Int, duplicate: Int) {
-    def describe: String = s"$added enqueued, $duplicate already queued (dedup)"
+  case class Enqueued(added: Int, duplicate: Int, failed: Int = 0) {
+    def describe: String = s"$added enqueued, $duplicate already queued (dedup), $failed failed"
   }
 
   def all(queue: TaskQueue, rows: Seq[StoredMovieRecord]): Enqueued =
@@ -31,6 +31,7 @@ object ForceResolveEnqueue {
         EnrichTaskKeys.resolveTmdbPayload(r.title, r.year, force = true)) match {
         case EnqueueResult.Added     => counts.copy(added = counts.added + 1)
         case EnqueueResult.Duplicate => counts.copy(duplicate = counts.duplicate + 1)
+        case EnqueueResult.Failed(_) => counts.copy(failed = counts.failed + 1)
       }
     }
 }

@@ -79,6 +79,12 @@ object EnqueueResult {
   /** An active (waiting or worked-on) task with the same dedupKey already
    *  existed, so nothing was added. */
   case object Duplicate extends EnqueueResult
+  /** The queue could not answer — the write itself failed (a Mongo error, not a
+   *  duplicate key), so whether the task exists is UNKNOWN and nothing should be
+   *  remembered about it. Kept apart from [[Duplicate]] because the two used to be
+   *  one: a Mongo error came back as "already queued", the caller dropped the task
+   *  believing it in hand, and nothing ever ran it. */
+  case class Failed(reason: String) extends EnqueueResult
 }
 
 /** What a handler decided about a claimed task. */

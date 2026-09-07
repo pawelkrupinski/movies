@@ -105,11 +105,15 @@ class MongoTaskQueue(db: Option[MongoDatabase] = None, collectionName: String = 
         val res = Await.result(c.updateOne(filter, onInsert, new com.mongodb.client.model.UpdateOptions().upsert(true)).toFuture(), 10.seconds)
         if (res.getUpsertedId != null) EnqueueResult.Added else EnqueueResult.Duplicate
       }.recover {
+        // Losing the race on the unique index IS the dedup working: another writer
+        // got the same key in first. Anything else is Mongo failing to answer, and
+        // must say so — reported as `Duplicate` it read as "already queued" and the
+        // task was silently lost.
         case exception: MongoWriteException if services.MongoErrors.isDuplicateKey(exception) => EnqueueResult.Duplicate
         case exception: Throwable =>
           logger.warn(s"TaskQueue.enqueue($dedupKey) failed: ${exception.getMessage}")
-          EnqueueResult.Duplicate
-      }.getOrElse(EnqueueResult.Duplicate)
+          EnqueueResult.Failed(exception.getMessage)
+      }.get
   }
 
   override def claim(workerId: String, lease: FiniteDuration, now: Instant): Option[Task] = coll match {
