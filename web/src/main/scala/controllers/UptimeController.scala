@@ -236,7 +236,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
    *  a venue's scrape cadence off; both sides share the one predicate that
    *  matters, `isNotFound`. */
   private def goneUpstream(errors: Seq[String]): Boolean =
-    errors.nonEmpty && errors.forall(error => services.scrapes.GoneUpstream.isNotFound(error))
+    errors.nonEmpty && errors.forall(error => services.scrapes.GoneUpstream.saysPageIsGone(error))
 
   /** Worst-first, and `Missing` ranks BELOW Failing: a cinema whose page is gone
    *  but whose enrichment is also failing has something live to fix, so it belongs

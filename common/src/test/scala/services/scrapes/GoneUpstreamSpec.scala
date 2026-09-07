@@ -38,11 +38,40 @@ class GoneUpstreamSpec extends AnyFlatSpec with Matchers {
     GoneUpstream.isGone(rowFailing(NotFound, since = now.minusSeconds(3600)), now) shouldBe false
   }
 
+  // SensaCine answers 410 for a retired cinema page, and `Cine Mota del Cuervo`
+  // therefore sat in /uptime's Failing section indefinitely while the byte-for-byte
+  // equivalent 404 venues were quarantined on day one. 410 is a STRONGER statement
+  // than 404 ("gone, and not coming back"), and every other place in the codebase
+  // that draws this line already counts it — see HttpStatusException.isDurable.
+  it should "recognise a 410 the same way, since that is the stronger 'gone'" in {
+    val gone410 = "HttpStatusException: HTTP 410 for GET https://www.sensacine.com/cines/cine/E1013/"
+    GoneUpstream.isGone(rowFailing(gone410, since = now.minusSeconds(30 * 3600)), now) shouldBe true
+    GoneUpstream.isGone(rowFailing(gone410, since = now.minusSeconds(3600)), now) shouldBe false
+  }
+
+  // A proxied chain venue never gets a bare status: the residential leg answers and
+  // the direct leg is Cloudflare-blocked, so the archive records both. The leg that
+  // REACHED the origin is the one whose answer this is; the blocked leg learned
+  // nothing, and letting it veto would make the quarantine unreachable for every
+  // venue we fetch through the proxy.
+  it should "read the durable leg out of a multi-backend failure" in {
+    val composite = "All 2 backends failed for get https://vwc.example/venue/1:\n" +
+      "  proxy: HttpStatusException: HTTP 404 for GET https://vwc.example/venue/1\n" +
+      "  fallback: HttpStatusException: HTTP 403 for GET https://vwc.example/venue/1"
+    GoneUpstream.isGone(rowFailing(composite, since = now.minusSeconds(30 * 3600)), now) shouldBe true
+  }
+
   it should "leave every other failure a plain failure" in {
     val day = now.minusSeconds(30 * 3600)
     GoneUpstream.isGone(rowFailing("HttpStatusException: HTTP 500 for GET https://x/", day), now) shouldBe false
     GoneUpstream.isGone(rowFailing("HttpStatusException: HTTP 403 for GET https://x/", day), now) shouldBe false
     GoneUpstream.isGone(rowFailing("HttpTimeoutException: request timed out", day), now) shouldBe false
+    // 400 is NOT gone, even though a retired venue id produces one (Odeon answers
+    // `400 Invalid site identifier` for a site it has dropped). A 400 is equally
+    // what a malformed request of OURS looks like, and quarantining that would hide
+    // a client bug in a collapsed section. The uncovered-venue page is what surfaces
+    // this shape — see SourceFallbackScraper.
+    GoneUpstream.isGone(rowFailing("HttpStatusException: HTTP 400 for GET https://x/", day), now) shouldBe false
     // A 404 in a URL or a film title is not an HTTP status.
     GoneUpstream.isGone(rowFailing("RuntimeException: no films at https://x/404-cinema", day), now) shouldBe false
   }

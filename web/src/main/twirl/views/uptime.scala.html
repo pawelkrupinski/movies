@@ -202,7 +202,7 @@
       unreadable.  *@
   @if(gone.nonEmpty) {
     <details class="leading-gone" id="gone">
-      <summary>Gone upstream — page 404s (@gone.size)</summary>
+      <summary>Gone upstream — page 404s or 410s (@gone.size)</summary>
       @for(f <- gone) { @flaggedRow(f) }
     </details>
   }

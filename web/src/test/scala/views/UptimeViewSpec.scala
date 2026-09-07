@@ -152,7 +152,7 @@ class UptimeViewSpec extends AnyFlatSpec with Matchers {
     val out = views.html.uptime(failing, gone, Seq.empty, Seq.empty, Nil, Nil, Nil).body
 
     out should include ("""<details class="leading-gone" id="gone">""")
-    out should include ("<summary>Gone upstream — page 404s (1)</summary>")
+    out should include ("<summary>Gone upstream — page 404s or 410s (1)</summary>")
     out should include ("Acme Theatre Riverton")
     // No `open` attribute → collapsed until clicked, like the fallback block.
     out should not include ("""class="leading-gone" id="gone" open""")

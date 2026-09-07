@@ -1,5 +1,7 @@
 package services.scrapes
 
+import tools.HttpStatusException
+
 import java.time.{Duration => JDuration, Instant}
 import scala.concurrent.duration._
 
@@ -18,15 +20,16 @@ import scala.concurrent.duration._
  * section, which exists to be acted on: 23 permanently dead venues across the
  * fleet is 23 rows of noise in front of the one row that means something today.
  *
- * So a 404 that has STOOD for [[MinimumAge]] is treated as "gone": scraped
- * rarely instead of every cycle, and shown in its own section rather than among
- * the failures. Nothing here deletes or disables anything — a venue that comes
+ * So a "this page is gone" answer — a 404 or a 410, the same durable pair
+ * [[HttpStatusException.isDurable]] draws everywhere else — that has STOOD for
+ * [[MinimumAge]] is treated as gone: scraped rarely instead of every cycle, and
+ * shown in its own section rather than among the failures. Nothing here deletes or disables anything — a venue that comes
  * back clears its own marker on the first successful scrape and leaves the
  * section by itself.
  */
 object GoneUpstream {
 
-  /** How long a 404 has to have stood before it counts as gone rather than
+  /** How long that answer has to have stood before it counts as gone rather than
    *  broken. A day, not an hour: an aggregator that redeploys badly can 404 a
    *  whole roster for minutes, and quarantining the fleet on a blip would hide
    *  exactly the outage worth waking up for. A genuinely dead page pays one more
@@ -38,26 +41,42 @@ object GoneUpstream {
    *  page returns has to be given a chance to prove it. */
   val RecheckInterval: FiniteDuration = 24.hours
 
-  /** The failure text that means "this page does not exist". Deliberately just
-   *  404 — a 403, a timeout or a 5xx is a page that exists and is refusing or
-   *  broken, which is a real failure and must keep its red row. */
-  private val NotFound = """(?i)\bHTTP\s+404\b""".r
+  /** A status carried in the recorded failure text. The archive persists the
+   *  message, not the throwable, so the code has to be read back out of it —
+   *  `\b` on both sides so a 404 in a URL or a film title is not mistaken for one. */
+  private val StatusInMessage = """(?i)\bHTTP\s+(\d{3})\b""".r
 
-  def isNotFound(error: String): Boolean = NotFound.findFirstIn(error).isDefined
+  /** Whether a recorded failure says the PAGE is gone rather than broken.
+   *
+   *  The set is [[HttpStatusException.isDurable]]'s — 404 and 410 — rather than a
+   *  second copy of it, because this is the same line that file already draws:
+   *  a status that describes the URL, not the moment. It used to be spelled `404`
+   *  here alone, and the drift cost a real venue: SensaCine answers **410** for a
+   *  retired cinema page, so `Cine Mota del Cuervo` sat in /uptime's Failing
+   *  section indefinitely while the byte-for-byte equivalent 404 venues were
+   *  quarantined on day one. A 403, a throttle, a 5xx or a timeout still describes
+   *  a page that EXISTS and is misbehaving, and keeps its red row.
+   *
+   *  A `FallbackHttpFetch` composite ("All N backends failed …") names one status
+   *  per leg; a durable one from ANY leg counts, because the leg that got it is the
+   *  leg that reached the origin — the others were blocked or timed out and
+   *  learned nothing about the resource. */
+  def saysPageIsGone(error: String): Boolean =
+    StatusInMessage.findAllMatchIn(error).exists(m => HttpStatusException.isDurable(m.group(1).toInt))
 
-  def isNotFound(error: Option[String]): Boolean = error.exists(isNotFound)
+  def saysPageIsGone(error: Option[String]): Boolean = error.exists(saysPageIsGone)
 
-  /** Has this cinema's page been 404ing, unbroken, for at least [[MinimumAge]]?
+  /** Has this cinema's page been answering gone, unbroken, for at least [[MinimumAge]]?
    *  Reads only the barren marker: any successful scrape clears it, so a row
    *  with content newer than the run cannot be gone. */
   def isGone(row: ArchivedScrape, now: Instant): Boolean = goneSince(row, now).isDefined
 
-  /** When this cinema started 404ing, if it qualifies as gone — the value the
+  /** When this cinema started answering gone, if it qualifies — the value the
    *  `/uptime` row shows ("gone since 29 Aug"). */
   def goneSince(row: ArchivedScrape, now: Instant): Option[Instant] =
     row.lastBarren
       .filter(_.outcome == ScrapeOutcome.Failed)
-      .filter(barren => isNotFound(barren.error))
+      .filter(barren => saysPageIsGone(barren.error))
       .map(_.runStartedAt)
       .filter(since => JDuration.between(since, now).toMillis >= MinimumAge.toMillis)
 
