@@ -50,6 +50,13 @@ class InMemoryMovieRepository(
   override def hasSlots:      Boolean = slots.isDefined
 
   private val store   = mutable.LinkedHashMap.empty[String, StoredMovieRecord]
+  // `movies.updatedAt`, stamped on every write the way the Mongo codec stamps it — the
+  // catch-up read (`foreachRecordUpdatedSince`) is a range over it, and a fake that did not
+  // keep one could only answer that read with everything or nothing.
+  private val updatedAtById = mutable.Map.empty[String, java.time.Instant]
+  private def put(id: String, row: StoredMovieRecord): Unit = {
+    store.put(id, row); updatedAtById.put(id, clock.instant()); ()
+  }
   val upserts         = mutable.ListBuffer.empty[(String, Option[Int], MovieRecord)]
   val deletes         = mutable.ListBuffer.empty[(String, Option[Int])]
 
@@ -93,7 +100,7 @@ class InMemoryMovieRepository(
     onDelete: FilmId => Unit
   ): Option[AutoCloseable] = Some(changes.register(onUpsert, id => onDelete(FilmId(id))))
 
-  seed.foreach { case (t, y, e) => val id = idOf(t, y); store.put(id, StoredMovieRecord(t, y, e, FilmId(id), Some(keyOf(t, y)))) }
+  seed.foreach { case (t, y, e) => val id = idOf(t, y); put(id, StoredMovieRecord(t, y, e, FilmId(id), Some(keyOf(t, y)))) }
 
   def enabled: Boolean = true
 
@@ -179,7 +186,7 @@ class InMemoryMovieRepository(
       if (slotsLanded) Map.empty[Source, SourceData]
       else if (screenings.isEmpty) restitched
       else ScreeningsSplit.stripShowtimes(restitched)
-    store.put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies), film, Some(storedKey)))
+    put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies), film, Some(storedKey)))
     screenings.foreach(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.showtimesOf(restitched), stitch))
     upserts.append((t, y, e))
     notifyWatcher(id, t, y, e)
@@ -245,7 +252,7 @@ class InMemoryMovieRepository(
             case (k, None)     => sl.deleteSlot(id, k)
           })
           val merged = patch.applyTo(stored.record)
-          store.put(id, StoredMovieRecord(t, y, merged, film, Some(StoredMovieRecord.keyFor(key))))
+          put(id, StoredMovieRecord(t, y, merged, film, Some(StoredMovieRecord.keyFor(key))))
           upserts.append((t, y, merged))
           notifyWatcher(id, t, y, merged)
           true
@@ -255,6 +262,7 @@ class InMemoryMovieRepository(
 
   def delete(film: FilmId): Unit = lock.synchronized {
     val id = film.value
+    updatedAtById.remove(id)
     store.remove(id).foreach { removed =>
       screenings.foreach(_.deleteFilm(id))   // the cascade the real repository owns
       slots.foreach(_.deleteFilm(id))
@@ -271,6 +279,12 @@ class InMemoryMovieRepository(
     StrandedSideRows.sweep(screenings, slots, liveIds = () => Some(store.keySet.toSet))
   }
 
+  /** The same range read as Mongo's, over the stamp kept above: strictly after `since`. */
+  override def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): Boolean = {
+    findAll().filter(r => updatedAtById.get(r.id.value).exists(_.isAfter(since))).foreach(f)
+    true
+  }
+
   def close(): Unit = ()
 
   /** Out-of-band write straight to the store, bypassing `upsert`'s split routing AND the
@@ -283,7 +297,7 @@ class InMemoryMovieRepository(
    *  cache whose view disagrees with the store. */
   def putEmbeddedOutOfBand(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
     val id = idOf(t, y)
-    store.put(id, StoredMovieRecord(t, y, e, FilmId(id), Some(keyOf(t, y)))); ()
+    put(id, StoredMovieRecord(t, y, e, FilmId(id), Some(keyOf(t, y))))
   }
 
   /** Out-of-band edit: drop the `filmwebUrl` + `filmwebRating` for the row.
@@ -293,7 +307,7 @@ class InMemoryMovieRepository(
     val id = idOf(t, y)
     store.get(id).foreach { s =>
       val updated = s.record.copy(filmwebUrl = None, filmwebRating = None)
-      store.put(id, s.copy(record = updated))
+      put(id, s.copy(record = updated))
       notifyWatcher(id, t, y, updated)
     }
   }

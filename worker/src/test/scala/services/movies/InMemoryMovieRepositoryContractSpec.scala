@@ -68,4 +68,39 @@ class InMemoryMovieRepositoryContractSpec extends AnyFlatSpec with Matchers {
 
     store.findAll().values.flatMap(_.values).flatten.toSeq shouldBe later
   }
+
+  // The bounded catch-up for a silent change stream reads "every row written after this
+  // instant" — off `movies.updatedAt` in Mongo, and off the same stamp here, kept by the
+  // fake on every write so a spec about the catch-up cannot pass against rows it would
+  // not find in production.
+  "InMemoryMovieRepository.foreachRecordUpdatedSince" should "yield only the rows written after the instant, stitched" in {
+    val clock  = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
+    val t0     = clock.instant()
+    val store  = new InMemoryScreeningsRepository
+    val repository = new InMemoryMovieRepository(screenings = Some(store), clock = clock)
+    repository.upsert("Written First", year, record(screened))
+    clock.advanceSeconds(60)
+    repository.upsert("Written Second", year, record(screened))
+
+    def updatedSince(since: java.time.Instant): Seq[StoredMovieRecord] = {
+      val rows = Seq.newBuilder[StoredMovieRecord]
+      repository.foreachRecordUpdatedSince(since)(rows += _) shouldBe true
+      rows.result()
+    }
+    // By id: a read row's TITLE is re-derived from its cinema slot (the same for both here).
+    def idOf(t: String) = FilmId(StoredMovieRecord.keyFor(t, year, repository.normalizer))
+
+    updatedSince(t0).map(_.id)                shouldBe Seq(idOf("Written Second")) // strictly after, like Mongo's $gt
+    updatedSince(t0.plusSeconds(60))          shouldBe empty
+    updatedSince(t0.minusSeconds(1)).map(_.id) should contain theSameElementsAs Seq(idOf("Written First"), idOf("Written Second"))
+    // Stitched like every other read: the showtimes live in `screenings`, and a catch-up that
+    // re-projected a showtime-less row would wipe the film's screenings off the site.
+    updatedSince(t0).head.record.data.values.flatMap(_.showtimes) shouldBe times
+
+    // An out-of-band write — the store changed, no change event — is exactly what the
+    // catch-up exists to find.
+    clock.advanceSeconds(60)
+    repository.putEmbeddedOutOfBand("Written First", year, record(screened))
+    updatedSince(t0.plusSeconds(60)).map(_.id) shouldBe Seq(idOf("Written First"))
+  }
 }

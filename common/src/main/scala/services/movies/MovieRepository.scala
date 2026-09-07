@@ -243,6 +243,19 @@ trait MovieRepository {
    *  Default delegates to the (fully stitched, safe) [[foreachRecord]]. */
   def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
 
+  /** Like [[foreachRecord]] — fully stitched, showtimes included — but only the rows whose
+   *  `updatedAt` is strictly after `since`. The BOUNDED catch-up read for a silent change
+   *  stream: the read-model prune sweep hands it the instant of the `movies` cursor's last
+   *  delivered event and re-projects exactly the rows written after it, whatever the cursor
+   *  failed to deliver. `updatedAt` is bumped on every write (see `MovieCodecs`), and the
+   *  Mongo store indexes it so this is a range read, never a collection scan.
+   *
+   *  Strictly after, because a delivery is stamped AFTER the write it delivers: a row the
+   *  cursor did deliver has `updatedAt` before that stamp and is not read again. Same
+   *  completeness contract as [[foreachRecord]]. Default: every row — a store that keeps no
+   *  timestamp can only over-approximate "changed since", never under. */
+  def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): Boolean = foreachRecord(f)
+
   /** Remove every record matching the given (title, year). Best-effort —
    *  failures are logged, never thrown. */
   /** Remove the film stored under this id, with its side-collection rows. Best-effort
@@ -614,7 +627,8 @@ class MongoMovieRepository(
    *  caller wipe the read model — so bail as "incomplete" (`false`), exactly like a
    *  failed movies batch. The movies pages stay keyset-bounded; only the screenings
    *  map (separate small docs) is held. */
-  private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit, withShowtimes: Boolean = true): Boolean = {
+  private def scanStitched(onBatch: Seq[StoredMovieRecord] => Unit, withShowtimes: Boolean = true,
+                           filter: Bson = Filters.empty()): Boolean = {
     // Side rows are fetched PER PAGE, for exactly the films that page holds, rather than
     // preloaded whole. Both are one indexed `filmId $in [...]` query.
     //
@@ -628,7 +642,7 @@ class MongoMovieRepository(
     // row's absence must not act on a partial view, so one failed side read fails the scan
     // exactly as a failed `movies` batch does.
     var sideReadsComplete = true
-    val moviesComplete = scanByKeyset { batch =>
+    val moviesComplete = scanByKeyset(filter) { batch =>
       val ids = batch.map(_._id).toSet
       // `withShowtimes = false` skips this read entirely rather than discarding its result:
       // the caller has said it never looks at a showtime, and this is the expensive half.
@@ -667,7 +681,7 @@ class MongoMovieRepository(
    *  only when the scan reached the last page; `false` when a batch still failed after
    *  its retries — rows delivered so far still reached `onBatch`, so a PRUNING caller
    *  must treat `false` as "not the complete corpus" and skip its destructive step. */
-  private def scanByKeyset(onBatch: Seq[StoredMovieDto] => Unit): Boolean = coll match {
+  private def scanByKeyset(filter: Bson)(onBatch: Seq[StoredMovieDto] => Unit): Boolean = coll match {
     case Some(c) =>
       KeysetScan.scan[StoredMovieDto](
         label          = "MovieRepository keyset batch",
@@ -676,9 +690,9 @@ class MongoMovieRepository(
         initialBackoff = foreachRecordBatchBackoff,
         keyOf          = _._id,
         fetchPage      = (afterId, limit) => {
-          val filter = afterId.fold(Filters.empty())(Filters.gt("_id", _))
+          val page = afterId.fold(filter)(id => Filters.and(filter, Filters.gt("_id", id)))
           Await.result(
-            c.find(filter).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
+            c.find(page).sort(Sorts.ascending("_id")).limit(limit).toFuture(), 60.seconds)
         },
         onIncomplete   = exception =>
           logger.warn(s"MovieRepository keyset scan failed after retries: " +
@@ -784,10 +798,16 @@ class MongoMovieRepository(
    *  does, so each row's showtimes are empty. Cheap enough to run on a 5-min metrics timer
    *  without a repeated full-collection screenings read. See the trait doc for the invariant. */
   override def foreachRecordWithoutShowtimes(f: StoredMovieRecord => Unit): Boolean =
-    scanByKeyset(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
+    scanByKeyset(Filters.empty())(_.foreach(dto => f(StoredMovieDto.toDomain(dto, normalizer))))
 
   override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean =
     scanStitched(_.foreach(f), withShowtimes = false)
+
+  /** The `updatedAt` range read, through the same stitched scan as [[foreachRecord]] — the
+   *  catch-up re-projects what it reads, so a row from here must be as whole as one the
+   *  change stream would have delivered. */
+  override def foreachRecordUpdatedSince(since: Instant)(f: StoredMovieRecord => Unit): Boolean =
+    scanStitched(_.foreach(f), filter = Filters.gt("updatedAt", BsonDateTime(since.toEpochMilli)))
 
   /** Remove the film `id` with its side-collection rows. */
   def delete(id: FilmId): Unit = coll.foreach { c =>
@@ -1191,7 +1211,7 @@ class MongoMovieRepository(
     // row would collide on it (found by the integration suite, not production).
     // `createIndex` cannot alter an existing index's options, so a conflicting earlier
     // definition is dropped and rebuilt — the same rule `MongoTtlIndex.reconcile` follows.
-    uniqueIndex(coll, "tmdbId", new IndexOptions().unique(true).background(true)
+    ensureIndex(coll, "tmdbId", new IndexOptions().unique(true).background(true)
       .partialFilterExpression(org.mongodb.scala.bson.collection.immutable.Document(
         "tmdbId" -> org.mongodb.scala.bson.collection.immutable.Document("$type" -> "number"))))
     // One document per stored key: the key is the lookup identity now, and the cache
@@ -1199,15 +1219,21 @@ class MongoMovieRepository(
     // is the store refusing the one a race lets through. Measured 2026-09-07: zero
     // duplicate keys in any country, so the index builds clean. Every document has
     // the field after the backfill above, so plain unique — no partial filter.
-    uniqueIndex(coll, "key", new IndexOptions().unique(true).background(true))
+    ensureIndex(coll, "key", new IndexOptions().unique(true).background(true))
+    // `updatedAt` is bumped on every write and read by the change-stream catch-up
+    // (`foreachRecordUpdatedSince`): "the rows written since the cursor last delivered" has
+    // to be a range read on an index, or the 30-minute prune sweep that asks it would scan
+    // the collection to find, in steady state, nothing.
+    ensureIndex(coll, "updatedAt", new IndexOptions().background(true))
   }
 
-  /** Create a unique index on `field`, rebuilding it when an earlier definition of the
-   *  same name carries different options: `createIndex` cannot alter an existing
+  /** Create a single-field index on `field`, rebuilding it when an earlier definition of
+   *  the same name carries different options: `createIndex` cannot alter an existing
    *  index (IndexOptionsConflict, code 85), so the old one is dropped first — the
    *  same rule `MongoTtlIndex.reconcile` follows. A failure is logged, never fatal:
-   *  the film store works without the index, it merely stops refusing duplicates. */
-  private def uniqueIndex(coll: MongoCollection[StoredMovieDto], field: String, options: IndexOptions): Unit =
+   *  the film store works without the index — a unique one merely stops refusing
+   *  duplicates, a plain one merely stops serving its range read. */
+  private def ensureIndex(coll: MongoCollection[StoredMovieDto], field: String, options: IndexOptions): Unit =
     Try {
       def create() = Await.result(coll.createIndex(Indexes.ascending(field), options).toFuture(), 30.seconds)
       Try(create()).recover {
@@ -1217,7 +1243,7 @@ class MongoMovieRepository(
       }.get
       ()
     }.recover {
-      case exception: Throwable => logger.warn(s"movies unique `$field` index creation failed: ${exception.getMessage}")
+      case exception: Throwable => logger.warn(s"movies `$field` index creation failed: ${exception.getMessage}")
     }
 
   /** Mongo's duplicate-key error — a second document claiming a tmdbId the unique index
