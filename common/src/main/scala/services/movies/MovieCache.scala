@@ -992,7 +992,16 @@ class CaffeineMovieCache(
    *
    *  Only then `canonicalRank`, which stays the tie-break within one film. Every step
    *  is a pure function of the row set plus this listing, so the answer cannot depend
-   *  on arrival order. */
+   *  on arrival order.
+   *
+   *  Deliberately NOT `Verdict.of`, though both weigh a listing's minutes against a
+   *  film's own. The verdict is a yes/no VETO on one candidate — minutes a category
+   *  apart deny it, anything nearer passes — and here every candidate would pass:
+   *  105 minutes is plausible for both the 102-minute romcom and Antonioni's 121.
+   *  This is a CHOICE among rivals, which needs the nearest, and it must go on to
+   *  venue counts and incumbency when the minutes cannot choose; the verdict's crew
+   *  arm has nothing to read because a same-titled rival's director is never on the
+   *  listing's own row. `SameFilmVocabulariesSpec` pins the difference. */
   private def chooseConcluded(
     candidates:     Seq[CacheKey],
     listingRuntime: Option[Int],

@@ -78,6 +78,13 @@ enum Support { case Crew, Runtime }
  * Both signals demand POSITIVE contradiction: a venue that published nothing is
  * not disagreeing, and a credit that folds away entirely (a CJK name) compares as
  * nothing rather than as a stranger.
+ *
+ * Two other places answer a same-film question and are NOT this one, on purpose:
+ * `MixedFilmDetector.describeDifferentFilms` compares two rows' cinemas with each
+ * other, strictly, and reads titles and years; `MovieCache.chooseConcluded` picks
+ * the nearest of several rival films rather than vetoing one. Neither reads a
+ * candidate, and this reads no title, year or id. `SameFilmVocabulariesSpec` pins
+ * all three over one table.
  */
 object Verdict {
 

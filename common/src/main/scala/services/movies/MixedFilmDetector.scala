@@ -121,7 +121,20 @@ object MixedFilmDetector {
    *  record was READ. Under the storage split a migrated film's `movies` document carries no
    *  `sourceData` at all, so a caller planning on RAW documents — `MongoStagingFolder` does —
    *  gets `false` where the stitched view gives `true`. Pinned in `MixedFilmDetectorSpec`,
-   *  along with why it currently costs nothing. */
+   *  along with why it currently costs nothing.
+   *
+   *  Deliberately NOT `Verdict.of`, although both compare directors and runtimes. The
+   *  verdict weighs the cinemas against ONE candidate film as TMDB describes it and
+   *  is designed to be LOOSE — a credit is compared by `SamePerson` (initials,
+   *  truncations, transliterations forgiven), and minutes deny only a category
+   *  apart, because a false "different" there re-resolves a film that was right.
+   *  This compares two rows' cinemas with each other and must be STRICT, because a
+   *  false "different" here splits a row and a false "same" buries a second film on
+   *  it: a director agrees only whole-name (two directors share a given name), and
+   *  minutes disagree at three. On "Obcy" — 120 minutes beside 103, nobody credited
+   *  — the verdict accepts and this splits, and both are right for their question.
+   *  It also reads the title and the year, which the verdict never does.
+   *  `SameFilmVocabulariesSpec` pins the difference. */
   def describeDifferentFilms(a: MovieRecord, b: MovieRecord, normalizer: TitleNormalizer): Boolean =
     describeDifferentFilms(publishedIdentity(a, normalizer), publishedIdentity(b, normalizer))
 
