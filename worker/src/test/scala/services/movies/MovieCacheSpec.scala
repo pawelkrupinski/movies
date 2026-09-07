@@ -242,13 +242,13 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
   // method, so we cover the on-demand admin-endpoint behaviour here:
   // (a) in-memory rows that aren't in Mongo get dropped, (b) repository-side edits
   // become visible, (c) the negative cache is orthogonal and survives.
-  "rehydrate" should "reconcile two movies documents that collapse onto one key" in {
+  "rehydrate" should "keep two documents under their own stored keys and leave the same-film fold to the settle" in {
     // Two movies docs for one film: "zaplatani|2010" plus a stale "tangled|2010" first
     // stored under the English title but now displaying (via its TMDB Polish title) as
-    // "Zaplątani". On read both re-derive the same display title → collapse to one
-    // CacheKey, so the cross-title settle never sees two rows; the hydrate reconciles
-    // them instead: one id survives (the lower, deterministically), the other document
-    // goes, and the survivor is written under the shared key.
+    // "Zaplątani". The stored KEY is the row's lookup identity — not the display title,
+    // which is a vote over the slots — so the hydrate keys them apart, exactly as the
+    // store does, and the settle's tmdbId edge folds them: a same-film pair is the
+    // settle's self-heal, never something a hydrate re-derives from a title.
     val zaplSlots = Map[Source, SourceData](
       Tmdb      -> SourceData(title = Some("Zaplątani"), originalTitle = Some("Tangled"), releaseYear = Some(2010)),
       Multikino -> SourceData(title = Some("Zaplątani"), releaseYear = Some(2010)))
@@ -256,12 +256,33 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       ("Tangled",   Some(2010), MovieRecord(tmdbId = Some(38757), data = zaplSlots)), // → _id tangled|2010, displays "Zaplątani"
       ("Zaplątani", Some(2010), MovieRecord(tmdbId = Some(38757), data = zaplSlots))  // → _id zaplatani|2010
     ))
-    new CaffeineMovieCache(repository, normalizer = titleNormalizer) // constructor hydrates → reaps the orphan
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    cache.entries.map(_._1.normalized).toSet shouldBe Set("tangled", "zaplatani")     // keyed by the stored keys
+    cache.entries.map(_._1.cleanTitle).toSet shouldBe Set("Zaplątani")               // labelled by the display title
+
+    cache.canonicalizeBySanitize()
+
+    val rows = repository.findAll()
+    withClue(s"expected ONE doc after the settle, got ${rows.map(r => (r.title, r.id))}\n")(rows.size shouldBe 1)
+    rows.head.record.tmdbId shouldBe Some(38757)
+  }
+
+  it should "reconcile two documents stored under ONE key" in {
+    // Only a genuine stored-key collision — legacy data, a lost race — is the hydrate's
+    // to reconcile: the lower id survives, the other document goes.
+    val repository = new InMemoryMovieRepository()
+    val record = MovieRecord(tmdbId = Some(38757), data = Map[Source, SourceData](
+      Multikino -> SourceData(title = Some("Zaplątani"), releaseYear = Some(2010))))
+    repository.upsert(FilmId("zaplatani|2010"), "Zaplątani", Some(2010), record)
+    repository.upsert(FilmId("f0000000000000001"), "Zaplątani", Some(2010), record.copy(imdbRating = Some(7.7)))
+    repository.findAll() should have size 2
+
+    new CaffeineMovieCache(repository, normalizer = titleNormalizer)                   // constructor hydrates → reconciles
+
     val rows = repository.findAll()
     withClue(s"expected ONE doc, got ${rows.map(r => (r.title, r.id))}\n")(rows.size shouldBe 1)
-    rows.head.id shouldBe FilmId("tangled|2010")
-    rows.head.key(titleNormalizer) shouldBe "zaplatani|2010"
-    repository.deletes.map(_._1) should contain ("Zaplątani")
+    rows.head.id shouldBe FilmId("f0000000000000001")                                   // the lower id string
+    rows.head.record.imdbRating shouldBe Some(7.7)
   }
 
   it should "drop in-memory rows that aren't in the repository" in {

@@ -242,7 +242,7 @@ trait TestWiring extends WorkerWiring {
   def concludeEnrichment(): Unit =
     movieRepository.findAll().foreach { sr =>
       if (!sr.record.tmdbConcluded)
-        movieRepository.upsert(sr.title, sr.year, sr.record.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
+        movieRepository.upsert(sr.id, sr.title, sr.year, sr.record.copy(tmdbAttempt = Some(services.resolution.TmdbAttempt.Legacy)))
     }
 
   /** Boot the corpus to the shape production reaches ~20s in: scrape once, drain

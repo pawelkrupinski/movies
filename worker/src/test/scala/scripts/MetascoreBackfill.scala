@@ -49,7 +49,7 @@ object MetascoreBackfill {
     val total       = rows.size
     val startedAtMs = System.currentTimeMillis()
 
-    val tasks = rows.map { case StoredMovieRecord(title, year, e, _) =>
+    val tasks = rows.map { case StoredMovieRecord(title, year, e, _, _) =>
       Future {
         val freshScore = e.metacriticUrl.flatMap(url => Try(mc.metascoreFor(url)).toOption.flatten)
         val index = done.incrementAndGet()

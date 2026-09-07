@@ -36,7 +36,7 @@ class FilmIdentityInvariantsSpec extends AnyFlatSpec with Matchers with ScalaChe
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 12, 20, 0), None))))
 
   "any sequence of puts, resolutions and settles" should "leave every side row on a live document and every key on one document" in {
-    forAll(ops, minSuccessful(80)) { sequence =>
+    forAll(ops, minSuccessful(300)) { sequence =>
       val screenings = new InMemoryScreeningsRepository
       val slots      = new InMemorySlotsRepository
       val repository = new InMemoryMovieRepository(screenings = Some(screenings), slots = Some(slots))

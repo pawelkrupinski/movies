@@ -240,7 +240,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   /** A row the resolver will act on: known to the cache, with no imdbId to keep. */
   private def seedUnidentifiedFilm(wiring: ArchiveReplayWiring): Unit = {
-    wiring.movieRepository.upsert("Stop Making Sense", None, models.MovieRecord())
+    wiring.movieRepository.upsert(services.movies.FilmId.legacy("Stop Making Sense", None, wiring.movieRepository.normalizer), "Stop Making Sense", None, models.MovieRecord())
     wiring.movieCache.rehydrate()
     ()
   }

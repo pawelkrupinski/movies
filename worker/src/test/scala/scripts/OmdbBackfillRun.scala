@@ -48,7 +48,7 @@ object OmdbBackfillRun {
     val idFills  = new AtomicInteger(0)
     val urlFills = new AtomicInteger(0)
 
-    val tasks = candidates.map { case StoredMovieRecord(title, year, e, _) =>
+    val tasks = candidates.map { case StoredMovieRecord(title, year, e, _, _) =>
       Future {
         // imdbId by title search (original/English title first — OMDb is an English DB).
         val foundId  = if (e.imdbId.isEmpty) omdb.findImdbId((e.originalTitle.toSeq :+ title).distinct, year, e.director.toSet) else None

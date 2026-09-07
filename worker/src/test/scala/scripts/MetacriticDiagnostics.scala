@@ -76,7 +76,7 @@ object MetacriticDiagnostics {
     val httpProbes  = new AtomicInteger(0)
     val startedAtMs = System.currentTimeMillis()
 
-    val tasks = missing.map { case StoredMovieRecord(title, year, e, _) =>
+    val tasks = missing.map { case StoredMovieRecord(title, year, e, _, _) =>
       Future {
         val orig      = e.originalTitle
         val linkTitle = orig.getOrElse(title)

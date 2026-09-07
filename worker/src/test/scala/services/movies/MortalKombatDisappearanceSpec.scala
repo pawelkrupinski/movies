@@ -189,7 +189,7 @@ class MortalKombatDisappearanceSpec extends AnyFlatSpec with Matchers {
       def isMk2(e: MovieRecord): Boolean =
         e.tmdbId.contains(931285) || e.imdbId.contains("tt17490712")
 
-      val visibleRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e, _) =>
+      val visibleRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e, _, _) =>
         isMk2(e) && e.cinemaData.nonEmpty
       }
       visibleRows.size shouldBe 1

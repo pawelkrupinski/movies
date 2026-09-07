@@ -95,4 +95,26 @@ class FilmIdentityWritesSpec extends AnyFlatSpec with Matchers {
     repository.findAll().groupBy(_.key(titleNormalizer)).values.map(_.size).max shouldBe 1
     cache.entries.map(_._1).toSet shouldBe Set(held, yearless)
   }
+
+  it should "merge under the sibling's current key when the vote's canonical key is another film's" in {
+    // The property's second find: a same-film fold whose `canonical` vote lands on a key a
+    // third film holds. The two rows are still one film and still merge — under the
+    // sibling's current key.
+    val (_, repository) = split()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val other   = CacheKey("Alpha", Some(2025), titleNormalizer)          // film 2 at the key the vote will want
+    val sibling = CacheKey("Alpha", Some(2026), titleNormalizer)          // film 1
+    val arriving = CacheKey("Gamma", Some(2025), titleNormalizer)         // film 1 again, under another title
+    cache.put(other,    MovieRecord(tmdbId = Some(2), data = slot(KinoMuza, "Alpha") + ((Tmdb: Source) -> SourceData(title = Some("Alpha"), releaseYear = Some(2025)))))
+    cache.put(sibling,  MovieRecord(tmdbId = Some(1), data = slot(Helios, "Alpha")   + ((Tmdb: Source) -> SourceData(title = Some("Alpha"), releaseYear = Some(2026)))))
+    val otherId = cache.idOf(other).get; val siblingId = cache.idOf(sibling).get
+
+    cache.put(arriving, MovieRecord(tmdbId = Some(1), data = slot(Helios, "Gamma") + ((Tmdb: Source) -> SourceData(title = Some("Gamma"), releaseYear = Some(2025)))))
+
+    val rows = repository.findAll()
+    rows.map(_.id).toSet shouldBe Set(otherId, siblingId)
+    rows.groupBy(_.key(titleNormalizer)).values.map(_.size).max shouldBe 1
+    cache.get(other).flatMap(_.tmdbId) shouldBe Some(2)
+    cache.idOf(sibling) shouldBe Some(siblingId)
+  }
 }

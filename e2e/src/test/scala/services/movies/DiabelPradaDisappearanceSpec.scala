@@ -138,7 +138,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
       def isPrada(e: MovieRecord): Boolean =
         e.tmdbId.contains(928344) || e.imdbId.contains("tt12340108")
 
-      val visibleRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e, _) =>
+      val visibleRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e, _, _) =>
         isPrada(e) && e.cinemaData.nonEmpty
       }
       visibleRows.size shouldBe 1
@@ -293,7 +293,7 @@ class DiabelPradaDisappearanceSpec extends AnyFlatSpec with Matchers {
     // Drain the TMDB worker so any in-flight resolutions land before we read.
     service.stop()
 
-    val pradaRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e, _) =>
+    val pradaRows = cache.snapshot().filter { case StoredMovieRecord(_, _, e, _, _) =>
       e.tmdbId.contains(928344) || e.imdbId.contains("tt12340108")
     }
     pradaRows.size shouldBe 1

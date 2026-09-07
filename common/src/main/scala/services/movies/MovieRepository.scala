@@ -23,10 +23,17 @@ import scala.util.Try
  *  `id` is the row's Mongo `_id` — permanent, see [[FilmId]]. A row synthesised
  *  without storage (tests, the odd in-memory construction) defaults to the legacy
  *  form, its key, which is what every row stored before ids existed carries. */
-case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord, id: FilmId) {
-  /** The row's lookup key — `sanitize(title)|year` — as stored in the document's `key`
-   *  field. NOT the identity: a retitle changes it, the `id` stays. */
-  def key(normalizer: TitleNormalizer): String = StoredMovieRecord.keyFor(title, year, normalizer)
+case class StoredMovieRecord(title: String, year: Option[Int], record: MovieRecord, id: FilmId,
+                             storedKey: Option[String] = None) {
+  /** The row's lookup key as STORED in the document's `key` field (for a row written
+   *  before keys were stored, its `_id`); derived from the title and year only for a
+   *  row synthesised without storage. NOT the identity: a retitle changes it, the `id`
+   *  stays. */
+  def key(normalizer: TitleNormalizer): String = storedKey.getOrElse(StoredMovieRecord.keyFor(title, year, normalizer))
+
+  /** The cache key this row answers to — the stored key, labelled with the display title. */
+  private[services] def cacheKey(normalizer: TitleNormalizer): CacheKey =
+    storedKey.fold(CacheKey(title, year, normalizer))(CacheKey.stored(title, _))
 }
 
 object StoredMovieRecord {
@@ -71,7 +78,7 @@ object StoredMovieRecord {
     val sep      = k.lastIndexOf('|')
     val idPrefix = if (sep >= 0) k.substring(0, sep) else k
     val year     = if (sep >= 0) k.substring(sep + 1).toIntOption else None
-    StoredMovieRecord(record.displayTitle(idPrefix, normalizer), year, record, FilmId(id))
+    StoredMovieRecord(record.displayTitle(idPrefix, normalizer), year, record, FilmId(id), Some(k))
   }
 }
 
@@ -238,9 +245,6 @@ trait MovieRepository {
 
   /** Remove every record matching the given (title, year). Best-effort —
    *  failures are logged, never thrown. */
-  def delete(title: String, year: Option[Int]): Unit =
-    findByKeyChecked(CacheKey(title, year, normalizer))._1.foreach(row => delete(row.id))
-
   /** Remove the film stored under this id, with its side-collection rows. Best-effort
    *  — failures are logged, never thrown. */
   def delete(id: FilmId): Unit
@@ -271,41 +275,14 @@ trait MovieRepository {
   /** Write-through upsert of the film `id`, stored under the lookup key
    *  `sanitize(title)|year`. The same id under a new key is a RETITLE — the document
    *  stays, its `key` moves. Best-effort — failures are logged, never thrown. */
-  def upsert(id: FilmId, title: String, year: Option[Int], e: MovieRecord): Unit
+  def upsert(id: FilmId, key: CacheKey, e: MovieRecord): Unit
 
-  /** Key-addressed upsert for callers that do not hold an id — seeding, and the odd
-   *  script. The row already stored under this key keeps its id; otherwise the row is
-   *  created under the key's LEGACY id (the key string itself, the shape every document
-   *  written before ids existed has), or a fresh id if a document already owns that
-   *  string. The cache never takes this path; it knows its ids. */
-  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = {
-    val key = CacheKey(title, year, normalizer)
-    findByKeyChecked(key) match {
-      case (Some(row), _) => upsert(row.id, title, year, e)
-      case (None, true)   =>
-        val taken: FilmId => Boolean = id => findByIdChecked(id)._1.isDefined
-        upsert(Some(FilmId.legacy(key)).filterNot(taken).getOrElse(FilmId.fresh(key, taken)), title, year, e)
-      case (None, false)  => ()   // a failed read is not "absent": writing could make a second document
-    }
-  }
+  /** [[upsert]] for a caller outside `services` that holds only a title and year (a
+   *  fixture re-seeding rows it read back); the key is derived by this store's rules. */
+  def upsert(id: FilmId, title: String, year: Option[Int], e: MovieRecord): Unit =
+    upsert(id, CacheKey(title, year, normalizer), e)
 
-  /** Update the row at `(title, year)` only if it currently exists. Returns
-   *  true on update, false when no row matched (concurrent delete, or the
-   *  row never existed). Used by the cache's `putIfPresent` so a rating
-   *  write that races against a concurrent `cache.invalidate` can't
-   *  resurrect the row by upserting it back into existence.
-   *
-   *  Writes only the fields where `before` and `after` differ — via
-   *  `$set`/`$unset` per `MovieRecordPatch`. An out-of-band Mongo edit
-   *  to a field this updater didn't touch (e.g. `FilmwebUrlAudit`
-   *  clearing `filmwebUrl` while a stale-cache rating tick concurrently
-   *  bumps `filmwebRating`) is therefore preserved instead of being
-   *  clobbered by a full-document replace. */
-  def updateIfPresent(id: FilmId, title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean
-
-  /** Key-addressed [[updateIfPresent]] — see the key-addressed `upsert`. */
-  def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean =
-    findByKeyChecked(CacheKey(title, year, normalizer))._1.exists(row => updateIfPresent(row.id, title, year, before, after))
+  def updateIfPresent(id: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): Boolean
 
   /** Stream out-of-band changes to persisted rows as they happen, so the cache
    *  can apply each change incrementally instead of periodically reloading the
@@ -332,6 +309,36 @@ trait MovieRepository {
 
   /** Release any underlying resources. No-op when nothing to release. */
   def close(): Unit
+}
+
+/**
+ * Writes addressed by the lookup key rather than the film id — for a caller that has
+ * no id in hand: seeding a spec, a one-off script. NOT part of [[MovieRepository]]'s
+ * contract: production code holds ids (the cache's index, a stored row) and the
+ * contract stays id-addressed; the implementations carry this so a test can write by
+ * title and year. The row already stored under the key keeps its id; otherwise the
+ * row is created under the key's LEGACY id (the key string itself, the shape every
+ * document written before ids existed has), or a fresh id if a document already owns
+ * that string. A store that cannot say whether a document holds the key is left alone
+ * — a failed read is not "absent", and writing could make a second document.
+ */
+trait KeyAddressedMovieWrites { self: MovieRepository =>
+  def upsert(title: String, year: Option[Int], e: MovieRecord): Unit = {
+    val key = CacheKey(title, year, normalizer)
+    findByKeyChecked(key) match {
+      case (Some(row), _) => upsert(row.id, key, e)
+      case (None, true)   =>
+        val taken: FilmId => Boolean = id => findByIdChecked(id)._1.isDefined
+        upsert(Some(FilmId.legacy(key)).filterNot(taken).getOrElse(FilmId.fresh(key, taken)), key, e)
+      case (None, false)  => ()
+    }
+  }
+
+  def updateIfPresent(title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean =
+    findByKeyChecked(CacheKey(title, year, normalizer))._1.exists(row => updateIfPresent(row.id, row.cacheKey(normalizer), before, after))
+
+  def delete(title: String, year: Option[Int]): Unit =
+    findByKeyChecked(CacheKey(title, year, normalizer))._1.foreach(row => delete(row.id))
 }
 
 object MovieRepository {
@@ -437,7 +444,7 @@ class MongoMovieRepository(
   // two different streams answering two different questions; the worker happens to satisfy
   // both with one object. See [[ScreeningsMetrics]].
   screeningsMetrics: ScreeningsMetrics = ScreeningsMetrics.noop
-) extends MovieRepository with Logging {
+) extends MovieRepository with KeyAddressedMovieWrites with Logging {
 
 
   override def hasScreenings: Boolean = screenings.isDefined
@@ -796,9 +803,11 @@ class MongoMovieRepository(
     screeningsMoved && slotsMoved
   }
 
-  def upsert(film: FilmId, title: String, year: Option[Int], e: MovieRecord): Unit = coll.foreach { c =>
-    val id   = film.value
-    val key  = documentKey(title, year)
+  def upsert(film: FilmId, cacheKey: CacheKey, e: MovieRecord): Unit = coll.foreach { c =>
+    val id    = film.value
+    val key   = StoredMovieRecord.keyFor(cacheKey)
+    val title = cacheKey.cleanTitle
+    val year  = cacheKey.year
     // A whole-record write can carry slots STRIPPED for the cache; `showtimesOf` would
     // drop them and `replaceFilm` would DELETE their screenings. Re-stitch first.
     // …and a re-stitch whose READ failed under-reports the film: every slot it could not
@@ -909,11 +918,13 @@ class MongoMovieRepository(
     }
   }
 
-  def updateIfPresent(film: FilmId, title: String, year: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = coll match {
+  def updateIfPresent(film: FilmId, cacheKey: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = coll match {
     case None => false
     case Some(c) =>
-      val id  = film.value
-      val key = documentKey(title, year)
+      val id    = film.value
+      val key   = StoredMovieRecord.keyFor(cacheKey)
+      val title = cacheKey.cleanTitle
+      val year  = cacheKey.year
       // Showtime deltas → `screenings` (its authority under the split); from the
       // ORIGINAL records. Only when a screenings repo is wired.
       val ops = if (screenings.isDefined) ScreeningsSplit.slotOps(before.data, after.data)
@@ -1191,12 +1202,4 @@ class MongoMovieRepository(
   private def isClusterClosed(exception: Throwable): Boolean =
     Option(exception.getMessage).exists(_.contains("state should be: open"))
 
-  // Match the in-memory CacheKey's normalization rules so case-only and
-  // diacritic variants of the same title share a single Mongo record. Without
-  // this, "Tom i Jerry: Przygoda w muzeum" and "Tom i jerry: przygoda w
-  // muzeum" — both reported by different cinemas for the same film — each get
-  // their own row, and only one can be updated per hourly refresh tick (the
-  // tick walks the deduplicated Caffeine cache).
-  private def documentKey(title: String, year: Option[Int]): String =
-    StoredMovieRecord.keyFor(title, year, normalizer)
 }

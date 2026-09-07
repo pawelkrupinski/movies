@@ -40,7 +40,7 @@ class InMemoryMovieRepository(
   // Last and defaulted so the positional constructions are unchanged; a spec that
   // is ABOUT country scoping passes its own instance instead of swapping a global.
   override val normalizer: services.movies.TitleNormalizer = services.movies.TitleNormalizer.deployment
-) extends MovieRepository {
+) extends MovieRepository with KeyAddressedMovieWrites {
   // Fold titles with the rules the corpus was keyed under, not a process default.
 
   override def hasScreenings: Boolean = screenings.isDefined
@@ -87,7 +87,7 @@ class InMemoryMovieRepository(
     onDelete: FilmId => Unit
   ): Option[AutoCloseable] = Some(changes.register(onUpsert, id => onDelete(FilmId(id))))
 
-  seed.foreach { case (t, y, e) => val id = idOf(t, y); store.put(id, StoredMovieRecord(t, y, e, FilmId(id))) }
+  seed.foreach { case (t, y, e) => val id = idOf(t, y); store.put(id, StoredMovieRecord(t, y, e, FilmId(id), Some(keyOf(t, y)))) }
 
   def enabled: Boolean = true
 
@@ -135,17 +135,19 @@ class InMemoryMovieRepository(
    *  write to the storage itself, and must land whatever the fake is telling the cache
    *  about its reads. */
   override def upsert(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
-    upsert(FilmId(idOf(t, y)), t, y, e)
+    upsert(FilmId(idOf(t, y)), CacheKey(t, y, normalizer), e)
   }
   override def updateIfPresent(t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
-    updateIfPresent(FilmId(idOf(t, y)), t, y, before, after)
+    updateIfPresent(FilmId(idOf(t, y)), CacheKey(t, y, normalizer), before, after)
   }
   override def delete(t: String, y: Option[Int]): Unit = lock.synchronized {
     delete(FilmId(idOf(t, y)))
   }
 
-  def upsert(film: FilmId, t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
+  def upsert(film: FilmId, key: CacheKey, e: MovieRecord): Unit = lock.synchronized {
     val id = film.value
+    val (t, y) = (key.cleanTitle, key.year)
+    val storedKey = StoredMovieRecord.keyFor(key)
     // Same order as `MongoMovieRepository.upsert`: re-stitch first (a record can arrive
     // stripped for cache residency, and `showtimesOf` would then drop showtimes that
     // `replaceFilm` proceeds to delete), then store the row WITHOUT showtimes and file
@@ -171,7 +173,7 @@ class InMemoryMovieRepository(
       if (slotsLanded) Map.empty[Source, SourceData]
       else if (screenings.isEmpty) restitched
       else ScreeningsSplit.stripShowtimes(restitched)
-    store.put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies), film))
+    store.put(id, StoredMovieRecord(t, y, e.copy(data = dataForMovies), film, Some(storedKey)))
     screenings.foreach(ScreeningsSplit.applyFilm(_, id, ScreeningsSplit.showtimesOf(restitched), stitch))
     upserts.append((t, y, e))
     notifyWatcher(id, t, y, e)
@@ -201,8 +203,9 @@ class InMemoryMovieRepository(
       screeningsMoved && slotsMoved
     }
 
-  def updateIfPresent(film: FilmId, t: String, y: Option[Int], before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
+  def updateIfPresent(film: FilmId, key: CacheKey, before: MovieRecord, after: MovieRecord): Boolean = lock.synchronized {
     val id = film.value
+    val (t, y) = (key.cleanTitle, key.year)
     store.get(id) match {
       case None => false
       case Some(stored) =>
@@ -236,7 +239,7 @@ class InMemoryMovieRepository(
             case (k, None)     => sl.deleteSlot(id, k)
           })
           val merged = patch.applyTo(stored.record)
-          store.put(id, StoredMovieRecord(t, y, merged, film))
+          store.put(id, StoredMovieRecord(t, y, merged, film, Some(StoredMovieRecord.keyFor(key))))
           upserts.append((t, y, merged))
           notifyWatcher(id, t, y, merged)
           true
@@ -266,7 +269,7 @@ class InMemoryMovieRepository(
    *  cache whose view disagrees with the store. */
   def putEmbeddedOutOfBand(t: String, y: Option[Int], e: MovieRecord): Unit = lock.synchronized {
     val id = idOf(t, y)
-    store.put(id, StoredMovieRecord(t, y, e, FilmId(id))); ()
+    store.put(id, StoredMovieRecord(t, y, e, FilmId(id), Some(keyOf(t, y)))); ()
   }
 
   /** Out-of-band edit: drop the `filmwebUrl` + `filmwebRating` for the row.

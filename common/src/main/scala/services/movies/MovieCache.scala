@@ -38,6 +38,18 @@ private[services] object CacheKey {
    *  wherever a `given` is already in scope. */
   def apply(cleanTitle: String, year: Option[Int], normalizer: TitleNormalizer): CacheKey =
     new CacheKey(cleanTitle, year, normalizer.sanitize(cleanTitle))
+
+  /** The key a stored row answers to: its `key` field AS STORED (`normalized|year`), with
+   *  the display title as its label. The stored key is the lookup identity; re-deriving
+   *  it from the display title — which is a vote over the row's slots and moves as
+   *  they do — used to make the cache and the store disagree about which key a row
+   *  held (the drifted-id orphans of old). */
+  def stored(cleanTitle: String, storedKey: String): CacheKey = {
+    val sep = storedKey.lastIndexOf('|')
+    val (normalized, year) =
+      if (sep >= 0) (storedKey.substring(0, sep), storedKey.substring(sep + 1).toIntOption) else (storedKey, None)
+    new CacheKey(cleanTitle, year, normalized)
+  }
 }
 
 /**
@@ -514,7 +526,7 @@ class CaffeineMovieCache(
       store(key, forCache(clean), id)
       // `clean` may carry stripped slots (folds/canonicalize read from the stripped cache);
       // `upsert` re-stitches those from the film's screenings so a full write never deletes them.
-      repository.upsert(id, key.cleanTitle, key.year, clean)
+      repository.upsert(id, key, clean)
       touch()
   }
 
@@ -710,12 +722,21 @@ class CaffeineMovieCache(
         // sharing a title and a year, clustered apart by tmdbId. Re-keying onto it would put
         // two documents under one key and drop this cluster's rows out of the cache
         // (found by `FilmIdentityInvariantsSpec`). The cluster keeps its keys instead.
-        corpusIndex.idOf(canonical).filterNot(id => members.exists(_._2 == id)) match {
+        // The canonical key may belong to a film OUTSIDE this cluster — two films sharing a
+        // title and a year, clustered apart by tmdbId. The cluster still collapses (its rows
+        // are one film), but onto the survivor's CURRENT key, never by taking another
+        // film's: that put two documents under one key and dropped the cluster's rows out
+        // of the cache (found by `FilmIdentityInvariantsSpec`).
+        val target = corpusIndex.idOf(canonical).filterNot(id => members.exists(_._2 == id)) match {
           case Some(holder) =>
-            logger.warn(s"canonicalize '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}): another film " +
-              s"($holder) holds the canonical key; ${members.size} row(s) of $survivorId keep their keys.")
-            keyCollisions.incrementAndGet(); ()
-          case None =>
+            logger.info(s"canonicalize '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}): another film " +
+              s"($holder) holds the canonical key; the cluster collapses onto '${survivorKey.cleanTitle}' " +
+              s"(${survivorKey.year.getOrElse("—")}) instead.")
+            keyCollisions.incrementAndGet()
+            survivorKey
+          case None => canonical
+        }
+        locally {
             val victims     = keys.filterNot(_ == survivorKey)
             val (moved, stranded) = victims.partition(v =>
               repository.moveFilm(residentIdOf(v), survivorId))
@@ -724,7 +745,7 @@ class CaffeineMovieCache(
                 "cinemas could not be carried onto the winner — they fold again on the next pass.")
             moved.foreach(invalidate)
             evict(survivorKey)
-            putAs(canonical, merged, survivorId)
+            putAs(target, merged, survivorId)
         }
       }
       // Victims = every other row in the cluster folded away; a lone respelled
@@ -1060,6 +1081,12 @@ class CaffeineMovieCache(
     // have a document (a retitle arriving here, a cold key `idFor` found in the store)
     // whose side rows must reach the survivor — a brand-new id simply has nothing to move.
     val survivorId = residentIdOf(siblingKey)
+    // The canonical key may belong to a THIRD film (two films sharing a title and a
+    // year, clustered apart by tmdbId). The merge still happens — these two rows are one
+    // film — but under the sibling's current key, never by taking another film's.
+    val target =
+      if (corpusIndex.idOf(canonical).exists(id => id != survivorId && id != newId)) { keyCollisions.incrementAndGet(); siblingKey }
+      else canonical
     val victimIds  = (Seq(newId) ++ corpusIndex.idOf(newKey)).distinct.filter(_ != survivorId)
     val (moved, stranded) = victimIds.partition(repository.moveFilm(_, survivorId))
     if (stranded.nonEmpty) {
@@ -1075,11 +1102,11 @@ class CaffeineMovieCache(
     }
     moved.foreach(repository.delete)
     if (corpusIndex.idOf(newKey).exists(moved.contains)) evict(newKey)
-    if (canonical != siblingKey) evict(siblingKey)
-    persist(canonical, merged, survivorId)
+    if (target != siblingKey) evict(siblingKey)
+    persist(target, merged, survivorId)
     // The merge may have filled enrichment inputs the canonical lacked (e.g. an
     // imdbId/searchTitle from the victim) — re-kick the affected enrichments.
-    retriggerChangedEnrichments(siblingRecord, siblingKey, merged, canonical)
+    retriggerChangedEnrichments(siblingRecord, siblingKey, merged, target)
     // Counted whether the incoming key had a stored row of its own or was a fresh write
     // that never became one: either way a would-be duplicate was folded at write time.
     if (newKey != siblingKey) {
@@ -1155,7 +1182,7 @@ class CaffeineMovieCache(
       // report success without touching the repository (or firing the change stream).
       true
     } else {
-      repository.updateIfPresent(id, key.cleanTitle, key.year, prior, fullAfter)
+      repository.updateIfPresent(id, key, prior, fullAfter)
       touch()
       true
     }
@@ -1167,7 +1194,7 @@ class CaffeineMovieCache(
   private[services] def invalidate(key: CacheKey): Unit = {
     val id = corpusIndex.idOf(key)
     evict(key)
-    id.fold(repository.delete(key.cleanTitle, key.year))(repository.delete)
+    id.orElse(repository.findByKeyChecked(key)._1.map(_.id)).foreach(repository.delete)
     touch()
   }
 
@@ -1976,7 +2003,7 @@ class CaffeineMovieCache(
   def snapshot(): Seq[StoredMovieRecord] = {
     import scala.jdk.CollectionConverters._
     positive.asMap().asScala.iterator
-      .map { case (k, e) => StoredMovieRecord(k.cleanTitle, k.year, e, corpusIndex.idOf(k).getOrElse(FilmId.legacy(k))) }
+      .map { case (k, e) => StoredMovieRecord(k.cleanTitle, k.year, e, corpusIndex.idOf(k).getOrElse(FilmId.legacy(k)), Some(StoredMovieRecord.keyFor(k))) }
       .toSeq
       .sortBy(_.title.toLowerCase)
   }
@@ -2032,7 +2059,7 @@ class CaffeineMovieCache(
     // instead, so the cache is lossless the moment the rule lands (the orphaned
     // Mongo `_id` is reconciled by a later scrape / the reaper).
     val byKey: Map[CacheKey, Seq[StoredMovieRecord]] =
-      rows.groupBy(r => CacheKey(r.title, r.year, normalizer))
+      rows.groupBy(_.cacheKey(normalizer))
     // Count what this backstop reload catches that the incremental change stream missed:
     // a put whose cached value DIFFERED (a missed upsert) and a key no longer in Mongo (a
     // missed delete). After resume tokens + delete-apply these should be ~0 in steady state
@@ -2063,7 +2090,7 @@ class CaffeineMovieCache(
       duplicates.foreach { case (k, ids) =>
         val survivor = ids.head
         val (moved, stranded) = ids.tail.partition(repository.moveFilm(_, survivor))
-        Option(positive.getIfPresent(k)).foreach(repository.upsert(survivor, k.cleanTitle, k.year, _))
+        Option(positive.getIfPresent(k)).foreach(repository.upsert(survivor, k, _))
         moved.foreach(repository.delete)
         if (stranded.nonEmpty)
           logger.warn(s"MovieCache rehydrate: kept ${stranded.size} duplicate document(s) of '${k.cleanTitle}' whose " +
@@ -2125,7 +2152,7 @@ class CaffeineMovieCache(
    *  the identity-gate `put` (Mongo is already the source of truth here, no
    *  re-folding needed). */
   private def applyUpsert(r: StoredMovieRecord): Unit = {
-    val key = CacheKey(r.title, r.year, normalizer)
+    val key = r.cacheKey(normalizer)
     // A retitle arriving from another writer: the id's previous key entry is stale.
     corpusIndex.keyOf(r.id).filter(_ != key).foreach(evict)
     store(key, forCache(r.record), r.id)
