@@ -17,68 +17,74 @@
 # would have been a downgrade, so these rules exist as a condition of retiring `kubectl set image`
 # rather than as a follow-up to it.
 #
-# ⚠️ `gotk_reconcile_condition` IS EMITTED FOR EVERY STATUS VALUE, one series per (kind, name,
-# type, status) with a 0/1 value -- so the series EXISTING says nothing and only `== 1` is a fact.
-# An expression that omits it fires the moment Flux reports anything at all, which is the shape
-# that paged on a healthy replica set (see the alert-expression memory) and the reason
-# infra/test/alert-rules/flux.yml asserts the healthy case stays silent.
+# ⚠️ THIS FILE NO LONGER WATCHES WHETHER A RECONCILE SUCCEEDS. It was written around
+# `gotk_reconcile_condition`, whose 0/1-per-(kind,name,type,status) shape is why the rules said
+# `== 1` rather than testing for the series -- an expression that omits the comparison fires the
+# moment Flux reports anything at all. That care was correct and is now moot: this fleet's Flux has
+# never published that gauge, nor `gotk_suspend_status`, so the three rules built on them were
+# permanently green. They are gone, replaced by one that watches reconciles CEASING, which is what
+# the remaining metrics can actually say. Reconciliation FAILURE and a SUSPENDED object are
+# unwatched here until kube-state-metrics is given a `--custom-resource-state-config` for Flux's
+# custom resources, and that config lives in the gitops repository. See the note on the rule.
 groups:
   - name: flux
     rules:
-      # THE WHOLE DEPLOY PATH, ONE ALERT. Kind-agnostic on purpose: a GitRepository that cannot
-      # fetch, a Kustomization that cannot apply and an ImagePolicy that matches nothing all end
-      # with new commits not reaching the cluster, and all of them show up here.
-      - alert: FluxReconciliationFailing
-        expr: gotk_reconcile_condition{type="Ready",status="False"} == 1
-        for: 30m
+      # ------------------------------------------------------------------------------------------
+      # THREE ALERTS STOOD HERE THAT COULD NEVER FIRE, AND THAT IS WORTH RECORDING RATHER THAN
+      # QUIETLY REPLACING
+      # ------------------------------------------------------------------------------------------
+      #
+      # `FluxReconciliationFailing`, `FluxDeployPathStalled` and `FluxSuspended` selected on
+      # `gotk_reconcile_condition` and `gotk_suspend_status`. Neither has EVER had a series on this
+      # fleet -- `count(max_over_time(...[30d]))` returns 0 for both, against 22 for the duration
+      # counter beside them. Newer flux controllers dropped those gauges; the only `gotk_*` families
+      # published here are `gotk_reconcile_duration_seconds_{bucket,count,sum}` and `gotk_token_*`.
+      # So all three were permanently green for the same reason a deleted alert is green, and the
+      # deploy path they guarded was unwatched for as long as they existed.
+      #
+      # ⚠️ "NO SERIES RIGHT NOW" IS NOT THE TEST, and using it as one produces false accusations.
+      # `kube_pod_container_status_waiting_reason` and `nixos_auto_apply_blocked_reason` both read
+      # zero at an arbitrary instant and both are healthy: they are published only while a pod is
+      # waiting or a host is blocked, so absence is the good state. The question is whether a metric
+      # has EVER had a series, over a window longer than the condition it reports. Asking it the
+      # other way nearly cost K3sPodCrashLooping, which is fine, a needless rewrite.
+      #
+      # WHAT REPLACES THEM IS WEAKER, AND SAYING SO IS THE POINT. A stopped reconciler and a FAILING
+      # one are different failures, and only the first is detectable from what Flux emits here: the
+      # duration histogram counts reconciles, so it can say they have ceased, but not that one came
+      # back NotReady. A Kustomization that reconciles briskly and fails every time still increments
+      # this counter and stays silent here.
+      #
+      # RESTORING THE FAILURE AND SUSPEND SIGNALS needs kube-state-metrics to expose Flux's custom
+      # resources through `--custom-resource-state-config`, which lives in the gitops repository
+      # rather than in this one. Until that exists, this file does NOT watch reconciliation failure
+      # or a suspended object, and the absence of an alert here is not evidence that Flux is
+      # applying cleanly.
+      #
+      # ONE HOUR AGAINST A MEASURED CADENCE, not a round number: the busiest objects reconcile 12-14
+      # times an hour (ImageUpdateAutomation/movies 14.1, GitRepository/movies 12.1), so an hour at
+      # zero is far outside normal for anything that reconciles at all. Per-series, so it names the
+      # object that stopped rather than the fleet.
+      - alert: FluxReconciliationStopped
+        expr: increase(gotk_reconcile_duration_seconds_count[1h]) == 0
+        # The `increase` window is already an hour; this only confirms it is not one odd sample at a
+        # scrape boundary.
+        for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "flux {{ $labels.kind }}/{{ $labels.name }} has been NotReady for 30m"
+          summary: "flux {{ $labels.kind }}/{{ $labels.name }} has not reconciled for an hour"
           description: >-
-            This object has failed to reconcile for half an hour, so whatever it owns is now
-            whatever it was last able to apply. Start with
-            `kubectl -n flux-system describe {{ $labels.kind }} {{ $labels.name }}` -- the message
-            on the Ready condition names the cause directly, and the controller's log
-            (`kubectl -n flux-system logs deploy/<controller>`) has the detail.
+            `gotk_reconcile_duration_seconds_count` for this object has not moved in an hour, while
+            the busiest objects on this cluster reconcile 12-14 times an hour. Either its controller
+            is wedged, the object is suspended, or its source is unreachable. This is the DEPLOY
+            PATH: a stopped Kustomization means merged changes stop reaching pods, silently, with CI
+            green and the image built -- the state that hid a read-model fix for hours on
+            2026-09-07. Check `flux get all -A` on monitoring-1 and the controller's own output in
+            the log store (`namespace:flux-system`). This alert does NOT watch reconciliation
+            FAILURE: an object that reconciles and fails every time keeps this counter moving and
+            stays silent here.
 
-      # THE IMAGE HALF, SEPARATELY AND LOUDER, because its failure is the invisible one. The other
-      # kinds fail against a manifest somebody just changed and is watching; this one fails against
-      # a registry, silently, when nobody is looking at it at all.
-      - alert: FluxDeployPathStalled
-        expr: >-
-          gotk_reconcile_condition{type="Ready",status="False",
-            kind=~"ImageRepository|ImagePolicy|ImageUpdateAutomation"} == 1
-        for: 30m
-        labels:
-          severity: critical
-        annotations:
-          summary: "new builds are no longer reaching the cluster ({{ $labels.kind }}/{{ $labels.name }})"
-          description: >-
-            CI can still build and push images, and nothing in CI will go red, but none of them
-            become deploys while this is failing. The three usual causes, in the order worth
-            checking: the ImagePolicy matches no tag (compare the pattern against
-            `main-<utc14>-<sha7>` and remember FluxImageAutomationSpec guards exactly this), the
-            registry scan is failing, or the deploy key that lets image-automation PUSH has been
-            revoked -- that key is the only credential in this path and it is repo-scoped, id
-            162222850.
-
-      # SUSPENDED IS NOT AN ERROR AND THAT IS THE PROBLEM. A suspended automation reports itself
-      # perfectly healthy while deploys quietly stop. Two hours is long enough that a deliberate
-      # pause during an incident does not page, and short enough that a forgotten one does.
-      - alert: FluxSuspended
-        expr: gotk_suspend_status == 1
-        for: 2h
-        labels:
-          severity: warning
-        annotations:
-          summary: "flux {{ $labels.kind }}/{{ $labels.name }} has been suspended for 2h"
-          description: >-
-            A suspended object is not reconciled and not deployed, and reports no error for it. If
-            this was a deliberate pause, resume it; if nobody remembers doing it, treat it as an
-            unexplained stop to the deploy path. Note that suspending by `kubectl patch` DOES NOT
-            STICK here -- the Kustomization reverts it from git within minutes -- so a suspension
-            that persists this long was committed, and resuming means a commit too.
 
       # THE EXPORTER ITSELF. Without this the three rules above go quiet exactly when the thing
       # they watch dies hardest, because an absent series cannot compare `== 1`.

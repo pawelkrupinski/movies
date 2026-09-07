@@ -1,19 +1,21 @@
 # UNIT TESTS FOR THE FLUX DEPLOY-PATH ALERTS.
 #
-# `promtool check rules` proves the file parses. What it cannot say is whether these expressions
-# mean what their prose claims, and this rule file has one way to be wrong that matters more than
-# all the others:
+# ⚠️ THIS FILE PREVIOUSLY PROVED THREE ALERTS CORRECT THAT COULD NEVER FIRE, and that is the most
+# useful thing about its history. It fed promtool synthetic `gotk_reconcile_condition` and
+# `gotk_suspend_status` series, asserted careful things about them, and passed -- while this
+# fleet's Flux has never published either gauge. `count(max_over_time(...[30d]))` returns 0 for
+# both. A unit test supplies its own inputs, so it can only ever say "IF this series existed, the
+# rule would behave"; it cannot notice that the premise is false in production.
 #
-#   ⚠️ `gotk_reconcile_condition` IS EMITTED FOR EVERY STATUS VALUE. Flux publishes one series per
-#      (kind, name, type, status) combination and moves the VALUE between 0 and 1 -- so a perfectly
-#      healthy object still produces a `status="False"` series, sitting at 0. An expression that
-#      selects those labels without `== 1` fires permanently, on everything, from the moment Flux
-#      starts. That is not hypothetical: the same shape once paged continuously on a healthy Mongo
-#      replica set. The FIRST test below is therefore the load-bearing one -- it asserts silence
-#      while every series exists.
+# The lesson kept here rather than in a commit message: for any rule watching a metric this
+# repository does not itself publish, the test proves the LOGIC and something else has to prove the
+# METRIC. That something is a series count against real Prometheus over a window longer than the
+# condition being reported -- longer, because `kube_pod_container_status_waiting_reason` and
+# `nixos_auto_apply_blocked_reason` both read zero at any healthy instant and are perfectly alive.
 #
-# The rest cover the three ways the deploy path stops without an outage: a policy that matches
-# nothing, an automation somebody suspended and forgot, and a controller that is simply gone.
+# What remains is one rule that watches reconciles CEASING, which the surviving metrics can say,
+# and one that watches the controller being gone. Reconciliation FAILURE and a SUSPENDED object are
+# not watched at all -- see the note in flux.rules.
 rule_files:
   - ../../nix/files/monitoring/rules/flux.rules
 
@@ -21,141 +23,94 @@ evaluation_interval: 1m
 
 tests:
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # A COMPLETELY HEALTHY FLUX. Every series exists, including the False ones, all at their honest
-  # values. Nothing may fire.
+  # A HEALTHY FLUX. Objects reconcile at the cadence this cluster actually runs -- the busiest sit
+  # at 12-14 an hour -- and the controller is up. Nothing may fire.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
-      - series: 'gotk_reconcile_condition{kind="ImagePolicy",name="movies-web",namespace="flux-system",type="Ready",status="True"}'
-        values: '1+0x300'
-      - series: 'gotk_reconcile_condition{kind="ImagePolicy",name="movies-web",namespace="flux-system",type="Ready",status="False"}'
-        values: '0+0x300'
-      - series: 'gotk_reconcile_condition{kind="Kustomization",name="web-pl-config",namespace="flux-system",type="Ready",status="False"}'
-        values: '0+0x300'
-      - series: 'gotk_suspend_status{kind="ImageUpdateAutomation",name="movies",namespace="flux-system"}'
-        values: '0+0x300'
-      - series: 'up{job="flux",controller="image-automation-controller"}'
+      # 14/h, the measured rate for ImageUpdateAutomation/movies: one every ~4.3 minutes.
+      - series: 'gotk_reconcile_duration_seconds_count{kind="ImageUpdateAutomation",name="movies",namespace="flux-system",job="flux"}'
+        values: '0+0.233x300'
+      - series: 'gotk_reconcile_duration_seconds_count{kind="Kustomization",name="web-pl-config",namespace="flux-system",job="flux"}'
+        values: '0+0.2x300'
+      - series: 'up{job="flux"}'
         values: '1+0x300'
     alert_rule_test:
-      - eval_time: 4h
-        alertname: FluxReconciliationFailing
-        exp_alerts: []
-      - eval_time: 4h
-        alertname: FluxDeployPathStalled
-        exp_alerts: []
-      - eval_time: 4h
-        alertname: FluxSuspended
-        exp_alerts: []
-      - eval_time: 4h
+      - eval_time: 250m
+        alertname: FluxReconciliationStopped
+      - eval_time: 250m
         alertname: FluxControllerDown
-        exp_alerts: []
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # THE POLICY MATCHES NO TAG. CI keeps building and pushing; none of it becomes a deploy. This is
-  # the invisible failure the critical alert exists for, and it must also show up in the general
-  # one, which is kind-agnostic on purpose.
+  # THE DEPLOY PATH STOPS WITHOUT AN OUTAGE. One Kustomization's counter flatlines while the other
+  # keeps moving and the controller stays up -- which is the shape that hid a read-model fix for
+  # hours on 2026-09-07: CI green, image built, nothing reaching pods.
+  #
+  # It must name the object that stopped and NOT the one still working.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
-      - series: 'gotk_reconcile_condition{kind="ImagePolicy",name="movies-web",namespace="flux-system",type="Ready",status="False"}'
+      - series: 'gotk_reconcile_duration_seconds_count{kind="Kustomization",name="web-pl-config",namespace="flux-system",job="flux"}'
+        values: '500+0x300'
+      - series: 'gotk_reconcile_duration_seconds_count{kind="Kustomization",name="headlamp",namespace="flux-system",job="flux"}'
+        values: '0+0.2x300'
+      - series: 'up{job="flux"}'
         values: '1+0x300'
     alert_rule_test:
-      # Not at 20m: a scan failing briefly is normal and must not page.
-      - eval_time: 20m
-        alertname: FluxDeployPathStalled
-        exp_alerts: []
-      - eval_time: 35m
-        alertname: FluxDeployPathStalled
-        exp_alerts:
-          - exp_labels:
-              severity: critical
-              kind: ImagePolicy
-              name: movies-web
-              namespace: flux-system
-              type: Ready
-              status: "False"
-            exp_annotations:
-              summary: "new builds are no longer reaching the cluster (ImagePolicy/movies-web)"
-              description: >-
-                CI can still build and push images, and nothing in CI will go red, but none of them
-                become deploys while this is failing. The three usual causes, in the order worth
-                checking: the ImagePolicy matches no tag (compare the pattern against
-                `main-<utc14>-<sha7>` and remember FluxImageAutomationSpec guards exactly this), the
-                registry scan is failing, or the deploy key that lets image-automation PUSH has been
-                revoked -- that key is the only credential in this path and it is repo-scoped, id
-                162222850.
-      - eval_time: 35m
-        alertname: FluxReconciliationFailing
+      # THE `for:` IS LOAD-BEARING AND THIS IS WHAT PINS IT. The condition is already true at five
+      # minutes -- see the note below -- so without `for: 15m` a single flat scrape interval would
+      # page. Deleting the `for:` from the rule fails HERE and nowhere else.
+      - eval_time: 5m
+        alertname: FluxReconciliationStopped
+      # ⚠️ NOT "nothing before 75m", which is the intuitive and wrong expectation this test was
+      # first written with. `increase(counter[1h])` over a FLAT series is 0 as soon as the window
+      # holds samples at all -- it does not wait for the window to span an hour of wall clock. So
+      # the condition is true early and the `for: 15m` is the only delay. Asserted at 90m because
+      # that is comfortably past it, not because 75m is a boundary.
+      - eval_time: 90m
+        alertname: FluxReconciliationStopped
         exp_alerts:
           - exp_labels:
               severity: warning
-              kind: ImagePolicy
-              name: movies-web
+              kind: Kustomization
+              name: web-pl-config
               namespace: flux-system
-              type: Ready
-              status: "False"
+              job: flux
             exp_annotations:
-              summary: "flux ImagePolicy/movies-web has been NotReady for 30m"
-              description: >-
-                This object has failed to reconcile for half an hour, so whatever it owns is now
-                whatever it was last able to apply. Start with `kubectl -n flux-system describe
-                ImagePolicy movies-web` -- the message on the Ready condition names the cause
-                directly, and the controller's log (`kubectl -n flux-system logs deploy/<controller>`)
-                has the detail.
+              summary: 'flux Kustomization/web-pl-config has not reconciled for an hour'
+              description: "`gotk_reconcile_duration_seconds_count` for this object has not moved in an hour, while the busiest objects on this cluster reconcile 12-14 times an hour. Either its controller is wedged, the object is suspended, or its source is unreachable. This is the DEPLOY PATH: a stopped Kustomization means merged changes stop reaching pods, silently, with CI green and the image built -- the state that hid a read-model fix for hours on 2026-09-07. Check `flux get all -A` on monitoring-1 and the controller's own output in the log store (`namespace:flux-system`). This alert does NOT watch reconciliation FAILURE: an object that reconciles and fails every time keeps this counter moving and stays silent here."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # SUSPENDED AND FORGOTTEN. Reports no error at all; deploys simply stop. A deliberate pause
-  # during an incident must not page, a forgotten one must.
+  # A SLOW OBJECT IS NOT A STOPPED ONE. Some Flux objects reconcile on long intervals by design, so
+  # the rule must not page for one that moves only a few times an hour.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
-      - series: 'gotk_suspend_status{kind="ImageUpdateAutomation",name="movies",namespace="flux-system"}'
+      # 2 per hour -- far below the busiest objects, and still alive.
+      - series: 'gotk_reconcile_duration_seconds_count{kind="GitRepository",name="movies",namespace="flux-system",job="flux"}'
+        values: '0+0.0333x300'
+      - series: 'up{job="flux"}'
         values: '1+0x300'
     alert_rule_test:
-      - eval_time: 1h
-        alertname: FluxSuspended
-        exp_alerts: []
-      - eval_time: 2h5m
-        alertname: FluxSuspended
-        exp_alerts:
-          - exp_labels:
-              severity: warning
-              kind: ImageUpdateAutomation
-              name: movies
-              namespace: flux-system
-            exp_annotations:
-              summary: "flux ImageUpdateAutomation/movies has been suspended for 2h"
-              description: >-
-                A suspended object is not reconciled and not deployed, and reports no error for it.
-                If this was a deliberate pause, resume it; if nobody remembers doing it, treat it as
-                an unexplained stop to the deploy path. Note that suspending by `kubectl patch` DOES
-                NOT STICK here -- the Kustomization reverts it from git within minutes -- so a
-                suspension that persists this long was committed, and resuming means a commit too.
+      - eval_time: 120m
+        alertname: FluxReconciliationStopped
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # THE CONTROLLER IS GONE. Without this the rules above go quiet exactly when the thing they
-  # watch dies hardest, because an absent series cannot compare `== 1`.
+  # THE CONTROLLER IS GONE. `FluxReconciliationStopped` is expected to fire too once the counter
+  # stops advancing -- both are true and both are worth saying, but the controller alert is the one
+  # that names the cause.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
-      - series: 'up{job="flux",controller="image-automation-controller"}'
-        values: '0+0x120'
+      - series: 'up{job="flux"}'
+        values: '0+0x300'
     alert_rule_test:
-      - eval_time: 10m
-        alertname: FluxControllerDown
-        exp_alerts: []
-      - eval_time: 20m
+      - eval_time: 30m
         alertname: FluxControllerDown
         exp_alerts:
           - exp_labels:
               severity: critical
               job: flux
-              controller: image-automation-controller
             exp_annotations:
-              summary: "flux image-automation-controller is not answering its metrics port"
-              description: >-
-                Either the controller is down or its NodePort no longer matches. The ports are fixed
-                in movies-gitops/flux-metrics/services.yaml and must agree with
-                `fleet.prometheus.fluxTargets`; nothing checks that, and a disagreement looks exactly
-                like this. Check `kubectl -n flux-system get pods` first -- if they are Running, it
-                is the port.
+              summary: 'flux  is not answering its metrics port'
+              description: 'Either the controller is down or its NodePort no longer matches. The ports are fixed in movies-gitops/flux-metrics/services.yaml and must agree with `fleet.prometheus.fluxTargets`; nothing checks that, and a disagreement looks exactly like this. Check `kubectl -n flux-system get pods` first -- if they are Running, it is the port.'
