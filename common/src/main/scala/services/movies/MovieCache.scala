@@ -263,6 +263,9 @@ class CaffeineMovieCache(
   // Exposed for tests + diagnostics: a non-zero value means scrapes are landing against
   // an unreadable corpus, which is the state that used to silently prune boards.
   private[services] val skippedUnreadable = new java.util.concurrent.atomic.AtomicLong(0)
+  // Writes refused because a different film already holds the key (two films, one
+  // title and year). Exposed for tests + diagnostics.
+  private[services] val keyCollisions = new java.util.concurrent.atomic.AtomicLong(0)
 
   // `recordStats` so the resident corpus can report its hit ratio — a read served
   // here is a Mongo read not made. Unbounded, so its eviction count stays 0 by
@@ -497,13 +500,22 @@ class CaffeineMovieCache(
   private def persist(key: CacheKey, e: MovieRecord): Unit =
     idFor(key).fold(deferUnreadable("write", key))(persist(key, e, _))
 
-  private def persist(key: CacheKey, e: MovieRecord, id: FilmId): Unit = {
-    val clean = withoutZeroRatings(e)
-    store(key, forCache(clean), id)
-    // `clean` may carry stripped slots (folds/canonicalize read from the stripped cache);
-    // `upsert` re-stitches those from the film's screenings so a full write never deletes them.
-    repository.upsert(id, key.cleanTitle, key.year, clean)
-    touch()
+  private def persist(key: CacheKey, e: MovieRecord, id: FilmId): Unit = corpusIndex.idOf(key).filter(_ != id) match {
+    case Some(holder) =>
+      // A DIFFERENT film already answers to this key (the same-film cases were folded
+      // by `putAs` before this point): two films sharing a title and a year. Writing
+      // would put a second document under one key and drop the holder out of the
+      // cache — the property spec's first find. The row stays where it is instead.
+      logger.warn(s"Refusing to write '${key.cleanTitle}' (${key.year.getOrElse("—")}) as $id: another film " +
+        s"($holder) holds that key. The row keeps its current key.")
+      keyCollisions.incrementAndGet(); ()
+    case None =>
+      val clean = withoutZeroRatings(e)
+      store(key, forCache(clean), id)
+      // `clean` may carry stripped slots (folds/canonicalize read from the stripped cache);
+      // `upsert` re-stitches those from the film's screenings so a full write never deletes them.
+      repository.upsert(id, key.cleanTitle, key.year, clean)
+      touch()
   }
 
   // Rating sources occasionally hand us a literal zero — MC/RT search pages
@@ -694,15 +706,26 @@ class CaffeineMovieCache(
         val members     = keys.map(k => k -> residentIdOf(k))
         val survivorId  = FilmCanonicalizer.survivor(members, canonical).get   // members is non-empty
         val survivorKey = members.collectFirst { case (k, id) if id == survivorId => k }.get
-        val victims     = keys.filterNot(_ == survivorKey)
-        val (moved, stranded) = victims.partition(v =>
-          repository.moveFilm(residentIdOf(v), survivorId))
-        if (stranded.nonEmpty)
-          logger.warn(s"canonicalize '${canonical.cleanTitle}': keeping ${stranded.size} row(s) whose " +
-            "cinemas could not be carried onto the winner — they fold again on the next pass.")
-        moved.foreach(invalidate)
-        evict(survivorKey)
-        putAs(canonical, merged, survivorId)
+        // The canonical key may already belong to a film OUTSIDE this cluster — two films
+        // sharing a title and a year, clustered apart by tmdbId. Re-keying onto it would put
+        // two documents under one key and drop this cluster's rows out of the cache
+        // (found by `FilmIdentityInvariantsSpec`). The cluster keeps its keys instead.
+        corpusIndex.idOf(canonical).filterNot(id => members.exists(_._2 == id)) match {
+          case Some(holder) =>
+            logger.warn(s"canonicalize '${canonical.cleanTitle}' (${canonical.year.getOrElse("—")}): another film " +
+              s"($holder) holds the canonical key; ${members.size} row(s) of $survivorId keep their keys.")
+            keyCollisions.incrementAndGet(); ()
+          case None =>
+            val victims     = keys.filterNot(_ == survivorKey)
+            val (moved, stranded) = victims.partition(v =>
+              repository.moveFilm(residentIdOf(v), survivorId))
+            if (stranded.nonEmpty)
+              logger.warn(s"canonicalize '${canonical.cleanTitle}': keeping ${stranded.size} row(s) whose " +
+                "cinemas could not be carried onto the winner — they fold again on the next pass.")
+            moved.foreach(invalidate)
+            evict(survivorKey)
+            putAs(canonical, merged, survivorId)
+        }
       }
       // Victims = every other row in the cluster folded away; a lone respelled
       // key (keys.size == 1) is a re-key, not a merge, so it counts 0.

@@ -78,4 +78,21 @@ class FilmIdentityWritesSpec extends AnyFlatSpec with Matchers {
     refusing.findAll().map(r => r.id -> r.record.tmdbId).toSet shouldBe before
     cache.entries.map(_._1).toSet shouldBe Set(a, b)
   }
+
+  "a different film wanting a key another film holds" should "stay where it is, not become a second document under that key" in {
+    val (_, repository) = split()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val held     = CacheKey("Beta", Some(2026), titleNormalizer)
+    val yearless = CacheKey("Beta", None, titleNormalizer)
+    cache.put(held,     MovieRecord(tmdbId = Some(1), data = slot(KinoMuza, "Beta") + ((Tmdb: Source) -> SourceData(title = Some("Beta"), releaseYear = Some(2026)))))
+    cache.put(yearless, MovieRecord(tmdbId = Some(2), data = slot(Helios, "Beta")   + ((Tmdb: Source) -> SourceData(title = Some("Beta"), releaseYear = Some(2026)))))
+    val ids = repository.findAll().map(_.id).toSet
+
+    cache.canonicalizeBySanitize()      // wants to re-key the yearless film onto 2026, which the other film holds
+
+    cache.keyCollisions.get() should be >= 1L
+    repository.findAll().map(_.id).toSet shouldBe ids
+    repository.findAll().groupBy(_.key(titleNormalizer)).values.map(_.size).max shouldBe 1
+    cache.entries.map(_._1).toSet shouldBe Set(held, yearless)
+  }
 }
