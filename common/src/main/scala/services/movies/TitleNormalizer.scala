@@ -125,7 +125,7 @@ class TitleNormalizer(val rules: TitleRuleSet) {
   private def canonical(t: String): String = rules.canonical(t)
 
   // Memoised because `sanitize` is the hottest normaliser — called per movie ×
-  // per corpus row inside `MovieCache`'s scrape scans (`concludedKeyFor`,
+  // per corpus row inside `ScrapeLanding`'s scrape scans (`concludedKeyFor`,
   // `redirectToExistingVariant`, the per-tick index rebuilds) and every staging /
   // projection key. The inner `canonical` fold is already cached per-`TitleRuleSet`,
   // but the outer NFD-normalise + deburr + Unicode `replaceAll` ran uncached on

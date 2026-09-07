@@ -6,7 +6,7 @@ package services.movies
  * Two places have to choose between candidate films that a title cannot separate,
  * and both have the same evidence to hand — what the venues printed:
  *
- *   - `MovieCache.chooseConcluded`, deciding which of two same-titled concluded
+ *   - `ScrapeLanding.chooseConcluded`, deciding which of two same-titled concluded
  *     rows a listing belongs on;
  *   - `FilmCanonicalizer.canonical`, deciding which tmdbId a cluster folded on a
  *     shared imdbId should keep.

@@ -17,7 +17,7 @@ import tools.PersonName
  * were stored and rendered verbatim while every other source (TMDB, IMDb, the
  * Polish scrapers, the UK chain clients) supplied properly-cased ones, so the
  * corpus is MIXED. [[tools.PersonName]] now capitalises them at both the Flicks
- * parse boundary and `MovieCache.buildCinemaSlot`; this script applies the same
+ * parse boundary and `ScrapeLanding.buildCinemaSlot`; this script applies the same
  * function to what is already persisted.
  *
  * Because the repair runs over a mostly-correct corpus, EVERY write is
@@ -45,7 +45,7 @@ import tools.PersonName
  * site serves.
  *
  * Only `cast` is touched. `director` shares the same casing rule going forward
- * (both go through `MovieCache.displayNames`), but no source has been observed
+ * (both go through `ScrapeLanding.displayNames`), but no source has been observed
  * shipping a lowercase director, so there is nothing to repair.
  *
  * ==Running it==

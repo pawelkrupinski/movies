@@ -27,7 +27,7 @@ object YearWindow {
    *  latarnie", 1989 against 1991). Wide enough for that gap and no wider — a
    *  same-titled remake still awaiting its own tmdbId must not be swallowed. Read by
    *  the settle's cluster attach (`FilmCanonicalizer.clusterByFilm` rule 2) AND by the
-   *  scrape landing (`MovieCache.concludedKeyFor`), which have to agree: a listing
+   *  scrape landing (`ScrapeLanding.concludedKeyFor`), which have to agree: a listing
    *  landed outside the settle's window is a row the settle folds a tick later, and
    *  one refused inside it is a row the settle never folds. */
   val ProductionToRelease: Int = 2

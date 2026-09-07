@@ -86,6 +86,29 @@ rest is the key itself.
    (`MovieCache.putAs`, `MergeReason.ImdbIdentity`). Every edge the settle
    knows is now asked when the screening lands; the settle is the self-heal.
 
+## Where the landing lives
+
+`MovieCache` is being split along its three responsibilities, one seam at a time,
+each a pure extraction the landing specs pin before and after:
+
+1. DONE `ListingLanding` — the six questions the corpus is asked about one listing
+   (same-titled rows, alias, this venue's slot, decoration, search key, the cinemas'
+   veto), as a pure value over `CorpusIndexReader` and the resident records.
+2. DONE `ScrapeLanding` — the whole scrape-time path `recordCinemaScrape` was: the
+   depth / breadth / cold-mirror guards, `concludedKeyFor`'s nearest-year walk over
+   `YearWindow`, the variant redirect and the one retitle a scrape may cause
+   (`RekeyReason.ScrapeVariant`), the slot build, the write under the per-title
+   lock, the same-slot drop from other rows, the prune, the staging divert and the
+   bus announcements. It reaches the cache only through `LandingStore` — the
+   resident read, the read-only index, `keyOf`, the three write funnels (`put`,
+   `putIfPresent`, `rekey`), `withTitleLock`, `storedChecked`, `residentCount`,
+   `rehydrate` and the `skippedUnreadable` counter — and `CaffeineMovieCache`
+   implements that trait and delegates `recordCinemaScrape` to it, so no caller
+   changed. `ScrapeLandingSpec` drives the class on its own constructor.
+3. NEXT the settle — `canonicalizeBySanitize`, `collapseCluster`, `settleResolved`,
+   `backfillEmbeddedYears` — leaving the cache the resident corpus, its index, the
+   identity gate and the locks.
+
 ## Measuring
 
 `kinowo_worker_merges_total` / `kinowo_worker_rekeys_total` by reason, and the

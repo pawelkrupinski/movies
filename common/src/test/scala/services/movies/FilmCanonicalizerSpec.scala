@@ -136,7 +136,7 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
 
   // The window's EDGE, pinned so it can only move on purpose: two years off attaches,
   // three does not. `YearWindow.ProductionToRelease` owns the number, and
-  // `MovieCache.concludedKeyFor` reads the same one so a listing lands exactly where
+  // `ScrapeLanding.concludedKeyFor` reads the same one so a listing lands exactly where
   // the settle would attach it (`DecoratedListingLandsSpec` pins that side).
   it should "attach an unresolved row at the edge of the year window and orphan one just past it" in {
     def clustersFor(cinemaYear: Int) = FilmCanonicalizer.clusterByFilm(Seq(

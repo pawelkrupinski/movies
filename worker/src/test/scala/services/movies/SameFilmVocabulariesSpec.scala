@@ -20,7 +20,7 @@ import services.resolution.{Candidate, Contradiction, Support, Verdict}
  *     (±2 minutes) or, when a side has no minutes, by year
  *     (`YearWindow.PublishedAdjacency`), vetoed by an agreeing whole-name director.
  *     It never reads an id.
- *   - `MovieCache.chooseConcluded` — which of several SAME-TITLED concluded rows a
+ *   - `ScrapeLanding.chooseConcluded` — which of several SAME-TITLED concluded rows a
  *     listing belongs on: the runtime it published against each film's own, then
  *     the film more venues screen, then where this venue already sits, then
  *     `canonicalRank`. It never reads a director or a title.

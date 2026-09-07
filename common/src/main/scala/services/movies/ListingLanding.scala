@@ -51,7 +51,7 @@ object ListingLanding {
         .orElse(sameSearchAs.minByOption(FilmCanonicalizer.canonicalRank))
   }
 
-  def ask(index: CorpusIndex, recordOf: CacheKey => Option[MovieRecord], listing: Listing,
+  def ask(index: CorpusIndexReader, recordOf: CacheKey => Option[MovieRecord], listing: Listing,
           normalizer: TitleNormalizer, diverting: Boolean): Answers = {
     val norm           = normalizer.sanitize(listing.displayTitle)
     val sameTitledRows = index.rowsFor(norm)

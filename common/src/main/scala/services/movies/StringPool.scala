@@ -7,7 +7,7 @@ import com.github.benmanes.caffeine.cache.Caffeine
  *  cinemas doesn't hold N byte-identical copies
  *  of the same value across its per-cinema slots. Low-cardinality tokens especially win:
  *  a country or genre recurs in thousands of slots corpus-wide yet collapses to ONE
- *  instance. Interning happens at the single write boundary (`MovieCache.buildCinemaSlot`);
+ *  instance. Interning happens at the single write boundary (`ScrapeLanding.buildCinemaSlot`);
  *  the prior-slot carry-forward already holds interned instances, so only fresh values
  *  need it.
  *
@@ -39,7 +39,7 @@ object StringPool {
    *  elements), ageRating 8,532x (7 distinct), director 69x, cast 60x.
    *
    *  So heap duplication is NOT this cap overflowing. It is the paths that never
-   *  reach the pool -- interning happens only at `MovieCache.buildCinemaSlot`, so
+   *  reach the pool -- interning happens only at `ScrapeLanding.buildCinemaSlot`, so
    *  anything rehydrated through `MovieCodecs` decode, plus `Showtime.format` and
    *  `CinemaShowing.titleKey`, arrives as fresh instances. Raising this number would
    *  cost memory and change nothing. */

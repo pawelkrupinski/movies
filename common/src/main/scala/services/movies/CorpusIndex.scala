@@ -4,6 +4,22 @@ import models.{Cinema, MovieRecord, Source, SourceData}
 
 import scala.collection.mutable
 
+/** The questions the scrape-time landing asks of the index — [[CorpusIndex]] read-only,
+ *  which is all [[ScrapeLanding]] and [[ListingLanding]] are handed: the index is only as
+ *  correct as the cache's write funnels, so nothing outside the cache may write it. */
+private[movies] trait CorpusIndexReader {
+  def keysDecoratedBy(whole: Seq[String], minBaseTokens: Int = 1): Set[CacheKey]
+  def keysWithSearchKey(search: String): Set[CacheKey]
+  def holdsTitle(normalized: String): Boolean
+  def holdsAlias(alias: String): Boolean
+  def keysForAlias(alias: String): Set[CacheKey]
+  def entriesFor(normalized: String): Seq[(CacheKey, MovieRecord)]
+  def rowsFor(normalized: String): Seq[MovieRecord]
+  def holdsCinemaSlot(cinema: Cinema, normalized: String): Boolean
+  def keysForCinemaSlot(cinema: Cinema, normalized: String): Set[CacheKey]
+  def slotsOf(cinema: Cinema): Seq[(CacheKey, Source, SourceData)]
+}
+
 /**
  * The four whole-corpus derivations `recordCinemaScrape` asks about, maintained AS
  * ROWS ARE WRITTEN instead of rebuilt from scratch on every venue.
@@ -62,7 +78,7 @@ import scala.collection.mutable
  *                   it must stay the ONE definition the divert gate uses.
  */
 private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
-                                        isConcludedBareRow: (CacheKey, MovieRecord) => Boolean) {
+                                        isConcludedBareRow: (CacheKey, MovieRecord) => Boolean) extends CorpusIndexReader {
 
   /** `key.normalized` → the rows living under it. The old `rowsFor` grouping. */
   private val rowsByNormalized = mutable.Map.empty[String, mutable.Map[CacheKey, MovieRecord]]
@@ -189,7 +205,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
 
   /** The concluded bare rows carrying this sanitized alias.
    *
-   *  The alias arm of [[MovieCache.concludedKeyFor]], which walked the whole corpus
+   *  The alias arm of [[ScrapeLanding.concludedKeyFor]], which walked the whole corpus
    *  running `isBareFilmTitle` and a `sanitize` per alias per row — for every landed
    *  listing. */
   def keysForAlias(alias: String): Set[CacheKey] =

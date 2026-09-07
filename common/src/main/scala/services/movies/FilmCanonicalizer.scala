@@ -542,7 +542,7 @@ object FilmCanonicalizer {
     // A cross-title cluster (a film folded across two languages by shared tmdbId,
     // "Tangled" + "Zaplątani") ALSO needs this: keying on the alphabetical `min`
     // could pick an original-language title no cinema reports, so every localised
-    // scrape would miss it (`MovieCache.concludedKeyFor` matches by sanitize) and
+    // scrape would miss it (`ScrapeLanding.concludedKeyFor` matches by sanitize) and
     // re-spawn the duplicate. `minSpelling` remains the ladder's last-resort tie-
     // break. The rating SEARCH query is now case/diacritic-folded (FilmwebClient;
     // RT/MC already slug-fold), so this re-spelling no longer shifts which fixture
