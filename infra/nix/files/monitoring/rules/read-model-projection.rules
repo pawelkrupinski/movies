@@ -343,6 +343,15 @@ groups:
       # a worker whose census could not be read would show every served film as a difference and
       # page for a monitoring gap. So this rule refuses to speak unless BOTH sides are reporting.
       #
+      # WHAT `for:` MEANS HERE IS "NEVER REACHED ZERO", not "was large on average". The rule is
+      # evaluated every 15s (the group's pinned interval) and a single evaluation that finds the
+      # two sides equal resets the pending state, so this fires only when the difference failed
+      # to touch zero even once across the whole window. That is the standing expectation stated
+      # as a rule: a converged read model returns to zero between every census refresh, and a
+      # system that oscillates 0 -> 5 -> 0 is converging and stays silent, while a floor that
+      # never reaches zero -- however small -- is what pages.
+      #
+      # THE WINDOW MUST EXCEED THE CENSUS CADENCE, which is the only reason it is not one minute.
       # `for: 20m` IS FOUR CENSUS REFRESHES. The worker side is recomputed off the shared corpus
       # scan every 5 minutes (`WorkerCorpusScan`, KINOWO_CORPUS_SCAN_SECONDS) while the web side
       # is live off its change streams, so the pair is legitimately out of step for up to one
