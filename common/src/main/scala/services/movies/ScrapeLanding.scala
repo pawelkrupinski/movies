@@ -339,10 +339,21 @@ private[movies] final class ScrapeLanding(
       deduped.sortBy(cm => (cleaned(cm), cm.movie.releaseYear.getOrElse(Int.MinValue))).flatMap { cm =>
       val displayTitle = cleaned(cm)
       val norm         = normalizer.sanitize(displayTitle)
-      // The year that decides placement: this listing's, else the one this venue's
-      // own slot already records (see `venueSlotYear`). Without the fallback a
-      // deferred-detail venue is placed as yearless on every tick, for ever.
-      val primary      = store.keyOf(displayTitle, cm.movie.releaseYear.orElse(venueSlotYear(norm)))
+      // The year that decides placement: this listing's, else the one it wrote into
+      // its own TITLE (see `EmbeddedYear`), else the one this venue's own slot
+      // already records (see `venueSlotYear`). Without the last a deferred-detail
+      // venue is placed as yearless on every tick, for ever.
+      //
+      // The title arm is what separates two films a repertory listing distinguishes
+      // ONLY by the year it brackets. `sanitize` strips that annotation — rightly,
+      // it is not part of a film's identity for a merge key — so "It (1990)" and
+      // "It (2017)" both reduce to "it", and a listing arriving with no year of its
+      // own lands on whichever of them is already concluded. kinowo_us held exactly
+      // that: five venues screening Tommy Lee Wallace's 168-minute miniseries on the
+      // row resolved to Muschietti's 135-minute film, which `MixedFilmSplitter` then
+      // re-diverted on every settle and the fold put straight back.
+      val primary      = store.keyOf(displayTitle,
+        cm.movie.releaseYear.orElse(EmbeddedYear.of(displayTitle)).orElse(venueSlotYear(norm)))
       // A newcomer: `staging` is wired and this film's sanitize group isn't in
       // `movies` yet — AND it isn't a known film listed under another language (an
       // alias of a concluded row). (Same-tick spelling variants already collapsed

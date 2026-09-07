@@ -14,11 +14,13 @@ package services.movies
  *     retrospective ("Klasyka w NCKF: Generał (1926) 4K", "Konwicki: Lawa (1989)")
  *     resolves via the year-scoped exact-title path instead of stalling at the
  *     year-less singleton guard (see `MovieService.resolveTmdbId`); and
- *   - PERSISTED at the scrape boundary (`MovieCache.recordCinemaScrape`) as the
- *     row's release year, so a scrape that reported no year still keys, resolves,
- *     and displays as if the cinema had shipped the year — the deterministic
- *     scrape-path re-key `canonicalRank` already reconciles (never the async
- *     resolve path, which would race it).
+ *   - PERSISTED at the scrape boundary (`ScrapeLanding`) as the row's release
+ *     year, so a scrape that reported no year still keys, resolves, and displays
+ *     as if the cinema had shipped the year — the deterministic scrape-path re-key
+ *     `canonicalRank` already reconciles (never the async resolve path, which
+ *     would race it). It is also what keeps two films a listing distinguishes ONLY
+ *     by its bracketed year apart, since the key strips the annotation the moment
+ *     it is read: "It (1990)" and "It (2017)" both sanitize to `it`.
  *
  *  Abstains (returns None) when there's no delimited year, when it's outside the
  *  plausible film range [1888, maxYear], or when SEVERAL distinct years appear

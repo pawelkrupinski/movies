@@ -340,4 +340,90 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
       }
     }
   }
+
+  // ── It, kinowo_us 2026-09-07: the year is IN the title, and the key drops it ──
+  //
+  // Twenty-one Cinepolis / EVO venues list "It (2017)" at 135 minutes (Andy
+  // Muschietti); five — Bright Star and four Rooftop Cinemas — list "It (1990)" at
+  // 168 (Tommy Lee Wallace's miniseries). Neither side publishes a `releaseYear`
+  // and neither publishes an `originalTitle`: the Flicks listings carry a title and
+  // nothing else, and the only place the year appears is INSIDE it.
+  //
+  // `sanitize` strips a bracketed year (`xtra-canonical-trailing-paren-year`, so
+  // "Milczenie owiec (1991)" merges into "Milczenie owiec"), which is right for a
+  // merge KEY and wrong as the whole of a placement decision: both spellings reduce
+  // to "it", the listing reaches `concludedKeyFor` carrying no year at all, and a
+  // yearless listing lands on any concluded same-title row — here the only one
+  // there is, the 2017 film. The row then held two films, `MixedFilmSplitter`
+  // re-diverted the five slots on every settle, the staging fold put them straight
+  // back, and the United States convergence leg counted five splits per pass for
+  // ever.
+  //
+  // `EmbeddedYear` already reads exactly this annotation, and its own header says
+  // it is the row's lookup year when the scrape carries none. The landing simply
+  // never asked it.
+  // tmdbId 570670 (Muschietti, 2017) against 33217 (Wallace, 1990) — two films.
+  private val It2017 = 570670
+
+  /** The 2017 film's resolved row, as the Cinepolis venues describe it. */
+  private def resolvedIt2017 = MovieRecord(tmdbId = Some(It2017), data = Map[Source, SourceData](
+    models.Tmdb      -> SourceData(title = Some("It"), releaseYear = Some(2017), runtimeMinutes = Some(135)),
+    (Helios: Source) -> SourceData(title = Some("It (2017)"), runtimeMinutes = Some(135),
+      director = Seq("Andy Muschietti"), showtimes = Seq(Showtime(When, bookingUrl = None)))))
+
+  /** A Flicks listing: a title, a runtime, a director — and no year of its own. */
+  private def flicksListing(cinema: Cinema, title: String, runtime: Int, director: String): CinemaMovie =
+    CinemaMovie(
+      movie     = Movie(title = title, releaseYear = None, runtimeMinutes = Some(runtime)),
+      cinema    = cinema,
+      posterUrl = None, filmUrl = None, synopsis = None, cast = Nil, director = Seq(director),
+      showtimes = Seq(Showtime(When, bookingUrl = None)))
+
+  private def itCinemas(c: MovieCache, year: Int): Set[Cinema] =
+    c.get(c.keyOf("It", Some(year))).map(_.cinemaData.keySet).getOrElse(Set.empty)
+
+  "a listing that prints its release year inside the title" should
+    "land on the film of THAT year, not on the same-titled film already resolved" in {
+    val c = cache()
+    withClue("the premise — the canonical key drops the bracketed year, so both spellings collide: ") {
+      titleNormalizer.sanitize("It (1990)") shouldBe titleNormalizer.sanitize("It (2017)")
+    }
+    c.put(c.keyOf("It", Some(2017)), resolvedIt2017)
+
+    c.recordCinemaScrape(Multikino, Seq(flicksListing(Multikino, "It (1990)", 168, "Tommy Lee Wallace")))
+
+    withClue(s"cinemas on the 2017 row: ${itCinemas(c, 2017).map(_.displayName)}: ") {
+      itCinemas(c, 2017) should not contain Multikino
+    }
+    itCinemas(c, 1990) should contain(Multikino)
+  }
+
+  // The convergence axis itself. The split is a CLEANUP — the row is only mixed
+  // because the landing put a second film on it — so with the landing right there
+  // is nothing for a settle to split, and the count that ran away stays at zero.
+  it should "leave the resolved row describing one film, so no settle has to split it" in {
+    val c = cache()
+    c.put(c.keyOf("It", Some(2017)), resolvedIt2017)
+
+    c.recordCinemaScrape(Multikino, Seq(flicksListing(Multikino, "It (1990)", 168, "Tommy Lee Wallace")))
+
+    val strays = c.get(c.keyOf("It", Some(2017)))
+      .map(r => MixedFilmDetector.strays(r, c.normalizer)).getOrElse(Nil)
+    withClue(s"the 2017 row still holds a second film's slots: ${strays.map(_._1)}: ") {
+      strays shouldBe empty
+    }
+  }
+
+  // The other direction, which must not move: a venue that prints the year of the
+  // film the row already IS keeps landing on it, so this cannot spawn a duplicate
+  // row for every venue that decorates its title.
+  it should "still land the venues that print the resolved row's own year on it" in {
+    val c = cache()
+    c.put(c.keyOf("It", Some(2017)), resolvedIt2017)
+
+    c.recordCinemaScrape(Multikino, Seq(flicksListing(Multikino, "It (2017)", 135, "Andy Muschietti")))
+
+    itCinemas(c, 2017) should contain(Multikino)
+    itCinemas(c, 1990) shouldBe empty
+  }
 }
