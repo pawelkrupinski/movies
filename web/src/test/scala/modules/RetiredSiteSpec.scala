@@ -18,16 +18,24 @@ import scala.concurrent.Future
  * but whose site lives somewhere else now.
  *
  * The whole point of keeping the old host alive is that the links pointing at it
- * keep working, so this spec is written against the three audiences that follow
- * such a link and want different things — a person, a client, and a crawler:
+ * keep working, so this spec is written against the audiences that follow such a
+ * link and want different things — a person, a client, and a crawler:
  *
- *   - a PERSON who typed the old address or opened an old bookmark is told it
- *     changed, and handed the new one. That is the only thing a redirect could
- *     not do, and the only reason two of these routes render a page at all.
- *   - a CLIENT (the mobile apps' `/api/…` calls, a deep link into a film page)
- *     is redirected, permanently, method and query intact.
- *   - a CRAWLER scraping a shared link finds the LIVE page's own metadata, so a
- *     preview posted years ago still renders the way it always did.
+ *   - a PERSON who typed the old address, opened an old bookmark, or followed a
+ *     deep link (a film page, `/plan`, a legal page) is told it changed, and
+ *     handed the new one. `/` and `/{city}/` do this with the live page's own
+ *     metadata; everything else does it with the brand-level fallback, because
+ *     there is no per-page title/image to give it with no database behind this
+ *     process.
+ *   - a CLIENT calling `/api/…` is told to upgrade, not transparently handed the
+ *     live API's current (possibly drifted) response.
+ *   - a CLIENT writing outside `/api/…` (`/auth/token`, `/uptime/img-event`) is
+ *     redirected, permanently, method and query intact — unchanged, because a
+ *     program wants the resource, not a page to read.
+ *   - a CRAWLER scraping a shared `/` or `/{city}/` link finds the LIVE page's
+ *     own metadata, so a preview posted years ago still renders the way it
+ *     always did; a crawler on any other link gets the same brand-level notice
+ *     a person landing there does.
  */
 class RetiredSiteSpec extends AnyFlatSpec with Matchers {
 
@@ -114,37 +122,60 @@ class RetiredSiteSpec extends AnyFlatSpec with Matchers {
   }
 
   // ── the client ────────────────────────────────────────────────────────────
-  "an API call" should "move permanently to the same endpoint on the live site" in {
+  "an API call" should "be told to upgrade rather than handed the live API's response" in {
     val result = respond("GET", "/api/catalog")
-    status(result)           shouldBe MOVED_PERMANENTLY
-    redirectLocation(result) shouldBe Some("https://kinowo.net/api/catalog")
+    status(result) shouldBe UPGRADE_REQUIRED
+    contentType(result) shouldBe Some("application/json")
+    contentAsString(result) shouldBe models.ClientSupport.json
   }
 
-  it should "keep the query string, which is where the whole request lives for a filtered call" in {
-    redirectLocation(respond("GET", "/poznan/api/repertoire?date=2026-08-30&cinema=Kino+Muza")) shouldBe
-      Some("https://kinowo.net/poznan/api/repertoire?date=2026-08-30&cinema=Kino+Muza")
+  it should "carry the same ETag GET /api/client-support serves on the live site" in {
+    header("ETag", respond("GET", "/api/catalog")) shouldBe Some(models.ClientSupport.etag)
   }
 
-  // 308, not 301: a 301 lets a client turn a PUT into a GET and drop the body,
-  // which is how a write silently stops working against the new host.
-  it should "preserve the method and body of a write" in {
-    status(respond("PUT",    "/api/me/state")) shouldBe PERMANENT_REDIRECT
+  it should "answer the same way for a city-scoped API path" in {
+    status(respond("GET", "/poznan/api/repertoire?date=2026-08-30")) shouldBe UPGRADE_REQUIRED
+  }
+
+  // A write is told to upgrade exactly like a read — `/api/me/state` and
+  // `/api/me` both carry `/api/` — but a write OUTSIDE `/api/…` still redirects,
+  // preserving method and body: a 301 there would let a client turn a PUT into a
+  // GET and drop the body, which is how a write silently stops working.
+  it should "tell a write under /api/ to upgrade too, but still redirect one outside it" in {
+    status(respond("PUT",    "/api/me/state")) shouldBe UPGRADE_REQUIRED
+    status(respond("DELETE", "/api/me"))       shouldBe UPGRADE_REQUIRED
     status(respond("POST",   "/auth/token"))   shouldBe PERMANENT_REDIRECT
-    status(respond("DELETE", "/api/me"))       shouldBe PERMANENT_REDIRECT
   }
 
-  "a deep link into a film page" should "land on the same film on the live site" in {
-    val result = respond("GET", "/poznan/movie/diuna-czesc-druga")
-    status(result)           shouldBe MOVED_PERMANENTLY
-    redirectLocation(result) shouldBe Some("https://kinowo.net/poznan/movie/diuna-czesc-druga")
+  // ── the deep link ─────────────────────────────────────────────────────────
+  // No database means no real title/poster for a specific film, so it falls
+  // back to the same brand-level notice `/` renders — but the LINK still goes
+  // to the actual film, not to the landing page.
+  "a deep link into a film page" should "render the brand-level notice, linking to the same film" in {
+    val html = body("/poznan/movie/diuna-czesc-druga")
+    status(respond("GET", "/poznan/movie/diuna-czesc-druga")) shouldBe OK
+    html should include ("Zmieniliśmy adres")
+    html should include ("""<a class="go" href="https://kinowo.net/poznan/movie/diuna-czesc-druga">""")
+    html should include ("<title>Kinowo — repertuar kin w Twoim mieście</title>")
   }
 
   // The table is total on purpose: a retired host has no 404s to give, so a page
-  // the live site grew after the move still gets there without this router
+  // the live site grew after the move still gets the notice without this router
   // learning about it.
-  "a path this router has never heard of" should "still be sent to the live site" in {
-    redirectLocation(respond("GET", "/whatever/the/live/site/grew")) shouldBe
-      Some("https://kinowo.net/whatever/the/live/site/grew")
+  "a path this router has never heard of" should "still render the notice, linking to the live site" in {
+    val result = respond("GET", "/whatever/the/live/site/grew")
+    status(result) shouldBe OK
+    contentAsString(result) should include ("""<a class="go" href="https://kinowo.net/whatever/the/live/site/grew">""")
+  }
+
+  // robots.txt/sitemap.xml/og-image are read by a machine, not a person — a
+  // notice page would be the wrong bytes for all three, so they keep the
+  // redirect even though they are plain GETs.
+  "a machine file" should "still redirect rather than render the notice" in {
+    redirectLocation(respond("GET", "/robots.txt"))              shouldBe Some("https://kinowo.net/robots.txt")
+    redirectLocation(respond("GET", "/sitemap.xml"))              shouldBe Some("https://kinowo.net/sitemap.xml")
+    redirectLocation(respond("GET", "/poznan/og-image"))          shouldBe Some("https://kinowo.net/poznan/og-image")
+    redirectLocation(respond("GET", "/poznan/movie/og-image"))    shouldBe Some("https://kinowo.net/poznan/movie/og-image")
   }
 
   // ── what has to keep answering locally ────────────────────────────────────
@@ -176,8 +207,7 @@ class RetiredSiteSpec extends AnyFlatSpec with Matchers {
       status(Helpers.route(application, FakeRequest("GET", "/health")).get)   shouldBe OK
       status(Helpers.route(application, FakeRequest("GET", "/metrics")).get)  shouldBe NOT_FOUND
       contentAsString(Helpers.route(application, FakeRequest("GET", "/poznan/")).get) should include ("Zmieniliśmy adres")
-      redirectLocation(Helpers.route(application, FakeRequest("GET", "/api/catalog")).get) shouldBe
-        Some("https://kinowo.net/api/catalog")
+      status(Helpers.route(application, FakeRequest("GET", "/api/catalog")).get) shouldBe UPGRADE_REQUIRED
     }
   }
 }

@@ -36,4 +36,19 @@ class RetiredSiteAddressSpec extends AnyFlatSpec with Matchers {
     RetiredSite.redirectStatus("PUT")    shouldBe 308
     RetiredSite.redirectStatus("DELETE") shouldBe 308
   }
+
+  "an API path" should "be recognised under a city prefix or bare" in {
+    RetiredSite.isApiPath("/api/catalog")           shouldBe true
+    RetiredSite.isApiPath("/poznan/api/repertoire")  shouldBe true
+    RetiredSite.isApiPath("/poznan/movie/diuna")     shouldBe false
+    RetiredSite.isApiPath("/auth/token")             shouldBe false
+  }
+
+  "a machine file" should "be robots.txt, sitemap.xml, or an og-image, and nothing else" in {
+    RetiredSite.isMachineFile("/robots.txt")             shouldBe true
+    RetiredSite.isMachineFile("/sitemap.xml")             shouldBe true
+    RetiredSite.isMachineFile("/poznan/og-image")         shouldBe true
+    RetiredSite.isMachineFile("/poznan/movie/og-image")   shouldBe true
+    RetiredSite.isMachineFile("/poznan/movie/diuna")      shouldBe false
+  }
 }

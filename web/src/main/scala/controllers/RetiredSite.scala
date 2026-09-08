@@ -33,4 +33,19 @@ object RetiredSite {
   def redirectStatus(method: String): Int =
     if (method == "GET" || method == "HEAD") Status.MOVED_PERMANENTLY
     else                                     Status.PERMANENT_REDIRECT
+
+  /** `/api/...` or `/{city}/api/...` — every JSON endpoint the mobile apps and the
+   *  browser's own JS call (see the routes file's "API (JSON)" block), regardless
+   *  of method. These get told to upgrade rather than redirected — see
+   *  [[controllers.RetiredSiteController.apiUpgradeRequired]]. */
+  def isApiPath(path: String): Boolean = path.contains("/api/")
+
+  /** The handful of non-API paths a MACHINE reads verbatim rather than a person —
+   *  `robots.txt`, `sitemap.xml`, and the dynamically generated share-card images
+   *  (`/{city}/og-image`, `/{city}/movie/og-image`). These keep the redirect: a
+   *  crawler parsing robots rules, a sitemap consumer, or Facebook/Slack fetching
+   *  the literal `og:image` URL a cached preview points at would choke on an HTML
+   *  notice page instead of the bytes it asked for. */
+  def isMachineFile(path: String): Boolean =
+    path == "/robots.txt" || path == "/sitemap.xml" || path.endsWith("/og-image")
 }
