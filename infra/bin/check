@@ -241,6 +241,23 @@ else
   failed=1
 fi
 
+step "fleet-ssh address resolution"
+# `bin/fleet-ssh` and `bin/fleet_hosts.py` are what stands between a person and the same wrong
+# turn `bin/stage-nixos-closures` was ported to avoid: a jump host that resolves and gives a
+# shell because it is a real machine, just not this fleet's. Driven against a fake flake so this
+# needs no `nix eval` and stays fast; `nix eval` above already proves the real flake evaluates.
+if [ -f test/test_fleet_hosts.py ]; then
+  if out="$(python3 test/test_fleet_hosts.py 2>&1)"; then
+    echo "  ok  $(printf '%s' "$out" | grep -c '\.\.\. ok$') test(s)"
+  else
+    echo "$out" | tail -25 | sed 's/^/  /'
+    failed=1
+  fi
+else
+  echo "  FAILED test/test_fleet_hosts.py is missing"
+  failed=1
+fi
+
 step "reboot-required decision"
 # THE ONE PIECE OF FLEET LOGIC WHOSE OTHER TEST IS "REBOOT A MACHINE AND LOOK". It decides
 # `nixos_reboot_required`, which is what the dashboard turns into "reboot owed" -- and it was wrong
