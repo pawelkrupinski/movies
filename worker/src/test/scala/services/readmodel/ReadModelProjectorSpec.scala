@@ -6,7 +6,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemoryMovieRepository, StoredMovieRecord}
+import services.movies.{InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, StoredMovieRecord}
 
 import java.time.LocalDateTime
 
@@ -675,6 +675,56 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     partial.findAllScreenings().map(_._id).toSet shouldBe ids.toSet
     healer.stop()
+  }
+
+  // THE HEAL MUST CONVERGE. Its venue check reads slots only, so a slot with no showtimes
+  // is indistinguishable from a venue whose row is missing and it asks about both — which
+  // made every sweep re-project the same rows for ever (PL: ~333 of them, every 30 minutes,
+  // 2026-09-08). A sweep that finds nothing to write must not ask again at the same row state.
+  "the orphan prune" should "stop re-projecting a row whose only absent venue is a spent slot" in {
+    // The SPLIT storage production runs, so the sweep's scan carries slots without showtimes.
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    val m  = new RecordingMetrics()
+    val sweeper = new ReadModelProjector(repository, rm, rm, m)
+    // One venue screening it, one venue whose showtimes are all gone: the second projects no
+    // screenings row at all, so its id reads as absent on every slots-only pass.
+    repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
+      KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
+    sweeper.onMovieUpsert(repository.findAll().head)
+
+    sweeper.pruneOrphans()                      // the first sweep may legitimately look
+    val looked = m.projectCalls
+    sweeper.pruneOrphans()
+    sweeper.pruneOrphans()
+
+    // Counting PROJECTIONS, not writes: a heal that writes nothing is exactly the symptom,
+    // so a write count cannot see the loop at all.
+    withClue(s"the heal re-projected a row it had nothing to write for (${m.projectCalls - looked} times): ") {
+      m.projectCalls shouldBe looked
+    }
+    sweeper.stop()
+  }
+
+  it should "ask again once the row itself changes" in {
+    val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
+                                                 slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
+    val rm = new InMemoryReadModelRepository()
+    val sweeper = new ReadModelProjector(repository, rm, rm, new RecordingMetrics())
+    repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
+      Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
+      KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
+    sweeper.onMovieUpsert(repository.findAll().head)
+    sweeper.pruneOrphans()
+    rm.findAllMovies().foreach(c => rm.deleteMovie(c._id))     // the card goes missing after that
+    val before = rm.movieUpserts.size
+
+    sweeper.pruneOrphans()
+
+    withClue("a genuinely missing card must still be healed: ") { rm.movieUpserts.size should be > before }
+    sweeper.stop()
   }
 
   // The 2026-09-07 ReadModelFilmPruneBurst, replayed: live rows whose cards sit under ids

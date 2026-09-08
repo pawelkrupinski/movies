@@ -287,6 +287,18 @@ class InMemoryMovieRepository(
   }
 
   /** The same range read as Mongo's, over the stamp kept above: strictly after `since`. */
+  /** THE SLOTS-ONLY SCAN, WITHOUT SHOWTIMES — as `MongoMovieRepository` does under the
+   *  read/write split, and NOT as the trait's default does (which hands back a fully
+   *  stitched row). The difference is not cosmetic: `ReadModelProjection.screeningIds`
+   *  answers a different question when a slot carries no showtimes, and a fake that
+   *  stitched them made the read-model sweep look convergent in every spec while
+   *  production re-projected the same ~333 Polish rows every 30 minutes (2026-09-08).
+   *  A repository with no screenings store is not split, so it stitches as before. */
+  override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): Boolean = {
+    findAll().foreach(row => f(if (screenings.isEmpty) row else row.copy(record = row.record.copy(data = ScreeningsSplit.stripShowtimes(row.record.data)))))
+    true
+  }
+
   override def foreachRecordUpdatedSince(since: java.time.Instant)(f: StoredMovieRecord => Unit): Boolean = {
     readRows(id => updatedAtById.get(id).exists(_.isAfter(since))).foreach(f)
     true
