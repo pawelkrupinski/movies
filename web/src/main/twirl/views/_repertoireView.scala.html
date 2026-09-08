@@ -3,13 +3,17 @@
    client-side showtime expiry counts forward from. Must be the SAME instant
    passed to `MovieControllerService.toSchedules`, or the page starts life
    already disagreeing with itself about what has lapsed. *@
-@(films: Seq[FilmSchedule], devMode: Boolean, renderedAt: java.time.LocalDateTime)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], devMode: Boolean, renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false)(implicit city: models.City, messages: play.api.i18n.Messages)
 @* The Filmy view-root. Rendered inside `#view-pager` (the day carousel
    viewport) on the full repertoire page.
 
    `data-next-day` is the next midnight on the CITY's clock — when the page
-   retires itself and reloads into the new day. See the expiry block below. *@
-<main id="view-root" data-view="films" data-next-day="@{renderedAt.toLocalDate.plusDays(1).atStartOfDay(city.zoneId).toInstant.toEpochMilli}">
+   retires itself and reloads into the new day. See the expiry block below.
+
+   `data-large-city` gates shared.js's carousel between the animated
+   clone-and-slide preview and an instant in-place re-filter — see the
+   `MovieControllerService.LargeCityShowtimeThreshold` doc comment. *@
+<main id="view-root" data-view="films" data-large-city="@isLargeCity" data-next-day="@{renderedAt.toLocalDate.plusDays(1).atStartOfDay(city.zoneId).toInstant.toEpochMilli}">
 <div class="container-fluid py-4 px-4">
   <div id="no-films" class="text-center py-5 text-secondary" style="display:none">@messages("empty.repertoire")</div>
   <div class="row g-3 row-cols-2 row-cols-sm-3 row-cols-md-4 row-cols-lg-5 row-cols-xl-6" id="film-grid">

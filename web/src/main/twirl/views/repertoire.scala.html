@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @* `renderedAt` must be the clock `films` was filtered by — see `_repertoireView`. *@
-@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
+@(films: Seq[FilmSchedule], allCinemas: Seq[String], cinemaPills: Map[String, String], devMode: Boolean, oauthProviders: Set[String], renderedAt: java.time.LocalDateTime, isLargeCity: Boolean = false, pageTitle: String = "Kinowo", pageDescription: String = "Repertuar kin w jednym miejscu — z ocenami IMDb, RT i Filmweb.", pageUrl: String = "", fbAppId: Option[String] = None, canonicalUrl: String = "")(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -43,10 +43,14 @@
    100vw day columns; the real grid (`#view-root`) is the centre column. A
    horizontal swipe (or arrow / key / dropdown change) translates `#day-track`,
    revealing the neighbouring day's grid — cloned + filtered to its day at
-   gesture start and removed once the slide settles (see shared.js). *@
+   gesture start and removed once the slide settles (see shared.js). Above
+   `MovieControllerService.LargeCityShowtimeThreshold` (`isLargeCity`,
+   stamped as `data-large-city` on `#view-root`), a phone skips the clone +
+   slide entirely and re-filters the live grid in place instead — cloning
+   the whole tree for a preview is what stutters on a city this size. *@
 <div id="view-pager">
   <div id="day-track">
-@_repertoireView(films, devMode, renderedAt)
+@_repertoireView(films, devMode, renderedAt, isLargeCity)
   </div>
 </div>
 

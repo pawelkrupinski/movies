@@ -127,6 +127,17 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val manyCinemasHtml: String = views.html.film(
         tools.ManyCinemaFilm(schedules.head), "http://test.local/movie-many",
         ogDescription = "", devMode = false).body
+      // The listing re-seated with 10,500 synthetic showtimes on one film —
+      // crosses `MovieControllerService.LargeCityShowtimeThreshold` so the
+      // day carousel's instant-swap path (shared.js `usesInstantDayChange`)
+      // can be driven without a real city's worth of scraped data.
+      val manyShowtimesSchedules = tools.ManyShowtimesCity(schedules, now)
+      val manyShowtimesHtml: String = views.html.repertoire(
+        manyShowtimesSchedules, cinemas, pills, devMode = false,
+        oauthProviders = noOauth, renderedAt = now,
+        isLargeCity = controllers.MovieControllerService.totalShowtimes(manyShowtimesSchedules) >
+          controllers.MovieControllerService.LargeCityShowtimeThreshold
+      ).body
       // The signed-in index — WHICH IS THE SAME HTML AS THE SIGNED-OUT ONE.
       // Nothing server-rendered names a visitor any more (that is what lets the
       // real listing carry an `s-maxage`), so "logged in" is not a render at all:
@@ -229,6 +240,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // Isolated /movie render carrying 12 cinemas on one date — drives the
           // cinema-fold unfold button.
           case p if sub(p) == "/movie-many" => manyCinemasHtml
+          // A large city's listing — crosses the instant-day-swap threshold.
+          case p if sub(p) == "/many-showtimes" => manyShowtimesHtml
           // The city-selection landing (no city prefix — there's no city yet).
           case "/landing" => landingHtml
           // Its grouped variant — same template, a country with `cityGroups`.
@@ -3056,6 +3069,83 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       )
 
       previewOrder shouldBe committedOrder
+    }
+  }
+
+  // ── Large city: instant day-swap, no clone/slide ─────────────────────────────
+  //
+  // Above `MovieControllerService.LargeCityShowtimeThreshold`, cloning the whole
+  // `#film-grid` per neighbour (`buildDayColumn`) is expensive enough to stutter
+  // a real swipe (measured on Salt Lake City: ~17.5k DOM nodes per clone, two
+  // clones mounted at gesture start). `/many-showtimes` re-seats the fixture
+  // corpus with 10,500 synthetic showtimes on one film so it crosses that
+  // threshold; these assert the touch/pill/dropdown paths skip the clone and
+  // slide entirely on a coarse pointer and just re-filter the live grid.
+
+  "a large city" should "skip the clone/slide on a committed touch swipe and update instantly" in {
+    onPath("/many-showtimes") { page =>
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+      page.evalBool("document.getElementById('view-root').dataset.largeCity === 'true'") shouldBe true
+
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 240, 505))   // past the deadzone → axis-locked
+      page.eval(synthDrag("pointermove", 100, 505))   // past the commit threshold
+      // No clone was ever mounted, and the track never armed/transformed —
+      // unlike the small-city carousel test above, which asserts the opposite.
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") shouldBe 0
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe false
+
+      page.eval(synthDrag("pointerup", 100, 505))
+      // The release still commits the day change — just without ever cloning
+      // or animating the track.
+      page.waitFor("document.getElementById('date-filter').value === 'tomorrow'", timeoutMs = 2000)
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") shouldBe 0
+    }
+  }
+
+  it should "skip the clone/slide on a sub-threshold touch drag too" in {
+    onPath("/many-showtimes") { page =>
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      page.eval(synthDrag("pointerdown", 300, 500))
+      page.eval(synthDrag("pointermove", 285, 505))   // axis-locked, below commit threshold (and no flick)
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") shouldBe 0
+      page.eval(synthDrag("pointerup", 285, 505))
+      page.evalString("document.getElementById('date-filter').value") shouldBe "today"   // unchanged
+    }
+  }
+
+  it should "skip the clone/slide on a day-pill tap and update instantly" in {
+    onPath("/many-showtimes") { page =>
+      coarsePointer(page)
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+      page.waitFor("document.querySelector('.col[data-title]') !== null")
+
+      page.eval("pickDay('anytime')")
+      // A normal-size city arms the track for this exact interaction (see "the
+      // day pills" tests below) — a large city on a coarse pointer never does.
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe false
+      page.evalInt("document.querySelectorAll('#day-track > .day-col').length") shouldBe 0
+      page.evalString("document.getElementById('date-filter').value") shouldBe "anytime"
+      page.evalBool("document.querySelector('#day-pills .day-pill[data-day=\"anytime\"]').classList.contains('active')") shouldBe true
+    }
+  }
+
+  it should "still animate the slide on a FINE pointer (desktop) even above the threshold" in {
+    onPath("/many-showtimes") { page =>
+      // No touch emulation here — default fine (mouse) pointer.
+      enableSlideAnimation(page)
+      page.evalBool("matchMedia('(pointer: coarse)').matches") shouldBe false
+      page.eval("document.getElementById('date-filter').value = 'today'; onDateChange()")
+
+      page.eval("window.stepDate(1)")
+      page.evalBool("document.getElementById('day-track').classList.contains('day-track--armed')") shouldBe true
+      page.waitFor("document.querySelectorAll('#day-track > .day-col').length === 0", timeoutMs = 2000)
+      page.evalString("document.getElementById('date-filter').value") shouldBe "tomorrow"
     }
   }
 

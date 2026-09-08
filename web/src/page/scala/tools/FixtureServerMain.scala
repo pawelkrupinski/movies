@@ -128,6 +128,21 @@ object FixtureServerMain {
       }
     }
 
+    // `/{city}/many-showtimes` — the listing re-seated with 10,500 synthetic
+    // showtimes on one film so it crosses
+    // `MovieControllerService.LargeCityShowtimeThreshold`, driving the day
+    // carousel's instant-swap path (shared.js `usesInstantDayChange`). No
+    // corpus city in this fixture is remotely that size on its own.
+    def manyShowtimesPageFor(c: City): String = {
+      implicit val ci: City = c
+      val base    = schedulesFor(c)
+      val bumped  = ManyShowtimesCity(base, now)
+      val isLarge = controllers.MovieControllerService.totalShowtimes(bumped) >
+        controllers.MovieControllerService.LargeCityShowtimeThreshold
+      views.html.repertoire(bumped, c.cinemaDisplayNames, c.cinemaPillMap, devMode = false,
+        oauthProviders = oauthConfigured, renderedAt = now, isLargeCity = isLarge).body
+    }
+
     // The city-selection screens, from `landings()` so this route table and
     // `FixtureServerLandingSpec` read the same strings.
     //
@@ -168,6 +183,7 @@ object FixtureServerMain {
                  (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => Some(browsePageFor(c))
       case s if s.startsWith("/movies?")                => Some(indexPageFor(c))
       case "/movie-many"                                => Some(manyCinemaFilmPageFor(c))
+      case "/many-showtimes"                             => Some(manyShowtimesPageFor(c))
       case s if s.startsWith("/movie/")                 => Some(filmPageFor(c, s.stripPrefix("/movie/")))
       case _                                            => None
     }

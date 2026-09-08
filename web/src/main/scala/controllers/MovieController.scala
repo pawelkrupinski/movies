@@ -336,6 +336,23 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
 }
 
 object MovieControllerService {
+  /** Above this many showtimes on one page, the day carousel's clone-and-slide
+   *  preview (`shared.js` `buildDayColumn`, cloning the whole `#film-grid` to
+   *  build a sliding neighbour-day preview) costs enough DOM-cloning that a
+   *  swipe visibly stutters on a phone — Salt Lake City (28k showtimes, 40
+   *  cinemas) measured ~17.5k DOM nodes per clone, two clones per swipe.
+   *  `renderIndexHtml` stamps `isLargeCity` onto `#view-root` as
+   *  `data-large-city`, and `shared.js` skips straight to an in-place
+   *  re-filter instead of cloning + animating when it's set. Desktop is
+   *  unaffected — the carousel's slide/clone already only runs behind
+   *  `pointer: coarse`. */
+  val LargeCityShowtimeThreshold = 10000
+
+  /** Total individual showtimes across every film/date/cinema in `schedules` —
+   *  the size the day carousel actually has to clone per swipe. */
+  def totalShowtimes(schedules: Seq[FilmSchedule]): Int =
+    schedules.iterator.flatMap(_.showings).flatMap(_._2).map(_.showtimes.size).sum
+
   /** displayName → Cinema (cinemas are `Source`s, so reuse the shared map). */
   private def cinemaByName(name: String): Option[Cinema] =
     Source.byDisplayName.get(name).collect { case c: Cinema => c }
@@ -509,14 +526,16 @@ class MovieController( cc: ControllerComponents,
     // One clock for both the filtering and the page's own expiry countdown —
     // `_repertoireView` counts forward from `renderedAt`, so it has to be the
     // instant the schedules were actually pruned at.
-    val now       = LocalDateTime.now(city.zoneId)
-    val schedules = movieControllerService.toSchedules(city, now)
-    val meta      = FilterDescription.forIndex(city, request.queryString, schedules)
+    val now         = LocalDateTime.now(city.zoneId)
+    val schedules   = movieControllerService.toSchedules(city, now)
+    val meta        = FilterDescription.forIndex(city, request.queryString, schedules)
+    val isLargeCity = MovieControllerService.totalShowtimes(schedules) > MovieControllerService.LargeCityShowtimeThreshold
     views.html.repertoire(
       schedules,
       city.cinemaDisplayNames,
       city.cinemaPillMap,
       devMode, oauthProviders, renderedAt = now,
+      isLargeCity     = isLargeCity,
       pageTitle       = meta.title,
       pageDescription = meta.description,
       pageUrl         = PageMeta.canonicalUrl(request),

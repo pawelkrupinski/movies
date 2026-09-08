@@ -2417,6 +2417,24 @@
   let _animating = false;   // guards re-entrancy while a commit animation runs
   let _queuedDay = null;    // a day-step requested mid-slide → run as a follow-on slide on commit
 
+  // A large city (`MovieControllerService.LargeCityShowtimeThreshold`, stamped
+  // as `data-large-city` on `#view-root`) ships every showtime for every day
+  // in one page load. On a phone, the carousel's clone-and-slide preview
+  // (`buildDayColumn`, below) clones that WHOLE tree — up to two clones per
+  // swipe, at gesture start — which is cheap for a normal city but visibly
+  // stutters once a city's showtime count runs into the tens of thousands
+  // (Salt Lake City: ~17.5k DOM nodes per clone). These cities skip the
+  // clone/slide machinery on touch entirely and re-filter the LIVE grid in
+  // place instead — the same `applyFilters` pass every day-change ends with
+  // anyway, just with no preview and no travel. Desktop is unaffected: it
+  // never enters the touch gesture path, and pill/dropdown/keyboard clicks
+  // there still animate (see `animateToDay`'s own check, mirrored here so
+  // pill click and swipe agree).
+  function usesInstantDayChange() {
+    const root = document.getElementById('view-root');
+    return !!root && root.dataset.largeCity === 'true' && matchMedia('(pointer: coarse)').matches;
+  }
+
   // Step the day dropdown by `dir` (+1 = next day, -1 = previous), WRAPPING
   // around its full option list, then re-render via the normal date-change path
   // (`onDateChange` → `applyFilters` → `syncDateToURL`). Exposed for the swipe
@@ -2679,6 +2697,7 @@
       return;
     }
     retireSwipeHint();   // any deliberate day change means they've got the gesture
+    if (usesInstantDayChange()) { commitDay(targetValue); return; }
     if (_animating) {
       // A slide is already running: don't drop this step. Remember the latest
       // destination; the in-flight commit (`commitDay`) continues the slide on
@@ -2711,7 +2730,7 @@
     const target = neighborDay(dayDir);
     if (target == null) { unmountNeighbors(); return; }
     highlightDayPill(target);   // keep the pill on the target through the slide (covers a sub-threshold flick)
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (usesInstantDayChange() || matchMedia('(prefers-reduced-motion: reduce)').matches) {
       commitDay(target);
       return;
     }
@@ -2724,6 +2743,7 @@
     const track = dayTrack();
     if (!track) return;
     syncDayPills();   // the drag may have previewed a neighbour — return the highlight to the real day
+    if (usesInstantDayChange()) { unmountNeighbors(); return; }   // nothing was armed/moved — just clear drag state
     const ms = swipeAnimMs();
     track.style.transition = 'transform ' + ms + 'ms ease';
     setTrack(0);
@@ -2771,10 +2791,14 @@
       if (adx >= SWIPE_DEADZONE_PX && adx >= ady) {
         _drag.axis = 'x';
         dismissSwipeHint();                    // they're swiping — get the nudge out of the way
-        // Mount BOTH neighbour columns so either drag direction reveals the
-        // right day from the screen edge, parked at -100vw. The day ring wraps,
-        // so every direction has a destination.
-        _drag.armed = armTrack(neighborDay(-1), neighborDay(1));
+        // Large cities skip the neighbour-clone preview (see `usesInstantDayChange`)
+        // — nothing to mount, but the gesture is still live and can still commit.
+        _drag.armed = usesInstantDayChange()
+          // Mount BOTH neighbour columns so either drag direction reveals the
+          // right day from the screen edge, parked at -100vw. The day ring wraps,
+          // so every direction has a destination.
+          ? true
+          : armTrack(neighborDay(-1), neighborDay(1));
       }
       // Otherwise still ambiguous → wait for the next move.
       else return;
@@ -2789,8 +2813,13 @@
     _drag.lastT = e.timeStamp;
     // The track follows the finger 1:1 (on top of the parked -100vw), revealing
     // the neighbour day's column from whichever edge the finger pulls in; the
-    // pill highlight previews the day a release would land on.
-    if (_drag.armed) { setTrack(dx); previewDayPillForDrag(dx); }
+    // pill highlight previews the day a release would land on. A large city has
+    // no neighbour mounted to reveal, so it skips the track transform and just
+    // keeps the pill preview — the grid itself changes only on commit.
+    if (_drag.armed) {
+      if (!usesInstantDayChange()) setTrack(dx);
+      previewDayPillForDrag(dx);
+    }
   }, { passive: true });
 
   // Decision happens ONLY when the finger lifts (or the gesture cancels): step
