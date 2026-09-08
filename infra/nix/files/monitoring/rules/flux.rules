@@ -23,7 +23,8 @@
 # moment Flux reports anything at all. That care was correct and is now moot: this fleet's Flux has
 # never published that gauge, nor `gotk_suspend_status`, so the three rules built on them were
 # permanently green. They are gone, replaced by one that watches reconciles CEASING, which is what
-# the remaining metrics can actually say. Reconciliation FAILURE and a SUSPENDED object are
+# the remaining metrics can actually say -- for the objects that reconcile on a CLOCK. ImagePolicy
+# does not, and is excluded; see the note on the rule. Reconciliation FAILURE and a SUSPENDED object are
 # unwatched here until kube-state-metrics is given a `--custom-resource-state-config` for Flux's
 # custom resources, and that config lives in the gitops repository. See the note on the rule.
 groups:
@@ -65,8 +66,27 @@ groups:
       # times an hour (ImageUpdateAutomation/movies 14.1, GitRepository/movies 12.1), so an hour at
       # zero is far outside normal for anything that reconciles at all. Per-series, so it names the
       # object that stopped rather than the fleet.
+      #
+      # ⚠️ `kind!="ImagePolicy"` BECAUSE THAT KIND HAS NO CADENCE TO MEASURE AGAINST, and this rule
+      # paged on it before anyone read the spec. An ImagePolicy takes no `interval`:
+      # image-reflector-controller evaluates it only when the ImageRepository it points at completes
+      # a scan that CHANGED the tag set, so its counter advances once per image build. Seven days on
+      # this fleet, `increase(...[7d])`: every other object 610-1197, ImagePolicy/movies-web 83 and
+      # ImagePolicy/movies-worker 92 -- which is the merge count, not a cadence. The condition was
+      # consequently true 46% and 43% of the time respectively, on a deploy path that was healthy
+      # throughout: on 2026-09-08 it fired for movies-web while the policy held
+      # main-20260907234535-fc94b3e, the tag for the then-current HEAD, and every Kustomization read
+      # Applied.
+      #
+      # THE EXCLUSION GIVES UP NOTHING, which is why it is the fix rather than a silence. The
+      # ImageRepository beside it runs the registry scan that FEEDS the policy, on a 5m `interval`,
+      # under the same image-reflector-controller and scraped from the same target -- so a wedged
+      # reflector flatlines ImageRepository/movies-web (1141 reconciles over those same 7 days) and
+      # still pages here, one series later in the same chain. The only lost signal is a policy
+      # wedged during a week with no merges, which this counter could not tell from a quiet week
+      # anyway.
       - alert: FluxReconciliationStopped
-        expr: increase(gotk_reconcile_duration_seconds_count[1h]) == 0
+        expr: increase(gotk_reconcile_duration_seconds_count{kind!="ImagePolicy"}[1h]) == 0
         # The `increase` window is already an hour; this only confirms it is not one odd sample at a
         # scrape boundary.
         for: 15m
@@ -83,7 +103,9 @@ groups:
             2026-09-07. Check `flux get all -A` on monitoring-1 and the controller's own output in
             the log store (`namespace:flux-system`). This alert does NOT watch reconciliation
             FAILURE: an object that reconciles and fails every time keeps this counter moving and
-            stays silent here.
+            stays silent here. ImagePolicy is EXCLUDED: it has no interval and advances only when
+            an image is built, so an hour of silence is its normal state -- a wedged
+            image-reflector-controller is caught by its ImageRepository instead.
 
 
       # THE EXPORTER ITSELF. Without this the three rules above go quiet exactly when the thing

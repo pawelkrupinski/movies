@@ -78,7 +78,7 @@ tests:
               job: flux
             exp_annotations:
               summary: 'flux Kustomization/web-pl-config has not reconciled for an hour'
-              description: "`gotk_reconcile_duration_seconds_count` for this object has not moved in an hour, while the busiest objects on this cluster reconcile 12-14 times an hour. Either its controller is wedged, the object is suspended, or its source is unreachable. This is the DEPLOY PATH: a stopped Kustomization means merged changes stop reaching pods, silently, with CI green and the image built -- the state that hid a read-model fix for hours on 2026-09-07. Check `flux get all -A` on monitoring-1 and the controller's own output in the log store (`namespace:flux-system`). This alert does NOT watch reconciliation FAILURE: an object that reconciles and fails every time keeps this counter moving and stays silent here."
+              description: "`gotk_reconcile_duration_seconds_count` for this object has not moved in an hour, while the busiest objects on this cluster reconcile 12-14 times an hour. Either its controller is wedged, the object is suspended, or its source is unreachable. This is the DEPLOY PATH: a stopped Kustomization means merged changes stop reaching pods, silently, with CI green and the image built -- the state that hid a read-model fix for hours on 2026-09-07. Check `flux get all -A` on monitoring-1 and the controller's own output in the log store (`namespace:flux-system`). This alert does NOT watch reconciliation FAILURE: an object that reconciles and fails every time keeps this counter moving and stays silent here. ImagePolicy is EXCLUDED: it has no interval and advances only when an image is built, so an hour of silence is its normal state -- a wedged image-reflector-controller is caught by its ImageRepository instead."
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
   # A SLOW OBJECT IS NOT A STOPPED ONE. Some Flux objects reconcile on long intervals by design, so
@@ -114,3 +114,63 @@ tests:
             exp_annotations:
               summary: 'flux  is not answering its metrics port'
               description: 'Either the controller is down or its NodePort no longer matches. The ports are fixed in movies-gitops/flux-metrics/services.yaml and must agree with `fleet.prometheus.fluxTargets`; nothing checks that, and a disagreement looks exactly like this. Check `kubectl -n flux-system get pods` first -- if they are Running, it is the port.'
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # AN EVENT-DRIVEN OBJECT IS NOT A STOPPED ONE, and this is the case that produced a false page.
+  #
+  # `ImagePolicy` HAS NO `interval` -- read its spec and there is nowhere to put one. It is
+  # evaluated by image-reflector-controller only when the `ImageRepository` it points at finishes a
+  # scan that CHANGED the tag set, so its counter advances once per image build and not otherwise.
+  # Over seven days on this fleet: every other object 610-1197 reconciles, ImagePolicy/movies-web
+  # 83 and ImagePolicy/movies-worker 92 -- roughly the number of merges, because that is what it
+  # counts. The one-hour rule was therefore TRUE 46% of the time for movies-web and 43% for
+  # movies-worker, and fired every quiet evening while the deploy path was entirely healthy.
+  #
+  # ⚠️ EXCLUDING IT COSTS NO COVERAGE, which is the only reason this is the right fix rather than a
+  # silenced alert. `ImageRepository` runs the same policy evaluation on a 5m `interval`, is served
+  # by the SAME image-reflector-controller and scraped from the same target -- so a wedged
+  # reflector still flatlines ImageRepository/movies-web (1141 reconciles in those same 7 days) and
+  # still pages here. What is lost is only the ability to distinguish a wedged policy from a quiet
+  # week, which the metric could never say.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      # Flat for the whole run: no image was built, so the policy was never asked anything.
+      - series: 'gotk_reconcile_duration_seconds_count{kind="ImagePolicy",name="movies-web",namespace="flux-system",job="flux"}'
+        values: '83+0x300'
+      # Its own ImageRepository keeps scanning -- this is the series that WOULD page if the
+      # reflector wedged, and it must stay silent while it is healthy.
+      - series: 'gotk_reconcile_duration_seconds_count{kind="ImageRepository",name="movies-web",namespace="flux-system",job="flux"}'
+        values: '0+0.2x300'
+      - series: 'up{job="flux"}'
+        values: '1+0x300'
+    alert_rule_test:
+      - eval_time: 120m
+        alertname: FluxReconciliationStopped
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # THE COVER THE EXCLUSION LEANS ON. A wedged image-reflector-controller stops the ImageRepository
+  # too, and that still has to page -- otherwise excluding ImagePolicy would have blinded the whole
+  # image half of the deploy path rather than one noisy series in it.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'gotk_reconcile_duration_seconds_count{kind="ImageRepository",name="movies-web",namespace="flux-system",job="flux"}'
+        values: '1141+0x300'
+      - series: 'gotk_reconcile_duration_seconds_count{kind="ImagePolicy",name="movies-web",namespace="flux-system",job="flux"}'
+        values: '83+0x300'
+      - series: 'up{job="flux"}'
+        values: '1+0x300'
+    alert_rule_test:
+      - eval_time: 120m
+        alertname: FluxReconciliationStopped
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              kind: ImageRepository
+              name: movies-web
+              namespace: flux-system
+              job: flux
+            exp_annotations:
+              summary: 'flux ImageRepository/movies-web has not reconciled for an hour'
+              description: "`gotk_reconcile_duration_seconds_count` for this object has not moved in an hour, while the busiest objects on this cluster reconcile 12-14 times an hour. Either its controller is wedged, the object is suspended, or its source is unreachable. This is the DEPLOY PATH: a stopped Kustomization means merged changes stop reaching pods, silently, with CI green and the image built -- the state that hid a read-model fix for hours on 2026-09-07. Check `flux get all -A` on monitoring-1 and the controller's own output in the log store (`namespace:flux-system`). This alert does NOT watch reconciliation FAILURE: an object that reconciles and fails every time keeps this counter moving and stays silent here. ImagePolicy is EXCLUDED: it has no interval and advances only when an image is built, so an hour of silence is its normal state -- a wedged image-reflector-controller is caught by its ImageRepository instead."
