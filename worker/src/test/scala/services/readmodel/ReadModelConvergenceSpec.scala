@@ -25,6 +25,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
     def recordFilmPruned(reason: String, count: Int): Unit        = (1 to count).foreach(_ => pruned += reason)
     def recordCardRetired(reason: String): Unit                   = retired += reason
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
+    def recordWriteBurst(seconds: Double): Unit                     = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()

@@ -87,6 +87,7 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordCardWrite(changed: Set[String]): Unit               = series.recordCardWrite(countryCode, changed)
   def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit =
     series.recordProject(countryCode, wallSeconds, cpuSeconds)
+  def recordWriteBurst(seconds: Double): Unit                    = series.recordWriteBurst(countryCode, seconds)
   def recordMetadataProjection(reused: Boolean): Unit           = series.recordMetadataProjection(countryCode, reused)
   def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
 
@@ -289,6 +290,14 @@ object WorkerTaskMetrics {
       .labelNames("country")
       .register(registry)
 
+    private val readModelWriteBurst = Histogram.builder()
+      .name("kinowo_worker_readmodel_write_burst_seconds")
+      .help("Wall-clock of the WRITE half of one project() call since boot, by country — writer.upsertMovie/diffScreenings for a single source row, once its variants are computed. Separate from readmodel_project_duration_seconds, which times only the computation before any write. On 2026-09-08 a wide UK release took up to ~40 minutes to reach all 73 of its cities after its source row turned ready, with nothing distinguishing computation, writing, or change-stream delivery as the slow part — this histogram is the write-phase half of that answer; a long write burst against a short project_duration for the same call points at the write loop (city count, Mongo round-trips), not at resolve/synopsisByCity/ratings.")
+      .labelNames("country")
+      .classicUpperBounds(DurationBucketsSeconds*)
+      .classicOnly()
+      .register(registry)
+
     private val readModelProjectCalls = Counter.builder()
       .name("kinowo_worker_readmodel_project_calls")
       .help("Source rows projected (projectAll invoked) since boot, by country — the throughput denominator for readmodel_project_duration_seconds. Driven by the incremental change-stream path (the periodic full reproject sweep was retired).")
@@ -387,6 +396,7 @@ object WorkerTaskMetrics {
         readModelProjectCalls.labelValues(c).inc(0.0)     // materialize at 0 so the counter series (+ its _created) exists from boot
         readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
         readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
+        readModelWriteBurst.labelValues(c).observe(0.0)      // ditto — the write-phase half of that same answer
         ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(c, o))
         ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
           Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
@@ -445,6 +455,9 @@ object WorkerTaskMetrics {
       readModelProjectCpu.labelValues(country).inc(math.max(0.0, cpuSeconds))
       readModelProjectCalls.labelValues(country).inc()
     }
+
+    def recordWriteBurst(country: String, seconds: Double): Unit =
+      readModelWriteBurst.labelValues(country).observe(math.max(0.0, seconds))
 
     def recordMetadataProjection(country: String, reused: Boolean): Unit =
       readModelMetadataProjections.labelValues(country,

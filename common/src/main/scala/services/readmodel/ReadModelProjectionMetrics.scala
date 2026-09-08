@@ -56,6 +56,19 @@ trait ReadModelProjectionMetrics {
    *  made it useless for the credit-floor diagnosis it was added for. */
   def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit
 
+  /** The WRITE half of one `project()` call — wall-clock spent in `writer.upsertMovie`/
+   *  `writer.upsertScreening`/`writer.deleteScreening` for a single source row, once its
+   *  variants are computed. Separate from `recordProject`, which measures only the pure
+   *  computation before any write: a row with many cities writes one document per
+   *  (card, city, cinema), sequentially, and on 2026-09-08 the UK read model took up to
+   *  ~40 minutes to cover all 73 cities of a wide release after its source row became
+   *  ready, with no signal distinguishing "still computing" from "still writing" from
+   *  "the change-stream event hadn't arrived yet" — this is that signal. A projection
+   *  whose write phase runs long while the computation phase (`recordProject`) stays
+   *  short points at the write loop itself (city count, Mongo round-trip cost), not at
+   *  resolve/synopsisByCity/ratings. */
+  def recordWriteBurst(seconds: Double): Unit
+
   /** One projection decided whether to REUSE cached metadata or RECOMPUTE it.
    *  `reused=true` is the optimisation win: the row's metadata inputs were unchanged
    *  (a showtime-only change at an already-present cinema), so `resolve`/`synopsisByCity`/
@@ -129,6 +142,7 @@ object ReadModelProjectionMetrics {
     def recordCardRetired(reason: String): Unit                   = ()
     def recordDriftWrites(documents: Int): Unit                   = ()
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
+    def recordWriteBurst(seconds: Double): Unit                       = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()
     def recordCatchUp(rows: Int): Unit                              = ()

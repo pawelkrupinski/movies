@@ -165,6 +165,11 @@ class ReadModelProjector(
       wallSeconds = (System.nanoTime() - wallStart) / 1e9,
       cpuSeconds  = (cpuClock.nanos() - cpuStart) / 1e9
     )
+    // The WRITE half, timed separately from the computation above (`recordProject`) — see
+    // `recordWriteBurst`. A wide release writes one document per (card, city, cinema)
+    // through `writer.upsertMovie`/`diffScreenings`, sequentially; this is the phase that
+    // scales with city count, not with resolve/synopsisByCity/ratings cost.
+    val writeStart = System.nanoTime()
     var written = 0
     variants.foreach { case (movie, screenings) =>
       val hash    = CardHash.of(movie)
@@ -187,6 +192,7 @@ class ReadModelProjector(
     val produced = variants.map(_._1._id).toSet
     lastCardsByRow.get(rowId).foreach(before => (before -- produced).foreach(retireCard(_, RetireReason.VariantGone)))
     lastCardsByRow.update(rowId, produced)
+    metrics.recordWriteBurst((System.nanoTime() - writeStart) / 1e9)
     written
   }
 

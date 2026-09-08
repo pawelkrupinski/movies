@@ -45,6 +45,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val sweeps = scala.collection.mutable.Buffer.empty[(String, Boolean)]
     val projectDurations = scala.collection.mutable.Buffer.empty[Double]
     val projectCpuSeconds = scala.collection.mutable.Buffer.empty[Double]
+    val writeBurstSeconds = scala.collection.mutable.Buffer.empty[Double]
     var metadataReused = 0
     var metadataRecomputed = 0
     def projectCalls: Int = projectDurations.size
@@ -59,6 +60,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
       projectDurations  += wallSeconds
       projectCpuSeconds += cpuSeconds
     }
+    def recordWriteBurst(seconds: Double): Unit                   = writeBurstSeconds += seconds
     def recordMetadataProjection(reused: Boolean): Unit          = if (reused) metadataReused += 1 else metadataRecomputed += 1
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = sweeps += (kind -> didWork)
     val caughtUp = scala.collection.mutable.Buffer.empty[Int]
@@ -505,6 +507,30 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.reconcile()
     m.projectCalls shouldBe 2
+  }
+
+  "the write-burst metric" should "time the write phase separately, and only for a row that reaches it" in {
+    // Distinguishes "still computing" from "still writing" from "the event hadn't arrived
+    // yet" for a slow multi-city projection — see `recordWriteBurst`'s doc.
+    val repository = new InMemoryMovieRepository(); val rm = new InMemoryReadModelRepository()
+    val m = new RecordingMetrics()
+    val projector = new ReadModelProjector(repository, rm, rm, m)
+
+    // A ready row projected via the change-stream path reaches the write phase → timed.
+    projector.onMovieUpsert(stored(record(Some(8.0), Seq(at("2026-06-12T20:00")))))
+    m.writeBurstSeconds should have size 1
+    m.writeBurstSeconds.head should be >= 0.0
+
+    // A row still enriching is held back BEFORE the write phase (and before
+    // recordProject too) — it must not buy a write-burst reading either.
+    val notReady = MovieRecord(imdbRating = Some(7.0), data = Map[Source, SourceData](Multikino -> slot(Seq(at("2026-06-12T20:00")))))
+    projector.onMovieUpsert(StoredMovieRecord("Foo", Some(2024), notReady))
+    m.writeBurstSeconds should have size 1
+
+    // A full reproject sweep reaches the write phase for the live row → one more timing.
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.reconcile()
+    m.writeBurstSeconds should have size 2
   }
 
   it should "attribute CPU from the thread CPU clock, not from wall-clock" in {
