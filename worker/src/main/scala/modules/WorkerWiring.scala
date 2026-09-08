@@ -9,7 +9,7 @@ import services.freshness.{Freshness, FreshnessKind}
 import services.{Drainable, MongoConnection, UptimeMonitor}
 import services.cadence.RatingCadence
 import services.metrics.WorkerMetrics
-import services.tasks.DueWindow
+import services.tasks.{DueWindow, VenueCadenceStore}
 import tools.{Env, ExecutionBudget, SharedExecutionBudget}
 
 /**
@@ -118,10 +118,18 @@ class WorkerWiring(
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
 
   // ── Shared due schedules (eager) ──────────────────────────────────────────
+  // The per-venue cadence override `scrapeDueWindow` reads and `ScrapeFreshnessPolicy`
+  // writes after every landed scrape — see `VenueScrapeCadence`. Country-scoped
+  // (this wiring IS one country), like `scrapeDueWindow` itself.
+  val venueCadenceStore = new VenueCadenceStore(Freshness.defaultScrapeTtl)
   // ONE shared due schedule backs both the scrape reaper (enqueue) and the scrape
   // handler (pickup re-gate), so they agree on what's due and a cinema's scrapes
   // spread across the freshness window instead of falling due in a lockstep wave.
-  val scrapeDueWindow = new DueWindow(Freshness.defaultScrapeTtl)
+  // The period is PER-KEY (`venueCadenceStore.periodFor`), not the flat default:
+  // most cinemas get the country's own cadence (the store's own fallback), but a
+  // venue whose freshest listing runs dry sooner gets a shorter one — see
+  // `VenueScrapeCadence`.
+  val scrapeDueWindow = new DueWindow(venueCadenceStore.periodFor, Freshness.defaultScrapeTtl)
   // Shared detail refresh schedule. Its period IS the DetailEnrich TTL, read from
   // `Freshness.ttlFor` rather than repeated as a literal here: `CachingDetailFetch`'s
   // own TTL is defined as "shorter than this window" and pinned by a spec against

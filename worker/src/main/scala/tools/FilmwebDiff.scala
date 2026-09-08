@@ -211,7 +211,7 @@ object FilmwebDiff {
   /** Map a per-cinema [[CinemaDiff]] to the JSON renderer's input. */
   private def cinemaResult(d: CinemaDiff): FilmwebDiffJson.CinemaResult =
     FilmwebDiffJson.CinemaResult(
-      city        = cityOf(d.cinema).map(_.slug).getOrElse(""),
+      city        = City.forCinema(d.cinema).map(_.slug).getOrElse(""),
       cinema      = d.cinema.displayName,
       filmwebId   = d.filmwebId,
       resolvedVia = resolvedVia(d.source),
@@ -277,7 +277,7 @@ object FilmwebDiff {
   private def csvReport(today: LocalDate, diffs: Seq[CinemaDiff]): String = {
     val header = "date,city,cinema,ours,fw,shared,ours_only,fw_only,verdict"
     val rows = diffs.map { d =>
-      val city = cityOf(d.cinema).map(_.slug).getOrElse("")
+      val city = City.forCinema(d.cinema).map(_.slug).getOrElse("")
       List(today.toString, city, csvField(d.cinema.displayName),
         d.oursCount, d.fwCount, d.shared, d.oursOnly, d.fwOnly, verdictLabel(d.verdict))
         .mkString(",")
@@ -289,9 +289,6 @@ object FilmwebDiff {
    *  field carries a comma/quote/newline. Cinema names can contain commas. */
   private def csvField(s: String): String =
     if (s.exists(c => c == ',' || c == '"' || c == '\n')) "\"" + s.replace("\"", "\"\"") + "\"" else s
-
-  private def cityOf(cinema: Cinema): Option[City] =
-    City.all.find(_.cinemas.contains(cinema))
 
   /** Restrict a side's showtimes to the comparison window and key by film. */
   private def withinWindow(

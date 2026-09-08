@@ -58,7 +58,8 @@ class ScrapeChunkReduceHandler(
         try {
           publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain,
             () => movies, listingComplete = missing.isEmpty))
-          scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema))
+          val horizon = VenueScrapeCadence.remainingHorizonOf(scraper.cinema, movies, clock)
+          scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema), Some(horizon))
           store.completeRun(cinema, runId)
           if (missing.nonEmpty)
             logger.warn(s"$cinema run $runId reduced PARTIAL: ${stored.size}/${expected.size} chunks (${missing.size} missing)")

@@ -100,6 +100,12 @@ class ChunkScrapePlanner(
   private def publishEmpty(scraper: ChunkedCinemaScraper): Unit = {
     try publishScrape(new PreScrapedCinemaScraper(scraper.cinema, scraper.scrapeHosts, scraper.chain, () => Seq.empty))
     catch { case _: Exception => () }
+    // Deliberately NOT fed to VenueScrapeCadence: that mechanism is for a venue
+    // with SOME showtimes about to run dry, not one advertising nothing at all.
+    // A seasonally-closed venue (a drive-in shut all winter, a site between
+    // programmes) can sit here for weeks; the MinInterval floor would hammer its
+    // site every 30 minutes for as long as that lasts, for no benefit — the country
+    // default already re-checks it often enough to notice when it reopens.
     scrapeFreshness.succeeded(ScrapeCinemaHandler.dedupKey(scraper.cinema))
   }
 

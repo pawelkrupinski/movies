@@ -91,8 +91,9 @@ class ScrapeCinemaHandler(
         }
         val t0     = System.currentTimeMillis()
         try {
-          runner.run(scraper)
-          outcome.succeeded(key)
+          val touched = runner.run(scraper)
+          val horizon = VenueScrapeCadence.remainingHorizonOf(cinema, touched.map(_._1), clock)
+          outcome.succeeded(key, Some(horizon))
           Done
         } catch {
           case e: Exception =>

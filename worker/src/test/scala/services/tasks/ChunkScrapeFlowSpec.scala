@@ -59,14 +59,16 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     override def withZone(zone: java.time.ZoneId): Clock = this
   }
 
-  private class Harness(scraper: FakeChunked, clock: Clock = Clock.fixed(now, ZoneOffset.UTC)) {
+  private class Harness(scraper: FakeChunked, clock: Clock = Clock.fixed(now, ZoneOffset.UTC),
+                         venueCadenceDefault: FiniteDuration = 14.hours) {
     val queue     = new InMemoryTaskQueue
     val store     = new InMemoryChunkScrapeStore
     val freshness = new InMemoryFreshnessStore
+    val venueCadence = new VenueCadenceStore(venueCadenceDefault)
     val published = mutable.ListBuffer.empty[Seq[CinemaMovie]]
     val publishScrape: CinemaScraper => Unit = s => { published += scala.util.Try(s.fetch()).getOrElse(Seq.empty); () }
     private val map = Map(cinemaName -> (scraper: ChunkedCinemaScraper))
-    val policy  = new ScrapeFreshnessPolicy(freshness, clock = clock)
+    val policy  = new ScrapeFreshnessPolicy(freshness, clock = clock, venueCadence = Some(venueCadence))
     val planner = new ChunkScrapePlanner(map, store, queue, publishScrape, policy, stale, clock)
     val chunkH  = new ScrapeChunkHandler(map, store, clock)
     val reduceH = new ScrapeChunkReduceHandler(map, store, publishScrape, policy, clock)
@@ -117,6 +119,27 @@ class ChunkScrapeFlowSpec extends AnyFlatSpec with Matchers {
     byTitle shouldBe Map("Dune" -> 2, "Wicked" -> 1) // Dune merged across both days
     h.freshness.isFresh(ScrapeCinemaHandler.dedupKey(cinema), FreshnessKind.CinemaScrape, now) shouldBe true
     h.store.activeRun(cinemaName) shouldBe None // run cleaned up
+  }
+
+  // The chunked reduce path is `ScrapeChunkReduceHandler`'s own terminal-success
+  // branch, a DIFFERENT call site from the plain scrape's — see
+  // `ScrapeTasksSpec`'s equivalent for that one. Both must feed the same
+  // `VenueScrapeCadence` mechanism (durant/moab/zamora's US/ES venues chunk on
+  // Flicks/Webedia), so it's proven here too rather than assumed from the other
+  // path's test.
+  it should "shorten a thin venue's cadence once its chunks reduce to a listing that runs out early" in {
+    // `now` is 2026-06-25T00:00Z = Warsaw 02:00 (CEST); a single showtime at
+    // 06:00 the same Warsaw day leaves 4h of runway — well under the 14h
+    // default, so periodFor halves it to 2h.
+    val thinDay = LocalDateTime.of(2026, 6, 25, 6, 0)
+    val thin    = CinemaMovie(Movie("Coyote vs. Acme"), cinema, None, Some("https://f/thin"), None, Nil, Nil,
+      Seq(Showtime(thinDay, None)), Map.empty, None)
+    val h = new Harness(new FakeChunked(Map("2026-06-25" -> Seq(thin))))
+    h.planner.plan(cinemaName) shouldBe 1
+    h.drain()
+
+    h.published should have size 1
+    h.venueCadence.periodFor(ScrapeCinemaHandler.dedupKey(cinema)) shouldBe 2.hours
   }
 
   it should "NOT reduce until every expected chunk has landed" in {

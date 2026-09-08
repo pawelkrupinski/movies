@@ -61,6 +61,43 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     fresh.isFresh(key, FreshnessKind.CinemaScrape) shouldBe true
   }
 
+  // ── Thin-venue cadence: durant/moab's mechanism, end to end ─────────────────
+  // `ScrapeCinemaHandler` must compute the just-landed listing's remaining
+  // runway and feed it through the SAME `ScrapeFreshnessPolicy` /
+  // `VenueCadenceStore` the reaper's `DueWindow` reads — proven here through the
+  // real seam (a shared `DueWindow`), not by calling `VenueScrapeCadence`
+  // directly, since a wiring mistake (forgetting to bind `touched`, passing the
+  // wrong cinema) would pass a unit test of the pure function alone.
+  it should "shorten a thin venue's own due schedule after landing a listing that runs out early" in {
+    val zone       = models.City.forCinema(Multikino).get.zoneId
+    val fixedClock = Clock.fixed(Instant.parse("2026-09-08T10:00:00Z"), ZoneOffset.UTC)
+    val nowLocal   = LocalDateTime.now(fixedClock.withZone(zone))
+    // 2h of runway against a 14h country default (the US cadence durant/moab sit
+    // on) — well under, so periodFor halves it: 1h, still above the 30min floor.
+    val thin = Seq(CinemaMovie(Movie("Coyote vs. Acme"), Multikino, posterUrl = None, filmUrl = None,
+      synopsis = None, cast = Nil, director = Nil, showtimes = Seq(Showtime(nowLocal.plusHours(2), None))))
+    val scraper      = new FakeScraper(Multikino, thin)
+    val freshness    = new InMemoryFreshnessStore
+    val venueCadence = new VenueCadenceStore(countryDefault = 14.hours)
+    val dueWindow    = new DueWindow(venueCadence.periodFor, 14.hours)
+    val venueKey     = ScrapeCinemaHandler.dedupKey(Multikino)
+    val policy = new ScrapeFreshnessPolicy(freshness, clock = fixedClock, venueCadence = Some(venueCadence))
+    val handler = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper),
+      freshRunner(), freshness, dueWindow, fixedClock, scrapeFreshness = Some(policy))
+
+    handler.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+
+    // Just scraped: not due again this instant either way — this isolates the
+    // ASSERTION below to the period the store now holds, not a same-tick fluke.
+    dueWindow.isDue(venueKey, freshness.lastFetchedAt(venueKey), fixedClock.instant()) shouldBe false
+    // 90 minutes on: past the shortened ~1h period, so it must already be due —
+    // the flat 14h country default would have left it stale for another 12.5h.
+    val ninetyMinutesOn = fixedClock.instant().plusSeconds(90 * 60)
+    withClue(s"expected the halved ~1h period to have elapsed by +90min: ") {
+      dueWindow.isDue(venueKey, freshness.lastFetchedAt(venueKey), ninetyMinutesOn) shouldBe true
+    }
+  }
+
   // ── A venue whose page is gone ────────────────────────────────────────────
   // Both aggregators keep advertising venues whose pages 404 forever — 2 in the
   // US roster, 21 in the German one — and because the roster is harvested FROM

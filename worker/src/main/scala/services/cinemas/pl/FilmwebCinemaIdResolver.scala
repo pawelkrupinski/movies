@@ -48,7 +48,7 @@ class FilmwebCinemaIdResolver(http: HttpFetch) {
     }.toMap
 
     cities.flatMap(_.cinemas).map { cinema =>
-      val listing = cityOf(cinema).flatMap(c => listingByCity.get(c.slug)).getOrElse(Nil)
+      val listing = City.forCinema(cinema).flatMap(c => listingByCity.get(c.slug)).getOrElse(Nil)
       resolveOne(cinema, listing)
     }
   }
@@ -65,8 +65,6 @@ class FilmwebCinemaIdResolver(http: HttpFetch) {
         }
     }
 
-  private def cityOf(cinema: Cinema): Option[City] =
-    City.all.find(_.cinemas.contains(cinema))
 }
 
 object FilmwebCinemaIdResolver {

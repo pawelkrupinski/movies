@@ -242,7 +242,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // due schedule by the same rule. See ScrapeFreshnessPolicy for why a broken venue
   // MUST eventually be stamped: un-stamped venues sort first in the reaper's
   // oldest-first order and otherwise camp on the whole per-tick budget forever.
-  lazy val scrapeFreshnessPolicy    = new ScrapeFreshnessPolicy(freshnessStore)
+  lazy val scrapeFreshnessPolicy    = new ScrapeFreshnessPolicy(freshnessStore, venueCadence = Some(venueCadenceStore))
 
   // ONE shared due schedule (`scrapeDueWindow`, an eager member of the root) backs
   // both the scrape reaper (enqueue) and the scrape handler (pickup re-gate), so

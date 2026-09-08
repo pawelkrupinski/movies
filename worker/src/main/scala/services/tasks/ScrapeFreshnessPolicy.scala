@@ -3,6 +3,8 @@ package services.tasks
 import play.api.Logging
 import services.freshness.{FreshnessKind, FreshnessStore}
 
+import scala.concurrent.duration.FiniteDuration
+
 import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 
@@ -49,16 +51,28 @@ class ScrapeFreshnessPolicy(
   // retry within one attempt (`CinemaScraper.maxFetchAttempts`), so this is the
   // second, coarser layer — enough to ride out a blip, not enough to camp the queue.
   immediateRetries: Int   = 2,
-  clock:            Clock = Clock.systemUTC()
+  clock:            Clock = Clock.systemUTC(),
+  // Where a landed scrape's remaining-showtime runway feeds a shortened next
+  // interval for THIN venues (see `VenueScrapeCadence`) — `None` (the default)
+  // leaves cadence untouched, so every existing caller/test that doesn't pass a
+  // `remainingHorizon` to `succeeded` is unaffected. Production wires the same
+  // instance the worker's `scrapeDueWindow` reads.
+  venueCadence:     Option[VenueCadenceStore] = None
 ) extends Logging {
 
   private val consecutiveFailures = new ConcurrentHashMap[String, Integer]()
 
   /** The scrape produced a listing (possibly empty) — stamp it and forget any
-   *  failure streak. */
-  def succeeded(key: String): Unit = {
+   *  failure streak. `remainingHorizon`, when the caller has one, records how
+   *  much showtime runway that listing leaves so a THIN venue's next interval
+   *  can shorten below the country default — see `VenueScrapeCadence`. `None`
+   *  (a GoneUpstream skip, a call site that hasn't been taught to measure it)
+   *  leaves whatever cadence this venue already had untouched, never resets it
+   *  back to the country default. */
+  def succeeded(key: String, remainingHorizon: Option[FiniteDuration] = None): Unit = {
     consecutiveFailures.remove(key)
     freshness.markFresh(key, FreshnessKind.CinemaScrape, clock.instant())
+    for (store <- venueCadence; horizon <- remainingHorizon) store.record(key, horizon)
   }
 
   /** The scrape was deliberately SKIPPED rather than run — the venue's page is
