@@ -3,7 +3,9 @@ package services.movies
 import models.{Cinema, CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.events.InProcessEventBus
 import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.staging.{InMemoryStagingFolder, InMemoryStagingRepository}
 
 import java.time.LocalDateTime
 
@@ -425,5 +427,84 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
 
     itCinemas(c, 2017) should contain(Multikino)
     itCinemas(c, 1990) shouldBe empty
+  }
+
+  // ── The same year, lost on the STAGING round trip ───────────────────────────
+  //
+  // Everything above is a listing landing on a row that already exists. On a corpus
+  // holding NEITHER film — a fresh convergence replay, and every US venue's first
+  // tick — both listings are newcomers and go to `pending_movies` instead, where a
+  // row is filed under `cinema|sanitize(title)|year`. The divert handed that row the
+  // year the LISTING published, which for these venues is none, so both films were
+  // filed under `…|it|` and `StagingFold.planGroup` — which keys a group's rows by
+  // `CacheKey(title, year)`, equal on `(sanitize, year)` — unioned them into ONE
+  // record before either had a tmdbId. That row resolves to one of the two films and
+  // the other's venues are the strays `MixedFilmSplitter` re-diverts on every settle.
+  //
+  // The splitter's own divert then lost the year the same way — it passes
+  // `slot.releaseYear`, which these venues never publish — so the staged row came
+  // back yearless and `clusterByFilm`'s rule (4) folded it straight onto the resolved
+  // row it had just been taken off. That is the loop the United States leg counts:
+  // five splits, then ten, on "a corpus that holds no mixed row".
+
+  "two films that share a title and print their year only inside it" should
+    "incubate as a staging row each, and fold to a row each" in {
+    val repository = new InMemoryMovieRepository()
+    val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
+    val c          = new CaffeineMovieCache(repository, new InProcessEventBus,
+      staging = Some(staging), normalizer = titleNormalizer)
+
+    // Neither film is in `movies`, so both venues' listings divert to staging.
+    c.recordCinemaScrape(Helios,    Seq(flicksListing(Helios,    "It (2017)", 135, "Andy Muschietti")))
+    c.recordCinemaScrape(Multikino, Seq(flicksListing(Multikino, "It (1990)", 168, "Tommy Lee Wallace")))
+
+    withClue("a staging row is filed under cinema|title|year, and the year is the only " +
+             "thing that keeps these two apart: ") {
+      staging.findAll().map(r => (r.title, r.year)) should contain theSameElementsAs
+        Seq(("It (2017)", Some(2017)), ("It (1990)", Some(1990)))
+    }
+
+    new InMemoryStagingFolder(staging, repository, titleNormalizer).foldGroup("It (1990)")
+
+    val folded = repository.findAll()
+    folded.map(_.year).toSet shouldBe Set(Some(1990), Some(2017))
+    withClue(s"the fold put both films on one row: " +
+             s"${folded.map(r => (r.title, r.year, r.record.cinemaSlots.map(_._1.displayName)))}: ") {
+      folded.flatMap(r => MixedFilmDetector.strays(r.record, titleNormalizer)) shouldBe empty
+    }
+  }
+
+  "the slots a settle splits off a mixed row" should
+    "not be folded straight back onto the row they left" in {
+    val repository = new InMemoryMovieRepository()
+    val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
+    val c          = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    // The prod row: resolved to Muschietti's film and screened by a majority of
+    // venues, with one screening Wallace's merged onto it — the state a settle is
+    // there to repair. Two venues on the 2017 side because that is what makes the
+    // 1990 venue the STRAY: `MixedFilmDetector` reads the row's cinemas alone (never
+    // its resolution), so one venue each way is a tie either side of which is an
+    // equally correct split. kinowo_us ran 21 venues against 5.
+    c.put(c.keyOf("It", Some(2017)), resolvedIt2017.copy(
+      data = resolvedIt2017.data
+        + ((models.CinemaCityKinepolis: Source) -> SourceData(
+            title = Some("It (2017)"), runtimeMinutes = Some(135), director = Seq("Andy Muschietti"),
+            showtimes = Seq(Showtime(When, bookingUrl = None))))
+        + ((Multikino: Source) -> SourceData(
+            title = Some("It (1990)"), runtimeMinutes = Some(168), director = Seq("Tommy Lee Wallace"),
+            showtimes = Seq(Showtime(When, bookingUrl = None))))))
+    val splitter = new MixedFilmSplitter(c, staging)
+
+    splitter.splitMixedRows() shouldBe 1
+    new InMemoryStagingFolder(staging, repository, titleNormalizer).foldGroup("It (1990)")
+    c.rehydrate()
+
+    withClue("the fold handed the split slot back to the film it was just taken off: ") {
+      itCinemas(c, 2017) should not contain Multikino
+    }
+    itCinemas(c, 1990) should contain(Multikino)
+    withClue("a second settle re-splitting the same slot is the loop itself: ") {
+      splitter.splitMixedRows() shouldBe 0
+    }
   }
 }
