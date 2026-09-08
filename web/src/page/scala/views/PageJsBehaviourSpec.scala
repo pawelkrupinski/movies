@@ -2194,7 +2194,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // count assertion here is a race with the page's ambient image traffic.
   private val ProbeVerdicts =
     "_peekImgEvents().filter(e => e.host === 'images.weserv.nl' " +
-      "&& (e.error || '').includes('favicon.svg'))"
+      "&& (e.error || '').includes('favicon.png'))"
 
   it should "blame the proxy when the origin serves what weserv could not" in {
     onPath("/") { page =>
@@ -2204,7 +2204,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval(
         """(() => {
           |  _resetImgProbeBudget();   // the page's own broken posters spend it
-          |  const local = location.origin + '/assets/img/favicon.svg';
+          |  const local = location.origin + '/assets/img/favicon.png';
           |  _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&w=480');
           |})()""".stripMargin)
       page.waitFor(s"$ProbeVerdicts.length === 1", timeoutMs = 10000)
@@ -2224,7 +2224,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """(() => {
           |  _drainImgEvents();
           |  _resetImgProbeBudget();   // the page's own broken posters spend it
-          |  const local = location.origin + '/assets/img/favicon.svg';
+          |  const local = location.origin + '/assets/img/favicon.png';
           |  const img = document.createElement('img');
           |  const src = 'https://images.weserv.nl/?url=' + encodeURIComponent(local);
           |  img.dataset.originalSrc = src;
@@ -2253,7 +2253,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val leftAfterOverspending = page.evalString(
         """(() => {
           |  _resetImgProbeBudget();
-          |  const local = location.origin + '/assets/img/favicon.svg';
+          |  const local = location.origin + '/assets/img/favicon.png';
           |  const budget = _imgProbeBudget();
           |  for (let i = 0; i < budget + 5; i++) {
           |    _imgProbeProxyFault('https://images.weserv.nl/?url=' + encodeURIComponent(local) + '&n=' + i);

@@ -44,7 +44,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
 
   it should "declare a favicon so the browser doesn't 404 on /favicon.ico" in {
     html should include ("""rel="icon"""")
-    html should include ("img/favicon.svg")
+    html should include ("img/favicon.png")
   }
 
   /** The US picks a METRO here — Los Angeles, Houston — found under its state's
