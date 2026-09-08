@@ -212,6 +212,39 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.stagingDeletes should have size cinemas.size
   }
 
+  it should "fold a repertory revival's rebroadcast year onto the same film, not split it out" in {
+    // THE QUEEN BUDAPEST REGRESSION (2026-09-08). A Cinema City venue advertised its
+    // 2026 anniversary screening of the 2012 concert film as "Queen Budapest (2026)"
+    // — the CINEMA dating the EVENT, not the film. A now-reverted rule
+    // (`separateByAssertedYear`) read that bracketed number as a release-year
+    // assertion, disagreed with the other 20 venues' plain "Queen Budapest" (which
+    // resolved to tmdbId 142773, TMDB year 2012) by 14 years, and split it into its
+    // own staging group — which never resolved (`noMatch`) and lost all 21 venues'
+    // showtimes. Real strings from the incident's CI log, run at the fast unit layer
+    // this regression should have been caught at instead of an hour-long corpus leg.
+    // The 20 plain-titled venues already folded into this movies row, resolved and
+    // keyed under TMDB's own year — 2012, YEARLESS on the venues' own slots (they
+    // never printed one). The 21st venue's title embeds 2026 and nothing else asserts
+    // a year for it, so it is the one row whose asserted year could disagree.
+    val existing = StoredMovieRecord("Queen Budapest", Some(2012), MovieRecord(
+      tmdbId = Some(142773),
+      data = Map[Source, SourceData](
+        Multikino -> SourceData(title = Some("Queen Budapest")),
+        Tmdb      -> SourceData(title = Some("Queen Budapest"), releaseYear = Some(2012)))))
+    val dated = StagingRecord(Helios, "Queen Budapest (2026)", None, MovieRecord(
+      data = Map[Source, SourceData](Helios -> SourceData(title = Some("Queen Budapest (2026)")))), titleNormalizer)
+
+    val plan = StagingFold.planGroup(Seq(dated), Seq(existing), titleNormalizer)
+    settleIsANoOpAfterFold(plan)
+
+    plan.moviesUpserts should have size 1
+    val (_, _, record) = plan.moviesUpserts.head
+    record.tmdbId shouldBe Some(142773)
+    record.data.keySet shouldBe Set(Multikino, Helios, Tmdb) // no venue lost to a phantom second film
+    plan.moviesUpserts.head._1 shouldBe existing.id
+    plan.moviesDeletes shouldBe empty
+  }
+
   it should "keep distinct-tmdbId remakes at different years as two movies rows" in {
     // 'Diuna' 1984 (Lynch) vs 2021 (Villeneuve) — distinct tmdbIds, years far
     // apart, so `clusterByFilm` keeps them as two clusters → two `movies` rows.
