@@ -1,4 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14" fill="#0d0d22"/>
-  <text x="32" y="34" font-size="40" text-anchor="middle" dominant-baseline="central">🎬</text>
+  <rect width="64" height="64" rx="14" fill="#10123a"/>
+  <rect x="5" y="24" width="11" height="20" rx="5" fill="#e0202f"/>
+  <rect x="48" y="24" width="11" height="20" rx="5" fill="#e0202f"/>
+  <rect x="6.5" y="27" width="8" height="7" rx="2.5" fill="#181a33"/>
+  <rect x="49.5" y="27" width="8" height="7" rx="2.5" fill="#181a33"/>
+  <rect x="16" y="6" width="32" height="30" rx="12" fill="#e0202f"/>
+  <rect x="13" y="30" width="38" height="16" rx="8" fill="#e0202f"/>
+  <circle cx="24" cy="20" r="6" fill="#f0d488"/>
+  <circle cx="32" cy="15" r="7" fill="#f6dfa0"/>
+  <circle cx="40" cy="20" r="6" fill="#f0d488"/>
+  <circle cx="27" cy="24" r="5" fill="#f6dfa0"/>
+  <circle cx="37" cy="24" r="5" fill="#f0d488"/>
+  <path d="M20 25 L44 25 L40 52 L24 52 Z" fill="#ffffff"/>
+  <path d="M25 25 L29.5 25 L27.5 52 L23.5 52 Z" fill="#e0202f"/>
+  <path d="M34.5 25 L39 25 L39.5 52 L35 52 Z" fill="#e0202f"/>
+  <rect x="19" y="23" width="26" height="5" rx="2" fill="#ffffff"/>
 </svg>
