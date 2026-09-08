@@ -44,6 +44,44 @@ object FilmCanonicalizer {
   def searchKey(title: String, normalizer: TitleNormalizer): String =
     normalizer.sanitize(tools.TextNormalization.romanizeCyrillic(normalizer.apiQuery(title)))
 
+  /** Is one `sanitize(title)` group really SEVERAL films, and if so which year does each
+   *  member belong under? `asserted` is what each member says about its year — the year
+   *  it is filed under, else the one its own title PRINTS (`EmbeddedYear`). Returns
+   *  `None` — leave every member exactly where it is — unless those years fall into more
+   *  than one band.
+   *
+   *  This exists because `sanitize` strips a bracketed year, so "It (1990)" and
+   *  "It (2017)" both reduce to `it`. On a corpus holding neither film nothing else in
+   *  the fold can tell them apart: no row has a tmdbId, and neither venue published a
+   *  year, so both become one record and every settle afterwards splits the minority's
+   *  venues off for the next fold to hand back.
+   *
+   *  The printed year may only SEPARATE, never FILE. A year is printed by SOME venues and
+   *  not others ("Titanic (1997)" here, "Titanic" next door), so on its own it says
+   *  nothing; filing every newcomer under it split those venues apart and held 5,235 of
+   *  31,772 Polish screenings out of the read model (1a1c62e29, reverted). Only a
+   *  DISAGREEMENT is evidence — hence the `None`, which is what the overwhelming majority
+   *  of groups get.
+   *
+   *  Bands are [[YearWindow.ProductionToRelease]] wide and CHAIN (1989, 1991, 1993 is one
+   *  band): that is rule (2)'s own tolerance, so a separation can never split what
+   *  [[clusterByFilm]] would immediately put back together, and chaining errs towards one
+   *  film — the direction that leaves today's behaviour alone. A member asserting no year
+   *  at all joins the biggest band (ties on the lower year), which is a function of the
+   *  row set alone, so the answer never depends on arrival order. */
+  def separateByAssertedYear(asserted: Seq[Option[Int]]): Option[Seq[Option[Int]]] = {
+    // Descending within each band, so `head` is the last year taken and `last` the
+    // band's lowest.
+    val bands = asserted.flatten.distinct.sorted.foldLeft(List.empty[List[Int]]) {
+      case (band :: rest, year) if year - band.head <= YearWindow.ProductionToRelease => (year :: band) :: rest
+      case (bands, year)                                                              => List(year) :: bands
+    }
+    Option.when(bands.sizeIs > 1) {
+      val biggest = bands.maxBy(band => (asserted.count(_.exists(band.contains)), -band.last))
+      asserted.map(_.orElse(Some(biggest.last)))
+    }
+  }
+
   /** Year a cluster collapses to — TMDB's resolved year if any member carries
    *  one (all resolved members of a cluster share a tmdbId hence a tmdbYear),
    *  else the lowest present KEY year, else yearless.

@@ -1,7 +1,7 @@
 package services.staging
 
 import models.MovieRecord
-import services.movies.{CacheKey, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
+import services.movies.{CacheKey, EmbeddedYear, FilmCanonicalizer, MovieRecordMerge, StoredMovieRecord, TitleNormalizer, FilmId}
 
 /**
  * The PURE decision half of folding a newcomer's staging rows into `movies`,
@@ -128,9 +128,26 @@ object StagingFold {
     // that then collapses onto the same `(sanitize, None)` key and clobbers all but
     // one — dropping every cinema's slot but one for the all-yearless events
     // (Maraton Horrorów, Filmowe Poranki).
-    val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, r.year, normalizer)).toSeq.map {
-      case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
-    }
+    //
+    // A `sanitize(title)` group is not always ONE film, and the union is where two of
+    // them become one record: `sanitize` strips a bracketed year, so "It (1990)" and
+    // "It (2017)" both key `(it, None)` on a corpus that holds neither film — every
+    // venue's first tick, and the whole of a convergence replay. The settle then
+    // rightly split the 1990 venues off with `MixedFilmSplitter` and this fold handed
+    // them straight back, for ever.
+    //
+    // What each member ASSERTS about its year separates them — and only separates:
+    // `separateByAssertedYear` moves nothing unless those years disagree, so a film
+    // some venues list as "Titanic (1997)" and others as "Titanic" stays one row (see
+    // its scaladoc for what filing by the printed year cost). The `movies` rows are
+    // evidence, never re-keyed here: a venue split off a row resolved to 2017 asserts
+    // 1990 only against that row's year.
+    val asserted = stagingRows.map(r => r.year.orElse(EmbeddedYear.of(r.title))) ++
+      moviesRows.map(r => r.year.orElse(r.record.tmdbYear).orElse(EmbeddedYear.of(r.title)))
+    val stagingYears = FilmCanonicalizer.separateByAssertedYear(asserted)
+      .fold(stagingRows.map(_.year))(_.take(stagingRows.size))
+    val stagingByKey = stagingRows.zip(stagingYears).groupBy { case (r, year) => CacheKey(r.title, year, normalizer) }
+      .toSeq.map { case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_._1.record)) }
     val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year, normalizer) -> r.record)
     val moviesKeys  = moviesByKey.map(_._1).toSet
     // The id behind each existing key; two documents under one key (a legacy duplicate)

@@ -1,9 +1,11 @@
 package services.movies
 
-import models.{Cinema, CinemaMovie, Helios, Movie, Multikino, MovieRecord, Showtime, Source, SourceData}
+import models.{CharlieMonroe, Cinema, CinemaMovie, Helios, KinoApollo, KinoMuza, KinoPalacowe, Movie, Multikino, MovieRecord, Showtime, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.events.InProcessEventBus
 import services.movies.SingleCountryNormalizer.titleNormalizer
+import services.staging.{InMemoryStagingFolder, InMemoryStagingRepository}
 
 import java.time.LocalDateTime
 
@@ -425,5 +427,103 @@ class SameTitleTwoFilmsSpec extends AnyFlatSpec with Matchers {
 
     itCinemas(c, 2017) should contain(Multikino)
     itCinemas(c, 1990) shouldBe empty
+  }
+
+  // ── Through STAGING, where neither film exists yet ──────────────────────────
+  //
+  // Everything above is a listing landing on a row that already exists. On a corpus
+  // holding NEITHER film — a fresh convergence replay, and every US venue's first tick —
+  // both listings are newcomers and go to `pending_movies`, which the landing files under
+  // the year the VENUE published: none, for the venues that print it only inside a title.
+  // The fold reads the titles instead (`FilmCanonicalizer.separateByAssertedYear`), so
+  // nothing about how a row is KEYED had to change to keep the two films apart.
+
+  "two films that share a title and print their year only inside it" should
+    "incubate as staging rows and fold to a row each" in {
+    val repository = new InMemoryMovieRepository()
+    val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
+    val c = new CaffeineMovieCache(repository, new InProcessEventBus,
+      staging = Some(staging), normalizer = titleNormalizer)
+
+    // Neither film is in `movies`, so both venues' listings divert to staging.
+    c.recordCinemaScrape(Helios,    Seq(flicksListing(Helios,    "It (2017)", 135, "Andy Muschietti")))
+    c.recordCinemaScrape(Multikino, Seq(flicksListing(Multikino, "It (1990)", 168, "Tommy Lee Wallace")))
+
+    new InMemoryStagingFolder(staging, repository, titleNormalizer).foldGroup("It (1990)")
+
+    val folded = repository.findAll()
+    withClue(s"the fold made one film of both: ${folded.map(r => (r.title, r.year, r.record.cinemaSlots.map(_._1.displayName)))}: ") {
+      folded.map(_.year).toSet shouldBe Set(Some(1990), Some(2017))
+    }
+    folded.flatMap(r => MixedFilmDetector.strays(r.record, titleNormalizer)) shouldBe empty
+  }
+
+  it should "not have the slots a settle splits off folded straight back onto the row they left" in {
+    val repository = new InMemoryMovieRepository()
+    val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
+    val c          = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    // The prod row: resolved to Muschietti's film and screened by a majority of venues,
+    // with one screening Wallace's merged onto it — the state a settle is there to
+    // repair. Two venues on the 2017 side because that is what makes the 1990 venue the
+    // STRAY: `MixedFilmDetector` reads the row's cinemas alone (never its resolution), so
+    // one venue each way is a tie either side of which is an equally correct split.
+    // kinowo_us ran 21 venues against 5.
+    c.put(c.keyOf("It", Some(2017)), resolvedIt2017.copy(
+      data = resolvedIt2017.data
+        + ((models.CinemaCityKinepolis: Source) -> SourceData(
+            title = Some("It (2017)"), runtimeMinutes = Some(135), director = Seq("Andy Muschietti"),
+            showtimes = Seq(Showtime(When, bookingUrl = None))))
+        + ((Multikino: Source) -> SourceData(
+            title = Some("It (1990)"), runtimeMinutes = Some(168), director = Seq("Tommy Lee Wallace"),
+            showtimes = Seq(Showtime(When, bookingUrl = None))))))
+    val splitter = new MixedFilmSplitter(c, staging)
+
+    splitter.splitMixedRows() shouldBe 1
+    new InMemoryStagingFolder(staging, repository, titleNormalizer).foldGroup("It (1990)")
+    c.rehydrate()
+
+    withClue("the fold handed the split slot back to the film it was just taken off: ") {
+      itCinemas(c, 2017) should not contain Multikino
+    }
+    itCinemas(c, 1990) should contain(Multikino)
+    withClue("a second settle re-splitting the same slot is the loop itself: ") {
+      splitter.splitMixedRows() shouldBe 0
+    }
+  }
+
+  // ── THE REGRESSION GUARD ────────────────────────────────────────────────────
+  //
+  // The year is printed by SOME venues and not others, so it must never decide where a
+  // newcomer is FILED. `1a1c62e29` made it decide, and a film listed as "Titanic (1997)"
+  // at one cinema and "Titanic" at the next incubated as two staging rows under two keys,
+  // resolving apart — 5,235 of 31,772 Polish screenings never reached the read model.
+  "a film only SOME of whose venues print its year" should
+    "stage under one key and fold to one row carrying every venue's showtimes" in {
+    val repository = new InMemoryMovieRepository()
+    val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
+    val c = new CaffeineMovieCache(repository, new InProcessEventBus,
+      staging = Some(staging), normalizer = titleNormalizer)
+
+    val printing = Seq(Helios, Multikino, KinoMuza)
+    val silent   = Seq(KinoApollo, KinoPalacowe, CharlieMonroe)
+    printing.foreach(v => c.recordCinemaScrape(v, Seq(flicksListing(v, "Titanic (1997)", 194, "James Cameron"))))
+    silent.foreach(v   => c.recordCinemaScrape(v, Seq(flicksListing(v, "Titanic",        194, "James Cameron"))))
+
+    withClue(s"the venues incubated apart: ${staging.findAll().map(r => (r.cinema.displayName, r.title, r.year))}: ") {
+      staging.findAll().map(r => (titleNormalizer.sanitize(r.title), r.year)).distinct should have size 1
+    }
+
+    new InMemoryStagingFolder(staging, repository, titleNormalizer).foldGroup("Titanic")
+
+    val folded = repository.findAll()
+    withClue(s"folded to ${folded.map(r => (r.title, r.year, r.record.cinemaSlots.size))}: ") {
+      folded should have size 1
+    }
+    // A slot is keyed per SHOWN title (`CinemaShowing`), not by the bare cinema.
+    folded.head.record.cinemaSlots.flatMap(s => Source.cinemaOf(s._1)).toSet shouldBe (printing ++ silent).toSet
+    withClue("a venue's showtimes were dropped on the way through staging: ") {
+      folded.head.record.cinemaSlots.count(_._2.showtimes.nonEmpty) shouldBe 6
+    }
+    staging.findAll() shouldBe empty
   }
 }
