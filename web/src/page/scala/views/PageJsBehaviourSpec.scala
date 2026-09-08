@@ -378,19 +378,27 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  delay injected into `/api/me/state` reproduced it locally. This closes the
    *  separate hole of a guard that did not wait for what it said it did.
    *
-   *  Nor is it airtight, and it is worth saying which window is left: the values
-   *  waited on are the ones ANY boot on this origin writes, so if the previous
-   *  document's own `/api/me/state` resolves between this clear and the reload
-   *  committing, its write can satisfy the wait. Shutting that would need a
-   *  per-document marker the production script does not offer — a signal to add
-   *  there, not to fake here.
+   *  The window that leaves — the previous document's own `/api/me/state`
+   *  resolving between this clear and the reload committing, and its write
+   *  satisfying a wait meant for the next boot — is shut by asking `performance`
+   *  rather than localStorage. Resource entries are per-DOCUMENT and empty after
+   *  a navigation, so they answer "did the boot now running fetch this?", which
+   *  is the question; an origin-wide store cannot.
    *
    *  5s for the same reason the other waits here carry one: it spans a fresh
    *  document plus the chained fetches its boot makes. */
   private def awaitOwnReconcile(page: CdpPage): Unit = {
     clearLocalStorage(page)
     page.reload()
-    page.waitFor("localStorage.getItem('serverStateSynced') === '1' && " +
+    // THIS document's own fetch, not merely a value some document wrote.
+    // `performance` entries are per-document and start empty after a navigation,
+    // so a `/api/me/state` resource entry here is proof that the boot now
+    // running went and asked — which localStorage, shared across every tab on
+    // this origin, can never be. The two state reads then confirm the answer
+    // landed.
+    page.waitFor("performance.getEntriesByType('resource')" +
+                 ".some(function (r) { return r.name.indexOf('/api/me/state') !== -1; }) && " +
+                 "localStorage.getItem('serverStateSynced') === '1' && " +
                  "getHidden().indexOf('Film A') !== -1",
                  timeoutMs = 5000)
   }
