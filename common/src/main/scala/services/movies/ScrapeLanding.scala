@@ -352,13 +352,8 @@ private[movies] final class ScrapeLanding(
       // that: five venues screening Tommy Lee Wallace's 168-minute miniseries on the
       // row resolved to Muschietti's 135-minute film, which `MixedFilmSplitter` then
       // re-diverted on every settle and the fold put straight back.
-      //
-      // `filedYear` is the same year the DIVERT files its staging row under, so the
-      // two placements agree: a staging row is keyed `cinema|sanitize(title)|year`
-      // and the fold groups by `(sanitize, year)` too, so a divert that dropped the
-      // annotation put both films back under one key before either had a tmdbId.
-      val filedYear    = cm.movie.releaseYear.orElse(EmbeddedYear.of(displayTitle))
-      val primary      = store.keyOf(displayTitle, filedYear.orElse(venueSlotYear(norm)))
+      val primary      = store.keyOf(displayTitle,
+        cm.movie.releaseYear.orElse(EmbeddedYear.of(displayTitle)).orElse(venueSlotYear(norm)))
       // A newcomer: `staging` is wired and this film's sanitize group isn't in
       // `movies` yet — AND it isn't a known film listed under another language (an
       // alias of a concluded row). (Same-tick spelling variants already collapsed
@@ -383,17 +378,10 @@ private[movies] final class ScrapeLanding(
         if (divert) {
           // NEWCOMER → staging. Build the slot off this cinema's PRIOR staging
           // slot (preserves two-stage detail fields + the year fallback), write
-          // one `cinema|title|year` row under the SAME `filedYear` that decided the
-          // placement above, and DON'T touch `movies` — it stays held out of the
-          // read model until it resolves and folds in (the promoter + folder own
-          // that). Excluded from `resolved`, so no movies-side prune/publish fires
-          // for it.
-          //
-          // The year matters here as much as it does on a `movies` key: the fold
-          // groups staging rows by `CacheKey(title, year)` and `sanitize` has
-          // already dropped the annotation, so filing "It (1990)" and "It (2017)"
-          // as yearless made ONE record of them on a corpus that held neither film
-          // yet — which is every venue's first tick, and the whole US replay.
+          // one `cinema|title|year` row, and DON'T touch `movies` — it stays held
+          // out of the read model until it resolves and folds in (the promoter +
+          // folder own that). Excluded from `resolved`, so no movies-side
+          // prune/publish fires for it.
           val priorSlot     = priorStagingRows.get(norm).flatMap(_.record.data.get(cinemaSlotKey(cinema, displayTitle)))
           val effectiveYear = cm.movie.releaseYear.orElse(priorSlot.flatMap(_.releaseYear))
           val slot          = buildCinemaSlot(cm, displayTitle, priorSlot, effectiveYear)
@@ -408,7 +396,7 @@ private[movies] final class ScrapeLanding(
           // (`StagingFolder`) never takes it, so it has never serialised this collection.
           // A staging row is keyed by `cinema|title|year` and one cinema is scraped by
           // one thread, so no second scrape can be writing the rows this venue owns.
-          divertsToStage += ((cinema, displayTitle, filedYear, MovieRecord(
+          divertsToStage += ((cinema, displayTitle, cm.movie.releaseYear, MovieRecord(
             searchTitle = Some(normalizer.apiQuery(normalizer.recase(displayTitle))),
             data        = Map(cinemaSlotKey(cinema, displayTitle) -> slot)
           )))
