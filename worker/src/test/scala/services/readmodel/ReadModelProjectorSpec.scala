@@ -53,6 +53,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     def recordFilmPruned(reason: String, count: Int): Unit        = { prunes += count; pruneReasons += reason }
     val retired = scala.collection.mutable.Buffer.empty[String]
     def recordCardRetired(reason: String): Unit                   = retired += reason
+    val driftWrites = scala.collection.mutable.Buffer.empty[Int]
+    def recordDriftWrites(documents: Int): Unit                    = driftWrites += documents
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = {
       projectDurations  += wallSeconds
       projectCpuSeconds += cpuSeconds
@@ -725,6 +727,36 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     withClue("a genuinely missing card must still be healed: ") { rm.movieUpserts.size should be > before }
     sweeper.stop()
+  }
+
+  // A ROW THAT EXISTS AND IS WRONG is what every id-only backstop misses: the prune removes
+  // a card whose row is gone, the heal writes one that is missing, and neither looks at what
+  // a row SAYS. Three UK films held August showtimes into September because of it. The
+  // rolling content check re-projects one slice of the corpus per sweep, so a drifted row is
+  // corrected within a day even though nothing about it ever changes again.
+  "the orphan prune" should "rewrite a stored projection that drifted from its source" in {
+    val (projector, repository, rm) = fixture()
+    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
+    projector.onMovieUpsert(repository.findAll().head)
+    val card = rm.findAllMovies().head
+
+    // The read model drifts underneath: a showtime nobody will ever change again.
+    rm.findAllScreenings().foreach(sc => rm.upsertScreening(sc.copy(showtimes = Seq(at("2026-01-01T10:00")))))
+    rm.upsertMovie(card.copy(title = "Stale title nobody will correct"))
+    // A fresh projector, so its memo is seeded from the drifted store exactly as a restart's is.
+    val m       = new RecordingMetrics()
+    val checker = new ReadModelProjector(repository, rm, rm, m)
+    checker.start()
+
+    // One slice per sweep, so run enough sweeps to cover every slice.
+    (1 to 48).foreach(_ => checker.pruneOrphans())
+
+    withClue("the drifted card and screenings must be rewritten from the source: ") {
+      rm.findAllMovies().head.title shouldBe "Foo"
+      rm.findAllScreenings().flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-12T20:00")
+    }
+    m.driftWrites.sum should be > 0
+    checker.stop(); projector.stop()
   }
 
   // The 2026-09-07 ReadModelFilmPruneBurst, replayed: live rows whose cards sit under ids

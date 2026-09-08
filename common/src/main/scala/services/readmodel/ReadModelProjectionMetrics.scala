@@ -34,6 +34,10 @@ trait ReadModelProjectionMetrics {
    *  its readiness — by [[ReadModelProjectionMetrics.RetireReason]]. */
   def recordCardRetired(reason: String): Unit
 
+  /** Documents the rolling CONTENT check rewrote — a stored projection that had drifted
+   *  from what its source row projects to. Zero is the healthy reading. */
+  def recordDriftWrites(documents: Int): Unit
+
   /** One `ReadModelProjection.projectAll` ran for a source row. Fed from
    *  [[ReadModelProjector.project]]; `..._calls_total` is how many rows were projected.
    *
@@ -123,6 +127,7 @@ object ReadModelProjectionMetrics {
     def recordWrite(target: String, op: String, count: Int): Unit = ()
     def recordFilmPruned(reason: String, count: Int): Unit        = ()
     def recordCardRetired(reason: String): Unit                   = ()
+    def recordDriftWrites(documents: Int): Unit                   = ()
     def recordProject(wallSeconds: Double, cpuSeconds: Double): Unit = ()
     def recordMetadataProjection(reused: Boolean): Unit           = ()
     def recordReconcileSweep(kind: String, didWork: Boolean): Unit = ()

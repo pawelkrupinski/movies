@@ -103,6 +103,18 @@ class ReadModelProjector(
   // Deferred off the boot path — running a full scan synchronously at `start()` stacked a
   // second scan onto the cache hydrate + first scrape on a cold JVM (the boot CPU drain).
   private val PruneBootDelaySeconds = Env.positiveLong("KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS", 300L)
+
+  /** How many prune sweeps it takes to re-project the whole corpus once — the ROLLING
+   *  CONTENT CHECK. Every backstop before it compared IDS: the prune removes a card whose
+   *  row is gone, the heal writes a card or a venue that is missing. None of them can see a
+   *  row that EXISTS and is WRONG, and on 2026-09-08 three UK films had held the wrong
+   *  showtimes since 2026-08-29 — Troy and 2046 at the Prince Charles, Glastonbury at the
+   *  Southsea — served to real users, invisible to every sweep, and unrepairable by the
+   *  change stream because the source had long since stopped changing. A projection is
+   *  diff-based, so re-projecting a slice costs a read per row and writes only what actually
+   *  drifted; at 48 slices on a 30-minute sweep the whole corpus is verified once a day. */
+  private val ContentSlices = Env.positiveInt("KINOWO_READMODEL_CONTENT_SLICES", 48)
+  private var sweepCount    = 0L
   @volatile private var watchHandle: Option[AutoCloseable] = None
 
   def enabled: Boolean = writer.enabled && movieRepository.enabled
@@ -306,6 +318,8 @@ class ReadModelProjector(
     val liveIds = scala.collection.mutable.Set.empty[String]
     // The source-row keys behind those cards — what `lastMetadata` is keyed by.
     val liveRowKeys = scala.collection.mutable.Set.empty[String]
+    // The ids of the ready rows this scan saw — what the content check walks its slice of.
+    val liveRowIds  = scala.collection.mutable.ArrayBuffer.empty[services.movies.FilmId]
     var reprojected = 0
     // The cards as they are BEFORE this sweep. A ready row ANY of whose ids has no card
     // is healed here, in the same pass, before anything is pruned: on 2026-09-07 the
@@ -344,6 +358,7 @@ class ReadModelProjector(
         val ids = partition.filmIds
         liveIds ++= ids
         liveRowKeys += row.id.value
+        liveRowIds  += row.id
         if (!lastCardsByRow.contains(row.id.value)) lastCardsByRow.update(row.id.value, ids.toSet)
         if (reproject)
           try reprojected += project(partition)
@@ -415,6 +430,25 @@ class ReadModelProjector(
     // the alert on the cursor's age is what ends the state. Only while a movies cursor is
     // SUBSCRIBED: a repository that never opened one (a test wiring, a Mongo-less boot) has
     // promised no deliveries, and the prune must stay the id-only sweep it is there.
+    // THE ROLLING CONTENT CHECK: one slice of the corpus per sweep, read whole and
+    // re-projected, so a row whose stored projection has drifted is corrected within a day
+    // even though nothing about it changes again. Deterministic by row id, so the slices
+    // partition the corpus rather than sampling it, and every row is reached.
+    var drifted = 0
+    if (!reproject && scanComplete) {
+      val slice = math.floorMod(sweepCount, ContentSlices.toLong).toInt
+      liveRowIds.iterator.filter(id => math.floorMod(id.value.##.toLong, ContentSlices.toLong).toInt == slice).foreach { id =>
+        try movieRepository.findById(id).foreach(row => drifted += project(ReadModelProjection.partition(row, normalizer)))
+        catch { case exception: Throwable =>
+          logger.warn(s"read-model $kind: a row in the content slice failed to project, continuing: ${exception.getMessage}") }
+      }
+      if (drifted > 0)
+        logger.warn(s"read-model $kind sweep: content check slice $slice of $ContentSlices rewrote $drifted document(s) — " +
+          "a stored projection had drifted from what the source projects to, which the id-only sweeps cannot see.")
+      metrics.recordDriftWrites(drifted)
+    }
+    sweepCount += 1
+
     var caughtUp = 0
     val liveness = movieRepository.changeStreamLiveness
     if (!reproject && liveness.isWatching(ChangeStreamLiveness.Movies)) {

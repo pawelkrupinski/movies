@@ -1402,7 +1402,7 @@
         {
           "id": 51,
           "title": "Worker — read-model removals: retired by the stream vs left to the prune (per min)",
-          "description": "Cards leaving the read model, by the path that removed them. THE RULE (2026-09-07): the prune is a NO-OP — the change-stream path retires every card it no longer produces (kinowo_worker_readmodel_cards_retired_total: variant-gone = a re-projected row stopped producing that decorated-listing card, row-deleted = the row was deleted or merged away, row-unready = the row lost its readiness), so the prune lines (kinowo_worker_readmodel_films_pruned_total, by reason) must sit at ZERO. Any sustained prune rate is a projection defect to chase by its reason — row-gone = no row projects to that id, variant-gone = the row lives but no longer produces that variant — never accepted churn, and it is also the gap the worker census and the web disagree across until the sweep runs. 'sweeps that removed something' is the same statement per sweep rather than per card.",
+          "description": "Cards leaving the read model, by the path that removed them. THE RULE (2026-09-07): the prune is a NO-OP — the change-stream path retires every card it no longer produces (kinowo_worker_readmodel_cards_retired_total: variant-gone = a re-projected row stopped producing that decorated-listing card, row-deleted = the row was deleted or merged away, row-unready = the row lost its readiness), so the prune lines (kinowo_worker_readmodel_films_pruned_total, by reason) must sit at ZERO. Any sustained prune rate is a projection defect to chase by its reason — row-gone = no row projects to that id, variant-gone = the row lives but no longer produces that variant — never accepted churn, and it is also the gap the worker census and the web disagree across until the sweep runs. 'sweeps that removed something' is the same statement per sweep rather than per card. A fourth line, 'CONTENT DRIFT rewritten' (kinowo_worker_readmodel_drift_writes_total), is the rolling content check: every other line here compares IDS, and none of them can see a row that EXISTS and is WRONG — three UK films held August showtimes into September because of exactly that. One slice of the corpus is re-projected per sweep (the whole corpus once a day) and the projection's diff rewrites only what drifted, so this too should read zero.",
           "type": "timeseries",
           "datasource": {
             "type": "prometheus",
@@ -1468,6 +1468,15 @@
               "refId": "B",
               "expr": "sum(rate(kinowo_worker_readmodel_reconcile_sweeps_total{country=~\"$country\", did_work=\"true\"}[$__rate_interval])) * 60",
               "legendFormat": "prune sweeps that removed something",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
+              "refId": "D",
+              "expr": "sum by (country) (rate(kinowo_worker_readmodel_drift_writes_total{country=~\"$country\"}[$__rate_interval])) * 60",
+              "legendFormat": "CONTENT DRIFT rewritten {{country}}",
               "datasource": {
                 "type": "prometheus",
                 "uid": "local-prometheus"
