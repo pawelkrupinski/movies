@@ -20,13 +20,7 @@ package services.movies
  *     `canonicalRank` already reconciles (never the async resolve path, which
  *     would race it). It is also what keeps two films a listing distinguishes ONLY
  *     by its bracketed year apart, since the key strips the annotation the moment
- *     it is read: "It (1990)" and "It (2017)" both sanitize to `it`; and
- *   - as the tie-breaker the STAGING FOLD reads to tell two such films apart before
- *     either has resolved (`FilmCanonicalizer.separateByAssertedYear`). Note the
- *     asymmetry with the two uses above: there the year is READ off one listing, so a
- *     silent listing simply gets none, while a fold compares a whole group, where a
- *     year only some venues print is evidence of two films only when the group's
- *     years DISAGREE. It may separate them there; it may never file them.
+ *     it is read: "It (1990)" and "It (2017)" both sanitize to `it`.
  *
  *  Abstains (returns None) when there's no delimited year, when it's outside the
  *  plausible film range [1888, maxYear], or when SEVERAL distinct years appear

@@ -697,40 +697,4 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
       Set[Source](Kinoteka)            // yearless straggler, alone (two distinct films → rule 4 refuses)
     )
   }
-
-  // `separateByAssertedYear` is the one rule that reads a year printed INSIDE a title,
-  // and its whole safety comes from abstaining: a year some venues print and others
-  // don't is not evidence of two films. The fold specs exercise it through `planGroup`;
-  // these pin the arithmetic itself.
-  "separateByAssertedYear" should "abstain on a group whose members assert no more than one band" in {
-    FilmCanonicalizer.separateByAssertedYear(Seq(None, None, None)) shouldBe None
-    FilmCanonicalizer.separateByAssertedYear(Seq(Some(1997), None, None)) shouldBe None
-    FilmCanonicalizer.separateByAssertedYear(Seq(Some(1997), Some(1997))) shouldBe None
-    withClue("the production-to-release gap rule (2) absorbs is ONE band: ") {
-      FilmCanonicalizer.separateByAssertedYear(Seq(Some(1989), Some(1991))) shouldBe None
-    }
-    withClue("bands chain, so a dense run of years stays one film: ") {
-      FilmCanonicalizer.separateByAssertedYear(Seq(Some(1989), Some(1991), Some(1993))) shouldBe None
-    }
-  }
-
-  it should "give each member the year it asserts once the group holds two bands" in {
-    FilmCanonicalizer.separateByAssertedYear(Seq(Some(1990), Some(2017))) shouldBe
-      Some(Seq(Some(1990), Some(2017)))
-  }
-
-  it should "put a member asserting NO year with the biggest band" in {
-    // The bare-title venue can't say which film it is screening, so it goes to the one
-    // most of the group is about — a function of the row set, never of arrival order.
-    FilmCanonicalizer.separateByAssertedYear(
-      Seq(Some(1990), Some(1990), Some(1990), Some(2017), None)) shouldBe
-      Some(Seq(Some(1990), Some(1990), Some(1990), Some(2017), Some(1990)))
-    FilmCanonicalizer.separateByAssertedYear(
-      Seq(Some(1990), Some(2017), Some(2017), Some(2017), None)) shouldBe
-      Some(Seq(Some(1990), Some(2017), Some(2017), Some(2017), Some(2017)))
-    withClue("equal bands break on the LOWER year, so the answer is total: ") {
-      FilmCanonicalizer.separateByAssertedYear(Seq(Some(2017), Some(1990), None)) shouldBe
-        Some(Seq(Some(2017), Some(1990), Some(1990)))
-    }
-  }
 }

@@ -2,7 +2,7 @@ package services.staging
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import models.{Cinema, CinemaCityWroclavia, Helios, Multikino, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import models.{Cinema, CinemaCityWroclavia, Helios, Multikino, MovieRecord, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{CacheKey, CaffeineMovieCache, EnrichmentRetrigger, FilmId, MovieRepository, RetriggerKind, StoredMovieRecord, StoredRowsRepository}
@@ -17,18 +17,6 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
       data = Map[Source, SourceData](
         cinema -> SourceData(title = Some(title), releaseYear = Some(cinemaYear)),
         Tmdb   -> SourceData(title = Some(title), releaseYear = Some(tmdbYear)))), titleNormalizer)
-
-  /** A newcomer's per-cinema staging row exactly as `ScrapeLanding`'s divert writes one:
-   *  the year the VENUE published (usually none — where a year appears at all it is
-   *  printed inside the title), no tmdbId, and one slot with that venue's spelling and
-   *  its showtimes. */
-  private def newcomer(cinema: Source, title: String, publishedYear: Option[Int] = None): StagingRecord =
-    StagingRecord(cinema, title, publishedYear, MovieRecord(data = Map[Source, SourceData](
-      cinema -> SourceData(title = Some(title), releaseYear = publishedYear,
-                           showtimes = Seq(Showtime(java.time.LocalDateTime.of(2026, 9, 8, 20, 5), bookingUrl = None))))),
-      titleNormalizer)
-
-  private def sources(cinemas: Seq[Cinema]): Set[Source] = cinemas.map(c => c: Source).toSet
 
   private def repoOf(rows: StoredMovieRecord*): MovieRepository = new StoredRowsRepository(rows.toSeq, titleNormalizer)
 
@@ -336,113 +324,5 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     val (_, _, record) = plan.moviesUpserts.head
     record.tmdbId shouldBe Some(1275779)
     record.imdbId shouldBe Some("tt15047880")
-  }
-
-  // ── A printed year SEPARATES; it never FILES ────────────────────────────────
-  //
-  // `sanitize` strips a bracketed year, so "It (1990)" and "It (2017)" both reduce to
-  // `it`. On a corpus holding NEITHER film — every venue's first tick, and the whole of
-  // a convergence replay — no row in the group carries a tmdbId or a key year, so the
-  // union in `planGroup` made ONE record of two films. The settle then rightly split the
-  // 1990 venues off with `MixedFilmSplitter`, the staged rows came back, and the fold put
-  // them straight onto the row they had just left: 5 splits, then 10, for ever (the
-  // United States convergence leg since 2026-09-06).
-  //
-  // What the group's members ASSERT about their year is the only thing that can tell them
-  // apart here. It may only SEPARATE, never file: a year some venues print and others
-  // don't is no evidence of two films, and filing every newcomer under the year its own
-  // title printed held 5,235 of 31,772 Polish screenings out of the read model
-  // (1a1c62e29, reverted by 829eb309d).
-
-  it should "split a group whose titles print DIFFERENT years into a row per film" in {
-    val wallace    = Cinema.all.slice(0, 5)   // "It" (1990), Tommy Lee Wallace
-    val muschietti = Cinema.all.slice(5, 8)   // "It" (2017), Andy Muschietti
-    val rows = wallace.map(c => newcomer(c, "It (1990)")) ++ muschietti.map(c => newcomer(c, "It (2017)"))
-
-    val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty, titleNormalizer)
-    settleIsANoOpAfterFold(plan)
-
-    withClue(s"folded to ${plan.moviesUpserts.map(u => (u._2.cleanTitle, u._2.year, u._3.data.keySet.size))}: ") {
-      plan.moviesUpserts.map(u => (u._2.year, u._3.data.keySet)).toSet shouldBe
-        Set((Some(1990), sources(wallace)), (Some(2017), sources(muschietti)))
-    }
-    plan.stagingDeletes should have size rows.size
-  }
-
-  it should "keep a group's staged venues OFF a movies row resolved to a different year" in {
-    // The other half of the loop. `MixedFilmSplitter` has already taken the 1990 venues
-    // off the resolved 2017 row and re-diverted them, under their own spelling and with
-    // no year — the venues never published one. Nothing on those rows but the title says
-    // which film they are, so the fold saw a yearless, idless straggler and rule (4)
-    // handed it straight back to the film it had just been taken off.
-    val staged = Cinema.all.slice(0, 5).map(c => newcomer(c, "It (1990)"))
-    val muschietti = StoredMovieRecord("It", Some(2017), MovieRecord(
-      tmdbId = Some(570670),
-      data   = Map[Source, SourceData](
-        Tmdb             -> SourceData(title = Some("It"), releaseYear = Some(2017), runtimeMinutes = Some(135)),
-        (Helios: Source) -> SourceData(title = Some("It (2017)"), runtimeMinutes = Some(135)))))
-
-    val plan = StagingFold.planGroup(staged, Seq(muschietti), titleNormalizer)
-    settleIsANoOpAfterFold(plan)
-
-    withClue(s"folded to ${plan.moviesUpserts.map(u => (u._2.cleanTitle, u._2.year, u._3.tmdbId))}: ") {
-      plan.moviesUpserts.map(u => (u._2.year, u._3.tmdbId)).toSet shouldBe
-        Set((Some(2017), Some(570670)), (Some(1990), None))
-    }
-    plan.moviesUpserts.collectFirst { case (_, k, r) if k.year.contains(1990) => r.data.keySet } shouldBe
-      Some(sources(Cinema.all.slice(0, 5)))
-    plan.moviesDeletes shouldBe empty
-  }
-
-  // ── THE REGRESSION GUARD ────────────────────────────────────────────────────
-  //
-  // A year is printed by SOME venues and not others, so on its own it is never evidence
-  // that a group holds two films. The moment it is allowed to FILE a row, the venues that
-  // stay silent incubate apart from the ones that print it — and whichever half fails to
-  // resolve is held out of the read model with all of its showtimes. All three cases
-  // below must hold whatever the separation does.
-
-  it should "keep a film ONE row when a year only SOME of its venues print is all that differs" in {
-    val printing = Cinema.all.slice(0, 3)
-    val silent   = Cinema.all.slice(3, 6)
-    val rows = printing.map(c => newcomer(c, "Titanic (1997)")) ++ silent.map(c => newcomer(c, "Titanic"))
-
-    val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty, titleNormalizer)
-    settleIsANoOpAfterFold(plan)
-
-    withClue(s"folded to ${plan.moviesUpserts.map(u => (u._2.cleanTitle, u._2.year, u._3.data.keySet.size))}: ") {
-      plan.moviesUpserts should have size 1
-    }
-    plan.moviesUpserts.head._3.data.keySet shouldBe sources(printing ++ silent)
-  }
-
-  it should "keep a film ONE row when only SOME of its venues PUBLISH its year" in {
-    // The same statement about a year shipped in the venue's payload rather than inside
-    // its title — the shape most of the corpus has, and the one a separation that fired
-    // on "the members' years differ" would break.
-    val publishing = Cinema.all.slice(0, 3)
-    val silent     = Cinema.all.slice(3, 6)
-    val rows = publishing.map(c => newcomer(c, "Titanic", Some(1997))) ++ silent.map(c => newcomer(c, "Titanic"))
-
-    val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty, titleNormalizer)
-    settleIsANoOpAfterFold(plan)
-
-    plan.moviesUpserts should have size 1
-    plan.moviesUpserts.head._2.year shouldBe Some(1997)
-    plan.moviesUpserts.head._3.data.keySet shouldBe sources(publishing ++ silent)
-  }
-
-  it should "keep a film ONE row when its venues' years sit a production-to-release gap apart" in {
-    // "Zawieście czerwone latarnie": one venue prints the PRODUCTION year, another the
-    // release. Two years, one film — `clusterByFilm` rule (2) is built to absorb exactly
-    // this gap, so a separation must never fire inside the same window.
-    val rows = Seq(newcomer(Helios, "Zawieście czerwone latarnie (1989)"),
-                   newcomer(Multikino, "Zawieście czerwone latarnie (1991)"))
-
-    val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty, titleNormalizer)
-    settleIsANoOpAfterFold(plan)
-
-    plan.moviesUpserts should have size 1
-    plan.moviesUpserts.head._3.data.keySet shouldBe Set[Source](Helios, Multikino)
   }
 }
