@@ -44,6 +44,17 @@ class UptimeMonitor(
 ) extends Logging {
   import UptimeMonitor._
 
+  /** Whether this process may REBUILD the bucket TTL index, or only create it when absent.
+   *
+   *  DERIVED, NOT PASSED. `surfaceExternalWrites` already says which tier this is — the
+   *  serving app sets it, the worker leaves it off — and a second boolean at the call site is
+   *  one a future wiring can silently forget, with nothing failing. Both tiers write
+   *  `uptimeBuckets` and both authenticate as `kinowo_app`, so the serving app is perfectly
+   *  able to drop an index the worker depends on. It has nothing to gain by doing so: both
+   *  compute the expiry from the same constant, so a disagreement the reader can see is one
+   *  the owner sees too, rebuilds, and reports if it cannot. */
+  private val ownsIndexes: Boolean = !surfaceExternalWrites
+
   private val data = new BucketStore()
   private val listeners = new java.util.concurrent.CopyOnWriteArrayList[BucketListener]()
 
@@ -93,9 +104,14 @@ class UptimeMonitor(
    *  the existing expiry back before touching anything — see its comment for why
    *  the `collMod` this used to fire unconditionally was both unauthorised and a
    *  no-op. The compound index keeps its own `Try` so a TTL that cannot be
-   *  reconciled can't skip it. */
+   *  reconciled can't skip it.
+   *
+   *  `reconcile` only when this process OWNS the collection — see `ownsIndexes`. The
+   *  serving app shares `uptimeBuckets` with the worker and gets `ensure`, which creates
+   *  the index when absent and otherwise reports rather than rebuilding. */
   private def ensureIndexes(c: MongoCollection[Document]): Unit = {
-    MongoTtlIndex.reconcile(c, "bucket", BucketTtlSeconds, "UptimeMonitor")
+    if (ownsIndexes) MongoTtlIndex.reconcile(c, "bucket", BucketTtlSeconds, "UptimeMonitor")
+    else             MongoTtlIndex.ensure(c, "bucket", BucketTtlSeconds, "UptimeMonitor (read tier)")
 
     Try {
       Await.result(c.createIndex(

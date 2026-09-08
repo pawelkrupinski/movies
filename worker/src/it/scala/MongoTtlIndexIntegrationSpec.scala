@@ -7,9 +7,11 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Indexes
 import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
+import org.scalatest.concurrent.Eventually
+import org.scalatest.time.{Millis, Seconds, Span}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.MongoTtlIndex
+import services.{MongoTtlIndex, UptimeMonitor}
 import tools.Env
 
 import java.util.concurrent.TimeUnit
@@ -31,7 +33,7 @@ import scala.jdk.CollectionConverters._
  * is what separates those two worlds: the old behaviour sends one command per
  * boot regardless, the new one sends none once the index agrees.
  */
-class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
+class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with Eventually {
 
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
@@ -173,6 +175,66 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
       MongoTtlIndex.Mismatches.names should contain (s"${database.name}.__integration_test_ttl_$$clash$$")
       MongoTtlIndex.Mismatches.names should not contain "__integration_test_ttl_$clash$"
     } finally MongoTtlIndex.Mismatches.resolved(collection.namespace.getFullName)
+  }
+
+  /** THE READ TIER MUST NOT DROP AN INDEX THE WRITER DEPENDS ON. Both tiers write
+   *  `uptimeBuckets` and both authenticate as `kinowo_app`, so "it cannot" was never true —
+   *  it is a choice this code has to make. `ensure` makes it: create when absent, report
+   *  when it disagrees, never rebuild. Asserted beside `reconcile` on the SAME starting
+   *  state, because the difference between them is the whole point. */
+  it should "leave a disagreeing index alone under `ensure`, where `reconcile` would rebuild it" in {
+    val collection = sentinel("ensure")
+    Await.result(collection.createIndex(
+      Indexes.ascending("at"),
+      new com.mongodb.client.model.IndexOptions().expireAfter(100L, TimeUnit.SECONDS)
+    ).toFuture(), 10.seconds)
+
+    forget()
+    MongoTtlIndex.ensure(collection, "at", 86400L, "spec")
+
+    withClue("the read tier dropped an index it does not own: ")(sent("dropIndexes") shouldBe 0)
+    sent("createIndexes") shouldBe 0
+    withClue("the read tier changed an expiry it does not own: ")(expiryOf(collection, "at") shouldBe Some(100L))
+    // And it does not raise the gauge: the owner is what reports, or the same index would be
+    // counted once per process that noticed it.
+    MongoTtlIndex.Mismatches.names should not contain collection.namespace.getFullName
+
+    // The owner, on the identical state, does rebuild it.
+    MongoTtlIndex.reconcile(collection, "at", 86400L, "spec")
+    expiryOf(collection, "at") shouldBe Some(86400L)
+  }
+
+  it should "still create a missing index under `ensure`, so a cold collection is not left unreaped" in {
+    val collection = sentinel("ensure-cold")
+    forget()
+    MongoTtlIndex.ensure(collection, "at", 86400L, "spec")
+    expiryOf(collection, "at") shouldBe Some(86400L)
+    sent("dropIndexes") shouldBe 0
+  }
+
+  /** THE WIRING RULE, not just the helper. `MongoTtlIndex.ensure` behaving well is worth
+   *  nothing if the serving app never calls it, and a flag at a call site is one a future
+   *  wiring can drop without any test noticing. `UptimeMonitor` derives it from
+   *  `surfaceExternalWrites`, which is what `web.modules.Wiring` sets — so constructing one
+   *  the way that wiring does is the assertion. */
+  it should "not rebuild the bucket index from a monitor wired the way the serving app wires it" in {
+    val buckets = database.getCollection[Document]("uptimeBuckets")
+    Await.ready(buckets.drop().toFuture(), 10.seconds)
+    Await.result(database.createCollection("uptimeBuckets").toFuture(), 10.seconds)
+    Await.result(buckets.createIndex(
+      Indexes.ascending("bucket"),
+      new com.mongodb.client.model.IndexOptions().expireAfter(100L, TimeUnit.SECONDS)
+    ).toFuture(), 10.seconds)
+    try {
+      forget()
+      new UptimeMonitor(Some(database), surfaceExternalWrites = true)
+      // The index work runs on a daemon thread, so give it room to have done the wrong thing.
+      eventually(timeout(Span(5, Seconds)), interval(Span(150, Millis))) {
+        sent("listIndexes") should be > 0
+      }
+      withClue("the serving app rebuilt an index it does not own: ")(sent("dropIndexes") shouldBe 0)
+      expiryOf(buckets, "bucket") shouldBe Some(100L)
+    } finally Await.ready(buckets.drop().toFuture(), 10.seconds)
   }
 
   it should "ignore a compound index that merely mentions the field" in {

@@ -77,11 +77,7 @@ object MongoTtlIndex extends Logging {
         rebuild(collection, field, wantedSeconds, label)
 
       case None =>
-        Try {
-          Await.result(collection.createIndex(
-            Indexes.ascending(field),
-            new JIndexOptions().expireAfter(wantedSeconds, TimeUnit.SECONDS)
-          ).toFuture(), 10.seconds)
+        create(collection, field, wantedSeconds, label).map { _ =>
           // SYMMETRY, so a namespace cannot stay counted after it is healthy again. Every
           // branch that ends with the index correct clears the entry; every branch that ends
           // with it wrong records one. There is no path to this today — `reconcile` runs once
@@ -101,6 +97,54 @@ object MongoTtlIndex extends Logging {
         }
     }
   }
+
+  /** For a process that SHARES the collection but does not own its schema: create the
+   *  index when it is absent, and otherwise only SAY that it disagrees.
+   *
+   *  `uptimeBuckets` is written by both tiers — the worker records scrape outcomes, the
+   *  serving app flushes its own buckets — and both authenticate as `kinowo_app`, so the
+   *  read tier is perfectly able to drop an index the worker depends on. It should not be:
+   *  a drop that succeeds and a create that fails is an unreaped collection either way, and
+   *  a reader has no business being the one to cause it. Nor is there anything to gain,
+   *  since both tiers compute the wanted expiry from the SAME constant — if the read tier
+   *  sees a disagreement, the owner sees it too, rebuilds it, and reports it if it cannot.
+   *
+   *  So this warns and stops. It deliberately does NOT record a mismatch: the gauge means
+   *  "the owner could not fix this", and a second process reporting the same index would
+   *  double-count a problem it is not responsible for. */
+  def ensure(
+    collection:    MongoCollection[Document],
+    field:         String,
+    wantedSeconds: Long,
+    label:         String
+  ): Unit = {
+    val name = collection.namespace.getCollectionName
+    currentExpiry(collection, field) match {
+      case Some(actual) if actual == wantedSeconds => ()
+      case Some(actual) =>
+        logger.warn(s"$label: $name TTL index on `$field` expires after ${actual}s, want ${wantedSeconds}s — " +
+          "leaving it to the process that owns this collection, which rebuilds it and reports if it cannot.")
+      case None =>
+        create(collection, field, wantedSeconds, label).recover { case exception =>
+          // Not this process's to fix either, so it is a note rather than a mismatch: on a
+          // cold collection the owner creates the index on its own next construction.
+          logger.warn(s"$label: $name TTL index on `$field` could not be created here: ${exception.getMessage}")
+        }
+      ()
+    }
+  }
+
+  /** Build the TTL index, reporting nothing: the two callers read a failure differently and
+   *  each says so itself. Shared because they differ only in what they do when an index is
+   *  already there and disagrees. */
+  private def create(collection: MongoCollection[Document], field: String, wantedSeconds: Long, label: String): Try[Unit] =
+    Try {
+      Await.result(collection.createIndex(
+        Indexes.ascending(field),
+        new JIndexOptions().expireAfter(wantedSeconds, TimeUnit.SECONDS)
+      ).toFuture(), 10.seconds)
+      ()
+    }
 
   /** The `expireAfterSeconds` of the existing single-field TTL index on `field`,
    *  or None when there is no such index — or when the read itself failed, in

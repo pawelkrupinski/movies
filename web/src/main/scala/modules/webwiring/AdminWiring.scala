@@ -18,6 +18,8 @@ trait AdminWiring { self: Wiring =>
   // worker's activity — a fixed, bounded cost rather than reacting to every
   // write (the per-write change stream pegged the serving vCPU at multi-city
   // scrape volume).
+  // `surfaceExternalWrites = true` also means this tier does NOT own the bucket TTL index and
+  // will not rebuild it — see `UptimeMonitor.ownsIndexes`.
   lazy val uptimeMonitor = new UptimeMonitor(mongoConnection.database, surfaceExternalWrites = true)
 
   // Comma-separated allowlist of admin EMAILS permitted to reach the operational
