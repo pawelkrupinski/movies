@@ -41,6 +41,46 @@ class ReadModelProjectionSpec extends AnyFlatSpec with Matchers {
     )
   )
 
+  // ONE VENUE, TWO SLOTS. A cinema slot is a `CinemaShowing(cinema, titleKey)`, so a venue
+  // that re-listed a film under a new title keeps BOTH keys until something retires the old
+  // one — and once the new listing's title is written onto both, the two slots belong to one
+  // display-title variant and compose one `web_screenings` id. Production, 2026-09-08:
+  // Cinema City Wolność held `…␟terminator2dziensadu` (three future showtimes, refreshed that
+  // evening) and `…␟terminator2dziensadu35rocznica` (spent), both titled "Terminator 2: Dzień
+  // sądu 35. Rocznica", and the site served the spent one in nine Polish cities.
+  private val renamedVenue = MovieRecord(
+    tmdbId = Some(280),
+    data = Map[Source, SourceData](
+      CinemaShowing(Multikino, "terminator2dziensadu") -> SourceData(
+        title = Some("Terminator 2: Dzień sądu 35. Rocznica"), releaseYear = Some(1991),
+        filmUrl = Some("https://mk/nowy"), showtimes = Seq(at("2026-09-10T20:00"), at("2026-09-11T20:00"))),
+      CinemaShowing(Multikino, "terminator2dziensadu35rocznica") -> SourceData(
+        title = Some("Terminator 2: Dzień sądu 35. Rocznica"), releaseYear = Some(1991),
+        showtimes = Seq(at("2026-08-31T20:00")))))
+
+  private val renamedStored =
+    StoredMovieRecord.fromStorage("terminator2dziensadu|1991", renamedVenue, titleNormalizer)
+
+  "two slots of one venue that compose the same screenings id" should "yield ONE row carrying every showtime" in {
+    val rows = ReadModelProjection.screeningsAll(renamedStored, titleNormalizer).flatten
+
+    withClue(s"rows: ${rows.map(r => r._id -> r.showtimes.size)}: ") {
+      rows.map(_._id).distinct should have size rows.size          // no id written twice
+      rows                     should have size 1
+    }
+    rows.head.showtimes.map(_.dateTime.toString) should contain allOf
+      ("2026-09-10T20:00", "2026-09-11T20:00", "2026-08-31T20:00")
+    rows.head.filmUrl shouldBe Some("https://mk/nowy")              // the slot that still names one
+  }
+
+  it should "not depend on which of the two slots the record happens to hold first" in {
+    val reversed = StoredMovieRecord.fromStorage(
+      "terminator2dziensadu|1991", renamedVenue.copy(data = renamedVenue.data.toSeq.reverse.toMap), titleNormalizer)
+
+    ReadModelProjection.screeningsAll(reversed, titleNormalizer).flatten.map(r => (r._id, r.showtimes)) shouldBe
+      ReadModelProjection.screeningsAll(renamedStored, titleNormalizer).flatten.map(r => (r._id, r.showtimes))
+  }
+
   private val id     = s"${titleNormalizer.sanitize("Skazani na Shawshank")}|1994"
   private val stored = StoredMovieRecord.fromStorage(id, record, titleNormalizer)
 

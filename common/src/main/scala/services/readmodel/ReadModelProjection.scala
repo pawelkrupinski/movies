@@ -130,18 +130,37 @@ object ReadModelProjection {
   private def screeningsFor(showings: Seq[(Cinema, SourceData)], fid: String): Seq[CityScreening] =
     showings.flatMap { case (cinema, slot) =>
       if (slot.showtimes.isEmpty) None
-      else City.forCinema(cinema).map { city =>
+      else City.forCinema(cinema).map(city => (s"$fid|${city.slug}|${cinema.displayName}", city, cinema, slot))
+    }
+      // ONE ROW PER (card, city, cinema), CARRYING EVERY SLOT'S SHOWTIMES. A venue can hold
+      // TWO slots of one film whose keys differ but whose titles now agree — the venue
+      // re-listed the film and the old slot key outlived the rename, so `movie_slots` holds
+      // both `…␟terminator2dziensadu` and `…␟terminator2dziensadu35rocznica`, each titled
+      // "Terminator 2: Dzień sądu 35. Rocznica". Both land in the same display-title variant
+      // and compose the same `_id`, and this used to build one `CityScreening` per slot: the
+      // later one won whichever map the caller folded them into, and when the loser was the
+      // slot the scrape had just refreshed, the site served the DEAD half. Measured on
+      // production 2026-09-08 — nine Polish cities each serving one film with no showtimes
+      // while the corpus had them, for days, invisible to the prune (the row exists) and to
+      // the heal (its id exists). Unioning is the only answer that cannot lose a showtime and
+      // does not depend on which slot came first; a venue with one slot, the overwhelming
+      // case, is untouched by it.
+      .groupBy(_._1).toSeq
+      .map { case (id, entries) =>
+        val (_, city, cinema, _) = entries.head
         CityScreening(
-          _id       = s"$fid|${city.slug}|${cinema.displayName}",
+          _id       = id,
           filmId    = fid,
           city      = city.slug,
           cinema    = cinema.displayName,
-          filmUrl   = slot.filmUrl,
-          showtimes = slot.showtimes
+          // The first slot that names one, in the slots' own order, so a rename that drops
+          // the link does not blank an address the other slot still carries.
+          filmUrl   = entries.iterator.flatMap { case (_, _, _, slot) => slot.filmUrl }.nextOption(),
+          showtimes = entries.flatMap { case (_, _, _, slot) => slot.showtimes }.distinct
             .sortBy(st => (st.dateTime.toString, st.bookingUrl.getOrElse(""), st.format.mkString(",")))
         )
       }
-    }.sortBy(_._id)
+      .sortBy(_._id)
 
   /** One display-title variant of a SPLIT row: the slot keys that reported the title,
    *  the record scoped to them, the title the card shows and the card's id — each
