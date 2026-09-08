@@ -734,29 +734,44 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // a row SAYS. Three UK films held August showtimes into September because of it. The
   // rolling content check re-projects one slice of the corpus per sweep, so a drifted row is
   // corrected within a day even though nothing about it ever changes again.
-  "the orphan prune" should "rewrite a stored projection that drifted from its source" in {
+  "the orphan prune" should "rewrite a stored projection whose source moved while nothing was listening" in {
+    // THE PRODUCTION SHAPE, not a tampered read model: the source row changes and NO event is
+    // delivered (`putEmbeddedOutOfBand` writes without ringing the change stream, which is what
+    // a lost event leaves behind), and only THEN does a projector start. That ordering is the
+    // whole difficulty — the row's `updatedAt` is older than the process, so the silent-cursor
+    // catch-up cannot reach it either, and nothing about the film will ever change again.
+    // Troy and 2046 at the Prince Charles and Glastonbury at the Southsea sat like this from
+    // 2026-08-29 to 2026-09-08, serving August showtimes to real users.
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
     projector.onMovieUpsert(repository.findAll().head)
-    val card = rm.findAllMovies().head
+    rm.findAllScreenings().flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-12T20:00")
+    projector.stop()
 
-    // The read model drifts underneath: a showtime nobody will ever change again.
-    rm.findAllScreenings().foreach(sc => rm.upsertScreening(sc.copy(showtimes = Seq(at("2026-01-01T10:00")))))
-    rm.upsertMovie(card.copy(title = "Stale title nobody will correct"))
-    // A fresh projector, so its memo is seeded from the drifted store exactly as a restart's is.
+    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-07-20T18:00"))))
+    // …and then the stream carries on delivering OTHER films, so the drifted row is older than
+    // the cursor's last delivered event. This is what makes the case unreachable by every other
+    // backstop and is exactly the production shape: the loss happened on 2026-08-29, the cursor
+    // has delivered plenty since, and the silent-cursor catch-up only re-reads rows written
+    // AFTER the last delivery. Without it the catch-up repairs the row and this spec would be
+    // testing that instead.
+    repository.upsert("Bar", Some(2024), record(Some(6.0), Seq(at("2026-06-14T20:00"))))
+
     val m       = new RecordingMetrics()
     val checker = new ReadModelProjector(repository, rm, rm, m)
-    checker.start()
-
-    // One slice per sweep, so run enough sweeps to cover every slice.
-    (1 to 48).foreach(_ => checker.pruneOrphans())
-
-    withClue("the drifted card and screenings must be rewritten from the source: ") {
-      rm.findAllMovies().head.title shouldBe "Foo"
-      rm.findAllScreenings().flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-12T20:00")
+    checker.start()          // seeds its memo from the stale read model, exactly as a restart does
+    withClue("the boot heal must not see this: every card and venue id is present, only the CONTENT is wrong: ") {
+      rm.findAllScreenings().filter(_.filmId.startsWith("foo")).flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-12T20:00")
     }
+
+    (1 to 48).foreach(_ => checker.pruneOrphans())   // one slice per sweep; 48 covers the corpus
+
+    withClue("the drifted screenings must be rewritten from the source: ") {
+      rm.findAllScreenings().filter(_.filmId.startsWith("foo")).flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-07-20T18:00")
+    }
+    rm.findAllMovies().find(_._id.startsWith("foo")).flatMap(_.ratings.imdb) shouldBe Some(9.9)
     m.driftWrites.sum should be > 0
-    checker.stop(); projector.stop()
+    checker.stop()
   }
 
   // The 2026-09-07 ReadModelFilmPruneBurst, replayed: live rows whose cards sit under ids
