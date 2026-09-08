@@ -195,6 +195,15 @@ jobs:
         working-directory: infra
         run: python3 test/test_auto_apply_classify.py
 
+      # SAME SHAPE AS THE CLASSIFIER ABOVE -- pure stdlib Python, no nix eval, no network -- so it
+      # belongs here rather than staying something only bin/check ran. Driven against a fake
+      # flake (no real nix eval), so it stays instant: see bin/fleet-ssh and fleet_hosts.py for
+      # the wrong turn ("fleet-jump" resolves and gives a shell, but on a DIFFERENT fleet) this
+      # guards against.
+      - name: fleet-ssh resolves a host to the address the flake gives it, never a guess
+        working-directory: infra
+        run: python3 test/test_fleet_hosts.py
+
       # THE REST OF bin/check, WHICH UNTIL 2026-09-06 RAN ONLY FOR WHOEVER RAN bin/check. Each of
       # these is pure and instant — stdlib Python or bash over files in the tree — so the only
       # reason they were not here was that nobody had added them. A dashboard panel naming a
