@@ -768,12 +768,35 @@ groups:
       # ---- A city that WAS serving films dropped to zero (sustained) --------
       # The defensive floor under the swing rule above (which self-resolves once
       # its 1h baseline decays). Fires when a city's all-scope count is 0 now AND
-      # averaged >=4 over the last 6h — i.e. it was genuinely serving films and
+      # PEAKED at >=4 in the last 24h — i.e. it was genuinely serving films and
       # went dark, NOT a tiny city that is simply empty by nature (those never
-      # satisfy the 6h>=4 guard, so they don't page). The 6h baseline keeps this
-      # firing for hours while the city stays at 0 — that's the read-model-outage
-      # signal the swing alert can't hold. Resolves (noData → OK) the moment the
-      # city serves a film again.
+      # satisfy the guard, so they don't page). Resolves the moment the city
+      # serves a film again.
+      #
+      # The qualifier is a MAX, and that is the load-bearing part. It was
+      # `avg_over_time(...[6h])` until 2026-09-08, and an average over a trailing
+      # window is made of the very samples the blackout is zeroing: every dark
+      # minute drags the mean down until the city's own history stops clearing 4
+      # and the rule goes quiet WHILE THE CITY IS STILL DARK. The comment here
+      # used to claim the opposite — that the 6h baseline "keeps this firing for
+      # hours" — and replaying both forms against the real series over
+      # 2026-09-02..09-08 says otherwise:
+      #
+      #   avg_over_time([6h])   1 episode,   70 dark-minutes reported
+      #   max_over_time([24h])  4 episodes, 2610 dark-minutes reported
+      #
+      # es/zamora went dark for 460 minutes on 09-03 and the old form reported 70
+      # of them. us/butte was dark from 09-07 02:50Z for more than 27 hours and
+      # the old form never paged for it once, because butte fell from 4 films and
+      # a mean of 4 dips under the threshold inside a single window. de/sassnitz
+      # and us/havre were likewise real and likewise unreported.
+      #
+      # A max cannot be eroded by the outage it is qualifying. The 24h window is
+      # the unit a cinema programme comes in, and it still lapses once a city has
+      # been dark a full day — deliberately: a venue dark that long is a roster
+      # question, not an incident, and a 7d window (6 episodes over the same
+      # days) keeps paging for a week about cinemas that have simply closed.
+      # Guarded by worker deploy.GrafanaCityEmptyQualifierSpec.
       - uid: kinowo-movies-served-city-empty
         title: City serving zero films (was active)
         condition: C
@@ -783,8 +806,8 @@ groups:
         labels:
           severity: critical
         annotations:
-          summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 6h)'
-          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite a >=4 film average over the last 6h — the city went dark. The likely cause is a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage). Check web logs for "findAllMovies failed" / "Missing field", and https://kinowo.net/{{ $labels.city }}/.'
+          summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 24h)'
+          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite peaking at >=4 films in the last 24h — the city went dark. The likely cause is a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage). Check web logs for "findAllMovies failed" / "Missing field", and https://kinowo.net/{{ $labels.city }}/.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -792,7 +815,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '(kinowo_web_movies_served{scope="all"} == 0) and (avg_over_time(kinowo_web_movies_served{scope="all"}[6h] offset 10m) >= 4)'
+              expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4)'
               instant: true
               range: false
               intervalMs: 1000

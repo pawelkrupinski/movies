@@ -60,8 +60,6 @@ import org.scalatest.matchers.should.Matchers
  */
 class GrafanaServedSwingScopeSpec extends AnyFlatSpec with Matchers {
 
-  private val AlertRules = "infra/nix/files/monitoring/grafana/alerting/alert-rules.yaml"
-
   private val SwingUid = "kinowo-movies-served-swing"
 
   private val Gauge = "kinowo_web_movies_served"
@@ -71,22 +69,10 @@ class GrafanaServedSwingScopeSpec extends AnyFlatSpec with Matchers {
   private val DropDeviation =
     s"avg_over_time($Gauge{scope=\"all\"}[1h]) - $Gauge{scope=\"all\"}"
 
-  /** The `- uid: kinowo-movies-served-swing` list item, up to the next rule. */
   private lazy val swingRule: String =
-    RepoFile
-      .read(AlertRules)
-      .split("(?m)^\\s*- uid:")
-      .find(_.trim.startsWith(SwingUid))
-      .getOrElse(fail(s"no rule with uid `$SwingUid` in $AlertRules"))
+    AlertRule.withUid(SwingUid).getOrElse(fail(s"no rule with uid `$SwingUid` in ${AlertRule.File}"))
 
-  /** The rule's PromQL, without the prose around it — the `description:`
-   *  annotation names the gauge too, and a metric name in a sentence carries no
-   *  selector. */
-  private lazy val swingQueries: Seq[String] =
-    """(?m)^\s*expr:\s*'(.*)'\s*$""".r
-      .findAllMatchIn(swingRule)
-      .map(_.group(1))
-      .toSeq
+  private lazy val swingQueries: Seq[String] = AlertRule.expressionsIn(swingRule)
 
   /** Every selector the rule's PromQL puts on the gauge, as the label matcher it
    *  carries (`""` when the gauge is named bare, which selects every scope). */
@@ -98,7 +84,7 @@ class GrafanaServedSwingScopeSpec extends AnyFlatSpec with Matchers {
     }
 
   "the served-swing rule" should "read the gauge at all" in {
-    withClue(s"`$SwingUid` in $AlertRules no longer selects `$Gauge`: ") {
+    withClue(s"`$SwingUid` in ${AlertRule.File} no longer selects `$Gauge`: ") {
       gaugeSelectors should not be empty
     }
   }
