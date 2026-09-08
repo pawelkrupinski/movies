@@ -82,76 +82,18 @@ jobs:
     # other five legs' images are built and then sit in the registry unreleased, because both tiers
     # otherwise run on k3s and are shipped by the GHCR jobs at the bottom of this file.
     #
-    # THE HALF OF `build-image` THAT WAS NOT REDUNDANT.
+    # `free-runners` — the job that used to sit here, cancelling any in-flight
+    # `Country convergence` run to take its runners back for the deploy — was
+    # retired 2026-09-08 alongside that workflow moving to `cancel-in-progress:
+    # false`. Cancelling a run that lane no longer intends to throw away would
+    # destroy real progress rather than merely accelerate a supersede that was
+    # coming anyway, which is the whole reason `us-convergence.yml` was ever
+    # split out from this suite. See that file's header, and
+    # `country-convergence.yml`'s `concurrency:` block.
     #
-    # That job built a second copy of an image GHCR already had, on a Fly builder
-    # this project does not run — but it also took the runners back off the
-    # convergence suite, and it did that from a job with NO `needs:`, which is the
-    # only place it works: the runners come free while ci's jobs are still
-    # queueing. Moved into anything that waits for ci it would free nothing, which
-    # `DeployImageReuseSpec` measured.
-    #
-    # So the build went and this stayed, as ~10s of runner rather than ~85s. It
-    # still holds the account's 20th concurrent slot, which is why removing the
-    # image build freed no runner for ci to spend.
-    free-runners:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: read
-            actions: write
-        steps:
-            # FIRST, before this job does any work of its own: take the runners
-            # back off the convergence suite.
-            #
-            # 20 concurrent jobs is the whole account's allowance, and this run
-            # wants all 20. A convergence run in flight holds 3 of them for
-            # anywhere from 25 to 90 minutes, so a push landing in that window
-            # doesn't get 3 of its jobs until a convergence leg finishes. Measured:
-            # 17 jobs started at once and 3 waited, one of them the longest job in
-            # the build — the run took 10m28s against a 7m critical path.
-            #
-            # Cancelling costs that suite very little, because it is already the
-            # thing that yields: its own workflow keeps one lane with
-            # `cancel-in-progress`, so the next push was going to throw the run away
-            # regardless — 6 of 10 consecutive runs ended `cancelled` — and
-            # `kick-convergence` re-dispatches it from this same run a few minutes
-            # later, against the newer commit. This just makes the preemption
-            # happen at the START of the deploy, where it frees runners, instead of
-            # at the end, where it frees nothing. The nightly 04:20 schedule remains
-            # the guaranteed-to-finish signal either way.
-            #
-            # The runners do not come back instantly: GitHub takes ~80s to tear a
-            # cancelled job down, so a deploy that lands mid-convergence still has
-            # a job or two start late — measured at +76s, against +3s for the rest.
-            # Better than waiting out a convergence leg, but not free, and worth
-            # knowing before someone re-measures and thinks this step did nothing.
-            #
-            # It cancels a HAND-STARTED convergence run too. If you dispatched one
-            # deliberately and want its answer, don't push while it runs.
-            #
-            # NOT the `US convergence` build, and the workflow is named explicitly here
-            # so it can't be. That one is a separate workflow precisely so nothing
-            # preempts it: its leg runs for hours recording the enrichment tree that
-            # makes the NEXT one fast, so a run cancelled here has published nothing and
-            # its replacement starts just as cold — the supersede loop the split exists
-            # to break, reintroduced from the runner-budget side and indistinguishable
-            # from an ordinary supersede in the run list. It holds two of the twenty
-            # concurrent jobs while it runs; that is the price. (DeployImageReuseSpec)
-            - name: Take the runners back from any in-flight convergence run
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  GH_REPO: ${{ github.repository }}
-              run: |
-                  set -uo pipefail
-                  # Anything not already finished — a QUEUED run counts: it holds no
-                  # runner yet, but it takes the first ones to free up, which is
-                  # precisely the ones this deploy is waiting for.
-                  for id in $(gh run list --workflow "Country convergence" --limit 20 \
-                                  --json databaseId,status \
-                                  --jq '.[] | select(.status != "completed") | .databaseId'); do
-                      echo "cancelling convergence run $id to free its runners"
-                      gh run cancel "$id" || true
-                  done
+    # This job used to occupy the account's 20th concurrent slot at t=0; that
+    # slot is left idle now rather than spent on a job with nothing correct
+    # left to do (`CiRunnerBudgetSpec`).
 
     # THE ONE THING FLY.IO STILL HOSTS FROM THIS REPOSITORY: the Polish web app
     # `kinowo`, which is what `kinowo.fly.dev` resolves to. There is no matrix here
@@ -378,9 +320,9 @@ jobs:
     #
     # BOTH TIERS `needs: ci`, which the standalone workflows did not. They deployed to the cluster
     # the moment their image built, tests or no tests — a push that failed ci still rolled a broken
-    # web image onto kinowo.net. It also keeps the runner budget intact: the account's 20 concurrent
-    # jobs are spoken for at t=0 by ci's 19 plus `free-runners` (CiRunnerBudgetSpec), and a job that
-    # waits for ci takes a slot ci has already given back.
+    # web image onto kinowo.net. It also keeps the runner budget intact: ci's 19 jobs are the only
+    # ones spoken for at t=0 now that `free-runners` is retired, and a job that waits for ci takes a
+    # slot ci has already given back (`CiRunnerBudgetSpec`).
     build-web:
         needs: ci
         runs-on: ubuntu-latest

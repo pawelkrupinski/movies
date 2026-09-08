@@ -31,12 +31,14 @@ import org.scalatest.matchers.should.Matchers
  */
 class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val caller   = RepoFile.read(".github/workflows/country-convergence.yml")
-  /** The United States runs the same leg from a BUILD OF ITS OWN, because it is the one
-   *  country whose leg must not be superseded — see [[ConvergenceConcurrencyConfigSpec]].
-   *  Everything below is about the leg wiring, which is identical either side of that
-   *  split, so every rule here reads both callers rather than the shared one. A rule
-   *  that looked only at `country-convergence.yml` would go quiet about the country it
-   *  matters most for. */
+  /** The United States runs the same leg from a BUILD OF ITS OWN — not for the lane
+   *  any more (both workflows queue rather than cancel, see
+   *  [[ConvergenceConcurrencyConfigSpec]]), but because `needs:` joins JOBS, not matrix
+   *  legs, and a shared `needs: sample` would make every country wait for every other
+   *  country's sample (see `country-convergence.yml`'s header). Everything below is
+   *  about the leg wiring, which is identical either side of that split, so every rule
+   *  here reads both callers rather than the shared one. A rule that looked only at
+   *  `country-convergence.yml` would go quiet about the country it matters most for. */
   private lazy val usCaller = RepoFile.read(".github/workflows/us-convergence.yml")
   private lazy val callers  = Seq(caller, usCaller)
   private lazy val leg      = RepoFile.read(".github/workflows/country-convergence-leg.yml")

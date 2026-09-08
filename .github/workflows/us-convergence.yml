@@ -5,15 +5,20 @@
 # It asks the same question `country-convergence.yml` does (does the scrape → fold
 # → settle loop reach a fixpoint on THIS country's catalogue and title rules?) and
 # it calls the same reusable leg with the same inputs. Nothing about the pipeline
-# differs. What differs is the LANE, and that is the whole reason this file exists.
+# differs, and — since 2026-09-08 — nothing about the LANE differs either: both
+# workflows now take `cancel-in-progress: false` on a constant group (see below).
+# What still forces a file of its own is the WIRING: `needs:` joins JOBS, not
+# matrix legs, so one shared `needs: sample` would gate every country's full leg
+# on every OTHER country's sample finishing first (`country-convergence.yml`'s
+# own header covers this in full).
 #
-# WHY THE US CANNOT SHARE THE SHARED SUITE'S LANE
+# WHY THE US NEEDED `cancel-in-progress: false` FIRST, AND WHY IT MATTERS MORE HERE
 #
-# That lane is `cancel-in-progress: true` on a constant group: the newest run
-# supersedes whatever is in flight, from wherever it was dispatched, and the
-# nightly schedule is the run guaranteed to finish. For Poland, Germany and the UK
-# that is a good trade — their legs are 12 to 73 minutes on a WARM enrichment tree,
-# and a superseded run costs a dozen minutes of a tree that stays warm regardless.
+# `cancel-in-progress: true` — what `country-convergence.yml` used until this
+# split proved the alternative — trades a cancelled run's progress for one
+# authoritative answer per push. For Poland, Germany and the UK that used to be a
+# good trade: their legs are 12 to 73 minutes on a WARM enrichment tree, and a
+# superseded run costs a dozen minutes of a tree that stays warm regardless.
 #
 # The US has no warm tree. Its budget is 330 minutes against their 135, not because
 # its corpus is bigger (1,419 films sits between Poland and Germany) but because
@@ -23,7 +28,8 @@
 # suite that is meant to converge cannot: on a repo that pushes several times a day
 # the five-hour leg never reaches an assertion, and the tree it exists to build
 # never gets warm enough for the leg to get short enough to survive. The three warm
-# countries yield cheaply; the US yields forever.
+# countries yielded cheaply under the old lane; the US would have yielded forever
+# — which is why this file, and this setting, existed before the sibling adopted it.
 #
 # WHAT `cancel-in-progress: false` ACTUALLY BUYS — and it is not "no lane"
 #
@@ -33,13 +39,14 @@
 # CANCELS whatever was pending before it. So a day of pushes into a running leg
 # produces exactly two runs — the one finishing, and the newest commit's, with
 # every older queued run discarded. Finish what is running, then pick up the latest
-# and drop the rest.
+# and drop the rest. (ConvergenceConcurrencyConfigSpec)
 #
-# `main.yml`'s `free-runners` step is the other half of that promise: it cancels
-# in-flight *Country convergence* runs to take their runners back for the deploy,
-# and it names that workflow explicitly so this one is never touched. A cancel
-# there would undo the lane here, and would read as an ordinary supersede.
-# (ConvergenceConcurrencyConfigSpec, DeployImageReuseSpec)
+# `main.yml` used to run a `free-runners` step that cancelled in-flight
+# `Country convergence` runs to take their runners back for the deploy, and it
+# named that workflow explicitly so this one was never touched. It is retired
+# now that the sibling shares this lane too — cancelling a run neither workflow
+# intends to throw away would destroy real progress, not merely accelerate a
+# supersede that was coming anyway. (DeployImageReuseSpec)
 #
 # The price is three of the account's twenty concurrent jobs held for as long as the
 # leg runs — the sample, then the full leg and the order-independence replay side by
@@ -60,8 +67,9 @@ on:
 
 concurrency:
     group: us-convergence
-    # NOT the shared suite's `true`. See the header — this is the setting the file
-    # exists for.
+    # SEPARATE from `country-convergence`'s group (this file's own group name),
+    # but the SAME shape as it now: see the header for why this setting used to
+    # be what set this file apart and no longer is.
     cancel-in-progress: false
 
 jobs:

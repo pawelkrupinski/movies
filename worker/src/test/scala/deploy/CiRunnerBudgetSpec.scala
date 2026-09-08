@@ -88,48 +88,36 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * And it should USE the whole allowance. Under-filling it is as real a
-   * regression as over-filling: the build's work is fixed, so a slot left idle
-   * is a shard that had to be merged into another row, lengthening the long
-   * pole. This is the assertion that makes someone deleting a job think about
-   * where the freed runner should go.
+   * Used to be an EXACT-fill assertion — under-filling the allowance was as real
+   * a regression as over-filling, because the account's 20th slot was always
+   * `free-runners`, a job with nothing else it could be spending it on. That job
+   * was retired 2026-09-08 (`DeployImageReuseSpec`), and this budget now runs
+   * one slot under the allowance deliberately: filling it means giving ci.yml's
+   * own sharding another row, which is a call about THAT suite's shard sizes,
+   * not a consequence of retiring a runner-preemption step. Left as headroom
+   * until someone has a shard that wants it.
    */
-  it should "use the whole allowance, not leave a runner idle" in {
+  it should "leave the freed slot as headroom rather than force an unrelated shard to fill it" in {
     withClue(s"ci.yml=$ciRunners + main.yml(no-needs)=$deployRunnersAtStart: ") {
-      ciRunners + deployRunnersAtStart shouldBe Allowance
+      ciRunners + deployRunnersAtStart shouldBe (Allowance - 1)
     }
   }
 
   /**
-   * `free-runners` is the one main.yml job that runs alongside ci rather than
-   * after it, and it is deliberate: it cancels an in-flight convergence run, and
-   * the runners that frees are only useful while ci's jobs are still queueing. A
-   * `needs:` here would make it free nothing — and would hand back a slot ci.yml
-   * is not sized to spend.
-   *
-   * It used to be `build-image`, which cancelled AND built a container on Fly's
-   * builder. The build moved to GHCR, where it was already happening; the
-   * cancelling stayed, because this is the only place it works.
+   * NO main.yml job should start alongside ci any more. `free-runners` was the
+   * one exception — it ran with no `needs:` because the runners it freed were
+   * only useful while ci's jobs were still queueing — and it is gone
+   * (`DeployImageReuseSpec`). The GHCR build jobs that ship the k3s tiers all
+   * hang off `needs: ci`, which is what keeps the budget above honest: dropping
+   * a `needs:` to make a deploy land sooner would silently push a push to main
+   * past the allowance, and the jobs that queue would be whichever GitHub felt
+   * like.
    */
-  it should "take the runners back alongside the tests, not after them" in {
-    val freeRunners = RepoFile.block(mainYml, "free-runners")
-    freeRunners should not include "needs:"
-    freeRunners should include("gh run cancel")
-  }
-
-  /**
-   * …and it must stay the ONLY one. The GHCR build jobs that ship the k3s tiers
-   * arrived here from two workflows that started them at t=0, which is a slot
-   * apiece that neither this budget nor ci.yml's 19 has room for. Hanging them
-   * off `needs: ci` is what keeps the number above honest; dropping the `needs:`
-   * to make a deploy land four minutes sooner would silently push a push to main
-   * to 22 jobs, and the two that queue would be whichever GitHub felt like.
-   */
-  it should "hang every other main.yml job off ci rather than starting it at t=0" in {
+  it should "hang every main.yml job off ci rather than starting any at t=0" in {
     val atStart = jobs(mainYml).view
       .filterKeys(_ != "ci")
       .collect { case (name, block) if !block.linesIterator.exists(_.trim.startsWith("needs:")) => name }
       .toSet
-    withClue("jobs starting alongside ci: ")(atStart shouldBe Set("free-runners"))
+    withClue("jobs starting alongside ci: ")(atStart shouldBe empty)
   }
 }

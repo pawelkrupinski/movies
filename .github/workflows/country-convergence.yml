@@ -29,12 +29,12 @@ on:
     #
     # They are TENS of minutes long once enrichment actually runs (Poland 12 warm,
     # ~22 on a cache it has to build first; Germany and the UK carry 1.6x and 2.2x
-    # Poland's films), and the lane below is single and cancel-in-progress — so every
-    # minute spent queueing behind something else is a minute in which the next push
-    # can supersede the run before it reaches an assertion. Starting with the deploy
-    # rather than after it is head start against exactly that. The runner-pool cost is
-    # four concurrent jobs while the deploy runs; the deploy is a flyctl release wait,
-    # so it contends for a slot, not for CPU.
+    # Poland's films), and the lane below queues rather than cancels — so starting
+    # alongside the deploy, instead of after it, is what keeps a leg dispatched by
+    # one push from still being queued when the next push's leg would otherwise
+    # jump ahead of it. The runner-pool cost is four concurrent jobs while the
+    # deploy runs; the deploy is a flyctl release wait, so it contends for a slot,
+    # not for CPU.
     #
     # Deploy-time dispatch is best-effort by construction. The nightly schedule below
     # is the run that is guaranteed to finish.
@@ -45,37 +45,39 @@ on:
 
 concurrency:
     # ONE lane for the whole workflow — a constant, with nothing per-run in it — so
-    # a new run always supersedes the one still in flight, whatever branch or event
-    # it came from. GitHub collapses runs only when this string is EQUAL, so every
-    # expression added here silently buys another lane:
+    # GitHub collapses every run into it regardless of branch or event. Expression
+    # keys were tried and rejected for exactly the reason `us-convergence.yml`
+    # documents for its own group:
     #
     #   - `${{ github.sha }}`-`${{ github.event_name }}` (the original) gave every
     #     deploy, nightly and manual run a lane of its own — nothing ever cancelled
     #     anything, and legs of up to 135 minutes piled up on the runner pool while
     #     only the newest run's result gets read.
-    #   - `${{ github.ref }}` (the replacement) looked like it only split main from
+    #   - `${{ github.ref }}` (a later attempt) looked like it only split main from
     #     the rare foreign dispatch. It isn't rare: dispatching by hand from a
     #     worktree branch is how this suite normally gets run manually here. On
     #     2026-08-01 a `convergence-imdb-ladder` dispatch and a main deploy dispatch
     #     ran side by side for an hour — six heavyweight legs at once.
-    #
-    # The cost is deliberate: a hand-dispatched branch run is cancelled by the next
-    # push to main. One authoritative answer is worth more than several competing
-    # ones. (ConvergenceConcurrencyConfigSpec)
-    #
-    # It is deliberate because these four legs are CHEAP to throw away — 12 to 73
-    # warm minutes, against a fixture tree that stays warm either way. That is what
-    # stopped being true for the United States, which is why it left: its leg spends
-    # hours recording the tree it is replaying, so a supersede costs the work AND
-    # leaves its replacement exactly as cold. Don't add a country here without asking
-    # which of the two it is.
     group: country-convergence
-    # Unconditional again, and safe now: every run of this workflow is either a
-    # deploy-triggered dispatch or a deliberate one, so there are no runs that exist
-    # only to skip. Previously a skipped `workflow_run` run took the lane and
-    # cancelled a leg 21.5 minutes into real work; the deploy dispatching us
-    # explicitly removes that class of run entirely.
-    cancel-in-progress: true
+    # NOT `true` any more (Paweł, 2026-09-08) — this workflow now takes the SAME
+    # lane `us-convergence.yml` always has: finish what is running, hold at most
+    # one newer run pending behind it, and drop every push in between. Read that
+    # file's header for the mechanics (what `cancel-in-progress: false` on a
+    # constant group actually buys) and why the United States needed it first.
+    #
+    # These four legs used to be CHEAP to throw away — 12 to 73 warm minutes,
+    # against a fixture tree that stays warm either way — and cancel-in-progress
+    # traded a run's progress for one authoritative answer per push. That trade
+    # is gone: a cancelled run now answers NOTHING rather than answering late, so
+    # the suite could go a whole day of frequent pushes without ever finishing a
+    # leg. Queueing behind the run in flight costs a few more minutes of runner
+    # time per push; it is worth it for a suite that otherwise never reports.
+    #
+    # `main.yml`'s `free-runners` job existed only to preempt this workflow for
+    # the deploy — retired in the same change, because preempting a run this
+    # lane no longer intends to throw away is a regression, not a runner-budget
+    # optimisation. (ConvergenceConcurrencyConfigSpec, CiRunnerBudgetSpec)
+    cancel-in-progress: false
 
 jobs:
     # One call per country, each carrying its own sample → convergence chain, so a
