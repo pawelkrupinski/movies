@@ -3,6 +3,7 @@ package services.movies
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 import models._
+import services.titlerules.TitleRuleSet
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -1021,6 +1022,89 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Multikino, Seq(amp, iii))
     repo.upserts shouldBe empty
     emissions.get() shouldBe 0
+  }
+
+  // ── One venue, one listing title, ONE slot ─────────────────────────────────
+  //
+  // Prod 2026-09-08, `terminator2dziensadu|1991`, Cinema City Wolność — two slots
+  // for ONE venue on ONE row:
+  //   "Cinema City Wolność␟terminator2dziensadu35rocznica"  spent, no future showtimes
+  //   "Cinema City Wolność␟terminator2dziensadu"            refreshed, 3 future showtimes
+  // both titled "Terminator 2: Dzień sądu 35. Rocznica". A slot key is `sanitize` of
+  // the shown title, and `sanitize` answers under the CURRENT rules: the rule that
+  // strips the anniversary suffix moved every fresh write onto `terminator2dziensadu`
+  // and left the slot written under the older derivation behind. (Any writer keying
+  // the slot off a different title of the same listing — the staging fold, the detail
+  // merge — strands one the same way.) Both slots fall in one display-title variant
+  // and used to compose the same `web_screenings` id, so the spent half silently
+  // overwrote the live one and nine Polish cities served it for days.
+  //
+  // The write loop already drops the same (cinema, title) slot from every OTHER row,
+  // on the argument that this tick just decided which film the listing belongs to.
+  // It subtracted the row it was writing, which is where the venue's own duplicate
+  // sits. Nothing else retires it: the end-of-tick prune is the only other remover
+  // and it stands down on every chunked venue (`listingIsComplete = false`, as
+  // below) — which is why prod's pair survived tick after tick.
+
+  /** Every slot `cinema` holds, across every row — the shape a duplicate shows up in. */
+  private def cinemaSlots(cache: CaffeineMovieCache, cinema: Cinema): Seq[(Source, SourceData)] =
+    cache.entries.toSeq.flatMap(_._2.data.filter { case (source, _) => Source.cinemaOf(source).contains(cinema) })
+
+  it should "retire the venue's duplicate slot for a title it just listed, on the row it just wrote" in {
+    val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val rowTitle = "Terminator 2: Dzień sądu"
+    val listed   = "Terminator 2: Dzień sądu 35. Rocznica"
+    val key      = cache.keyOf(rowTitle, Some(1991))
+    // The key this listing got BEFORE the suffix rule landed — a normalizer without
+    // the rules is how that older derivation is reproduced, rather than by hand.
+    val stale: Source = CinemaShowing.keyFor(Multikino, listed, new TitleNormalizer(TitleRuleSet(Seq.empty)))
+    val fresh: Source = CinemaShowing.keyFor(Multikino, listed, titleNormalizer)
+    withClue("the two derivations must give DIFFERENT slot keys, or there is no duplicate to retire: ")(
+      stale should not be fresh)
+    // The prod row: the venue's slot under the older key, carrying the listing's
+    // title and no future showtimes.
+    cache.put(key, MovieRecord(tmdbId = Some(280), data = Map[Source, SourceData](
+      Tmdb  -> SourceData(title = Some(rowTitle), releaseYear = Some(1991)),
+      stale -> SourceData(title = Some(listed), releaseYear = Some(1991)))))
+
+    val landed = cache.recordCinemaScrape(Multikino,
+      Seq(cinemaMovie(listed, Multikino, Some(1991), showtimes = Seq(showtime("2027-06-08T18:00")))),
+      listingIsComplete = false)
+
+    withClue("the listing must land on the row that already holds the venue's slot: ")(
+      landed.map(_._2) shouldBe Seq(key))
+    val slots = cinemaSlots(cache, Multikino)
+    withClue(s"slots: ${slots.map { case (s, sd) => s.displayName -> sd.showtimes.size }}\n") {
+      slots.map(_._1) shouldBe Seq(fresh)
+      slots.head._2.showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.parse("2027-06-08T18:00"))
+    }
+  }
+
+  it should "leave the venue's OTHER listing alone — a decorated edition is a second real listing, not a duplicate" in {
+    val cache   = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    val edition = "Kino Dostępne: Wonka"
+    val key     = cache.keyOf("Wonka", Some(2026))
+    val plain:     Source = CinemaShowing.keyFor(Multikino, "Wonka", titleNormalizer)
+    val decorated: Source = CinemaShowing.keyFor(Multikino, edition, titleNormalizer)
+    withClue("a programme edition keeps its own slot key — it is a card of its own: ")(
+      plain should not be decorated)
+    cache.put(key, MovieRecord(tmdbId = Some(787699), data = Map[Source, SourceData](
+      plain     -> SourceData(title = Some("Wonka"), releaseYear = Some(2026), showtimes = Seq(showtime("2027-06-08T18:00"))),
+      decorated -> SourceData(title = Some(edition), releaseYear = Some(2026), showtimes = Seq(showtime("2027-06-09T14:00"))))))
+
+    // The venue lists the plain title only, on a chunked tick (no prune): the edition
+    // is a listing this tick simply didn't mention, and nothing about the plain
+    // title's write is evidence against it.
+    cache.recordCinemaScrape(Multikino,
+      Seq(cinemaMovie("Wonka", Multikino, showtimes = Seq(showtime("2027-06-08T20:30")))),
+      listingIsComplete = false)
+
+    val slots = cinemaSlots(cache, Multikino).toMap
+    withClue(s"slots: ${slots.map { case (s, sd) => s.displayName -> sd.showtimes.size }}\n") {
+      slots.keySet shouldBe Set(plain, decorated)
+      slots(decorated).showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.parse("2027-06-09T14:00"))
+      slots(plain).showtimes.map(_.dateTime)     shouldBe Seq(LocalDateTime.parse("2027-06-08T20:30"))
+    }
   }
 
   // ── Partial-scrape guard: a degraded response must not prune still-playing films ──

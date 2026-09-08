@@ -277,18 +277,26 @@ private[movies] final class ScrapeLanding(
      *  synopsis (longest-seen, keyed by its source) so the displayed blurb stays
      *  sticky once that slot is gone — see `MovieRecord.retainedSynopses`. Under
      *  the per-title lock via `putIfPresent`, so a concurrent sibling-slot write
-     *  isn't clobbered. Shared by the stale-slot prune below and the
-     *  same-slot-on-two-rows cleanup in the write loop. */
+     *  isn't clobbered. Shared by the stale-slot prune below and the write loop's
+     *  duplicate-slot cleanup (the same (cinema, title) held twice — on another
+     *  row, or twice on the row being written). An empty `slotKeys` leaves the
+     *  record untouched. */
     def dropCinemaSlots(key: CacheKey, slotKeysOf: MovieRecord => Set[Source]): Unit =
       store.putIfPresent(key, cur => {
         val slotKeys = slotKeysOf(cur)
-        val captured = slotKeys.iterator.flatMap { s =>
-          cur.data.get(s).flatMap(_.synopsis).filter(_.nonEmpty).map(s -> _)
-        }.toMap
-        val kept = cur.data -- slotKeys
-        cur.copy(
-          data             = kept -- orphanedChainDetail(kept),
-          retainedSynopses = MovieRecordMerge.mergeRetainedSynopses(cur.retainedSynopses, captured))
+        // Nothing to drop — the common case now that the write loop asks this of the
+        // row it just wrote. Leave the record exactly as it is rather than running
+        // the orphaned-chain-detail sweep over a row this drop has no claim on.
+        if (slotKeys.isEmpty) cur
+        else {
+          val captured = slotKeys.iterator.flatMap { s =>
+            cur.data.get(s).flatMap(_.synopsis).filter(_.nonEmpty).map(s -> _)
+          }.toMap
+          val kept = cur.data -- slotKeys
+          cur.copy(
+            data             = kept -- orphanedChainDetail(kept),
+            retainedSynopses = MovieRecordMerge.mergeRetainedSynopses(cur.retainedSynopses, captured))
+        }
       })
 
     /** A chain's shared detail slot once the last venue of that chain has left the
@@ -511,9 +519,9 @@ private[movies] final class ScrapeLanding(
               }
           }
           // This tick just decided which film this (cinema, title) belongs to, so
-          // any OTHER row still holding the same slot is stale by construction —
-          // drop it there. The write above lands the slot; without this it only
-          // ever COPIED, and the sole removal was the end-of-tick prune, which
+          // any OTHER slot for the same (cinema, title) is stale by construction —
+          // drop it, wherever it sits. The write above lands the slot; without this
+          // it only ever COPIED, and the sole removal was the end-of-tick prune, which
           // stands down on a partial scrape and only sees rows this cinema's own
           // index lists. That is how "Zaproszenie" served the Kinepolis 21:40 and
           // Kino Malta showtimes under BOTH `zaproszenie|2026` and
@@ -521,17 +529,33 @@ private[movies] final class ScrapeLanding(
           // Unlike the prune this is safe on a degraded tick: it removes a slot
           // only because we just OBSERVED this venue listing this title, never
           // because a fetch failed to mention it.
-          // The slots to drop are read off the OTHER row rather than assumed to be
+          // The slots to drop are read off the row rather than assumed to be
           // `slotKey`: the same venue's slot for this film can sit there under a
           // different Source spelling (a bare `Cinema` from an older write, a
-          // `CinemaShowing` for a decorated edition), and dropping only `slotKey`
-          // would miss exactly the stranded copies this is here to clear.
+          // `CinemaShowing` keyed off the title an earlier derivation produced —
+          // the staging fold keys the slot by the STAGED row's title, the detail
+          // merge by the row's), and dropping only `slotKey` would miss exactly the
+          // stranded copies this is here to clear.
+          // Including the row just written (`+ key`), which is where the venue's
+          // OWN duplicate sits — one venue listing one title is one slot, so a
+          // second slot on this row for the same (cinema, sanitized title) is stale
+          // by the same argument. Prod 2026-09-08: Cinema City Wolność held
+          // `terminator2dziensadu35rocznica` (spent) beside `terminator2dziensadu`
+          // (3 future showtimes) on `terminator2dziensadu|1991`, both titled
+          // "Terminator 2: Dzień sądu 35. Rocznica"; the read model composed one
+          // `web_screenings` id from the pair and served the spent half in nine
+          // cities for days. `- key` left it there for ever: the end-of-tick prune
+          // is the only other remover and it stands down on every chunked venue.
+          // The slot just written is excluded on that row (and only there — the
+          // SAME source key on another row is exactly what this drop retires), so
+          // this can never remove the showtimes it just recorded.
           // Gated on the write above: see `landed`.
-          if (landed) (corpusIndex.keysForCinemaSlot(cinema, norm) - key).foreach { other =>
-            dropCinemaSlots(other, _.data.collect {
+          if (landed) (corpusIndex.keysForCinemaSlot(cinema, norm) + key).foreach { row =>
+            val justWritten: Set[Source] = if (row == key) Set(slotKey) else Set.empty
+            dropCinemaSlots(row, _.data.collect {
               case (src, sd) if Source.cinemaOf(src).contains(cinema) &&
                                 sd.title.exists(t => normalizer.sanitize(t) == norm) => src
-            }.toSet)
+            }.toSet -- justWritten)
           }
           // Gated on the write having LANDED. A skipped write leaves Caffeine
           // without the row, so announcing it as new sends `MovieDetailsComplete` /
