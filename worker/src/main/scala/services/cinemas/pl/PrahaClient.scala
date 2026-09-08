@@ -50,7 +50,10 @@ object PrahaClient {
   val RepertoireUrl = s"$BaseUrl/pl/repertuar-kino-praha"
 
   // "10 Cze 2026 / 15:30" — day, Polish month abbreviation, year, then time.
-  private val StampPat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})\s*/\s*(\d{1,2}):(\d{2})""".r
+  // The site started inserting a parenthesised weekday abbreviation between
+  // the year and the slash ("09 Wrz 2026 (Śr) / 16:00"); tolerate it without
+  // capturing it — it's redundant with the date itself.
+  private val StampPat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})(?:\s*\([^)]*\))?\s*/\s*(\d{1,2}):(\d{2})""".r
 
   private case class RawSlot(
     title:    String,

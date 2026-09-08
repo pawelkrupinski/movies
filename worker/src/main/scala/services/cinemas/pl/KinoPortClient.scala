@@ -111,14 +111,21 @@ object KinoPortClient {
    *  wholesale below, and an unparseable heading must not inherit the previous
    *  day. */
   private val DayPat = """(\d{1,2})\.(\d{1,2})\b.*""".r
-  /** `18:00 – Arek. Mama. Panorama` — time and title inside the `<strong>`,
-   *  split on the en dash (U+2013). */
+  /** `18:00 – Arek. Mama. Panorama` — time and title, read off the paragraph's
+   *  `<strong>` text joined (some screenings split "17:00 – Tony" across
+   *  three sibling `<strong>` tags instead of one), split on the en dash
+   *  (U+2013) or a plain hyphen. */
   private val TimeTitlePat = """^(\d{1,2}):(\d{2})\s*[–-]\s*(.+)$""".r
   /** ` (72′)` — runtime in minutes, U+2032 PRIME, immediately after the strong. */
   private val RuntimePat = """\((\d{1,3})′\)""".r
-  /** `2026, reż. Mikołaj Janik` / `2025` — the first `<em>` of the paragraph. */
+  /** `2026, reż. Mikołaj Janik` / `2025` — the caption line, whether wrapped in
+   *  `<em>` (older posts) or plain text after a `<br>` (September 2026 on). */
   private val YearPat     = """^(\d{4})\b""".r
+  /** `reż. Mikołaj Janik` — the explicit-credit form. */
   private val DirectorPat = """reż\.\s*(.+?)\s*$""".r
+  /** `1962, Orson Welles` — September 2026's captions dropped the "reż."
+   *  prefix; a name straight after the year comma is still the director. */
+  private val DirectorNoCreditWordPat = """^\d{4}\s*,\s*(.+?)\s*$""".r
   private val YearInHeaderPat = """\b(20\d{2})\b""".r
   /** Co-directed films are listed either "Wilhelm Sasnal i Anna Sasnal" or
    *  "Wilhelm Sasnal, Anna Sasnal"; both mean two people. */
@@ -134,7 +141,19 @@ object KinoPortClient {
   )
 
   /** Walk the post body in document order, carrying the month header's year and
-   *  the current day, and emit one slot per screening paragraph. */
+   *  the current day, and emit one slot per screening paragraph.
+   *
+   *  Day headers ("30.07 (czwartek)") used to live only in `<h4>`; the site's
+   *  September 2026 relayout moved them into plain `<p>` instead (and moved
+   *  the month header from `<h3>` into `<h4>`). Rather than hard-coding either
+   *  tag, a day header is recognised by its TEXT SHAPE wherever it appears —
+   *  `h3`, `h4` or `p` — and only an element that ISN'T one is considered for
+   *  the other two roles (month/year header, or screening paragraph). This
+   *  also fixes a latent bug the old tag-based dispatch had: a non-day `<h4>`
+   *  (the month header, under the new layout) used to unconditionally reset
+   *  `day` to `None` just by virtue of being an `<h4>` that didn't match
+   *  `DayPat` — harmless while month headers only ever opened a post, but
+   *  wrong in general. */
   private def parseProgramme(renderedHtml: String, postUrl: String, today: LocalDate): Seq[RawSlot] = {
     val body = Jsoup.parseBodyFragment(renderedHtml).body()
     dropArchive(body)
@@ -146,25 +165,21 @@ object KinoPortClient {
 
     body.select("h3, h4, p").asScala.foreach { element =>
       val text = element.text.trim
-      element.tagName match {
-        case "h3" =>
+      text match {
+        case DayPat(d, m) =>
+          val month = m.toInt
+          // Months only ever advance within one post; a month that goes
+          // BACKWARDS is a December→January wrap, so roll the year.
+          if (previousMonth.exists(_ > month)) year += 1
+          previousMonth = Some(month)
+          day = Try(LocalDate.of(year, month, d.toInt)).toOption
+        case _ if element.tagName == "h3" || element.tagName == "h4" =>
           // A month header with an explicit year re-anchors the calendar; reset
           // the rollover tracker so "Styczeń 2027" after a December day isn't
           // ALSO bumped a year by the wrap rule below.
           YearInHeaderPat.findFirstMatchIn(text).foreach { m =>
             year = m.group(1).toInt
             previousMonth = None
-          }
-        case "h4" =>
-          day = text match {
-            case DayPat(d, m) =>
-              val month = m.toInt
-              // Months only ever advance within one post; a month that goes
-              // BACKWARDS is a December→January wrap, so roll the year.
-              if (previousMonth.exists(_ > month)) year += 1
-              previousMonth = Some(month)
-              Try(LocalDate.of(year, month, d.toInt)).toOption
-            case _ => None
           }
         case _ =>
           for {
@@ -187,23 +202,46 @@ object KinoPortClient {
    *  note between days). */
   private def parseScreening(paragraph: Element, date: LocalDate, postUrl: String): Option[RawSlot] =
     for {
-      strong          <- Option(paragraph.selectFirst("strong"))
-      (time, title)   <- strong.text.trim match {
+      strongs         <- Option(paragraph.select("strong")).filter(!_.isEmpty)
+      // "17:00 – Tony" sometimes arrives as ONE <strong>, sometimes split
+      // across three siblings ("17:00" / "– " / "Tony"); joining and
+      // collapsing whitespace handles both.
+      strongText       = strongs.asScala.map(_.text.trim).mkString(" ").replaceAll("\\s+", " ").trim
+      (time, title)   <- strongText match {
                            case TimeTitlePat(h, m, t) =>
                              Try(LocalTime.of(h.toInt, m.toInt)).toOption.map(_ -> t.trim).filter(_._2.nonEmpty)
                            case _ => None
                          }
     } yield {
-      val caption = Option(paragraph.selectFirst("em")).map(_.text.trim).getOrElse("")
+      val caption = captionOf(paragraph)
       RawSlot(
         title          = title,
         dateTime       = LocalDateTime.of(date, time),
         postUrl        = postUrl,
         runtimeMinutes = RuntimePat.findFirstMatchIn(paragraph.text).map(_.group(1).toInt),
         releaseYear    = YearPat.findFirstMatchIn(caption).map(_.group(1).toInt),
-        director       = DirectorPat.findFirstMatchIn(caption).map(_.group(1)).toSeq
-                           .flatMap(DirectorSeparator.split(_).toSeq)
-                           .map(_.trim).filter(_.nonEmpty)
+        director       = directorOf(caption)
       )
     }
+
+  /** The paragraph's second line — year/director/notes — whether it's wrapped
+   *  in `<em>` (posts through August 2026) or left as plain text after a
+   *  `<br>` (September 2026 on). Reads the raw HTML and splits on `<br>`
+   *  rather than `Element.text`, which collapses line breaks entirely. */
+  private def captionOf(paragraph: Element): String =
+    Option(paragraph.selectFirst("em")).map(_.text.trim).filter(_.nonEmpty).getOrElse {
+      paragraph.html.split("""<br\s*/?>""").drop(1).headOption
+        .map(line => Jsoup.parseBodyFragment(line).body.text.trim).getOrElse("")
+    }
+
+  /** `reż. Mikołaj Janik` when the caption spells the credit out; September
+   *  2026's captions dropped that word, leaving just `1962, Orson Welles`, so
+   *  a name straight after the year comma is taken as the director too. */
+  private def directorOf(caption: String): Seq[String] = {
+    val credited = DirectorPat.findFirstMatchIn(caption).map(_.group(1))
+    val fallback = if (credited.isEmpty) DirectorNoCreditWordPat.findFirstMatchIn(caption).map(_.group(1)) else None
+    (credited orElse fallback).toSeq
+      .flatMap(DirectorSeparator.split(_).toSeq)
+      .map(_.trim).filter(_.nonEmpty)
+  }
 }
