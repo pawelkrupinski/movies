@@ -94,6 +94,8 @@ class InMemoryStagingFolder(
       plan.moviesDeletes.foreach(movieRepository.delete)
       plan.stagingDeletes.foreach(stagingRepository.deleteRow)
       logger.info(s"Folded group '$cleanTitle': ${stagingRows.size} staging row(s) → ${plan.moviesUpserts.size} movies row(s).")
+      // Loud, not silent — see `MongoStagingFolder`'s identical line.
+      plan.deferred.foreach(d => logger.warn(StagingFold.deferredCollisionWarning(d)))
       plan.newPromotions
     }
   }

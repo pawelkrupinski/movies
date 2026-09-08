@@ -358,4 +358,102 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     record.tmdbId shouldBe Some(1275779)
     record.imdbId shouldBe Some("tt15047880")
   }
+
+  // THE 'LALKA' REGRESSION (poland/convergence CI run 34244749223, commit bbc45b52,
+  // 2026-09-08). Real tmdbIds/imdbIds from that run's log: two Polish cinemas each
+  // report the bare title "Lalka" (one prints its own 2026 cinema year, the other
+  // its own 2025), and TMDB's search — genuinely ambiguous for a common one-word
+  // title — resolves them to two DIFFERENT, unrelated films that both happen to
+  // carry TMDB year 2026: 'Lalka' (tmdbId 1321666, a 2026 Maciej Kawalski film) and
+  // an unrelated 'Lalka' (tmdbId 1309396). `clusterByFilm` correctly keeps them as
+  // two clusters — different tmdbId, different imdbId, nothing says they're one
+  // film — but each cluster's OWN `canonical()` vote, run in isolation, concludes
+  // the IDENTICAL display title ("Lalka", its only cinema vote) at the IDENTICAL
+  // TMDB year (2026), so both plan an upsert at key 'lalka|2026'.
+  //
+  // The fix does NOT merge them — that would attribute one film's cinemas to the
+  // other's title/poster/synopsis/tmdbId, corrupting BOTH (verified against
+  // `ScrapeLanding.concludedKeyFor`: a merged/rekeyed loser would also silently
+  // steal the winner's FUTURE scrapes, since `CorpusIndex.entriesFor` — the first
+  // thing a later scrape asks — is keyed on the exact concluded CacheKey and a
+  // lone remaining candidate is landed on with no re-disambiguation). Instead it
+  // keeps ONE cluster's own, unmodified data and DEFERS the other: not written,
+  // not merged, not retired, its staging rows left unconsumed so the same
+  // collision is cheaply re-detected (and re-deferred) next time, with no crash
+  // and no reschedule-forever loop.
+  it should "defer one of two DIFFERENT films that conclude the same (title, year) key, instead of merging or double-writing" in {
+    def staged(cinema: Source, cinemaYear: Int, tmdbId: Int, tmdbYear: Int, imdbId: String): StagingRecord =
+      StagingRecord(cinema, "Lalka", Some(cinemaYear), MovieRecord(
+        tmdbId = Some(tmdbId), imdbId = Some(imdbId),
+        data = Map[Source, SourceData](
+          cinema -> SourceData(title = Some("Lalka"), releaseYear = Some(cinemaYear)),
+          Tmdb   -> SourceData(title = Some("Lalka"), releaseYear = Some(tmdbYear)))), titleNormalizer)
+    // Neither cinema's OWN reported year is 2026 (both print an off-by-a-bit
+    // production year, not TMDB's release year) — deliberately, so that whichever
+    // side loses never coincidentally shares its RAW (title, year) key with the
+    // concluded key the WINNER is later stored under; that would union the two
+    // records at the pre-cluster staging/movies boundary step before this fix
+    // ever got a say, a separate (and separately fixable) gap this test isn't
+    // about.
+    val kawalski = staged(CinemaCityWroclavia, cinemaYear = 2024, tmdbId = 1321666, tmdbYear = 2026, imdbId = "tt37082105")
+    val other    = staged(Helios,              cinemaYear = 2025, tmdbId = 1309396, tmdbYear = 2026, imdbId = "tt36749000")
+    val rows     = Seq(kawalski, other)
+
+    val plan = StagingFold.planGroup(rows, moviesRows = Seq.empty, titleNormalizer)
+    settleIsANoOpAfterFold(plan)
+
+    // Exactly one film is promoted, with its OWN correct, unmodified identity and
+    // ONLY its own cinema's screenings — never both cinemas' data on one record.
+    withClue(s"expected exactly one upsert, kept whole: ${plan.moviesUpserts}\n") {
+      plan.moviesUpserts should have size 1
+    }
+    val (winnerId, key, winnerRecord) = plan.moviesUpserts.head
+    key shouldBe CacheKey("Lalka", Some(2026), titleNormalizer)
+    val winnerIsKawalski = winnerRecord.tmdbId.contains(1321666)
+    val winnerIsOther    = winnerRecord.tmdbId.contains(1309396)
+    withClue(s"the surviving record's tmdbId must be one of the two real films, not a blend: $winnerRecord\n")(
+      (winnerIsKawalski || winnerIsOther) shouldBe true)
+    if (winnerIsKawalski) {
+      winnerRecord.imdbId shouldBe Some("tt37082105")
+      winnerRecord.data.keySet shouldBe Set(CinemaCityWroclavia, Tmdb) // NOT Helios too
+    } else {
+      winnerRecord.imdbId shouldBe Some("tt36749000")
+      winnerRecord.data.keySet shouldBe Set(Helios, Tmdb) // NOT CinemaCityWroclavia too
+    }
+
+    // Nothing was retired or deleted — the loser was never an existing document.
+    plan.moviesDeletes shouldBe empty
+    plan.retirements   shouldBe empty
+
+    // The deferral is reported, naming BOTH sides' real identities.
+    plan.deferred should have size 1
+    val d = plan.deferred.head
+    d.key shouldBe key
+    val (keptTmdbId, deferredTmdbId) = if (winnerIsKawalski) (Some(1321666), Some(1309396)) else (Some(1309396), Some(1321666))
+    d.keptTmdbId     shouldBe keptTmdbId
+    d.deferredTmdbId shouldBe deferredTmdbId
+    StagingFold.deferredCollisionWarning(d) should include ("1321666")
+    StagingFold.deferredCollisionWarning(d) should include ("1309396")
+
+    // The loser's staging row is NOT consumed — only the winner's is — so the exact
+    // same collision is what the next fold attempt sees, cheaply, rather than
+    // silently losing the deferred film's incubation state.
+    plan.stagingDeletes should have size 1
+    val loserRow = if (winnerIsKawalski) other else kawalski
+    plan.stagingDeletes should not contain loserRow
+
+    // Idempotent: the NEXT real fold attempt sees exactly this — the winner already
+    // promoted to `movies` (found via `moviesRows`, same id) and only the loser's
+    // row still in staging (the winner's was consumed above). Re-planning from that
+    // state makes the SAME decision again — the already-existing winner re-affirmed,
+    // the same loser deferred again — rather than oscillating or double-promoting.
+    val winnerExisting = StoredMovieRecord(key.cleanTitle, key.year, winnerRecord, winnerId)
+    val secondPlan = StagingFold.planGroup(Seq(loserRow), moviesRows = Seq(winnerExisting), titleNormalizer)
+    secondPlan.moviesUpserts.map(_._1) shouldBe Seq(winnerId)
+    secondPlan.moviesDeletes           shouldBe empty
+    secondPlan.deferred                should have size 1
+    secondPlan.deferred.head.keptTmdbId     shouldBe keptTmdbId
+    secondPlan.deferred.head.deferredTmdbId shouldBe deferredTmdbId
+    secondPlan.stagingDeletes shouldBe empty // the loser's row STILL isn't consumed
+  }
 }

@@ -113,6 +113,10 @@ class MongoStagingFolder(
           // the retired rows by the time it runs, or it writes the film with an empty board.
           plan.foreach(p => migrateRetiredSideRows(p.retirements))
           completeSideCollections(plan.map(_.moviesUpserts.toSeq).getOrElse(Seq.empty))
+          // Loud, not silent: a deferred cluster wrote nothing this round on purpose
+          // (see `StagingFold.resolveKeyCollisions`), and an operator watching staging
+          // for problems should see it the same way they see any other fold outcome.
+          plan.foreach(_.deferred.foreach(d => logger.warn(StagingFold.deferredCollisionWarning(d))))
           result = Some(newPromotions)
         case StagingFold.Next.Retry(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
