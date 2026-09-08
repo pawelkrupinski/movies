@@ -79,6 +79,195 @@ Both were caught on 2026-09-04 and neither shows as a white bar:
 So whenever you diagnose a root cause, immediately ask which OTHER venues share
 that code path and check them too, whatever colour their bar is.
 
+### A fourth trap: cadence vs. retention window, at the low-cadence countries
+
+Found 2026-09-08. `classify()` doesn't require 3 non-empty buckets — it takes
+`.takeRight(3)` of whatever's there, so a service with only 1 bucket in the 24h
+window still classifies white/green off that ONE bucket. At PL/UK/ES cadence
+(60/420/420 min) that's rarely a problem — most services fill 3 buckets inside
+24h. At DE (600 min) and especially US (840 min) it's structural: **no US
+service had 3 non-empty buckets in this run's 24h window at all — max was 2,
+and 336 of the 1,143 white US services had exactly 1.** Two consequences:
+
+- **The green→white transition signal goes blind exactly where it's most
+  needed.** DE and US both showed **zero** green→white transitions this run,
+  not because nothing broke, but because a transition older than ~1-2 scrapes
+  back (which at 840 min is not very far back at all) has already scrolled out
+  of the 24h window.
+- **The "archive age ≤10d + filmCount>0" cut is dominated by publication lag,
+  not breakage**, at these cadences. Spot-checked DE's Film-Eck (age 1.1d,
+  1 film) and UK's Electric Palace Harwich (a genuine green→white transition,
+  not just an archive hit): BOTH have real, correctly-formatted upcoming
+  screenings live on the aggregator right now that our last 1-2 scrapes simply
+  missed because the venue hadn't published them yet when we asked. This is
+  the exact shape 2026-09-04's Kinowerkstatt false-positive — replaying live
+  captures through the real client is still the only way to tell a lag from a
+  break, and at DE/US cadence, most single-film "recently broke" candidates
+  will be lag. Weight the "recently broke" list accordingly; treat it as a
+  probe queue, not a bug list.
+
+---
+
+## 2026-09-08
+
+**Fifth all-five-country sweep.** This run's first sweep script draft required
+exactly 3 non-empty buckets to call a service white — caught and fixed before
+any numbers were recorded, because it silently UNDER-counted every country
+whose cadence can't fill 3 buckets in the 24h retention window (i.e.
+everywhere but PL): the draft script found 0 white in the US on the same data
+where the corrected script (matching the real `classify()`'s `.takeRight(3)`,
+no minimum) found 1,143. Flagging this here in case a past run's ad hoc
+tooling made the same mistake — it wouldn't be visible in this log, only in
+an implausibly-low white count for DE/US that didn't get questioned. See the
+new "cadence vs. retention window" methodology note above. Newest bucket
+2026-09-08 17:45 UTC.
+
+| DB | services | white | white % | red | green→white |
+|---|---|---|---|---|---|
+| `kinowo` (PL) | 310 | **7** | 2.3% | 1 (Nowe Kino Warszawa) | 0 |
+| `kinowo_uk` | 853 | **70** | 8.2% | 0 | 1 |
+| `kinowo_de` | 1,538 | **395** | 25.7% | 21 | 0 |
+| `kinowo_us` | 5,030 | **1,143** | 22.7% | 2 | 0 |
+| `kinowo_es` | 602 | **215** | 35.7% | 1 | 5 |
+
+vs. 2026-09-04: PL 8/325 (2.5%), UK 57/854 (6.7%), DE 386/1538 (25%),
+US 779/5038 (15.5%), ES 198/602 (32.9%). DE and ES are flat. **UK ticked up
+1.5pt and US jumped 7pt** — both explained below, neither systemic.
+
+### Poland — all 7 hand-probed, 2 fixed, 5 confirmed still dormant
+
+**KinoPort (Gdańsk) — fixed, @cbe5cdfb7.** gcsw.pl (the venue's WordPress site)
+relaid its repertoire post: the month header moved `<h3>`→`<h4>`, and — the
+part that actually broke parsing — the DAY headers ("03.09 (CZWARTEK)") moved
+from `<h4>` into plain `<p>`. `KinoPortClient`'s tag-based dispatch
+(`case "h4" => parse day` / `case _ => parse screening`) never saw a day
+header again once it stopped living in `<h4>`, so `day` stayed `None` and
+every screening paragraph was silently dropped: 0 films, 0 showtimes for the
+whole September post. Two smaller format drifts rode along in the same post:
+some titles now split across three sibling `<strong>` tags ("17:00" / "– " /
+"Tony") instead of one, and captions dropped their `<em>` wrapper and "reż."
+prefix ("1962, Orson Welles" instead of "1962, reż. Orson Welles").
+
+Fix: day-header detection is now TEXT-SHAPE-based (`DayPat` matched against
+any `h3`/`h4`/`p`'s text) rather than tag-based, so it doesn't care which tag
+the site puts it in. This incidentally fixes a latent bug the old dispatch
+had — a non-day `<h4>` (the month header, under the new layout) used to
+unconditionally reset `day` to `None` just by being an `<h4>` that didn't
+match `DayPat`, harmless only because month headers used to always open a
+post before any screening. Screening parsing now joins ALL `<strong>` tags in
+a paragraph instead of taking the first, and captions fall back to the plain
+text after the first `<br>` when there's no `<em>`, with a director fallback
+for a bare "YYYY, Name" credit.
+
+**Test:** `KinoPortMarkupChangeSpec` replays a 2026-09-08 capture of the live
+(broken) post — fails before (`List() was empty`), passes after. The original
+`KinoPortClientSpec` (2026-07-31 capture, old markup) still passes unchanged —
+the fix is backward-compatible.
+
+**Kino Praha (Warszawa) — fixed, @cbe5cdfb7.** mteatr.pl started inserting a
+parenthesised weekday abbreviation between the year and the slash in its date
+stamp — "09 Wrz 2026 **(Śr)** / 16:00" instead of "09 Wrz 2026 / 16:00" — and
+`PrahaClient.StampPat` required the slash immediately after the 4-digit year,
+so every stamp on the page failed to match: 0 films, 0 showtimes. Fix: an
+optional non-capturing `(?:\s*\([^)]*\))?` between the year and the slash.
+`PrahaWeekdayLabelSpec` replays a 2026-09-08 capture; fails before, passes
+after; the original `PrahaClientSpec` (June capture, no weekday label) still
+passes.
+
+**Layers:** `sbt testUnit` green after `./infra/bin/fetch-gitops` (13 + 1,371
++ 3,461 + 973 + 60 = 5,878 tests; the first run's 40 `deploy.*` failures were
+the same missing-local-checkout artifact 2026-09-04 hit, not this change).
+`FilmScheduleEndToEndSpec` and `PageSnapshotSpec` both green **without any
+snapshot regeneration** — the e2e fixture corpus under `08-06-2026/` replays a
+frozen capture of both venues from BEFORE either site's markup changed, so
+neither fix's new code path is exercised by it; the old-markup path both specs
+also cover is unchanged.
+
+**Neither KinoPort nor Kino Praha is in the DiacriticMonthNameSpec /
+`ScraperParse.DayMonthPat` family from 2026-09-04** — both are bespoke
+one-off parsers (a WP-REST post walker, a `div.post`/`div.label` reader), so
+this is two unrelated site-relayout bugs, not a shared regex trap.
+
+**The other 5 white PL venues — all re-probed live, all still confirmed
+dormant, no change from 2026-08-24/09-04:**
+
+| Venue | Source | What the source says |
+|---|---|---|
+| Kino Lewart (Lubartów) | bilety24 `…/lubartowski-osrodek-kultury-1382` | 0 `Film:` |
+| Kino Wisła Brzeszcze | bilety24 `…/osrodek-kultury-w-brzeszczach-1539` | 0 `Film:` |
+| Patria (Zakopane) | `kinopatria.com/repertuar/` | 0 `h3.amy-movie-field-title` |
+| Kino Chatka Żaka (Lublin) | `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` | 0 `div.box-row` |
+| DKF Politechnika | Filmweb 1645 | `[]` — now the **8th** consecutive run white. The 08-24 entry's October checkpoint stands: if still `[]` in October, escalate to "has Filmweb quietly dropped the venue" rather than logging dormancy a 9th time. |
+
+**Recovered since 2026-09-04 (2):** Kino KDK (Kutno) and Kino nad Wartą
+(Konin) are no longer in the white list — both were "0 Film: of 73, all
+Koncert/Spektakl" dormancy reads last run; nothing to fix, they just started
+screening again.
+
+### UK — 70 white, 1 green→white transition, triaged not fixed
+
+**Electric Palace Harwich — investigated, no fix, self-heals.** The one
+green→white transition in the whole run: green at 2026-09-07 17:45 UTC, then
+zero at 00:45 / 07:45 / 14:45 UTC on 09-08, no errors recorded on any bucket
+(so `fetch()` succeeded and returned nothing, not a network/parse failure).
+Re-fetched live (as of 2026-09-08 ~19:50 UTC) through the REAL client path —
+`programmeUrl` for the `timetable__day` tabs, then `sessionsUrl` with the
+`is-ajax-call: yes` header the sessions fragment requires — and got real
+content: the venue's own site currently advertises sessions on 09-11 through
+09-14, and the sessions fragments for those days parse to 1-2
+`cinema-times__article` blocks each. All three white buckets fall in the same
+UTC calendar day, before those dates were apparently published; this is the
+same publication-lag shape 2026-09-04 caught on Kinowerkstatt, not a client
+bug. UK cadence (420 min) means it should self-heal on its own within a few
+hours — check first on the next run before assuming otherwise.
+
+The other 69 white UK venues were triaged, not hand-probed: 0 are
+seasonal-named (`terraza|verano|open.?air|autokino|freibad|sommer|drive.?in`
+matches nothing in the UK roster, as 2026-09-04 also found), 44 have never had
+a `cinema_scrapes` archive entry (long-tail, presumptively just quiet), 8 have
+an archive older than 10 days (long dormant), and 18 (including Electric
+Palace Harwich) have a content-bearing archive ≤10 days old — per the cadence
+note above, expect most of those 18 to be publication lag rather than bugs;
+not spot-checked individually this run.
+
+### DE / US / ES — triaged, sampled, not hand-probed exhaustively
+
+**Seasonal closures explain most of the DE/US/ES volume, same as 2026-09-04,
+and US's jump is almost entirely seasonal.** Cross-cutting the white set
+against `terraza|verano|open.?air|autokino|freibad|sommer|drive.?in`:
+
+| | seasonal-named venues | of them white | vs 09-04 |
+|---|---|---|---|
+| DE | 175 | **164 (94%)** | 158/175 (90%) |
+| US | 300 | **244 (81%)** | 99/303 (33%) |
+| ES | 27 | **22 (81%)** | 19/27 (70%) |
+| UK | 0 | — | — |
+
+US's seasonal share nearly TRIPLED (33%→81%) in the 4 days since 09-04, which
+straddled US Labor Day (2026-09-07) — the traditional close date for drive-ins
+and outdoor screens. Non-seasonal US white also rose (14.4%→19%, 680→899 of
+~4,730), but the seasonal swing accounts for the bulk of the country's 15.5%→
+22.7% jump. DE and ES's seasonal shares were already high on 09-04 and stayed
+roughly flat.
+
+**Nine-venue spot-check, live via the aggregators' own JSON/markup (not the
+JS-rendered venue page — see the cadence note above for why the sessions/JSON
+endpoint is the one that matters):**
+
+| Venue | Country | Verdict |
+|---|---|---|
+| El cine Villablino, Cine Bahía, Cine AMGu, Cine Princesa, Sala d'actes Ajuntament (Balaguer) | ES — all 5 of this run's green→white transitions | `data-showtimes-dates="[]"` on all 5. Genuinely empty upstream right now, not a parser gap. |
+| Kinowerkstatt (Saarbrücken) | DE | `data-showtimes-dates="[]"` today — unlike 2026-09-04, when the same venue had a real programme (that was the false-positive precedent). Genuinely empty this time. |
+| Film-Eck (Wermelskirchen) | DE | `data-showtimes-dates=["2026-09-11",…,"2026-09-14"]` — real future programme, our last 2 scrapes (both zero, no errors) simply predate its publication. Publication lag, matches Electric Palace Harwich's shape; expect self-heal. |
+| Curt's Theater, Town Hall Theatre Quincy | US | Both show flicks.us's own "Sorry, we haven't received movie times for this cinema yet" banner. Genuinely empty upstream. |
+
+Net: of these 9 spot-checked venues (the 5 ES green→white transitions plus 4
+sampled non-seasonal "recently broke" candidates in DE/US), 8 were genuinely
+empty upstream and 1 (Film-Eck) was publication lag; none were parser bugs.
+No code changes for DE/US/ES this run. **Red columns, unchanged in shape from
+09-04** (DE: `filmstarts.de` 404s; US: `flicks.us` 404s; ES: 1 `HTTP 410`) —
+out of brief, no action taken.
+
 ---
 
 ## 2026-09-04
