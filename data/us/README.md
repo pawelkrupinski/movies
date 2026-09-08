@@ -27,10 +27,15 @@ distance-clustered instead.
 
 The addressable place is the **metro** — `/los-angeles/`, a `City` of its own —
 because "films in Los Angeles" is a screen somebody wants and "films in
-California" is not. 448 of them, over the 46 states with 30+ venues; a state
-under that is one place in its own right and keeps the slug `states.py` gave it
-(Alaska, Hawaii, DC, Delaware, Rhode Island, Vermont, Guam, American Samoa and
-the Virgin Islands — nine of the 55), so the US serves **457 cities**.
+California" is not. 461 of them; a state both under 30 venues and compact enough
+to read as one list is one place in its own right and keeps the slug `states.py`
+gave it (DC, Delaware, Rhode Island, Vermont, Guam, American Samoa and the Virgin
+Islands — seven of the 55), so the US serves **468 cities**.
+
+Alaska and Hawaii are under the count but not compact: 1,900 km of roadless
+Alaska and four Hawaiian islands are not one list anybody browses, so both split
+into their metros (`UsRoster.MaxSpanToStayWholeKm`), and `/alaska/` and
+`/hawaii/` 301 to the biggest metro cut out of each.
 
 The **state** survives as a `CityGroup`: the landing lists metros under their
 state's heading, which is how a visitor gets from "California" to "Los Angeles".

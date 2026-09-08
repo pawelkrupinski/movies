@@ -925,11 +925,14 @@ final class GermanRegion(slug: String, labels: CityLabels, lat: Double, lon: Dou
 /** A US METRO — the data-driven `City` subtype, and the place a US visitor
  *  actually names. "Films in Los Angeles" is a screen somebody wants; "films in
  *  California" is not, which is why the state is a [[CityGroup]] here and not a
- *  city. The nine states and territories too small to have metros (Alaska,
- *  Hawaii, DC, …) have nothing to split into, so each is one of these in its own
- *  right, keeping the slug it already had.
+ *  city. The seven states and territories too small AND compact enough not to
+ *  split (Delaware, Vermont, DC, Rhode Island, Guam, American Samoa, the Virgin
+ *  Islands) have nothing to cut into, so each is one of these in its own right,
+ *  keeping the slug it already had. Alaska and Hawaii are NOT among them: both
+ *  are under the venue count but sprawl past `MaxSpanToStayWholeKm`, so both
+ *  were split into their metros.
  *
- *  The roster (5,031 cinemas over 448 metros + those nine) is generated into
+ *  The roster (5,031 cinemas over 461 metros + those seven) is generated into
  *  `UsRosterData` and materialised by [[UsRoster]]; instances are built ONCE (in
  *  `City.usCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.
@@ -1086,7 +1089,7 @@ object City {
   /** The UK picker's grouping: NATION over COUNTY over the places inside it.
    *
    *  79 places is past what anyone reads as one A-to-Z — the same problem the US
-   *  has at 457 — but the UK's answer is levels UP rather than one down. A Flicks
+   *  has at 468 — but the UK's answer is levels UP rather than one down. A Flicks
    *  region is usually already the county ("Cheshire", "Cornwall", "Kent"), so
    *  there is nothing to cut those into; what the list wanted was the county over
    *  them and the nation over that.
@@ -1232,7 +1235,7 @@ object City {
   /** The German picker's grouping: one entry per BUNDESLAND, over the regions
    *  inside it, alphabetically both ways.
    *
-   *  158 regions is Germany's version of the same problem the US has at 457 and
+   *  158 regions is Germany's version of the same problem the US has at 468 and
    *  the UK at 79 — and unlike the UK there is a natural level directly above,
    *  so this is one level rather than two. A region is already a travel-shed of
    *  towns around a hub ("Köln" also covers Düsseldorf and Bonn); the Land is
@@ -1259,7 +1262,7 @@ object City {
   /** The United States' cities — the authoritative list for
    *  [[Country.UnitedStates]]. One city per METRO (448 of them, distance-clustered
    *  from the venues' own coordinates — see `data/us/scripts/cluster_metros.py`),
-   *  plus the nine states and territories with too few venues to be worth
+   *  plus the seven states and territories with too few venues to be worth
    *  splitting, which are cities in their own right. The state itself is a
    *  [[CityGroup]], not a city: nobody wants a screen of every cinema in Texas.
    *

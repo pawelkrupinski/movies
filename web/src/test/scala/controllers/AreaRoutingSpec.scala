@@ -127,7 +127,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
     html should include ("""<optgroup label="California">""")
     html should include ("""<option value="san-francisco-bay-area">San Francisco Bay Area</option>""")
-    // Two of the 457 are both called "Philadelphia" — a flat list offers them as
+    // Two of the 461 metros are both called "Philadelphia" — a flat list offers them as
     // two identical options, which is why the US switcher is grouped at all.
     html should include ("""<optgroup label="Pennsylvania">""")
     html should include ("""<optgroup label="New Jersey">""")

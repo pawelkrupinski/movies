@@ -205,7 +205,7 @@ a re-harvest if missed:
   states too small to have any), with the state kept as a `CityGroup` so the
   picker can still be browsed. Group by the unit a visitor NAMES, and reach for a
   grouping — not a bigger city — when the resulting list is long.
-- **A metro-sized `City` unit needs a slug rule.** 457 US slugs join one global
+- **A metro-sized `City` unit needs a slug rule.** 468 US slugs join one global
   `City.bySlug` namespace that already held a UK Birmingham, and a metro name is
   not unique across state lines either. `City.usSlugs` qualifies with the state
   where the bare slug is taken; `CitySpec` fails on any collision that survives.

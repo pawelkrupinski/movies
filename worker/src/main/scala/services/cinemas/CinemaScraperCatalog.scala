@@ -1624,7 +1624,7 @@ class CinemaScraperCatalog(
     }.toMap
 
   // ── United States (chain-primary, Flicks for the rest) ───────────────────
-  // Data-driven from the full UsRoster (457 metros and small states / ~4,200 cinemas):
+  // Data-driven from the full UsRoster (468 metros and small states / 5,031 cinemas):
   // one scraper per cinema, keyed by the state slug that City.slug uses.
   //
   // A venue named in `UsChainVenues` gets its CHAIN'S OWN site as the primary and
@@ -1813,7 +1813,7 @@ class CinemaScraperCatalog(
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
   ) ++ germanBaseByCity   // Germany: the full 158-region roster (data-driven)
-    ++ usBaseByCity       // USA: 457 metros + small states (data-driven)
+    ++ usBaseByCity       // USA: 461 metros + 7 small states (data-driven)
     ++ spanishBaseByCity  // Spain: the full 52-province roster (data-driven)
 
   /** Per-city scrapers plus any Filmweb-catchment venues for that city. */

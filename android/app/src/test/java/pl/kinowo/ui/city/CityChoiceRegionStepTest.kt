@@ -19,7 +19,7 @@ import pl.kinowo.model.City
 import pl.kinowo.model.Country
 
 /**
- * The US is picked in two steps — state, then city — because 457 metros in one
+ * The US is picked in two steps — state, then city — because 468 places in one
  * A-to-Z is not a list anybody reads. Every other country keeps the single flat
  * list, and that difference is driven purely by whether the catalog's cities
  * carry a region.

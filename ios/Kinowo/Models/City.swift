@@ -20,7 +20,7 @@ struct City: Codable, Hashable {
     let country: String
     /// The group this city is picked under, where its country groups them at all
     /// — a US state ("California"), a UK nation ("Scotland") — and `nil` in the
-    /// countries that group nothing. Neither 457 US metros nor 79 UK counties in
+    /// countries that group nothing. Neither 468 US places nor 79 UK counties in
     /// one A-to-Z is a list anybody reads, so the picker asks for the group
     /// first; a country without regions keeps the single flat list.
     ///

@@ -38,7 +38,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
   }
 
   /** `/{slug}/` is ONE global namespace — `City.bySlug` searches every country's
-   *  list — and the US now puts 457 places into it beside 41 Polish, 79 UK and
+   *  list — and the US now puts 468 places into it beside 41 Polish, 79 UK and
    *  158 German ones. Two cities sharing a slug means one of them is
    *  unreachable, silently, at whichever position `find` reaches second. */
   "Every city slug" should "be unique across every country, and URL-shaped" in {
