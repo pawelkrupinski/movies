@@ -50,6 +50,33 @@ private[services] object CacheKey {
       if (sep >= 0) (storedKey.substring(0, sep), storedKey.substring(sep + 1).toIntOption) else (storedKey, None)
     new CacheKey(cleanTitle, year, normalized)
   }
+
+  /** The character separating a disambiguated key's base title from its suffix —
+   *  never emitted by `TitleNormalizer.sanitize` (which strips every non-alphanumeric
+   *  Unicode character), so it is an unambiguous marker inside `normalized`. */
+  private val DisambiguatorMarker = '~'
+
+  /** A retitle that keeps `base`'s identity apart from whichever OTHER film already
+   *  holds `base`'s bare key — see `StagingFold.resolveKeyCollisions`. Only the
+   *  literal `normalized` string (and therefore the stored `key` field / Mongo's
+   *  unique index on it) changes; `lookupBase` strips the suffix straight back off,
+   *  so `CorpusIndex` still buckets this row together with the film that kept the
+   *  plain key, and `ScrapeLanding.concludedKeyFor` / `chooseConcluded` still see
+   *  both candidates for every future listing of either film. `suffix` must be
+   *  content-derived and stable (a tmdbId/imdbId), never an arrival-order artifact
+   *  (a `FilmId`) — see the caller. */
+  def disambiguated(base: CacheKey, suffix: String): CacheKey =
+    new CacheKey(base.cleanTitle, base.year, s"${base.normalized}$DisambiguatorMarker$suffix")
+
+  /** The bare lookup form of a (possibly disambiguated) `normalized` string — what
+   *  `CorpusIndex` buckets rows by, and what a row's OWN spelling must sanitize back
+   *  to for `StoredMovieRecord.fromStorage`'s mangled-title fallback. A no-op for
+   *  every ordinary key: `sanitize` never produces [[DisambiguatorMarker]], so this
+   *  only ever strips something on a key `disambiguated` built. */
+  def lookupBase(normalized: String): String = {
+    val i = normalized.indexOf(DisambiguatorMarker)
+    if (i >= 0) normalized.substring(0, i) else normalized
+  }
 }
 
 /**
@@ -595,8 +622,19 @@ class CaffeineMovieCache(
     // the only shape the genuine redirect needs: `recordCinemaScrape`'s rekeys
     // change spelling at the SAME year (case/separator) and a yearless key whose
     // row gained a resolved year both reach their row through it.
-    sameTitle.filter(_.year == key.year).minByOption(canonicalRank)
-      .orElse(sameTitle.minByOption(canonicalRank))
+    //
+    // `canonicalRank` alone ties when two DIFFERENT films share this exact title
+    // AND year (`StagingFold.resolveKeyCollisions`'s disambiguated pair) — both
+    // have the same `cleanTitle` and `year`, so the only thing left to break the
+    // tie deterministically is `normalized`, which the plain (unsuffixed) row
+    // always sorts before a disambiguated one. This has no runtime/venue evidence
+    // to go on (unlike `ScrapeLanding.chooseConcluded`), so it does not always pick
+    // the "right" film for an ambiguous caller — it only guarantees the pick is the
+    // SAME one every time, which is what this method's callers (redirect-after-
+    // rekey, not scrape-time landing) need.
+    def rank(k: CacheKey) = (canonicalRank(k), k.normalized)
+    sameTitle.filter(_.year == key.year).minByOption(rank)
+      .orElse(sameTitle.minByOption(rank))
   }
 
   /** Collapse every set of rows that are the SAME FILM into ONE row under the

@@ -78,7 +78,13 @@ object StoredMovieRecord {
     val sep      = k.lastIndexOf('|')
     val idPrefix = if (sep >= 0) k.substring(0, sep) else k
     val year     = if (sep >= 0) k.substring(sep + 1).toIntOption else None
-    StoredMovieRecord(record.displayTitle(idPrefix, normalizer), year, record, FilmId(id), Some(k))
+    // `CacheKey.lookupBase` strips a `StagingFold.resolveKeyCollisions` disambiguator
+    // suffix before this reaches `displayTitle`'s mangled-title FALLBACK (used only
+    // when the record carries no cinema/TMDB title yet): every real spelling
+    // sanitizes to the bare base, never to the suffixed form, so passing the raw
+    // prefix through would fall back to a garbled "lalka~tmdb1309396" instead of
+    // "lalka". A no-op for every ordinary (non-disambiguated) key.
+    StoredMovieRecord(record.displayTitle(CacheKey.lookupBase(idPrefix), normalizer), year, record, FilmId(id), Some(k))
   }
 }
 

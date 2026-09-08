@@ -65,9 +65,15 @@ object StagingFold {
     // a write conflict on identity rather than the transaction machinery. Message-matched
     // (not a bare `isDuplicateKey`) so a `key_1` collision — two DIFFERENT films
     // concluding the identical (sanitize, year) key, which `resolveKeyCollisions`
-    // already defers deterministically inside ONE `planGroup` call — still falls through
-    // to `Abandon`: the same two clusters conclude the same collision every time, so
-    // retrying it cannot help and would only spend the budget masking it.
+    // already resolves deterministically (disambiguates or, lacking any stable
+    // identity to disambiguate with, defers) inside ONE `planGroup` call — still
+    // falls through to `Abandon`: the same two clusters conclude the same collision
+    // every time, so retrying it cannot help and would only spend the budget masking
+    // it. This is a genuinely different failure than what reaches here in practice:
+    // `resolveKeyCollisions` runs and resolves the collision INSIDE the successful
+    // planning of `foldOnce`, so a `key_1` E11000 actually reaching Mongo would mean
+    // two SEPARATE transactions concluded the same stored key at once — a narrower
+    // race than the tmdbId one above, kept non-retryable rather than assumed safe.
     case scala.util.Failure(e: com.mongodb.MongoWriteException)
       if services.MongoErrors.isDuplicateKey(e) && tmdbIdCollision(e) && attempt < maxRetries =>
       Next.Retry(e)
@@ -108,11 +114,19 @@ object StagingFold {
      *  because only `planGroup` knows which cluster a loser belonged to; a group that
      *  produces several surviving rows has several different winners. */
     retirements:    Seq[(FilmId, FilmId)] = Nil,
-    /** A cluster this fold refused to promote THIS round because its concluded key
-     *  is already taken by an unrelated film — see [[resolveKeyCollisions]]. Purely
-     *  informational (nothing here is written); a caller logs it so the deferral is
-     *  loud rather than a silent no-op. */
-    deferred:       Seq[DeferredIdentityCollision] = Nil
+    /** A cluster this fold could not promote at all THIS round because its concluded
+     *  key is already taken by an unrelated film AND it carries no stable identity
+     *  (no tmdbId, no imdbId) of its own to disambiguate the stored key with — see
+     *  [[resolveKeyCollisions]]. Purely informational (nothing here is written); a
+     *  caller logs it so the deferral is loud rather than a silent no-op. The common
+     *  case — both sides identified — is [[disambiguated]] instead: that cluster IS
+     *  promoted, under a suffixed key. */
+    deferred:       Seq[DeferredIdentityCollision] = Nil,
+    /** A cluster whose concluded key collided with an unrelated, already-identified
+     *  film's, and was promoted anyway under a key suffixed with its OWN tmdbId/
+     *  imdbId — see [[resolveKeyCollisions]]. Purely informational; a caller logs it
+     *  the same way as [[deferred]]. */
+    disambiguated:  Seq[DisambiguatedIdentityCollision] = Nil
   ) {
     /** The surviving rows by key, for callers that hand them on to the cache. */
     def folded: Seq[(CacheKey, MovieRecord)] = moviesUpserts.map { case (_, k, r) => k -> r }
@@ -121,7 +135,12 @@ object StagingFold {
   /** Two clusters that both concluded `key`, but whose own resolved identities
    *  (tmdbId/imdbId) disagree — `clusterByFilm` already refused to merge them, so
    *  `resolveKeyCollisions` keeps `kept`'s promotion and defers `deferred`'s rather
-   *  than picking a display title/poster/synopsis for two different real films. */
+   *  than picking a display title/poster/synopsis for two different real films.
+   *  Reached only when the losing cluster carries NEITHER a tmdbId nor an imdbId —
+   *  nothing stable to disambiguate its stored key with — which is rare: by the time
+   *  two clusters both conclude the identical key, `clusterByFilm` has almost always
+   *  told them apart BY their tmdbIds, so [[DisambiguatedIdentityCollision]] is the
+   *  common outcome and this one the fallback. */
   case class DeferredIdentityCollision(
     key: CacheKey,
     keptTmdbId: Option[Int], keptImdbId: Option[String],
@@ -137,6 +156,32 @@ object StagingFold {
     s"Staging fold: two different films both concluded key '${StoredMovieRecord.keyFor(d.key)}' " +
     s"(kept ${identity(d.keptTmdbId, d.keptImdbId)}; deferred ${identity(d.deferredTmdbId, d.deferredImdbId)}) " +
     "— the deferred film's cinemas stay in staging until the ambiguity resolves on its own."
+  }
+
+  /** Two clusters that both concluded `key` — see [[DeferredIdentityCollision]] — but
+   *  here the loser carries a stable tmdbId/imdbId of its own, so instead of being
+   *  held back it is promoted straight away under `disambiguatedKey`: the SAME shared
+   *  `normalized` prefix (so `CorpusIndex` still buckets it beside the film that kept
+   *  the plain key, and every future listing of either film still reaches
+   *  `ScrapeLanding.chooseConcluded`'s runtime/venue disambiguation), with a suffix
+   *  derived from the loser's OWN tmdbId (or imdbId, when it has no tmdbId) — never
+   *  its `FilmId`, which is minted from arrival order and is the exact non-determinism
+   *  this collision-handling exists to remove (see `resolveKeyCollisions`). */
+  case class DisambiguatedIdentityCollision(
+    key: CacheKey, disambiguatedKey: CacheKey,
+    keptTmdbId: Option[Int], keptImdbId: Option[String],
+    disambiguatedTmdbId: Option[Int], disambiguatedImdbId: Option[String]
+  )
+
+  /** The WARN an operator sees for a [[DisambiguatedIdentityCollision]] — the
+   *  promoted-anyway counterpart of [[deferredCollisionWarning]]. */
+  def disambiguatedCollisionWarning(d: DisambiguatedIdentityCollision): String = {
+    def identity(tmdbId: Option[Int], imdbId: Option[String]) =
+      s"tmdbId=${tmdbId.map(_.toString).getOrElse("—")}/imdbId=${imdbId.getOrElse("—")}"
+    s"Staging fold: two different films both concluded key '${StoredMovieRecord.keyFor(d.key)}' " +
+    s"(kept ${identity(d.keptTmdbId, d.keptImdbId)} at the plain key; " +
+    s"${identity(d.disambiguatedTmdbId, d.disambiguatedImdbId)} promoted instead under " +
+    s"'${StoredMovieRecord.keyFor(d.disambiguatedKey)}')."
   }
 
   /** The TMDB ids carried by a group's rows. A folder loads existing `movies` rows
@@ -190,12 +235,21 @@ object StagingFold {
     val stagingByKey = stagingRows.groupBy(r => CacheKey(r.title, r.year, normalizer)).toSeq.map {
       case (key, rows) => key -> MovieRecordMerge.unionAll(rows.map(_.record))
     }
-    val moviesByKey = moviesRows.map(r => CacheKey(r.title, r.year, normalizer) -> r.record)
+    // `r.cacheKey(normalizer)` — the row's KEY AS STORED — not a bare re-derivation
+    // from `(r.title, r.year)`. The two agree for every ordinary row (a stored key's
+    // prefix always sanitizes back to the display title), so this is a no-op there;
+    // they DIVERGE for a row `resolveKeyCollisions` previously disambiguated, whose
+    // stored key carries a suffix a bare re-derivation would silently drop. Dropping
+    // it here would re-collide this row with its rival's in `byKey` below on every
+    // SUBSEQUENT fold — unioning two different films' records, the exact corruption
+    // this whole mechanism exists to prevent — instead of this cluster re-concluding
+    // the same disambiguated key it already holds.
+    val moviesByKey = moviesRows.map(r => r.cacheKey(normalizer) -> r.record)
     val moviesKeys  = moviesByKey.map(_._1).toSet
     // The id behind each existing key; two documents under one key (a legacy duplicate)
     // resolve to the lower id, deterministically, and the other retires into it.
     val idsByKey: Map[CacheKey, Seq[FilmId]] =
-      moviesRows.groupBy(r => CacheKey(r.title, r.year, normalizer)).view.mapValues(_.map(_.id).sortBy(_.value)).toMap
+      moviesRows.groupBy(r => r.cacheKey(normalizer)).view.mapValues(_.map(_.id).sortBy(_.value)).toMap
     // Union ACROSS the staging↔movies boundary too: `CacheKey` is case-insensitive,
     // so a staging "iron maiden" row and an already-promoted movies "Iron Maiden"
     // row share a key but sit in SEPARATE entries above. Left un-unioned they each
@@ -239,19 +293,22 @@ object StagingFold {
     // both bare-titled "Lalka", both TMDB year 2026 — a common one-word title with an
     // ambiguous search match, not a merge candidate) can still both conclude the
     // identical `(sanitize, year)` key. `movies` has exactly one row per key, so two
-    // upserts at it is unwritable — the second `replaceOne` hits the `key` unique
-    // index as an E11000 (prod PL, 'Lalka', this incident) — but the two clusters are
-    // NOT one film, so `resolveKeyCollisions` does not merge them (that would show one
-    // film's screenings under the other's title/poster/tmdbId, which is worse than the
-    // crash it replaces): it keeps the winner untouched and DEFERS the loser instead —
-    // see [[resolveKeyCollisions]].
-    val (kept, deferred) = resolveKeyCollisions(plannedByCluster)
+    // upserts at the SAME key is unwritable — the second `replaceOne` hits the `key`
+    // unique index as an E11000 (prod PL, 'Lalka', this incident) — but the two
+    // clusters are NOT one film, so `resolveKeyCollisions` does not merge them (that
+    // would show one film's screenings under the other's title/poster/tmdbId, worse
+    // than the crash it replaces): it keeps ONE cluster's promotion at the plain key
+    // and gives every other colliding cluster a DIFFERENT stored key instead, derived
+    // from its own tmdbId/imdbId — see [[resolveKeyCollisions]].
+    val (kept, deferred, disambiguated) = resolveKeyCollisions(plannedByCluster, fresh)
     val upserts       = kept.map(cp => (cp.filmId, cp.key, cp.record))
     val newPromotions = kept.collect { case cp if cp.isNewFilm => cp.key -> cp.record }
     val survivors     = upserts.map(_._1).toSet
     // A deferred cluster's OWN pre-existing `movies` row (if it had one — a legacy
     // duplicate this fold would otherwise have retired) is left exactly as it is:
     // not upserted (nothing here decided its content changed), not deleted either.
+    // A DISAMBIGUATED cluster needs no such protection: it IS upserted (under its
+    // suffixed key), so its own id is already in `survivors`.
     val protectedIds  = deferred.flatMap(_.loserExistingIds).toSet
     val moviesDeletes = moviesRows.map(_.id).distinct.filterNot(id => survivors.contains(id) || protectedIds.contains(id))
     // Derived from `moviesDeletes`, never widening it: the deletes stay exactly what they
@@ -263,11 +320,12 @@ object StagingFold {
     // the same rows and re-detects (and re-defers) the same collision — cheaply, and
     // without ever raising, so nothing retries under backoff or reschedules; it simply
     // waits for the ambiguity to resolve on its own (one side re-resolving its tmdbId,
-    // or a human merging by hand).
+    // or a human merging by hand). A DISAMBIGUATED cluster's staging rows are NOT held
+    // back — it promoted this round — so only the true defers narrow `consumedStaging`.
     val deferredRawKeys = deferred.flatMap(_.loserOwnRawKeys).toSet
     val consumedStaging = stagingRows.filterNot(r => deferredRawKeys.contains(CacheKey(r.title, r.year, normalizer)))
     Plan(upserts, moviesDeletes, consumedStaging, newPromotions, retirements,
-      deferred = deferred.map(_.collision))
+      deferred = deferred.map(_.collision), disambiguated = disambiguated)
   }
 
   /** One cluster's plan before cross-cluster collision resolution: the id/key/record
@@ -281,9 +339,10 @@ object StagingFold {
     ownRawKeys: Seq[CacheKey], existingIds: Seq[FilmId]
   )
 
-  /** One cluster that lost a key collision: what a caller needs to leave it alone
-   *  (its own raw keys, so its staging rows stay unconsumed; its own existing ids, so
-   *  they stay undeleted) and what it needs to log the deferral. */
+  /** One cluster that lost a key collision and carries no stable identity of its own
+   *  (see [[DeferredIdentityCollision]]): what a caller needs to leave it alone (its
+   *  own raw keys, so its staging rows stay unconsumed; its own existing ids, so they
+   *  stay undeleted) and what it needs to log the deferral. */
   private case class DeferredCluster(loserOwnRawKeys: Seq[CacheKey], loserExistingIds: Seq[FilmId], collision: DeferredIdentityCollision)
 
   /** Resolve every key two or more clusters concluded down to ONE promoted cluster —
@@ -295,38 +354,96 @@ object StagingFold {
    *  film — `idsByKey` in [[planGroup]] already resolves that case (two literal
    *  `movies` documents at one key) inside a single cluster, before this ever runs.
    *
-   *  The winner is an EXISTING row over a freshly-minted one, and the lower id on a
-   *  tie — deterministic, order-independent. Every other cluster at that key is
-   *  DEFERRED: not written, not merged into the winner, not retired — simply left out
-   *  of this round, exactly as if its staging rows had not concluded yet. The next
-   *  fold attempt re-runs this same decision from the same (unconsumed) staging rows,
-   *  so a later tick where one side's identity resolves differently — or a human
-   *  merges the two films by hand — is what actually converges it, not a guess made
-   *  here. A no-op — one cluster per key, returned as-is — for every ordinary fold,
-   *  which is all of them bar a same-title-same-year collision between two films the
-   *  corpus otherwise correctly keeps apart. */
-  private def resolveKeyCollisions(planned: Seq[ClusterPlan]): (Seq[ClusterPlan], Seq[DeferredCluster]) = {
+   *  THE WINNER, deterministically: the cluster with the lower tmdbId (or, lacking
+   *  one, the lower imdbId), never `isNewFilm`/`FilmId` — an id is minted from the key
+   *  a row was FIRST created under, i.e. from ARRIVAL ORDER, and ranking on it is
+   *  exactly the bug this replaces (poland/convergence run 34271323339: the same two
+   *  clusters flipped which one "won" four times in one boot as more decorated
+   *  siblings landed, because by the time BOTH already had their own pre-existing
+   *  `movies` row the old `(isNewFilm, FilmId)` tie-break degraded to comparing
+   *  `FilmId` strings alone). tmdbId/imdbId are real, externally-assigned identities,
+   *  fixed regardless of when this corpus first saw the film, so this pick is the same
+   *  whatever order the corpus replays in.
+   *
+   *  EVERY OTHER cluster at that key is PROMOTED TOO, not held back, provided it
+   *  carries a tmdbId or an imdbId of its own: [[CacheKey.disambiguated]] suffixes its
+   *  stored key with that identity — content-derived and just as order-independent as
+   *  the winner pick — while `CorpusIndex` still buckets it under the shared plain
+   *  title (`CacheKey.lookupBase`), so every future listing of either film keeps
+   *  reaching `ScrapeLanding.chooseConcluded`'s runtime/venue disambiguation exactly as
+   *  it does today. Only a loser with NEITHER a tmdbId NOR an imdbId — nothing stable
+   *  to suffix with — falls back to the old behaviour: DEFERRED, not written, not
+   *  merged, not retired, its staging rows left unconsumed so the next fold attempt
+   *  re-detects (and re-defers) the same collision until an identity resolves or a
+   *  human merges the two films by hand.
+   *
+   *  A no-op — one cluster per key, returned as-is — for every ordinary fold, which is
+   *  all of them bar a same-title-same-year collision between two films the corpus
+   *  otherwise correctly keeps apart.
+   *
+   *  `fresh` (the same one [[planGroup]] mints brand-new ids with) re-mints a
+   *  disambiguated loser's id when it is itself brand new: every `ClusterPlan.filmId`
+   *  was computed BEFORE this function ever saw the group, from `survivor(members,
+   *  canonKey)` — and for two colliding brand-new clusters, `canonKey` is the SAME
+   *  contested key for both, so both already hold the IDENTICAL freshly-minted id.
+   *  Promoting the loser under that id, alongside the winner's, would upsert two
+   *  documents under one `_id` — Mongo just silently keeps whichever write lands
+   *  last — so a loser with no pre-existing row of its own gets a genuinely fresh id
+   *  derived from ITS OWN disambiguated key instead. A loser that already had a
+   *  `movies` row keeps that row's real id unconditionally: this is a RETITLE, not a
+   *  new document. */
+  private def resolveKeyCollisions(planned: Seq[ClusterPlan], fresh: CacheKey => FilmId): (Seq[ClusterPlan], Seq[DeferredCluster], Seq[DisambiguatedIdentityCollision]) = {
+    // Lower tmdbId first (absent sorts last), then lower imdbId, both real identities
+    // fixed independently of this corpus's arrival order. `isNewFilm`/`filmId.value`
+    // only break a tie neither id can — which, since `clusterByFilm` already split
+    // these clusters apart BY tmdbId/imdbId, means at least one of BOTH sides has
+    // neither: nothing content-based is left to rank them by, so this residual
+    // arrival-order tie-break is unavoidable there (and moot for the disambiguation
+    // below, which needs no winner/loser order among rows with no identity at all).
+    def rank(c: ClusterPlan) =
+      (c.record.tmdbId.isEmpty, c.record.tmdbId.getOrElse(Int.MaxValue),
+       c.record.imdbId.isEmpty, c.record.imdbId.getOrElse(""),
+       c.isNewFilm, c.filmId.value)
+    // The loser's OWN stable identity to suffix its stored key with — never a
+    // `FilmId` (arrival-order-derived, see above). `None` only for a loser with
+    // neither a tmdbId nor an imdbId, which falls back to deferring.
+    def stableSuffix(c: ClusterPlan): Option[String] =
+      c.record.tmdbId.map(id => s"tmdb$id").orElse(c.record.imdbId.map(id => s"imdb$id"))
     val byKey = planned.groupBy(_.key)
     val seen  = scala.collection.mutable.Set.empty[CacheKey]
-    val kept     = Seq.newBuilder[ClusterPlan]
-    val deferred = Seq.newBuilder[DeferredCluster]
+    val kept          = Seq.newBuilder[ClusterPlan]
+    val deferred      = Seq.newBuilder[DeferredCluster]
+    val disambiguated = Seq.newBuilder[DisambiguatedIdentityCollision]
     planned.foreach { cp =>
       if (!seen(cp.key)) {
         seen += cp.key
         val colliding = byKey(cp.key)
         if (colliding.sizeIs == 1) kept += cp
         else {
-          val ranked = colliding.sortBy(c => (c.isNewFilm, c.filmId.value))
+          val ranked = colliding.sortBy(rank)
           val winner = ranked.head
           kept += winner
           ranked.tail.foreach { loser =>
-            deferred += DeferredCluster(loser.ownRawKeys, loser.existingIds,
-              DeferredIdentityCollision(cp.key, winner.record.tmdbId, winner.record.imdbId,
-                loser.record.tmdbId, loser.record.imdbId))
+            stableSuffix(loser) match {
+              case Some(suffix) =>
+                val disambiguatedKey = CacheKey.disambiguated(cp.key, suffix)
+                // A brand-new loser's `filmId` was minted from the SAME contested
+                // `cp.key` the winner's was — re-mint from its own disambiguated key
+                // so the two promotions don't collide on `_id` (see the doc comment).
+                // An existing row's id is its real, permanent identity: kept as-is.
+                val filmId = if (loser.isNewFilm) fresh(disambiguatedKey) else loser.filmId
+                kept += loser.copy(filmId = filmId, key = disambiguatedKey)
+                disambiguated += DisambiguatedIdentityCollision(cp.key, disambiguatedKey,
+                  winner.record.tmdbId, winner.record.imdbId, loser.record.tmdbId, loser.record.imdbId)
+              case None =>
+                deferred += DeferredCluster(loser.ownRawKeys, loser.existingIds,
+                  DeferredIdentityCollision(cp.key, winner.record.tmdbId, winner.record.imdbId,
+                    loser.record.tmdbId, loser.record.imdbId))
+            }
           }
         }
       }
     }
-    (kept.result(), deferred.result())
+    (kept.result(), deferred.result(), disambiguated.result())
   }
 }
