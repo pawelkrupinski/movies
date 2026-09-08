@@ -797,6 +797,25 @@ groups:
       # question, not an incident, and a 7d window (6 episodes over the same
       # days) keeps paging for a week about cinemas that have simply closed.
       # Guarded by worker deploy.GrafanaCityEmptyQualifierSpec.
+      #
+      # A SECOND real cause besides the read-model outage this rule was written
+      # for: us/durant and us/moab paged this way with no read-model symptom at
+      # all — a city can go dark just because its own venue's freshest listing
+      # covers only a day or so of screenings, so the served count (strictly
+      # FUTURE showings) drains to zero as those pass and only recovers at the
+      # next scrape. Confirmed 2026-09-08 against the worker log: neither
+      # `[scrape-depth]` nor `[scrape-prune]` fired for any of durant's three
+      # venues at the trough — no guard was involved, the venue's own runway was
+      # just shorter than the country's scrape cadence (14h for US). Fixed the
+      # same day (`3cbbdec00`, `services.tasks.VenueScrapeCadence`): a venue
+      # whose landed listing runs out sooner is now re-scraped at HALF its
+      # remaining runway instead of waiting the full country window, so this
+      # page should fire far less often for that cause going forward — 113 US,
+      # 15 ES, 14 DE and 3 UK cinemas were measured running under their own
+      # cadence before the fix. Genuinely reduces the frequency, not necessarily
+      # to zero (a floor of 30min still leaves a thin margin), so if this alert
+      # names a small single/few-venue city, check the venue's OWN site before
+      # chasing a read-model cause — it may simply be between screenings.
       - uid: kinowo-movies-served-city-empty
         title: City serving zero films (was active)
         condition: C
@@ -807,7 +826,7 @@ groups:
           severity: critical
         annotations:
           summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 24h)'
-          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite peaking at >=4 films in the last 24h — the city went dark. The likely cause is a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage). Check web logs for "findAllMovies failed" / "Missing field", and https://kinowo.net/{{ $labels.city }}/.'
+          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite peaking at >=4 films in the last 24h — the city went dark. TWO known causes: (1) a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage) — check web logs for "findAllMovies failed" / "Missing field"; (2) a small/thin venue whose own listing ran out before its next scrape (durant/moab, 2026-09-08) — check https://kinowo.net/{{ $labels.city }}/ and the venue''s own site before assuming (1) if this city has few venues.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
