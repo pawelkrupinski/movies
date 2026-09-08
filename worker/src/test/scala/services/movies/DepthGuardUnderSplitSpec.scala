@@ -64,6 +64,37 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
     storedShowtimes(repository, "Film 1") shouldBe 10
   }
 
+  it should "let a smaller consecutive-rejection cap accept a degraded tick sooner" in {
+    // The shape behind `ScrapeHealth.maxRejectionsFor`: a slow-cadence country's flat
+    // 3-tick grace can hold a venue's stale showtimes for far longer than its own
+    // scrape interval implies (es/Multicines Zamora, 2026-09-07: 21h). Wiring a
+    // smaller cap through `CaffeineMovieCache` accepts the degraded listing on the
+    // SECOND thin tick instead of the fourth.
+    val repository = splitRepository()
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer,
+      maxConsecutiveDepthRejections = 1)
+
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1)) // 1st reject: held
+    storedShowtimes(repository, "Film 1") shouldBe 12
+
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1)) // 2nd reject: accepted
+    storedShowtimes(repository, "Film 1") shouldBe 1
+  }
+
+  it should "keep the default cap's full grace when no override is given" in {
+    // Same two thin ticks, default (unset) cap: still held after both, matching the
+    // existing "discard a depth-degraded tick" spec above — the default threads
+    // through unchanged.
+    val repository = splitRepository()
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1))
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1))
+    storedShowtimes(repository, "Film 1") shouldBe 12
+  }
+
   it should "keep a stripped slot's showtime count available to the guard" in {
     // The mechanism the two specs above depend on, pinned directly: stripping for cache
     // residency drops the list but must not drop how many there were.

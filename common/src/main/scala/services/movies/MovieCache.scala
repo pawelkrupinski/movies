@@ -278,7 +278,14 @@ class CaffeineMovieCache(
   // the cache's identity country-correct rather than process-global. REQUIRED,
   // not defaulted: this is the production cache, and every CacheKey it builds
   // is a row identity.
-  override val normalizer: TitleNormalizer
+  override val normalizer: TitleNormalizer,
+  // How many consecutive thin ticks `ScrapeLanding`'s depth guard holds a venue
+  // before accepting a degraded listing, forwarded verbatim to it. Defaults from
+  // THIS deployment's own scrape cadence (`KINOWO_SCRAPE_FRESHNESS_MINUTES`, read
+  // once here rather than by `ScrapeLanding` itself so the guard's pure functions
+  // stay pure) — see `ScrapeHealth.maxRejectionsFor` for why a flat "3" isn't safe
+  // for the slower-cadence countries.
+  maxConsecutiveDepthRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.defaultScrapeTtl)
 ) extends MovieCache with LandingStore with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built
@@ -1120,7 +1127,8 @@ class CaffeineMovieCache(
    *  [[LandingStore]]. Constructed here, on `this`, because the store IS this cache;
    *  the landing reads nothing from it until the first scrape, so the not-yet-built
    *  `this` it receives is never observed. */
-  private val landing = new ScrapeLanding(this, repository, staging, bus, screeningTokens, enrichmentLanguage)
+  private val landing = new ScrapeLanding(this, repository, staging, bus, screeningTokens, enrichmentLanguage,
+    maxConsecutiveDepthRejections)
   /** [[LandingStore]]: how many rows are resident — zero is the cold mirror the
    *  landing's first scrape guards against. */
   private[services] def residentCount: Long = positive.estimatedSize()

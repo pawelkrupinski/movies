@@ -74,7 +74,15 @@ private[movies] final class ScrapeLanding(
   screeningTokens: ScreeningTokens,
   // The deployment's language, used to canonicalise cinema-reported production
   // countries into the deployment's own (see `CountryNames.canonical`).
-  enrichmentLanguage: java.util.Locale
+  enrichmentLanguage: java.util.Locale,
+  // How many consecutive thin ticks the DEPTH guard holds before accepting a
+  // degraded listing — see `ScrapeHealth.maxRejectionsFor` for why this can't stay
+  // one constant everywhere: the constant's wall-clock hold scales with this
+  // deployment's own scrape cadence, from a 3h hold in Poland to a 42h one in the
+  // US. Defaults to the OLD flat constant so every existing single-country
+  // construction (including tests) is unchanged; `CaffeineMovieCache` wires the
+  // cadence-aware value.
+  maxConsecutiveDepthRejections: Int = ScrapeHealth.MaxConsecutiveDepthRejections
 ) extends Logging {
 
   import store.{corpusIndex, normalizer}
@@ -150,7 +158,8 @@ private[movies] final class ScrapeLanding(
     val knownCinemaShowtimes = corpusIndex.slotsOf(cinema).map { case (_, _, sd) =>
       ShowtimesDigest.slotShowtimeCount(sd) }.sum
     val batchShowtimes       = movies.iterator.map(_.showtimes.size).sum
-    ScrapeHealth.depth(knownCinemaShowtimes, batchShowtimes, depthRejections.getOrElse(cinema.displayName, 0)) match {
+    ScrapeHealth.depth(knownCinemaShowtimes, batchShowtimes, depthRejections.getOrElse(cinema.displayName, 0),
+      maxConsecutiveDepthRejections) match {
       case ScrapeHealth.Depth.Reject(consecutive) =>
         depthRejections.put(cinema.displayName, consecutive)
         RemovalAudit.scrapeDepthGuarded(cinema.displayName, batchShowtimes, knownCinemaShowtimes, consecutive)

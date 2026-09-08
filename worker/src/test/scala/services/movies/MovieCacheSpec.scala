@@ -1158,15 +1158,30 @@ class MovieCacheSpec extends AnyFlatSpec with Matchers {
       events.exists(e => e.getFormattedMessage.contains("pruned") && e.getFormattedMessage.contains("Multikino")) shouldBe true)
   }
 
-  it should "still prune below the small-venue floor even on a severe drop — the guard only protects boards big enough for the shrink to be implausible" in {
+  it should "still prune a small venue's ordinary shrink, just below the absolute-drop floor" in {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
-    // Four films — under MinSlotsForShrinkGuard, so the shrink guard never engages:
-    // a small venue really can go from four films to one between ticks, so a big
-    // proportional drop there is a real schedule change and MUST prune, not linger.
+    // Four films, under MinSlotsForShrinkGuard, dropping to one — a drop of 3, one
+    // short of MinAbsoluteDropForShrinkGuard (4). A small venue really can go from
+    // four films to one between ticks, so this must prune, not linger.
     cache.recordCinemaScrape(Multikino, multiFilmScrape(4))
     cache.recordCinemaScrape(Multikino, Seq(multiFilmScrape(4).head))
     multikinoSlot(cache, "Film 1") should not be None
     multikinoSlot(cache, "Film 2") shouldBe None
+  }
+
+  it should "keep a small venue's slots when the drop is a near-total collapse, not an ordinary shrink" in {
+    // CineStars Hood River, 2026-09-07: 7 slots (all under MinSlotsForShrinkGuard),
+    // fresh scrape returns 1 — a drop of 6. MinSlotsForShrinkGuard used to exempt
+    // this outright, so the prune ran unguarded and deleted six still-screening
+    // films (Spider-Man: Brand New Day, Coyote vs. Acme, Cars, The Odyssey, By Any
+    // Means, The Dog Stars). MinAbsoluteDropForShrinkGuard (4) now catches it.
+    val cache = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
+    cache.recordCinemaScrape(Multikino, multiFilmScrape(7))
+    val events = captureRemovalAudit(cache.recordCinemaScrape(Multikino, Seq(multiFilmScrape(7).head)))
+    (1 to 7).foreach(i =>
+      withClue(s"Film $i must survive a small venue's near-total collapse: ")(multikinoSlot(cache, s"Film $i") should not be None))
+    withClue("guard skip must be audited: ")(
+      events.exists(e => e.getFormattedMessage.contains("SKIPPED") && e.getFormattedMessage.contains("Multikino")) shouldBe true)
   }
 
   // ── Depth guard: a scrape that keeps every film but loses their showtimes ──
