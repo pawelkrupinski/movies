@@ -40,6 +40,23 @@ import org.scalatest.matchers.should.Matchers
  *
  * `kinowo-movies-served-city-empty`, the companion that keeps paging while a
  * city stays dark, already scopes itself to `all` for the same reason.
+ *
+ * It also guards the rule's DIRECTION. The rule was two-sided (`abs()`) but the
+ * shape it exists for is the crater, and a jump is the system working: a small
+ * city's weekly programme lands in a single projection tick and its count
+ * doubles. Replaying the rule's own `expr` over 2026-09-04..09-08 gave 8
+ * episodes surviving the 5m `for`, and SEVEN were jumps -- zamora 0 -> 13,
+ * durant 3 -> 10 on three separate days, moab 3 -> 8, marktredwitz 12 -> 19,
+ * bernkastel-kues 20 -> 34. Each follows a scrape landing in the worker log:
+ * marktredwitz's 23:45Z jump follows `Refreshed Cineplanet Marktredwitz: 17
+ * entries` at 23:44:14Z, bernkastel-kues's 01:15Z jump follows `Refreshed
+ * Movietown Neubruecke: 30 entries` at 01:10:08Z. The `>= 4 films` floor cannot
+ * suppress them, because in a three-film town a +7 landing clears both the 50%
+ * and the 4-film bar; only the SIGN separates the two populations.
+ *
+ * The one real drop in those four days -- hood-river 7 -> 1 at 2026-09-07
+ * 22:55Z -- is what the rule is for, and still fires: `worker-us` re-scraped
+ * CineStars Hood River, got 1 entry, and scrape-prune deleted six films.
  */
 class GrafanaServedSwingScopeSpec extends AnyFlatSpec with Matchers {
 
@@ -48,6 +65,11 @@ class GrafanaServedSwingScopeSpec extends AnyFlatSpec with Matchers {
   private val SwingUid = "kinowo-movies-served-swing"
 
   private val Gauge = "kinowo_web_movies_served"
+
+  /** The deviation term the rule must compute: the gauge subtracted FROM its
+   *  own trailing baseline, so a drop is positive and a jump is negative. */
+  private val DropDeviation =
+    s"avg_over_time($Gauge{scope=\"all\"}[1h]) - $Gauge{scope=\"all\"}"
 
   /** The `- uid: kinowo-movies-served-swing` list item, up to the next rule. */
   private lazy val swingRule: String =
@@ -94,6 +116,36 @@ class GrafanaServedSwingScopeSpec extends AnyFlatSpec with Matchers {
           "does. "
       ) {
         selector should include("scope=\"all\"")
+      }
+    }
+  }
+
+  it should "measure the drop only, not the jump a scrape landing makes" in {
+    swingQueries.foreach { query =>
+      withClue(
+        s"`$SwingUid` computes `abs(...)`, so it fires on a JUMP as readily as on a drop. A jump " +
+          "is the system working: a small city's weekly programme lands in one projection tick " +
+          "and its count doubles. Seven of the eight episodes over 2026-09-04..09-08 were that " +
+          "shape -- zamora 0 -> 13, durant 3 -> 10 three days running, moab 3 -> 8, marktredwitz " +
+          "12 -> 19, bernkastel-kues 20 -> 34 -- each following a `Refreshed <cinema>: N entries` " +
+          "line in the worker log. The `>= 4 films` floor cannot separate them, because a +7 " +
+          "landing in a three-film town clears both bars. Subtract the gauge FROM the baseline " +
+          "so that only a drop is positive. "
+      ) {
+        query should not include "abs("
+      }
+    }
+  }
+
+  it should "orient the deviation so that a drop is the positive side" in {
+    swingQueries.foreach { query =>
+      withClue(
+        s"`$SwingUid` no longer subtracts `$Gauge` FROM `avg_over_time($Gauge...)`. That " +
+          "orientation is what makes a drop positive and a jump negative, so the `gt 0.5` " +
+          "threshold sees craters only. Reversing the operands silently re-admits every " +
+          "scrape-landing jump. "
+      ) {
+        query should include(DropDeviation)
       }
     }
   }

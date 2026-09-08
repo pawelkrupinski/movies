@@ -678,19 +678,37 @@ groups:
                   reducer: { type: last, params: [] }
               refId: C
 
-      # ---- Per-city served-film count swung suddenly (either direction) -----
+      # ---- Per-city served-film count DROPPED suddenly ---------------------
       # The web exposes kinowo_web_movies_served{city,scope} — distinct films
       # served per /:city/ page, sampled every minute from the real serving path.
-      # This rule fires when a city's count deviates from its own trailing 1h
-      # average by >50% AND by >=4 films — in EITHER direction (abs()). The
-      # relative test catches the shape of a read-model outage (a malformed
-      # web_movies row empties the corpus → a city craters to 0); the absolute
-      # >=4 floor suppresses the noise of tiny-town cities where +-2 films is a
-      # normal day-to-day swing. It's inherently a TRANSITION ping (the 1h
-      # baseline catches up within ~an hour, so it self-resolves); the city-empty
-      # rule below is the companion that keeps paging while a city stays dark.
+      # This rule fires when a city's count falls below its own trailing 1h
+      # average by >50% AND by >=4 films. The relative test catches the shape of
+      # a read-model outage (a malformed web_movies row empties the corpus → a
+      # city craters to 0); the absolute >=4 floor suppresses the noise of
+      # tiny-town cities where -2 films is a normal day-to-day swing. It's
+      # inherently a TRANSITION ping (the 1h baseline catches up within ~an hour,
+      # so it self-resolves); the city-empty rule below is the companion that
+      # keeps paging while a city stays dark.
       #
-      # scope="all" ONLY, and that selector is load-bearing. The other scope,
+      # DROPS ONLY, and the orientation of the subtraction is load-bearing. The
+      # rule was two-sided (abs()) until 2026-09-08, and in that form a JUMP paged
+      # as readily as a crater — but a jump is the system working: a small city's
+      # weekly programme lands in one projection tick and its count doubles.
+      # Replaying this expr over 2026-09-04..09-08 gave 8 episodes surviving the
+      # 5m `for`, and SEVEN were jumps: zamora 0 → 13, durant 3 → 10 on three
+      # separate days, moab 3 → 8, marktredwitz 12 → 19, bernkastel-kues 20 → 34.
+      # Each follows a scrape landing in the worker log — marktredwitz's 23:45Z
+      # jump follows "Refreshed Cineplanet Marktredwitz: 17 entries" at 23:44:14Z,
+      # bernkastel-kues's 01:15Z jump follows "Refreshed Movietown Neubrücke: 30
+      # entries" at 01:10:08Z. The >=4 floor cannot suppress them, because a +7
+      # landing in a three-film town clears both bars; only the SIGN separates the
+      # two populations. Subtracting the gauge FROM the baseline makes a drop
+      # positive and a jump negative, so the gt 0.5 threshold sees craters only.
+      # The one real drop in those four days still fires: hood-river 7 → 1 at
+      # 2026-09-07 22:55Z, when worker-us re-scraped CineStars Hood River, got one
+      # entry, and scrape-prune deleted six films.
+      #
+      # scope="all" ONLY, and that selector is load-bearing too. The other scope,
       # "tomorrow", counts films showing on the NEXT LOCAL CALENDAR DAY, so every
       # city's series steps to a different day's programme at local midnight and
       # the 1h baseline spends the next hour averaging two unrelated days. On
@@ -702,9 +720,14 @@ groups:
       # moved a film across either midnight. No threshold separates that from a
       # real drop, because on this metric it IS the same event; only the calendar
       # day on each side of the step differs, and the rule cannot ask.
+      #
+      # Note the alert time is the ALERTING host's clock, not the city's: the
+      # hood-river page landed at 00:55 CEST and read as a midnight rollover
+      # while Hood River's own clock said 15:51 PDT. Check the CITY's zone before
+      # calling a midnight-shaped alert a rollover.
       # Guarded by worker deploy.GrafanaServedSwingScopeSpec.
       - uid: kinowo-movies-served-swing
-        title: Films served per city swung suddenly
+        title: Films served per city dropped suddenly
         condition: C
         for: 5m
         noDataState: OK
@@ -712,8 +735,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: '{{ $labels.city }} ({{ $labels.scope }}) film count swung sharply vs its 1h average'
-          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" is >50% and >=4 films off its trailing 1h average — a sudden jump or drop in what the web is serving. A drop is the read-model-outage shape (a malformed web_movies row empties the corpus, every city craters); a jump can be a scrape/projection anomaly. Check https://kinowo.net/{{ $labels.city }}/ and the "films served per city" dashboard panel.'
+          summary: '{{ $labels.city }} ({{ $labels.scope }}) film count dropped sharply vs its 1h average'
+          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" has fallen >50% and >=4 films below its trailing 1h average — a sudden drop in what the web is serving. That is the read-model-outage shape (a malformed web_movies row empties the corpus, every city craters), or a scrape-prune deleting a venue''s programme after a thin listing. Jumps do NOT page: a count doubling is a weekly programme landing. Check https://kinowo.net/{{ $labels.city }}/ and the "films served per city" dashboard panel, and read the alert time in the CITY''s timezone before calling it a rollover.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -721,7 +744,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '(abs(kinowo_web_movies_served{scope="all"} - avg_over_time(kinowo_web_movies_served{scope="all"}[1h])) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and (abs(kinowo_web_movies_served{scope="all"} - avg_over_time(kinowo_web_movies_served{scope="all"}[1h])) >= 4)'
+              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4)'
               instant: true
               range: false
               intervalMs: 1000
