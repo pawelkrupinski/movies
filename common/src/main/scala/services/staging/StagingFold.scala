@@ -50,8 +50,38 @@ object StagingFold {
     case scala.util.Failure(e: com.mongodb.MongoException)
       if e.hasErrorLabel(com.mongodb.MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) && attempt < maxRetries =>
       Next.Retry(e)
+    // A DIFFERENT title-group's fold can resolve to this SAME tmdbId and win the race to
+    // create the film's `movies` row first — nothing serializes two `StagingFold` tasks
+    // against each other (see `MongoStagingFolder`'s doc comment), so a decorated
+    // spelling that concludes an identity another concurrent/prior fold already promoted
+    // has its own insert collide with the partial UNIQUE index on `tmdbId` (prod PL,
+    // 2026-09-08: 'Lalka' tmdbId 1321666, folded from a dozen decorated spellings —
+    // several concluded the identity independently, and whichever committed second hit
+    // `E11000 … index: tmdbId_1`). The winner's write is majority-committed by the time
+    // the loser's fails, so a bare retry re-reads with it already visible, and THIS
+    // attempt's own cluster then merges into it through `reconcileTmdbIds`'s sibling
+    // lookup instead of re-inserting — the same "two writers, one wins, the other
+    // reconciles" shape the transient-error retry above already handles, just tripped by
+    // a write conflict on identity rather than the transaction machinery. Message-matched
+    // (not a bare `isDuplicateKey`) so a `key_1` collision — two DIFFERENT films
+    // concluding the identical (sanitize, year) key, which `resolveKeyCollisions`
+    // already defers deterministically inside ONE `planGroup` call — still falls through
+    // to `Abandon`: the same two clusters conclude the same collision every time, so
+    // retrying it cannot help and would only spend the budget masking it.
+    case scala.util.Failure(e: com.mongodb.MongoWriteException)
+      if services.MongoErrors.isDuplicateKey(e) && tmdbIdCollision(e) && attempt < maxRetries =>
+      Next.Retry(e)
     case scala.util.Failure(e) => Next.Abandon(e)
   }
+
+  /** True when a duplicate-key write error names the `tmdbId` unique index specifically.
+   *  The driver's `WriteError` carries no structured index name, only the server's text
+   *  (`"... index: tmdbId_1 dup key: { tmdbId: 1321666 }"`), so this is matched on the
+   *  message rather than a code alone — `code == 11000` alone would also swallow a
+   *  `key_1` collision, which is a different, non-retryable situation (see the call
+   *  site in [[nextAfterAttempt]]). */
+  private def tmdbIdCollision(e: com.mongodb.MongoWriteException): Boolean =
+    Option(e.getError).flatMap(err => Option(err.getMessage)).exists(_.contains("tmdbId"))
 
   /** What to write to bring `movies` to its folded+settled state, and which
    *  staging rows were consumed. `moviesDeletes` are existing `movies` rows in

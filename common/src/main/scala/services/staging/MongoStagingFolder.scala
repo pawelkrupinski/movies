@@ -120,7 +120,11 @@ class MongoStagingFolder(
           result = Some(newPromotions)
         case StagingFold.Next.Retry(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
-          logger.warn(s"Staging fold '$cleanTitle' hit a transient txn error (attempt $attempt): ${e.getMessage} — retrying.")
+          // Covers both a transient transaction error AND a losing race against a
+          // concurrent fold for another title-group that resolved to the same tmdbId
+          // (see `StagingFold.nextAfterAttempt`) — the retry re-reads and finds the
+          // winner's row either way.
+          logger.warn(s"Staging fold '$cleanTitle' hit a retryable error (attempt $attempt): ${e.getMessage} — retrying.")
         case StagingFold.Next.Abandon(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
           logger.error(s"Staging fold '$cleanTitle' aborted after $attempt attempt(s): ${e.getMessage} " +

@@ -1,7 +1,8 @@
 package services.staging
 
-import com.mongodb.{MongoException, ServerAddress}
+import com.mongodb.{MongoException, MongoWriteException, ServerAddress, WriteError}
 import com.mongodb.MongoSocketReadException
+import org.bson.BsonDocument
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -26,6 +27,21 @@ class StagingFoldOutcomeSpec extends AnyFlatSpec with Matchers {
     e
   }
 
+  // The prod PL 2026-09-08 incident, verbatim shape: two decorated 'Lalka' spellings
+  // (tmdbId 1321666) folded as separate title-groups, and whichever committed second
+  // hit the partial unique index its sibling had just satisfied.
+  private def tmdbIdRace: MongoWriteException = new MongoWriteException(
+    new WriteError(11000,
+      "E11000 duplicate key error collection: kinowo.movies index: tmdbId_1 dup key: { tmdbId: 1321666 }",
+      new BsonDocument()),
+    new ServerAddress("localhost", 27017), java.util.Collections.emptyList[String]())
+
+  private def keyCollision: MongoWriteException = new MongoWriteException(
+    new WriteError(11000,
+      "E11000 duplicate key error collection: kinowo.movies index: key_1 dup key: { key: \"lalka|2026\" }",
+      new BsonDocument()),
+    new ServerAddress("localhost", 27017), java.util.Collections.emptyList[String]())
+
   "a successful attempt" should "commit, promotions and all" in {
     StagingFold.nextAfterAttempt(Success(Seq.empty), attempt = 1, maxRetries) shouldBe
       StagingFold.Next.Commit(Seq.empty)
@@ -48,5 +64,32 @@ class StagingFoldOutcomeSpec extends AnyFlatSpec with Matchers {
     next                                        shouldBe StagingFold.Next.Abandon(cause)
     // …and specifically NOT the value a fold that promoted nothing returns.
     next                                 should not be StagingFold.Next.Commit(Seq.empty)
+  }
+
+  // THE 2026-09-08 regression. A losing race against a DIFFERENT title-group's fold for
+  // the same tmdbId used to abandon on the very first attempt (a duplicate-key write
+  // error carries no transient label), rethrowing and rescheduling the whole task under
+  // backoff instead of just re-reading — noisy, and slow to converge. A retry is safe
+  // here specifically because the winner's write is already majority-committed by the
+  // time the loser's fails, so the very next attempt sees it as a sibling and merges.
+  "a losing race against a sibling fold for the same tmdbId, with retries left" should
+    "go round again rather than abandon on the first attempt" in {
+    StagingFold.nextAfterAttempt(Failure(tmdbIdRace), attempt = 1, maxRetries) shouldBe a[StagingFold.Next.Retry]
+  }
+
+  "a losing race against a sibling fold for the same tmdbId, out of retries" should
+    "be abandoned, not silently committed" in {
+    StagingFold.nextAfterAttempt(Failure(tmdbIdRace), attempt = maxRetries, maxRetries) shouldBe
+      a[StagingFold.Next.Abandon]
+  }
+
+  // A `key_1` collision is a DIFFERENT situation: two clusters `resolveKeyCollisions`
+  // already kept apart (disagreeing tmdbId/imdbId) both concluding the identical
+  // (sanitize, year) key. The same two clusters produce the same collision every retry,
+  // so — unlike the tmdbId race above — retrying cannot help; it must abandon immediately
+  // like any other non-transient failure, per `resolveKeyCollisions`'s own deferral.
+  "a key_1 collision between two genuinely different films" should
+    "be abandoned rather than retried" in {
+    StagingFold.nextAfterAttempt(Failure(keyCollision), attempt = 1, maxRetries) shouldBe a[StagingFold.Next.Abandon]
   }
 }
