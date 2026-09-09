@@ -2987,6 +2987,34 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
+    "_id" : "f2784f89d8cb5fb8",
+    "title" : "Kawa i papierosy",
+    "originalTitle" : "Coffee and Cigarettes",
+    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/kawa_i_paierosy.jpg?itok=dtvjVQpK",
+    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/iKOwWFlCSWDkm2d9HrZnm9LWQUT.jpg", "https://m.media-amazon.com/images/M/MV5BZGQ2MmE1ZDItOTk0Zi00ZDVlLTg4MzUtYTdlMTQyNmE3OTI2XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 98,
+    "releaseYear" : 2004,
+    "genres" : [ "Komedia", "Dramat" ],
+    "countries" : [ "USA", "Włochy", "Japonia" ],
+    "directors" : [ "Jim Jarmusch" ],
+    "cast" : [ "Roberto Benigni", "Steven Wright", "Joie Lee", "Cinqué Lee", "Steve Buscemi" ],
+    "synopsis" : "Jedenaście krótkich epizodów. Każdy przedstawia innych bohaterów i inną historię, ale wszystkie łączy jedno, kawa i papierosy. Dwie rzeczy, bez których nie da się żyć, i które najlepiej smakują razem. Tematami rozmów są np. możliwość użycia nikotyny jako środka owadobójczego, albo co tak naprawdę stało się z Elvisem Presleyem.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/DyqYmsxWjQ0" ],
+    "ratings" : {
+      "imdb" : 7,
+      "imdbUrl" : "https://www.imdb.com/title/tt0379217/",
+      "metascore" : 65,
+      "metacriticUrl" : "https://www.metacritic.com/movie/coffee-and-cigarettes",
+      "rottenTomatoes" : 63,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/coffee_and_cigarettes",
+      "filmweb" : 7.6,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Kawa+i+papierosy-2003-110812"
+    },
+    "weightedRating" : 6.8500000000000005,
+    "synopsisByCity" : {
+      "warszawa" : "W swoich - często improwizowanych – nowelkach, Jarmusch pozwala spotkać się na chwilę bohaterom, ale i aktorom. Przy kawiarnianych stolikach zatrzymują się na chwilę m.in. Tom Waits i Iggy Pop, Steve Coogan i Alfred Molina, Bill Murray z raperami RZA i GZA, Cate Blanchett z… Cate Blanchett, by pogadać o medycynie alternatywnej, wspólnych przodkach, Elvisie Presley’u, czy latach XX w Paryżu."
+    }
+  }, {
     "_id" : "f27ef0f3e2fb09f9",
     "title" : "Rozmowa",
     "originalTitle" : "The Conversation",
@@ -3764,6 +3792,26 @@
     "weightedRating" : 0,
     "synopsisByCity" : {
       "warszawa" : "Historia morderczej kurtki w filmie króla absurdu Quentina Dupieux\n\n.\n\nGeorges kupuje zamszową kurtkę z jeleniej skóry i zaczyna traktować ją jak sens własnego życia. Kiedy wpada na pomysł, że powinien być jedyną osobą na świecie noszącą kurtkę, jego codzienność zaczyna zamieniać się w coraz bardziej absurdalny chaos. Podszywając się pod reżysera filmowego i kręcąc kompletnie przypadkowe sceny, Georges coraz mocniej odpływa w świat własnych obsesji i dziwnych decyzji.\n\nQuentin Dupieux bierze historię o facecie zakochanym w kurtce i robi z niej jedną z najlepszych współczesnych komedii absurdu. „Deerskin” jest śmiertelnie poważny w swoim szaleństwie – i właśnie dlatego działa tak dobrze. Absurdalny humor, idealne tempo i kompletna pewność siebie Dupieux sprawiają, że widz zaczyna akceptować nawet najbardziej niedorzeczne decyzje bohatera.\n\nQuentin Dupieux to jeden z najciekawszych współczesnych twórców kina absurdu i autor takich filmów jak „Mordercza opona”, „Palenie powoduje kaszel” czy „Mandibles”. Jego filmy zawsze zaczynają się od pozornie absurdalnego pomysłu, ale bardzo szybko zamieniają się w coś dużo bardziej błyskotliwego i nieprzewidywalnego. W „Deerskin” Dupieux perfekcyjnie łączy komedię, dziwny niepokój i satyrę na męskie ego, tworząc film równie śmieszny, co kompletnie surrealistyczny."
+    }
+  }, {
+    "_id" : "f31360e7630dd180",
+    "title" : "Kobiecy świat: Zaproszenie",
+    "posterUrl" : "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg",
+    "fallbackPosterUrls" : [ ],
+    "releaseYear" : 2026,
+    "genres" : [ "Komedia" ],
+    "countries" : [ "USA" ],
+    "directors" : [ ],
+    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Kobiecy+%C5%9Bwiat%3A+Zaproszenie/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kobiecy+%C5%9Bwiat%3A+Zaproszenie",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kobiecy+%C5%9Bwiat%3A+Zaproszenie"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : {
+      "warszawa" : "Zapraszamy na cykl filmowy dedykowany kobietom!\n\nRaz w miesiącu organizujemy spotkanie filmowe dedykowane specjalnie dla naszych widzek.\nZapewniamy miłą atmosferę w damskim towarzystwie (chociaż Panowie też są oczywiście mile widziani!).\nWspólnie oglądamy najbardziej rozchwytywane tytuły z naszego repertuaru, klasyki kina i ciekawe nowości warte zobaczenia.\nPrzed seansem można poczęstować się powitalną lampką wina, otrzymać wyjątkowe prezenty oraz wsiąść udział w losowaniu nagród!\n\nJoe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?"
     }
   }, {
     "_id" : "f323862b49fe0f8c",
@@ -4942,27 +4990,20 @@
   }, {
     "_id" : "f44185c33505e5ce",
     "title" : "Poza prawem // jim jarmusch",
-    "originalTitle" : "執法先鋒",
-    "posterUrl" : "https://image.tmdb.org/t/p/w500/diXiT68DC6mIlzv3WsOS2iYkl36.jpg",
-    "fallbackPosterUrls" : [ "https://m.media-amazon.com/images/M/MV5BY2RhODlhYTMtOWViNC00NTM4LThiMDgtNDM1YjRiMjdlZjVmXkEyXkFqcGc@._V1_.jpg" ],
+    "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 107,
     "releaseYear" : 1986,
-    "genres" : [ "Akcja", "Komedia", "Kryminał", "Dramat", "Thriller" ],
-    "countries" : [ "Hongkong" ],
-    "directors" : [ "元奎" ],
-    "cast" : [ "元彪", "Cynthia Rothrock", "黃錦燊", "元奎", "午馬" ],
-    "synopsis" : "Prokurator (Yuen Biao), po nieudanym procesie dwóch mafiozów, po tym jak główny świadek zostaje wraz z całą rodziną zamordowany, postanawia sam wymierzyć sprawiedliwość. Ale nie tylko on działa poza prawem... o czym również przekona się ścigająca prokuratora dzielna policjantka (Cynthia Rothrock).",
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
     "trailerUrls" : [ ],
     "ratings" : {
-      "imdb" : 7.1,
-      "imdbUrl" : "https://www.imdb.com/title/tt0094374/",
-      "metacriticUrl" : "https://www.metacritic.com/search/%E5%9F%B7%E6%B3%95%E5%85%88%E9%8B%92/?category=2",
-      "rottenTomatoes" : 84,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/righting_wrongs_1986",
-      "filmweb" : 6.7,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Poza+prawem-1986-103188"
+      "metacriticUrl" : "https://www.metacritic.com/search/Poza+prawem+%2F%2F+jim+jarmusch/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Poza+prawem+%2F%2F+jim+jarmusch",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Poza+prawem+%2F%2F+jim+jarmusch"
     },
-    "weightedRating" : 7.400000000000001,
+    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "f4507708bc67e182",
@@ -6582,6 +6623,23 @@
     "synopsisByCity" : {
       "poznan" : "Pokazowi będzie towarzyszyć spotkanie z Markiem Silkiem.\n\nThe screening will be accompanied by a meeting with Marc Silk.\n\nMarc Silk – jeden z najbardziej znanych brytyjskich aktorów głosowych. Współpracował z George’em Lucasem przy „Star Wars Episode I”, gdzie użyczył głosu senatorowi Aks Moe. Znany jest przede wszystkim jako głos Johnny’ego Bravo dla Cartoon Network UK oraz Boba Budowniczego w USA i Kanadzie. Występował m.in. w produkcjach BBC i Nexflix. Brał udział w „Go Jetters”, „Roary The Racing Car”, „Teenage Mutant Ninja Turtles”, „Strange Hill High”, „Danger Mouse”, „LEGO City” czy „7 Bears”. Marka Silka można również usłyszeć w grach komputerowych. Jest m.in. narratorem gry o Harrym Potterze oraz ożywia postacie w „Labyrinth” i „Black & White”.\n\nMarc Silk – one of the most recognizable British voice actors. He worked with George Lucas on “Star Wars Episode I,” voicing Senator Aks Moe. He is best known as the voice of Johnny Bravo for Cartoon Network UK and Bob the Builder in the U.S. and Canada. He has appeared in productions for BBC and Netflix, including “Go Jetters,” “Roary the Racing Car,” “Teenage Mutant Ninja Turtles,” “Strange Hill High,” “Danger Mouse,” “LEGO City,” and “7 Bears.” He can also be heard in video games, including as narrator in a Harry Potter game and as characters in “Labyrinth” and “Black & White.”\n\nJohnny Bravo, excerpts, 10′\n\nKlipy z kreskówki Johnny Bravo oraz fragment talk-showu Johnny’ego Bravo.\n\nJohnny Bravo Cartoon video clips & excerpt from Johnny Bravo talk show.\n\nScooby-Doo, excerpts, 2’\n\nKlipy wideo ze Scoobym i Shaggym.\n\nScooby and Shaggy video clips.\n\nDanger Mouse s02e22: Dark Side of the Mouse, reż./dir. Robert Cullen, Wielka Brytania/United Kingdom 2014, 22’\n\nDzielna Mysz potrzebuje pomocy Crumhorna, aby powstrzymać Dudleya Poisona i Macka the Forka przed opublikowaniem kompromitujących nagrań wideo. Oczywiście wszystko jest częścią planu Crumhorna, by uciec. Teraz Dzielna Mysz musi poprosić o pomoc innych arcyzłoczyńców, aby ocalić Ziemię.\n\nDanger Mouse needs Crumhorn’s help to stop Dudley Poison and Mack the Fork from releasing embarrassing videos. Naturally it’s all part of Crumhorn’s plan to escape. Now Danger Mouse has to enlist other arch villains to help him save the Earth.\n\nDanger Mouse s02e23: The Scare Mouse Project, reż./dir. Robert Cullen, Wielka Brytania/United Kingdom 2014, 11’\n\nDzielna Mysz w końcu poznaje znaczenie strachu, gdy Headless Postman powraca, by zemścić się na potomku Ichaboda Mouse’a. Czy Dzielna Mysz będzie się chować, czy stanie do walki?\n\nDanger Mouse finally discovers the meaning of fear when the Headless Postman comes for revenge on Ichabod Mouse’s descendant. Will Danger Mouse cower or fight?\n\nStrange Hill High s02e07: Mitchell Who?, Chris Tichborne, Geoff Walker, Wielka Brytania/United Kingdom 2014, 22’\n\nMitchell przypadkowo wymazuje siebie z historii, usuwając swój szkolny transkrypt. Początkowo anonimowość wydaje się zabawna, ale gdy przyjaciele o nim zapominają, a on sam zaczyna znikać, zwraca się do Samii, jedynej osoby, która go pamięta, o pomoc w zresetowaniu swojego istnienia.\n\nMitchell accidentally erases himself from history after deleting his school record. At first his anonymity is fun but when his friends forget him and he starts to disappear, he calls on Samia, the one person who can remember him, to help reboot his existence."
     }
+  }, {
+    "_id" : "f5a8c4578fc4bc74",
+    "title" : "Zabriskie Point (1970)",
+    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/projekt_bez_nazwy__18__01.png",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Zabriskie+Point+%281970%29/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zabriskie+Point+%281970%29",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zabriskie+Point+%281970%29"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
   }, {
     "_id" : "f5a93e2b1c012a20",
     "title" : "Minionki i straszydła",
@@ -9680,60 +9738,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "f7a360cb2725aee2",
-    "title" : "Kawa i papierosy",
-    "originalTitle" : "Coffee and Cigarettes",
-    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/kawa_i_paierosy.jpg?itok=dtvjVQpK",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/iKOwWFlCSWDkm2d9HrZnm9LWQUT.jpg", "https://m.media-amazon.com/images/M/MV5BZGQ2MmE1ZDItOTk0Zi00ZDVlLTg4MzUtYTdlMTQyNmE3OTI2XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 98,
-    "releaseYear" : 2004,
-    "genres" : [ "Komedia", "Dramat" ],
-    "countries" : [ "USA", "Włochy", "Japonia" ],
-    "directors" : [ "Jim Jarmusch" ],
-    "cast" : [ "Roberto Benigni", "Steven Wright", "Joie Lee", "Cinqué Lee", "Steve Buscemi" ],
-    "synopsis" : "Jedenaście krótkich epizodów. Każdy przedstawia innych bohaterów i inną historię, ale wszystkie łączy jedno, kawa i papierosy. Dwie rzeczy, bez których nie da się żyć, i które najlepiej smakują razem. Tematami rozmów są np. możliwość użycia nikotyny jako środka owadobójczego, albo co tak naprawdę stało się z Elvisem Presleyem.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/DyqYmsxWjQ0" ],
-    "ratings" : {
-      "imdb" : 7,
-      "imdbUrl" : "https://www.imdb.com/title/tt0379217/",
-      "metascore" : 65,
-      "metacriticUrl" : "https://www.metacritic.com/movie/coffee-and-cigarettes",
-      "rottenTomatoes" : 63,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/coffee_and_cigarettes",
-      "filmweb" : 7.6,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Kawa+i+papierosy-2003-110812"
-    },
-    "weightedRating" : 6.8500000000000005,
-    "synopsisByCity" : {
-      "warszawa" : "W swoich - często improwizowanych – nowelkach, Jarmusch pozwala spotkać się na chwilę bohaterom, ale i aktorom. Przy kawiarnianych stolikach zatrzymują się na chwilę m.in. Tom Waits i Iggy Pop, Steve Coogan i Alfred Molina, Bill Murray z raperami RZA i GZA, Cate Blanchett z… Cate Blanchett, by pogadać o medycynie alternatywnej, wspólnych przodkach, Elvisie Presley’u, czy latach XX w Paryżu."
-    }
-  }, {
-    "_id" : "f7a360cb2725aee2~kawaipapierosyjimjarmusch",
-    "title" : "Kawa i papierosy // jim jarmusch",
-    "originalTitle" : "Coffee and Cigarettes",
-    "posterUrl" : "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/kawa_i_paierosy.jpg?itok=dtvjVQpK",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/iKOwWFlCSWDkm2d9HrZnm9LWQUT.jpg", "https://m.media-amazon.com/images/M/MV5BZGQ2MmE1ZDItOTk0Zi00ZDVlLTg4MzUtYTdlMTQyNmE3OTI2XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 98,
-    "releaseYear" : 2004,
-    "genres" : [ "Komedia", "Dramat" ],
-    "countries" : [ "USA", "Włochy", "Japonia" ],
-    "directors" : [ "Jim Jarmusch" ],
-    "cast" : [ "Roberto Benigni", "Steven Wright", "Joie Lee", "Cinqué Lee", "Steve Buscemi" ],
-    "synopsis" : "Jedenaście krótkich epizodów. Każdy przedstawia innych bohaterów i inną historię, ale wszystkie łączy jedno, kawa i papierosy. Dwie rzeczy, bez których nie da się żyć, i które najlepiej smakują razem. Tematami rozmów są np. możliwość użycia nikotyny jako środka owadobójczego, albo co tak naprawdę stało się z Elvisem Presleyem.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/DyqYmsxWjQ0" ],
-    "ratings" : {
-      "imdb" : 7,
-      "imdbUrl" : "https://www.imdb.com/title/tt0379217/",
-      "metascore" : 65,
-      "metacriticUrl" : "https://www.metacritic.com/movie/coffee-and-cigarettes",
-      "rottenTomatoes" : 63,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/coffee_and_cigarettes",
-      "filmweb" : 7.6,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Kawa+i+papierosy-2003-110812"
-    },
-    "weightedRating" : 6.8500000000000005,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "f7a781163a7585ac",
     "title" : "Dzieci z Bullerbyn",
     "originalTitle" : "Alla vi barn i Bullerbyn",
@@ -12567,27 +12571,6 @@
     "weightedRating" : 8.25,
     "synopsisByCity" : { }
   }, {
-    "_id" : "f98abd32f6623553",
-    "title" : "Zabriskie Point",
-    "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/projekt_bez_nazwy__18__01.png",
-    "fallbackPosterUrls" : [ "https://image.tmdb.org/t/p/w500/rsizhXAXbiqX31YVpGBCUV8lr16.jpg" ],
-    "runtimeMinutes" : 113,
-    "releaseYear" : 1970,
-    "genres" : [ "Dramat" ],
-    "countries" : [ "Włochy", "USA" ],
-    "directors" : [ "Michelangelo Antonioni" ],
-    "cast" : [ "Mark Frechette", "Daria Halprin", "Paul Fix", "G.D. Spradlin", "Bill Garaway" ],
-    "synopsis" : "Burzliwe lata 60-te XX wieku. Na uniwersytecie w Los Angeles dochodzi do rozruchów. Do kolorowych studentów, występujących przeciwko dyskryminacji rasowej, przyłączają się biali. Żądają równych praw, zapewnienia miejsc pracy. Podczas demonstracji ginie policjant. Świadkiem wydarzeń jest Mark, który ucieka z miasta skradzioną awionetką, tym samym rzucając na siebie podejrzenie o udział w strzelaninie, w której zginął policjant. Na pustyni w Arizonie spotyka hipiskę Darię. Wspólnie z nią wybiera się w podróż do Zabriskie Point, położonego w słynnej Dolinie Śmierci.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdbUrl" : "https://www.imdb.com/title/tt0066601/",
-      "metacriticUrl" : "https://www.metacritic.com/search/Zabriskie+Point/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Zabriskie+Point",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Zabriskie+Point"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "f98ad5a622534995",
     "title" : "Jak daleko stąd, jak blisko | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser",
     "originalTitle" : "Jak daleko stąd, jak blisko",
@@ -13954,121 +13937,6 @@
       "plock" : "Czy można zaprzyjaźnić się z drzewem i dzięki temu zmienić swoje życie?\n\nW nagrodzonym na festiwalu w Wenecji filmie Ildikó Enyedi („Dusza i ciało”) to pytanie staje się początkiem hipnotyzującej, pełnej emocji podróży. „Milcząca przyjaciółka” zaprasza do świata, w którym ludzie potrafią nawiązać głębokie relacje z naturą i komunikować się z nią poza słowami. To film-medytacja, który otula spokojem i napełnia mocą.\n\nW sercu uniwersyteckiego ogrodu botanicznego rośnie okazały miłorząb japoński (gingko biloba), który na przestrzeni wieku staje się niemym świadkiem i uczestnikiem historii trojga nieznajomych. Zdeterminowana dziewczyna walczy o miejsce na wydziale botaniki, szukając w cieniu drzewa schronienia przed uprzedzeniami zdominowanego przez mężczyzn świata nauki. Samotny student, który nigdy nie zwracał uwagi na rośliny, w jego milczącej obecności odnajduje punkt oparcia po życiowym zawirowaniu. Neurolog z Hong-Kongu (w tej roli znany z filmów Wonga Kar-Waia Tony Leung) pod wpływem kontaktu z drzewem zaczyna kwestionować swoje naukowe przekonania, odkrywając głęboką więź między tym, co widzialne, a tym, co nieuchwytne.\n\n„Milcząca przyjaciółka” to film, który koi, inspiruje i otwiera oczy na to, co na co dzień umyka naszej uwadze. Pozwala zanurzyć się w opowieści pełnej spokoju, piękna i emocjonalnej głębi, która przypomina, jak potężny wpływ ma na nas kontakt z przyrodą. To poruszająca historia o więziach, które przekraczają granice ludzkiego rozumienia – i o tym, że czasem najwierniejszego przyjaciela możemy znaleźć tam, gdzie najmniej się tego spodziewamy."
     }
   }, {
-    "_id" : "fa53b6c01e7d8954",
-    "title" : "Zaproszenie",
-    "originalTitle" : "The Invite",
-    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 108,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Komedia" ],
-    "countries" : [ "USA" ],
-    "directors" : [ "Olivia Wilde" ],
-    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
-    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
-    "ratings" : {
-      "imdb" : 6.7,
-      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
-      "metascore" : 77,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
-      "rottenTomatoes" : 92,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
-      "filmweb" : 6.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
-    },
-    "weightedRating" : 7.425,
-    "synopsisByCity" : {
-      "poznan" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne,...",
-      "wroclaw" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?",
-      "szczecin" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów. Gwiazdorska obsada w błyskotliwie pikantnej komedii o blaskach i cieniach pożycia małżeńskiego. Czy miłość i pożądanie mają swój nieprzekraczalny termin przydatności do spożycia? Aby małżeńskiemu życiu dodać trochę smaku czasem warto zaprosić sąsiadów. Do stołu i nie tylko. Jak wiadomo niedaleko jest z jadalni do sypialni. Genialne aktorstwo, przezabawne dialogi nierzadko zaprawione nutką goryczy i sporo erotycznego napięcia. Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?",
-      "przemysl" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny."
-    }
-  }, {
-    "_id" : "fa53b6c01e7d8954~kobiecyswiatzaproszenie",
-    "title" : "Kobiecy świat: Zaproszenie",
-    "originalTitle" : "The Invite",
-    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 108,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Komedia" ],
-    "countries" : [ "USA" ],
-    "directors" : [ "Olivia Wilde" ],
-    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
-    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
-    "ratings" : {
-      "imdb" : 6.7,
-      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
-      "metascore" : 77,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
-      "rottenTomatoes" : 92,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
-      "filmweb" : 6.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
-    },
-    "weightedRating" : 7.425,
-    "synopsisByCity" : {
-      "warszawa" : "Zapraszamy na cykl filmowy dedykowany kobietom!\n\nRaz w miesiącu organizujemy spotkanie filmowe dedykowane specjalnie dla naszych widzek.\nZapewniamy miłą atmosferę w damskim towarzystwie (chociaż Panowie też są oczywiście mile widziani!).\nWspólnie oglądamy najbardziej rozchwytywane tytuły z naszego repertuaru, klasyki kina i ciekawe nowości warte zobaczenia.\nPrzed seansem można poczęstować się powitalną lampką wina, otrzymać wyjątkowe prezenty oraz wsiąść udział w losowaniu nagród!\n\nJoe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?"
-    }
-  }, {
-    "_id" : "fa53b6c01e7d8954~zaproszeniekinotekadlarodzicow",
-    "title" : "Zaproszenie | Kinoteka dla rodziców",
-    "originalTitle" : "The Invite",
-    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 108,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Komedia" ],
-    "countries" : [ "USA" ],
-    "directors" : [ "Olivia Wilde" ],
-    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
-    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
-    "ratings" : {
-      "imdb" : 6.7,
-      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
-      "metascore" : 77,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
-      "rottenTomatoes" : 92,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
-      "filmweb" : 6.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
-    },
-    "weightedRating" : 7.425,
-    "synopsisByCity" : {
-      "warszawa" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?\n\nKinoteka dla Rodziców to nowy cykl wydarzeń w Kinotece, stworzony z myślą o opiekunach małych dzieci, którzy na co dzień rzadko mają możliwość skorzystania z oferty kulturalnej. Projekt odpowiada na ich potrzeby, oferując seanse najnowszych produkcji filmowych w warunkach dostosowanych do obecności niemowląt i maluchów. Pokazy odbywają się przy obniżonej głośności, z delikatnie przygaszonym światłem, a na sali dostępne są udogodnienia takie jak przewijak. Kluczowym elementem wydarzenia jest swobodna, wspierająca atmosfera – taka, w której naturalne zachowania dzieci nie są źródłem stresu, a rodzice mogą w pełni cieszyć się wizytą w kinie.\nWydarzenie będzie miało charakter cykliczny – seanse zaplanowano co dwa tygodnie, w czwartki o godzinie 11:30. Na początek przewidziane są cztery pokazy pilotażowe, z pierwszym seansem 7 maja.\n\nPartnerami cyklu są: LUU KIDS, SEYSSO, DEAR SOPHIE."
-    }
-  }, {
-    "_id" : "fa53b6c01e7d8954~zaproszeniezobaczprzedpremierowo",
-    "title" : "Zaproszenie | Zobacz przedpremierowo",
-    "originalTitle" : "The Invite",
-    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
-    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://www.novekino.pl/multimedia/zaproszenie_wis_ks/plakat.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 108,
-    "releaseYear" : 2026,
-    "genres" : [ "Dramat", "Komedia" ],
-    "countries" : [ "USA" ],
-    "directors" : [ "Olivia Wilde" ],
-    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
-    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
-    "ratings" : {
-      "imdb" : 6.7,
-      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
-      "metascore" : 77,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
-      "rottenTomatoes" : 92,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
-      "filmweb" : 6.1,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
-    },
-    "weightedRating" : 7.425,
-    "synopsisByCity" : {
-      "warszawa" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?"
-    }
-  }, {
     "_id" : "fa5bbb70d00a1bb8",
     "title" : "Iron Maiden: Burning Ambition",
     "fallbackPosterUrls" : [ ],
@@ -14081,6 +13949,24 @@
       "metacriticUrl" : "https://www.metacritic.com/search/Iron+Maiden%3A+Burning+Ambition/?category=2",
       "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Iron+Maiden%3A+Burning+Ambition",
       "filmwebUrl" : "https://www.filmweb.pl/search?query=Iron+Maiden%3A+Burning+Ambition"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
+    "_id" : "fa5c5dc0905c6cda",
+    "title" : "Kawa i papierosy // jim jarmusch",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 98,
+    "releaseYear" : 2003,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Kawa+i+papierosy+%2F%2F+jim+jarmusch/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kawa+i+papierosy+%2F%2F+jim+jarmusch",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kawa+i+papierosy+%2F%2F+jim+jarmusch"
     },
     "weightedRating" : 0,
     "synopsisByCity" : { }
@@ -17734,6 +17620,93 @@
       "wroclaw" : "Nominowany do Oscara i nagrodzony Grand Prix w Cannes film Lucasa Dhonata o dorastaniu, które przychodzi za szybko i zbyt brutalnie. Leo i Remi wychowują się razem. Łączy ich bliska relacja, której rozwój zostaje zakłócony. „Blisko” to opowieść o bliskości, która buduje i wzmacnia, choć czasem bywa bolesna.\nPo seansie zapraszamy na spotkanie z Pawłem Rudnickim profesorem Uniwersytetu DSW Ideis, pedagogiem i politologiem zajmującmy się badaniami nad edukacją, migracjami, nierównościami społecznymi oraz zaangażowanymi praktykami edukacyjnymi."
     },
     "ageRating" : "12"
+  }, {
+    "_id" : "fcbadf4943332426",
+    "title" : "Zaproszenie",
+    "originalTitle" : "The Invite",
+    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 108,
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "USA" ],
+    "directors" : [ "Olivia Wilde" ],
+    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
+    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
+    "ratings" : {
+      "imdb" : 6.7,
+      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
+      "rottenTomatoes" : 92,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
+    },
+    "weightedRating" : 7.425,
+    "synopsisByCity" : {
+      "poznan" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne,...",
+      "wroclaw" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?",
+      "szczecin" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów. Gwiazdorska obsada w błyskotliwie pikantnej komedii o blaskach i cieniach pożycia małżeńskiego. Czy miłość i pożądanie mają swój nieprzekraczalny termin przydatności do spożycia? Aby małżeńskiemu życiu dodać trochę smaku czasem warto zaprosić sąsiadów. Do stołu i nie tylko. Jak wiadomo niedaleko jest z jadalni do sypialni. Genialne aktorstwo, przezabawne dialogi nierzadko zaprawione nutką goryczy i sporo erotycznego napięcia. Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?",
+      "przemysl" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny."
+    }
+  }, {
+    "_id" : "fcbadf4943332426~zaproszeniekinotekadlarodzicow",
+    "title" : "Zaproszenie | Kinoteka dla rodziców",
+    "originalTitle" : "The Invite",
+    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 108,
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "USA" ],
+    "directors" : [ "Olivia Wilde" ],
+    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
+    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
+    "ratings" : {
+      "imdb" : 6.7,
+      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
+      "rottenTomatoes" : 92,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
+    },
+    "weightedRating" : 7.425,
+    "synopsisByCity" : {
+      "warszawa" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?\n\nKinoteka dla Rodziców to nowy cykl wydarzeń w Kinotece, stworzony z myślą o opiekunach małych dzieci, którzy na co dzień rzadko mają możliwość skorzystania z oferty kulturalnej. Projekt odpowiada na ich potrzeby, oferując seanse najnowszych produkcji filmowych w warunkach dostosowanych do obecności niemowląt i maluchów. Pokazy odbywają się przy obniżonej głośności, z delikatnie przygaszonym światłem, a na sali dostępne są udogodnienia takie jak przewijak. Kluczowym elementem wydarzenia jest swobodna, wspierająca atmosfera – taka, w której naturalne zachowania dzieci nie są źródłem stresu, a rodzice mogą w pełni cieszyć się wizytą w kinie.\nWydarzenie będzie miało charakter cykliczny – seanse zaplanowano co dwa tygodnie, w czwartki o godzinie 11:30. Na początek przewidziane są cztery pokazy pilotażowe, z pierwszym seansem 7 maja.\n\nPartnerami cyklu są: LUU KIDS, SEYSSO, DEAR SOPHIE."
+    }
+  }, {
+    "_id" : "fcbadf4943332426~zaproszeniezobaczprzedpremierowo",
+    "title" : "Zaproszenie | Zobacz przedpremierowo",
+    "originalTitle" : "The Invite",
+    "posterUrl" : "https://kinopalacowe.pl/media/gallery/lg/ZAPROSZENIE_poster-zmniejzony.jpg",
+    "fallbackPosterUrls" : [ "https://image.bilety24.pl/sf_api_thumb_400/dealer-default/1491/zaproszenie-poster-zmniejzony.jpg", "https://medstore.kinoteka.pl/zaproszeniezaproszeniepayoffposterdata380x555.jpg", "https://kinobajka.pl/wp-content/uploads/2026/06/zaproszenie-zaproszenie-payoff-poster-data-scaled-1-206x300.webp", "https://image.tmdb.org/t/p/w500/vR0BiB5Mx1g0bb9w65FRmjQAd5U.jpg", "https://m.media-amazon.com/images/M/MV5BMjI0MzJjMjctNmQzZi00Y2U4LWEwZGItMmE3NDUzNzk1YzY3XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 108,
+    "releaseYear" : 2026,
+    "genres" : [ "Dramat", "Komedia" ],
+    "countries" : [ "USA" ],
+    "directors" : [ "Olivia Wilde" ],
+    "cast" : [ "Olivia Wilde", "Penelope Cruz", "Seth Rogen", "Edward Norton" ],
+    "synopsis" : "Znudzone sobą małżeństwo zaprasza na kolację parę wyzwolonych sąsiadów.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/irrgVZHmi9Y" ],
+    "ratings" : {
+      "imdb" : 6.7,
+      "imdbUrl" : "https://www.imdb.com/title/tt14173636/",
+      "metascore" : 77,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-invite",
+      "rottenTomatoes" : 92,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_invite",
+      "filmweb" : 6.1,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Zaproszenie-2026-10109168"
+    },
+    "weightedRating" : 7.425,
+    "synopsisByCity" : {
+      "warszawa" : "Joe i Angela są małżeństwem z kilkunastoletnim stażem. Z pozoru ich związek wydaje się wręcz wzorcowy: zgodne, spokojne życie w porządnej dzielnicy, udane dziecko, niezły status materialny. Jednak pod powierzchnią kryją się wzajemne pretensje, drobne konflikty, a przede wszystkim nuda i rutyna. Gdy pewnego wieczoru Joe i Angela zapraszają na kolację parę tajemniczych sąsiadów, swobodna i przyjacielska rozmowa zaczyna zmieniać się w pełną dwuznaczności grę. To, co dotąd skrywane, wychodzi na jaw, a niewypowiedziane pragnienia ducha i ciała zaczynają nabierać niebezpiecznie realnych kształtów. Czy obie pary pójdą dziś spać we własnych łóżkach?"
+    }
   }, {
     "_id" : "fcc001388da94fae",
     "title" : "André Rieu. Niech żyje Maastricht!",
@@ -40907,6 +40880,17 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "f2784f89d8cb5fb8|warszawa|Kino Muranów",
+    "filmId" : "f2784f89d8cb5fb8",
+    "city" : "warszawa",
+    "cinema" : "Kino Muranów",
+    "filmUrl" : "https://kinomuranow.pl/film/kawa-i-papierosy",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-15T18:00:00",
+      "bookingUrl" : "https://kinomuranow.pl/tickets/26079/buy",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "f27ef0f3e2fb09f9|poznan|Kino Pałacowe",
     "filmId" : "f27ef0f3e2fb09f9",
     "city" : "poznan",
@@ -43554,6 +43538,17 @@
       "dateTime" : "2026-06-26T22:30:00",
       "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=68581a68-465b-493b-971b-97355aa7cc5e&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
       "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f31360e7630dd180|warszawa|Kino Wisła",
+    "filmId" : "f31360e7630dd180",
+    "city" : "warszawa",
+    "cinema" : "Kino Wisła",
+    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19805",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-24T18:00:00",
+      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=113006&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
+      "format" : [ "NAP" ]
     } ]
   }, {
     "_id" : "f323862b49fe0f8c|szczecin|Kino Zamek",
@@ -76219,6 +76214,17 @@
       "dateTime" : "2026-07-09T18:00:00",
       "bookingUrl" : "https://estradapoznan.bilety24.pl/kup-bilety/?id=936823",
       "room" : "Sala apollo",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f5a8c4578fc4bc74|lodz|Kino NCKF EC1",
+    "filmId" : "f5a8c4578fc4bc74",
+    "city" : "lodz",
+    "cinema" : "Kino NCKF EC1",
+    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/zabriskie-point-1970",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-20T19:00:00",
+      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lw==&date_termin=2026-06-20",
       "format" : [ ]
     } ]
   }, {
@@ -115955,27 +115961,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f7a360cb2725aee2|warszawa|Kino Muranów",
-    "filmId" : "f7a360cb2725aee2",
-    "city" : "warszawa",
-    "cinema" : "Kino Muranów",
-    "filmUrl" : "https://kinomuranow.pl/film/kawa-i-papierosy",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-15T18:00:00",
-      "bookingUrl" : "https://kinomuranow.pl/tickets/26079/buy",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "f7a360cb2725aee2~kawaipapierosyjimjarmusch|wloclawek|Kino za Rogiem",
-    "filmId" : "f7a360cb2725aee2~kawaipapierosyjimjarmusch",
-    "city" : "wloclawek",
-    "cinema" : "Kino za Rogiem",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-27T18:00:00",
-      "bookingUrl" : "https://bilety.pokis.pl/MSI/Default.aspx?event_id=2533&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "f7a781163a7585ac|warszawa|Kino Cytadela",
     "filmId" : "f7a781163a7585ac",
     "city" : "warszawa",
@@ -144847,17 +144832,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f98abd32f6623553|lodz|Kino NCKF EC1",
-    "filmId" : "f98abd32f6623553",
-    "city" : "lodz",
-    "cinema" : "Kino NCKF EC1",
-    "filmUrl" : "https://ec1lodz.pl/narodowe-centrum-kultury-filmowej/repertuar-kina/zabriskie-point-1970",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-20T19:00:00",
-      "bookingUrl" : "https://bilety.ec1lodz.pl/rezerwacja/termin.html?d=5&idl=31&target=Lw==&date_termin=2026-06-20",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "f98ad5a622534995|trojmiasto|Kino Spektrum",
     "filmId" : "f98ad5a622534995",
     "city" : "trojmiasto",
@@ -162333,190 +162307,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "fa53b6c01e7d8954|lublin|Kino Bajka",
-    "filmId" : "fa53b6c01e7d8954",
-    "city" : "lublin",
-    "cinema" : "Kino Bajka",
-    "filmUrl" : "https://kinobajka.pl/film_do_repertuaru/zaproszenie/",
-    "showtimes" : [ {
-      "dateTime" : "2026-07-11T19:30:00",
-      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-12T19:30:00",
-      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-13T19:30:00",
-      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-14T19:30:00",
-      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-15T19:30:00",
-      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-16T19:30:00",
-      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fa53b6c01e7d8954|poznan|Kino Pałacowe",
-    "filmId" : "fa53b6c01e7d8954",
-    "city" : "poznan",
-    "cinema" : "Kino Pałacowe",
-    "filmUrl" : "http://kinopalacowe.pl/filmy/14519-zaproszenie-przedpremiera/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-27T18:00:00",
-      "bookingUrl" : "https://ckzamek.bilety24.pl/kup-bilety/?id=930202",
-      "room" : "Sala 1 - Kinowa",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-29T20:30:00",
-      "bookingUrl" : "https://ckzamek.bilety24.pl/kup-bilety/?id=930203",
-      "room" : "Sala 1 - Kinowa",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fa53b6c01e7d8954|przemysl|Centrum 3D Przemyśl",
-    "filmId" : "fa53b6c01e7d8954",
-    "city" : "przemysl",
-    "cinema" : "Centrum 3D Przemyśl",
-    "filmUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-07-31-17-30",
-    "showtimes" : [ {
-      "dateTime" : "2026-07-31T17:30:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-07-31-17-30",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-31T19:45:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-07-31-19-45",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-01T17:30:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-01-17-30",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-01T19:45:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-01-19-45",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-02T17:30:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-02-17-30",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-02T19:45:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-02-19-45",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-04T17:30:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-04-17-30",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-04T19:45:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-04-19-45",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-05T17:30:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-05-17-30",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-05T19:45:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-05-19-45",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-06T17:30:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-06-17-30",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-08-06T19:45:00",
-      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-06-19-45",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fa53b6c01e7d8954|szczecin|Kino Pionier 1907",
-    "filmId" : "fa53b6c01e7d8954",
-    "city" : "szczecin",
-    "cinema" : "Kino Pionier 1907",
-    "filmUrl" : "https://pionier1907.pl/event/zaproszenie",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-24T17:45:00",
-      "bookingUrl" : "https://biletomat.pl/embedded/rezerwacja/346191?salesChannelId=01922a05-bf2b-7e41-a9da-e66b06ba318e",
-      "room" : "Sala Czerwona",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fa53b6c01e7d8954|wroclaw|Dolnośląskie Centrum Filmowe",
-    "filmId" : "fa53b6c01e7d8954",
-    "city" : "wroclaw",
-    "cinema" : "Dolnośląskie Centrum Filmowe",
-    "filmUrl" : "https://dcf.bilety24.pl/wydarzenie/?id=157558",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-28T17:30:00",
-      "bookingUrl" : "https://dcf.bilety24.pl/kup-bilety/?id=938158",
-      "room" : "Sala Lwów",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fa53b6c01e7d8954~kobiecyswiatzaproszenie|warszawa|Kino Wisła",
-    "filmId" : "fa53b6c01e7d8954~kobiecyswiatzaproszenie",
-    "city" : "warszawa",
-    "cinema" : "Kino Wisła",
-    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19805",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-24T18:00:00",
-      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=113006&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
-      "format" : [ "NAP" ]
-    } ]
-  }, {
-    "_id" : "fa53b6c01e7d8954~zaproszeniekinotekadlarodzicow|warszawa|Kinoteka",
-    "filmId" : "fa53b6c01e7d8954~zaproszeniekinotekadlarodzicow",
-    "city" : "warszawa",
-    "cinema" : "Kinoteka",
-    "filmUrl" : "https://kinoteka.pl/film/zaproszenie-kinoteka-dla-rodzicow/",
-    "showtimes" : [ {
-      "dateTime" : "2026-07-09T11:30:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=ecb5c0ce-94dc-4f8b-87f8-85edf2998d32&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fa53b6c01e7d8954~zaproszeniezobaczprzedpremierowo|warszawa|Kinoteka",
-    "filmId" : "fa53b6c01e7d8954~zaproszeniezobaczprzedpremierowo",
-    "city" : "warszawa",
-    "cinema" : "Kinoteka",
-    "filmUrl" : "https://kinoteka.pl/film/zaproszenie-zobacz-przedpremierowo/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T20:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=9c1cc70a-510b-4c22-837b-46cf792d67bf&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-27T18:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=089a06c3-3d8b-47ac-a69b-50a6b6b0384d&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T18:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=ce22c46e-5a7b-4cb9-b3a4-f32fc37d05d0&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-29T18:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=5cda5fc4-310e-4510-a311-c23b34f3c00f&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-30T20:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=02c85c5a-0e41-4fff-82f5-b7962558719d&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-01T20:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=c23a4a06-d890-487b-9ad2-ff0106260a27&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-02T20:00:00",
-      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=2bb9e29b-1202-496f-bdf9-6ffb5ac12750&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "fa5bbb70d00a1bb8|koszalin|Bajka",
     "filmId" : "fa5bbb70d00a1bb8",
     "city" : "koszalin",
@@ -162558,6 +162348,16 @@
     }, {
       "dateTime" : "2026-06-29T19:30:00",
       "bookingUrl" : "https://bilety.sdksanok.pl/MSI/Default.aspx?event_id=11325&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dFlow%26date%3d2026-06-29",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fa5c5dc0905c6cda|wloclawek|Kino za Rogiem",
+    "filmId" : "fa5c5dc0905c6cda",
+    "city" : "wloclawek",
+    "cinema" : "Kino za Rogiem",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-27T18:00:00",
+      "bookingUrl" : "https://bilety.pokis.pl/MSI/Default.aspx?event_id=2533&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
       "format" : [ ]
     } ]
   }, {
@@ -184255,6 +184055,179 @@
       "dateTime" : "2026-06-09T18:30:00",
       "bookingUrl" : "https://dcf.bilety24.pl/kup-bilety/?id=930311",
       "room" : "Sala Lwów",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fcbadf4943332426|lublin|Kino Bajka",
+    "filmId" : "fcbadf4943332426",
+    "city" : "lublin",
+    "cinema" : "Kino Bajka",
+    "filmUrl" : "https://kinobajka.pl/film_do_repertuaru/zaproszenie/",
+    "showtimes" : [ {
+      "dateTime" : "2026-07-11T19:30:00",
+      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-12T19:30:00",
+      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-13T19:30:00",
+      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-14T19:30:00",
+      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-15T19:30:00",
+      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-16T19:30:00",
+      "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fcbadf4943332426|poznan|Kino Pałacowe",
+    "filmId" : "fcbadf4943332426",
+    "city" : "poznan",
+    "cinema" : "Kino Pałacowe",
+    "filmUrl" : "http://kinopalacowe.pl/filmy/14519-zaproszenie-przedpremiera/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-27T18:00:00",
+      "bookingUrl" : "https://ckzamek.bilety24.pl/kup-bilety/?id=930202",
+      "room" : "Sala 1 - Kinowa",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-29T20:30:00",
+      "bookingUrl" : "https://ckzamek.bilety24.pl/kup-bilety/?id=930203",
+      "room" : "Sala 1 - Kinowa",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fcbadf4943332426|przemysl|Centrum 3D Przemyśl",
+    "filmId" : "fcbadf4943332426",
+    "city" : "przemysl",
+    "cinema" : "Centrum 3D Przemyśl",
+    "filmUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-07-31-17-30",
+    "showtimes" : [ {
+      "dateTime" : "2026-07-31T17:30:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-07-31-17-30",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-31T19:45:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-07-31-19-45",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-01T17:30:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-01-17-30",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-01T19:45:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-01-19-45",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-02T17:30:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-02-17-30",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-02T19:45:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-02-19-45",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-04T17:30:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-04-17-30",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-04T19:45:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-04-19-45",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-05T17:30:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-05-17-30",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-05T19:45:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-05-19-45",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-06T17:30:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-06-17-30",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-08-06T19:45:00",
+      "bookingUrl" : "https://ck.przemysl.pl/component/icagenda/1042-zaproszenie/2026-08-06-19-45",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fcbadf4943332426|szczecin|Kino Pionier 1907",
+    "filmId" : "fcbadf4943332426",
+    "city" : "szczecin",
+    "cinema" : "Kino Pionier 1907",
+    "filmUrl" : "https://pionier1907.pl/event/zaproszenie",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-24T17:45:00",
+      "bookingUrl" : "https://biletomat.pl/embedded/rezerwacja/346191?salesChannelId=01922a05-bf2b-7e41-a9da-e66b06ba318e",
+      "room" : "Sala Czerwona",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fcbadf4943332426|wroclaw|Dolnośląskie Centrum Filmowe",
+    "filmId" : "fcbadf4943332426",
+    "city" : "wroclaw",
+    "cinema" : "Dolnośląskie Centrum Filmowe",
+    "filmUrl" : "https://dcf.bilety24.pl/wydarzenie/?id=157558",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-28T17:30:00",
+      "bookingUrl" : "https://dcf.bilety24.pl/kup-bilety/?id=938158",
+      "room" : "Sala Lwów",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fcbadf4943332426~zaproszeniekinotekadlarodzicow|warszawa|Kinoteka",
+    "filmId" : "fcbadf4943332426~zaproszeniekinotekadlarodzicow",
+    "city" : "warszawa",
+    "cinema" : "Kinoteka",
+    "filmUrl" : "https://kinoteka.pl/film/zaproszenie-kinoteka-dla-rodzicow/",
+    "showtimes" : [ {
+      "dateTime" : "2026-07-09T11:30:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=ecb5c0ce-94dc-4f8b-87f8-85edf2998d32&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "fcbadf4943332426~zaproszeniezobaczprzedpremierowo|warszawa|Kinoteka",
+    "filmId" : "fcbadf4943332426~zaproszeniezobaczprzedpremierowo",
+    "city" : "warszawa",
+    "cinema" : "Kinoteka",
+    "filmUrl" : "https://kinoteka.pl/film/zaproszenie-zobacz-przedpremierowo/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T20:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=9c1cc70a-510b-4c22-837b-46cf792d67bf&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-27T18:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=089a06c3-3d8b-47ac-a69b-50a6b6b0384d&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-28T18:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=ce22c46e-5a7b-4cb9-b3a4-f32fc37d05d0&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-29T18:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=5cda5fc4-310e-4510-a311-c23b34f3c00f&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-30T20:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=02c85c5a-0e41-4fff-82f5-b7962558719d&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-01T20:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=c23a4a06-d890-487b-9ad2-ff0106260a27&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-02T20:00:00",
+      "bookingUrl" : "https://bilety.kinoteka.pl/#/screen?screeningId=2bb9e29b-1202-496f-bdf9-6ffb5ac12750&cinemaId=9ef78349-db9c-4dfc-85aa-96d030082c0d",
       "format" : [ ]
     } ]
   }, {

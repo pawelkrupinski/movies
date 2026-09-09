@@ -10642,7 +10642,7 @@ showings:
 
 === Zaproszenie ===
 displayTitle:      Zaproszenie
-cinemaTitles:      Kobiecy świat: Zaproszenie | ZAPROSZENIE | Zaproszenie | Zaproszenie | Kinoteka dla rodziców | Zaproszenie | Zobacz przedpremierowo
+cinemaTitles:      ZAPROSZENIE | Zaproszenie | Zaproszenie | Kinoteka dla rodziców | Zaproszenie | Zobacz przedpremierowo
 runtimeMinutes:    108
 releaseYear:       2026
 countries:         USA
@@ -10668,7 +10668,6 @@ cinemaScrapes:
   Kino Bajka / Zaproszenie / —
   Kino Pałacowe / Zaproszenie / 2026
   Kino Pionier 1907 / ZAPROSZENIE / 2026
-  Kino Wisła / Kobiecy świat: Zaproszenie / 2026
   Kinoteka / Zaproszenie | Zobacz przedpremierowo / —
 showings:
   2026-06-27  Kino Pałacowe                 18:00 Sala 1 - Kinowa
