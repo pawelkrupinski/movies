@@ -85,8 +85,13 @@ class InMemoryStagingFolder(
       val ids        = StagingFold.reconcileTmdbIds(stagingRows, groupRows)
       val siblings   = if (ids.isEmpty) Seq.empty
         else all.filter(r => r.record.tmdbId.exists(ids.contains) && normalizer.sanitize(r.title) != key)
-      val plan       = StagingFold.planGroup(stagingRows, groupRows ++ siblings, normalizer,
-        fresh = FilmId.fresh(_, taken = id => movieRepository.findByIdChecked(id)._1.isDefined))
+      // `planGroupProbingContestedKeys`, not a bare `planGroup`: this fold's own
+      // `groupRows`/`siblings` are scoped by sanitize prefix and tmdbId exactly like
+      // `MongoStagingFolder`'s, so they have the SAME blind spot to a same-key collision
+      // whose other side shares neither — see that method's doc comment.
+      val plan       = StagingFold.planGroupProbingContestedKeys(stagingRows, groupRows ++ siblings, normalizer,
+        fresh = FilmId.fresh(_, taken = id => movieRepository.findByIdChecked(id)._1.isDefined)
+      )(keys => all.filter(r => keys.contains(r.key(normalizer))))
       // A retirement is a merge: carry the loser's side rows onto the winner before the
       // loser goes — the same rule `MongoStagingFolder.migrateRetiredSideRows` follows.
       plan.retirements.foreach { case (loser, winner) => movieRepository.moveFilm(loser, winner) }

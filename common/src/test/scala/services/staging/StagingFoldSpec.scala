@@ -532,4 +532,113 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
         secondPlan.moviesDeletes shouldBe empty
       }
   }
+
+  // THE 'LALKA' REGRESSION, ROUND 4 (poland/convergence run 34285923158, 2026-09-08).
+  // By now BOTH films already have their own `movies` row from an EARLIER, unrelated
+  // fold of the bare "Lalka" group: the lower tmdbId (1309396, "the other film") at the
+  // PLAIN key, Kawalski's (1321666) disambiguated onto a suffixed one. A brand-new
+  // decorated spelling of Kawalski's film ('Kino na obcasach: Lalka') then folds as its
+  // OWN, separate `sanitize(title)` group — a real `MongoStagingFolder.foldOnce` call
+  // for it loads existing `movies` rows by ITS OWN sanitize prefix (no match — a totally
+  // different string) and by ITS OWN tmdbId (1321666 — finds Kawalski's disambiguated
+  // row, but NEVER the other film's, which carries a DIFFERENT tmdbId and a DIFFERENT
+  // sanitize prefix). `resolveKeyCollisions` only ever sees collisions AMONG CLUSTERS
+  // PRESENT IN THE SAME `planGroup` CALL, and the other film's plain-key row is never
+  // loaded into this one — so this fold's own `canonical()` vote (nothing to go on but
+  // Kawalski's own cinema/TMDB titles) recomputes the bare "Lalka"/2026 key from
+  // scratch, oblivious that it is already taken, and tries to RE-KEY Kawalski's
+  // EXISTING disambiguated row onto it — worse than a fresh insert, because it moves an
+  // already-settled row. This hit Mongo's `key_1` unique index dozens of times, across
+  // five different decorated spellings, and none of them converged on retry: round 2's
+  // tmdbId retry (a42086081) re-reads BY TMDBID, and this collision's other side has a
+  // DIFFERENT tmdbId, so the retry's own read is exactly as blind as the first attempt
+  // — simply retrying the identical narrow read can never discover the occupant.
+  "planGroup, called with only the narrow sibling set a real fold's own sanitize/tmdbId " +
+    "read would load" should "reproduce the defect: re-key an existing disambiguated " +
+    "sibling back onto a plain key another film already holds" in {
+    val plainKey = CacheKey("Lalka", Some(2026), titleNormalizer)
+    val otherExisting = StoredMovieRecord.fromStorage("f0aaaaaaaaaaaaa", Some(StoredMovieRecord.keyFor(plainKey)),
+      MovieRecord(tmdbId = Some(1309396), imdbId = Some("tt36749000"), data = Map[Source, SourceData](
+        Helios -> SourceData(title = Some("Lalka"), releaseYear = Some(2026)),
+        Tmdb   -> SourceData(title = Some("Lalka"), releaseYear = Some(2026)))), titleNormalizer)
+    val kawalskiDisambiguatedKey = CacheKey.disambiguated(plainKey, "tmdb1321666")
+    // TWO bare "Lalka" cinema votes — Kawalski's row was itself born from the EARLIER
+    // bare-title 150-row fold (`clusterByFilm` split ITS bare-title cinemas apart from
+    // `otherExisting`'s by tmdbId, but every cinema on Kawalski's OWN side of that split
+    // still reported the film as plain "Lalka"), so the dominant-title vote favours the
+    // bare spelling over ONE new decorated listing by COUNT, not by alphabetical
+    // tie-break — the shape a real multi-cinema fold actually produces.
+    val kawalskiExisting = StoredMovieRecord.fromStorage("f0bbbbbbbbbbbbb", Some(StoredMovieRecord.keyFor(kawalskiDisambiguatedKey)),
+      MovieRecord(tmdbId = Some(1321666), imdbId = Some("tt37082105"), data = Map[Source, SourceData](
+        CinemaCityWroclavia -> SourceData(title = Some("Lalka"), releaseYear = Some(2024)),
+        KinoMuza            -> SourceData(title = Some("Lalka"), releaseYear = Some(2024)),
+        Tmdb                -> SourceData(title = Some("Lalka"), releaseYear = Some(2026)))), titleNormalizer)
+    val newDecoratedListing = staging(Multikino, "Kino na obcasach: Lalka", cinemaYear = 2024, tmdbId = 1321666, tmdbYear = 2026)
+
+    // The narrow set a REAL fold for this new decorated title would load: its own
+    // sanitize prefix matches neither existing row, and its own tmdbId (1321666) only
+    // pulls in Kawalski's sibling — never `otherExisting`, a different tmdbId entirely.
+    val narrowlyLoaded = Seq(kawalskiExisting)
+    val plan = StagingFold.planGroup(Seq(newDecoratedListing), moviesRows = narrowlyLoaded, titleNormalizer)
+
+    withClue(s"expected the defect — Kawalski's row re-keyed onto the plain key another film holds: ${plan.moviesUpserts}\n") {
+      plan.moviesUpserts.map(_._1) should contain(FilmId("f0bbbbbbbbbbbbb"))
+      val (_, key, _) = plan.moviesUpserts.find(_._1 == FilmId("f0bbbbbbbbbbbbb")).get
+      key shouldBe plainKey // THE BUG: not `kawalskiDisambiguatedKey`, and identical to `otherExisting`'s own key.
+    }
+  }
+
+  it should "keep the sibling correctly disambiguated when a probe supplies the plain key's real occupant, instead of a plan blind to it" in {
+    val plainKey = CacheKey("Lalka", Some(2026), titleNormalizer)
+    val otherExisting = StoredMovieRecord.fromStorage("f0aaaaaaaaaaaaa", Some(StoredMovieRecord.keyFor(plainKey)),
+      MovieRecord(tmdbId = Some(1309396), imdbId = Some("tt36749000"), data = Map[Source, SourceData](
+        Helios -> SourceData(title = Some("Lalka"), releaseYear = Some(2026)),
+        Tmdb   -> SourceData(title = Some("Lalka"), releaseYear = Some(2026)))), titleNormalizer)
+    val kawalskiDisambiguatedKey = CacheKey.disambiguated(plainKey, "tmdb1321666")
+    // TWO bare "Lalka" cinema votes — Kawalski's row was itself born from the EARLIER
+    // bare-title 150-row fold (`clusterByFilm` split ITS bare-title cinemas apart from
+    // `otherExisting`'s by tmdbId, but every cinema on Kawalski's OWN side of that split
+    // still reported the film as plain "Lalka"), so the dominant-title vote favours the
+    // bare spelling over ONE new decorated listing by COUNT, not by alphabetical
+    // tie-break — the shape a real multi-cinema fold actually produces.
+    val kawalskiExisting = StoredMovieRecord.fromStorage("f0bbbbbbbbbbbbb", Some(StoredMovieRecord.keyFor(kawalskiDisambiguatedKey)),
+      MovieRecord(tmdbId = Some(1321666), imdbId = Some("tt37082105"), data = Map[Source, SourceData](
+        CinemaCityWroclavia -> SourceData(title = Some("Lalka"), releaseYear = Some(2024)),
+        KinoMuza            -> SourceData(title = Some("Lalka"), releaseYear = Some(2024)),
+        Tmdb                -> SourceData(title = Some("Lalka"), releaseYear = Some(2026)))), titleNormalizer)
+    val newDecoratedListing = staging(Multikino, "Kino na obcasach: Lalka", cinemaYear = 2024, tmdbId = 1321666, tmdbYear = 2026)
+
+    // Same narrow load a real fold would start from — but this time through
+    // `planGroupProbingContestedKeys`, whose `probe` stands in for the caller's OWN
+    // Mongo lookup by literal key. It is asked for exactly the key(s) the tentative
+    // plan wants to write that `narrowlyLoaded` doesn't already explain — here, the
+    // plain key — and it answers as a real `movies.find(key ∈ …)` would: `otherExisting`
+    // is out there, just never loaded into this fold's own narrow read.
+    val narrowlyLoaded = Seq(kawalskiExisting)
+    var probed = Set.empty[String]
+    val plan = StagingFold.planGroupProbingContestedKeys(Seq(newDecoratedListing), narrowlyLoaded, titleNormalizer)(keys =>
+      { probed = keys; if (keys.contains(StoredMovieRecord.keyFor(plainKey))) Seq(otherExisting) else Seq.empty })
+    settleIsANoOpAfterFold(plan)
+
+    probed shouldBe Set(StoredMovieRecord.keyFor(plainKey))
+
+    plan.moviesUpserts should have size 2
+    val byId = plan.moviesUpserts.map { case (id, k, r) => id -> (k, r) }.toMap
+    // Kawalski's row keeps its OWN existing id AND its OWN disambiguated key —
+    // unmoved — while gaining the new decorated title's cinema.
+    val (kawalskiKey, kawalskiRecord) = byId(FilmId("f0bbbbbbbbbbbbb"))
+    kawalskiKey shouldBe kawalskiDisambiguatedKey
+    kawalskiRecord.data.keySet shouldBe Set(CinemaCityWroclavia, KinoMuza, Multikino, Tmdb)
+    // The plain-key holder is untouched (re-affirmed at its own id and key, not moved).
+    val (otherKey, _) = byId(FilmId("f0aaaaaaaaaaaaa"))
+    otherKey shouldBe plainKey
+
+    plan.moviesDeletes shouldBe empty
+    plan.deferred      shouldBe empty
+    // The collision IS surfaced — the probe found a genuine rival — just resolved the
+    // same deterministic way `resolveKeyCollisions` always resolves one it can see.
+    plan.disambiguated should have size 1
+    plan.disambiguated.head.keptTmdbId          shouldBe Some(1309396)
+    plan.disambiguated.head.disambiguatedTmdbId shouldBe Some(1321666)
+  }
 }

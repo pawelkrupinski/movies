@@ -62,20 +62,31 @@ object StagingFold {
     // attempt's own cluster then merges into it through `reconcileTmdbIds`'s sibling
     // lookup instead of re-inserting — the same "two writers, one wins, the other
     // reconciles" shape the transient-error retry above already handles, just tripped by
-    // a write conflict on identity rather than the transaction machinery. Message-matched
-    // (not a bare `isDuplicateKey`) so a `key_1` collision — two DIFFERENT films
-    // concluding the identical (sanitize, year) key, which `resolveKeyCollisions`
-    // already resolves deterministically (disambiguates or, lacking any stable
-    // identity to disambiguate with, defers) inside ONE `planGroup` call — still
-    // falls through to `Abandon`: the same two clusters conclude the same collision
-    // every time, so retrying it cannot help and would only spend the budget masking
-    // it. This is a genuinely different failure than what reaches here in practice:
-    // `resolveKeyCollisions` runs and resolves the collision INSIDE the successful
-    // planning of `foldOnce`, so a `key_1` E11000 actually reaching Mongo would mean
-    // two SEPARATE transactions concluded the same stored key at once — a narrower
-    // race than the tmdbId one above, kept non-retryable rather than assumed safe.
+    // a write conflict on identity rather than the transaction machinery.
+    //
+    // A `key_1` collision gets the SAME treatment now, for a corrected reason. An
+    // earlier version of this comment (round 2, a42086081) reasoned that "the same two
+    // clusters conclude the same collision every time, so retrying it cannot help" — true
+    // ONLY of a collision `resolveKeyCollisions` already sees INSIDE one `planGroup` call,
+    // which it resolves deterministically before ever reaching Mongo. Round 4 (prod PL,
+    // 2026-09-08, poland/convergence run 34285923158) showed a `key_1` E11000 actually
+    // reaching Mongo dozens of times for five decorated 'Lalka' spellings — a DIFFERENT
+    // situation `resolveKeyCollisions` structurally cannot see: each spelling is its own
+    // fold group, loaded via its own sanitize prefix and its own tmdbId, and the OTHER
+    // 'Lalka' film (a different tmdbId, a different sanitize prefix, already holding the
+    // plain key from an earlier fold) is invisible to that load — the same two clusters
+    // are NEVER even in the same call, so the old reasoning's premise never held for this
+    // shape. `planGroupProbingContestedKeys` closes that blind spot (a caller probes for
+    // the literal key a plan wants to write and folds any occupant it finds back into the
+    // group before the write), so the common case now resolves without ever raising; a
+    // `key_1` E11000 that still reaches here means the probe's OWN read still missed a
+    // SIMULTANEOUS committer — retrying is exactly right there, the same "two writers, one
+    // wins, the other's next read sees it" shape as the tmdbId case, just with the caller's
+    // probe (not `reconcileTmdbIds`) as the sibling lookup that converges it. Message-
+    // matched (not a bare `isDuplicateKey`) so this stays scoped to the two error shapes
+    // this reasoning actually covers.
     case scala.util.Failure(e: com.mongodb.MongoWriteException)
-      if services.MongoErrors.isDuplicateKey(e) && tmdbIdCollision(e) && attempt < maxRetries =>
+      if services.MongoErrors.isDuplicateKey(e) && (tmdbIdCollision(e) || keyCollision(e)) && attempt < maxRetries =>
       Next.Retry(e)
     case scala.util.Failure(e) => Next.Abandon(e)
   }
@@ -84,10 +95,15 @@ object StagingFold {
    *  The driver's `WriteError` carries no structured index name, only the server's text
    *  (`"... index: tmdbId_1 dup key: { tmdbId: 1321666 }"`), so this is matched on the
    *  message rather than a code alone — `code == 11000` alone would also swallow a
-   *  `key_1` collision, which is a different, non-retryable situation (see the call
-   *  site in [[nextAfterAttempt]]). */
+   *  `key_1` collision, matched separately by [[keyCollision]] (see the call site in
+   *  [[nextAfterAttempt]]). */
   private def tmdbIdCollision(e: com.mongodb.MongoWriteException): Boolean =
     Option(e.getError).flatMap(err => Option(err.getMessage)).exists(_.contains("tmdbId"))
+
+  /** True when a duplicate-key write error names the `key` unique index specifically —
+   *  the other retryable shape, see [[nextAfterAttempt]]'s doc comment. */
+  private def keyCollision(e: com.mongodb.MongoWriteException): Boolean =
+    Option(e.getError).flatMap(err => Option(err.getMessage)).exists(_.contains("key_1"))
 
   /** What to write to bring `movies` to its folded+settled state, and which
    *  staging rows were consumed. `moviesDeletes` are existing `movies` rows in
@@ -326,6 +342,61 @@ object StagingFold {
     val consumedStaging = stagingRows.filterNot(r => deferredRawKeys.contains(CacheKey(r.title, r.year, normalizer)))
     Plan(upserts, moviesDeletes, consumedStaging, newPromotions, retirements,
       deferred = deferred.map(_.collision), disambiguated = disambiguated)
+  }
+
+  /** [[planGroup]], but re-run once more against any row this group's OWN read missed
+   *  because a same-key collision's OTHER side shares neither this group's sanitize
+   *  prefix nor its tmdbId/imdbId — the two things a caller's `moviesRows` load is
+   *  scoped by (`MongoStagingFolder.foldOnce`'s `groupRows`/`siblings` queries;
+   *  `InMemoryStagingFolder`'s equivalent filters).
+   *
+   *  Two "Lalka" films (tmdbId 1321666, 1309396) share only their CONCLUDED spelling,
+   *  never a sanitize prefix ("kinonaobcasachlalka" vs "lalka") or a tmdbId/imdbId — so
+   *  a decorated-title fold group never loads the plain-key occupant
+   *  [[resolveKeyCollisions]] would need to see, and either (a) writes a brand-new
+   *  document straight onto an already-taken key, or worse (b) RE-KEYS an existing
+   *  sibling it DID load (found by tmdbId) back onto the plain key, because
+   *  `FilmCanonicalizer.canonical` recomputes a cluster's key from its cinema/TMDB
+   *  votes with NO memory of a prior fold's disambiguation — only `resolveKeyCollisions`
+   *  remembers that, and only for clusters present in the SAME call. Both shapes hit
+   *  Mongo's `key_1` unique index (prod PL, 2026-09-08, poland/convergence run
+   *  34285923158: five decorated 'Lalka' spellings, each its own fold group, each blind
+   *  to the sibling 'Lalka' film a PRIOR fold had already disambiguated onto a suffixed
+   *  key, each re-concluding the plain 'lalka|2026' — round 4 of the same incident
+   *  `resolveKeyCollisions` (round 3, a784d5d68) did not by itself fix, because that
+   *  fix's cross-cluster visibility only ever reached as far as one `planGroup` call's
+   *  own `moviesRows`).
+   *
+   *  `probe` is the caller's own I/O: given the literal stored-key strings this group's
+   *  first pass wants to write that no already-loaded row explains, look them up for
+   *  real (`movies.key ∈ …`, scoped to the caller's own session/transaction so the read
+   *  is consistent with the write that follows). Any hit is folded into `moviesRows` and
+   *  the group re-planned — now WITH the contested key's occupant present,
+   *  `resolveKeyCollisions` runs its usual deterministic tie-break and the common case
+   *  (the occupant already committed) resolves to a disambiguated key with no error ever
+   *  reaching Mongo. Only a genuinely SIMULTANEOUS pair — neither side's probe finds the
+   *  other yet — can still race to the unique index; `nextAfterAttempt` retries a `key_1`
+   *  failure for exactly this reason now, and the retry's OWN probe (run again, fresh)
+   *  finds the now-committed winner. */
+  def planGroupProbingContestedKeys(
+    stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord],
+    normalizer: TitleNormalizer, extraCinemaTitles: Seq[String] = Nil,
+    fresh: CacheKey => FilmId = FilmId.fresh(_, _ => false)
+  )(probe: Set[String] => Seq[StoredMovieRecord]): Plan = {
+    val tentative = planGroup(stagingRows, moviesRows, normalizer, extraCinemaTitles, fresh)
+    val knownKeys = moviesRows.map(r => StoredMovieRecord.keyFor(r.cacheKey(normalizer))).toSet
+    val uncovered = tentative.moviesUpserts.map { case (_, k, _) => StoredMovieRecord.keyFor(k) }.toSet -- knownKeys
+    if (uncovered.isEmpty) tentative
+    else {
+      val knownIds   = moviesRows.map(_.id).toSet
+      val discovered = probe(uncovered).filterNot(r => knownIds.contains(r.id))
+      if (discovered.isEmpty) tentative
+      // `extraCinemaTitles` is held fixed, not re-derived from `discovered`: a newly
+      // found occupant is a DIFFERENT film (`clusterByFilm` already keeps it apart by
+      // tmdbId/imdbId), so its cinema titles are not a vote on THIS cluster's spelling —
+      // only `resolveKeyCollisions`'s tie-break needs to see it at all.
+      else planGroup(stagingRows, moviesRows ++ discovered, normalizer, extraCinemaTitles, fresh)
+    }
   }
 
   /** One cluster's plan before cross-cluster collision resolution: the id/key/record
