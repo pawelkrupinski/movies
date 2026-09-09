@@ -4,11 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
@@ -104,7 +107,14 @@ fun CityChoiceScreen(
     // sizes to its full content here, and a UK subregion's three tall rows
     // already reach the fold) — an absolutely-positioned overlay is the only
     // way to offer the button without pushing a lower row off-screen.
-    Box(Modifier.fillMaxSize()) {
+    //
+    // Edge-to-edge (MainActivity.enableEdgeToEdge): inset padding at the Box
+    // itself, not just the Column inside it, so the floating locate button —
+    // a sibling of the Column, not a child — clears the status bar too.
+    // Without it the country picker's label sat under the clock and the
+    // locate button under the battery icon on tall-status-bar phones
+    // (Pixel 9 Pro XL).
+    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
         Column(
             Modifier.fillMaxSize().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -281,8 +291,11 @@ private fun NoMatches(query: String, message: Int) {
  */
 @Composable
 fun CityConfirmScreen(city: City, onConfirm: () -> Unit, onChooseOther: () -> Unit) {
+    // Edge-to-edge: same gap as CityChoiceScreen — centering hides it on most
+    // screens, but a short one (landscape, a small phone) can still clip
+    // against the status/nav bar without this.
     Column(
-        Modifier.fillMaxSize().padding(horizontal = 24.dp),
+        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
