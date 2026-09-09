@@ -83,14 +83,18 @@ object FoldFixture {
     }
 
     /** One cinema's staging row, CONCLUDED (`tmdbId` present) — an unconcluded group is not
-     *  foldable, so a spec that omits it asserts against a fold that never ran. Returns its
-     *  `_id`. */
-    def seedStagingRow(cinema: String, title: String, year: Option[Int], tmdbId: Int): String = {
-      val id = s"$cinema|${titleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
-      Await.result(staging.replaceOne(Filters.eq("_id", id),
-        Document("_id" -> id, "tmdbId" -> tmdbId,
-          "sourceData" -> Document(cinema -> Document("title" -> title)),
-          "updatedAt" -> now),
+     *  foldable, so a spec that omits it asserts against a fold that never ran. `imdbId` is
+     *  optional — most fold specs never need it; `ConcurrentFoldRaceHarness` threads it
+     *  through for a race shape that does. Returns its `_id`. */
+    def seedStagingRow(cinema: String, title: String, year: Option[Int], tmdbId: Int, imdbId: Option[String] = None): String = {
+      val id  = s"$cinema|${titleNormalizer.sanitize(title)}|${year.map(_.toString).getOrElse("")}"
+      val doc = imdbId match {
+        case Some(imdb) => Document("_id" -> id, "tmdbId" -> tmdbId, "imdbId" -> imdb,
+          "sourceData" -> Document(cinema -> Document("title" -> title)), "updatedAt" -> now)
+        case None => Document("_id" -> id, "tmdbId" -> tmdbId,
+          "sourceData" -> Document(cinema -> Document("title" -> title)), "updatedAt" -> now)
+      }
+      Await.result(staging.replaceOne(Filters.eq("_id", id), doc,
         new com.mongodb.client.model.ReplaceOptions().upsert(true)).toFuture(), Timeout)
       id
     }

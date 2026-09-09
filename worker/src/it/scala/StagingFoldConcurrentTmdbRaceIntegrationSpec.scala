@@ -1,14 +1,15 @@
 package integration
 
-import models.{Helios, Multikino}
+import models.{CinemaCityKinepolis, Helios, Multikino}
 import org.mongodb.scala.model.Filters
 import org.mongodb.scala.ObservableFuture
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.util.concurrent.CyclicBarrier
 import scala.concurrent.Await
 import scala.concurrent.duration._
+
+import ConcurrentFoldRaceHarness.RaceGroup
 
 /**
  * The 2026-09-08 prod PL incident's SHAPE, reproduced against a real replica set:
@@ -37,50 +38,36 @@ import scala.concurrent.duration._
  * network-separated worker processes have room to fully commit one side before the
  * other reads, and this loopback pair usually does not. So treat this spec as what it
  * can honestly prove — that `MongoStagingFolder`'s retry loop, against a REAL
- * transactional Mongo, converges two racing folds for one tmdbId to a single row with
+ * transactional Mongo, converges racing folds for one tmdbId to a single row with
  * every anchor's cinema, whichever of the two error shapes actually fires — and rely
  * on `StagingFoldOutcomeSpec` for the specific regression pin.
+ *
+ * The concurrency plumbing (seed, barrier, thread, join, collect) lives in
+ * `ConcurrentFoldRaceHarness`, shared with the three-way race below.
  */
 class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matchers {
 
   FoldFixture.requireThrowawayMongo()
 
-  // Its own sentinel anchor prefix and tmdbId — see `FoldFixture`, the it suites share
-  // one database. `tmdbId` is a shared namespace too (the fold pulls cross-title
-  // siblings by it from the WHOLE collection), so this one is unused by any neighbour.
-  private val tmdbId = 424350
-  // Two DIFFERENT decorated spellings (the actual incident's shape), each its own
-  // `sanitize(title)` fold group, both resolving to the SAME tmdbId and neither
-  // pre-existing in `movies`, so both folds have to decide "new film or sibling?"
-  // from scratch, at the same time.
-  private val anchors = Seq(
-    Multikino -> "Lalka reż. testfoldrace",
-    Helios    -> "Ladies Night - Testfoldrace"
-  )
-
   it should "converge to one `movies` row, with every anchor's cinema, when two " +
     "decorated spellings race to conclude the same tmdbId" in {
     FoldFixture.withFold("staging-fold-tmdb-race") { fold =>
-      anchors.foreach { case (cinema, title) => fold.seedStagingRow(cinema.displayName, title, Some(2026), tmdbId) }
+      // Its own sentinel anchor prefix and tmdbId — see `FoldFixture`, the it suites share
+      // one database. `tmdbId` is a shared namespace too (the fold pulls cross-title
+      // siblings by it from the WHOLE collection), so this one is unused by any neighbour.
+      val tmdbId = 424350
+      // Two DIFFERENT decorated spellings (the actual incident's shape), each its own
+      // `sanitize(title)` fold group, both resolving to the SAME tmdbId and neither
+      // pre-existing in `movies`, so both folds have to decide "new film or sibling?"
+      // from scratch, at the same time.
+      val groups = Seq(
+        RaceGroup(Multikino, "Lalka reż. testfoldrace",       Some(2026), tmdbId),
+        RaceGroup(Helios,    "Ladies Night - Testfoldrace",   Some(2026), tmdbId)
+      )
 
-      val folder = fold.folder()
-      // Both threads block here until both have arrived, so their `foldGroup` calls —
-      // session open, read, write, commit — start together rather than queueing one
-      // after another, which is what actually raced in prod (a shared `TaskWorker`
-      // pool claiming several `StagingFold` tasks at once).
-      val barrier = new CyclicBarrier(anchors.size)
-      val threads = anchors.map { case (_, title) =>
-        var outcome: Either[Throwable, Unit] = Left(new IllegalStateException("thread did not run"))
-        val t = new Thread(() => {
-          barrier.await()
-          outcome = try { folder.foldGroup(title); Right(()) } catch { case e: Throwable => Left(e) }
-        })
-        t.start()
-        (t, () => outcome)
-      }
-      threads.foreach(_._1.join(30.seconds.toMillis))
+      val outcomes = ConcurrentFoldRaceHarness.race(fold, groups)
 
-      val failures = threads.map(_._2()).collect { case Left(e) => e }
+      val failures = outcomes.collect { case Left(e) => e }
       withClue(s"a losing fold must retry and converge, not rethrow: ${failures.mkString("; ")}\n") {
         failures shouldBe empty
       }
@@ -91,9 +78,45 @@ class StagingFoldConcurrentTmdbRaceIntegrationSpec extends AnyFlatSpec with Matc
         survivors should have size 1
       }
 
-      val cinemaNames = anchors.map(_._1.displayName).toSet
+      val cinemaNames = groups.map(_.cinema.displayName).toSet
       withClue("every anchor's cinema must reach the surviving film — a race must not " +
         "silently drop the loser's own cinema: ") {
+        fold.slots.findForFilm(survivors.head).keySet shouldBe cinemaNames
+      }
+    }
+  }
+
+  // Proves the harness generalises PAST the pairwise case it was extracted from: three
+  // decorated spellings, three separate fold groups, all racing to conclude the SAME
+  // tmdbId at once. Same shape prod saw (a dozen decorated 'Lalka' spellings, not just
+  // two) — this is about exercising `ConcurrentFoldRaceHarness` at N>2 groups, not a new
+  // bug case, so it asserts the identical two invariants the pairwise test does.
+  it should "converge to one `movies` row, with every anchor's cinema, when THREE " +
+    "decorated spellings race to conclude the same tmdbId" in {
+    FoldFixture.withFold("staging-fold-tmdb-race-3way") { fold =>
+      val tmdbId = 424351
+      val groups = Seq(
+        RaceGroup(Multikino,            "Lalka reż. threewayrace",     Some(2026), tmdbId),
+        RaceGroup(Helios,               "Ladies Night - Threewayrace", Some(2026), tmdbId),
+        RaceGroup(CinemaCityKinepolis,  "Kino kobiet: Threewayrace",   Some(2026), tmdbId)
+      )
+
+      val outcomes = ConcurrentFoldRaceHarness.race(fold, groups)
+
+      val failures = outcomes.collect { case Left(e) => e }
+      withClue(s"a losing fold must retry and converge, not rethrow: ${failures.mkString("; ")}\n") {
+        failures shouldBe empty
+      }
+
+      val survivors = Await.result(fold.movies.find(Filters.eq("tmdbId", tmdbId)).toFuture(), 10.seconds)
+        .flatMap(_.get("_id").map(_.asString().getValue))
+      withClue(s"survivors=$survivors — three fresh inserts for one tmdbId must settle to ONE document: ") {
+        survivors should have size 1
+      }
+
+      val cinemaNames = groups.map(_.cinema.displayName).toSet
+      withClue("every anchor's cinema must reach the surviving film — a race must not " +
+        "silently drop a loser's own cinema: ") {
         fold.slots.findForFilm(survivors.head).keySet shouldBe cinemaNames
       }
     }
