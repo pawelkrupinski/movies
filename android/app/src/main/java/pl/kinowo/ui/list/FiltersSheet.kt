@@ -523,17 +523,26 @@ private fun CinemaAreaGroup(
  */
 @Composable
 private fun CitySection(viewModel: KinowoViewModel, onClose: () -> Unit) {
-    val selected by viewModel.selectedCity.collectAsState()
-    val catalog = viewModel.countryCatalog.collectAsState().value
-    val countryCode = Country.normalizeCode(viewModel.selectedCountryCode.collectAsState().value) ?: Country.default.code
-    val country = catalog.countries.selected(countryCode)
-    val cities = catalog.cities.sortedForPicker(countryCode)
-    val currentCity = cities.firstOrNull { it.slug == selected }
-        ?: catalog.cities.defaultCity(countryCode) ?: Cities.DEFAULT
+    // Frozen at first composition (`.value`, not `collectAsState()`) rather
+    // than read live: "Wybierz inne miasto" clears the city as part of
+    // closing the sheet, and a live value would react to that before the
+    // ModalBottomSheet finishes dismissing, flashing the country's DEFAULT
+    // city in for a frame where the actually-selected one belongs. Nothing
+    // else in this sheet can change the selection while it's open, so one
+    // snapshot is enough — mirrors iOS FiltersBar's `currentCityLabel`.
+    val currentCityLabel = remember {
+        val catalog = viewModel.countryCatalog.value
+        val countryCode = Country.normalizeCode(viewModel.selectedCountryCode.value) ?: Country.default.code
+        val country = catalog.countries.selected(countryCode)
+        val cities = catalog.cities.sortedForPicker(countryCode)
+        val currentCity = cities.firstOrNull { it.slug == viewModel.selectedCity.value }
+            ?: catalog.cities.defaultCity(countryCode) ?: Cities.DEFAULT
+        "${currentCity.name}, ${country.displayName}"
+    }
 
     FilterSectionLabel(stringResource(R.string.filter_city))
     Text(
-        "${currentCity.name}, ${country.displayName}",
+        currentCityLabel,
         color = TextSecondary,
         fontSize = 14.sp,
         modifier = Modifier.padding(bottom = 6.dp),

@@ -433,11 +433,17 @@ struct FiltersSheet: View {
     // Gate the actual sign-out behind a yes/no confirmation.
     @State private var showSignOutConfirm = false
 
-    /// "‹city›, ‹country›" for the current selection — shown above the "Choose
-    /// another city" button so the row reads as a status line rather than a
-    /// bare action. Falls back to the country's default city the same way the
-    /// old inline Miasto picker did, for the gap before a first pick lands.
-    private var currentCityLabel: String {
+    /// "‹city›, ‹country›" for the current selection, FROZEN at the value it
+    /// held when the sheet appeared — captured once (`.onAppear`) rather than
+    /// read live from `prefs.selectedCity`. "Choose another city" clears that
+    /// preference as part of closing the sheet (see its button below), and a
+    /// live computed property would react to that clear before the dismiss
+    /// animation finishes, flashing the country's DEFAULT city in for a frame
+    /// where the actually-selected one belongs. Nothing else in this sheet can
+    /// change the selection while it's open, so one snapshot is enough.
+    @State private var currentCityLabel: String?
+
+    private func computeCurrentCityLabel() -> String {
         let slug = prefs.selectedCity ?? catalog.defaultCity(inCountry: prefs.selectedCountry.code)?.slug ?? City.default.slug
         let cityName = catalog.sorted(inCountry: prefs.selectedCountry.code).first { $0.slug == slug }?.name ?? slug
         return "\(cityName), \(prefs.selectedCountry.displayName)"
@@ -564,7 +570,7 @@ struct FiltersSheet: View {
                 // leave the app pointed at a stale city on a new base URL.
                 Section("filtersheet.city") {
                     HStack {
-                        Text(currentCityLabel)
+                        Text(currentCityLabel ?? computeCurrentCityLabel())
                         Spacer()
                     }
                     .foregroundStyle(.secondary)
@@ -637,6 +643,9 @@ struct FiltersSheet: View {
                 }
             }
             .accessibilityIdentifier(A11y.FiltersSheet.root)
+            .onAppear {
+                if currentCityLabel == nil { currentCityLabel = computeCurrentCityLabel() }
+            }
             }
         }
     }
