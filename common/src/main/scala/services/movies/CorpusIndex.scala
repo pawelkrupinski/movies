@@ -80,10 +80,7 @@ private[movies] trait CorpusIndexReader {
 private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
                                         isConcludedBareRow: (CacheKey, MovieRecord) => Boolean) extends CorpusIndexReader {
 
-  /** `CacheKey.lookupBase(key.normalized)` → the rows living under it. The old
-   *  `rowsFor` grouping. Bucketed by the LOOKUP base, not `key.normalized` verbatim,
-   *  so a key `StagingFold.resolveKeyCollisions` disambiguated still surfaces beside
-   *  the film that kept the plain key — see `put`. */
+  /** `key.normalized` → the rows living under it. The old `rowsFor` grouping. */
   private val rowsByNormalized = mutable.Map.empty[String, mutable.Map[CacheKey, MovieRecord]]
 
   /** (cinema, sanitized slot title) → the keys holding that slot. The old
@@ -128,19 +125,11 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   private val keysByImdbId    = mutable.Map.empty[String, mutable.Set[CacheKey]]
   private val imdbIdByKey     = mutable.Map.empty[CacheKey, String]
 
-  /** Index `record` under `key`, replacing whatever that key contributed before.
-   *
-   *  Bucketed by [[CacheKey.lookupBase]], NOT `key.normalized` verbatim: a key
-   *  `StagingFold.resolveKeyCollisions` disambiguated (two different films that
-   *  independently concluded the same bare title+year) still has to surface beside
-   *  the film that kept the plain key, so `ScrapeLanding.concludedKeyFor` keeps
-   *  seeing both candidates for a future listing of either — `lookupBase` is a
-   *  no-op for every ordinary key, so this is unobservable outside that one rare
-   *  collision. */
+  /** Index `record` under `key`, replacing whatever that key contributed before. */
   def put(key: CacheKey, record: MovieRecord, id: FilmId): Unit = synchronized {
     forget(key)
     idByKey.update(key, id); keyById.update(id, key)
-    rowsByNormalized.getOrElseUpdate(CacheKey.lookupBase(key.normalized), mutable.Map.empty).update(key, record)
+    rowsByNormalized.getOrElseUpdate(key.normalized, mutable.Map.empty).update(key, record)
     record.cinemaShowings.foreach { case (cinema, sd) =>
       sd.title.foreach { t =>
         keysByCinemaSlot.getOrElseUpdate((cinema, normalizer.sanitize(t)), mutable.Set.empty) += key
@@ -263,8 +252,7 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
   }
 
   private def forget(key: CacheKey): Unit = {
-    val lookupBase = CacheKey.lookupBase(key.normalized)
-    val prior = rowsByNormalized.get(lookupBase).flatMap(_.get(key))
+    val prior = rowsByNormalized.get(key.normalized).flatMap(_.get(key))
     prior.foreach { record =>
       record.cinemaShowings.foreach { case (cinema, sd) =>
         sd.title.foreach { t =>
@@ -310,9 +298,9 @@ private[movies] final class CorpusIndex(normalizer: TitleNormalizer,
     }
     // Only this key's own id: `put` on another key may already have claimed the id.
     idByKey.remove(key).foreach(id => if (keyById.get(id).contains(key)) keyById -= id)
-    rowsByNormalized.get(lookupBase).foreach { rows =>
+    rowsByNormalized.get(key.normalized).foreach { rows =>
       rows -= key
-      if (rows.isEmpty) rowsByNormalized -= lookupBase
+      if (rows.isEmpty) rowsByNormalized -= key.normalized
     }
   }
 }

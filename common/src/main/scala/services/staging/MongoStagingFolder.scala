@@ -113,13 +113,6 @@ class MongoStagingFolder(
           // the retired rows by the time it runs, or it writes the film with an empty board.
           plan.foreach(p => migrateRetiredSideRows(p.retirements))
           completeSideCollections(plan.map(_.moviesUpserts.toSeq).getOrElse(Seq.empty))
-          // Loud, not silent: a deferred cluster wrote nothing this round on purpose,
-          // and a disambiguated one wrote under a suffixed key instead of the plain
-          // one it concluded (see `StagingFold.resolveKeyCollisions`) — an operator
-          // watching staging for problems should see both the same way they see any
-          // other fold outcome.
-          plan.foreach(_.deferred.foreach(d => logger.warn(StagingFold.deferredCollisionWarning(d))))
-          plan.foreach(_.disambiguated.foreach(d => logger.warn(StagingFold.disambiguatedCollisionWarning(d))))
           result = Some(newPromotions)
         case StagingFold.Next.Retry(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
@@ -327,9 +320,8 @@ class MongoStagingFolder(
       val group = groupRows ++ siblings
       // A brand-new film's id must not be a live document's — checked in THIS session, so
       // the write below cannot replace a film the fold never read.
-      val plan  = StagingFold.planGroupProbingContestedKeys(stagingRows, group, normalizer, stitchedCinemaTitles(group),
-        fresh = FilmId.fresh(_, taken = id => await(movies.countDocuments(session, Filters.eq("_id", id.value)).toFuture()) > 0)
-      )(keys => await(movies.find(session, Filters.in("key", keys.toSeq*)).toFuture()).map(StoredMovieDto.toDomain(_, normalizer)))
+      val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(group),
+        fresh = FilmId.fresh(_, taken = id => await(movies.countDocuments(session, Filters.eq("_id", id.value)).toFuture()) > 0))
       plan.moviesUpserts.foreach { case (film, k, record) =>
         val id = film.value
         // The SAME shape `MovieRepository.upsert` would have written. This write is

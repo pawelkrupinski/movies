@@ -83,25 +83,13 @@ class StagingFoldOutcomeSpec extends AnyFlatSpec with Matchers {
       a[StagingFold.Next.Abandon]
   }
 
-  // THE 2026-09-08 ROUND 4 regression (poland/convergence run 34285923158). A `key_1`
-  // collision used to be treated as the OTHER, non-retryable situation — two clusters
-  // `resolveKeyCollisions` already kept apart, both concluding the identical key INSIDE
-  // one `planGroup` call, where retrying truly cannot help (the same two clusters
-  // conclude the same collision every time). But a `key_1` E11000 that actually reaches
-  // Mongo means `resolveKeyCollisions` never got to run on this pair at all — they were
-  // never in the same call (`planGroupProbingContestedKeys`'s doc comment has the full
-  // trace) — so it is the SAME "two writers, one wins, the other's next read sees it"
-  // shape as the tmdbId race above, just discovered through a caller's own probe instead
-  // of `reconcileTmdbIds`. Retrying is what lets that probe run again and find the
-  // now-committed winner.
-  "a losing race on the plain `key` against a fold this group's own read never loaded, with retries left" should
-    "go round again rather than abandon on the first attempt" in {
-    StagingFold.nextAfterAttempt(Failure(keyCollision), attempt = 1, maxRetries) shouldBe a[StagingFold.Next.Retry]
-  }
-
-  "a losing race on the plain `key` against a fold this group's own read never loaded, out of retries" should
-    "be abandoned, not silently committed" in {
-    StagingFold.nextAfterAttempt(Failure(keyCollision), attempt = maxRetries, maxRetries) shouldBe
-      a[StagingFold.Next.Abandon]
+  // A `key_1` collision is a DIFFERENT situation: two clusters `resolveKeyCollisions`
+  // already kept apart (disagreeing tmdbId/imdbId) both concluding the identical
+  // (sanitize, year) key. The same two clusters produce the same collision every retry,
+  // so — unlike the tmdbId race above — retrying cannot help; it must abandon immediately
+  // like any other non-transient failure, per `resolveKeyCollisions`'s own deferral.
+  "a key_1 collision between two genuinely different films" should
+    "be abandoned rather than retried" in {
+    StagingFold.nextAfterAttempt(Failure(keyCollision), attempt = 1, maxRetries) shouldBe a[StagingFold.Next.Abandon]
   }
 }
