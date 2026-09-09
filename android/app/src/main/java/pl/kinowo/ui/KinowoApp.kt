@@ -149,17 +149,42 @@ internal fun CityGate(
     // `detected`, so a deliberate pick of a different city can pre-suppress the
     // "you're nearer …" prompt that would otherwise fire on the next screen.
     var nearest by remember { mutableStateOf<City?>(null) }
+    // An attempt is in flight AND was triggered by the chooser's own "use my
+    // location" button — the first-launch attempt below never sets this, so a
+    // denial/miss there stays silent exactly as it always has. Doubles as the
+    // button's busy flag.
+    var locating by remember { mutableStateOf(false) }
+    // The last MANUAL attempt (via `locating`) found nothing within 100 km, or
+    // was denied. Shown inline on the chooser; cleared on the next attempt or
+    // a fresh gate open.
+    var locateFailed by remember { mutableStateOf(false) }
 
     fun resolveIn(country: String) = scope.launch {
         val city = resolveNearest(country, catalog.cities)
-        if (city != null) { detected = city; nearest = city } else showChooser = true
+        if (city != null) {
+            // `showChooser` may already be true here — a manual "use my
+            // location" tap runs this from the chooser itself, unlike the
+            // first-launch call where it always starts false — so a hit must
+            // explicitly hand control back to the confirm screen.
+            detected = city; nearest = city; showChooser = false
+        } else {
+            showChooser = true
+            if (locating) locateFailed = true
+        }
+        locating = false
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         val country = start?.countryCode
-        if (granted && country != null) resolveIn(country) else showChooser = true
+        if (granted && country != null) {
+            resolveIn(country)
+        } else {
+            showChooser = true
+            if (locating) locateFailed = true
+            locating = false
+        }
     }
 
     // Keyed on the start rather than fired once: it arrives asynchronously and
@@ -173,6 +198,8 @@ internal fun CityGate(
         detected = null
         nearest = null
         showChooser = false
+        locating = false
+        locateFailed = false
         // The user reached this gate by naming a country, so the answer they are
         // owed is that country's cities — not a location fix, and not the
         // permission dialog that taking one would raise.
@@ -187,6 +214,20 @@ internal fun CityGate(
         else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 
+    // The chooser's own "use my location" button — re-runs the same check on
+    // demand instead of only once on first launch. Reuses `permissionLauncher`
+    // and `resolveIn` rather than a parallel permission flow.
+    fun locateMe() {
+        val country = start?.countryCode ?: return
+        locating = true
+        locateFailed = false
+        val alreadyGranted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.ACCESS_COARSE_LOCATION,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (alreadyGranted) resolveIn(country)
+        else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
+
     val city = detected
     when {
         showChooser     -> CityChoiceScreen(
@@ -194,6 +235,9 @@ internal fun CityGate(
             onPick = { onPick(it, nearest) },
             selectedCountryCode = start?.countryCode,
             onCountry = onCountry,
+            onLocateMe = ::locateMe,
+            locating = locating,
+            locateFailed = locateFailed,
         )
         city != null    -> CityConfirmScreen(
             city = city,

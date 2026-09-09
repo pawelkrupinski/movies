@@ -16,6 +16,8 @@
     <string name="no_region_matching">Kein Bundesstaat namens „%1$s“.</string>
     <string name="back_to_regions">Alle Bundesstaaten</string>
     <string name="near_city_label">Du bist in der Nähe von</string>
+    <string name="locate_me">Meinen Standort verwenden</string>
+    <string name="no_city_nearby_locate">Keine unterstützte Stadt in der Nähe.</string>
     <string name="show_repertoire">Spielzeiten anzeigen — %1$s</string>
     <string name="choose_other_city">Andere Stadt wählen</string>
 

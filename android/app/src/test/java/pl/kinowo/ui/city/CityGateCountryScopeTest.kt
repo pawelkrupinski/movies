@@ -5,7 +5,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -175,6 +177,47 @@ class CityGateCountryScopeTest {
 
         compose.onNodeWithText("Pokaż repertuar", substring = true).assertIsDisplayed()
         assertEquals(1, locationAttempts)
+    }
+
+    /**
+     * The chooser's own "use my location" button re-runs the same check the
+     * first-launch flow takes, on demand: opened straight into the chooser
+     * (no automatic attempt, `locationAttempts == 0`), a tap resolves against
+     * the Poznań fix and — Poland being the selected country — confirms it,
+     * exactly like a first-launch hit would.
+     */
+    @Test
+    fun locateButtonTriggersAFreshResolutionAndConfirms() {
+        val start = MutableStateFlow<CityGateStart?>(CityGateStart("pl", locate = false))
+        compose.setContent { gate(start) }
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Poznań").assertIsDisplayed() // as a row of the chooser
+        assertEquals("opening straight into the chooser must not itself take a fix", 0, locationAttempts)
+
+        compose.onNodeWithContentDescription("Znajdź moje miasto").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Pokaż repertuar", substring = true).assertIsDisplayed()
+        assertEquals(1, locationAttempts)
+    }
+
+    /**
+     * The same button's miss path: Germany selected, but the fix is still
+     * Poznań's — over 100 km from every German city — so the chooser stays up
+     * and says so, rather than silently doing nothing.
+     */
+    @Test
+    fun locateButtonMissShowsTheNoNearbyMessage() {
+        val start = MutableStateFlow<CityGateStart?>(CityGateStart("de", locate = false))
+        compose.setContent { gate(start) }
+        compose.waitForIdle()
+
+        compose.onNodeWithContentDescription("Znajdź moje miasto").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Brak obsługiwanego miasta w pobliżu.").assertIsDisplayed()
+        compose.onNodeWithText("Berlin").assertIsDisplayed() // the chooser is still the one showing
     }
 
     /** Sanity: the scoping helper the gate leans on really is country-scoped. */

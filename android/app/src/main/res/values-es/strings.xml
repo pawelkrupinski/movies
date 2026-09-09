@@ -16,6 +16,8 @@
     <string name="no_region_matching">No hay ninguna región llamada «%1$s».</string>
     <string name="back_to_regions">Todas las regiones</string>
     <string name="near_city_label">Estás cerca de</string>
+    <string name="locate_me">Usar mi ubicación</string>
+    <string name="no_city_nearby_locate">No hay ninguna ciudad disponible cerca.</string>
     <string name="show_repertoire">Ver las sesiones — %1$s</string>
     <string name="choose_other_city">Elegir otra ciudad</string>
 

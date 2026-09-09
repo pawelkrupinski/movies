@@ -16,6 +16,8 @@
     <string name="no_region_matching">No state named “%1$s”.</string>
     <string name="back_to_regions">All states</string>
     <string name="near_city_label">You’re near</string>
+    <string name="locate_me">Use my location</string>
+    <string name="no_city_nearby_locate">No supported city nearby.</string>
     <string name="show_repertoire">Show showtimes — %1$s</string>
     <string name="choose_other_city">Choose another city</string>
 
