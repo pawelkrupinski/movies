@@ -27,7 +27,13 @@
     pageTitle       = messages("landing.apexTitle", models.Country.apexBrandName),
     pageDescription = messages("landing.ogDescription"),
     pageUrl         = "https://" + models.Country.apexHost + "/",
-    imageUrl        = "https://" + models.Country.apexHost + "/assets/img/" + models.Country.default.homeOgImage,
+    // The front door itself is brand chrome (its title/description are already
+    // pinned to English above), but the card image was still `Country.default`
+    // — Poland's `og-home.jpg`, Polish posters — because that's the fallback
+    // every OTHER homeOgImage caller wants. Here it isn't a fallback, it's the
+    // only country a visitor to the English-language front door ever sees, so
+    // pin it to the US card explicitly rather than inheriting the Polish default.
+    imageUrl        = "https://" + models.Country.apexHost + "/assets/img/" + models.Country.UnitedStates.homeOgImage,
   )
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
