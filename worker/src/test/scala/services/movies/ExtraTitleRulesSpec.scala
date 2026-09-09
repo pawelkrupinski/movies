@@ -73,6 +73,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Seans filmowy dla rodziców: Ojczyzna"            -> ("Seans filmowy dla rodziców: ",      "Ojczyzna"),
     // Fourth-wave (2026-06-20) club / audience programme prefixes.
     "Kino seniora: Takie jest życie"                  -> ("Kino seniora: ",                    "Takie jest życie"),
+    "Kino Seniora - 500 Mil"                          -> ("Kino Seniora - ",                   "500 Mil"),
     "Fregata dla Seniorów: Ojczyzna"                  -> ("Fregata dla Seniorów: ",            "Ojczyzna"),
     "Janosik Dzieciom: Minionki i straszydła"         -> ("Janosik Dzieciom: ",                "Minionki i straszydła"),
     "Janosik Szkrabom: Reksio i paw"                  -> ("Janosik Szkrabom: ",                "Reksio i paw"),

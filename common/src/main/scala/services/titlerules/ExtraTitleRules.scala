@@ -165,6 +165,7 @@ object ExtraTitleRules {
     // Fourth-wave (2026-06-20) audit of the rating-less corpus: club / audience
     // programme banners that prefix the film (own display row, query stripped).
     prog("xtra-pp-kino-seniora-colon", """(?i)^Kino\s+seniora:\s+""",                        "'Kino seniora:' colon variant of the existing pipe form (Takie jest życie)"),
+    prog("xtra-pp-kino-seniora-dash",  """(?i)^Kino\s+Seniora\s*[-–—]\s+""",                 "'Kino Seniora -' dash variant of the existing pipe/colon forms — found live in prod (Klaps cinema's '500 Mil' senior screening), where the un-stripped banner reached the TMDB query and the row never resolved"),
     prog("xtra-pp-fregata-seniorow",   """(?iu)^Fregata\s+dla\s+Seniorów:\s+""",             "'Fregata dla Seniorów:' senior strand (Ojczyzna)"),
     prog("xtra-pp-janosik-kids",       """(?i)^Janosik\s+(?:Dzieciom|Szkrabom):\s+""",       "'Janosik Dzieciom/Szkrabom:' kids strands (Minionki i straszydła)"),
     prog("xtra-pp-najlepsze-z-najgorszych", """(?i)^Najlepsze\s+z\s+najgorszych:\s+""",      "'Najlepsze z najgorszych:' bad-movie-night cycle — global so it covers Kosmos/Mikro/NCKF, not just the muza per-cinema seed rule (Sarnie żniwo, Brudny Henryk)"),
