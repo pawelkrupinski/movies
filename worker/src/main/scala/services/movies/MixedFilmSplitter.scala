@@ -95,15 +95,27 @@ class MixedFilmSplitter(cache: MovieCache, staging: StagingRepository,
     strays.foreach { case (source, slot) =>
       Source.cinemaOf(source).foreach { cinema =>
         val title = slot.title.filter(_.trim.nonEmpty).getOrElse(entry.title)
+        // The year that decides where the stray lands: this slot's, else the one it
+        // wrote into its own TITLE (see `EmbeddedYear`) — the same fallback
+        // `ScrapeLanding.recordCinemaScrape` already applies for an ordinary
+        // newcomer's landing, and for the identical reason: a stray staged YEARLESS
+        // reaches `StagingFold.planGroup` idless AND yearless, which
+        // `FilmCanonicalizer.clusterByFilm`'s rule 4 folds onto ANY same-titled
+        // cluster by title alone — straight back onto the row it just left. Five
+        // Rooftop Cinema / Bright Star venues screening Tommy Lee Wallace's 1990 "It"
+        // miniseries wrote the year into the title with no `releaseYear` of their
+        // own, so every settle re-diverted them and the fold put them straight back
+        // (`kinowo_us`, 2026-09-08 — see `MixedFilmSplitterSpec`).
+        val year   = slot.releaseYear.orElse(EmbeddedYear.of(title))
         // The STORED slot carries this cinema's showtimes; the resident one carries none.
         val staged = storedSlots.getOrElse(source, slot)
-        staging.upsert(cinema, title, slot.releaseYear, MovieRecord(
+        staging.upsert(cinema, title, year, MovieRecord(
           searchTitle = Some(cache.normalizer.apiQuery(cache.normalizer.recase(title))),
           data        = Map(source -> staged)))
         logger.info(s"Mixed-film split: '${entry.title}' (${entry.year.getOrElse("?")}) — " +
           s"${cinema.displayName} screens a different film " +
           s"[director: ${slot.director.mkString(", ")}; original: ${slot.originalTitle.getOrElse("—")}] " +
-          s"→ re-diverted to staging as '$title' (${slot.releaseYear.getOrElse("?")}) " +
+          s"→ re-diverted to staging as '$title' (${year.getOrElse("?")}) " +
           s"with ${ShowtimesDigest.slotShowtimeCount(staged)} showtime(s).")
       }
     }

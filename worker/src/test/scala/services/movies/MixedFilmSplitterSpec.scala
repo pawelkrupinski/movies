@@ -226,6 +226,85 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
       staging.findAll() shouldBe empty)
   }
 
+  /** Production `kinowo_us`: five Rooftop Cinema / Bright Star venues screen Tommy
+   *  Lee Wallace's 1990 "It" miniseries as a retro event, writing the year straight
+   *  into the title ("It (1990)") rather than into their own `releaseYear` field —
+   *  so the stray slot reaches the splitter YEARLESS. Staged yearless, it lands in
+   *  `StagingFold.planGroup`'s raw `(sanitize, year)` bucket for "it" with NO year at
+   *  all, the same bucket the mainstream "It" (2017) row's OWN key normalizes to —
+   *  `FilmCanonicalizer.clusterByFilm`'s yearless-and-idless rule then folds it
+   *  straight back onto the 2017 cluster by title alone, so every settle re-diverts
+   *  the same five venues and the fold puts them straight back: never converges.
+   *
+   *  `ScrapeLanding`'s ordinary landing path already carries the fix for exactly
+   *  this shape — `cm.movie.releaseYear.orElse(EmbeddedYear.of(displayTitle))` — the
+   *  splitter's re-diversion path just never got it. This pins that the splitter
+   *  now elevates the embedded year too, so the stray lands in staging keyed
+   *  `it|1990`, a DIFFERENT raw key from the mainstream `it|2017` row — never
+   *  reaching the yearless fallback rule at all. */
+  "the row holding both 'It' films" should "elevate the stray's embedded year, not stage it yearless" in {
+    // Neither slot publishes an ORIGINAL title (the real US/Flicks shape —
+    // `identityTitle`'s doc: "every US and UK row"), so detection falls back to
+    // the PLAIN title for the whole row: "It (2017)" / "It (1990)" reduce to the
+    // single distinctive word "2017" / "1990" each ("it" alone is too short to
+    // count), which differ — corroborated by the runtimes, 33 minutes apart. TWO
+    // mainstream cinemas against Helios's one retro screening, so the larger group
+    // is `main` and Helios — the YEARLESS one, matching the real incident — is the
+    // stray that gets diverted (`identityGroups` sorts by `-slots.size` first).
+    val record = MovieRecord(data = Map[Source, SourceData](
+      Multikino   -> slot("It (2017)", Seq("Andy Muschietti"), None, Some(2017), Some(135)),
+      KinoMuranow -> slot("It (2017)", Seq("Andy Muschietti"), None, Some(2017), Some(135)),
+      Helios      -> slot("It (1990)", Seq("Tommy Lee Wallace"), None, None, Some(168))))
+    val (_, staging, splitter) = fixture(record, "It", Some(2017))
+
+    splitter.splitMixedRows() shouldBe 1
+
+    val staged = staging.findAll().head
+    withClue(s"staged with no year — the exact shape that folds straight back onto the 2017 row " +
+      s"on every settle instead of converging: $staged\n") {
+      staged.year shouldBe Some(1990)
+    }
+  }
+
+  /** The convergence claim itself, for the shape above: a genuinely unresolvable
+   *  stray (TMDB has no "It" 1990 MOVIE entry — Wallace's adaptation is a TV
+   *  miniseries there, so `/search/movie` can never match it) must still settle to
+   *  a STABLE state — parked in staging under its OWN (title, year) key, same as
+   *  "Joanna d'Arc"'s never-resolving stray in "settle should split a mixed row,
+   *  and change nothing on a second pass" above — rather than bounce between
+   *  staging and the 2017 row forever. Real `settle`, real (empty-result) TMDB
+   *  stub, twice. */
+  "settle" should "converge a genuinely unresolvable 'It' 1990 stray to a stable staging park, not a bounce" in {
+    val repository = new InMemoryMovieRepository()
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val staging    = new InMemoryStagingRepository(normalizer = titleNormalizer)
+    val service    = new MovieService(cache, new InProcessEventBus(),
+      new TmdbClient(http = new tools.GetOnlyHttpFetch {
+        override def get(url: String): String = """{"results":[]}"""
+      }, apiKey = Some("stub")),
+      staging = staging)
+
+    cache.put(cache.keyOf("It", Some(2017)), MovieRecord(data = Map[Source, SourceData](
+      Multikino   -> slot("It (2017)", Seq("Andy Muschietti"), None, Some(2017), Some(135)),
+      KinoMuranow -> slot("It (2017)", Seq("Andy Muschietti"), None, Some(2017), Some(135)),
+      Helios      -> slot("It (1990)", Seq("Tommy Lee Wallace"), None, None, Some(168)))))
+
+    service.settle()
+    val mainstreamAfterFirst = cache.get(cache.keyOf("It", Some(2017))).map(_.cinemaSlots.size)
+    val stagedAfterFirst     = staging.findAll()
+    mainstreamAfterFirst shouldBe Some(2)
+    withClue(s"the 1990 stray should be parked in staging under its OWN year, not lost: $stagedAfterFirst\n")(
+      stagedAfterFirst.map(_.year) should contain(Some(1990)))
+
+    service.settle()
+    withClue("a converged corpus must not re-divert the stray a second time, nor shrink the mainstream " +
+      "row it already left — the churn this test guards: ") {
+      cache.get(cache.keyOf("It", Some(2017))).map(_.cinemaSlots.size) shouldBe mainstreamAfterFirst
+      staging.findAll().map(_.year) shouldBe stagedAfterFirst.map(_.year)
+    }
+    service.stop()
+  }
+
   "a second pass" should "find nothing left to split" in {
     val record = MovieRecord(data = Map[Source, SourceData](
       KinoMuranow -> slot("Joanna d'Arc", Seq("Luc Besson"), Some("Joan of Arc"), Some(1999), Some(160)),
