@@ -163,12 +163,27 @@ class KinowoViewModel(
      *  time MainActivity recreates. Harmless at the first-launch gate, where the
      *  city is null anyway. */
     fun setCountry(code: String) = viewModelScope.launch {
-        prefs.clearCity()
-        // The user just said which country they want, so let them say which city
-        // too: the re-armed gate offers that country's list rather than whatever
-        // city the device happens to sit near.
-        prefs.awaitExplicitCityPick()
+        reArmCityGate()
         prefs.setCountryCode(code)
+    }
+
+    /** Drop the current city and arm the gate for an explicit pick, without
+     *  touching the country. Backs the Filtry sheet's "Pick another city"
+     *  button — the sole replacement for the old inline Kraj/Miasto pickers —
+     *  which re-gates to [pl.kinowo.ui.city.CityChoiceScreen] the same way
+     *  [setCountry] already did for a country switch. */
+    fun pickAnotherCity() = viewModelScope.launch { reArmCityGate() }
+
+    /** Clear the persisted city and ask the gate for an explicit pick rather
+     *  than a located offer — shared by [setCountry] (a new country's
+     *  deployment may not serve the old city) and [pickAnotherCity] (the user
+     *  asked to switch city or country from within the app). */
+    private suspend fun reArmCityGate() {
+        prefs.clearCity()
+        // The user just asked to pick, so let them: the re-armed gate offers
+        // an explicit choice rather than whatever city the device happens to
+        // sit near.
+        prefs.awaitExplicitCityPick()
     }
 
     val hiddenFilms: StateFlow<Set<String>> =

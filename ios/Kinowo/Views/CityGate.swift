@@ -253,26 +253,45 @@ struct CityChoiceView: View {
                 query = ""
                 region = nil
             }
+            .accessibilityIdentifier(A11y.CityGate.picker)
         }
     }
 
-    /// One selectable segment per `Country.all`. Selecting persists the choice
-    /// (forcing its language) and re-points the stores at the new deployment so
-    /// the city list below immediately reflects the chosen country's server.
+    /// One selectable pill per `Country.all`, in a horizontally scrolling row.
+    /// A segmented `Picker` squeezed every segment into an equal share of the
+    /// row width, so "United Kingdom" / "United States" clipped to an ellipsis
+    /// the moment a fourth or fifth country was deployed. Pills instead render
+    /// at each label's own intrinsic width — never truncated — and the row
+    /// scrolls to fit however many countries the catalog carries, mirroring
+    /// the Android `CountryPicker`.
     private var countryPicker: some View {
-        Picker("country.label", selection: Binding(
-            get: { prefs.selectedCountry },
-            set: { country in
-                prefs.setCountry(country)
-                store.use(country: country)
-                details.use(country: country)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(catalog.countries, id: \.code) { country in
+                    let selected = country.code == prefs.selectedCountry.code
+                    Button {
+                        guard country != prefs.selectedCountry else { return }
+                        prefs.setCountry(country)
+                        store.use(country: country)
+                        details.use(country: country)
+                    } label: {
+                        Text(country.displayName)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .font(.subheadline.weight(selected ? .semibold : .regular))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 8)
+                            .background(
+                                selected ? Color.accentColor.opacity(0.85) : Color(.secondarySystemFill),
+                                in: Capsule()
+                            )
+                            .foregroundStyle(selected ? Color.white : Color.primary)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
-        )) {
-            ForEach(catalog.countries, id: \.code) { country in
-                Text(country.displayName).tag(country)
-            }
+            .padding(.vertical, 2)
         }
-        .pickerStyle(.segmented)
     }
 
     /// One tappable row: a label and the disclosure chevron both steps use.

@@ -198,75 +198,39 @@ class FiltersSheetOrderTest {
     }
 
     /**
-     * The city picker is a Material3 ExposedDropdownMenu: the field shows the
-     * active city, the other cities stay hidden until the field is tapped, and
-     * picking one switches the city (collapsing the menu). Fails if the field
-     * eagerly composes every city, or the picker regresses to the wheel.
+     * Miasto is now a single "Wybierz inne miasto" entry point back to the
+     * first-launch picker — not an inline Kraj/Miasto pair of dropdowns. Its
+     * status line names the current city AND country (so dropping the country
+     * picker doesn't drop that information), and tapping the button clears the
+     * city and closes the sheet, which is what re-gates the app to the chooser.
      */
     @Test
-    fun cityPickerIsAnExposedDropdown() {
+    fun cityPickerIsAPickAnotherCityButtonNamingTheCityAndCountry() {
+        var closed = false
         compose.setContent {
-            FiltersSheetContent(viewModel(), films = emptyList())
+            FiltersSheetContent(viewModel(), films = emptyList(), onClose = { closed = true })
         }
 
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Miasto"))
-
-        // The field shows the active city; another city is hidden until opened.
-        val other = Cities.sortedIn("pl").first { it.slug != Cities.DEFAULT.slug }.name
-        compose.onNodeWithText(Cities.DEFAULT.name).assertIsDisplayed()
-        compose.onNodeWithText(other).assertDoesNotExist()
-
-        // Tapping the field opens the menu, revealing the other cities.
-        compose.onNodeWithText(Cities.DEFAULT.name).performClick()
-        compose.onNodeWithText(other).assertExists()
-    }
-
-    /**
-     * The country switch ("Kraj") sits directly above the city switch ("Miasto")
-     * — Country over City — mirroring iOS FiltersBar. Its field shows the current
-     * country's native name (Poland by default). Fails if the switcher drifts, or
-     * regresses to the old top-bar placement that replaced the 🎬 mark.
-     */
-    @Test
-    fun countryPickerSitsDirectlyAboveTheCityPicker() {
-        compose.setContent {
-            FiltersSheetContent(viewModel(), films = emptyList())
-        }
-
-        fun top(text: String) =
-            compose.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.top
-
-        // The country field shows Poland's native name; scroll it + Miasto on screen.
+        // Status line: current city, current country — the country name that
+        // used to live in its own "Kraj" dropdown is folded in here instead.
         val poland = Country.default.displayName // "Polska"
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Miasto"))
-        assertTrue("Kraj must sit directly above Miasto",
-            top(poland) < top("Miasto"))
-    }
+        val statusLine = "${Cities.DEFAULT.name}, $poland"
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText(statusLine))
+        compose.onNodeWithText(statusLine).assertIsDisplayed()
 
-    /**
-     * The country picker is a Material3 ExposedDropdownMenu like the city one:
-     * the field shows the active country, the others stay hidden until tapped,
-     * and picking is wired to [pl.kinowo.ui.KinowoViewModel.setCountry]. Fails if
-     * it eagerly composes every country or regresses to the top-bar pill.
-     */
-    @Test
-    fun countryPickerIsAnExposedDropdown() {
-        compose.setContent {
-            FiltersSheetContent(viewModel(), films = emptyList())
-        }
+        // No inline city list — the old dropdown's other cities are gone.
+        val otherCity = Cities.sortedIn("pl").first { it.slug != Cities.DEFAULT.slug }.name
+        compose.onNodeWithText(otherCity).assertDoesNotExist()
 
-        val poland = Country.default.displayName // "Polska"
-        val uk = Country.all.first { it != Country.default }.displayName // "United Kingdom"
-
-        compose.onNode(hasScrollAction()).performScrollToNode(hasText(poland))
-
-        // The field shows the active country; another stays hidden until opened.
-        compose.onNodeWithText(poland).assertIsDisplayed()
-        compose.onNodeWithText(uk).assertDoesNotExist()
-
-        // Tapping the field opens the menu, revealing the other countries.
-        compose.onNodeWithText(poland).performClick()
-        compose.onNodeWithText(uk).assertExists()
+        // The button re-arms the gate (KinowoViewModel.pickAnotherCity) and
+        // closes the sheet — closing is what's observable synchronously here;
+        // clearCity()/awaitExplicitCityPick() themselves are covered at the
+        // UserPreferences layer (UserPreferencesCityTest / ExplicitPickTest).
+        // Scroll it into view itself — it sits a row below `statusLine`, which
+        // the scroll above only guaranteed for that row, not for this one.
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Wybierz inne miasto"))
+        compose.onNodeWithText("Wybierz inne miasto").performClick()
+        assertTrue("Choosing another city should close the sheet", closed)
     }
 
     /**

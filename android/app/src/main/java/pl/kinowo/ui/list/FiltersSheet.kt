@@ -30,12 +30,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -91,7 +88,6 @@ import pl.kinowo.model.CinemaArea
 import pl.kinowo.model.CinemaCatalog
 import pl.kinowo.model.Country
 import pl.kinowo.model.defaultCity
-import pl.kinowo.model.isSwitchable
 import pl.kinowo.model.sortedForPicker
 import pl.kinowo.model.selected
 import pl.kinowo.filter.SortOption
@@ -275,16 +271,11 @@ private fun FiltersList(
                 FromHourRow(viewModel.formatFilter) { viewModel.formatFilter = it }
             }
 
-            // Kraj — the deployment country switch, directly above Miasto
-            // (Country over City), mirroring iOS FiltersBar's "Kraj" picker
-            // above "Miasto". Renders nothing when only one country is deployed.
-            item(key = "sec_country") { CountrySection(viewModel) }
-
-            // Miasto — the city the repertoire is served for. Last filter,
-            // right above the account section, mirroring iOS FiltersBar.
-            // Usable before login (it's just a city switch); switching
-            // re-fetches.
-            item(key = "sec_city") { CitySection(viewModel) }
+            // Miasto — a single entry point back to the first-launch picker,
+            // replacing the inline Kraj/Miasto dropdowns. Last filter, right
+            // above the account section, mirroring iOS FiltersBar. Usable
+            // before login (it's just a city switch).
+            item(key = "sec_city") { CitySection(viewModel, onClose) }
 
             item { AccountSection(viewModel) }
 
@@ -519,96 +510,38 @@ private fun CinemaAreaGroup(
 }
 
 /**
- * Kraj — the deployment country, as a Material3 ExposedDropdownMenu mirroring
- * [CitySection] and sitting directly above it (Country over City). Each country
- * is its own web deployment serving a disjoint set of cities, so picking one
- * routes through [KinowoViewModel.setCountry], which clears the selected city
- * (re-arming the city gate) and recreates the activity onto the new deployment +
- * locale. Rendered only when more than one country is deployed ([Country.all]) —
- * a single-country build shows nothing. The first-launch gate's parallel control
- * is the pill-based [pl.kinowo.ui.CountryPicker]; both funnel through the same
- * ViewModel call. Exercised by FiltersSheetOrderTest.
+ * Miasto — a single entry point back to [pl.kinowo.ui.city.CityChoiceScreen],
+ * the first-launch picker, replacing the inline Kraj/Miasto
+ * `ExposedDropdownMenu`s: a status line naming the current city and country,
+ * plus a "Wybierz inne miasto" button. Tapping it calls
+ * [KinowoViewModel.pickAnotherCity] — the same clear-city + arm-explicit-pick
+ * pair [KinowoViewModel.setCountry] already used for an in-sheet country
+ * switch — so [pl.kinowo.ui.KinowoApp] re-gates to the chooser once the sheet
+ * closes ([onClose]). Always shown (independent of
+ * [pl.kinowo.model.isSwitchable]) since it now covers picking a different city
+ * within the same country too, mirroring iOS FiltersBar.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CountrySection(viewModel: KinowoViewModel) {
-    val countries = viewModel.countryCatalog.collectAsState().value.countries
-    if (!countries.isSwitchable) return
-    val selectedCode by viewModel.selectedCountryCode.collectAsState()
-    val current = countries.selected(selectedCode)
-    var expanded by remember { mutableStateOf(false) }
-    FilterSectionLabel(stringResource(R.string.country_label))
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        OutlinedTextField(
-            value = current.displayName,
-            onValueChange = {},
-            readOnly = true,
-            singleLine = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            countries.forEach { country ->
-                DropdownMenuItem(
-                    text = { Text(country.displayName) },
-                    onClick = {
-                        viewModel.setCountry(country.code)
-                        expanded = false
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                )
-            }
-        }
-    }
-}
-
-/**
- * Miasto — the active city, as a Material3 ExposedDropdownMenu: a read-only
- * field showing the active city over an elevated, animated menu of the selected
- * country's cities ([Cities.sortedIn]). Picking persists the choice (and
- * re-fetches that city's repertoire). Independent of login — it's just a city switch.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CitySection(viewModel: KinowoViewModel) {
+private fun CitySection(viewModel: KinowoViewModel, onClose: () -> Unit) {
     val selected by viewModel.selectedCity.collectAsState()
     val catalog = viewModel.countryCatalog.collectAsState().value
     val countryCode = Country.normalizeCode(viewModel.selectedCountryCode.collectAsState().value) ?: Country.default.code
+    val country = catalog.countries.selected(countryCode)
     val cities = catalog.cities.sortedForPicker(countryCode)
-    val current = cities.firstOrNull { it.slug == selected }
+    val currentCity = cities.firstOrNull { it.slug == selected }
         ?: catalog.cities.defaultCity(countryCode) ?: Cities.DEFAULT
-    var expanded by remember { mutableStateOf(false) }
+
     FilterSectionLabel(stringResource(R.string.filter_city))
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
+    Text(
+        "${currentCity.name}, ${country.displayName}",
+        color = TextSecondary,
+        fontSize = 14.sp,
+        modifier = Modifier.padding(bottom = 6.dp),
+    )
+    Button(
+        onClick = { viewModel.pickAnotherCity(); onClose() },
         modifier = Modifier.fillMaxWidth(),
-    ) {
-        OutlinedTextField(
-            value = current.name,
-            onValueChange = {},
-            readOnly = true,
-            singleLine = true,
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            cities.forEach { city ->
-                DropdownMenuItem(
-                    text = { Text(city.name) },
-                    onClick = {
-                        viewModel.setCity(city.slug)
-                        expanded = false
-                    },
-                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
-                )
-            }
-        }
-    }
+    ) { Text(stringResource(R.string.choose_other_city)) }
 }
 
 /**

@@ -88,6 +88,9 @@ enum A11y {
         static let fromHourSection = "filters.fromHour"
         static let clearButton     = "filters.clear"
         static let doneButton      = "filters.done"
+        /// The "Choose another city" button that replaced the inline Kraj/Miasto
+        /// pickers — re-arms the first-launch chooser instead.
+        static let pickAnotherCityButton = "filters.pickAnotherCity"
     }
 
     enum CinemaPage {
@@ -114,6 +117,10 @@ enum A11y {
         /// The "back to the state list" control on the second step of a grouped
         /// country's pick (the US). Only present once a state has been chosen.
         static let backToRegionsButton = "citygate.backToRegions.button"
+        /// The manual picker's own `List` (`CityChoiceView`'s body), so a test
+        /// can confirm the gate re-mounted it (e.g. after "Pick another city"
+        /// in Filtry) without depending on locale-specific copy.
+        static let picker = "citygate.picker"
     }
 
     enum EmptyState {

@@ -424,7 +424,6 @@ struct FiltersSheet: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var store: RepertoireStore
-    @EnvironmentObject var details: DetailsStore
     @Environment(\.dismiss) private var dismiss
 
     // ScrollViewReader anchor for the account section (Konto / Zaloguj się) —
@@ -433,6 +432,16 @@ struct FiltersSheet: View {
 
     // Gate the actual sign-out behind a yes/no confirmation.
     @State private var showSignOutConfirm = false
+
+    /// "‹city›, ‹country›" for the current selection — shown above the "Choose
+    /// another city" button so the row reads as a status line rather than a
+    /// bare action. Falls back to the country's default city the same way the
+    /// old inline Miasto picker did, for the gap before a first pick lands.
+    private var currentCityLabel: String {
+        let slug = prefs.selectedCity ?? catalog.defaultCity(inCountry: prefs.selectedCountry.code)?.slug ?? City.default.slug
+        let cityName = catalog.sorted(inCountry: prefs.selectedCountry.code).first { $0.slug == slug }?.name ?? slug
+        return "\(cityName), \(prefs.selectedCountry.displayName)"
+    }
 
     var body: some View {
         NavigationStack {
@@ -544,52 +553,30 @@ struct FiltersSheet: View {
                     .accessibilityIdentifier(A11y.FiltersSheet.clearButton)
                 }
 
-                // ── Kraj ─────────────────────────────────────────
-                // In-app country switch, shown only when more than one country
-                // is deployed (`Country.isSwitchable`). Mirrors the first-launch
-                // gate's country picker: persisting the code forces the new
-                // country's language and re-points both stores at its deployment
-                // (`use(country:)`). Then `clearCity()` re-gates to the city
-                // chooser — the current city may not exist under the new host, so
-                // we never leave the app pointed at a stale city on a new base URL.
-                if catalog.isSwitchable {
-                    Section("country.label") {
-                        Picker("country.label", selection: Binding(
-                            get: { prefs.selectedCountry },
-                            set: { country in
-                                guard country != prefs.selectedCountry else { return }
-                                prefs.setCountry(country)
-                                store.use(country: country)
-                                details.use(country: country)
-                                prefs.clearCity()
-                                dismiss()
-                            }
-                        )) {
-                            ForEach(catalog.countries, id: \.code) { country in
-                                Text(country.displayName).tag(country)
-                            }
-                        }
-                    }
-                }
-
-                // ── Miasto ───────────────────────────────────────
-                // Always available (signed in or out): picks which city's
-                // repertoire the app shows. Changing it re-points both
-                // stores at the new `/{slug}/api/…` path and persists the
-                // choice. The picker lists the SELECTED country's cities.
+                // ── City ─────────────────────────────────────────
+                // A single entry point back to the first-launch picker
+                // (`CityChoiceView`), replacing the inline Kraj/Miasto pickers:
+                // tapping re-arms the explicit-pick flow (`awaitExplicitCityPick`)
+                // and clears the persisted city (`clearCity`) — the same pair the
+                // country switch used to trigger here — so `CityGate` re-mounts on
+                // the country/city chooser once the sheet closes. The current city
+                // may not exist under a newly chosen country's host, so we never
+                // leave the app pointed at a stale city on a new base URL.
                 Section("filtersheet.city") {
-                    Picker("filtersheet.city", selection: Binding(
-                        get: { prefs.selectedCity ?? catalog.defaultCity(inCountry: prefs.selectedCountry.code)?.slug ?? City.default.slug },
-                        set: { slug in
-                            prefs.setCity(slug)
-                            store.use(citySlug: slug, timeZone: catalog.zone(ofSlug: slug, inCountry: prefs.selectedCountry))
-                            details.use(citySlug: slug)
-                        }
-                    )) {
-                        ForEach(catalog.sorted(inCountry: prefs.selectedCountry.code), id: \.slug) { city in
-                            Text(city.name).tag(city.slug)
-                        }
+                    HStack {
+                        Text(currentCityLabel)
+                        Spacer()
                     }
+                    .foregroundStyle(.secondary)
+                    Button {
+                        prefs.awaitExplicitCityPick()
+                        prefs.clearCity()
+                        dismiss()
+                    } label: {
+                        Text("citygate.choose_other")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .accessibilityIdentifier(A11y.FiltersSheet.pickAnotherCityButton)
                 }
 
                 // ── Account ──────────────────────────────────────
