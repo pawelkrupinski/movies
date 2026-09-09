@@ -155,6 +155,21 @@ struct CityChoiceView: View {
     /// `nil` when location was unavailable (then there's nothing to suppress).
     var nearest: City?
 
+    /// The "use my location" toolbar button's own resolver — separate from the
+    /// gate's `CityResolverView`, since this button re-runs the same check on
+    /// demand rather than once on first launch.
+    @StateObject private var locateResolver = LocationCityResolver()
+    /// A fix is in flight for the toolbar button — disables it and swaps its
+    /// icon for a spinner so a second tap can't stack a second request.
+    @State private var locating = false
+    /// A hit from the toolbar button, awaiting confirmation — presented via
+    /// `CityConfirmView`, same as the first-launch flow.
+    @State private var located: City?
+    /// The toolbar button's last attempt found nothing within 100 km (or was
+    /// denied) — shown inline, cleared on the next attempt or a country/step
+    /// change.
+    @State private var noNearbyLocate = false
+
     /// Live search text; narrows the list to the cities whose folded name
     /// contains it (diacritic-insensitive, so "lodz" finds "Łódź"), or — on a
     /// grouped step — to the matching region/subregion names.
@@ -220,6 +235,12 @@ struct CityChoiceView: View {
                     countryPicker
                 } header: {
                     Text("country.label")
+                }
+
+                if noNearbyLocate {
+                    Text("citygate.no_nearby_locate")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier(A11y.CityGate.noNearbyLocateLabel)
                 }
 
                 if pickingRegion {
@@ -337,8 +358,77 @@ struct CityChoiceView: View {
                 query = ""
                 region = nil
                 subregion = nil
+                noNearbyLocate = false
             }
             .accessibilityIdentifier(A11y.CityGate.picker)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: locate) {
+                        if locating {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "location.fill")
+                        }
+                    }
+                    .disabled(locating)
+                    .accessibilityLabel("citygate.locate_me")
+                    .accessibilityIdentifier(A11y.CityGate.locateButton)
+                }
+            }
+            // A hit re-uses the exact confirm UI the first-launch flow shows —
+            // "you're near X", adopt or choose another — rather than a second,
+            // divergent presentation for what is the same decision.
+            .sheet(isPresented: Binding(
+                get: { located != nil },
+                set: { if !$0 { located = nil } }
+            )) {
+                if let city = located {
+                    CityConfirmView(
+                        city: city,
+                        onConfirm: { choose(city); located = nil },
+                        onChooseOther: { located = nil }
+                    )
+                }
+            }
+        }
+    }
+
+    /// Re-runs the first-launch location check on demand, for a visitor who
+    /// already has a city (or is re-picking one) and wants to check what's
+    /// nearby without typing it. Reuses `LocationCityResolver` — permission
+    /// request, cached-fix reuse, timeouts and the 100 km cutoff are all
+    /// already there; this view only routes the outcome.
+    private func locate() {
+        guard !locating else { return }
+        locating = true
+        noNearbyLocate = false
+        #if DEBUG
+        // The same UI-test seam `CityResolverView` uses for the first-launch
+        // flow (`KINOWO_FORCE_DETECTED_CITY`), so a test can drive this
+        // button deterministically too — no CoreLocation dialog, no fix
+        // timeout. `KINOWO_FORCE_LOCATE_UNAVAILABLE` covers the miss case, and
+        // is checked FIRST so a test can reach the picker via the first-launch
+        // hit (`KINOWO_FORCE_DETECTED_CITY`, unaffected by this flag — only
+        // `CityResolverView` reads it) and still drive the button's own miss.
+        let env = ProcessInfo.processInfo.environment
+        if env["KINOWO_FORCE_LOCATE_UNAVAILABLE"] == "1" {
+            locating = false
+            noNearbyLocate = true
+            return
+        }
+        if let slug = env["KINOWO_FORCE_DETECTED_CITY"], let city = catalog.cities.first(where: { $0.slug == slug }) {
+            locating = false
+            located = city
+            return
+        }
+        #endif
+        Task {
+            let outcome = await locateResolver.resolve(in: countryCode, cities: catalog.cities)
+            locating = false
+            switch outcome {
+            case .city(let city): located = city
+            case .unavailable: noNearbyLocate = true
+            }
         }
     }
 

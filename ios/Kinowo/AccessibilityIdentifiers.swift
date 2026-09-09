@@ -125,6 +125,12 @@ enum A11y {
         /// can confirm the gate re-mounted it (e.g. after "Pick another city"
         /// in Filtry) without depending on locale-specific copy.
         static let picker = "citygate.picker"
+        /// The manual picker's "use my location" toolbar button — re-runs the
+        /// same location resolution the first-launch gate takes, on demand.
+        static let locateButton = "citygate.locate.button"
+        /// The "no supported city nearby" row shown after a `locateButton` tap
+        /// finds nothing within range.
+        static let noNearbyLocateLabel = "citygate.noNearbyLocate.label"
     }
 
     enum EmptyState {
