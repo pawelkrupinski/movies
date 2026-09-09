@@ -83,11 +83,12 @@ class StagingFoldOutcomeSpec extends AnyFlatSpec with Matchers {
       a[StagingFold.Next.Abandon]
   }
 
-  // A `key_1` collision is a DIFFERENT situation: two clusters `resolveKeyCollisions`
-  // already kept apart (disagreeing tmdbId/imdbId) both concluding the identical
-  // (sanitize, year) key. The same two clusters produce the same collision every retry,
-  // so — unlike the tmdbId race above — retrying cannot help; it must abandon immediately
-  // like any other non-transient failure, per `resolveKeyCollisions`'s own deferral.
+  // A `key_1` collision is a DIFFERENT situation: two clusters `clusterByFilm` correctly
+  // kept apart (disagreeing tmdbId/imdbId) both concluding the identical (sanitize, year)
+  // key — `planGroup` plans both, undeferred (see `StagingFoldSpec`'s "plan two DIFFERENT
+  // films at the identical key"). The same two clusters produce the same collision every
+  // retry, so — unlike the tmdbId race above — retrying cannot help; it must abandon
+  // immediately like any other non-transient failure.
   "a key_1 collision between two genuinely different films" should
     "be abandoned rather than retried" in {
     StagingFold.nextAfterAttempt(Failure(keyCollision), attempt = 1, maxRetries) shouldBe a[StagingFold.Next.Abandon]

@@ -64,10 +64,12 @@ object StagingFold {
     // reconciles" shape the transient-error retry above already handles, just tripped by
     // a write conflict on identity rather than the transaction machinery. Message-matched
     // (not a bare `isDuplicateKey`) so a `key_1` collision — two DIFFERENT films
-    // concluding the identical (sanitize, year) key, which `resolveKeyCollisions`
-    // already defers deterministically inside ONE `planGroup` call — still falls through
-    // to `Abandon`: the same two clusters conclude the same collision every time, so
-    // retrying it cannot help and would only spend the budget masking it.
+    // concluding the identical (sanitize, year) key, which `planGroup` deliberately does
+    // NOT defer or disambiguate (a same-day chain of key-collision fixes was reverted,
+    // see the "plan two DIFFERENT films at the identical key" test in `StagingFoldSpec`)
+    // — still falls through to `Abandon`: the same two clusters conclude the same
+    // collision every time, so retrying it cannot help and would only spend the budget
+    // masking it.
     case scala.util.Failure(e: com.mongodb.MongoWriteException)
       if services.MongoErrors.isDuplicateKey(e) && tmdbIdCollision(e) && attempt < maxRetries =>
       Next.Retry(e)
@@ -149,9 +151,20 @@ object StagingFold {
    *  runs over the whole corpus, applied here to the fold's neighbourhood. */
   def planGroup(stagingRows: Seq[StagingRecord], moviesRows: Seq[StoredMovieRecord],
                 normalizer: TitleNormalizer, extraCinemaTitles: Seq[String] = Nil,
-                // The id for a BRAND-NEW film. A caller with a store checks the candidate is
-                // not a live id there (`FilmId.fresh`'s `taken`); the pure default cannot.
-                fresh: CacheKey => FilmId = FilmId.fresh(_, _ => false)): Plan = {
+                // The id for a BRAND-NEW film, given every id THIS SAME `planGroup` call has
+                // already minted. That exclusion set matters: `FilmId.fresh` is a pure
+                // function of the key alone, so two DIFFERENT clusters that conclude the
+                // identical canonical key (the accepted key_1-collision trade-off — see the
+                // "plan two DIFFERENT films at the identical key" test below) used to call it
+                // independently and get back the IDENTICAL id — worse than the documented
+                // key_1 crash, because `MongoStagingFolder.foldOnce`'s second `replaceOne`
+                // then matched the first one's just-written document (same `_id`, same
+                // transaction) and silently overwrote it, losing a whole film with no error
+                // at all (see `StagingFoldSpec` "mint DISTINCT ids for two brand-new films
+                // colliding on the same key"). A caller with a store additionally checks a
+                // candidate is not a LIVE id there (`FilmId.fresh`'s `taken`); the pure
+                // default only guards against this plan's own collisions.
+                fresh: (CacheKey, Set[FilmId]) => FilmId = (key, mintedSoFar) => FilmId.fresh(key, mintedSoFar.contains)): Plan = {
     // Union the per-cinema staging rows to ONE row per (sanitize, year) key FIRST,
     // restoring the one-row-per-key invariant `clusterByFilm` assumes. Without it,
     // N separate YEARLESS cinema rows would each become a rule-4 singleton cluster
@@ -179,26 +192,35 @@ object StagingFold {
       val sorted = entries.sortBy { case (k, _) => FilmCanonicalizer.canonicalRank(k) }
       sorted.head._1 -> MovieRecordMerge.unionAll(sorted.map(_._2))
     }
-    val planned = FilmCanonicalizer.groupByFilm(byKey, normalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer)).map { cluster =>
-      val (canonKey, merged) = FilmCanonicalizer.canonical(cluster, normalizer, extraCinemaTitles)
-      // A cluster is a brand-new promotion iff no existing `movies` row joined it
-      // (all members came from staging) — a merge into an existing row, or a
-      // re-key of one, does NOT count: that row already owns its ratings.
-      val isNewFilm = !cluster.exists { case (k, _) => moviesKeys.contains(k) }
-      // Drop the staging-only `searchTitle`: a `movies` row queries external
-      // services off its canonical title, so it never carries the (order-pinned)
-      // staging search title — movies stay a deterministic function of the corpus.
-      // The existing `movies` rows this cluster folds INTO `canonKey`. Recorded per
-      // cluster because that is the only place the loser→winner pairing is known.
-      // The surviving id: the row already stored under the canonical key; else the
-      // best-ranked existing member's — its year or spelling changed, the film did not;
-      // else this is a brand-new film. Every other existing member retires into it.
-      val members  = cluster.map(_._1).distinct.filter(moviesKeys.contains)
-        .flatMap(k => idsByKey(k).map(k -> _))
-      val winnerId = FilmCanonicalizer.survivor(members, canonKey).getOrElse(fresh(canonKey))
-      val retired  = members.map(_._2).filterNot(_ == winnerId).distinct
-      ((winnerId, canonKey, merged.copy(searchTitle = None)), isNewFilm, retired.map(_ -> winnerId))
-    }
+    // A LEFT fold, not a `.map`: minting a fresh id for one cluster has to be visible to
+    // the NEXT cluster's mint, or two clusters colliding on one canonical key mint the
+    // same id (see `fresh`'s doc comment above). Order is the same `groupByFilm`/
+    // `clusterByFilm` produce — already order-independent of arrival — so the minted-so-
+    // far set does not reintroduce an order dependency into which id a cluster gets;
+    // it only stops two clusters within ONE such deterministic result from colliding.
+    val (plannedRev, _) = FilmCanonicalizer.groupByFilm(byKey, normalizer).flatMap(FilmCanonicalizer.clusterByFilm(_, normalizer))
+      .foldLeft((Vector.empty[((FilmId, CacheKey, MovieRecord), Boolean, Seq[(FilmId, FilmId)])], Set.empty[FilmId])) {
+        case ((acc, mintedSoFar), cluster) =>
+          val (canonKey, merged) = FilmCanonicalizer.canonical(cluster, normalizer, extraCinemaTitles)
+          // A cluster is a brand-new promotion iff no existing `movies` row joined it
+          // (all members came from staging) — a merge into an existing row, or a
+          // re-key of one, does NOT count: that row already owns its ratings.
+          val isNewFilm = !cluster.exists { case (k, _) => moviesKeys.contains(k) }
+          // Drop the staging-only `searchTitle`: a `movies` row queries external
+          // services off its canonical title, so it never carries the (order-pinned)
+          // staging search title — movies stay a deterministic function of the corpus.
+          // The existing `movies` rows this cluster folds INTO `canonKey`. Recorded per
+          // cluster because that is the only place the loser→winner pairing is known.
+          // The surviving id: the row already stored under the canonical key; else the
+          // best-ranked existing member's — its year or spelling changed, the film did not;
+          // else this is a brand-new film. Every other existing member retires into it.
+          val members  = cluster.map(_._1).distinct.filter(moviesKeys.contains)
+            .flatMap(k => idsByKey(k).map(k -> _))
+          val winnerId = FilmCanonicalizer.survivor(members, canonKey).getOrElse(fresh(canonKey, mintedSoFar))
+          val retired  = members.map(_._2).filterNot(_ == winnerId).distinct
+          (acc :+ ((winnerId, canonKey, merged.copy(searchTitle = None)), isNewFilm, retired.map(_ -> winnerId)), mintedSoFar + winnerId)
+      }
+    val planned = plannedRev
     val upserts       = planned.map(_._1)
     val newPromotions = planned.collect { case ((_, k, r), true, _) => k -> r }
     val survivors     = upserts.map(_._1).toSet

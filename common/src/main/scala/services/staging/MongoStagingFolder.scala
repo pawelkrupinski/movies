@@ -321,7 +321,10 @@ class MongoStagingFolder(
       // A brand-new film's id must not be a live document's — checked in THIS session, so
       // the write below cannot replace a film the fold never read.
       val plan  = StagingFold.planGroup(stagingRows, group, normalizer, stitchedCinemaTitles(group),
-        fresh = FilmId.fresh(_, taken = id => await(movies.countDocuments(session, Filters.eq("_id", id.value)).toFuture()) > 0))
+        // taken = a LIVE id in the store, in THIS session, OR one this very plan already
+        // minted for an earlier cluster — see `planGroup`'s `fresh` doc comment.
+        fresh = (key, mintedSoFar) => FilmId.fresh(key,
+          taken = id => mintedSoFar.contains(id) || await(movies.countDocuments(session, Filters.eq("_id", id.value)).toFuture()) > 0))
       plan.moviesUpserts.foreach { case (film, k, record) =>
         val id = film.value
         // The SAME shape `MovieRepository.upsert` would have written. This write is

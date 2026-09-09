@@ -403,4 +403,35 @@ class StagingFoldSpec extends AnyFlatSpec with Matchers {
     plan.retirements    shouldBe empty
     plan.stagingDeletes should have size 2
   }
+
+  // A wrinkle the property spec (`StagingFoldCollisionPropertySpec`) found inside the
+  // accepted trade-off above: `fresh` is a PURE function of the canonical key, called
+  // once per colliding cluster — so two BRAND-NEW clusters that conclude the identical
+  // key used to get the IDENTICAL FilmId too (nothing threaded "already minted in this
+  // very plan" into `taken`). That is strictly worse than the documented key_1 crash:
+  // `MongoStagingFolder.foldOnce` replaces each upsert by `_id`, so the second write
+  // matched the FIRST one's just-inserted document (same `_id`, same transaction) and
+  // silently overwrote it — no unique-index violation at all, one whole film gone with
+  // no error to reschedule on. Fixed by excluding ids already minted earlier in the
+  // SAME `planGroup` call, so the second cluster's `fresh` call bumps its nonce and the
+  // two colliding upserts reach Mongo as two documents — which is what actually hits
+  // `key_1`, matching `nextAfterAttempt`'s documented Abandon-and-reschedule path.
+  it should "mint DISTINCT ids for two brand-new films colliding on the same key" in {
+    def staged(cinema: Source, cinemaYear: Int, tmdbId: Int, tmdbYear: Int, imdbId: String): StagingRecord =
+      StagingRecord(cinema, "Lalka", Some(cinemaYear), MovieRecord(
+        tmdbId = Some(tmdbId), imdbId = Some(imdbId),
+        data = Map[Source, SourceData](
+          cinema -> SourceData(title = Some("Lalka"), releaseYear = Some(cinemaYear)),
+          Tmdb   -> SourceData(title = Some("Lalka"), releaseYear = Some(tmdbYear)))), titleNormalizer)
+    val kawalski = staged(CinemaCityWroclavia, cinemaYear = 2024, tmdbId = 1321666, tmdbYear = 2026, imdbId = "tt37082105")
+    val other    = staged(Helios,              cinemaYear = 2025, tmdbId = 1309396, tmdbYear = 2026, imdbId = "tt36749000")
+
+    val plan = StagingFold.planGroup(Seq(kawalski, other), moviesRows = Seq.empty, titleNormalizer)
+
+    plan.moviesUpserts should have size 2
+    withClue(s"two colliding brand-new films minted the SAME id — one write would silently " +
+      s"clobber the other instead of hitting key_1: ${plan.moviesUpserts.map(_._1)}\n") {
+      plan.moviesUpserts.map(_._1).distinct should have size 2
+    }
+  }
 }
