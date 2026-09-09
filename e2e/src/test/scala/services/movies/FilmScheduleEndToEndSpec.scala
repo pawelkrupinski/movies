@@ -398,6 +398,27 @@ class FilmScheduleEndToEndSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // Corpus-wide invariants the fold's SETTLE step is supposed to leave standing —
+  // Mongo's real unique `key_1` index and partial unique `tmdbId_1` index refuse
+  // exactly these two shapes in production, so this proves the whole real ~1000-film
+  // PL corpus never gets there needing the index to save it, not just the synthetic
+  // cases in StagingFoldSpec / StagingFoldCollisionPropertySpec. Cheap: `wiring` is
+  // already booted and settled by the tests above, this only walks it.
+  it should "never leave two settled documents sharing a `key` or a `tmdbId`" in {
+    val rows = wiring.movieRepository.findAll()
+
+    val keyDuplicates = rows.groupBy(_.key(titleNormalizer)).collect { case (key, dups) if dups.sizeIs > 1 => key -> dups.map(_.id) }
+    withClue(s"two settled documents share a `key` — the shape Mongo's unique `key_1` index exists to refuse: $keyDuplicates\n") {
+      keyDuplicates shouldBe empty
+    }
+
+    val tmdbIdDuplicates = rows.flatMap(r => r.record.tmdbId.map(_ -> r.id)).groupBy(_._1)
+      .collect { case (tmdbId, dups) if dups.sizeIs > 1 => tmdbId -> dups.map(_._2) }
+    withClue(s"two settled documents share a tmdbId — the shape the partial unique `tmdbId_1` index exists to refuse: $tmdbIdDuplicates\n") {
+      tmdbIdDuplicates shouldBe empty
+    }
+  }
+
   /** Render every FilmSchedule into a deterministic multi-line block. One
    *  block per film, separated by blank lines; films sorted alphabetically
    *  by display title. Each block lists every field a viewer of the `/`
