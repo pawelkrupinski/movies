@@ -14,11 +14,13 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * would resolve by the popularity tie-break — a guess. The TMDB stage refuses
  * unless the search is unambiguous (exactly one result).
  *
- * The one widening: when a YEAR is present, a year-scoped search whose TOP hit
- * is an exact-title match resolves even if it returned several same-year films
- * (`searchYearExactTop`) — the year + verbatim top is confidence the yearless
- * case can't have. A non-exact top still refuses, and yearless rows are
- * unaffected.
+ * The one widening: when a YEAR is present, a year-scoped search whose results
+ * contain EXACTLY ONE exact-title match resolves even if the search returned
+ * several same-year films overall (`searchYearExactTop`) — the year plus a
+ * single verbatim match is confidence the yearless case can't have. A search
+ * with no exact match, or with MORE THAN ONE (genuine ambiguity — same
+ * popularity-tie-break trap `searchUnique` refuses on a bare title), still
+ * refuses, and yearless rows are unaffected.
  */
 class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
 
@@ -195,10 +197,14 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
     cache.get(cache.keyOf("Labirynt", Some(2024))).flatMap(_.tmdbId) shouldBe None
   }
 
-  it should "resolve a year-bearing row to the most-popular exact match when multiple results are exact (same-year same-original-title)" in {
-    // Two 2022 "The Visitor" films: the popular one (881487) matches via
-    // original_title; the less-popular one (1026057) matches via title.
-    // Both are exact matches — searchYearExactTop picks the most-popular one.
+  it should "NOT resolve a year-bearing row when the year-scoped search returns MULTIPLE exact matches (genuine ambiguity, no popularity guess)" in {
+    // Two 2022 "The Visitor" films: 881487 (popularity 1.413) matches via
+    // original_title, 1026057 (popularity 0.145) matches via title. Both are
+    // exact matches, so this is the SAME ambiguity `searchUnique` refuses on a
+    // bare title — picking the most-popular of the two used to silently misroute
+    // the row to 881487, an unrelated film (see `TmdbMisresolveSpec`, where this
+    // exact pair is named Decoy/Correct and 881487 is the wrong one). Two exact
+    // matches must refuse, not guess.
     val seed = MovieRecord(data = Map[Source, SourceData](
       CinemaCityPoznanPlaza -> SourceData(title = Some("The Visitor"), releaseYear = Some(2022))))
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("The Visitor", Some(2022), seed))), normalizer = titleNormalizer)
@@ -207,13 +213,12 @@ class TmdbTitleOnlyResolveSpec extends AnyFlatSpec with Matchers {
       |{"id":1026057,"title":"The Visitor","original_title":"The Visitor","release_date":"2022-06-01","popularity":0.145}
       |]}""".stripMargin
     val service = new MovieService(cache, new InProcessEventBus(),
-      tmdb(
-        "/search/movie"              -> search,
-        "/movie/881487/external_ids" -> """{"id":881487,"imdb_id":"tt15558152"}"""
-      ))
+      // No /external_ids stub — a resolve would throw on the unstubbed call, so a
+      // silent guess fails loudly.
+      tmdb("/search/movie" -> search))
 
     service.reEnrichSync("The Visitor", Some(2022))
-    cache.get(cache.keyOf("The Visitor", Some(2022))).flatMap(_.tmdbId) shouldBe Some(881487)
+    cache.get(cache.keyOf("The Visitor", Some(2022))).flatMap(_.tmdbId) shouldBe None
   }
 
   // ── Embedded "(YYYY)" year hint — a year-less retrospective screening whose

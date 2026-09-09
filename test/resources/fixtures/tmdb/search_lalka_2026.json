@@ -1,0 +1,48 @@
+{
+    "page": 1,
+    "results": [
+        {
+            "adult": false,
+            "backdrop_path": "/cT0Beeme1WVc4udpfg9t0stX05s.jpg",
+            "genre_ids": [
+                10749,
+                18,
+                36
+            ],
+            "id": 1321666,
+            "title": "Lalka",
+            "original_language": "pl",
+            "original_title": "Lalka",
+            "overview": "Nowa adaptacja powie\u015bci Boles\u0142awa Prusa o tym samym tytule.",
+            "popularity": 2.5181,
+            "poster_path": "/4DnKzoUUqYCXBUQLPJykv6hVGTb.jpg",
+            "release_date": "2026-09-30",
+            "softcore": false,
+            "video": false,
+            "vote_average": 0.0,
+            "vote_count": 0
+        },
+        {
+            "adult": false,
+            "backdrop_path": "/qNtbEnmHjNDwhdgzgaIhn7BLLk9.jpg",
+            "genre_ids": [
+                35,
+                10749
+            ],
+            "id": 1309396,
+            "title": "Lalka",
+            "original_language": "fr",
+            "original_title": "La Poup\u00e9e",
+            "overview": "R\u00e9mi nigdy nie pogodzi\u0142 si\u0119 z ostatnim rozstaniem. Od tamtej pory jest w zwi\u0105zku z lalk\u0105 \u2013 to prostsze. Ma na imi\u0119 Audrey. W dniu, w kt\u00f3rym Patricia, nowa kole\u017canka, pojawia si\u0119 w firmie R\u00e9miego, Audrey w tajemniczy spos\u00f3b o\u017cywa.",
+            "popularity": 5.3102,
+            "poster_path": "/vBAeiPmam86lgALArnDt4oY7NDD.jpg",
+            "release_date": "2026-04-22",
+            "softcore": false,
+            "video": false,
+            "vote_average": 6.05,
+            "vote_count": 30
+        }
+    ],
+    "total_pages": 1,
+    "total_results": 2
+}

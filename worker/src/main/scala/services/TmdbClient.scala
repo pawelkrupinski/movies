@@ -104,20 +104,28 @@ class TmdbClient(
     if (results.lengthCompare(1) == 0) results.headOption else None
   }
 
-  /** Resolve when a YEAR is present AND the year-scoped search returns at least
-   *  one EXACT title match (Polish or original). Returns the most-popular exact
-   *  match (first after [[parseSearchResults]]'s popularity sort). Broader than
-   *  [[searchUnique]] (which needs the whole result set to be a singleton): the
-   *  year scopes to the right era and a verbatim title in the results is the
-   *  confidence, so a row whose year-scoped search returns several same-year films
-   *  ("Sundown" alongside "Sundown Town", "DJ at Sundown") still resolves to the
-   *  one the cinema named. Still refuses when NO result is an exact match — that's
-   *  the popularity guess [[searchUnique]] exists to avoid. No-op without a year,
-   *  so yearless rows stay refused. */
+  /** Resolve when a YEAR is present AND the year-scoped search returns EXACTLY
+   *  ONE EXACT title match (Polish or original). Broader than [[searchUnique]]
+   *  (which needs the whole result set to be a singleton): the year scopes to
+   *  the right era and a verbatim title in the results is the confidence, so a
+   *  row whose year-scoped search returns several same-year films but only ONE
+   *  of them an exact title match ("Sundown" alongside "Sundown Town", "DJ at
+   *  Sundown") still resolves to the one the cinema named. Still refuses when
+   *  NO result is an exact match, or when MORE THAN ONE is — that's the same
+   *  popularity guess [[searchUnique]] exists to avoid: a year-scoped "Lalka"
+   *  search for 2026 returns two exact Polish-title matches, Maciej Kawalski's
+   *  real upcoming film (tmdbId 1321666, low popularity) and an unrelated
+   *  French film TMDB also titles "Lalka" in Polish (tmdbId 1309396, higher
+   *  popularity) — picking the top of that pair by popularity silently misrouted
+   *  every Polish cinema's real "Lalka" listing to the French film. Two exact
+   *  matches is genuine ambiguity, not confidence; refuse rather than guess, the
+   *  same as a bare-title search returning several results. No-op without a
+   *  year, so yearless rows stay refused. */
   def searchYearExactTop(title: String, year: Option[Int]): Option[TmdbClient.SearchResult] =
     if (year.isEmpty) None
     else authHeader.flatMap { auth =>
-      searchOnce(title, year, auth).filter(TmdbClient.isExactTitleMatch(_, title)).headOption
+      val exact = searchOnce(title, year, auth).filter(TmdbClient.isExactTitleMatch(_, title))
+      if (exact.lengthCompare(1) == 0) exact.headOption else None
     }
 
   /** Look up the IMDB id of a TMDB movie. Returns None when TMDB knows the

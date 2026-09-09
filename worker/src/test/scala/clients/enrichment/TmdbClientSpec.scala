@@ -444,6 +444,40 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     override def get(url: String): String = { lastUrl = url; body }
   }
 
+  // Prod 2026-09-09. `GET /search/movie?query=Lalka&language=pl-PL&year=2026&
+  // primary_release_year=2026` — recorded 2026-09-09, `test/resources/fixtures/
+  // tmdb/search_lalka_2026.json` — returns TWO real films TMDB titles "Lalka" in
+  // Polish: Maciej Kawalski's actual upcoming film (tmdbId 1321666, popularity
+  // 2.52, pre-release) and an unrelated French film "La Poupée" (tmdbId 1309396,
+  // popularity 5.31, the more-popular of the two). `searchYearExactTop` used to
+  // take `.headOption` after the popularity sort, so this real payload silently
+  // resolved dozens of Polish cinemas' actual "Lalka" listings to the French film.
+  "searchYearExactTop" should "refuse when the year-scoped search returns two real exact-title matches" in {
+    val body  = scala.io.Source.fromInputStream(
+      getClass.getClassLoader.getResourceAsStream("fixtures/tmdb/search_lalka_2026.json")).mkString
+    val fetch = new StubFetch(body)
+    val hit   = new TmdbClient(fetch, apiKey = Some("stub")).searchYearExactTop("Lalka", Some(2026))
+
+    withClue(s"fetched ${fetch.lastUrl}: ")(fetch.lastUrl should include ("/search/movie"))
+    hit shouldBe None
+  }
+
+  it should "still resolve when only the genuine film's entry is present (control)" in {
+    // Sanity check: with the French decoy removed, the SAME real Kawalski entry
+    // (id, title, popularity, overview lifted from the recorded fixture) resolves
+    // normally — the refusal above is genuine ambiguity, not a change that broke
+    // exact-match resolution outright.
+    val body =
+      """{"results":[
+        |{"id":1321666,"title":"Lalka","original_title":"Lalka","release_date":"2026-09-30",
+        | "popularity":2.5181,"overview":"Nowa adaptacja powieści Bolesława Prusa o tym samym tytule."}
+        |]}""".stripMargin
+    val fetch = new StubFetch(body)
+    new TmdbClient(fetch, apiKey = Some("stub")).searchYearExactTop("Lalka", Some(2026)) shouldBe
+      Some(TmdbClient.SearchResult(1321666, "Lalka", Some("Lalka"), Some(2026), 2.5181,
+        Some("Nowa adaptacja powieści Bolesława Prusa o tym samym tytule.")))
+  }
+
   // `crewIds` is what the whole DIRECTOR half of the mis-resolution sweep rests on:
   // an empty set reads as "TMDB could not answer", so a wrong JSON path here does not
   // fail loudly — it silently stops the sweep confirming anything, for ever. Replayed
