@@ -6,13 +6,25 @@
     "%lld": {},
     "%lld/%lld": {
       "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld/%2$lld"
+          }
+        },
         "en": {
           "stringUnit": {
-            "state": "new",
+            "state": "translated",
             "value": "%1$lld/%2$lld"
           }
         },
         "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld/%2$lld"
+          }
+        },
+        "pl": {
           "stringUnit": {
             "state": "translated",
             "value": "%1$lld/%2$lld"
