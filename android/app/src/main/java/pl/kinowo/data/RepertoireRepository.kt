@@ -30,11 +30,11 @@ class RepertoireRepository(
     val error: StateFlow<String?> = _error.asStateFlow()
 
     // The city whose repertoire `films` currently holds, or null before the
-    // first successful load. `films` is NOT cleared on a city switch (to avoid
-    // flashing an empty grid), so it briefly holds the PREVIOUS city's list
-    // mid-switch — anything that must read the right city's films (e.g. a deep
-    // link's film lookup) waits for this to equal the target slug rather than
-    // for `films` to merely be non-empty.
+    // first successful load OR while an actual city switch (see [reload]) has
+    // dropped it. Anything that must read the right city's films (e.g. a deep
+    // link's film lookup) waits for this to equal the target slug — null is
+    // just another shade of "not yet" alongside the wrong slug, so clearing it
+    // mid-switch is safe.
     private val _loadedCity = MutableStateFlow<String?>(null)
     val loadedCity: StateFlow<String?> = _loadedCity.asStateFlow()
 
@@ -49,6 +49,17 @@ class RepertoireRepository(
     }
 
     suspend fun reload(citySlug: String, now: Instant = Instant.now()) {
+        // An actual city switch (not a same-city refresh — foreground restale,
+        // pull-to-refresh, `onResume`'s `reloadIfStale`): drop the OUTGOING
+        // city's films so the grid shows the loading state instead of the
+        // previous city's list while this fetch is in flight. `JsonListCache`
+        // is single-slot (unlike iOS's per-city `RepertoireCache`), so there's
+        // no warm on-disk copy of the NEW city to repaint from instantly —
+        // this always waits on the network fetch below.
+        if (_loadedCity.value != null && _loadedCity.value != citySlug) {
+            _films.value = emptyList()
+            _loadedCity.value = null
+        }
         _isLoading.value = true
         _error.value = null
         try {

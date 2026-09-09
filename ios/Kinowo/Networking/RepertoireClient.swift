@@ -6,10 +6,10 @@ final class RepertoireStore: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var error: Error? = nil
     /// The city whose repertoire `films` currently holds, or nil before the
-    /// first successful load. `films` isn't cleared on a city switch (no empty
-    /// flash), so it briefly holds the PREVIOUS city's list mid-switch — a deep
-    /// link's film lookup waits for this to equal its target slug rather than
-    /// for `films` to merely be non-empty.
+    /// first successful load OR while a switch (`use(citySlug:)`/`use(country:)`,
+    /// via `resetForCitySwitch`) has dropped it. A deep link's film lookup
+    /// waits for this to equal its target slug — nil is just another shade of
+    /// "not yet" alongside the wrong slug, so clearing it mid-switch is safe.
     @Published private(set) var loadedCitySlug: String?
     /// The current city's cinema universe + area grouping (`/api/cinemas`).
     /// `.empty` (flat) until fetched; a split city (London) drives the
@@ -64,6 +64,7 @@ final class RepertoireStore: ObservableObject {
         // The new deployment has its own cinema roster/areas — drop the stale one.
         catalog = .empty
         catalogCitySlug = nil
+        resetForCitySwitch()
         Task { await reload() }
     }
 
@@ -85,7 +86,24 @@ final class RepertoireStore: ObservableObject {
         // briefly show the previous city's areas mid-switch.
         catalog = .empty
         catalogCitySlug = nil
+        resetForCitySwitch()
         Task { await reload() }
+    }
+
+    /// Drop the OUTGOING city/deployment's repertoire so `content`'s
+    /// `isLoading && films.isEmpty` branch shows the loading state instead of
+    /// the previous city's films while the new one's fetch is in flight — a
+    /// switch used to leave `films` populated across it (documented on
+    /// `loadedCitySlug` below as "no empty flash"), which read as the WRONG
+    /// city's grid hanging around for a beat rather than as a clean load.
+    /// Immediately re-checks the disk cache for the new city right after, so a
+    /// warm cache still shows instantly instead of a spinner; only a
+    /// genuinely cold one waits on the network `reload()` the caller kicks off
+    /// next.
+    private func resetForCitySwitch() {
+        films = []
+        loadedCitySlug = nil
+        loadCachedData()
     }
 
     func loadCachedData(now: Date = Date()) {

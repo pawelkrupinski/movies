@@ -1,7 +1,11 @@
 package pl.kinowo.data
 
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -76,6 +80,74 @@ class RepertoireRepositoryTest {
         // The deep-link gate keys on this: it stays "poznan" until warszawa's
         // load actually lands, so a film lookup never runs against stale films.
         assertEquals("warszawa", repository.loadedCity.value)
+    }
+
+    /** An API whose response for the NEXT call waits until [release] is
+     *  called, so a test can inspect repository state mid-fetch — the fake
+     *  itself never resolves the target city until the test says so. */
+    private class GatedApi(private val byCity: Map<String, List<Film>>) : RepertoireApi {
+        private var gate = CompletableDeferred<Unit>()
+
+        fun release() {
+            gate.complete(Unit)
+        }
+
+        override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?): KinowoApi.Fetched<Film> {
+            gate.await()
+            gate = CompletableDeferred() // re-arm for the next call
+            return KinowoApi.Fetched(byCity[citySlug] ?: emptyList(), null, notModified = false)
+        }
+    }
+
+    @Test
+    fun `switching city drops the outgoing city's films while the new fetch is in flight`() = runBlocking {
+        val poznan = listOf(Film(title = "Poznań film"))
+        val warszawa = listOf(Film(title = "Warszawa film"))
+        val api = GatedApi(mapOf("poznan" to poznan, "warszawa" to warszawa))
+        val repository = RepertoireRepository(api, cache())
+
+        api.release() // let the first (poznan) fetch through immediately
+        repository.reload("poznan")
+        assertEquals(poznan, repository.films.value)
+
+        // warszawa's fetch is gated — reload() suspends on it, so its FIRST
+        // (synchronous) act — dropping poznań's films — is what's observable
+        // right now, before any network response has arrived.
+        val job = launch { repository.reload("warszawa") }
+        yield() // let the child coroutine run up to the gate
+
+        assertEquals(
+            "the previous city's films should be gone the moment a real switch starts, not linger until the new city's fetch resolves",
+            emptyList<Film>(), repository.films.value,
+        )
+        assertNull(repository.loadedCity.value)
+
+        api.release()
+        job.join()
+        assertEquals(warszawa, repository.films.value)
+        assertEquals("warszawa", repository.loadedCity.value)
+    }
+
+    @Test
+    fun `a same-city refresh (foreground restale, pull-to-refresh) leaves films alone mid-flight`() = runBlocking {
+        val poznan = listOf(Film(title = "Poznań film"))
+        val api = GatedApi(mapOf("poznan" to poznan))
+        val repository = RepertoireRepository(api, cache())
+
+        api.release()
+        repository.reload("poznan")
+        assertEquals(poznan, repository.films.value)
+
+        // Same city again — a refresh, not a switch. No reason to blank the
+        // grid the user is already looking at while it revalidates.
+        val job = launch { repository.reload("poznan") }
+        yield()
+
+        assertEquals(poznan, repository.films.value)
+        assertEquals("poznan", repository.loadedCity.value)
+
+        api.release()
+        job.join()
     }
 
     @Test
