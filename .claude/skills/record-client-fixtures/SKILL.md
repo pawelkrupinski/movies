@@ -19,6 +19,21 @@ When to record a fixture:
   tightened validation).
 - Hitting a real-world payload that exposed a parser bug — capture that
   exact payload so the bug can't regress.
+- **Hitting a real-world payload that exposed a wrong MATCHING/RESOLUTION
+  decision** — not just a parser bug. A search endpoint (TMDB title search,
+  director-walk, imdbId recovery) returning multiple plausible candidates
+  and picking the wrong one is a real-world case just like a malformed
+  payload, and belongs in the same permanent regression suite: capture the
+  exact response, name the fixture after the ambiguity it demonstrates
+  (`search_lalka_2026.json`, not `search_results_1.json`), and add a case to
+  the relevant `*MisresolveSpec`/`*TitleOnlyResolveSpec` asserting the
+  correct outcome (or, where nothing safe can be concluded, that the code
+  refuses rather than guesses). Each incident like this — "Lalka" (two
+  exact-title matches, wrong one more popular, 2026-09-08), "The Visitor"
+  (two same-year matches, only the director disambiguates) — grows this into
+  a standing library of real ambiguity shapes that any future change to the
+  matching ladder gets checked against in milliseconds, instead of only
+  being caught the next time that exact ambiguity recurs in production.
 
 How:
 
