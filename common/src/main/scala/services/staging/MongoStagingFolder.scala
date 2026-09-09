@@ -46,7 +46,12 @@ class MongoStagingFolder(
    *  once or several times: the planning read is per ATTEMPT, so a double whose budget is
    *  per FOLD spends it on the retry and then fails the read the spec meant to leave
    *  alone. See `FoldOnUnreadableRowSpec`. Production keeps 3. */
-  maxRetries: Int = 3
+  maxRetries: Int = 3,
+  /** Backoff before each retry — see `MongoStagingFolder.retryBackoffMs`. A
+   *  constructor seam (mirroring `tools.RetryWithBackoff`'s own `sleep`
+   *  parameter) so a spec wanting fast retries can inject a no-op instead of
+   *  a real `Thread.sleep`. */
+  sleep: Long => Unit = Thread.sleep
 ) extends StagingFolder with Logging {
 
 
@@ -121,6 +126,12 @@ class MongoStagingFolder(
           // (see `StagingFold.nextAfterAttempt`) — the retry re-reads and finds the
           // winner's row either way.
           logger.warn(s"Staging fold '$cleanTitle' hit a retryable error (attempt $attempt): ${e.getMessage} — retrying.")
+          // Jittered backoff before looping back to `startTransaction()` — see
+          // `retryBackoffMs`. Without it, N≥3 racers that collided together retry
+          // in near-lockstep and tend to re-collide with EACH OTHER (not the
+          // already-committed winner), which can exhaust `maxRetries` on a losing
+          // pair rather than converging.
+          sleep(MongoStagingFolder.retryBackoffMs(attempt))
         case StagingFold.Next.Abandon(e) =>
           Try(await(publisherToFuture(session.abortTransaction())))
           logger.error(s"Staging fold '$cleanTitle' aborted after $attempt attempt(s): ${e.getMessage} " +
@@ -391,4 +402,26 @@ class MongoStagingFolder(
     })
     promise.future
   }
+}
+
+object MongoStagingFolder {
+
+  /** Jittered backoff before a retry: `10 * attempt` ms of base delay plus up to
+   *  20ms of jitter (so ~10-30ms on attempt 1, ~20-40ms on attempt 2, …). Small
+   *  on purpose — a real replica set's transaction commit is near-instant, so
+   *  the goal is only to de-synchronize two losers that would otherwise retry
+   *  in near-lockstep and re-collide, not to genuinely throttle.
+   *
+   *  MongoDB's own transient-transaction-error guidance is to back off with
+   *  jitter for exactly this reason: an immediate retry-storm makes repeated
+   *  re-collision MORE likely, not less, because every racer retries at the
+   *  same instant its neighbour does. `StagingFoldConcurrentTmdbRaceIntegrationSpec`'s
+   *  three-way race is deliberately adversarial (`ConcurrentFoldRaceHarness`'s
+   *  `CyclicBarrier` starts every racer at the exact same instant) — with no
+   *  backoff, two losers retrying immediately can re-collide with EACH OTHER
+   *  (rather than with the by-then-committed winner), and a third collision on
+   *  the last of `maxRetries` attempts abandons instead of converging — the
+   *  2026-09-09 CI failure this fixes. */
+  private[staging] def retryBackoffMs(attempt: Int): Long =
+    (10L * attempt) + scala.util.Random.nextInt(20)
 }
