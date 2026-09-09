@@ -212,7 +212,22 @@
          would re-snapshot every page in every ungrouped country over a control
          none of them render differently. *@
       @if(city.country.cities.sizeIs > 1) {
-        <div class="panel-section-label">@messages("nav.city")</div>
+        <div class="panel-section-label d-flex align-items-center justify-content-between">
+          <span>@messages("nav.city")</span>
+          @* Re-runs the same 100 km nearest-city check the `/` landing does
+             automatically, but on demand — for the visitor who's already
+             picked a city and wants to check another one nearby without
+             typing it. `locateNearestCity` (shared.js) reuses
+             `nearestCityWithinKm` (`_geoDistance`) and `onCityChange`
+             (the existing "remember + navigate" adoption) rather than
+             duplicating either. *@
+          <button type="button" id="locate-city-btn" class="btn refresh-btn btn-sm filter-icon-btn" onclick="locateNearestCity()" aria-label="@messages("nav.locateMe")" title="@messages("nav.locateMe")">
+            <svg class="filter-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+            </svg>
+          </button>
+        </div>
+        <div id="locate-city-status" class="locate-city-status" style="display:none"></div>
         <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
           @if(city.country.cityGroups.isEmpty) {@for(c <- city.country.allSorted) {
             <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>

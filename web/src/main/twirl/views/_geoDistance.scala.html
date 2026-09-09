@@ -1,0 +1,28 @@
+@()
+@* Pure geolocation helpers shared by the city-selection landing and the
+   Filtry "use my location" button. No params, no dependency on `city` or any
+   other page context, so it's safe to include from `landing.scala.html`
+   (deliberately self-contained — see its own header comment) as well as from
+   the repertoire page ahead of `shared.js`. *@
+<script>
+  // Haversine distance in km between two lat/lon points.
+  function distanceKm(lat1, lon1, lat2, lon2) {
+    var toRad = function (d) { return d * Math.PI / 180; };
+    var R = 6371;
+    var dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
+    var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+
+  // Nearest of `cities` (each with .lat/.lon) within `maxKm`, or null.
+  function nearestCityWithinKm(cities, lat, lon, maxKm) {
+    var best = null, bestD = Infinity;
+    cities.forEach(function (c) {
+      var d = distanceKm(lat, lon, c.lat, c.lon);
+      if (d < bestD) { bestD = d; best = c; }
+    });
+    return (best && bestD <= maxKm) ? best : null;
+  }
+</script>

@@ -246,3 +246,31 @@ test.describe('Filtry → Miasto switch', { tag: '@agnostic' }, () => {
     await page.waitForURL((u) => new URL(u).pathname === '/wroclaw/');
   });
 });
+
+// The Filtry panel's own location button — a manual re-run of the same 100 km
+// check the `/` landing does automatically, for a visitor who already has a
+// city but wants to check what's nearby without typing it.
+test.describe('Filtry → Miasto locate button', { tag: '@agnostic' }, () => {
+  test('a fix near Wrocław switches from Poznań to /wroclaw/', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation({ latitude: 51.1079, longitude: 17.0385 });
+    await gotoAndWaitForCards(page, '/poznan/');
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#locate-city-btn').click();
+    await page.waitForURL((u) => new URL(u).pathname === '/wroclaw/');
+  });
+
+  test('a fix nowhere near a Polish city says so and stays put', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    // New York — nowhere near any city this Polish deployment serves.
+    await context.setGeolocation({ latitude: 40.7128, longitude: -74.0060 });
+    await gotoAndWaitForCards(page, '/poznan/');
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#locate-city-btn').click();
+    await expect(page.locator('#locate-city-status')).toHaveText(/./);
+    // The status text only lands after the async fix and the nearest-city
+    // check both ran — by then a hit would already have called
+    // `onCityChange` and started navigating.
+    expect(new URL(page.url()).pathname).toBe('/poznan/');
+  });
+});

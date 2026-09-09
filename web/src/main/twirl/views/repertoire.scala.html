@@ -30,6 +30,9 @@
 @_hiddenModal()
 
 @_sharedJsConfig(allCinemas, cinemaPills, oauthProviders)
+@* Pure haversine helpers the Filtry "use my location" button calls into —
+   see `_geoDistance`'s own header for why this isn't just part of shared.js. *@
+@_geoDistance()
 <script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 
 @* The listing's only heading. Visually hidden because the design opens straight

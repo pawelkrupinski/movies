@@ -27,6 +27,7 @@ nav.imaxOnly=Solo IMAX
 nav.fromHour=Desde
 nav.any=Cualquiera
 nav.city=Ciudad
+nav.locateMe=Usar mi ubicación
 nav.countrySwitch=País
 nav.clear=Borrar
 nav.copyLink=Copiar enlace

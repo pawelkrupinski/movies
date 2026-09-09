@@ -141,6 +141,7 @@
     </ul>
     <p class="locating" id="locating"></p>
   </main>
+  @_geoDistance()
   <script>
     @* THE COUNTRY'S OWN LIST, even when `places` widened the rows above. In
        every deployment the two are the same set. On the fixture server they are
@@ -258,27 +259,6 @@
       apply();
     })();
 
-    // Haversine distance in km between two lat/lon points.
-    function distanceKm(lat1, lon1, lat2, lon2) {
-      var toRad = function (d) { return d * Math.PI / 180; };
-      var R = 6371;
-      var dLat = toRad(lat2 - lat1), dLon = toRad(lon2 - lon1);
-      var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-
-    // Nearest supported city within 100 km, or null.
-    function nearestWithin100km(lat, lon) {
-      var best = null, bestD = Infinity;
-      CITIES.forEach(function (c) {
-        var d = distanceKm(lat, lon, c.lat, c.lon);
-        if (d < bestD) { bestD = d; best = c; }
-      });
-      return (best && bestD <= 100) ? best : null;
-    }
-
     (function () {
       // The visitor named this country to get here (`?pick=city`), so the city
       // is theirs to name too: no fix, and no permission prompt to take one.
@@ -292,7 +272,7 @@
       navigator.geolocation.getCurrentPosition(
         function (pos) {
           if (done) return;
-          var c = nearestWithin100km(pos.coords.latitude, pos.coords.longitude);
+          var c = nearestCityWithinKm(CITIES, pos.coords.latitude, pos.coords.longitude, 100);
           if (c) {
             done = true;
             // Remember the choice so the next visit skips this screen. Scoped to

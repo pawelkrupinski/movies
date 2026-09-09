@@ -39,6 +39,13 @@
      can move a rendered page to another zone. *@
   window.CITY_TIMEZONE      = "@city.zoneId.getId";
   const ALL_CITIES          = @Html(city.country.allJson);
+  @* Status text for the Filtry "use my location" button — shared.js has no
+     access to `messages()`, so the two strings it needs travel as globals,
+     the same way every other page-bound piece of copy here does. Reuses the
+     landing page's own keys rather than adding nav-scoped duplicates: the
+     copy means the same thing in both places. *@
+  window.LOCATING_TEXT      = @Html(play.api.libs.json.Json.toJson(messages("landing.locating")).toString);
+  window.NO_NEARBY_TEXT     = @Html(play.api.libs.json.Json.toJson(messages("landing.noNearby")).toString);
   @* Per-deployment locale for shared.js: weekday/month arrays, empty-state /
      swipe-hint / clear strings, and the showtime plural rule + forms. Replaces
      the Polish literals shared.js used to hardcode (DAY2/MONTHS/_showtimeNoun). *@

@@ -106,6 +106,28 @@
   }
   window.onCityChange = onCityChange;
 
+  // Filtry's "use my location" button. Same 100 km haversine check the `/`
+  // landing runs automatically (`nearestCityWithinKm`, from `_geoDistance`,
+  // against `ALL_CITIES`, from `_sharedJsConfig`), triggered on demand instead
+  // of on load, and reusing `onCityChange` for the hit rather than a second
+  // adoption path.
+  function locateNearestCity() {
+    var status = document.getElementById('locate-city-status');
+    var show = function (text) { if (status) { status.textContent = text; status.style.display = text ? '' : 'none'; } };
+    if (!navigator.geolocation) return;
+    show(window.LOCATING_TEXT || '');
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        var c = nearestCityWithinKm(ALL_CITIES, pos.coords.latitude, pos.coords.longitude, 100);
+        if (c) { show(''); onCityChange(c.slug); }
+        else show(window.NO_NEARBY_TEXT || '');
+      },
+      function () { show(window.NO_NEARBY_TEXT || ''); },
+      { timeout: 5000, maximumAge: 600000 }
+    );
+  }
+  window.locateNearestCity = locateNearestCity;
+
   // THIS deployment's own base URL, read off the country switcher.
   //
   // The server marks the current country's <option> with a `selected`
