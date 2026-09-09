@@ -2431,6 +2431,36 @@
           }
         }
       }
+    },
+    "citygate.back_to_region": {
+      "comment": "Back control on the picker's third step (a UK subregion's city list, e.g. West Midlands) — returns to the region's own list.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zurück"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Atrás"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wstecz"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

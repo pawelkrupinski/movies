@@ -27,9 +27,11 @@ object Catalog {
    * characters needing JSON escaping. Mirrors the `{slug,name,lat,lon}` city
    * shape the web `ALL_CITIES` clients already parse, plus the owning country
    * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
-   * where the country's picker groups its cities, the group's label as `region`.
-   * Each country carries its `timezone` and, where it has one, the
-   * `versionTokens` pair its "version" filter matches on.
+   * where the country's picker groups its cities, the group's label as `region`
+   * and, where that group nests a sub-group worth a tap of its own (more than
+   * one city under it), that sub-group's label as `subregion`. Each country
+   * carries its `timezone` and, where it has one, the `versionTokens` pair its
+   * "version" filter matches on.
    */
   /** The one zone a country is published under: its BIGGEST city's, ties by slug.
    *
@@ -97,10 +99,30 @@ object Catalog {
         //
         // The TOP level, through `allCities`, wherever the web nests deeper than
         // one (the UK puts a county between its nation and its places). `region`
-        // is one string per city and the apps' pick is two steps, so the nation is
-        // the level that fits them; the county is a refinement the page can afford
-        // and they cannot.
-        val regionOf = c.cityGroups.flatMap(g => g.allCities.map(_.slug -> g.label)).toMap
+        // names the nation regardless of depth, so a city keeps the same `region`
+        // whether or not its county went on to earn a `subregion` below.
+        //
+        // Absent where the TOP group itself collapsed onto its one city
+        // (`soleCity` — Berlin and Hamburg, Germany's single-region
+        // city-states; Delaware and Vermont, US states too small to split).
+        // Naming a "Berlin" region a visitor would only ever pick to reach the
+        // one thing under it costs a tap for nothing, so that city shows as a
+        // direct row on the region STEP instead, exactly where a flat
+        // country's cities always have.
+        val regionOf = c.cityGroups.filter(_.soleCity.isEmpty)
+          .flatMap(g => g.allCities.map(_.slug -> g.label)).toMap
+        // The SECOND level — present only for a sub-group that actually holds MORE
+        // THAN ONE city (`CityGroup.soleCity` is `None`): the UK's West Midlands
+        // (Birmingham/Dudley/Sandwell), Glamorgan (Cardiff/Glamorgan) and Antrim
+        // (Antrim/Belfast) are the only three today. A county that collapsed onto
+        // its one place already reads correctly through `region` alone — Cheshire
+        // needs no extra tap to reach Cheshire — so this stays absent there, and
+        // absent entirely for Germany and the US, whose groups don't nest a level
+        // this deep. The apps' third picker step reads this field and skip it when
+        // it's absent, same shape as `region`/`timezone` below.
+        val subregionOf = c.cityGroups.flatMap { g =>
+          g.groups.filter(_.soleCity.isEmpty).flatMap(sub => sub.allCities.map(_.slug -> sub.label))
+        }.toMap
         // The city's own zone, but ONLY where it differs from the country's — the
         // field a client falls back from, so writing it out where it would say the
         // same thing costs bytes and says nothing. Four countries keep one zone
@@ -110,9 +132,10 @@ object Catalog {
         val countryZone = countryTimezone(c)
         c.cities.map { city =>
           val region = regionOf.get(city.slug).fold("")(label => s""","region":"$label"""")
+          val subregion = subregionOf.get(city.slug).fold("")(label => s""","subregion":"$label"""")
           val zone   = city.zoneId.getId
           val tz     = if (zone == countryZone) "" else s""","timezone":"$zone""""
-          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$tz}"""
+          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$tz}"""
         }
       }
       .mkString("[", ",", "]")

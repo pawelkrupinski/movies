@@ -77,10 +77,26 @@ final class CityRegionTests: XCTestCase {
             .decode(Seed.self, from: try AppSources.data("Kinowo/catalog-seed.json"))
             .catalog.cities
 
-        XCTAssertEqual(seeded.regions(inCountry: "us").count, 55)
+        // 48 of the 55 states/territories actually split into several metros —
+        // the other 7 (Delaware, Vermont, Rhode Island, DC, American Samoa,
+        // Guam, the Virgin Islands) are single-metro and collapse onto their
+        // one city instead (`CityGroup.soleCity`), the same way a UK county
+        // with one place needs no region tap either.
+        XCTAssertEqual(seeded.regions(inCountry: "us").count, 48)
         XCTAssertTrue(seeded.regions(inCountry: "us").contains("California"))
-        // Every US city is placed; a city with no state would be unreachable.
-        XCTAssertTrue(seeded.inCountry("us").allSatisfy { $0.region != nil })
+        // Every US city is PLACED somewhere reachable: a grouped state (region)
+        // or a collapsed single-metro one (a direct row on the region step).
+        let collapsed: Set<String> = [
+            "delaware", "vermont", "rhode-island", "district-of-columbia",
+            "american-samoa", "guam", "virgin-islands",
+        ]
+        for city in seeded.inCountry("us") {
+            if collapsed.contains(city.slug) {
+                XCTAssertNil(city.region, "\(city.slug) should have collapsed onto its one metro")
+            } else {
+                XCTAssertNotNil(city.region, "\(city.slug) has no region and would be unreachable")
+            }
+        }
         XCTAssertTrue(seeded.inCountry("pl").allSatisfy { $0.region == nil })
     }
 }

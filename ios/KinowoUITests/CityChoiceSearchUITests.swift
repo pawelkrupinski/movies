@@ -14,7 +14,11 @@ final class CityChoiceSearchUITests: XCTestCase {
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
-        app.launchArguments += ["-UITests", "1"]
+        // `-selectedCountryCode pl` overrides whatever country a PREVIOUS test in
+        // this run left persisted (e.g. a picker test that switched to the UK) —
+        // the launch-argument domain outranks it, same defense `FixtureLaunch`
+        // applies. Without it this test's outcome depends on run order.
+        app.launchArguments += ["-UITests", "1", "-selectedCountryCode", "pl"]
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
         app.launch()

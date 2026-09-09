@@ -36,6 +36,17 @@ data class City(
      */
     val region: String? = null,
     /**
+     * The SECOND-level group [region] sits under a further split, where that
+     * split actually holds more than one city — the UK's West Midlands
+     * (Birmingham/Dudley/Sandwell), Glamorgan (Cardiff/Glamorgan) and Antrim
+     * (Antrim/Belfast). Null everywhere else: a county that collapsed onto its
+     * one place reads correctly through [region] alone (Cheshire needs no
+     * third tap to reach Cheshire), and Germany/the US never nest this deep.
+     *
+     * Carried by `/api/catalog` (and the bundled seed), same shape as [region].
+     */
+    val subregion: String? = null,
+    /**
      * This city's own IANA zone, where it differs from its country's; null
      * otherwise — which is every city of the four countries that keep one zone
      * throughout, so the field costs nothing there.
@@ -139,17 +150,17 @@ object Cities {
         City("manchester", "Manchester", 53.4808, -2.2426, "uk", "England"),
         City("norwich", "Norwich", 52.6309, 1.2974, "uk", "England"),
         City("aberdeenshire", "Aberdeenshire", 57.308, -2.3393, "uk", "Scotland"),
-        City("antrim", "Antrim", 54.762, -6.0127, "uk", "Northern Ireland"),
+        City("antrim", "Antrim", 54.762, -6.0127, "uk", "Northern Ireland", "Antrim"),
         City("armagh", "Armagh", 54.4492, -6.398, "uk", "Northern Ireland"),
         City("ayrshire-and-arran", "Ayrshire and Arran", 55.5093, -4.581, "uk", "Scotland"),
         City("bedfordshire", "Bedfordshire", 52.0082, -0.4435, "uk", "England"),
-        City("belfast", "Belfast", 54.5857, -5.9428, "uk", "Northern Ireland"),
+        City("belfast", "Belfast", 54.5857, -5.9428, "uk", "Northern Ireland", "Antrim"),
         City("berkshire", "Berkshire", 51.4268, -0.9169, "uk", "England"),
-        City("birmingham", "Birmingham", 52.4581, -1.9041, "uk", "England"),
+        City("birmingham", "Birmingham", 52.4581, -1.9041, "uk", "England", "West Midlands"),
         City("bristol", "Bristol", 51.4659, -2.5805, "uk", "England"),
         City("buckinghamshire", "Buckinghamshire", 51.7582, -0.7609, "uk", "England"),
         City("cambridgeshire", "Cambridgeshire", 52.4301, -0.0137, "uk", "England"),
-        City("cardiff", "Cardiff", 51.4892, -3.1939, "uk", "Wales"),
+        City("cardiff", "Cardiff", 51.4892, -3.1939, "uk", "Wales", "Glamorgan"),
         City("central-scotland", "Central Scotland", 56.08, -3.8066, "uk", "Scotland"),
         City("cheshire", "Cheshire", 53.2917, -2.4966, "uk", "England"),
         City("clwyd", "Clwyd", 53.3083, -3.6072, "uk", "Wales"),
@@ -160,7 +171,7 @@ object Cities {
         City("devon", "Devon", 50.6651, -3.687, "uk", "England"),
         City("dorset", "Dorset", 50.7664, -2.1122, "uk", "England"),
         City("down", "Down", 54.4293, -5.9704, "uk", "Northern Ireland"),
-        City("dudley", "Dudley", 52.497, -2.0918, "uk", "England"),
+        City("dudley", "Dudley", 52.497, -2.0918, "uk", "England", "West Midlands"),
         City("dumfries-and-galloway", "Dumfries and Galloway", 54.9881, -3.8232, "uk", "Scotland"),
         City("dunbartonshire-argyll-bute", "Dunbartonshire and Argyll & Bute", 55.7795, -4.9973, "uk", "Scotland"),
         City("dyfed", "Dyfed", 51.9892, -4.3329, "uk", "Wales"),
@@ -170,7 +181,7 @@ object Cities {
         City("essex", "Essex", 51.7621, 0.5901, "uk", "England"),
         City("fermanagh", "Fermanagh", 54.3499, -7.6316, "uk", "Northern Ireland"),
         City("fife", "Fife", 56.1287, -3.2424, "uk", "Scotland"),
-        City("glamorgan", "Glamorgan", 51.6388, -3.7535, "uk", "Wales"),
+        City("glamorgan", "Glamorgan", 51.6388, -3.7535, "uk", "Wales", "Glamorgan"),
         City("glasgow", "Glasgow", 55.8682, -4.2316, "uk", "Scotland"),
         City("gloucestershire", "Gloucestershire", 51.8387, -2.2712, "uk", "England"),
         City("guernsey", "Guernsey", 49.4446, -2.5695, "uk", "Crown Dependencies"),
@@ -198,7 +209,7 @@ object Cities {
         City("powys", "Powys", 52.3806, -3.26, "uk", "Wales"),
         City("renfrewshire", "Renfrewshire", 55.9204, -4.5838, "uk", "Scotland"),
         City("roxburgh-ettrick-and-lauderdale", "Roxburgh, Ettrick and Lauderdale", 55.5183, -2.7969, "uk", "Scotland"),
-        City("sandwell", "Sandwell", 52.5175, -1.9932, "uk", "England"),
+        City("sandwell", "Sandwell", 52.5175, -1.9932, "uk", "England", "West Midlands"),
         City("shropshire", "Shropshire", 52.6813, -2.6215, "uk", "England"),
         City("somerset", "Somerset", 51.2159, -2.824, "uk", "England"),
         City("south-yorkshire", "South Yorkshire", 53.5141, -1.3109, "uk", "England"),
@@ -332,9 +343,10 @@ fun List<City>.sortedForPicker(countryCode: String): List<City> {
  *  not group its cities (Poland, Spain), and that emptiness is what the picker
  *  reads as "show one flat list".
  *
- *  ONE level, even where the web has two: the UK page puts a county between the
- *  nation and the place, and `/api/catalog` sends only the nation, which is the
- *  level a single `region` string per city can carry. */
+ *  The TOP level, even where a region nests a `subregion` below it (see
+ *  [subregionsIn]): the UK's nation names every one of its cities' `region`,
+ *  whether or not the county underneath went on to earn a third step of its
+ *  own. */
 fun List<City>.regionsIn(countryCode: String): List<String> =
     inCountry(countryCode).mapNotNull { it.region }.distinct()
 
@@ -354,6 +366,34 @@ fun List<City>.matchingInRegion(query: String, countryCode: String, region: Stri
     matching(query, countryCode).let { cities ->
         if (region == null) cities else cities.filter { it.region == region }
     }
+
+/** The `subregion`s within [region] that hold more than one city — a THIRD
+ *  picker step, reached only for the UK's West Midlands / Glamorgan / Antrim
+ *  today. Empty for every other region (which is most of them, and the whole
+ *  of Germany and the US): a county that collapsed onto its one place has no
+ *  `subregion` to speak of, and shows as a direct row instead (see
+ *  [directCitiesIn]). */
+fun List<City>.subregionsIn(countryCode: String, region: String): List<String> =
+    inCountry(countryCode).filter { it.region == region }.mapNotNull { it.subregion }.distinct()
+
+/** [subregionsIn] narrowed to those matching [query], folded the same way city
+ *  and region names are. */
+fun List<City>.subregionsMatching(query: String, countryCode: String, region: String): List<String> {
+    val q = Cities.searchFold(query.trim())
+    val subregions = subregionsIn(countryCode, region)
+    return if (q.isEmpty()) subregions else subregions.filter { Cities.searchFold(it).contains(q) }
+}
+
+/** [matchingInRegion]'s DIRECT rows — the cities in [region] that carry no
+ *  `subregion` and so show as a leaf row right there, rather than behind a
+ *  [subregionsIn] group. */
+fun List<City>.directCitiesIn(query: String, countryCode: String, region: String): List<City> =
+    matchingInRegion(query, countryCode, region).filter { it.subregion == null }
+
+/** [matchingInRegion] narrowed to one [subregion] — the third step, reached
+ *  only where [subregionsIn] is non-empty. */
+fun List<City>.matchingInSubregion(query: String, countryCode: String, region: String, subregion: String): List<City> =
+    matchingInRegion(query, countryCode, region).filter { it.subregion == subregion }
 
 /** [sortedForPicker] narrowed to the cities matching [query] (case- and
  *  diacritic-insensitive substring). A blank query yields the whole country list. */

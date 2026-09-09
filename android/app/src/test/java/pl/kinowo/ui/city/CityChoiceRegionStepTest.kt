@@ -127,4 +127,31 @@ class CityChoiceRegionStepTest {
         compose.onNodeWithText("Poznań").assertIsDisplayed()
         compose.onNodeWithText("All states").assertDoesNotExist()
     }
+
+    /**
+     * A city whose TOP group collapsed onto it alone — Berlin/Hamburg among
+     * Germany's Bundesländer, Delaware/Vermont among the US states — shows as
+     * a direct row on the state step itself, since there's no group left to
+     * name. Delaware is synthesized here (`region = null`) alongside the real
+     * multi-metro California/Texas.
+     */
+    @Test
+    fun aCollapsedTopGroupShowsAsADirectRowOnTheStateStep() {
+        val delaware = City("delaware", "Delaware", 39.16, -75.53, "us")
+        var picked: City? = null
+        compose.setContent {
+            CityChoiceScreen(
+                catalog = Catalog(countries = Country.all, cities = listOf(losAngeles, sanDiego, austin, delaware)),
+                onPick = { picked = it },
+                selectedCountryCode = "us",
+            )
+        }
+
+        // Right there on the state step, alongside the real states.
+        compose.onNodeWithText("California").assertIsDisplayed()
+        compose.onNodeWithText("Delaware").assertIsDisplayed()
+
+        compose.onNodeWithText("Delaware").performClick()
+        assertEquals(delaware, picked)
+    }
 }

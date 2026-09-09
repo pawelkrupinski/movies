@@ -26,6 +26,15 @@ final class CatalogStore: ObservableObject {
     init(session: URLSession = .shared, cache: CatalogCache = CatalogCache()) {
         self.session = session
         self.cache = cache
+        #if DEBUG
+        // UI tests that assert on the BUNDLED seed's shape need it deterministically
+        // — a prior interactive/test run's live fetch otherwise persists indefinitely
+        // and silently wins over a freshly-updated seed, since nothing else ever
+        // clears `CatalogCache`.
+        if ProcessInfo.processInfo.environment["KINOWO_CLEAR_CATALOG_CACHE"] != nil {
+            cache.clear()
+        }
+        #endif
         // Prefer the last persisted fetch; else the bundled seed; else the
         // compile-time fallback registry (should never be needed).
         if let persisted = cache.load(), let parsed = CatalogBody.decode(persisted.body) {
@@ -92,6 +101,18 @@ final class CatalogStore: ObservableObject {
     }
     func matching(_ query: String, inCountry code: String, region: String?) -> [City] {
         cities.matching(query, inCountry: code, region: region)
+    }
+    func subregions(inCountry code: String, region: String) -> [String] {
+        cities.subregions(inCountry: code, region: region)
+    }
+    func subregionsMatching(_ query: String, inCountry code: String, region: String) -> [String] {
+        cities.subregionsMatching(query, inCountry: code, region: region)
+    }
+    func matchingDirect(_ query: String, inCountry code: String, region: String) -> [City] {
+        cities.matchingDirect(query, inCountry: code, region: region)
+    }
+    func matching(_ query: String, inCountry code: String, region: String, subregion: String) -> [City] {
+        cities.matching(query, inCountry: code, region: region, subregion: subregion)
     }
     func defaultCity(inCountry code: String) -> City? { cities.defaultCity(inCountry: code) }
     /// The zone to reason about `slug`'s showtimes in — its own where the catalog

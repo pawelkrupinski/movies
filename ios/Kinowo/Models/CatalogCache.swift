@@ -29,4 +29,13 @@ struct CatalogCache {
         defaults.set(body, forKey: bodyKey)
         defaults.set(etag, forKey: etagKey)
     }
+
+    /// Drop the persisted fetch, so the next `CatalogStore.init()` falls back
+    /// to the bundled seed. UI-test-only (see `KINOWO_CLEAR_CATALOG_CACHE`): a
+    /// prior interactive/test session's live fetch otherwise wins over the
+    /// seed indefinitely, since nothing else ever clears this key.
+    func clear() {
+        defaults.removeObject(forKey: bodyKey)
+        defaults.removeObject(forKey: etagKey)
+    }
 }

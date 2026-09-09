@@ -29,6 +29,16 @@ struct City: Codable, Hashable {
     /// and so a catalog from an older server still decodes.
     var region: String? = nil
 
+    /// The SECOND-level group `region` sits under a further split, where that
+    /// split actually holds more than one city — the UK's West Midlands
+    /// (Birmingham/Dudley/Sandwell), Glamorgan (Cardiff/Glamorgan) and Antrim
+    /// (Antrim/Belfast). `nil` everywhere else: a county that collapsed onto its
+    /// one place reads correctly through `region` alone (Cheshire needs no
+    /// third tap to reach Cheshire), and Germany/the US never nest this deep.
+    ///
+    /// Carried by `/api/catalog` (and the bundled seed), same shape as `region`.
+    var subregion: String? = nil
+
     /// This city's own IANA zone, where it differs from its country's; `nil`
     /// otherwise — which is every city of the four countries that keep one zone
     /// throughout, so the field costs nothing there.
@@ -113,17 +123,17 @@ struct City: Codable, Hashable {
         City(slug: "manchester", name: "Manchester", lat: 53.4808, lon: -2.2426, country: "uk", region: "England"),
         City(slug: "norwich", name: "Norwich", lat: 52.6309, lon: 1.2974, country: "uk", region: "England"),
         City(slug: "aberdeenshire", name: "Aberdeenshire", lat: 57.308, lon: -2.3393, country: "uk", region: "Scotland"),
-        City(slug: "antrim", name: "Antrim", lat: 54.762, lon: -6.0127, country: "uk", region: "Northern Ireland"),
+        City(slug: "antrim", name: "Antrim", lat: 54.762, lon: -6.0127, country: "uk", region: "Northern Ireland", subregion: "Antrim"),
         City(slug: "armagh", name: "Armagh", lat: 54.4492, lon: -6.398, country: "uk", region: "Northern Ireland"),
         City(slug: "ayrshire-and-arran", name: "Ayrshire and Arran", lat: 55.5093, lon: -4.581, country: "uk", region: "Scotland"),
         City(slug: "bedfordshire", name: "Bedfordshire", lat: 52.0082, lon: -0.4435, country: "uk", region: "England"),
-        City(slug: "belfast", name: "Belfast", lat: 54.5857, lon: -5.9428, country: "uk", region: "Northern Ireland"),
+        City(slug: "belfast", name: "Belfast", lat: 54.5857, lon: -5.9428, country: "uk", region: "Northern Ireland", subregion: "Antrim"),
         City(slug: "berkshire", name: "Berkshire", lat: 51.4268, lon: -0.9169, country: "uk", region: "England"),
-        City(slug: "birmingham", name: "Birmingham", lat: 52.4581, lon: -1.9041, country: "uk", region: "England"),
+        City(slug: "birmingham", name: "Birmingham", lat: 52.4581, lon: -1.9041, country: "uk", region: "England", subregion: "West Midlands"),
         City(slug: "bristol", name: "Bristol", lat: 51.4659, lon: -2.5805, country: "uk", region: "England"),
         City(slug: "buckinghamshire", name: "Buckinghamshire", lat: 51.7582, lon: -0.7609, country: "uk", region: "England"),
         City(slug: "cambridgeshire", name: "Cambridgeshire", lat: 52.4301, lon: -0.0137, country: "uk", region: "England"),
-        City(slug: "cardiff", name: "Cardiff", lat: 51.4892, lon: -3.1939, country: "uk", region: "Wales"),
+        City(slug: "cardiff", name: "Cardiff", lat: 51.4892, lon: -3.1939, country: "uk", region: "Wales", subregion: "Glamorgan"),
         City(slug: "central-scotland", name: "Central Scotland", lat: 56.08, lon: -3.8066, country: "uk", region: "Scotland"),
         City(slug: "cheshire", name: "Cheshire", lat: 53.2917, lon: -2.4966, country: "uk", region: "England"),
         City(slug: "clwyd", name: "Clwyd", lat: 53.3083, lon: -3.6072, country: "uk", region: "Wales"),
@@ -134,7 +144,7 @@ struct City: Codable, Hashable {
         City(slug: "devon", name: "Devon", lat: 50.6651, lon: -3.687, country: "uk", region: "England"),
         City(slug: "dorset", name: "Dorset", lat: 50.7664, lon: -2.1122, country: "uk", region: "England"),
         City(slug: "down", name: "Down", lat: 54.4293, lon: -5.9704, country: "uk", region: "Northern Ireland"),
-        City(slug: "dudley", name: "Dudley", lat: 52.497, lon: -2.0918, country: "uk", region: "England"),
+        City(slug: "dudley", name: "Dudley", lat: 52.497, lon: -2.0918, country: "uk", region: "England", subregion: "West Midlands"),
         City(slug: "dumfries-and-galloway", name: "Dumfries and Galloway", lat: 54.9881, lon: -3.8232, country: "uk", region: "Scotland"),
         City(slug: "dunbartonshire-argyll-bute", name: "Dunbartonshire and Argyll & Bute", lat: 55.7795, lon: -4.9973, country: "uk", region: "Scotland"),
         City(slug: "dyfed", name: "Dyfed", lat: 51.9892, lon: -4.3329, country: "uk", region: "Wales"),
@@ -144,7 +154,7 @@ struct City: Codable, Hashable {
         City(slug: "essex", name: "Essex", lat: 51.7621, lon: 0.5901, country: "uk", region: "England"),
         City(slug: "fermanagh", name: "Fermanagh", lat: 54.3499, lon: -7.6316, country: "uk", region: "Northern Ireland"),
         City(slug: "fife", name: "Fife", lat: 56.1287, lon: -3.2424, country: "uk", region: "Scotland"),
-        City(slug: "glamorgan", name: "Glamorgan", lat: 51.6388, lon: -3.7535, country: "uk", region: "Wales"),
+        City(slug: "glamorgan", name: "Glamorgan", lat: 51.6388, lon: -3.7535, country: "uk", region: "Wales", subregion: "Glamorgan"),
         City(slug: "glasgow", name: "Glasgow", lat: 55.8682, lon: -4.2316, country: "uk", region: "Scotland"),
         City(slug: "gloucestershire", name: "Gloucestershire", lat: 51.8387, lon: -2.2712, country: "uk", region: "England"),
         City(slug: "guernsey", name: "Guernsey", lat: 49.4446, lon: -2.5695, country: "uk", region: "Crown Dependencies"),
@@ -172,7 +182,7 @@ struct City: Codable, Hashable {
         City(slug: "powys", name: "Powys", lat: 52.3806, lon: -3.26, country: "uk", region: "Wales"),
         City(slug: "renfrewshire", name: "Renfrewshire", lat: 55.9204, lon: -4.5838, country: "uk", region: "Scotland"),
         City(slug: "roxburgh-ettrick-and-lauderdale", name: "Roxburgh, Ettrick and Lauderdale", lat: 55.5183, lon: -2.7969, country: "uk", region: "Scotland"),
-        City(slug: "sandwell", name: "Sandwell", lat: 52.5175, lon: -1.9932, country: "uk", region: "England"),
+        City(slug: "sandwell", name: "Sandwell", lat: 52.5175, lon: -1.9932, country: "uk", region: "England", subregion: "West Midlands"),
         City(slug: "shropshire", name: "Shropshire", lat: 52.6813, lon: -2.6215, country: "uk", region: "England"),
         City(slug: "somerset", name: "Somerset", lat: 51.2159, lon: -2.824, country: "uk", region: "England"),
         City(slug: "south-yorkshire", name: "South Yorkshire", lat: 53.5141, lon: -1.3109, country: "uk", region: "England"),
@@ -323,9 +333,10 @@ extension Array where Element == City {
     /// that does not group its cities (Poland, Spain), and that emptiness is what
     /// the picker reads as "show one flat list".
     ///
-    /// ONE level, even where the web has two: the UK page puts a county between
-    /// the nation and the place, and `/api/catalog` sends only the nation, which
-    /// is the level a single `region` string per city can carry.
+    /// The TOP level, even where a region nests a `subregion` below it (see
+    /// `subregions(inCountry:region:)`): the UK's nation names every one of its
+    /// cities' `region`, whether or not the county underneath went on to earn a
+    /// third step of its own.
     func regions(inCountry countryCode: String) -> [String] {
         var seen = Set<String>()
         return inCountry(countryCode).compactMap(\.region).filter { seen.insert($0).inserted }
@@ -348,6 +359,42 @@ extension Array where Element == City {
         let cities = matching(query, inCountry: countryCode)
         guard let region else { return cities }
         return cities.filter { $0.region == region }
+    }
+
+    /// The `subregion`s within `region` that hold more than one city — a THIRD
+    /// picker step, reached only for the UK's West Midlands / Glamorgan / Antrim
+    /// today. Empty for every other region (which is most of them, and the whole
+    /// of Germany and the US): a county that collapsed onto its one place has no
+    /// `subregion` to speak of, and shows as a direct row instead (see
+    /// `matchingDirect(_:inCountry:region:)`).
+    func subregions(inCountry countryCode: String, region: String) -> [String] {
+        var seen = Set<String>()
+        return inCountry(countryCode)
+            .filter { $0.region == region }
+            .compactMap(\.subregion)
+            .filter { seen.insert($0).inserted }
+    }
+
+    /// `subregions(inCountry:region:)` narrowed to those matching `query`,
+    /// folded the same way city and region names are.
+    func subregionsMatching(_ query: String, inCountry countryCode: String, region: String) -> [String] {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        let subregions = subregions(inCountry: countryCode, region: region)
+        guard !trimmed.isEmpty else { return subregions }
+        return subregions.filter { City.searchFold($0).contains(City.searchFold(trimmed)) }
+    }
+
+    /// `matching(_:inCountry:region:)`'s DIRECT rows — the cities in `region`
+    /// that carry no `subregion` and so show as a leaf row right there, rather
+    /// than behind a `subregions(inCountry:region:)` group.
+    func matchingDirect(_ query: String, inCountry countryCode: String, region: String) -> [City] {
+        matching(query, inCountry: countryCode, region: region).filter { $0.subregion == nil }
+    }
+
+    /// `matching(_:inCountry:region:)` narrowed to one `subregion` — the third
+    /// step, reached only where `subregions(inCountry:region:)` is non-empty.
+    func matching(_ query: String, inCountry countryCode: String, region: String, subregion: String) -> [City] {
+        matching(query, inCountry: countryCode, region: region).filter { $0.subregion == subregion }
     }
 
     /// The default city for `countryCode` — its first entry in this list, or `nil`.

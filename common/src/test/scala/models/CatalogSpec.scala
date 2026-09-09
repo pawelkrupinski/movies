@@ -106,6 +106,51 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     cityEntry("madrid") should not include "region"
   }
 
+  it should "carry no region where the TOP group collapsed onto its one city" in {
+    val j = Catalog.json
+    def cityEntry(slug: String) =
+      j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
+    // Berlin and Hamburg are Germany's single-region city-states; Delaware and
+    // Vermont are US states too small to split into metros. Naming their one
+    // Bundesland/state as a `region` a visitor would only ever open to reach
+    // the single thing under it costs a tap for nothing — this is the same
+    // `CityGroup.soleCity` collapse `region` already applies one level down
+    // (a UK county with one place), now applied at the top too.
+    cityEntry("berlin")   should not include "region"
+    cityEntry("hamburg")  should not include "region"
+    cityEntry("delaware") should not include "region"
+    cityEntry("vermont")  should not include "region"
+    // Bremen genuinely groups two places (Bremen, Bremerhaven), so it keeps
+    // its region step.
+    cityEntry("bremen")      should include(""""region":"Bremen"""")
+    cityEntry("bremerhaven") should include(""""region":"Bremen"""")
+  }
+
+  it should "name the SUB-group only where it holds more than one city" in {
+    val j = Catalog.json
+    def cityEntry(slug: String) =
+      j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
+    // West Midlands, Glamorgan and Antrim are the three UK counties that group
+    // more than one place — the level `region` alone can't carry (it names only
+    // the nation, "England"/"Wales"/"Northern Ireland").
+    cityEntry("birmingham") should include(""""region":"England","subregion":"West Midlands"""")
+    cityEntry("dudley")     should include(""""subregion":"West Midlands"""")
+    cityEntry("sandwell")   should include(""""subregion":"West Midlands"""")
+    cityEntry("cardiff")    should include(""""region":"Wales","subregion":"Glamorgan"""")
+    cityEntry("glamorgan")  should include(""""subregion":"Glamorgan"""")
+    cityEntry("antrim")     should include(""""region":"Northern Ireland","subregion":"Antrim"""")
+    cityEntry("belfast")    should include(""""subregion":"Antrim"""")
+    // A county that collapsed onto its one place carries no subregion — Cheshire
+    // reads correctly through `region` alone, with no extra tap to reach it.
+    cityEntry("cheshire") should not include "subregion"
+    cityEntry("glasgow")  should not include "subregion"
+    // Germany and the US group one level deep, so neither ever writes it.
+    cityEntry("muenchen")     should not include "subregion"
+    cityEntry("los-angeles")  should not include "subregion"
+    // The flat countries write neither region nor subregion.
+    cityEntry("poznan") should not include "subregion"
+  }
+
   it should "contain exactly the switchable countries' cities" in {
     val cityCount = Catalog.json.split("\"slug\":", -1).length - 1
     cityCount shouldBe Country.switchable.flatMap(_.cities).size

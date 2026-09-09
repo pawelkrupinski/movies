@@ -154,12 +154,16 @@ struct CityChoiceView: View {
     var nearest: City?
 
     /// Live search text; narrows the list to the cities whose folded name
-    /// contains it (diacritic-insensitive, so "lodz" finds "Łódź"), or — on the
-    /// first step of a grouped country — to the matching regions.
+    /// contains it (diacritic-insensitive, so "lodz" finds "Łódź"), or — on a
+    /// grouped step — to the matching region/subregion names.
     @State private var query = ""
     /// The region being browsed, on a country whose cities are grouped. `nil` is
-    /// the first step (pick a state); non-nil the second (pick a city in it).
+    /// the first step (pick a nation/state); non-nil the second.
     @State private var region: String?
+    /// The subregion being browsed, within `region` — the third step, reached
+    /// only where `region` itself splits into sub-groups holding more than one
+    /// city (the UK's West Midlands / Glamorgan / Antrim). `nil` everywhere else.
+    @State private var subregion: String?
 
     private var countryCode: String { prefs.selectedCountry.code }
 
@@ -171,7 +175,38 @@ struct CityChoiceView: View {
     private var pickingRegion: Bool { !regions.isEmpty && region == nil }
 
     private var visibleRegions: [String] { catalog.regionsMatching(query, inCountry: countryCode) }
-    private var visibleCities: [City] { catalog.matching(query, inCountry: countryCode, region: region) }
+    /// Cities whose TOP group collapsed onto them alone (Berlin, Hamburg —
+    /// Germany's single-region city-states; Delaware, Vermont — US states too
+    /// small to split), shown as direct rows right on the region step since
+    /// there is no group left to name. Empty for a fully flat country (Poland,
+    /// Spain), whose whole list already renders through the `else` branch below.
+    private var visibleTopDirectCities: [City] {
+        guard pickingRegion else { return [] }
+        return catalog.matching(query, inCountry: countryCode).filter { $0.region == nil }
+    }
+
+    /// The subregions within `region` that hold more than one city — the
+    /// second step's own group rows. Empty for every region without one
+    /// (which is most of them, and the whole of Germany and the US).
+    private var visibleSubregions: [String] {
+        guard let region else { return [] }
+        return catalog.subregionsMatching(query, inCountry: countryCode, region: region)
+    }
+    /// The second step's DIRECT rows: cities in `region` with no subregion of
+    /// their own. Falls back to the whole (unscoped) match for a flat country,
+    /// where `region` is always `nil`.
+    private var visibleDirectCities: [City] {
+        if let region {
+            return catalog.matchingDirect(query, inCountry: countryCode, region: region)
+        }
+        return catalog.matching(query, inCountry: countryCode)
+    }
+
+    /// The third step's rows: cities within one `subregion` of `region`.
+    private var visibleSubregionCities: [City] {
+        guard let region, let subregion else { return [] }
+        return catalog.matching(query, inCountry: countryCode, region: region, subregion: subregion)
+    }
 
     var body: some View {
         NavigationStack {
@@ -193,17 +228,46 @@ struct CityChoiceView: View {
                             }
                             .foregroundStyle(.primary)
                         }
+                        ForEach(visibleTopDirectCities, id: \.slug) { city in
+                            Button {
+                                choose(city)
+                            } label: {
+                                row(city.name)
+                            }
+                            .foregroundStyle(.primary)
+                        }
                     } header: {
                         Text("citygate.choose_region_title")
                     }
 
-                    if visibleRegions.isEmpty {
+                    if visibleRegions.isEmpty && visibleTopDirectCities.isEmpty {
                         Text(String(format: String(localized: "citygate.no_region_match"), query))
                             .foregroundStyle(.secondary)
                     }
-                } else {
+                } else if subregion == nil {
+                    // At the TOP of the section — above every row, not buried in
+                    // a footer below them — so it stays visible without
+                    // scrolling on a long list, matching Android's
+                    // `CityChoiceScreen` (its back button sits above the search
+                    // field, not after the results).
+                    if region != nil {
+                        Button {
+                            region = nil
+                            query = ""
+                        } label: {
+                            Label("citygate.back_to_regions", systemImage: "chevron.left")
+                        }
+                        .accessibilityIdentifier(A11y.CityGate.backToRegionsButton)
+                    }
+
                     Section {
-                        ForEach(visibleCities, id: \.slug) { city in
+                        ForEach(visibleSubregions, id: \.self) { name in
+                            Button { subregion = name; query = "" } label: {
+                                row(name)
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                        ForEach(visibleDirectCities, id: \.slug) { city in
                             Button {
                                 choose(city)
                             } label: {
@@ -220,21 +284,39 @@ struct CityChoiceView: View {
                         } else {
                             Text("citygate.choose_title")
                         }
-                    } footer: {
-                        if region != nil {
-                            Button {
-                                region = nil
-                                query = ""
-                            } label: {
-                                Label("citygate.back_to_regions", systemImage: "chevron.left")
-                            }
-                            .accessibilityIdentifier(A11y.CityGate.backToRegionsButton)
-                        }
                     }
 
-                    if visibleCities.isEmpty {
+                    if visibleSubregions.isEmpty && visibleDirectCities.isEmpty {
                         // Keeps the search field anchored (an empty List would let
                         // it collapse) and tells the user nothing matched.
+                        Text(String(format: String(localized: "citygate.no_match"), query))
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    // Third step: browsing one subregion's cities. Same
+                    // above-the-list back-button placement as the second step.
+                    Button {
+                        subregion = nil
+                        query = ""
+                    } label: {
+                        Label("citygate.back_to_region", systemImage: "chevron.left")
+                    }
+                    .accessibilityIdentifier(A11y.CityGate.backToRegionButton)
+
+                    Section {
+                        ForEach(visibleSubregionCities, id: \.slug) { city in
+                            Button {
+                                choose(city)
+                            } label: {
+                                row(city.name)
+                            }
+                            .foregroundStyle(.primary)
+                        }
+                    } header: {
+                        Text(subregion ?? "")
+                    }
+
+                    if visibleSubregionCities.isEmpty {
                         Text(String(format: String(localized: "citygate.no_match"), query))
                             .foregroundStyle(.secondary)
                     }
@@ -247,11 +329,12 @@ struct CityChoiceView: View {
                         prompt: Text(pickingRegion ? "citygate.search_region_hint" : "citygate.search_hint"))
             .autocorrectionDisabled()
             .textInputAutocapitalization(.never)
-            // Switching country changes what both steps mean, so neither a
+            // Switching country changes what every step means, so neither a
             // half-typed query nor a state from the country just left survives it.
             .onChange(of: countryCode) { _ in
                 query = ""
                 region = nil
+                subregion = nil
             }
             .accessibilityIdentifier(A11y.CityGate.picker)
         }
