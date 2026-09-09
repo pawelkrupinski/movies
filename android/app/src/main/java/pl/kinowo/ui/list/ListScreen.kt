@@ -684,7 +684,7 @@ internal fun FilmsGrid(
 @Composable
 internal fun CinemaGrid(sections: List<CinemaSection>, showHeaders: Boolean, bottomInset: Dp, scrollResetKey: Any?, onOpen: (String) -> Unit, onHide: (String) -> Unit) {
     if (sections.isEmpty()) {
-        EmptyState("Brak repertuaru.")
+        EmptyState(stringResource(R.string.no_showings))
         return
     }
     val gridState = rememberLazyGridState()
