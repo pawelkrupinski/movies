@@ -107,8 +107,11 @@ class KinowoViewModel(
     private val sync = StateSyncService(prefs, authRepository.user, userStateClient, viewModelScope)
 
     // Skips the one nearer-city check that the post-OAuth resume would otherwise
-    // fire — armed when a web sign-in starts (see [signInWithGoogle]).
-    private val citySwitchSuppressor = CitySwitchSuppressor()
+    // fire — armed when a web sign-in starts (see [signInWithGoogle]) or a city
+    // is re-picked with no detected nearest (see [chooseCityAtGate]). Internal
+    // rather than private so a test can assert it armed without going through
+    // [checkCitySwitch]'s real location fetch.
+    internal val citySwitchSuppressor = CitySwitchSuppressor()
 
     init {
         sync.start()
@@ -494,13 +497,27 @@ class KinowoViewModel(
         prefs.setCity(slug)
     }
 
-    /** Adopt a city the user deliberately picked at the first-launch gate. When
-     *  it differs from the location-detected [nearestSlug], pre-record that pair
-     *  so [checkCitySwitch] doesn't fire the "you're nearer …" prompt the moment
+    /** Adopt a city the user deliberately picked at the gate. When it differs
+     *  from the location-detected [nearestSlug], pre-record that pair so
+     *  [checkCitySwitch] doesn't fire the "you're nearer …" prompt the moment
      *  the repertoire appears — the pick was intentional. Seeds the key before
-     *  persisting the city so the prompt check sees it. */
+     *  persisting the city so the prompt check sees it.
+     *
+     *  [nearestSlug] is only ever non-null on the first-launch flow, which
+     *  resolved a location fix before landing here. Reached any other way —
+     *  Filtry's "Pick another city", or a country switch — there's no detected
+     *  nearest to build a precise key from, so fall back to skipping the ONE
+     *  check [checkCitySwitch] fires right after this pick (the same one-shot
+     *  suppressor a web sign-in's Custom Tab resume uses): the pick was still
+     *  deliberate, and a genuine later foreground still re-arms the check
+     *  normally. */
     fun chooseCityAtGate(slug: String, nearestSlug: String?) = viewModelScope.launch {
-        Cities.initialChoiceSuppressKey(slug, nearestSlug)?.let { prefs.setCitySwitchPromptKey(it) }
+        val key = Cities.initialChoiceSuppressKey(slug, nearestSlug)
+        if (key != null) {
+            prefs.setCitySwitchPromptKey(key)
+        } else if (nearestSlug == null) {
+            citySwitchSuppressor.suppressNextCheck()
+        }
         citySwitchSuggestion = null
         prefs.setCity(slug)
     }

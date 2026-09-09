@@ -210,6 +210,36 @@ final class CityTests: XCTestCase {
         XCTAssertNil(City.initialChoiceSuppressKey(chosenSlug: "warszawa", nearestSlug: nil))
     }
 
+    // ── switchPromptSuppression (any `choose(_:)`, first-launch or a later re-pick) ───
+
+    /// The true first-launch flow: a real, different detected nearest seeds
+    /// the precise pair — same case `initialChoiceSuppressKey` already covers.
+    func testSwitchPromptSuppressionSeedsTheKeyForADifferentDetectedNearest() {
+        XCTAssertEqual(
+            City.switchPromptSuppression(chosenSlug: "warszawa", nearestSlug: "poznan"),
+            .seedKey("warszawa→poznan"))
+    }
+
+    /// A manual re-pick — Filtry's "Choose another city", or a country switch
+    /// — never resolved a location fix, so there's no pair to key on. Falls
+    /// back to blanket-suppressing the next check instead of leaving it
+    /// unsuppressed (the bug: picking a city elsewhere immediately re-offered
+    /// the "you're nearer …" prompt for wherever the device physically was).
+    func testSwitchPromptSuppressionFallsBackToBlanketSuppressionWithNoDetectedNearest() {
+        XCTAssertEqual(
+            City.switchPromptSuppression(chosenSlug: "warszawa", nearestSlug: nil),
+            .suppressNextCheck)
+    }
+
+    /// The picked city already IS the detected nearest — `switchSuggestion`
+    /// stays quiet on its own (`nearest.slug == chosenSlug`), so neither
+    /// suppression path has anything to do.
+    func testSwitchPromptSuppressionIsNoneWhenTheChoiceAlreadyMatchesTheNearest() {
+        XCTAssertEqual(
+            City.switchPromptSuppression(chosenSlug: "poznan", nearestSlug: "poznan"),
+            .none)
+    }
+
     // ── apiURL (city-prefixed endpoints) ──────────────────────────
 
     func testRepertoireURLIsCityPrefixed() {

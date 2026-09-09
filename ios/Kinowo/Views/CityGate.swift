@@ -148,6 +148,8 @@ struct CityChoiceView: View {
     @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var store: RepertoireStore
     @EnvironmentObject var details: DetailsStore
+    // For `choose(_:)`'s fallback suppression — see there.
+    @EnvironmentObject var authService: AuthService
     /// The location-detected nearest city, when one was found — used only to
     /// pre-suppress the switch prompt for a deliberate pick of another city.
     /// `nil` when location was unavailable (then there's nothing to suppress).
@@ -388,13 +390,18 @@ struct CityChoiceView: View {
         }
     }
 
-    /// Adopt the picked city. When it differs from the location-detected
-    /// nearest, record that pair so the "you're nearer …" prompt doesn't fire
-    /// the moment the repertoire appears — the user just chose this city on
-    /// purpose. Order matters: seed the key before `setCity` flips the gate.
+    /// Adopt the picked city, and settle the "nearer city" prompt for it —
+    /// see `City.switchPromptSuppression`. Order matters: apply the
+    /// suppression before `setCity` flips the gate to `ContentView`, whose
+    /// `onAppear` fires the very next check.
     private func choose(_ city: City) {
-        if let key = City.initialChoiceSuppressKey(chosenSlug: city.slug, nearestSlug: nearest?.slug) {
+        switch City.switchPromptSuppression(chosenSlug: city.slug, nearestSlug: nearest?.slug) {
+        case .seedKey(let key):
             prefs.setCitySwitchPromptKey(key)
+        case .suppressNextCheck:
+            authService.citySwitchSuppressor.suppressNextCheck()
+        case .none:
+            break
         }
         prefs.setCity(city.slug)
     }

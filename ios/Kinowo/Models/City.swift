@@ -240,6 +240,33 @@ struct City: Codable, Hashable {
         return switchPromptKey(chosenSlug: chosenSlug, nearestSlug: nearestSlug)
     }
 
+    /// What `CityChoiceView.choose(_:)` should do about the "nearer city"
+    /// prompt when adopting `chosenSlug`, given `nearestSlug` — the
+    /// location-detected nearest on the true first-launch flow, or `nil` when
+    /// this pick has none (Filtry's "Choose another city", or a country
+    /// switch, neither of which resolved a location fix before landing here).
+    enum SwitchPromptSuppression: Equatable {
+        /// A real, DIFFERENT detected nearest: seed the precise
+        /// `chosen→nearest` pair, so `switchSuggestion` recognises and stays
+        /// quiet for exactly it.
+        case seedKey(String)
+        /// No detected nearest to build a pair from — there's nothing precise
+        /// to key on, so skip the ONE check `ContentView.onAppear` fires right
+        /// after this pick instead (`CitySwitchSuppressor`, the same
+        /// mechanism a web sign-in's Custom Tab resume uses).
+        case suppressNextCheck
+        /// Nothing to do: the chosen city already equals the detected
+        /// nearest, so `switchSuggestion` will stay quiet on its own.
+        case none
+    }
+
+    static func switchPromptSuppression(chosenSlug: String, nearestSlug: String?) -> SwitchPromptSuppression {
+        if let key = initialChoiceSuppressKey(chosenSlug: chosenSlug, nearestSlug: nearestSlug) {
+            return .seedKey(key)
+        }
+        return nearestSlug == nil ? .suppressNextCheck : .none
+    }
+
     /// The city-prefixed API URL for `endpoint` (`"repertoire"` /
     /// `"details"`) against `base` — e.g. `…/poznan/api/repertoire`. The
     /// repertoire/details stores build their fetch URL through this so the
