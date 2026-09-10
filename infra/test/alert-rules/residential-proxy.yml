@@ -1,0 +1,57 @@
+rule_files:
+  - ../../nix/files/monitoring/rules/residential-proxy.rules
+
+evaluation_interval: 1m
+
+tests:
+  # THE 2026-09-10 SHAPE, REPLAYED: UK's proxy fetches are mostly 503ing (Decodo tunnel failures)
+  # while PL's stay healthy (its Zyte leg absorbs the same outage silently, which is exactly the
+  # blind spot a fleet-wide `sum` used to have -- see the header). Only UK crosses the 0.5 ratio.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_uptime_recent_failures{country="uk",service="Residential proxy",job="kinowo-web"}'
+        values: '0+8x80'
+      - series: 'kinowo_uptime_recent_successes{country="uk",service="Residential proxy",job="kinowo-web"}'
+        values: '0+2x80'
+      - series: 'kinowo_uptime_recent_failures{country="pl",service="Residential proxy",job="kinowo-web"}'
+        values: '0+1x80'
+      - series: 'kinowo_uptime_recent_successes{country="pl",service="Residential proxy",job="kinowo-web"}'
+        values: '0+49x80'
+    alert_rule_test:
+      # Not yet held for the full 15m.
+      - eval_time: 5m
+        alertname: ResidentialProxyFallingBackToZyte
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: ResidentialProxyFallingBackToZyte
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk }
+            exp_annotations:
+              summary: "uk's Decodo residential proxy is mostly failing — falling back to Zyte"
+              description: "Over half of uk's residential-proxy fetches in the last 30 min failed (kinowo_uptime_recent_failures vs _recent_successes, service \"Residential proxy\"). Scraping still works via the Zyte/direct fallback behind it, so no cinema is down — but the flat-fee Decodo proxy is not serving and the per-request Zyte egress is back in use. Check the \"Residential proxy\" row on that country's /uptime for the error text (a per-IP \"Limit: 3\" auth cap, 401/407, or a burned IP is one cinema/port; an account-wide \"Tunnel failed, got: 503\" across every port, reproducible locally with `KINOWO_PROXY_USER=… KINOWO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.ProxyProbe'`, is the whole account -- check the Decodo dashboard for plan/billing/quota before chasing worker code, same as the 2026-06-16 \"Limit: 3\" incident). See reference_decodo_isp_proxy and reference_zyte_is_decodo_fallback_only."
+
+  # A HEALTHY FLEET STAYS SILENT: occasional Zyte fallthrough well under half, the measured
+  # 2026-08-30 shape (UK 46/80276 = 0.057%, US 1.11%) at a much coarser ratio for headroom.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_uptime_recent_failures{country="us",service="Residential proxy",job="kinowo-web"}'
+        values: '0+2x80'
+      - series: 'kinowo_uptime_recent_successes{country="us",service="Residential proxy",job="kinowo-web"}'
+        values: '0+98x80'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ResidentialProxyFallingBackToZyte
+        exp_alerts: []
+
+  # A QUIET COUNTRY (no proxied traffic in the window, or the proxy disabled entirely) MUST NOT
+  # DIVIDE BY ZERO into a false positive -- clamp_min's job.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_uptime_recent_failures{country="de",service="Residential proxy",job="kinowo-web"}'
+        values: '0x80'
+      - series: 'kinowo_uptime_recent_successes{country="de",service="Residential proxy",job="kinowo-web"}'
+        values: '0x80'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ResidentialProxyFallingBackToZyte
+        exp_alerts: []

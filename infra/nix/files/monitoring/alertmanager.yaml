@@ -91,23 +91,35 @@ route:
     # should not have to be re-derived: FilesystemSpaceLow/Critical, FilesystemInodesLow/Critical,
     # FilesystemWillFillWithin7Days, FilesystemReadOnly, FilesystemMetricsAbsent, WorkerDown,
     # WorkerQueueStalled, WorkerQueueGrowingUnbounded, WorkerQueueMetricsAbsent,
-    # WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, plus the two named in full below.
-    # Fifteen, and every one of them is meant.
+    # WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, plus the three named in full below.
+    # Sixteen, and every one of them is meant.
     #
-    # THE TWO READ-MODEL NAMES ARE SPELLED OUT, NOT GIVEN A `ReadModel.*` PREFIX, and the asymmetry
-    # with the two families above is the point. A prefix is right for Filesystem and Worker because
-    # EVERY rule in those families has the silent-failure property that earns a mailbox. It is wrong
-    # for ReadModel, where six of the eight rules watch the pipeline's own movement and belong in
-    # the chat stream with everything else -- a prefix would enrol them without anyone deciding to.
+    # THE THREE NAMES SPELLED OUT IN FULL, NOT GIVEN A PREFIX, and the asymmetry with the two
+    # families above is the point. A prefix is right for Filesystem and Worker because EVERY rule
+    # in those families has the silent-failure property that earns a mailbox. It is wrong for
+    # ReadModel, where six of the eight rules watch the pipeline's own movement and belong in the
+    # chat stream with everything else -- a prefix would enrol them without anyone deciding to --
+    # and `ResidentialProxyFallingBackToZyte` has no family of its own at all (residential-proxy.rules
+    # holds exactly one rule).
     #
-    # WHAT EARNS THESE TWO THE MAILBOX is the same property the Worker note below describes, in its
-    # sharpest form yet. On 2026-09-07 a prune deleted 509 cards, ReadModelFilmPruneBurst fired for
-    # 25 minutes and RESOLVED correctly on its own terms, and the hole stayed open for four and a
-    # half hours with the site quietly serving a short catalogue. Nothing 500s, nothing goes down,
-    # and the one signal that existed had already stood down. That is precisely the shape a chat
-    # channel scrolls past. `FilesystemReadOnly` lives in host-health.rules rather than with the other six and is
-    # easy to miss when reading this — a root that has gone read-only is exactly the kind of thing
-    # worth a mailbox, so it is kept, deliberately rather than by accident.
+    # WHAT EARNS THE TWO READ-MODEL NAMES THE MAILBOX is the same property the Worker note below
+    # describes, in its sharpest form yet. On 2026-09-07 a prune deleted 509 cards,
+    # ReadModelFilmPruneBurst fired for 25 minutes and RESOLVED correctly on its own terms, and the
+    # hole stayed open for four and a half hours with the site quietly serving a short catalogue.
+    # Nothing 500s, nothing goes down, and the one signal that existed had already stood down. That
+    # is precisely the shape a chat channel scrolls past. `FilesystemReadOnly` lives in
+    # host-health.rules rather than with the other six and is easy to miss when reading this — a
+    # root that has gone read-only is exactly the kind of thing worth a mailbox, so it is kept,
+    # deliberately rather than by accident.
+    #
+    # `ResidentialProxyFallingBackToZyte` EARNS IT THE SAME WAY: the fallback chain means scraping
+    # itself does not break when Decodo degrades, so nothing 500s and no cinema goes dark -- the
+    # only trace is a per-request Zyte bill climbing and one /uptime row nobody is staring at.
+    # Ported from Grafana on 2026-09-10 specifically because Grafana's contact points are
+    # Telegram-only (see the tombstone on `kinowo-residential-proxy-failing` in
+    # grafana/alerting/alert-rules.yaml) and this incident -- UK's Cineworld/Odeon scrapes retrying
+    # 8+ times with no working path, found by hand on /uk/tasks rather than by any alert -- is
+    # exactly the case a chat-only channel missed.
     #
     # THE PREFIX MEANS A NEW `Worker*` OR `Filesystem*` RULE EMAILS BY DEFAULT. That is the right
     # default for these two families -- they are the ones whose failure is silent -- but it is a
@@ -128,14 +140,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent"
+        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent"
+        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m

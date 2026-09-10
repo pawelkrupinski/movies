@@ -80,11 +80,21 @@ trait EgressWiring { self: WorkerWiring =>
   // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26
   // from kinowo-worker-uk: the identical GET returns 403 from Fly, 200 from a
   // residential IP; every Decodo pool IP returns 200 too). Flicks is the ONLY UK
-  // source, so the block took all ~843 UK venues red at once. Residential proxy
-  // primary, DIRECT fallback — no Zyte leg: flicks is a plain Cloudflare
-  // IP-reputation block that the proxy clears, so paying Zyte per request across
-  // 843 venues would buy nothing the proxy doesn't already give.
-  lazy val flicksFetch: HttpFetch = proxyPrimary(httoFetch)
+  // source (and, via flicksUs, the AMC/Regal/Malco fallback for the US), so the
+  // block took all ~843 UK venues red at once.
+  //
+  // Residential proxy primary, Zyte fallback (added 2026-09-10, after the Decodo
+  // account itself started 503ing every tunnel — `ProxyProbe` reproduced it from a
+  // clean non-worker egress against api.ipify.org/Multikino/biletyna, so it is not
+  // an IP-reputation block the direct leg would clear). Before this, the fallback
+  // was plain `direct`, which is USELESS here: direct is the exact block the proxy
+  // exists to clear, so a Decodo-side outage left Cineworld/Flicks/AMC/Regal/Malco
+  // with no working path at all (8+ retries on a single UK Cineworld Leeds date
+  // chunk). Zyte is billed per request, so this must stay BEHIND the proxy, never
+  // primary — see feedback_zyte_is_decodo_fallback_only — and the
+  // `kinowo-residential-proxy-failing` alert (now ResidentialProxyFallingBackToZyte,
+  // routed to email) is what says whether that's actually happening.
+  lazy val flicksFetch: HttpFetch = proxyPrimary(zyteFetch)
 
   // Vue/CinemaxX films API is Cloudflare-403'd from our Fly IP (like flicks) AND
   // token-gated, so it egresses residential AND host-sticky (one IP+cookie for the
@@ -102,9 +112,13 @@ trait EgressWiring { self: WorkerWiring =>
   // took all 102 Odeon venues red at once, so the data fetch moves onto the proxy.
   // Per-venue (default host+path) stickiness, not host-only: Odeon carries its auth
   // in a header, not a cookie, so nothing has to share an IP, and the per-date
-  // showtimes paths spread the sweep across the pool. Falls back to direct — a
-  // burned proxy is no worse than today, and the flicks fallback sits behind that.
-  lazy val odeonFetch: HttpFetch = proxyPrimary(httoFetch)
+  // showtimes paths spread the sweep across the pool.
+  //
+  // Falls back to Zyte, not direct (changed 2026-09-10 alongside flicksFetch, same
+  // Decodo-account-wide 503 outage — see the comment there). Odeon Middlesbrough hit
+  // the identical "proxy: Tunnel failed, got: 503 / fallback: HTTP 403" loop with a
+  // bare direct fallback, because direct is Cloudflare-blocked here too.
+  lazy val odeonFetch: HttpFetch = proxyPrimary(zyteFetch)
 
   // Harvests Odeon's ~12h Vista JWT via Zyte browserHtml (the estate-wide token
   // lives in the Cloudflare-gated www page; the ocapi DATA host is open). Lazy TTL

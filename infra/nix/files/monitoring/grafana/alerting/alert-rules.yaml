@@ -123,6 +123,8 @@ deleteRules:
     uid: kinowo-worker-credit-low
   - orgId: 1
     uid: kinowo-worker-throttled
+  - orgId: 1
+    uid: kinowo-residential-proxy-failing
 
 groups:
   # ================================================================================================
@@ -524,8 +526,9 @@ groups:
   # 30-min window) and scraped via the [[metrics]] block in fly.toml.
   # ================================================================================================
   # AUDIT VERDICT FOR THIS GROUP (2026-08-29) -- `app-uptime`: ALL SIX KEPT, UNCHANGED.
+  # (Residential proxy failing left the group on 2026-09-10 -- see the tombstone above -- so this
+  # is now five, not six; the verdict below still stands for the ones that remain.)
   #
-  #   KEEP  Residential proxy failing (falling back to Zyte)
   #   KEEP  Enrichment source failing (ratings stopped refreshing)
   #   KEEP  Films served per city swung suddenly
   #   KEEP  City serving zero films (was active)
@@ -559,57 +562,21 @@ groups:
     folder: Kinowo Alerts
     interval: 1m
     rules:
-      # ---- Residential (Decodo) proxy failing -----------------------------
-      # The proxy egress for the Cloudflare-blocked cinemas (Multikino, biletyna)
-      # sits behind a Zyte/direct fallback, so when it dies EVERY cinema bar stays
-      # green and only the "Residential proxy" /uptime row goes red — a silent
-      # failure nobody watches while the Zyte bill (~$25/mo vs the proxy's ~$2)
-      # quietly returns. This is exactly the 2026-06-16 incident (Decodo's per-IP
-      # "Limit: 3" concurrent-auth cap rolled everything to Zyte for hours,
-      # unnoticed). Alert on the recent failure RATIO: failures /
-      # (failures+successes) over the last 30 min. clamp_min keeps an idle/low-
-      # volume window from dividing by zero; an absent series (proxy disabled, no
-      # KINOWO_PROXY_* secrets) yields no data → no alarm. Warning, not critical:
-      # scraping never breaks (the fallback serves), it's a cost + capability
-      # regression, so 15m of sustained majority-failure is the right trip.
-      - uid: kinowo-residential-proxy-failing
-        title: Residential proxy failing (falling back to Zyte)
-        condition: C
-        for: 15m
-        noDataState: OK
-        execErrState: OK
-        labels:
-          severity: warning
-        annotations:
-          summary: 'The Decodo residential proxy is mostly failing — cinema scrapes are falling back to Zyte'
-          description: 'Over half of the residential-proxy fetches in the last 30 min failed (kinowo_uptime_recent_failures vs _recent_successes for service "Residential proxy"). Scraping still works via the Zyte/direct fallback so no cinema is down — but the flat-fee Decodo proxy is not serving and the per-request Zyte egress is back in use. Check the "Residential proxy" row on https://kinowo.net/uptime for the error text (per-IP "Limit: 3" auth cap, 401/407, or a burned IP), and the Decodo dashboard. See reference_decodo_isp_proxy.'
-        data:
-          - refId: A
-            relativeTimeRange: { from: 600, to: 0 }
-            datasourceUid: local-prometheus
-            model:
-              datasource: { type: prometheus, uid: local-prometheus }
-              editorMode: code
-              expr: 'sum(kinowo_uptime_recent_failures{service="Residential proxy"}) / clamp_min(sum(kinowo_uptime_recent_failures{service="Residential proxy"}) + sum(kinowo_uptime_recent_successes{service="Residential proxy"}), 1)'
-              instant: true
-              range: false
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: C
-            relativeTimeRange: { from: 0, to: 0 }
-            datasourceUid: __expr__
-            model:
-              type: threshold
-              datasource: { type: __expr__, uid: __expr__ }
-              expression: A
-              conditions:
-                - type: query
-                  evaluator: { type: gt, params: [0.5] }
-                  operator: { type: and }
-                  query: { params: [] }
-                  reducer: { type: last, params: [] }
-              refId: C
+      # RETIRED RULE kinowo-residential-proxy-failing -- ported to Prometheus-native
+      # nix/files/monitoring/rules/residential-proxy.rules (`ResidentialProxyFallingBackToZyte`) on
+      # 2026-09-10, not deleted outright: this file's ONLY contact point is Telegram
+      # (grafana-contactpoints.yaml has no email receiver), so a rule living here could nag a chat
+      # channel and nothing else about a cost regression that had, that same day, left UK's
+      # Cineworld/Odeon scrapes with no working fallback for over 20 minutes before it was found by
+      # hand on /uk/tasks. The fleet already has a working Telegram+email path
+      # (alertmanager.yaml) for exactly this silent-but-costly shape -- the worker-queue and
+      # read-model-gap rules earn the mailbox for the identical reason -- so the rule moved there
+      # instead of Grafana growing a second SMTP relay to maintain. The new file also groups
+      # `by (country)`, which this bare `sum(...)` version could not: PL's Zyte leg was absorbing
+      # the 2026-09-10 outage silently while UK's climbed, and a fleet-wide sum blends the two into
+      # a number that undersells the country actually in trouble.
+      #
+      # Nothing this repository deploys reads this uid any more.
 
       # ---- An enrichment source is refusing us --------------------------------
       # 2026-07-30: IMDb's GraphQL CDN started 403-ing every request that didn't

@@ -1,0 +1,76 @@
+---
+# IS THE DECODO RESIDENTIAL PROXY ACTUALLY SERVING, OR IS ZYTE QUIETLY PICKING UP THE BILL?
+#
+# `flicksFetch`, `odeonFetch`, `biletynaFetch` and `multikinoFetch` all route residential-proxy
+# primary, Zyte (then direct) fallback (worker/src/main/scala/modules/wiring/EgressWiring.scala).
+# When Decodo serves, every cinema bar on /uptime stays green and nothing costs anything beyond the
+# proxy's flat ~$2/mo. When it doesn't, scraping still (mostly) works -- that's the whole point of
+# the fallback -- so nothing user-facing breaks, no cinema goes dark, and the only trace is the
+# per-request Zyte bill climbing and the "Residential proxy" /uptime row going red. That is
+# precisely the shape that goes unnoticed: nothing pages on its own, because nothing is DOWN.
+#
+# PORTED FROM GRAFANA (`kinowo-residential-proxy-failing` in alerting/alert-rules.yaml, retired
+# there with a tombstone) on 2026-09-10, not written fresh. Grafana's own contact points route
+# everything to Telegram only (grafana-contactpoints.yaml has no email receiver), so the Grafana
+# version could only ever nag a chat channel about a cost regression. This fleet already has a
+# working Telegram+email path (alertmanager.yaml, proven end-to-end via Resend on 2026-09-05) for
+# exactly this class of silent-but-costly failure -- the worker-queue and read-model-gap rules earn
+# the mailbox for the identical reason. Moving here, rather than teaching Grafana to email too,
+# means one SMTP relay to keep working instead of two.
+#
+# THE 2026-09-10 INCIDENT THIS WOULD HAVE CAUGHT. The Decodo account started 503ing every CONNECT
+# tunnel account-wide (confirmed via `scripts.ProxyProbe` against api.ipify.org, Multikino AND
+# biletyna -- not one cinema, not one port). PL's proxied clients already had a Zyte leg behind the
+# proxy and stayed invisibly green while quietly billing Zyte. UK's `flicksFetch`/`odeonFetch` did
+# NOT (fixed the same day, alongside this rule) -- their fallback was bare `direct`, which is
+# USELESS against a Decodo outage because direct is the exact Cloudflare block the proxy exists to
+# clear. Cineworld Leeds and Odeon Middlesbrough scrape chunks retried 8+ times with no working
+# path at all, discovered by reading /uk/tasks by hand. `kinowo-residential-proxy-failing` was live
+# in Grafana throughout and never producing a channel anyone was watching closely enough to notice
+# in time -- this file's whole reason to exist.
+#
+# WHY `sum by (country)`, NOT THE BARE `sum(...)` THE GRAFANA VERSION USED. `kinowo_uptime_recent_*`
+# is exposed per web pod (services.metrics -- MetricsController reads that country's own Mongo
+# uptimeBuckets) and scraped with a `country` label attached externally by scrape-kinowo-apps.yaml,
+# exactly like cinema-scrape.rules relies on. The old fleet-wide sum could only ever say "somewhere
+# the proxy is degraded" -- which is what actually happened here: PL's ratio stayed near zero
+# (Zyte absorbed it silently) while UK's climbed, and a bare `sum` blends the two into a number that
+# undersells UK's outage. Per-country is what lets the alert -- and its email subject, which
+# `.CommonLabels.country` already renders for the worker/read-model rules -- name which pool.
+#
+# THE THRESHOLD AND WINDOW ARE UNCHANGED FROM THE GRAFANA RULE: over half the residential-proxy
+# fetches in the last 30 min failing, sustained 15m. `clamp_min` keeps a quiet country (proxy
+# disabled, or simply no proxied traffic in the window) from dividing by zero; an absent series
+# yields no data -> no alarm, same as before. Warning, not critical: the fallback chain means
+# scraping itself does not break, so this is a cost + capability regression, not an outage.
+groups:
+  - name: residential-proxy
+    rules:
+      - alert: ResidentialProxyFallingBackToZyte
+        expr: >-
+          (
+            sum by (country) (kinowo_uptime_recent_failures{service="Residential proxy"})
+            /
+            clamp_min(
+              sum by (country) (kinowo_uptime_recent_failures{service="Residential proxy"})
+              + sum by (country) (kinowo_uptime_recent_successes{service="Residential proxy"}),
+              1
+            )
+          ) > 0.5
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}'s Decodo residential proxy is mostly failing — falling back to Zyte"
+          description: >-
+            Over half of {{ $labels.country }}'s residential-proxy fetches in the last 30 min failed
+            (kinowo_uptime_recent_failures vs _recent_successes, service "Residential proxy").
+            Scraping still works via the Zyte/direct fallback behind it, so no cinema is down — but
+            the flat-fee Decodo proxy is not serving and the per-request Zyte egress is back in use.
+            Check the "Residential proxy" row on that country's /uptime for the error text (a
+            per-IP "Limit: 3" auth cap, 401/407, or a burned IP is one cinema/port; an account-wide
+            "Tunnel failed, got: 503" across every port, reproducible locally with
+            `KINOWO_PROXY_USER=… KINOWO_PROXY_PASS=… sbt 'worker/Test/runMain scripts.ProxyProbe'`,
+            is the whole account -- check the Decodo dashboard for plan/billing/quota before
+            chasing worker code, same as the 2026-06-16 "Limit: 3" incident). See
+            reference_decodo_isp_proxy and reference_zyte_is_decodo_fallback_only.

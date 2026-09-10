@@ -143,6 +143,12 @@ route_is telegram-and-email alertname=ReadModelServingShortOfCorpus severity=war
 # no country label -- "one side of the census has stopped publishing" is fleet-wide.
 route_is telegram-and-email alertname=ReadModelServedGaugesAbsent severity=warning
 
+# PORTED FROM GRAFANA on 2026-09-10 (Grafana's own contact points are Telegram-only, so the rule
+# could not reach email there) for the same silent-but-costly reason as the two families above: the
+# proxy->Zyte->direct fallback chain means scraping does not break when Decodo degrades, so nothing
+# 500s and the only trace is a climbing Zyte bill and an /uptime row nobody is watching closely.
+route_is telegram-and-email alertname=ResidentialProxyFallingBackToZyte severity=warning country=uk
+
 # THE REST OF THE READ-MODEL FAMILY MUST *NOT* HAVE FOLLOWED THEM INTO THE MAILBOX. This is the
 # assertion that fails if somebody later replaces the two names above with a `ReadModel.*` prefix,
 # which is the tempting simplification and the wrong one.

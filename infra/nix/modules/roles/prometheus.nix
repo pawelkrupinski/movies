@@ -191,6 +191,11 @@ let
     # "projection trigger" line and could not be attributed for an evening. Alphabetically after
     # nixos-deploy and before web-errors.
     "read-model-projection"
+    # IS THE DECODO RESIDENTIAL PROXY SERVING, OR IS ZYTE QUIETLY PICKING UP THE BILL. Ported from
+    # Grafana (which has no email receiver) after the 2026-09-10 Decodo account-wide 503 outage
+    # took UK's Cineworld/Odeon scrapes down with no working fallback at all -- fixed the same day
+    # alongside this rule. Alphabetically after read-model-projection and before web-errors.
+    "residential-proxy"
     # IS THE SITE ANSWERING. Every other file here watches a machine or a process, all of which can
     # be green while the web tier serves a 500 to every visitor. Added after the "Error share" panel
     # spent an afternoon at 25% with nothing failing -- the file explains why the 4xx half of that
