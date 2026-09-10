@@ -460,7 +460,57 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
     resolved.flatMap(_.tmdbId) shouldBe Some(131635)
   }
 
-  // ── 3g. The name a cinema prints may be the WRITER ───────────────────────
+  // ── 3g. The year-pinned branch must not skip the sequel guard too ────────
+
+  /** `titleClose`'s own `SequelMarker` guard (3f above) only fires once a
+   *  candidate is close enough to try in the first place; the year-pinned
+   *  branch below it runs precisely when NO candidate is close to ANY credit,
+   *  and asks only whether the year-pinned credit shares a word with the
+   *  candidates. A cinema that drops the instalment number entirely — prints
+   *  just "The Hunger Games: Mockingjay" — is 5 characters short of either
+   *  exact title, well past `titleClose`'s ≤2-edit bound, so only this branch
+   *  can resolve the row; but the shortened title shares "mockingjay" with
+   *  BOTH instalments and names the SERIES, not a specific part, which is
+   *  exactly the shape `SequelMarker.namesAnotherEntry` refuses. The UK
+   *  convergence suite's order-dependent divergence (2026-09-10): once no
+   *  candidate title was close enough to try, the year-pinned branch bound
+   *  the row to whichever instalment's year it happened to carry — the same
+   *  collision `titleClose`'s guard already refuses, reached through the one
+   *  door that skipped it.
+   */
+  it should "refuse a year-pinned credit the candidate title itself doesn't name a specific instalment of" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"  -> """{"results":[]}""",
+      "/search/person" -> """{"results":[{"id":17838,"name":"Francis Lawrence","known_for_department":"Directing"}]}""",
+      "/person/17838/movie_credits" -> """{"crew":[
+        |{"id":131634,"title":"The Hunger Games: Mockingjay - Part 1","original_title":"The Hunger Games: Mockingjay - Part 1",
+        | "release_date":"2014-11-20","department":"Directing","job":"Director","popularity":40.0},
+        |{"id":131635,"title":"The Hunger Games: Mockingjay - Part 2","original_title":"The Hunger Games: Mockingjay - Part 2",
+        | "release_date":"2015-11-19","department":"Directing","job":"Director","popularity":50.0}
+        |]}""".stripMargin,
+      // Stubbed so a pre-fix binding surfaces as the WRONG film rather than a
+      // fetch failure — the point is that it used to resolve, confidently, to
+      // the wrong instalment.
+      "/movie/131634/external_ids" -> """{"id":131634,"imdb_id":"tt1951265"}""",
+      "/movie/131634?"             -> """{"id":131634,"title":"The Hunger Games: Mockingjay - Part 1","original_title":"The Hunger Games: Mockingjay - Part 1","release_date":"2014-11-20","runtime":123}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // Dropping "Part 1"/"Part 2" entirely: too far from either exact title
+    // for `titleClose` to try, and the row's (merge-order-dependent) year
+    // happens to land on Part 1's — the shape that used to bind confidently
+    // to the wrong instalment.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("The Hunger Games: Mockingjay"), director = Seq("Francis Lawrence"),
+                           releaseYear = Some(2014))))
+    val resolved = service.resolveStagingRecord("The Hunger Games: Mockingjay", Some(2014), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe None
+  }
+
+  // ── 3h. The name a cinema prints may be the WRITER ───────────────────────
 
   /** Cinemas do not reliably print the director. "Drzewo magii" is directed by Ben
    *  Gregor and WRITTEN by Simon Farnaby, and cinemas print one or the other — a

@@ -509,6 +509,20 @@ class TmdbCandidateSearch(
           TitleMatch.sharesDistinctiveToken(
             candidates, Seq(f.title) ++ f.originalTitle.toSeq, normalizer.sanitize)
 
+        // `corroboratedByTitle` shares a proper noun across languages, but two
+        // instalments of the same series share that noun with EACH OTHER too
+        // ("Mockingjay Part 1" / "Part 2" both corroborate on "mockingjay") — so
+        // when a row's (merge-order-dependent) `year` happens to land on the
+        // WRONG instalment's release year, this tier bound it there anyway,
+        // mirroring the `titleClose` collision `SequelMarker` already guards
+        // (`DirectorWalkResolvesSpec`). Same veto, applied to the raw candidate
+        // titles against the year-pinned credit's own titles.
+        def isDifferentInstalment(f: TmdbClient.SearchResult): Boolean = {
+          val fRaws = Seq(f.title) ++ f.originalTitle.toSeq
+          candidates.exists(wRaw => fRaws.exists(fRaw =>
+            SequelMarker.differentInstalments(TitleContainment.tokens(wRaw), TitleContainment.tokens(fRaw))))
+        }
+
         // When the title is FULLY translated it keeps nothing to share — "Trener
         // Tenisa" against "Il Maestro", "Kochanie" against "Gioia mia" — and the
         // year-pinned branch is the only way those resolve. Runtime and cast are
@@ -537,7 +551,7 @@ class TmdbCandidateSearch(
             runtimeAgrees || castAgrees
           }
         val byYear = year.flatMap(y => credits.filter(_.releaseYear.contains(y)) match {
-          case Seq(only) if corroboratedByTitle(only) || corroboratedByFacts(only) =>
+          case Seq(only) if !isDifferentInstalment(only) && (corroboratedByTitle(only) || corroboratedByFacts(only)) =>
             // Collapse a TMDB adjacent-year DUPLICATE of one film: if the year-pinned
             // credit shares its title with a credit ±1 year off (the same film entered
             // twice — "Gourou" as both 2025/1315702 and 2026/1259983), they're ONE
