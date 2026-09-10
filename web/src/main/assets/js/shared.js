@@ -2520,16 +2520,44 @@
   // dismissal at 23:50 doesn't let the banner right back in at 00:10 just
   // because the calendar day turned over. Device-local, same as the swipe
   // hint — reuses its `_hintGet`/`_hintSet` localStorage wrapper.
+  //
+  // Every call logs its gate state to the console (`[app-banner] {…}`), and
+  // `?forceAppBanner=1` bypasses both gates — see `appBannerForced` below.
   const APP_BANNER_DAY       = 'kinowoAppBannerDay';           // last calendar day it was shown
   const APP_BANNER_SNOOZE    = 'kinowoAppBannerSnoozedUntil';  // epoch ms the ✕ sets
   const APP_BANNER_SNOOZE_MS = 24 * 60 * 60 * 1000;
 
+  // `?forceAppBanner=1` bypasses both gates below — for testing on the real
+  // site without waiting out the daily cap / 24h snooze, or hand-editing
+  // localStorage. Never shown to a real visitor; it's a URL param nobody
+  // stumbles onto by accident.
+  function appBannerForced() {
+    return /[?&]forceAppBanner=1(&|$)/.test(location.search);
+  }
+
   function maybeShowAppBanner() {
     const banner = document.getElementById('app-banner');
     if (!banner) return;                                              // not a page that carries it
-    if (Date.now() < parseInt(_hintGet(APP_BANNER_SNOOZE) || '0', 10)) return;  // explicitly dismissed recently
-    const today = pageToday();
-    if (_hintGet(APP_BANNER_DAY) === today) return;                   // already shown today
+
+    const forced        = appBannerForced();
+    const now           = Date.now();
+    const snoozedUntil  = parseInt(_hintGet(APP_BANNER_SNOOZE) || '0', 10);
+    const snoozed       = now < snoozedUntil;
+    const today         = pageToday();
+    const shownDay      = _hintGet(APP_BANNER_DAY);
+    const shownToday    = shownDay === today;
+    // The gate state that decides whether the banner shows — logged always
+    // (one cheap line) so a report of "I don't see it" can be diagnosed from
+    // the visitor's own console instead of guessing blind.
+    console.log('[app-banner]', {
+      today, shownDay, shownToday,
+      snoozedUntil: snoozedUntil ? new Date(snoozedUntil).toISOString() : null, snoozed,
+      forced, willShow: forced || (!snoozed && !shownToday),
+    });
+    if (!forced) {
+      if (snoozed) return;      // explicitly dismissed recently
+      if (shownToday) return;   // already shown today
+    }
     _hintSet(APP_BANNER_DAY, today);
 
     const ua = navigator.userAgent;

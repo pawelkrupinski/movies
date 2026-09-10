@@ -5,7 +5,7 @@ import { reload } from './helpers';
 // The app-promo top banner: nudges EVERY visitor (not just phones, unlike the
 // swipe hint) toward the native app once per calendar day, picking the store
 // badge that matches the detected OS — both when it can't tell (desktop, or
-// an unrecognised UA). The ✕ snoozes it for 30 days on top of the daily cap.
+// an unrecognised UA). The ✕ snoozes it for 24h on top of the daily cap.
 test.describe('app banner', () => {
   const banner      = (page: Page) => page.locator('#app-banner');
   const iosBadge     = (page: Page) => page.locator('#app-banner-ios');
@@ -67,5 +67,32 @@ test.describe('app banner', () => {
     await expect(iosBadge(page)).toHaveAttribute('href', 'https://apps.apple.com/app/id6792566321');
     await expect(androidBadge(page))
       .toHaveAttribute('href', 'https://play.google.com/store/apps/details?id=net.pawel.kinowo');
+  });
+
+  test('logs its gate state to the console on every visit', async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+    // `console.log('[app-banner]', {…})` — the second arg is a JSHandle, not
+    // text, so read it back via jsonValue() rather than ConsoleMessage.text().
+    const states: Array<Record<string, unknown>> = [];
+    page.on('console', (msg) => {
+      if (msg.text().startsWith('[app-banner]') && msg.args().length > 1) {
+        void msg.args()[1].jsonValue().then((v) => states.push(v as Record<string, unknown>));
+      }
+    });
+    await reload(page);
+    await expect(banner(page)).toBeVisible();
+    await expect.poll(() => states.length).toBe(1);
+    expect(states[0]).toMatchObject({ willShow: true, shownToday: false, snoozed: false });
+  });
+
+  test('?forceAppBanner=1 bypasses both the daily cap and the dismiss snooze', async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+    await reload(page);
+    await expect(banner(page)).toBeVisible();          // first visit today
+    await page.locator('.app-banner-close').click();   // dismiss → snoozed 24h
+    await expect(banner(page)).toBeHidden();
+
+    await page.goto('/poznan/?date=anytime&forceAppBanner=1', { waitUntil: 'domcontentloaded' });
+    await expect(banner(page)).toBeVisible();           // forced past BOTH gates
   });
 });
