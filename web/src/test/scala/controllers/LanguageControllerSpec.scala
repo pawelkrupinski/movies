@@ -24,6 +24,19 @@ class LanguageControllerSpec extends AnyFlatSpec with Matchers {
     redirectLocation(res) shouldBe Some("/poznan/")
     cookies(res).get("PLAY_LANG") shouldBe None
   }
+
+  // `play.i18n.langCookieMaxAge = 31536000` in application.conf is a bare
+  // number, which HOCON parses as MILLISECONDS for a duration setting absent a
+  // unit suffix — so it was read as 31536000ms = 31536s (~8.8 hours), not the
+  // 31536000 SECONDS (365 days) the value and the config's own comment intend.
+  // A pick that survives "a browser restart rather than just the session" is
+  // the whole point of setting this at all; at 8.8 hours it barely outlives a
+  // lunch break, and a visitor who picked German yesterday finds themselves
+  // back on the deployment default today with no further action of their own.
+  it should "set the PLAY_LANG cookie to survive a year, not ~8.8 hours" in {
+    val res = controller.set("de", "/poznan/").apply(FakeRequest("GET", "/lang/de"))
+    cookies(res).get("PLAY_LANG").flatMap(_.maxAge) shouldBe Some(31536000)
+  }
 }
 
 /** `LanguageController.safeBack` — pure, so asserted without a request. */
