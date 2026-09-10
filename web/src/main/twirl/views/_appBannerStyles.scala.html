@@ -1,0 +1,57 @@
+@()
+@* App-promo top banner styles — kept in its own partial (same split as
+   `_pillStyles` / `_ratingStyles`) rather than growing `_sharedStyles`
+   directly. Deliberately called ONLY from `repertoire.scala.html`, next to
+   its `@_appBanner()` markup, wrapped in `@_minified` there — NOT folded
+   into `_sharedStyles` itself, since /movie, /browse, /tune etc. call that
+   too but never render the banner and would ship this dead otherwise.
+   `--app-banner-h` is set at runtime by `maybeShowAppBanner` (shared.js)
+   from the banner's actual rendered height — not hardcoded — because the
+   headline/subtitle length varies per locale (German runs noticeably
+   longer than Polish) and can wrap on a narrow phone. *@
+<style>
+  #app-banner {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+    min-height: 64px; padding: .5rem .6rem;
+    background: #1a1a2e; border-bottom: 1px solid #3a3a6e;
+    transform: translateY(-100%);
+    opacity: 0; visibility: hidden;
+    transition: transform .25s ease, opacity .25s ease, visibility .25s;
+  }
+  /* `visibility` (not just the transform) is what makes an undismissed banner
+     properly absent — off-screen tab stops and Playwright's `toBeVisible()`
+     both key off it, mirroring `#swipe-hint`'s identical show/hide pair. */
+  #app-banner.visible { transform: translateY(0); opacity: 1; visibility: visible; }
+  .app-banner-icon {
+    width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+    display: block; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+  .app-banner-text { flex: 1; min-width: 0; }
+  .app-banner-headline { font-size: .82rem; font-weight: 600; color: #fff; }
+  .app-banner-subtitle {
+    font-size: .72rem; color: #99b;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* Store badges — built from scratch (not the official badge artwork), close
+     enough to read at a glance as "Apple" / "Google Play" without reproducing
+     either company's trademarked badge pixel-for-pixel. */
+  .app-banner-badge {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: .45rem;
+    background: #000; color: #fff; border-radius: 8px; padding: .35rem .7rem;
+    text-decoration: none; border: 1px solid #333; line-height: 1.15;
+  }
+  .app-banner-badge svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .app-banner-badge-lines { display: flex; flex-direction: column; }
+  .app-banner-badge-lines span:first-child { font-size: .58rem; color: #ccc; letter-spacing: .02em; }
+  .app-banner-badge-lines span:last-child { font-size: .82rem; font-weight: 600; }
+  .app-banner-close {
+    flex-shrink: 0; background: transparent; border: none; color: #778;
+    font-size: 1.1rem; width: 28px; height: 28px; cursor: pointer; line-height: 1;
+  }
+
+  /* Pushed content down by the banner's real (locale-dependent) height rather
+     than a fixed constant — see the file doc comment above. */
+  body.has-app-banner { padding-top: var(--app-banner-h, 64px); }
+  body.has-app-banner .navbar { top: var(--app-banner-h, 64px); }
+</style>

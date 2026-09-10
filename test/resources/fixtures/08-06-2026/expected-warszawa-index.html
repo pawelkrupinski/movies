@@ -50,8 +50,39 @@
 
 
 
+  
+   
+<style>#app-banner{position:fixed;top:0;left:0;right:0;z-index:1000;display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;min-height:64px;padding:.5rem .6rem;background:#1a1a2e;border-bottom:1px solid #3a3a6e;transform:translateY(-100%);opacity:0;visibility:hidden;transition:transform .25s ease,opacity .25s ease,visibility .25s}#app-banner.visible{transform:translateY(0);opacity:1;visibility:visible}.app-banner-icon{width:42px;height:42px;border-radius:10px;flex-shrink:0;display:block;box-shadow:0 1px 3px rgba(0,0,0,.4)}.app-banner-text{flex:1;min-width:0}.app-banner-headline{font-size:.82rem;font-weight:600;color:#fff}.app-banner-subtitle{font-size:.72rem;color:#99b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.app-banner-badge{flex-shrink:0;display:inline-flex;align-items:center;gap:.45rem;background:#000;color:#fff;border-radius:8px;padding:.35rem .7rem;text-decoration:none;border:1px solid #333;line-height:1.15}.app-banner-badge svg{width:20px;height:20px;flex-shrink:0}.app-banner-badge-lines{display:flex;flex-direction:column}.app-banner-badge-lines span:first-child{font-size:.58rem;color:#ccc;letter-spacing:.02em}.app-banner-badge-lines span:last-child{font-size:.82rem;font-weight:600}.app-banner-close{flex-shrink:0;background:transparent;border:none;color:#778;font-size:1.1rem;width:28px;height:28px;cursor:pointer;line-height:1}body.has-app-banner{padding-top:var(--app-banner-h,64px)}body.has-app-banner .navbar{top:var(--app-banner-h,64px)}</style>
+ 
+
 </head>
 <body>
+
+
+<div id="app-banner" role="banner" aria-label="Promocja aplikacji Kinowo">
+  <img class="app-banner-icon" src="/assets/img/app-icon.png" alt="Kinowo" width="42" height="42">
+  <div class="app-banner-text">
+    <div class="app-banner-headline">Kinowo — aplikacja mobilna</div>
+    <div class="app-banner-subtitle">Szybciej, bez przeglądarki</div>
+  </div>
+
+  <a id="app-banner-ios" class="app-banner-badge" href="https://apps.apple.com/app/id6792566321" target="_blank" rel="noopener" style="display:none">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M16.365 1.43c0 1.14-.428 2.163-1.267 3.021-.986.986-2.14 1.474-3.417 1.373-.047-1.131.435-2.216 1.29-3.045C13.923.703 15.144.187 16.365 1.43zM20.869 17.116c-.542 1.243-.8 1.798-1.494 2.9-.968 1.517-2.334 3.408-4.024 3.424-1.502.014-1.889-.978-3.926-.966-2.038.012-2.463.982-3.966.968-1.69-.016-2.984-1.719-3.953-3.235-2.71-4.238-2.994-9.219-1.322-11.877 1.184-1.886 3.055-2.988 4.813-2.988 1.797 0 2.927.988 4.415.988 1.442 0 2.318-.99 4.418-.99 1.567 0 3.227.854 4.409 2.328-3.877 2.126-3.245 7.663.63 9.448z"/></svg>
+    <span class="app-banner-badge-lines"><span>Dostępne w</span><span>App Store</span></span>
+  </a>
+  <a id="app-banner-android" class="app-banner-badge" href="https://play.google.com/store/apps/details?id=net.pawel.kinowo" target="_blank" rel="noopener" style="display:none">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <defs><linearGradient id="app-banner-play-grad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#00E676"/><stop offset=".4" stop-color="#00C6FF"/>
+        <stop offset=".7" stop-color="#FFD500"/><stop offset="1" stop-color="#FF3D00"/>
+      </linearGradient></defs>
+      <path fill="url(#app-banner-play-grad)" d="M4 3.5v17c0 .55.6.9 1.08.63l14.84-8.5a.72.72 0 0 0 0-1.26L5.08 2.87A.72.72 0 0 0 4 3.5z"/>
+    </svg>
+    <span class="app-banner-badge-lines"><span>Dostępne w</span><span>Google Play</span></span>
+  </a>
+
+  <button type="button" class="app-banner-close" onclick="dismissAppBanner()" aria-label="Zamknij">✕</button>
+</div>
 
 
 <nav class="navbar px-4 py-3 d-flex align-items-center">

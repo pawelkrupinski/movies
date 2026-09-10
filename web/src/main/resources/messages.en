@@ -107,5 +107,14 @@ back.repertoire=Listings
 # ── First-run swipe hint ────────────────────────────────────────────────────
 hint.swipe=Swipe to change day
 
+# ── App promotion banner ──────────────────────────────────────────────────────
+# {0} = brand ("Kinowo" in PL, "Showtimes" elsewhere) — see Country.brandName.
+appBanner.aria={0} app promotion
+appBanner.headline={0} — mobile app
+appBanner.subtitle=Faster, no browser needed
+appBanner.appStoreLine1=Download on the
+appBanner.playLine1=Get it on
+appBanner.close=Close
+
 # ── Errors ──────────────────────────────────────────────────────────────────
 error.unknownCity=Unknown city: {0}

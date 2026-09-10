@@ -107,5 +107,14 @@ back.repertoire=Cartelera
 # ── First-run swipe hint ────────────────────────────────────────────────────
 hint.swipe=Desliza para cambiar de día
 
+# ── App promotion banner ──────────────────────────────────────────────────────
+# {0} = brand ("Kinowo" in PL, "Showtimes" elsewhere) — see Country.brandName.
+appBanner.aria=Promoción de la app {0}
+appBanner.headline={0} — app móvil
+appBanner.subtitle=Más rápido, sin navegador
+appBanner.appStoreLine1=Disponible en el
+appBanner.playLine1=Disponible en
+appBanner.close=Cerrar
+
 # ── Errors ──────────────────────────────────────────────────────────────────
 error.unknownCity=Ciudad desconocida: {0}

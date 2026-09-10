@@ -22,9 +22,14 @@
   @* The Filmy view-chrome CSS (`.cinema-label`, film-card content-visibility)
      lives in `_sharedStyles` so it's shared across every page. *@
   @_sharedStyles(devMode)
+  @* Only this page renders `@_appBanner()` below, so its styles are scoped
+     here rather than folded into `_sharedStyles` — /movie, /browse, /tune
+     etc. would otherwise ship dead CSS for markup they never render. *@
+  @_minified(devMode) { @_appBannerStyles() }
 </head>
 <body>
 
+@_appBanner()
 @_navbar(devMode, oauthProviders)
 @_loginModal(oauthProviders)
 @_hiddenModal()

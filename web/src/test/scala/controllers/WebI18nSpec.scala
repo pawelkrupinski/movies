@@ -105,6 +105,29 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     plCategory(25) shouldBe "many"
   }
 
+  /** {0} is the country's `brandName` ("Kinowo" in PL, "Showtimes" elsewhere) —
+   *  the app banner substitutes it the same way `brand.title` does above, so a
+   *  bundle that dropped the placeholder or mistranslated the fixed half would
+   *  surface here rather than only at render time. */
+  "the app promotion banner" should "substitute the brand name per bundle" in {
+    pl("appBanner.headline", "Kinowo")    shouldBe "Kinowo — aplikacja mobilna"
+    en("appBanner.headline", "Showtimes") shouldBe "Showtimes — mobile app"
+    TestMessages.forLang("de")("appBanner.headline", "Showtimes") shouldBe "Showtimes — Mobile App"
+    TestMessages.forLang("es")("appBanner.headline", "Showtimes") shouldBe "Showtimes — app móvil"
+  }
+
+  it should "carry a store-badge line pair in every bundle, none of it hardcoded caps" in {
+    for (messages <- Seq(pl, en, TestMessages.forLang("de"), TestMessages.forLang("es"))) withClue(s"${messages.lang.code}: ") {
+      val appStoreLine1 = messages("appBanner.appStoreLine1")
+      val playLine1     = messages("appBanner.playLine1")
+      appStoreLine1 should not be "appBanner.appStoreLine1"   // key actually resolved
+      playLine1     should not be "appBanner.playLine1"
+      // Sentence case, not shouting — e.g. "Get it on", never "GET IT ON".
+      appStoreLine1 should not be appStoreLine1.toUpperCase(messages.lang.locale)
+      playLine1     should not be playLine1.toUpperCase(messages.lang.locale)
+    }
+  }
+
   "DateFormatter" should "keep Polish byte-identical (genitive month)" in {
     val d = LocalDate.of(2026, 6, 4)
     DateFormatter.format(d, Locale.forLanguageTag("pl-PL")) shouldBe "Czwartek 4 czerwca"

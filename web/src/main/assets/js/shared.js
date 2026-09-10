@@ -2510,6 +2510,60 @@
     _hintSet(SWIPE_HINT_DONE, '1');
   }
 
+  // ── App promotion banner ────────────────────────────────────────────────────
+  // Nudges EVERY visitor (not just phones — unlike the swipe hint above) toward
+  // the native app once per calendar day, picking the store badge that matches
+  // their OS. Two independent gates: the daily cap keeps an undismissed banner
+  // from reappearing on every navigation within the same day, and the ✕ sets a
+  // longer 30-day snooze on top of that. Device-local, same as the swipe hint —
+  // reuses its `_hintGet`/`_hintSet` localStorage wrapper.
+  const APP_BANNER_DAY       = 'kinowoAppBannerDay';           // last calendar day it was shown
+  const APP_BANNER_SNOOZE    = 'kinowoAppBannerSnoozedUntil';  // epoch ms the ✕ sets
+  const APP_BANNER_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
+
+  function maybeShowAppBanner() {
+    const banner = document.getElementById('app-banner');
+    if (!banner) return;                                              // not a page that carries it
+    if (Date.now() < parseInt(_hintGet(APP_BANNER_SNOOZE) || '0', 10)) return;  // explicitly dismissed recently
+    const today = pageToday();
+    if (_hintGet(APP_BANNER_DAY) === today) return;                   // already shown today
+    _hintSet(APP_BANNER_DAY, today);
+
+    const ua = navigator.userAgent;
+    // iPadOS has reported a plain desktop-Mac UA (no "iPad" token) since
+    // iPadOS 13's "Request Desktop Website" default — Macintosh + a touch
+    // screen is the standard way to tell it apart from an actual Mac.
+    const isIOS      = /iPhone|iPad|iPod/.test(ua) ||
+      (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const isAndroid  = /Android/.test(ua);
+    if (isIOS) {
+      document.getElementById('app-banner-ios').style.display = 'inline-flex';
+    } else if (isAndroid) {
+      document.getElementById('app-banner-android').style.display = 'inline-flex';
+    } else {
+      // Can't tell (desktop, or an unrecognised UA) — offer both rather than guessing wrong.
+      document.getElementById('app-banner-ios').style.display = 'inline-flex';
+      document.getElementById('app-banner-android').style.display = 'inline-flex';
+    }
+
+    banner.classList.add('visible');
+    // Measured AFTER the badge(s) + `.visible` land — the headline/subtitle
+    // length varies per locale and can wrap, so a hardcoded height would be
+    // wrong for German while being right for Polish.
+    requestAnimationFrame(() => {
+      document.documentElement.style.setProperty('--app-banner-h', banner.offsetHeight + 'px');
+      document.body.classList.add('has-app-banner');
+    });
+  }
+
+  // Wired to the banner's ✕ button (onclick, in `_appBanner.scala.html`).
+  function dismissAppBanner() {
+    _hintSet(APP_BANNER_SNOOZE, String(Date.now() + APP_BANNER_SNOOZE_MS));
+    document.getElementById('app-banner')?.classList.remove('visible');
+    document.body.classList.remove('has-app-banner');
+  }
+  window.dismissAppBanner = dismissAppBanner;
+
   // ── Carousel track plumbing ────────────────────────────────────────────────
 
   function dayTrack() { return document.getElementById('day-track'); }
@@ -2874,6 +2928,7 @@
     updateNavbar();
     bootView();
     maybeShowSwipeHint();   // once-a-day phone nudge, retired on first swipe
+    maybeShowAppBanner();   // once-a-day app-store nudge, snoozed 30d on dismiss
     // AFTER the page knows who is looking, and only then: the server-state
     // reconcile is a no-op for an anonymous visitor and the sign-out self-heal
     // looks for the avatar menu, so both would read "signed out" off every page
