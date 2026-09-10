@@ -8,6 +8,7 @@ struct ContentView: View {
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var deepLink: DeepLinkCoordinator
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.locale) private var locale
     /// iPhone portrait is `.regular` height, landscape `.compact` — so this
     /// flips on every portrait⇄landscape rotation. It's resolved from the
     /// UIKit trait collection, NOT from SwiftUI's layout pass, so it stays
@@ -74,7 +75,7 @@ struct ContentView: View {
     /// Run after the carousel commits a day change (it has already advanced
     /// `dateFilter`): flash the new day's name and retire the onboarding hint.
     private func didChangeDay() {
-        showDayLabel(dateFilter.label)
+        showDayLabel(dateFilter.label(locale: locale))
         // First-ever swipe retires the onboarding hint for good. `markSwiped()`
         // is idempotent, so running it on every swipe is harmless.
         swipeHintTask?.cancel()
@@ -212,7 +213,7 @@ struct ContentView: View {
         // prompt-key remembered) only by the authorized-only location check,
         // so it never fires without an existing location grant.
         .alert(
-            citySwitchSuggestion.map { String(format: String(localized: "switch.nearer_title"), $0.target.name) } ?? "",
+            citySwitchSuggestion.map { String(format: localizedString("switch.nearer_title", locale: locale), $0.target.name) } ?? "",
             isPresented: Binding(
                 get: { citySwitchSuggestion != nil },
                 set: { if !$0 { citySwitchSuggestion = nil } }
@@ -227,7 +228,7 @@ struct ContentView: View {
             }
             Button("switch.not_now", role: .cancel) {}
         } message: { suggestion in
-            Text(String(format: String(localized: "switch.question"), suggestion.target.name))
+            Text(String(format: localizedString("switch.question", locale: locale), suggestion.target.name))
         }
         .task {
             // Revalidate the country/city catalog on cold open (conditional GET;

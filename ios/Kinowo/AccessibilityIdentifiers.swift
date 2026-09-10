@@ -92,6 +92,7 @@ enum A11y {
         /// pickers — re-arms the first-launch chooser instead.
         static let pickAnotherCityButton = "filters.pickAnotherCity"
         static let languagePicker = "filters.language"
+        static let sortPicker      = "filters.sort"
     }
 
     enum CinemaPage {

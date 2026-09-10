@@ -1,6 +1,28 @@
 import SwiftUI
 import UIKit
 
+/// Looks up `key` in `Localizable.xcstrings`, translated for `locale`
+/// regardless of the device's actual preferred language / `AppleLanguages`.
+///
+/// `String(localized:locale:)` does NOT do this despite taking an explicit
+/// `locale:` parameter — verified empirically: launched with `AppleLanguages`
+/// forced to `pl`, then passing `locale: Locale(identifier: "en")` still
+/// returned the Polish translation, so the String Catalog runtime resolves
+/// against the bundle's own cached preferred localization and ignores the
+/// per-call override. Loading `locale`'s own `.lproj` sub-bundle directly and
+/// querying IT sidesteps that cache — the same mechanism `NSLocalizedString`
+/// used for years before String Catalogs existed, and `.xcstrings` still
+/// compiles down to a classic `<lang>.lproj/Localizable.strings` per
+/// language, so it works unchanged.
+func localizedString(_ key: String, locale: Locale) -> String {
+    let languageCode = locale.language.languageCode?.identifier ?? locale.identifier
+    guard let path = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
+          let bundle = Bundle(path: path) else {
+        return String(localized: String.LocalizationValue(key))
+    }
+    return bundle.localizedString(forKey: key, value: nil, table: "Localizable")
+}
+
 // Display captions for the two filter enums. They live here, in the app
 // target, rather than beside the enums in `Models/Filters.swift`: those
 // compile into `KinowoCore`, which deliberately ships no localized bundle
@@ -9,23 +31,31 @@ import UIKit
 // `swift test`. `String` rather than `LocalizedStringKey` because
 // `DatePillsRow` measures each caption's rendered width to decide whether
 // the four pills fit at a uniform size.
+//
+// `locale` is an explicit parameter, not read from `Locale.current` /
+// `localizedString`'s own default: that resolves against `AppleLanguages`,
+// which iOS only re-reads at the NEXT process launch (see `KinowoApp.init`'s
+// doc comment) — every caller instead passes the CURRENT
+// `@Environment(\.locale)`, which the root `.environment(\.locale)` modifier
+// (`KinowoApp.body`) updates in-session the moment the Filtry language picker
+// changes it.
 extension DateFilter {
-    var label: String {
+    func label(locale: Locale) -> String {
         switch self {
-        case .anytime:         return String(localized: "datefilter.anytime")
-        case .today:           return String(localized: "datefilter.today")
-        case .tomorrow:        return String(localized: "datefilter.tomorrow")
-        case .week:            return String(localized: "datefilter.week")
+        case .anytime:         return localizedString("datefilter.anytime", locale: locale)
+        case .today:           return localizedString("datefilter.today", locale: locale)
+        case .tomorrow:        return localizedString("datefilter.tomorrow", locale: locale)
+        case .week:            return localizedString("datefilter.week", locale: locale)
         case .specific(let d): return d
         }
     }
 }
 
 extension SortOption {
-    var label: String {
+    func label(locale: Locale) -> String {
         switch self {
-        case .earliest: return String(localized: "sort.earliest")
-        case .rating:   return String(localized: "sort.rating")
+        case .earliest: return localizedString("sort.earliest", locale: locale)
+        case .rating:   return localizedString("sort.rating", locale: locale)
         }
     }
 }
@@ -147,6 +177,7 @@ struct TopBar: View {
 struct DatePillsRow: View {
     @Binding var dateFilter: DateFilter
     let scale: CGFloat
+    @Environment(\.locale) private var locale
 
     /// Width offered to the row, measured from the full-width frame below so it
     /// reflects the space available regardless of how the pills size within it.
@@ -161,7 +192,7 @@ struct DatePillsRow: View {
     private var intrinsicWidths: [CGFloat] {
         let font = UIFont.systemFont(ofSize: fontSize, weight: .medium)
         return DateFilter.presets.map { preset in
-            let textWidth = (preset.label as NSString)
+            let textWidth = (preset.label(locale: locale) as NSString)
                 .size(withAttributes: [.font: font]).width
             return textWidth.rounded(.up) + 2 * horizontalPadding
         }
@@ -207,7 +238,7 @@ struct DatePillsRow: View {
         return Button {
             dateFilter = f
         } label: {
-            Text(f.label)
+            Text(f.label(locale: locale))
                 .font(.system(size: fontSize, weight: .medium))
                 .lineLimit(1)
                 .frame(maxWidth: equalWidth ? .infinity : nil)
@@ -425,6 +456,7 @@ struct FiltersSheet: View {
     @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var store: RepertoireStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.locale) private var locale
 
     // ScrollViewReader anchor for the account section (Konto / Zaloguj się) —
     // shared across both branches so a sign-in can scroll it into view.
@@ -451,7 +483,7 @@ struct FiltersSheet: View {
         // `CountryDisplayName.localized` with the picker, rather than its own
         // `String(localized: "country.\(code)")` — see that helper's doc
         // comment for why the dynamic-interpolation form silently fails.
-        return "\(cityName), \(CountryDisplayName.localized(prefs.selectedCountry.code))"
+        return "\(cityName), \(CountryDisplayName.localized(prefs.selectedCountry.code, locale: locale))"
     }
 
     var body: some View {
@@ -464,9 +496,10 @@ struct FiltersSheet: View {
                 Section("filtersheet.sort_section") {
                     Picker("filtersheet.sort_picker", selection: $sortOption) {
                         ForEach(SortOption.allCases, id: \.self) { option in
-                            Text(option.label).tag(option)
+                            Text(option.label(locale: locale)).tag(option)
                         }
                     }
+                    .accessibilityIdentifier(A11y.FiltersSheet.sortPicker)
                 }
 
                 // Hidden films get a single row that pushes a child screen —

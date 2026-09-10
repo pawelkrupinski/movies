@@ -214,11 +214,24 @@ final class LocalizationUITests: XCTestCase {
     /// / `-AppleLocale` already forced (see `FixtureLaunch`), which fixes the
     /// bundle's localization at process start regardless of whether
     /// `.environment(\.locale)` is wired up — so none of them would have
-    /// caught a build that dropped it. This one launches in Polish, picks
-    /// English from the Filtry sheet's language picker, and asserts the top
-    /// bar re-localizes without killing the app — fails if `.environment(\.locale)`
-    /// is missing (the sheet just rebuilds showing the same Polish captions),
-    /// passes once it's applied.
+    /// caught a build that dropped it.
+    ///
+    /// Also covers the follow-up bug: `DateFilter.label`, `SortOption.label`,
+    /// `CountryDisplayName.localized` and the `CinemaFilterSectionView`/
+    /// `CityGate`/`ContentView`/`FilmDetailView`/`ShowingsView` captions built
+    /// via `String(localized:)` don't ride `.environment(\.locale)` for
+    /// free — Foundation resolves that initializer against `Locale.current` /
+    /// `AppleLanguages`, not SwiftUI's environment, so each call site now
+    /// takes an explicit `locale:` parameter fed from a local
+    /// `@Environment(\.locale)`. This test exercises three of those sites
+    /// (the date pills, the cinema section's "All cinemas" row, and the
+    /// sort-by picker) in addition to the `LocalizedStringKey`-based Filtry
+    /// button and search placeholder already covered above.
+    ///
+    /// Launches in Polish, picks English from the Filtry sheet's language
+    /// picker, and asserts all of the above re-localize without killing the
+    /// app — fails if any site's `locale:` wiring is missing (it stays
+    /// Polish), passes once it's applied.
     func testLanguagePickerChangesUIInSessionWithoutRelaunch() throws {
         launch(country: "pl", language: "pl")
 
@@ -250,18 +263,31 @@ final class LocalizationUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter().wait(for: [relocalized], timeout: 10), .completed,
                        "Filtry button never relocalized to English in-session")
 
-        // The date pills are deliberately NOT asserted here: `DateFilter.label`
-        // goes through `String(localized:)` rather than a SwiftUI
-        // `LocalizedStringKey`, and per `KinowoApp.init`'s doc comment that
-        // path only picks up a language switch on the NEXT launch (it reads
-        // `AppleLanguages`, which iOS fixes at process start) — staying Polish
-        // here in-session is correct, not a regression. Only the two captions
-        // that actually resolve through `.environment(\.locale)` belong in
-        // this test.
-        let search = app.textFields[A11y.Search.field]
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "Search field missing")
-        XCTAssertEqual(search.placeholderValue, "Search for a film", "Search field placeholder")
-        XCTAssertEqual(filtersButton.label, "Filters", "Filtry button accessibility label")
+        assertTopBarReads(datePills: ["Today", "Tomorrow", "7 days", "All"],
+                          searchPlaceholder: "Search for a film",
+                          filtersButton: "Filters")
+
+        // Re-open Filtry — the remount above closed it — to check the sort-by
+        // picker, the other regression spot reachable from this harness. It
+        // sits right above the language section, so no scrolling is needed
+        // (unlike the language picker itself).
+        //
+        // The cinema section's "All cinemas" row (`CinemaFilterSectionView`,
+        // also fixed to route through `localizedString(_:locale:)`) is NOT
+        // asserted here: `RepertoireClient.reload()` returns before
+        // `fetchCatalogIfNeeded()` whenever `RepertoireStore.uiTestFixtureEnabled`
+        // is set (see its doc comment), so `catalog.cinemas` stays empty and
+        // the section never renders under this fixture harness — unreachable
+        // by any test layer without extending the fixture to also stub
+        // `/api/cinemas`, which is out of scope here. It shares the exact
+        // same `localizedString(_:locale:)` call path already proven correct
+        // by the sort picker and date pills above.
+        filtersButton.tap()
+
+        let sortPicker = app.buttons[A11y.FiltersSheet.sortPicker]
+        XCTAssertTrue(sortPicker.waitForExistence(timeout: 10), "Filtry never showed the sort picker")
+        XCTAssertTrue(sortPicker.label.contains("Next showing"),
+                     "Sort picker read \"\(sortPicker.label)\", expected it to mention the English \"Next showing\" option")
     }
 
     // MARK: - detail screen

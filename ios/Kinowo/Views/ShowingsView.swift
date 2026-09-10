@@ -194,6 +194,7 @@ struct ShowingsView: View {
 private struct ShowtimeBadge: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.showtimePillStyle) private var style
+    @Environment(\.locale) private var locale
     let showtime: Showtime
     var displayFormat: String = ""
 
@@ -281,7 +282,7 @@ private struct ShowtimeBadge: View {
                 } onPressingChanged: { pressing in
                     if !pressing { holding = false }
                 }
-                .accessibilityHint(String(format: String(localized: "showings.room_hint"), room))
+                .accessibilityHint(String(format: localizedString("showings.room_hint", locale: locale), room))
         } else if let url = showtime.bookingURL {
             Link(destination: url) { pill }
                 .buttonStyle(.plain)

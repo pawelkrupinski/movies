@@ -23,13 +23,13 @@ import SwiftUI
 /// in `FiltersBar.swift` for the identical reasoning), so `String(localized:)`
 /// there would resolve to the bare key under `swift test`.
 enum CountryDisplayName {
-    static func localized(_ code: String) -> String {
+    static func localized(_ code: String, locale: Locale) -> String {
         switch code {
-        case "pl": return String(localized: "country.pl")
-        case "uk": return String(localized: "country.uk")
-        case "de": return String(localized: "country.de")
-        case "us": return String(localized: "country.us")
-        case "es": return String(localized: "country.es")
+        case "pl": return localizedString("country.pl", locale: locale)
+        case "uk": return localizedString("country.uk", locale: locale)
+        case "de": return localizedString("country.de", locale: locale)
+        case "us": return localizedString("country.us", locale: locale)
+        case "es": return localizedString("country.es", locale: locale)
         default:   return code
         }
     }
@@ -138,6 +138,7 @@ struct CityConfirmView: View {
     let city: City
     let onConfirm: () -> Void
     let onChooseOther: () -> Void
+    @Environment(\.locale) private var locale
 
     var body: some View {
         VStack(spacing: 20) {
@@ -152,7 +153,7 @@ struct CityConfirmView: View {
                 .font(.title).bold()
             Spacer()
             Button(action: onConfirm) {
-                Text(String(format: String(localized: "citygate.show_repertoire"), city.name))
+                Text(String(format: localizedString("citygate.show_repertoire", locale: locale), city.name))
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -185,6 +186,7 @@ struct CityChoiceView: View {
     @EnvironmentObject var details: DetailsStore
     // For `choose(_:)`'s fallback suppression — see there.
     @EnvironmentObject var authService: AuthService
+    @Environment(\.locale) private var locale
     /// The location-detected nearest city, when one was found — used only to
     /// pre-suppress the switch prompt for a deliberate pick of another city.
     /// `nil` when location was unavailable (then there's nothing to suppress).
@@ -300,7 +302,7 @@ struct CityChoiceView: View {
                     }
 
                     if visibleRegions.isEmpty && visibleTopDirectCities.isEmpty {
-                        Text(String(format: String(localized: "citygate.no_region_match"), query))
+                        Text(String(format: localizedString("citygate.no_region_match", locale: locale), query))
                             .foregroundStyle(.secondary)
                     }
                 } else if subregion == nil {
@@ -348,7 +350,7 @@ struct CityChoiceView: View {
                     if visibleSubregions.isEmpty && visibleDirectCities.isEmpty {
                         // Keeps the search field anchored (an empty List would let
                         // it collapse) and tells the user nothing matched.
-                        Text(String(format: String(localized: "citygate.no_match"), query))
+                        Text(String(format: localizedString("citygate.no_match", locale: locale), query))
                             .foregroundStyle(.secondary)
                     }
                 } else {
@@ -376,7 +378,7 @@ struct CityChoiceView: View {
                     }
 
                     if visibleSubregionCities.isEmpty {
-                        Text(String(format: String(localized: "citygate.no_match"), query))
+                        Text(String(format: localizedString("citygate.no_match", locale: locale), query))
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -497,7 +499,7 @@ struct CityChoiceView: View {
                         // exactly what `CountryDisplayName.localized` already
                         // resolved through the catalog — see its doc comment
                         // for why that's a literal switch, not a dynamic key.
-                        Text(CountryDisplayName.localized(country.code))
+                        Text(CountryDisplayName.localized(country.code, locale: locale))
                             .lineLimit(1)
                             .fixedSize()
                             .font(.subheadline.weight(selected ? .semibold : .regular))

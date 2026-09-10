@@ -16,6 +16,7 @@ import SwiftUI
 struct CinemaFilterSectionView: View {
     let catalog: CinemaCatalog
     @ObservedObject var prefs: UserPreferences
+    @Environment(\.locale) private var locale
 
     @State private var openAreas: Set<String> = []
 
@@ -29,7 +30,7 @@ struct CinemaFilterSectionView: View {
                 let all = section.allCheck
                 checkboxRow(
                     check: all,
-                    label: String(localized: "cinemafilter.all_cinemas"),
+                    label: localizedString("cinemafilter.all_cinemas", locale: locale),
                     bold: true,
                     identifier: A11y.CinemaFilter.all
                 ) {
@@ -50,7 +51,7 @@ struct CinemaFilterSectionView: View {
     /// Reads out how much of the city is still shown — the same count the old
     /// bar's collapsed handle carried, now that there's no handle.
     private var footer: some View {
-        Text(String(format: String(localized: "cinemafilter.count"),
+        Text(String(format: localizedString("cinemafilter.count", locale: locale),
                     section.enabledCount, catalog.cinemas.count))
     }
 

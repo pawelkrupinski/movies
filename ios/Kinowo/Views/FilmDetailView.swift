@@ -21,6 +21,7 @@ struct FilmDetailView: View {
     // screen needs the selected-city slug the same way the listing card does.
     @EnvironmentObject var prefs: UserPreferences
     @Environment(\.filmDetailStyle) private var style
+    @Environment(\.locale) private var locale
     @State private var playingTrailerIndex: Int? = nil
     @State private var showFullScreenPoster = false
 
@@ -213,13 +214,13 @@ struct FilmDetailView: View {
         // key type carries no text to uppercase. Wording is deliberately
         // identical to Android's `meta_*` strings.
         VStack(alignment: .leading, spacing: style.metaBlockSpacing) {
-            metaBlock(label: String(localized: "filmdetail.meta_synopsis"),
+            metaBlock(label: localizedString("filmdetail.meta_synopsis", locale: locale),
                       value: filmDetails?.synopsis, markdown: true)
-            metaBlock(label: String(localized: "filmdetail.meta_director"),
+            metaBlock(label: localizedString("filmdetail.meta_director", locale: locale),
                       value: joined(film.directors))
-            metaBlock(label: String(localized: "filmdetail.meta_cast"),
+            metaBlock(label: localizedString("filmdetail.meta_cast", locale: locale),
                       value: joined(film.cast))
-            metaBlock(label: String(localized: "filmdetail.meta_countries"),
+            metaBlock(label: localizedString("filmdetail.meta_countries", locale: locale),
                       value: joined(film.countries))
         }
     }
@@ -281,7 +282,7 @@ struct FilmDetailView: View {
             // web's playTrailer behaviour: clear src + hide frame).
             playingTrailerIndex = active ? nil : index
         } label: {
-            Text(String(format: String(localized: "filmdetail.trailer_number"), index + 1))
+            Text(String(format: localizedString("filmdetail.trailer_number", locale: locale), index + 1))
                 .font(.system(size: 13, weight: .medium))
                 .foregroundColor(active ? Color(red: 0.10, green: 0.10, blue: 0.18) : Color.kinowoLinkAccent)
                 .padding(.horizontal, 12)
