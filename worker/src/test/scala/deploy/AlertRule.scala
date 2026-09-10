@@ -29,4 +29,20 @@ object AlertRule {
       .findAllMatchIn(ruleBlock)
       .map(_.group(1))
       .toSeq
+
+  /** The `expr:` PromQL for one `data:` entry within a rule block, by its
+   *  `refId` (the `- refId: <id>` list item), unquoted. `None` if that refId
+   *  doesn't exist in the block, or names an expression with no `expr:` of
+   *  its own (a `type: threshold`/`reduce` expression references another
+   *  refId instead). A rule with more than one query — e.g. a detection
+   *  query plus a purely informational companion for the alert text — needs
+   *  this rather than `expressionsIn` so a guard on the DETECTION query
+   *  doesn't also constrain a companion that is deliberately shaped
+   *  differently. */
+  def expressionFor(ruleBlock: String, refId: String): Option[String] =
+    ruleBlock
+      .split("(?m)^\\s*- refId:\\s*")
+      .toSeq
+      .find(_.takeWhile(c => !c.isWhitespace) == refId)
+      .flatMap("""(?m)^\s*expr:\s*'(.*)'\s*$""".r.findFirstMatchIn(_).map(_.group(1)))
 }

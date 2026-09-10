@@ -40,44 +40,63 @@ class GrafanaCityEmptyQualifierSpec extends AnyFlatSpec with Matchers {
   private val CityEmptyUid = "kinowo-movies-served-city-empty"
 
   private val Gauge = "kinowo_web_movies_served"
+  private val CorpusGauge = "kinowo_worker_movies_served"
 
   private lazy val rule: String =
     AlertRule.withUid(CityEmptyUid).getOrElse(fail(s"no rule with uid `$CityEmptyUid` in ${AlertRule.File}"))
 
-  private lazy val queries: Seq[String] = AlertRule.expressionsIn(rule)
+  // The DETECTION query (refId A) — everything below guards this one
+  // specifically, not every query in the rule, because the rule also carries
+  // a purely informational companion (refId B, see the test at the bottom)
+  // that is deliberately shaped differently: a `expressionsIn`-wide check
+  // would wrongly demand the companion read the same gauge and qualifier.
+  private lazy val query: String =
+    AlertRule.expressionFor(rule, "A").getOrElse(fail(s"no refId A query in `$CityEmptyUid` in ${AlertRule.File}"))
 
   "the city-empty rule" should "read the gauge at all" in {
     withClue(s"`$CityEmptyUid` in ${AlertRule.File} no longer selects `$Gauge`: ") {
-      queries should not be empty
-      queries.foreach(_ should include(Gauge))
+      query should include(Gauge)
     }
   }
 
   it should "qualify on a peak the blackout cannot erode, not on a decaying average" in {
-    queries.foreach { query =>
-      withClue(
-        s"`$CityEmptyUid` qualifies its zero-check with `avg_over_time`. That average is computed " +
-          "over a trailing window made of the samples the outage is zeroing, so it sinks under the " +
-          ">= 4 threshold while the city is still dark and the rule goes quiet mid-incident. " +
-          "es/zamora was dark 460 minutes on 2026-09-03 and the average form reported 70 of them; " +
-          "us/butte was dark over 27 hours from 09-07 and it never paged at all. Use " +
-          "`max_over_time`, which asks whether the city was ever active in the window. "
-      ) {
-        query should not include "avg_over_time"
-      }
+    withClue(
+      s"`$CityEmptyUid` qualifies its zero-check with `avg_over_time`. That average is computed " +
+        "over a trailing window made of the samples the outage is zeroing, so it sinks under the " +
+        ">= 4 threshold while the city is still dark and the rule goes quiet mid-incident. " +
+        "es/zamora was dark 460 minutes on 2026-09-03 and the average form reported 70 of them; " +
+        "us/butte was dark over 27 hours from 09-07 and it never paged at all. Use " +
+        "`max_over_time`, which asks whether the city was ever active in the window. "
+    ) {
+      query should not include "avg_over_time"
     }
   }
 
   it should "ask whether the city was active over a whole day" in {
-    queries.foreach { query =>
-      withClue(
-        s"`$CityEmptyUid` no longer qualifies on `max_over_time($Gauge{scope=\"all\"}[24h] offset 10m)`. " +
-          "A shorter window shortens how long a genuine blackout is reported: over 2026-09-02..09-08 " +
-          "a [6h] max covered 980 dark-minutes against [24h]'s 2610, cutting zamora's 460-minute " +
-          "blackout off at 320 and butte's at 290. A day is the unit a cinema programme comes in. "
-      ) {
-        query should include(s"""max_over_time($Gauge{scope="all"}[24h] offset 10m)""")
-      }
+    withClue(
+      s"`$CityEmptyUid` no longer qualifies on `max_over_time($Gauge{scope=\"all\"}[24h] offset 10m)`. " +
+        "A shorter window shortens how long a genuine blackout is reported: over 2026-09-02..09-08 " +
+        "a [6h] max covered 980 dark-minutes against [24h]'s 2610, cutting zamora's 460-minute " +
+        "blackout off at 320 and butte's at 290. A day is the unit a cinema programme comes in. "
+    ) {
+      query should include(s"""max_over_time($Gauge{scope="all"}[24h] offset 10m)""")
+    }
+  }
+
+  // Added 2026-09-10 alongside the Decodo-outage investigation: the rule used
+  // to make a responder manually check the venue's own site before deciding
+  // whether a dark city is a read-model bug or a genuinely empty listing.
+  // refId B answers that from the notification itself.
+  it should "carry the corpus-side count for the same city as an informational companion query" in {
+    withClue(
+      s"`$CityEmptyUid` no longer carries a refId B query reading `$CorpusGauge` by city. That " +
+        "companion is what lets the notification say whether a dark city is a genuine content gap " +
+        "(both sides zero) or a read-model defect (corpus nonzero while the site reads zero) " +
+        "without a human running a follow-up query first. "
+    ) {
+      val companion =
+        AlertRule.expressionFor(rule, "B").getOrElse(fail(s"no refId B query in `$CityEmptyUid` in ${AlertRule.File}"))
+      companion should include(CorpusGauge)
     }
   }
 }
