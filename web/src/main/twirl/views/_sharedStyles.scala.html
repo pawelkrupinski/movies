@@ -630,6 +630,45 @@
   }
   .hidden-modal-actions { display: flex; gap: .55rem; }
 
+  /* Mobile-parity city picker — same `.hidden-modal-backdrop`/`.hidden-modal`
+     shell as the hidden-films modal (`city-picker-modal.scala.html` carries
+     both classes), plus its own rows: the current city shown on the Filtry
+     trigger row, the country pill strip, the back row, the drilled-into
+     region/subregion breadcrumb, and the locate button/status moved here
+     from the old in-panel row. */
+  .city-picker-current { color: #aab; font-size: .75rem; }
+  .city-picker-countries {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    margin: .5rem 0;
+  }
+  .city-picker-country-pill {
+    background: #292955; color: #cdd; border: 1px solid #3a3a6e; border-radius: 999px;
+    padding: .3rem .75rem; font-size: .78rem; cursor: pointer;
+  }
+  .city-picker-country-pill:hover { background: #3a3a6e; }
+  .city-picker-country-pill.active { background: #5a5a9e; color: #fff; border-color: #5a5a9e; }
+  .city-picker-locate-btn {
+    display: flex; align-items: center; gap: .4rem;
+    width: 100%; margin-bottom: .3rem;
+  }
+  .city-picker-locate-btn .filter-icon { width: 16px; height: 16px; fill: currentColor; }
+  /* Back row sits above the title so it reads as "where this screen would
+     return to", same placement as the apps' own back row above their
+     search box. */
+  .city-picker-back-row {
+    align-items: center; gap: .4rem; cursor: pointer;
+    color: #aad4ff; font-size: .85rem; margin-bottom: .3rem;
+  }
+  .city-picker-back-arrow { font-size: 1.1rem; line-height: 1; }
+  .city-picker-subtitle { color: #9a9ac0; font-size: .8rem; margin: -.2rem 0 .5rem; }
+  .city-picker-empty { color: #9a9ac0; font-size: .85rem; margin: .4rem 0; }
+  /* A region/subregion heading row — the plain `.panel-item` a city row uses
+     is a block, so the chevron needs its own flex layout to sit at the
+     opposite edge rather than run straight after the label text. */
+  .city-picker-group-item {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
   /* Small count badge on the "Ukryte filmy" row inside Filtry. */
   .hidden-row-count {
     font-size: .7rem;

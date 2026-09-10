@@ -38,7 +38,14 @@
      "Today" listed tomorrow. `window.`-scoped (not a lexical const) so tests
      can move a rendered page to another zone. *@
   window.CITY_TIMEZONE      = "@city.zoneId.getId";
-  const ALL_CITIES          = @Html(city.country.allJson);
+  @* The country this deployment serves, and the full multi-country catalog
+     (every deployed country's cities, each carrying its `region`/`subregion`
+     grouping and its own `baseUrl`) — the exact JSON `/api/catalog` hands the
+     apps (`models.Catalog`), embedded here instead of fetched so the Filtry →
+     Miasto picker (`_cityPickerModal`) can drill any deployed country's city
+     tree, and cross into it, without a second request. *@
+  const CURRENT_COUNTRY_CODE = "@city.country.code";
+  const KINOWO_CATALOG      = @Html(models.Catalog.json);
   @* Status text for the Filtry "use my location" button — shared.js has no
      access to `messages()`, so the two strings it needs travel as globals,
      the same way every other page-bound piece of copy here does. Reuses the

@@ -106,28 +106,6 @@
   }
   window.onCityChange = onCityChange;
 
-  // Filtry's "use my location" button. Same 100 km haversine check the `/`
-  // landing runs automatically (`nearestCityWithinKm`, from `_geoDistance`,
-  // against `ALL_CITIES`, from `_sharedJsConfig`), triggered on demand instead
-  // of on load, and reusing `onCityChange` for the hit rather than a second
-  // adoption path.
-  function locateNearestCity() {
-    var status = document.getElementById('locate-city-status');
-    var show = function (text) { if (status) { status.textContent = text; status.style.display = text ? '' : 'none'; } };
-    if (!navigator.geolocation) return;
-    show(window.LOCATING_TEXT || '');
-    navigator.geolocation.getCurrentPosition(
-      function (pos) {
-        var c = nearestCityWithinKm(ALL_CITIES, pos.coords.latitude, pos.coords.longitude, 100);
-        if (c) { show(''); onCityChange(c.slug); }
-        else show(window.NO_NEARBY_TEXT || '');
-      },
-      function () { show(window.NO_NEARBY_TEXT || ''); },
-      { timeout: 5000, maximumAge: 600000 }
-    );
-  }
-  window.locateNearestCity = locateNearestCity;
-
   // THIS deployment's own base URL, read off the country switcher.
   //
   // The server marks the current country's <option> with a `selected`
@@ -189,6 +167,208 @@
     window.location.href = countrySwitchTarget(url);
   }
   window.onCountryChange = onCountryChange;
+
+  // ── City picker (Filtry → Miasto) ────────────────────────────────────────
+  //
+  // Mobile-parity city switcher: every deployed country across the top
+  // (`#city-picker-countries`), then a region → subregion → city drill-down
+  // underneath, with a back row popping one level at a time — the same shape
+  // as the iOS `CityGate` chooser / Android `CityChoiceScreen`. Driven
+  // entirely by `KINOWO_CATALOG` (`_sharedJsConfig`), so switching country
+  // here never navigates on its own — only picking a CITY does, exactly like
+  // the apps, where country is a peer control over the same list rather than
+  // a step you back out of.
+  //
+  // `cityPickerRegion`/`cityPickerSubregion` mirror the apps' own two
+  // nullable state fields 1:1 (`region`/`subregion` in `CityChoiceScreen.kt` /
+  // `CityGate.swift`): both null is the top level (regions, or straight to
+  // cities for a flat country), region set is the second level, both set is
+  // the third (only the UK ever reaches it).
+  let cityPickerCountry = null;
+  let cityPickerRegion = null;
+  let cityPickerSubregion = null;
+  let cityPickerRows = [];
+
+  function cityPickerCitiesOf(code) {
+    return KINOWO_CATALOG.cities.filter(c => c.country === code);
+  }
+
+  function openCityPicker() {
+    closeOtherPanels(null);
+    cityPickerCountry = CURRENT_COUNTRY_CODE;
+    cityPickerRegion = null;
+    cityPickerSubregion = null;
+    const search = document.getElementById('city-picker-search');
+    if (search) search.value = '';
+    renderCityPickerCountries();
+    renderCityPickerBody();
+    const modal = document.getElementById('city-picker-backdrop');
+    if (modal) modal.classList.add('open');
+  }
+  window.openCityPicker = openCityPicker;
+
+  function closeCityPicker() {
+    const modal = document.getElementById('city-picker-backdrop');
+    if (modal) modal.classList.remove('open');
+  }
+  window.closeCityPicker = closeCityPicker;
+
+  function renderCityPickerCountries() {
+    const wrap = document.getElementById('city-picker-countries');
+    if (!wrap) return;
+    wrap.innerHTML = '';
+    // Same guard as the old country `<select>` — a single-country deployment
+    // shows no dead control.
+    if (KINOWO_CATALOG.countries.length <= 1) { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    KINOWO_CATALOG.countries.forEach(country => {
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'city-picker-country-pill' + (country.code === cityPickerCountry ? ' active' : '');
+      pill.textContent = country.name;
+      pill.onclick = () => pickCityPickerCountry(country.code);
+      wrap.appendChild(pill);
+    });
+  }
+
+  function pickCityPickerCountry(code) {
+    if (code === cityPickerCountry) return;
+    cityPickerCountry = code;
+    cityPickerRegion = null;
+    cityPickerSubregion = null;
+    const search = document.getElementById('city-picker-search');
+    if (search) search.value = '';
+    renderCityPickerCountries();
+    renderCityPickerBody();
+  }
+
+  // Pops one drill level — subregion first, then region — same one-tap-per-
+  // level back as the apps' own back button.
+  function cityPickerBack() {
+    if (cityPickerSubregion !== null) cityPickerSubregion = null;
+    else if (cityPickerRegion !== null) cityPickerRegion = null;
+    else return;
+    renderCityPickerBody();
+  }
+  window.cityPickerBack = cityPickerBack;
+
+  // The current level's rows: region/subregion HEADINGS (drill further)
+  // ahead of any DIRECT city at that level (a group collapsed onto its one
+  // city — `CityGroup.soleCity` — never earned a heading of its own), each
+  // kind sorted alphabetically under the country's own language, mirroring
+  // `_cityPickerGroup`'s groups-then-cities order.
+  function buildCityPickerRows() {
+    const cities = cityPickerCitiesOf(cityPickerCountry);
+    const lang = cityPickerCountry;
+    const byName = (a, b) => a.name.localeCompare(b.name, lang);
+    const byLabel = (a, b) => a.localeCompare(b, lang);
+    const scoped = cityPickerRegion === null
+      ? cities
+      : cities.filter(c => c.region === cityPickerRegion);
+    const groupField = cityPickerRegion === null ? 'region' : (cityPickerSubregion === null ? 'subregion' : null);
+    if (groupField === null) {
+      return scoped.slice().sort(byName).map(c => ({ kind: 'city', label: c.name, city: c }));
+    }
+    const headings = [];
+    scoped.forEach(c => { if (c[groupField] && headings.indexOf(c[groupField]) === -1) headings.push(c[groupField]); });
+    headings.sort(byLabel);
+    if (headings.length === 0) {
+      return scoped.slice().sort(byName).map(c => ({ kind: 'city', label: c.name, city: c }));
+    }
+    const direct = scoped.filter(c => !c[groupField]).sort(byName);
+    return headings.map(label => ({ kind: groupField, label: label }))
+      .concat(direct.map(c => ({ kind: 'city', label: c.name, city: c })));
+  }
+
+  function renderCityPickerBody() {
+    const backRow = document.getElementById('city-picker-back-row');
+    const subtitle = document.getElementById('city-picker-subtitle');
+    const deeper = cityPickerRegion !== null;
+    if (backRow) backRow.style.display = deeper ? 'flex' : 'none';
+    if (subtitle) {
+      const parts = [cityPickerRegion, cityPickerSubregion].filter(Boolean);
+      subtitle.textContent = parts.join(' — ');
+      subtitle.style.display = parts.length ? '' : 'none';
+    }
+    cityPickerRows = buildCityPickerRows();
+    filterCityPicker();
+  }
+
+  function paintCityPickerRows(rows) {
+    const list = document.getElementById('city-picker-list');
+    const empty = document.getElementById('city-picker-empty');
+    if (!list) return;
+    list.innerHTML = '';
+    rows.forEach(row => {
+      const item = document.createElement('div');
+      item.className = 'panel-item city-picker-item';
+      item.textContent = row.label;
+      if (row.kind === 'city') {
+        item.onclick = () => pickCityPickerCity(row.city);
+      } else {
+        item.classList.add('city-picker-group-item');
+        const chevron = document.createElement('span');
+        chevron.className = 'submenu-chevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        chevron.textContent = '›';
+        item.appendChild(chevron);
+        item.onclick = row.kind === 'region'
+          ? () => { cityPickerRegion = row.label; renderCityPickerBody(); }
+          : () => { cityPickerSubregion = row.label; renderCityPickerBody(); };
+      }
+      list.appendChild(item);
+    });
+    if (empty) empty.style.display = rows.length === 0 ? 'block' : 'none';
+  }
+
+  // In-list name filter, same idiom as `filterHiddenModal` — narrows the
+  // CURRENT level's rows rather than searching the whole tree, so a query
+  // never surfaces a city from a country or region the visitor hasn't
+  // drilled into.
+  function filterCityPicker() {
+    const input = document.getElementById('city-picker-search');
+    const query = input ? input.value.trim().toLowerCase() : '';
+    const visible = query === ''
+      ? cityPickerRows
+      : cityPickerRows.filter(row => row.label.toLowerCase().indexOf(query) !== -1);
+    paintCityPickerRows(visible);
+  }
+  window.filterCityPicker = filterCityPicker;
+
+  // A city was picked — directly, or as the "use my location" hit. Same-
+  // country: reuse `onCityChange` (remember + navigate) unchanged. A
+  // DIFFERENT country is a different web deployment behind its own base URL,
+  // so it goes through `onCountryChange`'s existing signed-in/SSO handoff —
+  // landing the visitor on that country's own chooser to name the city,
+  // since `/auth/sso/start`'s `to` must match a deployed base URL verbatim
+  // and cannot also carry a city path.
+  function pickCityPickerCity(city) {
+    closeCityPicker();
+    if (city.country === CURRENT_COUNTRY_CODE) { onCityChange(city.slug); return; }
+    const country = KINOWO_CATALOG.countries.find(c => c.code === city.country);
+    if (country) onCountryChange(country.baseUrl);
+  }
+
+  // The chooser's own manual locate button — unlike the bare `/` landing's
+  // automatic check (scoped to the country it's already rendering), this
+  // searches every deployed country, mirroring the apps'
+  // `resolveNearestCityAnyCountry`.
+  function locateCityPickerAnywhere() {
+    const status = document.getElementById('city-picker-locate-status');
+    const show = text => { if (status) { status.textContent = text; status.style.display = text ? '' : 'none'; } };
+    if (!navigator.geolocation) return;
+    show(window.LOCATING_TEXT || '');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const c = nearestCityWithinKm(KINOWO_CATALOG.cities, pos.coords.latitude, pos.coords.longitude, 100);
+        if (c) { show(''); pickCityPickerCity(c); }
+        else show(window.NO_NEARBY_TEXT || '');
+      },
+      () => show(window.NO_NEARBY_TEXT || ''),
+      { timeout: 5000, maximumAge: 600000 }
+    );
+  }
+  window.locateCityPickerAnywhere = locateCityPickerAnywhere;
 
   // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
   // attached to each indexed badge (so we don't re-parse `dataset.format` on

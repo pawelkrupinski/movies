@@ -187,57 +187,23 @@
         <div class="panel-divider"></div>
       }
 
-      @* City picker — switches the whole app to another city's repertoire.
-         Last filter in the panel so it sits below the per-screening axes and
-         below the country switcher. Available signed-out; `onCityChange`
-         remembers the pick (cookie) and navigates to the chosen city's root.
-         Only rendered when more than one city is supported, so a single-city
-         deployment shows no dead control.
-
-         Grouped into `<optgroup>`s where the country says its places are found
-         through something (`Country.cityGroups` — the US by state, Germany by
-         Bundesland, the UK by nation). Flat otherwise, byte-for-byte as before:
-         two US metros really are both called "Philadelphia", and a flat list
-         offers them as two identical options.
-
-         The TOP level only, through `Country.optionGroups`: an `<optgroup>` may
-         not contain another, so a picker that nests deeper (the UK's county sits
-         between) still gets one heading here — and its places are re-sorted, since
-         the tree's order files them at their county's position and this list has
-         no county heading to explain that.
-
-         The branches are GLUED to their braces (`{@@for(…) {`), so the flat one
-         emits byte-for-byte what the bare loop emitted: Twirl keeps the template
-         text between two blocks whatever they evaluate to, and a newline there
-         would re-snapshot every page in every ungrouped country over a control
-         none of them render differently. *@
-      @if(city.country.cities.sizeIs > 1) {
-        <div class="panel-section-label d-flex align-items-center justify-content-between">
+      @* City picker — opens the mobile-parity `_cityPickerModal`: a
+         separate screen with every deployed country across the top and a
+         region → subregion → city drill-down (with a back row) underneath,
+         plus its own "use my location" button — same shape as the iOS
+         `CityGate` chooser / Android `CityChoiceScreen`. Replaces the old
+         in-panel `<select>` and its own locate button, which only covered
+         switching within THIS country. Available signed-out. Only rendered
+         when there's more than one place to switch to — another city in
+         this country, or another country entirely. *@
+      @if(city.country.cities.sizeIs > 1 || models.Country.switchable.sizeIs > 1) {
+        <div id="city-picker-row" class="panel-label submenu-row" onclick="openCityPicker()">
           <span>@messages("nav.city")</span>
-          @* Re-runs the same 100 km nearest-city check the `/` landing does
-             automatically, but on demand — for the visitor who's already
-             picked a city and wants to check another one nearby without
-             typing it. `locateNearestCity` (shared.js) reuses
-             `nearestCityWithinKm` (`_geoDistance`) and `onCityChange`
-             (the existing "remember + navigate" adoption) rather than
-             duplicating either. *@
-          <button type="button" id="locate-city-btn" class="btn refresh-btn btn-sm filter-icon-btn" onclick="locateNearestCity()" aria-label="@messages("nav.locateMe")" title="@messages("nav.locateMe")">
-            <svg class="filter-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
-            </svg>
-          </button>
+          <span class="submenu-right">
+            <span class="city-picker-current">@city.labels.nominative</span>
+            <span class="submenu-chevron">&#8250;</span>
+          </span>
         </div>
-        <div id="locate-city-status" class="locate-city-status" style="display:none"></div>
-        <select id="city-select" class="filter-select w-100" onchange="onCityChange(this.value)" style="margin-bottom:.4rem">
-          @if(city.country.cityGroups.isEmpty) {@for(c <- city.country.allSorted) {
-            <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
-          }} else {@for((groupLabel, groupCities) <- city.country.optionGroups) {
-            <optgroup label="@groupLabel">@for(c <- groupCities) {
-              <option value="@c.slug"@if(c.slug == city.slug){ selected}>@c.labels.nominative</option>
-            }
-            </optgroup>
-          }}
-        </select>
         <div class="panel-divider"></div>
       }
 

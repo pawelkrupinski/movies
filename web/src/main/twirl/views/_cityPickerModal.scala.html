@@ -1,0 +1,55 @@
+@()(implicit messages: play.api.i18n.Messages)
+@*
+   Mobile-parity city switcher: the same backdrop/card shell as
+   `_hiddenModal`, but its body is a small state machine mirroring the iOS
+   `CityGate` chooser / Android `CityChoiceScreen` — every deployed country
+   across the top, then a drill-down through region → subregion → city (only
+   the UK uses all three steps; a flat country like Poland or Spain goes
+   straight to its cities), with a back row popping one level at a time. The
+   "use my location" button moved here from the old Filtry → Miasto row (see
+   `_navbar`) and now searches every deployed country, mirroring the
+   chooser's own manual locate button rather than the country-scoped check
+   the bare `/` landing runs automatically.
+
+   Driven entirely by `KINOWO_CATALOG` (`_sharedJsConfig`) — the same
+   country+city+region/subregion JSON `/api/catalog` serves the apps
+   (`models.Catalog`), so the web tree and the apps' tree can never drift
+   apart. `shared.js` owns the state (`openCityPicker`, `pickCityPickerCountry`,
+   `cityPickerBack`, `pickCityPickerCity`, `locateCityPickerAnywhere`); this
+   template is just the shell, same division as `_hiddenModal`/`updateNavbar`.
+*@
+<div class="city-picker-backdrop hidden-modal-backdrop" id="city-picker-backdrop" onclick="closeCityPicker()">
+  <div class="city-picker-modal hidden-modal" onclick="event.stopPropagation()">
+    <button type="button" class="login-modal-close" onclick="closeCityPicker()" aria-label="@messages("auth.close")">&times;</button>
+
+    @* Hidden until a region (or subregion) is drilled into — see
+       `cityPickerBack`/`renderCityPickerBody`. *@
+    <div id="city-picker-back-row" class="city-picker-back-row" style="display:none" onclick="cityPickerBack()">
+      <span class="city-picker-back-arrow" aria-hidden="true">&#8249;</span>
+      <span>@messages("back.back")</span>
+    </div>
+
+    <div class="login-modal-title">@messages("landing.chooseCity")</div>
+    @* Breadcrumb of the region/subregion drilled into so far — plain text,
+       no message key needed: the labels are place names straight off
+       `KINOWO_CATALOG`, not copy. *@
+    <div id="city-picker-subtitle" class="city-picker-subtitle" style="display:none"></div>
+
+    @* One pill per deployed country — `renderCityPickerCountries` hides this
+       entirely on a single-country deployment, matching the old
+       `Country.switchable.sizeIs > 1` guard on the country `<select>`. *@
+    <div id="city-picker-countries" class="city-picker-countries"></div>
+
+    <button type="button" id="city-picker-locate-btn" class="btn refresh-btn btn-sm city-picker-locate-btn" onclick="locateCityPickerAnywhere()">
+      <svg class="filter-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+      </svg>
+      <span>@messages("nav.locateMe")</span>
+    </button>
+    <div id="city-picker-locate-status" class="locate-city-status" style="display:none"></div>
+
+    <input type="search" id="city-picker-search" class="hidden-modal-search" placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" autocomplete="off" oninput="filterCityPicker()">
+    <p id="city-picker-empty" class="city-picker-empty" style="display:none">@messages("landing.noCity")</p>
+    <div id="city-picker-list" class="hidden-modal-list city-picker-list"></div>
+  </div>
+</div>

@@ -237,40 +237,113 @@ test.describe('geolocation auto-redirect', { tag: '@agnostic' }, () => {
   });
 });
 
-test.describe('Filtry → Miasto switch', { tag: '@agnostic' }, () => {
-  test('selecting another city navigates to its repertoire root', async ({ page }) => {
+// The Filtry → Miasto row no longer holds a `<select>` or its own locate
+// button — both moved into a separate mobile-parity screen (`_cityPickerModal`)
+// mirroring the iOS `CityGate` chooser / Android `CityChoiceScreen`: every
+// deployed country across the top, a region → subregion → city drill-down
+// underneath with a back row, and the locate button now searching every
+// country rather than just this deployment.
+test.describe('Filtry → Miasto picker', { tag: '@agnostic' }, () => {
+  test('opens on this deployment\'s own country, flat, with no back row', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
-    // Open the Filtry panel, then switch the city select to Wrocław.
     await page.locator('#format-filter-btn').click();
-    await page.selectOption('#city-select', 'wroclaw');
+    await page.locator('#city-picker-row').click();
+    await expect(page.locator('#city-picker-backdrop')).toHaveClass(/open/);
+    // Poland is flat — the opening list is cities directly, no region
+    // heading, and nothing to back out of.
+    await expect(page.locator('#city-picker-back-row')).toBeHidden();
+    await expect(page.locator('#city-picker-list .city-picker-group-item')).toHaveCount(0);
+    await expect(page.locator('#city-picker-list .city-picker-item', { hasText: 'Wrocław' })).toBeVisible();
+  });
+
+  test('picking a city in the current country navigates straight to its repertoire root', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#city-picker-row').click();
+    await page.locator('#city-picker-list .city-picker-item', { hasText: 'Wrocław' }).click();
     await page.waitForURL((u) => new URL(u).pathname === '/wroclaw/');
   });
-});
 
-// The Filtry panel's own location button — a manual re-run of the same 100 km
-// check the `/` landing does automatically, for a visitor who already has a
-// city but wants to check what's nearby without typing it.
-test.describe('Filtry → Miasto locate button', { tag: '@agnostic' }, () => {
+  test('the search box narrows the current level only', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#city-picker-row').click();
+    await page.locator('#city-picker-search').fill('wroc');
+    await expect(page.locator('#city-picker-list .city-picker-item')).toHaveText(['Wrocław']);
+    await page.locator('#city-picker-search').fill('');
+    await expect(page.locator('#city-picker-list .city-picker-item').first()).toBeVisible();
+  });
+
+  test('drills a grouped country by region, then a back tap returns to the region list', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#city-picker-row').click();
+    // The US is grouped by state — pick it from the country pill row.
+    await page.locator('.city-picker-country-pill', { hasText: 'United States' }).click();
+    await expect(page.locator('#city-picker-list .city-picker-group-item').first()).toBeVisible();
+
+    await page.locator('#city-picker-list .city-picker-group-item', { hasText: 'California' }).click();
+    await expect(page.locator('#city-picker-back-row')).toBeVisible();
+    await expect(page.locator('#city-picker-subtitle')).toHaveText('California');
+    await expect(page.locator('#city-picker-list .city-picker-item', { hasText: 'Los Angeles' })).toBeVisible();
+
+    await page.locator('#city-picker-back-row').click();
+    await expect(page.locator('#city-picker-back-row')).toBeHidden();
+    await expect(page.locator('#city-picker-list .city-picker-group-item', { hasText: 'California' })).toBeVisible();
+  });
+
+  test('the UK needs two taps to reach a place — nation, then county', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#city-picker-row').click();
+    await page.locator('.city-picker-country-pill', { hasText: 'United Kingdom' }).click();
+    await page.locator('#city-picker-list .city-picker-group-item', { hasText: 'England' }).click();
+    await page.locator('#city-picker-list .city-picker-group-item', { hasText: 'West Midlands' }).click();
+    await expect(page.locator('#city-picker-subtitle')).toHaveText('England — West Midlands');
+    await expect(page.locator('#city-picker-list .city-picker-item', { hasText: 'Birmingham' })).toBeVisible();
+  });
+
+  test('picking a city in another country hands off to that deployment', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#city-picker-row').click();
+    // Germany is one level deep (Bundesland over its regions, no third
+    // level), so one region tap reaches cities directly.
+    await page.locator('.city-picker-country-pill', { hasText: 'Deutschland' }).click();
+    await page.locator('#city-picker-list .city-picker-group-item', { hasText: 'Bayern' }).click();
+    const [target] = await Promise.all([
+      page.waitForEvent('framenavigated', (f) => f === page.mainFrame()),
+      page.locator('#city-picker-list .city-picker-item:not(.city-picker-group-item)').first().click(),
+    ]);
+    expect(target.url()).toContain('showtimes.cc/de');
+    expect(target.url()).toContain('pick=city');
+  });
+
+  // The chooser's own manual locate button — a re-run of the same 100 km
+  // check the `/` landing does automatically, but ACROSS EVERY deployed
+  // country rather than just this one, mirroring the apps'
+  // `resolveNearestCityAnyCountry`.
   test('a fix near Wrocław switches from Poznań to /wroclaw/', async ({ page, context }) => {
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation({ latitude: 51.1079, longitude: 17.0385 });
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
-    await page.locator('#locate-city-btn').click();
+    await page.locator('#city-picker-row').click();
+    await page.locator('#city-picker-locate-btn').click();
     await page.waitForURL((u) => new URL(u).pathname === '/wroclaw/');
   });
 
-  test('a fix nowhere near a Polish city says so and stays put', async ({ page, context }) => {
+  test('a fix nowhere near any supported city says so and stays put', async ({ page, context }) => {
     await context.grantPermissions(['geolocation']);
-    // New York — nowhere near any city this Polish deployment serves.
-    await context.setGeolocation({ latitude: 40.7128, longitude: -74.0060 });
+    // The middle of the Pacific — nowhere near any city any deployment serves.
+    await context.setGeolocation({ latitude: 0, longitude: -160 });
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
-    await page.locator('#locate-city-btn').click();
-    await expect(page.locator('#locate-city-status')).toHaveText(/./);
+    await page.locator('#city-picker-row').click();
+    await page.locator('#city-picker-locate-btn').click();
+    await expect(page.locator('#city-picker-locate-status')).toHaveText(/./);
     // The status text only lands after the async fix and the nearest-city
-    // check both ran — by then a hit would already have called
-    // `onCityChange` and started navigating.
+    // check both ran — by then a hit would already have started navigating.
     expect(new URL(page.url()).pathname).toBe('/poznan/');
   });
 });
