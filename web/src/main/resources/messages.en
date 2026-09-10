@@ -28,7 +28,14 @@ nav.fromHour=From
 nav.any=Any
 nav.city=City
 nav.locateMe=Use my location
+nav.language=Language
 nav.countrySwitch=Country
+
+country.pl=Poland
+country.uk=United Kingdom
+country.de=Germany
+country.us=United States
+country.es=Spain
 nav.clear=Clear
 nav.copyLink=Copy link
 nav.search=Search…

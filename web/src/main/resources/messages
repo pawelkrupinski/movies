@@ -32,7 +32,17 @@ nav.fromHour=Od godziny
 nav.any=Dowolna
 nav.city=Miasto
 nav.locateMe=Znajdź moje miasto
+nav.language=Język
 nav.countrySwitch=Kraj
+
+# Country names — the country switcher (navbar + front-door picker) shows
+# these translated per the resolved UI language; city names never are (a
+# place's own name doesn't change with the reader's language).
+country.pl=Polska
+country.uk=Wielka Brytania
+country.de=Niemcy
+country.us=Stany Zjednoczone
+country.es=Hiszpania
 nav.clear=Wyczyść
 nav.copyLink=Skopiuj link do schowka
 nav.search=Szukaj…

@@ -31,8 +31,9 @@ class RetiredComponents(context: Context, country: Country)
     with AssetsComponents {
 
   // The one `Messages` this deployment renders with, fixed at boot from the
-  // country — same rule as `Wiring.deploymentMessages`; a retired site speaks
-  // the language of the site it replaced.
+  // country — a retired site has no filters UI to pick a language from, so
+  // (unlike the live site's `Wiring.deploymentMessages`) it always speaks the
+  // language of the site it replaced.
   private implicit lazy val deploymentMessages: play.api.i18n.Messages =
     messagesApi.preferred(Seq(play.api.i18n.Lang(country.language)))
 

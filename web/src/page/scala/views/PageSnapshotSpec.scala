@@ -91,9 +91,13 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     html should include ("""value="https://showtimes.cc/es"""")
     // ...with the current country (Poland, fromEnv default) pre-selected.
     html should include ("""value="https://kinowo.net" selected""")
-    // Each deployed country's own label, in its own language.
-    html should include (">Deutschland<")
-    html should include (">España<")
+    // Each deployed country's label, translated into THIS deployment's
+    // language (Polish) — not its own native name any more (`messages("country."
+    // + code)`, not `Country.displayName`), so every visitor's country switcher
+    // reads in one consistent language rather than mixing "Deutschland"/"España"
+    // into an otherwise-Polish page.
+    html should include (">Niemcy<")
+    html should include (">Hiszpania<")
   }
 
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {

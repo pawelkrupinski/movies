@@ -388,11 +388,38 @@ class MovieController( cc: ControllerComponents,
                        // can exercise a non-Polish host by passing one, instead of
                        // mutating the process-global env that parallel suites share.
                        servingCountry: models.Country = models.Country.fromEnv,
-                     )(implicit messages: play.api.i18n.Messages) extends AbstractController(cc) with Logging {
+                     ) extends AbstractController(cc) with Logging {
 
   // The country this deployment serves — the rules its corpus was keyed under,
   // so the city OG card folds titles the way the worker keyed them.
   private val normalizer: TitleNormalizer = TitleNormalizer.forCountry(servingCountry)
+
+  // The deployment's own language — what a request resolves to when it names
+  // no pick and no supported `Accept-Language` (`WebLangResolver.resolve`),
+  // and what `cacheablePlainPage` compares against to decide whether a
+  // request may still be handed the shared edge blob (see below).
+  //
+  // BARE ("pl", not "pl-PL"), NOT `Lang(servingCountry.language)` directly —
+  // `cc.messagesApi.preferred(...)` always normalises its result down to one
+  // of the region-less codes actually registered in `play.i18n.langs`, so a
+  // region-qualified `deploymentDefaultLang` could never `==` the `Lang` a
+  // resolved `Messages` reports, and `cacheablePlainPage` would silently
+  // reject every request — which is exactly what it did until this was caught
+  // by `SharedCacheableListingSpec`.
+  private val deploymentDefaultLang: play.api.i18n.Lang = play.api.i18n.Lang(servingCountry.language.getLanguage)
+
+  // The `Messages` this request renders in — an explicit pick or a supported
+  // `Accept-Language` layered over the deployment default. Resolved per
+  // request now rather than fixed at boot, so a visitor's language survives
+  // independently of which city/country they're browsing.
+  private def requestMessages(request: RequestHeader): play.api.i18n.Messages =
+    cc.messagesApi.preferred(Seq(WebLangResolver.resolve(request, deploymentDefaultLang)))
+
+  // `ServedCity`'s unknown-city 404 is a not-found edge case, not a page in the
+  // filters UI, so — like `DebugController`/`RetiredSiteController`/the
+  // sitemap/robots.txt — it stays on the deployment's fixed language rather
+  // than the visitor's resolved one.
+  private val deploymentMessages: play.api.i18n.Messages = cc.messagesApi.preferred(Seq(deploymentDefaultLang))
 
   // Validators, `Cache-Control`, the 304 short-circuit and the gzip blob for
   // every client-independent response this controller serves. The validator
@@ -426,14 +453,25 @@ class MovieController( cc: ControllerComponents,
   // same validators, and the `Vary: Accept-Encoding` both branches carry is what
   // keeps the two spellings apart in a shared cache. `/api/repertoire` has been
   // shared-cacheable on exactly those terms since it was first offered to the edge.
-  private def cacheablePlainPage(request: RequestHeader): Boolean =
-    request.queryString.isEmpty
+  //
+  // `lang == deploymentDefaultLang` IS THE OTHER HALF OF THAT SAFETY ARGUMENT,
+  // since the language picker made the rendered bytes able to vary by visitor
+  // too. This branch is offered to the edge, so it may only ever render for
+  // the ONE language value every visitor reaching it shares — the deployment
+  // default. Anyone resolved to a different language (an explicit pick, or a
+  // supported-but-non-default `Accept-Language`) falls into the filtered
+  // branch below, `private, no-cache`, exactly like a `?filter=` variant: not
+  // shared, so no visitor can ever be served another visitor's language.
+  private def cacheablePlainPage(request: RequestHeader, lang: play.api.i18n.Lang): Boolean =
+    request.queryString.isEmpty && lang == deploymentDefaultLang
 
   private val HtmlContentType = "text/html; charset=utf-8"
 
   // Every city-scoped handler wraps its body in this so resolution + not-found
-  // behaviour lives in one place — see `ServedCity` for the country scope.
-  private def withCity(slug: String)(f: City => Result): Result = ServedCity.resolve(slug, servingCountry)(f)
+  // behaviour lives in one place — see `ServedCity` for the country scope. The
+  // unknown-city 404 renders in `deploymentMessages` (see above), not a
+  // per-request resolution.
+  private def withCity(slug: String)(f: City => Result): Result = ServedCity.resolve(slug, servingCountry)(f)(using deploymentMessages)
 
   // Persist the viewed city so the bare `/` landing can bounce a returning
   // visitor straight to it. Readable by JS (httpOnly = false) so the client can
@@ -468,7 +506,9 @@ class MovieController( cc: ControllerComponents,
    *  the listing — what they skip is the shared blob, not the conditional GET. */
   private def renderIndex(city: City, request: RequestHeader): Result = {
     implicit val c: City = city
-    if (cacheablePlainPage(request)) {
+    implicit val messages: play.api.i18n.Messages = requestMessages(request)
+    val lang = messages.lang
+    if (cacheablePlainPage(request, lang)) {
       // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
       // (and its data-prep) never runs either.
       // NO `Set-Cookie` HERE, AND THAT IS THE WHOLE POINT OF THE BRANCH.
@@ -515,14 +555,16 @@ class MovieController( cc: ControllerComponents,
       // it costs that the blob branch does not is byte-identity between two
       // clients holding one validator, which only a SHARED cache could observe
       // -- and `private, no-cache` is exactly the instruction that none may.
+      // `lang.code` rides along in the key too — two requests sharing a filter
+      // but not a language must not 304 off each other's ETag.
       conditionalResponse.serve(request, HtmlContentType, CachePolicy.BrowserOnly,
-                                cacheKey = "|q=" + request.rawQueryString, city = Some(city),
+                                cacheKey = "|q=" + request.rawQueryString + "|lang=" + lang.code, city = Some(city),
                                 cacheBody = false)(renderIndexHtml(city, request).body)
         .withCookies(cityCookie(city))
     }
   }
 
-  private def renderIndexHtml(city: City, request: RequestHeader)(implicit c: City): play.twirl.api.Html = {
+  private def renderIndexHtml(city: City, request: RequestHeader)(implicit c: City, messages: play.api.i18n.Messages): play.twirl.api.Html = {
     // One clock for both the filtering and the page's own expiry countdown —
     // `_repertoireView` counts forward from `renderedAt`, so it has to be the
     // instant the schedules were actually pruned at.
@@ -551,6 +593,7 @@ class MovieController( cc: ControllerComponents,
 
   private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     implicit val c: City = city
+    implicit val messages: play.api.i18n.Messages = requestMessages(request)
     // Client-independent like the listing (nobody is rendered into it), but a
     // facet URL is one of combinatorially many and earns no edge entry.
     Ok(views.html.browse(
@@ -779,6 +822,7 @@ class MovieController( cc: ControllerComponents,
   }
 
   private def renderFilm(schedule: FilmSchedule, request: Request[AnyContent])(implicit c: City): Result = {
+    implicit val messages: play.api.i18n.Messages = requestMessages(request)
     // `request.uri` would carry the raw inbound encoding; use the canonical
     // FilmHref form instead so the og:url matches the link the page exposes
     // elsewhere. Scheme/host come from PageMeta so the X-Forwarded-* workaround
@@ -803,6 +847,10 @@ class MovieController( cc: ControllerComponents,
    *  of. Cached a day at the edge (the card only changes when ratings / poster
    *  do, and `OgCardService` memoises the bytes per those inputs). */
   def ogImage(city: String, title: String): Action[AnyContent] = Action {
+    // The share card is crawler/ops-facing (fetched by link-preview bots, not
+    // browsed in the filters UI), so — like `DebugController`/the sitemap —
+    // it stays on the deployment's fixed language rather than a per-request one.
+    implicit val messages: play.api.i18n.Messages = deploymentMessages
     withCity(city) { c =>
       movieControllerService.film(c, title) match {
         case Some(schedule) =>

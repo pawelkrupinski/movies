@@ -1,7 +1,5 @@
 package controllers
 
-import testsupport.TestMessages.given
-
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.Helpers._
@@ -29,9 +27,13 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   "the showtimes.cc apex" should "offer every deployed country, each on its own domain" in {
     val html = bodyOn("showtimes.cc")
     html should include ("""<ul class="country-list"""")
+    // The front door is pinned to English regardless of visitor/deployment
+    // language (it's brand chrome — see `LandingController.frontDoorMessages`),
+    // so a country's name here is its ENGLISH one, not `c.displayName` (which
+    // is Poland's/Germany's/Spain's own native name, used elsewhere).
     models.Country.switchable.foreach { c =>
       html should include (s"""href="${c.webUrl.get}/${controllers.LandingController.PickCityQuery}"""")
-      html should include (c.displayName)
+      html should include (testsupport.TestMessages.forLang("en")("country." + c.code))
     }
   }
 
@@ -41,7 +43,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   // two brands are one product.
   it should "include Poland, despite its separate domain and brand" in {
     val html = bodyOn("showtimes.cc")
-    html should include ("Polska")
+    html should include ("Poland")
     html should include ("""href="https://kinowo.net/?pick=city"""")
     html should include ("kinowo.net")
   }

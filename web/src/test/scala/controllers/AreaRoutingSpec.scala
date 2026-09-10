@@ -57,9 +57,9 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
       (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
       (SfFilm, Some(2024), filmIn(sfCinema, SfFilm, "tt102")),
     ),
+    // A US host renders English — asserted on below — for free from
+    // `servingCountry` now (`MovieController` derives its `Messages` from it).
     servingCountry = Country.UnitedStates,
-    // A US host renders English — assert on the copy it actually serves.
-    messages       = testsupport.TestMessages.forLang("en"),
   )._1
 
   private def deController(): MovieController = TestMovieController.build(
@@ -67,7 +67,6 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
       (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
     ),
     servingCountry = Country.Germany,
-    messages       = testsupport.TestMessages.forLang("de"),
   )._1
 
   private def ukController(): MovieController = TestMovieController.build(
@@ -75,7 +74,6 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
       (LaFilm, Some(2024), filmIn(laCinema, LaFilm, "tt101")),
     ),
     servingCountry = Country.UnitedKingdom,
-    messages       = testsupport.TestMessages.forLang("en"),
   )._1
 
   private def req(path: String) =
@@ -237,8 +235,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   // ── What must NOT change ────────────────────────────────────────────────────
 
   "London" should "keep serving its own listing, split into its five compass areas" in {
-    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom,
-                                       messages = testsupport.TestMessages.forLang("en"))._1
+    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom)._1
     val res = uk.index("london")(req("/london/"))
     status(res) shouldBe OK
     val body = contentAsString(res)
@@ -248,8 +245,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still arm the first-visit area picker, its only way to pick an area" in {
-    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom,
-                                       messages = testsupport.TestMessages.forLang("en"))._1
+    val uk = TestMovieController.build(Seq.empty, servingCountry = Country.UnitedKingdom)._1
     val body = contentAsString(uk.index("london")(req("/london/")))
     // The overlay opens for any city with areas; the flag that used to suppress
     // it existed only for the states that had a chooser screen instead.

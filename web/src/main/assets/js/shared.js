@@ -370,6 +370,21 @@
   }
   window.locateCityPickerAnywhere = locateCityPickerAnywhere;
 
+  // Language picker — a full navigation to `/lang/:code`, which sets Play's
+  // PLAY_LANG cookie and bounces back to `back` (`LanguageController`). Like
+  // `onCityChange`/`onCountryChange`, the whole page has to re-render in the
+  // new language anyway, so a view-swap would save nothing.
+  //
+  // `mountPrefix()` (not a bare `/lang/...`) for the same reason `onCityChange`
+  // needs it: `play.http.context` mounts a Showtimes country's whole site under
+  // a path segment (`/uk`, `/de`, …), and `/lang/:code` is behind that prefix
+  // like every other route.
+  function onLanguageChange(code) {
+    if (!code) return;
+    window.location.href = mountPrefix() + '/lang/' + code + '?back=' + encodeURIComponent(window.location.pathname + window.location.search);
+  }
+  window.onLanguageChange = onLanguageChange;
+
   // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
   // attached to each indexed badge (so we don't re-parse `dataset.format` on
   // every filter pass).

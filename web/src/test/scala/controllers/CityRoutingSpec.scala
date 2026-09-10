@@ -140,7 +140,6 @@ class CityRoutingSpec extends AnyFlatSpec with Matchers {
     val (us, _) = TestMovieController.build(
       Seq.empty,
       servingCountry = models.Country.UnitedStates,
-      messages       = testsupport.TestMessages.forLang("en"),
     )
     val res = us.index("texas")(FakeRequest(GET, "/texas/"))
     status(res)          shouldBe NOT_FOUND

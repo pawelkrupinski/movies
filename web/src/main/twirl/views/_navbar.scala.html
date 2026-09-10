@@ -181,7 +181,7 @@
         <div class="panel-section-label">@messages("nav.countrySwitch")</div>
         <select id="country-select" class="filter-select w-100" onchange="onCountryChange(this.value)" aria-label="@messages("nav.countrySwitch")" style="margin-bottom:.4rem">
           @for(c <- models.Country.switchable) {
-            <option value="@c.webUrl.get"@if(c == models.Country.fromEnv){ selected}>@c.displayName</option>
+            <option value="@c.webUrl.get"@if(c == models.Country.fromEnv){ selected}>@messages("country." + c.code)</option>
           }
         </select>
         <div class="panel-divider"></div>
@@ -206,6 +206,19 @@
         </div>
         <div class="panel-divider"></div>
       }
+
+      @* Language picker — independent of both city and country: picking one
+         navigates to `/lang/:code`, which sets Play's own PLAY_LANG cookie and
+         bounces back here (`onLanguageChange`, shared.js), so the whole page
+         re-renders in the new language. Always shown (unlike the country
+         switcher) — every deployment ships all four bundles. *@
+      <div class="panel-section-label">@messages("nav.language")</div>
+      <select id="language-select" class="filter-select w-100" onchange="onLanguageChange(this.value)" aria-label="@messages("nav.language")" style="margin-bottom:.4rem">
+        @for(code <- controllers.LanguageNames.Codes) {
+          <option value="@code"@if(code == messages.lang.code){ selected}>@controllers.LanguageNames.native(code)</option>
+        }
+      </select>
+      <div class="panel-divider"></div>
 
       <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">@messages("nav.clear")</button>
       <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem">@messages("nav.copyLink")</button>

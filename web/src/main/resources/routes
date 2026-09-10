@@ -5,6 +5,13 @@
 # geolocation). Hard cut: the old unprefixed URLs are gone.
 GET     /                           controllers.LandingController.index()
 
+# ── Language pick ────────────────────────────────────────────────────────────
+# The one write path for an explicit language pick (navbar `<select>`,
+# `onLanguageChange` in shared.js): sets Play's own PLAY_LANG cookie and
+# bounces back to `back`. A full navigation, not a fetch — see
+# `LanguageController` for why.
+GET     /lang/:code                 controllers.LanguageController.set(code: String, back: String ?= "/")
+
 # ── Mobile app association (Universal Links / App Links) ───────────────────────
 # Let kinowo.net URLs (incl. the copy-to-clipboard filter links) open the
 # native apps. AASA is served with no extension as application/json per Apple.

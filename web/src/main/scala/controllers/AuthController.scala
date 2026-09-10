@@ -59,7 +59,7 @@ class AuthController(
   // native apps' `kinowo://` deep link, and the cross-domain country switch.
   exchangeCodes:          AuthExchangeCodes,
   // The country THIS deployment serves. A web process serves exactly one (see
-  // `Wiring.deploymentMessages`), so it is fixed at boot rather than derived per
+  // `Wiring.deploymentLang`), so it is fixed at boot rather than derived per
   // request: it is what a starting flow stamps into its `state`, and what tells
   // a finishing one whether it is home or standing in for a sibling.
   country:                models.Country,

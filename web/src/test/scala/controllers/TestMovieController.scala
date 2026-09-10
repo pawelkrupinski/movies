@@ -20,22 +20,28 @@ object TestMovieController {
     // Which country's host this controller pretends to be. Defaults to Poland,
     // matching an unset KINOWO_COUNTRY; a spec exercising another country's
     // deployment passes it here rather than mutating the shared process env.
+    //
+    // This is now also what decides the UI language: `MovieController`
+    // resolves its `Messages` per request from `servingCountry.language` (a
+    // real `Accept-Language`/`PLAY_LANG` cookie can still override it on any
+    // individual `FakeRequest` — see `WebLangResolver`), so a spec asserting
+    // on, say, the UK deployment's English copy gets it for free just by
+    // passing `servingCountry = Country.UnitedKingdom` — no separate
+    // `messages` parameter to keep in sync any more.
     servingCountry: models.Country = models.Country.default,
-    // The UI language the views render in. Defaults to the deployment's Polish,
-    // matching `servingCountry`'s default; a spec exercising another country's
-    // host passes that country's `Lang` so the copy it asserts on is the copy
-    // that host actually serves.
-    messages: play.api.i18n.Messages = testsupport.TestMessages.deployment,
     // A read model the caller built itself — and therefore still holds the
     // backing store for, so a spec can push INCREMENTAL change-stream events
     // (one city's showtime moving) rather than only a whole-corpus `reload()`.
     // Defaults to projecting `records`, which is what most specs want.
     readModel: Option[WebReadModel] = None,
   ): (MovieController, WebReadModel) = {
-    given play.api.i18n.Messages = messages
     val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
     val ctrl  = new MovieController(
-      cc                     = Helpers.stubControllerComponents(),
+      // The REAL bundles, not Play's empty stub default — `MovieController`
+      // now resolves its own `Messages` off `cc.messagesApi` per request
+      // (`WebLangResolver`), so a spec asserting on actual rendered copy
+      // needs the checked-in `messages`/`messages.en`/… behind it.
+      cc                     = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi),
       movieControllerService = new MovieControllerService(readModel_),
       readModel              = readModel_,
       oauthProviders         = Set.empty,

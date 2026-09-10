@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{CatalogController, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LegalController, MovieController, SupportController, WellKnownController}
+import controllers.{CatalogController, ClientSupportController, EncodedResponseCache, HealthController, LandingController, LanguageController, LegalController, MovieController, SupportController, WellKnownController}
 import modules.Wiring
 
 /** ── The public site ───────────────────────────────────────────────────────
@@ -9,18 +9,22 @@ import modules.Wiring
  *  legal/support pages and the operational `/health` + `.well-known` answers. */
 trait ControllersWiring { self: Wiring =>
 
-  // The single `Messages` this deployment renders with — fixed at boot from the
-  // country's language (Poland → pl → default `messages`; other countries → en).
-  // A web deployment serves ONE country, so the locale never varies per request;
-  // controllers inject this into their Twirl views instead of deriving a Lang
-  // from `Accept-Language`.
-  implicit lazy val deploymentMessages: play.api.i18n.Messages =
-    messagesApi.preferred(Seq(play.api.i18n.Lang(models.Country.fromEnv.language)))
+  // The deployment's DEFAULT `Lang` — Poland → pl → default `messages`; other
+  // countries → their own bundle. `LandingController`/`MovieController`
+  // resolve a `Messages` per request now (`WebLangResolver`), layering a
+  // visitor's own pick/`Accept-Language` over this rather than rendering
+  // every visitor in it unconditionally.
+  lazy val deploymentLang: play.api.i18n.Lang = play.api.i18n.Lang(models.Country.fromEnv.language)
 
-  // View-rendering controllers take the deployment's fixed `Messages`
-  // (`deploymentMessages`, implicit above) so their Twirl views resolve
-  // `@messages("…")` in the country's language.
+  // The fixed deployment `Messages` — still what `DebugController` and
+  // `RetiredSiteController`-adjacent, ops/crawler-facing renders use (see
+  // `MovieController`'s own doc comment on `requestMessages` for the full
+  // list of pages deliberately left on this rather than the per-request one).
+  implicit lazy val deploymentMessages: play.api.i18n.Messages =
+    messagesApi.preferred(Seq(deploymentLang))
+
   lazy val landingController = new LandingController(controllerComponents, models.Country.fromEnv)
+  lazy val languageController = new LanguageController(controllerComponents)
   lazy val encodedResponseCache = new EncodedResponseCache
   // Fetches + composites the per-film Open Graph share card. Its own poster
   // fetch (not the scraper's httoFetch) so slow cinema origins get a generous
