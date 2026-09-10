@@ -77,9 +77,29 @@ class CityChoiceSearchTest {
     fun everyCatalogCountryFitsWithoutPushingTheCityListOffScreen() {
         compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = {}) }
 
-        listOf("Polska", "United Kingdom", "Deutschland", "United States").forEach {
+        // Country pills read in the viewer's UI language (Polish here, per this
+        // class's "pl" qualifiers) — not each country's own native name, so the
+        // UK/Germany/US pills read "Wielka Brytania"/"Niemcy"/"Stany Zjednoczone",
+        // not "United Kingdom"/"Deutschland"/"United States".
+        listOf("Polska", "Wielka Brytania", "Niemcy", "Stany Zjednoczone").forEach {
             compose.onNodeWithText(it).assertExists()
         }
+        compose.onNodeWithText("Białystok").assertIsDisplayed()
+    }
+
+    /**
+     * Country names in the picker follow the viewer's UI language switch
+     * (Poland reads "Polen" under German, not the fixed native "Polska"),
+     * while a city's own name never translates with the reader's language —
+     * Białystok stays Białystok even here.
+     */
+    @Test
+    @Config(sdk = [34], qualifiers = "de")
+    fun countryNamesFollowTheUiLanguageButCityNamesDoNot() {
+        compose.setContent { CityChoiceScreen(catalog = Catalog.fallback, onPick = {}) }
+
+        compose.onNodeWithText("Polen").assertExists()
+        compose.onNodeWithText("Polska").assertDoesNotExist()
         compose.onNodeWithText("Białystok").assertIsDisplayed()
     }
 

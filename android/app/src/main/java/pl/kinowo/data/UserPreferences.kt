@@ -91,8 +91,8 @@ class UserPreferences(private val context: Context) : SyncPrefs {
 
     /** ISO country code the user picked (see [pl.kinowo.model.Country]), or null
      *  until they choose one — then [pl.kinowo.model.Country.byCode] resolves the
-     *  default (Poland). Drives BOTH the API base URL and the forced UI language,
-     *  so switching it re-points the network layer and re-localizes the app. */
+     *  default (Poland). Drives the API base URL. The forced UI language is a
+     *  SEPARATE, independent pick — see [selectedLanguageTag]. */
     val selectedCountryCode: Flow<String?> =
         context.dataStore.data.map { it[KEY_COUNTRY] }
 
@@ -105,6 +105,23 @@ class UserPreferences(private val context: Context) : SyncPrefs {
      *  the API base URL and forced locale. Everywhere else observe the
      *  [selectedCountryCode] flow instead. */
     fun blockingCountryCode(): String? = runBlocking { selectedCountryCode.first() }
+
+    /** BCP-47 language tag the user explicitly picked in the Filtry sheet, or
+     *  null until they choose one — then [pl.kinowo.model.LanguageDefault]
+     *  resolves the default. Deliberately independent of [selectedCountryCode]:
+     *  switching country must never move this (and vice versa), since a country
+     *  switch only re-points the API base URL now — see [pl.kinowo.model.Country]. */
+    val selectedLanguageTag: Flow<String?> =
+        context.dataStore.data.map { it[KEY_LANGUAGE] }
+
+    suspend fun setLanguageTag(tag: String) = context.dataStore.edit { prefs ->
+        prefs[KEY_LANGUAGE] = tag
+    }
+
+    /** The persisted language tag read synchronously, or null if none. Used at
+     *  activity attach/wiring time, before any coroutine scope exists, to force
+     *  the locale. Everywhere else observe the [selectedLanguageTag] flow instead. */
+    fun blockingLanguageTag(): String? = runBlocking { selectedLanguageTag.first() }
 
     /** The `chosen→nearest` pair the "switch to a nearer city" prompt was last
      *  shown for, or null if never. Remembering only the single most-recent pair
@@ -182,6 +199,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_DISABLED = stringSetPreferencesKey("disabledCinemas")
         val KEY_CITY = stringPreferencesKey("selectedCity")
         val KEY_COUNTRY = stringPreferencesKey("selectedCountryCode")
+        val KEY_LANGUAGE = stringPreferencesKey("selectedLanguageTag")
         val KEY_CITY_SWITCH_PROMPT = stringPreferencesKey("citySwitchPromptKey")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")
         val KEY_HINT_DATE = stringPreferencesKey("swipeHintShownDate")

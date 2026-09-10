@@ -28,6 +28,7 @@ import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.Country
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
+import pl.kinowo.model.LanguageDefault
 import pl.kinowo.net.KinowoApi
 import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoApp
@@ -49,9 +50,10 @@ import java.util.concurrent.TimeUnit
 class MainActivity : ComponentActivity() {
 
     // The country selected at the moment this activity was created — used to
-    // pick the API base URL AND the forced locale (both applied before the first
-    // frame). A later switch persists a new code and calls recreate(), so the
-    // whole graph re-wires against the new deployment + language.
+    // pick the API base URL (applied before the first frame). A later switch
+    // persists a new code and calls recreate(), so the whole graph re-wires
+    // against the new deployment. The forced UI language is a separate,
+    // independent pick — see attachBaseContext and UserPreferences.selectedLanguageTag.
     private val country: Country by lazy { Country.byCode(UserPreferences(applicationContext).blockingCountryCode()) }
 
     private val viewModel: KinowoViewModel by viewModels {
@@ -84,11 +86,14 @@ class MainActivity : ComponentActivity() {
         KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, userStateClient, api, catalogRepository)
     }
 
-    // Force the selected country's language regardless of the device locale, so
-    // `values-en` is used for the UK country on a Polish phone (and vice versa).
+    // Force the user's selected UI language regardless of the device locale and
+    // regardless of the selected country — the two are independent picks now (see
+    // UserPreferences.selectedLanguageTag). Until the user explicitly picks a
+    // language, LanguageDefault resolves one from the device's own locale/region,
+    // so a fresh install still reads in a sensible language before any pick exists.
     override fun attachBaseContext(newBase: Context) {
-        val code = UserPreferences(newBase).blockingCountryCode()
-        super.attachBaseContext(LocaleWrapper.wrap(newBase, Country.byCode(code).languageTag))
+        val tag = UserPreferences(newBase).blockingLanguageTag() ?: LanguageDefault.resolve(newBase)
+        super.attachBaseContext(LocaleWrapper.wrap(newBase, tag))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -103,14 +108,14 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
-        // Re-create the activity when the selected country changes so attachBaseContext
-        // re-runs with the new locale. `recreate()` alone is NOT enough to re-point the
-        // data layer: like any configuration change it RETAINS the ViewModel (via
-        // `by viewModels()`), so the KinowoApi built in the factory keeps the previous
-        // country's baseUrl — the UI flips to the new language while repertoire requests
-        // still hit the old deployment (a UK city fetched from the PL backend returns an
-        // empty 200, rendering as "no showings"). Clear the ViewModelStore first so the
-        // factory re-runs and re-wires KinowoApi at the new baseUrl.
+        // Re-create the activity when the selected country changes so the API base
+        // URL is re-derived at wiring time. `recreate()` alone is NOT enough to
+        // re-point the data layer: like any configuration change it RETAINS the
+        // ViewModel (via `by viewModels()`), so the KinowoApi built in the factory
+        // keeps the previous country's baseUrl — repertoire requests would keep
+        // hitting the old deployment (a UK city fetched from the PL backend returns
+        // an empty 200, rendering as "no showings"). Clear the ViewModelStore first
+        // so the factory re-runs and re-wires KinowoApi at the new baseUrl.
         // `drop(1)` skips the current value (the initial emission).
         UserPreferences(applicationContext).selectedCountryCode
             .drop(1)
@@ -120,6 +125,18 @@ class MainActivity : ComponentActivity() {
                     recreate()
                 }
             }
+            .launchIn(lifecycleScope)
+        // Re-create the activity when the selected LANGUAGE changes so
+        // attachBaseContext re-runs and forces the new locale. Deliberately
+        // recreate() ONLY — unlike the country watcher above, this must NOT clear
+        // the ViewModelStore: a pure language change never touches KinowoApi's
+        // base URL (that's still keyed on country), so nothing in the retained
+        // ViewModel is stale. Clearing it here would just force a wasteful full
+        // data reload for a change that only needed new strings. This asymmetry
+        // between the two watchers is intentional — don't "fix" it into symmetry.
+        UserPreferences(applicationContext).selectedLanguageTag
+            .drop(1)
+            .onEach { recreate() }
             .launchIn(lifecycleScope)
         handleAuthDeepLink(intent)
         handleNavDeepLink(intent)

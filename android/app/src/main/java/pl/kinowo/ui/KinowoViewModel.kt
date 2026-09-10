@@ -49,6 +49,7 @@ import pl.kinowo.model.zoneFor
 import pl.kinowo.model.countryOf
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
+import pl.kinowo.model.LanguageDefault
 import pl.kinowo.ui.city.CityGateStart
 import pl.kinowo.model.selected
 import pl.kinowo.model.FilmDetails
@@ -137,6 +138,23 @@ class KinowoViewModel(
      *  copy). `byCode` maps a null or unknown code onto Poland, the same default
      *  the API base uses, so this can never be empty. */
     fun shareOrigin(): String = Country.byCode(selectedCountryCode.value).baseUrl
+
+    /** BCP-47 UI language tag, independent of [selectedCountryCode] (see
+     *  [pl.kinowo.data.UserPreferences.selectedLanguageTag]). Never null: a
+     *  missing pick resolves through [LanguageDefault] against the device's own
+     *  locale/region — the [java.util.Locale] overload, since this ViewModel
+     *  deliberately holds no Context reference (see [purgePostersIfNeeded] and
+     *  friends, which take one per-call instead). [MainActivity] applies the
+     *  same fallback (its Context-aware overload) at attach time. */
+    val selectedLanguage: StateFlow<String> =
+        prefs.selectedLanguageTag
+            .map { it ?: LanguageDefault.resolve(java.util.Locale.getDefault()) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, LanguageDefault.resolve(java.util.Locale.getDefault()))
+
+    /** Persist the chosen language. The activity observes [pl.kinowo.data.UserPreferences.selectedLanguageTag]
+     *  and recreates itself so the new locale takes effect — see MainActivity's
+     *  language watcher for why that recreate() does NOT also clear the ViewModel. */
+    fun setLanguage(tag: String) = viewModelScope.launch { prefs.setLanguageTag(tag) }
 
     /** What the first-launch gate should do — which country, and whether it may
      *  offer a located city (see [CityGateStart]).

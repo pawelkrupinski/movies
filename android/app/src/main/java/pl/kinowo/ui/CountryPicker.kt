@@ -27,6 +27,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.annotation.StringRes
 import pl.kinowo.R
 import pl.kinowo.model.Country
 import pl.kinowo.model.selected
@@ -35,6 +36,21 @@ import pl.kinowo.ui.theme.TextSecondary
 /** The gap between the header row (the "Country" label + locate-me icon) and
  *  the pill row below it. */
 private val CountryPickerGap = 6.dp
+
+/** The [R.string] resource holding [code]'s name in the CURRENT UI language —
+ *  the country picker's label, and the Filtry city status line's, follow the
+ *  viewer's chosen language (`countryNameRes("pl")` reads "Polen" under a
+ *  German UI), unlike [Country.displayName] which is fixed to the country's
+ *  own native name regardless of who's reading. Falls back to Poland's entry
+ *  for an unknown code, mirroring [Country.byCode]'s default-to-Poland. */
+@StringRes
+fun countryNameRes(code: String): Int = when (code) {
+    "uk" -> R.string.country_uk
+    "de" -> R.string.country_de
+    "us" -> R.string.country_us
+    "es" -> R.string.country_es
+    else -> R.string.country_pl
+}
 
 /**
  * The in-app country switch: one pill per country in [countries] (the live
@@ -105,14 +121,14 @@ fun CountryPicker(
                 val selected = country.code == current.code
                 if (selected) {
                     Button(onClick = { onSelect(country.code) }) {
-                        Text(country.displayName, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                        Text(stringResource(countryNameRes(country.code)), fontWeight = FontWeight.SemiBold, maxLines = 1)
                     }
                 } else {
                     OutlinedButton(
                         onClick = { onSelect(country.code) },
                         colors = ButtonDefaults.outlinedButtonColors(),
                     ) {
-                        Text(country.displayName, maxLines = 1)
+                        Text(stringResource(countryNameRes(country.code)), maxLines = 1)
                     }
                 }
             }

@@ -94,6 +94,7 @@ import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Film
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.NameCount
+import pl.kinowo.ui.countryNameRes
 import pl.kinowo.ui.common.labelText
 import pl.kinowo.ui.theme.TextSecondary
 
@@ -276,6 +277,11 @@ private fun FiltersList(
             // above the account section, mirroring iOS FiltersBar. Usable
             // before login (it's just a city switch).
             item(key = "sec_city") { CitySection(viewModel, onClose) }
+
+            // Język — independent of Miasto/Kraj now (see KinowoViewModel.selectedLanguage):
+            // picking a country no longer implies a language, so this gets its own row
+            // right below it, mirroring where iOS/web surface the same picker.
+            item(key = "sec_language") { LanguageSection(viewModel) }
 
             item { AccountSection(viewModel) }
 
@@ -530,15 +536,20 @@ private fun CitySection(viewModel: KinowoViewModel, onClose: () -> Unit) {
     // city in for a frame where the actually-selected one belongs. Nothing
     // else in this sheet can change the selection while it's open, so one
     // snapshot is enough — mirrors iOS FiltersBar's `currentCityLabel`.
-    val currentCityLabel = remember {
+    val (currentCityName, currentCountryCode) = remember {
         val catalog = viewModel.countryCatalog.value
         val countryCode = Country.normalizeCode(viewModel.selectedCountryCode.value) ?: Country.default.code
-        val country = catalog.countries.selected(countryCode)
         val cities = catalog.cities.sortedForPicker(countryCode)
         val currentCity = cities.firstOrNull { it.slug == viewModel.selectedCity.value }
             ?: catalog.cities.defaultCity(countryCode) ?: Cities.DEFAULT
-        "${currentCity.name}, ${country.displayName}"
+        currentCity.name to countryCode
     }
+    // The country half is a UI-language string (stringResource is a
+    // @Composable call, so it can't live inside the `remember` block above)
+    // read fresh every recomposition off the frozen code — deterministic, so
+    // freezing only the city/country CHOICE (not the rendered country text)
+    // changes nothing observable.
+    val currentCityLabel = "$currentCityName, ${stringResource(countryNameRes(currentCountryCode))}"
 
     FilterSectionLabel(stringResource(R.string.filter_city))
     Text(
@@ -551,6 +562,37 @@ private fun CitySection(viewModel: KinowoViewModel, onClose: () -> Unit) {
         onClick = { viewModel.pickAnotherCity(); onClose() },
         modifier = Modifier.fillMaxWidth(),
     ) { Text(stringResource(R.string.choose_other_city)) }
+}
+
+/** BCP-47 tag → native display name, in the fixed order offered by the picker. */
+private val LanguageOptions = listOf(
+    "pl" to "Polski",
+    "en" to "English",
+    "de" to "Deutsch",
+    "es" to "Español",
+)
+
+/**
+ * Język — the UI-language picker, independent of Miasto/Kraj (picking a
+ * country no longer forces a language — see [KinowoViewModel.selectedLanguage]).
+ * Reuses the file's one general-purpose dropdown widget ([Dropdown], the same
+ * one [FromHourRow] opens for its hour/minute pickers) rather than inventing a
+ * new selector. Persists through [KinowoViewModel.setLanguage]; MainActivity
+ * observes the pref and recreates the activity so the new locale applies from
+ * the next frame, without dropping the retained ViewModel.
+ */
+@Composable
+private fun LanguageSection(viewModel: KinowoViewModel) {
+    val selected by viewModel.selectedLanguage.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+
+    FilterSectionLabel(stringResource(R.string.filter_language))
+    Dropdown(
+        label = LanguageOptions.firstOrNull { it.first == selected }?.second ?: LanguageOptions.first().second,
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        items = LanguageOptions.map { (tag, name) -> name to tag },
+    ) { tag -> viewModel.setLanguage(tag); expanded = false }
 }
 
 /**

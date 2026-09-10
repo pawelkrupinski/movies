@@ -28,11 +28,11 @@ import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.Cities
-import pl.kinowo.model.Country
 import pl.kinowo.model.Film
 import pl.kinowo.model.FilmDetails
 import pl.kinowo.net.KinowoApi
 import pl.kinowo.net.PersistentCookieJar
+import pl.kinowo.R
 import pl.kinowo.ui.KinowoViewModel
 
 /**
@@ -213,7 +213,9 @@ class FiltersSheetOrderTest {
 
         // Status line: current city, current country — the country name that
         // used to live in its own "Kraj" dropdown is folded in here instead.
-        val poland = Country.default.displayName // "Polska"
+        // The country half reads from resources (this class's "pl" qualifiers
+        // resolve it to "Polska"), not the fixed Country.displayName field.
+        val poland = ApplicationProvider.getApplicationContext<android.content.Context>().getString(R.string.country_pl)
         val statusLine = "${Cities.DEFAULT.name}, $poland"
         compose.onNode(hasScrollAction()).performScrollToNode(hasText(statusLine))
         compose.onNodeWithText(statusLine).assertIsDisplayed()
@@ -231,6 +233,34 @@ class FiltersSheetOrderTest {
         compose.onNode(hasScrollAction()).performScrollToNode(hasText("Wybierz inne miasto"))
         compose.onNodeWithText("Wybierz inne miasto").performClick()
         assertTrue("Choosing another city should close the sheet", closed)
+    }
+
+    /**
+     * Język — the language picker — offers all four localized languages by
+     * native name and starts collapsed on the resolved default (Polish under
+     * this class's "pl" qualifiers, since no explicit pick has been made yet).
+     * Guards [pl.kinowo.ui.list.LanguageSection] rendering the new, independent
+     * language picker rather than reusing/duplicating the old country-coupled
+     * one.
+     */
+    @Test
+    fun languagePickerShowsAllFourNativeNames() {
+        compose.setContent {
+            FiltersSheetContent(viewModel(), films = emptyList())
+        }
+
+        compose.onNode(hasScrollAction()).performScrollToNode(hasText("Język"))
+        compose.onNodeWithText("Polski").assertIsDisplayed()
+        compose.onNodeWithText("Deutsch").assertDoesNotExist()
+
+        compose.onNodeWithText("Polski").performClick()
+
+        // "Polski" now appears twice (the still-collapsed-looking button label
+        // AND its own menu entry) — assert the other three instead, which don't
+        // duplicate.
+        compose.onNodeWithText("English").assertExists()
+        compose.onNodeWithText("Deutsch").assertExists()
+        compose.onNodeWithText("Español").assertExists()
     }
 
     /**

@@ -22,7 +22,14 @@ data class Country(
     /** Server country code, e.g. `pl`, `uk` — the single code space the catalog
      *  keys on (cities carry the same code). Also the persisted selection key. */
     val code: String,
-    /** Human-readable label for the country picker. */
+    /** The country's own native name, decoded verbatim from the catalog's
+     *  `name` field (`"Polska"`, `"Deutschland"`, ...). No longer what the UI
+     *  renders — the country picker and the Filtry city/country status line
+     *  read a per-viewer-language string via [pl.kinowo.ui.countryNameRes]
+     *  instead, since a country's label should follow the reader's UI
+     *  language, not stay fixed to the country's own name. Kept because it's
+     *  still the wire value [CountryDto.name] decodes to, and [CountryTest] /
+     *  [pl.kinowo.model.CatalogTest] pin that decode. */
     val displayName: String,
     /** Scheme + host of this country's web deployment; the [pl.kinowo.net.KinowoApi]
      *  base every request is built on. No trailing slash. */

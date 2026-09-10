@@ -3,6 +3,11 @@
 
     <!-- Country picker -->
     <string name="country_label">País</string>
+    <string name="country_pl">Polonia</string>
+    <string name="country_uk">Reino Unido</string>
+    <string name="country_de">Alemania</string>
+    <string name="country_us">Estados Unidos</string>
+    <string name="country_es">España</string>
 
     <!-- City gate -->
     <string name="choose_city_title">Elige una ciudad</string>
@@ -76,6 +81,7 @@
     <string name="from_time">A partir de</string>
     <string name="any">Cualquiera</string>
     <string name="filter_city">Ciudad</string>
+    <string name="filter_language">Idioma</string>
     <string name="filter_cinemas">Cines</string>
     <string name="hidden_films">Películas ocultas</string>
     <string name="show">Mostrar</string>
