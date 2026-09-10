@@ -4,7 +4,7 @@ import modules.WorkerWiring
 import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
 import services.cinemas.uk.OdeonAuthHarvester
-import tools.{Env, FallbackHttpFetch, HttpFetch, RealHttpFetch, ResidentialProxy, SessionWarmingHttpFetch, StickyShardHttpFetch}
+import tools.{Env, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, RealHttpFetch, ResidentialProxy, SessionWarmingHttpFetch, StickyShardHttpFetch}
 
 /** Cinema-site egress routes: the residential-proxy and Zyte chains the
  *  Cloudflare-blocked venues scrape through, each a seam the fixture wirings
@@ -51,12 +51,26 @@ trait EgressWiring { self: WorkerWiring =>
   // would split them onto different IPs and lose the cookie. Host-only funnels all
   // of a brand's traffic onto one IP+cookie jar; fine at Vue's ~88-venue/420-min
   // volume, well under Decodo's concurrent-auth cap.
+  //
+  // The proxy leg is circuit-broken (EgressWiring.breakerGuarded), unlike every
+  // other leg of this chain: it is the only one built from raw RealHttpFetch
+  // shards with none of HttpWiring's protective wrapping (no
+  // HostCircuitBreakerHttpFetch, no per-host pacing). Without it, a Decodo
+  // account-wide outage (every tunnel 503ing, 2026-09-10) makes EVERY venue call
+  // pay the full connect/request timeout on a dead tunnel before FallbackHttpFetch
+  // even tries the next leg — with only 4 worker threads, that alone starved
+  // throughput across every task type sharing the pool, not just the proxied
+  // scrapers, and surfaced as `Worker task queue head-of-line age high` (UK
+  // climbed past 2600s). The breaker opens per destination host after a few
+  // consecutive tunnel failures and fast-fails (~0ms) for the cooldown, so the
+  // chain falls through to `fallback` almost immediately instead of queuing
+  // behind a doomed proxy attempt on every single call.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None,
                            keyOf: String => String = StickyShardHttpFetch.hostAndPath): HttpFetch =
     proxyShards.fold(fallback) { shards =>
       val legs: IndexedSeq[HttpFetch] =
         warmUrl.fold[IndexedSeq[HttpFetch]](shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
-      val proxyLeg = new StickyShardHttpFetch(legs, keyOf)
+      val proxyLeg = EgressWiring.breakerGuarded(new StickyShardHttpFetch(legs, keyOf))
       new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = recordProxyOutcome)
     }
 
@@ -131,4 +145,13 @@ trait EgressWiring { self: WorkerWiring =>
 object EgressWiring {
   /** The /uptime row the residential-proxy leg is metered under. */
   private val ResidentialProxyService = "Residential proxy"
+
+  /** Wrap the sticky-shard proxy leg in a per-host circuit breaker, so a host
+   *  whose Decodo tunnel starts failing (a pool-wide 503 spell, an account-level
+   *  outage) stops paying the full connect/request budget on every call once it
+   *  has opened. Extracted to a pure function — rather than inlined in
+   *  `proxyPrimary` — so this composition is unit-testable without the rest of
+   *  `WorkerWiring`. */
+  private[wiring] def breakerGuarded(proxyLeg: HttpFetch): HttpFetch =
+    new HostCircuitBreakerHttpFetch(proxyLeg)
 }
