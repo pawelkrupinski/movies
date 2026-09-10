@@ -63,4 +63,33 @@ object SequelMarker {
     }
     ordinalRightAfterBase || partThenOrdinal
   }
+
+  /** Symmetric check: do `a` and `b` name two DIFFERENT instalments of the same
+   *  series — either one's tokens contain the other's plus a trailing ordinal
+   *  ([[namesAnotherEntry]], either direction), or the two run the same length
+   *  and END in a different ordinal token ("Part 1" vs "Part 2", "Rocky II" vs
+   *  "Rocky III"). The equal-length shape is one character apart once sanitized
+   *  ("...mockingjaypart1" / "...mockingjaypart2") — well inside
+   *  `TitleMatch.close`'s edit-distance bound, which exists for spelling drift
+   *  ("guru"→"gourou"), not for telling two sequels apart.
+   *
+   *  Deliberately does NOT also require every token before the last to match: a
+   *  caller only reaches here once `TitleMatch.close` has already judged the two
+   *  titles close overall, so a stray typo earlier in the title ("Mockinjay" for
+   *  "Mockingjay") must not defeat the one signal that actually separates the
+   *  films — a typo AND the digit both landing inside the same ≤2-edit budget is
+   *  common precisely because these titles are long. The trailing ordinal is
+   *  what a series numbers itself by; everything else is spelling.
+   *
+   *  Guards `TmdbCandidateSearch.directorWalk`'s fuzzy title match, which would
+   *  otherwise let a same-director sequel pair tie and fall to the lowest-id
+   *  tie-break — pinning "Mockingjay - Part 2" to "Part 1"'s (older, lower-id)
+   *  film whenever no candidate title matched either spelling exactly. */
+  def differentInstalments(a: Seq[String], b: Seq[String]): Boolean = {
+    def ordinalish(t: String): Boolean = isOrdinal(t) || WordOrdinals.contains(t)
+    if (a.isEmpty || b.isEmpty) false
+    else if (a.length == b.length) a.last != b.last && (ordinalish(a.last) || ordinalish(b.last))
+    else if (a.length < b.length) namesAnotherEntry(a, b)
+    else namesAnotherEntry(b, a)
+  }
 }

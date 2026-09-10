@@ -409,10 +409,12 @@ class TmdbCandidateSearch(
         // be FOUND does not widen what counts as a match.
         val directed = tmdb.personDirectorCredits(personId)
         val credits  = if (directed.nonEmpty) directed else tmdb.personWriterCredits(personId)
-        def sanitizedSet(titles: Seq[String]): Set[String] =
-          titles.iterator.map(normalizer.sanitize).filter(_.nonEmpty).toSet
-        val wanted       = sanitizedSet(candidates)
-        val wantedCinema = sanitizedSet(cinemaCandidates)
+        def sanitizedPairs(titles: Seq[String]): Seq[(String, String)] =
+          titles.iterator.map(t => t -> normalizer.sanitize(t)).filter(_._2.nonEmpty).toSeq
+        val wantedPairs       = sanitizedPairs(candidates)
+        val wantedCinemaPairs = sanitizedPairs(cinemaCandidates)
+        val wanted            = wantedPairs.map(_._2).toSet
+        val wantedCinema      = wantedCinemaPairs.map(_._2).toSet
         def titleOf(f: TmdbClient.SearchResult): Set[String] =
           (Seq(f.title) ++ f.originalTitle.toSeq).map(normalizer.sanitize).filter(_.nonEmpty).toSet
         // Fuzzy title match, scoped to THIS director's filmography (a small, trusted
@@ -422,9 +424,23 @@ class TmdbCandidateSearch(
         // (cinema-disagreed, merge-order-dependent) year — "Dalloway" 2025 vs "Gourou"
         // 2026, the SAME-director cross-film flip. A tight edit-distance match
         // (`TitleMatch.close`: ≤2 and ≤1/3 of the longer title) ties "guru"→"gourou"
-        // but never "guru"→"dalloway".
-        def titleClose(f: TmdbClient.SearchResult, want: Set[String] = wanted): Boolean =
-          titleOf(f).exists(t => want.exists(TitleMatch.close(_, t)))
+        // but never "guru"→"dalloway" — and, without the `SequelMarker` guard below,
+        // also tied "...mockingjaypart1" to "...mockingjaypart2" (one character
+        // apart): a UK cinema's "Mockingjay - Prt 2" typo pulled BOTH films into
+        // `eligible`, no tier matched either spelling exactly, and tier 4's
+        // lowest-id tie-break handed the row the OLDER film every time
+        // (`DirectorWalkResolvesSpec`). Operates on the RAW (pre-sanitize) title
+        // pairs because the sequel check needs word boundaries sanitize discards.
+        def titleClose(f: TmdbClient.SearchResult, want: Seq[(String, String)] = wantedPairs): Boolean = {
+          val fPairs = (Seq(f.title) ++ f.originalTitle.toSeq)
+            .map(t => t -> normalizer.sanitize(t)).filter(_._2.nonEmpty)
+          fPairs.exists { case (fRaw, fSan) =>
+            want.exists { case (wRaw, wSan) =>
+              TitleMatch.close(wSan, fSan) &&
+                !SequelMarker.differentInstalments(TitleContainment.tokens(wRaw), TitleContainment.tokens(fRaw))
+            }
+          }
+        }
         // Title match first (±1-year-tolerant); fall back to an exact-year match,
         // but ONLY when that year is unambiguous in the filmography. A director
         // with two same-year credits (Andrew Stanton: "In the Blink of an Eye"
@@ -443,13 +459,10 @@ class TmdbCandidateSearch(
         // An EXACT title outranks a merely close one. `titleClose` is fuzzy on
         // purpose, and a SEQUEL sits one character from the film it follows
         // ("Diabeł ubiera się u Prady 2" vs "…u Prady", "Piep*zyć Mickiewicza 3"
-        // vs "…Mickiewicza"), so both survive the filter and the lowest-id
-        // tie-break — written to collapse a TMDB duplicate of ONE film — hands the
-        // row the OLDER one. A year normally hides it, but the year arrives with
-        // whichever cinema publishes it, so rows scraped before that resolved
-        // year-less onto the wrong film and the corpus settled differently per
-        // arrival order (`StagingOrderDeterminismSpec`). Lowest-id still breaks
-        // ties among equally exact credits, which is the case it was written for.
+        // vs "…Mickiewicza", "…Mockingjay Part 1" vs "…Part 2") — `titleClose`'s
+        // own `SequelMarker.differentInstalments` guard now refuses those before
+        // they can tie, so only a genuine TMDB duplicate of ONE film reaches the
+        // lowest-id tie-break below (which is what it exists to collapse).
         val eligible = if (wanted.isEmpty) Seq.empty else credits.filter { f =>
           titleClose(f) && year.forall(y => f.releaseYear.forall(fy => math.abs(fy - y) <= 1))
         }
@@ -473,7 +486,7 @@ class TmdbCandidateSearch(
           tier.sortBy(f => (-venuesNaming(f), f.id)).headOption
         val byTitle = Seq(
           eligible.filter(f => titleOf(f).exists(wantedCinema.contains)),
-          eligible.filter(f => titleClose(f, wantedCinema)),
+          eligible.filter(f => titleClose(f, wantedCinemaPairs)),
           eligible.filter(f => titleOf(f).exists(wanted.contains)),
           eligible
         ).find(_.nonEmpty).flatMap(bestOf)

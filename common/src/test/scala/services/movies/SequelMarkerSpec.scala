@@ -34,4 +34,35 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     anotherEntry("Top Gun",                  "Top Gun - Re-Release")                     shouldBe false
     anotherEntry("Cars 20th Anniversary",    "Toddler Club Cars 20th Anniversary")       shouldBe false
   }
+
+  private def different(a: String, b: String) =
+    SequelMarker.differentInstalments(TitleContainment.tokens(a), TitleContainment.tokens(b))
+
+  it should "tell same-length sibling instalments apart, whichever side is asked first" in {
+    // The UK convergence flip (2026-09-10): "Mockingjay - Part 1" and "Part 2" are one
+    // character apart once sanitized, well inside `TitleMatch.close`'s edit-distance
+    // bound — this is the guard that keeps them from tying under it.
+    different("The Hunger Games: Mockingjay - Part 1", "The Hunger Games: Mockingjay - Part 2") shouldBe true
+    different("The Hunger Games: Mockingjay - Part 2", "The Hunger Games: Mockingjay - Part 1") shouldBe true
+    different("Rocky II", "Rocky III")                                                          shouldBe true
+    different("Kingsman 2", "Kingsman 3")                                                        shouldBe true
+  }
+
+  it should "still let genuine spelling drift of the SAME film through" in {
+    different("Guru", "Gourou")                                             shouldBe false
+    different("The Hunger Games: Mockingjay - Part 2", "The Hunger Games: Mockingjay - Part 2") shouldBe false
+  }
+
+  it should "fall back to the containment check when the two run different lengths" in {
+    different("Toy Story", "Toy Story 5")                     shouldBe true
+    different("Toy Story 5", "Toddler Club: Toy Story 5")     shouldBe false
+  }
+
+  it should "still catch the divergent ordinal despite a typo earlier in the title" in {
+    // A stray typo elsewhere ("Mockinjay") does not consume the ≤2-edit budget
+    // `titleClose` already spent judging the titles close — the trailing
+    // ordinal alone has to carry the signal, so this must NOT require every
+    // other token to match exactly.
+    different("The Hunger Games: Mockinjay - Part 1", "The Hunger Games: Mockingjay - Part 2") shouldBe true
+  }
 }

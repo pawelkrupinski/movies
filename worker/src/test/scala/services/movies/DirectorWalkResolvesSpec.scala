@@ -419,6 +419,47 @@ class DirectorWalkResolvesSpec extends AnyFlatSpec with Matchers {
     resolved.flatMap(_.tmdbId) shouldBe Some(1314481)
   }
 
+  /** The exact-title tiers above only save the row when SOME candidate spells a
+   *  credit exactly. When it doesn't — a typo, an abbreviation — `eligible` falls
+   *  through to tier 4's raw pool, and without the sequel guard `titleClose`
+   *  itself is the leak: "...mockingjaypart1" and "...mockingjaypart2" are one
+   *  character apart, well inside `TitleMatch.close`'s bound, so BOTH credits
+   *  entered `eligible` and the lowest-id tie-break took the OLDER film even
+   *  though the cinema published "Part 2". The UK convergence suite's
+   *  order-dependent divergence (2026-09-10): "The Hunger Games: Mockingjay -
+   *  Part 2" settled with year 2014 on one processing order and 2015 on
+   *  another, and Part 2's screenings folded onto Part 1's row.
+   */
+  it should "not fold a same-director sequel onto its predecessor when no title matches exactly" in {
+    val repository = new InMemoryMovieRepository()
+    val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"  -> """{"results":[]}""",
+      "/search/person" -> """{"results":[{"id":17838,"name":"Francis Lawrence","known_for_department":"Directing"}]}""",
+      // Part 1 carries the LOWER id — lowest-id would wrongly take it.
+      "/person/17838/movie_credits" -> """{"crew":[
+        |{"id":131634,"title":"The Hunger Games: Mockingjay - Part 1","original_title":"The Hunger Games: Mockingjay - Part 1",
+        | "release_date":"2014-11-20","department":"Directing","job":"Director","popularity":40.0},
+        |{"id":131635,"title":"The Hunger Games: Mockingjay - Part 2","original_title":"The Hunger Games: Mockingjay - Part 2",
+        | "release_date":"2015-11-19","department":"Directing","job":"Director","popularity":50.0}
+        |]}""".stripMargin,
+      "/movie/131634/external_ids" -> """{"id":131634,"imdb_id":"tt1951265"}""",
+      "/movie/131634?"             -> """{"id":131634,"title":"The Hunger Games: Mockingjay - Part 1","original_title":"The Hunger Games: Mockingjay - Part 1","release_date":"2014-11-20","runtime":123}""",
+      "/movie/131635/external_ids" -> """{"id":131635,"imdb_id":"tt1951266"}""",
+      "/movie/131635?"             -> """{"id":131635,"title":"The Hunger Games: Mockingjay - Part 2","original_title":"The Hunger Games: Mockingjay - Part 2","release_date":"2015-11-19","runtime":137}"""
+    )), apiKey = Some("stub"))
+    val service = new MovieService(cache, new InProcessEventBus(), tmdb)
+
+    // A typo'd cinema spelling ("Prt" for "Part") matches neither credit's title
+    // exactly, so only `titleClose`'s fuzzy match separates them.
+    val existing = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("The Hunger Games: Mockingjay - Prt 2"), director = Seq("Francis Lawrence"),
+                           releaseYear = Some(2015))))
+    val resolved = service.resolveStagingRecord("The Hunger Games: Mockingjay - Prt 2", Some(2015), existing)
+
+    resolved.flatMap(_.tmdbId) shouldBe Some(131635)
+  }
+
   // ── 3g. The name a cinema prints may be the WRITER ───────────────────────
 
   /** Cinemas do not reliably print the director. "Drzewo magii" is directed by Ben
