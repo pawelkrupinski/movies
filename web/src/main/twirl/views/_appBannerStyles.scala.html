@@ -11,7 +11,14 @@
    longer than Polish) and can wrap on a narrow phone. *@
 <style>
   #app-banner {
-    position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+    position: fixed; top: 0; left: 0; right: 0;
+    /* Below every full-viewport overlay (`.hidden-modal-backdrop` /
+       `.login-modal-backdrop` at 200, `.anon-nag-toast` at 150) — all of
+       them cover inset:0, which overlaps this banner's own top strip, and a
+       modal open behind a still-visible banner must win the click, not lose
+       it to the promo bar sitting on top of it. Still above the navbar (10)
+       and its tooltips/hints (20-30). */
+    z-index: 100;
     display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
     min-height: 64px; padding: .5rem .6rem;
     background: #1a1a2e; border-bottom: 1px solid #3a3a6e;
