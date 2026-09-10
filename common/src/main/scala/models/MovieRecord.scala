@@ -353,9 +353,19 @@ case class MovieRecord(
    *  Cinema City is the one wrinkle: every venue shares ONE chain-wide detail
    *  slot ([[CinemaCityChain]], see `Cinema.chainDetailVenues`) that belongs to
    *  no city, so it's admitted for `city` only when a Cinema City venue there is
-   *  actually screening the film — see [[synopsisAppliesToCity]]. */
+   *  actually screening the film — see [[synopsisAppliesToCity]].
+   *
+   *  That SAME chain slot is also the one whose language gets checked (see
+   *  [[bestSynopsis]]): confirmed prod bug, `cinema-city.pl`'s own detail page
+   *  served an English blurb on its Polish-domain pages for "Marsupilami",
+   *  which — being longer than TMDB's correct Polish one — won every city
+   *  Cinema City serves. The check is scoped to that one impersonal,
+   *  API-sourced slot, never to an individual cinema's own editorial text —
+   *  a boutique cinema (e.g. Amondo Grindhouse) legitimately writes an
+   *  English blurb for an English-subtitled special screening, and that
+   *  curated choice must never be second-guessed by a heuristic. */
   def synopsisForCity(city: City): Option[String] =
-    bestSynopsis(synopsisCandidatesFor(synopsisAppliesToCity(city)))
+    bestSynopsis(synopsisCandidatesFor(synopsisAppliesToCity(city)), expectedLanguage = Some(city.country.language.getLanguage))
 
   /** Best synopsis from the city-independent metadata sources ONLY (TMDB / IMDb
    *  / Filmweb — no cinema). The read model's per-film fallback ([[ResolvedMovie]]
@@ -419,12 +429,30 @@ case class MovieRecord(
    *  stripped for the comparison so a blurb can't win just by carrying more
    *  `<b>`/`<i>` tags. The winner is run through `SynopsisMarkdown.sanitize` so
    *  every consumer (web HTML, mobile `/api/details`, OG card, og:description)
-   *  sees well-formed markdown regardless of which source produced it. */
-  private def bestSynopsis(candidates: Seq[String]): Option[String] =
+   *  sees well-formed markdown regardless of which source produced it.
+   *
+   *  `expectedLanguage` (an ISO 639-1 tag, from [[synopsisForCity]]'s city) is
+   *  the FIRST sort key when given, and ONLY for a candidate from the Cinema
+   *  City chain-detail slot ([[CinemaCityChain]]) — see [[synopsisForCity]]
+   *  for why the check is scoped that narrowly. Such a candidate that
+   *  `tools.TextLanguage.detect`s as a different language loses to any
+   *  candidate that doesn't, before the paragraph/length comparison ever
+   *  runs. A candidate too short/ambiguous to classify (`detect` → `None`) is
+   *  never penalized — the check only fires on a confident wrong-language
+   *  read, never a false suspicion. Callers with no city in scope
+   *  ([[synopsis]], [[synopsisNonCinema]], [[synopsisCinema]]) pass `None`
+   *  and get the untouched paragraph-then-longest order. */
+  private def bestSynopsis(candidates: Seq[(Source, String)], expectedLanguage: Option[String] = None): Option[String] =
     candidates
-      .flatMap(processedSynopsisCandidate)
-      .sortBy { case (_, plainText) => (if (plainText.contains('\n')) 0 else 1, -plainText.length) }
-      .headOption.map { case (candidate, _) => tools.SynopsisMarkdown.sanitize(candidate) }
+      .flatMap { case (source, raw) => processedSynopsisCandidate(raw).map(source -> _) }
+      .sortBy { case (source, (_, plainText)) =>
+        val wrongLanguage = expectedLanguage.exists { expected =>
+          Source.cinemaOf(source).contains(CinemaCityChain) &&
+            tools.TextLanguage.detect(plainText).exists(_ != expected)
+        }
+        (if (wrongLanguage) 1 else 0, if (plainText.contains('\n')) 0 else 1, -plainText.length)
+      }
+      .headOption.map { case (_, (candidate, _)) => tools.SynopsisMarkdown.sanitize(candidate) }
 
   // The per-candidate processing (collapseRepeats → stripUrls → strip) is a pure,
   // deterministic function of the raw candidate string — but `bestSynopsis` runs it once
@@ -460,11 +488,11 @@ case class MovieRecord(
    *  `sortBy` in [[bestSynopsis]] keeps the higher-priority source —
    *  deterministic across machines (raw order drifted the whole-corpus snapshot
    *  between a dev box and CI). */
-  private def synopsisCandidatesFor(keep: Source => Boolean): Seq[String] =
+  private def synopsisCandidatesFor(keep: Source => Boolean): Seq[(Source, String)] =
     (data.keySet ++ retainedSynopses.keySet).toSeq
       .filter(keep)
       .sortBy(s => Source.priorityOf(s))
-      .flatMap(s => data.get(s).flatMap(_.synopsis).iterator ++ retainedSynopses.get(s).iterator)
+      .flatMap(s => (data.get(s).flatMap(_.synopsis).iterator ++ retainedSynopses.get(s).iterator).map(s -> _))
 
   /** Longest non-empty cast list across all sources (ties broken by source
    *  priority — see `synopsis`), spelled the way TMDB spells the names it

@@ -273,6 +273,73 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     record.synopsisForCity(Wroclaw) shouldBe Some("Krótki TMDB.")
   }
 
+  // ── Wrong-language cinema blurb must not win on length alone ──────────────
+  // Confirmed prod bug: Cinema City's own `cinema-city.pl` detail page served
+  // an English synopsis for "Marsupilami" on its Polish-domain pages — an
+  // upstream CMS bug, not a locale mistake in our scraper. The English blurb
+  // was longer than TMDB's correct Polish one and won `synopsisForCity`
+  // outright for every city Cinema City serves, including Poznań.
+
+  it should "prefer a shorter correctly-localized TMDB blurb over a longer wrong-language Cinema City one" in {
+    val english = "To save his job, David agrees to a wild plan involving a mischievous yellow creature " +
+      "and embarks on a long journey through the jungle with his family, facing danger after danger " +
+      "before they finally reach their destination."
+    val polish = "Aby uratować pracę, David zgadza się na szalony plan z udziałem żółtego stworzenia."
+    english.length should be > polish.length
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaCityChain       -> SourceData(synopsis = Some(english)),
+        CinemaCityPoznanPlaza -> SourceData(), // the Poznań venue screening this film
+        Tmdb                  -> SourceData(synopsis = Some(polish), language = Some("pl-PL"))
+      )
+    )
+    record.synopsisForCity(Poznan) shouldBe Some(polish)
+  }
+
+  it should "never second-guess a non-chain cinema's own English blurb (e.g. an English-subtitled special screening)" in {
+    // Confirmed real shape: Amondo Grindhouse posts English event write-ups for
+    // English-subtitled screenings — a deliberate editorial choice, unlike Cinema
+    // City's impersonal, API-sourced chain slot. The language check must be scoped
+    // to CinemaCityChain only, or a heuristic would override this curated text.
+    val english = "SCREENING WITH ENGLISH SUBS. A grisly cult classic slasher film that has stood " +
+      "the test of time, with a truly shocking and unforgettable climax after a terrible accident."
+    val polish  = "Krótki opis z TMDB."
+    english.length should be > polish.length
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Helios -> SourceData(synopsis = Some(english)),
+        Tmdb   -> SourceData(synopsis = Some(polish), language = Some("pl-PL"))
+      )
+    )
+    record.synopsisForCity(Poznan) shouldBe Some(english)
+  }
+
+  it should "still admit the Cinema City blurb when it's short/ambiguous enough not to read as a confident language guess" in {
+    // Below TextLanguage's MinHits threshold either way — no confident mismatch,
+    // so length still decides, exactly as before this check existed.
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CinemaCityChain       -> SourceData(synopsis = Some("Opis z sieci Cinema City.")),
+        CinemaCityPoznanPlaza -> SourceData(),
+        Tmdb                  -> SourceData(synopsis = Some("Krótki TMDB."))
+      )
+    )
+    record.synopsisForCity(Poznan) shouldBe Some("Opis z sieci Cinema City.")
+  }
+
+  it should "not apply a language check to the global synopsis (no city in scope)" in {
+    val english = "The quick fox and the lazy dog were the very best of friends after the long war."
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        Helios -> SourceData(synopsis = Some(english)),
+        Tmdb   -> SourceData(synopsis = Some("Krótki opis z TMDB."))
+      )
+    )
+    // `synopsis` has no city, so it keeps the untouched paragraph-then-longest
+    // order — the (longer) English cinema blurb still wins.
+    record.synopsis shouldBe Some(english)
+  }
+
   /** THE CHAIN BRANCH MUST NOT REBUILD THE SLOT MAP, once per city, on a record
    *  that screens in a hundred of them.
    *
