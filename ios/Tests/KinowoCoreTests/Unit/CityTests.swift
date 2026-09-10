@@ -53,6 +53,19 @@ final class CityTests: XCTestCase {
         XCTAssertNil(City.all.nearestWithin100km(lat: 52.4064, lon: 16.9252, inCountry: "uk"))
     }
 
+    // ── nearestWithin100km, UNSCOPED (the manual picker's own resolver) ──
+
+    func testUnscopedNearestCrossesCountryBorders() {
+        // The same fixes `testNearestIsScopedToTheSelectedCountry` proves the
+        // scoped overload rejects — the unscoped one must find them instead.
+        XCTAssertEqual(City.all.nearestWithin100km(lat: 51.5074, lon: -0.1278)?.slug, "london")
+        XCTAssertEqual(City.all.nearestWithin100km(lat: 52.4064, lon: 16.9252)?.slug, "poznan")
+    }
+
+    func testUnscopedNearestStillRespectsThe100kmCutoff() {
+        XCTAssertNil(City.all.nearestWithin100km(lat: 0, lon: 0))
+    }
+
     func testUkRosterIsTheFullSeventyNineRegions() {
         XCTAssertEqual(City.all.inCountry("uk").count, 79)
         XCTAssertEqual(City.all.inCountry("uk").first?.slug, "london")   // hand order

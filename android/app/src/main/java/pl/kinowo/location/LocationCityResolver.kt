@@ -30,6 +30,18 @@ class LocationCityResolver(private val context: Context) {
     }
 
     /**
+     * Like [resolveNearestCity], but unscoped — matches the fix against every
+     * country's cities rather than one. Backs the manual picker's "use my
+     * location" button, which should find the right city even when the
+     * country tab currently open isn't the one the device is actually in.
+     */
+    @SuppressLint("MissingPermission") // the gate requests ACCESS_COARSE_LOCATION before calling
+    suspend fun resolveNearestCityAnyCountry(cities: List<City>): City? {
+        val fix = locationFix() ?: return null
+        return cities.nearestWithin100km(fix.first, fix.second)
+    }
+
+    /**
      * A coarse `(lat, lon)` fix, but only when `ACCESS_COARSE_LOCATION` is
      * *already* granted — never triggers a permission request. Used by the
      * "you're nearer another city" prompt, which must stay silent (no system

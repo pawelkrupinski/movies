@@ -63,9 +63,11 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
     private let fixTimeout: TimeInterval
     /// Country whose cities the gate resolves a fix against — set by `resolve`
     /// so a fix is matched only to cities the SELECTED country serves (a Polish
-    /// fix never resolves to a UK region, or vice versa). Empty until then,
-    /// which matches no city — `resolve` is the only caller that reads it.
-    private var countryCode = ""
+    /// fix never resolves to a UK region, or vice versa). `nil` means unscoped
+    /// — set by `resolveAnyCountry`, the manual "use my location" button's own
+    /// search, which must find the right city even when the country tab open
+    /// at the moment isn't the one the device is actually in.
+    private var countryCode: String?
     /// The live catalog cities to match a fix against — passed by `resolve` so
     /// the resolver reflects a server-fetched catalog, not a static list.
     private var cities: [City] = []
@@ -109,6 +111,20 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         return await withCheckedContinuation { (cont: CheckedContinuation<Outcome, Never>) in
             continuation = cont
             self.log.notice("gate: resolving in \(countryCode, privacy: .public) against \(cities.count, privacy: .public) cities, authorization=\(self.requester.authorizationStatus.rawValue, privacy: .public)")
+            start(for: requester.authorizationStatus)
+        }
+    }
+
+    /// Like `resolve(in:cities:)`, but unscoped — matches the fix against
+    /// every country's cities rather than one. Backs the manual picker's "use
+    /// my location" button, which should find the right city even when the
+    /// country tab currently open isn't the one the device is actually in.
+    func resolveAnyCountry(cities: [City]) async -> Outcome {
+        self.countryCode = nil
+        self.cities = cities
+        return await withCheckedContinuation { (cont: CheckedContinuation<Outcome, Never>) in
+            continuation = cont
+            self.log.notice("gate: resolving across every country against \(cities.count, privacy: .public) cities, authorization=\(self.requester.authorizationStatus.rawValue, privacy: .public)")
             start(for: requester.authorizationStatus)
         }
     }
@@ -202,11 +218,15 @@ final class LocationCityResolver: NSObject, ObservableObject, CLLocationManagerD
         guard isAwaitingOutcome else { return }
         if coordinateContinuation != nil {
             finishCoordinate(Coordinate(lat: lat, lon: lon))
-        } else if let city = cities.nearestWithin100km(lat: lat, lon: lon, inCountry: countryCode) {
+            return
+        }
+        let city = countryCode.map { cities.nearestWithin100km(lat: lat, lon: lon, inCountry: $0) }
+            ?? cities.nearestWithin100km(lat: lat, lon: lon)
+        if let city {
             log.notice("gate: fix resolved to \(city.slug, privacy: .public)")
             finish(.city(city))
         } else {
-            log.notice("gate: fix landed over 100 km from every \(self.countryCode, privacy: .public) city — falling back to the manual list")
+            log.notice("gate: fix landed over 100 km from every \(self.countryCode ?? "known", privacy: .public) city — falling back to the manual list")
             finish(.unavailable)
         }
     }

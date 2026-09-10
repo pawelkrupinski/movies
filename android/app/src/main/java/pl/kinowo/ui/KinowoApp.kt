@@ -115,9 +115,10 @@ private fun CityGate(viewModel: KinowoViewModel) {
         start = viewModel.gateStart.collectAsState().value,
         catalog = viewModel.countryCatalog.collectAsState().value,
         onPick = { city, nearest -> viewModel.chooseCityAtGate(city.slug, nearest?.slug) },
-        onConfirm = { viewModel.setCity(it.slug) },
+        onConfirm = { viewModel.adoptDetectedCity(it) },
         onCountry = { viewModel.setCountry(it) },
         resolveNearest = resolver::resolveNearestCity,
+        resolveNearestAnyCountry = resolver::resolveNearestCityAnyCountry,
     )
 }
 
@@ -125,8 +126,12 @@ private fun CityGate(viewModel: KinowoViewModel) {
  * The gate's own state machine, with the ViewModel and CoreLocation lifted out
  * so a test can drive it: [start] says which country to scope to and whether a
  * located city may be offered at all (null while the stored choices are still
- * being read), and [resolveNearest] maps a country + the catalog's cities to
- * the nearest one within 100 km, or null.
+ * being read); [resolveNearest] maps a country + the catalog's cities to the
+ * nearest one within 100 km (the first-launch attempt, scoped to the country
+ * the user is already in); [resolveNearestAnyCountry] does the same search
+ * across every country (the chooser's manual "use my location" button, which
+ * must find the right city even when the country tab currently open isn't the
+ * one the device is actually in).
  */
 @Composable
 internal fun CityGate(
@@ -136,6 +141,7 @@ internal fun CityGate(
     onConfirm: (City) -> Unit,
     onCountry: (String) -> Unit,
     resolveNearest: suspend (String, List<City>) -> City?,
+    resolveNearestAnyCountry: suspend (List<City>) -> City?,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -174,16 +180,35 @@ internal fun CityGate(
         locating = false
     }
 
+    // The chooser's own "use my location" button's resolution — unscoped, so
+    // it finds the right city even when the country tab open at the moment
+    // isn't the one the device is actually in. `onConfirm` (wired at the
+    // ViewModel) is what switches the app's country to match, if it must.
+    fun resolveAny() = scope.launch {
+        val city = resolveNearestAnyCountry(catalog.cities)
+        if (city != null) {
+            detected = city; nearest = city; showChooser = false
+        } else {
+            showChooser = true
+            locateFailed = true
+        }
+        locating = false
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         val country = start?.countryCode
-        if (granted && country != null) {
-            resolveIn(country)
-        } else {
-            showChooser = true
-            if (locating) locateFailed = true
-            locating = false
+        when {
+            // `locating` is only ever true for the chooser's own button (see
+            // its declaration above), so this branch is the manual flow.
+            granted && locating -> resolveAny()
+            granted && country != null -> resolveIn(country)
+            else -> {
+                showChooser = true
+                if (locating) locateFailed = true
+                locating = false
+            }
         }
     }
 
@@ -215,16 +240,16 @@ internal fun CityGate(
     }
 
     // The chooser's own "use my location" button — re-runs the same check on
-    // demand instead of only once on first launch. Reuses `permissionLauncher`
-    // and `resolveIn` rather than a parallel permission flow.
+    // demand instead of only once on first launch, but unscoped (see
+    // `resolveAny`): reuses `permissionLauncher` rather than a parallel
+    // permission flow.
     fun locateMe() {
-        val country = start?.countryCode ?: return
         locating = true
         locateFailed = false
         val alreadyGranted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.ACCESS_COARSE_LOCATION,
         ) == PackageManager.PERMISSION_GRANTED
-        if (alreadyGranted) resolveIn(country)
+        if (alreadyGranted) resolveAny()
         else permissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
     }
 

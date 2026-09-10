@@ -66,6 +66,14 @@ class CityGateCountryScopeTest {
         cities.nearestWithin100km(poznan.lat, poznan.lon, country)
     }
 
+    /** The manual "use my location" button's resolver — the real UNSCOPED one,
+     *  searching every country the fix might land in. */
+    private var anyCountryLocationAttempts = 0
+    private val fixInPoznanAnyCountry: suspend (List<City>) -> City? = { cities ->
+        anyCountryLocationAttempts++
+        cities.nearestWithin100km(poznan.lat, poznan.lon)
+    }
+
     @Before
     fun grantLocation() {
         Shadows.shadowOf(org.robolectric.RuntimeEnvironment.getApplication())
@@ -83,6 +91,7 @@ class CityGateCountryScopeTest {
         onConfirm = onConfirm,
         onCountry = {},
         resolveNearest = fixInPoznan,
+        resolveNearestAnyCountry = fixInPoznanAnyCountry,
     )
 
     /**
@@ -180,11 +189,12 @@ class CityGateCountryScopeTest {
     }
 
     /**
-     * The chooser's own "use my location" button re-runs the same check the
-     * first-launch flow takes, on demand: opened straight into the chooser
-     * (no automatic attempt, `locationAttempts == 0`), a tap resolves against
-     * the Poznań fix and — Poland being the selected country — confirms it,
-     * exactly like a first-launch hit would.
+     * The chooser's own "use my location" button re-runs the check on demand,
+     * but through the UNSCOPED resolver ([fixInPoznanAnyCountry]), not the
+     * country-scoped one the first-launch flow uses: opened straight into the
+     * chooser (no automatic attempt, `locationAttempts == 0`), a tap resolves
+     * against the Poznań fix and — Poland being the selected country — confirms
+     * it, exactly like a first-launch hit would.
      */
     @Test
     fun locateButtonTriggersAFreshResolutionAndConfirms() {
@@ -199,18 +209,50 @@ class CityGateCountryScopeTest {
         compose.waitForIdle()
 
         compose.onNodeWithText("Pokaż repertuar", substring = true).assertIsDisplayed()
-        assertEquals(1, locationAttempts)
+        assertEquals("the button must use the unscoped resolver, not the country-scoped one", 0, locationAttempts)
+        assertEquals(1, anyCountryLocationAttempts)
     }
 
     /**
-     * The same button's miss path: Germany selected, but the fix is still
-     * Poznań's — over 100 km from every German city — so the chooser stays up
-     * and says so, rather than silently doing nothing.
+     * THE FEATURE: Germany is the selected tab, but the fix is Poznań's — over
+     * 100 km from every German city, and previously (when the button reused
+     * the country-scoped resolver) a miss. The button now searches every
+     * country, so it must still find and confirm Poznań despite the mismatched
+     * tab — a UK/PL visitor shouldn't have to switch the tab themselves first.
+     */
+    @Test
+    fun locateButtonFindsTheNearestCityEvenInAnUnselectedCountry() {
+        val start = MutableStateFlow<CityGateStart?>(CityGateStart("de", locate = false))
+        compose.setContent { gate(start) }
+        compose.waitForIdle()
+        compose.onNodeWithText("Berlin").assertIsDisplayed() // the chooser, scoped to Germany
+
+        compose.onNodeWithContentDescription("Znajdź moje miasto").performClick()
+        compose.waitForIdle()
+
+        compose.onNodeWithText("Poznań").assertIsDisplayed()
+        compose.onNodeWithText("Pokaż repertuar", substring = true).assertIsDisplayed()
+    }
+
+    /**
+     * The button's genuine miss path still exists: a fix over 100 km from
+     * EVERY city of EVERY country stays a miss, chooser up, message shown.
      */
     @Test
     fun locateButtonMissShowsTheNoNearbyMessage() {
         val start = MutableStateFlow<CityGateStart?>(CityGateStart("de", locate = false))
-        compose.setContent { gate(start) }
+        var confirmed: City? = null
+        compose.setContent {
+            CityGate(
+                start = start.collectAsState().value,
+                catalog = catalog,
+                onPick = { _, _ -> },
+                onConfirm = { confirmed = it },
+                onCountry = {},
+                resolveNearest = fixInPoznan,
+                resolveNearestAnyCountry = { cities -> cities.nearestWithin100km(0.0, 0.0) },
+            )
+        }
         compose.waitForIdle()
 
         compose.onNodeWithContentDescription("Znajdź moje miasto").performClick()
@@ -218,6 +260,7 @@ class CityGateCountryScopeTest {
 
         compose.onNodeWithText("Brak obsługiwanego miasta w pobliżu.").assertIsDisplayed()
         compose.onNodeWithText("Berlin").assertIsDisplayed() // the chooser is still the one showing
+        assertNull(confirmed)
     }
 
     /** Sanity: the scoping helper the gate leans on really is country-scoped. */
@@ -225,5 +268,12 @@ class CityGateCountryScopeTest {
     fun theNearestHelperNeverCrossesTheBorder() {
         assertEquals(poznan, catalog.cities.nearestWithin100km(poznan.lat, poznan.lon, "pl"))
         assertNull(catalog.cities.nearestWithin100km(poznan.lat, poznan.lon, "de"))
+    }
+
+    /** Sanity: the unscoped overload the button leans on really does cross it. */
+    @Test
+    fun theUnscopedHelperCrossesTheBorder() {
+        assertEquals(poznan, catalog.cities.nearestWithin100km(poznan.lat, poznan.lon))
+        assertNull(catalog.cities.nearestWithin100km(0.0, 0.0))
     }
 }

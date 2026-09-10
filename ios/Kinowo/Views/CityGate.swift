@@ -393,11 +393,15 @@ struct CityChoiceView: View {
         }
     }
 
-    /// Re-runs the first-launch location check on demand, for a visitor who
-    /// already has a city (or is re-picking one) and wants to check what's
-    /// nearby without typing it. Reuses `LocationCityResolver` — permission
-    /// request, cached-fix reuse, timeouts and the 100 km cutoff are all
-    /// already there; this view only routes the outcome.
+    /// Re-runs the location check on demand, for a visitor who already has a
+    /// city (or is re-picking one) and wants to check what's nearby without
+    /// typing it. Unlike the first-launch flow this searches EVERY country
+    /// (`resolveAnyCountry`, not `resolve(in:cities:)`), so it finds the right
+    /// city even when the country tab open at the moment isn't the one the
+    /// device is actually in — `choose(_:)` is what switches the country to
+    /// match, if the hit calls for it. Otherwise reuses `LocationCityResolver`
+    /// as-is: permission request, cached-fix reuse, timeouts and the 100 km
+    /// cutoff are all already there; this view only routes the outcome.
     private func locate() {
         guard !locating else { return }
         locating = true
@@ -423,7 +427,7 @@ struct CityChoiceView: View {
         }
         #endif
         Task {
-            let outcome = await locateResolver.resolve(in: countryCode, cities: catalog.cities)
+            let outcome = await locateResolver.resolveAnyCountry(cities: catalog.cities)
             locating = false
             switch outcome {
             case .city(let city): located = city
@@ -484,7 +488,19 @@ struct CityChoiceView: View {
     /// see `City.switchPromptSuppression`. Order matters: apply the
     /// suppression before `setCity` flips the gate to `ContentView`, whose
     /// `onAppear` fires the very next check.
+    ///
+    /// [nearest] (and so [located], via the toolbar button) may now sit in a
+    /// country OTHER than the one currently open — `locate()` searches every
+    /// country — so switch the country first when it does, exactly like the
+    /// country pill itself does. Safe to do here without losing anything:
+    /// this view only ever shows while `prefs.selectedCity` is still nil.
     private func choose(_ city: City) {
+        if city.country != prefs.selectedCountry.code {
+            let country = catalog.country(code: city.country)
+            prefs.setCountry(country)
+            store.use(country: country)
+            details.use(country: country)
+        }
         switch City.switchPromptSuppression(chosenSlug: city.slug, nearestSlug: nearest?.slug) {
         case .seedKey(let key):
             prefs.setCitySwitchPromptKey(key)

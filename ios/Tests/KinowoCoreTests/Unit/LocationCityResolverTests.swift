@@ -149,6 +149,40 @@ final class LocationCityResolverTests: XCTestCase {
         XCTAssertEqual(result, .unavailable)
     }
 
+    /// `resolveAnyCountry` backs the manual picker's "use my location" button:
+    /// unlike `resolve(in:cities:)`, it must resolve to a city whose country is
+    /// NOT the one passed anywhere — there's no country to pass at all.
+    func testResolveAnyCountryCrossesCountryBorders() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+        let berlin = City(slug: "berlin", name: "Berlin", lat: 52.5200, lon: 13.4050, country: "de")
+        let crossCountryCities = cities + [berlin]
+
+        async let outcome = resolver.resolveAnyCountry(cities: crossCountryCities)
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        resolver.deliverFix(lat: 52.5200, lon: 13.4050)
+
+        let result = await outcome
+        XCTAssertEqual(result, .city(berlin))
+    }
+
+    /// `resolveAnyCountry`'s genuine miss: a fix over 100 km from every city of
+    /// every country stays `.unavailable`, same cutoff as the scoped resolver.
+    func testResolveAnyCountryStillMissesWhenOutOfRangeOfEveryCountry() async {
+        let requester = RecordingLocationRequester(status: granted)
+        let resolver = LocationCityResolver(requester: requester, authorizationTimeout: 30, fixTimeout: 30)
+        let berlin = City(slug: "berlin", name: "Berlin", lat: 52.5200, lon: 13.4050, country: "de")
+
+        async let outcome = resolver.resolveAnyCountry(cities: cities + [berlin])
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 100_000_000)
+        resolver.deliverFix(lat: 0, lon: 0)
+
+        let result = await outcome
+        XCTAssertEqual(result, .unavailable)
+    }
+
     /// The fix CoreLocation is already holding answers outright. A fresh
     /// `requestLocation()` on a cold radio is seconds away at best and can fail
     /// indoors, and this is the gap that left an iPhone with working location

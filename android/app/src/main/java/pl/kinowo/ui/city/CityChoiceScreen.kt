@@ -2,14 +2,12 @@ package pl.kinowo.ui.city
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,13 +16,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -102,171 +97,147 @@ fun CityChoiceScreen(
     val regions = catalog.cities.regionsIn(country)
     val pickingRegion = regions.isNotEmpty() && region == null
 
-    // A Box, not another Column row: the city list below already has no
-    // height budget to spare (a LazyColumn with no explicit/weighted height
-    // sizes to its full content here, and a UK subregion's three tall rows
-    // already reach the fold) — an absolutely-positioned overlay is the only
-    // way to offer the button without pushing a lower row off-screen.
-    //
-    // Edge-to-edge (MainActivity.enableEdgeToEdge): inset padding at the Box
-    // itself, not just the Column inside it, so the floating locate button —
-    // a sibling of the Column, not a child — clears the status bar too.
-    // Without it the country picker's label sat under the clock and the
-    // locate button under the battery icon on tall-status-bar phones
-    // (Pixel 9 Pro XL).
-    Box(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars)) {
-        Column(
-            Modifier.fillMaxSize().padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            CountryPicker(
-                countries = catalog.countries,
-                selectedCode = selectedCountryCode,
-                onSelect = onCountry,
-                modifier = Modifier.padding(top = 24.dp),
+    // Edge-to-edge (MainActivity.enableEdgeToEdge): inset padding on this
+    // Column so the "Country" label doesn't sit under the clock and the
+    // now-inline locate button doesn't sit under the battery icon on
+    // tall-status-bar phones (Pixel 9 Pro XL).
+    Column(
+        Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars).padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        CountryPicker(
+            countries = catalog.countries,
+            selectedCode = selectedCountryCode,
+            onSelect = onCountry,
+            onLocateMe = onLocateMe,
+            locating = locating,
+            modifier = Modifier.padding(top = 24.dp),
+        )
+        if (locateFailed) {
+            Text(
+                stringResource(R.string.no_city_nearby_locate),
+                fontSize = 13.sp,
+                color = TextSecondary,
+                modifier = Modifier.padding(top = 8.dp),
             )
-            if (locateFailed) {
+        }
+        Text(
+            stringResource(if (pickingRegion) R.string.choose_region_title else R.string.choose_city_title),
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 24.dp),
+        )
+        Text(
+            // Inside a region or subregion, the subtitle names it: it is the
+            // only thing on this screen that says which state's (or county's)
+            // cities these are.
+            subregion ?: region ?: stringResource(
+                if (pickingRegion) R.string.choose_region_subtitle else R.string.choose_city_subtitle
+            ),
+            fontSize = 14.sp,
+            color = TextSecondary,
+            modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
+        )
+        if (subregion != null) {
+            // Its own back control — returns to the region's own list, not all
+            // the way out to the top region list (that's `back_to_regions`,
+            // one step further).
+            TextButton(
+                onClick = { subregion = null; query = "" },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                Text(stringResource(R.string.back), fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp))
+            }
+        } else if (region != null) {
+            TextButton(
+                onClick = { region = null; query = "" },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
                 Text(
-                    stringResource(R.string.no_city_nearby_locate),
-                    fontSize = 13.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(top = 8.dp),
+                    stringResource(R.string.back_to_regions),
+                    fontSize = 15.sp,
+                    modifier = Modifier.padding(start = 8.dp),
                 )
             }
-            Text(
-                stringResource(if (pickingRegion) R.string.choose_region_title else R.string.choose_city_title),
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 24.dp),
-            )
-            Text(
-                // Inside a region or subregion, the subtitle names it: it is the
-                // only thing on this screen that says which state's (or county's)
-                // cities these are.
-                subregion ?: region ?: stringResource(
-                    if (pickingRegion) R.string.choose_region_subtitle else R.string.choose_city_subtitle
-                ),
-                fontSize = 14.sp,
-                color = TextSecondary,
-                modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
-            )
-            if (subregion != null) {
-                // Its own back control — returns to the region's own list, not all
-                // the way out to the top region list (that's `back_to_regions`,
-                // one step further).
-                TextButton(
-                    onClick = { subregion = null; query = "" },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                    Text(stringResource(R.string.back), fontSize = 15.sp, modifier = Modifier.padding(start = 8.dp))
-                }
-            } else if (region != null) {
-                TextButton(
-                    onClick = { region = null; query = "" },
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-                ) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
-                    Text(
-                        stringResource(R.string.back_to_regions),
-                        fontSize = 15.sp,
-                        modifier = Modifier.padding(start = 8.dp),
+        }
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            singleLine = true,
+            placeholder = {
+                Text(stringResource(if (pickingRegion) R.string.search_region_hint else R.string.search_city_hint))
+            },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    Icon(
+                        Icons.Filled.Close,
+                        contentDescription = stringResource(R.string.clear),
+                        modifier = Modifier.clickable { query = "" },
                     )
                 }
-            }
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                singleLine = true,
-                placeholder = {
-                    Text(stringResource(if (pickingRegion) R.string.search_region_hint else R.string.search_city_hint))
-                },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                trailingIcon = {
-                    if (query.isNotEmpty()) {
-                        Icon(
-                            Icons.Filled.Close,
-                            contentDescription = stringResource(R.string.clear),
-                            modifier = Modifier.clickable { query = "" },
-                        )
-                    }
-                },
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            if (pickingRegion) {
-                val shownRegions = catalog.cities.regionsMatching(query, country)
-                // Cities whose TOP group collapsed onto them alone (Berlin, Hamburg
-                // — Germany's single-region city-states; Delaware, Vermont — US
-                // states too small to split), shown as direct rows right on this
-                // step since there is no group left to name.
-                val topDirect = catalog.cities.matching(query, country).filter { it.region == null }
-                if (shownRegions.isEmpty() && topDirect.isEmpty()) {
-                    NoMatches(query, R.string.no_region_matching)
-                } else {
-                    LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        items(shownRegions, key = { it }) { name ->
-                            TallFilledButton(name) { region = name; query = "" }
-                        }
-                        items(topDirect, key = { it.slug }) { city ->
-                            TallFilledButton(city.name) { onPick(city) }
-                        }
-                    }
-                }
-            } else if (subregion == null) {
-                val currentRegion = region
-                val shownSubregions = if (currentRegion != null) catalog.cities.subregionsMatching(query, country, currentRegion) else emptyList()
-                // The second step's direct rows: cities in `region` with no
-                // subregion of their own — the whole list for a flat country,
-                // where `region` is always null.
-                val direct = if (currentRegion != null) {
-                    catalog.cities.directCitiesIn(query, country, currentRegion)
-                } else {
-                    catalog.cities.matching(query, country)
-                }
-                if (shownSubregions.isEmpty() && direct.isEmpty()) {
-                    NoMatches(query, R.string.no_city_matching)
-                } else {
-                    LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        items(shownSubregions, key = { it }) { name ->
-                            TallFilledButton(name) { subregion = name; query = "" }
-                        }
-                        items(direct, key = { it.slug }) { city ->
-                            TallFilledButton(city.name) { onPick(city) }
-                        }
-                    }
-                }
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (pickingRegion) {
+            val shownRegions = catalog.cities.regionsMatching(query, country)
+            // Cities whose TOP group collapsed onto them alone (Berlin, Hamburg
+            // — Germany's single-region city-states; Delaware, Vermont — US
+            // states too small to split), shown as direct rows right on this
+            // step since there is no group left to name.
+            val topDirect = catalog.cities.matching(query, country).filter { it.region == null }
+            if (shownRegions.isEmpty() && topDirect.isEmpty()) {
+                NoMatches(query, R.string.no_region_matching)
             } else {
-                val currentRegion = region
-                val currentSubregion = subregion
-                checkNotNull(currentRegion) { "subregion is set, so its region must be too" }
-                checkNotNull(currentSubregion)
-                val cities = catalog.cities.matchingInSubregion(query, country, currentRegion, currentSubregion)
-                if (cities.isEmpty()) {
-                    NoMatches(query, R.string.no_city_matching)
-                } else {
-                    LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                        items(cities, key = { it.slug }) { city ->
-                            TallFilledButton(city.name) { onPick(city) }
-                        }
+                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    items(shownRegions, key = { it }) { name ->
+                        TallFilledButton(name) { region = name; query = "" }
+                    }
+                    items(topDirect, key = { it.slug }) { city ->
+                        TallFilledButton(city.name) { onPick(city) }
                     }
                 }
             }
-        }
-        // Re-runs the same first-launch location check on demand — for a
-        // visitor who's already reached this screen (location found nothing
-        // the first time, or a deliberate "choose other city") and wants to
-        // check what's nearby without typing it. Overlaid rather than laid
-        // out inline so it costs the list below it no height.
-        IconButton(
-            onClick = onLocateMe,
-            enabled = !locating,
-            modifier = Modifier.align(Alignment.TopEnd).padding(top = 20.dp, end = 12.dp),
-        ) {
-            if (locating) {
-                CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        } else if (subregion == null) {
+            val currentRegion = region
+            val shownSubregions = if (currentRegion != null) catalog.cities.subregionsMatching(query, country, currentRegion) else emptyList()
+            // The second step's direct rows: cities in `region` with no
+            // subregion of their own — the whole list for a flat country,
+            // where `region` is always null.
+            val direct = if (currentRegion != null) {
+                catalog.cities.directCitiesIn(query, country, currentRegion)
             } else {
-                Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.locate_me))
+                catalog.cities.matching(query, country)
+            }
+            if (shownSubregions.isEmpty() && direct.isEmpty()) {
+                NoMatches(query, R.string.no_city_matching)
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    items(shownSubregions, key = { it }) { name ->
+                        TallFilledButton(name) { subregion = name; query = "" }
+                    }
+                    items(direct, key = { it.slug }) { city ->
+                        TallFilledButton(city.name) { onPick(city) }
+                    }
+                }
+            }
+        } else {
+            val currentRegion = region
+            val currentSubregion = subregion
+            checkNotNull(currentRegion) { "subregion is set, so its region must be too" }
+            checkNotNull(currentSubregion)
+            val cities = catalog.cities.matchingInSubregion(query, country, currentRegion, currentSubregion)
+            if (cities.isEmpty()) {
+                NoMatches(query, R.string.no_city_matching)
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    items(cities, key = { it.slug }) { city ->
+                        TallFilledButton(city.name) { onPick(city) }
+                    }
+                }
             }
         }
     }

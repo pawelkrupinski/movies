@@ -412,6 +412,16 @@ fun List<City>.nearestWithin100km(lat: Double, lon: Double, countryCode: String)
     inCountry(countryCode).minByOrNull { haversineKm(lat, lon, it.lat, it.lon) }
         ?.takeIf { haversineKm(lat, lon, it.lat, it.lon) <= 100.0 }
 
+/** The city nearest ([lat], [lon]) across EVERY country this list carries, or
+ *  null beyond 100 km. Unlike [nearestWithin100km]'s country-scoped overload,
+ *  this is deliberately unscoped — the manual picker's "use my location"
+ *  button uses it to find the right city even when the country tab currently
+ *  open isn't the one the device is actually in (a UK visitor who hasn't
+ *  switched off the default Poland tab yet). */
+fun List<City>.nearestWithin100km(lat: Double, lon: Double): City? =
+    minByOrNull { haversineKm(lat, lon, it.lat, it.lon) }
+        ?.takeIf { haversineKm(lat, lon, it.lat, it.lon) <= 100.0 }
+
 /** The "you're nearer another city — switch?" suggestion, scoped to [countryCode];
  *  null when already nearest, out of range, or this pair was the [lastPromptKey]. */
 fun List<City>.switchSuggestion(

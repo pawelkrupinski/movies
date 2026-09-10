@@ -437,6 +437,19 @@ extension Array where Element == City {
         return nearest.city
     }
 
+    /// The city nearest the coordinate across EVERY country this list carries,
+    /// or `nil` beyond 100 km. Unlike the country-scoped overload above, this
+    /// is deliberately unscoped — the manual picker's "use my location" button
+    /// uses it to find the right city even when the country tab currently open
+    /// isn't the one the device is actually in (a UK visitor who hasn't
+    /// switched off the default Poland tab yet).
+    func nearestWithin100km(lat: Double, lon: Double) -> City? {
+        let ranked = map { (city: $0, km: City.haversineKm(latitude1: lat, longitude1: lon, latitude2: $0.lat, longitude2: $0.lon)) }
+            .min { $0.km < $1.km }
+        guard let nearest = ranked, nearest.km <= 100 else { return nil }
+        return nearest.city
+    }
+
     /// The "you're nearer another city — switch?" suggestion for a device at the
     /// coordinate, scoped to `countryCode`; `nil` when already nearest, out of
     /// range, or this pair was the `lastPromptKey`.

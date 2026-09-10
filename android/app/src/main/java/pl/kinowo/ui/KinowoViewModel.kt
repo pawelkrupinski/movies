@@ -39,6 +39,7 @@ import pl.kinowo.data.UserPreferences
 import pl.kinowo.deeplink.DeepLink
 import pl.kinowo.deeplink.DeepLinkFilters
 import pl.kinowo.model.CinemaCatalog
+import pl.kinowo.model.City
 import pl.kinowo.net.CinemaCatalogApi
 import pl.kinowo.deeplink.DeepLinkTitle
 import pl.kinowo.location.LocationCityResolver
@@ -495,6 +496,20 @@ class KinowoViewModel(
         // The excluded-cinema set is global and scoped per city at read time, so
         // a new city needs no reset — its own cinemas simply start unticked-free.
         prefs.setCity(slug)
+    }
+
+    /** Adopt a location-detected [city] at the gate's confirm screen — the
+     *  first-launch hit, or a manual "use my location" hit from the picker.
+     *  The manual button now searches EVERY country, so [city] may sit in a
+     *  country other than the one currently open; when it does, switch the
+     *  country directly via `prefs.setCountryCode` rather than [setCountry],
+     *  which clears the city — the same reasoning [handleDeepLink] already
+     *  applies to a cross-country deep link, and for the same reason: we're
+     *  about to set this exact city, not re-arm the gate for a fresh pick. */
+    fun adoptDetectedCity(city: City) = viewModelScope.launch {
+        if (city.country != selectedCountryCode.value) prefs.setCountryCode(city.country)
+        citySwitchSuggestion = null
+        prefs.setCity(city.slug)
     }
 
     /** Adopt a city the user deliberately picked at the gate. When it differs
