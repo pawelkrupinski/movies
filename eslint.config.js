@@ -44,6 +44,11 @@ module.exports = [
         applyFilters: 'readonly',
         applyFiltersForDay: 'readonly',
         buildIndex: 'readonly',
+
+        // From `_geoDistance.scala.html`, the pure-helper inline `<script>`
+        // rendered ahead of shared.js on every page — see its own doc
+        // comment for why it's a separate partial from `_repertoireView`'s.
+        nearestCityWithinKm: 'readonly',
       },
     },
     rules: {
