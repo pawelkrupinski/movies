@@ -11,6 +11,22 @@ final class CountySubregionPickerUITests: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments += ["-UITests", "1"]
+        // The UK country pill now renders through the `country.<code>`
+        // catalog key (`CountryDisplayName.localized`), so it follows the
+        // resolved UI language rather than always reading its own native
+        // name "United Kingdom" — forcing English here, same as
+        // `FixtureLaunch.intoGrid`'s `-selectedLanguageCode`/`-AppleLanguages`/
+        // `-AppleLocale` trio, is what makes that lookup below deterministic.
+        // Without it this test inherited whatever language a PREVIOUS test
+        // class's launch left persisted in `UserDefaults`/`AppleLanguages` —
+        // harmless before this change (the old `Country.displayName` never
+        // translated), but this test would otherwise silently depend on
+        // suite run order once it did.
+        app.launchArguments += [
+            "-selectedLanguageCode", "en",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en",
+        ]
         app.launchEnvironment["KINOWO_CLEAR_CITY"] = "1"
         app.launchEnvironment["KINOWO_FORCE_DETECTED_CITY"] = "warszawa"
         // A prior interactive/test session's live `/api/catalog` fetch on this

@@ -708,6 +708,156 @@
         }
       }
     },
+    "country.de": {
+      "comment": "Germany's own name, translated to the reader's UI language — the country picker's pill and the Filtry sheet's current-selection label. Looked up via a literal switch (CountryDisplayName.localized in CityGate.swift), not a dynamically-interpolated key, so Xcode's static extractor can't find this call site; kept manual like filtersheet.language.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Deutschland"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Germany"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alemania"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Niemcy"
+          }
+        }
+      }
+    },
+    "country.es": {
+      "comment": "Spain's own name, translated to the reader's UI language — the country picker's pill and the Filtry sheet's current-selection label. Looked up via a literal switch (CountryDisplayName.localized in CityGate.swift), not a dynamically-interpolated key, so Xcode's static extractor can't find this call site; kept manual like filtersheet.language.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spanien"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spain"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "España"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hiszpania"
+          }
+        }
+      }
+    },
+    "country.pl": {
+      "comment": "Poland's own name, translated to the reader's UI language — the country picker's pill and the Filtry sheet's current-selection label. Looked up via a literal switch (CountryDisplayName.localized in CityGate.swift), not a dynamically-interpolated key, so Xcode's static extractor can't find this call site; kept manual like filtersheet.language.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Poland"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polonia"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Polska"
+          }
+        }
+      }
+    },
+    "country.uk": {
+      "comment": "The United Kingdom's own name, translated to the reader's UI language — the country picker's pill and the Filtry sheet's current-selection label. Looked up via a literal switch (CountryDisplayName.localized in CityGate.swift), not a dynamically-interpolated key, so Xcode's static extractor can't find this call site; kept manual like filtersheet.language.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vereinigtes Königreich"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "United Kingdom"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reino Unido"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wielka Brytania"
+          }
+        }
+      }
+    },
+    "country.us": {
+      "comment": "The United States' own name, translated to the reader's UI language — the country picker's pill and the Filtry sheet's current-selection label. Looked up via a literal switch (CountryDisplayName.localized in CityGate.swift), not a dynamically-interpolated key, so Xcode's static extractor can't find this call site; kept manual like filtersheet.language.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vereinigte Staaten"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "United States"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estados Unidos"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stany Zjednoczone"
+          }
+        }
+      }
+    },
     "datefilter.anytime": {
       "comment": "Date pill: no date limit. The widest of the four, so it sets the uniform pill width.",
       "extractionState": "manual",
@@ -1694,6 +1844,36 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tylko IMAX"
+          }
+        }
+      }
+    },
+    "filtersheet.language": {
+      "comment": "Section header and picker label for the app's UI language, independent of country.",
+      "extractionState": "manual",
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sprache"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Język"
           }
         }
       }

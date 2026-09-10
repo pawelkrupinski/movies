@@ -446,7 +446,12 @@ struct FiltersSheet: View {
     private func computeCurrentCityLabel() -> String {
         let slug = prefs.selectedCity ?? catalog.defaultCity(inCountry: prefs.selectedCountry.code)?.slug ?? City.default.slug
         let cityName = catalog.sorted(inCountry: prefs.selectedCountry.code).first { $0.slug == slug }?.name ?? slug
-        return "\(cityName), \(prefs.selectedCountry.displayName)"
+        // The city half stays the city's own name (never translated — see
+        // `CityGate`'s country pill); the country half shares
+        // `CountryDisplayName.localized` with the picker, rather than its own
+        // `String(localized: "country.\(code)")` — see that helper's doc
+        // comment for why the dynamic-interpolation form silently fails.
+        return "\(cityName), \(CountryDisplayName.localized(prefs.selectedCountry.code))"
     }
 
     var body: some View {
@@ -583,6 +588,20 @@ struct FiltersSheet: View {
                             .frame(maxWidth: .infinity)
                     }
                     .accessibilityIdentifier(A11y.FiltersSheet.pickAnotherCityButton)
+                }
+
+                // ── Language ─────────────────────────────────────
+                // The UI language, fully independent of country (see
+                // `LanguageSelection`) — switching country never changes it.
+                Section("filtersheet.language") {
+                    Picker("filtersheet.language", selection: Binding(
+                        get: { prefs.selectedLanguage },
+                        set: { prefs.setLanguage($0) }
+                    )) {
+                        ForEach(LanguageSelection.supported, id: \.self) { code in
+                            Text(LanguageDisplayName.native(code)).tag(code)
+                        }
+                    }
                 }
 
                 // ── Account ──────────────────────────────────────

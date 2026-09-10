@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import StoreKit
 
 @main
 struct KinowoApp: App {
@@ -12,13 +13,19 @@ struct KinowoApp: App {
     @StateObject private var deepLink = DeepLinkCoordinator()
 
     init() {
-        // Force the selected country's language at process start so the bundle's
+        // Force the resolved language at process start so the bundle's
         // preferred localization (what `Text`/`String(localized:)` resolve
-        // against) matches the choice from the first frame — Poland's Polish by
-        // default. iOS reads `AppleLanguages` only at launch, so an in-session
-        // country switch persists the new tag here and fully lands on relaunch;
-        // the root `.environment(\.locale)` below flips SwiftUI `Text` in-session.
-        UserDefaults.standard.set([CountrySelection.current().languageCode], forKey: "AppleLanguages")
+        // against) matches the choice from the first frame. StoreKit's
+        // storefront lookup is async and can't block this synchronous
+        // initializer, so the first resolution only sees an explicit pick or
+        // the device-preferred language (falling back to English) —
+        // `resolveStorefrontLanguage()` below re-resolves with the storefront
+        // once it's available and primes `AppleLanguages` for the *next*
+        // launch. iOS reads `AppleLanguages` only at launch, so an in-session
+        // language switch persists the new tag here too and fully lands on
+        // relaunch; the root `.environment(\.locale)` below flips SwiftUI
+        // `Text` in-session.
+        UserDefaults.standard.set([LanguageSelection.resolve(storefrontCountry: nil)], forKey: "AppleLanguages")
         let preferences = UserPreferences()
         let authService = AuthService()
         _prefs = StateObject(wrappedValue: preferences)
@@ -31,6 +38,18 @@ struct KinowoApp: App {
         #if DEBUG
         Self.seedUITestPoster()
         #endif
+    }
+
+    /// Re-resolve the language once the real App Store storefront is known,
+    /// and prime `AppleLanguages` for the *next* launch — this can't change
+    /// the current session's bundle (iOS only reads `AppleLanguages` at
+    /// process start), only make the following launch storefront-aware.
+    /// Skipped if the user has since made an explicit pick, which always wins.
+    private func resolveStorefrontLanguage() async {
+        let storefrontCountry = await Storefront.current?.countryCode
+        guard LanguageSelection.explicit() == nil else { return }
+        let resolved = LanguageSelection.resolve(storefrontCountry: storefrontCountry)
+        UserDefaults.standard.set([resolved], forKey: "AppleLanguages")
     }
 
     #if DEBUG
@@ -62,14 +81,29 @@ struct KinowoApp: App {
                 .environmentObject(authService)
                 .environmentObject(sync)
                 .environmentObject(deepLink)
-                // Follow the selected country's language for in-session SwiftUI
-                // `Text(LocalizedStringKey)` resolution (keyed to the choice so a
-                // switch re-localizes the view tree).
-                .environment(\.locale, Locale(identifier: prefs.selectedCountry.languageCode))
-                .id(prefs.selectedCountry.code)
+                // Follow the selected (country-independent) language for
+                // in-session SwiftUI `Text(LocalizedStringKey)` resolution
+                // (keyed to the choice so a switch re-localizes the view tree).
+                //
+                // Language ONLY, deliberately NOT country too: `/api/catalog`
+                // (`CatalogController.catalog()`, web) is served identically by
+                // every deployment — no per-country branching at all — so a
+                // country switch has nothing catalog-side that needs a rebuild
+                // to pick up. Repertoire data is re-pointed directly instead,
+                // by whoever actually changes country: `handleDeepLink` calls
+                // `store.use(citySlug:)`/`details.use(citySlug:)` itself, and
+                // `CityGate`'s own `ContentView().task(id: slug)` re-fires off
+                // the CITY slug the moment one is chosen for the new country —
+                // neither needs this tree torn down. Keying on country too
+                // (tried, reverted) instead tore down `CityGate`'s own in-progress
+                // country→city picker flow (`CityChoiceView`) the instant a
+                // country was tapped, since the remount reset the whole subtree's
+                // local `@State` before the user could pick a city for it.
+                .id(prefs.selectedLanguage)
                 .preferredColorScheme(.dark)
                 .tint(Color(red: 0.42, green: 0.67, blue: 0.87))
                 .task { await authService.checkSession() }
+                .task { await resolveStorefrontLanguage() }
                 // A kinowo.net Universal Link (or kinowo:// link) opened the
                 // app. Switch the city eagerly so the CityGate flips straight to
                 // it on a cold launch; ContentView applies the filters + film.
@@ -97,9 +131,9 @@ struct KinowoApp: App {
         // A link on another country's deployment (showtimes-uk / showtimes-de)
         // must switch the country too, or the city would resolve against the
         // wrong deployment's catalog. Setting it re-points `kinowoBaseURL`; the
-        // root's `.id(selectedCountry.code)` then rebuilds ContentView, which
-        // reloads the new country's catalog + repertoire. No-ops when already
-        // in that country (e.g. a same-country kinowo.net link).
+        // UI language is unaffected — it's a fully independent preference (see
+        // `LanguageSelection`), so a cross-country link never changes it. No-ops
+        // when already in that country (e.g. a same-country kinowo.net link).
         if let countryCode = catalog.cities.country(ofSlug: link.citySlug) {
             prefs.setCountry(catalog.country(code: countryCode))
         }

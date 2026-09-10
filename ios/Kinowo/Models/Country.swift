@@ -10,10 +10,12 @@ private let warsawZone = TimeZone(identifier: "Europe/Warsaw") ?? .current
 
 /// A country the app can serve. Each country is its own web deployment
 /// (`baseURL`) serving its own localized `/{city}/api/repertoire` +
-/// `/{city}/api/details`, and carries the UI `languageCode` the app forces when
-/// that country is selected — deliberately NOT derived from the device locale,
-/// so a Polish phone browsing the UK deployment still reads English and the
-/// choice stays deterministic and testable.
+/// `/{city}/api/details`, and carries that deployment's own default UI
+/// `languageCode` (the server's `/api/catalog` value). The APP no longer
+/// forces this when the country is selected — the UI language is a fully
+/// independent preference, see `LanguageSelection` — but the field stays on
+/// the model since it mirrors the Android `Country` registry one-for-one and
+/// still describes each deployment's own site language.
 ///
 /// Pure Foundation — no SwiftUI / UIKit — so it lives in `KinowoCore` and the
 /// registry logic is unit-tested cross-platform (`swift test` on Linux CI).
@@ -23,7 +25,15 @@ struct Country: Codable, Hashable {
     /// Server country code, e.g. `pl`, `uk` — the single code space the catalog
     /// keys on (cities carry the same code). Also the persisted selection key.
     let code: String
-    /// Human-readable label for the country picker.
+    /// The country's own native name (`"Polska"`, `"Deutschland"`, `"España"`) —
+    /// historically what the country picker rendered verbatim, so a British
+    /// user browsing in English still saw "Deutschland" for Germany. The
+    /// picker now looks the name up through the `country.<code>` catalog key
+    /// instead, so it follows the resolved UI language like everything else in
+    /// `LanguageSelection`. This field stays on the model because it mirrors
+    /// the Android `Country` registry one-for-one and `CountryDTO.toCountry()`
+    /// still decodes the catalog payload's `name` straight into it, but no
+    /// production code reads it for display any more.
     let displayName: String
     /// BASE URL of this country's web deployment — scheme + host for a country
     /// that owns its domain (`https://kinowo.net`), plus a country segment for

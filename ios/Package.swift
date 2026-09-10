@@ -40,6 +40,10 @@ let authTargets: [Target] = [
             // compiles each file exactly once via the pbxproj.
             "Models/Country.swift",
             "Storage/CountrySelection.swift",
+            // The independent UI-language preference: `UserPreferences`
+            // resolves/persists `selectedLanguage` through it, same reasoning
+            // as `CountrySelection` above.
+            "Storage/LanguageSelection.swift",
         ]
     ),
     .testTarget(

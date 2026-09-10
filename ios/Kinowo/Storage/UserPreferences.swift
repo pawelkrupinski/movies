@@ -39,11 +39,17 @@ final class UserPreferences: ObservableObject {
     /// "you're near Poznań" offers the very thing they navigated away from.
     /// Cleared by `setCity(_:)`, however the city was reached.
     @Published private(set) var awaitingExplicitCityPick: Bool = false
-    /// The selected country (see `Country`) — which deployment the app talks to
-    /// and which language it forces. Defaults to Poland until the user picks
-    /// otherwise. Persisted via `CountrySelection` (same `store`) so it's
-    /// readable at launch by `kinowoBaseURL`.
+    /// The selected country (see `Country`) — which deployment the app talks
+    /// to. Defaults to Poland until the user picks otherwise. Persisted via
+    /// `CountrySelection` (same `store`) so it's readable at launch by
+    /// `kinowoBaseURL`.
     @Published private(set) var selectedCountry: Country
+    /// The selected UI language — fully independent of `selectedCountry` (see
+    /// `LanguageSelection`). Resolved at init from the persisted pick, else
+    /// device-preferred, else English — the storefront-informed fallback is
+    /// primed asynchronously by `KinowoApp` for the *next* launch, since
+    /// StoreKit's lookup can't run inside this synchronous initializer.
+    @Published private(set) var selectedLanguage: String
 
     private let store: UserDefaults
     private let kHidden        = "hiddenFilms"
@@ -68,6 +74,7 @@ final class UserPreferences: ObservableObject {
         awaitingExplicitCityPick = store.bool(forKey: kExplicitPick)
         areaPickerSeenCities = Set(store.stringArray(forKey: kAreaSeen) ?? [])
         selectedCountry     = CountrySelection.current(store)
+        selectedLanguage    = LanguageSelection.resolve(storefrontCountry: nil, defaults: store)
 
         #if DEBUG
         // UI tests force the first-launch city gate by ignoring any persisted
@@ -164,11 +171,10 @@ final class UserPreferences: ObservableObject {
         store.set(key, forKey: kSwitchPrompt)
     }
 
-    /// Persist the chosen country and force its language. The caller re-points
-    /// the repertoire/details stores (`use(country:)`) so new fetches hit the
-    /// new deployment; the language flip fully lands on the next launch (iOS
-    /// reads `AppleLanguages` at process start), with the in-session locale
-    /// injected at the root via `CountrySelection.localeForCurrentSelection`.
+    /// Persist the chosen country. The caller re-points the repertoire/details
+    /// stores (`use(country:)`) so new fetches hit the new deployment. The UI
+    /// language is unaffected — it's a fully independent preference (see
+    /// `setLanguage`), so switching country never changes what the user reads.
     func setCountry(_ country: Country) {
         guard selectedCountry != country else { return }
         selectedCountry = country
@@ -177,6 +183,16 @@ final class UserPreferences: ObservableObject {
         // city too: the re-gated app offers that country's list rather than
         // whatever city the device happens to sit near.
         awaitExplicitCityPick()
+    }
+
+    /// Persist an explicit language pick. iOS reads `AppleLanguages` at
+    /// process start, so the bundle switch fully lands on the next launch;
+    /// the in-session locale is injected at the root via
+    /// `.environment(\.locale)`, keyed off `selectedLanguage`.
+    func setLanguage(_ code: String) {
+        guard selectedLanguage != code else { return }
+        selectedLanguage = code
+        LanguageSelection.select(code, in: store)
     }
 
     /// Ask the city gate for an explicit pick rather than a located offer.

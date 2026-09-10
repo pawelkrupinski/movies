@@ -97,7 +97,10 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(Country.all.count, Set(Country.all.map(\.baseURL)).count)
     }
 
-    /// The switch is language-forcing, not device-derived.
+    /// Each registry entry still carries its deployment's own default
+    /// language code (from the server's `/api/catalog`), even though selecting
+    /// a country no longer forces it — see `LanguageSelection` for the actual,
+    /// independent UI-language preference.
     func testCountryDeterminesLanguageNotDeviceLocale() {
         XCTAssertEqual(Country.byCode("pl").languageCode, "pl")
         XCTAssertEqual(Country.byCode("uk").languageCode, "en")
@@ -162,11 +165,14 @@ final class CountryTests: XCTestCase {
         XCTAssertEqual(CountrySelection.current(defaults).baseURL.absoluteString, "https://showtimes.cc/uk")
     }
 
-    func testSelectingCountryForcesItsLanguageTag() {
+    /// The language is a fully independent preference (see
+    /// `LanguageSelectionTests`) — switching country must never touch it or
+    /// the `AppleLanguages` default.
+    func testSelectingCountryDoesNotTouchTheLanguagePreference() {
         let prefs = UserPreferences(store: defaults)
+        defaults.set(["pl"], forKey: "AppleLanguages")
         prefs.setCountry(Country.byCode("GB"))
-        // iOS reads AppleLanguages at launch to pick the localized bundle.
-        XCTAssertEqual(defaults.stringArray(forKey: "AppleLanguages"), ["en"])
-        XCTAssertEqual(CountrySelection.locale(defaults).identifier, "en")
+        XCTAssertEqual(defaults.stringArray(forKey: "AppleLanguages"), ["pl"])
+        XCTAssertNil(LanguageSelection.explicit(defaults))
     }
 }

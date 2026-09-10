@@ -1,5 +1,40 @@
 import SwiftUI
 
+/// A country's own name, in the resolved UI language — what the country
+/// picker's pill (`CityChoiceView.countryPicker`, below) and the Filtry
+/// sheet's current-selection label (`FiltersBar.computeCurrentCityLabel`)
+/// render in place of the old fixed `Country.displayName` (see that field's
+/// doc comment for the full history).
+///
+/// A literal `switch` over the five known codes rather than
+/// `String(localized: "country.\(code)")`: interpolating a `String` into
+/// `String.LocalizationValue` — like `LocalizedStringKey`, which `Text`
+/// uses — treats the interpolated value as a FORMAT ARGUMENT, turning the
+/// lookup key into `"country.%@"` rather than literal text. That key has no
+/// catalog entry, so the dynamic form silently falls back to rendering the
+/// untranslated format string — which happens to print as "country.pl",
+/// masquerading as a working lookup until you read it in a non-English
+/// language. Each case below is a compile-time string literal, which the
+/// runtime lookup (and Xcode's key extractor) actually matches.
+///
+/// Lives here rather than as a `Country` extension in `Models/Country.swift`:
+/// that file compiles into the Foundation-only `KinowoAuth` SPM target,
+/// which ships no localized bundle (see `DateFilter.label`'s header comment
+/// in `FiltersBar.swift` for the identical reasoning), so `String(localized:)`
+/// there would resolve to the bare key under `swift test`.
+enum CountryDisplayName {
+    static func localized(_ code: String) -> String {
+        switch code {
+        case "pl": return String(localized: "country.pl")
+        case "uk": return String(localized: "country.uk")
+        case "de": return String(localized: "country.de")
+        case "us": return String(localized: "country.us")
+        case "es": return String(localized: "country.es")
+        default:   return code
+        }
+    }
+}
+
 /// First-launch city gate. Until `prefs.selectedCity` is set, the user can't
 /// see a repertoire — there's no sensible default beyond "nearest". Once a
 /// city is chosen (by location or manual pick), the stores are pointed at its
@@ -228,9 +263,10 @@ struct CityChoiceView: View {
     var body: some View {
         NavigationStack {
             List {
-                // In-app country switch: picking a country swaps the API base URL
-                // and forces the UI language. Sits above the city list so the
-                // user chooses country → city top-to-bottom on first launch.
+                // In-app country switch: picking a country swaps the API base
+                // URL. The UI language is unaffected (see `LanguageSelection`)
+                // — sits above the city list so the user chooses country →
+                // city top-to-bottom on first launch.
                 Section {
                     countryPicker
                 } header: {
@@ -454,7 +490,14 @@ struct CityChoiceView: View {
                         store.use(country: country)
                         details.use(country: country)
                     } label: {
-                        Text(country.displayName)
+                        // Looked up by code, not `country.displayName` — a
+                        // country's NAME follows the resolved UI language
+                        // (unlike a city's own name, which never translates).
+                        // `Text(String)` renders verbatim, so this displays
+                        // exactly what `CountryDisplayName.localized` already
+                        // resolved through the catalog — see its doc comment
+                        // for why that's a literal switch, not a dynamic key.
+                        Text(CountryDisplayName.localized(country.code))
                             .lineLimit(1)
                             .fixedSize()
                             .font(.subheadline.weight(selected ? .semibold : .regular))

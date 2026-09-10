@@ -1,10 +1,10 @@
 import XCTest
 
-/// The app ships a `pl` / `en` / `de` string catalog, and everything the user
-/// reads is supposed to come out of it. For a long time most of the SwiftUI
-/// chrome was hardcoded Polish literals instead, so a German or British user
-/// got a Polish filter sheet — the catalog only covered the city gate and a
-/// handful of other screens.
+/// The app ships a `pl` / `en` / `de` / `es` string catalog, and everything
+/// the user reads is supposed to come out of it. For a long time most of the
+/// SwiftUI chrome was hardcoded Polish literals instead, so a German or
+/// British user got a Polish filter sheet — the catalog only covered the city
+/// gate and a handful of other screens.
 ///
 /// These launch the app under a forced language and read back what actually
 /// rendered. They fail against the hardcoded literals (every locale returned
@@ -15,20 +15,30 @@ import XCTest
 /// - the rightmost date pill, whose caption comes from `DateFilter.label` —
 ///   the `String(localized:)` path that had to move out of `KinowoCore`;
 /// - the Filtry button's accessibility label, a plain `LocalizedStringKey`.
+///
+/// The UI language is a fully independent preference from country (see
+/// `LanguageSelection`) — the two used to be hard-coupled (`CountrySelection`
+/// forced a country's own language), so every existing case below still pairs
+/// them 1:1 for simplicity, but `testSwitchingCountryDoesNotChangeLanguage`
+/// below is the one that actually pins the decoupling: a country/language
+/// combination (UK + German) that was impossible to express before this
+/// change, and a language that survives an in-app country switch.
 final class LocalizationUITests: XCTestCase {
 
     private var app: XCUIApplication!
 
     /// Put the simulator back on Polish before handing over to the next test.
     ///
-    /// `KinowoApp.init` persists `AppleLanguages` from the selected country on
-    /// every launch, so a run that forced `uk` leaves `["en"]` written to the
-    /// app's defaults. The country code itself doesn't persist (we only inject
-    /// it into the argument domain), so the *next* launch re-derives Polish and
-    /// self-heals — but iOS fixes the bundle's localization at process start,
-    /// so that one launch still comes up in the previous language. Left alone,
-    /// this hands whichever test runs first in the next suite a mis-localized
-    /// app. One throwaway Polish launch here closes that window.
+    /// `KinowoApp.init` persists `AppleLanguages` from the resolved language
+    /// (`LanguageSelection.resolve`) on every launch, so a run that forced
+    /// `de` leaves `["de"]` written to the app's defaults. Neither the country
+    /// code nor the language code persists across launches on its own (we only
+    /// inject them into the argument domain), so the *next* launch re-derives
+    /// Polish and self-heals — but iOS fixes the bundle's localization at
+    /// process start, so that one launch still comes up in the previous
+    /// language. Left alone, this hands whichever test runs first in the next
+    /// suite a mis-localized app. One throwaway Polish launch here closes that
+    /// window.
     override func tearDownWithError() throws {
         app = nil
         let reset = XCUIApplication()
@@ -77,6 +87,125 @@ final class LocalizationUITests: XCTestCase {
                           filtersButton: "Filtros")
     }
 
+    // MARK: - decoupling (country ≠ language)
+
+    /// The regression this change exists for: UK + German is a combination
+    /// `CountrySelection` couldn't even express before (the UK deployment's
+    /// own `languageCode` is `en`, so the old coupled code always forced
+    /// English there). Launches into it, confirms German actually rendered,
+    /// then drives the in-app country switch (Filtry → "choose another city"
+    /// → the manual picker's country pills, exactly as `PickAnotherCityUITests`
+    /// does) to Poland and asserts the top bar is STILL German — not Polish,
+    /// which is what the old `CountrySelection.select`-forces-`AppleLanguages`
+    /// coupling would have produced.
+    func testSwitchingCountryDoesNotChangeLanguage() throws {
+        launch(country: "uk", language: "de")
+        assertTopBarReads(datePills: ["Heute", "Morgen", "7 Tage", "Alle"],
+                          searchPlaceholder: "Film suchen",
+                          filtersButton: "Filter")
+
+        app.buttons[A11y.TopBar.filtryButton].tap()
+
+        // The button sits near the bottom of the Filtry `Form` — scroll it
+        // into view, same as `PickAnotherCityUITests`.
+        let pickButton = app.buttons[A11y.FiltersSheet.pickAnotherCityButton]
+        for _ in 0..<8 where !pickButton.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(pickButton.exists, "Filtry never showed the 'Choose another city' button")
+        pickButton.tap()
+
+        let confirm = app.buttons[A11y.CityGate.confirmButton]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "CityGate never re-armed")
+        app.buttons[A11y.CityGate.chooseOtherButton].tap()
+
+        // Country pills now resolve through the `country.<code>` catalog key
+        // (see `CityGate`'s `countryPicker`), so the pill reads Poland's name
+        // in the CURRENTLY FORCED UI language — still German here, since only
+        // the country is switching — rather than "Polska", Poland's own name.
+        let poland = app.buttons["Polen"]
+        XCTAssertTrue(poland.waitForExistence(timeout: 10), "Country picker never showed Poland")
+        poland.tap()
+
+        // Poland is a flat (unregioned) country, so its city list renders
+        // directly — but "Warszawa" sits below the fold of the alphabetical
+        // list, so it isn't in the accessibility tree until the search field
+        // narrows to it (same reasoning as `CityChoiceSearchUITests`).
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10), "No search field on the picker")
+        search.tap()
+        search.typeText("warszawa")
+
+        let warszawa = app.buttons["Warszawa"]
+        XCTAssertTrue(warszawa.waitForExistence(timeout: 10), "Poland's city list never appeared")
+        warszawa.tap()
+
+        // Back on the grid, now under Poland — and still German, proving the
+        // country switch left the independent language preference untouched.
+        assertTopBarReads(datePills: ["Heute", "Morgen", "7 Tage", "Alle"],
+                          searchPlaceholder: "Film suchen",
+                          filtersButton: "Filter")
+    }
+
+    /// The regression this follow-up exists for: a country's OWN name must
+    /// follow the resolved UI language on the picker (`Country.displayName`'s
+    /// replacement, the `country.<code>` catalog lookup in `CityGate`'s
+    /// `countryPicker`), while a CITY's name is the city's own name and must
+    /// never translate — "Warszawa" doesn't become "Warschau" just because
+    /// the reader's language is German. Same navigation as
+    /// `testSwitchingCountryDoesNotChangeLanguage` (Filtry → "choose another
+    /// city" → the manual picker), but this one stays on the country step
+    /// long enough to assert BOTH pills read their German translation before
+    /// moving on to Poland's (untranslated) city list. Fails before the
+    /// `country.<code>` lookup landed — the pills read "Polska"/"United
+    /// Kingdom" regardless of language — and passes after.
+    func testCountryPickerTranslatesCountryNamesButNotCityNames() throws {
+        launch(country: "uk", language: "de")
+
+        app.buttons[A11y.TopBar.filtryButton].tap()
+
+        // Same scroll-into-view as `testSwitchingCountryDoesNotChangeLanguage`.
+        let pickButton = app.buttons[A11y.FiltersSheet.pickAnotherCityButton]
+        for _ in 0..<8 where !pickButton.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(pickButton.exists, "Filtry never showed the 'Choose another city' button")
+        pickButton.tap()
+
+        let confirm = app.buttons[A11y.CityGate.confirmButton]
+        XCTAssertTrue(confirm.waitForExistence(timeout: 10), "CityGate never re-armed")
+        app.buttons[A11y.CityGate.chooseOtherButton].tap()
+
+        // Both pills read their GERMAN translation, not their own native
+        // name — Poland's own name is "Polska", the UK's is "United Kingdom";
+        // neither string should appear on this screen any more.
+        let poland = app.buttons["Polen"]
+        XCTAssertTrue(poland.waitForExistence(timeout: 10),
+                      "Country picker never showed Poland's German name")
+        XCTAssertTrue(app.buttons["Vereinigtes Königreich"].exists,
+                      "Country picker never showed the UK's German name")
+        XCTAssertFalse(app.buttons["Polska"].exists,
+                       "Poland pill still read its own native name, not the German translation")
+        XCTAssertFalse(app.buttons["United Kingdom"].exists,
+                       "UK pill still read its own native name, not the German translation")
+
+        poland.tap()
+
+        // Poland's city list — untranslated: "Warszawa" sits below the fold
+        // of the alphabetical list, so search narrows to it, same reasoning
+        // as `testSwitchingCountryDoesNotChangeLanguage`. It must still read
+        // "Warszawa", not a German rendering, because a city's name is the
+        // city's own name and never runs through the language catalog.
+        let search = app.searchFields.firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10), "No search field on the picker")
+        search.tap()
+        search.typeText("warszawa")
+
+        let warszawa = app.buttons["Warszawa"]
+        XCTAssertTrue(warszawa.waitForExistence(timeout: 10),
+                      "Poland's city list never showed Warszawa under its own, untranslated name")
+    }
+
     // MARK: - detail screen
     //
     // Its meta-block captions are passed to `metaBlock` as a `String` (it
@@ -106,21 +235,22 @@ final class LocalizationUITests: XCTestCase {
 
     // MARK: - helpers
 
-    /// The app doesn't follow the device language: it forces the selected
-    /// country's one (`CountrySelection`). That reaches the UI by two separate
-    /// routes, and a caption is localized only if BOTH are pointed at the same
-    /// place — which is exactly what these tests are here to pin down:
+    /// The UI language is independent of country (`LanguageSelection`) and
+    /// reaches the UI by two separate routes, both of which a caption must
+    /// come through to render localized:
     ///
-    /// - `selectedCountryCode` drives the root `.environment(\.locale)`, which
-    ///   is what SwiftUI resolves a `LocalizedStringKey` against;
+    /// - `selectedLanguageCode` (`LanguageSelection.key`) drives the root
+    ///   `.environment(\.locale)`, which is what SwiftUI resolves a
+    ///   `LocalizedStringKey` against;
     /// - `AppleLanguages` picks the bundle `String(localized:)` reads.
     ///
-    /// `KinowoApp.init` normally derives the second from the first, but only
-    /// for the *next* launch — iOS fixes the bundle's localization at process
-    /// start. `FixtureLaunch` sets both, so one consistent language lands on
-    /// the first launch with no relaunch dance; it also forces the city and
-    /// serves the offline fixture, which is what makes these reproducible on a
-    /// fresh simulator. See `FixtureLaunch` for the full reasoning.
+    /// `KinowoApp.init` normally derives the second from the first (via
+    /// `LanguageSelection.resolve`), but only for the *next* launch — iOS
+    /// fixes the bundle's localization at process start. `FixtureLaunch` sets
+    /// both directly, so one consistent language lands on the first launch
+    /// with no relaunch dance; it also forces the city and serves the offline
+    /// fixture, which is what makes these reproducible on a fresh simulator.
+    /// See `FixtureLaunch` for the full reasoning.
     private func launch(country: String, language: String,
                         file: StaticString = #filePath, line: UInt = #line) {
         app = XCUIApplication()

@@ -14,6 +14,7 @@
 		DD00000000000000000E01 /* Country.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E01 /* Country.swift */; };
 		DD00000000000000000E07 /* CatalogCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E07 /* CatalogCache.swift */; };
 		DD00000000000000000E02 /* CountrySelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E02 /* CountrySelection.swift */; };
+		DD00000000000000000E09 /* LanguageSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E09 /* LanguageSelection.swift */; };
 		DD00000000000000000E03 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E03 /* Localizable.xcstrings */; };
 		DD00000000000000000E04 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E04 /* InfoPlist.xcstrings */; };
 		DD00000000000000000E05 /* catalog-seed.json in Resources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000E05 /* catalog-seed.json */; };
@@ -120,6 +121,7 @@
 		CC00000000000000000E01 /* Country.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Country.swift; sourceTree = "<group>"; };
 		CC00000000000000000E07 /* CatalogCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogCache.swift; sourceTree = "<group>"; };
 		CC00000000000000000E02 /* CountrySelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountrySelection.swift; sourceTree = "<group>"; };
+		CC00000000000000000E09 /* LanguageSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageSelection.swift; sourceTree = "<group>"; };
 		CC00000000000000000E03 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000E04 /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		CC00000000000000000E05 /* catalog-seed.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "catalog-seed.json"; sourceTree = "<group>"; };
@@ -319,6 +321,7 @@
 			children = (
 				CC0000000000000000000A /* UserPreferences.swift */,
 				CC00000000000000000E02 /* CountrySelection.swift */,
+				CC00000000000000000E09 /* LanguageSelection.swift */,
 			);
 			path = Storage;
 			sourceTree = "<group>";
@@ -548,6 +551,7 @@
 				DD00000000000000000E01 /* Country.swift in Sources */,
 				DD00000000000000000E07 /* CatalogCache.swift in Sources */,
 				DD00000000000000000E02 /* CountrySelection.swift in Sources */,
+				DD00000000000000000E09 /* LanguageSelection.swift in Sources */,
 				DD00000000000000000304 /* HiddenFilmsFilter.swift in Sources */,
 				DD00000000000000000303 /* CitySwitchSuppressor.swift in Sources */,
 				DD00000000000000000301 /* CityGate.swift in Sources */,

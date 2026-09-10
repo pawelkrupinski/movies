@@ -14,11 +14,19 @@ enum FixtureLaunch {
 
     /// Launch `app` on `city`'s fixture listing and return once the grid is up.
     ///
-    /// `country` / `language` land in `UserDefaults`' ARGUMENT domain, which
-    /// outranks anything persisted on the simulator — the app forces the
-    /// selected country's language, and iOS fixes the bundle's localization at
-    /// process start, so both have to be set here to get one consistent
-    /// language on the first launch rather than a relaunch dance.
+    /// `country` and `language` are independent (see `LanguageSelection`) and
+    /// land in `UserDefaults`' ARGUMENT domain, which outranks anything
+    /// persisted on the simulator:
+    ///
+    /// - `-selectedCountryCode` is `CountrySelection.key` — read directly by
+    ///   `CountrySelection.current`.
+    /// - `-selectedLanguageCode` is `LanguageSelection.key` — read directly by
+    ///   `LanguageSelection.explicit`, so it wins step 1 of the resolution
+    ///   algorithm regardless of the device's own preferred language.
+    /// - `-AppleLanguages` / `-AppleLocale` additionally fix the bundle's
+    ///   localization (what `String(localized:)` resolves against) and
+    ///   `Locale.preferredLanguages` at process start, so one consistent
+    ///   language lands on the very first launch with no relaunch dance.
     static func intoGrid(
         _ app: XCUIApplication,
         country: String = "pl",
@@ -31,6 +39,7 @@ enum FixtureLaunch {
         app.launchArguments += [
             "-UITests", "1",
             "-selectedCountryCode", country,
+            "-selectedLanguageCode", language,
             "-AppleLanguages", "(\(language))",
             "-AppleLocale", language,
         ]
