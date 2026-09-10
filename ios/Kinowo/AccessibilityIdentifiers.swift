@@ -91,6 +91,7 @@ enum A11y {
         /// The "Choose another city" button that replaced the inline Kraj/Miasto
         /// pickers — re-arms the first-launch chooser instead.
         static let pickAnotherCityButton = "filters.pickAnotherCity"
+        static let languagePicker = "filters.language"
     }
 
     enum CinemaPage {

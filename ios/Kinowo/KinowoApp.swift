@@ -99,6 +99,7 @@ struct KinowoApp: App {
                 // country→city picker flow (`CityChoiceView`) the instant a
                 // country was tapped, since the remount reset the whole subtree's
                 // local `@State` before the user could pick a city for it.
+                .environment(\.locale, Locale(identifier: prefs.selectedLanguage))
                 .id(prefs.selectedLanguage)
                 .preferredColorScheme(.dark)
                 .tint(Color(red: 0.42, green: 0.67, blue: 0.87))

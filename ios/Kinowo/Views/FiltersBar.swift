@@ -602,6 +602,7 @@ struct FiltersSheet: View {
                             Text(LanguageDisplayName.native(code)).tag(code)
                         }
                     }
+                    .accessibilityIdentifier(A11y.FiltersSheet.languagePicker)
                 }
 
                 // ── Account ──────────────────────────────────────

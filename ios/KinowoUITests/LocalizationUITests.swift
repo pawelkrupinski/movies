@@ -206,6 +206,64 @@ final class LocalizationUITests: XCTestCase {
                       "Poland's city list never showed Warszawa under its own, untranslated name")
     }
 
+    /// The regression this guards: `KinowoApp.body` must apply
+    /// `.environment(\.locale, Locale(identifier: prefs.selectedLanguage))`
+    /// (keyed with `.id(prefs.selectedLanguage)` to force the tree to
+    /// re-resolve) for a language pick to take effect IN-SESSION, with no
+    /// relaunch. Every other test in this file launches with `-AppleLanguages`
+    /// / `-AppleLocale` already forced (see `FixtureLaunch`), which fixes the
+    /// bundle's localization at process start regardless of whether
+    /// `.environment(\.locale)` is wired up — so none of them would have
+    /// caught a build that dropped it. This one launches in Polish, picks
+    /// English from the Filtry sheet's language picker, and asserts the top
+    /// bar re-localizes without killing the app — fails if `.environment(\.locale)`
+    /// is missing (the sheet just rebuilds showing the same Polish captions),
+    /// passes once it's applied.
+    func testLanguagePickerChangesUIInSessionWithoutRelaunch() throws {
+        launch(country: "pl", language: "pl")
+
+        app.buttons[A11y.TopBar.filtryButton].tap()
+
+        // Sits near the bottom of the Filtry `Form`, same as
+        // `pickAnotherCityButton` in `testSwitchingCountryDoesNotChangeLanguage`.
+        let picker = app.buttons[A11y.FiltersSheet.languagePicker]
+        for _ in 0..<8 where !picker.exists {
+            app.swipeUp()
+        }
+        XCTAssertTrue(picker.exists, "Filtry never showed the language picker")
+        picker.tap()
+
+        let english = app.buttons["English"]
+        XCTAssertTrue(english.waitForExistence(timeout: 5), "Language picker never offered English")
+        english.tap()
+
+        // `.id(prefs.selectedLanguage)` on the root (see `KinowoApp.body`) tears
+        // down and remounts the whole tree on a language switch, which closes
+        // the Filtry sheet along with it — no separate dismiss needed. The
+        // remount isn't instantaneous, so wait for the Filtry button's own
+        // accessibility label to relocalize (a stable existing element's
+        // label, not element existence, is what proves the re-render landed)
+        // before reading the rest of the top bar.
+        let filtersButton = app.buttons[A11y.TopBar.filtryButton]
+        let relocalized = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == 'Filters'"), object: filtersButton)
+        XCTAssertEqual(XCTWaiter().wait(for: [relocalized], timeout: 10), .completed,
+                       "Filtry button never relocalized to English in-session")
+
+        // The date pills are deliberately NOT asserted here: `DateFilter.label`
+        // goes through `String(localized:)` rather than a SwiftUI
+        // `LocalizedStringKey`, and per `KinowoApp.init`'s doc comment that
+        // path only picks up a language switch on the NEXT launch (it reads
+        // `AppleLanguages`, which iOS fixes at process start) — staying Polish
+        // here in-session is correct, not a regression. Only the two captions
+        // that actually resolve through `.environment(\.locale)` belong in
+        // this test.
+        let search = app.textFields[A11y.Search.field]
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "Search field missing")
+        XCTAssertEqual(search.placeholderValue, "Search for a film", "Search field placeholder")
+        XCTAssertEqual(filtersButton.label, "Filters", "Filtry button accessibility label")
+    }
+
     // MARK: - detail screen
     //
     // Its meta-block captions are passed to `metaBlock` as a `String` (it
