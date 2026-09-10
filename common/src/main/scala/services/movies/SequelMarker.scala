@@ -33,6 +33,10 @@ object SequelMarker {
 
   private val Roman = "^(ii|iii|iv|v|vi|vii|viii|ix|x|xi|xii)$".r
 
+  private val RomanValues: Map[String, Int] =
+    Map("ii" -> 2, "iii" -> 3, "iv" -> 4, "v" -> 5, "vi" -> 6, "vii" -> 7,
+        "viii" -> 8, "ix" -> 9, "x" -> 10, "xi" -> 11, "xii" -> 12)
+
   /** Spelled-out ordinals, English and the catalogue's other languages, sanitized
    *  (no diacritics) the way `TitleContainment.tokens` hands them over. */
   private val WordOrdinals: Set[String] =
@@ -42,12 +46,33 @@ object SequelMarker {
         "zwei", "drei", "vier", "zweiter", "dritter",
         "dos", "tres", "cuatro", "segunda", "tercera")
 
+  /** The number each spelled-out ordinal above names, so a comparison across
+   *  languages ("Part Two" vs "Część druga") and across notations (below) means
+   *  the same thing as comparing the digits. */
+  private val WordOrdinalValues: Map[String, Int] =
+    Map("one" -> 1, "two" -> 2, "three" -> 3, "four" -> 4, "five" -> 5,
+        "six" -> 6, "seven" -> 7, "eight" -> 8, "nine" -> 9, "ten" -> 10,
+        "second" -> 2, "third" -> 3, "fourth" -> 4, "fifth" -> 5,
+        "druga" -> 2, "trzecia" -> 3, "czwarta" -> 4, "piata" -> 5,
+        "drugi" -> 2, "trzeci" -> 3, "czwarty" -> 4,
+        "zwei" -> 2, "drei" -> 3, "vier" -> 4, "zweiter" -> 2, "dritter" -> 3,
+        "dos" -> 2, "tres" -> 3, "cuatro" -> 4, "segunda" -> 2, "tercera" -> 3)
+
   /** A plausible release year is a year, never an ordinal. */
   private def isYear(t: String): Boolean =
     t.length == 4 && t.forall(_.isDigit) && { val y = t.toInt; y >= 1888 && y <= java.time.Year.now().getValue + 1 }
 
   def isOrdinal(t: String): Boolean =
     (t.nonEmpty && t.forall(_.isDigit) && !isYear(t)) || Roman.matches(t)
+
+  /** The instalment NUMBER `t` names, however it's written — "2", "ii" and
+   *  "two"/"Część druga" are the same value. `differentInstalments` compares
+   *  these, not the raw tokens, so a franchise catalogued under one notation by
+   *  one cinema and another by a second ("Mortal Kombat 2" vs TMDB's "Mortal
+   *  Kombat II") is never mistaken for two different films. */
+  private def ordinalValue(t: String): Option[Int] =
+    if (t.nonEmpty && t.forall(_.isDigit) && !isYear(t)) Some(t.toInt)
+    else RomanValues.get(t).orElse(WordOrdinalValues.get(t))
 
   /** True when `whole` (an edition's tokens, which contain `base`'s tokens as a
    *  prefix or suffix run) names a different film in `base`'s series. */
@@ -67,8 +92,12 @@ object SequelMarker {
   /** Symmetric check: do `a` and `b` name two DIFFERENT instalments of the same
    *  series — either one's tokens contain the other's plus a trailing ordinal
    *  ([[namesAnotherEntry]], either direction), or the two run the same length
-   *  and END in a different ordinal token ("Part 1" vs "Part 2", "Rocky II" vs
-   *  "Rocky III"). The equal-length shape is one character apart once sanitized
+   *  and END in ordinals naming different NUMBERS ("Part 1" vs "Part 2", "Rocky
+   *  II" vs "Rocky III"). Comparing by VALUE, not by raw token, is what keeps a
+   *  franchise cinemas number two different ways from tripping this: Multikino's
+   *  "Mortal Kombat 2" and TMDB's own "Mortal Kombat II" are the SAME film — "2"
+   *  and "ii" both resolve to 2 — while "Mockingjay - Part 1" and "- Part 2" (1
+   *  vs 2) are not. The equal-length shape is one character apart once sanitized
    *  ("...mockingjaypart1" / "...mockingjaypart2") — well inside
    *  `TitleMatch.close`'s edit-distance bound, which exists for spelling drift
    *  ("guru"→"gourou"), not for telling two sequels apart.
@@ -85,11 +114,13 @@ object SequelMarker {
    *  otherwise let a same-director sequel pair tie and fall to the lowest-id
    *  tie-break — pinning "Mockingjay - Part 2" to "Part 1"'s (older, lower-id)
    *  film whenever no candidate title matched either spelling exactly. */
-  def differentInstalments(a: Seq[String], b: Seq[String]): Boolean = {
-    def ordinalish(t: String): Boolean = isOrdinal(t) || WordOrdinals.contains(t)
+  def differentInstalments(a: Seq[String], b: Seq[String]): Boolean =
     if (a.isEmpty || b.isEmpty) false
-    else if (a.length == b.length) a.last != b.last && (ordinalish(a.last) || ordinalish(b.last))
+    else if (a.length == b.length)
+      (ordinalValue(a.last), ordinalValue(b.last)) match {
+        case (Some(va), Some(vb)) => va != vb
+        case _                    => false
+      }
     else if (a.length < b.length) namesAnotherEntry(a, b)
     else namesAnotherEntry(b, a)
-  }
 }

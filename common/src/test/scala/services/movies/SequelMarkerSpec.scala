@@ -65,4 +65,13 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     // other token to match exactly.
     different("The Hunger Games: Mockinjay - Part 1", "The Hunger Games: Mockingjay - Part 2") shouldBe true
   }
+
+  it should "not mistake the SAME instalment numbered two different ways for two films" in {
+    // `MortalKombatDisappearanceSpec`, broken by the first cut of this guard
+    // (2026-09-10): Multikino reports "Mortal Kombat 2", TMDB's own credit reads
+    // "Mortal Kombat II" — one film, arabic vs roman for the same number 2.
+    different("Mortal Kombat 2", "Mortal Kombat II")   shouldBe false
+    different("Mortal Kombat II", "Mortal Kombat 2")   shouldBe false
+    different("Dune: Part 2", "Dune: Part Two")         shouldBe false
+  }
 }
