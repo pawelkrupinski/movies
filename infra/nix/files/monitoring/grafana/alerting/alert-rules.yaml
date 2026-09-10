@@ -783,6 +783,21 @@ groups:
       # to zero (a floor of 30min still leaves a thin margin), so if this alert
       # names a small single/few-venue city, check the venue's OWN site before
       # chasing a read-model cause — it may simply be between screenings.
+      # AUTOMATED cause-1-vs-cause-2 discriminant, added 2026-09-10. This alert's
+      # own description used to ask a human to manually check
+      # `kinowo.net/{city}/` and the venue's own site before deciding which of the
+      # two known causes applies. `kinowo_worker_movies_served{city,scope="all"}`
+      # is the SAME city's count on the CORPUS side (the ReadModelServingDiffers-
+      # FromCorpus family's other gauge) — reading it for this exact city says
+      # which cause applies without a follow-up query: if it is ALSO 0, the
+      # corpus itself has nothing upcoming for this city, so cause (2) — a thin
+      # venue's listing ran dry — is confirmed and this is not a bug to chase. If
+      # it is NONZERO, the corpus thinks the city has films but the site is not
+      # serving them: that is cause (1)'s shape (or the specific defect
+      # `docs/read-model-convergence.md` names — an incremental prune that failed
+      # to retire, or simply hasn't caught up yet), worth chasing immediately.
+      # Query B is informational only — deliberately NOT part of `condition: C`,
+      # so it cannot change when this fires, only what the page says once it has.
       - uid: kinowo-movies-served-city-empty
         title: City serving zero films (was active)
         condition: C
@@ -793,7 +808,7 @@ groups:
           severity: critical
         annotations:
           summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 24h)'
-          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite peaking at >=4 films in the last 24h — the city went dark. TWO known causes: (1) a read-model outage (a malformed web_movies document makes the web''s findAllMovies throw and empties the whole corpus → every city to 0; see reference_web_movies_required_ratings_outage) — check web logs for "findAllMovies failed" / "Missing field"; (2) a small/thin venue whose own listing ran out before its next scrape (durant/moab, 2026-09-08) — check https://kinowo.net/{{ $labels.city }}/ and the venue''s own site before assuming (1) if this city has few venues.'
+          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite peaking at >=4 films in the last 24h — the city went dark. The corpus side for this same city (kinowo_worker_movies_served) currently reads {{ $values.B.Value }}: if that is ALSO 0, this is cause (2) — a small/thin venue whose own listing ran out before its next scrape (durant/moab, 2026-09-08) — check https://kinowo.net/{{ $labels.city }}/ and the venue''s own site, but it is very likely not a bug. If it is NONZERO, this is cause (1) — the corpus has films for this city that the site is not serving, a read-model defect (see reference_web_movies_required_ratings_outage and docs/read-model-convergence.md) — check web logs for "findAllMovies failed" / "Missing field" first.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -807,6 +822,18 @@ groups:
               intervalMs: 1000
               maxDataPoints: 43200
               refId: A
+          - refId: B
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: local-prometheus
+            model:
+              datasource: { type: prometheus, uid: local-prometheus }
+              editorMode: code
+              expr: 'max by (city) (kinowo_worker_movies_served{scope="all"})'
+              instant: true
+              range: false
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: B
           - refId: C
             relativeTimeRange: { from: 0, to: 0 }
             datasourceUid: __expr__
@@ -1070,6 +1097,15 @@ groups:
       # ~04:00, long before the floor at 05:00. `for: 5m` so a brief reaper pause
       # doesn't message. Human Telegram heads-up (no `notify` label → default
       # receiver), not the /throttle control webhook.
+      #
+      # `max BY (country)`, not a bare `max()` — fixed 2026-09-10. The metric
+      # already carries a `country` label (one series per country's worker), so a
+      # bare `max()` collapsed all five into one anonymous instance: the 2026-09-10
+      # Decodo-outage page said only "> 10min" with no way to tell from the
+      # notification alone that it was uk (2610s and climbing) and briefly us
+      # (465s, already recovering) rather than, say, a single country's reaper
+      # wedged. Grouping makes this a per-country multi-instance alert like every
+      # other rule in this file that reads a country-labelled gauge.
       - uid: kinowo-worker-task-age-high
         title: Worker task queue head-of-line age high
         condition: C
@@ -1077,8 +1113,8 @@ groups:
         noDataState: OK
         execErrState: OK
         annotations:
-          summary: 'kinowo-worker oldest waiting task > 10min — the queue is not draining'
-          description: 'kinowo_worker_queue_oldest_waiting_age_seconds > 600 for 5m: the head of the task queue has been waiting over ten minutes, so the worker pool is not keeping up (a CPU-credit throttle spiral, a wedged reaper, or a slow-host backlog). The earliest signal of the sustained-throttle failure mode.'
+          summary: '{{ $labels.country }} worker: oldest waiting task > 10min — the queue is not draining'
+          description: '{{ $labels.country }}''s kinowo_worker_queue_oldest_waiting_age_seconds > 600 for 5m: the head of the task queue has been waiting over ten minutes, so the worker pool is not keeping up (a CPU-credit throttle spiral, a wedged reaper, a slow-host backlog, or an egress path — e.g. the Decodo proxy — failing broadly enough to starve every task type sharing the pool). The earliest signal of the sustained-throttle failure mode.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -1086,7 +1122,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: 'max(kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker"})'
+              expr: 'max by (country) (kinowo_worker_queue_oldest_waiting_age_seconds{app="kinowo-worker"})'
               instant: true
               range: false
               intervalMs: 1000
