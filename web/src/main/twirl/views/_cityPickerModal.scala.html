@@ -17,10 +17,19 @@
    apart. `shared.js` owns the state (`openCityPicker`, `pickCityPickerCountry`,
    `cityPickerBack`, `pickCityPickerCity`, `locateCityPickerAnywhere`); this
    template is just the shell, same division as `_hiddenModal`/`updateNavbar`.
+
+   Its own `city-picker-*` classes throughout — NOT `.hidden-modal`/
+   `.login-modal-*` — even though `_sharedStyles` gives them the identical
+   backdrop/card shell. Sharing those classes literally (not just visually)
+   broke `hidden-modal-ui.spec.ts`'s `.hidden-modal .login-modal-close`
+   locator: Playwright's strict mode resolved it to two elements once this
+   modal also carried them, present-but-closed in the DOM being enough to
+   match. `#hidden-modal-backdrop` (an ID, and the only thing most specs
+   key on) was never ambiguous; the class combinator was.
 *@
-<div class="city-picker-backdrop hidden-modal-backdrop" id="city-picker-backdrop" onclick="closeCityPicker()">
-  <div class="city-picker-modal hidden-modal" onclick="event.stopPropagation()">
-    <button type="button" class="login-modal-close" onclick="closeCityPicker()" aria-label="@messages("auth.close")">&times;</button>
+<div class="city-picker-backdrop" id="city-picker-backdrop" onclick="closeCityPicker()">
+  <div class="city-picker-modal" onclick="event.stopPropagation()">
+    <button type="button" class="city-picker-close" onclick="closeCityPicker()" aria-label="@messages("auth.close")">&times;</button>
 
     @* Hidden until a region (or subregion) is drilled into — see
        `cityPickerBack`/`renderCityPickerBody`. *@
@@ -29,7 +38,7 @@
       <span>@messages("back.back")</span>
     </div>
 
-    <div class="login-modal-title">@messages("landing.chooseCity")</div>
+    <div class="city-picker-title">@messages("landing.chooseCity")</div>
     @* Breadcrumb of the region/subregion drilled into so far — plain text,
        no message key needed: the labels are place names straight off
        `KINOWO_CATALOG`, not copy. *@
@@ -48,8 +57,8 @@
     </button>
     <div id="city-picker-locate-status" class="locate-city-status" style="display:none"></div>
 
-    <input type="search" id="city-picker-search" class="hidden-modal-search" placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" autocomplete="off" oninput="filterCityPicker()">
+    <input type="search" id="city-picker-search" class="city-picker-search" placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" autocomplete="off" oninput="filterCityPicker()">
     <p id="city-picker-empty" class="city-picker-empty" style="display:none">@messages("landing.noCity")</p>
-    <div id="city-picker-list" class="hidden-modal-list city-picker-list"></div>
+    <div id="city-picker-list" class="city-picker-list"></div>
   </div>
 </div>

@@ -81,6 +81,15 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   private def req(path: String) =
     FakeRequest(GET, path).withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
 
+  // The mobile-parity city picker (`_cityPickerModal`) reads `KINOWO_CATALOG` —
+  // the embedded `models.Catalog.json` — rather than a server-rendered
+  // `<optgroup>` tree, so these read the same field the picker's JS drill-down
+  // groups by instead of parsing markup that no longer exists.
+  private def catalogRegion(html: String, slug: String): Option[String] =
+    s""""slug":"$slug"[^}]*"region":"([^"]+)"""".r.findFirstMatchIn(html).map(_.group(1))
+  private def catalogSubregion(html: String, slug: String): Option[String] =
+    s""""slug":"$slug"[^}]*"subregion":"([^"]+)"""".r.findFirstMatchIn(html).map(_.group(1))
+
   // ── The metro's own listing ─────────────────────────────────────────────────
 
   "/los-angeles/" should "render the repertoire scoped to that metro only" in {
@@ -123,60 +132,42 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     html should include ("\"los-angeles\";")
   }
 
-  it should "offer the other metros grouped by their state in the city switcher" in {
+  it should "carry the other metros' state grouping in the catalog the city picker drills through" in {
     val html = contentAsString(usController().index("los-angeles")(req("/los-angeles/")))
-    html should include ("""<optgroup label="California">""")
-    html should include ("""<option value="san-francisco-bay-area">San Francisco Bay Area</option>""")
-    // Two of the 461 metros are both called "Philadelphia" — a flat list offers them as
-    // two identical options, which is why the US switcher is grouped at all.
-    html should include ("""<optgroup label="Pennsylvania">""")
-    html should include ("""<optgroup label="New Jersey">""")
+    catalogRegion(html, "san-francisco-bay-area") shouldBe Some("California")
+    // Two of the 461 metros are both called "Philadelphia" — a flat list offers
+    // them as two identical rows, which is why the picker groups by state at
+    // all; the catalog is how it (and a visitor) can tell them apart.
+    val philadelphiaRegions = """"name":"Philadelphia"[^}]*"region":"([^"]+)"""".r
+      .findAllMatchIn(html).map(_.group(1)).toList
+    philadelphiaRegions should contain allOf ("Pennsylvania", "New Jersey")
   }
 
-  "A UK page's city switcher" should "group its counties by nation, the same arrangement its picker uses" in {
-    // The switcher reads `Country.cityGroups` — the same grouping the landing
-    // picker does — so giving the UK nations arranges BOTH. 79 options in one
-    // run is the same unreadable list on a `<select>` as on a page.
+  "A UK page's city picker" should "group its counties by nation, with a further subregion where a county holds more than one place" in {
+    // The catalog reads `Country.cityGroups` — the same grouping the landing
+    // picker's tree does — through `models.Catalog`'s `region`/`subregion`
+    // fields, so a nation groups its counties and a county that really holds
+    // several places (unlike one that collapsed onto its single place —
+    // `CityGroup.soleCity`) earns a subregion of its own.
     val html = contentAsString(ukController().index("london")(req("/london/")))
-    html should include ("""<optgroup label="England">""")
-    html should include ("""<optgroup label="Scotland">""")
-    html should include ("""<optgroup label="Crown Dependencies">""")
-    html should include ("""<option value="glasgow">Glasgow</option>""")
-    // FLATTENED to the top level: the UK picker nests a county between the nation
-    // and the place, and an `<optgroup>` may not contain another — so every one
-    // of a nation's places sits directly under it here, county and all.
-    html should include ("""<option value="birmingham">Birmingham</option>""")
-    html should not include """<optgroup label="West Midlands">"""
-
-    // …and RE-SORTED, which the tree's own order is not. A county that kept its
-    // heading contributes its places at the COUNTY's alphabetical position, so
-    // Birmingham used to follow Warwickshire here — correct under a "West
-    // Midlands" heading, nonsense in a flat list, where typing "b" walks
-    // Bedfordshire, Berkshire, Bristol and never reaches it.
-    val options = """<option value="[^"]+">([^<]+)</option>""".r
-      .findAllMatchIn(html.split("""<optgroup label="England">""")(1)
-                          .split("</optgroup>").head)
-      .map(_.group(1)).toList
-    options should contain allOf ("Birmingham", "Warwickshire", "Cheshire")
-    options.indexOf("Birmingham") should be < options.indexOf("Cheshire")
-    // British collation, not a code-point sort — the latter files "North
-    // Yorkshire" before "Northamptonshire" on the space.
-    val collator = java.text.Collator.getInstance(java.util.Locale.forLanguageTag("en-GB"))
-    withClue(s"England's options: ${options.take(8)}: ") {
-      options shouldBe options.sortWith((a, b) => collator.compare(a, b) < 0)
-    }
+    catalogRegion(html, "glasgow") shouldBe Some("Scotland")
+    catalogRegion(html, "birmingham") shouldBe Some("England")
+    catalogSubregion(html, "birmingham") shouldBe Some("West Midlands")
+    // Cheshire collapsed onto its one place, so it reads correctly through
+    // `region` alone — no subregion heading for a visitor to open for nothing.
+    catalogRegion(html, "cheshire") shouldBe Some("England")
+    catalogSubregion(html, "cheshire") shouldBe None
   }
 
   it should "group Germany's regions by Bundesland, the same way" in {
-    // Germany joined the grouped countries with the UK; the switcher reads the
-    // same `Country.cityGroups`, so 158 options are arranged rather than run
-    // together.
+    // Germany joined the grouped countries with the UK; the catalog carries the
+    // same `Country.cityGroups`, so 158 regions are grouped rather than run
+    // together in one A-to-Z.
     val html = contentAsString(deController().index("koeln")(req("/koeln/")))
-    html should include ("""<optgroup label="Nordrhein-Westfalen">""")
-    html should include ("""<optgroup label="Bayern">""")
-    html should include ("""<option value="muenchen">München</option>""")
-    // A Land is a heading, never an option.
-    html should not include """<option value="bayern">"""
+    catalogRegion(html, "muenchen") shouldBe Some("Bayern")
+    catalogRegion(html, "koeln") shouldBe Some("Nordrhein-Westfalen")
+    // A Land is a heading a visitor drills through, never a place of its own.
+    html should not include """"slug":"bayern""""
   }
 
   "A small metro" should "leave its cinema list flat rather than wrapping it in one group" in {

@@ -630,12 +630,76 @@
   }
   .hidden-modal-actions { display: flex; gap: .55rem; }
 
-  /* Mobile-parity city picker — same `.hidden-modal-backdrop`/`.hidden-modal`
-     shell as the hidden-films modal (`city-picker-modal.scala.html` carries
-     both classes), plus its own rows: the current city shown on the Filtry
-     trigger row, the country pill strip, the back row, the drilled-into
-     region/subregion breadcrumb, and the locate button/status moved here
-     from the old in-panel row. */
+  /* Mobile-parity city picker — its own class namespace throughout, even
+     though the shell is visually identical to the hidden-films modal
+     (backdrop/card/close/title/search/list, duplicated below rather than
+     shared): a Playwright spec locates the hidden-films modal's close
+     button by `.hidden-modal .login-modal-close`, and sharing those classes
+     literally made that selector ambiguous the moment this modal's
+     (closed, but present) markup also carried them. */
+  .city-picker-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    display: none;
+    align-items: center; justify-content: center;
+    z-index: 200;
+  }
+  .city-picker-backdrop.open { display: flex; }
+  .city-picker-modal {
+    background: #1a1a2e;
+    border: 1px solid #3a3a6e;
+    border-radius: 12px;
+    padding: 1.4rem 1.4rem 1.1rem;
+    max-width: 420px;
+    width: 92%;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .city-picker-close {
+    position: absolute;
+    top: .4rem; right: .55rem;
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+  }
+  .city-picker-close:hover { color: #fff; }
+  .city-picker-title { font-size: 1.2rem; font-weight: 600; margin-bottom: .5rem; }
+  .city-picker-search {
+    background: #3a3a6e;
+    color: #eee;
+    border: none;
+    border-radius: 6px;
+    padding: .25rem .6rem;
+    font-size: .875rem;
+    width: 100%;
+    margin-top: .6rem;
+    min-height: 35px;
+    flex-shrink: 0;
+  }
+  .city-picker-search::placeholder { color: #778; }
+  .city-picker-search:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
+  .city-picker-list {
+    overflow-y: auto;
+    margin: .35rem -.4rem .9rem;
+    padding: 0 .4rem;
+    scrollbar-width: thin; scrollbar-color: #3a3a6e transparent;
+  }
+  .city-picker-list::-webkit-scrollbar { width: 8px; height: 8px; }
+  .city-picker-list::-webkit-scrollbar-track { background: transparent; }
+  .city-picker-list::-webkit-scrollbar-thumb { background: #3a3a6e; border-radius: 4px; }
+  .city-picker-list::-webkit-scrollbar-thumb:hover { background: #5a5a9e; }
+  .city-picker-list .panel-item {
+    /* Inside the modal the item can use the full available width (vs. the
+       280px cap a dropdown-hosted `.panel-item` carries). */
+    max-width: none;
+  }
+  /* The current city shown on the Filtry trigger row that opens this
+     modal — `_navbar`'s `#city-picker-row`, not part of the modal itself. */
   .city-picker-current { color: #aab; font-size: .75rem; }
   .city-picker-countries {
     display: flex; flex-wrap: wrap; gap: .4rem;
