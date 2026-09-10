@@ -16,8 +16,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,9 +32,8 @@ import pl.kinowo.model.Country
 import pl.kinowo.model.selected
 import pl.kinowo.ui.theme.TextSecondary
 
-/** The gap between the "Country" label and the pill row below it, and — kept
- *  equal on purpose — the gap between the pill row and the locate-me icon
- *  beside it, so the header reads as one evenly-spaced group. */
+/** The gap between the header row (the "Country" label + locate-me icon) and
+ *  the pill row below it. */
 private val CountryPickerGap = 6.dp
 
 /**
@@ -49,9 +50,9 @@ private val CountryPickerGap = 6.dp
  * the city list below the fold. Scrolling keeps the header exactly one pill tall
  * however many countries the catalog carries.
  *
- * [onLocateMe] renders as an icon trailing the pill row — inline rather than
- * overlaid, so it costs no extra height and its gap from the pills can match
- * [CountryPickerGap] exactly, the same as the label's gap from the pills.
+ * [onLocateMe] renders as an icon trailing the "Country" label, ABOVE the pill
+ * row rather than beside it — its own row costs no extra height on top of the
+ * label's, and its gap down to the pills matches [CountryPickerGap] exactly.
  */
 @Composable
 fun CountryPicker(
@@ -64,45 +65,55 @@ fun CountryPicker(
 ) {
     val current = countries.selected(selectedCode)
     Column(modifier.fillMaxWidth()) {
-        Text(
-            stringResource(R.string.country_label),
-            fontSize = 19.5.sp,
-            color = TextSecondary,
-            modifier = Modifier.padding(bottom = CountryPickerGap),
-        )
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Row(
-                Modifier
-                    .weight(1f)
-                    .horizontalScroll(rememberScrollState())
-                    .selectableGroup(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                countries.forEach { country ->
-                    val selected = country.code == current.code
-                    if (selected) {
-                        Button(onClick = { onSelect(country.code) }) {
-                            Text(country.displayName, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                        }
+        Row(
+            Modifier.fillMaxWidth().padding(bottom = CountryPickerGap),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.country_label),
+                fontSize = 19.5.sp,
+                color = TextSecondary,
+                modifier = Modifier.weight(1f),
+            )
+            // The default 48dp touch target is meant for a row with no other
+            // height driver — here it would inflate the whole header row well
+            // past what the "Country" label needs, pushing the city list (and
+            // on a short subregion list, its last row) further down for no
+            // visual gain. Sized instead to sit comfortably beside the label.
+            CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides 32.dp) {
+                IconButton(onClick = onLocateMe, enabled = !locating, modifier = Modifier.size(32.dp)) {
+                    if (locating) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                     } else {
-                        OutlinedButton(
-                            onClick = { onSelect(country.code) },
-                            colors = ButtonDefaults.outlinedButtonColors(),
-                        ) {
-                            Text(country.displayName, maxLines = 1)
-                        }
+                        Icon(
+                            Icons.Filled.MyLocation,
+                            contentDescription = stringResource(R.string.locate_me),
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
                 }
             }
-            IconButton(
-                onClick = onLocateMe,
-                enabled = !locating,
-                modifier = Modifier.padding(start = CountryPickerGap),
-            ) {
-                if (locating) {
-                    CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                .selectableGroup(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            countries.forEach { country ->
+                val selected = country.code == current.code
+                if (selected) {
+                    Button(onClick = { onSelect(country.code) }) {
+                        Text(country.displayName, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    }
                 } else {
-                    Icon(Icons.Filled.MyLocation, contentDescription = stringResource(R.string.locate_me))
+                    OutlinedButton(
+                        onClick = { onSelect(country.code) },
+                        colors = ButtonDefaults.outlinedButtonColors(),
+                    ) {
+                        Text(country.displayName, maxLines = 1)
+                    }
                 }
             }
         }
