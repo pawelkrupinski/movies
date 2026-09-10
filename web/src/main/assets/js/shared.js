@@ -2513,13 +2513,16 @@
   // ── App promotion banner ────────────────────────────────────────────────────
   // Nudges EVERY visitor (not just phones — unlike the swipe hint above) toward
   // the native app once per calendar day, picking the store badge that matches
-  // their OS. Two independent gates: the daily cap keeps an undismissed banner
-  // from reappearing on every navigation within the same day, and the ✕ sets a
-  // longer 30-day snooze on top of that. Device-local, same as the swipe hint —
-  // reuses its `_hintGet`/`_hintSet` localStorage wrapper.
+  // their OS. Two independent gates, both ~a day but not redundant: the daily
+  // cap keys off the CITY's calendar day (`pageToday()`) and keeps an
+  // undismissed banner from reappearing on every navigation within that day,
+  // while the ✕ sets a rolling 24h snooze from the click instant — so a
+  // dismissal at 23:50 doesn't let the banner right back in at 00:10 just
+  // because the calendar day turned over. Device-local, same as the swipe
+  // hint — reuses its `_hintGet`/`_hintSet` localStorage wrapper.
   const APP_BANNER_DAY       = 'kinowoAppBannerDay';           // last calendar day it was shown
   const APP_BANNER_SNOOZE    = 'kinowoAppBannerSnoozedUntil';  // epoch ms the ✕ sets
-  const APP_BANNER_SNOOZE_MS = 30 * 24 * 60 * 60 * 1000;
+  const APP_BANNER_SNOOZE_MS = 24 * 60 * 60 * 1000;
 
   function maybeShowAppBanner() {
     const banner = document.getElementById('app-banner');
@@ -2928,7 +2931,7 @@
     updateNavbar();
     bootView();
     maybeShowSwipeHint();   // once-a-day phone nudge, retired on first swipe
-    maybeShowAppBanner();   // once-a-day app-store nudge, snoozed 30d on dismiss
+    maybeShowAppBanner();   // once-a-day app-store nudge, snoozed 24h on dismiss
     // AFTER the page knows who is looking, and only then: the server-state
     // reconcile is a no-op for an anonymous visitor and the sign-out self-heal
     // looks for the avatar menu, so both would read "signed out" off every page

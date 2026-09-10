@@ -49,7 +49,7 @@ test.describe('app banner', () => {
     }
   });
 
-  test('the ✕ hides it and survives a per-day reset (30-day snooze)', async ({ page }) => {
+  test('the ✕ hides it and survives a per-day reset (24h snooze)', async ({ page }) => {
     await page.evaluate(() => localStorage.clear());
     await reload(page);
     await expect(banner(page)).toBeVisible();

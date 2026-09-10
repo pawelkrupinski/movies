@@ -2,7 +2,7 @@
 @* App-promo top banner — markup only. `shared.js`'s `maybeShowAppBanner` (see
    the "App promotion banner" section there) decides once per calendar day
    whether to reveal it and which store badge(s) match the visitor's OS;
-   `dismissAppBanner` handles the ✕ and snoozes it for 30 days. Starts with
+   `dismissAppBanner` handles the ✕ and snoozes it for 24 hours. Starts with
    neither badge shown (`style="display:none"`) so a JS-disabled visitor never
    sees a banner with nothing it can act on — same reasoning as the grid-cloak
    / swipe-hint pattern elsewhere on this page.
