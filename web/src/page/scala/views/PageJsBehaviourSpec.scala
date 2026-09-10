@@ -79,7 +79,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
       // The city-selection landing (`/` with no city cookie) — drives the
       // inline city-search filter. City-independent, so served off-prefix.
-      val landingHtml: String = views.html.landing(models.Country.default).body
+      val landingHtml: String = views.html.landing(models.Country.default, isApex = false).body
 
       // The GROUPED landing — the same page for a country whose places are found
       // through a heading (`Country.cityGroups`). Poland's is one flat list, so
@@ -87,7 +87,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // 55 collapsed states over 468 places, and the seven that are a state and a
       // place at once. Rendered under the English bundle that host serves.
       val groupedLandingHtml: String =
-        views.html.landing(models.Country.UnitedStates)(using testsupport.TestMessages.forLang("en")).body
+        views.html.landing(models.Country.UnitedStates, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
       // …and the NESTED one. The UK puts a county between its nation and its
       // places, so a heading there sits inside another heading — the shape the
@@ -97,10 +97,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // wrong — nobody types "koln" — and its 16 Bundesländer all arrive shut, so
       // the search box is the way in rather than a convenience.
       val germanLandingHtml: String =
-        views.html.landing(models.Country.Germany)(using testsupport.TestMessages.forLang("en")).body
+        views.html.landing(models.Country.Germany, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
       val nestedLandingHtml: String =
-        views.html.landing(models.Country.UnitedKingdom)(using testsupport.TestMessages.forLang("en")).body
+        views.html.landing(models.Country.UnitedKingdom, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
       val pills = city.cinemaPillMap
       val indexHtml: String = views.html.repertoire(
@@ -460,306 +460,251 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  // ── city-selection landing search ────────────────────────────────────────
-  //
-  // The landing page (`/` with no city cookie) lists all 41 cities; the inline
-  // search box narrows them by folded substring match so a visitor can type
-  // their city instead of scrolling. Diacritic-insensitive: "lodz" finds
-  // "Łódź", "krakow" finds "Kraków".
+  // ── the dynamic picker: static fallback replaced by JS on load ──────────
 
-  /** Type `q` into the city-search box and fire the `input` handler. */
-  private def typeCitySearch(page: CdpPage, q: String): Unit =
+  "the landing page" should "hide the static, no-JS city list and mount the dynamic picker in its place" in {
+    onLanding { page =>
+      page.evalBool("getComputedStyle(document.getElementById('picker-static')).display === 'none'") shouldBe true
+      page.evalBool("getComputedStyle(document.getElementById('picker-dynamic')).display !== 'none'") shouldBe true
+    }
+  }
+
+  // ── the dynamic picker's search — CURRENT LEVEL only ─────────────────────
+  //
+  // The picker shows one level at a time (country → region → subregion →
+  // city, mirroring the retired Filtry → Miasto popup and the iOS/Android
+  // choosers), so the search box narrows THAT level's rows rather than the
+  // whole tree — a query never surfaces a city from a country or region the
+  // visitor hasn't drilled into. Diacritic-insensitive on both sides of the
+  // fold: "lodz" finds "Łódź", "krakow" finds "Kraków".
+
+  /** Type `q` into the dynamic picker's search box and fire the `input`
+   *  handler. */
+  private def typePickerSearch(page: CdpPage, q: String): Unit =
     page.eval(
-      "(function(){var i=document.getElementById('city-search');" +
+      "(function(){var i=document.getElementById('picker-search');" +
       s"""i.value="$q";""" +
       "i.dispatchEvent(new Event('input'));})()")
 
-  /** JSON array of the city names whose row is currently visible. */
-  private def visibleCities(page: CdpPage): String =
+  /** JSON array of the current level's row labels, in DOM order. Reads
+   *  `.picker-item-label` rather than the row's own `.textContent` — a
+   *  region/subregion row also carries a chevron `<span>`, whose text
+   *  `.textContent` would otherwise run straight into the label's. */
+  private def pickerRowLabels(page: CdpPage): String =
     page.evalString(
-      "JSON.stringify(Array.prototype.filter.call(" +
-      "document.querySelectorAll('#city-list > li')," +
-      "function(el){return getComputedStyle(el).display!=='none';})" +
-      ".map(function(el){return el.textContent.trim();}))")
+      "JSON.stringify(Array.prototype.map.call(" +
+      "document.querySelectorAll('#picker-list .picker-item-label'),"+
+      "function(el){return el.textContent.trim();}))")
 
-  "the city-selection landing search" should
-    "narrow the list to a typed city name" in {
+  private def pickerRowCount(page: CdpPage): Int =
+    page.evalInt("document.querySelectorAll('#picker-list .picker-item').length")
+
+  /** Click the current level's row whose label is `label` — a region/
+   *  subregion heading (drills in) or a city (would navigate; not exercised
+   *  here, see `city-select.spec.ts`). */
+  private def clickPickerRow(page: CdpPage, label: String): Unit =
+    page.eval(
+      "Array.prototype.filter.call(document.querySelectorAll('#picker-list .picker-item-label')," +
+      s"""function(el){return el.textContent.trim()==="$label";})[0].click()""")
+
+  /** Click the country pill whose label is `label` — each deployed country's
+   *  OWN-language name, straight off `KINOWO_CATALOG` (not translated into
+   *  the page's language; same as the retired popup). */
+  private def clickCountryPill(page: CdpPage, label: String): Unit =
+    page.eval(
+      "Array.prototype.filter.call(document.querySelectorAll('#picker-countries .picker-country-pill')," +
+      s"""function(el){return el.textContent.trim()==="$label";})[0].click()""")
+
+  "the dynamic picker's search" should "narrow the flat country's rows to a typed city name" in {
     onLanding { page =>
-      typeCitySearch(page, "wroc")
-      visibleCities(page) shouldBe """["Wrocław"]"""
+      typePickerSearch(page, "wroc")
+      pickerRowLabels(page) shouldBe """["Wrocław"]"""
     }
   }
 
   it should "match Polish names typed without diacritics" in {
     onLanding { page =>
       // "lodz" must find "Łódź" — ł/ó folded away on both sides.
-      typeCitySearch(page, "lodz")
-      visibleCities(page) shouldBe """["Łódź"]"""
-      typeCitySearch(page, "krakow")
-      visibleCities(page) shouldBe """["Kraków"]"""
+      typePickerSearch(page, "lodz")
+      pickerRowLabels(page) shouldBe """["Łódź"]"""
+      typePickerSearch(page, "krakow")
+      pickerRowLabels(page) shouldBe """["Kraków"]"""
+      typePickerSearch(page, "czestochowa")
+      pickerRowLabels(page) shouldBe """["Częstochowa"]"""
+      typePickerSearch(page, "zielona")
+      pickerRowLabels(page) shouldBe """["Zielona Góra"]"""
     }
   }
 
   it should "show the empty-state and no rows when nothing matches" in {
     onLanding { page =>
-      typeCitySearch(page, "zzzzz")
-      visibleCities(page) shouldBe "[]"
+      typePickerSearch(page, "zzzzz")
+      pickerRowCount(page) shouldBe 0
       page.evalBool(
-        "getComputedStyle(document.getElementById('city-empty')).display !== 'none'"
-      ) shouldBe true
-    }
-  }
-
-  // ── grouped landing: the state/nation disclosures ────────────────────────
-  //
-  // A country with 468 US places or 79 UK counties does not get one A-to-Z. They
-  // sit behind a heading you open — a native `<details>`, so it works before the
-  // script does — and the search has to reach through those headings, because a
-  // match nobody can see is a match that did not happen.
-
-  /** The elements matching `sel` that a reader can actually see, as a JS
-   *  expression yielding an Array.
-   *
-   *  `checkVisibility` rather than `display` or `getClientRects()`, because the
-   *  two mechanisms this list hides rows by answer differently to everything
-   *  else. The filter sets `display:none`; a shut `<details>` skips its content
-   *  instead (`content-visibility`), which leaves the rows' computed display
-   *  untouched AND — measured on Chrome 152 — still laying out, one client rect
-   *  each. `checkVisibility` is the one question both answer honestly. */
-  private def renderedIn(sel: String): String =
-    "Array.prototype.filter.call(" +
-    s"document.querySelectorAll('$sel')," +
-    "function(el){return el.checkVisibility({checkVisibilityCSS:true});})"
-
-  /** JSON array of the trimmed text of every element matching `sel` a reader
-   *  can see. */
-  private def renderedTexts(page: CdpPage, sel: String): String =
-    page.evalString(
-      s"JSON.stringify(${renderedIn(sel)}.map(function(el){return el.textContent.trim();}))")
-
-  /** How many elements matching `sel` a reader can see. */
-  private def renderedCount(page: CdpPage, sel: String): Int =
-    page.evalInt(s"${renderedIn(sel)}.length")
-
-  /** Click the group heading whose label is exactly `label`. */
-  private def clickGroup(page: CdpPage, label: String): Unit =
-    page.eval(
-      "Array.prototype.filter.call(document.querySelectorAll('#city-list summary')," +
-      s"""function(s){return s.textContent.trim()==="$label";})[0].click()""")
-
-  private val AnyGroupedCity = "#city-list details.city-group a"
-
-  "the grouped city-selection landing" should
-    "start with every group shut, so the list is its headings and nothing else" in {
-    onGroupedLanding { page =>
-      // 55 states and territories — the whole list a visitor first sees, minus
-      // the seven that are a place in their own right and link straight through.
-      val headings = renderedCount(page, "#city-list summary")
-      val direct   = renderedCount(page, "#city-list > li.city-direct > a")
-      headings + direct shouldBe models.Country.UnitedStates.cityGroups.size
-      headings should be > 40
-      // Not one of the 468 places is on screen yet.
-      renderedCount(page, AnyGroupedCity) shouldBe 0
-      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 0
-    }
-  }
-
-  it should "reveal a state's metros when its heading is clicked, and hide them again" in {
-    onGroupedLanding { page =>
-      clickGroup(page, "California")
-      renderedTexts(page, AnyGroupedCity) should include ("Los Angeles")
-      // Only that state opened — its neighbour's metros stay put away.
-      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 1
-      renderedTexts(page, AnyGroupedCity) should not include "Houston"
-
-      clickGroup(page, "California")
-      renderedCount(page, AnyGroupedCity) shouldBe 0
-    }
-  }
-
-  it should "link a state that IS a place straight to it, with no heading to open" in {
-    onGroupedLanding { page =>
-      // Delaware is too small to cut into metros, so `/delaware/` is the page —
-      // a heading you open to find one row repeating its own name is a step that
-      // buys nothing. See `CityGroup.soleCity`.
-      renderedTexts(page, """#city-list > li.city-direct > a[href="/delaware/"]""") shouldBe """["Delaware"]"""
-      renderedTexts(page, "#city-list summary") should not include "Delaware"
-      // California is the other half of that rule: many metros, so a heading.
-      renderedTexts(page, "#city-list summary") should include ("California")
-    }
-  }
-
-  it should "open the group a search hit is in — a match behind a shut heading is invisible" in {
-    onGroupedLanding { page =>
-      typeCitySearch(page, "los angeles")
-      renderedTexts(page, AnyGroupedCity) shouldBe """["Los Angeles"]"""
-      renderedTexts(page, "#city-list summary") shouldBe """["California"]"""
-      // The direct-link states filter out with everyone else.
-      renderedCount(page, """#city-list > li.city-direct > a[href="/delaware/"]""") shouldBe 0
-    }
-  }
-
-  it should "match a metro on its STATE's name, which is how a visitor looks for it" in {
-    onGroupedLanding { page =>
-      // Nobody types "Los Angeles" to find out what California has. The heading
-      // is the term the list taught them, so it has to be a term the box takes.
-      typeCitySearch(page, "california")
-      renderedTexts(page, "#city-list summary") shouldBe """["California"]"""
-      val shown = renderedCount(page, AnyGroupedCity)
-      shown shouldBe models.Country.UnitedStates.cityGroups.find(_.label == "California").get.cities.size
-      shown should be > 1
-    }
-  }
-
-  it should "shut every group again when the query is cleared" in {
-    onGroupedLanding { page =>
-      typeCitySearch(page, "los angeles")
-      typeCitySearch(page, "")
-      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 0
-      renderedCount(page, AnyGroupedCity) shouldBe 0
-      // …and every heading is back, including the ones the query filtered out.
-      renderedCount(page, "#city-list summary") +
-        renderedCount(page, "#city-list > li.city-direct > a") shouldBe models.Country.UnitedStates.cityGroups.size
-    }
-  }
-
-  "the search fold" should "find a German name by the spelling its own slug uses" in {
-    onGermanLanding { page =>
-      // "Köln" lives at `/koeln/`, so "koeln" is what a visitor types. A fold
-      // that only strips the umlaut answers that with nothing — and with every
-      // Bundesland arriving shut, nothing is the whole page.
-      typeCitySearch(page, "koeln")
-      renderedTexts(page, "#city-list a") shouldBe """["Köln"]"""
-      typeCitySearch(page, "muenchen")
-      renderedTexts(page, "#city-list a") shouldBe """["München"]"""
-
-      // …and by the stripped spelling too, and by the literal one.
-      typeCitySearch(page, "koln")
-      renderedTexts(page, "#city-list a") shouldBe """["Köln"]"""
-      typeCitySearch(page, "köln")
-      renderedTexts(page, "#city-list a") shouldBe """["Köln"]"""
-
-      // A heading answers to both spellings for the same reason.
-      typeCitySearch(page, "wuerttemberg")
-      renderedTexts(page, "#city-list summary") shouldBe """["Baden-Württemberg"]"""
-      typeCitySearch(page, "wurttemberg")
-      renderedTexts(page, "#city-list summary") shouldBe """["Baden-Württemberg"]"""
-    }
-  }
-
-  it should "still fold Polish the way it always did" in {
-    onLanding { page =>
-      // NFD replaced the hand-written Polish table; ł is the one letter it does
-      // not decompose, so it stays spelled out.
-      typeCitySearch(page, "lodz")
-      visibleCities(page) shouldBe """["Łódź"]"""
-      typeCitySearch(page, "krakow")
-      visibleCities(page) shouldBe """["Kraków"]"""
-      typeCitySearch(page, "czestochowa")
-      visibleCities(page) shouldBe """["Częstochowa"]"""
-      typeCitySearch(page, "zielona")
-      visibleCities(page) shouldBe """["Zielona Góra"]"""
-    }
-  }
-
-  "the two-level city-selection landing" should
-    "keep a county shut inside a shut nation, and open only what is asked for" in {
-    onNestedLanding { page =>
-      // Nothing but the five nations on screen: not a county, not a place.
-      renderedCount(page, "#city-list summary") shouldBe
-        models.Country.UnitedKingdom.cityGroups.size
-      renderedCount(page, "#city-list details.city-group a") shouldBe 0
-      renderedTexts(page, "#city-list summary") shouldBe
-        """["England","Scotland","Wales","Northern Ireland","Crown Dependencies"]"""
-
-      clickGroup(page, "England")
-      // The county level appears — and almost all of it is places, because every
-      // county holding ONE place was pulled up into a link.
-      renderedTexts(page, "#city-list summary") should include ("West Midlands")
-      renderedTexts(page, "#city-list a") should include ("Cheshire")
-      // Including the ones whose county name differs from the place's.
-      renderedTexts(page, "#city-list a") should include ("Liverpool")
-      renderedTexts(page, "#city-list a") should include ("Manchester")
-      renderedTexts(page, "#city-list summary") should not include "Merseyside"
-      // …but nothing INSIDE a real county has opened with it.
-      renderedTexts(page, "#city-list a") should not include "Birmingham"
-
-      clickGroup(page, "West Midlands")
-      renderedTexts(page, "#city-list a") should include ("Birmingham")
-      // Both levels are open, and only those two.
-      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 2
-    }
-  }
-
-  it should "open the WHOLE chain above a search hit, not just the heading nearest it" in {
-    onNestedLanding { page =>
-      // Birmingham is two headings deep. Opening only West Midlands would leave
-      // it inside a shut England, which is a hit the searcher still cannot see.
-      typeCitySearch(page, "birmingham")
-      renderedTexts(page, "#city-list a") shouldBe """["Birmingham"]"""
-      renderedTexts(page, "#city-list summary") shouldBe """["England","West Midlands"]"""
-      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 2
-    }
-  }
-
-  it should "still find a county by name after its one place was pulled up" in {
-    onNestedLanding { page =>
-      // "Merseyside" is no longer a heading anywhere on the page — it collapsed
-      // onto Liverpool. It has to stay a term the box takes, or pulling the row
-      // up would have made the county unfindable.
-      typeCitySearch(page, "merseyside")
-      renderedTexts(page, "#city-list a") shouldBe """["Liverpool"]"""
-      renderedTexts(page, "#city-list summary") shouldBe """["England"]"""
-
-      typeCitySearch(page, "greater manchester")
-      renderedTexts(page, "#city-list a") shouldBe """["Manchester"]"""
-    }
-  }
-
-  it should "match a place on its COUNTY's name as well as its nation's" in {
-    onNestedLanding { page =>
-      // Every heading above a row is a term the box takes — the grouping is how
-      // a visitor knows the place is there.
-      typeCitySearch(page, "west midlands")
-      renderedTexts(page, "#city-list a") shouldBe """["Birmingham","Dudley","Sandwell"]"""
-
-      typeCitySearch(page, "crown dependencies")
-      renderedTexts(page, "#city-list a") shouldBe """["Guernsey","Isle of Man","Jersey"]"""
-    }
-  }
-
-  it should "shut both levels again when the query is cleared" in {
-    onNestedLanding { page =>
-      typeCitySearch(page, "birmingham")
-      typeCitySearch(page, "")
-      page.evalInt("document.querySelectorAll('#city-list details[open]').length") shouldBe 0
-      renderedCount(page, "#city-list details.city-group a") shouldBe 0
-      renderedCount(page, "#city-list summary") shouldBe
-        models.Country.UnitedKingdom.cityGroups.size
-    }
-  }
-
-  it should "show the empty-state when nothing matches, headings included" in {
-    onGroupedLanding { page =>
-      typeCitySearch(page, "zzzzz")
-      renderedCount(page, "#city-list summary") shouldBe 0
-      renderedCount(page, AnyGroupedCity) shouldBe 0
-      page.evalBool(
-        "getComputedStyle(document.getElementById('city-empty')).display !== 'none'"
+        "getComputedStyle(document.getElementById('picker-empty')).display !== 'none'"
       ) shouldBe true
     }
   }
 
   it should "restore the full list when the query is cleared" in {
     onLanding { page =>
-      typeCitySearch(page, "wroc")
-      typeCitySearch(page, "")
-      page.evalString(
-        "String(document.querySelectorAll('#city-list > li').length)"
-      ) shouldBe page.evalString(
-        "String(Array.prototype.filter.call(" +
-        "document.querySelectorAll('#city-list > li')," +
-        "function(el){return getComputedStyle(el).display!=='none';}).length)")
+      typePickerSearch(page, "wroc")
+      typePickerSearch(page, "")
+      pickerRowCount(page) shouldBe models.Country.default.cities.size
+    }
+  }
+
+  // ── the dynamic picker's drill-down: region → subregion → city ──────────
+  //
+  // A country with 468 US places or 79 UK counties does not get one A-to-Z:
+  // the root level shows region headings (plus any place small enough to
+  // collapse onto — `CityGroup.soleCity`), and opening one REPLACES the list
+  // with that region's own rows, with a back row to return — one level per
+  // tap, exactly the popup's own mechanism.
+
+  "the grouped picker (the US)" should
+    "start on region headings and direct places only, with no back row" in {
+    onGroupedLanding { page =>
+      // 55 states and territories — the whole list a visitor first sees.
+      pickerRowCount(page) shouldBe models.Country.UnitedStates.cityGroups.size
+      page.evalBool("getComputedStyle(document.getElementById('picker-back-row')).display === 'none'") shouldBe true
+      pickerRowLabels(page) should include ("California")
+      // Delaware is too small to cut into metros, so it is a direct row here —
+      // a heading you open to find one place repeating its own name buys
+      // nothing. See `CityGroup.soleCity`.
+      pickerRowLabels(page) should include ("Delaware")
+    }
+  }
+
+  it should "reveal a state's metros when its heading is clicked, with a back row to return" in {
+    onGroupedLanding { page =>
+      clickPickerRow(page, "California")
+      page.evalBool("getComputedStyle(document.getElementById('picker-back-row')).display !== 'none'") shouldBe true
+      page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "California"
+      pickerRowLabels(page) should include ("Los Angeles")
+      pickerRowLabels(page) should not include "Houston"
+
+      page.eval("document.getElementById('picker-back-row').click()")
+      page.evalBool("getComputedStyle(document.getElementById('picker-back-row')).display === 'none'") shouldBe true
+      pickerRowCount(page) shouldBe models.Country.UnitedStates.cityGroups.size
+    }
+  }
+
+  it should "search only the level it is showing, not the whole tree" in {
+    onGroupedLanding { page =>
+      // "los angeles" is a CITY, one level below the root the box is
+      // searching — a query never surfaces a row from a level the visitor
+      // hasn't drilled into.
+      typePickerSearch(page, "los angeles")
+      pickerRowCount(page) shouldBe 0
+      // The heading itself is the root level's own term.
+      typePickerSearch(page, "california")
+      pickerRowLabels(page) shouldBe """["California"]"""
+
+      typePickerSearch(page, "")
+      clickPickerRow(page, "California")
+      // Now one level down, a DIFFERENT state's name is no longer a row here
+      // — it named a level above, not a place inside this one. (Not
+      // "california" itself: one of the state's own metros happens to share
+      // that name — a real coincidence, not a bug — so it would still match.)
+      typePickerSearch(page, "texas")
+      pickerRowCount(page) shouldBe 0
+      typePickerSearch(page, "los angeles")
+      pickerRowLabels(page) shouldBe """["Los Angeles"]"""
+    }
+  }
+
+  "the two-level picker (the UK)" should
+    "need two taps to reach a place — nation, then county" in {
+    onNestedLanding { page =>
+      // ALPHABETICAL, unlike the static tree's roster (declaration) order —
+      // the dynamic picker's row-building is inherited unchanged from the
+      // retired popup's `buildCityPickerRows`, which sorts every heading
+      // level (`headings.sort(byLabel)`); the static `_cityPickerGroup` tree
+      // instead walks `Country.cityGroups` in the order it's declared.
+      pickerRowLabels(page) shouldBe
+        """["Crown Dependencies","England","Northern Ireland","Scotland","Wales"]"""
+
+      clickPickerRow(page, "England")
+      // Almost all of it is places, because every county holding ONE place
+      // was pulled up a level (`CityGroup.soleCity`) — including where the
+      // county's own name differs from the place's (Merseyside → Liverpool).
+      pickerRowLabels(page) should include ("West Midlands")
+      pickerRowLabels(page) should include ("Cheshire")
+      pickerRowLabels(page) should include ("Liverpool")
+      pickerRowLabels(page) should not include "Merseyside"
+      pickerRowLabels(page) should not include "Birmingham"
+
+      clickPickerRow(page, "West Midlands")
+      page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "England — West Midlands"
+      pickerRowLabels(page) shouldBe """["Birmingham","Dudley","Sandwell"]"""
+
+      // Back pops ONE level at a time — county first, then nation.
+      page.eval("document.getElementById('picker-back-row').click()")
+      pickerRowLabels(page) should include ("West Midlands")
+      page.eval("document.getElementById('picker-back-row').click()")
+      pickerRowLabels(page) shouldBe
+        """["Crown Dependencies","England","Northern Ireland","Scotland","Wales"]"""
+    }
+  }
+
+  "the search fold" should "find a German name by the spelling its own slug uses" in {
+    onGermanLanding { page =>
+      clickPickerRow(page, "Nordrhein-Westfalen")
+      // "Köln" lives at `/koeln/`, so "koeln" is what a visitor types. A fold
+      // that only strips the umlaut answers that with nothing.
+      typePickerSearch(page, "koeln")
+      pickerRowLabels(page) shouldBe """["Köln"]"""
+      // …and by the stripped spelling too, and by the literal one.
+      typePickerSearch(page, "koln")
+      pickerRowLabels(page) shouldBe """["Köln"]"""
+      typePickerSearch(page, "köln")
+      pickerRowLabels(page) shouldBe """["Köln"]"""
+
+      typePickerSearch(page, "")
+      page.eval("document.getElementById('picker-back-row').click()")
+      clickPickerRow(page, "Bayern")
+      typePickerSearch(page, "muenchen")
+      pickerRowLabels(page) shouldBe """["München"]"""
+
+      // A root-level HEADING answers to both spellings for the same reason.
+      typePickerSearch(page, "")
+      page.eval("document.getElementById('picker-back-row').click()")
+      typePickerSearch(page, "wuerttemberg")
+      pickerRowLabels(page) shouldBe """["Baden-Württemberg"]"""
+      typePickerSearch(page, "wurttemberg")
+      pickerRowLabels(page) shouldBe """["Baden-Württemberg"]"""
+    }
+  }
+
+  it should "NOT find a Land pulled up a level by its own name — KINOWO_CATALOG carries no alias" in {
+    onGermanLanding { page =>
+      // The static fallback's `data-alias="Saarland"` (see `_cityPickerGroup`)
+      // is what makes Saarbrücken findable by "saarland" there — but
+      // `KINOWO_CATALOG` (`models.Catalog.json`, the same JSON the mobile
+      // apps read) never carries a collapsed group's name at all (see
+      // `Catalog.scala`'s `regionOf`, built only from groups whose
+      // `soleCity` is empty). The dynamic picker searches THAT data, so it
+      // shares the apps' own gap here rather than closing it — a pre-existing
+      // limitation of the popup this replaces, not a regression.
+      typePickerSearch(page, "saarland")
+      pickerRowCount(page) shouldBe 0
+      // The city's OWN name still finds it, same as any other root-level row.
+      typePickerSearch(page, "saarbruecken")
+      pickerRowLabels(page) shouldBe """["Saarbrücken"]"""
+    }
+  }
+
+  // ── country pills ─────────────────────────────────────────────────────
+
+  "the picker's country row" should "switch to another deployed country's own root level" in {
+    onLanding { page =>
+      // The fixture serves every deployed country (`Country.switchable`),
+      // same as production — `/landing` just opens on Poland's.
+      clickCountryPill(page, "Deutschland")
+      pickerRowLabels(page) should include ("Bayern")
+      pickerRowLabels(page) should not include "Wrocław"
+      page.evalBool("getComputedStyle(document.getElementById('picker-back-row')).display === 'none'") shouldBe true
     }
   }
 
@@ -5134,70 +5079,52 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
        |  pointerType: 'touch', isPrimary: true, clientX: $x, clientY: $y, bubbles: true, cancelable: true
        |}))""".stripMargin
 
-  // ── Country switch: carrying the sign-in across a domain boundary ────────
+  // ── Picker country crossing: an origin boundary, not a sign-in check ─────
   //
-  // `/uk`, `/de` and `/us` are one origin and share the session cookie outright
-  // (its path is the host root), so switching between them is a plain
-  // navigation and stays signed in by itself. kinowo.net is a different
-  // registrable domain, where no cookie setting can reach — go there directly
-  // and the visitor arrives signed out, hidden films apparently
-  // gone. `countrySwitchTarget` is the decision between the two, asserted here
-  // in a real browser because it reads BOTH facts off the rendered page: whether
-  // an avatar menu is present, and what this deployment's own base URL is.
+  // `/uk`, `/de` and `/us` are one origin and share the session cookie
+  // outright (its path is the host root), so crossing between them is a
+  // plain navigation and stays signed in by itself. kinowo.net is a
+  // different registrable domain, where no cookie setting can reach.
+  // `crossCountryUrl` (`landing.scala.html`) is the decision: a same-origin
+  // target gets a plain `?pick=city` link; a genuine origin crossing always
+  // goes through `/auth/sso/start` FIRST — unconditionally, not gated on a
+  // signed-in check, because `AuthController.ssoStart` is a documented safe
+  // no-op when there is nothing to hand over (it just redirects on through),
+  // and the picker has no navbar/`#auth-menu` to read a signed-in flag off
+  // in the first place (unlike the repertoire pages the retired
+  // `#country-select` lived on). The one extra redirect hop this costs a
+  // signed-out visitor crossing origins is the trade for never needing that
+  // check anywhere the picker can be reached from.
   //
-  // The fixture renders as Poland, so "this deployment" is https://kinowo.net.
+  // The fixture renders `/landing` as Poland; `window.location.origin` there
+  // is the test server's own address, not the prod `kinowo.net`.
 
-  "The country switcher" should "hand a signed-in visitor over through /auth/sso/start when the target is another origin" in {
-    onLoggedInIndex { page =>
-      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") shouldBe
-        "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fuk&pick=city"
-    }
-  }
-
-  it should "navigate straight there when the target is on this origin — the cookie already follows" in {
-    onLoggedInIndex { page =>
+  "The picker's country crossing" should "route a same-origin target through a plain ?pick=city link" in {
+    onLanding { page =>
       val origin = page.evalString("window.location.origin")
-      page.evalString("window.countrySwitchTarget(window.location.origin + '/de')") shouldBe s"$origin/de/?pick=city"
+      page.evalString("window.crossCountryUrl(window.location.origin + '/de')") shouldBe s"$origin/de/?pick=city"
     }
   }
 
-  it should "navigate straight there for a signed-out visitor — there is no session to hand over" in {
-    onPath("/") { page =>
-      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") shouldBe "https://showtimes.cc/uk/?pick=city"
+  it should "route a genuinely different origin through /auth/sso/start" in {
+    onLanding { page =>
+      val origin = page.evalString("window.location.origin")
+      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk')") shouldBe
+        s"$origin/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fuk&pick=city"
     }
   }
 
-  // THE SUBTLE ONE. By the time `onchange` fires, the <select>'s live value is
-  // the country being switched TO — so reading `.value` to answer "where am I"
-  // gives the destination, and the handoff would be minted on the wrong
-  // deployment (or, for a same-origin target, skipped entirely). The current
-  // country is found through the server-rendered `selected` ATTRIBUTE, which
-  // does not move when the property does. Simulated here by moving the value
-  // first, exactly as the browser does before calling the handler.
-  it should "read this deployment's own base off the selected attribute, not the live value" in {
-    onLoggedInIndex { page =>
-      page.evalBool("(document.getElementById('country-select').value = 'https://showtimes.cc/de', true)") shouldBe true
-      page.evalString("document.getElementById('country-select').value") shouldBe "https://showtimes.cc/de"
-
-      page.evalString("window.countrySwitchTarget('https://showtimes.cc/de')") shouldBe
-        "https://kinowo.net/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fde&pick=city"
-    }
-  }
-
-
-  // Switching country is a deliberate choice OF A COUNTRY, so the landing it
+  // Crossing country is a deliberate choice OF A COUNTRY, so the landing it
   // opens must ask which city rather than bounce to a cookie'd one or to
-  // wherever the device is standing. `pick=city` is what says so, and it has to
-  // survive both routes — including the handover, where it rides BESIDE `to`
-  // (the far side matches `to` against the deployed base URLs verbatim, so a
-  // query string inside it would be refused as "not a deployed country").
+  // wherever the device is standing. `pick=city` is what says so, and it has
+  // to survive both routes — including the handover, where it rides BESIDE
+  // `to` (the far side matches `to` against the deployed base URLs verbatim,
+  // so a query string inside it would be refused as "not a deployed country").
   it should "ask the destination for a city list, on both routes" in {
-    onLoggedInIndex { page =>
-      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") should endWith ("&pick=city")
-      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") should include ("to=https%3A%2F%2Fshowtimes.cc%2Fuk&")
-    }
-    onPath("/") { page =>
-      page.evalString("window.countrySwitchTarget('https://showtimes.cc/uk')") should endWith ("/?pick=city")
+    onLanding { page =>
+      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk')") should endWith ("&pick=city")
+      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk')") should include ("to=https%3A%2F%2Fshowtimes.cc%2Fuk&")
+      page.evalString("window.crossCountryUrl(window.location.origin + '/de')") should endWith ("/?pick=city")
     }
   }
 

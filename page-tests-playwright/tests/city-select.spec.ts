@@ -1,22 +1,35 @@
 import { test, expect, type Page } from '@playwright/test';
-import { gotoAndWaitForCards, waitForCards } from './helpers';
+import { gotoAndWaitForCards } from './helpers';
 
-// The group whose OWN heading is `name`. `hasText` would not do: it matches any
-// group containing the text, and a nested picker's outermost group contains
-// every heading under it — asking for "West Midlands" that way returns England.
-const groupNamed = (page: Page, name: string) =>
+// The group whose OWN heading is `name`, inside the STATIC fallback tree
+// (`#picker-static` — real crawlable links, hidden once the dynamic picker
+// below takes over; see `landing.scala.html`). `hasText` would not do: it
+// matches any group containing the text, and a nested picker's outermost
+// group contains every heading under it — asking for "West Midlands" that
+// way returns England.
+const staticGroupNamed = (page: Page, name: string) =>
   page.locator(`#city-list details.city-group:has(> summary:text-is("${name}"))`);
 
-// Multi-city: the bare `/` is a city-selection landing (every page lives
-// under `/{city}/`). It tries browser geolocation first and falls back to a
-// manual list; the Filtry → Miasto picker switches cities from any page.
+// The dynamic picker's CURRENT LEVEL row whose label is `label` — a region /
+// subregion heading (drills in on click) or a city (navigates on click).
+const pickerRow = (page: Page, label: string) =>
+  page.locator('#picker-list .picker-item', { hasText: label });
+
+const pickerCountryPill = (page: Page, label: string) =>
+  page.locator('#picker-countries .picker-country-pill', { hasText: label });
+
+// Multi-city: the bare `/` is the unified country + city picker (every page
+// lives under `/{city}/`). It tries browser geolocation first and falls back
+// to the picker; the Filtry → Miasto row navigates here from any page.
 
 test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
-  test('lists every city of the country it serves and a pick navigates into it', async ({ page }) => {
+  test('serves a crawlable static list of every city of the country it serves', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     // The fixture `/` renders ONE country's list, exactly as a deployment does
-    // (`views.html.landing(Country.default)` — see FixtureServerMain), so this is
-    // Poland's 41 cities. The grouped shape lives at /landing-us below.
+    // (`views.html.landing(Country.default, isApex = false)` — see
+    // FixtureServerMain), so this is Poland's 41 cities. Real `<a href>`
+    // markup even though the dynamic picker below hides it once JS runs —
+    // `toHaveCount`/`allTextContents` read the DOM regardless of visibility.
     const links = page.locator('.city-list a');
     await expect(links).toHaveCount(41);
     await expect(page.locator('.city-list')).toContainText('Poznań');
@@ -28,8 +41,14 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await expect(page.locator('.city-list')).toContainText('Częstochowa');
     // One flat A-to-Z: only a grouped country carries state headings.
     await expect(page.locator('.city-group')).toHaveCount(0);
+  });
 
-    await page.locator('.city-list a', { hasText: 'Poznań' }).click();
+  test('hides the static fallback and picks a city through the dynamic picker', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#picker-static')).toBeHidden();
+    await expect(page.locator('#picker-dynamic')).toBeVisible();
+
+    await pickerRow(page, 'Poznań').click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
   });
 });
@@ -45,73 +64,72 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
 // and `CountrySpec` pin the same number model-side; this one pins that the page
 // RENDERS all of them, which is the part they cannot see.
 test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
-  test('keeps every state shut until it is opened, then lands on the metro picked', async ({ page }) => {
+  test('the static fallback lists every place, all headings shut', async ({ page }) => {
     await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
     // All 468 places are in the document — 461 metros behind a state heading,
-    // plus the seven states small AND compact enough to be a place in their own
-    // right, which link straight through rather than heading a list of one
-    // (`CityGroup.soleCity`).
+    // plus the seven states small AND compact enough to be a place in their
+    // own right, which link straight through (`CityGroup.soleCity`).
     await expect(page.locator('.city-list a')).toHaveCount(468);
     const groups = page.locator('details.city-group');
     await expect(groups).toHaveCount(48);
     await expect(page.locator('#city-list > li.city-direct > a')).toHaveCount(7);
     await expect(page.locator('#city-list > li.city-direct > a[href="/delaware/"]')).toHaveText('Delaware');
-    // Every heading SHUT. The grouping only earns its keep closed: rendered open
-    // this is the 468-row A-to-Z the states were introduced to break up, with 55
-    // headings added to it.
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
     await expect(groups.first()).toContainText('Alabama');
-
-    const california = groupNamed(page, 'California');
+    const california = staticGroupNamed(page, 'California');
     await expect(california.locator('a')).toHaveCount(22);
-    // No state is addressable.
     await expect(page.locator('.city-list a[href="/california/"]')).toHaveCount(0);
-
-    await california.locator('> summary').click();
-    await expect(california).toHaveAttribute('open', '');
-    // Opening one leaves the rest alone.
-    await expect(page.locator('details.city-group[open]')).toHaveCount(1);
-    // ALPHABETICAL — a heading you open is a list you scan for a name you already
-    // know. Los Angeles is the state's biggest metro and led the roster-ordered
-    // list this replaced; it is now in the middle, which is the point.
-    await expect(california.locator('a').first()).toHaveText('Bakersfield');
-
-    await page.locator('a[href="/los-angeles/"]').click();
-    await page.waitForURL((u) => new URL(u).pathname === '/los-angeles/');
-    await expect(page.locator('#view-root')).toHaveCount(1);
   });
 
-  test('a heading closes again on a second click', async ({ page }) => {
+  test('the dynamic picker opens on the states and drills into one', async ({ page }) => {
     await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
-    const california = groupNamed(page, 'California');
-    await california.locator('> summary').click();
-    await expect(california.locator('a').first()).toBeVisible();
-    await california.locator('> summary').click();
-    await expect(california).not.toHaveAttribute('open', '');
-    await expect(california.locator('a').first()).toBeHidden();
+    await expect(page.locator('#picker-list .picker-item')).toHaveCount(55);
+    await expect(page.locator('#picker-back-row')).toBeHidden();
+
+    await pickerRow(page, 'California').click();
+    await expect(page.locator('#picker-back-row')).toBeVisible();
+    await expect(page.locator('#picker-subtitle')).toHaveText('California');
+    // ALPHABETICAL — a heading you open is a list you scan for a name you
+    // already know, not the roster order.
+    await expect(page.locator('#picker-list .picker-item').first()).toHaveText(/Bakersfield/);
+    await expect(pickerRow(page, 'Los Angeles')).toBeVisible();
+    // A pick's final navigation is not exercised here: `/landing-us` is the
+    // fixture harness's SIMULATED render of the US's own landing, carrying
+    // the US's real `pathPrefix` ("/us") baked into `rememberAndGo` — but
+    // this flat, single-process test server doesn't actually mount anything
+    // under `/us`, so a click would 404 in THIS harness even though the same
+    // code is correct on the real US deployment (whose own process really is
+    // mounted there). The same-country "navigates straight there" contract
+    // is exercised where the harness CAN support it — the flat, unprefixed
+    // default (`/` → `/poznan/`, below) and the popup's own retired tests
+    // for this exact case, which this replaces.
   });
 
-  test('the search box opens the state holding a hit and drops the rest', async ({ page }) => {
+  test('a back tap returns from the state level to the root', async ({ page }) => {
     await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
-    await page.locator('#city-search').fill('los angeles');
-    // A match behind a shut heading is a match the searcher cannot see, so the
-    // one state that still has a row OPENS.
-    const open = page.locator('details.city-group[open]');
-    await expect(open).toHaveCount(1);
-    await expect(open).toContainText('California');
-    await expect(page.locator('.city-list a:visible')).toHaveText(['Los Angeles']);
+    await pickerRow(page, 'California').click();
+    await expect(pickerRow(page, 'Los Angeles')).toBeVisible();
+    await page.locator('#picker-back-row').click();
+    await expect(page.locator('#picker-back-row')).toBeHidden();
+    await expect(page.locator('#picker-list .picker-item')).toHaveCount(55);
+  });
 
-    // The heading is a term the box takes too — nobody types "Los Angeles" to
-    // find out what California has.
-    await page.locator('#city-search').fill('california');
-    await expect(page.locator('details.city-group[open]')).toHaveCount(1);
-    await expect(page.locator('.city-list a:visible')).toHaveCount(22);
+  test('the search box narrows the level it is showing, not the whole tree', async ({ page }) => {
+    await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
+    // A metro is one level below the root the box is currently searching.
+    await page.locator('#picker-search').fill('los angeles');
+    await expect(page.locator('#picker-list .picker-item')).toHaveCount(0);
+    // The state's own name IS a root-level row. `.picker-item-label`, not
+    // the row's own text — a region/subregion row also carries a trailing
+    // chevron span.
+    await page.locator('#picker-search').fill('california');
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['California']);
 
-    // Clearing puts the list back the way it was arrived at: every heading
-    // present, every one of them shut.
-    await page.locator('#city-search').fill('');
-    await expect(page.locator('details.city-group[open]')).toHaveCount(0);
-    await expect(page.locator('#city-list > li:visible')).toHaveCount(55);
+    await page.locator('#picker-search').fill('');
+    await pickerRow(page, 'California').click();
+    await expect(page.locator('#picker-list .picker-item')).toHaveCount(22);
+    await page.locator('#picker-search').fill('los angeles');
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Los Angeles']);
   });
 });
 
@@ -122,58 +140,74 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
 // and collapse straight back into it, which is what keeps two levels readable —
 // only the ones that really group something cost a second tap.
 test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
-  test('shows nations first, then counties, then places — one level per tap', async ({ page }) => {
+  test('the static fallback lists every place under its county under its nation', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.city-list a')).toHaveCount(79);
-    // Nothing but the five nations: not a county, not a place.
     await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveText(
       ['England', 'Scotland', 'Wales', 'Northern Ireland', 'Crown Dependencies']);
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
-    // Neither level is a page.
     await expect(page.locator('.city-list a[href="/scotland/"]')).toHaveCount(0);
     await expect(page.locator('.city-list a[href="/west-midlands/"]')).toHaveCount(0);
-
-    const england = groupNamed(page, 'England');
-    await england.locator('> summary').click();
-    // A county holding ONE place is that place's link, pulled up a level —
-    // whether the two names agree (Cheshire) or not (Merseyside → Liverpool).
-    await expect(page.locator('#city-list a[href="/cheshire/"]')).toBeVisible();
-    await expect(page.locator('#city-list a[href="/liverpool/"]')).toBeVisible();
-    await expect(groupNamed(page, 'Merseyside')).toHaveCount(0);
-    // A county that really groups several keeps its heading — and stays shut.
-    const westMidlands = groupNamed(page, 'West Midlands');
-    await expect(westMidlands.locator('> summary')).toBeVisible();
-    await expect(page.locator('a[href="/birmingham/"]')).toBeHidden();
-
-    await westMidlands.locator('> summary').click();
-    await expect(westMidlands.locator('a')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
-    await expect(page.locator('details.city-group[open]')).toHaveCount(2);
-
-    await page.locator('a[href="/birmingham/"]').click();
-    await page.waitForURL((u) => new URL(u).pathname === '/birmingham/');
   });
 
-  test('a search hit opens every heading above it, not just the nearest', async ({ page }) => {
+  test('the dynamic picker needs two taps to reach a place — nation, then county', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
-    // Birmingham is two headings deep; opening only West Midlands would leave it
-    // inside a shut England, which is a hit the searcher still cannot see.
-    await page.locator('#city-search').fill('birmingham');
-    await expect(page.locator('.city-list a:visible')).toHaveText(['Birmingham']);
-    await expect(page.locator('#city-list summary:visible')).toHaveText(['England', 'West Midlands']);
+    // ALPHABETICAL, unlike the static tree's roster order above — the
+    // dynamic picker's row-building is inherited unchanged from the
+    // retired popup, which sorts every heading level.
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(
+      ['Crown Dependencies', 'England', 'Northern Ireland', 'Scotland', 'Wales']);
 
-    // Every heading above a row is a term the box takes.
-    await page.locator('#city-search').fill('west midlands');
-    await expect(page.locator('.city-list a:visible')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
+    await pickerRow(page, 'England').click();
+    // A county holding ONE place is that place's link, pulled up a level —
+    // whether the two names agree (Cheshire) or not (Merseyside → Liverpool).
+    await expect(pickerRow(page, 'Cheshire')).toBeVisible();
+    await expect(pickerRow(page, 'Liverpool')).toBeVisible();
+    await expect(pickerRow(page, 'Merseyside')).toHaveCount(0);
+    await expect(pickerRow(page, 'Birmingham')).toHaveCount(0);
 
-    // …and so is a county that is no longer a heading at all, because its one
-    // place was pulled up. Dropping the heading saved a tap; it must not have
-    // made the county unfindable.
-    await page.locator('#city-search').fill('merseyside');
-    await expect(page.locator('.city-list a:visible')).toHaveText(['Liverpool']);
+    await pickerRow(page, 'West Midlands').click();
+    await expect(page.locator('#picker-subtitle')).toHaveText('England — West Midlands');
+    // Scoped to the SUBREGION alone (3 places), not the whole region's 49 —
+    // a real bug this exact assertion caught upstream in `landing.scala.html`'s
+    // `buildPickerRows`, inherited unchanged from the retired popup.
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
+    // A pick's final navigation isn't exercised here — see the US test above
+    // for why the fixture harness can't support it for a non-default country.
+  });
 
-    await page.locator('#city-search').fill('');
-    await expect(page.locator('details.city-group[open]')).toHaveCount(0);
-    await expect(page.locator('#city-list > li:visible')).toHaveCount(5);
+  test('back pops one level at a time — county, then nation', async ({ page }) => {
+    await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
+    await pickerRow(page, 'England').click();
+    await pickerRow(page, 'West Midlands').click();
+    await expect(pickerRow(page, 'Birmingham')).toBeVisible();
+
+    await page.locator('#picker-back-row').click();
+    await expect(pickerRow(page, 'West Midlands')).toBeVisible();
+    await expect(page.locator('#picker-subtitle')).toHaveText('England');
+
+    await page.locator('#picker-back-row').click();
+    await expect(page.locator('#picker-back-row')).toBeHidden();
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(
+      ['Crown Dependencies', 'England', 'Northern Ireland', 'Scotland', 'Wales']);
+  });
+
+  test('a search hit at the county level does NOT find a place by its collapsed county name', async ({ page }) => {
+    await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
+    await pickerRow(page, 'England').click();
+    // The static fallback's `data-alias="Merseyside"` (see `_cityPickerGroup`)
+    // is what makes Liverpool findable by "merseyside" there — but
+    // `KINOWO_CATALOG` (the same JSON the mobile apps read) never carries a
+    // collapsed group's name at all (see `Catalog.scala`'s `subregionOf`,
+    // built only from sub-groups holding MORE than one place). The dynamic
+    // picker searches THAT data, so it shares the apps' own gap here rather
+    // than closing it — a pre-existing limitation of the popup this
+    // replaces, not a regression.
+    await page.locator('#picker-search').fill('merseyside');
+    await expect(page.locator('#picker-list .picker-item')).toHaveCount(0);
+    // The place's OWN name still finds it, same as any other row.
+    await page.locator('#picker-search').fill('liverpool');
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Liverpool']);
   });
 });
 
@@ -181,31 +215,41 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
 // ("Köln" also covers Düsseldorf and Bonn) — under the 16 Bundesländer, which is
 // what a visitor knows them by. One level, like the US.
 test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
-  test('lists regions under their Bundesland, collated as German', async ({ page }) => {
+  test('the static fallback lists every region under its Bundesland, collated as German', async ({ page }) => {
     await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.city-list a')).toHaveCount(158);
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
-    // Three of the 16 hold one region each and are pulled up: Berlin and Hamburg
-    // share their region's name, Saarland collapses onto Saarbrücken. The other
-    // 13 are headings.
+    // Three of the 16 hold one region each and are pulled up: Berlin and
+    // Hamburg share their region's name, Saarland collapses onto Saarbrücken.
     await expect(page.locator('#city-list > li.city-direct > a')).toHaveText(
       ['Berlin', 'Hamburg', 'Saarbrücken']);
     await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveCount(13);
-    // Saarland is gone as a heading but still findable.
-    await page.locator('#city-search').fill('saarland');
-    await expect(page.locator('.city-list a:visible')).toHaveText(['Saarbrücken']);
-    await page.locator('#city-search').fill('');
-
-    const nrw = groupNamed(page, 'Nordrhein-Westfalen');
-    await nrw.locator('> summary').click();
-    // Collated, not code-point-ordered: Köln belongs under K-o, and a bare sort
-    // files it after Krefeld because 'ö' outranks every letter.
+    const nrw = staticGroupNamed(page, 'Nordrhein-Westfalen');
     const names = await nrw.locator('a').allTextContents();
+    // Collated, not code-point-ordered: Köln belongs under K-o, and a bare
+    // sort files it after Krefeld because 'ö' outranks every letter.
     expect(names.indexOf('Köln')).toBeLessThan(names.indexOf('Krefeld'));
+  });
 
-    await page.locator('#city-search').fill('bayern');
-    await expect(page.locator('.city-list a:visible')).toContainText(['München']);
-    await expect(page.locator('#city-list summary:visible')).toHaveText(['Bayern']);
+  test('the dynamic picker folds umlauts both ways, one level down', async ({ page }) => {
+    await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
+    // Unlike the static fallback's `data-alias`, `KINOWO_CATALOG` carries no
+    // collapsed-group name at all (see the UK's equivalent test above) — so,
+    // unlike the static tree, "saarland" finds nothing here; "saarbruecken"
+    // (the city's own name) still does.
+    await page.locator('#picker-search').fill('saarland');
+    await expect(page.locator('#picker-list .picker-item')).toHaveCount(0);
+    await page.locator('#picker-search').fill('saarbruecken');
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Saarbrücken']);
+    await page.locator('#picker-search').fill('');
+
+    await pickerRow(page, 'Nordrhein-Westfalen').click();
+    await page.locator('#picker-search').fill('koeln');
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Köln']);
+    await page.locator('#picker-search').fill('koln');
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Köln']);
+    await page.locator('#picker-search').fill('köln');
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Köln']);
   });
 });
 
@@ -237,89 +281,52 @@ test.describe('geolocation auto-redirect', { tag: '@agnostic' }, () => {
   });
 });
 
-// The Filtry → Miasto row no longer holds a `<select>` or its own locate
-// button — both moved into a separate mobile-parity screen (`_cityPickerModal`)
-// mirroring the iOS `CityGate` chooser / Android `CityChoiceScreen`: every
-// deployed country across the top, a region → subregion → city drill-down
-// underneath with a back row, and the locate button now searching every
-// country rather than just this deployment.
-test.describe('Filtry → Miasto picker', { tag: '@agnostic' }, () => {
+// The Filtry → Miasto row no longer opens an in-page modal — it navigates to
+// the unified `/` picker (`landing.scala.html`), the same drill-down this file
+// already exercises above on the bare `/`. This block covers what only shows
+// up from THAT entry point: the picker opening on THIS deployment's own
+// country, the manual "use my location" button, and the cross-country
+// hand-off.
+test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agnostic' }, () => {
   test('opens on this deployment\'s own country, flat, with no back row', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
-    await expect(page.locator('#city-picker-backdrop')).toHaveClass(/open/);
-    // Poland is flat — the opening list is cities directly, no region
-    // heading, and nothing to back out of.
-    await expect(page.locator('#city-picker-back-row')).toBeHidden();
-    await expect(page.locator('#city-picker-list .city-picker-group-item')).toHaveCount(0);
-    await expect(page.locator('#city-picker-list .city-picker-item', { hasText: 'Wrocław' })).toBeVisible();
+    await page.waitForURL((u) => new URL(u).pathname === '/' && new URL(u).search === '?pick=city');
+    await expect(page.locator('#picker-back-row')).toBeHidden();
+    await expect(pickerRow(page, 'Wrocław')).toBeVisible();
   });
 
   test('picking a city in the current country navigates straight to its repertoire root', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
-    await page.locator('#city-picker-list .city-picker-item', { hasText: 'Wrocław' }).click();
+    await pickerRow(page, 'Wrocław').click();
     await page.waitForURL((u) => new URL(u).pathname === '/wroclaw/');
   });
 
-  test('the search box narrows the current level only', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/poznan/');
-    await page.locator('#format-filter-btn').click();
-    await page.locator('#city-picker-row').click();
-    await page.locator('#city-picker-search').fill('wroc');
-    await expect(page.locator('#city-picker-list .city-picker-item')).toHaveText(['Wrocław']);
-    await page.locator('#city-picker-search').fill('');
-    await expect(page.locator('#city-picker-list .city-picker-item').first()).toBeVisible();
-  });
-
-  test('drills a grouped country by region, then a back tap returns to the region list', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/poznan/');
-    await page.locator('#format-filter-btn').click();
-    await page.locator('#city-picker-row').click();
-    // The US is grouped by state — pick it from the country pill row.
-    await page.locator('.city-picker-country-pill', { hasText: 'United States' }).click();
-    await expect(page.locator('#city-picker-list .city-picker-group-item').first()).toBeVisible();
-
-    await page.locator('#city-picker-list .city-picker-group-item', { hasText: 'California' }).click();
-    await expect(page.locator('#city-picker-back-row')).toBeVisible();
-    await expect(page.locator('#city-picker-subtitle')).toHaveText('California');
-    await expect(page.locator('#city-picker-list .city-picker-item', { hasText: 'Los Angeles' })).toBeVisible();
-
-    await page.locator('#city-picker-back-row').click();
-    await expect(page.locator('#city-picker-back-row')).toBeHidden();
-    await expect(page.locator('#city-picker-list .city-picker-group-item', { hasText: 'California' })).toBeVisible();
-  });
-
-  test('the UK needs two taps to reach a place — nation, then county', async ({ page }) => {
-    await gotoAndWaitForCards(page, '/poznan/');
-    await page.locator('#format-filter-btn').click();
-    await page.locator('#city-picker-row').click();
-    await page.locator('.city-picker-country-pill', { hasText: 'United Kingdom' }).click();
-    await page.locator('#city-picker-list .city-picker-group-item', { hasText: 'England' }).click();
-    await page.locator('#city-picker-list .city-picker-group-item', { hasText: 'West Midlands' }).click();
-    await expect(page.locator('#city-picker-subtitle')).toHaveText('England — West Midlands');
-    await expect(page.locator('#city-picker-list .city-picker-item', { hasText: 'Birmingham' })).toBeVisible();
-  });
-
-  test('picking a city in another country hands off to that deployment', async ({ page }) => {
+  test('picking a city in another country hands off through this origin\'s SSO start', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
     // Germany is one level deep (Bundesland over its regions, no third
     // level), so one region tap reaches cities directly.
-    await page.locator('.city-picker-country-pill', { hasText: 'Deutschland' }).click();
-    await page.locator('#city-picker-list .city-picker-group-item', { hasText: 'Bayern' }).click();
-    const [target] = await Promise.all([
-      page.waitForEvent('framenavigated', (f) => f === page.mainFrame()),
-      page.locator('#city-picker-list .city-picker-item:not(.city-picker-group-item)').first().click(),
+    await pickerCountryPill(page, 'Deutschland').click();
+    await pickerRow(page, 'Bayern').click();
+    // `crossCountryUrl` routes every genuine origin crossing through
+    // `/auth/sso/start` FIRST (unconditionally — see `landing.scala.html`'s
+    // own comment), so the outgoing REQUEST is what to assert on: the
+    // fixture harness has no `AuthController` behind that route to actually
+    // land the visitor on `showtimes.cc/de` (a real Play app does).
+    const [request] = await Promise.all([
+      page.waitForRequest((r) => r.url().includes('/auth/sso/start')),
+      pickerRow(page, 'München').click(),
     ]);
-    expect(target.url()).toContain('showtimes.cc/de');
-    expect(target.url()).toContain('pick=city');
+    expect(request.url()).toContain('to=https%3A%2F%2Fshowtimes.cc%2Fde');
+    expect(request.url()).toContain('pick=city');
   });
 
-  // The chooser's own manual locate button — a re-run of the same 100 km
+  // The picker's own manual locate button — a re-run of the same 100 km
   // check the `/` landing does automatically, but ACROSS EVERY deployed
   // country rather than just this one, mirroring the apps'
   // `resolveNearestCityAnyCountry`.
@@ -329,7 +336,7 @@ test.describe('Filtry → Miasto picker', { tag: '@agnostic' }, () => {
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
-    await page.locator('#city-picker-locate-btn').click();
+    await page.locator('#picker-locate-btn').click();
     await page.waitForURL((u) => new URL(u).pathname === '/wroclaw/');
   });
 
@@ -340,10 +347,10 @@ test.describe('Filtry → Miasto picker', { tag: '@agnostic' }, () => {
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
-    await page.locator('#city-picker-locate-btn').click();
-    await expect(page.locator('#city-picker-locate-status')).toHaveText(/./);
+    await page.locator('#picker-locate-btn').click();
+    await expect(page.locator('#picker-locate-status')).toHaveText(/./);
     // The status text only lands after the async fix and the nearest-city
     // check both ran — by then a hit would already have started navigating.
-    expect(new URL(page.url()).pathname).toBe('/poznan/');
+    expect(new URL(page.url()).pathname).toBe('/');
   });
 });

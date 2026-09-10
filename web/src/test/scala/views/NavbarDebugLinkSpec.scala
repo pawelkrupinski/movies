@@ -41,24 +41,13 @@ class NavbarDebugLinkSpec extends AnyFlatSpec with Matchers {
     html should include ("nav-tab-debug")
   }
 
-  "filter panel" should "render the country switcher above the city picker row" in {
-    // Both render under Poznań: Poland has >1 city and >1 country is
-    // deployed (`Country.switchable`). The country switcher must sit above
-    // the city-picker trigger so the panel reads country → city
-    // top-to-bottom, matching iOS/Android — even though picking a country
-    // now happens INSIDE the picker screen the trigger opens (`_cityPickerModal`),
-    // not through the `<select>` itself any more.
+  "filter panel" should "navigate to the unified `/` picker rather than a country select or an in-panel city select" in {
+    // The old `#country-select` dropdown is gone entirely — picking a
+    // country is now a step inside the `/` picker itself (`landing.scala.html`),
+    // not a separate navbar control.
     val html = render(devMode = false)
-    val countryAt = html.indexOf("""id="country-select"""")
-    val cityAt    = html.indexOf("""id="city-picker-row"""")
-    countryAt should be > -1
-    cityAt should be > -1
-    countryAt should be < cityAt
-  }
-
-  "filter panel" should "open the mobile-parity city picker rather than an in-panel select" in {
-    val html = render(devMode = false)
-    html should include ("""onclick="openCityPicker()"""")
+    html should not include ("""id="country-select"""")
+    html should include ("""onclick="goToCityPicker()"""")
     html should not include ("""id="city-select"""")
     html should not include ("""id="locate-city-btn"""")
   }

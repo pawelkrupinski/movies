@@ -70,35 +70,10 @@ class PageSnapshotSpec extends AnyFlatSpec with Matchers {
     assertSnapshot(snapshotDirectory.resolve("expected-warszawa-index.html"), html)
   }
 
-  // Focused assertion for the navbar country switcher (independent of the whole
-  // -page byte diff above): the PL deployment (Country.fromEnv default = Poland)
-  // renders a #country-select listing every DEPLOYED country's host, with the
-  // current country pre-selected — the one flag (`Country.webUrl`) that makes a
-  // country switchable, so nothing else enumerates them.
-  "the navbar country switcher" should "render #country-select with each deployed country's host, current one selected" in {
-    val html = views.html.repertoire(
-      service.toSchedules(city, now), city.cinemaDisplayNames, city.cinemaPillMap,
-      devMode = false, oauthProviders = noOauthProviders, renderedAt = now
-    ).body
-
-    html should include ("""id="country-select"""")
-    html should include ("""onchange="onCountryChange(this.value)"""")
-    // Every deployed host appears as an option value...
-    html should include ("""value="https://kinowo.net"""")
-    html should include ("""value="https://showtimes.cc/uk"""")
-    html should include ("""value="https://showtimes.cc/de"""")
-    html should include ("""value="https://showtimes.cc/us"""")
-    html should include ("""value="https://showtimes.cc/es"""")
-    // ...with the current country (Poland, fromEnv default) pre-selected.
-    html should include ("""value="https://kinowo.net" selected""")
-    // Each deployed country's label, translated into THIS deployment's
-    // language (Polish) — not its own native name any more (`messages("country."
-    // + code)`, not `Country.displayName`), so every visitor's country switcher
-    // reads in one consistent language rather than mixing "Deutschland"/"España"
-    // into an otherwise-Polish page.
-    html should include (">Niemcy<")
-    html should include (">Hiszpania<")
-  }
+  // The navbar's country switcher (`#country-select`) is retired — a country
+  // pick now happens inside the unified `/` picker itself (see
+  // `LandingViewSpec`/`LandingApexSpec`), not through a separate navbar
+  // control. Nothing left here to assert on the repertoire page's own markup.
 
   private def assertSnapshot(expectedPath: Path, actual: String): Unit = {
     if (!Files.exists(expectedPath)) {

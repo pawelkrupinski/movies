@@ -630,108 +630,13 @@
   }
   .hidden-modal-actions { display: flex; gap: .55rem; }
 
-  /* Mobile-parity city picker — its own class namespace throughout, even
-     though the shell is visually identical to the hidden-films modal
-     (backdrop/card/close/title/search/list, duplicated below rather than
-     shared): a Playwright spec locates the hidden-films modal's close
-     button by `.hidden-modal .login-modal-close`, and sharing those classes
-     literally made that selector ambiguous the moment this modal's
-     (closed, but present) markup also carried them. */
-  .city-picker-backdrop {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,.6);
-    display: none;
-    align-items: center; justify-content: center;
-    z-index: 200;
-  }
-  .city-picker-backdrop.open { display: flex; }
-  .city-picker-modal {
-    background: #1a1a2e;
-    border: 1px solid #3a3a6e;
-    border-radius: 12px;
-    padding: 1.4rem 1.4rem 1.1rem;
-    max-width: 420px;
-    width: 92%;
-    max-height: 80vh;
-    display: flex;
-    flex-direction: column;
-    position: relative;
-  }
-  .city-picker-close {
-    position: absolute;
-    top: .4rem; right: .55rem;
-    background: transparent;
-    border: none;
-    color: #888;
-    font-size: 1.5rem;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .city-picker-close:hover { color: #fff; }
-  .city-picker-title { font-size: 1.2rem; font-weight: 600; margin-bottom: .5rem; }
-  .city-picker-search {
-    background: #3a3a6e;
-    color: #eee;
-    border: none;
-    border-radius: 6px;
-    padding: .25rem .6rem;
-    font-size: .875rem;
-    width: 100%;
-    margin-top: .6rem;
-    min-height: 35px;
-    flex-shrink: 0;
-  }
-  .city-picker-search::placeholder { color: #778; }
-  .city-picker-search:focus { outline: none; box-shadow: 0 0 0 2px #5a5a9e; }
-  .city-picker-list {
-    overflow-y: auto;
-    margin: .35rem -.4rem .9rem;
-    padding: 0 .4rem;
-    scrollbar-width: thin; scrollbar-color: #3a3a6e transparent;
-  }
-  .city-picker-list::-webkit-scrollbar { width: 8px; height: 8px; }
-  .city-picker-list::-webkit-scrollbar-track { background: transparent; }
-  .city-picker-list::-webkit-scrollbar-thumb { background: #3a3a6e; border-radius: 4px; }
-  .city-picker-list::-webkit-scrollbar-thumb:hover { background: #5a5a9e; }
-  .city-picker-list .panel-item {
-    /* Inside the modal the item can use the full available width (vs. the
-       280px cap a dropdown-hosted `.panel-item` carries). */
-    max-width: none;
-  }
-  /* The current city shown on the Filtry trigger row that opens this
-     modal — `_navbar`'s `#city-picker-row`, not part of the modal itself. */
+  /* The current city shown on the Filtry trigger row that navigates to the
+     `/` picker (`_navbar`'s `#city-picker-row`). The picker itself
+     (`landing.scala.html`) is a full page with its own `.picker-*` styles,
+     not a modal — the retired `_cityPickerModal`'s backdrop/card/close/
+     title/search/list/countries/pill/back-row/subtitle/empty/group-item
+     rules went with it. */
   .city-picker-current { color: #aab; font-size: .75rem; }
-  .city-picker-countries {
-    display: flex; flex-wrap: wrap; gap: .4rem;
-    margin: .5rem 0;
-  }
-  .city-picker-country-pill {
-    background: #292955; color: #cdd; border: 1px solid #3a3a6e; border-radius: 999px;
-    padding: .3rem .75rem; font-size: .78rem; cursor: pointer;
-  }
-  .city-picker-country-pill:hover { background: #3a3a6e; }
-  .city-picker-country-pill.active { background: #5a5a9e; color: #fff; border-color: #5a5a9e; }
-  .city-picker-locate-btn {
-    display: flex; align-items: center; gap: .4rem;
-    width: 100%; margin-bottom: .3rem;
-  }
-  .city-picker-locate-btn .filter-icon { width: 16px; height: 16px; fill: currentColor; }
-  /* Back row sits above the title so it reads as "where this screen would
-     return to", same placement as the apps' own back row above their
-     search box. */
-  .city-picker-back-row {
-    align-items: center; gap: .4rem; cursor: pointer;
-    color: #aad4ff; font-size: .85rem; margin-bottom: .3rem;
-  }
-  .city-picker-back-arrow { font-size: 1.1rem; line-height: 1; }
-  .city-picker-subtitle { color: #9a9ac0; font-size: .8rem; margin: -.2rem 0 .5rem; }
-  .city-picker-empty { color: #9a9ac0; font-size: .85rem; margin: .4rem 0; }
-  /* A region/subregion heading row — the plain `.panel-item` a city row uses
-     is a block, so the chevron needs its own flex layout to sit at the
-     opposite edge rather than run straight after the label text. */
-  .city-picker-group-item {
-    display: flex; align-items: center; justify-content: space-between;
-  }
 
   /* Small count badge on the "Ukryte filmy" row inside Filtry. */
   .hidden-row-count {

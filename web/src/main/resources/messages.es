@@ -29,7 +29,6 @@ nav.any=Cualquiera
 nav.city=Ciudad
 nav.locateMe=Usar mi ubicación
 nav.language=Idioma
-nav.countrySwitch=País
 
 country.pl=Polonia
 country.uk=Reino Unido

@@ -15,7 +15,7 @@ import org.scalatest.matchers.should.Matchers
 class LandingCountriesPreviewMetaSpec extends AnyFlatSpec with Matchers {
 
   private def render(): String =
-    views.html.landingCountries(Country.switchable)(using TestMessages.forLang("en")).body
+    views.html.landing(Country.default, isApex = true)(using TestMessages.forLang("en")).body
 
   "the front-door preview" should "point og:image + twitter:image at the US home card, not Poland's" in {
     val html = render()

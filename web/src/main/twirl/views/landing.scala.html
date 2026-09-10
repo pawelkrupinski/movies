@@ -1,59 +1,75 @@
-@(country: models.Country, places: Option[Seq[models.City]] = None)(implicit messages: play.api.i18n.Messages)
+@(deployment: models.Country, isApex: Boolean)(implicit messages: play.api.i18n.Messages)
 @*
-   Place-selection landing shown at `/` when no `city` cookie is present.
-   Lists every place the serving country supports, and on load tries browser
-   geolocation: a fix within 100 km of a supported place redirects straight
-   there (and remembers it via the `city` cookie); otherwise the visitor picks
-   from the list. Self-contained (no city-scoped partials) since there's no
-   city yet.
+   The unified country + city picker. Two doors lead here (see
+   `LandingController`):
 
-   Takes the COUNTRY rather than a bare city list: the list, its GROUPING and the
-   geolocation payload all have to come from the same country. Passing it in also
-   keeps the "nothing reads a global current country" rule this template used to
-   break four times over with `Country.fromEnv`.
+     - a country's own site (`kinowo.net/`, `showtimes.cc/uk/`, …) — `isApex`
+       false, `deployment` that country. A returning visitor with a `city`
+       cookie never reaches this at all (the controller bounces them straight
+       to their city); everyone else lands here to pick one, and browser
+       geolocation runs automatically, scoped to `deployment`'s own cities.
+     - the bare `showtimes.cc` apex (`Country.servesApex`) — `isApex` true.
+       Brand chrome rather than a country's site, so no cookie, no automatic
+       geolocation (guessing a COUNTRY from coordinates would send a visitor
+       somewhere they cannot opt out of), and its own English copy regardless
+       of which deployment happens to answer the host.
 
-   Poland and Spain are one flat A-to-Z (41 and 52 — a name is all a visitor
-   needs). The US, Germany and the UK are GROUPED (`Country.cityGroups`), because
-   "Los Angeles" is found under "California" and 468 US places, 158 German regions
-   or 79 UK counties in one alphabetical run is not a list anybody reads.
+   ONE mobile-parity picker serves both, mirroring the iOS `CityGate` chooser /
+   Android `CityChoiceScreen` (and the web's own retired Filtry → Miasto popup,
+   `_cityPickerModal` — deleted; this replaces it rather than sitting beside
+   it): every deployed country across the top, then a region → subregion →
+   city drill-down with a back row, driven entirely by `KINOWO_CATALOG`
+   (`models.Catalog.json` — the same JSON `/api/catalog` hands the apps).
+   Picking a city in `deployment`'s own country navigates straight there (and
+   on the per-country door, remembers it via the `city` cookie); picking one
+   in another country hands off to THAT country's own version of this page
+   (`?pick=city`, or `/auth/sso/start` first when it would otherwise drop a
+   signed-in session crossing an origin — see `crossCountryUrl`) rather than
+   carrying the drilled-to city across, matching the picker's existing,
+   deliberate country-switch behaviour.
 
-   The tree is not the same depth in each: the US nests one level (state over its
-   metros), Germany one (Bundesland over its regions), the UK two (nation over
-   county over its places). `_cityPickerGroup` renders a node of it and recurses,
-   so the depth is the country's to decide and not this template's to know.
-
-   Within a group everything is alphabetical — the only order a reader can search
-   by eye. A group that stands exactly where its one place stands (Delaware,
-   Vermont, and most UK counties) is a plain link to that place instead of a
-   heading you open to find it repeated; see `CityGroup.soleCity`.
-
-   `places` IS NONE IN EVERY DEPLOYMENT, meaning "the country's own list" — a
-   visitor to the Polish site is offered Polish cities and nothing else, and no
-   caller in `main` passes it. It exists for the fixture server
-   (`tools.FixtureServerMain`), which serves one `/` to browser specs written for
-   several countries at once. That is the only seam the harness overrides: the
-   copy, the brand and the geolocation payload still come from the country.
-   (An `Option` rather than a defaulted `Seq`, because a default argument may not
-   reference `country`, a parameter of its own list.)
-
+   STATIC FALLBACK: everything above is JS. `#picker-static` holds real,
+   crawlable markup with no JS of its own — `deployment`'s own city tree
+   (`_cityPickerGroup`, exactly as this page always rendered) on the
+   per-country door, the flat list of country links the old
+   `landingCountries.scala.html` rendered on the apex — so a visitor (or a
+   crawler) whose script never ran still has a complete, working picker one
+   tap from the door they arrived at. `initPicker()` hides it and mounts the
+   dynamic one in its place; nothing here assumes JS ran.
 *@
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
-  <title>@messages("landing.title", country.brandName)</title>
-  @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
-     card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
-     product (posters + ratings), which the city-selection screen itself can't. *@
-  @_ogTagsApp(
-    pageTitle       = messages("landing.title", country.brandName),
-    pageDescription = messages("landing.ogDescription"),
-    pageUrl         = country.ogOrigin + "/",
-    imageUrl        = country.ogOrigin + "/assets/img/" + country.homeOgImage,
-  )
-  @_jsonLd(controllers.StructuredData.landing())
+  @if(isApex) {
+    <title>@messages("landing.apexTitle", models.Country.apexBrandName)</title>
+    @_ogTagsApp(
+      pageTitle       = messages("landing.apexTitle", models.Country.apexBrandName),
+      pageDescription = messages("landing.ogDescription"),
+      pageUrl         = "https://" + models.Country.apexHost + "/",
+      // The apex is brand chrome (English copy pinned above), so its card
+      // image is pinned too, rather than inherited: `Country.default`'s own
+      // fallback is Poland's Polish-language `og-home.jpg`, which is right
+      // everywhere else this default applies but not here — the US card is
+      // the closest thing this brand-neutral page has to a representative
+      // image for an English-language audience.
+      imageUrl        = "https://" + models.Country.apexHost + "/assets/img/" + models.Country.UnitedStates.homeOgImage,
+    )
+  } else {
+    <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
+    <title>@messages("landing.title", deployment.brandName)</title>
+    @* Share preview (FB / Messenger / X / Slack): a dedicated repertoire-preview
+       card, not the bare "Wybierz miasto" picker — so a shared `/` link sells the
+       product (posters + ratings), which the city-selection screen itself can't. *@
+    @_ogTagsApp(
+      pageTitle       = messages("landing.title", deployment.brandName),
+      pageDescription = messages("landing.ogDescription"),
+      pageUrl         = deployment.ogOrigin + "/",
+      imageUrl        = deployment.ogOrigin + "/assets/img/" + deployment.homeOgImage,
+    )
+    @_jsonLd(controllers.StructuredData.landing())
+  }
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -64,29 +80,29 @@
     main { width: 100%; max-width: 420px; text-align: center; }
     h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: .25rem; }
     .sub { color: #9a9ac0; margin-bottom: 1.5rem; }
-    .city-search {
+    .picker-search {
       width: 100%; margin-bottom: 1rem; padding: .8rem 1rem;
       font: inherit; font-size: 1rem; color: #e7e7f5;
       background: #1a1a3a; border: 1px solid #2a2a5e; border-radius: 10px;
       outline: none; transition: border-color .15s;
     }
-    .city-search::placeholder { color: #6f6f9c; }
-    .city-search:focus { border-color: #3a3a7e; }
-    .city-empty { color: #9a9ac0; font-size: .95rem; margin: .25rem 0; display: none; }
-    .city-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
-    .city-list a {
+    .picker-search::placeholder { color: #6f6f9c; }
+    .picker-search:focus { border-color: #3a3a7e; }
+    .picker-empty { color: #9a9ac0; font-size: .95rem; margin: .25rem 0; display: none; }
+    .city-list, .country-list, .picker-list { list-style: none; display: flex; flex-direction: column; gap: .6rem; }
+    .city-list a, .country-list a, .picker-item {
       display: block; text-decoration: none; color: #e7e7f5;
       background: #1a1a3a; border: 1px solid #2a2a5e; border-radius: 10px;
       padding: .9rem 1.1rem; font-size: 1.05rem; font-weight: 500;
       transition: background .15s, border-color .15s;
+      cursor: pointer; text-align: left;
     }
-    .city-list a:hover { background: #25254e; border-color: #3a3a7e; }
+    .city-list a:hover, .country-list a:hover, .picker-item:hover { background: #25254e; border-color: #3a3a7e; }
+    .country-list a { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+    .country-host { color: #9a9ac0; font-size: .85rem; font-weight: 400; }
     /* No `display` of its own — a <details> laid out as anything but a block
        (flex especially) is how several engines end up showing a shut group's
        contents anyway. Its summary and its list stack on their own. */
-    /* The group heading is the control that opens the group, so it is styled as
-       a row like the cities under it rather than as a caption over them: a
-       heading you have to guess is tappable is one nobody taps. */
     .city-group-label {
       display: flex; align-items: center; justify-content: space-between; gap: .75rem;
       cursor: pointer; list-style: none;
@@ -108,47 +124,107 @@
       list-style: none; display: flex; flex-direction: column; gap: .6rem;
       margin: .6rem 0 0 .9rem;
     }
-    /* Each level indents once. Two levels of counties under a nation would
-       otherwise walk the rows off a phone's right edge, and the nesting is
-       already legible from the heading above them. */
     .city-group-cities .city-group-cities { margin-left: .6rem; }
-    /* A grouped list reads down one edge: the heading is left-aligned because it
-       carries a chevron on the other side, so the rows under it — and the groups
-       that collapsed into a single row — line up with it rather than floating in
-       the middle of a column they are supposed to belong to. The flat countries
-       keep the centred rows they have always had; there is no heading there for
-       anything to line up with. */
     .city-group-cities a, .city-direct a { text-align: left; }
     .locating { color: #9a9ac0; font-size: .9rem; margin-top: 1.25rem; min-height: 1.2em; }
+
+    /* ── Dynamic picker — mobile-parity, own class namespace ─────────────── */
+    .picker-countries { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; margin-bottom: 1rem; }
+    .picker-country-pill {
+      background: #1a1a3a; color: #cdd; border: 1px solid #2a2a5e; border-radius: 999px;
+      padding: .35rem .85rem; font-size: .85rem; cursor: pointer;
+    }
+    .picker-country-pill:hover { background: #25254e; }
+    .picker-country-pill.active { background: #3a3a7e; color: #fff; border-color: #3a3a7e; }
+    .locate-btn { display: flex; align-items: center; justify-content: center; gap: .4rem; width: 100%; margin-bottom: .75rem; }
+    .locate-btn .filter-icon { width: 18px; height: 18px; fill: currentColor; }
+    .locate-status { color: #9a9ac0; font-size: .85rem; margin: -.25rem 0 .75rem; }
+    .picker-back-row {
+      display: flex; align-items: center; gap: .4rem; cursor: pointer;
+      color: #aad4ff; font-size: .9rem; margin-bottom: .5rem;
+    }
+    .picker-back-arrow { font-size: 1.2rem; line-height: 1; }
+    .picker-subtitle { color: #9a9ac0; font-size: .85rem; margin: -.25rem 0 .75rem; }
+    .picker-group-item { display: flex; align-items: center; justify-content: space-between; }
+    .picker-group-item .submenu-chevron { color: #9a9ac0; }
   </style>
 </head>
 <body>
   <main>
-    <h1>🎬 @country.brandName</h1>
-    <p class="sub">@messages("landing.chooseCity")</p>
-    <input class="city-search" id="city-search" type="search" inputmode="search"
-           autocomplete="off" autocapitalize="off" spellcheck="false"
-           placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" aria-controls="city-list">
-    <p class="city-empty" id="city-empty">@messages("landing.noCity")</p>
-    <ul class="city-list" id="city-list">
-      @if(country.cityGroups.isEmpty) {
-      @for(c <- places.getOrElse(country.allSorted)) {
-        <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
-      }
+    @if(isApex) {
+      <h1>🎬 @models.Country.apexBrandName</h1>
+      <p class="sub">@messages("landing.chooseCountry")</p>
+    } else {
+      <h1>🎬 @deployment.brandName</h1>
+      <p class="sub">@messages("landing.chooseCity")</p>
+    }
+
+    <div id="picker-static">
+      @if(isApex) {
+        @* Poland answers on kinowo.net under a different brand, but is listed
+           like the rest — someone who lands here wanting Polish listings
+           should not have to know that the two brands are the same product. *@
+        <ul class="country-list" id="country-list">
+          @for(c <- models.Country.switchable) {
+            <li><a href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code">@messages("country." + c.code)<span class="country-host">@c.shareHost</span></a></li>
+          }
+        </ul>
       } else {
-      @for(g <- country.cityGroups) {@_cityPickerGroup(g)}
+        <ul class="city-list" id="city-list">
+          @if(deployment.cityGroups.isEmpty) {
+          @for(c <- deployment.allSorted) {
+            <li><a href="@routes.MovieController.index(c.slug)">@c.labels.nominative</a></li>
+          }
+          } else {
+          @for(g <- deployment.cityGroups) {@_cityPickerGroup(g)}
+          }
+        </ul>
       }
-    </ul>
+    </div>
+
+    <div id="picker-dynamic" style="display:none">
+      <div id="picker-countries" class="picker-countries"></div>
+      @if(!isApex) {
+      <button type="button" id="picker-locate-btn" class="btn refresh-btn btn-sm locate-btn" onclick="locatePickerAnywhere()">
+        <svg class="filter-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
+        </svg>
+        <span>@messages("nav.locateMe")</span>
+      </button>
+      <div id="picker-locate-status" class="locate-status" style="display:none"></div>
+      }
+      <div id="picker-back-row" class="picker-back-row" style="display:none" onclick="pickerBack()">
+        <span class="picker-back-arrow" aria-hidden="true">&#8249;</span>
+        <span>@messages("back.back")</span>
+      </div>
+      <div id="picker-subtitle" class="picker-subtitle" style="display:none"></div>
+      <input class="picker-search" id="picker-search" type="search" inputmode="search"
+             autocomplete="off" autocapitalize="off" spellcheck="false"
+             placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" aria-controls="picker-list" oninput="filterPicker()">
+      <p class="picker-empty" id="picker-empty">@messages("landing.noCity")</p>
+      <ul class="picker-list" id="picker-list"></ul>
+    </div>
+
+    @if(!isApex) {
     <p class="locating" id="locating"></p>
+    }
   </main>
-  @_geoDistance()
+  @if(!isApex) { @_geoDistance() }
   <script>
-    @* THE COUNTRY'S OWN LIST, even when `places` widened the rows above. In
-       every deployment the two are the same set. On the fixture server they are
-       not, deliberately: a nearest-place redirect is a claim about where the
-       visitor IS, and a harness that offered it all 333 places would answer a
-       Poznań fix with whichever of four countries happened to be closest. *@
-    var CITIES = @Html(country.allJson);
+    const KINOWO_CATALOG = @Html(models.Catalog.json);
+    // The country this PROCESS actually serves — decides whether a picked
+    // city is a local navigation or a hand-off to another deployment. Unlike
+    // `DEFAULT_PICKER_COUNTRY` below, this never changes with which pill is
+    // active.
+    const DEPLOYMENT_COUNTRY_CODE = "@deployment.code";
+    const DEPLOYMENT_MOUNT_PATH   = "@deployment.mountPath";
+    const DEPLOYMENT_PATH_PREFIX  = "@deployment.pathPrefix";
+    const IS_APEX = @isApex;
+    // The pill the picker opens on. The apex isn't itself anybody's city
+    // site (see IS_APEX branch in `pickPickerCity`), so it opens on the
+    // brand's own country rather than on `DEPLOYMENT_COUNTRY_CODE`, which may
+    // not even be a country a visitor would recognise as "home" here.
+    const DEFAULT_PICKER_COUNTRY = IS_APEX ? "@models.Country.default.code" : DEPLOYMENT_COUNTRY_CODE;
 
     // Fold a place name to the form people actually type it in. Two folds,
     // because one is not enough once the list is not Polish.
@@ -165,9 +241,7 @@
 
     // …and the German one, which a stripped fold gets WRONG. Nobody types
     // "koln": the umlaut expands, and the slug agrees — `/koeln/`, `/muenchen/`,
-    // `/nuernberg/`. Stripping alone answers "koeln" with nothing, which on a
-    // picker whose 16 Bundesländer all arrive shut is most of the way to
-    // unusable.
+    // `/nuernberg/`. Stripping alone answers "koeln" with nothing.
     function foldExpanded(s) {
       return (s || '').toLowerCase()
         .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
@@ -179,86 +253,226 @@
     // "Köln" is indexed as "koln koeln" and found by köln, koln and koeln alike.
     function haystack(s) { return fold(s) + ' ' + foldExpanded(s); }
 
-    // Client-side filter of the place list (41 Polish cities, 468 US places, 158
-    // German regions, 79 UK counties, …): typing narrows the visible rows by
-    // folded substring match; an empty box shows everything.
+    // ── Dynamic picker state ──────────────────────────────────────────────
     //
-    // Three things the grouped countries need on top of that. A row matches on
-    // the name of EVERY heading above it as well as its own, so "california"
-    // finds Los Angeles, "bayern" finds Nürnberg and "west midlands" finds
-    // Dudley — the grouping is how a visitor knows the place is there, and a
-    // search that ignores it answers nothing for the term they are most likely
-    // to type. Every heading above a hit OPENS, because a match behind a shut one
-    // is a match the searcher cannot see. And clearing the box shuts them all
-    // again, back to the list they arrived on.
-    //
-    // Depth-agnostic throughout: the UK puts a county between its nation and its
-    // places, and nothing here counts levels.
-    (function () {
-      var list = document.getElementById('city-list');
-      var input = document.getElementById('city-search');
-      if (!list || !input) return;
-      var empty  = document.getElementById('city-empty');
-      var groups = Array.prototype.slice.call(list.querySelectorAll('details.city-group'));
+    // `pickerRegion`/`pickerSubregion` mirror the apps' own two nullable
+    // state fields 1:1 (`region`/`subregion` in `CityChoiceScreen.kt` /
+    // `CityGate.swift`, and the retired popup's `cityPickerRegion`/
+    // `cityPickerSubregion`): both null is the top level (regions, or
+    // straight to cities for a flat country), region set is the second
+    // level, both set is the third (only the UK ever reaches it).
+    let pickerCountry = DEFAULT_PICKER_COUNTRY;
+    let pickerRegion = null;
+    let pickerSubregion = null;
+    let pickerRows = [];
 
-      // The headings above `el`, innermost first.
-      var ancestors = function (el) {
-        var chain = [];
-        for (var d = el.parentElement && el.parentElement.closest('details.city-group'); d;
-             d = d.parentElement && d.parentElement.closest('details.city-group')) {
-          chain.push(d);
+    function citiesOf(code) {
+      return KINOWO_CATALOG.cities.filter(function (c) { return c.country === code; });
+    }
+
+    function renderPickerCountries() {
+      const wrap = document.getElementById('picker-countries');
+      if (KINOWO_CATALOG.countries.length <= 1) { wrap.style.display = 'none'; return; }
+      wrap.style.display = '';
+      wrap.innerHTML = '';
+      KINOWO_CATALOG.countries.forEach(function (country) {
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'picker-country-pill' + (country.code === pickerCountry ? ' active' : '');
+        pill.textContent = country.name;
+        pill.onclick = function () { pickPickerCountry(country.code); };
+        wrap.appendChild(pill);
+      });
+    }
+
+    function pickPickerCountry(code) {
+      if (code === pickerCountry) return;
+      pickerCountry = code;
+      pickerRegion = null;
+      pickerSubregion = null;
+      const search = document.getElementById('picker-search');
+      if (search) search.value = '';
+      renderPickerCountries();
+      renderPickerBody();
+    }
+
+    // Pops one drill level — subregion first, then region — same one-tap-per-
+    // level back as the apps' own back button.
+    function pickerBack() {
+      if (pickerSubregion !== null) pickerSubregion = null;
+      else if (pickerRegion !== null) pickerRegion = null;
+      else return;
+      renderPickerBody();
+    }
+    window.pickerBack = pickerBack;
+
+    // The current level's rows: region/subregion HEADINGS (drill further)
+    // ahead of any DIRECT city at that level (a group collapsed onto its one
+    // city — `CityGroup.soleCity` — never earned a heading of its own), each
+    // kind sorted alphabetically under the country's own language.
+    function buildPickerRows() {
+      const cities = citiesOf(pickerCountry);
+      const lang = pickerCountry;
+      const byName = function (a, b) { return a.name.localeCompare(b.name, lang); };
+      const byLabel = function (a, b) { return a.localeCompare(b, lang); };
+      // Scoped by BOTH levels drilled so far, not just the first — the third
+      // (city) level of a country like the UK must narrow to the SUBREGION
+      // (West Midlands' 3 places), not fall back to the whole region
+      // (England's 49) once `pickerSubregion` is the only thing left unset.
+      const scoped = cities.filter(function (c) {
+        return (pickerRegion === null || c.region === pickerRegion) &&
+          (pickerSubregion === null || c.subregion === pickerSubregion);
+      });
+      const groupField = pickerRegion === null ? 'region' : (pickerSubregion === null ? 'subregion' : null);
+      if (groupField === null) {
+        return scoped.slice().sort(byName).map(function (c) { return { kind: 'city', label: c.name, city: c }; });
+      }
+      const headings = [];
+      scoped.forEach(function (c) {
+        if (c[groupField] && headings.indexOf(c[groupField]) === -1) headings.push(c[groupField]);
+      });
+      headings.sort(byLabel);
+      if (headings.length === 0) {
+        return scoped.slice().sort(byName).map(function (c) { return { kind: 'city', label: c.name, city: c }; });
+      }
+      const direct = scoped.filter(function (c) { return !c[groupField]; }).sort(byName);
+      return headings.map(function (label) { return { kind: groupField, label: label }; })
+        .concat(direct.map(function (c) { return { kind: 'city', label: c.name, city: c }; }));
+    }
+
+    function renderPickerBody() {
+      const backRow = document.getElementById('picker-back-row');
+      const subtitle = document.getElementById('picker-subtitle');
+      const deeper = pickerRegion !== null;
+      backRow.style.display = deeper ? 'flex' : 'none';
+      const parts = [pickerRegion, pickerSubregion].filter(Boolean);
+      subtitle.textContent = parts.join(' — ');
+      subtitle.style.display = parts.length ? '' : 'none';
+      pickerRows = buildPickerRows();
+      filterPicker();
+    }
+
+    function paintPickerRows(rows) {
+      const list = document.getElementById('picker-list');
+      const empty = document.getElementById('picker-empty');
+      list.innerHTML = '';
+      rows.forEach(function (row) {
+        const item = document.createElement('li');
+        item.className = 'picker-item';
+        // The label lives in its OWN `.picker-item-label` span — never bare
+        // `item.textContent` — so a region/subregion row's chevron (below)
+        // never runs into it: `el.textContent` walks every descendant text
+        // node, so a bare assignment followed by `appendChild(chevron)`
+        // would read back as "England›", not "England".
+        const label = document.createElement('span');
+        label.className = 'picker-item-label';
+        label.textContent = row.label;
+        item.appendChild(label);
+        if (row.kind === 'city') {
+          item.onclick = function () { pickPickerCity(row.city); };
+        } else {
+          item.classList.add('picker-group-item');
+          const chevron = document.createElement('span');
+          chevron.className = 'submenu-chevron';
+          chevron.setAttribute('aria-hidden', 'true');
+          chevron.textContent = '›';
+          item.appendChild(chevron);
+          item.onclick = row.kind === 'region'
+            ? function () { pickerRegion = row.label; renderPickerBody(); }
+            : function () { pickerSubregion = row.label; renderPickerBody(); };
         }
-        return chain;
-      };
+        list.appendChild(item);
+      });
+      empty.style.display = rows.length === 0 ? 'block' : 'none';
+    }
 
-      // Each linked row with the text it answers to: its own, plus every heading
-      // it sits under. Folded once here rather than per keystroke — 468 places ×
-      // every character typed is work worth not doing.
-      var rows = Array.prototype.slice.call(list.querySelectorAll('li'))
-        .filter(function (li) {
-          return Array.prototype.some.call(li.children, function (n) { return n.tagName === 'A'; });
-        })
-        .map(function (li) {
-          var above = ancestors(li);
-          // The row's own name, the headings above it, and — for a row that WAS
-          // a heading until its single place was pulled up — the name it had
-          // then. Merseyside is not on screen any more; typing it must still
-          // find Liverpool.
-          var text = li.textContent + ' ' + (li.getAttribute('data-alias') || '') + ' ' +
-            above.map(function (d) {
-              return d.querySelector(':scope > summary').textContent;
-            }).join(' ');
-          return { li: li, above: above, text: haystack(text) };
-        });
+    // In-list name filter, narrowing the CURRENT level's rows only — a query
+    // never surfaces a city from a country or region the visitor hasn't
+    // drilled into, same as the retired popup's `filterCityPicker`. Folded
+    // (Polish/German diacritics included, see `haystack` above), which the
+    // popup's own plain substring match never was.
+    function filterPicker() {
+      const input = document.getElementById('picker-search');
+      const query = fold(input.value.trim());
+      const visible = query === ''
+        ? pickerRows
+        : pickerRows.filter(function (row) { return haystack(row.label).indexOf(query) !== -1; });
+      paintPickerRows(visible);
+    }
+    window.filterPicker = filterPicker;
 
-      var apply = function () {
-        var q = fold(input.value.trim());
-        var shown = 0;
-        var live = [];
-        rows.forEach(function (row) {
-          var match = q === '' || row.text.indexOf(q) !== -1;
-          row.li.style.display = match ? '' : 'none';
-          if (match) {
-            shown++;
-            row.above.forEach(function (d) { if (live.indexOf(d) === -1) live.push(d); });
-          }
-        });
-        groups.forEach(function (g) {
-          var any = live.indexOf(g) !== -1;
-          // A heading whose every row filtered out goes with them, so the list
-          // never leaves one standing over nothing.
-          g.parentNode.style.display = (q === '' || any) ? '' : 'none';
-          g.open = q !== '' && any;
-        });
-        if (empty) empty.style.display = shown === 0 ? 'block' : 'none';
-      };
-      input.addEventListener('input', apply);
-      // Once up front too: a browser that restores the box's value across a
-      // reload or a back-navigation would otherwise show that text over an
-      // unfiltered list with every group shut.
-      apply();
-    })();
+    function rememberAndGo(slug) {
+      document.cookie = 'city=' + slug + ';path=' + DEPLOYMENT_MOUNT_PATH + ';max-age=' + (60 * 60 * 24 * 365);
+      window.location.href = DEPLOYMENT_PATH_PREFIX + '/' + slug + '/';
+    }
 
+    // Is `url` served by the origin this page came from? Parsed rather than
+    // string-matched, so a trailing slash or a country path segment cannot
+    // make two addresses on one host look like two origins.
+    function sameOriginAs(url) {
+      try { return new URL(url, window.location.href).origin === window.location.origin; }
+      catch (e) { return false; }
+    }
+
+    // Where a country PICK (not a same-country city pick) goes. Same-origin
+    // countries (the Showtimes family sharing showtimes.cc) share the session
+    // cookie outright, so a plain link keeps a signed-in visitor signed in.
+    // Crossing to a genuinely different origin (kinowo.net) would otherwise
+    // drop that session — `/auth/sso/start` hands it over first. Signed OUT
+    // is not an error there: it is just the link this would have followed
+    // anyway (see `AuthController.ssoStart`), so it is always safe to route
+    // through it rather than needing to know client-side whether anyone is
+    // signed in.
+    function crossCountryUrl(baseUrl) {
+      if (sameOriginAs(baseUrl)) return baseUrl + '/' + '@controllers.LandingController.PickCityQuery';
+      return window.location.origin + DEPLOYMENT_MOUNT_PATH +
+        'auth/sso/start?to=' + encodeURIComponent(baseUrl) + '&pick=city';
+    }
+
+    // A city was picked — directly, or as the "use my location" hit. The
+    // apex isn't itself anybody's city site, so every pick there hands off to
+    // the chosen country's own landing, even one that happens to share
+    // `DEPLOYMENT_COUNTRY_CODE`; on a country's own door, a city of ITS OWN
+    // navigates straight there, and any other hands off the same way.
+    function pickPickerCity(city) {
+      if (!IS_APEX && city.country === DEPLOYMENT_COUNTRY_CODE) { rememberAndGo(city.slug); return; }
+      const country = KINOWO_CATALOG.countries.find(function (c) { return c.code === city.country; });
+      if (country) window.location.href = crossCountryUrl(country.baseUrl);
+    }
+
+    @if(!isApex) {
+    // The picker's own manual locate button — unlike the automatic check
+    // below (scoped to `DEPLOYMENT_COUNTRY_CODE`), this searches every
+    // deployed country, mirroring the apps' `resolveNearestCityAnyCountry`.
+    function locatePickerAnywhere() {
+      const status = document.getElementById('picker-locate-status');
+      const show = function (text) { status.textContent = text; status.style.display = text ? '' : 'none'; };
+      if (!navigator.geolocation) return;
+      show('@Html(play.api.libs.json.Json.toJson(messages("landing.locating")).toString)');
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          const c = nearestCityWithinKm(KINOWO_CATALOG.cities, pos.coords.latitude, pos.coords.longitude, 100);
+          if (c) { show(''); pickPickerCity(c); }
+          else show('@Html(play.api.libs.json.Json.toJson(messages("landing.noNearby")).toString)');
+        },
+        function () { show('@Html(play.api.libs.json.Json.toJson(messages("landing.noNearby")).toString)'); },
+        { timeout: 5000, maximumAge: 600000 }
+      );
+    }
+    window.locatePickerAnywhere = locatePickerAnywhere;
+    }
+
+    // Hides the static fallback and mounts the dynamic picker in its place —
+    // everything above works fully without this ever running.
+    function initPicker() {
+      document.getElementById('picker-static').style.display = 'none';
+      document.getElementById('picker-dynamic').style.display = '';
+      renderPickerCountries();
+      renderPickerBody();
+    }
+    initPicker();
+
+    @if(!isApex) {
     (function () {
       // The visitor named this country to get here (`?pick=city`), so the city
       // is theirs to name too: no fix, and no permission prompt to take one.
@@ -272,23 +486,15 @@
       navigator.geolocation.getCurrentPosition(
         function (pos) {
           if (done) return;
-          var c = nearestCityWithinKm(CITIES, pos.coords.latitude, pos.coords.longitude, 100);
-          if (c) {
-            done = true;
-            // Remember the choice so the next visit skips this screen. Scoped to
-            // the deployment's mount point, like every cookie the server sets:
-            // on the shared brand domain a `path=/` cookie is one the sibling
-            // countries also receive and overwrite.
-            document.cookie = 'city=' + c.slug + ';path=@country.mountPath;max-age=' + (60 * 60 * 24 * 365);
-            window.location.replace('@{country.pathPrefix}/' + c.slug + '/');
-          } else {
-            finish('@messages("landing.noNearby")');
-          }
+          var c = nearestCityWithinKm(citiesOf(DEPLOYMENT_COUNTRY_CODE), pos.coords.latitude, pos.coords.longitude, 100);
+          if (c) { done = true; rememberAndGo(c.slug); }
+          else { finish('@messages("landing.noNearby")'); }
         },
         function () { finish(''); },
         { timeout: 5000, maximumAge: 600000 }
       );
     })();
+    }
   </script>
 </body>
 </html>

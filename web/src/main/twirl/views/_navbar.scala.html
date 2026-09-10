@@ -171,33 +171,20 @@
       </div>
       <div class="panel-divider"></div>
 
-      @* Country switcher — each country is a SEPARATE web deployment on its own
-         host, so switching NAVIGATES to that host's root (its city-chooser),
-         it does not view-swap. Only rendered when more than one country has a
-         real deployment (`Country.switchable`), so a single-country build shows
-         no dead control. The current country is `Country.fromEnv`. Sits above
-         the city picker so the selection cascades country → city top-to-bottom. *@
-      @if(models.Country.switchable.sizeIs > 1) {
-        <div class="panel-section-label">@messages("nav.countrySwitch")</div>
-        <select id="country-select" class="filter-select w-100" onchange="onCountryChange(this.value)" aria-label="@messages("nav.countrySwitch")" style="margin-bottom:.4rem">
-          @for(c <- models.Country.switchable) {
-            <option value="@c.webUrl.get"@if(c == models.Country.fromEnv){ selected}>@messages("country." + c.code)</option>
-          }
-        </select>
-        <div class="panel-divider"></div>
-      }
-
-      @* City picker — opens the mobile-parity `_cityPickerModal`: a
-         separate screen with every deployed country across the top and a
-         region → subregion → city drill-down (with a back row) underneath,
-         plus its own "use my location" button — same shape as the iOS
-         `CityGate` chooser / Android `CityChoiceScreen`. Replaces the old
-         in-panel `<select>` and its own locate button, which only covered
-         switching within THIS country. Available signed-out. Only rendered
-         when there's more than one place to switch to — another city in
-         this country, or another country entirely. *@
+      @* City picker — navigates to the unified `/` picker (`landing.scala.html`),
+         which opens on this deployment's own city list and also carries every
+         deployed country across the top, drilling region → subregion → city
+         with a back row, plus its own "use my location" button — the same
+         shape as the iOS `CityGate` chooser / Android `CityChoiceScreen`.
+         Replaces both the old in-panel country `<select>` (a country pick is
+         now just the picker's own top row) and the retired `_cityPickerModal`
+         popup — one picker, not a separate country control plus a separate
+         city modal. `?pick=city` so the picker asks rather than bouncing back
+         to this same city. Available signed-out. Only rendered when there's
+         more than one place to switch to — another city in this country, or
+         another country entirely. *@
       @if(city.country.cities.sizeIs > 1 || models.Country.switchable.sizeIs > 1) {
-        <div id="city-picker-row" class="panel-label submenu-row" onclick="openCityPicker()">
+        <div id="city-picker-row" class="panel-label submenu-row" onclick="goToCityPicker()">
           <span>@messages("nav.city")</span>
           <span class="submenu-right">
             <span class="city-picker-current">@city.labels.nominative</span>

@@ -79,7 +79,7 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
   private def req(path: String) =
     FakeRequest(GET, path).withHeaders("X-Forwarded-Proto" -> "https", "X-Forwarded-Host" -> "showtimes.cc")
 
-  // The mobile-parity city picker (`_cityPickerModal`) reads `KINOWO_CATALOG` —
+  // The unified `/` picker (`landing.scala.html`) reads `KINOWO_CATALOG` —
   // the embedded `models.Catalog.json` — rather than a server-rendered
   // `<optgroup>` tree, so these read the same field the picker's JS drill-down
   // groups by instead of parsing markup that no longer exists.

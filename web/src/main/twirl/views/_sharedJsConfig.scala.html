@@ -38,21 +38,14 @@
      "Today" listed tomorrow. `window.`-scoped (not a lexical const) so tests
      can move a rendered page to another zone. *@
   window.CITY_TIMEZONE      = "@city.zoneId.getId";
-  @* The country this deployment serves, and the full multi-country catalog
-     (every deployed country's cities, each carrying its `region`/`subregion`
-     grouping and its own `baseUrl`) — the exact JSON `/api/catalog` hands the
-     apps (`models.Catalog`), embedded here instead of fetched so the Filtry →
-     Miasto picker (`_cityPickerModal`) can drill any deployed country's city
-     tree, and cross into it, without a second request. *@
-  const CURRENT_COUNTRY_CODE = "@city.country.code";
+  @* The full multi-country catalog (every deployed country's cities, each
+     carrying its `region`/`subregion` grouping and its own `baseUrl`) — the
+     exact JSON `/api/catalog` hands the apps (`models.Catalog`). No JS on
+     THIS page reads it (the Filtry → Miasto row now navigates to the `/`
+     picker, which embeds its own copy — see `landing.scala.html`); embedded
+     here so `AreaRoutingSpec` can assert a city's region/subregion grouping
+     straight off the rendered page rather than re-deriving it. *@
   const KINOWO_CATALOG      = @Html(models.Catalog.json);
-  @* Status text for the Filtry "use my location" button — shared.js has no
-     access to `messages()`, so the two strings it needs travel as globals,
-     the same way every other page-bound piece of copy here does. Reuses the
-     landing page's own keys rather than adding nav-scoped duplicates: the
-     copy means the same thing in both places. *@
-  window.LOCATING_TEXT      = @Html(play.api.libs.json.Json.toJson(messages("landing.locating")).toString);
-  window.NO_NEARBY_TEXT     = @Html(play.api.libs.json.Json.toJson(messages("landing.noNearby")).toString);
   @* Per-deployment locale for shared.js: weekday/month arrays, empty-state /
      swipe-hint / clear strings, and the showtime plural rule + forms. Replaces
      the Polish literals shared.js used to hardcode (DAY2/MONTHS/_showtimeNoun). *@

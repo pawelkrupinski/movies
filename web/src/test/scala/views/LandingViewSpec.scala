@@ -7,7 +7,7 @@ import org.scalatest.matchers.should.Matchers
 
 class LandingViewSpec extends AnyFlatSpec with Matchers {
 
-  private val html = views.html.landing(models.Country.Poland).body
+  private val html = views.html.landing(models.Country.Poland, isApex = false).body
 
   "the city-selection landing page" should "render as a Polish HTML document listing the cities" in {
     html should include ("""<html lang="pl">""")
@@ -50,7 +50,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   /** The US picks a METRO here — Los Angeles, Houston — found under its state's
    *  heading. The page renders under the English bundle that host serves. */
   private val usHtml =
-    views.html.landing(models.Country.UnitedStates)(using testsupport.TestMessages.forLang("en")).body
+    views.html.landing(models.Country.UnitedStates, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
   "the US landing page" should "list every metro, each under its state" in {
     models.Country.UnitedStates.cities.foreach(c => usHtml should include (s"/${c.slug}/"))
@@ -86,7 +86,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   /** The UK picks a COUNTY — Cheshire, Kent — or one of the cities big enough to
    *  be a region of its own, found under its nation's heading. */
   private val ukHtml =
-    views.html.landing(models.Country.UnitedKingdom)(using testsupport.TestMessages.forLang("en")).body
+    views.html.landing(models.Country.UnitedKingdom, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
   "the UK landing page" should "list every county under its nation, and its places under the county" in {
     models.Country.UnitedKingdom.cities.foreach(c => ukHtml should include (s"/${c.slug}/"))
@@ -128,7 +128,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
 
   /** Germany picks a REGION — Köln, München — found under its Bundesland. */
   private val deHtml =
-    views.html.landing(models.Country.Germany)(using testsupport.TestMessages.forLang("en")).body
+    views.html.landing(models.Country.Germany, isApex = false)(using testsupport.TestMessages.forLang("en")).body
 
   "the German landing page" should "list every region under its Bundesland" in {
     models.Country.Germany.cities.foreach(c => deHtml should include (s"/${c.slug}/"))
