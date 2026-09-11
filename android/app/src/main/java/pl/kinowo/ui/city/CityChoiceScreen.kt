@@ -40,13 +40,14 @@ import androidx.compose.ui.unit.sp
 import pl.kinowo.R
 import pl.kinowo.model.Catalog
 import pl.kinowo.model.City
+import pl.kinowo.model.CityPickerRow
 import pl.kinowo.model.Country
-import pl.kinowo.model.directCitiesIn
 import pl.kinowo.model.matching
 import pl.kinowo.model.matchingInSubregion
 import pl.kinowo.model.regionsIn
-import pl.kinowo.model.regionsMatching
-import pl.kinowo.model.subregionsMatching
+import pl.kinowo.model.rowKey
+import pl.kinowo.model.secondLevelRows
+import pl.kinowo.model.topLevelRows
 import pl.kinowo.ui.CountryPicker
 import pl.kinowo.ui.theme.TextSecondary
 
@@ -183,44 +184,45 @@ fun CityChoiceScreen(
             modifier = Modifier.fillMaxWidth(),
         )
         if (pickingRegion) {
-            val shownRegions = catalog.cities.regionsMatching(query, country)
-            // Cities whose TOP group collapsed onto them alone (Berlin, Hamburg
-            // — Germany's single-region city-states; Delaware, Vermont — US
-            // states too small to split), shown as direct rows right on this
-            // step since there is no group left to name.
-            val topDirect = catalog.cities.matching(query, country).filter { it.region == null }
-            if (shownRegions.isEmpty() && topDirect.isEmpty()) {
+            // Each region's heading interleaved with any city whose top group
+            // collapsed onto it alone (Berlin, Hamburg; Delaware, Vermont), in
+            // the catalog's own order (see `mergedPickerRows`) — not every
+            // heading followed by every direct city, which stranded a heading
+            // like "West Midlands" ahead of its alphabetical neighbours.
+            val rows = catalog.cities.topLevelRows(query, country)
+            if (rows.isEmpty()) {
                 NoMatches(query, R.string.no_region_matching)
             } else {
                 LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    items(shownRegions, key = { it }) { name ->
-                        TallFilledButton(name) { region = name; query = "" }
-                    }
-                    items(topDirect, key = { it.slug }) { city ->
-                        TallFilledButton(city.name) { onPick(city) }
+                    items(rows, key = { it.rowKey }) { row ->
+                        when (row) {
+                            is CityPickerRow.Heading -> TallFilledButton(row.label) { region = row.label; query = "" }
+                            is CityPickerRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
+                        }
                     }
                 }
             }
         } else if (subregion == null) {
             val currentRegion = region
-            val shownSubregions = if (currentRegion != null) catalog.cities.subregionsMatching(query, country, currentRegion) else emptyList()
-            // The second step's direct rows: cities in `region` with no
-            // subregion of their own — the whole list for a flat country,
-            // where `region` is always null.
-            val direct = if (currentRegion != null) {
-                catalog.cities.directCitiesIn(query, country, currentRegion)
+            // The second step's rows — subregion headings (the UK's West
+            // Midlands / Glamorgan / Antrim) interleaved with `region`'s own
+            // directly-listed cities, same merge as the first step. Falls back
+            // to the whole flat list (as plain city rows) for a country with
+            // no grouping, where `region` is always null.
+            val rows = if (currentRegion != null) {
+                catalog.cities.secondLevelRows(query, country, currentRegion)
             } else {
-                catalog.cities.matching(query, country)
+                catalog.cities.matching(query, country).map { CityPickerRow.CityRow(it) }
             }
-            if (shownSubregions.isEmpty() && direct.isEmpty()) {
+            if (rows.isEmpty()) {
                 NoMatches(query, R.string.no_city_matching)
             } else {
                 LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-                    items(shownSubregions, key = { it }) { name ->
-                        TallFilledButton(name) { subregion = name; query = "" }
-                    }
-                    items(direct, key = { it.slug }) { city ->
-                        TallFilledButton(city.name) { onPick(city) }
+                    items(rows, key = { it.rowKey }) { row ->
+                        when (row) {
+                            is CityPickerRow.Heading -> TallFilledButton(row.label) { subregion = row.label; query = "" }
+                            is CityPickerRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
+                        }
                     }
                 }
             }

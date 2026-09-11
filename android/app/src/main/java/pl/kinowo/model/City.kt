@@ -344,56 +344,80 @@ fun List<City>.sortedForPicker(countryCode: String): List<City> {
  *  reads as "show one flat list".
  *
  *  The TOP level, even where a region nests a `subregion` below it (see
- *  [subregionsIn]): the UK's nation names every one of its cities' `region`,
+ *  [secondLevelRows]): the UK's nation names every one of its cities' `region`,
  *  whether or not the county underneath went on to earn a third step of its
  *  own. */
 fun List<City>.regionsIn(countryCode: String): List<String> =
     inCountry(countryCode).mapNotNull { it.region }.distinct()
 
-/** [regionsIn] narrowed to those matching [query], folded the same way city
- *  names are, so "calif" finds "California". A blank query yields them all. */
-fun List<City>.regionsMatching(query: String, countryCode: String): List<String> {
-    val q = Cities.searchFold(query.trim())
-    val regions = regionsIn(countryCode)
-    return if (q.isEmpty()) regions else regions.filter { Cities.searchFold(it).contains(q) }
-}
-
-/** [matching] confined to one [region] — the second step of a grouped country's
- *  pick. A null [region] leaves the country-wide list alone, so the same call
- *  serves both a grouped country's second screen and an ungrouped country's only
- *  one. */
+/** [matching] confined to one [region] — used by [matchingInSubregion] below.
+ *  A null [region] leaves the country-wide list alone, so the same call serves
+ *  both a grouped country's third screen and an ungrouped country's only one. */
 fun List<City>.matchingInRegion(query: String, countryCode: String, region: String?): List<City> =
     matching(query, countryCode).let { cities ->
         if (region == null) cities else cities.filter { it.region == region }
     }
 
-/** The `subregion`s within [region] that hold more than one city — a THIRD
- *  picker step, reached only for the UK's West Midlands / Glamorgan / Antrim
- *  today. Empty for every other region (which is most of them, and the whole
- *  of Germany and the US): a county that collapsed onto its one place has no
- *  `subregion` to speak of, and shows as a direct row instead (see
- *  [directCitiesIn]). */
-fun List<City>.subregionsIn(countryCode: String, region: String): List<String> =
-    inCountry(countryCode).filter { it.region == region }.mapNotNull { it.subregion }.distinct()
-
-/** [subregionsIn] narrowed to those matching [query], folded the same way city
- *  and region names are. */
-fun List<City>.subregionsMatching(query: String, countryCode: String, region: String): List<String> {
-    val q = Cities.searchFold(query.trim())
-    val subregions = subregionsIn(countryCode, region)
-    return if (q.isEmpty()) subregions else subregions.filter { Cities.searchFold(it).contains(q) }
-}
-
-/** [matchingInRegion]'s DIRECT rows — the cities in [region] that carry no
- *  `subregion` and so show as a leaf row right there, rather than behind a
- *  [subregionsIn] group. */
-fun List<City>.directCitiesIn(query: String, countryCode: String, region: String): List<City> =
-    matchingInRegion(query, countryCode, region).filter { it.subregion == null }
-
-/** [matchingInRegion] narrowed to one [subregion] — the third step, reached
- *  only where [subregionsIn] is non-empty. */
+/** [matchingInRegion] narrowed to one [subregion] — the THIRD step, reached
+ *  only where [secondLevelRows] holds a heading for it. */
 fun List<City>.matchingInSubregion(query: String, countryCode: String, region: String, subregion: String): List<City> =
     matchingInRegion(query, countryCode, region).filter { it.subregion == subregion }
+
+/** One row of a grouped picker level: a group heading (drills further) or a
+ *  city that carries no group at this level, either because its top group
+ *  collapsed onto it alone (Berlin, Hamburg; Delaware, Vermont) or because the
+ *  country/region simply isn't split any further here. */
+sealed class CityPickerRow {
+    data class Heading(val label: String) : CityPickerRow()
+    data class CityRow(val city: City) : CityPickerRow()
+}
+
+/** A stable `LazyColumn` item key — the heading's own label, or the city's
+ *  slug, either way unique within one picker level. */
+val CityPickerRow.rowKey: String
+    get() = when (this) {
+        is CityPickerRow.Heading -> "heading:$label"
+        is CityPickerRow.CityRow -> "city:${city.slug}"
+    }
+
+/** One pass over [cities] — ALREADY in the catalog's own canonical picker
+ *  order (`Catalog.scala` emits each country's cities in its picker tree's own
+ *  traversal order; never re-sorted here) — interleaving each group's
+ *  heading, emitted at its FIRST occurrence, with every city that carries no
+ *  group at this level. Listing every heading before every direct city (the
+ *  old shape) stranded a heading like "West Midlands" ahead of every direct
+ *  city in its region, instead of beside "West Sussex" where it
+ *  alphabetically belongs. */
+private fun mergedPickerRows(cities: List<City>, groupField: (City) -> String?, query: String): List<CityPickerRow> {
+    val q = Cities.searchFold(query.trim())
+    val seen = mutableSetOf<String>()
+    val rows = mutableListOf<CityPickerRow>()
+    for (city in cities) {
+        val group = groupField(city)
+        if (group != null) {
+            if (seen.add(group) && (q.isEmpty() || Cities.searchFold(group).contains(q))) {
+                rows.add(CityPickerRow.Heading(group))
+            }
+        } else if (q.isEmpty() || Cities.searchFold(city.name).contains(q)) {
+            rows.add(CityPickerRow.CityRow(city))
+        }
+    }
+    return rows
+}
+
+/** The FIRST picker step for a grouped country: each region's heading,
+ *  interleaved with any city whose top group collapsed onto it alone (Berlin,
+ *  Hamburg; Delaware, Vermont) — narrowed to [query]. Empty for a country that
+ *  does not group its cities (Poland, Spain). */
+fun List<City>.topLevelRows(query: String, countryCode: String): List<CityPickerRow> =
+    mergedPickerRows(inCountry(countryCode), groupField = { it.region }, query = query)
+
+/** The SECOND picker step, within one [region]: each subregion's heading
+ *  (reached only for the UK's West Midlands / Glamorgan / Antrim today)
+ *  interleaved with that region's own directly-listed cities — narrowed to
+ *  [query]. */
+fun List<City>.secondLevelRows(query: String, countryCode: String, region: String): List<CityPickerRow> =
+    mergedPickerRows(inCountry(countryCode).filter { it.region == region }, groupField = { it.subregion }, query = query)
 
 /** [sortedForPicker] narrowed to the cities matching [query] (case- and
  *  diacritic-insensitive substring). A blank query yields the whole country list. */
