@@ -131,7 +131,7 @@ final class LocalizationUITests: XCTestCase {
         // directly — but "Warszawa" sits below the fold of the alphabetical
         // list, so it isn't in the accessibility tree until the search field
         // narrows to it (same reasoning as `CityChoiceSearchUITests`).
-        let search = app.searchFields.firstMatch
+        let search = app.textFields[A11y.CityGate.searchField]
         XCTAssertTrue(search.waitForExistence(timeout: 10), "No search field on the picker")
         search.tap()
         search.typeText("warszawa")
@@ -196,7 +196,7 @@ final class LocalizationUITests: XCTestCase {
         // as `testSwitchingCountryDoesNotChangeLanguage`. It must still read
         // "Warszawa", not a German rendering, because a city's name is the
         // city's own name and never runs through the language catalog.
-        let search = app.searchFields.firstMatch
+        let search = app.textFields[A11y.CityGate.searchField]
         XCTAssertTrue(search.waitForExistence(timeout: 10), "No search field on the picker")
         search.tap()
         search.typeText("warszawa")

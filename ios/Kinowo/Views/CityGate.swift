@@ -228,32 +228,24 @@ struct CityChoiceView: View {
     private var regions: [String] { catalog.regions(inCountry: countryCode) }
     private var pickingRegion: Bool { !regions.isEmpty && region == nil }
 
-    private var visibleRegions: [String] { catalog.regionsMatching(query, inCountry: countryCode) }
-    /// Cities whose TOP group collapsed onto them alone (Berlin, Hamburg —
-    /// Germany's single-region city-states; Delaware, Vermont — US states too
-    /// small to split), shown as direct rows right on the region step since
-    /// there is no group left to name. Empty for a fully flat country (Poland,
-    /// Spain), whose whole list already renders through the `else` branch below.
-    private var visibleTopDirectCities: [City] {
+    /// The first step's rows — one per region, interleaved with any city whose
+    /// top group collapsed onto it alone (Berlin, Hamburg; Delaware, Vermont),
+    /// in the catalog's own order (see `City.mergedRows`), narrowed to `query`.
+    private var topLevelRows: [City.PickerRow] {
         guard pickingRegion else { return [] }
-        return catalog.matching(query, inCountry: countryCode).filter { $0.region == nil }
+        return catalog.topLevelRows(matching: query, inCountry: countryCode)
     }
 
-    /// The subregions within `region` that hold more than one city — the
-    /// second step's own group rows. Empty for every region without one
-    /// (which is most of them, and the whole of Germany and the US).
-    private var visibleSubregions: [String] {
-        guard let region else { return [] }
-        return catalog.subregionsMatching(query, inCountry: countryCode, region: region)
-    }
-    /// The second step's DIRECT rows: cities in `region` with no subregion of
-    /// their own. Falls back to the whole (unscoped) match for a flat country,
-    /// where `region` is always `nil`.
-    private var visibleDirectCities: [City] {
+    /// The second step's rows — one per subregion (reached only for the UK's
+    /// West Midlands / Glamorgan / Antrim today) interleaved with `region`'s
+    /// own directly-listed cities, in the catalog's own order. Falls back to
+    /// the whole flat list (as plain city rows) for a country with no
+    /// grouping, where `region` is always `nil`.
+    private var secondLevelRows: [City.PickerRow] {
         if let region {
-            return catalog.matchingDirect(query, inCountry: countryCode, region: region)
+            return catalog.secondLevelRows(matching: query, inCountry: countryCode, region: region)
         }
-        return catalog.matching(query, inCountry: countryCode)
+        return catalog.matching(query, inCountry: countryCode).map { .city($0) }
     }
 
     /// The third step's rows: cities within one `subregion` of `region`.
@@ -275,6 +267,15 @@ struct CityChoiceView: View {
                     Text("country.label")
                 }
 
+                // A manual row, not the native `.searchable` bar — SwiftUI
+                // always pins that directly under the nav title, ABOVE every
+                // list row including the Country section above, regardless of
+                // where in this builder it's attached. A plain row renders
+                // exactly where it's placed, so country-then-search reads
+                // top-to-bottom here the same way it already does on Android's
+                // `CityChoiceScreen`.
+                searchField
+
                 if noNearbyLocate {
                     Text("citygate.no_nearby_locate")
                         .foregroundStyle(.secondary)
@@ -283,25 +284,27 @@ struct CityChoiceView: View {
 
                 if pickingRegion {
                     Section {
-                        ForEach(visibleRegions, id: \.self) { name in
-                            Button { region = name; query = "" } label: {
-                                row(name)
+                        ForEach(topLevelRows, id: \.self) { row in
+                            switch row {
+                            case .heading(let name):
+                                Button { region = name; query = "" } label: {
+                                    self.row(name)
+                                }
+                                .foregroundStyle(.primary)
+                            case .city(let city):
+                                Button {
+                                    choose(city)
+                                } label: {
+                                    self.row(city.name)
+                                }
+                                .foregroundStyle(.primary)
                             }
-                            .foregroundStyle(.primary)
-                        }
-                        ForEach(visibleTopDirectCities, id: \.slug) { city in
-                            Button {
-                                choose(city)
-                            } label: {
-                                row(city.name)
-                            }
-                            .foregroundStyle(.primary)
                         }
                     } header: {
                         Text("citygate.choose_region_title")
                     }
 
-                    if visibleRegions.isEmpty && visibleTopDirectCities.isEmpty {
+                    if topLevelRows.isEmpty {
                         Text(String(format: localizedString("citygate.no_region_match", locale: locale), query))
                             .foregroundStyle(.secondary)
                     }
@@ -322,19 +325,21 @@ struct CityChoiceView: View {
                     }
 
                     Section {
-                        ForEach(visibleSubregions, id: \.self) { name in
-                            Button { subregion = name; query = "" } label: {
-                                row(name)
+                        ForEach(secondLevelRows, id: \.self) { row in
+                            switch row {
+                            case .heading(let name):
+                                Button { subregion = name; query = "" } label: {
+                                    self.row(name)
+                                }
+                                .foregroundStyle(.primary)
+                            case .city(let city):
+                                Button {
+                                    choose(city)
+                                } label: {
+                                    self.row(city.name)
+                                }
+                                .foregroundStyle(.primary)
                             }
-                            .foregroundStyle(.primary)
-                        }
-                        ForEach(visibleDirectCities, id: \.slug) { city in
-                            Button {
-                                choose(city)
-                            } label: {
-                                row(city.name)
-                            }
-                            .foregroundStyle(.primary)
                         }
                     } header: {
                         // Inside a region, the header is the region itself: it is
@@ -347,7 +352,7 @@ struct CityChoiceView: View {
                         }
                     }
 
-                    if visibleSubregions.isEmpty && visibleDirectCities.isEmpty {
+                    if secondLevelRows.isEmpty {
                         // Keeps the search field anchored (an empty List would let
                         // it collapse) and tells the user nothing matched.
                         Text(String(format: localizedString("citygate.no_match", locale: locale), query))
@@ -385,11 +390,6 @@ struct CityChoiceView: View {
             }
             .navigationTitle("citygate.nav_title")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query,
-                        placement: .navigationBarDrawer(displayMode: .always),
-                        prompt: Text(pickingRegion ? "citygate.search_region_hint" : "citygate.search_hint"))
-            .autocorrectionDisabled()
-            .textInputAutocapitalization(.never)
             // Switching country changes what every step means, so neither a
             // half-typed query nor a state from the country just left survives it.
             .onChange(of: countryCode) { _ in
@@ -515,6 +515,31 @@ struct CityChoiceView: View {
                 }
             }
             .padding(.vertical, 2)
+        }
+    }
+
+    /// The picker's own search row — a manual field rather than the native
+    /// `.searchable` bar, so it can sit BELOW the country picker (see the
+    /// comment where it's placed in `body`). Its prompt swaps between the
+    /// region-step and city-step copy, same wording `.searchable` used.
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+            TextField(pickingRegion ? "citygate.search_region_hint" : "citygate.search_hint", text: $query)
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
+                .accessibilityIdentifier(A11y.CityGate.searchField)
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("citygate.clear_search")
+            }
         }
     }
 

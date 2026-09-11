@@ -96,20 +96,14 @@ final class CatalogStore: ObservableObject {
     func sorted(inCountry code: String) -> [City] { cities.sortedForPicker(inCountry: code) }
     func matching(_ query: String, inCountry code: String) -> [City] { cities.matching(query, inCountry: code) }
     func regions(inCountry code: String) -> [String] { cities.regions(inCountry: code) }
-    func regionsMatching(_ query: String, inCountry code: String) -> [String] {
-        cities.regionsMatching(query, inCountry: code)
+    func topLevelRows(matching query: String, inCountry code: String) -> [City.PickerRow] {
+        cities.topLevelRows(matching: query, inCountry: code)
     }
     func matching(_ query: String, inCountry code: String, region: String?) -> [City] {
         cities.matching(query, inCountry: code, region: region)
     }
-    func subregions(inCountry code: String, region: String) -> [String] {
-        cities.subregions(inCountry: code, region: region)
-    }
-    func subregionsMatching(_ query: String, inCountry code: String, region: String) -> [String] {
-        cities.subregionsMatching(query, inCountry: code, region: region)
-    }
-    func matchingDirect(_ query: String, inCountry code: String, region: String) -> [City] {
-        cities.matchingDirect(query, inCountry: code, region: region)
+    func secondLevelRows(matching query: String, inCountry code: String, region: String) -> [City.PickerRow] {
+        cities.secondLevelRows(matching: query, inCountry: code, region: region)
     }
     func matching(_ query: String, inCountry code: String, region: String, subregion: String) -> [City] {
         cities.matching(query, inCountry: code, region: region, subregion: subregion)

@@ -23,11 +23,29 @@ final class CityRegionTests: XCTestCase {
         XCTAssertEqual(cities.regions(inCountry: "pl"), [])
     }
 
-    func testRegionSearchFoldsLikeCityNamesDo() {
-        XCTAssertEqual(cities.regionsMatching("calif", inCountry: "us"), ["California"])
-        XCTAssertEqual(cities.regionsMatching("TEX", inCountry: "us"), ["Texas"])
-        XCTAssertEqual(cities.regionsMatching("", inCountry: "us"), ["California", "Texas"])
-        XCTAssertEqual(cities.regionsMatching("zzz", inCountry: "us"), [])
+    func testTopLevelRowSearchFoldsLikeCityNamesDo() {
+        XCTAssertEqual(cities.topLevelRows(matching: "calif", inCountry: "us"), [.heading("California")])
+        XCTAssertEqual(cities.topLevelRows(matching: "TEX", inCountry: "us"), [.heading("Texas")])
+        XCTAssertEqual(
+            cities.topLevelRows(matching: "", inCountry: "us"),
+            [.heading("California"), .heading("Texas")])
+        XCTAssertEqual(cities.topLevelRows(matching: "zzz", inCountry: "us"), [])
+    }
+
+    /// A city whose top group collapsed onto it alone (Delaware, Vermont —
+    /// too small to split into metros) sits INTERLEAVED with the region
+    /// headings, at its own position in the catalog's order — not stranded
+    /// after every heading. Fails on the old "every heading, then every
+    /// direct city" shape, which put "West Midlands" ahead of its
+    /// alphabetical neighbours on the UK picker.
+    func testATopLevelDirectCityIsInterleavedWithHeadingsNotStrandedAfterThem() {
+        let delaware = City(slug: "delaware", name: "Delaware", lat: 39.0, lon: -75.5, country: "us")
+        // Catalog order: California's first city, then Delaware (no region —
+        // its top group collapsed), then Texas's first city.
+        let ordered = [losAngeles, sanDiego, delaware, austin]
+        XCTAssertEqual(
+            ordered.topLevelRows(matching: "", inCountry: "us"),
+            [.heading("California"), .city(delaware), .heading("Texas")])
     }
 
     func testACityListConfinedToOneRegion() {

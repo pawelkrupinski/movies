@@ -18,28 +18,53 @@ final class CitySubregionTests: XCTestCase {
 
     private var cities: [City] { [birmingham, dudley, cheshire, london] }
 
-    func testSubregionsAreDistinctAndInCatalogOrder() {
-        XCTAssertEqual(cities.subregions(inCountry: "uk", region: "England"), ["West Midlands"])
+    func testSubregionHeadingsAreDistinctAndInCatalogOrder() {
+        XCTAssertEqual(
+            cities.secondLevelRows(matching: "", inCountry: "uk", region: "England"),
+            [.heading("West Midlands"), .city(cheshire), .city(london)])
     }
 
-    /// A county with no split cities contributes nothing — that's what lets the
-    /// picker tell "nothing to open here" from "there's a group to descend into".
-    func testARegionWithNoSplitCountyHasNoSubregions() {
+    /// A county with no split cities contributes no heading — every row comes
+    /// back a plain city, which is what lets the picker tell "nothing to open
+    /// here" from "there's a group to descend into".
+    func testARegionWithNoSplitCountyHasNoSubregionHeadings() {
         let flatOnly: [City] = [cheshire, london]
-        XCTAssertEqual(flatOnly.subregions(inCountry: "uk", region: "England"), [])
+        XCTAssertEqual(
+            flatOnly.secondLevelRows(matching: "", inCountry: "uk", region: "England"),
+            [.city(cheshire), .city(london)])
     }
 
-    func testSubregionSearchFoldsLikeCityNamesDo() {
-        XCTAssertEqual(cities.subregionsMatching("west", inCountry: "uk", region: "England"), ["West Midlands"])
-        XCTAssertEqual(cities.subregionsMatching("zzz", inCountry: "uk", region: "England"), [])
+    func testSubregionRowSearchFoldsLikeCityNamesDo() {
+        XCTAssertEqual(
+            cities.secondLevelRows(matching: "west", inCountry: "uk", region: "England"),
+            [.heading("West Midlands")])
+        XCTAssertEqual(cities.secondLevelRows(matching: "zzz", inCountry: "uk", region: "England"), [])
+    }
+
+    /// The "West Midlands" heading sits INTERLEAVED at its own position in the
+    /// catalog's order, between the direct cities on either side of it — not
+    /// stranded ahead of every direct row. This is the exact shape the
+    /// reported "West Midlands out of order" bug had: the old code listed
+    /// every heading before every direct city regardless of where in the
+    /// (already-alphabetical) catalog order the heading's cities actually sat.
+    func testASubregionHeadingIsInterleavedWithDirectCitiesNotStrandedAheadOfThem() {
+        // Catalog order: a direct city, then West Midlands' two cities, then
+        // another direct city — exactly how `Catalog.scala` would emit
+        // England's cities once "Cheshire" < "West Midlands" < "London"-the-
+        // display-name sort (illustrative order here; the real alphabetical
+        // placement is asserted server-side in `CountrySpec`/`PageJsBehaviourSpec`).
+        let ordered = [cheshire, birmingham, dudley, london]
+        XCTAssertEqual(
+            ordered.secondLevelRows(matching: "", inCountry: "uk", region: "England"),
+            [.city(cheshire), .heading("West Midlands"), .city(london)])
     }
 
     /// Direct rows on the second step are the cities with NO subregion —
     /// Birmingham/Dudley move behind the "West Midlands" group row instead.
     func testDirectCitiesExcludeThoseWithASubregion() {
-        XCTAssertEqual(
-            cities.matchingDirect("", inCountry: "uk", region: "England").map(\.slug),
-            ["cheshire", "london"])
+        let directCities = cities.secondLevelRows(matching: "", inCountry: "uk", region: "England")
+            .compactMap { row -> City? in if case .city(let c) = row { return c } else { return nil } }
+        XCTAssertEqual(directCities.map(\.slug), ["cheshire", "london"])
     }
 
     func testCitiesConfinedToOneSubregion() {

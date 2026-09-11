@@ -512,6 +512,34 @@
         }
       }
     },
+    "citygate.clear_search": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche löschen"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear search"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar búsqueda"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść wyszukiwanie"
+          }
+        }
+      }
+    },
     "citygate.search_hint": {
       "localizations": {
         "de": {

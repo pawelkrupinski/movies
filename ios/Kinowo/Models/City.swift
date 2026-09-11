@@ -314,6 +314,41 @@ struct City: Codable, Hashable {
     }
 }
 
+extension City {
+    /// One row of a grouped picker level: a group heading (drills further) or
+    /// a city that carries no group at this level, either because its top
+    /// group collapsed onto it alone (`CityGroup.soleCity` — Berlin, Hamburg,
+    /// Delaware, Vermont) or because the country/region simply isn't split
+    /// any further here.
+    enum PickerRow: Hashable {
+        case heading(String)
+        case city(City)
+    }
+
+    /// One pass over `cities` — ALREADY in the catalog's own canonical picker
+    /// order (`Catalog.scala` emits each country's cities in its picker
+    /// tree's own traversal order; never re-sorted here) — interleaving each
+    /// group's heading, emitted at its FIRST occurrence, with every city that
+    /// carries no group at this level. Listing every heading before every
+    /// direct city (the old shape) stranded a heading like "West Midlands"
+    /// ahead of every direct city in its region, instead of beside "West
+    /// Sussex" where it alphabetically belongs.
+    fileprivate static func mergedRows(_ cities: [City], groupField: (City) -> String?, query: String) -> [PickerRow] {
+        let q = City.searchFold(query.trimmingCharacters(in: .whitespaces))
+        var seen = Set<String>()
+        var rows: [PickerRow] = []
+        for city in cities {
+            if let group = groupField(city) {
+                guard seen.insert(group).inserted else { continue }
+                if q.isEmpty || City.searchFold(group).contains(q) { rows.append(.heading(group)) }
+            } else if q.isEmpty || City.searchFold(city.name).contains(q) {
+                rows.append(.city(city))
+            }
+        }
+        return rows
+    }
+}
+
 /// Per-country queries over a catalog's city list. `self` is the live catalog's
 /// cities — the server-fetched list, the bundled seed, or (as a fallback) the
 /// compile-time `City.all`. Kept pure (no I/O) so they're unit-tested in
@@ -361,7 +396,7 @@ extension Array where Element == City {
     /// the picker reads as "show one flat list".
     ///
     /// The TOP level, even where a region nests a `subregion` below it (see
-    /// `subregions(inCountry:region:)`): the UK's nation names every one of its
+    /// `secondLevelRows(matching:inCountry:region:)`): the UK's nation names every one of its
     /// cities' `region`, whether or not the county underneath went on to earn a
     /// third step of its own.
     func regions(inCountry countryCode: String) -> [String] {
@@ -369,57 +404,35 @@ extension Array where Element == City {
         return inCountry(countryCode).compactMap(\.region).filter { seen.insert($0).inserted }
     }
 
-    /// `regions(inCountry:)` narrowed to those matching `query`, folded the same
-    /// way city names are, so "calif" finds "California".
-    func regionsMatching(_ query: String, inCountry countryCode: String) -> [String] {
-        let trimmed = query.trimmingCharacters(in: .whitespaces)
-        let regions = regions(inCountry: countryCode)
-        guard !trimmed.isEmpty else { return regions }
-        return regions.filter { City.searchFold($0).contains(City.searchFold(trimmed)) }
-    }
-
-    /// `matching(_:inCountry:)` confined to one `region` — the second step of a
-    /// grouped country's pick. A `nil` region leaves the country-wide list alone,
-    /// so the same call serves both a grouped country's second screen and an
-    /// ungrouped country's only one.
+    /// `matching(_:inCountry:)` confined to one `region` — used by
+    /// `matching(_:inCountry:region:subregion:)` below. A `nil` region leaves
+    /// the country-wide list alone, so the same call serves both a grouped
+    /// country's third screen and an ungrouped country's only one.
     func matching(_ query: String, inCountry countryCode: String, region: String?) -> [City] {
         let cities = matching(query, inCountry: countryCode)
         guard let region else { return cities }
         return cities.filter { $0.region == region }
     }
 
-    /// The `subregion`s within `region` that hold more than one city — a THIRD
-    /// picker step, reached only for the UK's West Midlands / Glamorgan / Antrim
-    /// today. Empty for every other region (which is most of them, and the whole
-    /// of Germany and the US): a county that collapsed onto its one place has no
-    /// `subregion` to speak of, and shows as a direct row instead (see
-    /// `matchingDirect(_:inCountry:region:)`).
-    func subregions(inCountry countryCode: String, region: String) -> [String] {
-        var seen = Set<String>()
-        return inCountry(countryCode)
-            .filter { $0.region == region }
-            .compactMap(\.subregion)
-            .filter { seen.insert($0).inserted }
+    /// The FIRST picker step for a grouped country: each region's heading,
+    /// interleaved with any city whose top group collapsed onto it alone
+    /// (Berlin, Hamburg; Delaware, Vermont) — narrowed to `query`. Empty for a
+    /// country that does not group its cities (Poland, Spain).
+    func topLevelRows(matching query: String, inCountry countryCode: String) -> [City.PickerRow] {
+        City.mergedRows(inCountry(countryCode), groupField: { $0.region }, query: query)
     }
 
-    /// `subregions(inCountry:region:)` narrowed to those matching `query`,
-    /// folded the same way city and region names are.
-    func subregionsMatching(_ query: String, inCountry countryCode: String, region: String) -> [String] {
-        let trimmed = query.trimmingCharacters(in: .whitespaces)
-        let subregions = subregions(inCountry: countryCode, region: region)
-        guard !trimmed.isEmpty else { return subregions }
-        return subregions.filter { City.searchFold($0).contains(City.searchFold(trimmed)) }
+    /// The SECOND picker step, within one `region`: each subregion's heading
+    /// (reached only for the UK's West Midlands / Glamorgan / Antrim today)
+    /// interleaved with that region's own directly-listed cities — narrowed
+    /// to `query`.
+    func secondLevelRows(matching query: String, inCountry countryCode: String, region: String) -> [City.PickerRow] {
+        City.mergedRows(inCountry(countryCode).filter { $0.region == region }, groupField: { $0.subregion }, query: query)
     }
 
-    /// `matching(_:inCountry:region:)`'s DIRECT rows — the cities in `region`
-    /// that carry no `subregion` and so show as a leaf row right there, rather
-    /// than behind a `subregions(inCountry:region:)` group.
-    func matchingDirect(_ query: String, inCountry countryCode: String, region: String) -> [City] {
-        matching(query, inCountry: countryCode, region: region).filter { $0.subregion == nil }
-    }
-
-    /// `matching(_:inCountry:region:)` narrowed to one `subregion` — the third
-    /// step, reached only where `subregions(inCountry:region:)` is non-empty.
+    /// `matching(_:inCountry:region:)` narrowed to one `subregion` — the THIRD
+    /// step, reached only where `secondLevelRows(matching:inCountry:region:)`
+    /// holds a heading for it.
     func matching(_ query: String, inCountry countryCode: String, region: String, subregion: String) -> [City] {
         matching(query, inCountry: countryCode, region: region).filter { $0.subregion == subregion }
     }

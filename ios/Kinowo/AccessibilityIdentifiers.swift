@@ -127,6 +127,11 @@ enum A11y {
         /// can confirm the gate re-mounted it (e.g. after "Pick another city"
         /// in Filtry) without depending on locale-specific copy.
         static let picker = "citygate.picker"
+        /// The picker's own search field — a manual row rather than the
+        /// native `.searchable` bar (see `CityGate.searchField`'s doc
+        /// comment), so a test locates it via `app.textFields[...]` rather
+        /// than `app.searchFields.firstMatch`.
+        static let searchField = "citygate.search.field"
         /// The manual picker's "use my location" toolbar button — re-runs the
         /// same location resolution the first-launch gate takes, on demand.
         static let locateButton = "citygate.locate.button"

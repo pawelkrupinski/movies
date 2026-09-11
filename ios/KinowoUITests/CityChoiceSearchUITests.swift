@@ -40,7 +40,7 @@ final class CityChoiceSearchUITests: XCTestCase {
 
         // "wroc" — typed without diacritics — narrows to Wrocław alone: it gets
         // pulled into view, and the previously-visible Białystok drops out.
-        let search = app.searchFields.firstMatch
+        let search = app.textFields[A11y.CityGate.searchField]
         XCTAssertTrue(search.waitForExistence(timeout: 5), "No search field on the picker")
         search.tap()
         search.typeText("wroc")
@@ -53,7 +53,7 @@ final class CityChoiceSearchUITests: XCTestCase {
 
     func testDiacriticTypedQueryFindsThePolishCity() throws {
         // "lodz" must find "Łódź" (ł/ó folded away).
-        let search = app.searchFields.firstMatch
+        let search = app.textFields[A11y.CityGate.searchField]
         XCTAssertTrue(search.waitForExistence(timeout: 5))
         search.tap()
         search.typeText("lodz")
