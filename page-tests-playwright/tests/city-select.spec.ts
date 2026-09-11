@@ -144,7 +144,7 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.city-list a')).toHaveCount(79);
     await expect(page.locator('#city-list > li > details.city-group > summary')).toHaveText(
-      ['England', 'Scotland', 'Wales', 'Northern Ireland', 'Crown Dependencies']);
+      ['England', 'Scotland', 'Northern Ireland', 'Wales', 'Crown Dependencies']);
     await expect(page.locator('details.city-group[open]')).toHaveCount(0);
     await expect(page.locator('.city-list a[href="/scotland/"]')).toHaveCount(0);
     await expect(page.locator('.city-list a[href="/west-midlands/"]')).toHaveCount(0);
@@ -152,11 +152,13 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
 
   test('the dynamic picker needs two taps to reach a place — nation, then county', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
-    // ALPHABETICAL, unlike the static tree's roster order above — the
-    // dynamic picker's row-building is inherited unchanged from the
-    // retired popup, which sorts every heading level.
+    // The fixed reading order every client agrees on — `Catalog.json` emits
+    // the UK's cities in `Country.cityGroups`' own nation order, and the
+    // dynamic picker preserves that encounter order rather than re-sorting
+    // it (which used to make this alphabetical and disagree with the static
+    // tree and the apps).
     await expect(page.locator('#picker-list .picker-item-label')).toHaveText(
-      ['Crown Dependencies', 'England', 'Northern Ireland', 'Scotland', 'Wales']);
+      ['England', 'Scotland', 'Northern Ireland', 'Wales', 'Crown Dependencies']);
 
     await pickerRow(page, 'England').click();
     // A county holding ONE place is that place's link, pulled up a level —
@@ -165,6 +167,12 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
     await expect(pickerRow(page, 'Liverpool')).toBeVisible();
     await expect(pickerRow(page, 'Merseyside')).toHaveCount(0);
     await expect(pickerRow(page, 'Birmingham')).toHaveCount(0);
+    // "West Midlands" sits interleaved in its own alphabetical position,
+    // beside "West Sussex" — not stranded ahead of every direct city in
+    // England, the reported "West Midlands out of order" bug.
+    const englandLabels = await page.locator('#picker-list .picker-item-label').allTextContents();
+    expect(englandLabels.indexOf('Warwickshire')).toBeLessThan(englandLabels.indexOf('West Midlands'));
+    expect(englandLabels.indexOf('West Midlands')).toBeLessThan(englandLabels.indexOf('West Sussex'));
 
     await pickerRow(page, 'West Midlands').click();
     await expect(page.locator('#picker-subtitle')).toHaveText('England — West Midlands');
@@ -189,7 +197,7 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
     await page.locator('#picker-back-row').click();
     await expect(page.locator('#picker-back-row')).toBeHidden();
     await expect(page.locator('#picker-list .picker-item-label')).toHaveText(
-      ['Crown Dependencies', 'England', 'Northern Ireland', 'Scotland', 'Wales']);
+      ['England', 'Scotland', 'Northern Ireland', 'Wales', 'Crown Dependencies']);
   });
 
   test('a search hit at the county level does NOT find a place by its collapsed county name', async ({ page }) => {
