@@ -56,8 +56,8 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl, url: "https://kinowo.net/poznan/" }
-                    - { country: germany,        code: de, url: "https://showtimes.cc/de/berlin/" }
+                    - { country: poland,         code: pl, url: "https://kinowo.net/poznan/",  city: poznan }
+                    - { country: germany,        code: de, url: "https://showtimes.cc/de/berlin/", city: berlin }
         runs-on: ubuntu-latest
         # ~5s a card, and the US is 457 of them (its states and their metros) —
         # the sweep alone is ~40 minutes there before a cold compile.
@@ -83,6 +83,13 @@ jobs:
                   echo "=== outbound IP this runner uses ==="
                   curl -s https://ifconfig.me || true
                   echo
+                  echo "=== fetch 3: with a real-Chrome-like UA/Accept/Sec-Fetch headers ==="
+                  curl -sD - -o /tmp/body3.html "${{ matrix.url }}" \
+                    -H 'User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/130.0.0.0 Safari/537.36' \
+                    -H 'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8' \
+                    -H 'Sec-Fetch-Mode: navigate' -H 'Sec-Fetch-Dest: document' -H 'Sec-Fetch-Site: none' \
+                    | grep -Ei '^(cf-ray|cf-cache-status|age|cache-control|last-modified|etag|via|date):'
+                  grep -oE '(Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota|Niedziela|Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag) [0-9]+ (stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|października|listopada|grudnia|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)' /tmp/body3.html | sort -u | head -5
 
             # Same Scala toolchain as the other sbt jobs (Temurin JDK 25 + sbt
             # dependency caching).
@@ -138,7 +145,8 @@ jobs:
               env:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   KINOWO_COUNTRY: ${{ matrix.code }}
-              run: sbt "web/PageTest/runMain tools.OgCardGenerator"
+              # DEBUG: trimmed to one city (matrix.city) instead of the full sweep.
+              run: sbt "web/PageTest/runMain tools.OgCardGenerator ${{ matrix.city }}"
 
             - uses: actions/upload-artifact@v6
               with:

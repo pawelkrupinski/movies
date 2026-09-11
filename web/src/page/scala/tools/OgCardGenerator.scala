@@ -197,6 +197,16 @@ object OgCardGenerator {
       // days so a late-night "Dziś" empty view doesn't yield an empty card.
       try page.eval("pickDay('anytime')")
       catch { case _: Throwable => () }
+      // TEMP DEBUG — print a content-freshness fingerprint as Chrome itself
+      // sees it, to compare against a plain curl from the same CI runner.
+      try {
+        val fp = page.evalString(
+          "(document.body.innerText.match(/\\b(Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota|Niedziela|Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag) \\d+ [A-Za-zźżąćęłńóś]+/g) || []).slice(0,5).join(' | ')"
+        )
+        System.err.println(s"[OG-DEBUG] chrome-visible dates: $fp")
+        val lm = page.evalString("document.lastModified")
+        System.err.println(s"[OG-DEBUG] document.lastModified: $lm")
+      } catch { case e: Throwable => System.err.println(s"[OG-DEBUG] fingerprint eval failed: ${e.getMessage}") }
       // Wait for the in-viewport posters to actually decode (see PostersReadyJs).
       // Capped so a genuinely broken poster can't hang the run — we screenshot
       // whatever decoded once the cap elapses.
