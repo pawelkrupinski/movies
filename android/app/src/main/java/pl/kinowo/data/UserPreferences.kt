@@ -100,6 +100,21 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         prefs[KEY_COUNTRY] = code
     }
 
+    /** Persist a located city that sits in a DIFFERENT country than the one
+     *  currently selected, together with the country switch, in ONE DataStore
+     *  transaction. MUST be atomic: MainActivity recreates the activity (and
+     *  clears the ViewModel's coroutine scope) the moment [selectedCountryCode]
+     *  changes, so writing the country and the city as two separate [edit]
+     *  calls lets that recreate race ahead of the second call and cancel it —
+     *  the city is then never adopted and the "which city did you mean" dialog
+     *  vanishes with the teardown. See
+     *  [pl.kinowo.ui.KinowoViewModel.adoptDetectedCity]. */
+    suspend fun setCityInCountry(slug: String, code: String) = context.dataStore.edit { prefs ->
+        prefs[KEY_COUNTRY] = code
+        prefs[KEY_CITY] = slug
+        prefs.remove(KEY_EXPLICIT_PICK)
+    }
+
     /** The persisted country code read synchronously, or null if none. Used at
      *  activity attach/wiring time, before any coroutine scope exists, to pick
      *  the API base URL and forced locale. Everywhere else observe the
