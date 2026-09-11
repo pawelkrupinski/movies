@@ -1,4 +1,17 @@
 import Foundation
+// The Xcode app compiles this file into one flat module alongside every
+// Model/Auth file, where no module named `KinowoCore`/`KinowoAuth` exists —
+// `canImport` is false there, so this compiles to nothing and every symbol
+// below resolves exactly as it does today. Only the standalone `KinowoNetworking`
+// SPM target (see `Package.swift`) sees these as true, which is what lets
+// `swift test` drive `RepertoireStore` directly instead of only through the
+// Combine-free decoder line `LocalServerRepertoireTests` exercises.
+#if canImport(KinowoCore)
+@testable import KinowoCore
+#endif
+#if canImport(KinowoAuth)
+@testable import KinowoAuth
+#endif
 
 @MainActor
 final class RepertoireStore: ObservableObject {
@@ -150,9 +163,14 @@ final class RepertoireStore: ObservableObject {
                 // wrong city and leave `films` empty; taking 304 at face value
                 // then strands an empty grid on a city that has a full listing.
                 // Hydrate from the entry the conditional header spoke for.
+                //
+                // The disk entry holds the RAW payload from whenever it was
+                // last fetched, so it can carry screenings that have since
+                // crossed the 30-minute cutoff — re-prune it against the
+                // caller's own clock rather than trusting its age.
                 if let cached = RepertoireCache.bodyForNotModified(
                     callerIsEmpty: films.isEmpty, deployment: base, city: citySlug) {
-                    self.films = cached
+                    self.films = cached.prunedPastShowings(now: now, zone: timeZone)
                 }
                 self.loadedCitySlug = citySlug
                 self.lastReloadedAt = now
@@ -162,7 +180,13 @@ final class RepertoireStore: ObservableObject {
                 throw URLError(.badServerResponse)
             }
             let decoded = try JSONDecoder().decode([Film].self, from: data)
-            self.films = decoded
+            // Re-prune locally rather than trusting the server's own cutoff:
+            // a foreground reload runs `pruneStaleShowings()` first (see
+            // ContentView's scenePhase handler), and a response generated
+            // even a little earlier than it's applied here would otherwise
+            // silently undo that prune with a payload the server considered
+            // fresh at request time but that has since aged past 30 minutes.
+            self.films = decoded.prunedPastShowings(now: now, zone: timeZone)
             self.loadedCitySlug = citySlug
             self.lastReloadedAt = now
             let lm = http.value(forHTTPHeaderField: "Last-Modified")

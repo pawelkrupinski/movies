@@ -331,10 +331,13 @@ extension Sequence where Element == Film {
     ///   remaining showtime that day;
     /// - cinema-groups / days / films that empty out are removed.
     ///
-    /// The server applies the same logic at request time, so a freshly
-    /// fetched payload is already pruned. Calling this locally on app
-    /// foreground keeps the cached data fresh as wall-clock advances
-    /// without a round-trip.
+    /// The server applies the same logic at request time, but `RepertoireStore`
+    /// re-applies it locally on every path that updates `films` — on-foreground,
+    /// a freshly-decoded reload, and a 304's replayed cache entry alike —
+    /// since any of those can be older than the caller's own clock by the time
+    /// they're applied (a slow round trip, a cache entry that predates the
+    /// cutoff). That keeps the cutoff correct as wall-clock advances even when
+    /// the payload itself hasn't changed.
     func prunedPastShowings(now: Date = Date(), zone: TimeZone = .warsaw) -> [Film] {
         return self.compactMap { film in
             let days: [DayShowings] = film.showings.compactMap { day in

@@ -6,7 +6,7 @@ import PackageDescription
 // second view of the same files so we can run XCTest cases via
 // `swift test` on Linux/Docker without a full Xcode install.
 //
-// Three targets:
+// Targets:
 // - `KinowoCore` — Foundation-only sources (Models + the cache /
 //   poster layer of Networking). The Views/, Storage/, ContentView, KinowoApp,
 //   RepertoireClient, DetailsStore files are excluded because they
@@ -54,6 +54,41 @@ let authTargets: [Target] = [
 ]
 #else
 let authTargets: [Target] = []
+#endif
+
+// - `KinowoNetworking` — Combine-dependent store layer (macOS/iOS only),
+//   same reasoning as `KinowoAuth`: compiled as its own module so
+//   `RepertoireStore` can be driven directly by `swift test` on macOS (a
+//   stubbed `URLSession` in, real reload/cache/prune logic exercised)
+//   instead of only through the decoder-only line `LocalServerRepertoireTests`
+//   exercises. `RepertoireClient.swift` has no `import` statements for
+//   `Film`/`City`/`RepertoireCache`/etc — the Xcode app compiles it into one
+//   flat module alongside those types, with no module boundary at all. This
+//   target instead depends on `KinowoCore`/`KinowoAuth` properly and the file
+//   itself guards a `@testable import` of each behind `#if canImport(...)`,
+//   which is false (so a no-op) in the Xcode build where no such module
+//   exists, and true only here — `@testable` because none of those types are
+//   `public`, and widening that surface just for this target isn't worth it.
+// - `KinowoNetworkingTests` — `RepertoireStore` unit tests (Combine;
+//   macOS/iOS only).
+#if canImport(Combine)
+let networkingTargets: [Target] = [
+    .target(
+        name: "KinowoNetworking",
+        dependencies: ["KinowoCore", "KinowoAuth"],
+        path: "Kinowo",
+        sources: [
+            "Networking/RepertoireClient.swift",
+        ]
+    ),
+    .testTarget(
+        name: "KinowoNetworkingTests",
+        dependencies: ["KinowoCore", "KinowoNetworking"],
+        path: "Tests/KinowoNetworkingTests"
+    ),
+]
+#else
+let networkingTargets: [Target] = []
 #endif
 
 let package = Package(
@@ -138,5 +173,5 @@ let package = Package(
                 .copy("Fixtures"),
             ]
         ),
-    ] + authTargets
+    ] + authTargets + networkingTargets
 )
