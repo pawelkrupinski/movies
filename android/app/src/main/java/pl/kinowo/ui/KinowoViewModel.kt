@@ -115,6 +115,17 @@ class KinowoViewModel(
     // [checkCitySwitch]'s real location fetch.
     internal val citySwitchSuppressor = CitySwitchSuppressor()
 
+    // How many times [checkCitySwitch] has run. Internal rather than private so
+    // a test can catch [KinowoApp]'s two check-triggering effects (the initial
+    // mount and the lifecycle's `ON_RESUME` catch-up dispatch, which fires
+    // synchronously for an observer added while already resumed — true of a
+    // manual pick, which never actually pauses/resumes the activity) both
+    // firing for what [chooseCityAtGate]'s doc calls "the ONE check" — a case
+    // [CitySwitchSuppressor]'s one-shot flag can't itself distinguish from a
+    // single legitimate call, since both leave it equally "consumed".
+    internal var checkCitySwitchInvocationCount = 0
+        private set
+
     init {
         sync.start()
         // Re-hydrate a session persisted across launches (iOS does this in
@@ -584,6 +595,7 @@ class KinowoViewModel(
      * for [KinowoApp] to render.
      */
     fun checkCitySwitch(context: Context) = viewModelScope.launch {
+        checkCitySwitchInvocationCount++
         // A web sign-in just returned via a Custom Tab resume — skip the one
         // check that would re-surface the prompt the user already answered.
         if (citySwitchSuppressor.consumeShouldSkip()) return@launch

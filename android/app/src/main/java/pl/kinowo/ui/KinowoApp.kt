@@ -76,9 +76,13 @@ fun KinowoApp(viewModel: KinowoViewModel) {
  * nearer a different supported city; if so, [KinowoViewModel.checkCitySwitch]
  * surfaces a suggestion we render as an [AlertDialog]. The check never requests
  * location permission and fires at most once per `chosen→nearest` pair.
+ *
+ * `internal` (not `private`) so a test can mount it directly, the same reason
+ * [pl.kinowo.ui.city.CityGate] is — see
+ * [pl.kinowo.ui.KinowoViewModel.checkCitySwitchInvocationCount].
  */
 @Composable
-private fun NearerCityPrompt(viewModel: KinowoViewModel) {
+internal fun NearerCityPrompt(viewModel: KinowoViewModel) {
     val context = LocalContext.current
     LaunchedEffect(Unit) { viewModel.checkCitySwitch(context) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.checkCitySwitch(context) }
