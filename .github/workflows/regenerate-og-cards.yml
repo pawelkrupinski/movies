@@ -25,6 +25,16 @@ name: Regenerate OG share cards
 # main and does NOT deploy. The repertoire moves week to week, so a run almost
 # always produces a diff; a truly unchanged week produces no PR.
 #
+# Each leg writes to an isolated KINOWO_OG_OUT directory and uploads ONLY
+# that — never the repo's own `web/src/main/assets/img`. A leg's checkout
+# already carries every other country's currently-committed cards, so
+# uploading straight from the checkout would bundle those untouched files
+# into the artifact alongside the ones this leg actually regenerated; with
+# five such artifacts merged by `open-pr` (`merge-multiple: true`, which for
+# a path present in more than one artifact keeps whichever is written last),
+# only one leg's refresh would ever survive into the diff — see the fix that
+# added this paragraph for the months of silently-stale cards that caused.
+#
 # Like sync-title-rules.yml, the PR is opened via the "Kinowo Sync Bot" GitHub
 # App so Branch CI runs on it (a PR created with the default GITHUB_TOKEN never
 # triggers `pull_request` — GitHub's recursion guard). Reuses the same repo
@@ -108,26 +118,54 @@ jobs:
             # The `/` landing montage — `og-home.jpg` for Poland, `og-home-{code}.jpg`
             # elsewhere. Screenshots the country's primary city under the same
             # overlay with the national tagline. One card, well under a minute.
+            #
+            # Both steps write into an ISOLATED per-leg directory
+            # (KINOWO_OG_OUT), not the repo's own `web/src/main/assets/img` —
+            # see the `upload-artifact` step below for why: a leg's checkout
+            # already carries every OTHER country's currently-committed cards,
+            # and writing in place would upload those stale files alongside
+            # this leg's fresh ones.
             - name: Regenerate the ${{ matrix.country }} landing card
               env:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   KINOWO_COUNTRY: ${{ matrix.code }}
+                  KINOWO_OG_OUT: ${{ runner.temp }}/og-out
               run: sbt "web/PageTest/runMain tools.OgCardGenerator home"
 
-            # Every live city page → web/src/main/assets/img/og-{slug}.jpg. Hits
-            # the public prod site — no Mongo/Fly secrets needed. ~5s/city.
+            # Every live city page → {KINOWO_OG_OUT}/og-{slug}.jpg. Hits the
+            # public prod site — no Mongo/Fly secrets needed. ~5s/city.
             # KINOWO_COUNTRY picks the brand/language and the base URL
             # screenshotted (its own webUrl, path prefix included).
             - name: Regenerate the ${{ matrix.country }} city cards
               env:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   KINOWO_COUNTRY: ${{ matrix.code }}
+                  KINOWO_OG_OUT: ${{ runner.temp }}/og-out
               run: sbt "web/PageTest/runMain tools.OgCardGenerator"
 
+            # Upload ONLY this leg's own isolated output directory — never the
+            # repo's `web/src/main/assets/img`, which (via the full checkout)
+            # also holds every other country's currently-committed cards. A
+            # leg only ever regenerates its OWN country's slugs, so uploading
+            # the shared checkout path would bundle those untouched files into
+            # this artifact too. `open-pr` merges all five artifacts with
+            # `merge-multiple: true`, which for any file present in more than
+            # one of them keeps whichever artifact download finishes last —
+            # so five artifacts that each carried a full (mostly-stale) copy
+            # of every country's cards meant only ONE leg's refresh ever
+            # survived the merge, silently, most weeks. See the regen PR
+            # history before this fix: a given city's card went untouched for
+            # months at a time despite every run reporting full success —
+            # each leg WAS producing fresh cards, they were just getting
+            # overwritten by another leg's stale carried-over copy of the same
+            # path before `open-pr` ever diffed against `main`. Scoping the
+            # artifact to a leg's own isolated output directory means no two
+            # artifacts ever share a file path, so there is nothing left to
+            # clobber regardless of download order.
             - uses: actions/upload-artifact@v6
               with:
                   name: og-cards-${{ matrix.code }}
-                  path: web/src/main/assets/img/og-*.jpg
+                  path: ${{ runner.temp }}/og-out/og-*.jpg
                   retention-days: 3
                   overwrite: true
                   if-no-files-found: error
