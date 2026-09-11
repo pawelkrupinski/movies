@@ -21,9 +21,14 @@ object Catalog {
 
   /**
    * Canonical, deterministic JSON body: `{"countries":[…],"cities":[…]}`. Order
-   * is fixed ([[Country.switchable]] order; each country's cities in declared
-   * order), so [[etag]] and the checked-in bundled seed stay stable across
-   * builds. Hand-built (no play-json in `common`); the field values carry no
+   * is fixed ([[Country.switchable]] order; each country's cities in PICKER
+   * order — [[Country.cityGroups]]'s nested traversal for a grouped country,
+   * alphabetical for a flat one — never the roster's raw declared order), so
+   * [[etag]] and the checked-in bundled seed stay stable across builds, AND
+   * every client that walks this array in encounter order (region/subregion
+   * grouping on the apps and the web's dynamic picker) reproduces the exact
+   * same order the picker tree already computed, rather than re-deriving its
+   * own. Hand-built (no play-json in `common`); the field values carry no
    * characters needing JSON escaping. Mirrors the `{slug,name,lat,lon}` city
    * shape the web `ALL_CITIES` clients already parse, plus the owning country
    * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
@@ -130,7 +135,15 @@ object Catalog {
         // an app prune a Los Angeles showtime on Pacific instead of on whatever one
         // zone the country had to pick (see the country `timezone` above).
         val countryZone = countryTimezone(c)
-        c.cities.map { city =>
+        // PICKER order, not `c.cities`' raw declared order: a grouped country's
+        // own nested tree (nation→county→city, Land→city, state→city — each
+        // level already sorted the way its own picker wants), a flat country's
+        // plain alphabetical list otherwise. Every client that derives group
+        // order from first-occurrence over this array — the apps' `region`/
+        // `subregion`, the web's dynamic picker — inherits that order for free,
+        // instead of re-deriving (and disagreeing on) its own.
+        val orderedCities = if (c.cityGroups.nonEmpty) c.cityGroups.flatMap(_.allCities) else c.allSorted
+        orderedCities.map { city =>
           val region = regionOf.get(city.slug).fold("")(label => s""","region":"$label"""")
           val subregion = subregionOf.get(city.slug).fold("")(label => s""","subregion":"$label"""")
           val zone   = city.zoneId.getId

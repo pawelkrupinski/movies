@@ -160,6 +160,13 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     forAll(Country.Germany.cityGroups)(sortedUnder(_, "de-DE"))
     forAll(Country.UnitedKingdom.cityGroups.flatMap(_.groups))(sortedUnder(_, "en-GB"))
 
+    // The STATES themselves are alphabetical too — same policy as Germany's
+    // Bundesländer and the UK's counties, unlike the UK's nations (which read
+    // in a fixed order, not alphabetically — see the UK grouping test below).
+    val usCollator = java.text.Collator.getInstance(Locale.forLanguageTag("en-US"))
+    val usStateLabels = Country.UnitedStates.cityGroups.map(_.displayLabel)
+    usStateLabels shouldBe usStateLabels.sortWith((a, b) => usCollator.compare(a, b) < 0)
+
     // Collated, not code-point-ordered: Köln belongs under K-o, and a bare sort
     // files it after Krefeld because 'ö' outranks every letter.
     val nrw = Country.Germany.cityGroups.find(_.label == "Nordrhein-Westfalen").get
@@ -169,7 +176,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   it should "group the UK by nation, then by county — the two levels above a Flicks region" in {
     Country.UnitedKingdom.cityGroups.map(_.label) shouldBe
-      Seq("England", "Scotland", "Wales", "Northern Ireland", "Crown Dependencies")
+      Seq("England", "Scotland", "Northern Ireland", "Wales", "Crown Dependencies")
     // A nation holds counties, never places directly.
     Country.UnitedKingdom.cityGroups.flatMap(_.cities) shouldBe empty
     // The two levels together partition the country's cities, exactly once each.

@@ -1103,8 +1103,10 @@ object City {
    *  Declared as a table rather than derived, because nothing in a `UkCity` knows
    *  its county or its nation: the roster is hand-authored `case object`s
    *  carrying a slug, a label and a fix, and neither fact is one those imply.
-   *  Nations are ordered by size — England first is the order a visitor scans —
-   *  and everything below is alphabetical, which is the only order a reader can
+   *  Nations are in this fixed reading order (England, Scotland, Northern
+   *  Ireland, Wales, Crown Dependencies) — the same order every client's picker
+   *  shows, kept in one place rather than re-derived per platform — and
+   *  everything below is alphabetical, which is the only order a reader can
    *  search by eye.
    *
    *  Every LIVE city appears exactly once (`CountrySpec` holds that, the same
@@ -1184,16 +1186,6 @@ object City {
         "Roxburgh Ettrick and Lauderdale"  -> Seq(RoxburghEttrickAndLauderdale),
         "Tayside"                          -> Seq(Tayside),
       )),
-      ("Wales", "wales", Seq(
-        "Clwyd"     -> Seq(Clwyd),
-        "Dyfed"     -> Seq(Dyfed),
-        // Cardiff is in Glamorgan, which Flicks also carries as a region of its
-        // own — so the county holds the city and the rest of itself.
-        "Glamorgan" -> Seq(Cardiff, Glamorgan),
-        "Gwent"     -> Seq(Gwent),
-        "Gwynedd"   -> Seq(Gwynedd),
-        "Powys"     -> Seq(Powys),
-      )),
       ("Northern Ireland", "northern-ireland", Seq(
         // Belfast straddles Antrim and Down; County Antrim holds the bulk of it
         // and is where it is conventionally filed.
@@ -1203,6 +1195,16 @@ object City {
         "Fermanagh"   -> Seq(Fermanagh),
         "Londonderry" -> Seq(Londonderry),
         "Tyrone"      -> Seq(Tyrone),
+      )),
+      ("Wales", "wales", Seq(
+        "Clwyd"     -> Seq(Clwyd),
+        "Dyfed"     -> Seq(Dyfed),
+        // Cardiff is in Glamorgan, which Flicks also carries as a region of its
+        // own — so the county holds the city and the rest of itself.
+        "Glamorgan" -> Seq(Cardiff, Glamorgan),
+        "Gwent"     -> Seq(Gwent),
+        "Gwynedd"   -> Seq(Gwynedd),
+        "Powys"     -> Seq(Powys),
       )),
       // Not part of the UK, but served by the same Flicks market and reached from
       // the same picker, so they need a heading rather than a nation to be filed
@@ -1411,22 +1413,29 @@ object City {
       .flatMap { case (former, successors) => successors.map(_ -> former) }
       .groupMap(_._1)(_._2)
 
-  /** The US picker's grouping: one entry per state or territory, in roster
-   *  order, holding the metros cut out of it (or the state itself, where it is
-   *  small enough to be one place).
+  /** The US picker's grouping: one entry per state or territory, holding the
+   *  metros cut out of it (or the state itself, where it is small enough to be
+   *  one place) — alphabetical both ways, same policy as Germany's Bundesländer
+   *  and the UK's counties.
    *
-   *  The metros inside a state are ALPHABETICAL. `UsRoster.places` has them
-   *  biggest-first, which is the right order for a list you read the top of and
-   *  the wrong one for a list you search by eye: a visitor opening "California"
-   *  is looking for a name they already know, and the only order that tells them
-   *  where to look for it is the one the alphabet gives. */
-  private[models] val usStates: Seq[CityGroup] =
-    UsRoster.places.zip(usCities).foldLeft(Vector.empty[CityGroup]) {
+   *  `UsRoster.places` has each state's metros biggest-first, which the fold
+   *  below preserves grouping-wise before [[CityListing.sorted]] re-sorts them:
+   *  a visitor opening "California" is looking for a name they already know,
+   *  and the only order that tells them where to look for it is the one the
+   *  alphabet gives. */
+  private[models] val usStates: Seq[CityGroup] = {
+    val grouped = UsRoster.places.zip(usCities).foldLeft(Vector.empty[CityGroup]) {
       case (groups :+ last, (place, city)) if last.slug == place.stateSlug =>
         groups :+ last.copy(cities = last.cities :+ city)
       case (groups, (place, city)) =>
         groups :+ CityGroup(place.stateName, place.stateSlug, Seq(city))
     }.map(g => g.copy(cities = CityListing.sorted(g.cities, Locale.forLanguageTag("en-US"))))
+    // By the displayed name — a state holding one metro shows that metro's name
+    // (Delaware, Vermont), and sorting on the state would agree here since
+    // neither collapses onto a differently-named place, but this stays uniform
+    // with Germany/the UK rather than special-cased.
+    CityListing.sortedLabels(grouped, Locale.forLanguageTag("en-US"))(_.displayLabel)
+  }
 
   /** Spain's cities — the authoritative list for [[Country.Spain]]. One city per
    *  PROVINCE (52 of them), materialised data-driven from `SpanishRosterData`
