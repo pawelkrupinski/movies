@@ -56,17 +56,33 @@ jobs:
             fail-fast: false
             matrix:
                 include:
-                    - { country: poland,         code: pl }
-                    - { country: united-kingdom, code: uk }
-                    - { country: germany,        code: de }
-                    - { country: united-states,  code: us }
-                    - { country: spain,          code: es }
+                    - { country: poland,         code: pl, url: "https://kinowo.net/poznan/" }
+                    - { country: germany,        code: de, url: "https://showtimes.cc/de/berlin/" }
         runs-on: ubuntu-latest
         # ~5s a card, and the US is 457 of them (its states and their metros) —
         # the sweep alone is ~40 minutes there before a cold compile.
         timeout-minutes: 90
         steps:
             - uses: actions/checkout@v5
+
+            # TEMP DEBUG — diagnosing why the OG regen produces byte-identical
+            # cards week after week in CI despite fresh content locally. Dumps
+            # the response headers + cache status this RUNNER sees from the
+            # target URL, twice (to catch a MISS-then-HIT pattern), plus a
+            # content freshness fingerprint. Remove before merging anything.
+            - name: DEBUG cache headers
+              run: |
+                  echo "=== fetch 1 ==="
+                  curl -sD - -o /tmp/body1.html "${{ matrix.url }}" | grep -Ei '^(cf-ray|cf-cache-status|age|cache-control|last-modified|etag|via|date):'
+                  echo "=== fetch 2 (immediate repeat) ==="
+                  curl -sD - -o /tmp/body2.html "${{ matrix.url }}" | grep -Ei '^(cf-ray|cf-cache-status|age|cache-control|last-modified|etag|via|date):'
+                  echo "=== content freshness fingerprint (fetch 1) ==="
+                  grep -oE '(Poniedziałek|Wtorek|Środa|Czwartek|Piątek|Sobota|Niedziela|Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag) [0-9]+ (stycznia|lutego|marca|kwietnia|maja|czerwca|lipca|sierpnia|września|października|listopada|grudnia|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)' /tmp/body1.html | sort -u | head -10
+                  echo "=== diff between the two fetches ==="
+                  diff -q /tmp/body1.html /tmp/body2.html && echo "IDENTICAL" || echo "DIFFERENT"
+                  echo "=== outbound IP this runner uses ==="
+                  curl -s https://ifconfig.me || true
+                  echo
 
             # Same Scala toolchain as the other sbt jobs (Temurin JDK 25 + sbt
             # dependency caching).
@@ -173,7 +189,7 @@ jobs:
               uses: peter-evans/create-pull-request@v6
               with:
                   token: ${{ steps.app-token.outputs.token }}
-                  branch: chore/regenerate-og-cards
+                  branch: debug/og-cache-diag-pr
                   delete-branch: true
                   add-paths: web/src/main/assets/img/og-*.jpg
                   commit-message: 'chore: regenerate per-city OG share cards'
