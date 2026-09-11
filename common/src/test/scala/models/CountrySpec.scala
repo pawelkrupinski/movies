@@ -160,12 +160,14 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     forAll(Country.Germany.cityGroups)(sortedUnder(_, "de-DE"))
     forAll(Country.UnitedKingdom.cityGroups.flatMap(_.groups))(sortedUnder(_, "en-GB"))
 
-    // The STATES themselves are alphabetical too — same policy as Germany's
-    // Bundesländer and the UK's counties, unlike the UK's nations (which read
-    // in a fixed order, not alphabetically — see the UK grouping test below).
-    val usCollator = java.text.Collator.getInstance(Locale.forLanguageTag("en-US"))
-    val usStateLabels = Country.UnitedStates.cityGroups.map(_.displayLabel)
-    usStateLabels shouldBe usStateLabels.sortWith((a, b) => usCollator.compare(a, b) < 0)
+    // The STATES themselves are alphabetical too — by the roster's own slug
+    // order (`UsRosterSpec` pins that), NOT re-sorted through a Locale
+    // Collator the way Germany's Bundesländer and the UK's counties are: a
+    // collator weighs "Virgin Islands"' space against "Virginia"'s
+    // continuing letter differently than plain string order does, and would
+    // silently swap the two.
+    val usStateSlugs = Country.UnitedStates.cityGroups.map(_.slug)
+    usStateSlugs shouldBe usStateSlugs.sorted
 
     // Collated, not code-point-ordered: Köln belongs under K-o, and a bare sort
     // files it after Krefeld because 'ö' outranks every letter.

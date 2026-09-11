@@ -1413,29 +1413,32 @@ object City {
       .flatMap { case (former, successors) => successors.map(_ -> former) }
       .groupMap(_._1)(_._2)
 
-  /** The US picker's grouping: one entry per state or territory, holding the
-   *  metros cut out of it (or the state itself, where it is small enough to be
-   *  one place) — alphabetical both ways, same policy as Germany's Bundesländer
-   *  and the UK's counties.
+  /** The US picker's grouping: one entry per state or territory, in roster
+   *  order — already alphabetical (`UsRosterSpec` pins it; a generator
+   *  regression that scrambled it once went unnoticed because nothing
+   *  asserted the order, only that each state's block stayed intact) — holding
+   *  the metros cut out of it (or the state itself, where it is small enough
+   *  to be one place).
    *
-   *  `UsRoster.places` has each state's metros biggest-first, which the fold
-   *  below preserves grouping-wise before [[CityListing.sorted]] re-sorts them:
-   *  a visitor opening "California" is looking for a name they already know,
-   *  and the only order that tells them where to look for it is the one the
-   *  alphabet gives. */
-  private[models] val usStates: Seq[CityGroup] = {
-    val grouped = UsRoster.places.zip(usCities).foldLeft(Vector.empty[CityGroup]) {
+   *  The metros inside a state are ALPHABETICAL. `UsRoster.places` has them
+   *  biggest-first, which is the right order for a list you read the top of and
+   *  the wrong one for a list you search by eye: a visitor opening "California"
+   *  is looking for a name they already know, and the only order that tells them
+   *  where to look for it is the one the alphabet gives.
+   *
+   *  Not re-sorted through [[CityListing.sortedLabels]] the way Germany's
+   *  Bundesländer and the UK's nations' counties are: a Locale [[Collator]]
+   *  weighs "Virgin Islands"' space against "Virginia"'s continuing letter
+   *  differently than the plain string order the roster (and slug) already
+   *  agree on, which would silently swap the two — worse than the roster's
+   *  own order, not better. */
+  private[models] val usStates: Seq[CityGroup] =
+    UsRoster.places.zip(usCities).foldLeft(Vector.empty[CityGroup]) {
       case (groups :+ last, (place, city)) if last.slug == place.stateSlug =>
         groups :+ last.copy(cities = last.cities :+ city)
       case (groups, (place, city)) =>
         groups :+ CityGroup(place.stateName, place.stateSlug, Seq(city))
     }.map(g => g.copy(cities = CityListing.sorted(g.cities, Locale.forLanguageTag("en-US"))))
-    // By the displayed name — a state holding one metro shows that metro's name
-    // (Delaware, Vermont), and sorting on the state would agree here since
-    // neither collapses onto a differently-named place, but this stays uniform
-    // with Germany/the UK rather than special-cased.
-    CityListing.sortedLabels(grouped, Locale.forLanguageTag("en-US"))(_.displayLabel)
-  }
 
   /** Spain's cities — the authoritative list for [[Country.Spain]]. One city per
    *  PROVINCE (52 of them), materialised data-driven from `SpanishRosterData`
