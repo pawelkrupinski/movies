@@ -90,42 +90,6 @@ lazy val itReportSettings = Seq(
     ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "it").toString)
 )
 
-// ── Coverage (sbt-scoverage) ─────────────────────────────────────────────────
-//
-// Applied to the three DEPLOYED modules only. testkit and e2e are test-support
-// code, so instrumenting them would count helpers toward "what production code
-// the unit suites reach", which is the one number the report is for.
-//
-// Measured by .github/workflows/coverage.yml — never by a deploy-gating job:
-// instrumented runs are ~2× slower, and ci.yml is at the runner budget.
-//
-//   sbt coverage testUnitNoE2e ; sbt coverageAggregate
-//
-// A plain `sbt test` never instruments: `coverageEnabled` is off until the
-// `coverage` command flips it for that sbt session.
-lazy val coverageSettings = Seq(
-  coverageExcludedPackages := Seq(
-    "<empty>",
-    "router\\..*",          // play-routes-compiler output (generated)
-    "controllers\\.javascript\\..*",
-    "controllers\\.routes.*",
-    "views\\.html\\..*",    // Twirl-generated `.scala.html` → `.scala`
-  ).mkString(";"),
-  coverageFailOnMinimum := false,
-  // The instrumenter skips any method body over 3,000 tree nodes and SAYS SO
-  // with a warning — the ~800-line US roster tables in `UsRosterData`, the
-  // `fromCodecs(...)` registries — which `-Werror` turns into a failed compile.
-  // The notice is the compiler's, not the code's: there is no threshold flag
-  // and nothing in those methods to fix, and the alternative (excluding every
-  // such FILE from the report) would drop `MongoScrapeArchiveRepository`, which
-  // has real logic, and break again on the next big table. So that one message
-  // is silenced ONLY while instrumenting — a plain compile keeps every warning
-  // fatal, and so does every OTHER warning under coverage.
-  scalacOptions ++= (
-    if (coverageEnabled.value) Seq("-Wconf:msg=Skipping coverage instrumentation:silent") else Nil
-  ),
-)
-
 // ── Shared module ────────────────────────────────────────────────────────────
 
 lazy val common = (project in file("common"))
@@ -155,7 +119,6 @@ lazy val common = (project in file("common"))
     )
   )
   .settings(unitReportSettings)
-  .settings(coverageSettings)
   .settings(noApiDocs)
 
 // ── Shared test support (not deployed) ───────────────────────────────────────
@@ -173,7 +136,6 @@ lazy val testkit = (project in file("testkit"))
     name := "testkit",
     publish / skip := true,
     libraryDependencies += scalatestPlay,
-    coverageEnabled := false,  // test support, not product — see coverageSettings
   )
   .settings(noApiDocs)
 
@@ -244,7 +206,6 @@ lazy val worker = (project in file("worker"))
   )
   .settings(unitReportSettings)
   .settings(itReportSettings)
-  .settings(coverageSettings)
   .settings(noApiDocs)
 
 // ── Web app (content serving) ────────────────────────────────────────────────
@@ -311,7 +272,6 @@ lazy val web = (project in file("web"))
   )
   .settings(unitReportSettings)
   .settings(itReportSettings)
-  .settings(coverageSettings)
   .settings(noApiDocs)
 
 // ── End-to-end test module (not deployed) ────────────────────────────────────
@@ -331,7 +291,6 @@ lazy val e2e = (project in file("e2e"))
     name := "e2e",
     publish / skip := true,
     libraryDependencies += scalatestPlay % Test,
-    coverageEnabled := false,  // no main sources; see coverageSettings
   )
   .settings(noApiDocs)
   .settings(unitReportSettings)
