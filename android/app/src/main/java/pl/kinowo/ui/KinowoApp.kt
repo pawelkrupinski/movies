@@ -77,14 +77,26 @@ fun KinowoApp(viewModel: KinowoViewModel) {
  * surfaces a suggestion we render as an [AlertDialog]. The check never requests
  * location permission and fires at most once per `chosen→nearest` pair.
  *
+ * A SINGLE [LifecycleEventEffect] covers both "on entry" and "on every resume":
+ * `Lifecycle.addObserver` synchronously replays the events needed to bring a
+ * freshly-added observer up to the owner's CURRENT state, so an observer added
+ * while already RESUMED — true the moment this composes, since a city pick
+ * never itself pauses/resumes the activity — fires immediately too. A second,
+ * separate `LaunchedEffect(Unit)` used to sit alongside this one to cover
+ * "on entry", but that made every mount fire TWO checks back-to-back; the
+ * `chooseCityAtGate` "no detected nearest" branch only expects ONE (it's
+ * guarded by [KinowoViewModel.citySwitchSuppressor], a one-shot flag — the
+ * first check consumed it silently, the second found it already spent and
+ * could surface a stale "you're nearer X" suggestion). See
+ * [pl.kinowo.ui.KinowoViewModel.checkCitySwitchInvocationCount] and
+ * `NearerCityPromptDoubleCheckTest`.
+ *
  * `internal` (not `private`) so a test can mount it directly, the same reason
- * [pl.kinowo.ui.city.CityGate] is — see
- * [pl.kinowo.ui.KinowoViewModel.checkCitySwitchInvocationCount].
+ * [pl.kinowo.ui.city.CityGate] is.
  */
 @Composable
 internal fun NearerCityPrompt(viewModel: KinowoViewModel) {
     val context = LocalContext.current
-    LaunchedEffect(Unit) { viewModel.checkCitySwitch(context) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.checkCitySwitch(context) }
 
     val suggestion = viewModel.citySwitchSuggestion ?: return
