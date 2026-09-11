@@ -617,13 +617,13 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the two-level picker (the UK)" should
     "need two taps to reach a place — nation, then county" in {
     onNestedLanding { page =>
-      // ALPHABETICAL, unlike the static tree's roster (declaration) order —
-      // the dynamic picker's row-building is inherited unchanged from the
-      // retired popup's `buildCityPickerRows`, which sorts every heading
-      // level (`headings.sort(byLabel)`); the static `_cityPickerGroup` tree
-      // instead walks `Country.cityGroups` in the order it's declared.
+      // The fixed reading order every client agrees on now — `Catalog.json`
+      // emits the UK's cities in `Country.cityGroups`' own nation order, and
+      // the dynamic picker's row-building preserves that encounter order
+      // rather than re-sorting it (which used to make this alphabetical and
+      // disagree with the static tree and the apps).
       pickerRowLabels(page) shouldBe
-        """["Crown Dependencies","England","Northern Ireland","Scotland","Wales"]"""
+        """["England","Scotland","Northern Ireland","Wales","Crown Dependencies"]"""
 
       clickPickerRow(page, "England")
       // Almost all of it is places, because every county holding ONE place
@@ -634,6 +634,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       pickerRowLabels(page) should include ("Liverpool")
       pickerRowLabels(page) should not include "Merseyside"
       pickerRowLabels(page) should not include "Birmingham"
+      // "West Midlands" sits interleaved in its own alphabetical position —
+      // beside "West Sussex", not stranded ahead of every direct city in
+      // England — the fix for the reported "West Midlands out of order" bug.
+      val england = Json.parse(pickerRowLabels(page)).as[Seq[String]]
+      england.indexOf("Warwickshire") should be < england.indexOf("West Midlands")
+      england.indexOf("West Midlands") should be < england.indexOf("West Sussex")
 
       clickPickerRow(page, "West Midlands")
       page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "England — West Midlands"
@@ -644,7 +650,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       pickerRowLabels(page) should include ("West Midlands")
       page.eval("document.getElementById('picker-back-row').click()")
       pickerRowLabels(page) shouldBe
-        """["Crown Dependencies","England","Northern Ireland","Scotland","Wales"]"""
+        """["England","Scotland","Northern Ireland","Wales","Crown Dependencies"]"""
     }
   }
 

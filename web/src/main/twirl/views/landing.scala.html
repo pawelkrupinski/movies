@@ -329,15 +329,21 @@
     }
     window.pickerBack = pickerBack;
 
-    // The current level's rows: region/subregion HEADINGS (drill further)
-    // ahead of any DIRECT city at that level (a group collapsed onto its one
-    // city — `CityGroup.soleCity` — never earned a heading of its own), each
-    // kind sorted alphabetically under the country's own language.
+    // The current level's rows: region/subregion HEADINGS interleaved with
+    // any DIRECT city at that level (a group collapsed onto its one city —
+    // `CityGroup.soleCity` — never earned a heading of its own), in ONE pass
+    // over `Catalog.json`'s own order — never re-sorted here. That order is
+    // already exactly right (`Catalog.scala` emits each country's cities in
+    // its picker tree's own traversal order: the UK's nations in a fixed
+    // reading order, everything below them alphabetical, same for Germany's
+    // Bundesländer and the US's states) — a heading is emitted at the FIRST
+    // city that carries it, which is precisely where it belongs relative to
+    // its sibling direct cities. Concatenating "all headings, then all direct
+    // cities" instead (the old shape) stranded a heading like "West Midlands"
+    // ahead of every direct city in its region, rather than beside "West
+    // Sussex" where it alphabetically belongs.
     function buildPickerRows() {
       const cities = citiesOf(pickerCountry);
-      const lang = pickerCountry;
-      const byName = function (a, b) { return a.name.localeCompare(b.name, lang); };
-      const byLabel = function (a, b) { return a.localeCompare(b, lang); };
       // Scoped by BOTH levels drilled so far, not just the first — the third
       // (city) level of a country like the UK must narrow to the SUBREGION
       // (West Midlands' 3 places), not fall back to the whole region
@@ -348,19 +354,19 @@
       });
       const groupField = pickerRegion === null ? 'region' : (pickerSubregion === null ? 'subregion' : null);
       if (groupField === null) {
-        return scoped.slice().sort(byName).map(function (c) { return { kind: 'city', label: c.name, city: c }; });
+        return scoped.map(function (c) { return { kind: 'city', label: c.name, city: c }; });
       }
-      const headings = [];
+      const rows = [];
+      const seen = {};
       scoped.forEach(function (c) {
-        if (c[groupField] && headings.indexOf(c[groupField]) === -1) headings.push(c[groupField]);
+        const group = c[groupField];
+        if (group) {
+          if (!seen[group]) { seen[group] = true; rows.push({ kind: groupField, label: group }); }
+        } else {
+          rows.push({ kind: 'city', label: c.name, city: c });
+        }
       });
-      headings.sort(byLabel);
-      if (headings.length === 0) {
-        return scoped.slice().sort(byName).map(function (c) { return { kind: 'city', label: c.name, city: c }; });
-      }
-      const direct = scoped.filter(function (c) { return !c[groupField]; }).sort(byName);
-      return headings.map(function (label) { return { kind: groupField, label: label }; })
-        .concat(direct.map(function (c) { return { kind: 'city', label: c.name, city: c }; }));
+      return rows;
     }
 
     function renderPickerBody() {
