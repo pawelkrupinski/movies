@@ -6,7 +6,7 @@ import tools.HttpFetch
 import org.jsoup.Jsoup
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime, MonthDay, ZoneId}
 import scala.jdk.CollectionConverters._
 import scala.util.Try
 
@@ -16,12 +16,16 @@ import scala.util.Try
  * page — one `div.post` per screening, grouped under `div.month-heading` day
  * headers. Each post carries:
  *   - `a[href^=/pl/]`            → the film detail link (also the post wrapper)
- *   - `a > div.label`           → the screening stamp "10 Cze 2026 / 15:30",
- *                                 with an absolute 4-digit year, so the date is
- *                                 read off it directly — no year inference from
- *                                 a yearless day header (the badge label inside
- *                                 `div.image`, e.g. "przedpremiera", carries the
- *                                 extra `.special-1` class and is excluded).
+ *   - `a > div.label`           → the screening stamp, whose exact shape has
+ *                                 drifted twice since June 2026: "10 Cze 2026 /
+ *                                 15:30" (year present), then "09 Wrz 2026 (Śr)
+ *                                 / 16:00" (a weekday abbreviation inserted),
+ *                                 then "12 Wrz (Sb) / 16:10" (the year dropped
+ *                                 entirely). `StampPat` tolerates all three; a
+ *                                 missing year is inferred from `today` (the
+ *                                 badge label inside `div.image`, e.g.
+ *                                 "przedpremiera", carries the extra
+ *                                 `.special-1` class and is excluded).
  *   - `div.box_tytul h2`        → the clean film title
  *
  * The page's own poster is a low-res thumbnail behind a 2x3 placeholder, so —
@@ -34,14 +38,15 @@ import scala.util.Try
  * its own site is the canonical, single-venue source, so we scrape that.
  */
 class PrahaClient(http: HttpFetch,
-                  override val cinema: Cinema = KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha)
+                  override val cinema: Cinema = KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha,
+                  today: LocalDate = LocalDate.now(ZoneId.of("Europe/Warsaw")))
     extends CinemaScraper {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(PrahaClient.BaseUrl)
   override def sourceUrl: Option[String] = Some(PrahaClient.BaseUrl)
 
   def fetch(): Seq[CinemaMovie] =
-    PrahaClient.parse(http.get(PrahaClient.RepertoireUrl), cinema)
+    PrahaClient.parse(http.get(PrahaClient.RepertoireUrl), cinema, today)
 }
 
 object PrahaClient {
@@ -49,11 +54,14 @@ object PrahaClient {
   val BaseUrl       = "https://www.mteatr.pl"
   val RepertoireUrl = s"$BaseUrl/pl/repertuar-kino-praha"
 
-  // "10 Cze 2026 / 15:30" — day, Polish month abbreviation, year, then time.
-  // The site started inserting a parenthesised weekday abbreviation between
-  // the year and the slash ("09 Wrz 2026 (Śr) / 16:00"); tolerate it without
-  // capturing it — it's redundant with the date itself.
-  private val StampPat = """(\d{1,2})\s+(\p{L}+)\s+(\d{4})(?:\s*\([^)]*\))?\s*/\s*(\d{1,2}):(\d{2})""".r
+  // "10 Cze 2026 / 15:30" — day, Polish month abbreviation, an optional year,
+  // then time. The site first started inserting a parenthesised weekday
+  // abbreviation between the year and the slash ("09 Wrz 2026 (Śr) / 16:00"),
+  // then four days later dropped the year entirely ("12 Wrz (Sb) / 16:10") —
+  // both tolerated without capturing the weekday (redundant with the date
+  // itself) and without requiring the year (see `parseStamp`, which infers it
+  // from `today` via `ScraperParse.upcomingDate` when absent).
+  private val StampPat = """(\d{1,2})\s+(\p{L}+)(?:\s+(\d{4}))?(?:\s*\([^)]*\))?\s*/\s*(\d{1,2}):(\d{2})""".r
 
   private case class RawSlot(
     title:    String,
@@ -61,7 +69,7 @@ object PrahaClient {
     filmUrl:  Option[String]
   )
 
-  def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
+  def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html, BaseUrl)
 
     val slots = document.select("div.post:has(div.box_tytul):has(div.label)").asScala.toSeq.flatMap { post =>
@@ -69,7 +77,7 @@ object PrahaClient {
         titleElement <- Option(post.selectFirst("div.box_tytul h2"))
         title    = titleElement.text.trim if title.nonEmpty
         stamp   <- Option(post.selectFirst("div.label:not(.special-1)")).map(_.text.trim)
-        dateTime <- parseStamp(stamp)
+        dateTime <- parseStamp(stamp, today)
       } yield RawSlot(
         title    = title,
         dateTime = dateTime,
@@ -97,13 +105,20 @@ object PrahaClient {
     }
   }
 
-  /** "10 Cze 2026 / 15:30" → `LocalDateTime`; `None` when the month
-   *  abbreviation is unknown or the day/time is out of range. */
-  private def parseStamp(stamp: String): Option[LocalDateTime] =
+  /** "10 Cze 2026 / 15:30" or the yearless "12 Wrz / 16:10" → `LocalDateTime`;
+   *  `None` when the month abbreviation is unknown or the day/time is out of
+   *  range. A stamp without a year has its year inferred from `today` via
+   *  [[ScraperParse.upcomingDate]] — the page only ever lists near-future
+   *  screenings, so the default 60-day grace is generous. */
+  private def parseStamp(stamp: String, today: LocalDate): Option[LocalDateTime] =
     StampPat.findFirstMatchIn(stamp).flatMap { m =>
       ScraperParse.polishMonthAbbrev(m.group(2)).flatMap { month =>
-        Try(LocalDateTime.of(
-          m.group(3).toInt, month, m.group(1).toInt, m.group(4).toInt, m.group(5).toInt)).toOption
+        val day = m.group(1).toInt
+        val date = Option(m.group(3)) match {
+          case Some(year) => Try(LocalDate.of(year.toInt, month, day)).toOption
+          case None       => Try(MonthDay.of(month, day)).toOption.flatMap(ScraperParse.upcomingDate(_, today))
+        }
+        date.flatMap(d => Try(d.atTime(m.group(4).toInt, m.group(5).toInt)).toOption)
       }
     }
 }

@@ -514,7 +514,7 @@ class CinemaScraperCatalog(
   // scraped without touching its hand-written scraper group.
   private val filmwebExtra: Map[String, Seq[CinemaScraper]] = Map(
     "wroclaw" -> Seq(new Bilety24SubdomainClient(http, "https://kulturalne-oborniki.bilety24.pl/repertuar/", KinoAstra, today = today, titles = titles), new FilmwebShowtimesClient(http, 1645, KinoDyskusyjnyKlubFilmowyPolitechnika, today = today)),
-    "warszawa" -> Seq(new PrahaClient(http, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha)),
+    "warszawa" -> Seq(new PrahaClient(http, KinoMazowieckiTeatrMuzycznyImJanaKiepuryKinoPraha, today)),
     "lodz" -> Seq(new KinoSpojniaClient(http, KinoSpojnia), bilety24("https://www.bilety24.pl/kino/organizator/miejski-osrodek-kultury-stary-mlyn-w-zgierzu-1697", KinoStaryMlyn)),
     "katowice" -> Seq(cinemaCity("1062", CinemaCity), new KinoPatriaClient(http, KinoPatria, today)),
     "szczecin" -> Seq(systemBiletowy(KinoKawiarnia), biletyna(KinoPDK), new SckStargardClient(http, KinoSCK)),
