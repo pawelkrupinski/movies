@@ -108,6 +108,159 @@ and 336 of the 1,143 white US services had exactly 1.** Two consequences:
 
 ---
 
+## 2026-09-12
+
+**Sixth all-five-country sweep.** No verbatim mongosh script was ever
+committed here (the 09-08 entry noted this) — wrote the sweep fresh from the
+`classify()` predicate this time (`db.getSiblingDB` × 5, replicate
+`failures>0 ? (successes+zeroes>0 ? yellow : red) : successes>0 ? green :
+zero`, `.takeRight(3)` on non-empty buckets, skip `*|enrichment` / `img:`).
+Newest bucket ~2026-09-12 12:45 UTC.
+
+| DB | services | white | white % | red | green→white |
+|---|---|---|---|---|---|
+| `kinowo` (PL) | 310 | **5** | 1.6% | 3 | 2 |
+| `kinowo_uk` | 852 | **60** | 7.0% | 0 | 4 |
+| `kinowo_de` | 1,537 | **390** | 25.4% | 21 | 1 |
+| `kinowo_us` | 5,040 | **715** | 14.2% | 2 | 10 |
+| `kinowo_es` | 601 | **198** | 32.9% | 1 | 2 |
+
+vs. 2026-09-08: PL 7/310 (2.3%), UK 70/853 (8.2%), DE 395/1538 (25.7%), US
+1143/5030 (22.7%), ES 215/602 (35.7%). PL, UK and US all improved; DE/ES flat.
+**US's drop (22.7%→14.2%) confirms 09-08's read that the Labor Day spike was
+temporary**, not a new baseline: seasonal-named US venues are back down to
+34% white (was 81% on 09-08, 33% on 09-04) — a one-off holiday-week dip in a
+weekly sawtooth (see `reference_showtimes_weekly_sawtooth`), not a trend.
+DE/ES seasonal shares stayed high (DE 95%, ES 78%), consistent with both
+runs before this one.
+
+### Poland — all 5 hand-probed; 1 fixed, 1 regression from a fix 4 days ago, 3 confirmed still dormant
+
+**Kino Praha — fixed AGAIN, @205d32428.** The weekday-label fix from 09-08
+(`cbe5cdfb7`) held for exactly one page-refresh cycle: mteatr.pl's archive
+shows Kino Praha scraping fine on 2026-09-09 13:37 (10 films), then going
+white again sometime before this run started. The site had changed its date
+stamp a second time — not by adding to it this time, but by **dropping the
+4-digit year entirely**: "12 Wrz (Sb) / 16:10" instead of "09 Wrz 2026 (Śr) /
+16:00". `PrahaClient.StampPat` still required the year, so it stopped
+matching every stamp again: 0 films, 0 showtimes, four days after the last
+fix.
+
+Fix: the year is now optional in `StampPat`; when absent, `parseStamp` infers
+it from `today` via the existing `ScraperParse.upcomingDate` (60-day grace) —
+the same helper other yearless-day-header scrapers already use. `PrahaClient`
+now takes a `today: LocalDate` parameter (defaulting to `LocalDate.now` in
+Warsaw time, like `KinoPortClient` and friends), threaded through from
+`CinemaScraperCatalog`.
+
+**Test:** `PrahaNoYearSpec` replays a 2026-09-12 capture of the live (broken,
+yearless) page — the pre-fix `PrahaClient` doesn't even compile against a
+`today` parameter (the class had none), which is as clean a "fails before" as
+a signature change gets; after the fix it reads "12 Wrz (Sb) / 16:10" as
+2026-09-12 16:10. `PrahaWeekdayLabelSpec` (09-08's fixture, year + weekday
+label) and the original `PrahaClientSpec` (June fixture, plain year) both
+still pass unchanged — three date-stamp shapes now share one pattern.
+
+**Layers:** `sbt worker/Test/test` green (3,462 tests) after
+`./infra/bin/fetch-gitops` (the `deploy.*` failures on the first run were the
+same missing-local-checkout artifact every run since 2026-09-04 hits, not
+this change). `FilmScheduleEndToEndSpec` and `PageSnapshotSpec` both green
+**without any snapshot regeneration** — the e2e fixture corpus under
+`08-06-2026/` still replays a frozen capture from before either of Kino
+Praha's two format drifts, so this fix's new code path isn't exercised by it,
+and the old year-present path both specs cover is unchanged.
+
+**Not pushed to main yet this run** — committed locally on this worktree's
+branch (`auto/white-cinema-20260912-145507`); the standing end-of-run flow
+(rebase → green → merge → push) runs after the rest of this sweep's triage,
+so a second fix landing later in the same run doesn't need two round-trips.
+
+**The other 4 white PL venues — all re-probed live, all still confirmed
+dormant, no change from 09-08:**
+
+| Venue | Source | What the source says |
+|---|---|---|
+| Kino Lewart (Lubartów) | bilety24 (redirected to `…/lubartowski-osrodek-kultury-1382`) | 0 `Film:` |
+| Kino Wisła Brzeszcze | bilety24 `…/osrodek-kultury-w-brzeszczach-1539` | 0 `Film:` |
+| Kino Chatka Żaka (Lublin) | `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` | 0 `div.box-row` |
+| DKF Politechnika | Filmweb 1645, `seances?date=` for today and tomorrow | `[]` on both — **9th consecutive run white**. The 08-24 checkpoint ("if still `[]` in October, escalate") has not yet triggered — today is 2026-09-12, not October — but it is close; the next run (~09-15/16) should watch for the rollover and escalate if it crosses without recovery. |
+
+**Two prior `needs-human` items have resolved themselves and are no longer
+white:** Kino GOK Tychowo and Kino Powiśle/Sztum (both flagged needs-human in
+earlier runs, both noted as "later recovered" in passing) are confirmed off
+the white list this run — no code change was involved, don't reopen either
+unless they reappear.
+
+**Green→white transitions (2): both self-healed same day, no action** —
+Dolnośląskie Centrum Filmowe (Wrocław) and Kino Głębocka 66 (Warszawa) each
+had a short mid-afternoon 09-11 zero run (1-5 buckets) bracketed by green on
+both sides; both are green again as of this run's newest bucket. Same shape
+as Electric Palace Harwich (09-08) — a same-day blip, not a break.
+
+**Red (3, unchanged in shape, out of brief):** Kino MOK Nowa Ruda, Kino
+Przedwiośnie, Nowe Kino Warszawa (the last already red on 09-08) — not
+white, not investigated this run.
+
+### UK — 60 white (down from 70), 4 green→white transitions, all genuinely empty upstream
+
+All four transitions — Arts Centre Stamford, Chiddingfold Village Hall
+Cinema, Regent Blackpool, The Fullarton Castle Douglas — are small
+community/arts-centre screens that each went green→zero within the same
+90-minute window on 2026-09-11 evening (~20:15-20:45 UTC) and stayed zero
+into this run. Fetched all four live via `flicks.co.uk/cinema/<slug>/`
+directly (not through the residential proxy — a developer IP isn't
+Cloudflare-403'd the way the worker's Fly egress is): all four render
+Flicks' own `no-streaming-sessions` block with no `data-date` tabs at all,
+i.e. genuinely empty upstream right now, not a parser gap. Plausibly a
+shared upstream publish/rollover moment for several small venues at once
+(the ~30-minute-wide clustering is suggestive) rather than four unrelated
+coincidences, but nothing on OUR side to fix either way. Not investigated
+further; UK's overall white share improved (8.2%→7.0%).
+
+### DE — 390 white, flat, 1 green→white transition (seasonal, no action)
+
+The one transition, "Open Air Kino, Mond & Sterne", is exactly the seasonal
+pattern documented since 09-04 (`open.?air` in the name) — an outdoor screen
+closing for the season, not a break. DE's seasonal white share is 95% (169
+seasonal-named venues, 161 white), consistent with every prior run. Not
+individually probed; nothing else stood out against the 09-08 baseline.
+
+### US — 715 white (down from 1,143), 10 green→white transitions, 9 confirmed genuinely empty upstream
+
+The Labor-Day seasonal spike 09-08 flagged as "confirm this isn't the new
+baseline" was NOT the new baseline: seasonal-named US white share is back to
+34% (was 81% on 09-08, 33% on 09-04) — a one-week dip, self-corrected.
+
+Of the 10 green→white transitions in the full 24h window, one (Fox Theatre
+Hutchinson) had already recovered by the time of this sweep (its last bucket
+is green) — the sharpest possible confirmation that the low-cadence signal
+here is usable when caught early. The other 9 — Center Smith Center, Garde
+Arts Center New London, Historic Temple Theatre of Viroqua, Imperial
+Theatre, Lund Theatre Viborg, Mountain Park Cinema, Redford Theatre Detroit,
+Reynolds Drive-In, Senate Theater Detroit — were each fetched live via
+`flicks.us/cinema/<slug>/`: **all 9 render the `no-streaming-sessions`
+block**, genuinely empty upstream right now. All nine are small
+single-screen historic theatres or a drive-in (Reynolds), the kind of venue
+that plausibly runs a weekly or gappy schedule rather than a daily one — not
+parser bugs. No code changes.
+
+### ES — 198 white (down from 215), 2 green→white transitions
+
+**Multicines Cáceres** already self-healed (its last 2 buckets are green,
+so it isn't in this run's actual white list despite the adjacent-bucket
+green→zero blip it shows mid-window). **Cine Capri** (theaterId E0230) is
+still white as of this run's last bucket, but its live venue page right now
+carries `data-showtimes-dates="[&quot;2026-09-12&quot;]"` — today's date IS
+published — and the direct showtimes JSON for that date returns real films.
+Cine Capri's archive shows its last content-bearing scrape at 2026-09-11
+~22:36 UTC, right where its bucket history goes green→zero — so the
+programme was posted sometime between our last two scrapes (ES cadence 420
+min): publication lag, same shape as Electric Palace Harwich / Film-Eck, not
+a parser break. Expect it to self-heal on its next scrape; not fixed, no
+code change. ES's seasonal share (78%, 27 venues) is flat vs. 09-08 (81%).
+
+---
+
 ## 2026-09-08
 
 **Fifth all-five-country sweep.** This run's first sweep script draft required
