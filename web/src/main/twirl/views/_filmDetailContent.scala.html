@@ -1,6 +1,6 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
-@(film: FilmSchedule)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(film: FilmSchedule, otherCities: Seq[(models.City, String)] = Seq.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
   Per-film detail content — poster + title + meta blocks + trailers + the
   full showings tree. Extracted from `film.scala.html` so the dev-only
@@ -56,6 +56,32 @@
           @if(film.cinemaFilmUrls.size > 10) {
             <button type="button" class="cinemas-more" data-label="@messages("detail.moreCinemas", "{0}")" onclick="unfoldCinemas(this)">@messages("detail.moreCinemas", film.cinemaFilmUrls.size - 10)</button>
           }
+        </div>
+      }
+
+      @* Real, server-rendered `<a href>`s to this same film's page in every
+         other city currently showing it — present in the markup regardless of
+         whether the popup is ever opened, so a crawler sees the sibling-city
+         links even though a visitor only does after clicking the trigger.
+         Only the CSS class toggled by `openOtherCitiesModal`/
+         `closeOtherCitiesModal` (shared.js) decides visibility; nothing here
+         is fetched on click. Absent entirely when this film has no upcoming
+         showing anywhere else, so a single-city release renders no dead
+         trigger. *@
+      @if(otherCities.nonEmpty) {
+        <div class="other-cities-row">
+          <button type="button" class="other-cities-trigger" onclick="openOtherCitiesModal()">@messages("detail.otherCities")</button>
+        </div>
+        <div class="other-cities-modal-backdrop" id="other-cities-modal-backdrop" onclick="closeOtherCitiesModal()">
+          <div class="other-cities-modal" onclick="event.stopPropagation()">
+            <button type="button" class="login-modal-close" onclick="closeOtherCitiesModal()" aria-label="@messages("auth.close")">&times;</button>
+            <div class="login-modal-title">@messages("detail.otherCitiesTitle", film.movie.title)</div>
+            <div class="other-cities-list">
+              @for((otherCity, href) <- otherCities) {
+                <a href="@href" class="other-cities-link">@otherCity.labels.nominative</a>
+              }
+            </div>
+          </div>
         </div>
       }
 

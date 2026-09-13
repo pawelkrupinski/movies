@@ -1,7 +1,7 @@
 @import controllers.FilmSchedule
 @import controllers.BrowseHref
 @import services.movies.TrailerEmbed
-@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", devMode: Boolean = false, oauthProviders: Set[String] = Set.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
+@(film: FilmSchedule, canonicalUrl: String, ogDescription: String, ogImageUrl: String = "", devMode: Boolean = false, oauthProviders: Set[String] = Set.empty, otherCities: Seq[(models.City, String)] = Seq.empty)(implicit city: models.City, messages: play.api.i18n.Messages)
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -75,7 +75,7 @@
   </div>
 </nav>
 @_loginModal(oauthProviders)
-@_filmDetailContent(film)
+@_filmDetailContent(film, otherCities)
 
 @_minified(devMode) {
 <script>

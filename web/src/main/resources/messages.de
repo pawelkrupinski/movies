@@ -99,6 +99,8 @@ detail.trailer=Trailer {0}
 detail.trailerTitle=Trailer: {0}
 detail.showings=Vorstellungen
 detail.moreCinemas={0} weitere Kinos anzeigen
+detail.otherCities=In anderen Städten
+detail.otherCitiesTitle={0} – in anderen Städten
 card.hide=Film ausblenden
 
 # ── Film page (meta) ────────────────────────────────────────────────────────

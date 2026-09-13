@@ -927,6 +927,20 @@
     const modal = document.getElementById('login-modal-backdrop');
     if (modal) modal.classList.remove('open');
   }
+
+  // ── Film page: "other cities" popup ──────────────────────────────────────
+  //
+  // The sibling-city links themselves are server-rendered and already in the
+  // DOM (`_filmDetailContent`) — this only toggles whether a visitor SEES
+  // them. Same backdrop/card shape as the login modal.
+  function openOtherCitiesModal() {
+    const modal = document.getElementById('other-cities-modal-backdrop');
+    if (modal) modal.classList.add('open');
+  }
+  function closeOtherCitiesModal() {
+    const modal = document.getElementById('other-cities-modal-backdrop');
+    if (modal) modal.classList.remove('open');
+  }
   // shared.js runs inside an IIFE, so these are NOT globals by default; the
   // navbar / login-modal partials call them from inline `onclick=` handlers,
   // which resolve against `window`. Without these assignments the click throws
@@ -936,6 +950,8 @@
   window.closeAuthMenu  = closeAuthMenu;
   window.openLoginModal = openLoginModal;
   window.closeLoginModal = closeLoginModal;
+  window.openOtherCitiesModal = openOtherCitiesModal;
+  window.closeOtherCitiesModal = closeOtherCitiesModal;
 
   // ── Who is looking at this page ──────────────────────────────────────────
   //

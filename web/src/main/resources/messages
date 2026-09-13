@@ -108,6 +108,8 @@ detail.trailer=Zwiastun {0}
 detail.trailerTitle=Zwiastun: {0}
 detail.showings=Seanse
 detail.moreCinemas=Pokaż pozostałe kina ({0})
+detail.otherCities=W innych miastach
+detail.otherCitiesTitle={0} – w innych miastach
 card.hide=Ukryj film
 
 # ── Film page (meta) ────────────────────────────────────────────────────────

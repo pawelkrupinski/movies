@@ -127,6 +127,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val manyCinemasHtml: String = views.html.film(
         tools.ManyCinemaFilm(schedules.head), "http://test.local/movie-many",
         ogDescription = "", devMode = false).body
+      // Isolated /movie render carrying two sibling-city links — drives the
+      // "W innych miastach" popup without depending on the fixture corpus
+      // actually having a cross-city duplicate on hand.
+      val otherCitiesHtml: String = views.html.film(
+        schedules.head, "http://test.local/movie-other-cities",
+        ogDescription = "", devMode = false,
+        otherCities = Seq(
+          models.Wroclaw -> "/wroclaw/movie/example-slug",
+          models.Warszawa -> "/warszawa/movie/example-slug",
+        )).body
       // The listing re-seated with 10,500 synthetic showtimes on one film —
       // crosses `MovieControllerService.LargeCityShowtimeThreshold` so the
       // day carousel's instant-swap path (shared.js `usesInstantDayChange`)
@@ -248,6 +258,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           // Isolated /movie render carrying 12 cinemas on one date — drives the
           // cinema-fold unfold button.
           case p if sub(p) == "/movie-many" => manyCinemasHtml
+          // Isolated /movie render with two sibling-city links — the "W
+          // innych miastach" popup test.
+          case p if sub(p) == "/movie-other-cities" => otherCitiesHtml
           // A large city's listing — crosses the instant-day-swap threshold.
           case p if sub(p) == "/many-showtimes" => manyShowtimesHtml
           // The city-selection landing (no city prefix — there's no city yet).
@@ -1426,6 +1439,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def onFilmMany(body: CdpPage => Any): Unit =
     onPath("/movie-many") { page => clearLocalStorage(page); body(page) }
 
+  private def onFilmOtherCities(body: CdpPage => Any): Unit =
+    onPath("/movie-other-cities")(body)
+
   /** Switch off `count` of the film's cinemas the way the Filtry sheet does —
    *  by display name into `disabledCinemas` — and re-run the page's filter.
    *  Returns the names switched off. */
@@ -1567,6 +1583,47 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """[...document.querySelectorAll('.cinema-link[data-cinema]')]
           |  .filter(a => a.offsetParent !== null).map(a => a.dataset.cinema)""".stripMargin
       ).as[Seq[String]] should contain noElementsOf off
+    }
+  }
+
+  // ── /movie "W innych miastach" (sibling-city links) popup ─────────────────
+  //
+  // The links themselves are server-rendered and already in the DOM — a
+  // crawler needs no click to see them. Only their VISIBILITY is JS-driven,
+  // which these tests exercise: hidden until the trigger is clicked, then
+  // shown, then hidden again.
+
+  "the /movie other-cities popup" should "keep its sibling links in the DOM but hidden before any click" in {
+    onFilmOtherCities { page =>
+      page.evalInt("document.querySelectorAll('.other-cities-link').length") shouldBe 2
+      page.evalBool("document.getElementById('other-cities-modal-backdrop').classList.contains('open')") shouldBe false
+      // Hidden via the backdrop's own display:none, not absent — offsetParent
+      // is null for a display:none ancestor.
+      page.evalBool("document.querySelector('.other-cities-link').offsetParent === null") shouldBe true
+    }
+  }
+
+  it should "reveal the sibling links when the trigger is clicked" in {
+    onFilmOtherCities { page =>
+      page.eval("document.querySelector('.other-cities-trigger').click()")
+      page.evalBool("document.getElementById('other-cities-modal-backdrop').classList.contains('open')") shouldBe true
+      page.evalBool("document.querySelector('.other-cities-link').offsetParent !== null") shouldBe true
+      page.eval(
+        "[...document.querySelectorAll('.other-cities-link')].map(a => a.getAttribute('href'))"
+      ).as[Seq[String]] should contain theSameElementsAs Seq(
+        "/wroclaw/movie/example-slug", "/warszawa/movie/example-slug")
+    }
+  }
+
+  it should "close again on the close button, and on a click outside the card" in {
+    onFilmOtherCities { page =>
+      page.eval("document.querySelector('.other-cities-trigger').click()")
+      page.eval("document.querySelector('.other-cities-modal .login-modal-close').click()")
+      page.evalBool("document.getElementById('other-cities-modal-backdrop').classList.contains('open')") shouldBe false
+
+      page.eval("document.querySelector('.other-cities-trigger').click()")
+      page.eval("document.getElementById('other-cities-modal-backdrop').click()")
+      page.evalBool("document.getElementById('other-cities-modal-backdrop').classList.contains('open')") shouldBe false
     }
   }
 

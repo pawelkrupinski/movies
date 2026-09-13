@@ -151,6 +151,61 @@
     .cinema-label-link { color: #66aadd; text-decoration: none; }
     .cinema-label-link:hover { color: #aad4ff; text-decoration: underline; }
 
+    /* "W innych miastach" trigger — same unobtrusive pill as `.cinemas-more`,
+       just below the cinema-link row. */
+    .other-cities-row { margin-top: .3rem; }
+    .other-cities-trigger {
+      display: inline-block;
+      font-size: .75rem;
+      color: #66aadd;
+      background: rgba(255,255,255,.06);
+      border: 0;
+      padding: .35em .8em;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+    .other-cities-trigger:hover { color: #aad4ff; background: rgba(255,255,255,.12); }
+
+    /* Popup listing this same film's page in every other city currently
+       showing it — same backdrop/card shape as `.login-modal-backdrop`/
+       `.login-modal` (reuses `.login-modal-close`/`.login-modal-title`), its
+       own class only because the body is a scrollable link list rather than
+       the login buttons. The links themselves are always in the markup
+       (see `_filmDetailContent`); only this visibility toggles. */
+    .other-cities-modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.6);
+      display: none;
+      align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    .other-cities-modal-backdrop.open { display: flex; }
+    .other-cities-modal {
+      background: #1a1a2e;
+      border: 1px solid #3a3a6e;
+      border-radius: 12px;
+      padding: 1.4rem 1.4rem 1.1rem;
+      max-width: 360px;
+      width: 92%;
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+    .other-cities-list {
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: .3rem;
+      margin-top: .3rem;
+    }
+    .other-cities-link {
+      color: #aad4ff;
+      text-decoration: none;
+      padding: .3rem 0;
+    }
+    .other-cities-link:hover { color: #fff; text-decoration: underline; }
+
     /* Mobile scaling. Rides the shared `--mobile-scale` variable
        defined in `_pillStyles` (loaded right below). Same factor as
        the listing pages, so the film-detail chrome (title, meta

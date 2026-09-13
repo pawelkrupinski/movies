@@ -99,6 +99,8 @@ detail.trailer=Trailer {0}
 detail.trailerTitle=Trailer: {0}
 detail.showings=Showings
 detail.moreCinemas=Show {0} more cinemas
+detail.otherCities=In other cities
+detail.otherCitiesTitle={0} – in other cities
 card.hide=Hide film
 
 # ── Film page (meta) ────────────────────────────────────────────────────────

@@ -177,6 +177,19 @@ class MovieControllerService(readModel: WebReadModel) extends Logging {
   def toSchedules(city: City): Seq[FilmSchedule] =
     toSchedules(city, LocalDateTime.now(city.zoneId))
 
+  /** Every OTHER city in `country` with an upcoming showing of `filmId` right
+   *  now — what a film page needs to link directly to its sibling-city
+   *  near-duplicates (`/{city}/movie/{slug}`), which used to be reachable only
+   *  through the sitemap and nothing else. Same `isUpcoming` predicate
+   *  [[schedulesFor]] applies, checked per city instead of building each
+   *  city's whole schedule. */
+  def citiesShowing(filmId: String, excluding: City, country: Country, now: LocalDateTime): Seq[City] =
+    country.allSorted.filter { c =>
+      c != excluding && readModel.screeningsForCity(c.slug).exists(sc =>
+        sc.filmId == filmId && sc.showtimes.exists(_.isUpcoming(now))
+      )
+    }
+
   /** Overload with an injectable `now` so tests can pin the clock to a fixture's
    * capture date. Scoped to `city`: `readModel.screeningsForCity` already
    * returns only this city's cinemas' screenings, so a film playing only
@@ -830,12 +843,19 @@ class MovieController( cc: ControllerComponents,
     // setup) is in one place.
     val canonicalUrl = PageMeta.origin(request) + FilmHref.forSlug(schedule.slug, schedule.movie.title)
     val ogImageUrl   = PageMeta.origin(request) + FilmHref.ogImage(schedule.movie.title)
+    // Sibling cities currently showing this same film — the cross-links a
+    // near-duplicate per-city page needs so it isn't only reachable through
+    // the sitemap. See [[MovieControllerService.citiesShowing]].
+    val otherCities: Seq[(City, String)] =
+      movieControllerService
+        .citiesShowing(schedule.resolved._id, c, servingCountry, LocalDateTime.now(c.zoneId))
+        .map(sibling => sibling -> FilmHref.forSlug(schedule.slug, schedule.movie.title, sibling))
     // Nobody is rendered into this page either, so `no-cache` (revalidate, keep
     // the browser copy, bfcache works) replaces the `no-store` a signed-in render
     // used to need. It stops short of offering itself to a shared cache only
     // because a per-film edge entry wants its own validator analysis, not because
     // the bytes are anyone's.
-    Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, oauthProviders))
+    Ok(views.html.film(schedule, canonicalUrl, OgCardAssembly.previewDescription(schedule), ogImageUrl, devMode, oauthProviders, otherCities))
       .withHeaders("Cache-Control" -> "private, no-cache")
       .withCookies(cityCookie(c))
   }
