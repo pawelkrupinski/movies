@@ -687,7 +687,13 @@ class MovieController( cc: ControllerComponents,
    *  every film each city is currently showing. Built from the warm read model
    *  (`toSchedules` per city is a cheap in-memory join), so it always reflects
    *  what's actually live. Cached for an hour at the edge/browser; the corpus
-   *  changes on the order of scrape cadence, not per request. */
+   *  changes on the order of scrape cadence, not per request.
+   *
+   *  A country whose corpus crosses `SitemapBuilder.CityPartitionThreshold`
+   *  URLs gets a sitemap INDEX here instead of the flat file — one sub-sitemap
+   *  per city (`citySitemap`) plus one for the landing (`sitemapRoot`). Today
+   *  that's only the US corpus, but the check is against the actual count, not
+   *  a hardcoded country, so it holds as any corpus grows past the threshold. */
   def sitemap: Action[AnyContent] = Action { request =>
     // Scope to THIS deployment's country — a `KINOWO_COUNTRY=pl` (Poland) host must
     // not advertise the UK/Germany cities that also live in the global `City.all`
@@ -702,10 +708,38 @@ class MovieController( cc: ControllerComponents,
         // up from the city (or, for the landing, from the country) via the same
         // builders the pages themselves use, so a country sharing the brand
         // domain neither drops the prefix nor doubles it.
-        SitemapBuilder.build(PageMeta.origin(request), servingCountry, entries, lastmod = cityLastmod)
+        if (SitemapBuilder.urlCount(entries) > SitemapBuilder.CityPartitionThreshold)
+          SitemapBuilder.cityIndex(PageMeta.origin(request), servingCountry)
+        else
+          SitemapBuilder.build(PageMeta.origin(request), servingCountry, entries, lastmod = cityLastmod)
       }
     Ok(body).as("application/xml; charset=utf-8")
       .withHeaders("Cache-Control" -> "public, max-age=3600")
+  }
+
+  /** `/sitemap-root.xml` — the landing-only sitemap a partitioned country's
+   *  index ([[SitemapBuilder.cityIndex]]) points at, since the landing URL
+   *  belongs to no one city and would look like that city's own page if it
+   *  rode along in one city's sub-sitemap instead. */
+  def sitemapRoot: Action[AnyContent] = Action { request =>
+    val body = SitemapBuilder.build(PageMeta.origin(request), servingCountry, Nil)
+    Ok(body).as("application/xml; charset=utf-8")
+      .withHeaders("Cache-Control" -> "public, max-age=3600")
+  }
+
+  /** `/{city}/sitemap.xml` — one city's slice of the full crawl map, served
+   *  only once a country's flat `sitemap.xml` has been partitioned (see
+   *  `sitemap`). Reuses the exact same per-city lastmod `sitemap` stamps the
+   *  flat file with; the only difference is the landing URL, which this
+   *  omits — `sitemapRoot` already speaks for it. */
+  def citySitemap(city: String): Action[AnyContent] = Action { request =>
+    withCity(city) { c =>
+      val films = movieControllerService.toSchedules(c)
+      val body = SitemapBuilder.build(PageMeta.origin(request), servingCountry, Seq(c -> films),
+                                       lastmod = cityLastmod, includeLanding = false)
+      Ok(body).as("application/xml; charset=utf-8")
+        .withHeaders("Cache-Control" -> "public, max-age=3600")
+    }
   }
 
   /** Conditional-GET wrapper for the JSON API endpoints — the same mechanism as

@@ -184,4 +184,38 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
     xml.linesIterator.find(_.contains(s"<loc>$Origin/wroclaw/</loc>")).get should include("<lastmod>2026-06-15</lastmod>")
   }
 
+  it should "omit the landing URL entirely when includeLanding is false" in {
+    val xml = SitemapBuilder.build(Origin, Country.Poland, entries, includeLanding = false)
+    xml should not include s"<loc>$Origin/</loc>"
+    xml should include(s"<loc>$Origin/poznan/</loc>")
+  }
+
+  // ── urlCount / CityPartitionThreshold / cityIndex ────────────────────────────
+
+  "SitemapBuilder.urlCount" should "count the landing URL plus each city's listing and distinct films" in {
+    // Poznan: 2 distinct films (Belle, Diuna) + its own listing = 3.
+    // Wroclaw: 1 distinct film (Belle) + its own listing = 2.
+    // Plus the landing URL = 6.
+    SitemapBuilder.urlCount(entries) shouldBe 6
+  }
+
+  it should "agree with the number of <url> elements build actually emits" in {
+    val xml = SitemapBuilder.build(Origin, Country.Poland, entries)
+    count(xml, "<url>") shouldBe SitemapBuilder.urlCount(entries)
+  }
+
+  "SitemapBuilder.cityIndex" should "list a root sitemap plus one sub-sitemap per city, well under the protocol's cap" in {
+    val xml = SitemapBuilder.cityIndex(Origin, Country.Poland)
+    xml should include("<sitemapindex")
+    xml should include(s"<loc>$Origin/sitemap-root.xml</loc>")
+    xml should include(s"<loc>$Origin/poznan/sitemap.xml</loc>")
+    xml should include(s"<loc>$Origin/warszawa/sitemap.xml</loc>")
+  }
+
+  it should "hang every city sub-sitemap off the mount point on a country sharing the brand domain" in {
+    val xml = SitemapBuilder.cityIndex("https://showtimes.cc", Country.UnitedKingdom)
+    xml should include("<loc>https://showtimes.cc/uk/sitemap-root.xml</loc>")
+    xml should include("<loc>https://showtimes.cc/uk/kent/sitemap.xml</loc>")
+    xml should not include "/uk/uk/"
+  }
 }

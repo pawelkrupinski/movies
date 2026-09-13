@@ -205,4 +205,66 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     lastmodOf(body, "/poznan/") should not be lastmodOf(body, "/wroclaw/")
   }
 
+  "/{city}/sitemap.xml" should "carry that one city's own lastmod and omit the landing URL" in {
+    val body = contentAsString(twoCityController().citySitemap("wroclaw")(req("/wroclaw/sitemap.xml")))
+
+    lastmodOf(body, "/wroclaw/")            shouldBe "2026-06-15"
+    lastmodOf(body, "/wroclaw/movie/diuna") shouldBe "2026-06-15"
+    body should not include "<loc>https://kinowo.net/</loc>"
+    body should not include "/poznan/"
+  }
+
+  // ── Partitioning an oversized country into a sitemap index ──────────────────
+  //
+  // Google caps a single sitemap at 50,000 URLs; `SitemapBuilder.CityPartitionThreshold`
+  // sits well under that so a corpus is split long before it becomes a real risk.
+  // The threshold is a URL COUNT, not a hardcoded country, so whichever corpus
+  // grows past it next gets partitioned — pinned here by crossing it with a
+  // synthetic Polish corpus rather than depending on the real US roster.
+
+  private def manyFilmsController(filmCount: Int): MovieController = {
+    val repository = new InMemoryReadModelRepository
+    val now = LocalDateTime.now().plusDays(1)
+    (1 to filmCount).foreach { i =>
+      val id = s"film-$i|2026"
+      repository.upsertMovie(resolvedMovie(id, s"Film $i"))
+      repository.upsertScreening(
+        CityScreening(s"s-$i", id, "poznan", Multikino.displayName, None, Seq(models.Showtime(now, None))))
+    }
+    val readModel = new WebReadModel(repository)
+    readModel.reload()
+    TestMovieController.build(Nil, readModel = Some(readModel))._1
+  }
+
+  "sitemap.xml" should "stay a flat file below the partition threshold" in {
+    val body = contentAsString(manyFilmsController(5).sitemap(req("/sitemap.xml")))
+    body should include("<urlset")
+    body should not include "<sitemapindex"
+  }
+
+  it should "partition into a per-city sitemap index once the corpus crosses the threshold" in {
+    val body = contentAsString(
+      manyFilmsController(SitemapBuilder.CityPartitionThreshold).sitemap(req("/sitemap.xml")))
+
+    body should include("<sitemapindex")
+    body should not include "<urlset"
+    body should include("<loc>https://kinowo.net/sitemap-root.xml</loc>")
+    body should include("<loc>https://kinowo.net/poznan/sitemap.xml</loc>")
+  }
+
+  "sitemap-root.xml" should "carry only the landing URL" in {
+    val body = contentAsString(
+      manyFilmsController(SitemapBuilder.CityPartitionThreshold).sitemapRoot(req("/sitemap-root.xml")))
+    body should include("<loc>https://kinowo.net/</loc>")
+    body should not include "/poznan/"
+  }
+
+  "{city}/sitemap.xml" should "carry that city's full film list once the country is partitioned" in {
+    val body = contentAsString(
+      manyFilmsController(SitemapBuilder.CityPartitionThreshold).citySitemap("poznan")(req("/poznan/sitemap.xml")))
+    body should include("<urlset")
+    body should include(s"<loc>https://kinowo.net/poznan/movie/film-1</loc>")
+    body should include(s"<loc>https://kinowo.net/poznan/movie/film-${SitemapBuilder.CityPartitionThreshold}</loc>")
+    body should not include "<loc>https://kinowo.net/</loc>"
+  }
 }

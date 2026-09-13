@@ -26,6 +26,10 @@ GET     /:city/movie                controllers.MovieController.film(city: Strin
 GET     /:city/movie/og-image       controllers.MovieController.ogImage(city: String, title: String)
 GET     /:city/movie/:slug          controllers.MovieController.filmBySlug(city: String, slug: String)
 GET     /:city/og-image             controllers.MovieController.cityOgImage(city: String)
+# This city's slice of the crawl map — only actually linked from the country's
+# sitemap index once that country's flat file crosses
+# `SitemapBuilder.CityPartitionThreshold`; harmless (if unlinked) otherwise.
+GET     /:city/sitemap.xml          controllers.MovieController.citySitemap(city: String)
 GET     /:city/movies               controllers.MovieController.browse(city: String, country: Option[String] ?= None, director: Option[String] ?= None, cast: Option[String] ?= None, genre: Option[String] ?= None, kraj: Option[String] ?= None, rezyser: Option[String] ?= None, aktor: Option[String] ?= None, gatunek: Option[String] ?= None)
 
 # ── Pre-rename addresses (`/film`, `/filmy`) ──────────────────────────────────
@@ -235,6 +239,10 @@ GET     /robots.txt                 controllers.MovieController.robotsTxt
 # built from the warm read model. Advertised in robots.txt so crawlers index the
 # long-tail film URLs without having to discover them by link-walking.
 GET     /sitemap.xml                controllers.MovieController.sitemap
+# The landing-only sub-sitemap a partitioned country's index points at (see
+# `SitemapBuilder.cityIndex`) — every OTHER country's sitemap.xml still IS this
+# content, just served at the flat address instead.
+GET     /sitemap-root.xml           controllers.MovieController.sitemapRoot
 
 # ── Static assets ─────────────────────────────────────────────────────────────
 GET     /assets/*file               controllers.Assets.versioned(path="/public", file: Asset)
