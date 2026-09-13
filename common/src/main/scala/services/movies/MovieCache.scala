@@ -279,13 +279,16 @@ class CaffeineMovieCache(
   // not defaulted: this is the production cache, and every CacheKey it builds
   // is a row identity.
   override val normalizer: TitleNormalizer,
-  // How many consecutive thin ticks `ScrapeLanding`'s depth guard holds a venue
-  // before accepting a degraded listing, forwarded verbatim to it. Defaults from
-  // THIS deployment's own scrape cadence (`KINOWO_SCRAPE_FRESHNESS_MINUTES`, read
-  // once here rather than by `ScrapeLanding` itself so the guard's pure functions
-  // stay pure) — see `ScrapeHealth.maxRejectionsFor` for why a flat "3" isn't safe
-  // for the slower-cadence countries.
-  maxConsecutiveDepthRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.defaultScrapeTtl)
+  // How many consecutive thin ticks `ScrapeLanding`'s depth AND breadth guards each
+  // hold a venue before accepting a degraded listing, forwarded verbatim to it.
+  // Defaults from THIS deployment's own scrape cadence (`KINOWO_SCRAPE_FRESHNESS_
+  // MINUTES`, read once here rather than by `ScrapeLanding` itself so the guards'
+  // pure functions stay pure) — see `ScrapeHealth.maxRejectionsFor` for why a flat
+  // "3" isn't safe for the slower-cadence countries.
+  maxConsecutiveGuardRejections: Int = ScrapeHealth.maxRejectionsFor(services.freshness.Freshness.defaultScrapeTtl),
+  // Guard-verdict + silent-write-skip counters, forwarded verbatim to `ScrapeLanding`
+  // — see `ScrapeLandingMetrics`. No-op for web/tests; the worker wires `WorkerTaskMetrics`.
+  scrapeLandingMetrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop
 ) extends MovieCache with LandingStore with Stoppable with Logging {
 
   // Supplies `CacheKey.apply` throughout this class, so a key can never be built
@@ -1128,7 +1131,7 @@ class CaffeineMovieCache(
    *  the landing reads nothing from it until the first scrape, so the not-yet-built
    *  `this` it receives is never observed. */
   private val landing = new ScrapeLanding(this, repository, staging, bus, screeningTokens, enrichmentLanguage,
-    maxConsecutiveDepthRejections)
+    maxConsecutiveGuardRejections, scrapeLandingMetrics)
   /** [[LandingStore]]: how many rows are resident — zero is the cold mirror the
    *  landing's first scrape guards against. */
   private[services] def residentCount: Long = positive.estimatedSize()

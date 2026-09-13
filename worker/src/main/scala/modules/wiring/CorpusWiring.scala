@@ -58,7 +58,8 @@ trait CorpusWiring { self: WorkerWiring =>
   lazy val movieCache: CaffeineMovieCache =
     new CaffeineMovieCache(movieRepository, eventBus, staging = Some(stagingRepository),
       retrigger = enrichmentRetrigger, mergeMetrics = taskMetrics, cacheMetrics = taskMetrics,
-      enrichmentLanguage = country.language, screeningTokens = screeningTokens, normalizer = titleNormalizer)
+      enrichmentLanguage = country.language, screeningTokens = screeningTokens, normalizer = titleNormalizer,
+      scrapeLandingMetrics = taskMetrics)
 
   // This deployment's badge vocabulary. One instance, shared by every path that
   // writes a `Showtime.format`, so the cache and the two detail-merge paths

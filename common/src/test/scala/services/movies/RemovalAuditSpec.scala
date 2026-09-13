@@ -117,12 +117,24 @@ class RemovalAuditSpec extends AnyFlatSpec with Matchers {
   }
 
   "RemovalAudit.scrapePruneSkipped" should "log the guard decision at INFO" in {
-    val events = capture(RemovalAudit.scrapePruneSkipped("Multikino Kraków", batchFilms = 3, knownSlots = 45, "partial-scrape-guard"))
+    val events = capture(RemovalAudit.scrapePruneSkipped("Multikino Kraków", batchFilms = 3, knownSlots = 45,
+      consecutive = 1, "partial-scrape-guard"))
     events.map(_.getLevel) shouldBe Seq(Level.INFO)
     val msg = events.head.getFormattedMessage
     msg should include ("SKIPPED")
     msg should include ("Multikino Kraków")
     msg should include ("known=45")
+    msg should include ("consecutive=1")
+  }
+
+  "RemovalAudit.scrapePruneAccepted" should "log the breadth guard giving up at WARN" in {
+    val events = capture(RemovalAudit.scrapePruneAccepted("Kino Aurum", batchFilms = 11, knownSlots = 58, consecutive = 4))
+    events.map(_.getLevel) shouldBe Seq(Level.WARN)
+    val msg = events.head.getFormattedMessage
+    msg should include ("ACCEPTED")
+    msg should include ("Kino Aurum")
+    msg should include ("known=58")
+    msg should include ("4 consecutive rejections")
   }
 
   "RemovalAudit.screeningsCleared" should "log INFO for a whole-film clear and DEBUG for a partial trim" in {

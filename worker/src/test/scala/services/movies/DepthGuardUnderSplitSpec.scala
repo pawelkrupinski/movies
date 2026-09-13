@@ -72,7 +72,7 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
     // SECOND thin tick instead of the fourth.
     val repository = splitRepository()
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer,
-      maxConsecutiveDepthRejections = 1)
+      maxConsecutiveGuardRejections = 1)
 
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 12))
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1)) // 1st reject: held
@@ -93,6 +93,42 @@ class DepthGuardUnderSplitSpec extends AnyFlatSpec with Matchers {
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1))
     cache.recordCinemaScrape(Multikino, deepScrape(films = 10, showtimesEach = 1))
     storedShowtimes(repository, "Film 1") shouldBe 12
+  }
+
+  it should "let a sustained film-count drop finally prune the slots it stopped listing" in {
+    // The BREADTH guard's escape valve (`ScrapeHealth.breadth`, added 2026-09-13 — Kino
+    // Aurum's shape: 11 currently-listed films against 57 accumulated slot-keys, a
+    // ratio that could never clear the floor on its own because the guard's OWN
+    // prune-skip was what stopped the stale 46 from ever being retired). Simulated
+    // here as a straight film-count drop, 20 films down to 9, each remaining film
+    // carrying MORE showtimes so total showtimes stay well above the DEPTH floor
+    // throughout — this spec isolates the breadth guard alone.
+    val repository = splitRepository()
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
+
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 20, showtimesEach = 12))
+    storedShowtimes(repository, "Film 1")  shouldBe 12
+    storedShowtimes(repository, "Film 20") shouldBe 12
+
+    // Three thin ticks: only Film 1..9 are listed (270 showtimes vs a 240-showtime
+    // known total — comfortably healthy on the DEPTH axis), but the film/slot COUNT
+    // (9 vs 20) is well below the breadth floor. The prune is skipped each time, so
+    // Film 20 (unlisted this tick) keeps its stale Multikino slot — the guard doing
+    // its job. Film 1 (listed every tick) is written normally regardless: the
+    // breadth guard gates the PRUNE, never the per-film write of what WAS listed.
+    (1 to ScrapeHealth.MaxConsecutiveDepthRejections).foreach { _ =>
+      cache.recordCinemaScrape(Multikino, deepScrape(films = 9, showtimesEach = 30))
+      storedShowtimes(repository, "Film 1")  shouldBe 30
+      storedShowtimes(repository, "Film 20") shouldBe 12
+    }
+
+    // The fourth thin tick exhausts the guard's grace: the prune finally runs, and
+    // Multikino's slot on Film 20 — never listed again since the first scrape — is
+    // dropped. Film 1 is unaffected, exactly as a real, sustained schedule cut
+    // should behave once the guard stops treating it as a bad fetch.
+    cache.recordCinemaScrape(Multikino, deepScrape(films = 9, showtimesEach = 30))
+    storedShowtimes(repository, "Film 1")  shouldBe 30
+    storedShowtimes(repository, "Film 20") shouldBe 0
   }
 
   it should "keep a stripped slot's showtime count available to the guard" in {

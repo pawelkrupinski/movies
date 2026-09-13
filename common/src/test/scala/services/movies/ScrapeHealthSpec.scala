@@ -2,7 +2,7 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.ScrapeHealth.Depth
+import services.movies.ScrapeHealth.{Breadth, Depth}
 
 import scala.concurrent.duration._
 
@@ -58,6 +58,41 @@ class ScrapeHealthSpec extends AnyFlatSpec with Matchers {
     // the drop — both boundaries land ON the healthy side at the last healthy value).
     ScrapeHealth.looksPartial(knownSlots = 7, batchSlots = 4, listingIsComplete = true) shouldBe false
     ScrapeHealth.looksPartial(knownSlots = 7, batchSlots = 3, listingIsComplete = true) shouldBe true
+  }
+
+  "the breadth guard's stateful form" should "reject a tick that looks partial, and count the rejection" in {
+    Breadth.Reject(1) shouldBe ScrapeHealth.breadth(knownSlots = 20, batchSlots = 9,
+      listingIsComplete = true, consecutiveRejections = 0)
+    ScrapeHealth.breadth(20, 9, listingIsComplete = true, consecutiveRejections = 2) shouldBe Breadth.Reject(3)
+  }
+
+  it should "let a sustained partial listing land once it has been rejected for the whole run of ticks" in {
+    // Kino Aurum, 2026-09-13: 11 currently-listed films against 57 accumulated
+    // slot-keys — a ratio that can never clear the floor on its own, because the
+    // guard's own prune-skip is what stops the stale 46 from ever being retired.
+    // Without this escape valve `looksPartial` wedges such a venue PERMANENTLY.
+    ScrapeHealth.breadth(20, 9, listingIsComplete = true,
+      consecutiveRejections = ScrapeHealth.MaxConsecutiveDepthRejections) shouldBe Breadth.AcceptDegraded(4)
+  }
+
+  it should "never accept a listing the caller says is short, however many ticks it repeats" in {
+    // `listingIsComplete = false` is a FACT (a chunked scrape lost a date-range),
+    // not a guess to eventually stop trusting — unlike the ratio inference, more
+    // consecutive ticks must never turn this into an accept.
+    ScrapeHealth.breadth(2, 2, listingIsComplete = false,
+      consecutiveRejections = ScrapeHealth.MaxConsecutiveDepthRejections * 5) shouldBe
+      Breadth.Reject(ScrapeHealth.MaxConsecutiveDepthRejections * 5 + 1)
+  }
+
+  it should "call a healthy tick healthy" in {
+    ScrapeHealth.breadth(20, 10, listingIsComplete = true, consecutiveRejections = 0) shouldBe Breadth.Healthy
+  }
+
+  it should "let a caller lower the breadth guard's own grace to match its cadence" in {
+    ScrapeHealth.breadth(20, 9, listingIsComplete = true, consecutiveRejections = 0,
+      maxConsecutiveRejections = 1) shouldBe Breadth.Reject(1)
+    ScrapeHealth.breadth(20, 9, listingIsComplete = true, consecutiveRejections = 1,
+      maxConsecutiveRejections = 1) shouldBe Breadth.AcceptDegraded(2)
   }
 
   "maxRejectionsFor" should "leave Poland's own cadence at the full three-tick grace" in {

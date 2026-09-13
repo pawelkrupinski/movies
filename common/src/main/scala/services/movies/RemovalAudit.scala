@@ -102,9 +102,21 @@ object RemovalAudit {
   /** The partial-scrape guard SKIPPED a prune (a degraded tick returned implausibly
    *  few films) — logs the decision so a "would have dropped N" is on the record
    *  even though nothing was removed. The counterpart signal to [[scrapePruned]]. */
-  def scrapePruneSkipped(cinema: String, batchFilms: Int, knownSlots: Int, reason: String): Unit =
+  def scrapePruneSkipped(cinema: String, batchFilms: Int, knownSlots: Int, consecutive: Int, reason: String): Unit =
     logger.info(s"[scrape-prune] cinema='$cinema' SKIPPED prune (looks partial): " +
-      s"batch=$batchFilms known=$knownSlots reason=$reason")
+      s"batch=$batchFilms known=$knownSlots consecutive=$consecutive reason=$reason")
+
+  /** The breadth guard gave up on a cinema: the thin ratio persisted across enough
+   *  consecutive ticks that it stopped being a plausible bad fetch, so the prune
+   *  finally runs and the venue's accumulated stale slots are let go. The
+   *  counterpart to [[scrapePruneSkipped]], mirroring [[scrapeDepthAccepted]] below
+   *  — a cinema that keeps tripping this either genuinely shed most of its board,
+   *  or (Kino Aurum, 2026-09-13) has been quietly accumulating never-pruned
+   *  decorated-title variants for weeks, each acceptance only ever clawing back
+   *  down to whatever this one tick happened to list. */
+  def scrapePruneAccepted(cinema: String, batchFilms: Int, knownSlots: Int, consecutive: Int): Unit =
+    logger.warn(s"[scrape-prune] cinema='$cinema' ACCEPTED a sustained partial listing after " +
+      s"$consecutive consecutive rejections: batch=$batchFilms known=$knownSlots reason=breadth-guard-exhausted")
 
   /** The DEPTH guard rejected a whole tick: the cinema's films all came back but
    *  carrying a fraction of their screenings, which is a degraded fetch (a chunked

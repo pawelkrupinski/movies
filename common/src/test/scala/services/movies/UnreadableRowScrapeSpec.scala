@@ -52,13 +52,20 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   /** A cache whose row-update reports failure on demand — what a lost race looks like
    *  to the caller. Named rather than anonymous: an anonymous subclass capturing a
    *  local `var` trips a JVM VerifyError under this Scala version. */
-  private class LosesWrites(repo: MovieRepository) extends CaffeineMovieCache(repo, normalizer = titleNormalizer) {
+  private class LosesWrites(repo: MovieRepository, metrics: ScrapeLandingMetrics = ScrapeLandingMetrics.noop)
+      extends CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics) {
     var loseWrites = false
     override private[services] def putIfPresent(
       key: CacheKey, updater: MovieRecord => MovieRecord): Boolean = {
       val landed = super.putIfPresent(key, updater)
       !loseWrites && landed
     }
+  }
+
+  private class RecordingScrapeLandingMetrics extends ScrapeLandingMetrics {
+    var skips: Vector[String] = Vector.empty
+    def recordGuardVerdict(guard: String, verdict: String): Unit = ()
+    def recordWriteSkipped(reason: String): Unit                 = skips :+= reason
   }
 
   private val stored = StoredMovieRecord("Live Film", Some(2026), liveFilm)
@@ -71,8 +78,9 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
 
   "a scrape landing on a film whose stored row cannot be READ" should
     "not rewrite that film as if only this cinema showed it" in {
-    val repo  = new Repo(Seq(stored), readable = false)
-    val cache = new CaffeineMovieCache(repo, normalizer = titleNormalizer)
+    val repo    = new Repo(Seq(stored), readable = false)
+    val metrics = new RecordingScrapeLandingMetrics
+    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics)
     cache.recordCinemaScrape(Multikino, Seq(cinemaMovie("Live Film")))
 
     // Nothing may be written. Any upsert here carries ONLY Multikino, and `upsert` hands
@@ -80,6 +88,9 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     withClue(s"wrote ${repo.upserts.map { case (_, t, r) => s"$t -> ${r.data.keySet}" }}: ")(
       repo.upserts.filter { case (_, _, r) => !r.data.contains(Helios) } shouldBe empty)
     cache.skippedUnreadable.get() should be > 0L
+    // The AtomicLong above is never read in production (see ScrapeLandingMetrics's own
+    // doc comment) — this counter is the one a dashboard can actually chart.
+    metrics.skips shouldBe Vector(ScrapeLandingMetrics.SkipReason.UnreadableRow)
   }
 
   // The slot MOVE, next to this skip. Deciding which film a (cinema, title) belongs to
@@ -201,7 +212,8 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
   // answer for that; assuming `true` because the key was present a moment ago is the
   // same data loss with a narrower window.
   it should "not strip the slot when the write itself reports it did not land" in {
-    val cache = new LosesWrites(new Repo(Seq.empty, readable = true))
+    val metrics = new RecordingScrapeLandingMetrics
+    val cache   = new LosesWrites(new Repo(Seq.empty, readable = true), metrics)
     // TWO rows carrying this venue's slot for the same title, so the scrape lands on
     // one (the canonical) and the move would drop the other.
     val slot  = SourceData(title = Some("Live Film"), showtimes = Seq(showtime))
@@ -232,5 +244,6 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     // went green against the very bug it is for.
     withClue(s"keep=${cache.get(keep).map(_.data.keySet)} other=${cache.get(other).map(_.data.keySet)}: ")(
       slotsOn(other) should not be empty)
+    metrics.skips shouldBe Vector(ScrapeLandingMetrics.SkipReason.CacheMissRace)
   }
 }

@@ -477,8 +477,22 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byRegexp", "options": "avg write-burst ms.*" },
-            "properties": [{ "id": "custom.lineStyle", "value": { "dash": [10, 10], "fill": "dash" } }]
+            "matcher": {
+              "id": "byRegexp",
+              "options": "avg write-burst ms.*"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "dash": [
+                    10,
+                    10
+                  ],
+                  "fill": "dash"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1178,6 +1192,108 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           }
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "title": "Scrape depth/breadth guard verdicts — reject vs accept, by country",
+      "description": "ScrapeHealth's two per-tick guards (services.movies.ScrapeHealth.depth / .breadth), reject=a tick looked depth- or breadth-degraded and was held; accept=the guard gave up after enough consecutive rejections and let the smaller board land. `healthy` isn't drawn — it's the overwhelming default and this panel is about the exceptions. A `reject` rate that never returns to zero is a cinema (or several) stuck failing the same way tick after tick — check RemovalAudit's [scrape-depth]/[scrape-prune] logs for which one. A run of `accept`s on one axis, one country, is either a real sustained schedule cut or a scraper that's been degraded in the same shape for hours (Kino Aurum, 2026-09-13: a breadth-guard deadlock — 57 accumulated slot-keys against an 11-film board — that had been silently re-triggering every ~2h for days before anyone noticed, purely from log-reading; this panel is what would have shown it on day one).",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 105
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, guard, verdict) (rate(kinowo_worker_scrape_guard_verdicts_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{guard}} {{verdict}}"
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "title": "Scrape writes silently skipped — by country and reason",
+      "description": "A scrape observed a title this tick but its write did not land, and neither reason throws or logs an ERROR on its own: cache-miss-race is MovieCache.putIfPresent returning false because a concurrent rekey of some OTHER title invalidated this key between the read and the compute (ScrapeLanding's own comment on `landed` names the mechanism); unreadable-row is the cache-miss branch finding the stored row could not be read at all (pairs with a WARN log naming the film). Both are already handled safely downstream (the title is spared that tick's prune, nothing is deleted) so a low, occasional rate here is not an incident — but a SUSTAINED nonzero rate for one country is a title whose corpus data has stopped updating without any exception ever being thrown, which is exactly the shape that made the still-open Kino Aurum screenings-freeze investigation (2026-09-13) take a multi-hour Mongo forensics session instead of a five-second look at this line.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 113
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, reason) (rate(kinowo_worker_scrape_write_skipped_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{country}} {{reason}}"
         }
       ]
     }

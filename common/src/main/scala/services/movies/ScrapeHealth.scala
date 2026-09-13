@@ -122,4 +122,52 @@ object ScrapeHealth {
       if (knownSlots >= MinSlotsForShrinkGuard) batchSlots < knownSlots * PruneFloorRatio
       else knownSlots - batchSlots >= MinAbsoluteDropForShrinkGuard
     }
+
+  /** The breadth guard's answer for one tick, stateful the same way [[Depth]] is. */
+  enum Breadth {
+    /** Looks partial: spare the prune, keep every slot the venue is not observed
+     *  to still list. */
+    case Reject(consecutive: Int)
+    /** Thin for [[MaxConsecutiveDepthRejections]] ticks running — the prune
+     *  finally runs and the venue's accumulated stale slots are let go. */
+    case AcceptDegraded(consecutive: Int)
+    case Healthy
+  }
+
+  /** [[looksPartial]] wrapped with the same consecutive-rejection grace [[depth]]
+   *  gets, so a venue whose accumulated slot-key count has permanently outgrown
+   *  what it currently lists is not held below the ratio floor forever.
+   *
+   *  Prod, 2026-09-13: Kino Aurum's `movie_slots`/`screenings` held 57–58 slot-keys
+   *  (old decorated-title variants, past runs, never pruned) against 11
+   *  currently-listed films — a ratio (~0.19) that can never clear
+   *  [[PruneFloorRatio]] on its own, because the guard's own prune-skip is the
+   *  ONLY thing stopping the stale 47 from ever being retired: the fewer of them
+   *  get pruned, the bigger `knownSlots` stays, the further the ratio sits below
+   *  the floor, forever. [[depth]] never risked this — its "known" side only ever
+   *  falls once a shrink is accepted, so it always has a path back to `Healthy` —
+   *  but the breadth axis had no such path until now, and a venue that wedges here
+   *  wedges the depth guard's OWN "known" baseline too: `MovieCache.recordCinema-
+   *  Scrape` sums showtimes over the same never-pruned slot set, so 47 stale slots'
+   *  leftover showtime counts kept `known` permanently inflated even on ticks the
+   *  depth guard itself accepted.
+   *
+   *  NEVER short-circuits `listingIsComplete = false` into an eventual accept: a
+   *  caller that KNOWS this tick's listing is short is stating a fact, not a guess
+   *  to stop trusting after enough repeats, and pruning on that basis is always
+   *  wrong however many ticks it repeats — which is exactly why this grace could
+   *  not simply be inlined into [[looksPartial]] itself.
+   *
+   *  `consecutiveRejections` / `maxConsecutiveRejections` mean what they mean for
+   *  [[depth]]; a caller who knows this venue's own cadence should pass
+   *  [[maxRejectionsFor]], not the bare constant, for the same reason that method
+   *  documents. */
+  def breadth(knownSlots: Int, batchSlots: Int, listingIsComplete: Boolean, consecutiveRejections: Int,
+              maxConsecutiveRejections: Int = MaxConsecutiveDepthRejections): Breadth =
+    if (!listingIsComplete) Breadth.Reject(consecutiveRejections + 1)
+    else if (!looksPartial(knownSlots, batchSlots, listingIsComplete = true)) Breadth.Healthy
+    else {
+      val consecutive = consecutiveRejections + 1
+      if (consecutive <= maxConsecutiveRejections) Breadth.Reject(consecutive) else Breadth.AcceptDegraded(consecutive)
+    }
 }
