@@ -1,12 +1,13 @@
 package controllers
 
-import models.{Helios, MovieRecord, Source, SourceData}
+import models.{CityScreening, Helios, Multikino, MultikinoPasazGrunwaldzki, MovieRecord, ResolvedMovie, ResolvedRatings, Source, SourceData}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import services.readmodel.{InMemoryReadModelRepository, WebReadModel}
 
-import java.time.LocalDateTime
+import java.time.{Instant, LocalDateTime}
 
 /** End-to-end checks on the two crawl-control endpoints: robots.txt advertises
  *  the sitemap + fences off the operational noise (while keeping `Allow: /` for
@@ -147,4 +148,61 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should not include "/kent/"            // UK region added in the Flicks roster
     body should not include "/berlin/"          // German city
   }
+
+  // ── Per-city lastmod ─────────────────────────────────────────────────────────
+  //
+  // Before this fix, every URL in the file — landing aside — carried
+  // `readModel.lastModified`, the MODEL-WIDE stamp that moves on ANY city's
+  // change. That claimed a Wrocław showtime edit as a change to Poznań's URLs
+  // too (and vice versa) — exactly the over-invalidation
+  // `WebReadModel.lastModifiedFor(citySlug)` already exists to avoid for the
+  // conditional-GET validator (see `WebReadModelSpec`). `StubReadModel`
+  // overrides only that one seam, to deterministic values, so the two cities'
+  // dates are pinned rather than racing the wall clock (which would round both
+  // onto today's date regardless of the bug, on any run finishing inside a day).
+
+  private def ratings = ResolvedRatings(None, None, None, "", None, "", None, "")
+  private def resolvedMovie(id: String, title: String) =
+    ResolvedMovie(id, title, None, None, Nil, None, Some(2026), Nil, Nil, Nil, Nil, None, Nil, ratings, 0.0)
+  private def cityScreening(id: String, filmId: String, city: String, cinema: models.Cinema) =
+    CityScreening(id, filmId, city, cinema.displayName, None, Seq(models.Showtime(LocalDateTime.now().plusDays(1), None)))
+
+  private class StubReadModel(repository: InMemoryReadModelRepository, stamps: Map[String, Instant])
+      extends WebReadModel(repository) {
+    override def lastModifiedFor(citySlug: String): Instant = stamps.getOrElse(citySlug, Instant.EPOCH)
+  }
+
+  private val PoznanStamp  = Instant.parse("2026-01-01T00:00:00Z")
+  private val WroclawStamp = Instant.parse("2026-06-15T00:00:00Z")
+
+  private def twoCityController(): MovieController = {
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(resolvedMovie("belle|2026", "Belle"))
+    repository.upsertMovie(resolvedMovie("diuna|2026", "Diuna"))
+    repository.upsertScreening(cityScreening("s-poznan", "belle|2026", "poznan", Multikino))
+    repository.upsertScreening(cityScreening("s-wroclaw", "diuna|2026", "wroclaw", MultikinoPasazGrunwaldzki))
+    val readModel = new StubReadModel(repository, Map("poznan" -> PoznanStamp, "wroclaw" -> WroclawStamp))
+    readModel.reload()
+    TestMovieController.build(Nil, readModel = Some(readModel))._1
+  }
+
+  private def lastmodOf(xml: String, locSuffix: String): String = {
+    val line = xml.linesIterator.find(_.contains(s"$locSuffix</loc>"))
+      .getOrElse(fail(s"no <url> ending in $locSuffix in:\n$xml"))
+    val start = line.indexOf("<lastmod>") + "<lastmod>".length
+    line.substring(start, line.indexOf("</lastmod>"))
+  }
+
+  "sitemap.xml" should "stamp each city's URLs with THAT city's own lastmod, not a shared one" in {
+    val body = contentAsString(twoCityController().sitemap(req("/sitemap.xml")))
+
+    lastmodOf(body, "/poznan/")             shouldBe "2026-01-01"
+    lastmodOf(body, "/wroclaw/")            shouldBe "2026-06-15"
+    lastmodOf(body, "/poznan/movie/belle")  shouldBe "2026-01-01"
+    lastmodOf(body, "/wroclaw/movie/diuna") shouldBe "2026-06-15"
+    // The whole point of the fix: two cities that changed on different days do
+    // not collapse onto one shared date.
+    lastmodOf(body, "/poznan/") should not be lastmodOf(body, "/wroclaw/")
+  }
+
 }

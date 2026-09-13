@@ -31,35 +31,43 @@ object SitemapBuilder {
    *  @param country the country this deployment serves — the mount point for the
    *                 landing URL, which belongs to no city
    *  @param entries each city paired with the films it's currently showing
-   *  @param lastmod the read model's mtime as a W3C date, stamped on the URLs
-   *                 whose body IS the read model — the city listings and
-   *                 film pages, all of which re-render on every projection. The
-   *                 landing is left unstamped: it's a static city list that a
-   *                 projection doesn't touch, and Google discards the lastmod
-   *                 signal site-wide once it catches URLs claiming changes they
-   *                 didn't make. */
+   *  @param lastmod per-CITY mtime as a W3C date, stamped on every URL whose
+   *                 body is that city's slice of the read model — the city's
+   *                 own listing and every film page under it, all of which
+   *                 re-render on every projection touching that city. A
+   *                 function rather than one shared value: stamping every city
+   *                 with the model-wide `readModel.lastModified` claimed a
+   *                 Warsaw showtime edit as a change to London's URLs too, and
+   *                 Google discards the lastmod signal site-wide once it
+   *                 catches URLs claiming changes they didn't make — the exact
+   *                 failure mode `readModel.lastModifiedFor(city)` already
+   *                 exists to avoid for conditional GETs (see
+   *                 `WebReadModel.lastModifiedFor`). The landing is always left
+   *                 unstamped: it's a static city list no per-city projection
+   *                 touches. */
   def build(origin: String, country: models.Country, entries: Seq[(City, Seq[FilmSchedule])],
-            lastmod: Option[String] = None): String = {
+            lastmod: City => Option[String] = _ => None): String = {
     val sb = new StringBuilder
     sb.append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')
     sb.append("""<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">""").append('\n')
 
-    def url(loc: String, stamped: Boolean = true): Unit = {
+    def url(loc: String, stamp: Option[String]): Unit = {
       sb.append("  <url><loc>").append(escape(origin + loc)).append("</loc>")
-      if (stamped) lastmod.foreach(m => sb.append("<lastmod>").append(m).append("</lastmod>"))
+      stamp.foreach(m => sb.append("<lastmod>").append(m).append("</lastmod>"))
       sb.append("</url>\n")
     }
 
-    url(country.mountPath, stamped = false)
+    url(country.mountPath, None)
     entries.foreach { case (city, films) =>
-      url(CityPath(city) + "/")
+      val stamp = lastmod(city)
+      url(CityPath(city) + "/", stamp)
       // Distinct + sorted so the file is deterministic (stable across requests
       // and testable) regardless of the read model's iteration order.
       // Keyed by the assigned slug, not the title: two films CAN share a
       // title, and de-duplicating on the title dropped one of them from the
       // index entirely.
       films.map(f => (f.slug, f.movie.title)).distinct.sortBy(_._1).foreach { case (slug, title) =>
-        url(FilmHref.forSlug(slug, title, city))
+        url(FilmHref.forSlug(slug, title, city), stamp)
       }
     }
 

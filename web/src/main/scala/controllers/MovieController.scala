@@ -673,6 +673,16 @@ class MovieController( cc: ControllerComponents,
   private def mountedUnderApex: Seq[models.Country] =
     models.Country.switchable.filter(_.pathPrefix.nonEmpty)
 
+  /** The `<lastmod>` W3C date for `city`'s URLs — its own per-city read-model
+   *  stamp (`WebReadModel.lastModifiedFor`), not the model-wide
+   *  `readModel.lastModified`. The model-wide stamp moves on every city's
+   *  change, so it claimed a Warsaw showtime edit as a change to every other
+   *  city's URLs too — the same over-invalidation `lastModifiedFor` already
+   *  exists to avoid for conditional GETs (see `ConditionalResponse`). */
+  private def cityLastmod(city: City): Option[String] =
+    Some(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
+      .format(readModel.lastModifiedFor(city.slug).atOffset(java.time.ZoneOffset.UTC)))
+
   /** `sitemap.xml` — the full crawl map: landing, every city listing + plan, and
    *  every film each city is currently showing. Built from the warm read model
    *  (`toSchedules` per city is a cheap in-memory join), so it always reflects
@@ -688,13 +698,11 @@ class MovieController( cc: ControllerComponents,
       if (servingCountry.servesApex(PageMeta.host(request))) SitemapBuilder.index(mountedUnderApex)
       else {
         val entries = servingCountry.cities.map(c => c -> movieControllerService.toSchedules(c))
-        val lastmod = java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
-          .format(readModel.lastModified.atOffset(java.time.ZoneOffset.UTC))
         // The bare ORIGIN plus the country: every `<loc>` picks the mount point
         // up from the city (or, for the landing, from the country) via the same
         // builders the pages themselves use, so a country sharing the brand
         // domain neither drops the prefix nor doubles it.
-        SitemapBuilder.build(PageMeta.origin(request), servingCountry, entries, lastmod = Some(lastmod))
+        SitemapBuilder.build(PageMeta.origin(request), servingCountry, entries, lastmod = cityLastmod)
       }
     Ok(body).as("application/xml; charset=utf-8")
       .withHeaders("Cache-Control" -> "public, max-age=3600")

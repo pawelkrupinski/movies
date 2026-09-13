@@ -70,7 +70,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "omit changefreq and priority — Google ignores both" in {
-    val xml = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = Some("2026-06-28"))
+    val xml = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = _ => Some("2026-06-28"))
     xml should not include "<changefreq>"
     xml should not include "<priority>"
   }
@@ -135,7 +135,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "stamp the read-model-derived URLs with lastmod when supplied" in {
-    val xml = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = Some("2026-06-28"))
+    val xml = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = _ => Some("2026-06-28"))
     xml should include("<lastmod>2026-06-28</lastmod>")
     xml should not include "<lastmod></lastmod>"
     // Every city listing and film URL regenerates with the read model…
@@ -143,7 +143,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave the landing page unstamped — it is a static city list" in {
-    val landing = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = Some("2026-06-28"))
+    val landing = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = _ => Some("2026-06-28"))
       .linesIterator.find(_.contains(s"<loc>$Origin/</loc>")).getOrElse("")
     landing should not include "<lastmod>"
   }
@@ -153,11 +153,35 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "produce well-formed, parseable XML" in {
-    val xml = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = Some("2026-06-28"))
+    val xml = SitemapBuilder.build(Origin, Country.Poland, entries, lastmod = _ => Some("2026-06-28"))
     val factory = javax.xml.parsers.DocumentBuilderFactory.newInstance()
     val doc = factory.newDocumentBuilder()
       .parse(new java.io.ByteArrayInputStream(xml.getBytes(java.nio.charset.StandardCharsets.UTF_8)))
     doc.getDocumentElement.getTagName shouldBe "urlset"
     doc.getElementsByTagName("url").getLength should be > 4
   }
+
+  // ── Per-city lastmod ─────────────────────────────────────────────────────────
+  //
+  // `lastmod` used to be one shared `Option[String]` applied to every stamped
+  // URL — a Wrocław change looked identical, on paper, to a Poznań one. It is
+  // now a function of the city, so each city's own URLs can carry its own date.
+
+  it should "stamp each city's URLs with the date THAT city's function returns" in {
+    val xml = SitemapBuilder.build(Origin, Country.Poland, entries,
+      lastmod = city => if (city == Poznan) Some("2026-01-01") else Some("2026-06-15"))
+
+    xml.linesIterator.find(_.contains(s"<loc>$Origin/poznan/</loc>")).get should include("<lastmod>2026-01-01</lastmod>")
+    xml.linesIterator.find(_.contains(s"<loc>$Origin/poznan/movie/belle</loc>")).get should include("<lastmod>2026-01-01</lastmod>")
+    xml.linesIterator.find(_.contains(s"<loc>$Origin/wroclaw/</loc>")).get should include("<lastmod>2026-06-15</lastmod>")
+  }
+
+  it should "leave a city's URLs unstamped when its function returns None, independent of its neighbours" in {
+    val xml = SitemapBuilder.build(Origin, Country.Poland, entries,
+      lastmod = city => if (city == Poznan) None else Some("2026-06-15"))
+
+    xml.linesIterator.find(_.contains(s"<loc>$Origin/poznan/</loc>")).get should not include "<lastmod>"
+    xml.linesIterator.find(_.contains(s"<loc>$Origin/wroclaw/</loc>")).get should include("<lastmod>2026-06-15</lastmod>")
+  }
+
 }
