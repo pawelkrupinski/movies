@@ -93,19 +93,13 @@ object MultikinoParser {
                         .map(id => s"https://www.youtube.com/watch?v=$id")),
       // Same Vue-platform `certificate = {name, description, src}` shape the UK
       // reads (see VueCinemasPlatformParser) — `name` is the Polish rating label
-      // ("15+", "18+"). AgeRating drops the "TBC" placeholder and blanks; the
-      // Polish "no restriction" marker "BO" (bez ograniczeń, also "b.o.") means
-      // no age limit rather than a rating to badge, so drop it here before
-      // normalising — verbatim otherwise, so "15+"/"18+" stay as spelled.
-      ageRating   = AgeRating.normalize(
-                      (film \ "certificate" \ "name").asOpt[String]
-                        .filterNot(name => NoRestriction.contains(name.trim.toLowerCase)))
+      // ("15+", "18+"). `normalizeDroppingNoRestriction` drops the "TBC"
+      // placeholder, blanks, and the Polish "no restriction" marker "BO" (bez
+      // ograniczeń, also "b.o.") — verbatim otherwise, so "15+"/"18+" stay as
+      // spelled.
+      ageRating   = AgeRating.normalizeDroppingNoRestriction((film \ "certificate" \ "name").asOpt[String])
     )
   }
-
-  /** Polish "no age restriction" markers — a marker, not a rating, so they map
-   *  to `None`. "BO" = "bez ograniczeń"; "b.o." is the abbreviated spelling. */
-  private val NoRestriction = Set("bo", "b.o.")
 
   private def parseSession(session: JsValue): Option[Showtime] =
     (session \ "startTime").asOpt[String].map { startTime =>

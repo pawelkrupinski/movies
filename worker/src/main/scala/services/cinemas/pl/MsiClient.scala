@@ -18,7 +18,6 @@ import scala.util.Try
  * [[MsiScraper]].
  *
  * Known venues on this platform:
- *   - Cinema1 Gdańsk          — bilety.cinemaone.pl
  *   - Kino GOK Tychowo        — bilety.goktychowo.pl
  *   - Kino MOK Nowa Ruda      — bilety.nowaruda.pl
  *   - Kino Warszawa Przeworsk — bilety-kino.przeworsk.um.gov.pl

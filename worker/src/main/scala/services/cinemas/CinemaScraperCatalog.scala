@@ -147,7 +147,7 @@ class CinemaScraperCatalog(
   // rosters below. The city lists keep naming each venue in scrape order; only
   // what used to be a repeated constructor moved here.
 
-  // MSI / VisualTicket portals (30). `fetch` is Zyte's residential egress for
+  // MSI / VisualTicket portals (29). `fetch` is Zyte's residential egress for
   // the one venue whose origin firewall blocks both our Fly IP and the Decodo
   // proxy (see the ctor doc); `mvcPath` / `titlePrefix` / `titleSuffix` are the
   // per-install quirks `MsiClient` documents.
@@ -157,7 +157,6 @@ class CinemaScraperCatalog(
                               titleSuffix: Option[String] = None,
                               fetch:       HttpFetch      = http)
   private val msiVenues: Map[Cinema, MsiVenue] = Map(
-    Cinema1Gdansk                -> MsiVenue("https://bilety.cinemaone.pl"),
     KinoKryterium                -> MsiVenue("https://bilety.ck105.koszalin.pl", fetch = zyteFetch),
     KinoMillenium                -> MsiVenue("https://bilety.csm.tarnow.pl", mvcPath = "/Kino/mvc/pl"),
     KinoKinomax                  -> MsiVenue("https://bilety.kinomax.info.pl"),
@@ -392,7 +391,10 @@ class CinemaScraperCatalog(
     // screening five films a day — so we read GCSW's own repertoire post instead,
     // via the WP REST route that survives the post's rotating permalink.
     new KinoPortClient(http, KinoPort, today),
-    msi(Cinema1Gdansk),
+    // Migrated off the legacy MSI portal onto the "POSitive Cinema" Angular SPA
+    // platform in 2026; the SPA renders no server HTML, so this reads the
+    // platform's own JSON REST API directly (see Cinema1Client's scaladoc).
+    new Cinema1Client(http, Cinema1Gdansk, cinemaId = "8d3b10d9-f892-4f57-bf74-9f86905ce3ea", today = today),
     new GdynskieCentrumFilmoweClient(http, GdynskieCentrumFilmowe),
   )
 

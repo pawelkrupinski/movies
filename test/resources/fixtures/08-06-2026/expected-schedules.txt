@@ -361,7 +361,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Backrooms. Bez wyjścia / 2026
   Cinema City Zakopianka / Backrooms. Bez wyjścia / 2026
   Cinema City Zielona Góra / Backrooms. Bez wyjścia / 2026
-  Cinema1 / Backrooms. Bez wyjścia / —
   Forum / Backrooms. Bez wyjścia / —
   Fregata / Backrooms. Bez wyjścia / —
   Helios Aleja Bielany / Backrooms. Bez wyjścia / —
@@ -1470,7 +1469,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Diabeł ubiera się u Prady 2 / 2026
   Cinema City Zakopianka / Diabeł ubiera się u Prady 2 / 2026
   Cinema City Zielona Góra / Diabeł ubiera się u Prady 2 / 2026
-  Cinema1 / Diabeł ubiera się u prady 2 / —
   Dolnośląskie Centrum Filmowe / Diabeł ubiera się u Prady 2 / 2026
   Gdyńskie Centrum Filmowe / Diabeł ubiera się u Prady 2 / —
   Helios Aleja Bielany / Diabeł ubiera się u Prady 2 / 2026
@@ -2064,7 +2062,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Drzewo magii / 2025
   Cinema City Zakopianka / Drzewo magii / 2025
   Cinema City Zielona Góra / Drzewo magii / 2025
-  Cinema1 / Drzewo magii / —
   Forum / Drzewo magii / —
   Fregata / Drzewo magii / —
   Gdyńskie Centrum Filmowe / Drzewo magii / —
@@ -2266,7 +2263,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Dzień objawienia ukraiński dubbing / 2026
   Cinema City Zakopianka / Dzień objawienia / 2026
   Cinema City Zielona Góra / Dzień objawienia ukraiński dubbing / 2026
-  Cinema1 / Dzień objawienia / —
   Dolnośląskie Centrum Filmowe / Dzień objawienia / 2026
   Forum / Dzień Objawienia / —
   Gdyńskie Centrum Filmowe / Dzień objawienia / —
@@ -2445,7 +2441,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Dzień objawienia ukraiński dubbing / 2026
   Cinema City Zakopianka / Dzień objawienia / 2026
   Cinema City Zielona Góra / Dzień objawienia ukraiński dubbing / 2026
-  Cinema1 / Dzień objawienia / —
   Dolnośląskie Centrum Filmowe / Dzień objawienia / 2026
   Forum / Dzień Objawienia / —
   Gdyńskie Centrum Filmowe / Dzień objawienia / —
@@ -3272,7 +3267,6 @@ cinemaScrapes:
   Cinema City Zakopianka / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema City Zielona Góra / Gwiezdne Wojny: Mandalorian i Grogu / 2026
   Cinema Lumiere / Mandalorian i grogu / —
-  Cinema1 / Mandalorian i grogu / —
   Europa / Mandalorian i Grogu / —
   Forum / Mandalorian i Grogu / —
   Fregata / Gwiezdne wojny: Mandalorian i Grogu / —
@@ -4763,7 +4757,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Michael / 2026
   Cinema City Zakopianka / Michael / 2026
   Cinema City Zielona Góra / Michael / 2026
-  Cinema1 / Michael / —
   Europa / MICHAEL / —
   Helios Aleja Bielany / Michael / 2026
   Helios Alfa / Michael / 2026
@@ -5185,6 +5178,7 @@ cinemaScrapes:
   Cinema City Wroclavia / Minionki i straszydła ukraiński dubbing / 2026
   Cinema City Zakopianka / Minionki i straszydła / 2026
   Cinema City Zielona Góra / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema1 / MINIONKI I STRASZYDŁA / 2026
   Forum / Minionki i straszydła / —
   Helios Aleja Bielany / Minionki i straszydła / —
   Helios Alfa / Minionki i straszydła / —
@@ -5319,6 +5313,7 @@ cinemaScrapes:
   Cinema City Wroclavia / Minionki i straszydła ukraiński dubbing / 2026
   Cinema City Zakopianka / Minionki i straszydła / 2026
   Cinema City Zielona Góra / Minionki i straszydła ukraiński dubbing / 2026
+  Cinema1 / MINIONKI I STRASZYDŁA / 2026
   Forum / Minionki i straszydła / —
   Helios Aleja Bielany / Minionki i straszydła / —
   Helios Alfa / Minionki i straszydła / —
@@ -5722,7 +5717,6 @@ cinemaScrapes:
   Cinema City Zakopianka / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Zielona Góra / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema Lumiere / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Cinema1 / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Gdyńskie Centrum Filmowe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Helios Aleja Bielany / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Helios Alfa / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
@@ -6165,7 +6159,6 @@ cinemaScrapes:
   Cinema City Zakopianka / Obsesja / 2025
   Cinema City Zielona Góra / Obsesja / 2025
   Cinema Lumiere / Obsesja. / —
-  Cinema1 / Obsesja / —
   Dolnośląskie Centrum Filmowe / Obsesja / 2025
   Forum / Obsesja / —
   Helios Aleja Bielany / Obsesja / 2026
@@ -7776,7 +7769,6 @@ cinemaScrapes:
   Cinema City Zakopianka / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema City Zielona Góra / Niesamowite przygody skarpetek 3. Ale ko / 2026
   Cinema Lumiere / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Cinema1 / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Gdyńskie Centrum Filmowe / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Helios Aleja Bielany / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Helios Alfa / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
@@ -8357,7 +8349,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Zakopianka / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Zielona Góra / Tom i Jerry: Przygoda w muzeum / 2026
-  Cinema1 / Tom i jerry: przygoda w muzeum / —
   Europa / Tom i Jerry: Przygoda w muzeum / —
   Helios Aleja Bielany / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Alfa / Tom i Jerry: Przygoda w muzeum / 2026
@@ -8918,7 +8909,6 @@ cinemaScrapes:
   Cinema City Zakopianka / Straszny film / 2026
   Cinema City Zielona Góra / Straszny film ukraiński dubbing / 2026
   Cinema Lumiere / Straszny film / —
-  Cinema1 / Straszny film / —
   Forum / Straszny film / —
   Fregata / Straszny film / —
   Helios Aleja Bielany / Straszny film / 2026
@@ -9070,7 +9060,6 @@ cinemaScrapes:
   Cinema City Zakopianka / Straszny film / 2026
   Cinema City Zielona Góra / Straszny film ukraiński dubbing / 2026
   Cinema Lumiere / Straszny film / —
-  Cinema1 / Straszny film / —
   Forum / Straszny film / —
   Fregata / Straszny film / —
   Helios Aleja Bielany / Straszny film / 2026
@@ -9208,7 +9197,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Super Mario Galaxy Film / 2026
   Cinema City Zakopianka / Super Mario Galaxy Film / 2026
   Cinema City Zielona Góra / Super Mario Galaxy Film / 2026
-  Cinema1 / Super mario galaxy film / —
   Helios Aleja Bielany / Super Mario Galaxy Film / 2026
   Helios Alfa / Super Mario Galaxy Film / 2026
   Helios Biała / Super Mario Galaxy Film / 2026
@@ -9667,7 +9655,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Zakopianka / Tom i Jerry: Przygoda w muzeum / 2026
   Cinema City Zielona Góra / Tom i Jerry: Przygoda w muzeum / 2026
-  Cinema1 / Tom i jerry: przygoda w muzeum / —
   Europa / Tom i Jerry: Przygoda w muzeum / —
   Helios Aleja Bielany / Tom i Jerry: Przygoda w muzeum / 2026
   Helios Alfa / Tom i Jerry: Przygoda w muzeum / 2026
@@ -9836,7 +9823,7 @@ cinemaScrapes:
   Cinema City Wroclavia / Toy Story 5 ukraiński dubbing / 2026
   Cinema City Zakopianka / Toy Story 5 / 2026
   Cinema City Zielona Góra / Toy Story 5 ukraiński dubbing / 2026
-  Cinema1 / Toy story 5 / —
+  Cinema1 / TOY STORY 5 / 2026
   Forum / Toy Story 5 / —
   Fregata / Toy Story 5 / —
   Helios Aleja Bielany / Toy Story 5 / —
@@ -10002,7 +9989,7 @@ cinemaScrapes:
   Cinema City Wroclavia / Toy Story 5 ukraiński dubbing / 2026
   Cinema City Zakopianka / Toy Story 5 / 2026
   Cinema City Zielona Góra / Toy Story 5 ukraiński dubbing / 2026
-  Cinema1 / Toy story 5 / —
+  Cinema1 / TOY STORY 5 / 2026
   Forum / Toy Story 5 / —
   Fregata / Toy Story 5 / —
   Helios Aleja Bielany / Toy Story 5 / —
@@ -10576,7 +10563,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Władcy Wszechświata / 2026
   Cinema City Zakopianka / Władcy Wszechświata / 2026
   Cinema City Zielona Góra / Władcy Wszechświata / 2026
-  Cinema1 / Władcy wszechświata / —
   Forum / Władcy wszechświata / —
   Helios Aleja Bielany / Władcy wszechświata / 2026
   Helios Alfa / Władcy wszechświata / 2026
@@ -10667,6 +10653,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14519-zaproszenie-przedpremiera/
 cinemaScrapes:
   Centrum 3D Przemyśl / ZAPROSZENIE / —
+  Cinema1 / ZAPROSZENIE / 2026
   Dolnośląskie Centrum Filmowe / Zaproszenie / 2026
   Kino Bajka / Zaproszenie / —
   Kino Pałacowe / Zaproszenie / 2026
@@ -10805,7 +10792,6 @@ cinemaScrapes:
   Cinema City Wroclavia / Zawodowcy / 2025
   Cinema City Zakopianka / Zawodowcy / 2025
   Cinema City Zielona Góra / Zawodowcy / 2025
-  Cinema1 / Zawodowcy / —
   Dolnośląskie Centrum Filmowe / Zawodowcy / 2026
   Fregata / ZAWODOWCY / —
   Gdyńskie Centrum Filmowe / Zawodowcy / —

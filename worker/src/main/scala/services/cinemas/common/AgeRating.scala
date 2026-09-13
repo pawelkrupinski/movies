@@ -17,6 +17,15 @@ object AgeRating {
 
   private val Placeholders = Set("tbc", "unknown")
 
+  // Polish "no age restriction" markers — a marker, not a rating, so a source
+  // that spells "no restriction" as a value (rather than leaving the field
+  // blank) should drop it via `normalizeDroppingNoRestriction` rather than
+  // badge it verbatim. "BO" = "bez ograniczeń"; "b.o." is the abbreviated
+  // spelling. Shared by every source whose payload uses this marker (Multikino's
+  // `certificate.name`, Cinema1's `ratings[].value`) so the marker set doesn't
+  // drift across parsers.
+  private val NoRestrictionMarkers = Set("bo", "b.o.")
+
   def normalize(raw: String): Option[String] =
     Option(raw).map(_.trim).filter(_.nonEmpty)
       .filterNot(r => Placeholders.contains(r.toLowerCase))
@@ -24,4 +33,8 @@ object AgeRating {
 
   def normalize(raw: Option[String]): Option[String] =
     raw.flatMap(normalize)
+
+  /** As `normalize`, but also drops the Polish "no restriction" marker(s) first. */
+  def normalizeDroppingNoRestriction(raw: Option[String]): Option[String] =
+    normalize(raw.filterNot(r => NoRestrictionMarkers.contains(r.trim.toLowerCase)))
 }
