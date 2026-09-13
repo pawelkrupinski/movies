@@ -53,6 +53,16 @@ class FilmwebDiffTitleNormalizerSpec extends AnyFlatSpec with Matchers {
     normalize("Diuna [2024]")        shouldBe "diuna"
   }
 
+  // Regression: Kino Mikro runs the "Mikrofeminizacje:" programme series, which
+  // `TitleNormalizer.recase` keeps as a separate DISPLAY row
+  // (feedback_programme_prefix_separate_rows), but Filmweb lists the same
+  // screening under the bare film title — without stripping the banner here,
+  // the FilmwebDiff CI run double-counted the screening as both `ours-only`
+  // and `fw-only` (2026-09-13 run).
+  it should "strip a leading programme-prefix banner so it keys the same as Filmweb's bare title" in {
+    normalize("Mikrofeminizacje: Totalna magia II") shouldBe normalize("Totalna magia II")
+  }
+
   it should "never reduce a title to empty even if it looks like a bare tag" in {
     // A title that's nothing BUT a trailing tag keeps the single token (we never
     // strip down to empty) rather than vanishing.

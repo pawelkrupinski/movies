@@ -1,5 +1,8 @@
 package tools
 
+import models.Country
+import services.movies.TitleNormalizer
+
 /**
  * Loose title key for cross-source film matching in [[FilmwebDiff]]: the same
  * screening must produce the same key whether it comes from our scraper or from
@@ -7,6 +10,14 @@ package tools
  * as both `ours-only` and `fw-only`.
  *
  * Normalisation, in order:
+ *   0. strip a leading programme-prefix banner ("Mikrofeminizacje: ", "Klub
+ *      Konesera: ", …) via the SAME `TitleRuleSet` rules production uses to
+ *      keep these as separate DISPLAY rows (see
+ *      feedback_programme_prefix_separate_rows) — Filmweb lists the bare film
+ *      title with no such banner, so without this step a programme-series
+ *      screening (confirmed at Kino Mikro, 2026-09-13 FilmwebDiff run)
+ *      double-counted as both `ours-only` (our prefixed title) and `fw-only`
+ *      (Filmweb's bare one);
  *   1. lower-case, drop parenthetical/bracket suffixes (original titles, year);
  *   2. cut at the first ellipsis (`…` / `...`) — a truncated listing keeps only
  *      its common prefix, so "skarpetek… podróż na kraj kosmosu" and the full
@@ -40,8 +51,10 @@ object FilmwebDiffTitleNormalizer {
     "2d", "3d", "imax", "4dx", "4d", "vr", "screenx", "dolby", "atmos", "hfr"
   )
 
-  def normalize(rawTitle: String): String = {
-    val lowered = rawTitle.trim.toLowerCase
+  def normalize(rawTitle: String, titles: TitleNormalizer = TitleNormalizer.forCountry(Country.default)): String = {
+    // 0. drop a leading programme-prefix banner, if any (see class doc).
+    val unprefixed = titles.programmePrefix(rawTitle).fold(rawTitle)(rawTitle.stripPrefix)
+    val lowered = unprefixed.trim.toLowerCase
 
     // 2. drop trailing parenthetical/bracket annotations, then cut at ellipsis.
     val noBrackets = lowered.replaceAll("[\\(\\[].*$", "")
