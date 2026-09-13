@@ -1007,8 +1007,15 @@ class CaffeineMovieCache(
         forCache(f)
       }
     })
-    if (updated == null) false
-    else {
+    if (updated == null) {
+      // The Caffeine-level race `ScrapeLanding`'s own comment on `landed` names: a
+      // concurrent `rekey` of some OTHER title invalidated this key between the
+      // read and this compute. Recorded here, not at each caller, because this is
+      // the one place that KNOWS it happened — every `putIfPresent` caller
+      // (scrape, rating refresh, rekey) shares the same race.
+      scrapeLandingMetrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.CacheMissRace)
+      false
+    } else {
     // `computeIfPresent` writes inside Caffeine's own lock, so it cannot go through
     // `store`; index the value it produced instead. Same contract, one line later.
     val id = residentIdOf(key)
@@ -1027,9 +1034,24 @@ class CaffeineMovieCache(
       // report success without touching the repository (or firing the change stream).
       true
     } else {
-      repository.updateIfPresent(id, key, prior, fullAfter)
+      // ITS RESULT, not `true` — fixed 2026-09-13. This discarded
+      // `repository.updateIfPresent`'s answer and reported success unconditionally,
+      // so a genuine persistence failure (the Mongo document didn't match, or the
+      // write threw and was caught into `false`) was invisible at every caller:
+      // `corpusIndex.put` above already made the CACHE look correct, `ScrapeLanding`'s
+      // `landed` gate — which exists precisely "to read the write", per its own
+      // comment — saw `true` regardless, and the title was never spared from that
+      // tick's prune nor counted anywhere. A row this happens to can look perfectly
+      // healthy in-memory while Mongo silently never catches up.
+      val wrote = repository.updateIfPresent(id, key, prior, fullAfter)
+      if (!wrote) {
+        logger.warn(s"MovieCache.putIfPresent(${key.cleanTitle}, ${key.year.getOrElse("—")}): " +
+          "the repository write reported failure for a row the cache still holds resident " +
+          "— the Mongo document didn't match, or the write itself failed.")
+        scrapeLandingMetrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.RepositoryWriteFailed)
+      }
       touch()
-      true
+      wrote
     }
     }
   }

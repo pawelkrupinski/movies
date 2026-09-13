@@ -522,20 +522,14 @@ private[movies] final class ScrapeLanding(
             case Some(_) =>
               // Its RESULT, not `true`. `putIfPresent` answers false when the key is no
               // longer in Caffeine by the time it computes — a concurrent `rekey` of a
-              // DIFFERENT title invalidates keys without holding this title's lock — and
-              // assuming the write landed is what lets the move below strip a slot that
+              // DIFFERENT title invalidates keys without holding this title's lock — or
+              // when the repository write itself failed for a row the cache still holds.
+              // Assuming the write landed is what lets the move below strip a slot that
               // was never replaced. The gate is only worth having if it reads the write.
-              //
-              // METERED: this race produces no exception and (until 2026-09-13) no
-              // counter — a title that keeps losing it looks, from the outside, exactly
-              // like a scrape that keeps succeeding, because every OTHER symptom of a
-              // dropped write (a stale `screenings` count, an unpruned slot) has its own
-              // unrelated-looking shape. `recordWriteSkipped` is what turns "this specific
-              // title's write silently skipped, tick after tick" into a number instead of
-              // a multi-hour Mongo forensics session.
-              val result = store.putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
-              if (!result) metrics.recordWriteSkipped(ScrapeLandingMetrics.SkipReason.CacheMissRace)
-              result
+              // (Both failure shapes are METERED — see `ScrapeLandingMetrics` — at the
+              // one place inside `MovieCache.putIfPresent` that actually knows which
+              // happened, not here: this call site cannot tell them apart.)
+              store.putIfPresent(key, current => current.copy(data = current.data + (slotKey -> slot)))
             case None =>
               // A cache MISS is not proof of first-time: a restart/eviction/re-key
               // can leave a fully-rated Mongo row unseen by Caffeine. Build the

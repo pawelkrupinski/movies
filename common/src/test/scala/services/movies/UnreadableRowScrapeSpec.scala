@@ -244,6 +244,47 @@ class UnreadableRowScrapeSpec extends AnyFlatSpec with Matchers {
     // went green against the very bug it is for.
     withClue(s"keep=${cache.get(keep).map(_.data.keySet)} other=${cache.get(other).map(_.data.keySet)}: ")(
       slotsOn(other) should not be empty)
+    // NOT asserting on `metrics` here: `LosesWrites` fakes the boolean AFTER the real
+    // `putIfPresent` already succeeded, so nothing inside it actually failed — the two
+    // real failure branches that record a metric are pinned directly below, against the
+    // genuine `MovieCache.putIfPresent`, not through this test double.
+  }
+
+  // `MovieCache.putIfPresent`'s TWO internal `false` branches, pinned directly rather
+  // than through a scrape. Both used to be indistinguishable from success at every
+  // caller (see `ScrapeLandingMetrics`'s doc comment) — the repository-write-failed one
+  // because the method discarded `repository.updateIfPresent`'s answer and returned
+  // `true` unconditionally, found while investigating why Kino Aurum's `screenings`
+  // stayed stale for days despite the depth guard repeatedly "accepting" a reduction.
+  "MovieCache.putIfPresent" should
+    "meter and return false when the repository write itself fails for a row the cache holds" in {
+    // `StoredRowsRepository`'s own default `updateIfPresent` is unconditionally `false` —
+    // exactly "the Mongo document didn't match, or the write threw and was caught",
+    // without needing a special fake for it.
+    val repo    = new Repo(Seq.empty, readable = true)
+    val metrics = new RecordingScrapeLandingMetrics
+    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics)
+    val key     = cache.keyOf("Live Film", Some(2026))
+    cache.put(key, liveFilm) // resident in Caffeine — `Repo.updateIfPresent` still answers `false` regardless
+    cache.get(key) should not be empty
+
+    val landed = cache.putIfPresent(key, current => current.copy(tmdbId = Some(999)))
+
+    withClue("the repository's `false` must reach the caller, not be swallowed into `true`: ")(
+      landed shouldBe false)
+    metrics.skips shouldBe Vector(ScrapeLandingMetrics.SkipReason.RepositoryWriteFailed)
+  }
+
+  it should "meter and return false on a Caffeine-level miss, without touching the repository" in {
+    val repo    = new Repo(Seq.empty, readable = true)
+    val metrics = new RecordingScrapeLandingMetrics
+    val cache   = new CaffeineMovieCache(repo, normalizer = titleNormalizer, scrapeLandingMetrics = metrics)
+    val key     = CacheKey("Nothing Resident", Some(2026), titleNormalizer)
+    cache.get(key) shouldBe empty // never put — nothing for Caffeine's computeIfPresent to find
+
+    val landed = cache.putIfPresent(key, identity)
+
+    landed shouldBe false
     metrics.skips shouldBe Vector(ScrapeLandingMetrics.SkipReason.CacheMissRace)
   }
 }
