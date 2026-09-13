@@ -41,6 +41,12 @@ class LanguagePickSpec extends AnyFlatSpec with Matchers {
     html should include("<html lang=\"de\"")
   }
 
+  it should "render English when the pick is \"en\", on a Polish deployment" in {
+    val html = contentAsString(controller().index("poznan")(
+      FakeRequest("GET", "/poznan/").withCookies(Cookie("PLAY_LANG", "en"))))
+    html should include("<html lang=\"en\"")
+  }
+
   it should "not disturb the deployment default when absent" in {
     val html = contentAsString(controller().index("poznan")(FakeRequest("GET", "/poznan/")))
     html should include("<html lang=\"pl\"")
