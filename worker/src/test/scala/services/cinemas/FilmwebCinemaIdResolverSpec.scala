@@ -68,6 +68,17 @@ class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionV
       Resolution(KinoAmondo, Some(2077), Override)
   }
 
+  it should "pin Multikino Rumia to 1464, not the bare 'Multikino' fuzzy match" in {
+    // Regression: Filmweb's Gdynia/Trójmiasto listing carries a bare "Multikino"
+    // (no district suffix). Against "Multikino Rumia" that scores exactly the
+    // 0.5 AcceptThreshold, so unpinned it would silently resolve to the wrong
+    // Multikino instead of Unmatched or the real Rumia id.
+    val bareMultikinoListing = Seq(FilmwebCinema("Multikino", 999))
+    bestMatch("Multikino Rumia", bareMultikinoListing).value.id shouldBe 999
+    resolver.resolveOne(MultikinoRumia, bareMultikinoListing) shouldBe
+      Resolution(MultikinoRumia, Some(1464), Override)
+  }
+
   it should "pin Kinoteka to 55 even when the city listing is unavailable" in {
     // kinoteka.pl is down at the TCP layer, so the venue lives on the Filmweb
     // fallback. The override must resolve its id WITHOUT a successful

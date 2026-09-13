@@ -889,7 +889,7 @@ showings:
 
 === Cinema Italia Oggi: Dobrze się kłamie w miłym towarzystwie ===
 displayTitle:      Cinema Italia Oggi: Dobrze się kłamie w miłym towarzystwie
-cinemaTitles:      Cinema Italia Oggi: Dobrze się kłamie w miłym towarzystwie | Dobrze się kłamie w miłym towarzystwie
+cinemaTitles:      Cinema Italia Oggi: Dobrze się kłamie w miłym towarzystwie
 runtimeMinutes:    97
 releaseYear:       2016
 countries:         Włochy
@@ -910,7 +910,6 @@ filmwebUrl:        https://www.filmweb.pl/film/Dobrze+si%C4%99+k%C5%82amie+w+mi%
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14629-cinema-italia-oggi-dobrze-sie-kamie-w-miym-towarzy/
 cinemaScrapes:
-  KINOkawiarnia Stacja Falenica / Dobrze się kłamie w miłym towarzystwie / —
   Kino Pałacowe / Cinema Italia Oggi: Dobrze się kłamie w miłym towarzystwie / 2016
 showings:
   2026-07-08  Kino Pałacowe                 20:30 Sala 1 - Kinowa
@@ -1047,6 +1046,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14633-cinema-italia-oggi-o-czym-sobie-nie-mowimy/
 cinemaScrapes:
   Centrum 3D Przemyśl / O CZYM SOBIE NIE MÓWIMY / —
+  KINOkawiarnia Stacja Falenica / O czym sobie nie mówimy / —
   Kino Muranów / O czym sobie nie mówimy / 2025
   Kino Pałacowe / Cinema Italia Oggi: O czym sobie nie mówimy / 2025
   Kino Pod Baranami / O czym sobie nie mówimy / —
@@ -2666,11 +2666,11 @@ showings:
 
 === Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil ===
 displayTitle:      Filmoczule Dla Edukacji z Odn i WZiSS Ump – 500 mil
-cinemaTitles:      FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil
+cinemaTitles:      500 mil | FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil
 runtimeMinutes:    102
 releaseYear:       2026
 countries:         Irlandia, Wielka Brytania
-posterUrl:         https://image.tmdb.org/t/p/w500/FhRosui9MSdxdyD3h0skOFhqED.jpg
+posterUrl:         https://stacjafalenica.pl/wp-content/uploads/2026/08/121_BetaCinema_500_Miles_copyright_Enda_Bowe_Finn_Productions_Ltd_Port_Pictures_Ltd-1.png
 synopsis.length:   2232
 cast:              Bill Nighy, Roman Griffin Davis, Dexter Sol Ansell, Clare Dunne, Michael Socha
 director:          Morgan Matthews
@@ -2687,6 +2687,7 @@ filmwebUrl:        https://www.filmweb.pl/film/500+mil-2026-10117286
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/filmoczule-dla-edukacji-z-odn-i-wziss-ump-500-mil/
 cinemaScrapes:
+  KINOkawiarnia Stacja Falenica / 500 mil / —
   Kino Muza / FILMOCZULE DLA EDUKACJI z ODN i WZiSS UMP – 500 mil / 2026
 showings:
   2026-06-16  Kino Muza                     17:30 Sala 2
@@ -3424,6 +3425,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/glos-z-ksiezyca/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14404-gos-z-ksiezyca-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
+  KINOkawiarnia Stacja Falenica / Głos z księżyca (1990) / —
   Kino Kinematograf / Federico Fellini: ciao a tutti! – Głos z księżyca / 1990
   Kino Muza / Głos z księżyca / 1990
   Kino Pałacowe / Głos z księżyca / 1990
@@ -5546,6 +5548,7 @@ filmwebUrl:        https://www.filmweb.pl/film/M%C5%82odsza+siostra-2025-1007038
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/mlodsza-siostra/
 cinemaScrapes:
+  KINOkawiarnia Stacja Falenica / Młodsza siostra / —
   Kino Centrum CSW Toruń / Młodsza siostra (org. La Petite Dernière) 17. edycja Przeglądu Nowego Kina Francuskiego / —
   Kino Muranów / Młodsza siostra / 2025
   Kino Muza / Młodsza siostra / 2025
@@ -5886,6 +5889,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14400-noce-cabirii-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
   Janosik / FEDERICO FELLINI: ciao a tutti!: Noce Cabirii / —
+  KINOkawiarnia Stacja Falenica / Noce Cabirii (1957) / —
   Kino 60 Krzeseł / Noce Cabirii / —
   Kino Kinematograf / Federico Fellini: ciao a tutti! – Noce Cabirii / 1957
   Kino Muza / Noce Cabirii / 1957
@@ -5951,6 +5955,7 @@ cinemaScrapes:
   Cinema City Wolność / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Wroclavia / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Zielona Góra / UNLIMITED SHOW - Nowa Fala / 2025
+  KINOkawiarnia Stacja Falenica / Nowa fala / —
   Kino Muranów / Nowa Fala / 2025
   Kino Muza / Nowa fala / 2025
   Kino Nowe Horyzonty / Nowa Fala / 2025
@@ -6377,7 +6382,6 @@ cinemaScrapes:
   Helios Sosnowiec / Orły republiki / —
   Helios Łódź / Orły republiki / —
   KINOMUZEUM / Orły republiki / 2025
-  KINOkawiarnia Stacja Falenica / Orły Republiki / —
   Kino 60 Krzeseł / Orły republiki / —
   Kino Amok / Orły republiki / —
   Kino Apollo Wałbrzych / Orły Republiki / —
@@ -6446,6 +6450,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/osiem-i-pol/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14402-osiem-i-po-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
+  KINOkawiarnia Stacja Falenica / Osiem i pół (1963) / —
   Kino Kinematograf / Federico Fellini: ciao a tutti! – Osiem i pół / 1963
   Kino Muza / Osiem i pół / 1963
   Kino Pałacowe / Osiem i pół / 1963
@@ -6521,7 +6526,6 @@ filmwebUrl:        https://www.filmweb.pl/film/Pan+Nikt+kontra+Putin-2025-100713
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14518-pan-nikt-kontra-putin-seans-i-spotkanie-z-pawem-ta/
 cinemaScrapes:
-  KINOkawiarnia Stacja Falenica / Pan Nikt kontra Putin / —
   Kino IKM / Pan Nikt kontra Putin / —
   Kino Pałacowe / Pan Nikt kontra Putin / 2025
   Kino Piast / Pan Nikt kontra Putin|Dkf / —
@@ -7463,7 +7467,7 @@ showings:
 
 === Podziemny krąg ===
 displayTitle:      Podziemny krąg
-cinemaTitles:      Classy Monday - Podziemny krąg | Klasyka na TOPie: Podziemny krąg | PODZIEMNY KRĄG | Podziemny Krąg (Fight Club) | Podziemny Krąg „Fight Club” | Podziemny krąg | Podziemny krąg (pokaz w DKF Megaron) | Podziemny krąg (re-release) | Podziemny krąg - zrekonstruowana wersja 4K | Podziemny krąg | DKF | Tani wtorek: PODZIEMNY KRĄG
+cinemaTitles:      Classy Monday - Podziemny krąg | Klasyka na TOPie: Podziemny krąg | PODZIEMNY KRĄG | Podziemny Krąg (Fight Club) | Podziemny krąg | Podziemny krąg (pokaz w DKF Megaron) | Podziemny krąg (re-release) | Podziemny krąg - zrekonstruowana wersja 4K | Podziemny krąg | DKF | Tani wtorek: PODZIEMNY KRĄG
 runtimeMinutes:    139
 releaseYear:       1999
 countries:         Niemcy, USA
@@ -7567,7 +7571,6 @@ cinemaScrapes:
   Helios Łódź / Podziemny krąg / —
   Helios Żory / Podziemny krąg / —
   Janosik / Klasyka na TOPie: Podziemny krąg / —
-  KINOkawiarnia Stacja Falenica / Podziemny Krąg „Fight Club” / —
   Kino 60 Krzeseł / Podziemny krąg (pokaz w DKF Megaron) / —
   Kino Apollo Wałbrzych / Podziemny krąg | DKF / —
   Kino Charlie / Podziemny krąg / —
@@ -7681,7 +7684,7 @@ showings:
 
 === Poranek dla dzieci: Kicia Kocia w podróży ===
 displayTitle:      Poranek dla dzieci: Kicia Kocia w podróży
-cinemaTitles:      Kicia Kocia w podróży | Poranek dla dzieci: Kicia Kocia w podróży
+cinemaTitles:      Kicia Kocia w podróży | Kicia kocia w podróży | Poranek dla dzieci: Kicia Kocia w podróży
 runtimeMinutes:    45
 releaseYear:       2026
 countries:         Polska
@@ -7709,6 +7712,7 @@ cinemaScrapes:
   Helios Koszalin / Kicia Kocia w podróży / 2025
   Helios Krosno / Kicia Kocia w podróży / 2025
   Helios Radom / Kicia Kocia w podróży / 2025
+  KINOkawiarnia Stacja Falenica / Kicia kocia w podróży / —
   Kino Pałacowe / Poranek dla dzieci: Kicia Kocia w podróży / 2026
   Służewski Dom Kultury / Kicia Kocia w podróży / —
 showings:
@@ -7904,7 +7908,6 @@ cinemaScrapes:
   Helios Koszalin / Pucio / —
   Helios Przemyśl / Pucio / 2026
   Helios Starachowice / Pucio / 2026
-  KINOkawiarnia Stacja Falenica / Pucio / —
   Kino Bułgarska 19 / PUCIO / 2026
   Kino Diana / Pucio / —
   Kino Kika / PUCIO / —
@@ -8398,7 +8401,6 @@ cinemaScrapes:
   Helios Żory / Tom i Jerry: Przygoda w muzeum / 2026
   Jaworzyna / Tom i Jerry: Przygoda w muzeum / —
   Jutrzenka / Tom i jerry: przygoda w muzeum / —
-  KINOkawiarnia Stacja Falenica / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
   Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
@@ -8488,7 +8490,6 @@ cinemaScrapes:
   Helios Koszalin / Pucio / —
   Helios Przemyśl / Pucio / 2026
   Helios Starachowice / Pucio / 2026
-  KINOkawiarnia Stacja Falenica / Pucio / —
   Kino Bułgarska 19 / PUCIO / 2026
   Kino Diana / Pucio / —
   Kino Kika / PUCIO / —
@@ -9408,6 +9409,7 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/slodkie-zycie/
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14401-sodkie-zycie-federico-fellini-ciao-a-tutti/
 cinemaScrapes:
+  KINOkawiarnia Stacja Falenica / Słodkie życie (1960) / —
   Kino Muza / Słodkie życie / 1960
   Kino Nowe Horyzonty / Słodkie życie / 1960
   Kino Pałacowe / Słodkie życie / 1960
@@ -9446,6 +9448,7 @@ filmwebUrl:        https://www.filmweb.pl/film/S%C5%82odkie+%C5%BCycie-1960-3094
 cinemaFilmUrls:
   Kino Rialto = https://www.kinorialto.poznan.pl/wydarzenie/?id=155999
 cinemaScrapes:
+  KINOkawiarnia Stacja Falenica / Słodkie życie (1960) / —
   Kino Muza / Słodkie życie / 1960
   Kino Nowe Horyzonty / Słodkie życie / 1960
   Kino Pałacowe / Słodkie życie / 1960
@@ -9708,7 +9711,6 @@ cinemaScrapes:
   Helios Żory / Tom i Jerry: Przygoda w muzeum / 2026
   Jaworzyna / Tom i Jerry: Przygoda w muzeum / —
   Jutrzenka / Tom i jerry: przygoda w muzeum / —
-  KINOkawiarnia Stacja Falenica / TOM I JERRY: PRZYGODA W MUZEUM / —
   Kino Atlantic / Tom i Jerry: Przygoda w muzeum / 2025
   Kino Bajka Kluczbork / Tom i Jerry: Przygoda w muzeum / —
   Kino Charlie / Tom i Jerry: Przygoda w muzeum / —
@@ -10139,6 +10141,7 @@ cinemaScrapes:
   Cinema City Wolność / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Wroclavia / UNLIMITED SHOW - Nowa Fala / 2025
   Cinema City Zielona Góra / UNLIMITED SHOW - Nowa Fala / 2025
+  KINOkawiarnia Stacja Falenica / Nowa fala / —
   Kino Muranów / Nowa Fala / 2025
   Kino Muza / Nowa fala / 2025
   Kino Nowe Horyzonty / Nowa Fala / 2025
@@ -10846,7 +10849,6 @@ cinemaScrapes:
   Helios Tczew / Zawodowcy / 2026
   Helios Łódź / Zawodowcy / 2026
   Helios Żory / Zawodowcy / 2026
-  KINOkawiarnia Stacja Falenica / Zawodowcy / —
   Kino Apollo Wałbrzych / Zawodowcy / —
   Kino Atlantic / Zawodowcy / 2026
   Kino Bajka Kluczbork / ZAWODOWCY / —

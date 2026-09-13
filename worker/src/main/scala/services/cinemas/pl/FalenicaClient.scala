@@ -14,13 +14,23 @@ import scala.util.Try
 /**
  * KINOkawiarnia Stacja Falenica (Warszawa). The `/repertuar/` page lists each
  * film (title, runtime + director, poster) linking to `/filmy/<slug>/`, whose
- * "Dostępne terminy" table holds the screenings (absolute DD.MM.YYYY date +
+ * "Dostępne terminy" list holds the screenings (absolute DD.MM.YYYY date +
  * time + a systembiletowy booking link) and the full synopsis.
  *
  * Two-phase fetch: the repertoire listing yields one entry per film with title,
  * runtime, director, poster, and the per-film detail-page URL stored in
  * `filmUrl`. The detail page is fetched per film for showtimes (always) and
  * for synopsis + trailerUrl (via `fetchFilmDetail`).
+ *
+ * The site moved to the `falenica3` WordPress theme in 2026-09: the listing's
+ * `<article class="filmy">` wrapper (a WP custom-post-type class) is gone —
+ * `div.repe-box` is now the outermost per-film element, though the inner
+ * `repe_title`/`repe_czas`/`repe_opis`/`repe_outer` classes carried over
+ * unchanged. The detail page was redesigned more thoroughly: showtimes moved
+ * from `div.terminy_list > div.row` to `div.entry-terms__row` (date/time/CTA
+ * each their own class), synopsis moved from `div.section.tresc` to
+ * `article.entry-description`, and the trailer is no longer a `<video>`/
+ * `<iframe>` embed but a `<button class="entry-trailer" data-youtube-id="…">`.
  */
 class FalenicaClient(http: HttpFetch
 ) extends CinemaScraper with DetailEnricher {
@@ -42,7 +52,7 @@ class FalenicaClient(http: HttpFetch
     // the editorial post but the film keeps live "Dostępne terminy" (Romeria,
     // Znaki Pana Śliwki did, with future showtimes). Don't exclude by slug —
     // the `showtimes.isEmpty` drop below already removes genuinely-dead pages.
-    val films = Jsoup.parse(http.get(ListingUrl)).select("article.filmy").asScala.toSeq.flatMap(parseListItem)
+    val films = Jsoup.parse(http.get(ListingUrl)).select("div.repe-box").asScala.toSeq.flatMap(parseListItem)
       .distinctBy(_.slug)
 
     val pages = ParallelDetailFetch.keyed("falenica-details", films.map(_.slug), 1.minute)(s => s"$BaseUrl/filmy/$s/") { url =>
@@ -81,15 +91,18 @@ class FalenicaClient(http: HttpFetch
     DetailFetchOutcome.transientToNone(http.get(ref)).map { html =>
       val document = Jsoup.parse(html)
       FilmDetail(
-        // `div.section.tresc` wraps the synopsis prose alongside the
-        // "Dostępne terminy" showtime table and the trailer's <video><a> (a
-        // YouTube URL); drop both so only the prose lands in the synopsis.
-        synopsis   = Option(document.selectFirst("div.section.tresc"))
-                       .map(ScraperParse.cleanSynopsis(_, "div.terminy_row", "div.trailer")).filter(_.length > 20),
-        // The detail page's WordPress `[video]` block holds the YouTube
-        // trailer as `<source type="video/youtube" src="…watch?v=…">`.
-        trailerUrl = document.select("video source[src], iframe[src]").asScala
-                       .map(_.attr("src")).filter(_.nonEmpty).flatMap(ScraperParse.canonicalTrailer).headOption
+        // `article.entry-description` holds only the synopsis prose (the
+        // showtimes list and trailer button live in sibling elements under the
+        // redesigned theme, not nested inside it) plus a leading "O filmie"
+        // heading, dropped so it doesn't leak into the first line.
+        synopsis   = Option(document.selectFirst("article.entry-description"))
+                       .map(ScraperParse.cleanSynopsis(_, "h2")).filter(_.length > 20),
+        // The trailer is a `<button class="entry-trailer" data-youtube-id="…">`
+        // (no more `<video>`/`<iframe>` embed); route the id through the same
+        // canonicaliser every scraper uses by rebuilding a watch URL from it.
+        trailerUrl = Option(document.selectFirst("button.entry-trailer[data-youtube-id]"))
+                       .map(_.attr("data-youtube-id")).filter(_.nonEmpty)
+                       .flatMap(id => ScraperParse.canonicalTrailer(s"https://www.youtube.com/watch?v=$id"))
       )
     }
 
@@ -112,11 +125,10 @@ class FalenicaClient(http: HttpFetch
     }
 
   private def parseShowtimes(document: org.jsoup.nodes.Document): Seq[Showtime] =
-    document.select("div.terminy_list > div.row").asScala.toSeq.flatMap { row =>
-      val dets = row.select("div.term_det").asScala.toSeq.map(_.text.trim)
-      val date = dets.flatMap(ScraperParse.parseDate).headOption
-      val time = dets.flatMap(ScraperParse.parseHHmm).headOption
-      val booking = Option(row.selectFirst("a.green_but[href]")).map(_.attr("href")).filter(_.nonEmpty)
+    document.select("div.entry-terms__row").asScala.toSeq.flatMap { row =>
+      val date = Option(row.selectFirst("div.entry-terms__date")).map(_.text.trim).flatMap(ScraperParse.parseDate)
+      val time = Option(row.selectFirst("div.entry-terms__time")).map(_.text.trim).flatMap(ScraperParse.parseHHmm)
+      val booking = Option(row.selectFirst("div.entry-terms__cta a[href]")).map(_.attr("href")).filter(_.nonEmpty)
       for { d <- date; t <- time } yield Showtime(d.atTime(t), booking, None, Nil)
     }
 }
