@@ -783,21 +783,34 @@ groups:
       # to zero (a floor of 30min still leaves a thin margin), so if this alert
       # names a small single/few-venue city, check the venue's OWN site before
       # chasing a read-model cause — it may simply be between screenings.
-      # AUTOMATED cause-1-vs-cause-2 discriminant, added 2026-09-10. This alert's
-      # own description used to ask a human to manually check
-      # `kinowo.net/{city}/` and the venue's own site before deciding which of the
-      # two known causes applies. `kinowo_worker_movies_served{city,scope="all"}`
-      # is the SAME city's count on the CORPUS side (the ReadModelServingDiffers-
-      # FromCorpus family's other gauge) — reading it for this exact city says
-      # which cause applies without a follow-up query: if it is ALSO 0, the
-      # corpus itself has nothing upcoming for this city, so cause (2) — a thin
-      # venue's listing ran dry — is confirmed and this is not a bug to chase. If
-      # it is NONZERO, the corpus thinks the city has films but the site is not
-      # serving them: that is cause (1)'s shape (or the specific defect
-      # `docs/read-model-convergence.md` names — an incremental prune that failed
-      # to retire, or simply hasn't caught up yet), worth chasing immediately.
-      # Query B is informational only — deliberately NOT part of `condition: C`,
-      # so it cannot change when this fires, only what the page says once it has.
+      # AUTOMATED cause-1-vs-cause-2 discriminant, added 2026-09-10, made LOAD-BEARING
+      # 2026-09-13. `kinowo_worker_movies_served{city,scope="all"}` is the SAME city's
+      # count on the CORPUS side (the ReadModelServingDiffersFromCorpus family's other
+      # gauge): if it is ALSO 0, the corpus itself has nothing upcoming for this city,
+      # so cause (2) — a thin venue's listing ran dry, or `services.movies.ScrapeHealth`'s
+      # depth guard correctly withholding a degraded batch — is confirmed and this is
+      # not a bug to chase. If it is NONZERO, the corpus thinks the city has films but
+      # the site is not serving them: that is cause (1)'s shape (or the specific defect
+      # `docs/read-model-convergence.md` names — an incremental prune that failed to
+      # retire, or simply hasn't caught up yet), worth chasing immediately.
+      #
+      # UNTIL 2026-09-13 QUERY B WAS INFORMATIONAL ONLY, deliberately kept out of
+      # `condition: C` so it could change what the page said but never whether it
+      # fired — so every cause-2 event paged critical too. A three-incident sample
+      # (2026-09-11: es/zamora, us/pueblo, us/havre — worker logs checked directly)
+      # was cause (2) in all three: two thin venues between scrapes and one venue
+      # genuinely dark ~28h, none of them bugs. Query A now requires B's same-city
+      # reading to be NONZERO before `condition: C` can trip, folding the discriminant
+      # into the firing decision instead of only the page text.
+      #
+      # SAFE AGAINST A CORPUS OUTAGE, not merely quieter: if the worker's own gauge
+      # goes missing fleet-wide (crashed, unwired from its registry),
+      # `ReadModelServedGaugesAbsent` in read-model-projection.rules already pages
+      # that separately — it is the better alert to read when the whole metric, not
+      # one city, has gone dark. `and on (city)` here only drops a city Prometheus has
+      # no CORPUS sample for at all, inside an otherwise-healthy gauge, which is
+      # exactly the cause-2 shape and never the whole-metric outage the sibling rule
+      # already owns.
       - uid: kinowo-movies-served-city-empty
         title: City serving zero films (was active)
         condition: C
@@ -808,7 +821,7 @@ groups:
           severity: critical
         annotations:
           summary: '{{ $labels.city }} is serving ZERO films (it was active in the last 24h)'
-          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite peaking at >=4 films in the last 24h — the city went dark. The corpus side for this same city (kinowo_worker_movies_served) currently reads {{ $values.B.Value }}: if that is ALSO 0, this is cause (2) — a small/thin venue whose own listing ran out before its next scrape (durant/moab, 2026-09-08) — check https://kinowo.net/{{ $labels.city }}/ and the venue''s own site, but it is very likely not a bug. If it is NONZERO, this is cause (1) — the corpus has films for this city that the site is not serving, a read-model defect (see reference_web_movies_required_ratings_outage and docs/read-model-convergence.md) — check web logs for "findAllMovies failed" / "Missing field" first.'
+          description: 'kinowo_web_movies_served{city="{{ $labels.city }}",scope="all"} has been 0 for 5m despite peaking at >=4 films in the last 24h, WHILE the corpus side for this same city (kinowo_worker_movies_served) reads {{ $values.B.Value }} — nonzero, which is the only case this alert now fires for (see the comment above this rule). The corpus has films for this city that the site is not serving: this is cause (1), a read-model defect (see reference_web_movies_required_ratings_outage and docs/read-model-convergence.md) — check web logs for "findAllMovies failed" / "Missing field" first, then kinowo_worker_readmodel_films_pruned_total{city="{{ $labels.city }}"} by reason for a prune that should not have happened.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -816,7 +829,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4)'
+              expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
               instant: true
               range: false
               intervalMs: 1000

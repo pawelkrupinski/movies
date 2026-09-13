@@ -1,0 +1,49 @@
+# THE CAUSE-1-VS-CAUSE-2 GATE ON `kinowo-movies-served-city-empty`, EVALUATED RATHER THAN READ.
+#
+# Like grafana-showtime-volume.yml, this rule lives in Grafana's provisioning
+# (grafana/alerting/alert-rules.yaml), not in a file Prometheus loads itself, so promtool cannot
+# load it as a rule — but its query A is ordinary PromQL against the same datasource, and
+# `promql_expr_test` will evaluate it. GrafanaCityEmptyAlertSpec fails if this file's expression
+# ever drifts from alert-rules.yaml's, so this suite cannot quietly go on testing a query
+# production no longer runs.
+#
+# WHY THIS SUITE EXISTS. Before 2026-09-13, query A fired on `kinowo_web_movies_served{city}==0`
+# alone, and the corpus-side reading (query B, `kinowo_worker_movies_served`) was informational
+# only — it changed what the page SAID, never whether it fired. A three-incident sample on
+# 2026-09-11 (es/zamora, us/pueblo, us/havre — all confirmed by worker log as thin
+# venues/legitimate depth-guard holds, not bugs) paged `severity: critical` every time anyway.
+# Query A now requires the SAME CITY's corpus reading to be nonzero before it produces a sample,
+# so a thin venue whose corpus has also run dry (cause 2) is silent, and only a site short of a
+# nonzero corpus (cause 1, the read-model defect this alert exists to catch) still pages.
+rule_files: []
+
+evaluation_interval: 1m
+
+tests:
+  # ── BOTH CAUSES, SIDE BY SIDE ────────────────────────────────────────────────────────────────
+  # Two cities, one active in the last 24h and now serving zero on the web side. Only "hadbug"
+  # has a corpus (worker) reading that stayed nonzero through the same window — a card the site
+  # is not serving that the corpus says should be there, cause (1). "wentdark"'s corpus reading
+  # drops to 0 in lockstep with the web reading — the corpus itself has nothing, cause (2), the
+  # exact shape es/zamora, us/pueblo and us/havre turned out to be on 2026-09-11.
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_web_movies_served{scope="all",city="hadbug",country="pl"}'
+        values: '4x146 0x10'
+      - series: 'kinowo_worker_movies_served{scope="all",city="hadbug",country="pl"}'
+        values: '6x156'
+      - series: 'kinowo_web_movies_served{scope="all",city="wentdark",country="us"}'
+        values: '4x146 0x10'
+      - series: 'kinowo_worker_movies_served{scope="all",city="wentdark",country="us"}'
+        values: '4x146 0x10'
+    promql_expr_test:
+      # THE EXPRESSION, PINNED VERBATIM FROM alert-rules.yaml (GrafanaCityEmptyAlertSpec checks
+      # this file contains it character-for-character).
+      - expr: '(kinowo_web_movies_served{scope="all"} == 0) and (max_over_time(kinowo_web_movies_served{scope="all"}[24h] offset 10m) >= 4) and on (city) (max by (city) (kinowo_worker_movies_served{scope="all"}) > 0)'
+        eval_time: 1550m
+        exp_samples:
+          # ONLY "hadbug" — a listed sample and nothing else, so if "wentdark" ever reappeared
+          # (the pre-2026-09-13 behaviour, or a future regression that drops the `and on (city)`
+          # clause) this test fails on the extra, unlisted series.
+          - labels: 'kinowo_web_movies_served{scope="all",city="hadbug",country="pl"}'
+            value: 0

@@ -214,8 +214,8 @@
         },
         {
           "refId": "B",
-          "expr": "rate(process_cpu_seconds_total{job=\"kinowo-web\"}[$__rate_interval]) * 100",
-          "legendFormat": "web (k3s)",
+          "expr": "rate(process_cpu_seconds_total{job=\"kinowo-web\",country=~\"$country\"}[$__rate_interval]) * 100",
+          "legendFormat": "web {{country}} (k3s)",
           "datasource": {
             "type": "prometheus",
             "uid": "local-prometheus"
@@ -3909,6 +3909,79 @@
         "x": 0,
         "y": 308
       }
+    },
+    {
+      "id": 9021,
+      "type": "row",
+      "title": "Diagnosing shared-node contention — k3s-worker-1 host CPU vs the JVMs on it",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 309
+      }
+    },
+    {
+      "id": 9022,
+      "title": "k3s-worker-1 — cores busy: host total vs sum of every JVM's own process_cpu (worker + web, all countries)",
+      "description": "Added 2026-09-13 after a pl web-tier p95 latency page (00:09-00:24 on 2026-09-11) that could not be explained: JVM heap was fine and traffic was negligible, and the only candidate left was contention on k3s-worker-1, which every country's worker AND web pod share (one host, NodePorts 30900-30914, see scrape-kinowo-apps.yaml) — but no panel could confirm or rule it out. 'host total' is this dashboard's own node_cpu_seconds_total, converted from a busy FRACTION to actual cores busy (busy fraction * core count) so it lines up with the JVM sum. 'JVM sum' adds every kinowo-worker and kinowo-web process_cpu_seconds_total rate across all five countries and both tiers — each is already in core-units (rate()==1 is one full core busy). The gap between the two lines is CPU on the host no JVM accounts for: containerd, the k3s agent itself, kube-proxy, or another pod entirely. A latency blip that lines up with the GAP widening points outside the application; one that lines up with the JVM SUM itself rising points at one of the five countries' own worker or web tier — see the per-country breakout in the CPU panel above.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 310
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(1 - avg by (host) (rate(node_cpu_seconds_total{host=\"k3s-worker-1\",mode=\"idle\"}[5m]))) * count by (host) (node_cpu_seconds_total{host=\"k3s-worker-1\",mode=\"idle\"})",
+          "legendFormat": "k3s-worker-1 host total",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(process_cpu_seconds_total{job=~\"kinowo-worker|kinowo-web\"}[5m]))",
+          "legendFormat": "sum of every JVM (worker+web, all countries)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ],
   "description": "One screen for the whole application, all of it on k3s: five scraping workers (pl, uk, de, us, es) and five web deployments (pl, uk, de, us, es), each its own Deployment on k3s-worker-1. Every panel reads the fleet's own Prometheus (local-prometheus) scraping each app's /metrics directly, so nothing here needs a Fly credential. Use the Country variable to focus one worker or set it to All to compare them all. Read it top-down the way an incident reads: is it alive, is it serving, is the pipeline moving, is the runtime healthy, and -- in the last two rows -- is the one machine both tiers depend on (mongo-1, the database) healthy, and is the machine that drew this page (monitoring-1) still collecting. Those two rows do NOT narrow with the Country variable: there is one mongod and one Prometheus behind every country on this page. The text panel at the top lists what the migration off Fly's managed Prometheus made permanently invisible. · NOTE (2026-08-29): this fleet was built today. The oldest metric on it is about 6h old and the app metrics are younger still — the DE and UK workers are under an hour, and the web tier's HTTP metrics about an hour. A window longer than a series has existed draws a gap, which is indistinguishable from a broken panel. The default range is set to match what the data can actually show; raise it as history accumulates.",
