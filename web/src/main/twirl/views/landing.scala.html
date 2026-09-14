@@ -236,6 +236,14 @@
   @_geoDistance()
   <script>
     const KINOWO_CATALOG = @Html(models.Catalog.json);
+    // Country names in the VISITOR's chosen UI language — `Catalog.json`'s own
+    // `name` field is each country's fixed native/English label (baked into the
+    // static, cacheable `/api/catalog` JSON), so it can't carry per-request
+    // text. Same `country.<code>` keys the static `#picker-static` fallback
+    // already reads (see below) — mirrored here for the dynamic pills.
+    const COUNTRY_NAMES = @Html(play.api.libs.json.Json.toJson(
+      models.Country.switchable.map(c => c.code -> messages("country." + c.code)).toMap
+    ).toString);
     // The country this PROCESS actually serves — decides whether a picked
     // city is a local navigation or a hand-off to another deployment. Unlike
     // `DEFAULT_PICKER_COUNTRY` below, this never changes with which pill is
@@ -303,7 +311,7 @@
         const pill = document.createElement('button');
         pill.type = 'button';
         pill.className = 'picker-country-pill' + (country.code === pickerCountry ? ' active' : '');
-        pill.textContent = country.name;
+        pill.textContent = COUNTRY_NAMES[country.code] || country.name;
         pill.onclick = function () { pickPickerCountry(country.code); };
         wrap.appendChild(pill);
       });

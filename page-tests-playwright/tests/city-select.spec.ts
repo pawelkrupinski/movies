@@ -398,8 +398,12 @@ test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agno
     await page.locator('#format-filter-btn').click();
     await page.locator('#city-picker-row').click();
     // Germany is one level deep (Bundesland over its regions, no third
-    // level), so one region tap reaches cities directly.
-    await pickerCountryPill(page, 'Deutschland').click();
+    // level), so one region tap reaches cities directly. The pill reads
+    // "Niemcy" — the fixture always renders in Polish (`TestMessages`'s
+    // deployment `Messages`) — not "Deutschland", Germany's own native
+    // name: the pill is now localized to the VISITOR's language via
+    // `COUNTRY_NAMES` (`landing.scala.html`), not `Country.displayName`.
+    await pickerCountryPill(page, 'Niemcy').click();
     await pickerRow(page, 'Bayern').click();
     // `crossCountryUrl` routes every genuine origin crossing through
     // `/auth/sso/start` FIRST (unconditionally — see `landing.scala.html`'s
