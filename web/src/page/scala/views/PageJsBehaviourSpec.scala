@@ -520,9 +520,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       "Array.prototype.filter.call(document.querySelectorAll('#picker-list .picker-item-label')," +
       s"""function(el){return el.textContent.trim()==="$label";})[0].click()""")
 
-  /** Click the country pill whose label is `label` — each deployed country's
-   *  OWN-language name, straight off `KINOWO_CATALOG` (not translated into
-   *  the page's language; same as the retired popup). */
+  /** Click the country pill whose label is `label` — the country's name in
+   *  the VISITOR's chosen UI language (`COUNTRY_NAMES`, `landing.scala.html`),
+   *  not `KINOWO_CATALOG`'s own fixed native/English label. */
   private def clickCountryPill(page: CdpPage, label: String): Unit =
     page.eval(
       "Array.prototype.filter.call(document.querySelectorAll('#picker-countries .picker-country-pill')," +
@@ -753,8 +753,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   "the picker's country row" should "switch to another deployed country's own root level" in {
     onLanding { page =>
       // The fixture serves every deployed country (`Country.switchable`),
-      // same as production — `/landing` just opens on Poland's.
-      clickCountryPill(page, "Deutschland")
+      // same as production — `/landing` just opens on Poland's. Pills are
+      // localized to the visitor's UI language (Polish here, the fixture's
+      // default), so Germany's pill reads "Niemcy", not "Deutschland".
+      clickCountryPill(page, "Niemcy")
       pickerRowLabels(page) should include ("Bayern")
       pickerRowLabels(page) should not include "Wrocław"
       page.evalBool("getComputedStyle(document.getElementById('picker-back-row')).display === 'none'") shouldBe true
