@@ -17259,6 +17259,22 @@
     "weightedRating" : 8.233333333333334,
     "synopsisByCity" : { }
   }, {
+    "_id" : "fc74b89fa58aca75",
+    "title" : "SMOK (Spotkania Młodych Odkrywców Kina). Trzy kolory: Czerwony",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/SMOK+%28Spotkania+M%C5%82odych+Odkrywc%C3%B3w+Kina%29.+Trzy+kolory%3A+Czerwony/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=SMOK+%28Spotkania+M%C5%82odych+Odkrywc%C3%B3w+Kina%29.+Trzy+kolory%3A+Czerwony",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=SMOK+%28Spotkania+M%C5%82odych+Odkrywc%C3%B3w+Kina%29.+Trzy+kolory%3A+Czerwony"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "fc75ee80b5bb265c",
     "title" : "Kontrakt rysownika",
     "originalTitle" : "The Draughtsman's Contract",
@@ -21210,33 +21226,6 @@
     "synopsisByCity" : { }
   }, {
     "_id" : "ff71ca09832b0599",
-    "title" : "SMOK (Spotkania Młodych Odkrywców Kina). Trzy kolory: Czerwony",
-    "originalTitle" : "Trois couleurs : Rouge",
-    "posterUrl" : "https://image.tmdb.org/t/p/w500/qMN6cGv5kGGuM9Ethpf5FUNsdov.jpg",
-    "fallbackPosterUrls" : [ "https://m.media-amazon.com/images/M/MV5BMTQ0YTQyYzItNGEzMi00NmI4LWJkOTMtOWMyMjAwMWEzYTZhXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 99,
-    "releaseYear" : 1994,
-    "genres" : [ "Dramat", "Tajemnica", "Romans" ],
-    "countries" : [ "Francja", "Polska", "Szwajcaria" ],
-    "directors" : [ "Krzysztof Kieślowski" ],
-    "cast" : [ "Irène Jacob", "Jean-Louis Trintignant", "Frédérique Feder", "Jean-Pierre Lorit", "Samuel Le Bihan" ],
-    "synopsis" : "Valentine, mieszkająca w Genewie dwudziestoletnia modelka, potrąca samochodem psa. Odnajduje jego właściciela, którym jest były sędzia. Ten jednak nie chce przyjąć zwierzęcia. Valentine zabiera psa, który pewnego dnia ucieka. Szukając go, przybywa ponownie do sędziego. Okazuje się, że podsłuchuje on rozmowy sąsiadów. Valentine jest początkowo oburzona, jednakże z czasem pomiędzy młodą kobietą a zgorzkniałym starym mężczyzną rodzi się przyjaźń.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 8.1,
-      "imdbUrl" : "https://www.imdb.com/title/tt0111495/",
-      "metascore" : 100,
-      "metacriticUrl" : "https://www.metacritic.com/movie/three-colors-red",
-      "rottenTomatoes" : 100,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/three_colors_red",
-      "filmweb" : 7.8,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Trzy+kolory%3A+Czerwony-1994-1162"
-    },
-    "weightedRating" : 8.975,
-    "synopsisByCity" : { },
-    "ageRating" : "18"
-  }, {
-    "_id" : "ff71ca09832b0599~trzykoloryczerwony",
     "title" : "Trzy kolory: Czerwony",
     "originalTitle" : "Trois couleurs : Rouge",
     "posterUrl" : "https://image.tmdb.org/t/p/w500/qMN6cGv5kGGuM9Ethpf5FUNsdov.jpg",
@@ -176956,6 +176945,21 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "fc74b89fa58aca75|bielsko-biala|Janosik",
+    "filmId" : "fc74b89fa58aca75",
+    "city" : "bielsko-biala",
+    "cinema" : "Janosik",
+    "filmUrl" : "https://www.bilety24.pl/kino/1500-smok-spotkania-mlodych-odkrywcow-kina-trzy-kolory-czerwony-156923?id=933330",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-18T14:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kino/1500-smok-spotkania-mlodych-odkrywcow-kina-trzy-kolory-czerwony-156923?id=933330",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-18T14:30:00",
+      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1500-smok-spotkania-mlodych-odkrywcow-kina-trzy-kolory-czerwony-156923?id=933330",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "fc75ee80b5bb265c|krakow|Kino Pod Baranami",
     "filmId" : "fc75ee80b5bb265c",
     "city" : "krakow",
@@ -200091,23 +200095,8 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "ff71ca09832b0599|bielsko-biala|Janosik",
+    "_id" : "ff71ca09832b0599|krakow|Kino Sfinks",
     "filmId" : "ff71ca09832b0599",
-    "city" : "bielsko-biala",
-    "cinema" : "Janosik",
-    "filmUrl" : "https://www.bilety24.pl/kino/1500-smok-spotkania-mlodych-odkrywcow-kina-trzy-kolory-czerwony-156923?id=933330",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-18T14:30:00",
-      "bookingUrl" : "https://www.bilety24.pl/kino/1500-smok-spotkania-mlodych-odkrywcow-kina-trzy-kolory-czerwony-156923?id=933330",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-18T14:30:00",
-      "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1500-smok-spotkania-mlodych-odkrywcow-kina-trzy-kolory-czerwony-156923?id=933330",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "ff71ca09832b0599~trzykoloryczerwony|krakow|Kino Sfinks",
-    "filmId" : "ff71ca09832b0599~trzykoloryczerwony",
     "city" : "krakow",
     "cinema" : "Kino Sfinks",
     "filmUrl" : "https://kinosfinks.okn.edu.pl/wydarzenie-3135-trzy_kolory_czerwony-szczegoly-21359.html",
