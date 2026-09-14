@@ -375,6 +375,29 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     AuthController.switchTarget(None)                                  shouldBe empty
   }
 
+  "AuthController.validatedCitySlug" should "accept a slug that belongs to the target country" in {
+    AuthController.validatedCitySlug(UkBase, Some("london")).value shouldBe "london"
+  }
+
+  it should "refuse a slug that belongs to a DIFFERENT country than the target" in {
+    // "warszawa" is real, just not a UK city — trusting it verbatim would land
+    // a UK-bound handoff on a URL that 404s (or worse, on a same-named slug
+    // that happens to exist in the target country but means something else).
+    AuthController.validatedCitySlug(UkBase, Some("warszawa")) shouldBe empty
+  }
+
+  it should "refuse a slug that names no city at all" in {
+    AuthController.validatedCitySlug(UkBase, Some("not-a-real-city")) shouldBe empty
+  }
+
+  it should "refuse when nothing was passed" in {
+    AuthController.validatedCitySlug(UkBase, None) shouldBe empty
+  }
+
+  it should "refuse when the target itself isn't a deployed country" in {
+    AuthController.validatedCitySlug("https://evil.example.com", Some("london")) shouldBe empty
+  }
+
   "AuthController.ssoStart" should "hand a signed-in visitor over with a one-shot code" in {
     val (ctl, repository, codes) = fixture()
     val userId = signedIn(repository, "alice@example.com")
@@ -418,6 +441,35 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe BAD_REQUEST
   }
 
+  // THE BUG THIS PINS. A picked city used to be dropped on this hop — a
+  // signed-out visitor who picked "London" from kinowo.net landed on
+  // `$UkBase/` (the UK's own picker) rather than on London itself.
+  it should "send a signed-out visitor with a picked city straight to that city" in {
+    val (ctl, _, _) = fixture()
+
+    val result = ctl.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=london"))
+
+    redirectLocation(result).value shouldBe s"$UkBase/london/"
+  }
+
+  it should "fall back to the bare target when the picked city doesn't belong to it" in {
+    val (ctl, _, _) = fixture()
+
+    val result = ctl.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=warszawa"))
+
+    redirectLocation(result).value shouldBe s"$UkBase/"
+  }
+
+  it should "carry a signed-in visitor's picked city onward to the finish leg" in {
+    val (ctl, repository, _) = fixture()
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=london").withSession("userId" -> userId))
+
+    redirectLocation(result).value should include(s"&city=london")
+  }
+
   "AuthController.ssoFinish" should "sign the visitor in and land them on this country's home" in {
     val (ctl, repository, codes) = fixture()
     val userId = signedIn(repository, "alice@example.com")
@@ -443,6 +495,29 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     session(badCode).get("userId") shouldBe empty
   }
 
+  // THE BUG THIS PINS, on the receiving leg: a validated `city=` lands the
+  // visitor on that exact city rather than on this country's bare home page.
+  it should "land a validated city straight on that city instead of the home page" in {
+    val (ctl, repository, codes) = fixtureFor(models.Country.UnitedKingdom)
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoFinish()(
+      FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(userId)}&city=london"))
+
+    redirectLocation(result).value shouldBe "/uk/london/"
+    session(result).get("userId").value shouldBe userId
+  }
+
+  it should "fall back to the home page when the city doesn't belong to THIS deployment's country" in {
+    val (ctl, repository, codes) = fixtureFor(models.Country.UnitedKingdom)
+    val userId = signedIn(repository, "alice@example.com")
+
+    val result = ctl.ssoFinish()(
+      FakeRequest("GET", s"/auth/sso/finish?code=${codes.mint(userId)}&city=warszawa"))
+
+    redirectLocation(result).value shouldBe routes.LandingController.index().url
+  }
+
   // THE WHOLE POINT, end to end: two controllers standing in for the two pods
   // either side of the domain boundary. They share a user repository and a code
   // store — which is what `MONGODB_USERS_DB` buys — and nothing else, no cookie
@@ -463,6 +538,33 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     val code     = redirectLocation(handoff).value.stripPrefix(s"$UkBase/auth/sso/finish?code=")
     val arrival  = uk.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code"))
 
+    session(arrival).get("userId").value shouldBe userId
+  }
+
+  // THE BUG THIS PINS, end to end: a signed-in visitor who picked a specific
+  // city (not just a country) across the domain boundary arrives on that
+  // city, not on the UK pod's own picker.
+  it should "arrive on the exact city that was picked, not that country's picker" in {
+    val repository = new InMemoryUserRepository
+    val store      = new InMemoryAuthExchangeCodeStore
+    def pod(country: models.Country): AuthController = new AuthController(
+      Helpers.stubControllerComponents(), Map.empty, repository,
+      new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
+
+    val poland = pod(models.Country.Poland)
+    val uk     = pod(models.Country.UnitedKingdom)
+    val userId = signedIn(repository, "alice@example.com")
+
+    val handoff = poland.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=london").withSession("userId" -> userId))
+    // Pulled out by name rather than assumed to come first — `ssoStart`
+    // appends `&city=` after `code=`, but nothing about query order is a
+    // contract worth pinning here.
+    val finishUrl = redirectLocation(handoff).value.stripPrefix(s"$UkBase/auth/sso/finish?")
+    val params    = finishUrl.split("&").map(_.split("=", 2)).collect { case Array(k, v) => k -> v }.toMap
+    val arrival   = uk.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=${params("code")}&city=${params("city")}"))
+
+    redirectLocation(arrival).value shouldBe "/uk/london/"
     session(arrival).get("userId").value shouldBe userId
   }
 

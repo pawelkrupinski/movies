@@ -22,11 +22,13 @@
    (`models.Catalog.json` — the same JSON `/api/catalog` hands the apps).
    Picking a city in `deployment`'s own country navigates straight there (and
    on the per-country door, remembers it via the `city` cookie); picking one
-   in another country hands off to THAT country's own version of this page
-   (`?pick=city`, or `/auth/sso/start` first when it would otherwise drop a
-   signed-in session crossing an origin — see `crossCountryUrl`) rather than
-   carrying the drilled-to city across, matching the picker's existing,
-   deliberate country-switch behaviour.
+   in another country navigates straight to THAT city too — same-origin
+   (the Showtimes family sharing showtimes.cc) with a plain link, a genuinely
+   different origin (kinowo.net) via `/auth/sso/start` first, which would
+   otherwise drop a signed-in session crossing the origin and carries the
+   picked city's slug alongside it, re-validated against the target
+   country's own cities before being trusted (see `crossCountryUrl` /
+   `AuthController.validatedCitySlug`).
 
    STATIC FALLBACK: everything above is JS. `#picker-static` holds real,
    crawlable markup with no JS of its own — `deployment`'s own city tree
@@ -550,17 +552,20 @@
     // the picked city keeps a signed-in visitor signed in AND lands them on
     // the city itself. Crossing to a genuinely different origin (kinowo.net)
     // would otherwise drop that session — `/auth/sso/start` hands it over
-    // first, landing on that country's own city picker rather than the exact
-    // city: the handoff's `to` is matched verbatim against the deployed base
-    // URLs (open-redirect safety), so it cannot carry a city path through.
-    // Signed OUT is not an error there: it is just the link this would have
-    // followed anyway (see `AuthController.ssoStart`), so it is always safe
-    // to route through it rather than needing to know client-side whether
-    // anyone is signed in.
+    // first, with the picked city's slug riding ALONGSIDE `to` (never inside
+    // it: `to` is matched verbatim against the deployed base URLs for
+    // open-redirect safety, so a query string on it is not a deployed
+    // country). `AuthController.validatedCitySlug` re-checks that slug
+    // against the TARGET country's own cities before trusting it, then the
+    // handoff lands on the exact city rather than dropping the visitor at
+    // that country's picker. Signed OUT is not an error there: it is just
+    // the link this would have followed anyway (see `AuthController.ssoStart`),
+    // so it is always safe to route through it rather than needing to know
+    // client-side whether anyone is signed in.
     function crossCountryUrl(baseUrl, slug) {
       if (sameOriginAs(baseUrl)) return baseUrl + '/' + slug + '/';
       return window.location.origin + DEPLOYMENT_MOUNT_PATH +
-        'auth/sso/start?to=' + encodeURIComponent(baseUrl) + '&pick=city';
+        'auth/sso/start?to=' + encodeURIComponent(baseUrl) + '&city=' + encodeURIComponent(slug);
     }
 
     // A city was picked — directly, or as the "use my location" hit. On a
@@ -568,8 +573,8 @@
     // other pick — a different country's city, or ANY city picked from the
     // apex (even one that happens to share `DEPLOYMENT_COUNTRY_CODE`, since
     // the apex isn't itself anybody's city site) — goes through
-    // `crossCountryUrl`, which itself lands directly on the picked city
-    // whenever that country shares this origin.
+    // `crossCountryUrl`, which lands directly on the picked city whether or
+    // not that country shares this origin.
     function pickPickerCity(city) {
       if (!IS_APEX && city.country === DEPLOYMENT_COUNTRY_CODE) { rememberAndGo(city.slug); return; }
       const country = KINOWO_CATALOG.countries.find(function (c) { return c.code === city.country; });

@@ -97,4 +97,14 @@ object LandingController {
 
   def picksCity(request: RequestHeader): Boolean =
     request.getQueryString(PickCityParam).contains(PickCityValue)
+
+  /** Query parameter carrying a SPECIFIC city's slug across the SSO handoff
+   *  (`AuthController.ssoStart`/`ssoFinish`) — distinct from `PickCityParam`,
+   *  which only marks "ask which city" with no city named. A picker that
+   *  already knows which city was picked hands its slug through here so the
+   *  handoff can land on that exact city instead of re-asking; the receiving
+   *  end re-validates it against its own known cities before trusting it (see
+   *  `AuthController.validatedCitySlug`), since a query parameter is
+   *  visitor-controlled. */
+  val CityParam = "city"
 }

@@ -392,7 +392,7 @@ test.describe('the apex front door offers the manual locate button too', { tag: 
       page.locator('#picker-locate-btn').click(),
     ]);
     expect(request.url()).toContain('to=https%3A%2F%2Fkinowo.net');
-    expect(request.url()).toContain('pick=city');
+    expect(request.url()).toContain('city=poznan');
   });
 
   test('a fix nowhere near any supported city says so and stays on the apex', async ({ page, context }) => {
@@ -465,7 +465,7 @@ test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agno
       pickerRow(page, 'München').click(),
     ]);
     expect(request.url()).toContain('to=https%3A%2F%2Fshowtimes.cc%2Fde');
-    expect(request.url()).toContain('pick=city');
+    expect(request.url()).toContain('city=muenchen');
   });
 
   // The picker's own manual locate button — a re-run of the same 100 km

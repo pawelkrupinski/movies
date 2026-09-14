@@ -452,6 +452,13 @@ class AuthController(
         logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
         BadRequest("Unknown country")
       case Some(target) =>
+        // A picker that already knows WHICH city was picked hands its slug
+        // through `city=` instead of the bare "ask again" `pick=city` marker,
+        // re-validated here against the TARGET country's own cities — never
+        // trusted verbatim, since it arrives on a query string a visitor
+        // controls — so the handoff below lands on the exact city rather than
+        // dropping the visitor at that country's picker.
+        val citySlug = AuthController.validatedCitySlug(target, request.getQueryString(LandingController.CityParam))
         SignedInUser(request, userRepository) match {
           // NOTHING TO HAND OVER, and the marker matters. This endpoint is now
           // also reached unprompted, by a signed-out arrival probing whether the
@@ -461,10 +468,13 @@ class AuthController(
           // probe's own cookie guard is the durable half; this is what holds when
           // a browser is refusing cookies, which is also a browser that can never
           // hold a session and must not be put in a loop chasing one.
-          case None       => Redirect(s"$target/$pick")
+          case None       => Redirect(citySlug.map(s => s"$target/$s/").getOrElse(s"$target/$pick"))
           case Some(user) =>
             val code = URLEncoder.encode(exchangeCodes.mint(user.id), UTF_8)
-            val onward = if (pick.isEmpty) "" else s"&${LandingController.PickCityParam}=${LandingController.PickCityValue}"
+            val onward = citySlug match {
+              case Some(s) => s"&${LandingController.CityParam}=${URLEncoder.encode(s, UTF_8)}"
+              case None    => if (pick.isEmpty) "" else s"&${LandingController.PickCityParam}=${LandingController.PickCityValue}"
+            }
             Redirect(s"$target/auth/sso/finish?code=$code$onward")
         }
     }
@@ -485,11 +495,16 @@ class AuthController(
     // named in a URL, which is an open redirect the moment it is trusted.
     // A country switch that came through the handover still owes its landing the
     // marker: the visitor chose this country and should be asked which city,
-    // not bounced to a cookie'd one.
+    // not bounced to a cookie'd one — UNLESS `ssoStart` already knew which city
+    // and handed its slug through `city=`, re-validated here against THIS
+    // deployment's own cities (this process serves exactly `country`), in
+    // which case the visitor lands directly on it instead of being asked again.
     val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
+    val citySlug = request.getQueryString(LandingController.CityParam).filter(country.bySlug.contains)
     val home = Redirect(
-      AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
-        .getOrElse(routes.LandingController.index().url) + pick)
+      citySlug.map(s => s"${country.pathPrefix}/$s/").getOrElse(
+        AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
+          .getOrElse(routes.LandingController.index().url) + pick))
     request.getQueryString("code").flatMap(exchangeCodes.redeem).flatMap(userRepository.findById) match {
       case None =>
         logger.warn("SSO handoff arrived without a redeemable code — landing signed out.")
@@ -606,4 +621,19 @@ object AuthController {
   private[controllers] def switchTarget(to: Option[String]): Option[String] =
     to.map(_.trim.stripSuffix("/")).filter(_.nonEmpty)
       .flatMap(candidate => models.Country.switchable.flatMap(_.webUrl).find(_ == candidate))
+
+  /** A `city=` query value passed to [[AuthController.ssoStart]], trusted only
+   *  once it names a real city of the country `target` (one of
+   *  [[switchTarget]]'s own allowlisted base URLs) belongs to — never taken
+   *  verbatim, since it arrives on a query string a visitor controls. `None`
+   *  for a missing, unknown, or mismatched slug, which callers fall back from
+   *  rather than propagate.
+   *
+   *  Pure, so the validation can be asserted without a request. */
+  private[controllers] def validatedCitySlug(target: String, slug: Option[String]): Option[String] =
+    for {
+      s       <- slug
+      country <- models.Country.switchable.find(_.webUrl.contains(target))
+      if country.bySlug.contains(s)
+    } yield s
 }

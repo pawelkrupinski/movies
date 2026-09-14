@@ -5270,19 +5270,21 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLanding { page =>
       val origin = page.evalString("window.location.origin")
       page.evalString("window.crossCountryUrl('https://showtimes.cc/uk', 'london')") shouldBe
-        s"$origin/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fuk&pick=city"
+        s"$origin/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fuk&city=london"
     }
   }
 
-  // A genuine origin crossing can't carry the picked city through: the far
-  // side matches `to` against the deployed base URLs verbatim (open-redirect
-  // safety), so a query string — or a path — riding inside it would be
-  // refused as "not a deployed country". `pick=city` rides BESIDE `to`
-  // instead, asking the destination for its own city list rather than
-  // bouncing to a cookie'd city or wherever the device is standing.
-  it should "ask the SSO destination for a city list, since the handoff can't carry the city itself" in {
+  // A genuine origin crossing can't carry the picked city through `to`
+  // itself: the far side matches `to` against the deployed base URLs
+  // verbatim (open-redirect safety), so a query string — or a path — riding
+  // inside it would be refused as "not a deployed country". The slug rides
+  // BESIDE `to` instead, as its own `city=` parameter — `AuthController`
+  // re-validates it against the TARGET country's own cities before trusting
+  // it (see `AuthController.validatedCitySlug`), so the handoff still lands
+  // on the exact city rather than bouncing to a cookie'd one.
+  it should "carry the picked city's slug alongside `to`, since the handoff can't carry it inside `to`" in {
     onLanding { page =>
-      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk', 'london')") should endWith ("&pick=city")
+      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk', 'london')") should endWith ("&city=london")
       page.evalString("window.crossCountryUrl('https://showtimes.cc/uk', 'london')") should include ("to=https%3A%2F%2Fshowtimes.cc%2Fuk&")
     }
   }
