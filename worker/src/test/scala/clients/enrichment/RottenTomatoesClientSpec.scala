@@ -5,8 +5,6 @@ import org.scalatest.matchers.should.Matchers
 import services.enrichment.RottenTomatoesClient
 import tools.GetOnlyHttpFetch
 
-import scala.collection.mutable
-
 class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
 
   "slugify" should "use underscores instead of hyphens" in {
@@ -371,10 +369,14 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
   // lists overlap — "The Sting" de-articles to the same "sting" its cleanTitle
   // slugs to directly. One attempt across all three probes each URL once.
 
-  /** Records every URL fetched, and answers each one from `respond`. */
+  /** Records every URL fetched, and answers each one from `respond`. Backed by
+   *  a `CopyOnWriteArrayList` because `canonicalUrl` now fires same-title
+   *  slug-variant probes CONCURRENTLY (`ConcurrentCandidateProbe`) — a plain
+   *  `mutable.ListBuffer` would race under concurrent writes from those probes. */
   private class RecordingFetch(respond: String => String) extends GetOnlyHttpFetch {
-    val requested: mutable.ListBuffer[String] = mutable.ListBuffer.empty
-    def get(url: String): String = { requested += url; respond(url) }
+    private val recorded = new java.util.concurrent.CopyOnWriteArrayList[String]()
+    def requested: List[String] = { import scala.jdk.CollectionConverters._; recorded.asScala.toList }
+    def get(url: String): String = { recorded.add(url); respond(url) }
   }
 
   private def notFound: String => String = url => throw new RuntimeException(s"HTTP 404 for $url")
@@ -442,5 +444,42 @@ class RottenTomatoesClientSpec extends AnyFlatSpec with Matchers {
       RottenTomatoesClient.SearchHit("lalka", "Lalka", None, None),
       RottenTomatoesClient.SearchHit("lalka_1969", "Lalka: Restored", Some(1968), None))
     c.pickBestSearchHit(hits, "Lalka", Some(2026)) shouldBe None
+  }
+
+  // ── Concurrent slug-variant probing ───────────────────────────────────────
+  //
+  // canonicalUrl fires its candidate slugs (via ConcurrentCandidateProbe)
+  // concurrently rather than one at a time — see tools.ConcurrentCandidateProbeSpec
+  // for the primitive's own tests. These two pin the two things that matter at
+  // the CLIENT level: latency actually drops, and priority order still decides
+  // the winner rather than whichever candidate answers first.
+
+  it should "probe candidate slugs concurrently, not sequentially" in {
+    val delay = 150L
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
+      def get(url: String): String = { Thread.sleep(delay); throw new RuntimeException("HTTP 404") }
+    })
+    val start = System.currentTimeMillis()
+    // "The North" + year has 4 candidate slugs (year-suffixed/bare x
+    // primary/de-articled); sequential would take ~4*150=600ms.
+    c.canonicalUrl("The North", Some(2026)) shouldBe None
+    (System.currentTimeMillis() - start) should be < (delay * 2)
+  }
+
+  // The RT twin of MetacriticClientSpec's "Odyssey" regression: the correct
+  // year-suffixed slug answers SLOWLY, while a lower-priority, undated slug
+  // (which the year guard can't reject — see "abstain (None) when the page has
+  // only a re-release releaseDate and no releaseYear" above) answers INSTANTLY.
+  // If candidate resolution picked whichever response landed first, the
+  // undated (possibly wrong) page would win.
+  it should "keep priority order deciding the winner even when a later, undated candidate answers faster" in {
+    val c = new RottenTomatoesClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/m/the_north_2026")) { Thread.sleep(150); rtMoviePage(2026) }
+        else if (url.endsWith("/m/the_north")) """<html><body><script>{"mediaType":"movie"}</script></body></html>"""
+        else throw new RuntimeException("HTTP 404")
+    })
+    c.canonicalUrl("The North", Some(2026)) shouldBe
+      Some("https://www.rottentomatoes.com/m/the_north_2026")
   }
 }

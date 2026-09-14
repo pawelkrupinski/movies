@@ -4,7 +4,7 @@ import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
+import tools.{ConcurrentCandidateProbe, EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -149,21 +149,24 @@ class MetacriticClient(http: HttpFetch) {
    *  year vs Metacritic's later US date — "Picnic at Hanging Rock" is 1975 vs
    *  1979) while rejecting the decade-plus gaps that mark a different film. */
   def canonicalResolve(title: String, year: Option[Int] = None, directors: Set[String] = Set.empty): Option[Resolved] =
-    candidateSlugs(title, year).iterator
-      .flatMap { slug =>
-        // 404 = "that slug isn't a film", which is what the ladder probes for, so
-        // it drops through to the next candidate. A block/throttle/5xx aborts the
-        // ladder instead of quietly reporting "no Metacritic page" — a failed read
-        // is not an answer. See tools.EnrichmentRead.
-        EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(s"$Site/movie/$slug")))
-          .filter(body => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)))
-          // Title and year are not always enough to name a film: Metacritic
-          // carries two 2025 "Dreams", Franco's and Haugerud's, and the slug
-          // probe hit whichever it hit. The page names its own director.
-          .filter(body => MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)))
-          .map(body => Resolved(s"$Site/movie/$slug", MetacriticClient.parseMetascore(body)))
-      }
-      .nextOption()
+    // Same-title slug variants (year-suffixed vs bare, primary vs de-articled)
+    // are INDEPENDENT probes — nothing about one informs another — so they fire
+    // concurrently. [[ConcurrentCandidateProbe]] still resolves the winner in
+    // this list's own priority order, never by response speed, so this changes
+    // wall-clock latency only, not which candidate wins.
+    ConcurrentCandidateProbe.firstMatch("mc-slug-probe", candidateSlugs(title, year)) { slug =>
+      // 404 = "that slug isn't a film", which is what the ladder probes for, so
+      // it drops through to the next candidate. A block/throttle/5xx aborts the
+      // ladder instead of quietly reporting "no Metacritic page" — a failed read
+      // is not an answer. See tools.EnrichmentRead.
+      EnrichmentRead.absentOnNotFound(http.get(MetacriticClient.requestUrl(s"$Site/movie/$slug")))
+        .filter(body => MetacriticClient.yearsCompatible(year, MetacriticClient.parseReleaseYear(body)))
+        // Title and year are not always enough to name a film: Metacritic
+        // carries two 2025 "Dreams", Franco's and Haugerud's, and the slug
+        // probe hit whichever it hit. The page names its own director.
+        .filter(body => MetacriticClient.directorsCompatible(directors, JsonLdAggregateRating.directorNames(body)))
+        .map(body => Resolved(s"$Site/movie/$slug", MetacriticClient.parseMetascore(body)))
+    }
 
   /** Slugs to probe, best-first. When the film's year is known the year-suffixed
    *  variant of each form is tried BEFORE its bare form — see

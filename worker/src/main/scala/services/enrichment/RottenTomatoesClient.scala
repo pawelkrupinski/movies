@@ -3,7 +3,7 @@ package services.enrichment
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
 import services.resolution.TitleMatch
-import tools.{EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
+import tools.{ConcurrentCandidateProbe, EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -109,11 +109,15 @@ class RottenTomatoesClient(http: HttpFetch) {
    *  collisions. The year-suffixed variants already encode the right year, so
    *  the guard is a no-op for them and only bites the bare slug. */
   def canonicalUrl(title: String, year: Option[Int] = None): Option[String] =
-    candidateSlugs(title, year).iterator
-      .map(s => s"$Site/m/$s")
-      .flatMap(url => EnrichmentRead.absentOnNotFound(http.get(url)).map(body => (url, body)))
-      .find { case (_, body) => MetacriticClient.yearsCompatible(year, RottenTomatoesClient.parseReleaseYear(body)) }
-      .map(_._1)
+    // Same-title slug variants are INDEPENDENT probes, so they fire
+    // concurrently — see MetacriticClient.canonicalResolve, which shares this
+    // shape and [[ConcurrentCandidateProbe]]'s priority-preserving guarantee.
+    ConcurrentCandidateProbe.firstMatch("rt-slug-probe", candidateSlugs(title, year)) { slug =>
+      val url = s"$Site/m/$slug"
+      EnrichmentRead.absentOnNotFound(http.get(url))
+        .filter(body => MetacriticClient.yearsCompatible(year, RottenTomatoesClient.parseReleaseYear(body)))
+        .map(_ => url)
+    }
 
   def candidateSlugs(title: String, year: Option[Int] = None): Seq[String] = {
     val primary = RottenTomatoesClient.slugify(title)

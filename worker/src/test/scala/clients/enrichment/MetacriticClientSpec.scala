@@ -5,8 +5,6 @@ import org.scalatest.matchers.should.Matchers
 import services.enrichment.MetacriticClient
 import tools.{GetOnlyHttpFetch, UpstreamNotFound}
 
-import scala.collection.mutable
-
 import services.enrichment.scraping.JsonLdAggregateRating
 
 class MetacriticClientSpec extends AnyFlatSpec with Matchers {
@@ -531,10 +529,14 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
   // that ladder costs — how many round trips each probe takes, and whether the
   // same URL is ever probed twice.
 
-  /** Records every URL fetched, and answers each one from `respond`. */
+  /** Records every URL fetched, and answers each one from `respond`. Backed by
+   *  a `CopyOnWriteArrayList` because `canonicalResolve` now fires same-title
+   *  slug-variant probes CONCURRENTLY (`ConcurrentCandidateProbe`) — a plain
+   *  `mutable.ListBuffer` would race under concurrent writes from those probes. */
   private class RecordingFetch(respond: String => String) extends GetOnlyHttpFetch {
-    val requested: mutable.ListBuffer[String] = mutable.ListBuffer.empty
-    def get(url: String): String = { requested += url; respond(url) }
+    private val recorded = new java.util.concurrent.CopyOnWriteArrayList[String]()
+    def requested: List[String] = { import scala.jdk.CollectionConverters._; recorded.asScala.toList }
+    def get(url: String): String = { recorded.add(url); respond(url) }
   }
 
   private def notFound: String => String = url => throw new RuntimeException(s"HTTP 404 for $url")
@@ -669,5 +671,40 @@ class MetacriticClientSpec extends AnyFlatSpec with Matchers {
     })
     c.canonicalResolve("Dreams", Some(2025), Set("Michel Franco")).map(_.url) shouldBe
       Some("https://www.metacritic.com/movie/dreams-2025")
+  }
+
+  // ── Concurrent slug-variant probing ───────────────────────────────────────
+  //
+  // canonicalResolve fires its candidate slugs (via ConcurrentCandidateProbe)
+  // concurrently rather than one at a time — see tools.ConcurrentCandidateProbeSpec
+  // for the primitive's own tests. These two pin the two things that matter at
+  // the CLIENT level: latency actually drops, and priority order still decides
+  // the winner rather than whichever candidate answers first.
+
+  it should "probe candidate slugs concurrently, not sequentially" in {
+    val delay = 150L
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String = { Thread.sleep(delay); throw new RuntimeException("HTTP 404") }
+    })
+    val start = System.currentTimeMillis()
+    // "The Odyssey" + year has 4 candidate slugs (see candidateSlugs above);
+    // sequential would take ~4*150=600ms.
+    c.canonicalResolve("The Odyssey", Some(2026)) shouldBe None
+    (System.currentTimeMillis() - start) should be < (delay * 2)
+  }
+
+  // Same "Odyssey" regression as above ("prefer the year-suffixed slug…"), but
+  // now the WRONG film's page (the undated bare slug) answers INSTANTLY while
+  // the RIGHT film's page (the year-suffixed slug) is slow. If candidate
+  // resolution picked whichever response landed first, the wrong film would win.
+  it should "keep priority order deciding the winner even when a later, wrong-film candidate answers faster" in {
+    val c = new MetacriticClient(new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("/movie/the-odyssey-2026/")) { Thread.sleep(150); moviePage("The Odyssey", 2026, 89) }
+        else if (url.endsWith("/movie/the-odyssey/")) undatedMoviePage("The Odyssey")
+        else UpstreamNotFound(url)
+    })
+    c.urlFor("The Odyssey", year = Some(2026)) shouldBe
+      Some("https://www.metacritic.com/movie/the-odyssey-2026")
   }
 }
