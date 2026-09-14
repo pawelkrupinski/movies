@@ -118,7 +118,12 @@ test.describe('app banner', () => {
     await reload(page);
     await expect(banner(page)).toBeVisible();
     await page.locator('.app-banner-close').click();
-    await expect(banner(page)).toBeHidden();
+    // The default 5s expect timeout has flaked here on a contended CI runner
+    // (`webkit-iphone-13-zoomed`, 2026-09-14, reran green): the click's synchronous
+    // `dismissAppBanner()` handler races main-thread starvation from the other
+    // WebKit phone variants sharing the runner — same contention class documented
+    // in helpers.ts's `firstVisibleCard`. Widened rather than just re-running.
+    await expect(banner(page)).toBeHidden({ timeout: 15_000 });
     // Even after clearing the once-a-day marker, the snooze keeps it away.
     await page.evaluate(() => localStorage.removeItem('kinowoAppBannerDay'));
     await reload(page);
@@ -154,7 +159,8 @@ test.describe('app banner', () => {
     await reload(page);
     await expect(banner(page)).toBeVisible();          // first visit today
     await page.locator('.app-banner-close').click();   // dismiss → snoozed 24h
-    await expect(banner(page)).toBeHidden();
+    // See the widened timeout's comment above — same click-then-hidden shape.
+    await expect(banner(page)).toBeHidden({ timeout: 15_000 });
 
     await page.goto('/poznan/?date=anytime&forceAppBanner=1', { waitUntil: 'domcontentloaded' });
     await expect(banner(page)).toBeVisible();           // forced past BOTH gates
