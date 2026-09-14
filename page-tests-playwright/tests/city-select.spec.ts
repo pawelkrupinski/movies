@@ -114,22 +114,48 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
     await expect(page.locator('#picker-list .picker-item')).toHaveCount(55);
   });
 
-  test('the search box narrows the level it is showing, not the whole tree', async ({ page }) => {
+  test('the search box searches every level at once, not just the one it is showing', async ({ page }) => {
     await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
-    // A metro is one level below the root the box is currently searching.
+    // "los angeles" is a CITY, one level below the root the box is showing —
+    // the query still finds it: it scans the whole country, not just the
+    // level currently drilled into. `.picker-item-label`, not the row's own
+    // text — a region/subregion row also carries a trailing chevron span.
     await page.locator('#picker-search').fill('los angeles');
-    await expect(page.locator('#picker-list .picker-item')).toHaveCount(0);
-    // The state's own name IS a root-level row. `.picker-item-label`, not
-    // the row's own text — a region/subregion row also carries a trailing
-    // chevron span.
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['Los Angeles']);
+    // The heading itself is a root-level term and matches too — alongside
+    // "Northern California", one of the state's own metros, sorted right
+    // after it.
     await page.locator('#picker-search').fill('california');
-    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['California']);
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['California', 'Northern California']);
 
     await page.locator('#picker-search').fill('');
     await pickerRow(page, 'California').click();
     await expect(page.locator('#picker-list .picker-item')).toHaveCount(22);
+    // One level down, a DIFFERENT state's own name STILL matches — the whole
+    // country is searched no matter how deep the visitor has drilled, same
+    // as the root level above (alongside a couple of the state's own metros
+    // that happen to share the name).
+    await page.locator('#picker-search').fill('texas');
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['East Texas', 'Texas', 'West Texas']);
     await page.locator('#picker-search').fill('los angeles');
     await expect(page.locator('#picker-list .picker-item')).toHaveText(['Los Angeles']);
+  });
+
+  test('jumps straight to the right state when a flattened result is picked from inside another one', async ({ page }) => {
+    await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
+    await pickerRow(page, 'California').click();
+    await expect(pickerRow(page, 'Los Angeles')).toBeVisible();
+    // "Texas" only matches at the ROOT level, yet it is offered from inside
+    // California — picking it has to leave California behind and land on
+    // Texas's own metros, not merely narrow California's list. Exact text,
+    // not `pickerRow`'s substring match — "East Texas"/"West Texas" also
+    // contain "Texas".
+    await page.locator('#picker-search').fill('texas');
+    await page.locator('#picker-list .picker-item')
+      .filter({ has: page.locator('.picker-item-label', { hasText: /^Texas$/ }) })
+      .click();
+    await expect(page.locator('#picker-subtitle')).toHaveText('Texas');
+    await expect(page.locator('.picker-item-label', { hasText: 'Los Angeles' })).toHaveCount(0);
   });
 });
 
@@ -198,6 +224,21 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
     await expect(page.locator('#picker-back-row')).toBeHidden();
     await expect(page.locator('#picker-list .picker-item-label')).toHaveText(
       ['England', 'Scotland', 'Northern Ireland', 'Wales', 'Crown Dependencies']);
+  });
+
+  test('finds a county from the nation root, and lands two levels deep in one tap', async ({ page }) => {
+    await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
+    // "West Midlands" is a COUNTY two levels below the root the box shows
+    // (nation → county → place) — the search scans the whole country
+    // regardless of level, so it surfaces from the very first screen.
+    await page.locator('#picker-search').fill('west midlands');
+    await expect(page.locator('#picker-list .picker-item-label')).toHaveText(['West Midlands']);
+
+    // Picking it has to land on the right NATION too, not just the county —
+    // a bare subregion name says nothing about which nation it belongs to.
+    await pickerRow(page, 'West Midlands').click();
+    await expect(page.locator('#picker-subtitle')).toHaveText('England — West Midlands');
+    await expect(page.locator('#picker-list .picker-item')).toHaveText(['Birmingham', 'Dudley', 'Sandwell']);
   });
 
   test('a search hit at the county level does NOT find a place by its collapsed county name', async ({ page }) => {
