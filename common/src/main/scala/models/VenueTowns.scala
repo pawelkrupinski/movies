@@ -1,6 +1,6 @@
 // GENERATED from data/uk/venues.json + data/pl/venues.json by
 // data/scripts/generate_venue_towns.py — do NOT edit by hand.
-// The town each of 981 venues sits in (842 in the UK, 139 in Poland).
+// The town each of 980 venues sits in (841 in the UK, 139 in Poland).
 // Regenerate after rebuilding either country's table; see data/uk/README.md
 // and data/pl/README.md.
 package models
@@ -620,11 +620,11 @@ private[models] object VenueTowns {
     ("Odeon Luxe Telford", "Telford"),
     ("Odeon Luxe Warrington", "Warrington"),
     ("Odeon Luxe West End", "London"),
-    ("Odeon Middlesbrough", "Middlesbrough")
+    ("Odeon Middlesbrough", "Middlesbrough"),
+    ("Odeon Northampton", "Northampton")
   )
 
   private def chunk4: Seq[(String, String)] = Seq(
-    ("Odeon Northampton", "Northampton"),
     ("Old Market Hall Shrewsbury", "Shrewsbury"),
     ("Olympic Cinema Barnes", "London"),
     ("Omniplex Antrim", "Antrim"),
@@ -773,11 +773,11 @@ private[models] object VenueTowns {
     ("Royalty Bowness-on-Windemere", "Bowness-on-Windemere"),
     ("Saffron Screen", "Saffron Walden"),
     ("Savoy (Scott Cinemas) Exmouth", "Exmouth"),
-    ("Savoy Boston", "Boston")
+    ("Savoy Boston", "Boston"),
+    ("Savoy Cinema Catterick Garrison", "Catterick Garrison")
   )
 
   private def chunk5: Seq[(String, String)] = Seq(
-    ("Savoy Cinema Catterick Garrison", "Catterick Garrison"),
     ("Savoy Cinema Corby", "Corby"),
     ("Savoy Cinema Heaton Moor", "Heaton Moor"),
     ("Savoy Cinema Nottingham", "Nottingham"),
@@ -926,11 +926,11 @@ private[models] object VenueTowns {
     ("Vue Cinemas Eastleigh", "Eastleigh"),
     ("Vue Cinemas Eltham", "London"),
     ("Vue Cinemas Exeter", "Exeter"),
-    ("Vue Cinemas Farnborough", "Farnborough")
+    ("Vue Cinemas Farnborough", "Farnborough"),
+    ("Vue Cinemas Finchley Road", "London")
   )
 
   private def chunk6: Seq[(String, String)] = Seq(
-    ("Vue Cinemas Finchley Road", "London"),
     ("Vue Cinemas Fulham", "London"),
     ("Vue Cinemas Gateshead", "Tyne & Wear"),
     ("Vue Cinemas Glasgow Fort", "Glasgow"),
