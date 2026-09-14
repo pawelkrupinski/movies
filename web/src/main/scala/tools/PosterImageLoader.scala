@@ -17,9 +17,22 @@ import javax.imageio.ImageIO
  */
 class PosterImageLoader(posters: PosterFetch) {
 
-  /** The first candidate that decodes, or None when every source fails. */
+  /** The first candidate that decodes, or None when every source fails.
+   *
+   *  The PRIMARY candidate (index 0) is tried ALONE first: most films' primary
+   *  poster works, so the common case stays exactly as cheap as one fetch —
+   *  see OgCardServiceSpec's "stop at the first candidate that loads, leaving
+   *  later fallbacks unfetched". Only once the primary has failed (often a
+   *  Multikino origin Cloudflare 403s our datacentre IP — see
+   *  [[OgCardService.card]]'s doc) are the REMAINING fallback candidates
+   *  raced CONCURRENTLY rather than walked one at a time: those are real
+   *  cinema origins with a legitimately slow (~6-7s) cold connect (see
+   *  [[PosterFetch]]), and trying several of them in sequence is what drove
+   *  the og-image endpoint's p95 into its histogram cap (2026-09-12). */
   def loadFirst(candidates: Seq[String]): Option[BufferedImage] =
-    candidates.iterator.flatMap(load(_).iterator).nextOption()
+    candidates.headOption.flatMap(load).orElse {
+      ConcurrentCandidateProbe.firstMatch("poster-fallbacks", candidates.drop(1))(load)
+    }
 
   def load(url: String): Option[BufferedImage] =
     decode(url).orElse {

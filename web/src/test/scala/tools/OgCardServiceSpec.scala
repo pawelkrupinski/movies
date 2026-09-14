@@ -157,4 +157,41 @@ class OgCardServiceSpec extends AnyFlatSpec with Matchers {
     // First candidate's origin fetch succeeds — no proxy retry, no later candidates.
     fetch.calls.get shouldBe 1
   }
+
+  // ── Concurrent fallback racing (2026-09-14) ───────────────────────────────
+  //
+  // A prior sequential walk drove og-image's p95 into its 10s histogram cap
+  // when the primary failed fast (Multikino's Cloudflare 403) and several
+  // legitimately-slow-but-real cinema origins were then tried ONE AT A TIME.
+  // PosterImageLoader.loadFirst now races the fallbacks (index 1+) once the
+  // primary has failed — these two pin that it's genuinely concurrent, and
+  // that it still returns a working poster.
+
+  it should "race fallback candidates concurrently once the primary fails, not walk them sequentially" in {
+    val delay = 150L
+    // Primary fails instantly (models Multikino's fast 403); each fallback
+    // would decode but only after `delay` — sequential fallthrough over 3
+    // fallbacks would take ~3*delay; racing them should land near one delay.
+    val fetch: PosterFetch = url =>
+      if (url.contains("primary")) None
+      else { Thread.sleep(delay); Some(jpeg) }
+    val start = System.currentTimeMillis()
+    val bytes = new OgCardService(fetch).card(
+      "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
+      Seq("https://cdn/primary.jpg", "https://cdn/fallback-a.jpg", "https://cdn/fallback-b.jpg", "https://cdn/fallback-c.jpg"),
+      "kinowo.net")
+    val elapsed = System.currentTimeMillis() - start
+    posterRed(bytes) should be > 150
+    elapsed should be < (delay * 3)
+  }
+
+  it should "still return a working poster when only the LAST fallback candidate decodes" in {
+    val fetch: PosterFetch = url =>
+      if (url.contains("fallback-c")) Some(jpeg) else None
+    val bytes = new OgCardService(fetch).card(
+      "Incepcja", "2010 · Sci-Fi", OgCardRenderer.ratingBadges(Some(8.8), None, None, None),
+      Seq("https://cdn/primary.jpg", "https://cdn/fallback-a.jpg", "https://cdn/fallback-b.jpg", "https://cdn/fallback-c.jpg"),
+      "kinowo.net")
+    posterRed(bytes) should be > 150
+  }
 }
