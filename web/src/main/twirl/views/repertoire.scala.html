@@ -26,6 +26,12 @@
      here rather than folded into `_sharedStyles` — /movie, /browse, /tune
      etc. would otherwise ship dead CSS for markup they never render. *@
   @_minified(devMode) { @_appBannerStyles() }
+  @* `related_applications` lets Chrome/Android answer "is the native app
+     already installed?" via `navigator.getInstalledRelatedApps()` — the
+     app banner's best-effort install check reads it, so it's scoped to
+     this page the same way the banner's own styles are. No icons/service
+     worker, so it can't trigger a PWA "Add to Home Screen" prompt. *@
+  <link rel="manifest" href="@routes.Assets.versioned("manifest.json")">
 </head>
 <body>
 

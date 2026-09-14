@@ -3,9 +3,13 @@ import type { Page } from '@playwright/test';
 import { reload } from './helpers';
 
 // The app-promo top banner: nudges EVERY visitor (not just phones, unlike the
-// swipe hint) toward the native app once per calendar day, picking the store
-// badge that matches the detected OS — both when it can't tell (desktop, or
-// an unrecognised UA). The ✕ snoozes it for 24h on top of the daily cap.
+// swipe hint) toward the native app, picking the store badge that matches the
+// detected OS — both when it can't tell (desktop, or an unrecognised UA). The
+// interval is device-aware: once per calendar day on a touch/coarse-pointer
+// device, once every 10 days on desktop. The ✕ snoozes it for 24h on top of
+// the interval cap. It's also suppressed outright when Chrome can confirm
+// (Android only — no iOS/Safari equivalent) the app is already installed via
+// `navigator.getInstalledRelatedApps()`.
 test.describe('app banner', () => {
   const banner      = (page: Page) => page.locator('#app-banner');
   const iosBadge     = (page: Page) => page.locator('#app-banner-ios');
@@ -28,6 +32,66 @@ test.describe('app banner', () => {
     await expect(banner(page)).toBeVisible();   // first visit today
     await reload(page);
     await expect(banner(page)).toBeHidden();    // same-day reload → suppressed
+  });
+
+  // Back-dates `kinowoAppBannerDay` by `days` and reloads — simulates time
+  // passing without waiting it out or mocking the clock. Parsed as UTC
+  // midnight, matching `_daysBetween` in shared.js.
+  async function backdateShownDayAndReload(page: Page, days: number): Promise<void> {
+    await page.evaluate((d) => {
+      const shown = localStorage.getItem('kinowoAppBannerDay');
+      if (!shown) return;
+      const date = new Date(shown + 'T00:00:00Z');
+      date.setUTCDate(date.getUTCDate() - d);
+      localStorage.setItem('kinowoAppBannerDay', date.toISOString().slice(0, 10));
+    }, days);
+    await reload(page);
+  }
+
+  test('a touch device sees it again after 1 day; a mouse/trackpad device needs 10', async ({ page }) => {
+    await page.evaluate(() => localStorage.clear());
+    await reload(page);
+    await expect(banner(page)).toBeVisible();   // first visit today
+    const isMobile = await page.evaluate(() => matchMedia('(pointer: coarse)').matches);
+
+    await backdateShownDayAndReload(page, 1);
+    if (isMobile) {
+      await expect(banner(page)).toBeVisible();   // due again after exactly 1 day
+    } else {
+      await expect(banner(page)).toBeHidden();    // desktop: 1 day is not due yet
+      await backdateShownDayAndReload(page, 9);    // 10 days total elapsed
+      await expect(banner(page)).toBeVisible();
+    }
+  });
+
+  test('suppressed when the app is already installed (Android/Chrome only signal)', async ({ page }) => {
+    await page.addInitScript(() => {
+      (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
+        .getInstalledRelatedApps = async () => [{ platform: 'play', id: 'net.pawel.kinowo' }];
+    });
+    await page.evaluate(() => localStorage.clear());
+    await reload(page);
+    await expect(banner(page)).toBeHidden();
+  });
+
+  test('shows normally when the installed-apps check reports no match', async ({ page }) => {
+    await page.addInitScript(() => {
+      (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
+        .getInstalledRelatedApps = async () => [];
+    });
+    await page.evaluate(() => localStorage.clear());
+    await reload(page);
+    await expect(banner(page)).toBeVisible();
+  });
+
+  test('?forceAppBanner=1 bypasses the installed-app check too', async ({ page }) => {
+    await page.addInitScript(() => {
+      (navigator as unknown as { getInstalledRelatedApps: () => Promise<Array<{ platform: string; id: string }>> })
+        .getInstalledRelatedApps = async () => [{ platform: 'play', id: 'net.pawel.kinowo' }];
+    });
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/poznan/?date=anytime&forceAppBanner=1', { waitUntil: 'domcontentloaded' });
+    await expect(banner(page)).toBeVisible();
   });
 
   test('picks the store badge matching the detected OS, both when it cannot tell', async ({ page }) => {
@@ -82,7 +146,7 @@ test.describe('app banner', () => {
     await reload(page);
     await expect(banner(page)).toBeVisible();
     await expect.poll(() => states.length).toBe(1);
-    expect(states[0]).toMatchObject({ willShow: true, shownToday: false, snoozed: false });
+    expect(states[0]).toMatchObject({ willShow: true, dueByInterval: true, snoozed: false });
   });
 
   test('?forceAppBanner=1 bypasses both the daily cap and the dismiss snooze', async ({ page }) => {

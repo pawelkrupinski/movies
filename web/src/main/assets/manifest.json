@@ -1,0 +1,10 @@
+{
+  "name": "Kinowo",
+  "short_name": "Kinowo",
+  "start_url": "/",
+  "display": "browser",
+  "prefer_related_applications": true,
+  "related_applications": [
+    { "platform": "play", "id": "net.pawel.kinowo" }
+  ]
+}
