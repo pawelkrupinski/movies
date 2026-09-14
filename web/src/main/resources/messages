@@ -88,9 +88,26 @@ landing.chooseCountry=Wybierz kraj
 landing.chooseCity=Wybierz miasto
 landing.searchCity=Szukaj miasta…
 landing.searchCityAria=Szukaj miasta
+# {0}/{1} = the picker's own term for its group level(s) — see landing.level.*
+# below — never the bare word "region": a UK visitor sees "kraj"/"hrabstwo",
+# a US one "stan", matching what the level ABOVE city is actually called in
+# the country currently open in the picker.
+landing.searchLevels1=Szukaj: {0} lub miasto…
+landing.searchLevels2=Szukaj: {0}, {1} lub miasto…
 landing.noCity=Brak miasta o tej nazwie.
 landing.locating=Ustalanie lokalizacji…
 landing.noNearby=Brak obsługiwanego miasta w pobliżu — wybierz z listy.
+# The picker's own group-level terms, one per country that nests
+# (`Country.cityGroups`) — Poland and Spain are flat and never need one. Feeds
+# the search box's placeholder (landing.searchLevels1/2) with the CORRECT
+# administrative word for that country's own top group ([[.region]]) and,
+# where it nests a second level (only the UK), the one below it
+# ([[.subregion]]) — not a generic "region" that would call a UK county a
+# "region" and a US state a "county" alike.
+landing.level.uk.region=kraj
+landing.level.uk.subregion=hrabstwo
+landing.level.us.region=stan
+landing.level.de.region=kraj związkowy
 
 # The notice a retired deployment serves in place of `/` and `/{city}/`.
 moved.heading=Zmieniliśmy adres

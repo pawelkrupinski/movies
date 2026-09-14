@@ -79,9 +79,15 @@ landing.chooseCountry=Choose your country
 landing.chooseCity=Choose your city
 landing.searchCity=Search for a city…
 landing.searchCityAria=Search for a city
+landing.searchLevels1=Search for a {0} or city…
+landing.searchLevels2=Search for a {0}, {1} or city…
 landing.noCity=No city by that name.
 landing.locating=Finding your location…
 landing.noNearby=No supported city nearby — pick one from the list.
+landing.level.uk.region=nation
+landing.level.uk.subregion=county
+landing.level.us.region=state
+landing.level.de.region=state
 
 # The notice a retired deployment serves in place of `/` and `/{city}/`.
 moved.heading=We''ve moved

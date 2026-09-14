@@ -51,6 +51,15 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
     await pickerRow(page, 'Poznań').click();
     await page.waitForURL((u) => new URL(u).pathname === '/poznan/');
   });
+
+  test('the search box just asks for a city — Poland never groups', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    // No `Country.cityGroups` here, so `PICKER_GROUP_LABELS` (`landing.scala.html`)
+    // has no entry for `pl` — the box's copy stays the plain city placeholder,
+    // same as the static fallback's own.
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
+    await expect(page.locator('#picker-search')).toHaveAttribute('aria-label', 'Szukaj miasta');
+  });
 });
 
 // The US lists 468 places — 461 distance-clustered METROS plus the seven states
@@ -112,6 +121,16 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
     await page.locator('#picker-back-row').click();
     await expect(page.locator('#picker-back-row')).toBeHidden();
     await expect(page.locator('#picker-list .picker-item')).toHaveCount(55);
+  });
+
+  test('the search box names the state level at the root, and drops it once inside one', async ({ page }) => {
+    await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: stan lub miasto…');
+    await expect(page.locator('#picker-search')).toHaveAttribute('aria-label', 'Szukaj: stan lub miasto');
+    await pickerRow(page, 'California').click();
+    // One level, no subregion here — once inside a state, only its own
+    // metros are left to search for.
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
   });
 
   test('the search box searches every level at once, not just the one it is showing', async ({ page }) => {
@@ -210,6 +229,17 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
     // for why the fixture harness can't support it for a non-default country.
   });
 
+  test('the search box narrows one level at a time — nation, then county, then city', async ({ page }) => {
+    await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
+    // Two levels here — the root box names both, deepest last.
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: kraj, hrabstwo lub miasto…');
+    await pickerRow(page, 'England').click();
+    // The nation is fixed now — only its counties and places are left.
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: hrabstwo lub miasto…');
+    await pickerRow(page, 'West Midlands').click();
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
+  });
+
   test('back pops one level at a time — county, then nation', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
     await pickerRow(page, 'England').click();
@@ -278,6 +308,13 @@ test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
     // Collated, not code-point-ordered: Köln belongs under K-o, and a bare
     // sort files it after Krefeld because 'ö' outranks every letter.
     expect(names.indexOf('Köln')).toBeLessThan(names.indexOf('Krefeld'));
+  });
+
+  test('the search box names the Bundesland by its own term, not a bare "region"', async ({ page }) => {
+    await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: kraj związkowy lub miasto…');
+    await pickerRow(page, 'Nordrhein-Westfalen').click();
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
   });
 
   test('the dynamic picker folds umlauts both ways, one level down', async ({ page }) => {
@@ -391,6 +428,17 @@ test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agno
     await page.locator('#city-picker-row').click();
     await pickerRow(page, 'Wrocław').click();
     await page.waitForURL((u) => new URL(u).pathname === '/wroclaw/');
+  });
+
+  test('switching the country pill switches the search box\'s level term with it', async ({ page }) => {
+    await gotoAndWaitForCards(page, '/poznan/');
+    await page.locator('#format-filter-btn').click();
+    await page.locator('#city-picker-row').click();
+    // Poland: flat, so just "city".
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
+    // Germany: one level, its OWN term — not Poland's, not a bare "region".
+    await pickerCountryPill(page, 'Deutschland').click();
+    await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: kraj związkowy lub miasto…');
   });
 
   test('picking a city in another country hands off through this origin\'s SSO start', async ({ page }) => {

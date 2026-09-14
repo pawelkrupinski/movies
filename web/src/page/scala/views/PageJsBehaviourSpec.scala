@@ -512,6 +512,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private def pickerRowCount(page: CdpPage): Int =
     page.evalInt("document.querySelectorAll('#picker-list .picker-item').length")
 
+  /** The search box's current placeholder — the level-aware copy
+   *  `updatePickerSearchCopy` (`landing.scala.html`) writes on every
+   *  `renderPickerBody`. */
+  private def pickerSearchPlaceholder(page: CdpPage): String =
+    page.evalString("document.getElementById('picker-search').getAttribute('placeholder')")
+
   /** Click the current level's row whose label is `label` — a region/
    *  subregion heading (drills in) or a city (would navigate; not exercised
    *  here, see `city-select.spec.ts`). */
@@ -567,6 +573,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "just ask for a city — Poland's picker never groups" in {
+    onLanding { page =>
+      // No `Country.cityGroups` here, so `PICKER_GROUP_LABELS`
+      // (`landing.scala.html`) has no `pl` entry — the box's copy stays the
+      // plain city placeholder no matter how the query narrows the list.
+      pickerSearchPlaceholder(page) shouldBe "Szukaj miasta…"
+    }
+  }
+
   // ── the dynamic picker's drill-down: region → subregion → city ──────────
   //
   // A country with 468 US places or 79 UK counties does not get one A-to-Z:
@@ -586,6 +601,16 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // a heading you open to find one place repeating its own name buys
       // nothing. See `CityGroup.soleCity`.
       pickerRowLabels(page) should include ("Delaware")
+    }
+  }
+
+  it should "name the state level in the search box, and drop it once inside one" in {
+    onGroupedLanding { page =>
+      pickerSearchPlaceholder(page) shouldBe "Search for a state or city…"
+      clickPickerRow(page, "California")
+      // One level, no subregion — once inside a state, only its own metros
+      // are left to search for.
+      pickerSearchPlaceholder(page) shouldBe "Search for a city…"
     }
   }
 
@@ -683,6 +708,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "narrow the search box's copy one level at a time — nation, then county, then city" in {
+    onNestedLanding { page =>
+      // Two levels here — the root box names both, deepest last.
+      pickerSearchPlaceholder(page) shouldBe "Search for a nation, county or city…"
+      clickPickerRow(page, "England")
+      // The nation is fixed now — only its counties and places are left.
+      pickerSearchPlaceholder(page) shouldBe "Search for a county or city…"
+      clickPickerRow(page, "West Midlands")
+      pickerSearchPlaceholder(page) shouldBe "Search for a city…"
+    }
+  }
+
   it should "find a county from the nation root, and land two levels deep in one tap" in {
     onNestedLanding { page =>
       // "West Midlands" is a COUNTY two levels below the root the box shows
@@ -748,6 +785,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "name the Bundesland level, then drop it once inside one" in {
+    onGermanLanding { page =>
+      pickerSearchPlaceholder(page) shouldBe "Search for a state or city…"
+      clickPickerRow(page, "Nordrhein-Westfalen")
+      pickerSearchPlaceholder(page) shouldBe "Search for a city…"
+    }
+  }
+
   // ── country pills ─────────────────────────────────────────────────────
 
   "the picker's country row" should "switch to another deployed country's own root level" in {
@@ -760,6 +805,20 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       pickerRowLabels(page) should include ("Bayern")
       pickerRowLabels(page) should not include "Wrocław"
       page.evalBool("getComputedStyle(document.getElementById('picker-back-row')).display === 'none'") shouldBe true
+    }
+  }
+
+  it should "switch the search box's level term along with the country" in {
+    onLanding { page =>
+      // Poland: flat, so just "city" — Polish copy, this fixture's own page
+      // language.
+      pickerSearchPlaceholder(page) shouldBe "Szukaj miasta…"
+      // Germany: one level, its OWN term — not Poland's, not a bare "region".
+      // `onLanding` renders in Polish, so the German term is Polish too
+      // (`landing.level.de.region`), same as a Polish visitor browsing
+      // another country from this page would see.
+      clickCountryPill(page, "Deutschland")
+      pickerSearchPlaceholder(page) shouldBe "Szukaj: kraj związkowy lub miasto…"
     }
   }
 

@@ -258,6 +258,27 @@
     // not even be a country a visitor would recognise as "home" here.
     const DEFAULT_PICKER_COUNTRY = IS_APEX ? "@models.Country.default.code" : DEPLOYMENT_COUNTRY_CODE;
 
+    // The search box's copy names what a query can ACTUALLY reach from the
+    // level currently open — "state" in the US, "nation"/"county" in the UK —
+    // never a bare "region" that would misname either. One entry per country
+    // that nests (`Country.cityGroups`); Poland and Spain are flat and never
+    // reach `pickerSearchLevels` below with a match. See `landing.level.*` in
+    // the messages files for the per-language terms.
+    const PICKER_GROUP_LABELS = {
+      uk: {
+        region: @Html(play.api.libs.json.Json.toJson(messages("landing.level.uk.region")).toString),
+        subregion: @Html(play.api.libs.json.Json.toJson(messages("landing.level.uk.subregion")).toString),
+      },
+      us: { region: @Html(play.api.libs.json.Json.toJson(messages("landing.level.us.region")).toString) },
+      de: { region: @Html(play.api.libs.json.Json.toJson(messages("landing.level.de.region")).toString) },
+    };
+    // `{0}`/`{1}` placeholders, filled in by `updatePickerSearchCopy` below —
+    // not pre-rendered with an arg, since which (and how many) levels apply
+    // is only known once `pickerCountry`/`pickerRegion`/`pickerSubregion` are.
+    const SEARCH_COPY_CITY   = @Html(play.api.libs.json.Json.toJson(messages("landing.searchCity")).toString);
+    const SEARCH_COPY_LEVEL1 = @Html(play.api.libs.json.Json.toJson(messages("landing.searchLevels1")).toString);
+    const SEARCH_COPY_LEVEL2 = @Html(play.api.libs.json.Json.toJson(messages("landing.searchLevels2")).toString);
+
     // Fold a place name to the form people actually type it in. Two folds,
     // because one is not enough once the list is not Polish.
     //
@@ -407,6 +428,36 @@
       return rows;
     }
 
+    // The group term(s) a query from THIS level can still reach, deepest
+    // first — never more than the two `PICKER_GROUP_LABELS` ever carries, and
+    // fewer once a level is already drilled past (once a nation is picked,
+    // "nation" no longer belongs in the box — only its counties and cities
+    // are left to search for). Empty for a flat country (no entry in
+    // `PICKER_GROUP_LABELS`) or once drilled all the way to city rows.
+    function pickerSearchLevels() {
+      const groups = PICKER_GROUP_LABELS[pickerCountry];
+      if (!groups) return [];
+      if (pickerRegion === null) return groups.subregion ? [groups.region, groups.subregion] : [groups.region];
+      if (pickerSubregion === null && groups.subregion) return [groups.subregion];
+      return [];
+    }
+
+    // Fills the search box's placeholder — and its aria-label, minus the
+    // trailing ellipsis a screen reader shouldn't hear — with the copy for
+    // the CURRENT level, so a UK visitor at the root sees "nation, county or
+    // city" while one already inside a nation sees just "county or city".
+    function updatePickerSearchCopy() {
+      const levels = pickerSearchLevels();
+      const text = levels.length === 2
+        ? SEARCH_COPY_LEVEL2.replace('{0}', levels[0]).replace('{1}', levels[1])
+        : levels.length === 1
+        ? SEARCH_COPY_LEVEL1.replace('{0}', levels[0])
+        : SEARCH_COPY_CITY;
+      const input = document.getElementById('picker-search');
+      input.placeholder = text;
+      input.setAttribute('aria-label', text.replace(/…$/, ''));
+    }
+
     function renderPickerBody() {
       const backRow = document.getElementById('picker-back-row');
       const subtitle = document.getElementById('picker-subtitle');
@@ -415,6 +466,7 @@
       const parts = [pickerRegion, pickerSubregion].filter(Boolean);
       subtitle.textContent = parts.join(' — ');
       subtitle.style.display = parts.length ? '' : 'none';
+      updatePickerSearchCopy();
       pickerRows = buildPickerRows();
       filterPicker();
     }
