@@ -124,6 +124,16 @@ class CinemaClientMarkersSpec extends AnyFlatSpec with Matchers {
     sourceUrls("Kozienicki Dom Kultury") shouldBe "http://bilety.dkkozienice.pl"
   }
 
+  it should "reach Nowe Kino Warszawa over plain HTTP, whose TLS certificate expired 2026-09-08" in {
+    // Same shape again, one month later: the `*.mck-gostynin.pl` wildcard leaf
+    // (Certum Domain Validation CA SHA2) expired on 2026-09-08 and the venue went
+    // red on /uptime the same night. The MSI portal answers the identical month
+    // page over plain HTTP with no redirect to HTTPS — byte-for-byte identical to
+    // the `https -k` fetch — so the catalog reads it there. Pinned because the
+    // scheme IS the fix: flip it back to https and the scrape returns to red.
+    sourceUrls("Nowe Kino Warszawa") shouldBe "http://bilety.mck-gostynin.pl"
+  }
+
   it should "omit a venue whose scraper has no stable public page (Multikino is slug-only)" in {
     // MultikinoClient stores only the 4-digit id, which maps to no public URL.
     sourceUrls.get("Multikino Stary Browar") shouldBe None

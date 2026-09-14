@@ -48,7 +48,7 @@ class MsiClientSpec
       KinoPowisle, LocalDate.of(2026, 6, 9), "dobra siostra", LocalDateTime.of(2026, 6, 19, 18, 0)),
     ("Kino Centrum Skarżysko", "kino-centrum-skarzysko", "https://bilet-mck.skarzysko.pl",
       KinoCentrumSkarzyskoKamienna, LocalDate.of(2026, 6, 10), "łowczynie demonów", LocalDateTime.of(2026, 6, 12, 16, 15)),
-    ("Nowe Kino Warszawa (Gostynin)", "nowe-kino-warszawa", "https://bilety.mck-gostynin.pl",
+    ("Nowe Kino Warszawa (Gostynin)", "nowe-kino-warszawa", "http://bilety.mck-gostynin.pl",
       KinoNoweKinoWarszawa, LocalDate.of(2026, 6, 10), "łowczynie demonów", LocalDateTime.of(2026, 6, 12, 17, 0)),
     // Kino ODEON (Sochaczew) runs on an Eurobilet backend that serves the
     // identical MSI month page — so the generic client reaches it off a base URL

@@ -181,7 +181,7 @@ class CinemaScraperCatalog(
     KinoMOKNowaRuda              -> MsiVenue("https://bilety.nowaruda.pl"),
     KinoPlaneta                  -> MsiVenue("https://rezerwacja.planetabrzesko.pl", mvcPath = "/Rezerwacja/mvc/pl"),
     KinoJutrzenka                -> MsiVenue("https://kino.sierpc.pl"),
-    KinoNoweKinoWarszawa         -> MsiVenue("https://bilety.mck-gostynin.pl"),
+    KinoNoweKinoWarszawa         -> MsiVenue("http://bilety.mck-gostynin.pl"),
     KinoZaRogiem                 -> MsiVenue("https://bilety.pokis.pl"),
     KinoODEON                    -> MsiVenue("https://kinoodeon.eurobilet.pl"),
     KinoIkar                     -> MsiVenue("https://kinoikar.mok-jar.pl"),

@@ -41,14 +41,15 @@ import scala.util.Try
  * @parameter baseUrl Scheme + host of the venue's MSI portal, no trailing slash
  *                (e.g. `https://bilety.goktychowo.pl`). The scheme is load-bearing
  *                twice over: it is what we fetch, and `MsiScraper` resolves every
- *                showtime's `abs:href` booking link against it. Two venues are
+ *                showtime's `abs:href` booking link against it. Three venues are
  *                wired `http://` rather than `https://` because their leaf
  *                certificate expired and was never renewed — RCK Kołobrzeg
- *                (Kino Wybrzeże, `*.rck.kolobrzeg.pl`, 2026-07-18) and Kozienicki
- *                Dom Kultury (`*.dkkozienice.pl`, 2026-08-07). In both cases the
- *                handshake fails validation while plain HTTP serves the identical
- *                page and does not redirect, so an expired certificate is a
- *                *scheme* problem here, not a reachability one.
+ *                (Kino Wybrzeże, `*.rck.kolobrzeg.pl`, 2026-07-18), Kozienicki
+ *                Dom Kultury (`*.dkkozienice.pl`, 2026-08-07), and Nowe Kino
+ *                Warszawa (`*.mck-gostynin.pl`, 2026-09-08). In all three cases
+ *                the handshake fails validation while plain HTTP serves the
+ *                identical page and does not redirect, so an expired certificate
+ *                is a *scheme* problem here, not a reachability one.
  * @parameter cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
  * @parameter today   Calendar anchor for computing the two months to fetch;
  *                defaults to the current Warsaw clock date.
