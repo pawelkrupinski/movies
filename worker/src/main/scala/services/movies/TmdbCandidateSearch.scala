@@ -365,6 +365,20 @@ class TmdbCandidateSearch(
       }
   }
 
+  /** Strip a trailing IMDb-style disambiguator — " (I)", " (II)", " (III)", … —
+   *  from a director credit before it reaches TMDB's person search. IMDb appends
+   *  a Roman-numeral suffix to tell same-named people apart ("Tom Holland (II)"
+   *  is the "Child's Play" 1988 director, not the "Spider-Man" actor), but that
+   *  suffix is IMDb's own disambiguation scheme, not TMDB's — `/search/person`
+   *  matches the raw string verbatim, so sent with the parenthetical intact it
+   *  finds nobody and the whole director-walk resolution abstains for a row that
+   *  would otherwise have resolved cleanly (confirmed on
+   *  `chuckydiemorderpuppe|1988`, DE, `director: ["Tom Holland (II)"]`). Anchored
+   *  to the end so a title or name that happens to end in "(I)"-shaped text
+   *  elsewhere is untouched. */
+  private def stripImdbDisambiguator(name: String): String =
+    TmdbCandidateSearch.ImdbDisambiguatorSuffix.replaceFirstIn(name, "")
+
   /** Walk a cinema-reported director's TMDB filmography and pick the entry the
    *  cinema is actually showing. Needed when the title search lands on the wrong
    *  film (different decade, different language, popularity tie-break gone wrong).
@@ -399,7 +413,7 @@ class TmdbCandidateSearch(
       // lists) that trusting it costs the whole resolution now the walk is the
       // only resolver. A person whose filmography doesn't contain the film simply
       // yields nothing here, which is exactly the signal to try the next one.
-      tmdb.findPersonCandidates(directory.split(",").head.trim).iterator.zipWithIndex.flatMap { case (personId, candidateIndex) =>
+      tmdb.findPersonCandidates(stripImdbDisambiguator(directory.split(",").head.trim)).iterator.zipWithIndex.flatMap { case (personId, candidateIndex) =>
         // Directing credits first — the common case, unchanged. A cinema that
         // printed the WRITER instead ("Drzewo magii" is directed by Ben Gregor and
         // written by Simon Farnaby, and cinemas print either) would otherwise walk
@@ -582,7 +596,7 @@ class TmdbCandidateSearch(
    *  Order-independent — see `StagingOrderDeterminismSpec`. */
   private def collapseDirectorDuplicate(id: Int, directors: Seq[String]): Int = {
     val credits = directors.iterator
-      .flatMap(d => tmdb.findPerson(d.split(",").head.trim).iterator.flatMap(tmdb.personDirectorCredits))
+      .flatMap(d => tmdb.findPerson(stripImdbDisambiguator(d.split(",").head.trim)).iterator.flatMap(tmdb.personDirectorCredits))
       .toSeq.distinctBy(_.id)
     def titles(f: TmdbClient.SearchResult): Set[String] =
       (Seq(f.title) ++ f.originalTitle.toSeq).map(normalizer.sanitize).filter(_.nonEmpty).toSet
@@ -608,4 +622,8 @@ object TmdbCandidateSearch {
    *  shows genuine pairs differing by (rounding, and whether the credits roll is
    *  counted). */
   val RuntimeAgreementMinutes: Int = 2
+
+  /** A trailing IMDb disambiguator — " (I)", " (II)", " (III)", … — see
+   *  `stripImdbDisambiguator`. */
+  val ImdbDisambiguatorSuffix: scala.util.matching.Regex = """(?i)\s+\([IVXLCDM]+\)$""".r
 }

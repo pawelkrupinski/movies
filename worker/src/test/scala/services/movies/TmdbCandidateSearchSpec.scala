@@ -50,4 +50,35 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
 
     search(tmdb).resolve("Guru", None, row, originalTitle = None, director = None) shouldBe None
   }
+
+  // ── An IMDb-style disambiguator suffix must not blind the person search ────
+
+  /** IMDb tells two same-named people apart with a trailing "(I)"/"(II)"/…
+   *  suffix — "Tom Holland (II)" is the "Child's Play" 1988 director, not the
+   *  "Spider-Man" actor of the same name. That suffix is IMDb's own scheme; TMDB
+   *  has never heard of it, and `/search/person` matches the raw string
+   *  verbatim. Sent with the parenthetical intact, "Tom Holland (II)" finds
+   *  nobody and the whole director-walk resolution abstains — confirmed on
+   *  corpus row `chuckydiemorderpuppe|1988` (DE), `director: ["Tom Holland
+   *  (II)"]`, `originalTitle: "Child's Play"`, `releaseYear: 1988`. Stubbing
+   *  `/search/person` ONLY for the clean "Tom Holland" query (not the
+   *  disambiguated form) is what makes this fail before the strip and pass
+   *  after it. */
+  it should "strip a trailing IMDb disambiguator before searching TMDB for the director" in {
+    val ChildsPlay = 587219
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"               -> """{"results":[]}""",
+      "query=Tom+Holland&"          -> """{"results":[{"id":9001,"name":"Tom Holland","known_for_department":"Directing"}]}""",
+      "/person/9001/movie_credits"  -> s"""{"crew":[{"id":$ChildsPlay,"title":"Chucky - die Mörderpuppe","original_title":"Child's Play","release_date":"1988-11-09","department":"Directing","popularity":10.0}]}""",
+      s"/movie/$ChildsPlay?"        -> s"""{"id":$ChildsPlay,"title":"Chucky - die Mörderpuppe","original_title":"Child's Play","release_date":"1988-11-09","runtime":87,"credits":{"crew":[{"job":"Director","name":"Tom Holland"}],"cast":[]}}"""
+    )), apiKey = Some("stub"))
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Chucky - die Mörderpuppe"), originalTitle = Some("Child's Play"),
+        director = Seq("Tom Holland (II)"), runtimeMinutes = Some(87))))
+
+    val found = search(tmdb).resolve(
+      "Chucky - die Mörderpuppe", Some(1988), row, originalTitle = Some("Child's Play"), director = None)
+    found.map(_._1) shouldBe Some(ChildsPlay)
+    found.flatMap(_._3) shouldBe Some(TmdbBasis.DirectorWalk)
+  }
 }
