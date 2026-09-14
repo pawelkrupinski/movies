@@ -48,10 +48,17 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     html should include ("kinowo.net")
   }
 
-  it should "pick a country, not a city — no city links and no geolocation" in {
+  it should "pick a country, not a city — no city links and no automatic geolocation redirect" in {
     val html = bodyOn("showtimes.cc")
     html should not include ("""class="city-list"""")
-    html should not include ("navigator.geolocation")
+    // The AUTOMATIC on-load redirect (`#locating`'s status element + the IIFE
+    // that drives it) stays apex-only-excluded — guessing a COUNTRY from
+    // coordinates would send a visitor somewhere they cannot opt out of. The
+    // manual "use my location" button (`locatePickerAnywhere`, which also
+    // references `navigator.geolocation`) is deliberately NOT excluded here:
+    // it's opt-in and searches every deployed country, so the apex offers it
+    // too — see the commit that added it.
+    html should not include ("""id="locating"""")
   }
 
   it should "answer the www. spelling too, in case the proxy redirect is bypassed" in {
