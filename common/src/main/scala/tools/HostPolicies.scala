@@ -314,6 +314,23 @@ object HostPolicies {
       minRequestInterval = Some(Duration.ofMillis(500)),
       paceKnob           = Some("KINOWO_LANDMARK_PACE_MS"),
     ),
+
+    // Kino Sfinks (Kraków) — its per-screening detail pages
+    // (`/wydarzenie-…-szczegoly-….html`), fetched by `EnrichDetails` tasks. The
+    // site is normally fast (~1.3s measured 2026-09-14), but stalls completely a
+    // few times a day: three separate incidents (2026-09-13 21:22, 2026-09-14
+    // 05:46 and 09:21 UTC) each show TWO concurrent detail fetches hanging the
+    // full 30s default and `ThrottledHttpFetch` pausing the host for 5s after —
+    // a whole-site stall, not a page-specific one. Under the 30s default each
+    // incident pinned an EnrichDetails worker slot for 30s twice, which is
+    // exactly panel-27's recurring p95 spike (baseline ~2-4s → 46.5-50.25s).
+    // 8s is well above the healthy ~1.3s call and well below the 30s default, so
+    // a stall now times out fast and trips `HostCircuitBreakerHttpFetch`'s
+    // cooldown instead of blocking a slot for the full budget — the same fix
+    // shape as Helios's REST API above. A cut-off enrichment fetch costs
+    // nothing: `EnrichDetailsHandler` reports it `Done` unmarked, so the next
+    // scrape re-enqueues it.
+    HostPolicy(Set("kinosfinks.okn.edu.pl"), requestTimeout = Duration.ofSeconds(8)),
   )
 
   /** True when `url`'s host matches one of `suffixes` (exact host or a dotted

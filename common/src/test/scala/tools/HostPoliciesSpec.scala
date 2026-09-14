@@ -151,6 +151,29 @@ class HostPoliciesSpec extends AnyFlatSpec with Matchers {
   // is a request-shape rule, not an IP ban). The header rides on the host policy
   // table — data, one row, like every other per-host rule.
 
+  // ── Fast-fail request budget (whole-site stall: Kino Sfinks) ──────────────
+  // kinosfinks.okn.edu.pl answers its normal ~1.3s but stalls completely a few
+  // times a day; under the 30s default each stall pinned an EnrichDetails slot
+  // for the full budget (recurring panel-27 p95 spikes 2026-09-13/14). Its host
+  // policy gives the tight response-read budget, while every other host keeps
+  // the generous default.
+
+  it should "give Kino Sfinks's detail host and its sub-domains the fast-fail budget" in {
+    HostPolicies.requestTimeoutFor("https://kinosfinks.okn.edu.pl/wydarzenie-1-x-szczegoly-1.html") shouldBe Duration.ofSeconds(8)
+    HostPolicies.requestTimeoutFor("https://www.kinosfinks.okn.edu.pl/x") shouldBe Duration.ofSeconds(8)
+  }
+
+  it should "keep the default for an unrelated okn.edu.pl sub-domain and a malformed URL" in {
+    HostPolicies.requestTimeoutFor("https://other.okn.edu.pl/x") shouldBe HostPolicies.DefaultRequestTimeout
+    HostPolicies.requestTimeoutFor("not a url") shouldBe HostPolicies.DefaultRequestTimeout
+  }
+
+  it should "make Kino Sfinks's budget below the 30s stall (so it times out and trips the breaker) but above its ~1.3s healthy call" in {
+    val sfinks = HostPolicies.requestTimeoutFor("https://kinosfinks.okn.edu.pl/x")
+    sfinks.compareTo(Duration.ofSeconds(30)) should be < 0
+    sfinks.compareTo(Duration.ofSeconds(2)) should be > 0
+  }
+
   "headersFor" should "give IMDb's GraphQL CDN the client-name header its edge now demands" in {
     HostPolicies.headersFor("https://caching.graphql.imdb.com/") shouldBe
       Map("x-imdb-client-name" -> "imdb-web-next")
