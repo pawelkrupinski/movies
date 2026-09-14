@@ -817,7 +817,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // `onLanding` renders in Polish, so the German term is Polish too
       // (`landing.level.de.region`), same as a Polish visitor browsing
       // another country from this page would see.
-      clickCountryPill(page, "Deutschland")
+      clickCountryPill(page, "Niemcy")
       pickerSearchPlaceholder(page) shouldBe "Szukaj: kraj związkowy lub miasto…"
     }
   }

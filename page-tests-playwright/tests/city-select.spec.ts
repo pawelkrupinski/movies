@@ -437,7 +437,9 @@ test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agno
     // Poland: flat, so just "city".
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj miasta…');
     // Germany: one level, its OWN term — not Poland's, not a bare "region".
-    await pickerCountryPill(page, 'Deutschland').click();
+    // The pill reads "Niemcy" — localized to the visitor's language via
+    // `COUNTRY_NAMES` (`landing.scala.html`), not "Deutschland".
+    await pickerCountryPill(page, 'Niemcy').click();
     await expect(page.locator('#picker-search')).toHaveAttribute('placeholder', 'Szukaj: kraj związkowy lub miasto…');
   });
 
