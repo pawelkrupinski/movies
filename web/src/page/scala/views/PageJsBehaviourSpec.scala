@@ -603,27 +603,43 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
-  it should "search only the level it is showing, not the whole tree" in {
+  it should "search every level at once, not just the one it is showing" in {
     onGroupedLanding { page =>
       // "los angeles" is a CITY, one level below the root the box is
-      // searching — a query never surfaces a row from a level the visitor
-      // hasn't drilled into.
+      // showing — the query still finds it: it scans the whole country,
+      // not just the level currently drilled into.
       typePickerSearch(page, "los angeles")
-      pickerRowCount(page) shouldBe 0
-      // The heading itself is the root level's own term.
+      pickerRowLabels(page) shouldBe """["Los Angeles"]"""
+      // The heading itself is a root-level term and matches too — alongside
+      // "Northern California", one of the state's own metros, sorted right
+      // after it.
       typePickerSearch(page, "california")
-      pickerRowLabels(page) shouldBe """["California"]"""
+      pickerRowLabels(page) shouldBe """["California","Northern California"]"""
 
       typePickerSearch(page, "")
       clickPickerRow(page, "California")
-      // Now one level down, a DIFFERENT state's name is no longer a row here
-      // — it named a level above, not a place inside this one. (Not
-      // "california" itself: one of the state's own metros happens to share
-      // that name — a real coincidence, not a bug — so it would still match.)
+      // One level down, a DIFFERENT state's own name STILL matches — the
+      // whole country is searched no matter how deep the visitor has
+      // drilled, exactly like the root level did above (alongside a couple
+      // of the state's own metros that happen to share the name).
       typePickerSearch(page, "texas")
-      pickerRowCount(page) shouldBe 0
+      pickerRowLabels(page) shouldBe """["East Texas","Texas","West Texas"]"""
       typePickerSearch(page, "los angeles")
       pickerRowLabels(page) shouldBe """["Los Angeles"]"""
+    }
+  }
+
+  it should "jump straight to the right state when a flattened result is picked from inside another one" in {
+    onGroupedLanding { page =>
+      clickPickerRow(page, "California")
+      pickerRowLabels(page) should include ("Los Angeles")
+      // "Texas" only matches at the ROOT level, yet it is offered from
+      // inside California — picking it has to leave California behind and
+      // land on Texas's own metros, not merely narrow California's list.
+      typePickerSearch(page, "texas")
+      clickPickerRow(page, "Texas")
+      page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "Texas"
+      pickerRowLabels(page) should not include "Los Angeles"
     }
   }
 
@@ -664,6 +680,24 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       page.eval("document.getElementById('picker-back-row').click()")
       pickerRowLabels(page) shouldBe
         """["England","Scotland","Northern Ireland","Wales","Crown Dependencies"]"""
+    }
+  }
+
+  it should "find a county from the nation root, and land two levels deep in one tap" in {
+    onNestedLanding { page =>
+      // "West Midlands" is a COUNTY two levels below the root the box shows
+      // (nation → county → place) — the search scans the whole country
+      // regardless of level, so it surfaces from the very first screen.
+      typePickerSearch(page, "west midlands")
+      pickerRowLabels(page) shouldBe """["West Midlands"]"""
+
+      // Picking it has to land on the right NATION too, not just the
+      // county — `buildSearchRows` carries the parent region along for
+      // exactly this, since a bare subregion name says nothing about which
+      // nation it belongs to.
+      clickPickerRow(page, "West Midlands")
+      page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "England — West Midlands"
+      pickerRowLabels(page) shouldBe """["Birmingham","Dudley","Sandwell"]"""
     }
   }
 

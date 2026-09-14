@@ -254,6 +254,19 @@ struct CityChoiceView: View {
         return catalog.matching(query, inCountry: countryCode, region: region, subregion: subregion)
     }
 
+    /// A query flattens the WHOLE country instead of narrowing just the level
+    /// currently drilled into — see `Array<City>.searchRows(matching:inCountry:)`.
+    /// Only meaningful for a grouped country: Poland and Spain have no regions
+    /// to flatten, so their own per-level search above already reaches every
+    /// city.
+    private var searchingAcrossLevels: Bool {
+        !regions.isEmpty && !query.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    private var searchRows: [City.SearchRow] {
+        catalog.searchRows(matching: query, inCountry: countryCode)
+    }
+
     var body: some View {
         NavigationStack {
             List {
@@ -282,7 +295,43 @@ struct CityChoiceView: View {
                         .accessibilityIdentifier(A11y.CityGate.noNearbyLocateLabel)
                 }
 
-                if pickingRegion {
+                if searchingAcrossLevels {
+                    // Replaces whichever step the visitor was on with ONE
+                    // flat, alphabetically merged list spanning every region,
+                    // subregion and city in the country — the whole point of
+                    // flattening the search is that it no longer matters
+                    // which level you were browsing when you started typing.
+                    Section {
+                        ForEach(searchRows, id: \.self) { row in
+                            switch row {
+                            case .region(let name):
+                                Button { region = name; subregion = nil; query = "" } label: {
+                                    self.row(name)
+                                }
+                                .foregroundStyle(.primary)
+                            case .subregion(let name, let parentRegion):
+                                Button { region = parentRegion; subregion = name; query = "" } label: {
+                                    self.row(name)
+                                }
+                                .foregroundStyle(.primary)
+                            case .city(let city):
+                                Button {
+                                    choose(city)
+                                } label: {
+                                    self.row(city.name)
+                                }
+                                .foregroundStyle(.primary)
+                            }
+                        }
+                    } header: {
+                        Text("citygate.choose_title")
+                    }
+
+                    if searchRows.isEmpty {
+                        Text(String(format: localizedString("citygate.no_match", locale: locale), query))
+                            .foregroundStyle(.secondary)
+                    }
+                } else if pickingRegion {
                     Section {
                         ForEach(topLevelRows, id: \.self) { row in
                             switch row {

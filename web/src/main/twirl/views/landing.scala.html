@@ -313,8 +313,7 @@
       pickerCountry = code;
       pickerRegion = null;
       pickerSubregion = null;
-      const search = document.getElementById('picker-search');
-      if (search) search.value = '';
+      clearPickerSearch();
       renderPickerCountries();
       renderPickerBody();
     }
@@ -369,6 +368,36 @@
       return rows;
     }
 
+    // Every region, subregion and city in the current country, regardless of
+    // how deep pickerRegion/pickerSubregion have drilled — a query for "kent"
+    // must surface the Kent COUNTY heading even from the UK's top level, not
+    // only once England is already open. Matches from every level land in one
+    // alphabetical list together (folded compare, so it agrees with `haystack`
+    // on what counts as a match).
+    function buildSearchRows(query) {
+      const rows = [];
+      const seenRegion = {};
+      const seenSubregion = {};
+      citiesOf(pickerCountry).forEach(function (c) {
+        if (c.region && !seenRegion[c.region]) {
+          seenRegion[c.region] = true;
+          if (haystack(c.region).indexOf(query) !== -1) rows.push({ kind: 'region', label: c.region });
+        }
+        if (c.subregion) {
+          const key = c.region + ' ' + c.subregion;
+          if (!seenSubregion[key]) {
+            seenSubregion[key] = true;
+            if (haystack(c.subregion).indexOf(query) !== -1) {
+              rows.push({ kind: 'subregion', label: c.subregion, region: c.region });
+            }
+          }
+        }
+        if (haystack(c.name).indexOf(query) !== -1) rows.push({ kind: 'city', label: c.name, city: c });
+      });
+      rows.sort(function (a, b) { return fold(a.label).localeCompare(fold(b.label)); });
+      return rows;
+    }
+
     function renderPickerBody() {
       const backRow = document.getElementById('picker-back-row');
       const subtitle = document.getElementById('picker-subtitle');
@@ -406,26 +435,36 @@
           chevron.setAttribute('aria-hidden', 'true');
           chevron.textContent = '›';
           item.appendChild(chevron);
+          // `row.region` is only set on a subregion row that came out of
+          // `buildSearchRows` (a normal, single-level `buildPickerRows` row
+          // never carries it because `pickerRegion` is already correct by
+          // then) — jumping to a flattened match still has to land with the
+          // right region selected, not just the subregion.
           item.onclick = row.kind === 'region'
-            ? function () { pickerRegion = row.label; renderPickerBody(); }
-            : function () { pickerSubregion = row.label; renderPickerBody(); };
+            ? function () { pickerRegion = row.label; pickerSubregion = null; clearPickerSearch(); renderPickerBody(); }
+            : function () { pickerRegion = row.region !== undefined ? row.region : pickerRegion; pickerSubregion = row.label; clearPickerSearch(); renderPickerBody(); };
         }
         list.appendChild(item);
       });
       empty.style.display = rows.length === 0 ? 'block' : 'none';
     }
 
-    // In-list name filter, narrowing the CURRENT level's rows only — a query
-    // never surfaces a city from a country or region the visitor hasn't
-    // drilled into, same as the retired popup's `filterCityPicker`. Folded
-    // (Polish/German diacritics included, see `haystack` above), which the
-    // popup's own plain substring match never was.
+    function clearPickerSearch() {
+      const input = document.getElementById('picker-search');
+      if (input) input.value = '';
+    }
+
+    // An empty box shows just the current level's rows (`buildPickerRows`).
+    // A query flattens the WHOLE country instead — regions, subregions and
+    // cities together, sorted alphabetically by `buildSearchRows` — so typing
+    // a county or nation name works from anywhere, not only once you've
+    // drilled down to the level it lives at. Folded (Polish/German diacritics
+    // included, see `haystack` above), which the retired popup's own plain
+    // substring match never was.
     function filterPicker() {
       const input = document.getElementById('picker-search');
       const query = fold(input.value.trim());
-      const visible = query === ''
-        ? pickerRows
-        : pickerRows.filter(function (row) { return haystack(row.label).indexOf(query) !== -1; });
+      const visible = query === '' ? pickerRows : buildSearchRows(query);
       paintPickerRows(visible);
     }
     window.filterPicker = filterPicker;

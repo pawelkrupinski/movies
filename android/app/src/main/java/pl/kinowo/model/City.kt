@@ -419,6 +419,63 @@ fun List<City>.topLevelRows(query: String, countryCode: String): List<CityPicker
 fun List<City>.secondLevelRows(query: String, countryCode: String, region: String): List<CityPickerRow> =
     mergedPickerRows(inCountry(countryCode).filter { it.region == region }, groupField = { it.subregion }, query = query)
 
+/** One row of a FLATTENED, whole-country search result — see [searchRows].
+ *  Unlike [CityPickerRow], a subregion here carries its parent [Subregion.region]:
+ *  picking it from a flat list has to land two drill-steps deep at once, not
+ *  just one, so the caller can't recover the region from its own current
+ *  state the way [CityPickerRow]'s single-level callers can. */
+sealed class CitySearchRow {
+    abstract val label: String
+    data class Region(override val label: String) : CitySearchRow()
+    data class Subregion(override val label: String, val region: String) : CitySearchRow()
+    data class CityRow(val city: City) : CitySearchRow() {
+        override val label: String get() = city.name
+    }
+}
+
+/** Every region, subregion and city in [countryCode] matching [query], merged
+ *  into ONE alphabetical list — a query for "kent" must surface the Kent
+ *  COUNTY heading even from the UK's top level, not only once England is
+ *  already open. Empty for a blank [query]: [topLevelRows]/[secondLevelRows]
+ *  above handle that case, and a country with no grouping (Poland, Spain) has
+ *  nothing to flatten in the first place — its own [matching] already reaches
+ *  every city. */
+fun List<City>.searchRows(query: String, countryCode: String): List<CitySearchRow> {
+    val q = Cities.searchFold(query.trim())
+    if (q.isEmpty()) return emptyList()
+    val seenRegion = mutableSetOf<String>()
+    val seenSubregion = mutableSetOf<String>()
+    val rows = mutableListOf<CitySearchRow>()
+    for (city in inCountry(countryCode)) {
+        val region = city.region
+        if (region != null && seenRegion.add(region) && Cities.searchFold(region).contains(q)) {
+            rows.add(CitySearchRow.Region(region))
+        }
+        val subregion = city.subregion
+        if (region != null && subregion != null && seenSubregion.add("$region $subregion") &&
+            Cities.searchFold(subregion).contains(q)
+        ) {
+            rows.add(CitySearchRow.Subregion(subregion, region))
+        }
+        if (Cities.searchFold(city.name).contains(q)) {
+            rows.add(CitySearchRow.CityRow(city))
+        }
+    }
+    val collator = java.text.Collator.getInstance(collationLocale(countryCode))
+    return rows.sortedWith(compareBy(collator) { it.label })
+}
+
+/** A stable `LazyColumn` item key — unique within one flattened search result,
+ *  same role as [rowKey] for [CityPickerRow]. A subregion's key includes its
+ *  region since two different regions could in principle share a subregion
+ *  name. */
+val CitySearchRow.rowKey: String
+    get() = when (this) {
+        is CitySearchRow.Region -> "region:$label"
+        is CitySearchRow.Subregion -> "subregion:$region:$label"
+        is CitySearchRow.CityRow -> "city:${city.slug}"
+    }
+
 /** [sortedForPicker] narrowed to the cities matching [query] (case- and
  *  diacritic-insensitive substring). A blank query yields the whole country list. */
 fun List<City>.matching(query: String, countryCode: String): List<City> {

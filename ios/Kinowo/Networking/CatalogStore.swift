@@ -105,6 +105,9 @@ final class CatalogStore: ObservableObject {
     func secondLevelRows(matching query: String, inCountry code: String, region: String) -> [City.PickerRow] {
         cities.secondLevelRows(matching: query, inCountry: code, region: region)
     }
+    func searchRows(matching query: String, inCountry code: String) -> [City.SearchRow] {
+        cities.searchRows(matching: query, inCountry: code)
+    }
     func matching(_ query: String, inCountry code: String, region: String, subregion: String) -> [City] {
         cities.matching(query, inCountry: code, region: region, subregion: subregion)
     }

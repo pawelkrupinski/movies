@@ -41,11 +41,13 @@ import pl.kinowo.R
 import pl.kinowo.model.Catalog
 import pl.kinowo.model.City
 import pl.kinowo.model.CityPickerRow
+import pl.kinowo.model.CitySearchRow
 import pl.kinowo.model.Country
 import pl.kinowo.model.matching
 import pl.kinowo.model.matchingInSubregion
 import pl.kinowo.model.regionsIn
 import pl.kinowo.model.rowKey
+import pl.kinowo.model.searchRows
 import pl.kinowo.model.secondLevelRows
 import pl.kinowo.model.topLevelRows
 import pl.kinowo.ui.CountryPicker
@@ -97,6 +99,11 @@ fun CityChoiceScreen(
     // this collapses to the single flat list it always was.
     val regions = catalog.cities.regionsIn(country)
     val pickingRegion = regions.isNotEmpty() && region == null
+    // A query flattens the WHOLE country instead of narrowing just the level
+    // currently drilled into — see `searchRows`. Only meaningful for a
+    // grouped country: Poland and Spain have no regions to flatten, so their
+    // own per-level search above already reaches every city.
+    val searchingAcrossLevels = regions.isNotEmpty() && query.isNotBlank()
 
     // Edge-to-edge (MainActivity.enableEdgeToEdge): inset padding on this
     // Column so the "Country" label doesn't sit under the clock and the
@@ -183,7 +190,31 @@ fun CityChoiceScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             modifier = Modifier.fillMaxWidth(),
         )
-        if (pickingRegion) {
+        if (searchingAcrossLevels) {
+            // Replaces whichever step was open with ONE flat, alphabetically
+            // merged list spanning every region, subregion and city in the
+            // country — the whole point of flattening the search is that it
+            // no longer matters which level the visitor was browsing when
+            // they started typing.
+            val rows = catalog.cities.searchRows(query, country)
+            if (rows.isEmpty()) {
+                NoMatches(query, R.string.no_city_matching)
+            } else {
+                LazyColumn(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    items(rows, key = { it.rowKey }) { row ->
+                        when (row) {
+                            is CitySearchRow.Region -> TallFilledButton(row.label) {
+                                region = row.label; subregion = null; query = ""
+                            }
+                            is CitySearchRow.Subregion -> TallFilledButton(row.label) {
+                                region = row.region; subregion = row.label; query = ""
+                            }
+                            is CitySearchRow.CityRow -> TallFilledButton(row.city.name) { onPick(row.city) }
+                        }
+                    }
+                }
+            }
+        } else if (pickingRegion) {
             // Each region's heading interleaved with any city whose top group
             // collapsed onto it alone (Berlin, Hamburg; Delaware, Vermont), in
             // the catalog's own order (see `mergedPickerRows`) — not every
