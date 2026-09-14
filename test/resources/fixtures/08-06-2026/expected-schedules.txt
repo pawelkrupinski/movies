@@ -1109,7 +1109,7 @@ showings:
 
 === Cinema Italia Oggi: Takie jest życie ===
 displayTitle:      Cinema Italia Oggi: Takie jest życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -1149,6 +1149,7 @@ cinemaScrapes:
   Kino Pod Baranami / Takie jest życie / —
   Kino Przedwiośnie / Portret Kobiety: Takie jest życie / 2025
   Kino Rialto / Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE / 2025
+  Kino Wisła / WSP: Takie jest życie - przedpremiera / 2025
   KinoGram / MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie / 2025
 showings:
   2026-07-12  Kino Pałacowe                 15:30 Sala 1 - Kinowa
@@ -1998,7 +1999,7 @@ showings:
 
 === Drzewo magii ===
 displayTitle:      Drzewo magii
-cinemaTitles:      DRZEWO MAGII | Drzewo Magii | Drzewo magii
+cinemaTitles:      DRZEWO MAGII | Drzewo Magii | Drzewo magii | Kino przyjazne sensorycznie: drzewo magii
 runtimeMinutes:    110
 releaseYear:       2026
 countries:         Francja, USA, Wielka Brytania
@@ -2123,6 +2124,7 @@ cinemaScrapes:
   Kino Kika / DRZEWO MAGII / —
   Kino Kolory / Drzewo magii / —
   Kino Kreska / Drzewo magii / —
+  Kino Kryterium / Kino przyjazne sensorycznie: drzewo magii / —
   Kino Lewart / Drzewo magii / —
   Kino MCSW Elektrownia / DRZEWO MAGII / —
   Kino MDK / DRZEWO MAGII / —
@@ -2754,7 +2756,7 @@ showings:
 
 === Filmowy Klub Seniora: 18 lecie - Takie Jest Życie ===
 displayTitle:      Filmowy Klub Seniora: 18 lecie - Takie Jest Życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -2794,6 +2796,7 @@ cinemaScrapes:
   Kino Pod Baranami / Takie jest życie / —
   Kino Przedwiośnie / Portret Kobiety: Takie jest życie / 2025
   Kino Rialto / Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE / 2025
+  Kino Wisła / WSP: Takie jest życie - przedpremiera / 2025
   KinoGram / MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie / 2025
 showings:
   2026-06-30  Kino Rialto                   13:00 · 15:30
@@ -2934,7 +2937,7 @@ showings:
 
 === Filmowy Klub Seniora: Ojczyzna ===
 displayTitle:      Filmowy Klub Seniora: Ojczyzna
-cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Pora dla Seniora: Ojczyzna
+cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Pora dla Seniora: Ojczyzna | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -2977,7 +2980,7 @@ cinemaScrapes:
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
-  Kino Atlantic / Pora dla Seniora: Ojczyzna / 2026
+  Kino Atlantic / Za Drzwiami Atlantica: Ojczyzna / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Cytadela / Ojczyzna (pokaz przedpremierowy) / 2026
@@ -3007,7 +3010,7 @@ cinemaScrapes:
   Kino Stary Młyn / Ojczyzna / —
   Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
-  Kino Wisła / Ojczyzna - pokaz przedpremierowy / 2026
+  Kino Wisła / WSP: Ojczyzna - przedpremiera / 2026
   KinoGram / Ojczyzna / —
   KinoPort / Ojczyzna / 2026
   Kinomax / Ojczyzna / —
@@ -3690,19 +3693,19 @@ runtimeMinutes:    85
 releaseYear:       2025
 countries:         Brazylia, Meksyk, Holandia
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/CwB_Poland_www_bekitny_szlak.jpg
-synopsis.length:   113
-cast:              —
+synopsis.length:   531
+cast:              Denise Weinberg, Rodrigo Santoro, Miriam Socarrás, Adanilo, Rosa Malagueta
 director:          Gabriel Mascara
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            1172265
+imdbId:            tt35340614
+originalTitle:     O Último Azul
+imdbRating:        7.0
+metascore:         78
+rottenTomatoes:    100
+filmwebRating:     6.6
+metacriticUrl:     https://www.metacritic.com/movie/the-blue-trail
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/o_ultimo_azul
+filmwebUrl:        https://www.filmweb.pl/film/B%C5%82%C4%99kitny+szlak-2025-10070302
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14485-kino-bez-barier-bekitny-szlak-ad-cc-pjm/
 cinemaScrapes:
@@ -6220,7 +6223,7 @@ showings:
 
 === Ojczyzna ===
 displayTitle:      Ojczyzna
-cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Pora dla Seniora: Ojczyzna
+cinemaTitles:      Filmowy Klub Seniora: OJCZYZNA | OJCZYZNA | Ojczyzna | Ojczyzna (pokaz przedpremierowy) | Ojczyzna - pokaz przedpremierowy | Ojczyzna | POKAZ PRZEDPREMIEROWY | Ojczyzna | Pokaz przedpremierowy | Ojczyzna | Zobacz przedpremierowo | Ojczyzna | pokaz przedpremierowy | Pora dla Seniora: Ojczyzna | WSP: Ojczyzna - przedpremiera | Za Drzwiami Atlantica: Ojczyzna
 runtimeMinutes:    82
 releaseYear:       2026
 countries:         Polska, Niemcy, Włochy, Francja
@@ -6265,7 +6268,7 @@ cinemaScrapes:
   Kino Agrafka / OJCZYZNA / 2026
   Kino Apollo / Ojczyzna / —
   Kino Apollo Wałbrzych / Ojczyzna | pokaz przedpremierowy / —
-  Kino Atlantic / Pora dla Seniora: Ojczyzna / 2026
+  Kino Atlantic / Za Drzwiami Atlantica: Ojczyzna / 2026
   Kino Awangarda 2 / Ojczyzna / —
   Kino Bajka Kluczbork / Ojczyzna / —
   Kino Cytadela / Ojczyzna (pokaz przedpremierowy) / 2026
@@ -6295,7 +6298,7 @@ cinemaScrapes:
   Kino Stary Młyn / Ojczyzna / —
   Kino Studyjne Kadr / Ojczyzna / —
   Kino Twierdza / Ojczyzna / —
-  Kino Wisła / Ojczyzna - pokaz przedpremierowy / 2026
+  Kino Wisła / WSP: Ojczyzna - przedpremiera / 2026
   KinoGram / Ojczyzna / —
   KinoPort / Ojczyzna / 2026
   Kinomax / Ojczyzna / —
@@ -7014,28 +7017,31 @@ showings:
 
 === Plenerowe Pałacowe: Father mother sister brother ===
 displayTitle:      Plenerowe Pałacowe: Father mother sister brother
-cinemaTitles:      Plenerowe Pałacowe: FATHER MOTHER SISTER BROTHER
+cinemaTitles:      Father Mother Sister Brother | Plenerowe Pałacowe: FATHER MOTHER SISTER BROTHER
 runtimeMinutes:    110
 releaseYear:       2025
-countries:         Francja, USA, Irlandia
+countries:         Francja, USA, Irlandia, Włochy, Niemcy, Wielka Brytania
 posterUrl:         https://kinopalacowe.pl/media/gallery/lg/FMSB_plakat_PL_LQ_2UmITj6.jpg
-synopsis.length:   116
-cast:              —
+synopsis.length:   402
+cast:              Tom Waits, Adam Driver, Mayim Bialik, Charlotte Rampling, Cate Blanchett
 director:          Jim Jarmsuch
-tmdbId:            —
-imdbId:            —
-originalTitle:     —
-imdbRating:        —
-metascore:         —
-rottenTomatoes:    —
-filmwebRating:     —
-metacriticUrl:     —
-rottenTomatoesUrl: —
-filmwebUrl:        —
+tmdbId:            1159206
+imdbId:            tt31189315
+originalTitle:     Father Mother Sister Brother
+imdbRating:        6.5
+metascore:         76
+rottenTomatoes:    83
+filmwebRating:     6.2
+metacriticUrl:     https://www.metacritic.com/movie/father-mother-sister-brother
+rottenTomatoesUrl: https://www.rottentomatoes.com/m/father_mother_sister_brother
+filmwebUrl:        https://www.filmweb.pl/film/Father+Mother+Sister+Brother-2025-10044977
 cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14616-plenerowe-paacowe-father-mother-sister-brother/
 cinemaScrapes:
+  DKF Rumcajs / Father Mother Sister Brother / —
+  Kino Amondo / Father Mother Sister Brother / —
   Kino Pałacowe / Plenerowe Pałacowe: FATHER MOTHER SISTER BROTHER / 2025
+  Kino na Szekspirowskim / Father Mother Sister Brother / —
 showings:
   2026-07-28  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 
@@ -9453,7 +9459,7 @@ showings:
 
 === Takie jest życie ===
 displayTitle:      Takie jest życie
-cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE
+cinemaTitles:      BEST FILM ON TOUR | Takie jest życie | spotkanie Beaty Kwiatkowskiej | Best Film ON Tour: Takie jest życie - przedpremiera | Best Film on Tour: Takie jest życie | Cinema Italia Oggi: Takie jest życie | Filmowe spotkania seniora: Takie jest życie | Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE | Kino Konesera: Takie jest życie | MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie | Portret Kobiety: Takie jest życie | TAKIE JEST ŻYCIE | Takie jest życie | Takie jest życie | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE | WSP: Takie jest życie - przedpremiera
 runtimeMinutes:    118
 releaseYear:       2025
 countries:         Włochy
@@ -9494,6 +9500,7 @@ cinemaScrapes:
   Kino Pod Baranami / Takie jest życie / —
   Kino Przedwiośnie / Portret Kobiety: Takie jest życie / 2025
   Kino Rialto / Filmowy Klub Seniora: 18 lecie - TAKIE JEST ŻYCIE / 2025
+  Kino Wisła / WSP: Takie jest życie - przedpremiera / 2025
   KinoGram / MIĘDZY ZMYSŁAMI (2. EDYCJA) - Takie jest życie / 2025
 showings:
   2026-06-16  Kino Pałacowe                 19:00 Sala 1 - Kinowa
