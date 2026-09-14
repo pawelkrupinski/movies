@@ -5180,48 +5180,49 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   //
   // `/uk`, `/de` and `/us` are one origin and share the session cookie
   // outright (its path is the host root), so crossing between them is a
-  // plain navigation and stays signed in by itself. kinowo.net is a
-  // different registrable domain, where no cookie setting can reach.
-  // `crossCountryUrl` (`landing.scala.html`) is the decision: a same-origin
-  // target gets a plain `?pick=city` link; a genuine origin crossing always
-  // goes through `/auth/sso/start` FIRST — unconditionally, not gated on a
-  // signed-in check, because `AuthController.ssoStart` is a documented safe
-  // no-op when there is nothing to hand over (it just redirects on through),
-  // and the picker has no navbar/`#auth-menu` to read a signed-in flag off
-  // in the first place (unlike the repertoire pages the retired
-  // `#country-select` lived on). The one extra redirect hop this costs a
-  // signed-out visitor crossing origins is the trade for never needing that
-  // check anywhere the picker can be reached from.
+  // plain navigation straight to the picked city, and stays signed in by
+  // itself. kinowo.net is a different registrable domain, where no cookie
+  // setting can reach. `crossCountryUrl` (`landing.scala.html`) is the
+  // decision: a same-origin target gets a plain link to the exact city; a
+  // genuine origin crossing always goes through `/auth/sso/start` FIRST —
+  // unconditionally, not gated on a signed-in check, because
+  // `AuthController.ssoStart` is a documented safe no-op when there is
+  // nothing to hand over (it just redirects on through), and the picker has
+  // no navbar/`#auth-menu` to read a signed-in flag off in the first place
+  // (unlike the repertoire pages the retired `#country-select` lived on).
+  // The one extra redirect hop this costs a signed-out visitor crossing
+  // origins is the trade for never needing that check anywhere the picker
+  // can be reached from.
   //
   // The fixture renders `/landing` as Poland; `window.location.origin` there
   // is the test server's own address, not the prod `kinowo.net`.
 
-  "The picker's country crossing" should "route a same-origin target through a plain ?pick=city link" in {
+  "The picker's country crossing" should "route a same-origin pick straight to the picked city" in {
     onLanding { page =>
       val origin = page.evalString("window.location.origin")
-      page.evalString("window.crossCountryUrl(window.location.origin + '/de')") shouldBe s"$origin/de/?pick=city"
+      page.evalString("window.crossCountryUrl(window.location.origin + '/de', 'berlin')") shouldBe
+        s"$origin/de/berlin/"
     }
   }
 
   it should "route a genuinely different origin through /auth/sso/start" in {
     onLanding { page =>
       val origin = page.evalString("window.location.origin")
-      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk')") shouldBe
+      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk', 'london')") shouldBe
         s"$origin/auth/sso/start?to=https%3A%2F%2Fshowtimes.cc%2Fuk&pick=city"
     }
   }
 
-  // Crossing country is a deliberate choice OF A COUNTRY, so the landing it
-  // opens must ask which city rather than bounce to a cookie'd one or to
-  // wherever the device is standing. `pick=city` is what says so, and it has
-  // to survive both routes — including the handover, where it rides BESIDE
-  // `to` (the far side matches `to` against the deployed base URLs verbatim,
-  // so a query string inside it would be refused as "not a deployed country").
-  it should "ask the destination for a city list, on both routes" in {
+  // A genuine origin crossing can't carry the picked city through: the far
+  // side matches `to` against the deployed base URLs verbatim (open-redirect
+  // safety), so a query string — or a path — riding inside it would be
+  // refused as "not a deployed country". `pick=city` rides BESIDE `to`
+  // instead, asking the destination for its own city list rather than
+  // bouncing to a cookie'd city or wherever the device is standing.
+  it should "ask the SSO destination for a city list, since the handoff can't carry the city itself" in {
     onLanding { page =>
-      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk')") should endWith ("&pick=city")
-      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk')") should include ("to=https%3A%2F%2Fshowtimes.cc%2Fuk&")
-      page.evalString("window.crossCountryUrl(window.location.origin + '/de')") should endWith ("/?pick=city")
+      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk', 'london')") should endWith ("&pick=city")
+      page.evalString("window.crossCountryUrl('https://showtimes.cc/uk', 'london')") should include ("to=https%3A%2F%2Fshowtimes.cc%2Fuk&")
     }
   }
 

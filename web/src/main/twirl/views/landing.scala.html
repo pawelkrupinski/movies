@@ -491,30 +491,37 @@
       catch (e) { return false; }
     }
 
-    // Where a country PICK (not a same-country city pick) goes. Same-origin
-    // countries (the Showtimes family sharing showtimes.cc) share the session
-    // cookie outright, so a plain link keeps a signed-in visitor signed in.
-    // Crossing to a genuinely different origin (kinowo.net) would otherwise
-    // drop that session — `/auth/sso/start` hands it over first. Signed OUT
-    // is not an error there: it is just the link this would have followed
-    // anyway (see `AuthController.ssoStart`), so it is always safe to route
-    // through it rather than needing to know client-side whether anyone is
-    // signed in.
-    function crossCountryUrl(baseUrl) {
-      if (sameOriginAs(baseUrl)) return baseUrl + '/' + '@controllers.LandingController.PickCityQuery';
+    // Where a picked city navigates when its country isn't this deployment's
+    // own (including every pick made from the apex, which is no one's city
+    // site). Same-origin countries (the Showtimes family sharing
+    // showtimes.cc) share the session cookie outright, so a plain link to
+    // the picked city keeps a signed-in visitor signed in AND lands them on
+    // the city itself. Crossing to a genuinely different origin (kinowo.net)
+    // would otherwise drop that session — `/auth/sso/start` hands it over
+    // first, landing on that country's own city picker rather than the exact
+    // city: the handoff's `to` is matched verbatim against the deployed base
+    // URLs (open-redirect safety), so it cannot carry a city path through.
+    // Signed OUT is not an error there: it is just the link this would have
+    // followed anyway (see `AuthController.ssoStart`), so it is always safe
+    // to route through it rather than needing to know client-side whether
+    // anyone is signed in.
+    function crossCountryUrl(baseUrl, slug) {
+      if (sameOriginAs(baseUrl)) return baseUrl + '/' + slug + '/';
       return window.location.origin + DEPLOYMENT_MOUNT_PATH +
         'auth/sso/start?to=' + encodeURIComponent(baseUrl) + '&pick=city';
     }
 
-    // A city was picked — directly, or as the "use my location" hit. The
-    // apex isn't itself anybody's city site, so every pick there hands off to
-    // the chosen country's own landing, even one that happens to share
-    // `DEPLOYMENT_COUNTRY_CODE`; on a country's own door, a city of ITS OWN
-    // navigates straight there, and any other hands off the same way.
+    // A city was picked — directly, or as the "use my location" hit. On a
+    // country's own door, a city of ITS OWN navigates straight there. Any
+    // other pick — a different country's city, or ANY city picked from the
+    // apex (even one that happens to share `DEPLOYMENT_COUNTRY_CODE`, since
+    // the apex isn't itself anybody's city site) — goes through
+    // `crossCountryUrl`, which itself lands directly on the picked city
+    // whenever that country shares this origin.
     function pickPickerCity(city) {
       if (!IS_APEX && city.country === DEPLOYMENT_COUNTRY_CODE) { rememberAndGo(city.slug); return; }
       const country = KINOWO_CATALOG.countries.find(function (c) { return c.code === city.country; });
-      if (country) window.location.href = crossCountryUrl(country.baseUrl);
+      if (country) window.location.href = crossCountryUrl(country.baseUrl, city.slug);
     }
 
     // The picker's own manual locate button — unlike the automatic check
