@@ -197,7 +197,6 @@
     <div id="picker-dynamic" style="display:none">
       <div class="picker-header">
         <div id="picker-countries" class="picker-countries"></div>
-        @if(!isApex) {
         @* Icon-only, trailing the country row — mirrors the apps' own
            locate control (iOS: a bare `location.fill` toolbar button, no
            label; Android: a 32dp `IconButton` trailing the "Country"
@@ -205,17 +204,19 @@
            unstyled white strip: `.btn`/`.refresh-btn`/`.btn-sm` are the
            navbar's OWN classes, defined in `_sharedStyles` — which this
            self-contained page never includes — so the button fell through
-           to the browser's bare default appearance. *@
+           to the browser's bare default appearance.
+           Shown on the apex too, unlike the automatic on-load geolocation
+           below: this is opt-in (the visitor taps it), and `locatePickerAnywhere`
+           already searches every deployed country, so it never has the
+           "guessed the wrong country with no way to opt out" problem the
+           automatic check is deliberately skipped for on the apex. *@
         <button type="button" id="picker-locate-btn" class="picker-locate-btn" onclick="locatePickerAnywhere()" aria-label="@messages("nav.locateMe")" title="@messages("nav.locateMe")">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
           </svg>
         </button>
-        }
       </div>
-      @if(!isApex) {
       <div id="picker-locate-status" class="locate-status" style="display:none"></div>
-      }
       <div id="picker-back-row" class="picker-back-row" style="display:none" onclick="pickerBack()">
         <span class="picker-back-arrow" aria-hidden="true">&#8249;</span>
         <span>@messages("back.back")</span>
@@ -232,7 +233,7 @@
     <p class="locating" id="locating"></p>
     }
   </main>
-  @if(!isApex) { @_geoDistance() }
+  @_geoDistance()
   <script>
     const KINOWO_CATALOG = @Html(models.Catalog.json);
     // The country this PROCESS actually serves — decides whether a picked
@@ -384,7 +385,7 @@
           if (haystack(c.region).indexOf(query) !== -1) rows.push({ kind: 'region', label: c.region });
         }
         if (c.subregion) {
-          const key = c.region + ' ' + c.subregion;
+          const key = c.region + ' ' + c.subregion;
           if (!seenSubregion[key]) {
             seenSubregion[key] = true;
             if (haystack(c.subregion).indexOf(query) !== -1) {
@@ -508,10 +509,10 @@
       if (country) window.location.href = crossCountryUrl(country.baseUrl);
     }
 
-    @if(!isApex) {
     // The picker's own manual locate button — unlike the automatic check
-    // below (scoped to `DEPLOYMENT_COUNTRY_CODE`), this searches every
-    // deployed country, mirroring the apps' `resolveNearestCityAnyCountry`.
+    // below (scoped to `DEPLOYMENT_COUNTRY_CODE`, and skipped entirely on the
+    // apex), this searches every deployed country, mirroring the apps'
+    // `resolveNearestCityAnyCountry`, so it works from the apex too.
     function locatePickerAnywhere() {
       const status = document.getElementById('picker-locate-status');
       const show = function (text) { status.textContent = text; status.style.display = text ? '' : 'none'; };
@@ -528,7 +529,6 @@
       );
     }
     window.locatePickerAnywhere = locatePickerAnywhere;
-    }
 
     // Hides the static fallback and mounts the dynamic picker in its place —
     // everything above works fully without this ever running.

@@ -54,10 +54,11 @@ object FixtureServerMain {
    *  country per deployment and so only ever one of these shapes.
    */
   private[tools] def landings(): Map[String, String] = Map(
-    "/"           -> views.html.landing(models.Country.default, isApex = false).body,
-    "/landing-us" -> views.html.landing(models.Country.UnitedStates, isApex = false).body,
-    "/landing-uk" -> views.html.landing(models.Country.UnitedKingdom, isApex = false).body,
-    "/landing-de" -> views.html.landing(models.Country.Germany, isApex = false).body,
+    "/"             -> views.html.landing(models.Country.default, isApex = false).body,
+    "/landing-us"   -> views.html.landing(models.Country.UnitedStates, isApex = false).body,
+    "/landing-uk"   -> views.html.landing(models.Country.UnitedKingdom, isApex = false).body,
+    "/landing-de"   -> views.html.landing(models.Country.Germany, isApex = false).body,
+    "/landing-apex" -> views.html.landing(models.Country.default, isApex = true).body,
   )
 
   def main(args: Array[String]): Unit = {

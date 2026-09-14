@@ -330,6 +330,45 @@ test.describe('geolocation auto-redirect', { tag: '@agnostic' }, () => {
   });
 });
 
+// The bare `showtimes.cc` apex (`isApex = true`, `/landing-apex` in the
+// fixture harness) skips the AUTOMATIC redirect above — guessing a country
+// from coordinates would send a visitor somewhere they cannot opt out of —
+// but the manual "use my location" button is opt-in and already searches
+// every deployed country (`locatePickerAnywhere`), so it carries no such
+// risk and is offered here too, not just on a country's own door.
+test.describe('the apex front door offers the manual locate button too', { tag: '@agnostic' }, () => {
+  test('the locate button is visible on the apex, not just a country\'s own door', async ({ page }) => {
+    await page.goto('/landing-apex', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('#picker-locate-btn')).toBeVisible();
+  });
+
+  test('a fix near a supported city hands off through this origin\'s SSO start', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    await context.setGeolocation({ latitude: 52.4064, longitude: 16.9252 }); // Poznań
+    await page.goto('/landing-apex', { waitUntil: 'domcontentloaded' });
+    // Same hand-off `crossCountryUrl` exercises for any cross-country pick —
+    // the apex is never itself a city's own door, so even a hit on the
+    // default country's own city routes through SSO start rather than
+    // navigating straight there.
+    const [request] = await Promise.all([
+      page.waitForRequest((r) => r.url().includes('/auth/sso/start')),
+      page.locator('#picker-locate-btn').click(),
+    ]);
+    expect(request.url()).toContain('to=https%3A%2F%2Fkinowo.net');
+    expect(request.url()).toContain('pick=city');
+  });
+
+  test('a fix nowhere near any supported city says so and stays on the apex', async ({ page, context }) => {
+    await context.grantPermissions(['geolocation']);
+    // The middle of the Pacific — nowhere near any city any deployment serves.
+    await context.setGeolocation({ latitude: 0, longitude: -160 });
+    await page.goto('/landing-apex', { waitUntil: 'domcontentloaded' });
+    await page.locator('#picker-locate-btn').click();
+    await expect(page.locator('#picker-locate-status')).toHaveText(/./);
+    expect(new URL(page.url()).pathname).toBe('/landing-apex');
+  });
+});
+
 // The Filtry → Miasto row no longer opens an in-page modal — it navigates to
 // the unified `/` picker (`landing.scala.html`), the same drill-down this file
 // already exercises above on the bare `/`. This block covers what only shows

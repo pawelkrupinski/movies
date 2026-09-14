@@ -83,4 +83,15 @@ class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
     landings("/") should include(s"""<html lang="${Country.default.language.getLanguage}"""")
     landings("/") should include(Country.default.brandName)
   }
+
+  it should "offer the manual locate button on the apex too, not just a country's own door" in {
+    // The apex skips the AUTOMATIC on-load redirect (guessing a country from
+    // coordinates would send a visitor somewhere they cannot opt out of), but
+    // the manual button is opt-in and already searches every deployed
+    // country (`locatePickerAnywhere`), so it carries none of that risk and
+    // belongs here too — this regressed once (the button was scoped to
+    // `@if(!isApex)` alongside the automatic check it doesn't share the
+    // reasoning with) with no browser-independent layer catching it.
+    landings("/landing-apex") should include("""id="picker-locate-btn"""")
+  }
 }
