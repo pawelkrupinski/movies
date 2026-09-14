@@ -131,7 +131,23 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "KINO KOBIET: Przepis na święta"                  -> ("KINO KOBIET: ",                     "Przepis na święta"),
     // 'Spotkania O! złości: ' in front of this comes off in the SEED meeting-cycle rule,
     // which stops at the first colon; this is the inner banner it leaves behind.
-    "czułe kino: W głowie się nie mieści 2"           -> ("czułe kino: ",                      "W głowie się nie mieści 2")
+    "czułe kino: W głowie się nie mieści 2"           -> ("czułe kino: ",                      "W głowie się nie mieści 2"),
+    // Twenty-fifth wave (2026-09-14) audit of the PL/US tmdbId:null corpus.
+    "Akademia Kina Światowego: Ema"                   -> ("Akademia Kina Światowego: ",        "Ema"),
+    "Akademia Kina Światowego: Ciche światło"         -> ("Akademia Kina Światowego: ",        "Ciche światło"),
+    // Colon-less 'WAJDA re-wizje:' — the seed xtra-pp-wajda-rewizje needs 'WAJDA:'.
+    "WAJDA re-wizje: Brzezina"                        -> ("WAJDA re-wizje: ",                  "Brzezina"),
+    "WAJDA Re-wizje: BEZ ZNIECZULENIA (178)"           -> ("WAJDA Re-wizje: ",                  "BEZ ZNIECZULENIA (178)"),
+    // Kino za Rogiem's director retrospective — some rows compile two shorts with
+    // a bare '+' (not a single resolvable title even stripped), but the banner
+    // strip itself is unambiguous, same precedent as Radu Jude/WAJDA above.
+    "3 Wieczory: KIEŚLOWSKI. Krótki film o zabijaniu" -> ("3 Wieczory: KIEŚLOWSKI. ",           "Krótki film o zabijaniu"),
+    "3 Wieczory: KIEŚLOWSKI. Amator+Refren"           -> ("3 Wieczory: KIEŚLOWSKI. ",           "Amator+Refren"),
+    // Alamo Drafthouse (US) recurring house strands.
+    "TERROR TUESDAY: THE THING (1982)"                -> ("TERROR TUESDAY: ",                  "THE THING (1982)"),
+    "TERROR TUESDAY: ALLIGATOR"                       -> ("TERROR TUESDAY: ",                  "ALLIGATOR"),
+    "SHOWTUNE SUNDAYS: CABARET (1972)"                -> ("SHOWTUNE SUNDAYS: ",                 "CABARET (1972)"),
+    "SHOWTUNE SUNDAYS: LITTLE SHOP OF HORRORS (1986)" -> ("SHOWTUNE SUNDAYS: ",                 "LITTLE SHOP OF HORRORS (1986)")
   )
 
   "ExtraTitleRules programme prefixes" should "extract the banner for the display row" in {
@@ -451,7 +467,13 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     // arrives verbatim — the seed quote rules fold „ and ” only.
     "WAKACYJNE PORANKI FILMOWE “JUTRO BĘDĘ ODWAŻNY”"       -> "JUTRO BĘDĘ ODWAŻNY",
     "WAKACYJNE PORANKI FILMOWE “MISS MOXY.KOCIA EKIPA”"    -> "MISS MOXY.KOCIA EKIPA",
-    "WAKACYJNE PORANKI FILMWE “PSOTY”"                     -> "PSOTY"
+    "WAKACYJNE PORANKI FILMWE “PSOTY”"                     -> "PSOTY",
+    // Twenty-fifth wave (2026-09-14): Alamo Drafthouse restoration-print suffixes
+    // behind the new 'TERROR TUESDAY:' prefix — two words ('4K RESTORATION') or a
+    // named format ('ON 35MM'), neither reached by the seed or xtra-4k-suffix
+    // (which only matches a bare trailing '4K' / '(4K)').
+    "CEMETERY MAN - 4K RESTORATION"                        -> "CEMETERY MAN",
+    "THE EXORCIST - ON 35MM"                                -> "THE EXORCIST"
   )
 
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
@@ -527,6 +549,22 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   // Real corpus strings the SEED already partially strips (so they can't go in the
   // load-bearing searchStripCases), proving the eighth-wave suffix still resolves the
   // bare film end-to-end once the seed's '+ …' PlusSuffix has run.
+  it should "combine the Alamo Drafthouse SPECIAL EVENT prefix with the seed anniversary suffix" in {
+    // Every SPECIAL EVENT row in the corpus carries a trailing 'Nth ANNIVERSARY',
+    // which the SEED's own 'structural-anniversary-suffix' already strips — so this
+    // can't go in the load-bearing programmeCases list above (seedOnly.search would
+    // NOT be unchanged). The prefix rule + that seed rule together take it to the
+    // bare film.
+    withClue("programmePrefix: ")(
+      withExtras.programmePrefix("SPECIAL EVENT: A BEAUTIFUL MIND - 25TH ANNIVERSARY") shouldBe Some("SPECIAL EVENT: "))
+    withClue("search: ")(
+      withExtras.search("SPECIAL EVENT: A BEAUTIFUL MIND - 25TH ANNIVERSARY") shouldBe "A BEAUTIFUL MIND")
+    withClue("search: ")(
+      withExtras.search("SPECIAL EVENT: IT'S A WONDERFUL LIFE - 80TH ANNIVERSARY") shouldBe "IT'S A WONDERFUL LIFE")
+    withClue("search: ")(
+      withExtras.search("SPECIAL EVENT: THE MALTESE FALCON (1941) - 85TH ANNIVERSARY") shouldBe "THE MALTESE FALCON (1941)")
+  }
+
   it should "resolve banner suffixes that sit behind a seed-stripped '+ …' tail" in {
     withClue("Lato + Modowy tail: ")(
       withExtras.search("Klatka dla ptaków | Lato z Robinem Williamsem + Modowy Klub Filmowy") shouldBe "Klatka dla ptaków")

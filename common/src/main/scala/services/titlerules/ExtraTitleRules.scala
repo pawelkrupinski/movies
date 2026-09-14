@@ -248,7 +248,34 @@ object ExtraTitleRules {
     //    kino: <film>' — so this covers the second. Named in full rather than as a
     //    generic second 'Word: ' strip, which is the shape the programme-prefix audit
     //    warns off.
-    prog("xtra-pp-czule-kino", """(?iu)^czułe\s+kino\s*:\s+""", "'czułe kino: <film>' Kino Orzeł discussion strand — the inner banner the seed 'Spotkania …:' rule leaves behind on 'Spotkania O! złości: czułe kino: <film>' (W głowie się nie mieści 2 → TMDB 1022789)")
+    prog("xtra-pp-czule-kino", """(?iu)^czułe\s+kino\s*:\s+""", "'czułe kino: <film>' Kino Orzeł discussion strand — the inner banner the seed 'Spotkania …:' rule leaves behind on 'Spotkania O! złości: czułe kino: <film>' (W głowie się nie mieści 2 → TMDB 1022789)"),
+    // Twenty-fifth wave (2026-09-14), from a fresh audit of the PL/US tmdbId:null
+    // corpus (joined `movies` ⋈ `movie_slots.slot.rawTitle`, cross-checked against
+    // every rule above so nothing already-covered is re-added).
+    //  - 'Akademia Kina Światowego: <film>' — Kino NCKF EC1's world-cinema sibling
+    //    of the already-covered 'Akademia Kina Polskiego:' (24th wave); same cinema,
+    //    same shape, distinct banner text. 9 rows stuck on hash filmIds, repeatedly
+    //    re-attempted and still tmdbId:null (Ema, Godziny, Bratan, Ciche światło, …).
+    prog("xtra-pp-akademia-kina-swiatowego", """(?iu)^Akademia\s+Kina\s+Światowego:\s+""", "'Akademia Kina Światowego: <film>' world-cinema-academy retrospective — sibling of xtra-pp-akademia-kina-polskiego (Kino NCKF EC1)"),
+    //  - Colon-less 'WAJDA re-wizje:' — the existing xtra-pp-wajda-rewizje requires
+    //    the literal 'WAJDA:' (colon right after WAJDA); Kino nad Wartą and Zacisze
+    //    spell it with a bare space instead, so neither the seed nor that rule reach
+    //    it. Both stuck rows resolve elsewhere in the corpus under 'Wajda. <film>' —
+    //    this variant alone was orphaned on a hash filmId.
+    prog("xtra-pp-wajda-rewizje-bare", """(?i)^WAJDA\s+re-?\s*wizje:\s*""", "colon-less 'WAJDA re-wizje:' variant of xtra-pp-wajda-rewizje (Kino nad Wartą: Brzezina; Zacisze: Bez znieczulenia)"),
+    //  - '3 Wieczory: KIEŚLOWSKI. <film[+film]>' — Kino za Rogiem's director
+    //    retrospective. Some rows compile two shorts with a '+' (not a single
+    //    resolvable title even stripped), but the banner itself is unambiguous
+    //    decoration, same precedent as the Radu Jude / WAJDA retrospective prefixes.
+    prog("xtra-3-wieczory-kieslowski", """(?iu)^3\s+Wieczory:\s+Kie[śs]lowski\.\s+""", "'3 Wieczory: KIEŚLOWSKI. <film>' Kino za Rogiem retrospective prefix"),
+    //  - US Alamo Drafthouse recurring house strands — 'TERROR TUESDAY:',
+    //    'SPECIAL EVENT:', 'SHOWTUNE SUNDAYS:' — each a real classic underneath
+    //    (The Thing, House of 1000 Corpses, Cabaret, …), all-caps so `caseSegment`
+    //    leaves the extracted banner intact (same shape as the 24th wave's guard
+    //    against the dropped 'WSP:' recasing bug).
+    prog("xtra-pp-terror-tuesday", """(?i)^TERROR\s+TUESDAY:\s+""", "'TERROR TUESDAY: <film>' Alamo Drafthouse horror-classics strand"),
+    prog("xtra-pp-special-event-alamo", """(?i)^SPECIAL\s+EVENT:\s+""", "'SPECIAL EVENT: <film>' Alamo Drafthouse strand — the trailing 'Nth ANNIVERSARY' folds via the seed structural-anniversary-suffix"),
+    prog("xtra-pp-showtune-sundays", """(?i)^SHOWTUNE\s+SUNDAYS:\s+""", "'SHOWTUNE SUNDAYS: <film>' Alamo Drafthouse musicals strand")
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -632,7 +659,14 @@ object ExtraTitleRules {
     // LEFT curly “ this cinema opens with has no such rule and arrives verbatim.
     // 'Film\p{L}*' because the same listing spells the banner 'FILMOWE' three times
     // and 'FILMWE' once.
-    searchReplace("xtra-wakacyjne-poranki-quoted", """(?iu)^Wakacyjne\s+Poranki\s+Film\p{L}*\s*[“„"]\s*(.+?)\s*[”"]\s*$""", "$1", "'WAKACYJNE PORANKI FILMOWE “<film>”' Kino Sokół Sokółka holiday-mornings strand — banner first, film QUOTED after it with no colon, so the colon-anchored xtra-pp-wakacyjne-cycle cannot reach it (Jutro będę odważny → TMDB 1470499, Psoty → 1584452, Miss Moxy. Kocia ekipa → 587357)")
+    searchReplace("xtra-wakacyjne-poranki-quoted", """(?iu)^Wakacyjne\s+Poranki\s+Film\p{L}*\s*[“„"]\s*(.+?)\s*[”"]\s*$""", "$1", "'WAKACYJNE PORANKI FILMOWE “<film>”' Kino Sokół Sokółka holiday-mornings strand — banner first, film QUOTED after it with no colon, so the colon-anchored xtra-pp-wakacyjne-cycle cannot reach it (Jutro będę odważny → TMDB 1470499, Psoty → 1584452, Miss Moxy. Kocia ekipa → 587357)"),
+    // Twenty-fifth wave (2026-09-14): Alamo Drafthouse restoration-print suffixes
+    // that sit BEHIND the new 'TERROR TUESDAY:' prefix. 'xtra-4k-suffix' only
+    // matches a bare trailing '4K' / '(4K)'; these spell the tag as two words
+    // ('4K RESTORATION') or name the format outright ('ON 35MM'), so neither the
+    // seed nor that rule reaches them (Cemetery Man, The Exorcist).
+    searchStrip("xtra-4k-restoration-suffix", """(?iu)\s*[-–—]\s*4K\s+RESTORATION\s*$""", "'<film> - 4K RESTORATION' Alamo Drafthouse restoration-print suffix, sibling of xtra-4k-suffix's bare '4K' form"),
+    searchStrip("xtra-on-35mm-suffix", """(?iu)\s*[-–—]\s*ON\s+35MM\s*$""", "'<film> - ON 35MM' Alamo Drafthouse print-format suffix")
   )
 
   /** Canonical (merge-key) unifications. Unlike the strips above these run in
