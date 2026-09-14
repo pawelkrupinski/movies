@@ -44,7 +44,16 @@ class TmdbCandidateSearch(
   //      filmography entry whose year matches the cinema's. Solves the
   //      Niedźwiedzica class of mis-resolution: Polish title "Niedźwiedzica"
   //      maps to Grizzly Falls 1999 on TMDB, but the cinema's reported
-  //      director "Asgeir Helgestad" leads us to his 2026 film instead.
+  //      director "Asgeir Helgestad" leads us to his 2026 film instead. When
+  //      the walk finds NOTHING for any reported director — TMDB's own
+  //      crew/person data doesn't credit them in a way the walk can find,
+  //      e.g. Queen: Hungarian Rhapsody – Live in Budapest '86 / director
+  //      János Zsombolyai, tmdbId 142773 — fall through to `searchYearExactTop`
+  //      (a year + EXACT title match, never consulting the director) so a row
+  //      the walk can't place still resolves when its own title search would
+  //      have been unambiguous anyway (see the comment beside its use in the
+  //      director-bearing branch below for why the looser `searchUnique` is
+  //      deliberately NOT reused here).
   //
   // The IMDb id is OPTIONAL: TMDB doesn't always have a cross-reference yet
   // (very recent releases — e.g. "Za duży na bajki 3" tmdbid 1484486 has no
@@ -259,17 +268,18 @@ class TmdbCandidateSearch(
           // credit by lowest id, deterministic across a TMDB adjacent-year
           // DUPLICATE of one film (Yann Gozlan's "Gourou").
           //
-          // There is deliberately NO title-search fallback here. Verifying a search
-          // hit by director only asks "do this candidate's credits name the reported
-          // director" — which cannot separate two films by the SAME director. Gozlan's
-          // "Gourou" and "Dalloway" both pass that check, so whichever the title
-          // search happened to return won, and the answer moved with the row's
-          // (merge-order-dependent) key year. Walking the filmography and matching the
-          // title is what actually picks between them; when the walk can't find the
-          // film, no match is the honest answer, not a rubber-stamped guess
-          // (`DirectorWalkResolvesSpec`). Director-LESS rows are unaffected — they
-          // still take the strict unambiguous-search branch above, which never picks
-          // between candidates either.
+          // There is deliberately NO fallback here that VERIFIES a search hit by
+          // director. Verifying a search hit by director only asks "do this
+          // candidate's credits name the reported director" — which cannot separate
+          // two films by the SAME director. Gozlan's "Gourou" and "Dalloway" both
+          // pass that check, so whichever the title search happened to return won,
+          // and the answer moved with the row's (merge-order-dependent) key year.
+          // Walking the filmography and matching the title is what actually picks
+          // between them; when the walk can't find the film, no match is the honest
+          // answer, not a rubber-stamped guess (`DirectorWalkResolvesSpec`).
+          // Director-LESS rows are unaffected — they still take the strict
+          // unambiguous-search branch above, which never picks between candidates
+          // either.
           // The row's own cinema-published runtime and cast travel with the walk so
           // a year-pinned credit can be corroborated by something other than the
           // title. CINEMA-only, like every other hint here — reading the merged
@@ -278,6 +288,42 @@ class TmdbCandidateSearch(
             .flatMap(d => directorWalk(Some(d), effectiveYear, candidates, evidence.runtimes, evidence.cast, cinemaCandidates, cinemaTitleWeight).map(d -> _))
             .nextOption()
             .map { case (d, hit) => searchBasis = Some(TmdbBasis.DirectorWalk); walkedBy = Some(d); hit }
+            // Fallback, once EVERY reported director's walk has come back with
+            // NOTHING — not "found the wrong film", but found no title/year-matching
+            // credit for that director at all. This is deliberately narrower than
+            // the director-less branch above: only `searchYearExactTop`, NEVER
+            // `searchUnique`. Both are title+year matches that never consult the
+            // reported director — that part of the safety argument holds for
+            // either — but `searchUnique` trusts TMDB's search API purely because
+            // it returned exactly one row, with NO check that the row's title
+            // resembles the query at all. That is too loose a signal to reuse
+            // unguarded here: `DirectorWalkResolvesSpec`'s "refuse rather than
+            // accept a same-director title-search hit" stubs a `findPerson` miss
+            // (walk yields nothing, same shape as this fallback firing) and a
+            // `/search/movie` response that returns exactly one hit — Yann
+            // Gozlan's "Dalloway" — for a "Guru" query it shares NO title with.
+            // `searchUnique` took that singleton unconditionally and resolved the
+            // row to the wrong Gozlan film. `searchYearExactTop` requires the hit
+            // to be an EXACT title match (Polish or original) at the reported
+            // year, which "Dalloway" is not against "Guru" — so it correctly
+            // abstains, and the walk's own refusal stands. A row this fallback
+            // exists for (Queen: Hungarian Rhapsody – Live in Budapest '86,
+            // tmdbId 142773, director János Zsombolyai — TMDB's own crew/person
+            // data doesn't credit him in a way the walk can find, so it returns
+            // nothing for a REAL film) still resolves: its cinema-reported title
+            // matches TMDB's exactly at the reported year, which is exactly what
+            // `searchYearExactTop` asks for. The cost is real and accepted: a
+            // director-bearing, walk-empty row with no year, or whose title
+            // isn't a verbatim TMDB match, still refuses — better no match than
+            // reusing a check this file has direct prod evidence is not safe here.
+            //
+            // `searchBasis` is set to YearScoped here, never DirectorWalk —
+            // `walkedBy` stays None because nothing was actually walked, and a
+            // DirectorWalk basis would misrepresent what this hit is evidence of.
+            // (Always YearScoped, never TitleOnly: `searchYearExactTop` is a
+            // no-op without a year, so this branch only ever fires with one.)
+            .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, effectiveYear)).nextOption()
+              .map(hit => { searchBasis = Some(TmdbBasis.YearScoped); hit }))
         }
       freshHit = hit
       hit.map(_.id.toString)
