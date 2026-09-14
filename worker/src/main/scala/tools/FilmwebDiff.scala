@@ -88,7 +88,8 @@ object FilmwebDiff {
 
   def main(args: Array[String]): Unit = {
     val daysAhead = args.headOption.flatMap(a => Try(a.toInt).toOption).getOrElse(3)
-    val today     = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+    val now       = LocalDateTime.now(ZoneId.of("Europe/Warsaw"))
+    val today     = now.toLocalDate
     val windowEnd = today.plusDays(daysAhead.toLong)
 
     // Path args: a `*.txt` → text report, a `*.csv` → summary CSV, a `*.json` →
@@ -160,7 +161,7 @@ object FilmwebDiff {
       }
 
       val r = resolutionByCinema(cinema)
-      diffFor(cinema, r.filmwebId, r.source, oursTry, fwTry, today, windowEnd)
+      diffFor(cinema, r.filmwebId, r.source, oursTry, fwTry, now, windowEnd)
     }
 
     // Cinemas with NO Filmweb id never reach the comparison loop, but they DO
@@ -290,15 +291,26 @@ object FilmwebDiff {
   private def csvField(s: String): String =
     if (s.exists(c => c == ',' || c == '"' || c == '\n')) "\"" + s.replace("\"", "\"\"") + "\"" else s
 
-  /** Restrict a side's showtimes to the comparison window and key by film. */
-  private def withinWindow(
-    movies: Seq[CinemaMovie], today: LocalDate, windowEnd: LocalDate
+  /** Restrict a side's showtimes to the comparison window and key by film.
+   *
+   *  The lower bound is `Showtime.isUpcoming(now)` — the SAME grace-period rule
+   *  the web's `toSchedules` and the worker's source-films gauge use to decide
+   *  "is this still showing" — applied identically to BOTH sides, not just a
+   *  bare `today` cutoff. Without this, a showtime earlier today that already
+   *  elapsed drops out of OUR live scrape (a source's feed stops listing a
+   *  screening once it starts) well before Filmweb's cached listing catches up,
+   *  and every one of those showed up as a phantom `fw-only` gap — entirely an
+   *  artifact of when in the day the diff happens to run, worst right before
+   *  midnight (confirmed: a 2026-09-13 23:33 manual run over-reported ~10 such
+   *  gaps at Kino Mikro alone that the routine 06:00 run never sees). */
+  private[tools] def withinWindow(
+    movies: Seq[CinemaMovie], now: LocalDateTime, windowEnd: LocalDate
   ): Map[String, Seq[LocalDateTime]] = {
-    val startOfDay = today.atStartOfDay()
-    val endOfDay   = windowEnd.plusDays(1).atStartOfDay() // exclusive: whole windowEnd day
+    val endOfDay = windowEnd.plusDays(1).atStartOfDay() // exclusive: whole windowEnd day
     movies
-      .map(m => FilmwebDiffTitleNormalizer.normalize(m.movie.title) -> m.showtimes.map(_.dateTime)
-        .filter(dt => !dt.isBefore(startOfDay) && dt.isBefore(endOfDay)))
+      .map(m => FilmwebDiffTitleNormalizer.normalize(m.movie.title) -> m.showtimes
+        .filter(s => s.isUpcoming(now) && s.dateTime.isBefore(endOfDay))
+        .map(_.dateTime))
       .filter(_._2.nonEmpty)
       .groupMapReduce(_._1)(_._2)(_ ++ _)
   }
@@ -309,7 +321,7 @@ object FilmwebDiff {
     source:    Source,
     oursTry:   Try[Seq[CinemaMovie]],
     fwTry:     Try[Seq[CinemaMovie]],
-    today:     LocalDate,
+    now:       LocalDateTime,
     windowEnd: LocalDate
   ): CinemaDiff = (oursTry, fwTry) match {
     case (Failure(e), _) =>
@@ -319,8 +331,8 @@ object FilmwebDiff {
       CinemaDiff(cinema, filmwebId, source, 0, 0, 0, 0, 0, FW_FETCH_FAILED,
         s"  Filmweb fetch failed: ${message(e)}", Map.empty, Map.empty)
     case (Success(ours), Success(fw)) =>
-      val oursByFilm = withinWindow(ours, today, windowEnd)
-      val fwByFilm   = withinWindow(fw, today, windowEnd)
+      val oursByFilm = withinWindow(ours, now, windowEnd)
+      val fwByFilm   = withinWindow(fw, now, windowEnd)
 
       val oursTimes = oursByFilm.values.flatten.toSeq
       val fwTimes   = fwByFilm.values.flatten.toSeq
