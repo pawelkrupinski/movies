@@ -14,9 +14,20 @@ class SearchTitlesSpec extends AnyFlatSpec with Matchers {
     found should contain("Akademia Kina Polskiego: Człowiek z żelaza (1981) 4K")
   }
 
-  it should "split a double-decorated colon-AND-period programme banner down to the film title" in {
-    val found = SearchTitles.candidates("3 wieczory: kieślowski. Blizna", None)
-    found should contain("Blizna")
+  /** Regression for the 2026-09-15 `PolandConvergenceSpec` settle-determinism
+   *  failure: a period-split was tried alongside the colon-split, and
+   *  "Vincent. Legenda oceanu- seans" (Kino Stary Młyn's own listing, not a
+   *  programme banner) split into a spurious "Legenda oceanu- seans"
+   *  candidate. That raced the ALREADY-AMBIGUOUS bare title "Vincent. Legenda
+   *  oceanu" (TMDB itself returns different films for it depending on which
+   *  year happens to be attached at resolution time) and made a
+   *  settled-corpus re-settle fold a row that hadn't folded on the previous
+   *  pass. A period is common, legitimate mid-title punctuation in this
+   *  corpus (unlike a colon), so it's not split on. */
+  it should "NOT split on a period — only a colon marks a programme banner" in {
+    val found = SearchTitles.candidates("Vincent. Legenda oceanu- seans", None)
+    found should not contain "Legenda oceanu- seans"
+    found should contain("Vincent. Legenda oceanu- seans")
   }
 
   it should "not split on a colon with nothing meaningful after it" in {

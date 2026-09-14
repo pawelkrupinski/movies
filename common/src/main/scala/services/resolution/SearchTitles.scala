@@ -13,10 +13,8 @@ object SearchTitles {
    *  its de-decorated forms — every side of a `" | "` festival/preview split
    *  ("Opętanie | ŻUŁAWSKI. KINO EKSTAZY", "WTF Fest | Stolik kawowy"), every side
    *  of a spaced dash ("Ladies Night - Narodziny gwiazdy"), the part after a
-   *  `"Series: Film"` or `"Series. Film"` programme banner ("Akademia Kina
-   *  Polskiego: Człowiek z żelaza (1981) 4K" → "Człowiek z żelaza (1981) 4K";
-   *  double-decorated banners split on both separators independently, so
-   *  "3 wieczory: kieślowski. Blizna" also yields "Blizna") and the
+   *  `"Series: Film"` programme-banner colon ("Akademia Kina Polskiego:
+   *  Człowiek z żelaza (1981) 4K" → "Człowiek z żelaza (1981) 4K") and the
    *  trailing-parenthetical-stripped form ("Ojczyzna (pokaz przedpremierowy)" →
    *  "Ojczyzna"). Blanks and duplicates collapse. Callers verify each hit, so an
    *  extra candidate can't mis-resolve onto a same-title different film. */
@@ -30,24 +28,35 @@ object SearchTitles {
       // undivided title stays a candidate — and a candidate only ever becomes a
       // resolution by matching, so an over-eager split costs nothing.
       val dashParts       = if (t.matches(""".*\s[-–—]\s.*""")) t.split("""\s+[-–—]\s+""").toIndexedSeq else Nil
-      // A programme banner is also introduced with a ": " or ". " prefix
-      // ("Akademia Kina Polskiego: Człowiek z żelaza", "Modoteka: Tootsie",
-      // "3 wieczory: kieślowski. Blizna" — colon AND period banners stacked).
-      // Only the FIRST occurrence of each separator is used, so a colon further
-      // into a legitimate title ("Kill Bill: Vol. 2: Redux") doesn't lose its
-      // undivided form (already kept via `Seq(t)`) — this only ADDS the
-      // post-banner half as an extra candidate. Both separators are tried
-      // independently against the undivided `t`, not chained, so a
-      // double-decorated banner yields the fully-stripped film title in one step.
-      // A separator with nothing meaningful on either side (leading or trailing)
-      // is skipped.
+      // A programme banner is also introduced with a ": " prefix ("Akademia
+      // Kina Polskiego: Człowiek z żelaza", "Modoteka: Tootsie"). Only the
+      // FIRST colon is used, so one further into a legitimate title ("Kill
+      // Bill: Vol. 2: Redux") doesn't lose its undivided form (already kept
+      // via `Seq(t)`) — this only ADDS the post-banner half as an extra
+      // candidate. A colon with nothing meaningful on either side (leading
+      // or trailing) is skipped.
+      //
+      // Deliberately COLON-ONLY, not period — a ". " split was tried and
+      // reverted (2026-09-15): unlike a colon, a mid-title ". " is a real,
+      // fairly common Polish film-title punctuation choice, not a reliable
+      // banner signal. "Vincent. Legenda oceanu" is a film's OWN stylised
+      // title (period included), not "Vincent" the banner + "Legenda oceanu"
+      // the film — splitting it manufactured a spurious "Legenda oceanu…"
+      // candidate that raced the ALREADY-AMBIGUOUS bare title (TMDB itself
+      // returns different films for "Vincent. Legenda oceanu" depending on
+      // which year happens to be attached at resolution time) and made a
+      // `PolandConvergenceSpec` settle-on-a-settled-corpus run fold a row
+      // that hadn't folded on the previous pass — exactly the order-dependence
+      // this file's resolution architecture exists to prevent. A colon
+      // essentially never appears mid-title in this corpus's real titles, so
+      // it doesn't carry the same risk; a period does, so it's not worth it.
       def afterBanner(separator: String): Option[String] = t.indexOf(separator) match {
         case idx if idx > 0 =>
           val post = t.substring(idx + separator.length).trim
           if (post.nonEmpty) Some(post) else None
         case _ => None
       }
-      val bannerParts     = Seq(afterBanner(": "), afterBanner(". ")).flatten
+      val bannerParts     = afterBanner(": ").toSeq
       val noTrailingParen = t.replaceAll("""\s*\([^)]*\)\s*$""", "").trim
       (Seq(t) ++ pipeParts ++ dashParts ++ bannerParts :+ noTrailingParen)
     }
