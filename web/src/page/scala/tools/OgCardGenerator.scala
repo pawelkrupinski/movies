@@ -68,21 +68,54 @@ object OgCardGenerator {
   private val Scale  = 3 // render the card at 3× then supersample down for smooth text
   private val JpegQuality = 0.85f
 
-  /** A residential (not the pool's M247 datacenter) Decodo port — see
-   *  `worker/src/main/resources/residential-proxy.properties`. Only used as
-   *  the default when `KINOWO_OG_PROXY_PORT` is unset. */
-  private val DefaultProxyPort = 10002
+  /** The pool's residential (not M247 datacenter) Decodo ports — see
+   *  `worker/src/main/resources/residential-proxy.properties`. Rotated across
+   *  batches (see `CitiesPerProxyBatch`) rather than pinning the whole run to
+   *  one, same shape as the worker's own `StickyShardHttpFetch`. Only used
+   *  when `KINOWO_OG_PROXY_PORT` is unset. */
+  private val ResidentialProxyPorts: Seq[Int] = Seq(10002, 10003, 10006, 10007)
 
-  private def proxyFromEnv(): Option[Chrome.ProxyConfig] =
-    for {
-      user <- sys.env.get("KINOWO_PROXY_USER")
-      pass <- sys.env.get("KINOWO_PROXY_PASS")
-    } yield Chrome.ProxyConfig(
+  /** How many cities one Chrome (and its one proxy port) handles before this
+   *  process restarts Chrome on the NEXT port in `ResidentialProxyPorts`.
+   *
+   *  A single Decodo port carrying a WHOLE country's cities (up to 468 for
+   *  the US) doesn't just get slow, it starts failing outright —
+   *  `document.readyState` itself timing out, not merely a slow poster.
+   *  Reproduced locally: 1-3 cities through one port, zero failures, every
+   *  time; 10 cities through one port in one run, 4/10 failed outright
+   *  (2026-09-15). The earlier fix (a bigger thread pool + a wider
+   *  poster-decode cap) targeted CPU contention on the CI runner and made
+   *  no measurable difference to the failure RATE in the actual regen PR —
+   *  because the bottleneck is the single residential connection's own
+   *  sustained-load ceiling, not this process's CPU. Batching bounds how
+   *  much traffic any one Decodo IP carries per run, the same reason the
+   *  worker's own Multikino/biletyna fetches shard across the pool instead
+   *  of pinning one port. */
+  private val CitiesPerProxyBatch = 15
+
+  private val proxyEnabled: Boolean = sys.env.contains("KINOWO_PROXY_USER") && sys.env.contains("KINOWO_PROXY_PASS")
+
+  /** The ports to rotate through this run. `KINOWO_OG_PROXY_PORT`, when set,
+   *  pins a single port instead (local debugging against one specific port). */
+  private def proxyPorts(): Seq[Int] =
+    sys.env.get("KINOWO_OG_PROXY_PORT").flatMap(_.toIntOption) match {
+      case Some(port) => Seq(port)
+      case None       => ResidentialProxyPorts
+    }
+
+  private def proxyConfigFor(port: Int): Option[Chrome.ProxyConfig] =
+    Option.when(proxyEnabled)(Chrome.ProxyConfig(
       host = sys.env.getOrElse("KINOWO_OG_PROXY_HOST", "isp.decodo.com"),
-      port = sys.env.get("KINOWO_OG_PROXY_PORT").flatMap(_.toIntOption).getOrElse(DefaultProxyPort),
-      user = user,
-      pass = pass
-    )
+      port = port,
+      user = sys.env("KINOWO_PROXY_USER"),
+      pass = sys.env("KINOWO_PROXY_PASS")
+    ))
+
+  private def startChromeOrExit(country: Country, proxy: Option[Chrome.ProxyConfig]): Chrome =
+    Chrome.tryStart(lang = Some(country.language.getLanguage), proxy = proxy).getOrElse {
+      System.err.println("No Chrome/Chromium found (set CDP_BROWSER_BIN). Aborting.")
+      sys.exit(1)
+    }
 
   def main(args: Array[String]): Unit = {
     val country = Country.fromEnv
@@ -96,25 +129,26 @@ object OgCardGenerator {
     val cities   = if (homeMode) Nil else country.cities.filter(c => only.isEmpty || only(c.slug))
     if (!homeMode && cities.isEmpty) { System.err.println(s"No ${country.code} cities matched ${only.mkString(", ")}"); sys.exit(1) }
 
-    val chrome = Chrome.tryStart(lang = Some(country.language.getLanguage), proxy = proxyFromEnv()).getOrElse {
-      System.err.println("No Chrome/Chromium found (set CDP_BROWSER_BIN). Aborting.")
-      sys.exit(1)
-    }
-
+    val ports = proxyPorts()
     val startedAt = System.currentTimeMillis()
     var ok = 0
-    try {
-      if (homeMode) {
+
+    if (homeMode) {
+      val chrome = startChromeOrExit(country, proxyConfigFor(ports.head))
+      try {
         val city = sys.env.get("KINOWO_OG_HOME_CITY").flatMap(s => country.bySlug.get(s))
           .orElse(country.cities.headOption)
           .getOrElse { System.err.println(s"Country ${country.code} has no cities to screenshot for the home card."); sys.exit(1) }
         if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", homeTagline(country), outDir.resolve(country.homeOgImage), "home")) ok += 1
-      } else {
-        cities.foreach { city =>
+      } finally chrome.close()
+    } else {
+      cities.grouped(CitiesPerProxyBatch).zipWithIndex.foreach { case (batch, batchIndex) =>
+        val chrome = startChromeOrExit(country, proxyConfigFor(ports(batchIndex % ports.size)))
+        try batch.foreach { city =>
           if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(city.shareImage), city.slug)) ok += 1
-        }
+        } finally chrome.close()
       }
-    } finally chrome.close()
+    }
 
     val total = if (homeMode) 1 else cities.size
     val secs  = (System.currentTimeMillis() - startedAt) / 1000.0

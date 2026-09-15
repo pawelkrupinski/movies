@@ -81,4 +81,42 @@ class CdpProxyAuthSpec extends AnyFlatSpec with Matchers {
       }
     finally proxy.close()
   }
+
+  // A THIRD real bug, found chasing what first looked like Decodo residential-
+  // proxy instability in OgCardGenerator (2026-09-15): a page with several
+  // subresources pauses several `Fetch.requestPaused` events near-simultaneously,
+  // each handled on `CdpPage.eventPool` and each calling `send` right back in
+  // to continue it — CONCURRENTLY with whatever thread is mid-navigation. Two
+  // threads calling `send` at once raced on the one underlying
+  // `java.net.http.WebSocket`, which allows only one outstanding `sendText` at
+  // a time: the loser threw `IllegalStateException: Send pending`, and if that
+  // was a `Fetch.continueRequest` the paused resource — and the whole page —
+  // never finished loading. This is what running MANY cities in one
+  // `OgCardGenerator` process actually reproduced (10 cities through one
+  // session, several outright page-load failures) where 1-3 never did; it
+  // looked exactly like "the residential line degrades under sustained use"
+  // until this exact exception turned up in a retry log. Fixed by serializing
+  // the write side of `send` (`CdpPage.sendLock`) — every call still awaits its
+  // OWN reply independently, so concurrent CDP round-trips stay concurrent.
+  it should "not race concurrent Fetch.requestPaused continuations under proxy (many subresources at once)" in {
+    val resourceCount = 30
+    val routes: PartialFunction[String, String] = {
+      case "/" => "<html><body>" + (1 to resourceCount).map(i => s"""<img src="/r$i">""").mkString + "</body></html>"
+      case p if p.matches("/r\\d+") => "<svg xmlns='http://www.w3.org/2000/svg'></svg>"
+    }
+    val server = new TestHttpServer(routes = routes)
+    val proxy  = new TestProxyServer(user = "proxyuser", pass = "proxypass")
+    try
+      Chrome.tryStart(proxy = Some(Chrome.ProxyConfig("127.0.0.1", proxy.port, "proxyuser", "proxypass"))) match {
+        case None => cancel("Chrome not installed — skipping CDP proxy-auth spec")
+        case Some(chrome) =>
+          try noException should be thrownBy chrome.openPage(server.baseUrl + "/") { page =>
+            page.waitFor(s"document.images.length >= $resourceCount", timeoutMs = 5000)
+          } finally chrome.close()
+      }
+    finally {
+      proxy.close()
+      server.close()
+    }
+  }
 }

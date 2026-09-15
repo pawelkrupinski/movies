@@ -340,6 +340,28 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
       }
     }).get(10, TimeUnit.SECONDS)
 
+  // `java.net.http.WebSocket` allows only ONE outstanding send at a time per
+  // socket — a second `sendText` before the first's returned CompletableFuture
+  // completes throws `IllegalStateException: Send pending`. `send()` used to
+  // call `ws.sendText` unsynchronized, which was fine while only ONE thread
+  // (the caller) ever called it — but a proxied page's `Fetch.enable` now
+  // pauses every subresource, and each `Fetch.requestPaused`/`authRequired`
+  // handler runs on `eventPool` (a SEPARATE thread from whichever thread is
+  // mid-navigation) and calls `send` right back in to continue it. Two
+  // threads calling `send` at once — routine on any page with more than a
+  // couple of concurrent resource loads — raced on the shared socket and hit
+  // exactly that exception, observed live (2026-09-15) as `document.
+  // readyState` itself timing out: a `Fetch.continueRequest` that lost the
+  // race never went out, so the paused resource, and the whole page, never
+  // finished loading. This was misread at first as residential-proxy
+  // instability (network jitter has the same "some pages just hang"
+  // symptom) — the giveaway was this exact exception in a retry log, a
+  // signature no network condition produces. Only the WRITE needs
+  // serializing; each call still waits on its OWN reply future independently,
+  // so concurrent CDP round-trips (multiple in-flight sends, replies arriving
+  // in any order) are unaffected.
+  private val sendLock = new Object
+
   /** Issue a CDP method call and return the `result` field of the reply.
    *  Blocks the caller until the reply arrives or 30s elapses. */
   def send(method: String, parameters: JsValue = Json.obj()): JsValue = {
@@ -347,7 +369,7 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
     val fut = new CompletableFuture[JsValue]()
     pending.put(id, fut)
     val message = Json.obj("id" -> id, "method" -> method, "params" -> parameters).toString
-    ws.sendText(message, true).get(5, TimeUnit.SECONDS)
+    sendLock.synchronized { ws.sendText(message, true).get(5, TimeUnit.SECONDS) }
     val reply = fut.get(30, TimeUnit.SECONDS)
     (reply \ "error").asOpt[JsValue].foreach { err =>
       throw new RuntimeException(s"CDP error from $method: ${Json.stringify(err)}")
