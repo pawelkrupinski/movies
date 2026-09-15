@@ -130,6 +130,14 @@ jobs:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   KINOWO_COUNTRY: ${{ matrix.code }}
                   KINOWO_OG_OUT: ${{ runner.temp }}/og-out
+                  # Routes every screenshot through Decodo's residential proxy
+                  # instead of this runner's own egress — GitHub Actions'
+                  # datacenter IP ranges are Cloudflare Bot-Fight-Mode material
+                  # on both kinowo.net and showtimes.cc (2026-09-15 outage;
+                  # `fight_mode: true` on both zones has no custom-rule skip at
+                  # all). Same secrets the worker's cinema scrapers already use.
+                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
+                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
               run: sbt "web/PageTest/runMain tools.OgCardGenerator home"
 
             # Every live city page → {KINOWO_OG_OUT}/og-{slug}.jpg. Hits the
@@ -141,6 +149,9 @@ jobs:
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
                   KINOWO_COUNTRY: ${{ matrix.code }}
                   KINOWO_OG_OUT: ${{ runner.temp }}/og-out
+                  # See the landing-card step above for why.
+                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
+                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
               run: sbt "web/PageTest/runMain tools.OgCardGenerator"
 
             # Upload ONLY this leg's own isolated output directory — never the
