@@ -244,6 +244,12 @@ tests:
         values: '30945x300'
       - series: 'kinowo_web_movies_served{country="us",city="new-york",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
         values: '30829x300'
+      # Both sides booted a day before this window -- the restart carve-out must not be what's
+      # keeping this silent (it isn't: ReadModelServingDiffersFromCorpus is expected to fire below).
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
+        values: '-86400+0x300'
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-web-us",job="kinowo-web"}'
+        values: '-86400+0x300'
     alert_rule_test:
       - eval_time: 4h
         alertname: ReadModelServingShortOfCorpus
@@ -259,7 +265,7 @@ tests:
               country: us
             exp_annotations:
               summary: "us: the corpus and the site disagree on 116 film-in-a-city, expected 0"
-              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"us\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"us\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"us\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement."
+              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"us\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"us\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"us\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement. (This alert already stands down for the first 45 minutes after a restart when that counter is zero, so if it fired anyway, either there was no recent restart or the counter is genuinely nonzero -- treat it as real.)"
 
   # THE ZERO EXPECTATION, IN THE DIRECTION THE PAGE CANNOT SEE. The site serving MORE than the
   # corpus would is a card no source row backs -- the shape the prune used to remove daily. The
@@ -271,6 +277,10 @@ tests:
         values: '1200x300'
       - series: 'kinowo_web_movies_served{country="de",city="berlin",instance="kinowo-web-de",job="kinowo-web",scope="all"}'
         values: '1206x300'
+      - series: 'process_start_time_seconds{country="de",instance="kinowo-worker-de",job="kinowo-worker"}'
+        values: '-86400+0x300'
+      - series: 'process_start_time_seconds{country="de",instance="kinowo-web-de",job="kinowo-web"}'
+        values: '-86400+0x300'
     alert_rule_test:
       - eval_time: 4h
         alertname: ReadModelServingShortOfCorpus
@@ -283,7 +293,7 @@ tests:
               country: de
             exp_annotations:
               summary: "de: the corpus and the site disagree on 6 film-in-a-city, expected 0"
-              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"de\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"de\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"de\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement."
+              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"de\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"de\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"de\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement. (This alert already stands down for the first 45 minutes after a restart when that counter is zero, so if it fired anyway, either there was no recent restart or the counter is genuinely nonzero -- treat it as real.)"
 
   # PER-CITY DIFFERENCES THAT CANCEL AT COUNTRY LEVEL STILL COUNT. One film attributed to Kraków
   # by the corpus and to Katowice by the site nets to zero and is still two cities wrong -- the
@@ -298,6 +308,10 @@ tests:
         values: '143x300'
       - series: 'kinowo_web_movies_served{country="pl",city="katowice",instance="kinowo-web-pl",job="kinowo-web",scope="all"}'
         values: '144x300'
+      - series: 'process_start_time_seconds{country="pl",instance="kinowo-worker-pl",job="kinowo-worker"}'
+        values: '-86400+0x300'
+      - series: 'process_start_time_seconds{country="pl",instance="kinowo-web-pl",job="kinowo-web"}'
+        values: '-86400+0x300'
     alert_rule_test:
       - eval_time: 4h
         alertname: ReadModelServingShortOfCorpus
@@ -310,7 +324,7 @@ tests:
               country: pl
             exp_annotations:
               summary: "pl: the corpus and the site disagree on 2 film-in-a-city, expected 0"
-              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"pl\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"pl\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"pl\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement."
+              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"pl\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"pl\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"pl\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement. (This alert already stands down for the first 45 minutes after a restart when that counter is zero, so if it fired anyway, either there was no recent restart or the counter is genuinely nonzero -- treat it as real.)"
 
   # AGREEMENT IS SILENCE, and a difference SHORTER than the census skew never speaks: the worker
   # census is recomputed every 5 minutes while the web is live, so the pair is legitimately out
@@ -326,6 +340,57 @@ tests:
       - eval_time: 45m
         alertname: ReadModelServingDiffersFromCorpus
         exp_alerts: []
+
+  # THE RESTART CARVE-OUT, REPLAYING THE REAL SHAPE. `process_start_time_seconds` for web-us is
+  # fixed at t=12500s (~208min): still inside the 45-minute grace window at every point in the
+  # `for: 20m` stretch leading up to eval_time (13200s-14400s all read 700-1900s of uptime), and
+  # the prune counter never moves. This is 2026-09-15's san-francisco-bay-area shape -- a card one
+  # city short, self-healing lag, no prune -- and it must NOT page.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="us",city="san-francisco-bay-area",instance="kinowo-worker-us",job="kinowo-worker",scope="all"}'
+        values: '500x300'
+      - series: 'kinowo_web_movies_served{country="us",city="san-francisco-bay-area",instance="kinowo-web-us",job="kinowo-web",scope="all"}'
+        values: '500x100 499x200'
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-web-us",job="kinowo-web"}'
+        values: '12500+0x300'
+      - series: 'process_start_time_seconds{country="us",instance="kinowo-worker-us",job="kinowo-worker"}'
+        values: '-86400+0x300'
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="us",reason="row-gone"}'
+        values: '0+0x300'
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="us",reason="variant-gone"}'
+        values: '0+0x300'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts: []
+
+  # THE CARVE-OUT MUST NOT MASK A REAL PRUNE. Same recent restart as above, but this time
+  # `kinowo_worker_readmodel_films_pruned_total` is actually climbing -- the exact signal
+  # `docs/read-model-convergence.md` says must never happen -- so the alert fires despite the
+  # restart, because the restart is not why the corpus and the site disagree here.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_movies_served{country="de",city="munich",instance="kinowo-worker-de",job="kinowo-worker",scope="all"}'
+        values: '400x300'
+      - series: 'kinowo_web_movies_served{country="de",city="munich",instance="kinowo-web-de",job="kinowo-web",scope="all"}'
+        values: '400x100 395x200'
+      - series: 'process_start_time_seconds{country="de",instance="kinowo-web-de",job="kinowo-web"}'
+        values: '12500+0x300'
+      - series: 'process_start_time_seconds{country="de",instance="kinowo-worker-de",job="kinowo-worker"}'
+        values: '-86400+0x300'
+      - series: 'kinowo_worker_readmodel_films_pruned_total{country="de",reason="row-gone"}'
+        values: '0+1x300'
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: ReadModelServingDiffersFromCorpus
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: de
+            exp_annotations:
+              summary: "de: the corpus and the site disagree on 5 film-in-a-city, expected 0"
+              description: "`kinowo_worker_movies_served{scope=\"all\"}` is the films this country\'s corpus WOULD serve and `kinowo_web_movies_served{scope=\"all\"}` is what the site IS serving; summed per city as absolute differences they must be the SAME NUMBER, and they have differed for 20 minutes. Either direction is a defect: the site short of the corpus is a card that should be there and is not, the site ahead of it is a card no source row backs. Find them with `max by (city) (kinowo_worker_movies_served{country=\"de\",scope=\"all\"}) - max by (city) (kinowo_web_movies_served{country=\"de\",scope=\"all\"})` (read the sign per city -- they cancel at country level), then `kinowo_worker_readmodel_films_pruned_total{country=\"de\"}` by reason: a prune that removed anything is the incremental path failing to retire a card it stopped producing, which `docs/read-model-convergence.md` says must never happen. Do not widen this rule to make it quiet -- zero is the whole statement. (This alert already stands down for the first 45 minutes after a restart when that counter is zero, so if it fired anyway, either there was no recent restart or the counter is genuinely nonzero -- treat it as real.)"
 
   # A CENSUS THAT READS ZERO MUST NOT PAGE. `WorkerCorpusMetrics` seeds every gauge at 0 on boot
   # and publishes nothing on a scan that could not read the whole corpus, so a restart into a

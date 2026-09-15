@@ -365,6 +365,16 @@ groups:
       # `kinowo_worker_readmodel_films_pruned_total{reason}`: a non-zero prune is the projector
       # failing to retire a card the incremental path should have taken back, which is the
       # defect this rule exists to surface.
+      #
+      # THE ONE CARVE-OUT: a country that just restarted. Traced three US firings (2026-09-09,
+      # -14, -15, see `docs/read-model-convergence.md` and reference_readmodel_drift_boot_race
+      # memory) back to a worker-us/web-us pod restart in every case, with the prune counter flat
+      # at zero throughout each -- the freshly-booted pair's census and change-stream state took
+      # up to 30 minutes to re-sync, not a projection defect. This is NOT the "raise the
+      # threshold" move the paragraph above forbids: it does not touch the diff amount or the
+      # `for:` window, and it stands down only when BOTH sides agree there is nothing to find --
+      # no restart in the last 45 minutes (`process_start_time_seconds`), OR the prune counter
+      # actually moved. A real prune-caused hole still pages even one second after a restart.
       - alert: ReadModelServingDiffersFromCorpus
         expr: >-
           (
@@ -380,6 +390,15 @@ groups:
           )
           and on (country) (
             sum by (country) (max by (country, city) (kinowo_web_movies_served{scope="all"})) > 0
+          )
+          and on (country) (
+            (
+              min by (country) (time() - process_start_time_seconds{job=~"kinowo-worker|kinowo-web"}) >= 2700
+            )
+            or
+            (
+              sum by (country) (increase(kinowo_worker_readmodel_films_pruned_total[20m])) > 0
+            )
           )
         for: 20m
         labels:
@@ -399,7 +418,10 @@ groups:
             `kinowo_worker_readmodel_films_pruned_total{country="{{ $labels.country }}"}` by reason:
             a prune that removed anything is the incremental path failing to retire a card it
             stopped producing, which `docs/read-model-convergence.md` says must never happen. Do
-            not widen this rule to make it quiet -- zero is the whole statement.
+            not widen this rule to make it quiet -- zero is the whole statement. (This alert
+            already stands down for the first 45 minutes after a restart when that counter is
+            zero, so if it fired anyway, either there was no recent restart or the counter is
+            genuinely nonzero -- treat it as real.)
 
       - alert: ReadModelServingShortOfCorpus
         expr: >-
