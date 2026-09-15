@@ -116,14 +116,33 @@ class ReScrapeIdempotencySpec extends AnyFlatSpec with Matchers {
     stagingAfter -- stagingBefore
   }
 
-  /** A full settle tick: scrape (observing staging) + drain + fold + settle.
-   *  Returns the staging diversions the scrape phase produced; merge churn is
-   *  read separately off the injected `CountingMergeMetrics`. */
+  /** A full settle tick: scrape (observing staging) + drain + fold + settle +
+   *  ratings. Returns the staging diversions the scrape phase produced; merge
+   *  churn is read separately off the injected `CountingMergeMetrics`.
+   *
+   *  `enrichRatingsSync()` was MISSING here until this comment was added —
+   *  `bootCorpus` (via `bootSettled`) runs it to a fully-joined completion
+   *  before this test's first tick starts, but a re-scrape can still hand a
+   *  film a fresh tmdbId/imdbId (a previously-`tmdbNoMatch` row resolving, an
+   *  IMDb id arriving off `ImdbIdResolver`'s pool), making it newly eligible
+   *  for a rating it never had. `DrainablePool.drain()` (what `drainServices`
+   *  waits on) explicitly does NOT see work that HANDS OFF to a different
+   *  pool — its own doc comment: "Work that hands off to a DIFFERENT pool is
+   *  not [covered]" — and a resolved id's rating fetch is queued onto the
+   *  task queue, a different pool from the one that resolved it. Without this
+   *  call that queued rating task sits un-drained through this test's own
+   *  `settleTick`s, and whichever LATER call in the suite happens to drain it
+   *  (or doesn't) decided whether this test saw the write it caused — the
+   *  "tick 2: 1 persisted write" flake this comment was added to explain.
+   *  Draining ratings every tick, exactly as production's continuously-running
+   *  TaskWorker would, removes that timing dependency instead of hoping the
+   *  corpus never hands out a fresh id mid-test. */
   private def settleTick(w: FixtureTestWiring, rnd: Random): Set[(String, String)] = {
     val diversions = scrapeTickObservingStaging(w, rnd)
     w.drainServices()
     w.drainStaging()
     w.movieService.settle()
+    w.enrichRatingsSync()
     diversions
   }
 
