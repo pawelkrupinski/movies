@@ -2686,6 +2686,15 @@
               }
             },
             {
+              "refId": "J",
+              "expr": "sum(rate(kinowo_worker_movie_coalesced_changes_total{country=~\"$country\"}[5m]))",
+              "legendFormat": "movie events coalesced away /s",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "local-prometheus"
+              }
+            },
+            {
               "refId": "B",
               "expr": "sum(rate(kinowo_worker_readmodel_project_calls_total{country=~\"$country\"}[5m]))",
               "legendFormat": "projection calls /s",
