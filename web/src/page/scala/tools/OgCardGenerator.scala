@@ -253,8 +253,18 @@ object OgCardGenerator {
       catch { case _: Throwable => () }
       // Wait for the in-viewport posters to actually decode (see PostersReadyJs).
       // Capped so a genuinely broken poster can't hang the run — we screenshot
-      // whatever decoded once the cap elapses.
-      try page.waitFor(PostersReadyJs, timeoutMs = 8000, pollMs = 150)
+      // whatever decoded once the cap elapses. 8000ms was enough before the
+      // generator routed through a proxy; once it did (2026-09-15, Decodo
+      // residential — see Chrome.tryStart's ProxyConfig), ~1/3 of a regen PR's
+      // cards started shipping with a blank poster. Not reproducible from a
+      // dev machine hitting the exact same proxied URLs (a handful of retries
+      // all loaded well under a second) — the difference is GH Actions' 2-core
+      // runners having less headroom to service the request volume a proxied
+      // page now generates (every resource pauses at Fetch.requestPaused for
+      // the proxy auth wiring; see CdpPage's eventPool). Widened rather than
+      // root-caused further: the poll returns as soon as posters ARE ready, so
+      // this only costs time on the slow tail, not the common case.
+      try page.waitFor(PostersReadyJs, timeoutMs = 20000, pollMs = 150)
       catch { case _: Throwable => () }
       Thread.sleep(400) // final layout + paint settle
       page.screenshot()

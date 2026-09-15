@@ -10,7 +10,7 @@ import java.nio.file.{Files, Path, Paths}
 import java.time.Duration
 import java.util.Comparator
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.{CompletableFuture, ConcurrentHashMap, TimeUnit}
+import java.util.concurrent.{CompletableFuture, ConcurrentHashMap, Executors, TimeUnit}
 
 /**
  * Minimal headless-Chrome driver used by `PageJsBehaviourSpec` to run
@@ -284,6 +284,22 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
   private val eventHandlers = new ConcurrentHashMap[String, JsValue => Unit]()
   private val buffer  = new StringBuilder()
 
+  // Dispatches CDP events off the WebSocket's own delivery thread (see onText
+  // below for why that's required) WITHOUT spawning a fresh OS thread per
+  // event. A proxied page's `Fetch.enable({patterns: [...]})` (see
+  // Chrome.openPage) pauses EVERY subresource request — posters, CSS, JS, the
+  // lot — so a real repertoire page fires dozens of these per load. Spawning
+  // a new Thread per one was cheap enough locally to hide the cost, but on
+  // GH Actions' 2-core runners it measurably slowed resource loads: the
+  // OG-card generator's poster-decode wait (capped, so a slow poster is
+  // skipped rather than hanging the run) started timing out at a real rate
+  // once the generator started proxying (2026-09-15, sampled ~1/3 of the
+  // regen PR's cards). Reproducible-page-through-the-real-proxy testing from
+  // a dev machine never hit it — the difference is CPU headroom to service
+  // the flood of spawned threads, not the network. A small fixed pool avoids
+  // repeated thread-creation overhead entirely.
+  private val eventPool = Executors.newFixedThreadPool(4)
+
   /** Register `handler` to run whenever Chrome sends the CDP event `method`
    *  (e.g. `"Fetch.authRequired"`), passed that event's `params`. At most one
    *  handler per method — a second registration replaces the first, which is
@@ -316,7 +332,7 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
                 // waiting for a reply that this same blocked thread is the
                 // only one able to deliver. Hit locally: `Fetch.continueWithAuth`
                 // from inside this callback timed out at 30s every time.
-                new Thread(() => try handler(params) catch { case _: Throwable => () }, s"cdp-event-$method").start()
+                eventPool.execute(() => try handler(params) catch { case _: Throwable => () })
               }
           }
         }
@@ -441,5 +457,8 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
   override def close(): Unit =
     try ws.sendClose(WebSocket.NORMAL_CLOSURE, "bye").get(2, TimeUnit.SECONDS)
     catch { case _: Throwable => () }
-    finally try ws.abort() catch { case _: Throwable => () }
+    finally {
+      try ws.abort() catch { case _: Throwable => () }
+      eventPool.shutdownNow()
+    }
 }
