@@ -227,6 +227,12 @@ in
         # Grafana authenticates its own users and could stand behind a proxy that only does TLS --
         # but its login is a shared password too, and this one asks WHO rather than WHAT.
         requireGoogleLogin = true;
+        # CI's deploy-marker job carries a Grafana service-account Bearer token, not a Google
+        # session -- `forward_auth` would only ever send it to `/oauth2/start` and the annotation
+        # would never post (found 2026-09-15: it did exactly that, silently, for weeks). Grafana's
+        # own token check is the real gate on this path; this only removes the SSO hop CI cannot
+        # complete. See `ssoExemptRequests` in roles/public-proxy.nix.
+        ssoExemptRequests = [{ method = "POST"; path = "/api/annotations"; }];
       };
 
       # THE SIGN-IN ITSELF, and the only redirect URI registered with Google. It carries no login

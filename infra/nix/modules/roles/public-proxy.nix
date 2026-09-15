@@ -111,6 +111,33 @@ in
             '';
           };
 
+          ssoExemptRequests = lib.mkOption {
+            type = lib.types.listOf (lib.types.submodule {
+              options = {
+                method = lib.mkOption { type = lib.types.str; description = "HTTP method, e.g. \"POST\"."; };
+                path = lib.mkOption { type = lib.types.str; description = "Exact request path, e.g. \"/api/annotations\" -- not a prefix."; };
+              };
+            });
+            default = [ ];
+            description = ''
+              Method+path pairs admitted straight to `upstream`, bypassing the Google-login
+              `forward_auth` gate even when `requireGoogleLogin` is set.
+
+              EXISTS FOR A CALLER THAT HOLDS ITS OWN CREDENTIAL BUT NO BROWSER SESSION -- a CI job
+              carrying a Bearer token, which `forward_auth` cannot honour because it asks Google,
+              not the upstream, who is calling. The upstream still authenticates the request itself
+              (Grafana checks the token against its own service accounts); this option only removes
+              the SSO hop that request could never complete. `auth.kinowo.net`'s own `/oauth2/*`
+              exclusion is the same technique, generalised -- see `googleLoginBlock` below.
+
+              ⚠️ EACH ENTRY IS A REAL, PERMANENT HOLE IN THE SSO DOOR FOR THAT EXACT METHOD+PATH.
+              Keep this list to exactly the requests that need it. A wildcard path here would
+              expose the whole upstream unauthenticated in every way `upstream`'s own auth does not
+              cover.
+            '';
+            example = [{ method = "POST"; path = "/api/annotations"; }];
+          };
+
           pathUpstreams = lib.mkOption {
             type = lib.types.attrsOf lib.types.str;
             default = { };
@@ -259,6 +286,16 @@ in
         fleet.publicProxy.vhosts."${host}" sets `requireGoogleLogin`, but this host does not enable
         `fleet.googleSso`, so there is nothing at ${googleSso.listenAddress} to ask.
       '';
+    }) cfg.vhosts
+    ++ lib.mapAttrsToList (host: v: {
+      # `ssoExemptRequests` routes straight to `upstream` by name -- nothing to route to on a
+      # vhost that only sets `pathUpstreams`, and nothing to exempt on one with no login gate.
+      assertion = v.ssoExemptRequests == [ ] || (v.requireGoogleLogin && v.upstream != null);
+      message = ''
+        fleet.publicProxy.vhosts."${host}" sets `ssoExemptRequests`, which needs both
+        `requireGoogleLogin` (there is no gate to bypass otherwise) and `upstream` (the address it
+        routes an exempted request to).
+      '';
     }) cfg.vhosts;
 
     security.acme = {
@@ -301,7 +338,22 @@ in
           # THE 401 IS TURNED INTO A REDIRECT rather than shown. The default would hand a browser a
           # bare 401 body, which is a dead end for a person; `/oauth2/start` with the original URL
           # in `rd` sends them to Google and back to the page they asked for.
+          # ONE `handle` PER EXEMPTED METHOD+PATH, same technique as the `/oauth2/*` block below and
+          # emitted before it for the same reason: a `handle` that matches is terminal, so it must
+          # be written ahead of `forward_auth` or the exemption never takes effect. Goes straight to
+          # `upstream` -- the door this bypasses is Google's, not the upstream's own.
+          ssoExemptBlock = lib.concatStrings (lib.imap0 (i: e: ''
+            @ssoExempt${toString i} {
+              method ${e.method}
+              path ${e.path}
+            }
+            handle @ssoExempt${toString i} {
+              reverse_proxy ${v.upstream}
+            }
+          '') v.ssoExemptRequests);
+
           googleLoginBlock = lib.optionalString v.requireGoogleLogin ''
+            ${ssoExemptBlock}
             handle ${googleSso.proxyPrefix}/* {
               reverse_proxy ${googleSso.listenAddress}
             }
