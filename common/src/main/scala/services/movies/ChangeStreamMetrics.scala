@@ -16,6 +16,15 @@ package services.movies
  *    so a climbing rate flags a caller re-introducing no-op writes. A slot change
  *    no longer reaches this stream at all — the slots live in `movie_slots`, which
  *    has its own cursor and its own counter ([[SideCollectionChangeMetrics]]).
+ *  - `recordCoalescedChange()` — one movies-doc event that rode an apply already
+ *    queued for its film (by an earlier movies event, or by the screenings/
+ *    movie_slots cursors — all three now share one pending set) instead of buying
+ *    its own. `dropCinemaSlots` is the common source: a dropped venue writes
+ *    `retainedSynopses` to `movies` in the SAME tick it deletes that venue's
+ *    `screenings`/`movie_slots` rows, so one logical event used to cost the film
+ *    TWO re-projections (one bought by this cursor, one by the coalesced side
+ *    burst) instead of one. `coalesced / (coalesced + readmodel_project_calls)`
+ *    is the share this cursor now folds into an already-queued apply.
  *
  * The worker wires the Prometheus-backed [[services.metrics.WorkerTaskMetrics]];
  * the web and unit tests use [[ChangeStreamMetrics.noop]]. Mirrors
@@ -24,6 +33,7 @@ package services.movies
 trait ChangeStreamMetrics {
   def recordEvent(op: String): Unit
   def recordUpdateKind(kind: String): Unit
+  def recordCoalescedChange(): Unit
 }
 
 object ChangeStreamMetrics {
@@ -79,5 +89,6 @@ object ChangeStreamMetrics {
   val noop: ChangeStreamMetrics = new ChangeStreamMetrics {
     def recordEvent(op: String): Unit        = ()
     def recordUpdateKind(kind: String): Unit = ()
+    def recordCoalescedChange(): Unit        = ()
   }
 }

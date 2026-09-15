@@ -68,7 +68,7 @@ object TaskObserver {
  * gauges are refreshed from a per-country `QueueSnapshot` each `Series.scrape()`.
  */
 class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
-  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ChangeStreamMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics {
+  extends TaskObserver with MergeMetrics with SplitMetrics with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ScrapeLandingMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
   def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
@@ -98,9 +98,16 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   def recordGuardVerdict(guard: String, verdict: String): Unit = series.recordScrapeGuardVerdict(countryCode, guard, verdict)
   def recordWriteSkipped(reason: String): Unit                 = series.recordScrapeWriteSkipped(countryCode, reason)
 
-  // ── ChangeStreamMetrics ─────────────────────────────────────────────────────
-  def recordEvent(op: String): Unit        = series.recordEvent(countryCode, op)
-  def recordUpdateKind(kind: String): Unit = series.recordUpdateKind(countryCode, kind)
+  // ── ChangeStreamMetrics for `movies` ────────────────────────────────────────
+  // A separate object rather than a direct mixin: `ChangeStreamMetrics.recordCoalescedChange`
+  // and `ScreeningsMetrics.recordCoalescedChange` erase to the same signature, so one class
+  // cannot implement both directly — the same reason `slotsChangeMetrics` below is its own
+  // object rather than a third mixin.
+  val movieChangeMetrics: ChangeStreamMetrics = new ChangeStreamMetrics {
+    def recordEvent(op: String): Unit        = series.recordEvent(countryCode, op)
+    def recordUpdateKind(kind: String): Unit = series.recordUpdateKind(countryCode, kind)
+    def recordCoalescedChange(): Unit        = series.recordMovieCoalesced(countryCode)
+  }
 
   // ── ScreeningsMetrics ───────────────────────────────────────────────────────
   def recordChangeEvent(op: String): Unit = series.recordScreeningsChangeEvent(countryCode, op)
@@ -339,6 +346,12 @@ object WorkerTaskMetrics {
       .labelNames("country", "kind")
       .register(registry)
 
+    private val movieCoalesced = Counter.builder()
+      .name("kinowo_worker_movie_coalesced_changes")
+      .help("Movies-doc change events that rode an apply already queued for their film instead of buying their own, by country — the movies cursor's twin of screenings/movie_slots_coalesced_changes, sharing the SAME pending set as those two. `dropCinemaSlots` writes `retainedSynopses` to `movies` in the same tick it deletes the dropped venue's screenings/movie_slots rows, so one logical slot-drop used to buy this cursor its own re-projection on top of the side cursors' (coalesced) one. coalesced/(coalesced+readmodel_project_calls) is the share now folded away. All GENUINE changes; no write guard can remove them.")
+      .labelNames("country")
+      .register(registry)
+
     private val screeningsChangeEvents = Counter.builder()
       .name("kinowo_worker_screenings_change_events")
       .help("Screenings change-stream events the SECOND cursor consumed since boot, by country and op (insert|update|replace|delete). The read-model projection's larger trigger: this cursor rings once per changed screenings DOCUMENT — one per (film, cinema slot) — and each ring costs a stitch read plus a full projection. Read readmodel_project_calls_total against the SUM of this and movie_change_events; against movie_change_events alone it reads as an unexplained 55:1, which is what a 2026-09-04 projection climb looked like while this half of the input had no counter.")
@@ -421,6 +434,7 @@ object WorkerTaskMetrics {
           Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
         Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
         ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
+        movieCoalesced.labelValues(c)
         ChangeStreamMetrics.Ops.foreach(o => screeningsChangeEvents.labelValues(c, o))
         ScreeningsMetrics.Outcomes.foreach(o => screeningsWrites.labelValues(c, o))
         screeningsCoalesced.labelValues(c)
@@ -501,6 +515,7 @@ object WorkerTaskMetrics {
     // ── ChangeStreamMetrics ────────────────────────────────────────────────────
     def recordEvent(country: String, op: String): Unit       = changeEvents.labelValues(country, op).inc()
     def recordUpdateKind(country: String, kind: String): Unit = changeUpdateKinds.labelValues(country, kind).inc()
+    def recordMovieCoalesced(country: String): Unit          = movieCoalesced.labelValues(country).inc()
 
     // ── ScreeningsMetrics ──────────────────────────────────────────────────────
     def recordScreeningsChangeEvent(country: String, op: String): Unit = screeningsChangeEvents.labelValues(country, op).inc()

@@ -107,9 +107,12 @@ final class MovieChangeStream(
     }
   }
 
-  // Film ids with a side-collection apply already QUEUED AND NOT YET STARTED. The set is
-  // the whole coalescing mechanism — see `SideCursor.applyChange`. ONE set for both side
-  // cursors: a film's screenings row and its slot row arriving together are one re-read.
+  // Film ids with an apply already QUEUED AND NOT YET STARTED. The set is the whole
+  // coalescing mechanism — see `SideCursor.applyChange` below and the `movies` cursor's own
+  // use of it in `ensureWatching`. ONE set for ALL THREE cursors (2026-09-15, was screenings
+  // + movie_slots only): `dropCinemaSlots` writes `retainedSynopses` to `movies` in the SAME
+  // tick it deletes the dropped venue's screenings/movie_slots rows, so a film's movies event
+  // and its side-collection burst now arriving together are one re-read too, not two.
   private val sideApplyPending = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
 
   /** One side-collection cursor — `screenings` or `movie_slots` — with its own demand
@@ -220,19 +223,44 @@ final class MovieChangeStream(
             .map(v => if (v.isString) v.asString.getValue else v.toString)
           // Apply OFF the Netty I/O loop: the stitch read + projection must not run
           // there (they made the loops contend + spin — see `changeApply`).
-          applyOffLoop(moviesDemand) {
-            fullDocument match {
-              // The movies doc has no showtimes — stitch them back from `screenings`
-              // (via `decode`) before fanning out, so consumers get a full row.
-              // A failed slot read yields None and we fan out NOTHING: an empty-cinema
-              // record here is what the projector turns into a screenings wipe.
-              case Some(dto) => decode(dto).foreach(movieChanges.dispatchUpsert)
-              // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't back-fill).
-              // Surface its _id so consumers can drop the row.
-              case None      => deletedId.foreach(movieChanges.dispatchDelete)
-            }
-            // Persist the advanced position (time-throttled, fire-and-forget).
-            resumeToken.save(force = false)
+          fullDocument match {
+            // The movies doc has no showtimes — stitch them back from `screenings` (via
+            // `decode`) before fanning out, so consumers get a full row. A failed slot read
+            // yields None and we fan out NOTHING: an empty-cinema record here is what the
+            // projector turns into a screenings wipe.
+            //
+            // COALESCE with a same-film apply already queued — by an earlier movies event,
+            // or by the screenings/movie_slots cursors sharing this pending set. This is the
+            // common case, not an edge case: `dropCinemaSlots` writes `retainedSynopses` to
+            // `movies` in the SAME tick it deletes the dropped venue's screenings/movie_slots
+            // rows, so a slot drop used to buy the film TWO re-projections (one bought here,
+            // one by the coalesced side burst) instead of one. `decode(dto)` re-stitches
+            // screenings/movie_slots FRESH at call time regardless of whose `dto` runs, so
+            // whichever apply actually fires sees every side-collection change of the burst.
+            // The one residual risk — two SEPARATE real `movies`-doc writes to the same film
+            // landing in the same tiny window, where the later one rides the earlier one's
+            // now-stale `dto` — is the same "at most one extra apply per burst" trade the side
+            // cursors already accept, self-healed by the rolling content-check sweep within a
+            // day if it ever bites.
+            case Some(dto) =>
+              if (sideApplyPending.add(dto._id))
+                applyOffLoop(moviesDemand) {
+                  sideApplyPending.remove(dto._id)
+                  decode(dto).foreach(movieChanges.dispatchUpsert)
+                  resumeToken.save(force = false) // time-throttled, fire-and-forget
+                }
+              else {
+                changeStreamMetrics.recordCoalescedChange()
+                moviesDemand.applied()
+              }
+            // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't back-fill). Surface
+            // its _id so consumers can drop the row. Never coalesced: once a row is gone
+            // there is nothing to re-read, and every delete must still reach the fan-out.
+            case None =>
+              applyOffLoop(moviesDemand) {
+                deletedId.foreach(movieChanges.dispatchDelete)
+                resumeToken.save(force = false) // time-throttled, fire-and-forget
+              }
           }
         }
         override def onError(e: Throwable): Unit = {

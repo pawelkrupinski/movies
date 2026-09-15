@@ -64,9 +64,10 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     slots:             Option[SlotsRepository]             = None,
     decode:            StoredMovieDto => Option[StoredMovieRecord] = decodeOf,
     reread:            String => Option[StoredMovieRecord] = _ => None,
-    screeningsMetrics: SideCollectionChangeMetrics         = ScreeningsMetrics.noop,
-    slotsMetrics:      SideCollectionChangeMetrics         = SideCollectionChangeMetrics.noop,
-    clock:             Clock                               = Clock.systemUTC()
+    screeningsMetrics:   SideCollectionChangeMetrics = ScreeningsMetrics.noop,
+    slotsMetrics:        SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
+    changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
+    clock:               Clock                       = Clock.systemUTC()
   ) = new MovieChangeStream(
     source              = source,
     screenings          = screenings,
@@ -74,7 +75,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     decode              = decode,
     reread              = reread,
     resumeToken         = new ChangeStreamResumeToken("movies", database = None, enabled = false),
-    changeStreamMetrics = ChangeStreamMetrics.noop,
+    changeStreamMetrics = changeStreamMetrics,
     screeningsMetrics   = screeningsMetrics,
     slotsMetrics        = slotsMetrics,
     changeDemandWindow  = ChangeStreamDemand.DefaultWindow,
@@ -185,6 +186,57 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       screeningsSeen.coalesced.get() shouldBe 1      // …and so did the screenings event, counted on ITS cursor
     } finally { handle.close(); under.close() }
   }
+
+  // THE THIRD CURSOR'S BLIND SPOT (2026-09-15). `dropCinemaSlots` writes `retainedSynopses`
+  // to `movies` in the SAME tick it deletes the dropped venue's screenings/movie_slots rows —
+  // one logical event, three collections, three cursors. Before this fix the movies cursor
+  // bought its own apply regardless of what the side cursors were doing, so this one event
+  // cost the film TWO re-projections (one from `movies`, one from the coalesced side burst)
+  // instead of one. All three cursors now share the same pending set.
+  it should "coalesce a same-film side-collection burst onto an already-queued movies apply" in {
+    val source     = new HandFedSource
+    val slots      = new InMemorySlotsRepository
+    val screenings = new InMemoryScreeningsRepository
+    val slotsSeen, screeningsSeen = new RecordingSideMetrics
+    val reread     = new AtomicInteger(0)
+    // Hold the SHARED single-threaded apply executor on an UNRELATED film's decode first —
+    // exactly the warm-up the screenings/slots-only burst test above uses. Without it, the
+    // "film|2024" movies apply below would remove itself from the pending set (the very first
+    // line inside its `applyOffLoop` block, BEFORE `decode` even reaches the gate) the instant
+    // the single idle executor thread picks the task up — microseconds before this test's main
+    // thread gets to call `slots.upsertSlot`/`screenings.upsertSlot`, so the coalescing window
+    // would already be closed by the time there is anything to coalesce.
+    val gate       = new CountDownLatch(1)
+    val under      = stream(source, screenings = Some(screenings), slots = Some(slots),
+      decode            = dto => { gate.await(5, TimeUnit.SECONDS); decodeOf(dto) },
+      reread            = id => { reread.incrementAndGet(); Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id))) },
+      screeningsMetrics = screeningsSeen,
+      slotsMetrics      = slotsSeen)
+    val dispatched = new AtomicInteger(0)
+    val drained    = new CountDownLatch(2) // the warm-up's own dispatch, then film|2024's one dispatch
+
+    val handle = under.watch(_ => { dispatched.incrementAndGet(); drained.countDown() }, _ => ())
+    try {
+      source.emit(event("insert", "other|2024", StoredMovieDto.fromDomain("other|2024", MovieRecord(), Instant.EPOCH)))
+      // The movies-doc half of the event: `dropCinemaSlots`'s `retainedSynopses` write. Queued
+      // behind the warm-up (still gated), so it stays in the pending set — added, not yet
+      // removed — for the side burst below to find.
+      source.emit(event("update", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+      // The SAME tick's side-collection writes — the venue's row actually moving, not noise.
+      // `updateIfPresent` writes `movies` BEFORE `screenings`/`movie_slots` (see
+      // `MovieRepository.scala`), so the movies event arriving first, as above, is the real order.
+      slots.upsertSlot("film|2024", "Venue0␟film", SourceData(title = Some("Film")))
+      screenings.upsertSlot("film|2024", "Venue0␟film", Seq(models.Showtime(LocalDateTime.of(2099, 1, 1, 20, 0), None)))
+      gate.countDown()
+
+      drained.await(5, TimeUnit.SECONDS) shouldBe true
+      dispatched.get()              shouldBe 2 // the warm-up's own dispatch + film|2024's ONE dispatch
+      reread.get()                  shouldBe 0 // neither side event bought its own re-read
+      slotsSeen.coalesced.get()     shouldBe 1 // the movie_slots write rode the queued movies apply
+      screeningsSeen.coalesced.get() shouldBe 1 // …and so did the screenings write
+    } finally { handle.close(); under.close() }
+  }
+
   // THE SILENT CURSOR. A terminal error is reopened on a backoff; a cursor that is OPEN and
   // delivering nothing — a server-side stall, a stale resume position — was detected by nothing:
   // the event counters simply stop moving, which is also what a quiet night looks like. The age

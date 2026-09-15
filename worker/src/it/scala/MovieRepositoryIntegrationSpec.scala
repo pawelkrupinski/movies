@@ -2,7 +2,9 @@ package integration
 
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import models.{Helios, HeliosOstrowWlkp, KinoMuranow, MovieRecord, Multikino, Showtime, Source, SourceData, Tmdb}
+import models.{CharlieMonroe, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia,
+  Helios, HeliosOstrowWlkp, KinoApollo, KinoBulgarska, KinoMuranow, KinoMuza, KinoPalacowe, MovieRecord, Multikino,
+  Rialto, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -40,7 +42,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     "tt0000001", "tt0000002", "tt0000003", "tt0000004", "tt0000006",
     "tt0000005", "tt0000010", "tt0000011", "tt0000012", "tt0000013", "tt0000014", "tt0000015", "tt0000077", "tt0000099",
     "tt0000078", "tt0000079", "tt0000080", "tt0000081", "tt0000024", "tt0000025",
-    "tt0000301" // the coalescing burst's film
+    "tt0000301", // the coalescing burst's film
+    "tt0000302" // the movies+screenings coalescing film
   ) ++ (1 to 20).map(n => f"tt000021$n%02d")           // the backpressure spec's 20 sentinels
     ++ (1 to 40).flatMap(n => Seq(f"tt900$n%05d", f"tt901$n%05d", f"tt902$n%05d", f"tt903$n%05d"))
     // …and the change-stream warm-ups, which write until the cursor delivers and so
@@ -651,6 +654,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     val sink = new ChangeStreamMetrics {
       def recordEvent(op: String): Unit        = recorded.synchronized(recorded += op)
       def recordUpdateKind(kind: String): Unit = ()
+      def recordCoalescedChange(): Unit        = ()
     }
     val repo  = new MongoMovieRepository(changeStreamMetrics = sink, normalizer = titleNormalizer)
     val title = "__integration-test-changestream-stats__"
@@ -825,6 +829,105 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       }
       // …and no update was lost: the film ends up carrying every venue of the burst.
       scr.findForFilm(id).keySet should contain allElementsOf (0 until Burst).map(i => s"Venue$i␟c")
+    } finally {
+      handle.foreach(_.close()); scr.deleteFilm(id)
+      repo.delete(title, year); repo.close(); client.close()
+    }
+  }
+
+  // THE THIRD CURSOR'S BLIND SPOT (2026-09-15). `dropCinemaSlots` writes `retainedSynopses`
+  // to `movies` in the SAME tick it deletes the dropped venue's `screenings` row — one
+  // logical event, two collections, two cursors, which used to buy the film two
+  // re-projections instead of one. `updateIfPresent` is the exact method `MovieCache`'s
+  // `dropCinemaSlots`/`putIfPresent` calls, so driving it directly here (below the cache)
+  // exercises the same write shape production makes.
+  it should "coalesce a movies retainedSynopses write with the screenings delete it causes, onto one re-projection" in {
+    import java.util.concurrent.{CountDownLatch, TimeUnit}
+    import java.util.concurrent.atomic.AtomicInteger
+    import java.time.LocalDateTime
+    import services.movies.MongoScreeningsRepository
+
+    val client        = MongoClient(Env.get("MONGODB_URI").get)
+    val db            = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
+    val movieSink     = new RecordingMovieChangeMetrics
+    val screeningsSink = new RecordingScreeningsMetrics
+    val scr           = new MongoScreeningsRepository(Some(db))
+    val repo          = new MongoMovieRepository(Some(db), screenings = Some(scr), normalizer = titleNormalizer,
+      changeStreamMetrics = movieSink, screeningsMetrics = screeningsSink)
+
+    val title = "__integration-test-movies-side-coalesce__"
+    val year  = Some(1906)
+    val id    = StoredMovieRecord.keyFor(title, year, titleNormalizer)
+    val Imdb  = "tt0000302"
+    // The stale-slot prune drops every venue a film lost IN ONE PASS, together — realistically
+    // more than one, so this drives `updateIfPresent` the same shape: one `movies` write
+    // (`retainedSynopses` for the whole set) plus one `screenings` delete PER dropped venue,
+    // all in the one call. `Multikino`/`Helios` stay (the survivors).
+    val droppedCinemas: Seq[Source] = Seq(KinoApollo, KinoBulgarska, CharlieMonroe, CinemaCityKinepolis,
+      KinoMuza, KinoPalacowe, CinemaCityPoznanPlaza, Rialto, CinemaCityWroclavia, CinemaCityKorona)
+    val Dropped = droppedCinemas.size
+
+    val dispatched = new AtomicInteger(0)
+    val warmed     = new CountDownLatch(1)
+    val handle = repo.watchChanges(
+      r => if (r.record.imdbId.contains(Imdb)) { dispatched.incrementAndGet(); warmed.countDown() },
+      _ => ())
+    handle should not be empty
+    try {
+      def slotOf(c: Source, hour: Int) = c -> SourceData(title = Some(title), synopsis = Some(s"${c.displayName}'s synopsis"),
+        showtimes = Seq(Showtime(LocalDateTime.of(2026, 6, 1, hour, 0), None)))
+      val before = MovieRecord(imdbId = Some(Imdb), data =
+        (droppedCinemas.zipWithIndex.map { case (c, i) => slotOf(c, i % 23 + 1) } :+ slotOf(Helios, 22)).toMap)
+      repo.upsert(title, year, before)
+      awaitStreamLive("a warm-up event, so a low dispatch count below would mean nothing was arriving " +
+                      "rather than that it was being coalesced",
+                      warmed.await(1, TimeUnit.SECONDS)) { pass =>
+        scr.upsertSlot(id, "Warm␟c", Seq(Showtime(LocalDateTime.of(2099, 1, 1, pass % 23 + 1, 0), None)))
+      }
+      // Drain any trailing warm-up deliveries still in flight: the warm-up loop issues a new
+      // write on EVERY pass until the first one's dispatch lands, so several of its writes can
+      // still be propagating when the latch fires. Wait for the dispatch count to stop moving
+      // before resetting, or a late warm-up delivery is miscounted as part of the real event.
+      var lastSeen    = dispatched.get()
+      var quietPasses = 0
+      while (quietPasses < 5) {
+        Thread.sleep(100)
+        val now = dispatched.get()
+        if (now == lastSeen) quietPasses += 1 else { quietPasses = 0; lastSeen = now }
+      }
+      dispatched.set(0); movieSink.reset(); screeningsSink.reset()
+
+      // No `slots` repository is wired here (this spec's screenings-only setup, matching the
+      // burst test above), so the `movies` patch also carries every dropped venue's
+      // `sourceData` removal alongside `retainedSynopses` — still ONE movies-doc write.
+      val after = before.copy(
+        data             = before.data -- droppedCinemas,
+        retainedSynopses = droppedCinemas.map(c => c -> s"${c.displayName}'s synopsis").toMap)
+      repo.updateIfPresent(title, year, before, after) shouldBe true
+
+      // SETTLE ON THE EVENTS THEMSELVES, exactly as the burst test above does: one movies
+      // event plus one screenings delete per dropped venue is `1 + Dropped` raw events, each
+      // either bought its own apply or rode one.
+      val TotalEvents = 1 + Dropped
+      val settleBy = System.currentTimeMillis() + 20000
+      while (dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount < TotalEvents &&
+             System.currentTimeMillis() < settleBy) Thread.sleep(50)
+      val accounted = dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount
+      info(s"1 movies write + $Dropped screenings deletes (one logical slot-drop pass): " +
+           s"${dispatched.get()} re-projection(s), ${movieSink.coalescedCount} movies-cursor + " +
+           s"${screeningsSink.coalescedCount} screenings-cursor event(s) coalesced")
+      withClue(s"only $accounted of $TotalEvents event(s) were accounted for; a coalesced event " +
+               s"that fails to release its demand window stalls the cursor for good: ") {
+        accounted should be >= TotalEvents
+      }
+      withClue(s"nothing coalesced ACROSS cursors (the drop bought ${dispatched.get()} separate " +
+               s"re-projections of one film), so a slot-drop still costs one full re-projection per " +
+               s"collection it touched: ") {
+        (movieSink.coalescedCount + screeningsSink.coalescedCount) should be > 0
+      }
+      // …and no update was lost: every dropped venue is gone, the survivor remains.
+      scr.findForFilm(id).keySet.intersect(droppedCinemas.map(_.displayName).toSet) shouldBe empty
+      scr.findForFilm(id).keySet should contain(Helios.displayName)
     } finally {
       handle.foreach(_.close()); scr.deleteFilm(id)
       repo.delete(title, year); repo.close(); client.close()
@@ -1803,6 +1906,20 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     def wrote(outcome: String): Int = Option(byOutcome.get(outcome)).map(_.get()).getOrElse(0)
     def coalescedCount: Int         = coalesced.get()
     def reset(): Unit               = { ops.clear(); byOutcome.clear(); coalesced.set(0) }
+  }
+
+  /** The `movies` cursor's twin of [[RecordingScreeningsMetrics]] — records what it coalesced
+   *  onto an already-queued apply (by another movies event, or by a screenings/movie_slots
+   *  event sharing the pending set), so a coalescing test can assert on it directly rather
+   *  than inferring it from a dispatch count alone. */
+  private class RecordingMovieChangeMetrics extends services.movies.ChangeStreamMetrics {
+    private val coalesced = new java.util.concurrent.atomic.AtomicInteger(0)
+    def recordEvent(op: String): Unit        = ()
+    def recordUpdateKind(kind: String): Unit = ()
+    def recordCoalescedChange(): Unit        = { coalesced.incrementAndGet(); () }
+
+    def coalescedCount: Int = coalesced.get()
+    def reset(): Unit       = coalesced.set(0)
   }
 
   private def show(hour: Int) =
