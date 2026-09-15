@@ -69,7 +69,7 @@ object OgCardGenerator {
     val cities   = if (homeMode) Nil else country.cities.filter(c => only.isEmpty || only(c.slug))
     if (!homeMode && cities.isEmpty) { System.err.println(s"No ${country.code} cities matched ${only.mkString(", ")}"); sys.exit(1) }
 
-    val chrome = Chrome.tryStart().getOrElse {
+    val chrome = Chrome.tryStart(lang = Some(country.language.getLanguage)).getOrElse {
       System.err.println("No Chrome/Chromium found (set CDP_BROWSER_BIN). Aborting.")
       sys.exit(1)
     }
@@ -106,7 +106,7 @@ object OgCardGenerator {
     while (attempt < Attempts) {
       attempt += 1
       try {
-        val bg   = screenshotCity(chrome, screenshotUrl, country.language.getLanguage)
+        val bg   = screenshotCity(chrome, screenshotUrl)
         val card = renderCard(chrome, bg, tagline, country)
         Files.write(out, downscale(card))
         println(f"✓ $label%-20s ${(System.currentTimeMillis() - t0) / 1000.0}%4.1fs  $out")
@@ -175,14 +175,14 @@ object OgCardGenerator {
   /** Screenshot the live city page at desktop 2×, with every date shown so the
    *  grid is populated regardless of the hour. Returns Base64 PNG bytes.
    *
-   *  `language` forces the request's `Accept-Language` header to the
-   *  deployment's own language (e.g. `"de"`), overriding whatever locale the
-   *  Chrome binary driving this generator defaults to. Without it,
-   *  `WebLangResolver` — which prefers a visitor's `Accept-Language` over the
-   *  deployment default — renders the page in the RUNNER's language (English
-   *  on most CI/dev machines), so a German or Spanish deployment's card
-   *  screenshot showed English nav/day-tab/search text under a correctly
-   *  German/Spanish overlay tagline.
+   *  Chrome is launched with `--lang` set to the deployment's own language
+   *  (see `Chrome.tryStart`) so `WebLangResolver` — which prefers a
+   *  visitor's `Accept-Language` over the deployment default — renders THIS
+   *  language rather than whatever locale the machine driving this generator
+   *  would otherwise default to (English on most CI/dev boxes). Without that,
+   *  a German or Spanish deployment's card screenshot showed English
+   *  nav/day-tab/search text under a correctly German/Spanish overlay
+   *  tagline.
    *
    *  Throws when the page didn't actually load (Chrome's offline error page, a
    *  5xx, prod rate-limiting): such a navigation still reaches readyState
@@ -191,8 +191,8 @@ object OgCardGenerator {
    *  — empty repertoire or not — so its absence means the site never loaded.
    *  The caller treats the throw as a skip + retry rather than overwriting a
    *  previously-good card with garbage. */
-  private def screenshotCity(chrome: Chrome, url: String, language: String): String =
-    chrome.openPage(url, acceptLanguage = Some(language)) { page =>
+  private def screenshotCity(chrome: Chrome, url: String): String =
+    chrome.openPage(url) { page =>
       setMetrics(page, 1180, 760, 2)
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
       catch { case _: Throwable => throw new RuntimeException("repertoire page did not load (no pickDay)") }

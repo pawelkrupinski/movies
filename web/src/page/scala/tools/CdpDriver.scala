@@ -65,28 +65,48 @@ object Chrome {
   }
 
   /** Launch a headless Chrome on a free port. Returns `None` when no
-   *  Chrome binary is reachable on this machine. */
-  def tryStart(): Option[Chrome] = findExecutable().flatMap { exe =>
+   *  Chrome binary is reachable on this machine.
+   *
+   *  `lang`, when given, sets `--accept-lang` — the switch Chrome derives the
+   *  `Accept-Language` header from on every request (`--lang`, Chrome's
+   *  UI-locale switch, does NOT affect it, confirmed empirically:
+   *  `CdpAcceptLanguageSpec` against a header-echoing test server). Used by
+   *  [[OgCardGenerator]] so a non-English deployment's background screenshot
+   *  renders in ITS language rather than whatever locale the machine driving
+   *  this generator defaults to (English on most CI/dev boxes).
+   *
+   *  Earlier this was a per-navigation `Network.enable` +
+   *  `Network.setExtraHTTPHeaders` CDP call pair instead (see git history):
+   *  it worked from a developer machine but made EVERY screenshot fail
+   *  outright in CI (`repertoire page did not load`, 0/52 Spain, 0/79 UK,
+   *  0/41 Poland, 2026-09-15) against the exact same live prod pages — the
+   *  local/CI split points at something CDP + `Network` domain specific
+   *  (a newer Chrome build, a race, a Linux-vs-macOS difference — not
+   *  pinned down). The `--accept-lang` launch switch reaches the same
+   *  outcome without ever touching the `Network` domain, which sidesteps
+   *  the problem rather than explaining it. */
+  def tryStart(lang: Option[String] = None): Option[Chrome] = findExecutable().flatMap { exe =>
     val port    = findFreePort()
     val userDirectory = Files.createTempDirectory("chrome-cdp-test-")
     val pb = new ProcessBuilder(
-      exe.toString,
-      "--headless",
-      "--disable-gpu",
-      "--no-sandbox",
-      "--hide-scrollbars",
-      "--mute-audio",
-      "--disable-background-networking",
-      "--disable-default-apps",
-      "--disable-extensions",
-      "--disable-sync",
-      // Anchored origin allow-list — without this, Chrome 111+ rejects
-      // WebSocket handshakes from clients that don't send an Origin
-      // header (our java.net.http.WebSocket doesn't) with a 403.
-      "--remote-allow-origins=*",
-      s"--remote-debugging-port=$port",
-      s"--user-data-dir=${userDirectory.toString}",
-      "about:blank"
+      (Seq(
+        exe.toString,
+        "--headless",
+        "--disable-gpu",
+        "--no-sandbox",
+        "--hide-scrollbars",
+        "--mute-audio",
+        "--disable-background-networking",
+        "--disable-default-apps",
+        "--disable-extensions",
+        "--disable-sync",
+        // Anchored origin allow-list — without this, Chrome 111+ rejects
+        // WebSocket handshakes from clients that don't send an Origin
+        // header (our java.net.http.WebSocket doesn't) with a 403.
+        "--remote-allow-origins=*",
+        s"--remote-debugging-port=$port",
+        s"--user-data-dir=${userDirectory.toString}"
+      ) ++ lang.map(code => s"--accept-lang=$code") ++ Seq("about:blank"))*
     ).redirectErrorStream(true)
     val process = pb.start()
     // Drain stdout/stderr so the buffer never fills up and blocks Chrome.
@@ -157,17 +177,11 @@ class Chrome private[tools] (
    *  is `complete`, so DOMContentLoaded handlers (buildIndex, the
    *  boot-time applyFilters() in _sharedJs) have fired.
    *
-   *  `acceptLanguage`, when given, overrides the request's `Accept-Language`
-   *  header before navigating — needed so a screenshot reflects the target
-   *  site's OWN language rather than whatever locale the driving machine's
-   *  Chrome install defaults to (see [[OgCardGenerator]], which renders a
-   *  German/Spanish deployment from a runner whose Chrome sends `en-US`).
-   *
    *  Callers usually point at `TestHttpServer.baseUrl + "/some/path"`.
    *  Avoid file:// — `history.replaceState` (used by the date-filter ↔
    *  URL sync to rewrite `?date=`) throws SecurityError on file:// origins,
    *  which silently aborts the rest of the handler in production code. */
-  def openPage[T](url: String, acceptLanguage: Option[String] = None)(body: CdpPage => T): T = {
+  def openPage[T](url: String)(body: CdpPage => T): T = {
     // Open a blank tab first, then navigate via CDP. Chrome ≥ 130 silently
     // ignores the URL passed to `/json/new?<URL>` on some platforms (CI
     // runners with the latest stable) — the tab lands on `about:blank`,
@@ -183,10 +197,6 @@ class Chrome private[tools] (
     try {
       page.send("Page.enable")
       page.send("Runtime.enable")
-      acceptLanguage.foreach { lang =>
-        page.send("Network.enable")
-        page.send("Network.setExtraHTTPHeaders", Json.obj("headers" -> Json.obj("Accept-Language" -> lang)))
-      }
       page.send("Page.navigate", Json.obj("url" -> url))
       // Wait for DOMContentLoaded so any inline `addEventListener
       // ('DOMContentLoaded', …)` registrations have fired. A short poll
