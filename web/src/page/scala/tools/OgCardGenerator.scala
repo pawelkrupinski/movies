@@ -49,6 +49,17 @@ import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
  * `KINOWO_OG_HOME_CITY` — override the city screenshotted for the `home` card.
  * Chrome is located via `Chrome.findExecutable()` (same `CDP_BROWSER_BIN`
  * override the page tests use). Each card takes well under a minute.
+ *
+ * `KINOWO_PROXY_USER` / `KINOWO_PROXY_PASS` (same secrets the worker's Decodo
+ * residential proxy already uses, see [[reference_decodo_isp_proxy]]), when
+ * BOTH present, route every screenshot request through
+ * `KINOWO_OG_PROXY_HOST`/`KINOWO_OG_PROXY_PORT` (default `isp.decodo.com` on
+ * a residential port) instead of this machine's own egress — needed because
+ * GitHub Actions' datacenter IP ranges are Cloudflare Bot-Fight-Mode material
+ * on both `kinowo.net` and `showtimes.cc` (2026-09-15: confirmed via
+ * `loadFailureDiagnostic` catching the challenge page, then `fight_mode: true`
+ * on both zones via the Cloudflare API — a setting with NO custom-rule skip).
+ * Proxy absent wherever those two secrets aren't set (local/dev default).
  */
 object OgCardGenerator {
 
@@ -56,6 +67,22 @@ object OgCardGenerator {
   private val Height = 630
   private val Scale  = 3 // render the card at 3× then supersample down for smooth text
   private val JpegQuality = 0.85f
+
+  /** A residential (not the pool's M247 datacenter) Decodo port — see
+   *  `worker/src/main/resources/residential-proxy.properties`. Only used as
+   *  the default when `KINOWO_OG_PROXY_PORT` is unset. */
+  private val DefaultProxyPort = 10002
+
+  private def proxyFromEnv(): Option[Chrome.ProxyConfig] =
+    for {
+      user <- sys.env.get("KINOWO_PROXY_USER")
+      pass <- sys.env.get("KINOWO_PROXY_PASS")
+    } yield Chrome.ProxyConfig(
+      host = sys.env.getOrElse("KINOWO_OG_PROXY_HOST", "isp.decodo.com"),
+      port = sys.env.get("KINOWO_OG_PROXY_PORT").flatMap(_.toIntOption).getOrElse(DefaultProxyPort),
+      user = user,
+      pass = pass
+    )
 
   def main(args: Array[String]): Unit = {
     val country = Country.fromEnv
@@ -69,7 +96,7 @@ object OgCardGenerator {
     val cities   = if (homeMode) Nil else country.cities.filter(c => only.isEmpty || only(c.slug))
     if (!homeMode && cities.isEmpty) { System.err.println(s"No ${country.code} cities matched ${only.mkString(", ")}"); sys.exit(1) }
 
-    val chrome = Chrome.tryStart(lang = Some(country.language.getLanguage)).getOrElse {
+    val chrome = Chrome.tryStart(lang = Some(country.language.getLanguage), proxy = proxyFromEnv()).getOrElse {
       System.err.println("No Chrome/Chromium found (set CDP_BROWSER_BIN). Aborting.")
       sys.exit(1)
     }

@@ -64,6 +64,12 @@ object Chrome {
     )
   }
 
+  /** An HTTP(S) forward proxy Chrome should route every request through, with
+   *  Basic credentials supplied over CDP (`Fetch.authRequired` →
+   *  `Fetch.continueWithAuth`) rather than embedded in `--proxy-server` —
+   *  modern Chrome ignores inline `user:pass@` there. See [[Chrome.tryStart]]. */
+  final case class ProxyConfig(host: String, port: Int, user: String, pass: String)
+
   /** Launch a headless Chrome on a free port. Returns `None` when no
    *  Chrome binary is reachable on this machine.
    *
@@ -84,8 +90,16 @@ object Chrome {
    *  (a newer Chrome build, a race, a Linux-vs-macOS difference — not
    *  pinned down). The `--accept-lang` launch switch reaches the same
    *  outcome without ever touching the `Network` domain, which sidesteps
-   *  the problem rather than explaining it. */
-  def tryStart(lang: Option[String] = None): Option[Chrome] = findExecutable().flatMap { exe =>
+   *  the problem rather than explaining it.
+   *
+   *  `proxy`, when given, adds `--proxy-server` so every request routes
+   *  through it (auth handled per-page in `openPage`; see [[ProxyConfig]]).
+   *  Used by [[OgCardGenerator]] to route through a residential IP —
+   *  GitHub Actions' own datacenter IP ranges are Cloudflare Bot-Fight-Mode
+   *  material (2026-09-15 CI outage, root-caused via `loadFailureDiagnostic`
+   *  to `fight_mode: true` on both zones, which Cloudflare's own docs confirm
+   *  has NO custom-rule skip/bypass at all). */
+  def tryStart(lang: Option[String] = None, proxy: Option[ProxyConfig] = None): Option[Chrome] = findExecutable().flatMap { exe =>
     val port    = findFreePort()
     val userDirectory = Files.createTempDirectory("chrome-cdp-test-")
     val pb = new ProcessBuilder(
@@ -106,7 +120,9 @@ object Chrome {
         "--remote-allow-origins=*",
         s"--remote-debugging-port=$port",
         s"--user-data-dir=${userDirectory.toString}"
-      ) ++ lang.map(code => s"--accept-lang=$code") ++ Seq("about:blank"))*
+      ) ++ lang.map(code => s"--accept-lang=$code")
+        ++ proxy.map(p => s"--proxy-server=http://${p.host}:${p.port}")
+        ++ Seq("about:blank"))*
     ).redirectErrorStream(true)
     val process = pb.start()
     // Drain stdout/stderr so the buffer never fills up and blocks Chrome.
@@ -135,7 +151,7 @@ object Chrome {
         val version = """"Browser":\s*"([^"]+)"""".r.findFirstMatchIn(info).map(_.group(1)).getOrElse("unknown")
         System.err.println(s"[CdpDriver] Chrome=$version path=$exe")
       } catch { case _: Throwable => () }
-      Some(new Chrome(process, port, userDirectory))
+      Some(new Chrome(process, port, userDirectory, proxy))
     } else {
       process.destroyForcibly()
       None
@@ -169,13 +185,24 @@ object Chrome {
 class Chrome private[tools] (
                               process: Process,
                               port: Int,
-                              userDataDirectory: Path
+                              userDataDirectory: Path,
+                              proxy: Option[Chrome.ProxyConfig] = None
                             ) extends AutoCloseable {
 
   /** Open `url` in a fresh tab, run `body`, then close the tab. The page
    *  is loaded synchronously — `body` runs after `document.readyState`
    *  is `complete`, so DOMContentLoaded handlers (buildIndex, the
    *  boot-time applyFilters() in _sharedJs) have fired.
+   *
+   *  When `tryStart` was given a `proxy`, this also enables `Fetch` with
+   *  `handleAuthRequests`, which surfaces the proxy's 407 as a
+   *  `Fetch.authRequired` event instead of Chrome showing a (headless-inert)
+   *  native credentials prompt that would otherwise hang the navigation
+   *  forever — `Fetch.continueWithAuth` answers it with the configured
+   *  Basic credentials. Only the `source: "Proxy"` challenge is answered;
+   *  a same-origin auth challenge (our own site has none) gets the default
+   *  (unauthenticated) response rather than leaking the proxy password to
+   *  an arbitrary origin.
    *
    *  Callers usually point at `TestHttpServer.baseUrl + "/some/path"`.
    *  Avoid file:// — `history.replaceState` (used by the date-filter ↔
@@ -197,6 +224,29 @@ class Chrome private[tools] (
     try {
       page.send("Page.enable")
       page.send("Runtime.enable")
+      proxy.foreach { p =>
+        // `patterns` is REQUIRED for `Fetch.authRequired` to fire at all — an
+        // empty/omitted `patterns` looked like "auth-only interception" but
+        // instead left Fetch interception fully inert: no event ever arrived
+        // and `Page.navigate` itself hung (confirmed locally, no `patterns` ⇒
+        // 30s timeout on the navigate reply; matches how Puppeteer's own
+        // `page.authenticate()` is wired — `patterns: [{urlPattern: "*"}]`).
+        // Matching everything means every request now pauses at
+        // `Fetch.requestPaused` too, so that has to be answered as well —
+        // with a bare `continueRequest` (no modification), it is a pass-through.
+        page.onEvent("Fetch.requestPaused") { params =>
+          page.send("Fetch.continueRequest", Json.obj("requestId" -> (params \ "requestId").as[String]))
+        }
+        page.onEvent("Fetch.authRequired") { params =>
+          val requestId = (params \ "requestId").as[String]
+          val isProxy   = (params \ "authChallenge" \ "source").asOpt[String].contains("Proxy")
+          val response  =
+            if (isProxy) Json.obj("response" -> "ProvideCredentials", "username" -> p.user, "password" -> p.pass)
+            else Json.obj("response" -> "Default")
+          page.send("Fetch.continueWithAuth", Json.obj("requestId" -> requestId, "authChallengeResponse" -> response))
+        }
+        page.send("Fetch.enable", Json.obj("handleAuthRequests" -> true, "patterns" -> Json.arr(Json.obj("urlPattern" -> "*"))))
+      }
       page.send("Page.navigate", Json.obj("url" -> url))
       // Wait for DOMContentLoaded so any inline `addEventListener
       // ('DOMContentLoaded', …)` registrations have fired. A short poll
@@ -223,12 +273,22 @@ class Chrome private[tools] (
   }
 }
 
-/** One CDP page session. Synchronous request/response over the WebSocket;
- *  events are ignored (we don't need them for the current spec). */
+/** One CDP page session. Synchronous request/response over the WebSocket,
+ *  plus best-effort dispatch of unsolicited events (messages with a
+ *  `method` but no `id`) to a handler registered via [[onEvent]] — needed
+ *  for `Fetch.authRequired`, which Chrome sends on its own initiative
+ *  rather than in reply to any call this driver made. */
 class CdpPage private[tools] (uri: URI) extends AutoCloseable {
   private val idGen = new AtomicInteger(0)
   private val pending = new ConcurrentHashMap[Int, CompletableFuture[JsValue]]()
+  private val eventHandlers = new ConcurrentHashMap[String, JsValue => Unit]()
   private val buffer  = new StringBuilder()
+
+  /** Register `handler` to run whenever Chrome sends the CDP event `method`
+   *  (e.g. `"Fetch.authRequired"`), passed that event's `params`. At most one
+   *  handler per method — a second registration replaces the first, which is
+   *  fine for this driver's one-handler-per-page usage. */
+  def onEvent(method: String)(handler: JsValue => Unit): Unit = eventHandlers.put(method, handler)
 
   private val ws: WebSocket = HttpClient.newHttpClient()
     .newWebSocketBuilder()
@@ -241,8 +301,23 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
           val text = buffer.toString
           buffer.setLength(0)
           val message = Json.parse(text)
-          (message \ "id").asOpt[Int].foreach { id =>
-            Option(pending.remove(id)).foreach(_.complete(message))
+          (message \ "id").asOpt[Int] match {
+            case Some(id) => Option(pending.remove(id)).foreach(_.complete(message))
+            case None     =>
+              for {
+                method  <- (message \ "method").asOpt[String]
+                handler <- Option(eventHandlers.get(method))
+              } {
+                val params = (message \ "params").getOrElse(Json.obj())
+                // MUST run off this thread: java.net.http's WebSocket listener
+                // delivers messages one at a time and won't invoke onText again
+                // until this call returns, so a handler that calls back into
+                // `send` (as the proxy-auth handler does) would deadlock
+                // waiting for a reply that this same blocked thread is the
+                // only one able to deliver. Hit locally: `Fetch.continueWithAuth`
+                // from inside this callback timed out at 30s every time.
+                new Thread(() => try handler(params) catch { case _: Throwable => () }, s"cdp-event-$method").start()
+              }
           }
         }
         null
