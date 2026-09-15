@@ -198,45 +198,15 @@ jobs:
             # commit's SHA + subject, so a metric regression on the dashboard
             # lines up visually with the release that caused it — the "I deploy X
             # and a service degrades" loop, made legible.
-            #
-            # Rides this job rather than one of its own: a job costs ~10s of
-            # spin-up on the critical path to run a 200ms curl. No-ops (doesn't
-            # fail the deploy) until the Grafana secrets are set.
             - name: Mark deploy in Grafana
               if: steps.guard.outputs.skip != 'true'
-              env:
-                  GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
-                  GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
-                  SHA: ${{ github.sha }}
-                  MSG: ${{ github.event.head_commit.message }}
-              run: |
-                  if [ -z "${GRAFANA_URL:-}" ] || [ -z "${GRAFANA_ANNOTATION_TOKEN:-}" ]; then
-                      echo "Grafana annotation secrets unset — skipping deploy marker."
-                      exit 0
-                  fi
-                  short="${SHA:0:7}"
-                  subject="$(printf '%s' "$MSG" | head -1)"
-                  now="$(( $(date +%s) * 1000 ))"
-                  body="$(jq -n --argjson time "$now" \
-                      --arg text "deploy ${short} — ${subject} (${SHA})" \
-                      '{time: $time, tags: ["deploy", "main"], text: $text}')"
-                  # NEVER FAIL THE DEPLOY OVER A MARKER. This step failed the whole `kinowo` leg on
-                  # 2026-08-29 -- `curl -fsS` returned 35 because GRAFANA_URL still named
-                  # kinowo-grafana.fly.dev, which had been scaled to zero machines when Grafana moved
-                  # to monitoring-1. The web app had already deployed successfully; the run went red
-                  # for an annotation.
-                  #
-                  # A deploy marker is an aid to reading a dashboard later. It is not a release
-                  # gate, and a red run for a missing annotation trains people to ignore red runs on
-                  # the workflow that actually ships production.
-                  if curl -fsS --max-time 20 -X POST "${GRAFANA_URL%/}/api/annotations" \
-                      -H "Authorization: Bearer ${GRAFANA_ANNOTATION_TOKEN}" \
-                      -H "Content-Type: application/json" \
-                      -d "$body"; then
-                      echo "Posted deploy marker for ${short}."
-                  else
-                      echo "::warning title=Deploy marker not posted::Grafana at ${GRAFANA_URL%/} did not accept the annotation for ${short}. The deploy itself succeeded."
-                  fi
+              uses: ./.github/actions/mark-grafana-deploy
+              with:
+                  tier: kinowo
+                  grafana-url: ${{ secrets.GRAFANA_URL }}
+                  grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+                  sha: ${{ github.sha }}
+                  commit-message: ${{ github.event.head_commit.message }}
 
     # Kick the country convergence suite off ALONGSIDE the deploy matrix — same
     # `needs: ci` the legs have, so the dispatch goes out the moment the build is
@@ -500,6 +470,27 @@ jobs:
                       "/repos/${{ github.repository }}/git/refs" \
                       -f ref=refs/tags/deployed-web -f sha='${{ github.sha }}'
 
+            # Only a checkout so the local composite action below is on disk —
+            # `gh api` above needs no working tree.
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github
+                  sparse-checkout-cone-mode: false
+
+            # An image existing for this commit is the closest thing CI has to a
+            # "web tier shipped" event now that Flux, not CI, does the rolling —
+            # see the note above. Marking it here, rather than waiting for Flux to
+            # actually converge, trades a few minutes of lag for a marker that
+            # still exists at all.
+            - name: Mark deploy in Grafana
+              uses: ./.github/actions/mark-grafana-deploy
+              with:
+                  tier: web
+                  grafana-url: ${{ secrets.GRAFANA_URL }}
+                  grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+                  sha: ${{ github.sha }}
+                  commit-message: ${{ github.event.head_commit.message }}
+
     build-worker:
         needs: ci
         runs-on: ubuntu-latest
@@ -666,3 +657,22 @@ jobs:
                     || gh api --method POST \
                       "/repos/${{ github.repository }}/git/refs" \
                       -f ref=refs/tags/deployed-worker -f sha='${{ github.sha }}'
+
+            # Only a checkout so the local composite action below is on disk —
+            # `gh api` above needs no working tree.
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: .github
+                  sparse-checkout-cone-mode: false
+
+            # An image existing for this commit is the closest thing CI has to a
+            # "worker tier shipped" event now that Flux, not CI, does the rolling —
+            # see the note on `record-web`.
+            - name: Mark deploy in Grafana
+              uses: ./.github/actions/mark-grafana-deploy
+              with:
+                  tier: worker
+                  grafana-url: ${{ secrets.GRAFANA_URL }}
+                  grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+                  sha: ${{ github.sha }}
+                  commit-message: ${{ github.event.head_commit.message }}

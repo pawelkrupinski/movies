@@ -98,6 +98,43 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
+   * The `deploy` job above only ships the retired `kinowo` Fly redirect host —
+   * it hasn't shipped the tiers a production dashboard cares about since CI
+   * stopped rolling k3s itself (see `record-web`'s own comment on why its
+   * marker "no longer means what is live"). A marker that rides only `deploy`
+   * ships a "deploy" annotation for an app nobody watches and none at all for
+   * the tiers that page. `record-web`/`record-worker` are the closest CI gets
+   * to "this tier shipped a new image" now, so the marker has to ride there
+   * too — found 2026-09-15 when a dashboard showed no deploy lines at all.
+   */
+  it should "also mark web and worker deploys from record-web/record-worker" in {
+    val recordWeb    = RepoFile.block(mainYml, "record-web")
+    val recordWorker = RepoFile.block(mainYml, "record-worker")
+    recordWeb    should include("Mark deploy in Grafana")
+    recordWorker should include("Mark deploy in Grafana")
+    // Both need the composite action on disk, which needs a checkout — the
+    // `gh api` ref-write step above them needs no working tree at all, so
+    // without this a spec-less regression could drop the checkout silently.
+    recordWeb    should include("actions/checkout")
+    recordWorker should include("actions/checkout")
+  }
+
+  /**
+   * `curl -f` only trips on HTTP >= 400 — a 302 (oauth2-proxy's front door
+   * redirecting an unauthenticated request to a Google login page, or a stale
+   * Grafana host) reads as success and the annotation is silently never
+   * written. Confirmed live 2026-09-15: both GET and POST to Grafana's API
+   * 302 through the SSO front door with a Bearer token. Assert the marker
+   * checks the real status code instead of trusting `-f`.
+   */
+  it should "treat anything other than HTTP 200 as a failed Grafana marker" in {
+    val action = RepoFile.read(".github/actions/mark-grafana-deploy/action.yml")
+    action should include("%{http_code}")
+    action should not include "curl -fsS"
+    action should include("\"$code\" = \"200\"")
+  }
+
+  /**
    * `free-runners` — the job that used to sit here cancelling an in-flight
    * `Country convergence` run to take its three runners back for the deploy —
    * was retired 2026-09-08 alongside that workflow adopting

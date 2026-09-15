@@ -1,0 +1,64 @@
+name: Mark deploy in Grafana
+description: >-
+  Posts a Grafana annotation tagged "deploy" carrying this commit's SHA and
+  subject, so a metric regression on a dashboard lines up visually with the
+  release that caused it. Never fails the calling job — a missing or rejected
+  annotation is a dashboard-reading aid, not a release gate.
+
+inputs:
+  tier:
+    description: Deploy tier recorded in the annotation's tags and text (e.g. kinowo, web, worker)
+    required: true
+  grafana-url:
+    description: Base URL of the Grafana instance
+    required: true
+  grafana-annotation-token:
+    description: Bearer token for POST /api/annotations
+    required: true
+  sha:
+    description: Commit SHA being marked
+    required: true
+  commit-message:
+    description: Full commit message; only its first line is used
+    required: true
+
+runs:
+  using: composite
+  steps:
+      - shell: bash
+        env:
+            GRAFANA_URL: ${{ inputs.grafana-url }}
+            GRAFANA_ANNOTATION_TOKEN: ${{ inputs.grafana-annotation-token }}
+            TIER: ${{ inputs.tier }}
+            SHA: ${{ inputs.sha }}
+            MSG: ${{ inputs.commit-message }}
+        run: |
+            if [ -z "${GRAFANA_URL:-}" ] || [ -z "${GRAFANA_ANNOTATION_TOKEN:-}" ]; then
+                echo "Grafana annotation secrets unset — skipping deploy marker."
+                exit 0
+            fi
+            short="${SHA:0:7}"
+            subject="$(printf '%s' "$MSG" | head -1)"
+            now="$(( $(date +%s) * 1000 ))"
+            body="$(jq -n --argjson time "$now" \
+                --arg text "deploy ${TIER} ${short} — ${subject} (${SHA})" \
+                --arg tier "$TIER" \
+                '{time: $time, tags: ["deploy", "main", $tier], text: $text}')"
+            # NEVER FAIL THE CALLING JOB OVER A MARKER. Also: check the status code
+            # explicitly rather than `curl -f`, which only trips on HTTP >= 400 — a
+            # 302 (Grafana's oauth2-proxy front door redirecting to a login page,
+            # or a stale host) reads as success under `-f` and silently posts
+            # nothing. See the 2026-08-29 kinowo/Grafana-host incident this guarded
+            # against, and the 2026-09-15 discovery that it was masking the SSO
+            # redirect too.
+            code="$(curl -sS --max-time 20 -o /tmp/grafana-annotation-response.json -w '%{http_code}' \
+                -X POST "${GRAFANA_URL%/}/api/annotations" \
+                -H "Authorization: Bearer ${GRAFANA_ANNOTATION_TOKEN}" \
+                -H "Content-Type: application/json" \
+                -d "$body" || echo "000")"
+            if [ "$code" = "200" ]; then
+                echo "Posted deploy marker for ${TIER} ${short}."
+            else
+                echo "::warning title=Deploy marker not posted::Grafana at ${GRAFANA_URL%/} returned HTTP ${code} for the ${TIER} ${short} annotation (expected 200)."
+                cat /tmp/grafana-annotation-response.json 2>/dev/null || true
+            fi
