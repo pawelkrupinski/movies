@@ -44,3 +44,20 @@ heal fixes, because the heals repaired missing cards while the prune kept creati
 Read its `reason` label, reproduce the shape as a case in `ReadModelConvergenceSpec`
 (it will fail), and fix the path that wrote the card. Never widen the prune, and never
 schedule it more often — that hides the defect behind a shorter window.
+
+## When `ReadModelServingDiffersFromCorpus` fires but the prune counter is zero
+
+Check `process_start_time_seconds{job=~".*worker.*|.*web.*",country="<country>"}` for a
+restart in the ~30 minutes before the divergence started, before chasing a projection
+bug. Three US episodes (2026-09-09, 2026-09-14, 2026-09-15) all self-resolved within
+20-30 minutes with `kinowo_worker_readmodel_films_pruned_total{country="us"}` flat at
+zero for every `reason` throughout — not the prune failing to retire a card, just the
+freshly-booted worker/web pair's census and change-stream state re-syncing after a
+rolling restart. Two of the three had a worker-us restart within 1-8 minutes of the
+divergence starting (and a web-us restart within the same window); the third had no
+worker-us restart but a web-us restart 35 minutes earlier. This is a boot-lag shape, not
+a data-loss one — no card is permanently missing, it just takes longer than the usual
+~5-10 minute census skew to reappear after a restart. Confirm with the same per-city
+diff query the alert annotation already gives, and `sum by (reason)
+(increase(kinowo_worker_readmodel_films_pruned_total{country="<country>"}[10m]))` staying
+at zero rules out the prune-side defect this doc otherwise describes.
