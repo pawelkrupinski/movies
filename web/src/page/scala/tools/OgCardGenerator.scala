@@ -106,7 +106,7 @@ object OgCardGenerator {
     while (attempt < Attempts) {
       attempt += 1
       try {
-        val bg   = screenshotCity(chrome, screenshotUrl)
+        val bg   = screenshotCity(chrome, screenshotUrl, country.language.getLanguage)
         val card = renderCard(chrome, bg, tagline, country)
         Files.write(out, downscale(card))
         println(f"✓ $label%-20s ${(System.currentTimeMillis() - t0) / 1000.0}%4.1fs  $out")
@@ -175,6 +175,15 @@ object OgCardGenerator {
   /** Screenshot the live city page at desktop 2×, with every date shown so the
    *  grid is populated regardless of the hour. Returns Base64 PNG bytes.
    *
+   *  `language` forces the request's `Accept-Language` header to the
+   *  deployment's own language (e.g. `"de"`), overriding whatever locale the
+   *  Chrome binary driving this generator defaults to. Without it,
+   *  `WebLangResolver` — which prefers a visitor's `Accept-Language` over the
+   *  deployment default — renders the page in the RUNNER's language (English
+   *  on most CI/dev machines), so a German or Spanish deployment's card
+   *  screenshot showed English nav/day-tab/search text under a correctly
+   *  German/Spanish overlay tagline.
+   *
    *  Throws when the page didn't actually load (Chrome's offline error page, a
    *  5xx, prod rate-limiting): such a navigation still reaches readyState
    *  `complete`, so without this guard we'd screenshot the dino error page and
@@ -182,8 +191,8 @@ object OgCardGenerator {
    *  — empty repertoire or not — so its absence means the site never loaded.
    *  The caller treats the throw as a skip + retry rather than overwriting a
    *  previously-good card with garbage. */
-  private def screenshotCity(chrome: Chrome, url: String): String =
-    chrome.openPage(url) { page =>
+  private def screenshotCity(chrome: Chrome, url: String, language: String): String =
+    chrome.openPage(url, acceptLanguage = Some(language)) { page =>
       setMetrics(page, 1180, 760, 2)
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
       catch { case _: Throwable => throw new RuntimeException("repertoire page did not load (no pickDay)") }

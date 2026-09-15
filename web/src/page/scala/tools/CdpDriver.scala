@@ -157,11 +157,17 @@ class Chrome private[tools] (
    *  is `complete`, so DOMContentLoaded handlers (buildIndex, the
    *  boot-time applyFilters() in _sharedJs) have fired.
    *
+   *  `acceptLanguage`, when given, overrides the request's `Accept-Language`
+   *  header before navigating — needed so a screenshot reflects the target
+   *  site's OWN language rather than whatever locale the driving machine's
+   *  Chrome install defaults to (see [[OgCardGenerator]], which renders a
+   *  German/Spanish deployment from a runner whose Chrome sends `en-US`).
+   *
    *  Callers usually point at `TestHttpServer.baseUrl + "/some/path"`.
    *  Avoid file:// — `history.replaceState` (used by the date-filter ↔
    *  URL sync to rewrite `?date=`) throws SecurityError on file:// origins,
    *  which silently aborts the rest of the handler in production code. */
-  def openPage[T](url: String)(body: CdpPage => T): T = {
+  def openPage[T](url: String, acceptLanguage: Option[String] = None)(body: CdpPage => T): T = {
     // Open a blank tab first, then navigate via CDP. Chrome ≥ 130 silently
     // ignores the URL passed to `/json/new?<URL>` on some platforms (CI
     // runners with the latest stable) — the tab lands on `about:blank`,
@@ -177,6 +183,10 @@ class Chrome private[tools] (
     try {
       page.send("Page.enable")
       page.send("Runtime.enable")
+      acceptLanguage.foreach { lang =>
+        page.send("Network.enable")
+        page.send("Network.setExtraHTTPHeaders", Json.obj("headers" -> Json.obj("Accept-Language" -> lang)))
+      }
       page.send("Page.navigate", Json.obj("url" -> url))
       // Wait for DOMContentLoaded so any inline `addEventListener
       // ('DOMContentLoaded', …)` registrations have fired. A short poll
