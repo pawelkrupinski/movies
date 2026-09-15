@@ -108,6 +108,191 @@ and 336 of the 1,143 white US services had exactly 1.** Two consequences:
 
 ---
 
+## 2026-09-15
+
+**Seventh all-five-country sweep.** Newest bucket ~2026-09-15 18:15 UTC. Same
+sweep script shape as prior runs (`classify()` replicated, `.takeRight(3)`, skip
+`*|enrichment` / `img:`). PL fully hand-probed; UK/DE/US/ES triaged by delegating
+the mongo-aggregation + live-spot-check legwork to background subagents (per
+this session's own delegate-probe-work convention), with every subagent claim of
+a "confirmed bug" personally re-verified live before trusting it — see the DE/ES
+finding below for why that mattered.
+
+| DB | services | white | white % | red | green→white (in-window) |
+|---|---|---|---|---|---|
+| `kinowo` (PL) | 312 | **5** | 1.6% | 3 | 0 |
+| `kinowo_uk` | 853 | **64** | 7.5% | 0 | 0 |
+| `kinowo_de` | 1,538 | **401** | 26.1% | 21 | 0 |
+| `kinowo_us` | 5,040 | **1,111** | 22.0% | 3 | 0 |
+| `kinowo_es` | 601 | **218** | 36.3% | 2 | 13 |
+
+vs. 2026-09-12: PL 5/310 (1.6%, flat), UK 60/852 (7.0%→7.5%, flat), DE 390/1537
+(25.4%→26.1%, flat), US 715/5040 (14.2%→22.0%, up), ES 198/601 (32.9%→36.3%, up).
+US's jump is the same weekly sawtooth the US seasonal cohort has shown every
+run so far (see `reference_showtimes_weekly_sawtooth`): seasonal (mostly
+drive-in) white share bounced back to 78% (245/314) after dropping to 34% on
+09-12 — not a new trend, a swing this cohort has now shown three separate times
+(09-04 low, 09-08 Labor-Day high, 09-12 low, 09-15 high again). ES's rise is
+explained below (13 fresh transitions, all lag not breakage).
+
+**In-window green→white transitions read 0 for PL/UK/DE/US again** — this is
+the same cadence-vs-24h-retention blind spot documented on 09-08: DE and US
+cadence (600/840 min) means a transition older than ~1-2 scrapes back has
+already scrolled out of the 24h window by the time the sweep runs. Confirmed
+concretely this run: Astoria-Filmtheater (DE, see below) has an
+archive-attested green scrape at 2026-09-13 23:39, comfortably a real
+green→white transition, but that bucket is >24h old by 18:15 on 09-15 and
+had already scrolled out. Don't read "0 transitions" as "nothing broke" for
+these four; ES's cadence (420 min) is the only one of the five short enough for
+the in-window signal to still be reliable, which is exactly why it's the one
+showing 13.
+
+### ⚠️ New methodology finding: a far-jump in the day-list is a WEEKLY-GAP venue self-healing, not a parser bug — and two background subagents got this wrong
+
+Both the DE and ES background triage agents flagged what looked like a live
+"confirmed bug": a recently-white venue whose aggregator page, fetched live,
+carries real upcoming showtimes. I re-checked both by hand before believing
+either, per the standing "positive control before believing a negative" /
+"don't claim wrong without evidence" rules, and **both were false positives**,
+with an identical shape:
+
+- **Astoria-Filmtheater (DE, theaterId A0020)** — `cinema_scrapes` shows a
+  real scrape on 2026-09-13 (2 films, 16:00 showtimes), `lastBarren.since`
+  2026-09-14 00:09. Fetched `filmstarts.de/kinoprogramm/kino/A0020/` live:
+  `data-showtimes-dates="[2026-09-18,2026-09-19,2026-09-20]"` — no 15/16/17 at
+  all. The per-day JSON for 09-15/16/17 all answer
+  `{"error":true,"message":"next.showtime.on","nextDate":"2026-09-18",…}`;
+  09-18 answers with a real film. This is a single-screen venue that plays a
+  few days, goes dark, and plays again — the site's own day-list SKIPS the gap
+  entirely, and `WebediaShowtimesClient.planChunks()` correctly reads that
+  skip as "nothing to fetch between now and the 18th," which is exactly what a
+  gap-programming venue looks like. It isn't broken; it just hasn't reached
+  the next screening block yet, and the aggregator only started advertising
+  that block sometime after our last scrape.
+- **Cine Cortés (ES, theaterId E0250)** — same exact shape.
+  `cinema_scrapes` shows a real scrape 2026-09-14 18:38 (2 films, 19:00/21:15
+  showtimes that Monday), `lastBarren.since` 2026-09-14 22:37. Live
+  `sensacine.com/cines/cine/E0250/`: `data-showtimes-dates=[2026-09-19,20,21]`
+  — nothing for 15/16/17/18. Per-day JSON for 09-15/16 answers
+  `next.showtime.on` → `nextDate: 2026-09-19`; 09-19 has real films. Monday
+  screening, then dark until Friday. Same non-bug.
+
+**Both `FlicksClient` and `WebediaShowtimesClient` share this exact
+"day-list, not fixed grid" design** (`planChunks()` reads the venue's own
+day-tab/attribute rather than probing a fixed window), so the failure mode —
+and the false-positive-bug shape — generalizes across all four non-PL
+countries. I spot-checked a fifth case in the same family, **Town Hall Theatre
+Quincy (US, `flicks.us/cinema/town-hall-theatre-quincy/`)**: live page shows
+`data-date="2026-09-18/19/20"`, nothing nearer — identical shape, also not a
+bug. Four OTHER US samples from the same "archived ≤3 days but white" bucket
+(Elk Rapids Cinema, Rex Theater Stanley, Dependable Drive-In Coraopolis, Kenda
+Drive-In) rendered Flicks' `no-streaming-sessions` block with no live day tabs
+at all — genuinely, currently empty, not lag.
+
+**Net effect: no code fix from either flagged "bug."** Both venues should
+self-heal on their clients' next scheduled scrape once the newly-published
+block enters the fetch window (DE cadence 600 min, ES 420 min — both already
+overdue as of this run's data cutoff). File this pattern alongside the
+existing DE/US "cadence vs. retention window" trap from 09-08 as a standing
+caution for future runs: **when a background agent (or a human) reports "the
+aggregator has real content but we're not scraping it," always check whether
+that content is for a NEAR date (real bug) or a FAR date past a gap the venue's
+own day-list currently skips (self-healing lag) — the two look identical from
+the archive alone and only the live per-day JSON around `today` distinguishes
+them.**
+
+### Poland — all 5 hand-probed live, 0 fixed, all confirmed dormant/lag, 1 new to the list
+
+| Venue | Source | What the source says |
+|---|---|---|
+| Kino Lewart (Lubartów) | bilety24 `…/lubartowski-osrodek-kultury-1382` | "Brak wydarzeń" (no events) |
+| Kino Wisła Brzeszcze | bilety24 `…/osrodek-kultury-w-brzeszczach-1539` | "Brak wydarzeń" |
+| Kino Chatka Żaka (Lublin) | `umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` | 0 `box-row`, page renders but empty |
+| DKF Politechnika | Filmweb 1645, `seances?date=` for 09-15/16/17 | `[]` on all three — **10th consecutive run white**. Cinema still exists on Filmweb (`/cinema/1645/info` resolves fine) — this is a DKF (student discussion film club) that plausibly runs on the academic calendar, not a broken scraper. The 08-24 checkpoint ("escalate if still `[]` in October") has STILL not triggered — today is 2026-09-15 — but the next run (~09-18) or the one after (~09-21) should watch for the October rollover and escalate then if it hasn't recovered. |
+| **Kino na Szekspirowskim (Gdańsk)** — NEW to the list | biletyna.pl `Gdansk/Kino-na-Szekspirowskim` | `cinema_scrapes` shows a real scrape 2026-09-12 18:01 (1 film, one 20:00 showtime), `lastBarren.since` 2026-09-12 18:31. **biletyna.pl now Cloudflare-blocks even a plain residential `curl`** (see `reference_biletyna_cloudflare_blocks_all_ips`), so probed the way the scraper's Zyte fallback does: `curl -u "$ZYTE_API_KEY:" … -d '{"url":…,"httpResponseBody":true}' https://api.zyte.com/v1/extract` (note: `browserHtml:true` 401'd against this key — `httpResponseBody:true` is what still authenticates). Decoded body reads "Brak wydarz…" — genuinely empty right now. A single-showtime venue that went quiet 3 days after its one screening reads as low-frequency programming, not a break; logging as intentionally-dormant unless it stays white for several more runs. |
+
+No PL venue currently carries an active Filmweb fallback (`filmwebFallback.active: true` — empty this run), so no masked breaks to chase this time.
+
+**Red (3, shape changed from last run, out of brief — not investigated):** Kino Roma, Kino MOK Nowa Ruda, Kino Centrum CSW Toruń (Kino Przedwiośnie and Nowe Kino Warszawa, red on 09-12, are no longer red).
+
+### UK — 64 white, 0 in-window transitions, triaged via subagent, nothing new
+
+Delegated the archive-join + spot-check to a background agent. Results: 54 of
+64 have no `cinema_scrapes` entry ever (long-tail, presumptively never had a
+scrape wired under this exact name or genuinely never screened); 7 share one
+stale archive with `lastBarren.since = 2026-08-31` (15 days dormant — Village
+Picture House Cuddington, The Barn Banchory, Belmont Filmhouse, Fuse Community
+Cinema Prudhoe, Little Theatre Sheringham, Flix Student-Run Cinema
+Loughborough, Phoenix Cinema Blyth); 3 have an archive ≤10 days old (Baldock
+Arts & Heritage Centre, Pavilion Cinema Whitby, The New Vic Tisbury Village
+Hall) and all 3 were spot-checked live on flicks.co.uk — all render
+`no-streaming-sessions` with no day tabs, genuinely empty right now, not lag.
+0 seasonal-named. No fixes, nothing new vs. 09-12's shape.
+
+### DE — 401 white, 1 confirmed false-positive "bug" (see above), otherwise flat
+
+Seasonal-named venues in the full 1,538-strong roster: 212, of which 205 (97%)
+are white — consistent with every prior run's late-summer pattern. Of the 196
+non-seasonal white venues: 61 have no archive ever, 8 have an archive >10 days
+old (spot-checked 4 of them live — Akademie der Künste, Filmtheater Wertingen,
+Kronen-Lichtspiele Rodgau, Campusfilmnächte — all confirmed `[]` on
+filmstarts.de), and 1 (Astoria-Filmtheater) has an archive ≤10 days old, which
+is the publication-lag false-positive detailed above. Red (21) unchanged in
+shape, out of brief.
+
+### US — 1,111 white, seasonal sawtooth back up, 1 false-positive checked, rest sampled genuinely empty
+
+Seasonal-named venues (drive-ins mostly): 314 of the 5,040-strong roster, 245
+(78%) white — the sawtooth swing described above, not a new trend. Of the
+remaining ~865 non-seasonal white venues, 828 have a `cinema_scrapes` archive
+≤10 days old (255 of those ≤3 days) — a much larger "recently active" share
+than any prior run, but this is the known US cadence (840 min) structural
+blind spot amplified by how many small US venues (historic single-screens,
+drive-ins, revival houses) run non-daily/weekly programming: at this cadence
+almost every gap between screening blocks classifies as "recently broke" by
+the archive-age heuristic alone. Sampled 5 directly rather than trusting the
+raw count: Town Hall Theatre Quincy is the same far-jump/self-healing shape as
+Astoria-Filmtheater/Cine Cortés (live page already shows 09-18/19/20, nothing
+nearer); Elk Rapids Cinema, Rex Theater Stanley, Dependable Drive-In
+Coraopolis and Kenda Drive-In all rendered `no-streaming-sessions` with no day
+tabs — genuinely, currently empty. Treating the 828 as a probe queue, not a
+bug list, per the 09-08 methodology note; not exhaustively probed given the
+volume and this run's 5-for-5 confirmation rate of "not a bug." Red (3) out of
+brief.
+
+### ES — 218 white, 13 green→white transitions (real, in-window — cadence is short enough to catch them), verdict: shared PUBLICATION-DAY clustering, not a shared outage, self-healing
+
+All 13 transitioned venues' `lastBarren.since` cluster tightly between
+2026-09-14 22:37 and 2026-09-15 03:48 UTC — a ~5h window. That clustering
+looked at first like a shared-cause break (a temporary sensacine.com
+degradation hitting many venues' scheduled scrapes at once) — but a real
+site-wide outage would show up as FAILURES (the client throws when the venue
+page 200s without the `data-showtimes-dates` attribute, or the fetch itself
+errors), not as clean `zero` buckets with `successes=0, failures=0, zeroes=1`.
+Every one of the 6 venues spot-checked live (Cine Cortés — the false-positive
+detailed above — plus Zornotza Aretoa, Cine AMGu, Casa de Cultura Doctor
+Velasco, Teatro Capitol, Cine Princesa, all confirmed `data-showtimes-dates=[]`
+or a far-future-only list) is either genuinely empty right now or the same
+publication-lag shape as Cine Cortés. The clustering is best read as many
+small Spanish venues publishing their weekly programme on the same weekday
+(several fell dark Sunday night/Monday and are picking back up midweek or the
+following weekend) rather than one shared infrastructure failure — consistent
+with all 13 using the one shared `WebediaShowtimesClient`/ES-market wiring but
+each venue's OWN day-list, not a common failure path. Expect most of the 13 to
+self-heal on their next scrape (ES cadence 420 min, several already overdue as
+of this run). No code change.
+
+Remaining ~205 non-transitioned white ES venues (routine triage, not
+individually probed): 24 seasonal-named (11.7% of the white list; historical
+share was higher, 27/78% on 09-12 — worth noting the seasonal COUNT in the
+white list dropped even as ES's overall white % rose, consistent with the
+rise being driven by the fresh transitions, not seasonal closures); of the
+181 non-seasonal remainder, 147 have no archive ever, 6 have an archive >10
+days old, 28 have an archive ≤10 days old (not spot-checked beyond the 6
+covered by the transition cluster above).
+
+---
+
 ## 2026-09-12
 
 **Sixth all-five-country sweep.** No verbatim mongosh script was ever
