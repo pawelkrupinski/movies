@@ -172,11 +172,26 @@ object OgCardGenerator {
   private[tools] val DismissAreaPickerJs: String =
     "(function(){var b=document.querySelector('#area-picker-overlay button');if(b)b.click();})()"
 
+  /** What did Chrome actually land on, when [[RepertoireLoadedJs]] never
+   *  became true? Distinguishes a DNS/connection failure (Chrome's own error
+   *  page: empty title, a `chrome-error://` URL) from a real HTTP error page
+   *  (title/URL/markup from the app or an intervening WAF/challenge page)
+   *  from a same-origin-but-broken render — the three failure shapes that all
+   *  looked identical as the bare "no pickDay" message. Best-effort: a page so
+   *  broken it can't even run this eval reports that instead of throwing. */
+  private[tools] def loadFailureDiagnostic(page: CdpPage): String =
+    try {
+      val href  = page.evalString("location.href")
+      val title = page.evalString("document.title")
+      val body  = page.evalString("document.body ? document.body.innerText.slice(0,200) : '(no body)'")
+      s"href=$href title=$title body=${body.replaceAll("\\s+", " ")}"
+    } catch { case _: Throwable => "diagnostic eval itself failed" }
+
   /** Screenshot the live city page at desktop 2×, with every date shown so the
    *  grid is populated regardless of the hour. Returns Base64 PNG bytes.
    *
-   *  Chrome is launched with `--lang` set to the deployment's own language
-   *  (see `Chrome.tryStart`) so `WebLangResolver` — which prefers a
+   *  Chrome is launched with `--accept-lang` set to the deployment's own
+   *  language (see `Chrome.tryStart`) so `WebLangResolver` — which prefers a
    *  visitor's `Accept-Language` over the deployment default — renders THIS
    *  language rather than whatever locale the machine driving this generator
    *  would otherwise default to (English on most CI/dev boxes). Without that,
@@ -195,7 +210,10 @@ object OgCardGenerator {
     chrome.openPage(url) { page =>
       setMetrics(page, 1180, 760, 2)
       try page.waitFor(RepertoireLoadedJs, timeoutMs = 4000, pollMs = 100)
-      catch { case _: Throwable => throw new RuntimeException("repertoire page did not load (no pickDay)") }
+      catch {
+        case _: Throwable =>
+          throw new RuntimeException(s"repertoire page did not load (no pickDay) [${loadFailureDiagnostic(page)}]")
+      }
       // A city split into cinema areas (e.g. London) opens the "Choose your
       // areas" picker over the grid on first load; dismiss it (accepting the
       // all-areas default) so the card shows posters, not the modal. A no-op

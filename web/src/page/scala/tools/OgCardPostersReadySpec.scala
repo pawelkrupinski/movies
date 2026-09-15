@@ -88,6 +88,24 @@ class OgCardPostersReadySpec extends AnyFlatSpec with Matchers with BeforeAndAft
     page.evalBool(s"!!(${OgCardGenerator.RepertoireLoadedJs})") shouldBe true
   }
 
+  // When RepertoireLoadedJs never becomes true, loadFailureDiagnostic is what
+  // tells apart a DNS/connection failure from a real HTTP error page from a
+  // same-origin-but-broken render — all three looked identical as the bare
+  // "no pickDay" message this replaced.
+  "loadFailureDiagnostic" should "report the page's actual title and body text" in withHtml(
+    "<!DOCTYPE html><html><head><title>Access Denied</title></head><body>blocked by WAF</body></html>"
+  ) { page =>
+    val diagnostic = OgCardGenerator.loadFailureDiagnostic(page)
+    diagnostic should include("title=Access Denied")
+    diagnostic should include("blocked by WAF")
+  }
+
+  it should "not throw when the page has no body at all" in withHtml(
+    "<!DOCTYPE html><html><head></head></html>"
+  ) { page =>
+    noException should be thrownBy OgCardGenerator.loadFailureDiagnostic(page)
+  }
+
   // Split cities (London) open the "Choose your areas" modal over the grid on
   // first load; DismissAreaPickerJs clicks its "Show listings" button so the
   // card captures posters, not the modal. The button's real apply/close logic
