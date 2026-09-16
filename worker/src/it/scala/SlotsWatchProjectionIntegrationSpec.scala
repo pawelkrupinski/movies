@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{MongoMovieRepository, MongoScreeningsRepository, MongoSlotsRepository, StoredMovieRecord}
 import services.readmodel.{MongoReadModelRepository, ReadModelProjector}
-import tools.{Env, IntegrationCorpusDatabase}
+import tools.{Env, Eventually, IntegrationCorpusDatabase}
 
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicInteger
@@ -38,15 +38,6 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
   private val title = "__slots-watch-sentinel__"
   private val year  = Some(2026)
 
-  /** Poll `probe` until it holds or `deadlineMs` pass; the cursor delivers asynchronously so
-   *  there is nothing to await but the outcome. */
-  private def eventually(deadlineMs: Long)(probe: => Boolean): Boolean = {
-    val by = System.currentTimeMillis() + deadlineMs
-    var ok = probe
-    while (!ok && System.currentTimeMillis() < by) { Thread.sleep(100); ok = probe }
-    ok
-  }
-
   "a movie_slots write with no movies or screenings change" should
     "reach the projector and emit the venue's web_screenings row" in {
     IntegrationCorpusDatabase.withDatabase(Env.get("MONGODB_URI").get, "slots_watch") { db =>
@@ -74,7 +65,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
         repository.upsert(title, year, MovieRecord(tmdbId = Some(Tmdb), data = Map[Source, SourceData](
           KinoMuranow -> SourceData(title = Some(title), showtimes = Seq(Showtime(when, None))))))
         withClue("the film's first venue never reached the read model, so nothing below tests what it claims: ") {
-          eventually(30000)(venueRows(KinoMuranow).nonEmpty) shouldBe true
+          Eventually.poll(30000)(venueRows(KinoMuranow).nonEmpty) shouldBe true
         }
 
         // Prod order, step one: the second venue's SCREENINGS row lands first. The screenings
@@ -84,7 +75,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
         val seenBefore = dispatched.get()
         screenings.upsertSlot(id, KinoLuna.displayName, Seq(Showtime(when.plusHours(1), None)))
         withClue("the screenings cursor never delivered the second venue's row: ") {
-          eventually(30000)(dispatched.get() > seenBefore) shouldBe true
+          Eventually.poll(30000)(dispatched.get() > seenBefore) shouldBe true
         }
         venueRows(KinoLuna) shouldBe empty
 
@@ -94,7 +85,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers {
         slots.upsertSlot(id, KinoLuna.displayName, SourceData(title = Some(title)))
         withClue(s"the slot row for ${KinoLuna.displayName} landed after the film's last projection and " +
                  "nothing re-projected the film, so the venue never reaches the site: ") {
-          eventually(30000)(venueRows(KinoLuna).nonEmpty) shouldBe true
+          Eventually.poll(30000)(venueRows(KinoLuna).nonEmpty) shouldBe true
         }
       } finally {
         counting.foreach(_.close()); projecting.foreach(_.close())

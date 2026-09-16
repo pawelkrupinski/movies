@@ -11,7 +11,7 @@ import org.scalatest.matchers.should.Matchers
 import org.mongodb.scala.{MongoClient, SingleObservableFuture}
 import org.mongodb.scala.model.Filters
 import services.movies.{ChangeStreamMetrics, MongoMovieRepository, StoredMovieRecord, FilmId}
-import tools.Env
+import tools.{Env, Eventually}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -96,6 +96,15 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     withClue(s"the change stream never delivered $what, so nothing below is testing " +
              s"what it claims to: ")(live shouldBe true)
   }
+
+  /** Poll `accounted` until it reaches `target` or `budgetMs` elapses — a named,
+   *  self-documenting call at the two coalescing settle-loops that share this shape,
+   *  over the one shared poll primitive (`Eventually.poll`) rather than each rolling
+   *  its own `while`/`Thread.sleep`. Doesn't assert; the caller compares `accounted`
+   *  against `target` itself, so its own `withClue` names what the shortfall means for
+   *  that specific burst. */
+  private def settleUntil(target: Int, budgetMs: Long = 60000)(accounted: => Int): Unit =
+    Eventually.poll(budgetMs, pollMs = 50)(accounted >= target)
 
   // Purge at the START too, not only at the end: a run interrupted before its
   // `afterAll` (a killed `IntegrationTest/test`, a CI timeout, an OOM) leaves
@@ -615,11 +624,6 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // — no waiting for the 30-min backstop rehydrate. Real stream against a replica set.
   it should "drop a MovieCache row when its source is deleted on the change stream" in {
     import services.movies.CaffeineMovieCache
-    def eventually(timeoutMs: Long)(cond: => Boolean): Boolean = {
-      val end = System.currentTimeMillis + timeoutMs
-      while (System.currentTimeMillis < end && !cond) Thread.sleep(100)
-      cond
-    }
     val client = MongoClient(Env.get("MONGODB_URI").get)
     val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
     val repo   = new MongoMovieRepository(Some(db), normalizer = titleNormalizer)
@@ -636,13 +640,13 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // Established by DELIVERY, not by a nap. `applyUpsert` IS what is under test here,
       // so a cursor that opened after the write would fail this exactly the way a broken
       // apply does -- and the 15s `eventually` below would spend its whole budget first.
-      awaitStreamLive("a warm-up upsert reaching the cache", eventually(1000)(warmPresent)) { pass =>
+      awaitStreamLive("a warm-up upsert reaching the cache", Eventually.poll(1000)(warmPresent)) { pass =>
         repo.upsert(warmTitle, year, MovieRecord(imdbId = Some(f"tt902$pass%05d")))
       }
       repo.upsert(title, year, MovieRecord(imdbId = Some("tt0000013")))
-      eventually(15000)(present) shouldBe true  // applied via the stream (applyUpsert)
+      Eventually.poll(15000)(present) shouldBe true  // applied via the stream (applyUpsert)
       repo.delete(title, year)
-      eventually(15000)(!present) shouldBe true  // dropped via applyDelete, not the backstop
+      Eventually.poll(15000)(!present) shouldBe true  // dropped via applyDelete, not the backstop
     } finally { cache.stop(); repo.delete(title, year); repo.delete(warmTitle, year); client.close() }
   }
 
@@ -703,18 +707,11 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     handle should not be empty
     try {
       // Write until one comes back rather than napping at the stream — the same
-      // establish-by-delivery rule the resume spec uses, and each attempt carries a
-      // DIFFERENT hour so every one of them is a genuine change with an event to count.
-      val deadline = System.currentTimeMillis() + 60000
-      var hour     = 0
-      var arrived  = false
-      while (!arrived && System.currentTimeMillis() < deadline) {
-        hour += 1
+      // establish-by-delivery rule the resume spec uses (`awaitStreamLive`), and each
+      // attempt carries a DIFFERENT hour so every one of them is a genuine change with
+      // an event to count.
+      awaitStreamLive("an event to count", seen.await(1, TimeUnit.SECONDS)) { hour =>
         repo.upsertSlot(film, "Multikino␟M", Seq(Showtime(LocalDateTime.of(2099, 1, 1, hour % 24, 0), None)))
-        arrived = seen.await(1, TimeUnit.SECONDS)
-      }
-      withClue("the screenings change stream never delivered, so there is nothing to count: ") {
-        arrived shouldBe true
       }
       sink.events should be > 0
     } finally { handle.foreach(_.close()); repo.deleteFilm(film); repo.close(); client.close() }
@@ -798,9 +795,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // event either bought an apply or rode one, so the two counters sum to the burst once it
       // has drained — and a cursor whose window leaked (a coalesced event that forgot to
       // release its demand) stalls and never gets there, which is the other half of this test.
-      val settleBy = System.currentTimeMillis() + 60000
-      while (dispatched.get() + sink.coalescedCount < Burst && System.currentTimeMillis() < settleBy)
-        Thread.sleep(50)
+      settleUntil(Burst)(dispatched.get() + sink.coalescedCount)
       withClue(s"only ${dispatched.get() + sink.coalescedCount} of $Burst burst events were " +
                s"accounted for; a coalesced event that fails to release its demand window " +
                s"stalls the cursor for good: ") {
@@ -916,9 +911,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // 2026-09-16: "only 1 of 11 event(s) were accounted for" — reproduced 0/13 locally at
       // any budget, consistent with CI-only resource contention rather than a logic bug).
       val TotalEvents = 1 + Dropped
-      val settleBy = System.currentTimeMillis() + 60000
-      while (dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount < TotalEvents &&
-             System.currentTimeMillis() < settleBy) Thread.sleep(50)
+      settleUntil(TotalEvents)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
       val accounted = dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount
       info(s"1 movies write + $Dropped screenings deletes (one logical slot-drop pass): " +
            s"${dispatched.get()} re-projection(s), ${movieSink.coalescedCount} movies-cursor + " +
@@ -969,16 +962,8 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     try {
       // Establish by DELIVERY, not by napping: write a fresh hour each pass until one comes
       // back. Every pass is a genuine change, so each has an event owed.
-      val deadline = System.currentTimeMillis() + 60000
-      var hour     = 0
-      var live     = false
-      while (!live && System.currentTimeMillis() < deadline) {
-        hour += 1
+      awaitStreamLive("a warm-up event", warmed.await(1, TimeUnit.SECONDS)) { hour =>
         repo.upsertSlot(film, slot, at(hour % 23 + 1))
-        live = warmed.await(1, TimeUnit.SECONDS)
-      }
-      withClue("the screenings change stream never delivered, so a silent one proves nothing: ") {
-        live shouldBe true
       }
 
       val settled = repo.findForFilm(film)(slot)
