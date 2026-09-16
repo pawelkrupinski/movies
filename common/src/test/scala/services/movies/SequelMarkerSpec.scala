@@ -88,4 +88,23 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     different("Mortal Kombat II", "Mortal Kombat 2")   shouldBe false
     different("Dune: Part 2", "Dune: Part Two")         shouldBe false
   }
+
+  // UK convergence, 2026-09-16, round two: closing the containment edge (above) let a
+  // DIFFERENT gap in the SAME franchise surface — "Catching Fire" and "Mockingjay -
+  // Part 2" don't contain each other at all (neither's tokens run along the other's),
+  // so `namesAnotherEntry`'s prefix/suffix check never even engages; they only share
+  // the franchise's common prefix. That's exactly the SIBLING shape `differentInstalments`
+  // exists to catch, and its own fallback — `namesAnotherEntry` on whichever side is
+  // shorter — needs one of the two to be a token-run of the other too, so it missed this
+  // pair the same way. `directorWalk`'s fuzzy match ties them once titleClose overall,
+  // pinning Catching Fire's screenings onto whichever Mockingjay part resolved first —
+  // observed in prod as the resolved row's YEAR flipping between the two films' real
+  // years depending on processing order.
+  it should "tell apart two same-franchise siblings that share only their common prefix" in {
+    different("The Hunger Games: Catching Fire", "The Hunger Games: Mockingjay - Part 2") shouldBe true
+    different("The Hunger Games: Mockingjay - Part 2", "The Hunger Games: Catching Fire") shouldBe true
+    different("The Hunger Games: Catching Fire", "The Hunger Games: Mockingjay - Part 1") shouldBe true
+    different("The Hunger Games: The Ballad of Songbirds and Snakes",
+              "The Hunger Games: Mockingjay - Part 1") shouldBe true
+  }
 }

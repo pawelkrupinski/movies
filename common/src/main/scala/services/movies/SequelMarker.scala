@@ -117,8 +117,25 @@ object SequelMarker {
     ordinalRightAfterBase || partThenOrdinal || knownSubtitle
   }
 
+  /** True when `a` and `b` share a CURATED franchise base as a common prefix and
+   *  each independently qualifies, against that base, as [[namesAnotherEntry]] —
+   *  the SIBLING shape the base/whole check above can't see, because neither
+   *  title's tokens run along the other's at all: "The Hunger Games: Catching
+   *  Fire" and "The Hunger Games: Mockingjay - Part 2" don't contain each other,
+   *  they only share the franchise's own opening. UK convergence, 2026-09-16,
+   *  round two: closing the containment edge for Catching Fire alone left this
+   *  gap, which surfaced as Catching Fire's screenings folding onto whichever
+   *  Mockingjay part `directorWalk` resolved first, instead of the original film. */
+  private def curatedSiblings(a: Seq[String], b: Seq[String]): Boolean =
+    KnownFranchiseSubtitles.keySet.exists { base =>
+      a.startsWith(base) && b.startsWith(base) &&
+      a.drop(base.length) != b.drop(base.length) &&
+      namesAnotherEntry(base, a) && namesAnotherEntry(base, b)
+    }
+
   /** Symmetric check: do `a` and `b` name two DIFFERENT instalments of the same
-   *  series — either one's tokens contain the other's plus a trailing ordinal
+   *  series — two curated siblings of one franchise base ([[curatedSiblings]]),
+   *  either one's tokens containing the other's plus a trailing ordinal
    *  ([[namesAnotherEntry]], either direction), or the two run the same length
    *  and END in ordinals naming different NUMBERS ("Part 1" vs "Part 2", "Rocky
    *  II" vs "Rocky III"). Comparing by VALUE, not by raw token, is what keeps a
@@ -144,6 +161,7 @@ object SequelMarker {
    *  film whenever no candidate title matched either spelling exactly. */
   def differentInstalments(a: Seq[String], b: Seq[String]): Boolean =
     if (a.isEmpty || b.isEmpty) false
+    else if (curatedSiblings(a, b)) true
     else if (a.length == b.length)
       (ordinalValue(a.last), ordinalValue(b.last)) match {
         case (Some(va), Some(vb)) => va != vb
