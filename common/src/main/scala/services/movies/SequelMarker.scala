@@ -74,6 +74,33 @@ object SequelMarker {
     if (t.nonEmpty && t.forall(_.isDigit) && !isYear(t)) Some(t.toInt)
     else RomanValues.get(t).orElse(WordOrdinalValues.get(t))
 
+  /** Sequels that don't NUMBER themselves — a subtitle change instead of an
+   *  ordinal/part-marker, so neither `ordinalRightAfterBase` nor
+   *  `partThenOrdinal` below can see them. The pattern (base is a token-run
+   *  PREFIX, extras are ordinary words) is indistinguishable in general from a
+   *  genuine prefix-anchored decoration — `"Casablanca 1942"` and
+   *  `"Ojczyzna - pokaz przedpremierowy"` are both PREFIX-shaped and both fold
+   *  correctly (`SequelMarkerSpec`), so widening the ordinal check to "any
+   *  trailing words" would break them. A curated, per-franchise list — same
+   *  idiom as `ExtraTitleRules`' curated banner exceptions — is the only safe
+   *  way to name the ones that AREN'T decorations, evidenced as they're found.
+   *
+   *  UK convergence, 2026-09-16: "The Hunger Games" (the resolved 2012
+   *  original) swallowed "The Hunger Games: Catching Fire" via the containment
+   *  edge — Catching Fire carries no ordinal, so the existing guard let it
+   *  through, and the ORDER two settle passes discovered the row in decided
+   *  whether Catching Fire's screenings folded onto the original or stayed
+   *  their own row. "The Ballad of Songbirds and Snakes" (2023) is the same
+   *  franchise's other non-ordinal entry — added alongside since it fits the
+   *  identical shape, though not itself confirmed in a corpus yet. */
+  private val KnownFranchiseSubtitles: Map[Seq[String], Set[Seq[String]]] = Map(
+    Seq("the", "hunger", "games") -> Set(
+      Seq("catching", "fire"),
+      Seq("the", "ballad", "of", "songbirds", "and", "snakes"),
+      Seq("the", "ballad", "of", "songbirds", "snakes")
+    )
+  )
+
   /** True when `whole` (an edition's tokens, which contain `base`'s tokens as a
    *  prefix or suffix run) names a different film in `base`'s series. */
   def namesAnotherEntry(base: Seq[String], whole: Seq[String]): Boolean = {
@@ -86,7 +113,8 @@ object SequelMarker {
       case Seq(marker, ordinal) => PartMarkers.contains(marker) && (isOrdinal(ordinal) || WordOrdinals.contains(ordinal))
       case _                    => false
     }
-    ordinalRightAfterBase || partThenOrdinal
+    val knownSubtitle = KnownFranchiseSubtitles.get(base).exists(_.contains(extras))
+    ordinalRightAfterBase || partThenOrdinal || knownSubtitle
   }
 
   /** Symmetric check: do `a` and `b` name two DIFFERENT instalments of the same

@@ -25,6 +25,20 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     anotherEntry("Wicked",           "Wicked: Part Three")                               shouldBe true
   }
 
+  // UK convergence, 2026-09-16: "The Hunger Games: Catching Fire" carries no
+  // ordinal or part-marker at all — the SUBTITLE changes instead of a number —
+  // so neither existing check above caught it, and the containment edge
+  // (`TitleContainment.decorates`) folded it onto the resolved "The Hunger
+  // Games" (2012) row exactly like a genuine decoration. Which processing
+  // order discovered the row first then decided whether Catching Fire's
+  // screenings folded onto the original or stayed their own — the same
+  // order-dependence shape as the already-fixed Mockingjay case above, just
+  // for a franchise entry that renames itself instead of numbering itself.
+  it should "refuse a same-franchise entry whose subtitle changes instead of numbering itself" in {
+    anotherEntry("The Hunger Games", "The Hunger Games: Catching Fire") shouldBe true
+    anotherEntry("The Hunger Games", "The Hunger Games: The Ballad of Songbirds and Snakes") shouldBe true
+  }
+
   it should "let a decorated screening of the same film fold" in {
     anotherEntry("Toy Story 5",              "Toddler Club: Toy Story 5")               shouldBe false
     anotherEntry("Fallen Angels by Noel Coward", "GB: Fallen Angels by Noel Coward")    shouldBe false

@@ -231,6 +231,23 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // UK convergence, 2026-09-16: the same "The Hunger Games" containment-edge
+  // collision, but for a sequel that renames itself instead of numbering
+  // itself — "Catching Fire" carries no ordinal or part-marker, so it isn't
+  // the shape the ordinal-based guard above catches. `SequelMarker`'s curated
+  // franchise-subtitle list is what refuses it here.
+  it should "not fold a same-franchise sequel onto the first film when its subtitle isn't a number" in {
+    val rows = Seq(
+      resolved("The Hunger Games", tmdbId = 70160, tmdbYear = 2012, cinema = Multikino),
+      unresolved("The Hunger Games: Catching Fire", None, cinema = Helios))
+    Seq(rows, rows.reverse).foreach { ordered =>
+      val components = FilmCanonicalizer.groupByFilm(ordered, titleNormalizer)
+      withClue(s"components: ${components.map(_.map(_._1.cleanTitle))}\n") {
+        components should have size 2
+      }
+    }
+  }
+
   it should "still fold a banner-decorated screening of the same film" in {
     val rows = Seq(
       resolved("Toy Story 5", tmdbId = 1, tmdbYear = 2026, cinema = Multikino),
