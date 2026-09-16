@@ -194,6 +194,89 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "refuse a rule-4 fold when the yearless-key row's OWN slot year contradicts the resolved film" in {
+    // DE "Hope", 2026-09-16: a resolved 2026 Korean horror film absorbed a
+    // yearless-key row whose only cinema slot reports the UNRELATED 2014
+    // Cameroonian migration drama "Hope" (91 min) — nothing to compare by TITLE
+    // (no originalTitle published), but the slot's own year is Δ12 from the
+    // resolved film, well past `YearWindow.SlotYearImplausibility`. Must NOT fold
+    // (contrast the Δ3 "Głos Hind Rajab" case above, which must).
+    val group = Seq(
+      resolved("Hope", tmdbId = 1058424, tmdbYear = 2026, cinema = Helios),
+      key("Hope", None) -> MovieRecord(
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Hope"), releaseYear = Some(2014), runtimeMinutes = Some(91))))
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    clusters should have size 2
+  }
+
+  it should "fold a yearless-key row within the WIDER rule-4 slot-year tolerance, and refuse just past it" in {
+    def clustersFor(slotYear: Int) = FilmCanonicalizer.clusterByFilm(Seq(
+      resolved("Hope", tmdbId = 1058424, tmdbYear = 2026, cinema = Helios),
+      key("Hope", None) -> MovieRecord(
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Hope"), releaseYear = Some(slotYear))))
+    ), titleNormalizer)
+    withClue("five years off: ") { clustersFor(2021) should have size 1 }
+    withClue("six years off: ")  { clustersFor(2020) should have size 2 }
+  }
+
+  it should "refuse a rule-4 fold when the yearless-key row's cinema publishes a contradicting original title + runtime" in {
+    // The "Obcy" shape (see `groupByFilm`'s containment-edge tests below), asked
+    // of rule 4 instead: Kino Pionier's "I Was A Stranger" (103 min) beside the
+    // resolved "L'étranger" (120 min) — MixedFilmDetector's own evidence, not a
+    // year gap, is what refuses this one.
+    val group = Seq(
+      published("Obcy", tmdbId = 7183, tmdbYear = 2025, cinema = Helios, originalTitle = "L'étranger", runtime = 120),
+      key("Obcy", None) -> MovieRecord(
+        data = Map[Source, SourceData](Multikino -> SourceData(title = Some("Obcy"), originalTitle = Some("I Was A Stranger"), runtimeMinutes = Some(103))))
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    clusters should have size 2
+  }
+
+  it should "reclaim a year-window orphan sharing an IDENTICAL cinema listing with a resolved sibling, however far the year gap" in {
+    // UK "The Hunger Games", 2026-09-16: Odeon Belfast's rerelease-season page
+    // re-lists the resolved 2012 film with no releaseYear of its own, so
+    // EmbeddedYear stamps it with the season's current year — 2026, fourteen
+    // years past the resolved cluster, outside even rule 2's ±2 window — but the
+    // venue's OWN synopsis text is byte-identical to what it already publishes on
+    // the resolved row. The gap must not matter when the listing itself is a
+    // provable duplicate.
+    val text = "Every year in the ruins of what was once North America..."
+    val group = Seq(
+      key("The Hunger Games", Some(2012)) -> MovieRecord(
+        tmdbId = Some(70160),
+        data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(2012))),
+        retainedSynopses = Map[Source, String](Helios -> text)),
+      key("The Hunger Games", Some(2026)) -> MovieRecord(
+        retainedSynopses = Map[Source, String](Helios -> text))
+    )
+    Seq(group, group.reverse).foreach { ordered =>
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer)
+      withClue(s"clusters: ${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
+        clusters should have size 1
+      }
+    }
+  }
+
+  it should "refuse to reclaim an orphan whose identical text happens to sit on TWO resolved clusters (ambiguous)" in {
+    val text = "Some verbatim synopsis text shared by coincidence."
+    val group = Seq(
+      key("Film X", Some(2000)) -> MovieRecord(
+        tmdbId = Some(1), data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(2000))),
+        retainedSynopses = Map[Source, String](Helios -> text)),
+      key("Film X", Some(2010)) -> MovieRecord(
+        tmdbId = Some(2), data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(2010))),
+        retainedSynopses = Map[Source, String](Multikino -> text)),
+      key("Film X", Some(2030)) -> MovieRecord(
+        retainedSynopses = Map[Source, String](Helios -> text, Multikino -> text))
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    // Three clusters: the two resolved films stay apart (different tmdbIds), and
+    // the ambiguous orphan stands alone rather than guessing which one it belongs to.
+    clusters should have size 3
+  }
+
   "groupByFilm" should "fold a film keyed under two languages (same tmdbId, bare titles) into one component, then one cluster" in {
     // "Tangled" (original) and "Zaplątani" (Polish) are the SAME film — same
     // tmdbId, both keys are TMDB aliases — but different sanitized titles, so the

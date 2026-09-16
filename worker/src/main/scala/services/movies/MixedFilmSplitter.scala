@@ -120,9 +120,17 @@ class MixedFilmSplitter(cache: MovieCache, staging: StagingRepository,
       }
     }
     // Drop them from the row in ONE update so the row is never observed holding
-    // a slot staging has already taken over.
+    // a slot staging has already taken over. `retainedSynopses` goes too, not just
+    // `data`: it survives a cinema's live slot being pruned BY DESIGN (the sticky
+    // best-ever blurb — see `MovieRecord.retainedSynopses`), so a plain `data`-only
+    // drop leaves the wrong film's text on the row forever once its venue stops
+    // screening it — cosmetically invisible only for as long as a correct
+    // candidate synopsis happens to outrank it. Confirmed on prod (2026-09-16):
+    // ES "Cronos" (a 1993 del Toro horror synopsis stuck on the resolved 2026
+    // docudrama's row) and DE "Hope"/"Ein Sommer in Paris" all carried exactly
+    // this shape — the stray cinema long gone, only the wrong blurb left behind.
     val strayKeys = strays.map(_._1).toSet
-    cache.putIfPresent(key, r => r.copy(data = r.data -- strayKeys))
+    cache.putIfPresent(key, r => r.copy(data = r.data -- strayKeys, retainedSynopses = r.retainedSynopses -- strayKeys))
     strays.size
   }
 

@@ -63,6 +63,31 @@ class MixedFilmSplitterSpec extends AnyFlatSpec with Matchers {
       Set(Some("Joan of Arc"), Some("Jóhanna af Örk"))
   }
 
+  "the row holding both Joan of Arc films" should "also drop the stray's retainedSynopses, not just its slot" in {
+    // `retainedSynopses` survives a cinema's LIVE slot being pruned by design (the
+    // sticky best-ever blurb), so dropping only `data` for a split-off stray leaves
+    // its film's synopsis glued to the row forever once that cinema stops screening
+    // it — confirmed on prod (2026-09-16) as three real films (ES "Cronos", DE
+    // "Hope", DE "Ein Sommer in Paris") each still carrying a wrong-film blurb from
+    // a merge whose live slot was gone.
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        KinoMuranow -> slot("Joanna d'Arc", Seq("Luc Besson"), Some("Joan of Arc"), Some(1999), Some(160)),
+        Helios      -> slot("Joanna d'Arc", Seq.empty, Some("Jóhanna af Örk"), Some(2025), None)),
+      retainedSynopses = Map[Source, String](
+        KinoMuranow -> "Besson's account of the Maid of Orléans.",
+        Helios      -> "Pálmason's Icelandic 'Jóhanna af Örk'."))
+    val (cache, staging, splitter) = fixture(record, "Joanna d'Arc", Some(2025))
+
+    splitter.splitMixedRows() shouldBe 1
+
+    val remaining = cache.get(cache.keyOf("Joanna d'Arc", Some(2025))).getOrElse(fail("row vanished"))
+    // Exactly one cinema's data AND exactly one cinema's retainedSynopses remain —
+    // the same one, not just an unrelated survivor of the two.
+    remaining.data.keySet shouldBe remaining.retainedSynopses.keySet
+    remaining.retainedSynopses should have size 1
+  }
+
   "a row where one cinema of many screens a different film" should "move only that one" in {
     // Production "Obcy": the majority screen Ozon's L'étranger; one screens
     // Brandt Andersen's film. The majority must be left completely undisturbed.

@@ -38,6 +38,20 @@ object YearWindow {
    *  over rows nothing has resolved (`clusterByFilm` rule 3). */
   val PublishedAdjacency: Int = 1
 
+  /** How far a YEARLESS-KEY row's own SLOT year may sit from a resolved cluster's
+   *  tmdbYear before `clusterByFilm` rule 4 refuses to fold it in on title alone.
+   *  Wider than [[ProductionToRelease]] on purpose: a slot year here is the
+   *  "deferred-detail" kind `FilmCanonicalizer.clusterYear` already refuses to
+   *  promote onto the row's own key, because it is noisier than a cinema's
+   *  considered production-year disagreement — a repertory listing's own vintage,
+   *  a stage adaptation's, a festival programme's. A MODEST gap of that kind must
+   *  still fold ("Głos Hind Rajab", slot 2022 vs resolved 2025, Δ3); only a gap wide
+   *  enough that no such quirk explains it is evidence of a second film ("Hope",
+   *  DE: a 2014 Cameroonian migration drama's slot folded onto a resolved 2026
+   *  Korean horror film, Δ12, absorbed for want of any other check — found
+   *  2026-09-16). */
+  val SlotYearImplausibility: Int = 5
+
   /** |ours − theirs|, for a caller that ranks candidates by NEARNESS within a window
    *  rather than asking a yes/no of one. */
   def distance(ours: Int, theirs: Int): Int = math.abs(ours - theirs)
