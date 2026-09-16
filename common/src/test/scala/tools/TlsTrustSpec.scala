@@ -30,6 +30,12 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
   private val CertumOvR39IntermediateSha256 =
     "F54CE21EA0F79548F1201A619049CA15F065E49A69F26FB9CF1282C7EECF9C4C"
 
+  // SHA-256 of kinoroma.zabrze.pl's expired leaf (notAfter 2026-09-14), pinned
+  // per case 5 of the class doc. Asserting it proves the exact right cert is
+  // bundled, not some other cert that happens to parse.
+  private val KinoRomaExpiredLeafSha256 =
+    "E004E5D26B31632D71D4A19E9C9F8691584B82F565E4D74C53D615262EB2F565"
+
   private def sha256(bytes: Array[Byte]): String =
     MessageDigest.getInstance("SHA-256").digest(bytes).map("%02X".format(_)).mkString
 
@@ -88,5 +94,39 @@ class TlsTrustSpec extends AnyFlatSpec with Matchers {
   it should "enable AIA intermediate fetching for servers that ship a broken chain" in {
     TlsTrust // force object init
     System.getProperty("com.sun.security.enableAIAcaIssuers") shouldBe "true"
+  }
+
+  it should "pin kinoroma.zabrze.pl's exact expired leaf" in {
+    val leaf = TlsTrust.pinnedExpiredLeafs
+      .find(_.getSubjectX500Principal.getName.contains("kinoroma.zabrze.pl"))
+      .getOrElse(fail("kinoroma.zabrze.pl expired leaf not pinned"))
+    sha256(leaf.getEncoded) shouldBe KinoRomaExpiredLeafSha256
+    // Documents WHY the pin exists: this cert really is expired, not a stale fixture.
+    leaf.getNotAfter.before(new java.util.Date()) shouldBe true
+  }
+
+  "matchesPinnedLeaf" should "match a chain whose leaf is byte-identical to a pinned cert" in {
+    val pinned = TlsTrust.pinnedExpiredLeafs
+    val leaf = pinned.headOption.getOrElse(fail("no pinned leaves loaded"))
+    TlsTrust.matchesPinnedLeaf(Array(leaf), pinned) shouldBe true
+  }
+
+  it should "reject a chain whose leaf isn't one of the pinned certs" in {
+    val unrelated = bySubject("Certum Trusted Root CA").getOrElse(fail("Certum root not bundled"))
+    TlsTrust.matchesPinnedLeaf(Array(unrelated), TlsTrust.pinnedExpiredLeafs) shouldBe false
+  }
+
+  it should "reject an empty chain" in {
+    TlsTrust.matchesPinnedLeaf(Array.empty, TlsTrust.pinnedExpiredLeafs) shouldBe false
+  }
+
+  "TlsTrust's trust manager" should "accept the pinned expired leaf despite it being past notAfter" in {
+    val leaf = TlsTrust.pinnedExpiredLeafs
+      .find(_.getSubjectX500Principal.getName.contains("kinoroma.zabrze.pl"))
+      .getOrElse(fail("kinoroma.zabrze.pl expired leaf not pinned"))
+    // Fails before this feature existed: the default JDK trust manager throws
+    // CertificateExpiredException on this exact chain. Passes now via the
+    // byte-exact pin, bypassing only that one certificate's expiry.
+    noException should be thrownBy TlsTrust.augmentedTrustManager.checkServerTrusted(Array(leaf), "RSA")
   }
 }

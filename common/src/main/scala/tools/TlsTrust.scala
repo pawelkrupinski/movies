@@ -50,11 +50,26 @@ import scala.util.{Try, Using}
  *      nothing to bridge leaf -> root with, and the AIA fetch of (2a) evidently
  *      does not survive the worker's egress (the venue went red and stayed red).
  *      Same remedy as (2b) — bundle the intermediate so the path closes offline.
+ *   5. `kinoroma.zabrze.pl` (Kino Roma) is a DIFFERENT class of breakage: the leaf
+ *      itself expired 2026-09-14 (a Let's Encrypt cert whose renewal automation
+ *      stopped running) — not a missing anchor, so no amount of root/intermediate
+ *      bundling helps (see [[reference_expired_cert_probe_plain_http]]). The usual
+ *      escape hatch — reroute to plain `http://` — doesn't apply either: the host
+ *      redirects http -> https unconditionally (even by IP + Host header) and sends
+ *      `Strict-Transport-Security`. So this one leaf is pinned by exact DER bytes
+ *      in [[PinnedExpiredLeafResources]] and trusted ONLY on a byte-for-byte match
+ *      — not the host, not any other cert that host might ever present, not a
+ *      blanket "ignore expiry" flag. Once the venue renews, the new leaf's bytes
+ *      won't match this pin and normal PKIX validation takes back over.
  *
  * The extra roots are ADDED to the defaults, never a replacement: well-behaved
  * APIs (TMDB, IMDb, Filmweb, …) keep validating against the standard store. The
  * composite trust manager tries the default store first and only falls back to
  * the bundled roots on a `CertificateException`, so trust is strictly widened.
+ * The pinned-expired-leaf check (case 5) is checked ahead of all of that — a
+ * cryptographic byte-match is cheaper and more precise than path-building — but
+ * it can only ever match the handful of exact leaves in
+ * [[PinnedExpiredLeafResources]], so it doesn't widen trust for anything else.
  */
 object TlsTrust extends Logging {
 
@@ -80,9 +95,22 @@ object TlsTrust extends Logging {
   /** The bundled extra roots, parsed. Empty if a resource is missing (logged). */
   private[tools] def bundledCerts: Seq[X509Certificate] = loadCerts(BundledRootResources)
 
-  /** SSLContext trusting default CAs + [[BundledRootResources]]. Falls back to
-   *  the platform default if anything goes wrong, so a packaging slip can never
-   *  take TLS down — it just reverts to the unaugmented store. */
+  /** Classpath-absolute paths of individual leaf certs we trust despite being
+   *  technically expired, pinned by exact bytes — see case 5 in the class doc.
+   *  Each entry is a single known-good keypair whose CA-issued validity window
+   *  has lapsed, not a host or a CA, so this can never grow into a general
+   *  "skip expiry" switch. */
+  val PinnedExpiredLeafResources: Seq[String] = Seq(
+    "/certs/expired-leaf-kinoroma-zabrze-pl.pem"
+  )
+
+  /** The pinned expired leaves, parsed. Empty if a resource is missing (logged). */
+  private[tools] def pinnedExpiredLeafs: Seq[X509Certificate] = loadCerts(PinnedExpiredLeafResources)
+
+  /** SSLContext trusting default CAs + [[BundledRootResources]] +
+   *  [[PinnedExpiredLeafResources]]. Falls back to the platform default if
+   *  anything goes wrong, so a packaging slip can never take TLS down — it just
+   *  reverts to the unaugmented store. */
   lazy val augmentedContext: SSLContext =
     build().recover { case exception =>
       logger.warn(s"TlsTrust: falling back to default SSLContext (${exception.getMessage})")
@@ -90,11 +118,11 @@ object TlsTrust extends Logging {
     }.get
 
   /** The X509TrustManager backing [[augmentedContext]] — exposed for tests. */
-  def augmentedTrustManager: X509TrustManager = compositeTrustManager(bundledCerts)
+  def augmentedTrustManager: X509TrustManager = compositeTrustManager(bundledCerts, pinnedExpiredLeafs)
 
   private def build(): Try[SSLContext] = Try {
     val context = SSLContext.getInstance("TLS")
-    context.init(null, Array[TrustManager](compositeTrustManager(bundledCerts)), null)
+    context.init(null, Array[TrustManager](compositeTrustManager(bundledCerts, pinnedExpiredLeafs)), null)
     context
   }
 
@@ -127,21 +155,41 @@ object TlsTrust extends Logging {
     trustManagerFor(ks)
   }
 
-  /** Try the default store first; fall back to the bundled roots only when the
-   *  default rejects the chain. Accepted-issuers is the union of both. */
-  private def compositeTrustManager(extra: Seq[X509Certificate]): X509TrustManager = {
+  /** True when the chain's leaf is byte-identical to one of the pinned expired
+   *  certs — the only condition under which case 5 trust (see the class doc)
+   *  kicks in. Pure and side-effect-free so it's directly unit-testable without
+   *  a full TLS handshake. */
+  private[tools] def matchesPinnedLeaf(chain: Array[X509Certificate], pinned: Seq[X509Certificate]): Boolean =
+    chain.headOption.exists(leaf => pinned.exists(p => p.getEncoded.sameElements(leaf.getEncoded)))
+
+  /** Try the default store first; fall back to the bundled roots on a
+   *  `CertificateException`; if that also fails, accept a byte-exact match
+   *  against a pinned expired leaf (case 5 in the class doc — see
+   *  [[matchesPinnedLeaf]]). Accepted-issuers is the union of the default store
+   *  and the bundled roots — pinned leaves are deliberately NOT added as
+   *  issuers, since they're leaves being matched exactly, not anchors. */
+  private def compositeTrustManager(extra: Seq[X509Certificate], pinnedExpired: Seq[X509Certificate]): X509TrustManager = {
     val primary = trustManagerFor(null)
-    if (extra.isEmpty) primary
+    if (extra.isEmpty && pinnedExpired.isEmpty) primary
     else {
-      val secondary = extraTrustManager(extra)
+      val secondary = if (extra.nonEmpty) Some(extraTrustManager(extra)) else None
       new X509TrustManager {
         override def checkServerTrusted(chain: Array[X509Certificate], authType: String): Unit =
           try primary.checkServerTrusted(chain, authType)
-          catch { case _: CertificateException => secondary.checkServerTrusted(chain, authType) }
+          catch {
+            case primaryFailure: CertificateException =>
+              val secondaryResult = secondary match {
+                case Some(s) => Try(s.checkServerTrusted(chain, authType))
+                case None    => scala.util.Failure(primaryFailure)
+              }
+              secondaryResult.recover {
+                case _: CertificateException if matchesPinnedLeaf(chain, pinnedExpired) => ()
+              }.get
+          }
         override def checkClientTrusted(chain: Array[X509Certificate], authType: String): Unit =
           primary.checkClientTrusted(chain, authType)
         override def getAcceptedIssuers: Array[X509Certificate] =
-          primary.getAcceptedIssuers ++ secondary.getAcceptedIssuers
+          primary.getAcceptedIssuers ++ secondary.map(_.getAcceptedIssuers).getOrElse(Array.empty[X509Certificate])
       }
     }
   }
