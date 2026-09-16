@@ -140,6 +140,11 @@ export default defineConfig({
     : 'list',
   use: {
     baseURL: BASE_URL,
+    // Identifies this suite's own headless-browser traffic to the edge, so
+    // a bare local run that forgets KINOWO_BASE_URL (see
+    // reference-playwright-base-url-defaults-to-prod) hits real fixtures
+    // instead of a Cloudflare bot challenge on kinowo.net/showtimes.cc.
+    extraHTTPHeaders: { 'X-Kinowo-Page-Tests': '1' },
     trace: 'on-first-retry',
     // Capture a screenshot on failure so a CI-only break is visible in
     // the uploaded report without re-running locally.
