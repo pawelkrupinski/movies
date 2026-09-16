@@ -56,6 +56,25 @@ class MixedFilmDetectorSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // UK prod, 2026-09-16: `hungergamesballadofsongbirdssnakes|2026` held Catching
+  // Fire, both Mockingjay parts, and Ballad of Songbirds and Snakes — each
+  // independently mis-resolved to one wrong tmdbId. Odeon's listings publish NO
+  // originalTitle, runtime, or year at all (not even a bare digit like Kung Fu
+  // Panda 4's), so nothing above this could ever see it: `identityGroups`' fallback
+  // still needed `corroborated()`, which had nothing to corroborate with. Only the
+  // curated franchise-siblings list can.
+  "a row mixing curated same-franchise siblings, with NO originalTitle/runtime/year at all" should
+    "split, even though nothing here could otherwise corroborate it" in {
+    def odeon(title: String) = SourceData(title = Some(title))
+    val record = MovieRecord(tmdbId = Some(1300968), data = Map[Source, SourceData](
+      Multikino   -> odeon("The Hunger Games: Catching Fire"),
+      Helios      -> odeon("The Hunger Games: Mockingjay - Part 2"),
+      KinoMuranow -> odeon("The Hunger Games: The Ballad of Songbirds and Snakes")))
+
+    val strays = MixedFilmDetector.strays(record, titleNormalizer)
+    strays should not be empty
+  }
+
   // ── What must NOT split ───────────────────────────────────────────────────
 
   // The other side of the sequel arm: a number appearing on one venue's title and not

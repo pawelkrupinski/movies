@@ -157,9 +157,41 @@ object MixedFilmDetector {
 
   /** Do these two identities describe DIFFERENT films? */
   def conflicting(a: Group, b: Group): Boolean =
-    (titlesDiffer(a.identity, b.identity) || sequelApart(a, b)) &&
+    ((titlesDiffer(a.identity, b.identity) || sequelApart(a, b)) &&
       !sameDirector(a.directors, b.directors) &&
-      corroborated(a.runtimes, b.runtimes, a.years, b.years)
+      corroborated(a.runtimes, b.runtimes, a.years, b.years)) ||
+      curatedSiblingGroups(a, b)
+
+  /** A SEPARATE, independent path into `conflicting()` — deliberately not subject to
+   *  its `sameDirector` veto or its `corroborated` requirement. An agreeing director
+   *  is normally conclusive evidence of one film (the "Twoje imię" dub case), but a
+   *  franchise sequel routinely shares its director with its siblings (Francis
+   *  Lawrence directed every modern Hunger Games film), which would make that veto
+   *  wrongly protect exactly the merge this exists to catch; and `corroborated` needs
+   *  a runtime or year neither side may publish (Odeon's small-chain listings carry
+   *  neither). So this reads raw title/originalTitle text straight off the slots —
+   *  bypassing `Group.identity` (already word-filtered into an unordered `Set`, which
+   *  loses the token ORDER `SequelMarker.curatedSiblings` needs to see "part" run
+   *  into an ordinal) — and asks ONLY the curated list, never the general
+   *  ordinal/containment logic `SequelMarker.differentInstalments` also runs, which
+   *  is vetted against clean TMDB candidate titles and misfires on raw cinema text
+   *  (see `curatedSiblings`'s own doc).
+   *
+   *  UK prod, 2026-09-16: `hungergamesballadofsongbirdssnakes|2026` ended up holding
+   *  Catching Fire, both Mockingjay parts, and Ballad of Songbirds and Snakes, each
+   *  independently mis-resolved (before `TmdbCandidateSearch`'s own `SequelMarker`
+   *  guard existed) to one wrong tmdbId — `MixedFilmSplitter` could not detect or
+   *  split any of it, because every existing signal here needs evidence Odeon never
+   *  publishes. This is what lets `MixedFilmSplitter` (already run every settle,
+   *  no new sweep needed) find and re-divert it once deployed. */
+  private def curatedSiblingGroups(a: Group, b: Group): Boolean = {
+    def rawTitleTokens(g: Group): Set[Seq[String]] =
+      g.slots.flatMap { case (_, sd) => sd.title.toSeq ++ sd.originalTitle.toSeq }
+        .map(TitleContainment.tokens).toSet
+    val aTokens = rawTitleTokens(a)
+    val bTokens = rawTitleTokens(b)
+    aTokens.exists(at => bTokens.exists(bt => SequelMarker.curatedSiblings(at, bt)))
+  }
 
   /** A film beside its own numbered SEQUEL — the one pair `titlesDiffer` structurally
    *  cannot see. `titleWords` drops anything under four characters, so "Kung Fu Panda"
