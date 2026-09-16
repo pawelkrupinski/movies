@@ -908,8 +908,15 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // SETTLE ON THE EVENTS THEMSELVES, exactly as the burst test above does: one movies
       // event plus one screenings delete per dropped venue is `1 + Dropped` raw events, each
       // either bought its own apply or rode one.
+      //
+      // Same 60s budget as the burst test above, not the 20s this used to carry: this settle
+      // spans TWO cursors (movies + screenings) racing the same shared apply thread, at least
+      // as much for the driver's own network round trips to land as the single-cursor burst
+      // above, so a shorter budget bought nothing but a flake on a loaded CI runner (Main CI,
+      // 2026-09-16: "only 1 of 11 event(s) were accounted for" — reproduced 0/13 locally at
+      // any budget, consistent with CI-only resource contention rather than a logic bug).
       val TotalEvents = 1 + Dropped
-      val settleBy = System.currentTimeMillis() + 20000
+      val settleBy = System.currentTimeMillis() + 60000
       while (dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount < TotalEvents &&
              System.currentTimeMillis() < settleBy) Thread.sleep(50)
       val accounted = dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount
