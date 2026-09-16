@@ -126,7 +126,14 @@ object SequelMarker {
    *  round two: closing the containment edge for Catching Fire alone left this
    *  gap, which surfaced as Catching Fire's screenings folding onto whichever
    *  Mockingjay part `directorWalk` resolved first, instead of the original film. */
-  private def curatedSiblings(a: Seq[String], b: Seq[String]): Boolean =
+  /** `private[movies]` so `FilmCanonicalizer`'s tmdbId/imdbId-sharing folds can ask
+   *  this ALONE, without the general ordinal/containment logic below — those are
+   *  vetted against clean TMDB candidate titles (`directorWalk`) or an
+   *  already-resolved base (the containment edge), and misfire on raw, messy
+   *  CINEMA-published title text: a synthetic disambiguating suffix ("Ghost 2 (1)")
+   *  reads as a false ordinal split. The curated list is manually vetted per
+   *  franchise, so it alone is safe to apply to bare cinema titles too. */
+  private[movies] def curatedSiblings(a: Seq[String], b: Seq[String]): Boolean =
     KnownFranchiseSubtitles.keySet.exists { base =>
       a.startsWith(base) && b.startsWith(base) &&
       a.drop(base.length) != b.drop(base.length) &&

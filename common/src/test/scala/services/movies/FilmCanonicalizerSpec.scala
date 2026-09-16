@@ -685,6 +685,66 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 1
   }
 
+  it should "split two curated franchise siblings sharing a WRONG tmdbId, even with no originalTitle/runtime/year evidence" in {
+    // UK prod, 2026-09-16: Odeon's rerelease-season listings for "Catching Fire" and
+    // "The Ballad of Songbirds and Snakes" publish no originalTitle/runtime/year at
+    // all (small-chain listings, title only) — `MixedFilmDetector` sees no evidence
+    // either way and would wave the merge through, exactly as it does for the
+    // legitimate "Zaplątani"/"Tangled" case right below. Only `SequelMarker`'s
+    // curated Hunger Games siblings list can tell these apart from bare titles alone.
+    val bareCinemaSlot = (title: String, cinema: Source) =>
+      key(title, Some(2026)) -> MovieRecord(
+        tmdbId = Some(1300968),
+        data = Map[Source, SourceData](
+          Tmdb   -> SourceData(releaseYear = Some(2026)),
+          cinema -> SourceData(title = Some(title), releaseYear = Some(2026))))
+    val components = FilmCanonicalizer.groupByFilm(Seq(
+      bareCinemaSlot("The Hunger Games: Catching Fire", Helios),
+      bareCinemaSlot("The Hunger Games: The Ballad of Songbirds and Snakes", Multikino)
+    ), titleNormalizer)
+    components should have size 1                                  // the shared (wrong) tmdbId links them
+    FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2
+  }
+
+  it should "also split two curated-base siblings that differ only by a numbered part" in {
+    // `curatedSiblings` gates the check on a CURATED base prefix match, but once
+    // that gate passes it still asks `namesAnotherEntry`'s general ordinal logic —
+    // so "Mockingjay Part 1" vs "Part 2" splits too, correctly (they ARE different
+    // films). What the curated gate protects against is an UNCURATED title merely
+    // ending in a number, never this genuine same-franchise numbered pair.
+    val bareCinemaSlot = (title: String, cinema: Source) =>
+      key(title, Some(2026)) -> MovieRecord(
+        tmdbId = Some(1300968),
+        data = Map[Source, SourceData](
+          Tmdb   -> SourceData(releaseYear = Some(2026)),
+          cinema -> SourceData(title = Some(title), releaseYear = Some(2026))))
+    val components = FilmCanonicalizer.groupByFilm(Seq(
+      bareCinemaSlot("The Hunger Games: Mockingjay - Part 1", Helios),
+      bareCinemaSlot("The Hunger Games: Mockingjay - Part 2", Multikino)
+    ), titleNormalizer)
+    components should have size 1
+    FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 2
+  }
+
+  it should "still merge an UNCURATED title's incidental numbered suffix sharing a tmdbId (evidence-free)" in {
+    // The guard `curatedSiblings` needs: unlike the Hunger Games base above, "Ghost 2"
+    // is not a curated franchise prefix, so a coincidental "(1)"-style suffix in
+    // ordinary cinema title text (a disambiguator, a re-run marker, anything) must
+    // NOT be read as a sequel split — only a CURATED base's own known siblings may.
+    val bareCinemaSlot = (title: String, cinema: Source) =>
+      key(title, Some(2025)) -> MovieRecord(
+        tmdbId = Some(700),
+        data = Map[Source, SourceData](
+          Tmdb   -> SourceData(releaseYear = Some(2025)),
+          cinema -> SourceData(title = Some(title), releaseYear = Some(2025))))
+    val components = FilmCanonicalizer.groupByFilm(Seq(
+      bareCinemaSlot("Ghost 2", Helios),
+      bareCinemaSlot("Ghost 2 (1)", Multikino)
+    ), titleNormalizer)
+    components should have size 1
+    FilmCanonicalizer.clusterByFilm(components.head, titleNormalizer) should have size 1
+  }
+
   it should "key a cross-language cluster on the dominant cinema title, not the alphabetical min" in {
     // The churn guard: keying on the alphabetical min ("tangled") would leave an
     // _id no cinema reports, so every "Zaplątani" scrape would re-spawn the row.

@@ -109,7 +109,37 @@ object FilmCanonicalizer {
     // against each sibling and about imdbId-sharing groups row by row, so reading the
     // identity per question rebuilt one row's from its slots once per comparison.
     case class Identified(row: Row, identity: Option[MixedFilmDetector.Group])
-    def differ(a: Identified, b: Identified): Boolean = MixedFilmDetector.describeDifferentFilms(a.identity, b.identity)
+    // A CURATED franchise-sibling check, independent of `MixedFilmDetector` and its
+    // `sameDirector` veto — deliberately so. `conflicting()`'s veto exists because an
+    // AGREEING director is normally conclusive evidence of one film (the "Twoje imię"
+    // dub case), but a franchise sequel routinely shares its director with its
+    // siblings (Francis Lawrence directed every modern Hunger Games film), which would
+    // make that veto wrongly protect exactly the merge this check exists to catch. So
+    // this reads ONLY the cinema-published bare titles (`evidence.titles` — present
+    // even when no venue publishes a distinct `originalTitle`, unlike
+    // `MixedFilmDetector`'s identity, which is why the byTmdbId/imdbId-sharing folds
+    // below needed a second check at all) and asks `SequelMarker.curatedSiblings`
+    // (not the fuller `differentInstalments`, which also runs its general
+    // ordinal/containment logic against ANY title pair — vetted against clean TMDB
+    // candidate titles or an already-resolved base, it misfires on raw cinema title
+    // text: a test fixture's synthetic "Ghost 2 (1)" disambiguator reads as a false
+    // ordinal split, `FilmCanonicalizerSpec` pins this). `curatedSiblings` gates that
+    // same ordinal logic behind a match on a CURATED franchise prefix first — Ghost 2
+    // never reaches it (no curated base matches), while a genuine curated-franchise
+    // numbered pair ("Mockingjay Part 1" vs "Part 2") still correctly splits too, not
+    // just the named non-numbered subtitles. UK prod, 2026-09-16:
+    // `hungergamesballadofsongbirdssnakes|2026` ended up holding Catching Fire, both
+    // Mockingjay parts, AND Ballad of Songbirds and Snakes — each independently
+    // mis-resolved (before `TmdbCandidateSearch`'s own `SequelMarker` guard existed)
+    // to the SAME wrong tmdbId, which this fold then waved together because Odeon's
+    // listings publish no `originalTitle`/runtime/year for either side.
+    def curatedFranchiseSiblings(a: MovieRecord, b: MovieRecord): Boolean = {
+      val aTokens = a.evidence.titles.map(TitleContainment.tokens)
+      val bTokens = b.evidence.titles.map(TitleContainment.tokens)
+      aTokens.exists(at => bTokens.exists(bt => SequelMarker.curatedSiblings(at, bt)))
+    }
+    def differ(a: Identified, b: Identified): Boolean =
+      MixedFilmDetector.describeDifferentFilms(a.identity, b.identity) || curatedFranchiseSiblings(a.row._2, b.row._2)
 
     // (1) Resolved rows → one cluster per distinct tmdbId. Sort the ids so the
     // cluster sequence is order-independent.
