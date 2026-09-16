@@ -64,6 +64,17 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     body should not include "Disallow: /*/movie?"
   }
 
+  // SemrushBot's crawl only feeds its own SEO product, not us, and (unlike
+  // meta-externalagent) it actually honours robots.txt — see
+  // project_us_movie_route_applebot_semrushbot_spikes memory.
+  it should "block SemrushBot entirely, while leaving the wildcard rule for everyone else" in {
+    val body = contentAsString(controller().robotsTxt(req("/robots.txt")))
+    body should include("User-agent: SemrushBot\nDisallow: /")
+    // The general allowlist stays untouched for other crawlers (e.g. Applebot).
+    body should include("User-agent: *")
+    body should include("Allow: /")
+  }
+
   "sitemap.xml" should "enumerate the landing, the city, its plan, and live films" in {
     val res = controller().sitemap(req("/sitemap.xml"))
     status(res)      shouldBe OK

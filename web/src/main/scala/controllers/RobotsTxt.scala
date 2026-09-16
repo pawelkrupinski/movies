@@ -29,9 +29,16 @@ object RobotsTxt {
   private val disallowed =
     Seq("/debug", "/admin", "/tasks", "/uptime", "/auth/", "/*/api/", "/*/debug/", "/*/movies", "/*/filmy")
 
+  // SemrushBot crawls the same volume as any other bot but, unlike Applebot
+  // (which feeds Apple's own search/Siri suggestions), the result only
+  // benefits Semrush's own SEO product -- not us. It honours robots.txt, so
+  // fencing it off here actually works, unlike a UA that ignores the file.
+  private val blockedAgents = Seq("SemrushBot")
+
   private def body(prefixes: Seq[String], sitemaps: Seq[String]): String = {
     val rules = for { prefix <- prefixes; path <- disallowed } yield s"Disallow: $prefix$path"
-    (Seq("User-agent: *", "Allow: /") ++ rules ++ Seq("") ++ sitemaps.map(s => s"Sitemap: $s"))
+    val blocks = blockedAgents.map(agent => s"User-agent: $agent\nDisallow: /")
+    (Seq("User-agent: *", "Allow: /") ++ rules ++ Seq("") ++ blocks ++ Seq("") ++ sitemaps.map(s => s"Sitemap: $s"))
       .mkString("", "\n", "\n")
   }
 
