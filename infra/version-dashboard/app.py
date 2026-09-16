@@ -37,12 +37,21 @@ RUNNING IT
     python3 infra/version-dashboard/app.py --once   # print the page's data as text and exit
 
 `--once` reads and prints, and that is all: it never serves, so nothing can post to it, and it
-starts no action of its own. It is safe to run from a script or a cron job.
+starts no action of its own. It is safe to run from a script or a cron job. `--once` covers the
+nixos page only -- the mobile page below has no text-mode counterpart yet.
 
-Stdlib only, on the system python3 -- no venv, no requirements.txt. It needs `nix` on PATH for the
-roster and `ssh` for the Prometheus read.
+The same process also serves http://127.0.0.1:8788/mobile -- what's in ios/ and android/ that
+neither the App Store nor Play has shipped yet. Unrelated data, unrelated refresh cadence, same
+port and process because a second `python3 ... &` per page is one more thing to remember to have
+running.
+
+Nearly stdlib only, on the system python3 -- no venv, no requirements.txt -- with one exception:
+the mobile page needs `cryptography` to sign the App Store Connect / Play Developer API JWTs,
+already relied on by this repo's release scripts and already on this machine. It needs `nix` on
+PATH for the roster and `ssh` for the Prometheus read.
 """
 
+import base64
 import concurrent.futures
 import hashlib
 import html
@@ -55,10 +64,25 @@ import sys
 import threading
 import time
 import urllib.parse
+import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+# THE ONE THIRD-PARTY IMPORT IN AN OTHERWISE STDLIB-ONLY FILE, and it is confined to the mobile
+# page below. `cryptography` signs the ES256/RS256 JWTs App Store Connect and the Play Developer
+# API both require -- there is no stdlib way to do that -- but it is already relied on by this
+# repo's release scripts (reference_app_store_connect_api, reference_play_api_direct_access) and
+# already present on the system python3 this dashboard runs under, so it costs nothing extra here.
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, padding
+from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 INFRA_DIR = os.path.dirname(HERE)
+# WHERE .env.local, android/play-credentials.json AND git itself ACTUALLY LIVE -- one level above
+# INFRA_DIR. The nixos page never needed this: `nix eval .` in INFRA_DIR resolves to the enclosing
+# checkout on its own (see the flake_machines() docstring), but plain file reads and `git log --
+# ios/` do not, and a pathspec resolved against the wrong cwd fails silently by matching nothing.
+ROOT_DIR = os.path.dirname(INFRA_DIR)
 
 # 8788, NOT 8787. bitcashier's version-dashboard already holds 8787 on this workstation, and two
 # processes racing for one port means whichever loses dies at boot -- silently, since launchd just
@@ -1108,6 +1132,9 @@ td.sv { color: #d4d9e1; }
 .help { cursor: help; text-decoration: underline dotted rgba(255,255,255,.28);
         text-underline-offset: 3px; }
 .badge.help { text-decoration: none; border-bottom: 1px dashed currentColor; }
+.navbar { font-size: 12px; margin-bottom: 10px; }
+.navbar a { color: #7d8590; text-decoration: none; }
+.navbar a:hover { color: #d7dae0; text-decoration: underline; }
 """
 
 
@@ -1313,6 +1340,7 @@ def render(data):
         # wipe an open console mid-switch -- and that console is the only record of what the switch
         # did. The auto-reload moved into JS below, where it can decline while a job is running.
         f"<style>{STYLE}</style></head><body>",
+        NAV,
         "<h1>kinowo — NixOS fleet</h1>",
         # "0 declared hosts" reads as an empty fleet rather than a broken query, which is the
         # opposite of what a failed roster means. Say which it is.
@@ -1899,6 +1927,330 @@ setInterval(() => { if(jobsRunning === 0) location.reload(); }, 30000);
 """
 
 
+# --------------------------------------------------------------------------------------------
+# THE MOBILE RELEASE PAGE -- what's in ios/ and android/ that neither store has shipped yet
+# --------------------------------------------------------------------------------------------
+#
+# THE BASELINE FOR "NOT RELEASED" HAS TO BE EACH STORE'S OWN LIVE STATE, NOT mobile-version.txt
+# AND NOT THE NEWEST "Release mobile" COMMIT. The two stores do not ship every version in
+# lockstep -- 2.0.7 went out iOS-only (project_mobile_2_0_7_ios_keyword_release), so Android's
+# store copy is still 2.0.6 even though `main` has moved past the 2.0.7 release commit. A page
+# that diffed against the newest release commit would call Android's still-live 2.0.6 changes
+# "released" the moment iOS alone shipped past it. So: ask each store what it is actually
+# serving, match that version string back to the "Release mobile X.Y.Z" commit that cut it (the
+# convention `scripts/mobile-release.sh` leaves every time), and diff each platform's own
+# directory from ITS OWN baseline, independently.
+
+IOS_APP_ID = "6792566321"
+ANDROID_PACKAGE = "net.pawel.kinowo"
+ASC_BASE = "https://api.appstoreconnect.apple.com"
+PLAY_BASE = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{ANDROID_PACKAGE}"
+
+# LONGER THAN THE NIXOS PAGE'S 30s, because a build here signs two fresh JWTs and round-trips to
+# Apple and Google rather than reading a Prometheus cache -- there is no reason to pay that on
+# every page load when the answer changes maybe once a day.
+MOBILE_CACHE_TTL = 600.0
+MOBILE_GIT_TIMEOUT = 30
+
+_mobile_cache_lock = threading.Lock()
+_mobile_cache = {"built_at": 0.0, "data": None, "building": False}
+
+
+def _env_local(key):
+    """One value out of .env.local, by grepping the file rather than `source`ing it -- a value in
+    there contains a bare `&`, which kills a zsh `source` outright (reference_app_store_connect_api).
+    Returns None on anything missing rather than raising: an absent key is a normal, reportable
+    state for this page (a laptop with no release credentials configured), not a bug in it."""
+    try:
+        with open(os.path.join(ROOT_DIR, ".env.local")) as f:
+            for line in f:
+                if line.startswith(key + "="):
+                    return line.split("=", 1)[1].strip().strip('"').strip("'")
+    except OSError:
+        return None
+    return None
+
+
+def _b64u(data):
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+
+
+def _asc_token():
+    """A ~18-minute ES256 JWT for App Store Connect, signed by hand because this file has no HTTP
+    client library beyond urllib and no JWT library at all -- see reference_app_store_connect_api
+    for the same recipe used from the release scripts. The DER signature `key.sign` returns has to
+    be converted to raw r||s (32 bytes each) or Apple rejects the token outright."""
+    key_id = _env_local("APP_STORE_KEY_ID")
+    issuer_id = _env_local("APP_STORE_ISSUER_ID")
+    if not key_id or not issuer_id:
+        raise RuntimeError("APP_STORE_KEY_ID/APP_STORE_ISSUER_ID missing from .env.local")
+    p8_path = os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{key_id}.p8")
+    with open(p8_path, "rb") as f:
+        key = serialization.load_pem_private_key(f.read(), password=None)
+    now = int(time.time())
+    header = _b64u(json.dumps({"alg": "ES256", "kid": key_id, "typ": "JWT"}).encode())
+    claims = _b64u(json.dumps({"iss": issuer_id, "iat": now, "exp": now + 1100,
+                               "aud": "appstoreconnect-v1"}).encode())
+    signing_input = f"{header}.{claims}"
+    der_sig = key.sign(signing_input.encode(), ec.ECDSA(hashes.SHA256()))
+    r, s = decode_dss_signature(der_sig)
+    raw_sig = r.to_bytes(32, "big") + s.to_bytes(32, "big")
+    return f"{signing_input}.{_b64u(raw_sig)}"
+
+
+def _asc_get(path):
+    req = urllib.request.Request(f"{ASC_BASE}{path}",
+                                  headers={"Authorization": f"Bearer {_asc_token()}"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return json.loads(resp.read())
+
+
+def ios_release_state():
+    """The newest iOS version Apple has actually put in front of users, and separately, whatever
+    is ahead of it and still working its way there.
+
+    `appStoreState == READY_FOR_SALE` IS "RELEASED"; WAITING_FOR_REVIEW IS NOT, even though it can
+    sit there for days. Folding a submitted-but-unreviewed version into the baseline would report
+    changes as shipped before a single user could have them. The `sort` query param 400s on this
+    endpoint (PARAMETER_ERROR.ILLEGAL, same restriction the builds endpoint has per
+    reference_app_store_connect_api) so the ordering is done locally, not trusted from Apple."""
+    try:
+        data = _asc_get(f"/v1/apps/{IOS_APP_ID}/appStoreVersions?limit=10")
+    except Exception as exc:  # noqa: BLE001 -- a network/auth failure is a reportable page state
+        return {"error": f"{type(exc).__name__}: {exc}"}
+    versions = sorted((v["attributes"] for v in data.get("data", [])),
+                       key=lambda a: a.get("createdDate") or "", reverse=True)
+    live = next((v for v in versions if v.get("appStoreState") == "READY_FOR_SALE"), None)
+    newest = versions[0] if versions else None
+    pending = None
+    if newest and (not live or newest.get("versionString") != live.get("versionString")):
+        pending = {"version": newest.get("versionString"), "state": newest.get("appStoreState")}
+    return {
+        "error": None,
+        "live_version": live.get("versionString") if live else None,
+        "live_extra": live.get("appStoreState") if live else None,
+        "pending": pending,
+    }
+
+
+def _play_access_token():
+    with open(os.path.join(ROOT_DIR, "android", "play-credentials.json")) as f:
+        cred = json.load(f)
+    now = int(time.time())
+    header = _b64u(json.dumps({"alg": "RS256", "typ": "JWT"}).encode())
+    claims = _b64u(json.dumps({
+        "iss": cred["client_email"],
+        "scope": "https://www.googleapis.com/auth/androidpublisher",
+        "aud": cred["token_uri"], "iat": now, "exp": now + 3600,
+    }).encode())
+    signing_input = f"{header}.{claims}"
+    key = serialization.load_pem_private_key(cred["private_key"].encode(), password=None)
+    sig = key.sign(signing_input.encode(), padding.PKCS1v15(), hashes.SHA256())
+    assertion = f"{signing_input}.{_b64u(sig)}"
+    body = f"grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion={assertion}".encode()
+    req = urllib.request.Request(cred["token_uri"], data=body, method="POST",
+                                  headers={"Content-Type": "application/x-www-form-urlencoded"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return json.loads(resp.read())["access_token"]
+
+
+def _play_get(path, token):
+    req = urllib.request.Request(f"{PLAY_BASE}{path}", headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return json.loads(resp.read())
+
+
+def _play_post(path, token):
+    req = urllib.request.Request(f"{PLAY_BASE}{path}", data=b"", method="POST",
+                                  headers={"Authorization": f"Bearer {token}"})
+    with urllib.request.urlopen(req, timeout=20) as resp:
+        return json.loads(resp.read())
+
+
+def android_release_state():
+    """The production track's own view of what is live, read through a throwaway EDIT because the
+    Play Developer API has no track-read endpoint outside one (reference_play_api_direct_access).
+    The edit is never committed -- it is left to expire on Google's side, same as every other
+    read-only edit this repo's release tooling opens, so this function can never change what is
+    actually live no matter how it fails."""
+    try:
+        token = _play_access_token()
+        edit_id = _play_post("/edits", token)["id"]
+        track = _play_get(f"/edits/{edit_id}/tracks/production", token)
+    except Exception as exc:  # noqa: BLE001
+        return {"error": f"{type(exc).__name__}: {exc}"}
+    releases = track.get("releases") or []
+    completed = next((r for r in releases if r.get("status") == "completed"), None)
+    newest = releases[0] if releases else None
+    pending = None
+    if newest and newest is not completed:
+        pending = {"version": newest.get("name"), "state": newest.get("status")}
+    return {
+        "error": None,
+        "live_version": completed.get("name") if completed else None,
+        "live_extra": ",".join(completed.get("versionCodes") or []) if completed else None,
+        "pending": pending,
+    }
+
+
+def release_commit_for(version):
+    """The commit that cut a given store version, found by the 'Release mobile X.Y.Z' commit
+    message `scripts/mobile-release.sh` leaves every time -- NOT inferred from mobile-version.txt,
+    which only ever holds the latest version either store has ever been asked to build, and NOT
+    `--all`, which would also match a stray worktree branch never merged to what this dashboard
+    actually runs from."""
+    if not version:
+        return None
+    pattern = "^Release mobile " + re.escape(version) + "$"
+    ok, out, _ = run(["git", "log", "-1", "--format=%H", f"--grep={pattern}"],
+                      cwd=ROOT_DIR, timeout=MOBILE_GIT_TIMEOUT)
+    sha = out.strip()
+    return sha if ok and sha else None
+
+
+def unreleased_commits(baseline_sha, subdir):
+    ok, out, _ = run(["git", "log", "--format=%H%x1f%h%x1f%ad%x1f%s", "--date=short",
+                       f"{baseline_sha}..HEAD", "--", subdir],
+                      cwd=ROOT_DIR, timeout=MOBILE_GIT_TIMEOUT)
+    if not ok:
+        return None
+    commits = []
+    for line in out.splitlines():
+        if not line:
+            continue
+        full, short, date, subject = line.split("\x1f", 3)
+        commits.append({"sha": full, "short": short, "date": date, "subject": subject})
+    return commits
+
+
+def build_mobile():
+    started = time.time()
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+        f_ios = pool.submit(ios_release_state)
+        f_android = pool.submit(android_release_state)
+        raw = {"iOS": (f_ios.result(), "ios"), "Android": (f_android.result(), "android")}
+
+    platforms = []
+    for name, (state, subdir) in raw.items():
+        # `fetch_failed` IS ITS OWN FLAG, NOT INFERRED FROM live_version BEING FALSY, because a
+        # version that has genuinely never shipped ALSO has no live_version -- and that is a
+        # different, unremarkable state ("nothing released yet") from a JWT/network fault, which
+        # is the one thing on this page actually worth an alarm-coloured box.
+        if state.get("error"):
+            platforms.append({"name": name, "fetch_failed": True, "error": state["error"]})
+            continue
+        version = state["live_version"]
+        baseline = release_commit_for(version)
+        commits = unreleased_commits(baseline, subdir) if baseline else None
+        if version is None:
+            error = "never released to this store yet"
+        elif not baseline:
+            error = f"no commit found matching 'Release mobile {version}'"
+        else:
+            error = None
+        platforms.append({
+            "name": name,
+            "fetch_failed": False,
+            "live_version": version,
+            "live_extra": state.get("live_extra"),
+            "pending": state.get("pending"),
+            "baseline": baseline,
+            "commits": commits,
+            "error": error,
+        })
+
+    return {"built_at": started, "took": time.time() - started, "platforms": platforms}
+
+
+def cached_mobile(force=False):
+    now = time.time()
+    with _mobile_cache_lock:
+        fresh = _mobile_cache["data"] is not None and (now - _mobile_cache["built_at"]) < MOBILE_CACHE_TTL
+        if fresh and not force:
+            return _mobile_cache["data"]
+        building = _mobile_cache["building"]
+        have_stale = _mobile_cache["data"] is not None
+        if not building:
+            _mobile_cache["building"] = True
+
+    if building and have_stale:
+        return _mobile_cache["data"]
+
+    try:
+        data = build_mobile()
+        with _mobile_cache_lock:
+            _mobile_cache["data"] = data
+            _mobile_cache["built_at"] = time.time()
+        return data
+    finally:
+        with _mobile_cache_lock:
+            _mobile_cache["building"] = False
+
+
+def render_mobile(data):
+    parts = [
+        "<!doctype html><html><head><meta charset='utf-8'>",
+        "<title>kinowo — mobile releases</title>",
+        f"<style>{STYLE}</style></head><body>",
+        NAV,
+        "<h1>kinowo — mobile releases</h1>",
+        "<div class='sub'>what's in <code>ios/</code> and <code>android/</code> that neither "
+        "store has shipped yet, diffed from each platform's OWN last released version "
+        f"&middot; built in {data['took']:.1f}s, {fmt_age(data['built_at'])} "
+        "&middot; <a href='/mobile?refresh=1'>refresh</a></div>",
+    ]
+
+    for p in data["platforms"]:
+        parts.append(f"<h2 style='font-size:13px;margin:22px 0 8px'>{html.escape(p['name'])}</h2>")
+        if p.get("fetch_failed"):
+            parts.append(f"<div class='err'>{html.escape(p['error'])}</div>")
+            continue
+
+        live_bits = html.escape(p["live_version"] or "?")
+        if p.get("live_extra"):
+            live_bits += f" <span class=hint>({html.escape(str(p['live_extra']))})</span>"
+        parts.append(f"<div class='sub'>live: <b>{live_bits}</b>")
+        if p.get("pending"):
+            pend = p["pending"]
+            parts.append(f" &middot; already submitted, not yet live: "
+                         f"<b>{html.escape(str(pend.get('version') or '?'))}</b> "
+                         f"<span class=hint>({html.escape(str(pend.get('state') or '?'))})</span>")
+        if p.get("baseline"):
+            parts.append(f" &middot; released from <code>{p['baseline'][:10]}</code>")
+        parts.append("</div>")
+
+        if p.get("error"):
+            parts.append(f"<div class='note'>{html.escape(p['error'])}</div>")
+            continue
+
+        commits = p.get("commits")
+        if commits is None:
+            parts.append("<div class='note'>could not read git history for this platform</div>")
+        elif not commits:
+            parts.append("<div class='note'>up to date — nothing merged here since the release "
+                         "that shipped the live version</div>")
+        else:
+            parts.append(f"<table><tr><th>commit</th><th>date</th><th>subject</th></tr>")
+            for c in commits:
+                parts.append(
+                    "<tr><td class='sv'>" + f"<span class=sha title='{html.escape(c['sha'])}'>"
+                    f"{html.escape(c['short'])}</span></td>"
+                    f"<td class='mut'>{html.escape(c['date'])}</td>"
+                    f"<td>{html.escape(c['subject'])}</td></tr>")
+            parts.append("</table>")
+            parts.append(f"<div class='sub'>{len(commits)} commit(s) not yet released</div>")
+
+    parts.append("</body></html>")
+    return "".join(parts)
+
+
+# A TWO-LINK NAV, printed on both pages, so this stays discoverable as one dashboard rather than
+# two unrelated pages that happen to share a port. Plain markup, no active-state JS: which page you
+# are on is already obvious from the H1 beneath it.
+NAV = ("<div class=navbar><a href='/nixos'>NixOS fleet</a>"
+       " &middot; <a href='/mobile'>Mobile releases</a></div>")
+
+
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):  # quiet: the terminal is for errors, not an access log
         pass
@@ -1938,6 +2290,12 @@ class Handler(BaseHTTPRequestHandler):
                 start = 0
             self._send(200, json.dumps(fleet_apply_log((args.get("job") or [""])[0], start)),
                        "application/json")
+        elif path == "/mobile":
+            # `?refresh=1` forces a synchronous rebuild instead of the usual serve-stale-while-
+            # rebuilding dance. That is fine ONLY because this page's rebuild is two fast HTTPS
+            # round trips plus a couple of `git log`s -- seconds, not the ssh-to-every-host cost
+            # the nixos page above is built to hide behind a spinner.
+            self._send(200, render_mobile(cached_mobile(force=bool(args.get("refresh")))))
         elif path == "/healthz":
             self._send(200, "ok", "text/plain; charset=utf-8")
         else:
@@ -1984,6 +2342,15 @@ def refresh_forever():
             pass
 
 
+def refresh_mobile_forever():
+    while True:
+        time.sleep(MOBILE_CACHE_TTL)
+        try:
+            cached_mobile(force=True)
+        except Exception:  # noqa: BLE001 -- a refresh failure must not kill the loop
+            pass
+
+
 def main():
     if "--once" in sys.argv:
         data = cached(force=True)
@@ -1996,9 +2363,12 @@ def main():
         return 0
 
     cached(force=True)  # warm before announcing, so the first visitor is not the one who waits
+    cached_mobile(force=True)
     threading.Thread(target=refresh_forever, daemon=True).start()
+    threading.Thread(target=refresh_mobile_forever, daemon=True).start()
     srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"kinowo NixOS fleet dashboard on http://127.0.0.1:{PORT}/nixos")
+    print(f"kinowo mobile releases dashboard on http://127.0.0.1:{PORT}/mobile")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

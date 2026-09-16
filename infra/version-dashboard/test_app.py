@@ -12,6 +12,7 @@ import importlib.util
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import tempfile
 import threading
@@ -492,6 +493,203 @@ class FlakeFingerprint(unittest.TestCase):
                 fh.write("object Application { val changed = true }")
             os.utime(scala, (time.time() + 10, time.time() + 10))
             self.assertEqual(before, app.flake_fingerprint(root))
+
+
+class _TempRepo:
+    """A throwaway git repo, never this one -- release_commit_for/unreleased_commits shell out to
+    real `git log`, and the point of these tests is the exact-match anchoring and the per-directory
+    scoping, neither of which this repo's own history can be relied on to exercise on demand."""
+
+    def __init__(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.root = self.dir.name
+        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
+        subprocess.run(["git", "config", "user.email", "t@t"], cwd=self.root, check=True)
+        subprocess.run(["git", "config", "user.name", "t"], cwd=self.root, check=True)
+
+    def commit(self, path, message):
+        full = os.path.join(self.root, path)
+        os.makedirs(os.path.dirname(full), exist_ok=True)
+        with open(full, "a") as fh:
+            fh.write("x")
+        subprocess.run(["git", "add", path], cwd=self.root, check=True)
+        subprocess.run(["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", message],
+                        cwd=self.root, check=True)
+        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root,
+                              capture_output=True, text=True, check=True)
+        return out.stdout.strip()
+
+    def cleanup(self):
+        self.dir.cleanup()
+
+
+class MobileReleaseBaseline(unittest.TestCase):
+    """release_commit_for / unreleased_commits -- the git half of the mobile-releases page. What's
+    worth pinning is the exact-match anchoring: a loose match would credit '2.0.17' or 'Release
+    mobile 2.0.7 hotfix' as the commit that shipped 2.0.7, which it did not, and the whole page's
+    baseline would be silently wrong."""
+
+    def setUp(self):
+        self.repo = _TempRepo()
+        self._orig_root = app.ROOT_DIR
+        app.ROOT_DIR = self.repo.root
+
+    def tearDown(self):
+        app.ROOT_DIR = self._orig_root
+        self.repo.cleanup()
+
+    def test_finds_the_exact_release_commit(self):
+        self.repo.commit("README.md", "init")
+        target = self.repo.commit("ios/a.swift", "Release mobile 2.0.7")
+        self.repo.commit("ios/b.swift", "unrelated")
+        self.assertEqual(app.release_commit_for("2.0.7"), target)
+
+    def test_does_not_match_a_longer_version_or_a_trailing_suffix(self):
+        self.repo.commit("README.md", "init")
+        self.repo.commit("ios/a.swift", "Release mobile 2.0.17")
+        self.repo.commit("ios/b.swift", "Release mobile 2.0.7 hotfix")
+        self.assertIsNone(app.release_commit_for("2.0.7"))
+
+    def test_a_missing_version_looks_up_nothing(self):
+        self.assertIsNone(app.release_commit_for(None))
+
+    def test_unreleased_commits_scoped_to_the_platform_directory(self):
+        base = self.repo.commit("README.md", "Release mobile 1.0.0")
+        self.repo.commit("web/x.scala", "web-only change")
+        ios_commit = self.repo.commit("ios/a.swift", "ios change")
+        self.assertEqual([c["sha"] for c in app.unreleased_commits(base, "ios")], [ios_commit])
+        self.assertEqual(app.unreleased_commits(base, "android"), [])
+
+    def test_up_to_date_is_an_empty_list_not_none(self):
+        base = self.repo.commit("README.md", "Release mobile 1.0.0")
+        self.assertEqual(app.unreleased_commits(base, "ios"), [])
+
+
+class MobileBuildAssembly(unittest.TestCase):
+    """build_mobile()'s only real job is wiring each store's own live_version to ITS OWN baseline
+    commit and diffing ITS OWN directory from there. That independence is the whole point of the
+    page -- see the module-level comment above build_mobile -- so the case worth pinning is a
+    repo where iOS has shipped past a point Android has not: a shared baseline would wrongly call
+    Android's still-unreleased changes released the moment iOS alone moved past them."""
+
+    def setUp(self):
+        self.repo = _TempRepo()
+        self._orig_root = app.ROOT_DIR
+        app.ROOT_DIR = self.repo.root
+        self._orig_ios, self._orig_android = app.ios_release_state, app.android_release_state
+
+    def tearDown(self):
+        app.ROOT_DIR = self._orig_root
+        app.ios_release_state, app.android_release_state = self._orig_ios, self._orig_android
+        self.repo.cleanup()
+
+    @staticmethod
+    def _by_name(data):
+        return {p["name"]: p for p in data["platforms"]}
+
+    def test_each_platform_diffs_from_its_own_release_not_the_others(self):
+        self.repo.commit("README.md", "init")
+        self.repo.commit("ios/a.swift", "Release mobile 2.0.6")
+        self.repo.commit("android/a.kt", "Release mobile 2.0.6")
+        self.repo.commit("ios/b.swift", "Release mobile 2.0.7")  # iOS-only bump, like the real one
+        self.repo.commit("ios/c.swift", "ios-only follow-up")
+        self.repo.commit("android/b.kt", "android-only follow-up")
+
+        app.ios_release_state = lambda: {"error": None, "live_version": "2.0.7",
+                                          "live_extra": "READY_FOR_SALE", "pending": None}
+        app.android_release_state = lambda: {"error": None, "live_version": "2.0.6",
+                                              "live_extra": "309", "pending": None}
+        by_name = self._by_name(app.build_mobile())
+        self.assertEqual([c["subject"] for c in by_name["iOS"]["commits"]], ["ios-only follow-up"])
+        self.assertEqual([c["subject"] for c in by_name["Android"]["commits"]],
+                         ["android-only follow-up"])
+
+    def test_a_fetch_error_is_reported_without_touching_git(self):
+        app.ios_release_state = lambda: {"error": "HTTPError 401: unauthorized"}
+        app.android_release_state = lambda: {"error": None, "live_version": None,
+                                              "live_extra": None, "pending": None}
+        by_name = self._by_name(app.build_mobile())
+        self.assertEqual(by_name["iOS"], {"name": "iOS", "fetch_failed": True,
+                                          "error": "HTTPError 401: unauthorized"})
+
+    def test_a_version_never_released_is_not_a_fetch_error(self):
+        # Distinct states that the earlier shape of this code conflated: both left `error` set and
+        # `live_version` falsy, so render_mobile could not tell a real 401 apart from an app that
+        # has simply never shipped. `fetch_failed` is what keeps them apart now.
+        app.ios_release_state = lambda: {"error": None, "live_version": None,
+                                          "live_extra": None, "pending": None}
+        app.android_release_state = lambda: {"error": None, "live_version": None,
+                                              "live_extra": None, "pending": None}
+        by_name = self._by_name(app.build_mobile())
+        self.assertFalse(by_name["iOS"]["fetch_failed"])
+        self.assertEqual(by_name["iOS"]["error"], "never released to this store yet")
+
+    def test_no_matching_release_commit_is_a_visible_error_not_a_crash(self):
+        app.ios_release_state = lambda: {"error": None, "live_version": "9.9.9",
+                                          "live_extra": "READY_FOR_SALE", "pending": None}
+        app.android_release_state = lambda: {"error": None, "live_version": None,
+                                              "live_extra": None, "pending": None}
+        by_name = self._by_name(app.build_mobile())
+        self.assertIn("9.9.9", by_name["iOS"]["error"])
+        self.assertIsNone(by_name["iOS"]["commits"])
+
+
+class RenderMobile(unittest.TestCase):
+    """render_mobile is a pure function of the dict build_mobile returns, same discipline as
+    `render`/`page` above -- every branch is reachable from a literal dict without a network call
+    or a git repo."""
+
+    @staticmethod
+    def _data(*platforms):
+        return {"built_at": time.time(), "took": 0.8, "platforms": list(platforms)}
+
+    def test_a_fetch_failure_is_an_err_box(self):
+        out = app.render_mobile(self._data(
+            {"name": "iOS", "fetch_failed": True, "error": "HTTPError 401: unauthorized"}))
+        self.assertIn("err", out)
+        self.assertIn("HTTPError 401: unauthorized", out)
+
+    def test_up_to_date_says_so(self):
+        out = app.render_mobile(self._data({
+            "name": "iOS", "fetch_failed": False, "live_version": "2.0.7", "live_extra": None,
+            "pending": None, "baseline": "abc1234", "commits": [], "error": None,
+        }))
+        self.assertIn("2.0.7", out)
+        self.assertIn("up to date", out)
+
+    def test_unreleased_commits_render_as_table_rows(self):
+        out = app.render_mobile(self._data({
+            "name": "Android", "fetch_failed": False, "live_version": "2.0.6", "live_extra": "309",
+            "pending": None, "baseline": "abc1234", "error": None,
+            "commits": [{"sha": "deadbeef" * 5, "short": "deadbee", "date": "2026-09-14",
+                        "subject": "Flatten the city picker's search"}],
+        }))
+        self.assertIn("deadbee", out)
+        self.assertIn("Flatten the city picker&#x27;s search", out)  # html-escaped
+        self.assertIn("1 commit(s) not yet released", out)
+
+    def test_a_pending_submission_is_shown_separately_from_live(self):
+        out = app.render_mobile(self._data({
+            "name": "iOS", "fetch_failed": False, "live_version": "2.0.6", "live_extra": None,
+            "pending": {"version": "2.0.7", "state": "WAITING_FOR_REVIEW"},
+            "baseline": "abc1234", "commits": [], "error": None,
+        }))
+        self.assertIn("2.0.6", out)
+        self.assertIn("2.0.7", out)
+        self.assertIn("WAITING_FOR_REVIEW", out)
+
+    def test_never_released_is_a_note_not_an_err_box(self):
+        out = app.render_mobile(self._data({
+            "name": "Android", "fetch_failed": False, "live_version": None, "live_extra": None,
+            "pending": None, "baseline": None, "commits": None,
+            "error": "never released to this store yet",
+        }))
+        self.assertIn("note", out)
+        self.assertNotIn("class='err'", out)
+
+    def test_the_nav_bar_links_to_the_nixos_page(self):
+        out = app.render_mobile(self._data())
+        self.assertIn("href='/nixos'", out)
 
 
 if __name__ == "__main__":
