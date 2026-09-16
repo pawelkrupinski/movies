@@ -98,6 +98,15 @@ object SequelMarker {
       Seq("catching", "fire"),
       Seq("the", "ballad", "of", "songbirds", "and", "snakes"),
       Seq("the", "ballad", "of", "songbirds", "snakes")
+    ),
+    // US prod, 2026-09-16: "Bring It On: All or Nothing" (2006, dir. Steve
+    // Rash) folded onto the resolved "Bring It On" (2000, dir. Peyton Reed)
+    // the same way — a franchise entry that renames itself instead of
+    // numbering itself. Found via a `CinemaCorroboration` director
+    // contradiction, not a re-key log; fixed by hand on the one row, added
+    // here so the containment edge refuses it on its own next time.
+    Seq("bring", "it", "on") -> Set(
+      Seq("all", "or", "nothing")
     )
   )
 

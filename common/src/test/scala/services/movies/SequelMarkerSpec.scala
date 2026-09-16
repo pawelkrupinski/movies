@@ -39,6 +39,14 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     anotherEntry("The Hunger Games", "The Hunger Games: The Ballad of Songbirds and Snakes") shouldBe true
   }
 
+  // US prod, 2026-09-16: "Bring It On: All or Nothing" (2006, dir. Steve Rash)
+  // folded onto the resolved "Bring It On" (2000, dir. Peyton Reed) the same
+  // way as Catching Fire above — caught by `CinemaCorroboration`'s director
+  // contradiction rather than a re-key log.
+  it should "refuse Bring It On's own subtitled sequel" in {
+    anotherEntry("Bring It On", "Bring It On: All or Nothing") shouldBe true
+  }
+
   it should "let a decorated screening of the same film fold" in {
     anotherEntry("Toy Story 5",              "Toddler Club: Toy Story 5")               shouldBe false
     anotherEntry("Fallen Angels by Noel Coward", "GB: Fallen Angels by Noel Coward")    shouldBe false
