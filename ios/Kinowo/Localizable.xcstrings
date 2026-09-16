@@ -568,30 +568,170 @@
         }
       }
     },
-    "citygate.search_region_hint": {
+    "citygate.level.de.region": {
       "localizations": {
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "Nach einem Bundesstaat suchen"
+            "value": "Bundesland"
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search for a state"
+            "value": "state"
           }
         },
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Busca una región"
+            "value": "estado federado"
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "Szukaj stanu"
+            "value": "kraj związkowy"
+          }
+        }
+      }
+    },
+    "citygate.level.uk.region": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Landesteil"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nation"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nación"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "kraj"
+          }
+        }
+      }
+    },
+    "citygate.level.uk.subregion": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grafschaft"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "county"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "condado"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hrabstwo"
+          }
+        }
+      }
+    },
+    "citygate.level.us.region": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bundesstaat"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "state"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "estado"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "stan"
+          }
+        }
+      }
+    },
+    "Search for a %@ or city": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche: %@ oder Stadt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search for a %@ or city"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca: %@ o ciudad"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj: %@ lub miasto"
+          }
+        }
+      }
+    },
+    "Search for a %@, %@ or city": {
+      "localizations": {
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suche: %1$@, %2$@ oder Stadt"
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search for a %1$@, %2$@ or city"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Busca: %1$@, %2$@ o ciudad"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Szukaj: %1$@, %2$@ lub miasto"
           }
         }
       }

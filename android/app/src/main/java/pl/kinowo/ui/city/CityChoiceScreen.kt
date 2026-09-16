@@ -41,12 +41,14 @@ import pl.kinowo.R
 import pl.kinowo.model.Catalog
 import pl.kinowo.model.City
 import pl.kinowo.model.CityPickerRow
+import pl.kinowo.model.CitySearchLevel
 import pl.kinowo.model.CitySearchRow
 import pl.kinowo.model.Country
 import pl.kinowo.model.matching
 import pl.kinowo.model.matchingInSubregion
 import pl.kinowo.model.regionsIn
 import pl.kinowo.model.rowKey
+import pl.kinowo.model.searchLevelsFor
 import pl.kinowo.model.searchRows
 import pl.kinowo.model.secondLevelRows
 import pl.kinowo.model.topLevelRows
@@ -57,6 +59,17 @@ import pl.kinowo.ui.theme.TextSecondary
  *  well above Material's compact 40dp default so the buttons read as primary
  *  actions rather than small links. */
 private val ControlMinHeight = 56.dp
+
+/** The localized noun for one [CitySearchLevel] — the only place an abstract
+ *  level identifier meets an `R.string`, so [searchLevelsFor] itself stays a
+ *  plain JVM function with no Android/Compose dependency. */
+private val CitySearchLevel.labelRes: Int
+    get() = when (this) {
+        CitySearchLevel.UkRegion -> R.string.search_level_uk_region
+        CitySearchLevel.UkSubregion -> R.string.search_level_uk_subregion
+        CitySearchLevel.UsRegion -> R.string.search_level_us_region
+        CitySearchLevel.DeRegion -> R.string.search_level_de_region
+    }
 
 /**
  * Fallback city picker shown when the location gate can't place the user
@@ -104,6 +117,21 @@ fun CityChoiceScreen(
     // grouped country: Poland and Spain have no regions to flatten, so their
     // own per-level search above already reaches every city.
     val searchingAcrossLevels = regions.isNotEmpty() && query.isNotBlank()
+    // The search box's own copy names what a query can ACTUALLY reach from
+    // THIS level — "state" in the US, "nation"/"county" in the UK, never a
+    // one-size-fits-all "region" that would misname either. Mirrors
+    // `pickerSearchLevels`/`updatePickerSearchCopy` in landing.scala.html so
+    // the same visitor reads the same wording on web and here.
+    val searchLevels = searchLevelsFor(country, region, subregion)
+    val searchHint = when (searchLevels.size) {
+        2 -> stringResource(
+            R.string.search_levels_2,
+            stringResource(searchLevels[0].labelRes),
+            stringResource(searchLevels[1].labelRes),
+        )
+        1 -> stringResource(R.string.search_levels_1, stringResource(searchLevels[0].labelRes))
+        else -> stringResource(R.string.search_city_hint)
+    }
 
     // Edge-to-edge (MainActivity.enableEdgeToEdge): inset padding on this
     // Column so the "Country" label doesn't sit under the clock and the
@@ -174,9 +202,7 @@ fun CityChoiceScreen(
             value = query,
             onValueChange = { query = it },
             singleLine = true,
-            placeholder = {
-                Text(stringResource(if (pickingRegion) R.string.search_region_hint else R.string.search_city_hint))
-            },
+            placeholder = { Text(searchHint) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             trailingIcon = {
                 if (query.isNotEmpty()) {

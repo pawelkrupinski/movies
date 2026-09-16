@@ -350,6 +350,38 @@ fun List<City>.sortedForPicker(countryCode: String): List<City> {
 fun List<City>.regionsIn(countryCode: String): List<String> =
     inCountry(countryCode).mapNotNull { it.region }.distinct()
 
+/** An abstract group-level identifier — never the localized noun itself, so
+ *  [searchLevelsFor] stays a pure JVM function the caller maps to its own
+ *  `R.string` (`CitySearchLevel.labelRes` in `CityChoiceScreen.kt`). Mirrors
+ *  `PICKER_GROUP_LABELS`' two entries per nesting country in landing.scala.html. */
+enum class CitySearchLevel { UkRegion, UkSubregion, UsRegion, DeRegion }
+
+/** [CitySearchLevel]s for a country that groups its cities, deepest first —
+ *  the UK nests two ([UkRegion] then [UkSubregion]); the US and Germany nest
+ *  one. A country absent here (Poland, Spain) is flat. */
+private val countrySearchLevels: Map<String, Pair<CitySearchLevel, CitySearchLevel?>> = mapOf(
+    "uk" to (CitySearchLevel.UkRegion to CitySearchLevel.UkSubregion),
+    "us" to (CitySearchLevel.UsRegion to null),
+    "de" to (CitySearchLevel.DeRegion to null),
+)
+
+/** The group level(s) a search from the CURRENT step can still reach, deepest
+ *  first — mirrors `pickerSearchLevels()` in landing.scala.html exactly, so
+ *  the web and the app phrase the search box's prompt identically: two at
+ *  the root of a country that nests two deep (the UK), one once a region is
+ *  picked or for a country with only one level (US/Germany), none once fully
+ *  drilled into a subregion or for a flat country (Poland, Spain). */
+fun searchLevelsFor(countryCode: String, region: String?, subregion: String?): List<CitySearchLevel> {
+    val levels = countrySearchLevels[countryCode] ?: return emptyList()
+    if (region == null) {
+        return levels.second?.let { listOf(levels.first, it) } ?: listOf(levels.first)
+    }
+    if (subregion == null) {
+        return levels.second?.let { listOf(it) } ?: emptyList()
+    }
+    return emptyList()
+}
+
 /** [matching] confined to one [region] — used by [matchingInSubregion] below.
  *  A null [region] leaves the country-wide list alone, so the same call serves
  *  both a grouped country's third screen and an ungrouped country's only one. */
@@ -452,7 +484,7 @@ fun List<City>.searchRows(query: String, countryCode: String): List<CitySearchRo
             rows.add(CitySearchRow.Region(region))
         }
         val subregion = city.subregion
-        if (region != null && subregion != null && seenSubregion.add("$region $subregion") &&
+        if (region != null && subregion != null && seenSubregion.add("$region\u0000$subregion") &&
             Cities.searchFold(subregion).contains(q)
         ) {
             rows.add(CitySearchRow.Subregion(subregion, region))

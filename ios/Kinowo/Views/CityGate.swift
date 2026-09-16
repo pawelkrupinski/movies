@@ -567,15 +567,40 @@ struct CityChoiceView: View {
         }
     }
 
+    /// The localization key(s) for the group level(s) a query from HERE can
+    /// still reach — see `City.searchLevelKeys`, computed from this view's
+    /// own `region`/`subregion` state exactly as `pickerSearchLevels()` in
+    /// landing.scala.html reads `pickerRegion`/`pickerSubregion`.
+    private var searchLevelKeys: [LocalizedStringKey] {
+        City.searchLevelKeys(country: countryCode, region: region, subregion: subregion).map(LocalizedStringKey.init)
+    }
+
+    /// The search field's prompt, naming what a query can ACTUALLY reach from
+    /// THIS level — "state" in the US, "nation"/"county" in the UK, never a
+    /// one-size-fits-all "region" that would misname either. Mirrors
+    /// `updatePickerSearchCopy()` in landing.scala.html so the same visitor
+    /// reads the same wording on web and here. Composed from nested `Text`
+    /// (not `String(localized:)`), so it re-localizes in-session along with
+    /// everything else `.environment(\.locale)` drives — see
+    /// reference_ios_locale_environment_vs_string_localized.
+    private var searchPrompt: Text {
+        let levels = searchLevelKeys
+        switch levels.count {
+        case 2: return Text("Search for a \(Text(levels[0])), \(Text(levels[1])) or city")
+        case 1: return Text("Search for a \(Text(levels[0])) or city")
+        default: return Text("citygate.search_hint")
+        }
+    }
+
     /// The picker's own search row — a manual field rather than the native
     /// `.searchable` bar, so it can sit BELOW the country picker (see the
-    /// comment where it's placed in `body`). Its prompt swaps between the
-    /// region-step and city-step copy, same wording `.searchable` used.
+    /// comment where it's placed in `body`). Its prompt swaps contextually —
+    /// see `searchPrompt`.
     private var searchField: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .foregroundStyle(.secondary)
-            TextField(pickingRegion ? "citygate.search_region_hint" : "citygate.search_hint", text: $query)
+            TextField("citygate.search_hint", text: $query, prompt: searchPrompt)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .accessibilityIdentifier(A11y.CityGate.searchField)

@@ -315,6 +315,36 @@ struct City: Codable, Hashable {
 }
 
 extension City {
+    /// The RAW localization key(s) for the group level(s) a search box's
+    /// prompt should name from a country that groups its cities — the UK's
+    /// nation/county, the US's/Germany's single state level. Not
+    /// `LocalizedStringKey` itself: this file is pure Foundation (see the
+    /// struct's own doc comment) so `swift test` still runs it on Linux CI;
+    /// `CityGate.searchPrompt` is what turns a key into `Text`. Mirrors
+    /// `PICKER_GROUP_LABELS` in landing.scala.html.
+    static let groupSearchLevelKeys: [String: (region: String, subregion: String?)] = [
+        "uk": ("citygate.level.uk.region", "citygate.level.uk.subregion"),
+        "us": ("citygate.level.us.region", nil),
+        "de": ("citygate.level.de.region", nil),
+    ]
+
+    /// The localization key(s) a search from THIS level can still reach,
+    /// deepest first — mirrors `pickerSearchLevels()` in landing.scala.html
+    /// exactly, so web and the app phrase the search box's prompt
+    /// identically: two at the root of a country that nests two deep (the
+    /// UK), one once a region is picked or for a country with only one level
+    /// (US/Germany), none once fully drilled into a subregion or for a flat
+    /// country (Poland, Spain).
+    static func searchLevelKeys(country: String, region: String?, subregion: String?) -> [String] {
+        guard let levels = groupSearchLevelKeys[country] else { return [] }
+        if region == nil {
+            if let sub = levels.subregion { return [levels.region, sub] }
+            return [levels.region]
+        }
+        if subregion == nil, let sub = levels.subregion { return [sub] }
+        return []
+    }
+
     /// One row of a grouped picker level: a group heading (drills further) or
     /// a city that carries no group at this level, either because its top
     /// group collapsed onto it alone (`CityGroup.soleCity` — Berlin, Hamburg,

@@ -13,12 +13,23 @@
     <string name="choose_city_title">Wybierz miasto</string>
     <string name="choose_city_subtitle">Repertuar pokazujemy dla wybranego miasta.</string>
     <string name="search_city_hint">Szukaj miasta</string>
+    <!-- {0}/{1} = the search box's own term(s) for the level(s) a query can
+         still reach from where the picker currently is — see
+         `search_level_*` below and `searchLevelsFor` in City.kt. Mirrors
+         `landing.searchLevels1/2` in messages so web and the app read alike. -->
+    <string name="search_levels_1">Szukaj: %1$s lub miasto</string>
+    <string name="search_levels_2">Szukaj: %1$s, %2$s lub miasto</string>
     <string name="clear">Wyczyść</string>
     <string name="no_city_matching">Brak miasta o nazwie „%1$s”.</string>
     <string name="choose_region_title">Wybierz stan</string>
     <string name="choose_region_subtitle">Najpierw stan, potem miasto.</string>
-    <string name="search_region_hint">Szukaj stanu</string>
     <string name="no_region_matching">Brak stanu o nazwie „%1$s”.</string>
+    <!-- The picker's own term for each grouped country's level(s) — mirrors
+         `landing.level.*` in messages exactly (same wording on web). -->
+    <string name="search_level_uk_region">kraj</string>
+    <string name="search_level_uk_subregion">hrabstwo</string>
+    <string name="search_level_us_region">stan</string>
+    <string name="search_level_de_region">kraj związkowy</string>
     <string name="back_to_regions">Wszystkie stany</string>
     <string name="near_city_label">Jesteś w pobliżu miasta</string>
     <string name="show_repertoire">Pokaż repertuar — %1$s</string>
