@@ -572,7 +572,7 @@ struct CityChoiceView: View {
     /// own `region`/`subregion` state exactly as `pickerSearchLevels()` in
     /// landing.scala.html reads `pickerRegion`/`pickerSubregion`.
     private var searchLevelKeys: [LocalizedStringKey] {
-        City.searchLevelKeys(country: countryCode, region: region, subregion: subregion).map(LocalizedStringKey.init)
+        City.searchLevelKeys(country: countryCode, region: region, subregion: subregion).map { LocalizedStringKey($0) }
     }
 
     /// The search field's prompt, naming what a query can ACTUALLY reach from
