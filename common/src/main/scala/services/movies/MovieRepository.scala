@@ -887,103 +887,120 @@ class MongoMovieRepository(
     val stitch = screenings.fold(ScreeningsSplit.ReStitched(e.data, Map.empty, complete = true))(
       ScreeningsSplit.reStitchChecked(_, id, e.data))
     val restitched = stitch.data
-    // Slots go FIRST, and `movies` only drops its embedded copy once they have actually
-    // landed. Dropping it on a FAILED slot write would leave the film with no cinemas in
-    // either place — the one way this migration can lose data — and a slots failure is
-    // deliberately swallowed so it can't break the movies write, so the write itself has
-    // to report back. A film whose slot write failed simply keeps the embedded map and is
-    // retried on the next scrape.
-    // Skip the write when the stored rows already match. `upsert` is the whole-record
-    // path every scrape merge takes, and `replaceFilm` rewrites EVERY row of the film —
-    // 471 of them for a film showing across the UK — so a scrape that changed only
-    // showtimes would otherwise churn the entire slot set for nothing. One indexed read
-    // replaces that; the film's screenings are already read here for `reStitch`, so this
-    // is a second small read, not a new round-trip pattern.
-    //
-    // Already-matching counts as LANDED: the rows are correct, so the embedded copy is
-    // still safe to drop. A failed read returns empty, which reads as "differs" and
-    // writes — the safe direction.
-    val slotPayload = SlotsRepository.slotsOf(restitched)
-    val slotsLanded = slots.exists { s =>
-      // ONE read, used twice. It answers "is anything different at all" (skip the write
-      // entirely) and, handed on, "which rows are different" (write only those) — which
-      // `replaceFilm` would otherwise have to go and ask again, on the hottest write path
-      // in the system. A read that FAILED is passed as None, not as an empty map: empty
-      // would read as "every row is new" and be trusted, where None makes `replaceFilm`
-      // read for itself.
-      //
-      // The read is not fenced against a concurrent writer, so a slot that changes between
-      // this read and the write can leave us skipping a row whose value happens to match
-      // what we read. Reading here rather than inside `replaceFilm` widens that window by
-      // the length of this method, and the price is one delayed row: the film's next scrape
-      // reads again and writes it. Not worth a transaction on the hottest write path.
-      SlotsRepository.applyFilm(s, id, slotPayload)
-    }
-    val now  = Instant.now()
-    val opts = new ReplaceOptions().upsert(true)
-    // The film document AS STORED, so a re-write that changes nothing can be skipped.
-    //
-    // `upsert` is the whole-record path every scrape merge takes, so each of a film's
-    // venues wrote this document once per tick whether or not anything about the film had
-    // changed. Mongo does not collapse that: a byte-identical `replaceOne` still reports
-    // `modifiedCount: 1` and still writes an oplog entry — measured, not assumed. Each of
-    // those entries is a change-stream delivery, and every delivery re-decodes the film
-    // document and re-dispatches it downstream, which is the cost the read-split exists to
-    // keep small.
-    //
-    // This is the third guard in this method and the only one that pays a round trip of its
-    // own for the privilege: the screenings check reuses `reStitchChecked`'s read, the slots
-    // check reuses nothing but reads a different collection. One indexed `_id` read to drop
-    // a write, its oplog entry and its fanout is the same trade the slots guard already
-    // makes here.
+    // Read the stored document FIRST, before anything is written. `MoviesUpsert.plan` needs
+    // it regardless (below), but reading it here ALSO lets the duplicate-key guard run before
+    // the slots write rather than after — see `collidesWithAnother`.
     //
     // Handed on as the `Try` it is: a read that FAILED and a document that is ABSENT both
     // write, but only one of them is "no such film", and the decision is where that is pinned.
     val stored = Try(Await.result(c.find(Filters.eq("_id", id)).limit(1).toFuture(), 10.seconds)).map(_.headOption)
-    // What to write, and whether the stored document already equals it — the decision is
-    // `MoviesUpsert`'s, so it is unit-tested apart from the three reads that feed it.
-    val plan = MoviesUpsert.plan(id, key, e, restitched, slotsLanded, slotsForStorage, stored, now)
-    Try {
-      if (!plan.unchanged) Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, opts).toFuture(), 10.seconds)
-      // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
-      // is upsert PLUS a delete of every slot the record doesn't name, so it may only run on
-      // a record we know is complete. When the re-stitch read failed we still write what this
-      // tick positively carries, but never the delete half — a slot we simply could not read
-      // is not a slot that stopped screening.
-      screenings.foreach { s =>
-        val showtimes = ScreeningsSplit.showtimesOf(restitched)
-        // Skip the whole call when the stored rows already match — the same guard the slots
-        // write above has, and here it is FREE: `reStitchChecked` has already read these
-        // rows, so `stitch.stored` costs no round trip where the slots half pays one.
+    val storedDoc = stored.toOption.flatten
+    // Only true when THIS call is about to give the film a key or tmdbId it did not already
+    // have stored — i.e. a re-key or a resolution, not the every-venue-every-tick re-merge
+    // that is this method's normal load. Gates the extra read below off the hot path: a tick
+    // that changes neither can't newly collide with a sibling document.
+    val identityChanging = !storedDoc.exists(_.key.contains(key)) ||
+      (e.tmdbId.isDefined && !storedDoc.exists(_.tmdbId == e.tmdbId))
+    // Landing the slots write BEFORE knowing the `movies` write will succeed left three films
+    // stranded on 2026-09-16: the slots write landed a genuine TMDB match, the `movies` write
+    // then hit the OTHER document already holding that tmdbId and was swallowed below, and
+    // the row was left with a resolved TMDB slot but `tmdbId` permanently null — invisible on
+    // the site, and never revisited (`UnresolvedTmdbReaper` treats `tmdbId`+`tmdbAttempt` both
+    // absent as "never even tried"). Checking for that sibling HERE, before either write, means
+    // a real collision refuses the whole upsert — slots included — leaving the film exactly as
+    // it was, instead of leaving the two collections disagreeing about it forever.
+    val collidesWithAnother = identityChanging && Try(Await.result(c.find(Filters.and(
+      Filters.ne("_id", id),
+      Filters.or(List(Some(Filters.eq("key", key)), e.tmdbId.map(t => Filters.eq("tmdbId", t))).flatten*)
+    )).limit(1).toFuture(), 10.seconds)).toOption.exists(_.nonEmpty)
+    if (collidesWithAnother) {
+      logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
+        s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document")
+    } else {
+      // Slots go FIRST, and `movies` only drops its embedded copy once they have actually
+      // landed. Dropping it on a FAILED slot write would leave the film with no cinemas in
+      // either place — the one way this migration can lose data — and a slots failure is
+      // deliberately swallowed so it can't break the movies write, so the write itself has
+      // to report back. A film whose slot write failed simply keeps the embedded map and is
+      // retried on the next scrape.
+      // Skip the write when the stored rows already match. `upsert` is the whole-record
+      // path every scrape merge takes, and `replaceFilm` rewrites EVERY row of the film —
+      // 471 of them for a film showing across the UK — so a scrape that changed only
+      // showtimes would otherwise churn the entire slot set for nothing. One indexed read
+      // replaces that; the film's screenings are already read here for `reStitch`, so this
+      // is a second small read, not a new round-trip pattern.
+      //
+      // Already-matching counts as LANDED: the rows are correct, so the embedded copy is
+      // still safe to drop. A failed read returns empty, which reads as "differs" and
+      // writes — the safe direction.
+      val slotPayload = SlotsRepository.slotsOf(restitched)
+      val slotsLanded = slots.exists { s =>
+        // ONE read, used twice. It answers "is anything different at all" (skip the write
+        // entirely) and, handed on, "which rows are different" (write only those) — which
+        // `replaceFilm` would otherwise have to go and ask again, on the hottest write path
+        // in the system. A read that FAILED is passed as None, not as an empty map: empty
+        // would read as "every row is new" and be trusted, where None makes `replaceFilm`
+        // read for itself.
         //
-        // This is now the outer of TWO guards, and they answer different questions.
-        // `replaceFilm` itself drops the rows that did not move (see `changedSlots`), which
-        // is what stops one venue's change rewriting all 298 rows of a German release. This
-        // one asks whether ANY row moved, and when none did it saves `replaceFilm` the read
-        // it would need to find that out. `upsert` is the whole-record path EVERY scrape
-        // merge takes and a film at N venues is written by N venues, so that read is worth
-        // skipping on its own.
-        //
-        // Equality is safe against the delete vector: if the stored rows equal what we
-        // would write, there is no slot for `replaceFilm` to prune. A differing read —
-        // including an empty one — writes, which is the safe direction.
-        // `stitch.stored` is this film's rows as they are NOW, already read above, and is handed
-        // on rather than making `replaceFilm` read them a second time. The three-way choice lives
-        // in `ScreeningsSplit.applyFilm` so the in-memory repository makes the same one.
-        ScreeningsSplit.applyFilm(s, id, showtimes, stitch)
+        // The read is not fenced against a concurrent writer, so a slot that changes between
+        // this read and the write can leave us skipping a row whose value happens to match
+        // what we read. Reading here rather than inside `replaceFilm` widens that window by
+        // the length of this method, and the price is one delayed row: the film's next scrape
+        // reads again and writes it. Not worth a transaction on the hottest write path.
+        SlotsRepository.applyFilm(s, id, slotPayload)
       }
-      ()
-    }.recover {
-      case exception: Throwable if isClusterClosed(exception) =>
-        // Shutdown race — the lifecycle closed the MongoClient while a worker
-        // was still mid-write. Harmless: the in-memory cache already has the
-        // value and the next refresh will persist it.
-        logger.debug(s"MovieRepository.upsert($title, $year) skipped — Mongo client closing.")
-      case exception: Throwable if isDuplicateKey(exception) =>
-        logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
-          s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document (${exception.getMessage})")
-      case exception: Throwable =>
-        logger.warn(s"MovieRepository.upsert($title, $year) failed: ${exception.getMessage}")
+      val now  = Instant.now()
+      val opts = new ReplaceOptions().upsert(true)
+      // What to write, and whether the stored document already equals it — the decision is
+      // `MoviesUpsert`'s, so it is unit-tested apart from the three reads that feed it.
+      val plan = MoviesUpsert.plan(id, key, e, restitched, slotsLanded, slotsForStorage, stored, now)
+      Try {
+        if (!plan.unchanged) Await.result(c.replaceOne(Filters.eq("_id", id), plan.document, opts).toFuture(), 10.seconds)
+        // Write this film's cinema showtimes to `screenings` (their authority). `replaceFilm`
+        // is upsert PLUS a delete of every slot the record doesn't name, so it may only run on
+        // a record we know is complete. When the re-stitch read failed we still write what this
+        // tick positively carries, but never the delete half — a slot we simply could not read
+        // is not a slot that stopped screening.
+        screenings.foreach { s =>
+          val showtimes = ScreeningsSplit.showtimesOf(restitched)
+          // Skip the whole call when the stored rows already match — the same guard the slots
+          // write above has, and here it is FREE: `reStitchChecked` has already read these
+          // rows, so `stitch.stored` costs no round trip where the slots half pays one.
+          //
+          // This is now the outer of TWO guards, and they answer different questions.
+          // `replaceFilm` itself drops the rows that did not move (see `changedSlots`), which
+          // is what stops one venue's change rewriting all 298 rows of a German release. This
+          // one asks whether ANY row moved, and when none did it saves `replaceFilm` the read
+          // it would need to find that out. `upsert` is the whole-record path EVERY scrape
+          // merge takes and a film at N venues is written by N venues, so that read is worth
+          // skipping on its own.
+          //
+          // Equality is safe against the delete vector: if the stored rows equal what we
+          // would write, there is no slot for `replaceFilm` to prune. A differing read —
+          // including an empty one — writes, which is the safe direction.
+          // `stitch.stored` is this film's rows as they are NOW, already read above, and is handed
+          // on rather than making `replaceFilm` read them a second time. The three-way choice lives
+          // in `ScreeningsSplit.applyFilm` so the in-memory repository makes the same one.
+          ScreeningsSplit.applyFilm(s, id, showtimes, stitch)
+        }
+        ()
+      }.recover {
+        case exception: Throwable if isClusterClosed(exception) =>
+          // Shutdown race — the lifecycle closed the MongoClient while a worker
+          // was still mid-write. Harmless: the in-memory cache already has the
+          // value and the next refresh will persist it.
+          logger.debug(s"MovieRepository.upsert($title, $year) skipped — Mongo client closing.")
+        case exception: Throwable if isDuplicateKey(exception) =>
+          // The pre-check above catches every collision this read could see; this remains as
+          // defence for the residual race it cannot — a sibling document landing the same
+          // key/tmdbId between that read and this write. Slots have already landed in that
+          // narrow window, same as before this guard existed, which is the accepted "one
+          // delayed row" trade the slots guard above already makes on this same write path.
+          logger.warn(s"MovieRepository.upsert($title, $year) refused: another document already holds its " +
+            s"key or its tmdbId=${e.tmdbId.getOrElse("?")} — the film keeps its previous document (${exception.getMessage})")
+        case exception: Throwable =>
+          logger.warn(s"MovieRepository.upsert($title, $year) failed: ${exception.getMessage}")
+      }
     }
   }
 
