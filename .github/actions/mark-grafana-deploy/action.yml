@@ -51,14 +51,35 @@ runs:
             # nothing. See the 2026-08-29 kinowo/Grafana-host incident this guarded
             # against, and the 2026-09-15 discovery that it was masking the SSO
             # redirect too.
-            code="$(curl -sS --max-time 20 -o /tmp/grafana-annotation-response.json -w '%{http_code}' \
+            code="$(curl -sS -v --max-time 20 -o /tmp/grafana-annotation-response.json -w '%{http_code}' \
                 -X POST "${GRAFANA_URL%/}/api/annotations" \
                 -H "Authorization: Bearer ${GRAFANA_ANNOTATION_TOKEN}" \
                 -H "Content-Type: application/json" \
-                -d "$body" || echo "000")"
+                -d "$body" 2>/tmp/grafana-annotation-verbose.log || echo "000")"
             if [ "$code" = "200" ]; then
                 echo "Posted deploy marker for ${TIER} ${short}."
             else
                 echo "::warning title=Deploy marker not posted::Grafana at ${GRAFANA_URL%/} returned HTTP ${code} for the ${TIER} ${short} annotation (expected 200)."
                 cat /tmp/grafana-annotation-response.json 2>/dev/null || true
+
+                # TEMPORARY (branch debug/grafana-annotation-network-probe): the SSO-redirect
+                # fix above stopped masking a SEPARATE failure — two real deploys since then
+                # (0907e2b3, b1eae352) got HTTP 000 / "Connection timed out" here, a bare TCP
+                # handshake never completing, while the same POST from a residential IP at the
+                # same moment succeeded in ~0.2s. The host's Terraform + in-host firewalls are
+                # both wide open on 443 from 0.0.0.0/0 (checked, no ASN/rate-limit rule
+                # anywhere), so this narrows down whether it's GitHub's runner egress, DNS, or
+                # something route-specific to Hetzner. Remove this block once that's diagnosed.
+                grafanaHost="${GRAFANA_URL#*://}"
+                grafanaHost="${grafanaHost%%/*}"
+                echo "--- network diagnostics ---"
+                echo "runner egress IP: $(curl -sS --max-time 5 https://api.ipify.org || echo 'lookup failed')"
+                echo "DNS resolution for ${grafanaHost}:"
+                getent hosts "$grafanaHost" || echo "getent found nothing"
+                echo "control request (does the runner reach github.com at all?):"
+                curl -sS -o /dev/null --max-time 10 \
+                    -w 'github.com -> %{http_code} (namelookup:%{time_namelookup}s connect:%{time_connect}s total:%{time_total}s)\n' \
+                    https://github.com || echo "control request to github.com ALSO failed — a runner-wide egress problem, not host-specific"
+                echo "verbose trace of the annotation POST:"
+                cat /tmp/grafana-annotation-verbose.log 2>/dev/null || true
             fi
