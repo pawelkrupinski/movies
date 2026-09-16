@@ -166,45 +166,69 @@ class MongoStagingFolder(
    *
    *  Per film, and failures are logged rather than thrown: the fold itself has COMMITTED
    *  by now, so raising here would reschedule a fold that already happened. A film left
-   *  incomplete is the pre-existing behaviour and the next scrape's upsert repairs it. */
+   *  incomplete is the pre-existing behaviour and the next scrape's upsert repairs it.
+   *
+   *  Read-union-write, not a transaction: two folds for DIFFERENT decorated spellings
+   *  that both converge on the same tmdbId each commit their own transaction
+   *  independently (the class doc's Lalka incident), then both reach this method for the
+   *  film id they converged on. `TaskWorker` claims fold tasks across a shared pool with
+   *  no per-tmdbId exclusion, so the two calls genuinely interleave in-process: each reads
+   *  the film before the other's write lands, unions in only its own cinema, and the
+   *  later write overwrites the earlier one outright — silently dropping the earlier
+   *  fold's cinema (`StagingFoldConcurrentTmdbRaceIntegrationSpec`, 2026-09-16). `withIdLock`
+   *  closes that window by serializing this method's body per film id, so the second call
+   *  always reads the first call's write and unions onto it instead of past it. */
   private def completeSideCollections(folded: Seq[(FilmId, CacheKey, MovieRecord)]): Unit =
     folded.foreach { case (id, key, record) =>
-      // `upsert` REPLACES a film's side rows with what the record names: `replaceFilm`
-      // upserts the payload and deletes every slot outside it. The folded record is the
-      // group's plan — the staging rows plus whatever the RAW `movies` documents carried —
-      // and under the storage split a migrated film's document carries no cinemas at all.
-      // Writing it as-is therefore deletes the slots and screenings of every cinema that
-      // was not part of this fold: the bare row losing Charlie Monroe and Kino Muza while a
-      // decorated edition folded in, which the convergence order-independence leg sees as
-      // the same film's screenings landing under different ids on different passes.
-      //
-      // So complete against the film as it currently STANDS, folded slots winning: the
-      // write becomes a superset and a fold can only add cinemas to a film, never silently
-      // drop the ones it never looked at.
-      val (existing, readOk) = movieRepository.findByIdChecked(id)
-      // …and a failed read is not "this film has no cinemas". Completing on that would
-      // delete the whole board, which is the outage this method exists to prevent
-      // (@8033e39c6). The fold has COMMITTED; skipping the completion leaves the film in
-      // the pre-existing incomplete shape, which the next scrape's upsert repairs.
-      if (!readOk)
-        logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but the " +
-          "film could not be read back — skipping the slots/screenings completion rather than " +
-          "writing a record that would delete the cinemas this fold never saw.")
-      else {
-        // `MovieRecordMerge.union`, not a map `++`: a colliding slot has to keep BOTH
-        // sides' showtimes. The folded slot often carries none — a staging row that has
-        // only just been scraped, or a cinema whose board lives in `screenings` — and
-        // letting it win the key outright blanks the very showtimes this completion is
-        // supposed to preserve. `union` takes the canonical's metadata and the union of
-        // the boards, which is the rule the rest of the pipeline already merges by.
-        val complete = existing.map(e => MovieRecordMerge.union(record, e.record)).getOrElse(record)
-        Try(movieRepository.upsert(id, key, complete)).failed.foreach { e =>
-          logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but its " +
-            s"slots/screenings write failed (${e.getClass.getSimpleName}: ${e.getMessage}) — the film holds " +
-            "no showtimes until its next scrape rewrites it.")
+      withIdLock(id) {
+        // `upsert` REPLACES a film's side rows with what the record names: `replaceFilm`
+        // upserts the payload and deletes every slot outside it. The folded record is the
+        // group's plan — the staging rows plus whatever the RAW `movies` documents carried —
+        // and under the storage split a migrated film's document carries no cinemas at all.
+        // Writing it as-is therefore deletes the slots and screenings of every cinema that
+        // was not part of this fold: the bare row losing Charlie Monroe and Kino Muza while a
+        // decorated edition folded in, which the convergence order-independence leg sees as
+        // the same film's screenings landing under different ids on different passes.
+        //
+        // So complete against the film as it currently STANDS, folded slots winning: the
+        // write becomes a superset and a fold can only add cinemas to a film, never silently
+        // drop the ones it never looked at.
+        val (existing, readOk) = movieRepository.findByIdChecked(id)
+        // …and a failed read is not "this film has no cinemas". Completing on that would
+        // delete the whole board, which is the outage this method exists to prevent
+        // (@8033e39c6). The fold has COMMITTED; skipping the completion leaves the film in
+        // the pre-existing incomplete shape, which the next scrape's upsert repairs.
+        if (!readOk)
+          logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but the " +
+            "film could not be read back — skipping the slots/screenings completion rather than " +
+            "writing a record that would delete the cinemas this fold never saw.")
+        else {
+          // `MovieRecordMerge.union`, not a map `++`: a colliding slot has to keep BOTH
+          // sides' showtimes. The folded slot often carries none — a staging row that has
+          // only just been scraped, or a cinema whose board lives in `screenings` — and
+          // letting it win the key outright blanks the very showtimes this completion is
+          // supposed to preserve. `union` takes the canonical's metadata and the union of
+          // the boards, which is the rule the rest of the pipeline already merges by.
+          val complete = existing.map(e => MovieRecordMerge.union(record, e.record)).getOrElse(record)
+          Try(movieRepository.upsert(id, key, complete)).failed.foreach { e =>
+            logger.warn(s"Staging fold: '${key.cleanTitle}' (${key.year.getOrElse("—")}) committed, but its " +
+              s"slots/screenings write failed (${e.getClass.getSimpleName}: ${e.getMessage}) — the film holds " +
+              "no showtimes until its next scrape rewrites it.")
+          }
         }
       }
     }
+
+  /** One monitor per film id, held only for the duration of [[completeSideCollections]]'s
+   *  read-union-write — see that method's doc for the race this closes. A
+   *  `ConcurrentHashMap` rather than a global lock: unrelated films complete
+   *  concurrently exactly as before, only two calls for the SAME id ever block each
+   *  other. Entries are never evicted; the key space is one film id per row this
+   *  process's worker ever folds, which is bounded by the corpus, not by traffic. */
+  private val idLocks = new java.util.concurrent.ConcurrentHashMap[String, Object]()
+
+  private def withIdLock[A](id: FilmId)(body: => A): A =
+    idLocks.computeIfAbsent(id.value, _ => new Object).synchronized(body)
 
   /** Hand each retired key's `movie_slots` / `screenings` rows to the row it folded into.
    *
