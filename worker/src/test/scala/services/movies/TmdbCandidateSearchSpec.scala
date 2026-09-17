@@ -51,6 +51,34 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     search(tmdb).resolve("Guru", None, row, originalTitle = None, director = None) shouldBe None
   }
 
+  // ── `searchUnique` must not trust a decoration-split fragment ──────────────
+
+  /** UK convergence, 2026-09-15→17: `SearchTitles.candidates`' banner-split adds
+   *  "Catching Fire" as an extra candidate for "The Hunger Games: Catching
+   *  Fire" (everything after the first ": "). The undivided title's own TMDB
+   *  search correctly sees two results and refuses — but a live TMDB
+   *  search-ranking anomaly briefly made the SHORT split fragment return a
+   *  single, spurious hit (a same-franchise, unrelated entry), and the OLD
+   *  unrestricted candidate pool let `searchUnique` accept it unconditionally.
+   *  `wholeCandidates` keeps that check from ever trying the split fragment,
+   *  so the row correctly refuses instead of mis-resolving. */
+  it should "refuse to resolve via a banner-split fragment even when that fragment alone looks unique" in {
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "query=The+Hunger+Games%3A+Catching+Fire" ->
+        """{"results":[
+          |{"id":101299,"title":"The Hunger Games: Catching Fire","release_date":"2013-11-15"},
+          |{"id":871533,"title":"Surviving the Game: Making The Hunger Games: Catching Fire","release_date":"2014-03-07"}
+          |]}""".stripMargin,
+      "query=Catching+Fire" ->
+        """{"results":[{"id":999,"title":"The Hunger Games: Sunrise on the Reaping","release_date":"2026-11-18"}]}"""
+    )), apiKey = Some("stub"))
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("The Hunger Games: Catching Fire"))))
+
+    search(tmdb).resolve(
+      "The Hunger Games: Catching Fire", None, row, originalTitle = None, director = None) shouldBe None
+  }
+
   // ── An IMDb-style disambiguator suffix must not blind the person search ────
 
   /** IMDb tells two same-named people apart with a trailing "(I)"/"(II)"/…

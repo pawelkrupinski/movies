@@ -48,4 +48,23 @@ class SearchTitlesSpec extends AnyFlatSpec with Matchers {
     val found = SearchTitles.candidates("Kill Bill: Vol. 2: Redux", None)
     found should contain("Kill Bill: Vol. 2: Redux")
   }
+
+  "wholeCandidates" should "keep only the reported titles, dropping every de-decorated split" in {
+    // UK convergence, 2026-09-15→17: `candidates`' banner/dash splits off "The
+    // Hunger Games: Catching Fire" / "…Mockingjay - Part 2" are far more generic
+    // than the film's own title, and a caller with no title-relevance check of
+    // its own (`TmdbCandidateSearch.searchUnique`) must never see them.
+    val found = SearchTitles.wholeCandidates("The Hunger Games: Catching Fire", None)
+    found should contain only "The Hunger Games: Catching Fire"
+
+    val dashed = SearchTitles.wholeCandidates("The Hunger Games: Mockingjay - Part 2", None)
+    dashed should contain only "The Hunger Games: Mockingjay - Part 2"
+  }
+
+  it should "still include the original title and extra titles as reported, unsplit" in {
+    val found = SearchTitles.wholeCandidates(
+      "Akademia Kina Polskiego: Człowiek z żelaza", Some("Man of Iron"), Seq("Ktoś inny: Wariant"))
+    found should contain theSameElementsAs Seq(
+      "Akademia Kina Polskiego: Człowiek z żelaza", "Man of Iron", "Ktoś inny: Wariant")
+  }
 }

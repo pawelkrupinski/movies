@@ -109,6 +109,14 @@ class TmdbCandidateSearch(
       .flatMap(t => Seq(normalizer.apiQuery(t), normalizer.searchQuery(t)))
       .filter(_.nonEmpty).distinct
     val candidates = queryForms(extraTitles)
+    // The restricted pool for `searchUnique` alone — see `SearchTitles.wholeCandidates`.
+    // Its "TMDB returned exactly one row" acceptance has no title-relevance check of
+    // its own, so a de-decorated fragment (a banner/dash split) is too generic a
+    // string to trust with it; `searchYearExactTop` below keeps using the full
+    // `candidates` set, since its exact-title-match filter is safe against them.
+    val wholeCandidates = SearchTitles.wholeCandidates(title, originalTitle, extraTitles)
+      .flatMap(t => Seq(normalizer.apiQuery(t), normalizer.searchQuery(t)))
+      .filter(_.nonEmpty).distinct
     // The same set restricted to what the CINEMAS published — `title` and
     // `originalTitle` are already cinema-side (`tmdbHints` reads
     // `cinemaOriginalTitle`), so only `slotOriginals` is dropped. The walk below
@@ -252,7 +260,10 @@ class TmdbCandidateSearch(
           // Sundown"). The year + verbatim top is confidence the singleton rule
           // lacks — still no popularity guess (a non-exact top doesn't resolve), and
           // yearless rows are untouched (searchYearExactTop is a no-op without a year).
-          candidates.iterator.flatMap(q => tmdb.searchUnique(q, effectiveYear)).nextOption()
+          // The singleton rule uses `wholeCandidates`, NOT `candidates` — see its
+          // doc: a de-decorated fragment is too generic a string for a check that
+          // never looks at whether the hit's title actually resembles the query.
+          wholeCandidates.iterator.flatMap(q => tmdb.searchUnique(q, effectiveYear)).nextOption()
             .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, effectiveYear)).nextOption())
             .map(hit => { searchBasis = Some(if (effectiveYear.isDefined) TmdbBasis.YearScoped else TmdbBasis.TitleOnly); hit })
         else {
