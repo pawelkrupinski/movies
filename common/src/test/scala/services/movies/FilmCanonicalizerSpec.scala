@@ -320,6 +320,78 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     clusters should have size 3
   }
 
+  it should "reclaim a year-window orphan whose OWN title DECORATES a resolved cluster's bare title, even at a cinema with no shared listing to compare" in {
+    // PL "Opętanie" poster-tour promo, 2026-09-17 (ReadModelFilmsInvisibleWithScreenings):
+    // Kino Spektrum published "Opętanie - plakatowa trasa: darmowy plakat dla
+    // każdego widza!" tagged with the TOUR's own year (2026) — 45 years past the
+    // resolved 1981 cluster, outside rule 2's ±2 window — at a cinema that carries
+    // NONE of the resolved cluster's own listings, so rule 2b's identical-text
+    // reclaim (the Hunger Games case above) has nothing to compare against and the
+    // row was a permanent orphan: `readyToProject` never held, so the projector
+    // pruned its card and the film 404'd with an upcoming showing on sale.
+    // `groupByFilm`'s containment edge already trusts a bare title as a token-run
+    // PREFIX of a longer one (with no MixedFilmDetector contradiction) to be the
+    // SAME film; this asks `clusterByFilm` to honour that same relationship
+    // instead of splitting it back apart on the year gap alone.
+    val group = Seq(
+      resolved("Opętanie", tmdbId = 21484, tmdbYear = 1981, cinema = Helios),
+      unresolved("Opętanie - plakatowa trasa: darmowy plakat dla każdego widza!", Some(2026), cinema = Kinoteka)
+    )
+    Seq(group, group.reverse).foreach { ordered =>
+      val clusters = FilmCanonicalizer.clusterByFilm(ordered, titleNormalizer)
+      withClue(s"clusters: ${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
+        clusters should have size 1
+      }
+    }
+  }
+
+  it should "refuse to reclaim a year-window orphan whose decoration matches TWO resolved clusters (ambiguous)" in {
+    // The decoration-match mirror of the identical-text ambiguity case above: a
+    // same-titled remake pair must stay split even though the orphan's title
+    // decorates BOTH of their bare titles.
+    val group = Seq(
+      resolved("Diuna", tmdbId = 1, tmdbYear = 1984, cinema = Helios),
+      resolved("Diuna", tmdbId = 2, tmdbYear = 2021, cinema = Multikino),
+      unresolved("Diuna - pokaz przedpremierowy", Some(2026), cinema = Kinoteka)
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    clusters should have size 3
+  }
+
+  it should "not reclaim a year-window orphan whose title carries its OWN delimited year disagreeing with the resolved cluster" in {
+    // "It (1990)" beside a resolved "It" (2017) — SameTitleTwoFilmsSpec's shape,
+    // asked of clusterByFilm directly. The bare-title containment match alone
+    // would decorate ("Casablanca 1942" is still Casablanca — years aren't a
+    // sequel marker), but the orphan's OWN delimited year says it is a DIFFERENT,
+    // specific same-titled film, which must refuse regardless of the title shape.
+    // Keyed at 1990 (not yearless) — `EmbeddedYear` persists the delimited year as
+    // the row's own lookup year at the scrape boundary, so this exercises the same
+    // rule-2/2b year-window orphan path the "Opętanie" case above does, not rule 4.
+    val group = Seq(
+      resolved("It", tmdbId = 570670, tmdbYear = 2017, cinema = Helios),
+      unresolved("It (1990)", Some(1990), cinema = Kinoteka)
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    clusters should have size 2
+  }
+
+  it should "not reclaim a year-window orphan whose decoration match is refused by MixedFilmDetector's own contradiction" in {
+    // The decoration-match mirror of the "Obcy" contradiction case above: a
+    // cinema-published original title + runtime that plainly names a DIFFERENT
+    // film must still refuse, even though the bare titles alone would decorate.
+    // Year kept far apart (2025 vs 2026's tmdbYear... a WIDE gap, well past ±2) so
+    // this exercises the decoration-reclaim path rather than the plain rule-2
+    // window, which would otherwise attach it regardless of this test's point.
+    val group = Seq(
+      published("Obcy", tmdbId = 7183, tmdbYear = 1969, cinema = Helios, originalTitle = "L'étranger", runtime = 120),
+      key("Obcy - pokaz przedpremierowy", Some(2026)) -> MovieRecord(
+        data = Map[Source, SourceData](Kinoteka ->
+          SourceData(title = Some("Obcy - pokaz przedpremierowy"), originalTitle = Some("I Was A Stranger"), runtimeMinutes = Some(103))))
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    clusters should have size 2
+  }
+
   "groupByFilm" should "fold a film keyed under two languages (same tmdbId, bare titles) into one component, then one cluster" in {
     // "Tangled" (original) and "Zaplątani" (Polish) are the SAME film — same
     // tmdbId, both keys are TMDB aliases — but different sanitized titles, so the

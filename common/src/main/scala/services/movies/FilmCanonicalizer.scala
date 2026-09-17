@@ -282,11 +282,50 @@ object FilmCanonicalizer {
       val bTexts = slotTexts(b)
       slotTexts(a).exists { case (source, text) => bTexts.get(source).contains(text) }
     }
+    // A year-window orphan whose OWN title textually DECORATES a resolved
+    // cluster's bare title/alias — a re-release banner stamped with the
+    // SCREENING's year, not the film's — is reclaimed the same way as an
+    // identical listing, for the cinema that never gets the chance to publish
+    // one: `sharesADuplicateListing` needs a matching print at a cinema the
+    // resolved cluster ALREADY has, which a decorated banner at a DIFFERENT
+    // venue never has. PL "Opętanie" poster-tour promo, 2026-09-17: Kino
+    // Spektrum published "Opętanie - plakatowa trasa: darmowy plakat dla
+    // każdego widza!" keyed at the tour's own year (2026), 45 years from the
+    // resolved 1981 cluster and at none of its cinemas — the row was a
+    // permanent orphan (`readyToProject` never held, so the projector pruned
+    // its card — `ReadModelFilmsInvisibleWithScreenings`). Reuses the SAME
+    // `TitleContainment.decorates` + `MixedFilmDetector` guard `groupByFilm`'s
+    // containment edge already trusts to union the two rows into one
+    // component in the first place — this only extends that trust to
+    // `clusterByFilm`'s own year-window refusal, so a decoration the settle
+    // already agreed is the same film isn't split back apart by its year.
+    def clusterTitleTokens(c: Cluster): Seq[Seq[String]] =
+      c.rows.flatMap { case (k, e) => (e.tmdbTitleAliases + k.cleanTitle).toSeq }.distinct.map(TitleContainment.tokens)
+    // A title carrying its OWN delimited year annotation that DISAGREES with the
+    // candidate cluster's is evidence of a genuinely different same-titled film —
+    // "It (1990)" beside a resolved "It" (2017) — which `EmbeddedYear` exists
+    // precisely to keep apart (`SameTitleTwoFilmsSpec`), and a bare title-run match
+    // must never override it: `TitleContainment`/`SequelMarker` deliberately do NOT
+    // treat a plain four-digit year as a sequel/entry marker ("Casablanca 1942" is
+    // still Casablanca), so without this check a decoration-reclaim would fold the
+    // one shape that guard was never meant to cover. A row with no delimited year of
+    // its own (the ordinary case, including "Opętanie"'s poster-tour banner) carries
+    // no such evidence and is unaffected.
+    def ownYearContradicts(c: Cluster, row: Row): Boolean =
+      EmbeddedYear.of(row._1.cleanTitle).exists(y => !c.refYear.contains(y))
+    def decoratesResolvedCluster(c: Cluster, row: Row): Boolean = {
+      val whole = TitleContainment.tokens(row._1.cleanTitle)
+      !ownYearContradicts(c, row) && whole.nonEmpty &&
+        clusterTitleTokens(c).exists(base => TitleContainment.decorates(base, whole)) &&
+        !c.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, row._2, normalizer))
+    }
     val reclaimHome: Map[Row, Int] = orphans.iterator.flatMap { row =>
-      val matches = resolvedWithAdjacent.zipWithIndex.filter { case (c, _) => c.rows.exists(cr => sharesADuplicateListing(cr._2, row._2)) }
-      // Ambiguous (the same text somehow shared by two resolved clusters) refuses,
-      // exactly like every other edge in this file that can't tell which film a
-      // row belongs to.
+      val matches = resolvedWithAdjacent.zipWithIndex.filter { case (c, _) =>
+        c.rows.exists(cr => sharesADuplicateListing(cr._2, row._2)) || decoratesResolvedCluster(c, row)
+      }
+      // Ambiguous (the same text, or a decoration, matches two resolved
+      // clusters) refuses, exactly like every other edge in this file that
+      // can't tell which film a row belongs to.
       Option.when(matches.lengthIs == 1)(row -> matches.head._2)
     }.toMap
     val resolvedReclaimed: Seq[Cluster] = resolvedWithAdjacent.zipWithIndex.map { case (c, index) =>
