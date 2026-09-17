@@ -31,8 +31,18 @@ class PosterImageLoader(posters: PosterFetch) {
    *  the og-image endpoint's p95 into its histogram cap (2026-09-12). */
   def loadFirst(candidates: Seq[String]): Option[BufferedImage] =
     candidates.headOption.flatMap(load).orElse {
-      ConcurrentCandidateProbe.firstMatch("poster-fallbacks", candidates.drop(1))(load)
+      ConcurrentCandidateProbe.firstMatch("poster-fallbacks", candidates.drop(1), maxConcurrent = MaxConcurrentFallbacks)(load)
     }
+
+  /** Bounds how many fallback candidates race at once — each holds a full image
+   *  download + decode in memory for its duration, so an unbounded fan-out
+   *  multiplies PEAK memory by the candidate count (up to 5 fallbacks). That is
+   *  what OOM-killed `web-pl` twice in ~4h on 2026-09-17: PL's frequent
+   *  Multikino-primary-poster miss forces this path disproportionately, and the
+   *  cgroup limit has no margin for 5 concurrent image buffers on top of the
+   *  JVM's own budget. 3 keeps most of `ba49e065c`'s latency win (worst case
+   *  2 rounds instead of 5 sequential fetches) while capping the multiplier. */
+  private val MaxConcurrentFallbacks = 3
 
   def load(url: String): Option[BufferedImage] =
     decode(url).orElse {

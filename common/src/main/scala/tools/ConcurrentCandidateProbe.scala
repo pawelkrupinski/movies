@@ -30,13 +30,27 @@ import scala.concurrent.{Await, Future}
  */
 object ConcurrentCandidateProbe {
 
-  def firstMatch[C, A](label: String, candidates: Seq[C])(probe: C => Option[A]): Option[A] = {
+  /** `maxConcurrent` bounds how many probes are ever IN FLIGHT at once, batching
+   *  the candidates into successive rounds of that size — the default,
+   *  unbounded, is exactly the original one-round-fires-everything behaviour.
+   *  A probe whose per-candidate cost is more than a cheap network round-trip
+   *  (an image download + decode, not a slug lookup) needs this: firing every
+   *  candidate at once multiplies PEAK memory by the candidate count, which is
+   *  what OOM-killed `web-pl` racing up to 5 poster fallbacks together
+   *  (2026-09-17) — see [[tools.PosterImageLoader]]. Rounds are evaluated
+   *  lazily (later rounds never start once an earlier one has a match or
+   *  throws), so this only trades some latency for a memory ceiling; it does
+   *  not change the priority-order or failure-propagation guarantees above. */
+  def firstMatch[C, A](label: String, candidates: Seq[C], maxConcurrent: Int = Int.MaxValue)
+                       (probe: C => Option[A]): Option[A] = {
     if (candidates.isEmpty) return None
     val ec = DaemonExecutors.virtualThreadEC(label)
     try
-      candidates.map(c => Future(probe(c))(using ec)).iterator
-        .map(Await.result(_, Duration.Inf))
-        .collectFirst { case Some(a) => a }
+      candidates.grouped(math.max(1, maxConcurrent)).map { round =>
+        round.map(c => Future(probe(c))(using ec)).iterator
+          .map(Await.result(_, Duration.Inf))
+          .collectFirst { case Some(a) => a }
+      }.collectFirst { case Some(a) => a }
     finally ec.shutdown()
   }
 }
