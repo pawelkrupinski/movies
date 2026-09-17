@@ -97,7 +97,21 @@ object SequelMarker {
     Seq("the", "hunger", "games") -> Set(
       Seq("catching", "fire"),
       Seq("the", "ballad", "of", "songbirds", "and", "snakes"),
-      Seq("the", "ballad", "of", "songbirds", "snakes")
+      Seq("the", "ballad", "of", "songbirds", "snakes"),
+      // UK convergence, 2026-09-15→17: a newly-trending, not-yet-released entry
+      // in the SAME franchise ("Sunrise on the Reaping", 2026-11-18, also
+      // Francis Lawrence) shares nothing with "Catching Fire"/"Mockingjay - Part
+      // 1"/"Part 2" but the "the hunger games" prefix — so a bare, undated
+      // rerelease listing (Odeon's rerelease-season pages stamp every title with
+      // the season's current year, exactly the "Catching Fire" 2013 vs the
+      // resolved cluster's own trap `437d1fa21` already names) let
+      // `TmdbCandidateSearch.directorWalk`'s year-pinned tier resolve straight to
+      // it: nothing here previously told `isDifferentInstalment` this was a
+      // DIFFERENT entry rather than the same one under an unfamiliar subtitle,
+      // so `corroboratedByTitle`'s "shares Hunger/Games with the query" was
+      // enough on its own. Curating it closes the same gap `catching fire` and
+      // `the ballad of songbirds and snakes` were added for.
+      Seq("sunrise", "on", "the", "reaping")
     ),
     // US prod, 2026-09-16: "Bring It On: All or Nothing" (2006, dir. Steve
     // Rash) folded onto the resolved "Bring It On" (2000, dir. Peyton Reed)

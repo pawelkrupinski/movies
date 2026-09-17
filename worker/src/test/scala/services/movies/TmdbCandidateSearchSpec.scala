@@ -126,6 +126,41 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     found.map(_._1) shouldBe Some(MinionkiIStraszydla)
   }
 
+  // ── `directorWalk`'s year-pinned tier must not fall for a same-franchise
+  //    entry sharing only the common prefix ──────────────────────────────────
+
+  /** UK convergence, 2026-09-15→17, third regression, and the one that actually
+   *  reproduces what CI saw: a rerelease listing stamps EVERY title with the
+   *  season's current year (`437d1fa21`'s "Odeon" trap, `YearWindow`'s own doc),
+   *  so a bare "The Hunger Games: Catching Fire" row carries `releaseYear =
+   *  2026` though the real film is 2013. That wrong year does TWO things: it
+   *  filters the real "Catching Fire" credit OUT of `eligible` (year 13 apart,
+   *  past `titleClose`'s year tolerance), so `byTitle` finds nothing despite an
+   *  exact title match existing — and it then uniquely pins `byYear` to
+   *  whichever OTHER Francis Lawrence credit happens to BE 2026: "Sunrise on the
+   *  Reaping", a not-yet-released franchise entry sharing nothing but "The
+   *  Hunger Games" with the query. `corroboratedByTitle` saw that shared prefix
+   *  as confirmation before `SequelMarker`'s curated list knew the two apart. */
+  it should "refuse a year-pinned credit that is a not-yet-released same-franchise sibling, not the wrong year's real film" in {
+    val SunriseOnTheReaping = 1300968
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "/search/movie"                -> """{"results":[]}""",
+      "query=Francis+Lawrence"       -> """{"results":[{"id":10943,"name":"Francis Lawrence","known_for_department":"Directing"}]}""",
+      "/person/10943/movie_credits"  -> s"""{"crew":[
+        |{"id":101299,"title":"The Hunger Games: Catching Fire","original_title":"The Hunger Games: Catching Fire","release_date":"2013-11-15","department":"Directing","popularity":23.5},
+        |{"id":$SunriseOnTheReaping,"title":"The Hunger Games: Sunrise on the Reaping","original_title":"The Hunger Games: Sunrise on the Reaping","release_date":"2026-11-18","department":"Directing","popularity":40.0}
+        |]}""".stripMargin
+    )), apiKey = Some("stub"))
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("The Hunger Games: Catching Fire"),
+        director = Seq("Francis Lawrence"), releaseYear = Some(2026))))
+
+    val found = search(tmdb).resolve(
+      "The Hunger Games: Catching Fire", Some(2026), row, originalTitle = None, director = None)
+    found.map(_._1) should not be Some(SunriseOnTheReaping)
+    found shouldBe None
+  }
+
   // ── An IMDb-style disambiguator suffix must not blind the person search ────
 
   /** IMDb tells two same-named people apart with a trailing "(I)"/"(II)"/…

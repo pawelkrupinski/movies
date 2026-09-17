@@ -39,6 +39,17 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     anotherEntry("The Hunger Games", "The Hunger Games: The Ballad of Songbirds and Snakes") shouldBe true
   }
 
+  // UK convergence, 2026-09-15→17: a newly-trending, not-yet-released franchise
+  // entry ("Sunrise on the Reaping", also Francis Lawrence) shares "the hunger
+  // games" with every other entry but names none of them — a bare, rerelease-
+  // year-stamped listing for "Catching Fire"/"Mockingjay - Part 1"/"Part 2" let
+  // `TmdbCandidateSearch.directorWalk`'s year-pinned tier resolve straight to
+  // it, because nothing here told `isDifferentInstalment` these were DIFFERENT
+  // entries rather than the same one under an unfamiliar subtitle.
+  it should "refuse a same-franchise entry that hasn't released yet, sharing only the franchise prefix" in {
+    anotherEntry("The Hunger Games", "The Hunger Games: Sunrise on the Reaping") shouldBe true
+  }
+
   // US prod, 2026-09-16: "Bring It On: All or Nothing" (2006, dir. Steve Rash)
   // folded onto the resolved "Bring It On" (2000, dir. Peyton Reed) the same
   // way as Catching Fire above — caught by `CinemaCorroboration`'s director
@@ -114,5 +125,17 @@ class SequelMarkerSpec extends AnyFlatSpec with Matchers {
     different("The Hunger Games: Catching Fire", "The Hunger Games: Mockingjay - Part 1") shouldBe true
     different("The Hunger Games: The Ballad of Songbirds and Snakes",
               "The Hunger Games: Mockingjay - Part 1") shouldBe true
+  }
+
+  // UK convergence, 2026-09-15→17: same shape as the pair above, but against the
+  // franchise's newest, not-yet-released entry — the one `directorWalk`'s year-
+  // pinned tier actually resolved a bare rerelease listing to (its 2026 release
+  // year, the only signal a rerelease-stamped listing carries, uniquely pins his
+  // filmography to this one credit).
+  it should "tell the not-yet-released franchise entry apart from its siblings too" in {
+    different("The Hunger Games: Catching Fire", "The Hunger Games: Sunrise on the Reaping") shouldBe true
+    different("The Hunger Games: Sunrise on the Reaping", "The Hunger Games: Catching Fire") shouldBe true
+    different("The Hunger Games: Mockingjay - Part 1", "The Hunger Games: Sunrise on the Reaping") shouldBe true
+    different("The Hunger Games: Mockingjay - Part 2", "The Hunger Games: Sunrise on the Reaping") shouldBe true
   }
 }
