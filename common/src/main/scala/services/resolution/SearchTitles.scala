@@ -66,23 +66,15 @@ object SearchTitles {
       .map(_.trim).filter(_.nonEmpty).distinct
   }
 
-  /** [[candidates]] WITHOUT the de-decorated forms — `title`, `originalTitle` and
-   *  `extraTitles`, each only as actually reported. The restricted pool a caller
-   *  whose acceptance check has no title-relevance verification of its own must
-   *  use instead of the full set: a de-decorated fragment (the banner-split
-   *  "Catching Fire" off "The Hunger Games: Catching Fire", the dash-split "The
-   *  Hunger Games: Mockingjay" off "…Mockingjay - Part 2") is a far more generic
-   *  string than the film's own reported title, and more likely to coincide with
-   *  an unrelated film during a live search-ranking anomaly than the specific
-   *  title a cinema actually printed. `TmdbCandidateSearch.searchUnique`'s
-   *  "TMDB returned exactly one row" trust learned this the hard way: UK
-   *  convergence, 2026-09-15→17 — a banner-split "Catching Fire" (off the
-   *  undivided title, ambiguous and correctly refused) transiently returned a
-   *  SINGLE spurious hit (a newly-trending, same-director franchise entry) that
-   *  `searchUnique` accepted unconditionally, mis-resolving three separate
-   *  Hunger Games sequels. `searchYearExactTop` and `directorWalk` keep verifying
-   *  hits by exact title / director-filmography match, so the full `candidates`
-   *  set (decorated forms included) remains safe for them. */
+  /** The subset of [[candidates]] that are the row's own titles exactly as
+   *  reported — `title`, `originalTitle` and `extraTitles`, none of them split
+   *  apart. Lets a caller whose acceptance check has no title-relevance
+   *  verification of its own (`TmdbCandidateSearch.searchUnique`'s director-less
+   *  branch) tell a de-decorated FRAGMENT (needs the extra check — see there)
+   *  from one of the row's own complete titles (trusted outright: no text-based
+   *  check could ever confirm a genuine cross-language TRANSLATION like
+   *  "Посіпаки і Монстряки" for "Minionki i straszydła", which is exactly why one
+   *  must not be asked of it). */
   def wholeCandidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] =
     (Seq(title) ++ originalTitle.toSeq ++ extraTitles).map(_.trim).filter(_.nonEmpty).distinct
 }

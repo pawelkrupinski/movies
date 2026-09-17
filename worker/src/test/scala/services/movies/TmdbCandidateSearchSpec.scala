@@ -51,18 +51,21 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
     search(tmdb).resolve("Guru", None, row, originalTitle = None, director = None) shouldBe None
   }
 
-  // ── `searchUnique` must not trust a decoration-split fragment ──────────────
+  // ── `searchUnique` must not trust an irrelevant decoration-split fragment ──
 
   /** UK convergence, 2026-09-15→17: `SearchTitles.candidates`' banner-split adds
    *  "Catching Fire" as an extra candidate for "The Hunger Games: Catching
    *  Fire" (everything after the first ": "). The undivided title's own TMDB
    *  search correctly sees two results and refuses — but a live TMDB
    *  search-ranking anomaly briefly made the SHORT split fragment return a
-   *  single, spurious hit (a same-franchise, unrelated entry), and the OLD
-   *  unrestricted candidate pool let `searchUnique` accept it unconditionally.
-   *  `wholeCandidates` keeps that check from ever trying the split fragment,
-   *  so the row correctly refuses instead of mis-resolving. */
-  it should "refuse to resolve via a banner-split fragment even when that fragment alone looks unique" in {
+   *  single, spurious hit (a same-franchise, unrelated entry — sharing
+   *  "Hunger"/"Games" with the undivided title, which is exactly why the fix
+   *  compares a hit against the SPECIFIC candidate that found it, "Catching
+   *  Fire", rather than the whole candidate set), and the OLD unconditional
+   *  "exactly one row" trust let `searchUnique` accept it. Verifying the hit
+   *  shares a distinctive word with "Catching Fire" itself — which it does
+   *  not — is what now refuses it. */
+  it should "refuse to resolve via a decoration-split fragment whose sole hit shares no distinctive word with it" in {
     val tmdb = new TmdbClient(http = new StubFetch(Map(
       "query=The+Hunger+Games%3A+Catching+Fire" ->
         """{"results":[
@@ -77,6 +80,50 @@ class TmdbCandidateSearchSpec extends AnyFlatSpec with Matchers {
 
     search(tmdb).resolve(
       "The Hunger Games: Catching Fire", None, row, originalTitle = None, director = None) shouldBe None
+  }
+
+  /** The mirror of the case above, and the reason the fix could not simply drop
+   *  decoration-split candidates from `searchUnique` altogether (tried and
+   *  reverted — it broke real resolutions): a Polish venue's own listing
+   *  routinely resolves ONLY via its colon-banner-split fragment, because the
+   *  undivided "banner: film" string never matches anything on TMDB. The split
+   *  fragment here ("drzewo magii") shares a distinctive word with its sole
+   *  hit's own title, so it must still resolve. */
+  it should "still resolve via a decoration-split fragment whose sole hit shares a distinctive word with it" in {
+    val DrzewoMagii = 1140521
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "query=Kino+przyjazne+sensorycznie%3A+drzewo+magii" -> """{"results":[]}""",
+      "query=drzewo+magii" ->
+        s"""{"results":[{"id":$DrzewoMagii,"title":"Drzewo magii","original_title":"The Magic Faraway Tree","release_date":"2026-11-20"}]}"""
+    )), apiKey = Some("stub"))
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Kino przyjazne sensorycznie: drzewo magii"))))
+
+    val found = search(tmdb).resolve(
+      "Kino przyjazne sensorycznie: drzewo magii", None, row, originalTitle = None, director = None)
+    found.map(_._1) shouldBe Some(DrzewoMagii)
+  }
+
+  /** UK convergence, 2026-09-15→17, second regression on the SAME fix: an earlier
+   *  version required every `searchUnique` hit to share a distinctive word with its
+   *  query, with no exception — which broke a genuine cross-language TRANSLATION
+   *  with no other signal. A Ukrainian-dubbed listing's OWN reported title
+   *  ("Посіпаки і Монстряки", not a decoration split of anything — it is the whole
+   *  title as printed) shares no token at all with "Minionki i straszydła"/"Minions
+   *  & Monsters", by definition: different words, different languages, same film.
+   *  It must still resolve — only a de-decorated FRAGMENT needs the extra check. */
+  it should "still resolve a row's own complete title via a translation sharing no distinctive word with the hit" in {
+    val MinionkiIStraszydla = 1315772
+    val tmdb = new TmdbClient(http = new StubFetch(Map(
+      "query=%D0%9F%D0%BE%D1%81%D1%96%D0%BF%D0%B0%D0%BA%D0%B8+%D1%96+%D0%9C%D0%BE%D0%BD%D1%81%D1%82%D1%80%D1%8F%D0%BA%D0%B8" ->
+        s"""{"results":[{"id":$MinionkiIStraszydla,"title":"Minionki i straszydła","original_title":"Minions & Monsters","release_date":"2026-08-01"}]}"""
+    )), apiKey = Some("stub"))
+    val row = MovieRecord(data = Map[Source, SourceData](
+      Helios -> SourceData(title = Some("Посіпаки і Монстряки"))))
+
+    val found = search(tmdb).resolve(
+      "Посіпаки і Монстряки", None, row, originalTitle = None, director = None)
+    found.map(_._1) shouldBe Some(MinionkiIStraszydla)
   }
 
   // ── An IMDb-style disambiguator suffix must not blind the person search ────

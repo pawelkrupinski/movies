@@ -109,14 +109,13 @@ class TmdbCandidateSearch(
       .flatMap(t => Seq(normalizer.apiQuery(t), normalizer.searchQuery(t)))
       .filter(_.nonEmpty).distinct
     val candidates = queryForms(extraTitles)
-    // The restricted pool for `searchUnique` alone — see `SearchTitles.wholeCandidates`.
-    // Its "TMDB returned exactly one row" acceptance has no title-relevance check of
-    // its own, so a de-decorated fragment (a banner/dash split) is too generic a
-    // string to trust with it; `searchYearExactTop` below keeps using the full
-    // `candidates` set, since its exact-title-match filter is safe against them.
+    // The subset of `candidates` that are the row's own titles exactly as reported
+    // — never split apart. Lets the director-less `searchUnique` branch below tell
+    // a de-decorated FRAGMENT (needs extra verification) from one of the row's own
+    // complete titles (trusted outright, same as before the fix — see its doc).
     val wholeCandidates = SearchTitles.wholeCandidates(title, originalTitle, extraTitles)
       .flatMap(t => Seq(normalizer.apiQuery(t), normalizer.searchQuery(t)))
-      .filter(_.nonEmpty).distinct
+      .filter(_.nonEmpty).toSet
     // The same set restricted to what the CINEMAS published — `title` and
     // `originalTitle` are already cinema-side (`tmdbHints` reads
     // `cinemaOriginalTitle`), so only `slotOriginals` is dropped. The walk below
@@ -254,16 +253,50 @@ class TmdbCandidateSearch(
     val resolvedId = tmdbIdCache.getOrResolve(hintKey) {
       val hit =
         if (rowDirectors.isEmpty)
-          // First the strict singleton rule; then, when a YEAR is present, accept a
-          // year-scoped search whose TOP hit is an exact-title match even if it
-          // returned several films (e.g. "Sundown" alongside "Sundown Town", "DJ at
-          // Sundown"). The year + verbatim top is confidence the singleton rule
-          // lacks — still no popularity guess (a non-exact top doesn't resolve), and
-          // yearless rows are untouched (searchYearExactTop is a no-op without a year).
-          // The singleton rule uses `wholeCandidates`, NOT `candidates` — see its
-          // doc: a de-decorated fragment is too generic a string for a check that
-          // never looks at whether the hit's title actually resembles the query.
-          wholeCandidates.iterator.flatMap(q => tmdb.searchUnique(q, effectiveYear)).nextOption()
+          // First the strict singleton rule — but a hit found via a DE-DECORATED
+          // fragment (`candidates` minus `wholeCandidates` — the banner-split, dash-
+          // split, pipe-split or trailing-paren-stripped forms `SearchTitles`
+          // derives, never one of the row's own reported titles as printed) ALSO has
+          // to share a distinctive word with that specific fragment, the same
+          // corroboration `corroboratedByTitle` asks of the walk's year-pinned tier.
+          // TMDB's own "exactly one row" is not, alone, evidence the hit is even the
+          // right FILM: such a fragment is short and generic enough that a transient
+          // search-ranking anomaly can make it return a single, wholly unrelated hit
+          // — UK convergence, 2026-09-15→17, mis-resolved three separate Hunger Games
+          // sequels this way, the banner-split "Catching Fire" (off "The Hunger
+          // Games: Catching Fire") transiently returning a newly-trending same-
+          // franchise entry as its sole hit. The check has to be against the
+          // SPECIFIC fragment queried, not the row's undivided title (also in
+          // `candidates`): that string shares "Hunger"/"Games" with the wrong hit's
+          // own "The Hunger Games: Sunrise on the Reaping" too, since both are the
+          // same franchise, while "Catching Fire" alone shares nothing with it. A
+          // correct fragment hit is always safe by this test — it is a SUBSTRING of
+          // the row's own title, so it keeps sharing a token with a genuinely correct
+          // hit regardless ("drzewo magii" still shares "drzewo"/"magii" with "Drzewo
+          // magii").
+          //
+          // A candidate that instead IS one of the row's own complete, reported
+          // titles is trusted unconditionally, exactly as before the fix — no
+          // text-overlap check could confirm a genuine TRANSLATION with no other
+          // signal, and one must still resolve: "Посіпаки і Монстряки", a Ukrainian
+          // dub's own reported title, shares no token at all with its correct hit
+          // "Minionki i straszydła"/"Minions & Monsters", by definition (they are
+          // different words in different languages for the same film). Only a
+          // de-decorated FRAGMENT — necessarily a piece of a longer string the row
+          // itself never claimed to BE — needs the extra check.
+          //
+          // Then, when a YEAR is present, accept a year-scoped search whose TOP hit
+          // is an exact-title match even if it returned several films (e.g.
+          // "Sundown" alongside "Sundown Town", "DJ at Sundown"). The year +
+          // verbatim top is confidence the singleton rule lacks — still no
+          // popularity guess (a non-exact top doesn't resolve), and yearless rows
+          // are untouched (searchYearExactTop is a no-op without a year).
+          candidates.iterator.flatMap(q => tmdb.searchUnique(q, effectiveYear).map(q -> _))
+            .find { case (q, hit) =>
+              wholeCandidates.contains(q) ||
+                TitleMatch.sharesDistinctiveToken(Seq(q), Seq(hit.title) ++ hit.originalTitle.toSeq, normalizer.sanitize)
+            }
+            .map(_._2)
             .orElse(candidates.iterator.flatMap(q => tmdb.searchYearExactTop(q, effectiveYear)).nextOption())
             .map(hit => { searchBasis = Some(if (effectiveYear.isDefined) TmdbBasis.YearScoped else TmdbBasis.TitleOnly); hit })
         else {

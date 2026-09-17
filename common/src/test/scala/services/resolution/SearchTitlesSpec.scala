@@ -50,10 +50,10 @@ class SearchTitlesSpec extends AnyFlatSpec with Matchers {
   }
 
   "wholeCandidates" should "keep only the reported titles, dropping every de-decorated split" in {
-    // UK convergence, 2026-09-15→17: `candidates`' banner/dash splits off "The
-    // Hunger Games: Catching Fire" / "…Mockingjay - Part 2" are far more generic
-    // than the film's own title, and a caller with no title-relevance check of
-    // its own (`TmdbCandidateSearch.searchUnique`) must never see them.
+    // UK convergence, 2026-09-15→17: `candidates`' banner-split off "The Hunger
+    // Games: Catching Fire" ("Catching Fire" alone) is a fragment, not one of the
+    // row's own reported titles, and `TmdbCandidateSearch.searchUnique`'s
+    // director-less branch needs to tell the two apart.
     val found = SearchTitles.wholeCandidates("The Hunger Games: Catching Fire", None)
     found should contain only "The Hunger Games: Catching Fire"
 
