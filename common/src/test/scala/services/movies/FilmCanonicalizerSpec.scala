@@ -220,6 +220,49 @@ class FilmCanonicalizerSpec extends AnyFlatSpec with Matchers {
     withClue("six years off: ")  { clustersFor(2020) should have size 2 }
   }
 
+  it should "waive the rule-4 slot-year refusal when a yearless straggler's OWN runtime agrees closely with the resolved film's" in {
+    // PL "Happy Together" (Wong Kar-wai, 1997), 2026-09-17: Kinoteka — a BRAND NEW
+    // venue, with nothing yet on the resolved row to reclaim by shared text the way
+    // rule 2b's "identical listing" check needs — reports "Data premiery:
+    // 30.06.2026" (this rerelease's screening date, not the film's vintage) under a
+    // bare, undecorated heading, so the row keys yearless but its slot carries a year
+    // Δ29 from the resolved 1997 cluster, past even `YearWindow.SlotYearImplausibility`.
+    // Its own `originalTitle`/`director` are published in Cantonese romanization
+    // ("Chun gwong cha sit"/"Wong Kar Wai") against TMDB's Chinese-script originals
+    // ("春光乍洩"/"王家衛"), so neither can serve as the override signal here — but
+    // the runtime, 96 minutes on both sides, needs no script to compare (contrast
+    // "Hope" above, whose stragglers published no runtime the resolved film agreed
+    // with either).
+    val group = Seq(
+      key("Happy Together", Some(1997)) -> MovieRecord(
+        tmdbId = Some(1013),
+        data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(1997), runtimeMinutes = Some(96)))),
+      key("Happy Together", None) -> MovieRecord(
+        data = Map[Source, SourceData](Kinoteka ->
+          SourceData(title = Some("Happy Together"), releaseYear = Some(2026), runtimeMinutes = Some(96))))
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    withClue(s"clusters: ${clusters.map(_.map(c => (c._1.cleanTitle, c._1.year)))}\n") {
+      clusters should have size 1
+    }
+  }
+
+  it should "still refuse the rule-4 fold on a wide slot-year gap when the straggler's runtime DISAGREES" in {
+    // The mirror of the case above: a yearless straggler past the slot-year
+    // tolerance does NOT get waived just because it names SOME runtime — only a
+    // CLOSELY AGREEING one is evidence of the same film.
+    val group = Seq(
+      key("Happy Together", Some(1997)) -> MovieRecord(
+        tmdbId = Some(1013),
+        data = Map[Source, SourceData](Tmdb -> SourceData(releaseYear = Some(1997), runtimeMinutes = Some(96)))),
+      key("Happy Together", None) -> MovieRecord(
+        data = Map[Source, SourceData](Kinoteka ->
+          SourceData(title = Some("Happy Together"), releaseYear = Some(2026), runtimeMinutes = Some(150))))
+    )
+    val clusters = FilmCanonicalizer.clusterByFilm(group, titleNormalizer)
+    clusters should have size 2
+  }
+
   it should "refuse a rule-4 fold when the yearless-key row's cinema publishes a contradicting original title + runtime" in {
     // The "Obcy" shape (see `groupByFilm`'s containment-edge tests below), asked
     // of rule 4 instead: Kino Pionier's "I Was A Stranger" (103 min) beside the

@@ -344,4 +344,16 @@ object MixedFilmDetector {
   /** Runtimes within this many minutes are the same film — cinemas round, and some
    *  count the credits. Matches the director walk's tolerance. */
   private val RuntimeAgreementMinutes = 2
+
+  /** The inverse of `corroborated`'s runtime branch, for a caller (`FilmCanonicalizer`
+   *  rule 4) that needs "these published runtimes say the SAME film" rather than
+   *  "different" — waiving a slot-year-implausibility refusal when nothing else
+   *  the straggler published corroborates it, exactly the runtime-over-year
+   *  precedent `corroborated` itself documents ("Rozmowa", Kinoteka's screening-date
+   *  year beside a matching 113-minute runtime). Empty on either side abstains
+   *  (false): a straggler with no runtime of its own has nothing to override with. */
+  private[movies] def runtimesAgree(a: Iterable[Int], b: Iterable[Int]): Boolean = {
+    val (as, bs) = (a.toSet, b.toSet)
+    as.nonEmpty && bs.nonEmpty && as.forall(x => bs.forall(y => math.abs(x - y) <= RuntimeAgreementMinutes))
+  }
 }

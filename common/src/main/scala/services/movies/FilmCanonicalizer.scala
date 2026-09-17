@@ -99,8 +99,14 @@ object FilmCanonicalizer {
    *       rows at y or y+1, the next window opens at the next distinct year
    *       > y+1. At most two neighbouring years per cluster, order-independent.
    *    4. Yearless AND idless rows fold into the group's canonical cluster (the
-   *       smallest-`canonicalRank` cluster from 1–3) on the title match alone;
-   *       a lone such row stays its own singleton. */
+   *       smallest-`canonicalRank` cluster from 1–3) on the title match alone,
+   *       UNLESS the row's own evidence contradicts it (a slot year or runtime
+   *       past tolerance, or a cinema-published original title `MixedFilmDetector`
+   *       reads as a different film) — except a slot-year contradiction alone is
+   *       waived when the row's own published runtime AGREES CLOSELY with the
+   *       resolved film's, the same "runtime settles it, not the year" precedent
+   *       `MixedFilmDetector.corroborated` documents. A lone such row stays its
+   *       own singleton. */
   def clusterByFilm(group: Seq[(CacheKey, MovieRecord)], normalizer: TitleNormalizer): Seq[Seq[(CacheKey, MovieRecord)]] = {
     type Row = (CacheKey, MovieRecord)
     def rank(r: Row): (Boolean, Int, String) = canonicalRank(r._1)
@@ -342,6 +348,25 @@ object FilmCanonicalizer {
     // refuses to promote, not a cinema's considered production-year disagreement;
     // "Głos Hind Rajab"'s Δ3 slot-vs-resolved gap must still fold (the test below
     // pins it), while "Hope"'s Δ12 must not.
+    //
+    // A straggler whose OWN published runtime AGREES CLOSELY with the resolved
+    // film's is exempted from the year-implausibility refusal above — the same
+    // "runtime settles it, not the year" precedent `MixedFilmDetector.corroborated`
+    // itself documents (Kinoteka's "Rozmowa" listed at a 2026 screening date beside
+    // a matching 113-minute runtime), applied here to a brand-new venue with
+    // nothing yet on the resolved row to reclaim by shared text (rule 2b's reclaim
+    // needs an EXISTING same-venue print to compare against, which a venue's
+    // first-ever scrape never has). PL "Happy Together" (Wong Kar-wai, 1997),
+    // 2026-09-17: Kinoteka's OWN detail page reports "Data premiery: 30.06.2026" —
+    // this rerelease's screening date, not the film's vintage — under a BARE
+    // heading `KinotekaClient`'s decorated-heading guard doesn't catch, so the row
+    // keys yearless but its slot carries a year Δ29 from the resolved 1997 cluster,
+    // past even `SlotYearImplausibility`. Runtime is the one signal that survives
+    // this row's OTHER trap too — its own `originalTitle`/`director` are published
+    // in Cantonese romanization ("Chun gwong cha sit"/"Wong Kar Wai") against
+    // TMDB's Chinese-script originals ("春光乍洩"/"王家衛"), so neither a title nor a
+    // director comparison can see the agreement, but the runtime — 96 minutes on
+    // both sides — needs no script to compare.
     val yearlessRows = yearless.toSeq
     val distinctFilms = resolvedClusters.size
     val clusters: Seq[Cluster] =
@@ -353,7 +378,9 @@ object FilmCanonicalizer {
         val canonicalRuntime = canonicalCluster.rows.flatMap(_._2.data.get(Tmdb).flatMap(_.runtimeMinutes)).headOption
         val (attach, refuse) = yearlessRows.partition { r =>
           val ev = r._2.evidence
-          !YearWindow.contradicts(ev.years, canonicalCluster.refYear, YearWindow.SlotYearImplausibility) &&
+          val yearContradicts = YearWindow.contradicts(ev.years, canonicalCluster.refYear, YearWindow.SlotYearImplausibility)
+          val runtimeAgrees   = MixedFilmDetector.runtimesAgree(ev.runtimes, canonicalRuntime.toSeq)
+          (!yearContradicts || runtimeAgrees) &&
             RuntimeCorroboration.plausible(ev.runtimes, canonicalRuntime) &&
             !canonicalCluster.rows.exists(cr => MixedFilmDetector.describeDifferentFilms(cr._2, r._2, normalizer))
         }
