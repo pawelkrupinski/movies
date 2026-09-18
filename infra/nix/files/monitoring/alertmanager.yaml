@@ -91,16 +91,16 @@ route:
     # should not have to be re-derived: FilesystemSpaceLow/Critical, FilesystemInodesLow/Critical,
     # FilesystemWillFillWithin7Days, FilesystemReadOnly, FilesystemMetricsAbsent, WorkerDown,
     # WorkerQueueStalled, WorkerQueueGrowingUnbounded, WorkerQueueMetricsAbsent,
-    # WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, plus the three named in full below.
-    # Sixteen, and every one of them is meant.
+    # WorkerTasksFailingRepeatedly, WorkerTaskTypeUnhandled, plus the four named in full below.
+    # Seventeen, and every one of them is meant.
     #
-    # THE THREE NAMES SPELLED OUT IN FULL, NOT GIVEN A PREFIX, and the asymmetry with the two
+    # THE FOUR NAMES SPELLED OUT IN FULL, NOT GIVEN A PREFIX, and the asymmetry with the two
     # families above is the point. A prefix is right for Filesystem and Worker because EVERY rule
     # in those families has the silent-failure property that earns a mailbox. It is wrong for
     # ReadModel, where six of the eight rules watch the pipeline's own movement and belong in the
     # chat stream with everything else -- a prefix would enrol them without anyone deciding to --
-    # and `ResidentialProxyFallingBackToZyte` has no family of its own at all (residential-proxy.rules
-    # holds exactly one rule).
+    # and `ResidentialProxyFallingBackToZyte` / `ChainFallbackSaturated` each has no family of its
+    # own at all (residential-proxy.rules and chain-fallback.rules each hold exactly one rule).
     #
     # WHAT EARNS THE TWO READ-MODEL NAMES THE MAILBOX is the same property the Worker note below
     # describes, in its sharpest form yet. On 2026-09-07 a prune deleted 509 cards,
@@ -121,6 +121,12 @@ route:
     # 8+ times with no working path, found by hand on /uk/tasks rather than by any alert -- is
     # exactly the case a chat-only channel missed.
     #
+    # `ChainFallbackSaturated` IS THE SAME SHAPE AT CHAIN GRANULARITY. Added after 2026-09-17: all
+    # 87 UK Cineworld venues broke simultaneously (a site relaunch 404ing the old scrape API), every
+    # one failed over to its per-venue Flicks fallback individually, no cinema bar went red, and
+    # nothing paged for over a day -- found by a human reading /uptime's "Aggregator fallback"
+    # section by hand. See chain-fallback.rules for the ratio-vs-threshold reasoning.
+    #
     # THE PREFIX MEANS A NEW `Worker*` OR `Filesystem*` RULE EMAILS BY DEFAULT. That is the right
     # default for these two families -- they are the ones whose failure is silent -- but it is a
     # decision a rule inherits without saying so, so add the name above and a case in
@@ -140,14 +146,14 @@ route:
     # one message to five, repeating hourly, on the channel this file's header argues must stay a
     # single stream. The subject is fixed below instead, where it costs nothing.
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte"
+        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated"
         - severity = "critical"
       receiver: telegram-and-email
       group_wait: 10s
       repeat_interval: 1h
 
     - matchers:
-        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte"
+        - alertname =~ "Filesystem.*|Worker.*|ReadModelServingShortOfCorpus|ReadModelServedGaugesAbsent|ResidentialProxyFallingBackToZyte|ChainFallbackSaturated"
         - severity = "warning"
       receiver: telegram-and-email
       group_interval: 15m

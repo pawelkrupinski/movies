@@ -6,8 +6,11 @@ import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.UptimeMonitor
 import services.UptimeMonitor.RecentTotals
+import services.fallback.{FallbackState, InMemoryFallbackStore}
 import services.metrics.WebJvmMetrics
 import services.readmodel.TestReadModel
+
+import java.time.Instant
 
 /**
  * Locks the Prometheus `/metrics` exposition that feeds the self-hosted Grafana:
@@ -87,8 +90,85 @@ class MetricsControllerSpec extends AnyFlatSpec with Matchers {
     body should include ("kinowo_uptime_recent_failures")
   }
 
-  private def newController(monitor: UptimeMonitor) = {
+  // ── kinowo_fallback_active_venues / kinowo_fallback_total_venues ──────────
+  //
+  // The Cineworld-relaunch incident (2026-09-17): 87 venues, one shared
+  // scraper client, ALL simultaneously riding their Flicks fallback for over
+  // a day, invisible because every cinema bar on /uptime stayed green. These
+  // gauges are what a `sum by (client) / sum by (client)` alert reads.
+  "renderFallbackSaturation" should "count active and total venues per shared client" in {
+    val tags = Map(
+      "Cineworld Leeds" -> Set("shared:CineworldClient"),
+      "Cineworld York" -> Set("shared:CineworldClient"),
+      "Odeon Luton" -> Set("shared:OdeonClient")
+    )
+    val states = Seq(fallbackState("Cineworld Leeds", active = true), fallbackState("Cineworld York", active = true))
+
+    val out = MetricsController.renderFallbackSaturation(tags, states, "uk")
+
+    out should include ("kinowo_fallback_active_venues{country=\"uk\",client=\"CineworldClient\"} 2")
+    out should include ("kinowo_fallback_total_venues{country=\"uk\",client=\"CineworldClient\"} 2")
+    out should include ("kinowo_fallback_active_venues{country=\"uk\",client=\"OdeonClient\"} 0")
+    out should include ("kinowo_fallback_total_venues{country=\"uk\",client=\"OdeonClient\"} 1")
+  }
+
+  it should "exclude custom (bespoke, single-venue) clients — only shared markers get a ratio" in {
+    val tags = Map("Rialto" -> Set("custom:RialtoClient"))
+    val states = Seq(fallbackState("Rialto", active = true))
+
+    val out = MetricsController.renderFallbackSaturation(tags, states, "pl")
+
+    out should not include "RialtoClient"
+  }
+
+  it should "not count a fallback-active cinema that recovered (active=false)" in {
+    val tags = Map("Cineworld Leeds" -> Set("shared:CineworldClient"))
+    val states = Seq(fallbackState("Cineworld Leeds", active = false))
+
+    val out = MetricsController.renderFallbackSaturation(tags, states, "uk")
+
+    out should include ("kinowo_fallback_active_venues{country=\"uk\",client=\"CineworldClient\"} 0")
+  }
+
+  it should "emit clients in name order and one HELP/TYPE pair per family" in {
+    val tags = Map("A" -> Set("shared:Zeta"), "B" -> Set("shared:Alpha"))
+
+    val out = MetricsController.renderFallbackSaturation(tags, Seq.empty, "pl")
+
+    out.indexOf("client=\"Alpha\"") should be < out.indexOf("client=\"Zeta\"")
+    out should include ("# TYPE kinowo_fallback_active_venues gauge")
+    out should include ("# TYPE kinowo_fallback_total_venues gauge")
+  }
+
+  "the controller" should "append the fallback-saturation gauges to the /metrics exposition" in {
+    val monitor = new UptimeMonitor() // no Mongo — tagService still writes its in-memory snapshot
+    monitor.tagService("Cineworld Leeds", Set("shared:CineworldClient"))
+    val fallbackStore = new InMemoryFallbackStore
+    fallbackStore.put(fallbackState("Cineworld Leeds", active = true))
+    val controller = newController(monitor, fallbackStore)
+
+    val body = contentAsString(controller.metrics(FakeRequest()))
+
+    body should include ("kinowo_fallback_active_venues{country=\"pl\",client=\"CineworldClient\"} 1")
+    body should include ("kinowo_fallback_total_venues{country=\"pl\",client=\"CineworldClient\"} 1")
+  }
+
+  private def fallbackState(cinema: String, active: Boolean) = FallbackState(
+    cinema = cinema,
+    active = active,
+    fallbackSource = "Flicks",
+    fallbackRef = None,
+    since = Some(Instant.EPOCH),
+    lastReason = None,
+    consecutiveFailures = 1,
+    lastPrimaryProbeAt = None,
+    nextPrimaryProbeAt = None,
+    updatedAt = Instant.EPOCH,
+    history = List.empty
+  )
+
+  private def newController(monitor: UptimeMonitor, fallbackStore: InMemoryFallbackStore = new InMemoryFallbackStore) = {
     val movieMetrics = new WebMovieMetrics(new MovieControllerService(TestReadModel.fromRecords(Seq.empty)))
-    new MetricsController(Helpers.stubControllerComponents(), monitor, movieMetrics, new WebJvmMetrics)
+    new MetricsController(Helpers.stubControllerComponents(), monitor, fallbackStore, movieMetrics, new WebJvmMetrics)
   }
 }

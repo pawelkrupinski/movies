@@ -1,0 +1,67 @@
+---
+# IS A WHOLE SCRAPER CLIENT QUIETLY RUNNING ON FALLBACK, OR IS THIS ONE VENUE HAVING A BAD DAY?
+#
+# EVERY CINEMA HAS A PER-VENUE AGGREGATOR FALLBACK (`SourceFallbackScraper`), and that is exactly
+# what makes a whole-client breakage invisible: when a scraper client 404s everywhere, each of its
+# venues fails over to its own fallback (Flicks in the UK, Filmweb in Poland, ...) individually, no
+# cinema bar on /uptime goes red, and nothing pages -- because nothing is actually down.
+#
+# THE 2026-09-17 INCIDENT THIS WOULD HAVE CAUGHT. Cineworld relaunched their website; the old
+# scraping API started 404ing for all 87 UK Cineworld venues at once. Every one of them quietly
+# failed over to Flicks. It was invisible for over a day -- found only by a human opening /uptime by
+# hand and noticing the "Aggregator fallback -- currently on fallback (87)" section. This rule reads
+# the same per-client grouping /uptime already renders (`CinemaClientMarkers`, pushed to Mongo's
+# `uptimeServiceTags` by the worker and read by `MetricsController`) so the ratio of a chain's
+# venues currently on fallback is a first-class series instead of something only a human glancing at
+# a status page would notice.
+#
+# WHY A RATIO, NOT AN ABSOLUTE COUNT. A shared client's venue count spans orders of magnitude --
+# Cineworld is 87, a two-venue chain is 2 -- so a fixed threshold either never fires for a small
+# chain or fires on ordinary background flakiness for a large one. `kinowo_fallback_active_venues`
+# and `kinowo_fallback_total_venues` (both emitted per `client` label by `MetricsController`, one
+# gauge pair per web pod's country) let the rule ask "what FRACTION of this chain is down", which
+# scales with the chain regardless of its size.
+#
+# ONLY SHARED CLIENTS GET A ROW AT ALL (`MetricsController.renderFallbackSaturation` excludes
+# `custom:` bespoke, single-venue markers at the source): a lone venue's ratio is always 0% or 100%
+# and says nothing about "is a WHOLE CHAIN down". The `>= 5` floor below is a second, independent
+# guard against the same failure mode -- a shared client with only two or three venues would still
+# swing to 100% on ordinary background flakiness, and this is the class of alert meant to page on a
+# fleet-wide break, not a handful of unlucky venues.
+#
+# THE THRESHOLD AND WINDOW. `> 0.5` mirrors `ResidentialProxyFallingBackToZyte`'s own ratio
+# threshold -- over half a chain's venues down is unambiguously a chain-wide problem, not noise.
+# `for: 1h` is deliberately generous against a brief synchronized blip (a proxy hiccup or a shared
+# upstream having one bad minute could plausibly flip several venues of the same client onto
+# fallback within the same probe cycle) while still comfortably same-day: the actual incident was
+# 87/87 sustained continuously for over 24 HOURS, so even a full hour of required persistence would
+# have caught it with room to spare. Warning, not critical, matching `ResidentialProxyFallingBackToZyte`
+# -- the fallback chain means scraping itself does not break and no cinema goes fully dark, so this
+# is a coverage-quality regression rather than an outage; it still routes to `telegram-and-email`
+# (see alertmanager.yaml's `ChainFallbackSaturated` matcher) because "silent, sustained, fleet-wide"
+# is precisely the shape a chat channel is most likely to scroll past.
+groups:
+  - name: chain-fallback
+    rules:
+      - alert: ChainFallbackSaturated
+        expr: >-
+          (
+            kinowo_fallback_active_venues
+            /
+            clamp_min(kinowo_fallback_total_venues, 1)
+          ) > 0.5
+          and kinowo_fallback_total_venues >= 5
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.client }} ({{ $labels.country }}) is mostly running on fallback — {{ $value | humanizePercentage }} of its venues"
+          description: >-
+            Over half of {{ $labels.client }}'s cinemas in {{ $labels.country }} have been riding
+            their aggregator fallback (Flicks/Filmweb/etc — see the `filmwebFallback` Mongo
+            collection) continuously for over an hour. This is the pattern behind the 2026-09-17
+            Cineworld incident: a whole scraper client broke and every venue quietly failed over
+            individually, so no cinema bar went red and nothing paged for over a day. Check the
+            "Aggregator fallback" section on {{ $labels.country }}'s /uptime page, filtered to
+            {{ $labels.client }} — it names which venues, since when, and the last failure reason
+            each one is riding the fallback for.

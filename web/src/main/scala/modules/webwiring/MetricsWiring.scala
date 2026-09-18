@@ -6,7 +6,9 @@ import services.metrics.{WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvm
 
 /** ── /metrics ──────────────────────────────────────────────────────────────
  *  Everything the web tier exposes to Prometheus, on ONE registry: the served
- *  corpus, the JVM, request rate/latency, the host and the in-heap caches. */
+ *  corpus, the JVM, request rate/latency, the host, the in-heap caches, and
+ *  per-scraper-client fallback saturation. `filmwebFallbackStore` (below) is
+ *  `AdminWiring`'s, reached through the shared `self: Wiring` self-type. */
 trait MetricsWiring { self: Wiring =>
 
   // Exposes the in-app /uptime health (Mongo `uptimeBuckets`) as Prometheus
@@ -43,5 +45,5 @@ trait MetricsWiring { self: Wiring =>
     "response"     -> (() => encodedResponseCache.occupancy),
     "og_card_film" -> (() => ogCardService.cacheOccupancy),
     "og_card_city" -> (() => cityOgCardService.cacheOccupancy)))
-  lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, webMovieMetrics, webJvmMetrics, metricsCountry.code)
+  lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, filmwebFallbackStore, webMovieMetrics, webJvmMetrics, metricsCountry.code)
 }

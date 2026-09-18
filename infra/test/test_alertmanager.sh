@@ -149,6 +149,12 @@ route_is telegram-and-email alertname=ReadModelServedGaugesAbsent severity=warni
 # 500s and the only trace is a climbing Zyte bill and an /uptime row nobody is watching closely.
 route_is telegram-and-email alertname=ResidentialProxyFallingBackToZyte severity=warning country=uk
 
+# ADDED AFTER 2026-09-17: all 87 UK Cineworld venues broke at once and every one failed over to its
+# per-venue Flicks fallback individually, so no cinema bar went red and nothing paged for a day --
+# the exact "silent, sustained, fleet-wide" shape the two families above earn the mailbox for. See
+# chain-fallback.rules.
+route_is telegram-and-email alertname=ChainFallbackSaturated severity=warning country=uk
+
 # THE REST OF THE READ-MODEL FAMILY MUST *NOT* HAVE FOLLOWED THEM INTO THE MAILBOX. This is the
 # assertion that fails if somebody later replaces the two names above with a `ReadModel.*` prefix,
 # which is the tempting simplification and the wrong one.

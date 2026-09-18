@@ -158,6 +158,11 @@ let
   # compared by eye without sorting one of them in your head. The comparison is the only check
   # there is until the guard script exists.
   ruleNames = [
+    # IS A WHOLE SCRAPER CLIENT QUIETLY RUNNING ON FALLBACK. Added after the 2026-09-17 incident:
+    # all 87 UK Cineworld venues broke at once when the site relaunched, and every one failed over
+    # to its per-venue aggregator fallback individually -- no cinema bar went red, nothing paged,
+    # found a day later by a human reading /uptime by hand. Alphabetically first.
+    "chain-fallback"
     # IS EVERY CINEMA STILL BEING SCRAPED. The application's own roster-freshness census, and the
     # only file here that watches the product rather than the machines it runs on. Its failure is
     # the silent kind: a cinema nobody scrapes emits no series at all, so every traffic counter

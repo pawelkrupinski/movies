@@ -1,0 +1,73 @@
+rule_files:
+  - ../../nix/files/monitoring/rules/chain-fallback.rules
+
+evaluation_interval: 1m
+
+tests:
+  # THE 2026-09-17 INCIDENT ITSELF: a shared client (87 venues, all UK Cineworld) pinned at
+  # 100% fallback for the whole window. Quiet through the `for: 1h` grace period, then fires.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_fallback_active_venues{country="uk",client="CineworldClient",job="kinowo-web"}'
+        values: '87x120'
+      - series: 'kinowo_fallback_total_venues{country="uk",client="CineworldClient",job="kinowo-web"}'
+        values: '87x120'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: ChainFallbackSaturated
+        exp_alerts: []
+      - eval_time: 65m
+        alertname: ChainFallbackSaturated
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk, client: CineworldClient, job: kinowo-web }
+            exp_annotations:
+              summary: "CineworldClient (uk) is mostly running on fallback — 100% of its venues"
+              description: >-
+                Over half of CineworldClient's cinemas in uk have been riding their aggregator
+                fallback (Flicks/Filmweb/etc — see the `filmwebFallback` Mongo collection)
+                continuously for over an hour. This is the pattern behind the 2026-09-17 Cineworld
+                incident: a whole scraper client broke and every venue quietly failed over
+                individually, so no cinema bar went red and nothing paged for over a day. Check the
+                "Aggregator fallback" section on uk's /uptime page, filtered to CineworldClient — it
+                names which venues, since when, and the last failure reason each one is riding the
+                fallback for.
+
+  # ORDINARY BACKGROUND FLAKINESS: a handful of venues out of a large chain riding fallback, well
+  # under the 50% threshold, must never fire.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_fallback_active_venues{country="pl",client="MultikinoClient",job="kinowo-web"}'
+        values: '3x120'
+      - series: 'kinowo_fallback_total_venues{country="pl",client="MultikinoClient",job="kinowo-web"}'
+        values: '45x120'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: ChainFallbackSaturated
+        exp_alerts: []
+
+  # THE MINIMUM-VENUE-COUNT FLOOR: a small shared client at 100% fallback must NOT page at the
+  # severity meant for a fleet-wide break — this is the guard against a two/three-venue client's
+  # ordinary flakiness spamming telegram-and-email.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_fallback_active_venues{country="de",client="TinyChainClient",job="kinowo-web"}'
+        values: '2x120'
+      - series: 'kinowo_fallback_total_venues{country="de",client="TinyChainClient",job="kinowo-web"}'
+        values: '2x120'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: ChainFallbackSaturated
+        exp_alerts: []
+
+  # DIVIDE-BY-ZERO GUARD: a client with zero known venues (both gauges absent-turned-zero, e.g. a
+  # stale series just before it ages out) must not produce a NaN-driven false alarm.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_fallback_active_venues{country="es",client="GoneClient",job="kinowo-web"}'
+        values: '0x120'
+      - series: 'kinowo_fallback_total_venues{country="es",client="GoneClient",job="kinowo-web"}'
+        values: '0x120'
+    alert_rule_test:
+      - eval_time: 65m
+        alertname: ChainFallbackSaturated
+        exp_alerts: []
