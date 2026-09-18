@@ -381,12 +381,24 @@ in
 
     externalUrl = lib.mkOption {
       type = lib.types.str;
-      default = "http://alertmanager.kinowo.internal:9093";
+      default = "http://localhost:9093";
       description = ''
-        What the links inside a Telegram alert point at. A name that resolves only on the private
-        network, deliberately: the person clicking it is expected to be on the VPN, and publishing
-        a working public link to the thing that can silence every alert is not a convenience worth
-        having.
+        What the links inside an alert (Telegram, and the "Silence or inspect" line in the email
+        body) point at.
+
+        THIS FLEET HAS NO VPN. An earlier default here was `http://alertmanager.kinowo.internal:9093`
+        -- a name chosen as if a private-network DNS existed that would resolve it for whoever
+        clicked the link. It never did: there is no split-DNS, no `/etc/hosts` entry, and no
+        WireGuard peer wiring that name up anywhere, on the laptop or on any host in the fleet (the
+        "6PN peer" note in hosts/monitoring-1 is about a DIFFERENT `kinowo.internal` -- Fly's own
+        app-internal DNS, torn down 2026-08-29 -- not this one). The link was dead from the day it
+        was written, and stayed dead long enough to reach a real inbox before anyone clicked it.
+
+        Alertmanager (like Prometheus and the k3s apiserver) is deliberately kept off the public
+        proxy -- see the header of roles/public-proxy.nix -- and reached instead with
+        `ssh -N -L 9093:10.20.0.11:9093 root@<monitoring-1's public address>`, then a browser at
+        `http://localhost:9093`. That tunnel is what this default names, so the link a person
+        actually receives matches the command they actually run.
       '';
     };
 

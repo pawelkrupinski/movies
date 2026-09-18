@@ -77,6 +77,36 @@ fi
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$1"; }
 
+step "externalUrl (the link an alert email or Telegram message points at) actually resolves"
+# PINS THE 2026-09-19 BUG: the option's default used to be
+# `http://alertmanager.kinowo.internal:9093`, a hostname wired up nowhere -- no split-DNS, no
+# `/etc/hosts`, no WireGuard peer, on the laptop or on any fleet host -- so the "Silence or inspect"
+# link in every alert email was dead from the day it was written. See the externalUrl option's own
+# header in roles/prometheus.nix for the full account.
+external_url_err="$(mktemp)"
+if external_url="$(nix --extra-experimental-features 'nix-command flakes' eval --raw \
+  "$infra/nix#nixosConfigurations.monitoring-1.config.fleet.prometheus.externalUrl" 2>"$external_url_err")"; then
+  case "$external_url" in
+    *"kinowo.internal"*)
+      echo "  FAILED monitoring-1's externalUrl is still $external_url -- that hostname has never"
+      echo "         resolved anywhere. See roles/prometheus.nix's externalUrl option."
+      failed=1
+      ;;
+    "")
+      echo "  FAILED could not read fleet.prometheus.externalUrl off monitoring-1"
+      failed=1
+      ;;
+    *)
+      echo "  ok  monitoring-1's externalUrl is $external_url"
+      ;;
+  esac
+else
+  echo "  FAILED could not evaluate monitoring-1's externalUrl:"
+  sed 's/^/         /' "$external_url_err" | tail -5
+  failed=1
+fi
+rm -f "$external_url_err"
+
 step "alertmanager config parses"
 if out="$(amtool check-config "$rendered" 2>&1)"; then
   echo "  ok  alertmanager.yaml parses, and every receiver and template with it"
