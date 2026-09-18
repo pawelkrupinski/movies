@@ -89,6 +89,17 @@ class TestHttpServer(
           exception.sendResponseHeaders(200, bytes.length.toLong)
           val os = exception.getResponseBody
           try os.write(bytes) finally os.close()
+        // Same shape as `/__echo-accept-language`, for `User-Agent` — lets a
+        // CDP-driven spec assert on what header a real browser navigation
+        // actually sent, e.g. that `Chrome.tryStart`'s `spoofHeadlessUserAgent`
+        // strips "Headless" on the wire (see `CdpUserAgentSpec`).
+        } else if (path == "/__echo-user-agent") {
+          val header = Option(exception.getRequestHeaders.getFirst("User-Agent")).getOrElse("")
+          val bytes  = header.getBytes(StandardCharsets.UTF_8)
+          exception.getResponseHeaders.add("Content-Type", "text/plain; charset=UTF-8")
+          exception.sendResponseHeaders(200, bytes.length.toLong)
+          val os = exception.getResponseBody
+          try os.write(bytes) finally os.close()
         } else if (path.startsWith("/assets/")) {
           val rel  = path.stripPrefix("/assets/")
           val file = Paths.get("web/src/main/assets").resolve(rel).toAbsolutePath

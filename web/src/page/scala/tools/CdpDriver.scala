@@ -98,8 +98,27 @@ object Chrome {
    *  GitHub Actions' own datacenter IP ranges are Cloudflare Bot-Fight-Mode
    *  material (2026-09-15 CI outage, root-caused via `loadFailureDiagnostic`
    *  to `fight_mode: true` on both zones, which Cloudflare's own docs confirm
-   *  has NO custom-rule skip/bypass at all). */
-  def tryStart(lang: Option[String] = None, proxy: Option[ProxyConfig] = None): Option[Chrome] = findExecutable().flatMap { exe =>
+   *  has NO custom-rule skip/bypass at all).
+   *
+   *  `spoofHeadlessUserAgent`, when true, strips "Headless" from the
+   *  User-Agent every page sends (via `Emulation.setUserAgentOverride` in
+   *  `openPage`, computed from THIS Chrome's own real UA so it can never go
+   *  stale as the runner's "stable" Chrome auto-updates). Used by
+   *  [[OgCardGenerator]] because a SEPARATE Cloudflare rule added 2026-09-16
+   *  (see `project_headless_chrome_full_crawl_2026_09_15` — a site-wide
+   *  challenge on both zones for any self-identifying headless UA, added to
+   *  stop an unrelated crawler) started challenging this generator's own
+   *  Chrome too: `--headless` Chrome's default UA contains `HeadlessChrome/…`,
+   *  which is exactly the substring that rule matches on. Confirmed
+   *  2026-09-18: every leg of the weekly regen failed instantly (first
+   *  request, no warm-up) on the Cloudflare challenge page, while a bare
+   *  `curl` with a normal UA through the SAME proxy got a clean 200 — so the
+   *  residential proxy (which already defeats Bot-Fight-Mode's IP scoring)
+   *  was never the problem here, the UA string was. The Free plan has no
+   *  TLS/JA3 fingerprinting or ML bot score behind this rule, so a plain
+   *  string substitution is enough — no launch-flag/stealth arms race
+   *  needed. */
+  def tryStart(lang: Option[String] = None, proxy: Option[ProxyConfig] = None, spoofHeadlessUserAgent: Boolean = false): Option[Chrome] = findExecutable().flatMap { exe =>
     val port    = findFreePort()
     val userDirectory = Files.createTempDirectory("chrome-cdp-test-")
     val pb = new ProcessBuilder(
@@ -146,12 +165,16 @@ object Chrome {
       // "passes locally / fails on CI" failure has a one-liner diff on
       // the version that ran. Chrome's `/json/version` endpoint returns
       // it as JSON. See [[feedback-ci-chrome-version-drift]].
+      var userAgentOverride: Option[String] = None
       try {
         val info = httpGet(s"http://localhost:$port/json/version")
         val version = """"Browser":\s*"([^"]+)"""".r.findFirstMatchIn(info).map(_.group(1)).getOrElse("unknown")
         System.err.println(s"[CdpDriver] Chrome=$version path=$exe")
+        if (spoofHeadlessUserAgent)
+          userAgentOverride = """"User-Agent":\s*"([^"]+)"""".r.findFirstMatchIn(info)
+            .map(_.group(1).replace("HeadlessChrome", "Chrome"))
       } catch { case _: Throwable => () }
-      Some(new Chrome(process, port, userDirectory, proxy))
+      Some(new Chrome(process, port, userDirectory, proxy, userAgentOverride))
     } else {
       process.destroyForcibly()
       None
@@ -186,7 +209,8 @@ class Chrome private[tools] (
                               process: Process,
                               port: Int,
                               userDataDirectory: Path,
-                              proxy: Option[Chrome.ProxyConfig] = None
+                              proxy: Option[Chrome.ProxyConfig] = None,
+                              userAgentOverride: Option[String] = None
                             ) extends AutoCloseable {
 
   /** Open `url` in a fresh tab, run `body`, then close the tab. The page
@@ -224,6 +248,14 @@ class Chrome private[tools] (
     try {
       page.send("Page.enable")
       page.send("Runtime.enable")
+      // `Emulation.setUserAgentOverride` is stateless (no `Emulation.enable`
+      // needed, same as `setDeviceMetricsOverride` below) and never touches
+      // the `Network` domain — which is otherwise avoided in this driver,
+      // see `tryStart`'s doc comment on why `--accept-lang` replaced a
+      // `Network.setExtraHTTPHeaders` call that broke CI outright.
+      userAgentOverride.foreach { ua =>
+        page.send("Emulation.setUserAgentOverride", Json.obj("userAgent" -> ua))
+      }
       proxy.foreach { p =>
         // `patterns` is REQUIRED for `Fetch.authRequired` to fire at all — an
         // empty/omitted `patterns` looked like "auth-only interception" but

@@ -60,6 +60,14 @@ import javax.imageio.{IIOImage, ImageIO, ImageWriteParam}
  * `loadFailureDiagnostic` catching the challenge page, then `fight_mode: true`
  * on both zones via the Cloudflare API — a setting with NO custom-rule skip).
  * Proxy absent wherever those two secrets aren't set (local/dev default).
+ *
+ * Chrome is also started with `spoofHeadlessUserAgent = true` (see
+ * `Chrome.tryStart`) — a SEPARATE Cloudflare rule added 2026-09-16 (site-wide
+ * on both zones, challenges any self-identifying headless UA) started
+ * challenging this generator's own `--headless` Chrome too, independent of
+ * the proxy/IP-reputation problem above: confirmed 2026-09-18, every leg
+ * failed instantly on the challenge page while a bare `curl` with a normal
+ * UA through the same proxy got a clean 200.
  */
 object OgCardGenerator {
 
@@ -112,7 +120,7 @@ object OgCardGenerator {
     ))
 
   private def startChromeOrExit(country: Country, proxy: Option[Chrome.ProxyConfig]): Chrome =
-    Chrome.tryStart(lang = Some(country.language.getLanguage), proxy = proxy).getOrElse {
+    Chrome.tryStart(lang = Some(country.language.getLanguage), proxy = proxy, spoofHeadlessUserAgent = true).getOrElse {
       System.err.println("No Chrome/Chromium found (set CDP_BROWSER_BIN). Aborting.")
       sys.exit(1)
     }
