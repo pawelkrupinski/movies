@@ -225,18 +225,30 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     else Healthy
   }
 
-  /** Every recorded error in the window says the page is a 404 — nothing else
-   *  broke, the venue simply isn't there. One non-404 among them (a 500, a
-   *  timeout, a parse error) makes it an ordinary failure again: that is a venue
-   *  whose page EXISTS and is misbehaving, which is worth acting on.
+  /** Durable evidence in the window clearly dominates — nothing else broke, the
+   *  venue simply isn't there. A LONE non-404 (a 500, a timeout, a WAF hiccup) is
+   *  tolerated when durable errors outnumber it more than 2-to-1; anything short
+   *  of that makes it an ordinary failure again, a venue whose page EXISTS and is
+   *  misbehaving, which is worth acting on.
+   *
+   *  The tolerance exists because "every recorded error" used to mean literally
+   *  every one: Kino Center's filmstarts.de page 404s on 8 of its last 9 recorded
+   *  attempts, with one stray HTTP 503 (confirmed still 404 live) — and because
+   *  the window is a sliding 3-bucket recency check, not a durable "since" marker,
+   *  a single future 503 could always land inside it before the last one aged
+   *  out, keeping a genuinely dead page in Failing forever. Two or more non-404s
+   *  still describe a venue flickering between gone and merely broken, so those
+   *  stay failing.
    *
    *  Recency, not duration, is the test here — the buckets only reach back a day.
    *  The worker asks the longer question against the scrape archive
    *  ([[services.scrapes.GoneUpstream]], "404ing for over a day") before it backs
    *  a venue's scrape cadence off; both sides share the one predicate that
    *  matters, `isNotFound`. */
-  private def goneUpstream(errors: Seq[String]): Boolean =
-    errors.nonEmpty && errors.forall(error => services.scrapes.GoneUpstream.saysPageIsGone(error))
+  private def goneUpstream(errors: Seq[String]): Boolean = {
+    val (durable, other) = errors.partition(services.scrapes.GoneUpstream.saysPageIsGone)
+    other.sizeIs <= 1 && durable.size > other.size * 2
+  }
 
   /** Worst-first, and `Missing` ranks BELOW Failing: a cinema whose page is gone
    *  but whose enrichment is also failing has something live to fix, so it belongs

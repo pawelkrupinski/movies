@@ -471,11 +471,45 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   }
 
   // The distinction is the error text and nothing else: a page that EXISTS and is
-  // refusing or timing out is a real failure someone can act on.
-  it should "stay failing when any recorded error is not a 404" in {
+  // refusing or timing out is a real failure someone can act on. A single non-404
+  // is only tolerated once durable evidence clearly dominates it (see below) — with
+  // one 404 and one 503, durable evidence does not, so this stays failing.
+  it should "stay failing when a non-404 is not clearly outnumbered" in {
     val sections = controller.groupRows(Set(cinema),
       statusesFrom(Map(cinema -> Seq("red", "red", "red"))),
       errorsFrom(Map(cinema -> Seq(NotFound, "HttpStatusException: HTTP 503 for GET https://x/"))), fakeRow)
+
+    sections.failing.map(_.row.name) shouldBe Seq(cinema)
+    sections.gone                    shouldBe empty
+  }
+
+  // filmstarts.de/kinoprogramm/kino/A0100/ (Kino Center) 404s on 8 of its last 9
+  // recorded attempts, with one HTTP 503 mixed in — a WAF hiccup or a rate limit,
+  // not evidence the page might come back (confirmed still 404 live). Requiring
+  // EVERY recent error to be durable kept it stuck in Failing forever, since a
+  // fresh stray non-404 could always land inside the 3-bucket window before the
+  // last one aged out. One outlier, clearly outnumbered by durable evidence,
+  // should not block quarantine.
+  it should "tolerate a single stray non-404 clearly outnumbered by 404s" in {
+    val sections = controller.groupRows(Set(cinema),
+      statusesFrom(Map(cinema -> Seq("red", "red", "red"))),
+      errorsFrom(Map(cinema -> Seq(
+        NotFound, NotFound, "HttpStatusException: HTTP 503 for GET https://x/",
+        NotFound, NotFound, NotFound, NotFound, NotFound, NotFound))), fakeRow)
+
+    sections.gone.map(_.row.name) shouldBe Seq(cinema)
+    sections.failing               shouldBe empty
+  }
+
+  // Two non-404s among five is not "a single stray outlier" — that is a venue
+  // flickering between gone and merely broken, which stays in Failing.
+  it should "stay failing when non-404s are more than a single outlier" in {
+    val sections = controller.groupRows(Set(cinema),
+      statusesFrom(Map(cinema -> Seq("red", "red", "red"))),
+      errorsFrom(Map(cinema -> Seq(
+        NotFound, NotFound, NotFound,
+        "HttpStatusException: HTTP 503 for GET https://x/",
+        "HttpStatusException: HTTP 500 for GET https://x/"))), fakeRow)
 
     sections.failing.map(_.row.name) shouldBe Seq(cinema)
     sections.gone                    shouldBe empty
