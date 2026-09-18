@@ -1,0 +1,53 @@
+# THE CAUSE-1-VS-CAUSE-2 GATE ON `kinowo-movies-served-swing`, EVALUATED RATHER THAN READ.
+#
+# Mirrors grafana-movies-served-city-empty.yml's structure: this rule lives in Grafana's
+# provisioning (grafana/alerting/alert-rules.yaml), not a file Prometheus loads itself, so
+# promtool cannot load it as a rule — but its query A is ordinary PromQL against the same
+# datasource, and `promql_expr_test` will evaluate it. GrafanaServedSwingCorpusDiscriminantSpec
+# fails if this file's expression ever drifts from alert-rules.yaml's, so this suite cannot
+# quietly go on testing a query production no longer runs.
+#
+# WHY THIS SUITE EXISTS. es/zamora paged `kinowo-movies-served-swing` three times in September
+# 2026 (09-03, 09-11, 09-17) and all three were confirmed cause (2): a single-venue city's corpus
+# thinning as its freshest scraped listing ran out of upcoming screenings between scrape passes,
+# not a web tier failing to serve what the corpus still had.
+# `kinowo_worker_movies_served{city="zamora"}` moved in EXACT lockstep with the web-side gauge at
+# every 5-minute sample through the whole 2026-09-17 episode (7 → 6 → 2, held 8h, back to 13), and
+# `kinowo_worker_readmodel_films_pruned_total{city="zamora"}` was empty the entire time — ruling
+# out a prune. Query A now excludes (`unless on (city)`) any city whose corpus-side gauge swung
+# down by the same >50% margin over the same window, so only a city whose corpus did NOT also
+# crater still fires — the read-model-defect shape (cause 1) this rule exists to catch.
+rule_files: []
+
+evaluation_interval: 10m
+
+tests:
+  # ── BOTH CAUSES, SIDE BY SIDE ────────────────────────────────────────────────────────────────
+  # Two cities, both dropping from 8 films to 0 on the web side in the same sample (an 8-film drop
+  # comfortably clears the >=4 floor). "hadbug"'s corpus reading stays flat at 8 throughout — the
+  # web stopped serving what the corpus still has, cause (1). "wentdark"'s corpus reading drops in
+  # lockstep with its web reading — the corpus itself thinned, cause (2), the exact shape
+  # es/zamora turned out to be on 09-03, 09-11 and 09-17.
+  - interval: 10m
+    input_series:
+      - series: 'kinowo_web_movies_served{scope="all",city="hadbug",country="pl"}'
+        values: '8x300 0x10'
+      - series: 'kinowo_worker_movies_served{scope="all",city="hadbug",country="pl"}'
+        values: '8x310'
+      - series: 'kinowo_web_movies_served{scope="all",city="wentdark",country="es"}'
+        values: '8x300 0x10'
+      - series: 'kinowo_worker_movies_served{scope="all",city="wentdark",country="es"}'
+        values: '8x300 0x10'
+    promql_expr_test:
+      # THE EXPRESSION, PINNED VERBATIM FROM alert-rules.yaml
+      # (GrafanaServedSwingCorpusDiscriminantSpec checks this file contains it
+      # character-for-character). eval_time lands on the FIRST post-drop sample, where the 1h
+      # lookback still averages mostly pre-drop 8s — the transition moment the live rule pages on.
+      - expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5)'
+        eval_time: 3010m
+        exp_samples:
+          # ONLY "hadbug" — a listed sample and nothing else, so if "wentdark" ever reappeared (a
+          # future regression that drops the `unless on (city)` clause) this test fails on the
+          # extra, unlisted series.
+          - labels: '{scope="all",city="hadbug",country="pl"}'
+            value: 1

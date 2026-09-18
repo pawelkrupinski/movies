@@ -692,7 +692,37 @@ groups:
       # hood-river page landed at 00:55 CEST and read as a midnight rollover
       # while Hood River's own clock said 15:51 PDT. Check the CITY's zone before
       # calling a midnight-shaped alert a rollover.
-      # Guarded by worker deploy.GrafanaServedSwingScopeSpec.
+      #
+      # CAUSE-1-VS-CAUSE-2 GATE, added 2026-09-18 — the SAME discriminant already
+      # applied to kinowo-movies-served-city-empty below on 2026-09-13, ported here
+      # after es/zamora paged this rule on 2026-09-17 18:35Z (7 → 6 → 2 films,
+      # held 8h) for the THIRD time this month (also 09-03, 09-11), and all three
+      # were confirmed cause (2): kinowo_worker_movies_served{city="zamora"} moved
+      # in EXACT lockstep with the web-side gauge at every 5m sample through the
+      # whole episode — the corpus itself thinned (Zamora's single venue's
+      # scraped listing ran its remaining screenings out between scrape passes;
+      # `kinowo_worker_readmodel_films_pruned_total{city="zamora"}` was empty
+      # throughout, ruling out a prune), not a web tier failing to serve what the
+      # corpus still had. Without a discriminant this rule cannot tell that shape
+      # apart from cause (1) — a read-model defect where the corpus HELD its
+      # count while the web craters — and pages `severity: warning` for both.
+      #
+      # `unless on (city) (...)` computes the SAME relative-drop ratio against
+      # `kinowo_worker_movies_served` and drops any city where the corpus swung
+      # down by more than the same 50% — i.e. only a city whose corpus did NOT
+      # also crater still fires. Set-difference (`unless`), not a threshold
+      # AND-ed into `condition: C`, because query A's OUTPUT VALUE is still the
+      # web-side ratio the page reports — the corpus term only decides which
+      # cities survive the join, exactly as kinowo-movies-served-city-empty's own
+      # `and on (city) (... > 0)` decides membership without changing query A's
+      # value. A city with no corpus series at all is unaffected (`unless` finds
+      # nothing to exclude), which is the conservative direction: a missing
+      # per-city corpus reading inside an otherwise-healthy gauge falls back to
+      # the pre-discriminant behaviour rather than going silently blind, and a
+      # fleet-wide corpus outage is `ReadModelServedGaugesAbsent`'s alarm to
+      # raise, not this rule's.
+      # Guarded by worker deploy.GrafanaServedSwingScopeSpec and
+      # deploy.GrafanaServedSwingCorpusDiscriminantSpec.
       - uid: kinowo-movies-served-swing
         title: Films served per city dropped suddenly
         condition: C
@@ -703,7 +733,7 @@ groups:
           severity: warning
         annotations:
           summary: '{{ $labels.city }} ({{ $labels.scope }}) film count dropped sharply vs its 1h average'
-          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" has fallen >50% and >=4 films below its trailing 1h average — a sudden drop in what the web is serving. That is the read-model-outage shape (a malformed web_movies row empties the corpus, every city craters), or a scrape-prune deleting a venue''s programme after a thin listing. Jumps do NOT page: a count doubling is a weekly programme landing. Check https://kinowo.net/{{ $labels.city }}/ and the "films served per city" dashboard panel, and read the alert time in the CITY''s timezone before calling it a rollover.'
+          description: 'kinowo_web_movies_served for city "{{ $labels.city }}" scope "{{ $labels.scope }}" has fallen >50% and >=4 films below its trailing 1h average, WHILE the corpus side (kinowo_worker_movies_served) for the same city did NOT fall by the same margin — the read-model-outage shape (a malformed web_movies row, or a prune that should not have fired) where the corpus still has what the web stopped serving. A city whose corpus thinned in lockstep (a thin single-venue listing running out between scrapes, or a legitimate scrape-prune) does not page here any more — check kinowo_worker_readmodel_films_pruned_total{city="{{ $labels.city }}"} by reason if that still needs confirming. Jumps do NOT page: a count doubling is a weekly programme landing. Check https://kinowo.net/{{ $labels.city }}/ and the "films served per city" dashboard panel, and read the alert time in the CITY''s timezone before calling it a rollover.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -711,7 +741,7 @@ groups:
             model:
               datasource: { type: prometheus, uid: local-prometheus }
               editorMode: code
-              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4)'
+              expr: '((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_web_movies_served{scope="all"}[1h]), 1)) and ((avg_over_time(kinowo_web_movies_served{scope="all"}[1h]) - kinowo_web_movies_served{scope="all"}) >= 4) unless on (city) ((avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]) - kinowo_worker_movies_served{scope="all"}) / clamp_min(avg_over_time(kinowo_worker_movies_served{scope="all"}[1h]), 1) > 0.5)'
               instant: true
               range: false
               intervalMs: 1000
