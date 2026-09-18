@@ -59,8 +59,11 @@ class UptimeRecordingScraper(
 }
 
 object UptimeRecordingScraper {
-  /** Compact `ClassName: message` label (capped at 200 chars) for the uptime
-   *  errors list. */
+  /** Compact `ClassName: message` label (capped at 1000 chars) for the uptime
+   *  errors list. A `FallbackHttpFetch` message nests one line per backend
+   *  (each repeating the full request URL), so a 200-char cap used to chop
+   *  the label before any backend's actual status code appeared — every
+   *  Cineworld failure recorded as a bare, useless "HttpStatusException: ". */
   def errorLabel(t: Throwable): String =
-    s"${t.getClass.getSimpleName}: ${Option(t.getMessage).getOrElse("")}".take(200)
+    s"${t.getClass.getSimpleName}: ${Option(t.getMessage).getOrElse("")}".take(1000)
 }

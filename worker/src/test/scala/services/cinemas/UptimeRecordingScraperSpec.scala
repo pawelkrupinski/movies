@@ -106,4 +106,21 @@ class UptimeRecordingScraperSpec extends AnyFlatSpec with Matchers {
     }
     new UptimeRecordingScraper(ScriptedCinemaScraper(List(Right(OneMovie))), new UptimeMonitor(), boom).fetch() shouldBe OneMovie
   }
+
+  // Regression for the Cineworld relaunch outage (2026-09-17..18): a
+  // FallbackHttpFetch message nests one nested line per backend, each
+  // repeating the full request URL, so the actual failure (the status code)
+  // can land well past the old 200-char cap. A cap that chops before any
+  // backend's status code appears is worse than no cap.
+  it should "not truncate errorLabel before a backend's status code, for a long nested fallback message" in {
+    val longUrl = "https://www.cineworld.co.uk/uk/data-api-service/v1/quickbook/10108/dates/in-cinema/075/until/2028-09-17?attr=&lang=en_GB"
+    val nested =
+      s"All 2 backends failed for get $longUrl:\n" +
+        s"  proxy: HttpStatusException: HTTP 404 for GET $longUrl\n" +
+        s"  fallback: RuntimeException: All 2 backends failed for get $longUrl:\n" +
+        s"    zyte: RuntimeException: Zyte API call returned upstream status=404 for $longUrl\n" +
+        s"    direct: HttpStatusException: HTTP 403 for GET $longUrl"
+    nested.length should be > 200 // the case that broke the old cap
+    UptimeRecordingScraper.errorLabel(new RuntimeException(nested)) should include ("HTTP 404")
+  }
 }
