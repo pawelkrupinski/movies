@@ -114,8 +114,10 @@ object KinoPortClient {
   /** `18:00 – Arek. Mama. Panorama` — time and title, read off the paragraph's
    *  `<strong>` text joined (some screenings split "17:00 – Tony" across
    *  three sibling `<strong>` tags instead of one), split on the en dash
-   *  (U+2013) or a plain hyphen. */
-  private val TimeTitlePat = """^(\d{1,2}):(\d{2})\s*[–-]\s*(.+)$""".r
+   *  (U+2013) or a plain hyphen. The separator is OPTIONAL: some screenings
+   *  (first seen 2026-09-19, e.g. "12:30 PUCIO KOCHA ZWIERZAKI") drop it
+   *  entirely, running the time straight into the title. */
+  private val TimeTitlePat = """^(\d{1,2}):(\d{2})\s*(?:[–-]\s*)?(.+)$""".r
   /** ` (72′)` — runtime in minutes, U+2032 PRIME, immediately after the strong. */
   private val RuntimePat = """\((\d{1,3})′\)""".r
   /** `2026, reż. Mikołaj Janik` / `2025` — the caption line, whether wrapped in
