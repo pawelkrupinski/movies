@@ -68,13 +68,13 @@ function applyLanguage(code) {
     else el.textContent = text;
   }
   var attrEls = document.querySelectorAll('[data-i18n-attr]');
-  for (var i = 0; i < attrEls.length; i++) {
-    var el = attrEls[i];
-    var attrArgs = [el.getAttribute('data-i18n-arg0'), el.getAttribute('data-i18n-arg1')]
+  for (var j = 0; j < attrEls.length; j++) {
+    var attrEl = attrEls[j];
+    var attrArgs = [attrEl.getAttribute('data-i18n-arg0'), attrEl.getAttribute('data-i18n-arg1')]
       .filter(function(a) { return a !== null; });
-    el.getAttribute('data-i18n-attr').split(';').forEach(function(pair) {
+    attrEl.getAttribute('data-i18n-attr').split(';').forEach(function(pair) {
       var sep = pair.indexOf(':');
-      if (sep >= 0) el.setAttribute(pair.slice(0, sep), t(pair.slice(sep + 1), attrArgs));
+      if (sep >= 0) attrEl.setAttribute(pair.slice(0, sep), t(pair.slice(sep + 1), attrArgs));
     });
   }
   document.documentElement.lang = code;

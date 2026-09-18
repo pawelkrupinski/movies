@@ -11,12 +11,6 @@ import { reload } from './helpers';
 // (Android only — no iOS/Safari equivalent) the app is already installed via
 // `navigator.getInstalledRelatedApps()`.
 test.describe('app banner', () => {
-  // `i18n.js`'s boot sniffs `navigator.languages` as a fallback when no pick
-  // is stored, matching a real Polish visitor's browser — pinned here so the
-  // suite's own (English) locale doesn't auto-switch the page before the
-  // "Polish headline" assertion below runs.
-  test.use({ locale: 'pl-PL' });
-
   const banner      = (page: Page) => page.locator('#app-banner');
   const iosBadge     = (page: Page) => page.locator('#app-banner-ios');
   const androidBadge = (page: Page) => page.locator('#app-banner-android');

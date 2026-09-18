@@ -149,6 +149,17 @@ export default defineConfig({
     // Capture a screenshot on failure so a CI-only break is visible in
     // the uploaded report without re-running locally.
     screenshot: 'only-on-failure',
+    // The fixture server (and prod's default deployment) render everything
+    // in Polish — the whole suite's assertions are written against that
+    // copy, including the ones exercising OTHER countries' city/region data
+    // (`/landing-us`, `/landing-uk`, `/landing-de` all still render through
+    // the Polish `Messages`). Without this, a browser context takes its
+    // locale from the CI runner (English), and `i18n.js`'s boot-time
+    // `navigator.languages` sniff (see `shared.js`/`i18n.js`) then silently
+    // switches the client-side UI chrome to English before any assertion
+    // runs — CI-only failures that don't reproduce with the runner's own
+    // browser default locale. Pinned here once rather than per spec.
+    locale: 'pl-PL',
   },
   metadata: { isLocalFixture: IS_LOCAL_FIXTURE, baseURL: BASE_URL },
   projects,

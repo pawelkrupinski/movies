@@ -12,13 +12,6 @@ import { gotoAndWaitForCards } from './helpers';
 // along with the round trip. Server-side regression coverage for that is
 // `web/src/test/scala/controllers/LanguagePickSpec.scala`.
 test.describe('Filtry → Język picker', { tag: '@agnostic' }, () => {
-  // `i18n.js`'s boot sniffs `navigator.languages` as a fallback when no pick
-  // is stored — matching what a REAL Polish visitor's browser reports, which
-  // is the case these tests pin. Without this the suite's own (English)
-  // locale would auto-switch the page before the "deployment default"
-  // assertion ever ran.
-  test.use({ locale: 'pl-PL' });
-
   test('offers all four languages, the deployment default selected', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await expect(page.locator('html')).toHaveAttribute('lang', 'pl');

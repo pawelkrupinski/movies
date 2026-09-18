@@ -17,6 +17,12 @@
 // cross-file reference would fire `no-undef`. Keep this list in sync
 // with the actual interface — a new constant in _sharedJsConfig or a
 // new function called by the inline block needs to land here.
+//
+// `i18n.js` (loaded ahead of shared.js — see `_sharedJsConfig.scala.html`/
+// `landing.scala.html`) is intentionally NOT added here: it's part of
+// this same lint glob, so declaring `t` as a global here would collide
+// with its own `function t(...)` and fire `no-redeclare`. shared.js
+// reaches it via `window.t(...)` instead, which needs no declaration.
 
 const js = require('@eslint/js');
 const globals = require('globals');

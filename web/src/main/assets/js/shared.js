@@ -990,7 +990,7 @@
 
     const name = document.createElement('span');
     name.className   = 'auth-name';
-    name.textContent = String(me.displayName || me.email || t('auth.account'))
+    name.textContent = String(me.displayName || me.email || window.t('auth.account'))
       .split(/[ @]/)[0];
     menu.appendChild(name);
 
@@ -1006,7 +1006,7 @@
     out.type        = 'submit';
     out.className   = 'auth-logout-btn';
     out.setAttribute('data-i18n', 'auth.logout');
-    out.textContent = t('auth.logout');
+    out.textContent = window.t('auth.logout');
     form.appendChild(out);
 
     const dropdown = document.createElement('div');
@@ -1419,8 +1419,8 @@
     const areas = window.CINEMA_AREAS || [];
     if (!areas.length || document.getElementById('area-picker-overlay')) return;
     const loc = {
-      title: t('areaPicker.title'), subtitle: t('areaPicker.subtitle'),
-      all: t('areaPicker.all'), confirm: t('areaPicker.confirm'),
+      title: window.t('areaPicker.title'), subtitle: window.t('areaPicker.subtitle'),
+      all: window.t('areaPicker.all'), confirm: window.t('areaPicker.confirm'),
     };
 
     const overlay = document.createElement('div');
@@ -1644,7 +1644,7 @@
     const noFilms = document.getElementById('no-films');
     if (visibleCount === 0) {
       noFilms.setAttribute('data-i18n', 'empty.repertoire');
-      noFilms.textContent = t('empty.repertoire');
+      noFilms.textContent = window.t('empty.repertoire');
       noFilms.style.display = '';
     } else {
       noFilms.style.display = 'none';
@@ -1925,7 +1925,7 @@
     const done = () => {
       if (!button) return;
       const previous = button.textContent;
-      button.textContent = t('nav.copied');
+      button.textContent = window.t('nav.copied');
       setTimeout(() => { button.textContent = previous; }, 1500);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {
