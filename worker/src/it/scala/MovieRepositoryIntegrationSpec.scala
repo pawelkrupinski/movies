@@ -904,14 +904,29 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // event plus one screenings delete per dropped venue is `1 + Dropped` raw events, each
       // either bought its own apply or rode one.
       //
-      // Same 60s budget as the burst test above, not the 20s this used to carry: this settle
-      // spans TWO cursors (movies + screenings) racing the same shared apply thread, at least
-      // as much for the driver's own network round trips to land as the single-cursor burst
-      // above, so a shorter budget bought nothing but a flake on a loaded CI runner (Main CI,
-      // 2026-09-16: "only 1 of 11 event(s) were accounted for" — reproduced 0/13 locally at
-      // any budget, consistent with CI-only resource contention rather than a logic bug).
+      // WIDER budget than the single-cursor burst test above (150s, not 60s): this settle
+      // spans TWO cursors (movies + screenings) racing the same shared apply thread, and unlike
+      // the burst test's tight write loop (which overlaps enough writes to buy real coalescing —
+      // "18 re-projection(s), 62 event(s) coalesced" for 80 writes), `updateIfPresent`'s 10
+      // screenings deletes are issued ONE AT A TIME on the calling thread, each waiting on its
+      // own round trip before the next fires — so each one's change event typically arrives
+      // after the PRIOR one's apply already finished and removed the film from
+      // `sideApplyPending`, buying this test little to no cross-event coalescing. Up to 11
+      // genuinely separate blocking stitch-reads, serialized through the one shared apply
+      // thread, is the expected shape here, not a bug.
+      //
+      // Flaked at 60s TWICE with the identical message (Main CI 2026-09-16 and 2026-09-18:
+      // "only 1 of 11 event(s) were accounted for"), reproduced 0 times locally at any budget
+      // both times. The 2026-09-18 run's full log shows the same job's OTHER specs hitting
+      // `IllegalStateException: state should be: server session pool is open` and retried
+      // `WriteConflict`s during the same window — independent evidence the runner's Mongo was
+      // under real resource contention that run, not evidence of a demand-window leak specific
+      // to this test (a genuine leak would stall every subsequent run, not just two out of many
+      // — see [[ChangeStreamDemand]] and `ChangeStreamDemandSpec`/`MovieChangeStreamSpec`, which
+      // pin both ways of getting the release wrong and stay green). Raising the ceiling again
+      // rather than re-deriving the same conclusion a third time.
       val TotalEvents = 1 + Dropped
-      settleUntil(TotalEvents)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
+      settleUntil(TotalEvents, budgetMs = 150000)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
       val accounted = dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount
       info(s"1 movies write + $Dropped screenings deletes (one logical slot-drop pass): " +
            s"${dispatched.get()} re-projection(s), ${movieSink.coalescedCount} movies-cursor + " +
