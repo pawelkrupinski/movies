@@ -45,6 +45,15 @@ class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
   // the property, so skip rather than assert against the wrong country.
   private val envCountryForced = System.getenv("KINOWO_COUNTRY") != null
 
+  // Every page (including this one) embeds ALL FOUR languages' packs inline
+  // (`#i18n-packs`, `controllers.I18nPacks`) for the client-side language
+  // switch — inert JSON data, never rendered as visible text. A "this brand-
+  // inappropriate word never appears" check has to look past that blob, or
+  // the UK page would fail it just for carrying Poland's own Polish copy
+  // (which legitimately names Filmweb) in the inert pack.
+  private def visibleBody(html: String): String =
+    html.replaceAll("(?s)<script id=\"i18n-packs\".*?</script>", "")
+
   "the UK landing preview" should "point og:image + twitter:image at the English home card on the UK host" in {
     if (envCountryForced) cancel("KINOWO_COUNTRY is set in the environment; property override can't take effect")
     val html = renderUk()
@@ -64,7 +73,7 @@ class LandingCountryPreviewSpec extends AnyFlatSpec with Matchers {
     if (envCountryForced) cancel("KINOWO_COUNTRY is set in the environment; property override can't take effect")
     val html = renderUk()
     html should include ("IMDb, Rotten Tomatoes and Metacritic")
-    html should not include "Filmweb"
+    visibleBody(html) should not include "Filmweb"
   }
 
   /** The UK's places are counties and regions, not cities — but they are WORDED

@@ -29,5 +29,5 @@
    to, so the slot is empty and hydration never runs.
 *@
 @if(oauthProviders.nonEmpty) {
-  <button type="button" id="auth-login" class="nav-tab nav-tab-login" onclick="openLoginModal()">@messages(loginLabel)</button>
+  <button type="button" id="auth-login" class="nav-tab nav-tab-login" onclick="openLoginModal()" data-i18n="@loginLabel">@messages(loginLabel)</button>
 }

@@ -15,7 +15,7 @@
 *@
 <nav class="navbar px-4 py-3 d-flex align-items-center">
   <div class="d-flex align-items-center gap-3 navbar-logo">
-    <span class="fw-bold fs-5">🎬<span class="navbar-title"> @messages("brand.title", city.labels.nominative)</span></span>
+    <span class="fw-bold fs-5">🎬 <span class="navbar-title" data-i18n="brand.title" data-i18n-arg0="@city.labels.nominative">@messages("brand.title", city.labels.nominative)</span></span>
     <div class="d-flex gap-1 align-items-center">
       @if(devMode) {
         <a href="@routes.DebugController.debug()" class="nav-tab nav-tab-debug">Debug</a>
@@ -29,7 +29,7 @@
        The label is icon-only; `updateFormatBtn` toggles `.filters-active`
        so the icon turns the accent colour whenever any filter that
        "Wyczyść" would clear is set — the same at-a-glance signal as mobile. *@
-    <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm filter-icon-btn" aria-label="@messages("nav.filters")" title="@messages("nav.filters")">
+    <button id="format-filter-btn" onclick="toggleFormatPanel(event)" class="btn refresh-btn btn-sm filter-icon-btn" aria-label="@messages("nav.filters")" title="@messages("nav.filters")" data-i18n-attr="aria-label:nav.filters;title:nav.filters">
       <svg class="filter-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
       </svg>
@@ -41,7 +41,7 @@
          alongside the login modal). *@
       <div id="hidden-row" class="panel-label" style="display:none; justify-content:space-between; align-items:center;"
            onclick="openHiddenModal(event)">
-        <span>@messages("nav.hiddenFilms")</span>
+        <span data-i18n="nav.hiddenFilms">@messages("nav.hiddenFilms")</span>
         <span id="hidden-row-count" class="hidden-row-count"></span>
       </div>
       <div id="hidden-row-divider" class="panel-divider" style="display:none"></div>
@@ -50,10 +50,10 @@
          default (earliest upcoming screening first); "Ocena" sorts by the
          equal-weight average of every rating a film has (highest first).
          `onSortChange` no-ops when the page has no `applyFilters`. *@
-      <div class="panel-section-label">@messages("nav.sort")</div>
+      <div class="panel-section-label" data-i18n="nav.sort">@messages("nav.sort")</div>
       <select id="sort-by" class="filter-select w-100" onchange="onSortChange()" style="margin-bottom:.4rem">
-        <option value="earliest">@messages("sort.earliest")</option>
-        <option value="rating">@messages("sort.rating")</option>
+        <option value="earliest" data-i18n="sort.earliest">@messages("sort.earliest")</option>
+        <option value="rating" data-i18n="sort.rating">@messages("sort.rating")</option>
       </select>
       <div class="panel-divider"></div>
 
@@ -61,16 +61,16 @@
          `buildCinemaPanel`/`toggleAllCinemas` JS; it writes `disabledCinemas`,
          which filters the film grid. *@
       <div id="filtry-cinema-section">
-        <div class="panel-section-label">@messages("nav.cinemas")</div>
+        <div class="panel-section-label" data-i18n="nav.cinemas">@messages("nav.cinemas")</div>
         <label class="panel-label" style="border-bottom:1px solid #3a3a6e; margin-bottom:4px; padding-bottom:8px;">
-          <input type="checkbox" autocomplete="off" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> @messages("nav.allCinemas")
+          <input type="checkbox" autocomplete="off" id="cinema-all" onchange="toggleAllCinemas(this.checked)"> <span data-i18n="nav.allCinemas">@messages("nav.allCinemas")</span>
         </label>
         <div id="cinema-list"></div>
         <div class="panel-divider"></div>
       </div>
 
       <div id="country-row" class="panel-label submenu-row" onclick="toggleSubmenu('country')">
-        <span>@messages("nav.country")</span>
+        <span data-i18n="nav.country">@messages("nav.country")</span>
         <span class="submenu-right">
           <span id="country-row-count" class="submenu-row-count" style="display:none"></span>
           <span id="country-chevron" class="submenu-chevron">&#8250;</span>
@@ -80,7 +80,7 @@
       <div class="panel-divider"></div>
 
       <div id="genre-row" class="panel-label submenu-row" onclick="toggleSubmenu('genre')">
-        <span>@messages("nav.genre")</span>
+        <span data-i18n="nav.genre">@messages("nav.genre")</span>
         <span class="submenu-right">
           <span id="genre-row-count" class="submenu-row-count" style="display:none"></span>
           <span id="genre-chevron" class="submenu-chevron">&#8250;</span>
@@ -90,7 +90,7 @@
       <div class="panel-divider"></div>
 
       <div id="director-row" class="panel-label submenu-row" onclick="toggleSubmenu('director')">
-        <span>@messages("nav.director")</span>
+        <span data-i18n="nav.director">@messages("nav.director")</span>
         <span class="submenu-right">
           <span id="director-row-count" class="submenu-row-count" style="display:none"></span>
           <span id="director-chevron" class="submenu-chevron">&#8250;</span>
@@ -100,7 +100,7 @@
       <div class="panel-divider"></div>
 
       <div id="cast-row" class="panel-label submenu-row" onclick="toggleSubmenu('cast')">
-        <span>@messages("nav.cast")</span>
+        <span data-i18n="nav.cast">@messages("nav.cast")</span>
         <span class="submenu-right">
           <span id="cast-row-count" class="submenu-row-count" style="display:none"></span>
           <span id="cast-chevron" class="submenu-chevron">&#8250;</span>
@@ -114,7 +114,7 @@
          pairs in the rendered page; self-hides when the page carries zero
          badges with a `data-room`. *@
       <div id="room-row" class="panel-label submenu-row" onclick="toggleSubmenu('room')">
-        <span>@messages("nav.rooms")</span>
+        <span data-i18n="nav.rooms">@messages("nav.rooms")</span>
         <span class="submenu-right">
           <span id="room-row-count" class="submenu-row-count" style="display:none"></span>
           <span id="room-chevron" class="submenu-chevron">&#8250;</span>
@@ -136,8 +136,8 @@
          they restore correctly in both engines even while a checkbox beside
          them is being corrupted, and losing the search you typed on Back is a
          real cost with nothing bought for it. *@
-      <div class="panel-section-label">@messages("nav.dimension")</div>
-      <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value=""   checked onchange="onFormatChange()"> @messages("nav.all")</label>
+      <div class="panel-section-label" data-i18n="nav.dimension">@messages("nav.dimension")</div>
+      <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value=""   checked onchange="onFormatChange()"> <span data-i18n="nav.all">@messages("nav.all")</span></label>
       <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value="2D"         onchange="onFormatChange()"> 2D</label>
       <label class="panel-label"><input type="radio" autocomplete="off" name="format-dim"  value="3D"         onchange="onFormatChange()"> 3D</label>
       <div class="panel-divider"></div>
@@ -147,18 +147,18 @@
          films all screen in one language marks neither, so it gets no row at
          all rather than two radios that can only match nothing. *@
       @city.country.versionTokens.map { tokens =>
-        <div class="panel-section-label">@messages("nav.version")</div>
-        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="" checked onchange="onFormatChange()"> @messages("nav.all")</label>
-        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="@tokens.subtitled" onchange="onFormatChange()"> @messages("nav.subtitles")</label>
-        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="@tokens.dubbed" onchange="onFormatChange()"> @messages("nav.dubbing")</label>
+        <div class="panel-section-label" data-i18n="nav.version">@messages("nav.version")</div>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="" checked onchange="onFormatChange()"> <span data-i18n="nav.all">@messages("nav.all")</span></label>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="@tokens.subtitled" onchange="onFormatChange()"> <span data-i18n="nav.subtitles">@messages("nav.subtitles")</span></label>
+        <label class="panel-label"><input type="radio" autocomplete="off" name="format-lang" value="@tokens.dubbed" onchange="onFormatChange()"> <span data-i18n="nav.dubbing">@messages("nav.dubbing")</span></label>
         <div class="panel-divider"></div>
       }
-      <label class="panel-label"><input type="checkbox" autocomplete="off" id="format-imax"           onchange="onFormatChange()"> @messages("nav.imaxOnly")</label>
+      <label class="panel-label"><input type="checkbox" autocomplete="off" id="format-imax"           onchange="onFormatChange()"> <span data-i18n="nav.imaxOnly">@messages("nav.imaxOnly")</span></label>
       <div class="panel-divider"></div>
-      <div class="panel-section-label">@messages("nav.fromHour")</div>
+      <div class="panel-section-label" data-i18n="nav.fromHour">@messages("nav.fromHour")</div>
       <div class="d-flex gap-1 align-items-center" style="margin-bottom:.4rem">
         <select id="from-hour" class="filter-select" onchange="onFormatChange()" style="flex:1; min-width:0">
-          <option value="">@messages("nav.any")</option>
+          <option value="" data-i18n="nav.any">@messages("nav.any")</option>
           @for(h <- 0 to 23) { <option value="@h">@{f"$h%02d"}</option> }
         </select>
         <span>:</span>
@@ -185,7 +185,7 @@
          another country entirely. *@
       @if(city.country.cities.sizeIs > 1 || models.Country.switchable.sizeIs > 1) {
         <div id="city-picker-row" class="panel-label submenu-row" onclick="goToCityPicker()">
-          <span>@messages("nav.city")</span>
+          <span data-i18n="nav.city">@messages("nav.city")</span>
           <span class="submenu-right">
             <span class="city-picker-current">@city.labels.nominative</span>
             <span class="submenu-chevron">&#8250;</span>
@@ -194,21 +194,25 @@
         <div class="panel-divider"></div>
       }
 
-      @* Language picker — independent of both city and country: picking one
-         navigates to `/lang/:code`, which sets Play's own PLAY_LANG cookie and
-         bounces back here (`onLanguageChange`, shared.js), so the whole page
-         re-renders in the new language. Always shown (unlike the country
-         switcher) — every deployment ships all four bundles. *@
-      <div class="panel-section-label">@messages("nav.language")</div>
-      <select id="language-select" class="filter-select w-100" onchange="onLanguageChange(this.value)" aria-label="@messages("nav.language")" style="margin-bottom:.4rem">
+      @* Language picker — independent of both city and country. Picking one
+         swaps the visible UI language IN PLACE (`onLanguageChange`, shared.js)
+         against the language pack every page embeds — no navigation, no
+         server round trip. `messages.lang.code` below is always the
+         deployment's own fixed default (the server never renders any other
+         language any more), so it doubles as "what's selected before any
+         client-side pick is applied" without a separate parameter. Always
+         shown (unlike the country switcher) — every deployment ships all
+         four packs. *@
+      <div class="panel-section-label" data-i18n="nav.language">@messages("nav.language")</div>
+      <select id="language-select" class="filter-select w-100" onchange="onLanguageChange(this.value)" aria-label="@messages("nav.language")" data-i18n-attr="aria-label:nav.language" style="margin-bottom:.4rem">
         @for(code <- controllers.LanguageNames.Codes) {
           <option value="@code"@if(code == messages.lang.code){ selected}>@controllers.LanguageNames.native(code)</option>
         }
       </select>
       <div class="panel-divider"></div>
 
-      <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100">@messages("nav.clear")</button>
-      <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem">@messages("nav.copyLink")</button>
+      <button onclick="resetFormatFilter()" class="btn refresh-btn btn-sm w-100" data-i18n="nav.clear">@messages("nav.clear")</button>
+      <button onclick="copyFilterLinkToClipboard(this)" class="btn refresh-btn btn-sm w-100" style="margin-top:.4rem" data-i18n="nav.copyLink">@messages("nav.copyLink")</button>
     </div>
   </div>
 
@@ -226,17 +230,17 @@
        Left/Right keys or swiping the grid all move that select; the pills'
        `.active` highlight is synced back from it. *@
     <div class="d-flex align-items-stretch navbar-date">
-      <div id="day-pills" class="day-pills" role="tablist" aria-label="@messages("nav.filterByDate")">
-        <button class="day-pill" type="button" role="tab" data-day="today"    onclick="pickDay('today')">@messages("day.today")</button>
-        <button class="day-pill" type="button" role="tab" data-day="tomorrow" onclick="pickDay('tomorrow')">@messages("day.tomorrow")</button>
-        <button class="day-pill" type="button" role="tab" data-day="week"     onclick="pickDay('week')">@messages("day.week")</button>
-        <button class="day-pill" type="button" role="tab" data-day="anytime"  onclick="pickDay('anytime')">@messages("day.all")</button>
+      <div id="day-pills" class="day-pills" role="tablist" aria-label="@messages("nav.filterByDate")" data-i18n-attr="aria-label:nav.filterByDate">
+        <button class="day-pill" type="button" role="tab" data-day="today"    onclick="pickDay('today')" data-i18n="day.today">@messages("day.today")</button>
+        <button class="day-pill" type="button" role="tab" data-day="tomorrow" onclick="pickDay('tomorrow')" data-i18n="day.tomorrow">@messages("day.tomorrow")</button>
+        <button class="day-pill" type="button" role="tab" data-day="week"     onclick="pickDay('week')" data-i18n="day.week">@messages("day.week")</button>
+        <button class="day-pill" type="button" role="tab" data-day="anytime"  onclick="pickDay('anytime')" data-i18n="day.all">@messages("day.all")</button>
       </div>
       <select id="date-filter" autocomplete="off" class="visually-hidden" aria-hidden="true" tabindex="-1" onchange="onDateSelect()">
-        <option value="today">@messages("day.today")</option>
-        <option value="tomorrow">@messages("day.tomorrow")</option>
-        <option value="week">@messages("day.week")</option>
-        <option value="anytime">@messages("day.all")</option>
+        <option value="today" data-i18n="day.today">@messages("day.today")</option>
+        <option value="tomorrow" data-i18n="day.tomorrow">@messages("day.tomorrow")</option>
+        <option value="week" data-i18n="day.week">@messages("day.week")</option>
+        <option value="anytime" data-i18n="day.all">@messages("day.all")</option>
       </select>
     </div>
     <div class="navbar-search">
@@ -244,7 +248,7 @@
          on desktop via `.search-icon { display:none }`), mirroring the iOS/Android
          search pill. *@
       <svg class="search-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><line x1="16.5" y1="16.5" x2="21" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input id="search-input" class="search-input" type="search" placeholder="@messages("nav.search")" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
+      <input id="search-input" class="search-input" type="search" placeholder="@messages("nav.search")" data-i18n-attr="placeholder:nav.search" oninput="applyFiltersDebounced()" onfocus="lockSearchZoom()" onblur="unlockSearchZoom()">
     </div>
 
   @* Auth: own slot so CSS can pin it to the far right on desktop and

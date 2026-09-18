@@ -41,6 +41,7 @@
 @_hiddenModal()
 
 @_sharedJsConfig(allCinemas, cinemaPills, oauthProviders)
+<script defer src="@routes.Assets.versioned("js/i18n.js")"></script>
 <script defer src="@routes.Assets.versioned("js/shared.js")"></script>
 
 @* The listing's only heading. Visually hidden because the design opens straight
@@ -68,6 +69,6 @@
 @* First-run swipe hint (phones only). shared.js reveals it once per calendar
    day until the first swipe retires it for good — same rule as the iOS/Android
    apps. Hidden by default; never shown on a fine-pointer (desktop) device. *@
-<div id="swipe-hint" aria-hidden="true"><span class="swipe-hint-arrows">‹ ›</span> @messages("hint.swipe")</div>
+<div id="swipe-hint" aria-hidden="true"><span class="swipe-hint-arrows">‹ ›</span> <span data-i18n="hint.swipe">@messages("hint.swipe")</span></div>
 </body>
 </html>

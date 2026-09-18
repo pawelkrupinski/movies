@@ -3,7 +3,7 @@
 @(movie: Movie, posterUrl: Option[String], resolved: ResolvedMovie, slug: Option[String])(showingsContent: Html)(implicit city: models.City, messages: play.api.i18n.Messages)
 <div class="card">
   <div class="poster-wrap">
-    <button type="button" class="hide-btn" title="@messages("card.hide")">✕</button>
+    <button type="button" class="hide-btn" title="@messages("card.hide")" data-i18n-attr="title:card.hide">✕</button>
     <a href="@FilmHref.forSlug(slug, movie.title)" style="display:block;height:100%">
       @* Poster + its onerror fallback chain; `_moviePoster` documents the
          `data-fallbacks` contract and is shared with the detail page. *@

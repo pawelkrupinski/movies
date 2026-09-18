@@ -59,6 +59,7 @@
 <body>
 
 @_sharedJsConfig(Seq.empty, Map.empty[String, String], oauthProviders)
+<script src="@routes.Assets.versioned("js/i18n.js")"></script>
 <script src="@routes.Assets.versioned("js/shared.js")"></script>
 
 <nav class="navbar px-4 py-3 d-flex align-items-center justify-content-between">
@@ -173,8 +174,12 @@
     if (button) {
       // The count is whatever this pass folded away, so narrowing the filter
       // to eight cinemas retires the button rather than offering to unfold
-      // rows that are no longer there.
-      button.textContent   = button.dataset.label.replace('{0}', folded);
+      // rows that are no longer there. `t()` (shared.js) rather than a
+      // server-baked template, so a language switch between filter passes
+      // keeps this in step too.
+      button.textContent   = t('detail.moreCinemas', [folded]);
+      button.setAttribute('data-i18n', 'detail.moreCinemas');
+      button.setAttribute('data-i18n-arg0', String(folded));
       button.style.display = folded > 0 ? '' : 'none';
     }
   }
@@ -217,11 +222,23 @@
     // when one deserves a name of its own, branch on its path here.
     var labEl = document.getElementById('back-link-label');
     var isListing = p === '/' || p === '/movies' || p.indexOf('/movies/') === 0;
-    var label = isListing ? (labEl ? labEl.textContent : '') : '@messages("back.back")';
+    // `t('back.back')`, not the server-baked literal: this runs AFTER
+    // `i18n.js`'s boot-time apply (see below), so a visitor with a stored
+    // non-default pick needs the live lookup, not the deployment default.
+    var label = isListing ? (labEl ? labEl.textContent : '') : t('back.back');
 
     var link  = document.getElementById('back-link');
     if (link)  link.setAttribute('href', url.pathname + url.search + url.hash);
-    if (labEl) labEl.textContent = label;
+    if (labEl) {
+      labEl.textContent = label;
+      // A translated "Wstecz"/"Back" label, unlike the city-name branch, has
+      // to keep tracking a client-side language switch — this runs ahead of
+      // shared.js's deferred boot, so marking it here (rather than in the
+      // static SSR markup, where the DEFAULT label is the city name, not this
+      // string) is what makes `applyLanguage`'s later sweep find it.
+      if (isListing) labEl.removeAttribute('data-i18n');
+      else labEl.setAttribute('data-i18n', 'back.back');
+    }
   })();
 </script>
 }

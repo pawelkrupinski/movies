@@ -45,13 +45,6 @@ import play.api.mvc._
 class LandingController(cc: ControllerComponents, country: Country = Country.fromEnv)
     extends AbstractController(cc) {
 
-  // The city screen's default language — always `country`'s, so a caller
-  // exercising a non-Polish deployment (every controller spec that overrides
-  // `country`) gets a consistent default without a second parameter to keep
-  // in sync (mirrors `MovieController.deploymentDefaultLang`, bare code and
-  // all — see its comment for why it can't be region-qualified).
-  private val deploymentDefaultLang: Lang = Lang(country.language.getLanguage)
-
   /** The front door is BRAND chrome, not a country's site, so it is rendered in
    *  the brand's language rather than the language of whichever deployment the
    *  proxy points the apex at. It used to be English by accident — the apex sat
@@ -64,11 +57,13 @@ class LandingController(cc: ControllerComponents, country: Country = Country.fro
     cc.messagesApi.preferred(Seq(Lang("en")))
 
   // The city screen, unlike the front door, IS a country's own site — a page
-  // this feature's language picker applies to. Resolved per request the same
-  // way `MovieController` does, layering a pick/`Accept-Language` over the
-  // deployment default rather than rendering every visitor in the latter.
-  private def requestMessages(request: RequestHeader): play.api.i18n.Messages =
-    cc.messagesApi.preferred(Seq(WebLangResolver.resolve(request, deploymentDefaultLang)))
+  // this feature's language picker applies to. Always `country`'s language:
+  // every visitor gets the same, edge-cacheable HTML; an explicit pick swaps
+  // the visible copy client-side (`shared.js`'s `applyLanguage`) rather than
+  // by re-rendering here (mirrors `MovieController.deploymentDefaultLang`,
+  // bare code and all — see its comment for why it can't be region-qualified).
+  private lazy val cityScreenMessages: play.api.i18n.Messages =
+    cc.messagesApi.preferred(Seq(Lang(country.language.getLanguage)))
 
   def index(): Action[AnyContent] = Action { request =>
     if (country.servesApex(PageMeta.host(request)))
@@ -77,7 +72,7 @@ class LandingController(cc: ControllerComponents, country: Country = Country.fro
       request.cookies.get("city").map(_.value).flatMap(City.bySlug) match {
         case Some(c) if !LandingController.picksCity(request) =>
           Redirect(s"${country.pathPrefix}/${c.slug}/")
-        case _ => Ok(views.html.landing(country, isApex = false)(using requestMessages(request)))
+        case _ => Ok(views.html.landing(country, isApex = false)(using cityScreenMessages))
       }
   }
 }

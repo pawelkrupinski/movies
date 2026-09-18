@@ -27,7 +27,7 @@
 }@film.resolved.ageRating.map { r =>
   <span class="pill age-rating">@r</span>
 }@for(g <- film.movie.genres) {
-  <a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>
+  <a href="@BrowseHref.genre(g)" class="pill genre" title="@messages("card.genreFilter", g)" data-i18n-attr="title:card.genreFilter" data-i18n-arg0="@g">@g</a>
 }</div>
 
       @film.resolved.originalTitle.map { ot =>
@@ -46,15 +46,16 @@
          selection changes. What is rendered here is the no-JS answer — the
          first ten of ALL of them — and `data-cinema` is what the filter
          matches on (display names, the same key `disabledCinemas` stores).
-         `data-label` carries the button's copy with a `{0}` hole, because
-         the count it names is only known once the filter has run. *@
+         `data-i18n-arg0` carries the button's count, because it (like the
+         language itself) is only known once the filter has run — see
+         `applyCinemaLinkFold` in `film.scala.html`. *@
       @if(film.cinemaFilmUrls.nonEmpty) {
         <div class="cinema-links" style="margin-top: .5rem;">
           @for(((cinema, url), cinemaIndex) <- film.cinemaFilmUrls.zipWithIndex) {
             <a href="@url" target="_blank" rel="nofollow noopener" data-cinema="@cinema.displayName" class="cinema-link@if(cinemaIndex >= 10){ folded}">@cinema.displayName ↗</a>
           }
           @if(film.cinemaFilmUrls.size > 10) {
-            <button type="button" class="cinemas-more" data-label="@messages("detail.moreCinemas", "{0}")" onclick="unfoldCinemas(this)">@messages("detail.moreCinemas", film.cinemaFilmUrls.size - 10)</button>
+            <button type="button" class="cinemas-more" data-i18n="detail.moreCinemas" data-i18n-arg0="@(film.cinemaFilmUrls.size - 10)" onclick="unfoldCinemas(this)">@messages("detail.moreCinemas", film.cinemaFilmUrls.size - 10)</button>
           }
         </div>
       }
@@ -70,12 +71,12 @@
          trigger. *@
       @if(otherCities.nonEmpty) {
         <div class="other-cities-row">
-          <button type="button" class="other-cities-trigger" onclick="openOtherCitiesModal()">@messages("detail.otherCities")</button>
+          <button type="button" class="other-cities-trigger" onclick="openOtherCitiesModal()" data-i18n="detail.otherCities">@messages("detail.otherCities")</button>
         </div>
         <div class="other-cities-modal-backdrop" id="other-cities-modal-backdrop" onclick="closeOtherCitiesModal()">
           <div class="other-cities-modal" onclick="event.stopPropagation()">
-            <button type="button" class="login-modal-close" onclick="closeOtherCitiesModal()" aria-label="@messages("auth.close")">&times;</button>
-            <div class="login-modal-title">@messages("detail.otherCitiesTitle", film.movie.title)</div>
+            <button type="button" class="login-modal-close" onclick="closeOtherCitiesModal()" aria-label="@messages("auth.close")" data-i18n-attr="aria-label:auth.close">&times;</button>
+            <div class="login-modal-title" data-i18n="detail.otherCitiesTitle" data-i18n-arg0="@film.movie.title">@messages("detail.otherCitiesTitle", film.movie.title)</div>
             <div class="other-cities-list">
               @for((otherCity, href) <- otherCities) {
                 <a href="@href" class="other-cities-link">@otherCity.labels.nominative</a>
@@ -87,28 +88,28 @@
 
       @film.synopsis match {
         case Some(text) => {
-          <div class="meta-label">@messages("detail.synopsis")</div>
+          <div class="meta-label" data-i18n="detail.synopsis">@messages("detail.synopsis")</div>
           <div class="meta-value synopsis">@Html(tools.SynopsisMarkdown.toInlineHtml(text))</div>
         }
         case None => {}
       }
 
       @if(film.director.nonEmpty) {
-          <div class="meta-label">@messages("detail.director")</div>
+          <div class="meta-label" data-i18n="detail.director">@messages("detail.director")</div>
           <div class="meta-value">@for((name, i) <- film.director.zipWithIndex) {<!--
             -->@if(i > 0){, }<a href="@BrowseHref.director(name)" class="meta-link">@name</a><!--
           -->}</div>
       }
 
       @if(film.cast.nonEmpty) {
-          <div class="meta-label">@messages("detail.cast")</div>
+          <div class="meta-label" data-i18n="detail.cast">@messages("detail.cast")</div>
           <div class="meta-value">@for((name, i) <- film.cast.zipWithIndex) {<!--
             -->@if(i > 0){, }<a href="@BrowseHref.actor(name)" class="meta-link">@name</a><!--
           -->}</div>
       }
 
       @if(film.movie.countries.nonEmpty) {
-        <div class="meta-label">@messages("detail.countries")</div>
+        <div class="meta-label" data-i18n="detail.countries">@messages("detail.countries")</div>
         <div class="meta-value">@for((country, i) <- film.movie.countries.zipWithIndex) {<!--
           -->@if(i > 0){, }<a href="@BrowseHref.country(country)" class="meta-link">@country</a><!--
         -->}</div>
@@ -124,10 +125,10 @@
          others. *@
       @defining(film.resolved.trailerUrls) { embedUrls =>
         @if(embedUrls.nonEmpty) {
-          <div class="meta-label">@messages("detail.trailers")</div>
+          <div class="meta-label" data-i18n="detail.trailers">@messages("detail.trailers")</div>
           <div>
             @for((url, idx) <- embedUrls.zipWithIndex) {
-              <button type="button" class="trailer-link" onclick="playTrailer(this, '@url')">@messages("detail.trailer", idx + 1)</button>
+              <button type="button" class="trailer-link" onclick="playTrailer(this, '@url')" data-i18n="detail.trailer" data-i18n-arg0="@(idx + 1)">@messages("detail.trailer", idx + 1)</button>
             }
           </div>
           @* Single iframe slot — every link sets src on this one element so
@@ -136,6 +137,7 @@
           <div class="trailer-frame" id="trailer-frame" style="display:none">
             <iframe id="trailer-iframe"
                     title="@messages("detail.trailerTitle", film.movie.title)"
+                    data-i18n-attr="title:detail.trailerTitle" data-i18n-arg0="@film.movie.title"
                     referrerpolicy="strict-origin-when-cross-origin"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowfullscreen></iframe>
@@ -191,7 +193,7 @@
   </script>
 
   <div class="showtimes-section">
-    <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;">@messages("detail.showings")</h2>
+    <h2 style="font-size: 1.1rem; font-weight: 600; margin-bottom: 0;" data-i18n="detail.showings">@messages("detail.showings")</h2>
     @* Every cinema the film plays at, every date. What narrows it is the
        visitor's own Filtry selection, applied by `applyFilters` in
        `film.scala.html` once shared.js boots — so the server render stays
@@ -199,6 +201,6 @@
        person sees carries only the cinemas they kept switched on.
        `#showings-empty` is what they get when the selection leaves nothing. *@
     @_filmShowings(film)
-    <div id="showings-empty" class="showings-empty" style="display:none">@messages("empty.repertoire")</div>
+    <div id="showings-empty" class="showings-empty" style="display:none" data-i18n="empty.repertoire">@messages("empty.repertoire")</div>
   </div>
 </div>

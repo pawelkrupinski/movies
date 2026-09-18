@@ -1,6 +1,6 @@
 @import models.Movie
 @import controllers.{FilmHref, BrowseHref, CardFormat}
-@(movie: Movie, slug: Option[String], linkGenres: Boolean, ageRating: Option[String] = None)(implicit city: models.City)
+@(movie: Movie, slug: Option[String], linkGenres: Boolean, ageRating: Option[String] = None)(implicit city: models.City, messages: play.api.i18n.Messages)
 @*
    The title link + runtime/year/genre pills shared, byte-for-byte, by the
    listing card (`_movieCard`). The two
@@ -14,5 +14,5 @@
 }@ageRating.map { r =>
   <span class="pill age-rating">@r</span>
 }@for(g <- movie.genres.take(3)) {
-  @if(linkGenres){<a href="@BrowseHref.genre(g)" class="pill genre" title="Filmy gatunku @g">@g</a>}else{<span class="pill genre">@g</span>}
+  @if(linkGenres){<a href="@BrowseHref.genre(g)" class="pill genre" title="@messages("card.genreFilter", g)" data-i18n-attr="title:card.genreFilter" data-i18n-arg0="@g">@g</a>}else{<span class="pill genre">@g</span>}
 }

@@ -22,12 +22,12 @@ object TestMovieController {
     // deployment passes it here rather than mutating the shared process env.
     //
     // This is now also what decides the UI language: `MovieController`
-    // resolves its `Messages` per request from `servingCountry.language` (a
-    // real `Accept-Language`/`PLAY_LANG` cookie can still override it on any
-    // individual `FakeRequest` — see `WebLangResolver`), so a spec asserting
-    // on, say, the UK deployment's English copy gets it for free just by
-    // passing `servingCountry = Country.UnitedKingdom` — no separate
-    // `messages` parameter to keep in sync any more.
+    // always renders `servingCountry.language`'s bundle (no per-request
+    // Accept-Language/cookie resolution any more — every visitor gets the
+    // same, edge-cacheable HTML), so a spec asserting on, say, the UK
+    // deployment's English copy gets it for free just by passing
+    // `servingCountry = Country.UnitedKingdom` — no separate `messages`
+    // parameter to keep in sync any more.
     servingCountry: models.Country = models.Country.default,
     // A read model the caller built itself — and therefore still holds the
     // backing store for, so a spec can push INCREMENTAL change-stream events
@@ -38,9 +38,9 @@ object TestMovieController {
     val readModel_ = readModel.getOrElse(TestReadModel.fromRecords(records))
     val ctrl  = new MovieController(
       // The REAL bundles, not Play's empty stub default — `MovieController`
-      // now resolves its own `Messages` off `cc.messagesApi` per request
-      // (`WebLangResolver`), so a spec asserting on actual rendered copy
-      // needs the checked-in `messages`/`messages.en`/… behind it.
+      // resolves its fixed deployment `Messages` off `cc.messagesApi`, so a
+      // spec asserting on actual rendered copy needs the checked-in
+      // `messages`/`messages.en`/… behind it.
       cc                     = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi),
       movieControllerService = new MovieControllerService(readModel_),
       readModel              = readModel_,

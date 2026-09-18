@@ -64,7 +64,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   private var corpusFilmCount: Int = 0
 
   override def beforeAll(): Unit = {
-    chrome = Chrome.tryStart()
+    // This whole spec exercises the Polish (default) deployment — pin Chrome's
+    // own locale to match, or `i18n.js`'s boot-time `navigator.languages` sniff
+    // (see shared.js/i18n.js) reads the RUNNER's own locale (English on most
+    // CI/dev boxes) and silently switches every page's client-side copy to
+    // English out from under assertions that expect the server-rendered Polish
+    // text — the same class of bug `OgCardGenerator.screenshotCity` already
+    // works around this way (see `Chrome.tryStart`'s doc / `CdpAcceptLanguageSpec`).
+    chrome = Chrome.tryStart(lang = Some("pl"))
     if (chrome.nonEmpty) {
       val wiring = new FixtureTestWiring("08-06-2026")
       // Load the read-model snapshot instead of the ~110s corpus boot (this spec
@@ -305,10 +312,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
-  /** Open the city-selection landing page (not city-scoped). */
+  /** Open the city-selection landing page (not city-scoped). Server-rendered
+   *  Polish (the fixture's default deployment) — but `i18n.js`'s boot-time
+   *  sniff would otherwise override that with whatever language the CI/dev
+   *  machine's own Chrome reports via `navigator.languages` (English on most
+   *  boxes), same class of mismatch `OgCardGenerator`/`CdpAcceptLanguageSpec`
+   *  document for the OG-card generator. Force it back to Polish once the
+   *  page has loaded, matching what the server actually rendered. */
   private def onLanding(body: CdpPage => Any): Unit =
     chrome match {
-      case Some(c) => c.openPage(server.baseUrl + "/landing")(body(_))
+      case Some(c) => c.openPage(server.baseUrl + "/landing") { page =>
+        page.eval("applyLanguage('pl')")
+        body(page)
+      }
       case None    => cancel("Chrome not installed — skipping JS behaviour test")
     }
 
@@ -606,11 +622,15 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "name the state level in the search box, and drop it once inside one" in {
     onGroupedLanding { page =>
-      pickerSearchPlaceholder(page) shouldBe "Search for a state or city…"
+      // Polish text, not English: the picker's own copy is the DEPLOYMENT's
+      // (`beforeAll` pins Chrome to `lang = Some("pl")` for exactly this),
+      // client-side-switched only by an explicit pick — see the `beforeAll`
+      // comment and `i18n.js`.
+      pickerSearchPlaceholder(page) shouldBe "Szukaj: stan lub miasto…"
       clickPickerRow(page, "California")
       // One level, no subregion — once inside a state, only its own metros
       // are left to search for.
-      pickerSearchPlaceholder(page) shouldBe "Search for a city…"
+      pickerSearchPlaceholder(page) shouldBe "Szukaj miasta…"
     }
   }
 
@@ -710,13 +730,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "narrow the search box's copy one level at a time — nation, then county, then city" in {
     onNestedLanding { page =>
+      // Polish text throughout — see the note on the US state test above.
       // Two levels here — the root box names both, deepest last.
-      pickerSearchPlaceholder(page) shouldBe "Search for a nation, county or city…"
+      pickerSearchPlaceholder(page) shouldBe "Szukaj: kraj, hrabstwo lub miasto…"
       clickPickerRow(page, "England")
       // The nation is fixed now — only its counties and places are left.
-      pickerSearchPlaceholder(page) shouldBe "Search for a county or city…"
+      pickerSearchPlaceholder(page) shouldBe "Szukaj: hrabstwo lub miasto…"
       clickPickerRow(page, "West Midlands")
-      pickerSearchPlaceholder(page) shouldBe "Search for a city…"
+      pickerSearchPlaceholder(page) shouldBe "Szukaj miasta…"
     }
   }
 
@@ -787,9 +808,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   it should "name the Bundesland level, then drop it once inside one" in {
     onGermanLanding { page =>
-      pickerSearchPlaceholder(page) shouldBe "Search for a state or city…"
+      // Polish text throughout — see the note on the US state test above.
+      pickerSearchPlaceholder(page) shouldBe "Szukaj: kraj związkowy lub miasto…"
       clickPickerRow(page, "Nordrhein-Westfalen")
-      pickerSearchPlaceholder(page) shouldBe "Search for a city…"
+      pickerSearchPlaceholder(page) shouldBe "Szukaj miasta…"
     }
   }
 

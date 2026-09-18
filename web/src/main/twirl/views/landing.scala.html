@@ -162,15 +162,42 @@
     .picker-group-item { display: flex; align-items: center; justify-content: space-between; }
     .picker-group-item .submenu-chevron { color: #9a9ac0; }
   </style>
+  @* This page never loads `shared.js` — it's fully self-contained — so it
+     embeds the language pack and `i18n.js` (the `t`/`applyLanguage`/
+     `onLanguageChange`/boot logic those share) directly rather than through
+     `_sharedJsConfig.scala.html`. No in-page language switcher lives here,
+     but a visitor who picked a language elsewhere still expects the picker's
+     own chrome ("Choose your city", "Back", country names, …) to open in it;
+     the boot-time apply below (inside `i18n.js`) does that from
+     `localStorage`, and this page's own inline script below reads the same
+     live `t()`/`currentLang` for its JS-built copy (country pills, search
+     placeholder, geolocation status) rather than baking one language in at
+     render time.
+     `KINOWO_LOCALE` isn't embedded via `_sharedJsConfig` here, so `i18n.js`
+     needs its `.lang` seeded directly — `messages.lang.code` (this page's own
+     implicit) is `frontDoorMessages`'s fixed "en" on the apex,
+     `cityScreenMessages`'s deployment language otherwise (`LandingController`).
+     On the apex specifically, `KINOWO_NO_AUTO_LANG` stops `i18n.js`'s boot
+     from applying a stored/sniffed pick: the apex is brand chrome that speaks
+     for the whole brand, not for a visitor (see the class doc above), so it
+     must always render in English — `t()`/`countryName()` still work there
+     (needed for `renderPickerCountries()` below), they just always resolve
+     against the English pack since `currentLang` never moves off it. *@
+  <script>
+    const KINOWO_LOCALE = { lang: "@messages.lang.code" };
+    @if(isApex) { window.KINOWO_NO_AUTO_LANG = true; }
+  </script>
+  <script id="i18n-packs" type="application/json">@Html(controllers.I18nPacks.json)</script>
+  <script src="@routes.Assets.versioned("js/i18n.js")"></script>
 </head>
 <body>
   <main>
     @if(isApex) {
       <h1>🎬 @models.Country.apexBrandName</h1>
-      <p class="sub">@messages("landing.chooseCountry")</p>
+      <p class="sub" data-i18n="landing.chooseCountry">@messages("landing.chooseCountry")</p>
     } else {
       <h1>🎬 @deployment.brandName</h1>
-      <p class="sub">@messages("landing.chooseCity")</p>
+      <p class="sub" data-i18n="landing.chooseCity">@messages("landing.chooseCity")</p>
     }
 
     <div id="picker-static">
@@ -180,7 +207,7 @@
            should not have to know that the two brands are the same product. *@
         <ul class="country-list" id="country-list">
           @for(c <- models.Country.switchable) {
-            <li><a href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code">@messages("country." + c.code)<span class="country-host">@c.shareHost</span></a></li>
+            <li><a href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code"><span data-i18n="@{"country." + c.code}">@messages("country." + c.code)</span><span class="country-host">@c.shareHost</span></a></li>
           }
         </ul>
       } else {
@@ -212,7 +239,7 @@
            already searches every deployed country, so it never has the
            "guessed the wrong country with no way to opt out" problem the
            automatic check is deliberately skipped for on the apex. *@
-        <button type="button" id="picker-locate-btn" class="picker-locate-btn" onclick="locatePickerAnywhere()" aria-label="@messages("nav.locateMe")" title="@messages("nav.locateMe")">
+        <button type="button" id="picker-locate-btn" class="picker-locate-btn" onclick="locatePickerAnywhere()" aria-label="@messages("nav.locateMe")" title="@messages("nav.locateMe")" data-i18n-attr="aria-label:nav.locateMe;title:nav.locateMe">
           <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
             <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3c-.46-4.17-3.77-7.48-7.94-7.94V1h-2v2.06C6.83 3.52 3.52 6.83 3.06 11H1v2h2.06c.46 4.17 3.77 7.48 7.94 7.94V23h2v-2.06c4.17-.46 7.48-3.77 7.94-7.94H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
           </svg>
@@ -221,13 +248,16 @@
       <div id="picker-locate-status" class="locate-status" style="display:none"></div>
       <div id="picker-back-row" class="picker-back-row" style="display:none" onclick="pickerBack()">
         <span class="picker-back-arrow" aria-hidden="true">&#8249;</span>
-        <span>@messages("back.back")</span>
+        <span data-i18n="back.back">@messages("back.back")</span>
       </div>
       <div id="picker-subtitle" class="picker-subtitle" style="display:none"></div>
+      @* No `data-i18n-attr` here: `updatePickerSearchCopy()` (below) already
+         recomputes this placeholder/aria-label live from `t()` on every
+         render, so a static marker would just race it. *@
       <input class="picker-search" id="picker-search" type="search" inputmode="search"
              autocomplete="off" autocapitalize="off" spellcheck="false"
              placeholder="@messages("landing.searchCity")" aria-label="@messages("landing.searchCityAria")" aria-controls="picker-list" oninput="filterPicker()">
-      <p class="picker-empty" id="picker-empty">@messages("landing.noCity")</p>
+      <p class="picker-empty" id="picker-empty" data-i18n="landing.noCity">@messages("landing.noCity")</p>
       <ul class="picker-list" id="picker-list"></ul>
     </div>
 
@@ -242,10 +272,12 @@
     // `name` field is each country's fixed native/English label (baked into the
     // static, cacheable `/api/catalog` JSON), so it can't carry per-request
     // text. Same `country.<code>` keys the static `#picker-static` fallback
-    // already reads (see below) — mirrored here for the dynamic pills.
-    const COUNTRY_NAMES = @Html(play.api.libs.json.Json.toJson(
-      models.Country.switchable.map(c => c.code -> messages("country." + c.code)).toMap
-    ).toString);
+    // already reads (see above) — looked up live via `t()` (from `i18n.js`,
+    // loaded before this script) rather than baked into one language at
+    // render time, so it tracks whatever `bootLanguage()` already applied
+    // (always English on the apex — see the `<head>` comment on
+    // `KINOWO_NO_AUTO_LANG`).
+    function countryName(code) { return t('country.' + code); }
     // The country this PROCESS actually serves — decides whether a picked
     // city is a local navigation or a hand-off to another deployment. Unlike
     // `DEFAULT_PICKER_COUNTRY` below, this never changes with which pill is
@@ -265,21 +297,15 @@
     // never a bare "region" that would misname either. One entry per country
     // that nests (`Country.cityGroups`); Poland and Spain are flat and never
     // reach `pickerSearchLevels` below with a match. See `landing.level.*` in
-    // the messages files for the per-language terms.
-    const PICKER_GROUP_LABELS = {
-      uk: {
-        region: @Html(play.api.libs.json.Json.toJson(messages("landing.level.uk.region")).toString),
-        subregion: @Html(play.api.libs.json.Json.toJson(messages("landing.level.uk.subregion")).toString),
-      },
-      us: { region: @Html(play.api.libs.json.Json.toJson(messages("landing.level.us.region")).toString) },
-      de: { region: @Html(play.api.libs.json.Json.toJson(messages("landing.level.de.region")).toString) },
-    };
-    // `{0}`/`{1}` placeholders, filled in by `updatePickerSearchCopy` below —
-    // not pre-rendered with an arg, since which (and how many) levels apply
-    // is only known once `pickerCountry`/`pickerRegion`/`pickerSubregion` are.
-    const SEARCH_COPY_CITY   = @Html(play.api.libs.json.Json.toJson(messages("landing.searchCity")).toString);
-    const SEARCH_COPY_LEVEL1 = @Html(play.api.libs.json.Json.toJson(messages("landing.searchLevels1")).toString);
-    const SEARCH_COPY_LEVEL2 = @Html(play.api.libs.json.Json.toJson(messages("landing.searchLevels2")).toString);
+    // the messages files for the per-language terms. Looked up live via `t()`
+    // (like `countryName` above), not pre-rendered in one language.
+    function pickerGroupLabels() {
+      return {
+        uk: { region: t('landing.level.uk.region'), subregion: t('landing.level.uk.subregion') },
+        us: { region: t('landing.level.us.region') },
+        de: { region: t('landing.level.de.region') },
+      };
+    }
 
     // Fold a place name to the form people actually type it in. Two folds,
     // because one is not enough once the list is not Polish.
@@ -334,7 +360,7 @@
         const pill = document.createElement('button');
         pill.type = 'button';
         pill.className = 'picker-country-pill' + (country.code === pickerCountry ? ' active' : '');
-        pill.textContent = COUNTRY_NAMES[country.code] || country.name;
+        pill.textContent = countryName(country.code);
         pill.onclick = function () { pickPickerCountry(country.code); };
         wrap.appendChild(pill);
       });
@@ -437,7 +463,7 @@
     // are left to search for). Empty for a flat country (no entry in
     // `PICKER_GROUP_LABELS`) or once drilled all the way to city rows.
     function pickerSearchLevels() {
-      const groups = PICKER_GROUP_LABELS[pickerCountry];
+      const groups = pickerGroupLabels()[pickerCountry];
       if (!groups) return [];
       if (pickerRegion === null) return groups.subregion ? [groups.region, groups.subregion] : [groups.region];
       if (pickerSubregion === null && groups.subregion) return [groups.subregion];
@@ -451,10 +477,10 @@
     function updatePickerSearchCopy() {
       const levels = pickerSearchLevels();
       const text = levels.length === 2
-        ? SEARCH_COPY_LEVEL2.replace('{0}', levels[0]).replace('{1}', levels[1])
+        ? t('landing.searchLevels2', levels)
         : levels.length === 1
-        ? SEARCH_COPY_LEVEL1.replace('{0}', levels[0])
-        : SEARCH_COPY_CITY;
+        ? t('landing.searchLevels1', levels)
+        : t('landing.searchCity');
       const input = document.getElementById('picker-search');
       input.placeholder = text;
       input.setAttribute('aria-label', text.replace(/…$/, ''));
@@ -589,14 +615,14 @@
       const status = document.getElementById('picker-locate-status');
       const show = function (text) { status.textContent = text; status.style.display = text ? '' : 'none'; };
       if (!navigator.geolocation) return;
-      show('@Html(play.api.libs.json.Json.toJson(messages("landing.locating")).toString)');
+      show(t('landing.locating'));
       navigator.geolocation.getCurrentPosition(
         function (pos) {
           const c = nearestCityWithinKm(KINOWO_CATALOG.cities, pos.coords.latitude, pos.coords.longitude, 100);
           if (c) { show(''); pickPickerCity(c); }
-          else show('@Html(play.api.libs.json.Json.toJson(messages("landing.noNearby")).toString)');
+          else show(t('landing.noNearby'));
         },
-        function () { show('@Html(play.api.libs.json.Json.toJson(messages("landing.noNearby")).toString)'); },
+        function () { show(t('landing.noNearby')); },
         { timeout: 5000, maximumAge: 600000 }
       );
     }
@@ -620,7 +646,7 @@
       if (/(^|[?&])@{controllers.LandingController.PickCityParam}=@{controllers.LandingController.PickCityValue}(&|$)/.test(location.search)) return;
       if (!navigator.geolocation) return;
       var note = document.getElementById('locating');
-      note.textContent = '@messages("landing.locating")';
+      note.textContent = t('landing.locating');
       var done = false;
       var finish = function (msg) { if (!done) { done = true; note.textContent = msg || ''; } };
       navigator.geolocation.getCurrentPosition(
@@ -628,7 +654,7 @@
           if (done) return;
           var c = nearestCityWithinKm(citiesOf(DEPLOYMENT_COUNTRY_CODE), pos.coords.latitude, pos.coords.longitude, 100);
           if (c) { done = true; rememberAndGo(c.slug); }
-          else { finish('@messages("landing.noNearby")'); }
+          else { finish(t('landing.noNearby')); }
         },
         function () { finish(''); },
         { timeout: 5000, maximumAge: 600000 }

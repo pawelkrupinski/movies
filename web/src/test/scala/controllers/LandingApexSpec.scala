@@ -24,6 +24,14 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     contentAsString(controller.index().apply(
       FakeRequest("GET", "/").withHeaders("X-Forwarded-Host" -> host)))
 
+  // Every page (including this one) embeds ALL FOUR languages' packs inline
+  // (`#i18n-packs`, `controllers.I18nPacks`) for the client-side language
+  // switch — inert JSON data, never rendered as visible text. A check for
+  // "no Polish leaked in" has to look past that blob, or every deployment's
+  // embedded Polish pack would fail it regardless of what's actually shown.
+  private def visibleBody(html: String): String =
+    html.replaceAll("(?s)<script id=\"i18n-packs\".*?</script>", "")
+
   "the showtimes.cc apex" should "offer every deployed country, each on its own domain" in {
     val html = bodyOn("showtimes.cc")
     html should include ("""<ul class="country-list"""")
@@ -99,7 +107,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     val html = bodyOn("showtimes.cc")
     html should include ("""<html lang="en"""")
     html should include ("Choose your country")
-    html should not include ("Wybierz")
+    visibleBody(html) should not include ("Wybierz")
   }
 
   "a returning visitor's city bounce" should "stay inside the deployment's mount point" in {

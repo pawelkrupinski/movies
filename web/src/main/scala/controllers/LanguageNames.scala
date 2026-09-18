@@ -7,7 +7,8 @@ package controllers
  *  "Polski". */
 object LanguageNames {
 
-  /** Display order for the picker — matches `WebLangResolver.Supported`. */
+  /** Display order for the picker — matches the language pack's own keys
+   *  (`I18nPackGenerator`, `controllers.I18nPacks`). */
   val Codes: Seq[String] = Seq("pl", "en", "de", "es")
 
   def native(code: String): String = code match {

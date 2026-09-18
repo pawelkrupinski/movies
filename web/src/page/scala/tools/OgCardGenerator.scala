@@ -259,13 +259,17 @@ object OgCardGenerator {
   /** Screenshot the live city page at desktop 2×, with every date shown so the
    *  grid is populated regardless of the hour. Returns Base64 PNG bytes.
    *
-   *  Chrome is launched with `--accept-lang` set to the deployment's own
-   *  language (see `Chrome.tryStart`) so `WebLangResolver` — which prefers a
-   *  visitor's `Accept-Language` over the deployment default — renders THIS
-   *  language rather than whatever locale the machine driving this generator
-   *  would otherwise default to (English on most CI/dev boxes). Without that,
-   *  a German or Spanish deployment's card screenshot showed English
-   *  nav/day-tab/search text under a correctly German/Spanish overlay
+   *  The server always renders the deployment's own default language now (no
+   *  more Accept-Language/cookie resolution — see `shared.js`'s client-side
+   *  language switch), so THAT part can't drift with the machine driving this
+   *  generator. But `shared.js` boots by sniffing `navigator.languages` as a
+   *  fallback when no explicit pick is stored, and a headless Chrome's own
+   *  locale defaults to English on most CI/dev boxes — so Chrome is still
+   *  launched with `--accept-lang` set to the deployment's own language (see
+   *  `Chrome.tryStart`), matching the sniff to what the server already
+   *  rendered instead of letting the client overwrite it back to English.
+   *  Without that, a German or Spanish deployment's card screenshot showed
+   *  English nav/day-tab/search text under a correctly German/Spanish overlay
    *  tagline.
    *
    *  Throws when the page didn't actually load (Chrome's offline error page, a

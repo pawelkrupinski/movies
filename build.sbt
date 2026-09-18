@@ -261,6 +261,16 @@ lazy val web = (project in file("web"))
     // `.env.local` lives at the repo root, not under web/, so point the proxy
     // hook at the build root rather than this module's baseDirectory.
     PlayKeys.playRunHooks += MongoProxy((LocalRootProject / baseDirectory).value),
+    // The client-side language pack (`controllers.I18nPacks`) — derives from
+    // `messages*` on every compile so the bundles stay the one source of
+    // truth for both the server-rendered default page and the client-side
+    // language switch. See `I18nPackGenerator`.
+    Compile / resourceGenerators += Def.task {
+      Seq(I18nPackGenerator.generate(
+        (Compile / resourceDirectory).value,
+        (Compile / resourceManaged).value,
+      ))
+    }.taskValue,
     // mongo-scala-driver, caffeine and jsoup come transitively via `common`.
     libraryDependencies ++= Seq(
       jsoup,                 // also used directly in views/helpers

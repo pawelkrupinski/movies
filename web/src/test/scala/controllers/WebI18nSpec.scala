@@ -63,7 +63,6 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     json should include("\"one\":\"seans\"")
     json should include("\"few\":\"seanse\"")
     json should include("\"many\":\"seansów\"")
-    json should include("\"emptyRepertoire\":\"Brak repertuaru.\"")
     json should include("Nie")   // Polish short weekday
   }
 
@@ -72,7 +71,6 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
     json should include("\"plural\":\"en\"")
     json should include("\"one\":\"showing\"")
     json should include("\"other\":\"showings\"")
-    json should include("\"emptyRepertoire\":\"No listings.\"")
   }
 
   // German and Spanish share the English one/other RULE but not its words — a

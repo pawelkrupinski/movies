@@ -44,6 +44,7 @@ country.us=Stany Zjednoczone
 country.es=Hiszpania
 nav.clear=Wyczyść
 nav.copyLink=Skopiuj link do schowka
+nav.copied=Skopiowano!
 nav.search=Szukaj…
 nav.filterByDate=Filtruj według daty
 brand.title=Repertuar kinowy {0}
@@ -128,6 +129,8 @@ detail.moreCinemas=Pokaż pozostałe kina ({0})
 detail.otherCities=W innych miastach
 detail.otherCitiesTitle={0} – w innych miastach
 card.hide=Ukryj film
+# {0} = genre name — the tap-to-filter tooltip on a card's genre pill.
+card.genreFilter=Filmy gatunku {0}
 
 # ── Film page (meta) ────────────────────────────────────────────────────────
 # `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative,

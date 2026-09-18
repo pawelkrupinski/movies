@@ -37,6 +37,7 @@ country.us=United States
 country.es=Spain
 nav.clear=Clear
 nav.copyLink=Copy link
+nav.copied=Copied!
 nav.search=Search…
 nav.filterByDate=Filter by date
 brand.title=Cinema listings {0}
@@ -108,6 +109,8 @@ detail.moreCinemas=Show {0} more cinemas
 detail.otherCities=In other cities
 detail.otherCitiesTitle={0} – in other cities
 card.hide=Hide film
+# {0} = genre name — the tap-to-filter tooltip on a card's genre pill.
+card.genreFilter={0} films
 
 # ── Film page (meta) ────────────────────────────────────────────────────────
 # `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative,

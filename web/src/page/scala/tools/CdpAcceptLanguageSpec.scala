@@ -6,20 +6,20 @@ import org.scalatest.matchers.should.Matchers
 /**
  * Regression for the OG-card generator rendering non-English deployments
  * (Poland, Germany, Spain) with English nav/day-tab/search chrome under an
- * otherwise-correctly-translated overlay tagline: `WebLangResolver` prefers a
- * request's own `Accept-Language` over the deployment's fixed default, and
- * the headless Chrome driving `OgCardGenerator` sends whatever the RUNNER's
- * own locale is (`en-US` on most CI/dev machines) — never the deployment's
- * language — so every non-English card screenshot rendered in English
- * regardless of `KINOWO_COUNTRY`.
+ * otherwise-correctly-translated overlay tagline: `shared.js`'s client-side
+ * language switch sniffs `navigator.languages` as a fallback when no explicit
+ * pick is stored, and the headless Chrome driving `OgCardGenerator` reports
+ * whatever the RUNNER's own locale is (`en-US` on most CI/dev machines) —
+ * never the deployment's language — so every non-English card screenshot
+ * would otherwise render in English regardless of `KINOWO_COUNTRY`.
  *
  * `Chrome.tryStart`'s `lang` parameter fixes this by launching Chrome with
  * `--lang=<code>`, which is also where Chrome derives the `Accept-Language`
- * header it sends on every request. This spec proves the header actually
- * reaches the server on the wire (`TestHttpServer`'s
- * `/__echo-accept-language` echo route), independent of whether any
- * particular page happens to honour the header — that's `WebLangResolver`'s
- * job, covered elsewhere.
+ * header it sends on every request AND the `navigator.languages` value
+ * client-side JS reads. This spec proves the header actually reaches the
+ * server on the wire (`TestHttpServer`'s `/__echo-accept-language` echo
+ * route) — the same flag `OgCardGenerator.screenshotCity` relies on to keep
+ * the sniff matching what the server already rendered.
  *
  * (An earlier version of this fix set the header per-navigation via CDP's
  * `Network.enable` + `Network.setExtraHTTPHeaders` instead. That worked

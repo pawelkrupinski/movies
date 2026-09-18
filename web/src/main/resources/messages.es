@@ -37,6 +37,7 @@ country.us=Estados Unidos
 country.es=España
 nav.clear=Borrar
 nav.copyLink=Copiar enlace
+nav.copied=¡Copiado!
 nav.search=Buscar…
 nav.filterByDate=Filtrar por fecha
 brand.title=Cartelera de cine en {0}
@@ -108,6 +109,8 @@ detail.moreCinemas=Ver {0} cines más
 detail.otherCities=En otras ciudades
 detail.otherCitiesTitle={0} – en otras ciudades
 card.hide=Ocultar película
+# {0} = genre name — the tap-to-filter tooltip on a card's genre pill.
+card.genreFilter=Películas de {0}
 
 # ── Film page (meta) ────────────────────────────────────────────────────────
 # `<title>` + og tail, appended after "<film> (<year>)". {0} = city nominative,

@@ -116,20 +116,11 @@
   }
   window.goToCityPicker = goToCityPicker;
 
-  // Language picker — a full navigation to `/lang/:code`, which sets Play's
-  // PLAY_LANG cookie and bounces back to `back` (`LanguageController`). Like
-  // `onCityChange`/`onCountryChange`, the whole page has to re-render in the
-  // new language anyway, so a view-swap would save nothing.
-  //
-  // `mountPrefix()` (not a bare `/lang/...`) for the same reason `onCityChange`
-  // needs it: `play.http.context` mounts a Showtimes country's whole site under
-  // a path segment (`/uk`, `/de`, …), and `/lang/:code` is behind that prefix
-  // like every other route.
-  function onLanguageChange(code) {
-    if (!code) return;
-    window.location.href = mountPrefix() + '/lang/' + code + '?back=' + encodeURIComponent(window.location.pathname + window.location.search);
-  }
-  window.onLanguageChange = onLanguageChange;
+  // Client-side language switching (`t`/`applyLanguage`/`onLanguageChange`,
+  // the `I18N_PACKS` pack, and the boot-time apply) lives in the standalone
+  // `i18n.js`, loaded before this file — see that file's own doc comment for
+  // why it isn't folded in here (landing.scala.html needs it too, and never
+  // loads shared.js at all).
 
   // requiredTokens may be empty → fast-path. Otherwise checks a pre-built Set
   // attached to each indexed badge (so we don't re-parse `dataset.format` on
@@ -999,7 +990,7 @@
 
     const name = document.createElement('span');
     name.className   = 'auth-name';
-    name.textContent = String(me.displayName || me.email || KINOWO_LOCALE.auth.account)
+    name.textContent = String(me.displayName || me.email || t('auth.account'))
       .split(/[ @]/)[0];
     menu.appendChild(name);
 
@@ -1014,7 +1005,8 @@
     const out = document.createElement('button');
     out.type        = 'submit';
     out.className   = 'auth-logout-btn';
-    out.textContent = KINOWO_LOCALE.auth.logout;
+    out.setAttribute('data-i18n', 'auth.logout');
+    out.textContent = t('auth.logout');
     form.appendChild(out);
 
     const dropdown = document.createElement('div');
@@ -1426,7 +1418,10 @@
   function showAreaPicker() {
     const areas = window.CINEMA_AREAS || [];
     if (!areas.length || document.getElementById('area-picker-overlay')) return;
-    const loc = (typeof KINOWO_LOCALE !== 'undefined' && KINOWO_LOCALE.areaPicker) || {};
+    const loc = {
+      title: t('areaPicker.title'), subtitle: t('areaPicker.subtitle'),
+      all: t('areaPicker.all'), confirm: t('areaPicker.confirm'),
+    };
 
     const overlay = document.createElement('div');
     overlay.id = 'area-picker-overlay';
@@ -1648,7 +1643,8 @@
   function updateEmptyState(visibleCount) {
     const noFilms = document.getElementById('no-films');
     if (visibleCount === 0) {
-      noFilms.textContent = KINOWO_LOCALE.emptyRepertoire;
+      noFilms.setAttribute('data-i18n', 'empty.repertoire');
+      noFilms.textContent = t('empty.repertoire');
       noFilms.style.display = '';
     } else {
       noFilms.style.display = 'none';
@@ -1929,7 +1925,7 @@
     const done = () => {
       if (!button) return;
       const previous = button.textContent;
-      button.textContent = 'Skopiowano!';
+      button.textContent = t('nav.copied');
       setTimeout(() => { button.textContent = previous; }, 1500);
     };
     if (navigator.clipboard && navigator.clipboard.writeText) {

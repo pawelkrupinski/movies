@@ -23,6 +23,12 @@ const pickerCountryPill = (page: Page, label: string) =>
 // to the picker; the Filtry → Miasto row navigates here from any page.
 
 test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
+  // `i18n.js`'s boot sniffs `navigator.languages` as a fallback when no pick
+  // is stored, matching a real Polish visitor's browser — pinned here so the
+  // suite's own (English) locale doesn't auto-switch the page before a
+  // "deployment default" assertion runs.
+  test.use({ locale: 'pl-PL' });
+
   test('serves a crawlable static list of every city of the country it serves', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     // The fixture `/` renders ONE country's list, exactly as a deployment does
@@ -73,6 +79,11 @@ test.describe('city selection landing (/)', { tag: '@agnostic' }, () => {
 // and `CountrySpec` pin the same number model-side; this one pins that the page
 // RENDERS all of them, which is the part they cannot see.
 test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
+  // The fixture's `/landing-us` route renders through the default (Polish)
+  // `Messages` (no override) — see the note on the Poland describe block
+  // above for why this needs 'pl-PL' pinned.
+  test.use({ locale: 'pl-PL' });
+
   test('the static fallback lists every place, all headings shut', async ({ page }) => {
     await page.goto('/landing-us', { waitUntil: 'domcontentloaded' });
     // All 468 places are in the document — 461 metros behind a state heading,
@@ -185,6 +196,11 @@ test.describe('grouped city landing (the US)', { tag: '@agnostic' }, () => {
 // and collapse straight back into it, which is what keeps two levels readable —
 // only the ones that really group something cost a second tap.
 test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
+  // The fixture's `/landing-uk` route renders through the default (Polish)
+  // `Messages` (no override) — see the note on the Poland describe block
+  // above for why this needs 'pl-PL' pinned.
+  test.use({ locale: 'pl-PL' });
+
   test('the static fallback lists every place under its county under its nation', async ({ page }) => {
     await page.goto('/landing-uk', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.city-list a')).toHaveCount(79);
@@ -294,6 +310,14 @@ test.describe('two-level city landing (the UK)', { tag: '@agnostic' }, () => {
 // ("Köln" also covers Düsseldorf and Bonn) — under the 16 Bundesländer, which is
 // what a visitor knows them by. One level, like the US.
 test.describe('grouped city landing (Germany)', { tag: '@agnostic' }, () => {
+  // The fixture's `/landing-de` route (`FixtureServerMain`) renders Germany's
+  // city/region DATA through the default (Polish) `Messages` — it passes no
+  // override — so, like the Poland describe block above, this needs 'pl-PL'
+  // pinned, not 'de-DE': the suite's own (English) locale would otherwise
+  // have `i18n.js`'s boot sniff switch the UI chrome to English, which
+  // matches neither what the server rendered nor what these assertions test.
+  test.use({ locale: 'pl-PL' });
+
   test('the static fallback lists every region under its Bundesland, collated as German', async ({ page }) => {
     await page.goto('/landing-de', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('.city-list a')).toHaveCount(158);
@@ -413,6 +437,9 @@ test.describe('the apex front door offers the manual locate button too', { tag: 
 // country, the manual "use my location" button, and the cross-country
 // hand-off.
 test.describe('Filtry → Miasto navigates to the unified picker', { tag: '@agnostic' }, () => {
+  // See the same note on the Poland describe block above.
+  test.use({ locale: 'pl-PL' });
+
   test('opens on this deployment\'s own country, flat, with no back row', async ({ page }) => {
     await gotoAndWaitForCards(page, '/poznan/');
     await page.locator('#format-filter-btn').click();

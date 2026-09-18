@@ -77,7 +77,7 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
   it should "carry the empty-state block the filter reveals when nothing is left" in {
     val html = views.html._filmDetailContent(schedule(3)()).body
 
-    html should include ("""<div id="showings-empty" class="showings-empty" style="display:none">""")
+    html should include ("""<div id="showings-empty" class="showings-empty" style="display:none" data-i18n="empty.repertoire">""")
     html should include ("Brak repertuaru.")
   }
 
@@ -105,12 +105,15 @@ class CinemaFoldSpec extends AnyFlatSpec with Matchers {
     rendered shouldBe expected
   }
 
-  it should "carry the button's copy as a template the filtered count fills in" in {
+  it should "mark the button for the client-side language switch, with the no-JS count as its arg" in {
     val html = views.html._filmDetailContent(schedule(3)(63)).body
 
-    // The rendered count is the no-JS answer; `data-label` is what
-    // `applyCinemaLinkFold` rewrites once it knows how many survived.
-    html should include ("""data-label="Pokaż pozostałe kina ({0})"""")
+    // The rendered count (53, asserted above) is the no-JS answer;
+    // `data-i18n`/`data-i18n-arg0` are what `applyCinemaLinkFold`
+    // (`film.scala.html`) rewrites once it knows how many survived the
+    // filter, and what a later language switch re-substitutes against.
+    html should include ("""data-i18n="detail.moreCinemas"""")
+    html should include ("""data-i18n-arg0="53"""")
   }
 
   it should "leave a row of exactly ten pills whole, with no button" in {

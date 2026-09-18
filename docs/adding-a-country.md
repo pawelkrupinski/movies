@@ -472,6 +472,9 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
 - **Web** (`web/src/main/resources/`): `messages.<lang>` mirroring `messages.en`'s
   keys; add `<lang>` to `play.i18n.langs` in `application.conf` (else the deployment
   silently falls back to Polish). Fix any hardcoded literals to `messages(...)`.
+  Nothing else to wire up for the navbar's language picker itself — the
+  client-side pack it switches against (`I18nPackGenerator`/`controllers.I18nPacks`)
+  is generated straight from these same `messages*` bundles at build time.
   **Two things outside the bundle are language-shaped too, and neither fails
   loudly.** `controllers.JsLocale` carries the showtime PLURAL FORMS the client
   JS renders — a language that adds no entry there silently ships the English
