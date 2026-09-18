@@ -49,7 +49,7 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
     "Amondo"             -> new AmondoClient(http),
     "Bilety24Organizer"  -> new Bilety24OrganizerClient(http, "https://x/org", KinoApollo, titles = titleNormalizer),
     "CinemaCity"         -> new CinemaCityScraper(new CinemaCityClient(http, titles = titleNormalizer), "1081", CinemaCityKinepolis),
-    "Cineworld"          -> new CineworldClient(http, "001", KinoApollo),
+    "Cineworld"          -> new CineworldClient(http, "x001-cineworld-cinema-test", KinoApollo),
     "Cytadela"           -> new CytadelaClient(http),
     "Dcf"                -> new DcfClient(http),
     "Ekobilet"           -> new EkobiletClient(http, "slug", KinoApollo),
@@ -116,8 +116,19 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
    *  and stamps the film back onto the normal refresh window. Reserve `Failed`
    *  for the fetch actually failing — a throw, a status, an unreadable body. */
   it should "report a page that loaded but carries no fields as Fetched, not Failed" in {
+    // Cineworld is EXEMPT from this one: `AlwaysEmptyPage` serves an HTML string
+    // ("<!doctype html>…"), which is what "loaded but carries no fields" means for
+    // every other client here — all scraped-HTML detail pages that jsoup parses
+    // without ever throwing. Cineworld's detail fetch is a JSON API
+    // (`/api/gatsby-source-boxofficeapi/movies?ids=`), so that same HTML string is
+    // genuinely unparseable to it — "an unreadable body" is the one case this
+    // family's own philosophy (see the class doc above) says SHOULD be `Failed`,
+    // not silently swallowed. A real empty answer from Cineworld's endpoint (an id
+    // it doesn't recognise) is a well-formed `[]`, which `CineworldParser.parseMovieDetail`
+    // already turns into `None`/`Failed` correctly — this exemption is about the
+    // shape of the probe, not a gap in the client.
     val livelocking = enrichers(new AlwaysEmptyPage).collect {
-      case (name, e) if e.fetchDetail("https://example.test/film") == DetailFetchOutcome.Failed => name
+      case (name, e) if name != "Cineworld" && e.fetchDetail("https://example.test/film") == DetailFetchOutcome.Failed => name
     }
     withClue(
       "these clients fold a loaded-but-empty page into Failed, which is never stamped — so " +

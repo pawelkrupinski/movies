@@ -560,8 +560,10 @@ case object KinoSDK extends Cinema("Kino SDK", "SDK")   // Sanok — bilety.sdks
 case object CinemaCityChain extends Cinema("Cinema City", "Cinema City")
 // Network-level detail source for Cineworld UK, mirroring CinemaCityChain: the
 // chain's 87 venues share one `detailGroup` ("cineworld"), so their deferred
-// detail (synopsis/cast/director from the film page) lands in this ONE synthetic
-// slot instead of an arbitrary venue's. Not in `Cinema.all`, so no scraper/coverage
+// detail (synopsis/cast/director/certificate, fetched from the site's
+// `movies?ids=` endpoint since the 2026-09-17 relaunch — see
+// `services.cinemas.uk.CineworldClient`) lands in this ONE synthetic slot
+// instead of an arbitrary venue's. Not in `Cinema.all`, so no scraper/coverage
 // obligation; added to `Source.all` for priority + slot-key resolution.
 case object CineworldChain extends Cinema("Cineworld", "Cineworld")
 // Network-level detail source for Regal US, mirroring CineworldChain: the chain's

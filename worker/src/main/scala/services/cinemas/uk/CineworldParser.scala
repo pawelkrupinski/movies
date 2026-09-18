@@ -1,306 +1,60 @@
 package services.cinemas.uk
 
-import models.{Cinema, CinemaMovie, Movie, Showtime}
-import org.jsoup.Jsoup
 import play.api.libs.json._
 import services.cinemas.common.FilmDetail
-import services.movies.TrailerEmbed
 
-import java.time.{LocalDate, LocalDateTime}
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
- * Pure JSON → model transformation for Cineworld's `quickbook` data API
- * (the same Regal-built endpoint family Cinema City Poland serves off, chain
- * code 10108 instead of 10103). No I/O: [[CineworldClient]] fetches the bodies
- * and hands them here, so every parse is unit-testable against the recorded
- * fixtures without any HTTP stubbing.
+ * Pure JSON → [[FilmDetail]] transformation for Cineworld's per-film detail
+ * endpoint (`/api/gatsby-source-boxofficeapi/movies?ids=<id>`, see
+ * [[CineworldClient]]). No I/O: the client fetches the body and hands it here,
+ * so the parse is unit-testable against recorded fixtures with no HTTP
+ * stubbing.
+ *
+ * The listing scrape itself (schedule + chain-wide film catalogue) is NOT
+ * parsed here — `CineworldClient` composes [[services.cinemas.common.GatsbyBoxOfficeClient]]
+ * for that, since it is the identical platform Showcase/Everyman already run.
+ * This file exists only for the ONE thing that platform's shared parser
+ * doesn't cover: Cineworld's own site (unlike Showcase/Everyman) exposes
+ * synopsis/cast/director/certificate, just off this separate runtime
+ * endpoint rather than the static catalogue query.
  */
 object CineworldParser {
 
-  /** One venue off the chain roster (`cinemas/with-event/until/<date>`). The
-   *  checked-in `docs/venue-maps/CINEWORLD-VENUE-MAP.tsv` — which pairs each API venue id with
-   *  the `Cinema` case object it feeds — is built from this list, so the reader
-   *  lives in code and is pinned by the spec: a roster shape change (a renamed
-   *  venue, a new site, a dropped one) then surfaces as a test failure instead
-   *  of a silently stale map. */
-  case class CineworldVenue(id: String, displayName: String, link: Option[String])
+  /** The BBFC certificates the `movies` endpoint's `certificate` field can
+   *  legitimately hold. Whitelisted rather than passed through verbatim, so a
+   *  future vendor value we don't recognise (a rating-pending placeholder, a
+   *  non-UK certificate on a rare import) drops instead of leaking onto a
+   *  card — the same discipline the old `attributeIds` whitelist kept. */
+  private val BbfcCertificates: Set[String] = Set("U", "PG", "12A", "12", "15", "18")
 
-  /** The chain's venues. Throws when the response carries no `body.cinemas`
-   *  array — that isn't "no venues", it's a response we failed to parse. */
-  def parseVenues(json: String): Seq[CineworldVenue] =
-    array(json, "cinemas").flatMap { venue =>
-      for {
-        id   <- (venue \ "id").asOpt[String].filter(_.nonEmpty)
-        name <- (venue \ "displayName").asOpt[String].filter(_.nonEmpty)
-      } yield CineworldVenue(id, name, (venue \ "link").asOpt[String].filter(_.nonEmpty))
-    }
-
-  /** The dates a venue has a programme on, off `dates/in-cinema/<id>/until/…`.
-   *  Sparse — Cineworld lists day-by-day for the near term and then only the
-   *  individual far-out days advance sales are open on, so this is the exact
-   *  set of days worth a `film-events` call.
-   *
-   *  An EMPTY list is expected data (a venue with nothing on), not a failure:
-   *  the planner records an empty scrape and `MovieCache.recordCinemaScrape`
-   *  bails on it, so the venue keeps its last-known listing. A body with no
-   *  `dates` array at all is a parse failure and throws — the line
-   *  `WebediaShowtimesClient` and [[FlicksClient]] already draw. */
-  def parseDates(json: String): Seq[LocalDate] =
-    array(json, "dates").flatMap(_.asOpt[String])
-      .flatMap(s => Try(LocalDate.parse(s)).toOption)
-      .distinct.sorted
-
-  /** ONE day's `film-events` response → that day's films, joining `events[]` to
-   *  `films[]` on `filmId`. Deterministic: films come out ordered by their
-   *  Cineworld id and each film's showtimes by start time. Throws on a body we
-   *  can't parse (only that day's chunk task reschedules). */
-  def parseDay(json: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val body   = parseBody(json)
-    val films  = optionalArray(body, "films")
-    val events = optionalArray(body, "events")
-
-    val info: Map[String, FilmInfo] = films.iterator.flatMap { film =>
-      (film \ "id").asOpt[String].filter(_.nonEmpty).zip((film \ "name").asOpt[String].filter(_.nonEmpty))
-        .map { case (id, name) =>
-          id -> FilmInfo(
-            name           = name,
-            runtimeMinutes = (film \ "length").asOpt[Int].filter(_ > 0),
-            posterUrl      = (film \ "posterLink").asOpt[String].filter(_.nonEmpty),
-            filmUrl        = (film \ "link").asOpt[String].filter(_.nonEmpty),
-            // `videoLink` is a bare YouTube share URL ("https://youtu.be/…") on
-            // roughly half the catalogue; commit it only when it parses as a
-            // YouTube id we can embed, normalised to the watch form the view
-            // layer expects (same shape MultikinoParser stores).
-            trailerUrl     = (film \ "videoLink").asOpt[String].filter(_.nonEmpty)
-                               .flatMap(TrailerEmbed.youTubeId)
-                               .map(id => s"https://www.youtube.com/watch?v=$id"),
-            genres         = attributesOf(film).flatMap(GenreLabel.get).distinct.toList,
-            ageRating      = certificateOf(attributesOf(film)))
-        }
-    }.toMap
-
-    events.iterator.flatMap { event =>
-      for {
-        filmId   <- (event \ "filmId").asOpt[String].filter(_.nonEmpty)
-        dateTime <- (event \ "eventDateTime").asOpt[String].flatMap(s => Try(LocalDateTime.parse(s)).toOption)
-      } yield filmId -> Showtime(
-        dateTime   = dateTime,
-        bookingUrl = (event \ "bookingLink").asOpt[String].filter(_.nonEmpty),
-        room       = (event \ "auditorium").asOpt[String].filter(_.nonEmpty).map(screenName),
-        format     = formatOf(attributesOf(event)))
-    }.toSeq
-      .groupBy(_._1).toSeq.sortBy(_._1)
-      .flatMap { case (filmId, slots) =>
-        info.get(filmId).map { film =>
-          CinemaMovie(
-            movie       = Movie(
-              title          = film.name,
-              runtimeMinutes = film.runtimeMinutes,
-              // `releaseYear` is the UK *theatrical release* year, not the film's
-              // production year: this feed stamps 2026 on "Scorsese Season: Raging
-              // Bull (1980)" and on "£2 Family Films : Chicken Run (2026
-              // Re-Release)" alike. Using it would poison TMDB resolution exactly
-              // the way it does for Multikino — a year-scoped search excludes the
-              // real film and the fallback picks whoever shares the title. Leave
-              // it None; `MovieService.settle`'s `EmbeddedYear` backfill recovers
-              // the year from the titles that actually carry one.
-              releaseYear    = None,
-              genres         = film.genres,
-              rawTitle       = Some(film.name)),
-            cinema      = cinema,
-            posterUrl   = film.posterUrl,
-            filmUrl     = film.filmUrl,
-            // Synopsis / cast / director aren't in this listing feed; they live on
-            // the film's detail page (`filmUrl`) and are filled in by the deferred
-            // `CineworldClient` DetailEnricher via `parseDetail`.
-            synopsis    = None,
-            cast        = Seq.empty,
-            director    = Seq.empty,
-            showtimes   = slots.map(_._2).sortBy(_.dateTime),
-            externalIds = Map("cineworld" -> filmId),
-            trailerUrl  = film.trailerUrl,
-            // BBFC certificate off the film's `attributeIds` (see `certificateOf`).
-            ageRating   = film.ageRating)
-        }
+  /** One film's detail off a `movies?ids=<id>` response — a JSON ARRAY with at
+   *  most one element (the platform silently omits an id it doesn't recognise
+   *  rather than erroring, so an empty array is a normal "not found" answer,
+   *  not a parse failure). `None` on an empty array, an unparseable body, or a
+   *  body that isn't the array shape we expect. */
+  def parseMovieDetail(json: String): Option[FilmDetail] =
+    Try(Json.parse(json)).toOption
+      .flatMap(_.asOpt[Seq[JsValue]])
+      .getOrElse(Seq.empty)
+      .headOption
+      .map { m =>
+        FilmDetail(
+          synopsis       = (m \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty),
+          cast           = (m \ "casting").asOpt[Seq[String]].getOrElse(Seq.empty)
+                              .map(_.trim).filter(_.nonEmpty),
+          // `direction`/`coDirection` are separate arrays on the wire (a
+          // credited co-director is a distinct field, not folded into
+          // `direction`) but the app has one `director` list — concatenate.
+          director       = ((m \ "direction").asOpt[Seq[String]].getOrElse(Seq.empty) ++
+                             (m \ "coDirection").asOpt[Seq[String]].getOrElse(Seq.empty))
+                              .map(_.trim).filter(_.nonEmpty),
+          // The wire carries seconds ("runtime": 7500); the app wants whole
+          // minutes.
+          runtimeMinutes = (m \ "runtime").asOpt[Int].filter(_ > 0).map(_ / 60),
+          ageRating      = (m \ "certificate").asOpt[String].map(_.trim.toUpperCase)
+                              .filter(BbfcCertificates.contains)
+        )
       }
-  }
-
-  private case class FilmInfo(
-    name:           String,
-    runtimeMinutes: Option[Int],
-    posterUrl:      Option[String],
-    filmUrl:        Option[String],
-    trailerUrl:     Option[String],
-    genres:         Seq[String],
-    ageRating:      Option[String]
-  )
-
-  /** Parse a Cineworld film DETAIL page (`/films/<slug>/<id>`) for the fields the
-   *  listing feed omits — synopsis, cast, director, running time, certificate.
-   *  The page ships them twice: a client-rendered `movie-component` and a
-   *  server-rendered `<noscript>` block of `Label: value` `<p>`s
-   *  ("Cast: …", "Director: …", "Running time: 102 minutes", "Age restrictions:
-   *  PG") plus one UNLABELLED `<p>` — the synopsis. We read the `<noscript>`
-   *  block (jsoup parses its children as real elements): stable plain HTML, no
-   *  JS. Release/production year is deliberately NOT read — Cineworld stamps the
-   *  UK theatrical year on re-releases (the same trap `parseDay` avoids). */
-  def parseDetail(html: String): FilmDetail = {
-    val paragraphs = Jsoup.parse(html).select("noscript p").eachText().asScala.toList
-    val byLabel: Map[String, String] = paragraphs.flatMap { text =>
-      labelOf(text).map(label => label -> text.substring(label.length + 1).trim)
-    }.toMap
-    FilmDetail(
-      // The synopsis is the sole `<p>` carrying no recognised label prefix.
-      synopsis       = paragraphs.find(labelOf(_).isEmpty).map(_.trim).filter(_.nonEmpty),
-      cast           = byLabel.get("Cast").map(splitList).getOrElse(Seq.empty),
-      director       = byLabel.get("Director").map(splitList).getOrElse(Seq.empty),
-      runtimeMinutes = byLabel.get("Running time").flatMap(firstInt),
-      ageRating      = byLabel.get("Age restrictions").map(_.trim.toUpperCase)
-                         .filter(c => c.nonEmpty && c != "TBC"))
-  }
-
-  /** The recognised `<p>` label prefixes on a detail page's `<noscript>` block.
-   *  A paragraph starting with `"<Label>:"` is that field; the one paragraph
-   *  matching none is the synopsis. Kept case-insensitive against label casing
-   *  drift. `Production` / `Release date` are recognised only so they DON'T get
-   *  mistaken for the synopsis — their values are never read (the year trap). */
-  private val DetailLabels: List[String] =
-    List("Release date", "Running time", "Original title", "Original language",
-         "Cast", "Director", "Production", "Genre", "Age restrictions")
-
-  /** The label a `<p>`'s text begins with (`"<Label>:"`, case-insensitive), or
-   *  None when it matches no known label — the synopsis paragraph. */
-  private def labelOf(text: String): Option[String] =
-    DetailLabels.find(l =>
-      text.length > l.length && text.charAt(l.length) == ':' && text.regionMatches(true, 0, l, 0, l.length))
-
-  /** A comma-separated `<p>` value ("Tim Allen, Joan Cusack, …") → its trimmed,
-   *  non-empty parts. */
-  private def splitList(value: String): Seq[String] =
-    value.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq
-
-  /** The leading integer of a value like "102 minutes", or None. */
-  private def firstInt(value: String): Option[Int] =
-    """\d+""".r.findFirstIn(value).flatMap(_.toIntOption)
-
-  /** `attributeIds` is one kitchen-sink list per film AND per event, mixing
-   *  screen format (`2d`, `imax`, `4dx`), genre (`action`), BBFC rating (`15`),
-   *  language (`tamil`), accessibility (`audio-described`) and seating
-   *  (`recliner`, `reserved-selected`). Callers pick the slice they want. */
-  private def attributesOf(node: JsValue): Seq[String] =
-    (node \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty).map(_.toLowerCase)
-
-  /** The screen-feature tokens we badge a showtime with, in the app-wide
-   *  vocabulary `FormatTags` fixes (2D / 3D / IMAX / 4DX / NAP …) so Cineworld
-   *  agrees with every other source, plus the film's spoken language on the
-   *  foreign-language screenings that carry one. Deliberately narrow: `laser`,
-   *  `recliner`, `reserved-selected` and `audio-described` ride the majority of
-   *  screenings here (audio description alone is on ~75% of them), so badging
-   *  them would be noise rather than a distinguishing mark. */
-  private def formatOf(attrs: Seq[String]): List[String] = {
-    val set = attrs.toSet
-    List(
-      PremiumFormats.collectFirst { case (id, token) if set.contains(id) => token },
-      if (set.contains("3d")) Some("3D") else if (set.contains("2d")) Some("2D") else None,
-      if (set.contains("subbed")) Some("NAP") else None
-    ).flatten ++ attrs.flatMap(LanguageLabel.get).distinct
-  }
-
-  /** Premium presentation formats, most distinctive first — a 4DX screening is
-   *  also flagged `3d`, so only the leading match becomes the premium badge and
-   *  the dimension token follows it separately. */
-  private val PremiumFormats: List[(String, String)] =
-    List("imax" -> "IMAX", "4dx" -> "4DX", "screenx" -> "SCREENX")
-
-  /** Spoken-language attribute ids Cineworld tags a foreign-language screening
-   *  with → the token we badge it with, so a Tamil or Telugu showing reads
-   *  apart from the English default. Whitelisted like [[GenreLabel]] for the
-   *  same reason: `attributeIds` has no namespace to separate a language from a
-   *  rating, genre or seating id, so an unrecognised token must drop rather
-   *  than leak a non-language attribute onto the badge. */
-  private val LanguageLabel: Map[String, String] = Map(
-    "hindi"  -> "HINDI",
-    "tamil"  -> "TAMIL",
-    "telugu" -> "TELUGU"
-  )
-
-  /** BBFC certificate ids as they appear in a film's `attributeIds` → the label
-   *  we display. Whitelisted like [[GenreLabel]] / [[LanguageLabel]]: the same
-   *  kitchen-sink list carries genres, formats, languages and seating with no
-   *  namespace to tell a certificate apart, so only these recognised codes map
-   *  and everything else drops. `tbc` (rating pending) is deliberately absent →
-   *  no ageRating. The full BBFC set is U / PG / 12A / 12 / 15 / 18; the Sheffield
-   *  fixture carries every one except the rare bare `12` (cinemas almost always
-   *  screen the `12a` advisory cut), kept as a documented BBFC code. */
-  private val CertificateLabel: Map[String, String] = Map(
-    "u"   -> "U",
-    "pg"  -> "PG",
-    "12a" -> "12A",
-    "12"  -> "12",
-    "15"  -> "15",
-    "18"  -> "18"
-  )
-
-  /** A film's BBFC certificate off its `attributeIds`, or None when it carries no
-   *  recognised certificate token (`tbc` = rating pending, or none at all). At
-   *  most one certificate per film, so the first recognised token wins. */
-  private def certificateOf(attrs: Seq[String]): Option[String] =
-    attrs.flatMap(CertificateLabel.get).headOption
-
-  /** Cineworld's `auditorium` is the bare screen number ("12"); the venue signs
-   *  and the booking flow both call it "Screen 12". Anything non-numeric (a
-   *  named premium screen) passes through as-is. */
-  private def screenName(auditorium: String): String =
-    if (auditorium.forall(_.isDigit)) s"Screen $auditorium" else auditorium
-
-  /** Genre tokens as they appear in `attributeIds` → the label we display.
-   *  Whitelisted rather than passed through, because the same list carries
-   *  ratings, languages and seating that are NOT genres; an unrecognised token
-   *  drops rather than leaking "reserved-selected" onto a card. */
-  private val GenreLabel: Map[String, String] = Map(
-    "action"      -> "Action",
-    "adventure"   -> "Adventure",
-    "animation"   -> "Animation",
-    "anime"       -> "Anime",
-    "biography"   -> "Biography",
-    "comedy"      -> "Comedy",
-    "concert"     -> "Concert",
-    "crime"       -> "Crime",
-    "documentary" -> "Documentary",
-    "drama"       -> "Drama",
-    "family"      -> "Family",
-    "fantasy"     -> "Fantasy",
-    "history"     -> "History",
-    "horror"      -> "Horror",
-    "music"       -> "Music",
-    "musical"     -> "Musical",
-    "mystery"     -> "Mystery",
-    "opera"       -> "Opera",
-    "romance"     -> "Romance",
-    "sci-fi"      -> "Sci-Fi",
-    "scifi"       -> "Sci-Fi",
-    "sport"       -> "Sport",
-    "thriller"    -> "Thriller",
-    "war"         -> "War",
-    "western"     -> "Western"
-  )
-
-  /** Every quickbook response wraps its payload in a `body` object. Its absence
-   *  means we're not looking at the API we think we are (an error page, a
-   *  Cloudflare interstitial, a shape change) — a failure, so it throws. */
-  private def parseBody(json: String): JsValue =
-    (Json.parse(json) \ "body").asOpt[JsObject].getOrElse(
-      throw new IllegalStateException("Cineworld response carried no `body` object"))
-
-  /** A REQUIRED array under `body` — missing means an unparseable response. */
-  private def array(json: String, field: String): Seq[JsValue] =
-    (parseBody(json) \ field).asOpt[JsArray].map(_.value.toSeq).getOrElse(
-      throw new IllegalStateException(s"Cineworld response carried no `body.$field` array"))
-
-  /** An array under an already-parsed body that may legitimately be absent —
-   *  a day with no programme comes back with empty (or no) `films`/`events`. */
-  private def optionalArray(body: JsValue, field: String): Seq[JsValue] =
-    (body \ field).asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
 }

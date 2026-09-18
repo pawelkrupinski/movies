@@ -1,208 +1,162 @@
 package clients.cineworld
 
 import clients.tools.FakeHttpFetch
-import models.CineworldSheffield
-import org.scalatest.OptionValues
+import models.CineworldBarnsley
+import org.scalatest.{LoneElement, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.uk.{CineworldClient, CineworldParser}
 
 import java.time.{LocalDate, LocalDateTime}
 
-/** Replays the recorded Cineworld `quickbook` responses for Sheffield (site
- *  code 031, captured 2026-07-27) — the chain roster, the venue's day list, and
- *  two days of `film-events` — and pins what the client makes of them: which
- *  days it plans, the films a day's `events[]`→`films[]` join produces, their
- *  showtimes / booking deep-links / screen / premium-format badges, and the
- *  cross-day merge. No live HTTP: everything resolves out of
- *  `test/resources/fixtures/cineworld/`. */
-class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues {
+/**
+ * Replays Cineworld Barnsley (`G01HN`) through [[CineworldClient]] entirely
+ * from disk — the real responses recorded 2026-09-18, the day after
+ * Cineworld's site relaunch onto the Webedia "box office" Gatsby platform
+ * (see the client's own doc for the discovery):
+ *
+ *   - `page-data/sq/d/3836549025.json` — the chain-wide film catalogue
+ *     (trimmed to the fields [[services.cinemas.common.GatsbyBoxOfficeParser]]
+ *     reads; the live payload also carries a huge per-venue `theaters[]`/
+ *     `events[]` block nothing here parses)
+ *   - `api/gatsby-source-boxofficeapi/schedule.ec33ebc2.json` — the ONE call
+ *     covering the client's whole 730-day horizon
+ *   - four `api/gatsby-source-boxofficeapi/movies.*.json` — single-film
+ *     detail responses for the `fetchFilmDetail` cases below
+ *
+ * The listing half of this (catalogue + schedule join, tag → format tokens,
+ * expired-session dropping) is [[services.cinemas.common.GatsbyBoxOfficeClient]]'s
+ * own contract, already covered by `GatsbyBoxOfficeClientSpec` against
+ * Showcase — this spec's listing tests exist to confirm CineworldClient wires
+ * that shared client correctly (right theaterId derived from the slug, right
+ * base URL, right venue path), not to re-prove the shared parser. The DETAIL
+ * tests below are what's actually new to Cineworld: nothing else on this
+ * platform has a `fetchFilmDetail`.
+ */
+class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues with LoneElement {
 
-  private val today  = LocalDate.of(2026, 7, 27)
-  private val Sheffield = "031"
-  private val fake   = new FakeHttpFetch("cineworld")
+  private val Today   = LocalDate.of(2026, 9, 18)
+  private val Barnsley = "g01hn-cineworld-cinema-barnsley"
+  private val fake    = new FakeHttpFetch("cineworld")
 
   private def client(http: tools.HttpFetch = fake) =
-    new CineworldClient(http, Sheffield, CineworldSheffield, today)
+    new CineworldClient(http, Barnsley, CineworldBarnsley, today = Today)
 
-  // ── the chain roster docs/venue-maps/CINEWORLD-VENUE-MAP.tsv is built from ────────────────
-  "parseVenues" should "read every venue in the chain roster with its id and name" in {
-    val venues = CineworldParser.parseVenues(fake.get(CineworldClient.venuesUrl(LocalDate.of(2026, 8, 31))))
-    venues.size shouldBe 87
-    val sheffield = venues.find(_.id == Sheffield).value
-    sheffield.displayName shouldBe "Sheffield"
-    sheffield.link.value shouldBe "https://www.cineworld.co.uk/cinemas/sheffield"
-    venues.map(_.id).distinct.size shouldBe venues.size
+  private lazy val films = client().fetch()
+  private def film(title: String) = films.find(_.movie.title == title).value
+
+  // ── the listing: CineworldClient composes GatsbyBoxOfficeClient correctly ──
+
+  "fetch" should "derive the platform theaterId from the slug and join the venue's schedule against the catalogue" in {
+    films.size shouldBe 61
+    films.map(_.cinema).toSet shouldBe Set(CineworldBarnsley)
+    films.map(_.movie.title) should contain("How to Train Your Dragon")
   }
 
-  // ── the horizon: days come off the venue's own `dates` endpoint ───────────
-  // The venue's day list is the horizon — we plan EVERY day it advertises, not a
-  // window of it. Sheffield (recorded 2026-07-27) publishes a dense five-week block
-  // and then a sparse advance-sale tail of one-off event days running to 2027-04-22:
-  // Met Opera, RBO season, NT Live, anniversary re-releases.
-  //
-  // Capping this at 35 days is what deleted them from prod. The cap kept the tail out
-  // of the listing, and `MovieCache`'s scrape-prune reads "absent from the listing" as
-  // "stopped screening" — so every complete scrape dropped the venue's whole advance
-  // programme. Measured on 2026-07-27: ZERO Cineworld showtimes survived beyond 36 days.
-  "planChunks" should "plan every day the venue advertises, including the advance-sale tail" in {
-    val days = client().planChunks()
-    days.size shouldBe 55
-    days.head shouldBe "2026-07-27"
-    days.last shouldBe "2027-04-22"
-    days shouldBe days.sorted
-    // the tail specifically — the part a 35-day cap would have cut
-    days.count(_ > "2026-08-31") shouldBe 19
+  it should "expose the venue's public cinemas page as its source URL" in {
+    client().sourceUrl.value shouldBe
+      "https://www.cineworld.co.uk/cinemas/g01hn-cineworld-cinema-barnsley/"
   }
 
-  it should "keep a far-out advance-sale day, and drop only days already past" in {
-    val strays = scripted(_ =>
-      """{"body":{"dates":["2026-07-20","2026-07-27","2026-08-31","2027-01-04"]}}""")
-    // 2026-07-20 is yesterday's programme — nothing upcoming there. 2027-01-04 is a real
-    // advance-sale day and must be planned.
-    client(strays).planChunks() shouldBe Seq("2026-07-27", "2026-08-31", "2027-01-04")
+  it should "carry the catalogue's poster, film page and genres, with no synopsis/cast/certificate off the listing" in {
+    val dragon = film("How to Train Your Dragon")
+    dragon.posterUrl.value shouldBe
+      "https://all.web.img.acsta.net/img/cb/c1/cbc10fab7a11505fc74ff8546e3d458e.jpg"
+    dragon.filmUrl.value shouldBe
+      "https://www.cineworld.co.uk/films/313481-how-to-train-your-dragon"
+    dragon.movie.genres shouldBe Seq("Adventure", "Fantasy", "Action")
+    dragon.externalIds shouldBe Map("boxoffice" -> "313481")
+    // The listing/catalogue never carries these on ANY brand this platform
+    // serves (see class doc) — Cineworld's detail fetch fills them in later.
+    dragon.synopsis shouldBe None
+    dragon.cast shouldBe empty
+    dragon.director shouldBe empty
+    dragon.ageRating shouldBe None
   }
 
-  it should "ignore a date beyond the sanity horizon (a garbage far date can't fan out forever)" in {
-    val silly = scripted(_ => """{"body":{"dates":["2026-07-27","2099-01-01"]}}""")
-    client(silly).planChunks() shouldBe Seq("2026-07-27")
+  it should "translate the new premium-format tags this platform's Cineworld deployment adds (4DX, ScreenX, Infinity Vision, 4K)" in {
+    // Barnsley's own 4DX+Laser 3D screening.
+    film("How to Train Your Dragon").showtimes.loneElement.format shouldBe List("3D", "4DX", "LASER")
+    film("Resident Evil").showtimes
+      .find(_.dateTime == LocalDateTime.of(2026, 9, 19, 17, 40)).value
+      .format shouldBe List("2D", "SCREENX", "LASER")
+    film("Avengers: Endgame (Re-Release)").showtimes
+      .find(_.dateTime == LocalDateTime.of(2026, 9, 25, 11, 20)).value
+      .format shouldBe List("3D", "4DX", "INFINITY", "LASER")
+    film("The Secret World of Arrietty 4K").showtimes
+      .find(_.dateTime == LocalDateTime.of(2026, 10, 14, 17, 0)).value
+      .format shouldBe List("2D", "IMAX", "LASER", "4K", "SUB")
   }
 
-  it should "return empty (not throw) for a venue with nothing on" in {
-    client(scripted(_ => """{"body":{"dates":[]}}""")).planChunks() shouldBe empty
+  it should "badge a foreign-language screening's spoken language alongside its subtitle marker" in {
+    film("Hanuman Ansh").showtimes
+      .find(_.dateTime == LocalDateTime.of(2026, 9, 20, 19, 20)).value
+      .format shouldBe List("2D", "LASER", "SUB", "HINDI")
   }
 
-  it should "THROW when the response carries no day list at all" in {
-    // Not "no programme" — a body we failed to parse (an error page, a shape
-    // change). Failing the scrape keeps the venue's last-known listing.
-    an[IllegalStateException] should be thrownBy
-      client(scripted(_ => """{"body":{}}""")).planChunks()
-  }
+  // ── the detail fetch: the ONE thing genuinely new to Cineworld here ───────
 
-  // ── one day: events[] joined to films[] ──────────────────────────────────
-  private val day = client().fetchChunk("2026-07-27")
-
-  "fetchChunk" should "produce one film per id that has screenings that day" in {
-    day.size shouldBe 20
-    day.map(_.cinema).toSet shouldBe Set(CineworldSheffield)
-    day.map(_.movie.title) should contain("Toy Story 5")
-  }
-
-  it should "carry the film's title, runtime, page, poster, trailer and Cineworld id" in {
-    val toyStory = day.find(_.movie.title == "Toy Story 5").value
-    toyStory.movie.runtimeMinutes.value shouldBe 102
-    toyStory.filmUrl.value shouldBe "https://www.cineworld.co.uk/films/toy-story-5/ho00014533"
-    toyStory.posterUrl.value should include("regalcdn.azureedge.net")
-    toyStory.trailerUrl.value shouldBe "https://www.youtube.com/watch?v=UV7Ht-R3ICY"
-    toyStory.externalIds shouldBe Map("cineworld" -> "ho00014533")
-    // Genres are one slice of the film's kitchen-sink attributeIds
-    // ('2d','3d','4dx','action','animation','audio-described','laser','pg',
-    // 'reserved-selected'); the BBFC rating is lifted out separately (below) and
-    // formats / seating drop.
-    toyStory.movie.genres shouldBe Seq("Action", "Animation")
-  }
-
-  it should "lift the BBFC certificate out of attributeIds into ageRating" in {
-    day.find(_.movie.title == "Toy Story 5").value.ageRating.value shouldBe "PG"
-    day.find(_.movie.title == "£2 Family Films : Chicken Run (2026 Re-Release)").value.ageRating.value shouldBe "U"
-    day.find(_.movie.title == "The Odyssey (2026)").value.ageRating.value shouldBe "15"
-    day.find(_.movie.title == "Evil Dead Burn").value.ageRating.value shouldBe "18"
-    day.find(_.movie.title == "Brunello: The Gracious Visionary").value.ageRating.value shouldBe "12A"
-    // 'tbc' (rating pending) is not a certificate → no ageRating.
-    day.find(_.movie.title == "Animal Farm (2025)").value.ageRating shouldBe None
-  }
-
-  it should "leave releaseYear unset — the API's is the UK re-release year" in {
-    // "Scorsese Season: Raging Bull (1980)" ships releaseYear 2026 here.
-    day.find(_.movie.title == "Scorsese Season: Raging Bull (1980)").value.movie.releaseYear shouldBe None
-    day.flatMap(_.movie.releaseYear) shouldBe empty
-  }
-
-  it should "map each event to a showtime with its booking deep-link and screen" in {
-    val toyStory = day.find(_.movie.title == "Toy Story 5").value
-    toyStory.showtimes.size shouldBe 13
-    toyStory.showtimes.map(_.dateTime) shouldBe toyStory.showtimes.map(_.dateTime).sorted
-    val tenOClock = toyStory.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 10, 0)).value
-    tenOClock.bookingUrl.value shouldBe
-      "https://experience.cineworld.co.uk/select-tickets?sitecode=031&site=031&id=456974&lang=en"
-    tenOClock.room.value shouldBe "Screen 9"
-  }
-
-  it should "badge the premium formats and drop the noise attributes" in {
-    val toyStory = day.find(_.movie.title == "Toy Story 5").value
-    // 10:00 is the 4DX 3D screening; 09:00 is a plain 2D one in the same film.
-    toyStory.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 10, 0)).value.format shouldBe
-      List("4DX", "3D")
-    toyStory.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 9, 0)).value.format shouldBe
-      List("2D")
-    // IMAX rides the Odyssey's Screen 7 sessions; 'laser' / 'recliner' /
-    // 'audio-described' / 'reserved-selected' never become badges.
-    val odyssey = day.find(_.movie.title == "The Odyssey (2026)").value
-    odyssey.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 11, 20)).value.format shouldBe
-      List("IMAX", "2D")
-    // TAMIL / TELUGU join the set off the day's foreign-language screenings.
-    day.flatMap(_.showtimes).flatMap(_.format).toSet shouldBe
-      Set("2D", "3D", "IMAX", "4DX", "NAP", "TAMIL", "TELUGU")
-  }
-
-  it should "mark a subtitled screening" in {
-    val odyssey = day.find(_.movie.title == "The Odyssey (2026)").value
-    odyssey.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 18, 10)).value.format shouldBe
-      List("2D", "NAP")
-  }
-
-  it should "badge the spoken language of a foreign-language screening" in {
-    // "Jana Nayagan (Tamil)" is subtitled Tamil — its attributeIds carry 'tamil'
-    // alongside 'subbed', so the badge reads "TAMIL" (what it's in) after the
-    // "NAP" subtitle marker, with the language ids never leaking as genres.
-    val janaNayagan = day.find(_.movie.title == "Jana Nayagan (Tamil)").value
-    janaNayagan.showtimes.find(_.dateTime == LocalDateTime.of(2026, 7, 27, 10, 40)).value.format shouldBe
-      List("2D", "NAP", "TAMIL")
-  }
-
-  // ── fetch(): planChunks → fetchChunk → reduceChunks, in process ───────────
-  "fetch" should "merge every planned day into one row per film" in {
-    // Only the two recorded days are scripted into the day list; the per-day
-    // film-events calls resolve out of the fixture corpus.
-    val twoDays = scripted(url =>
-      if (url.contains("/dates/")) """{"body":{"dates":["2026-07-27","2026-07-28"]}}"""
-      else fake.get(url))
-
-    val movies   = client(twoDays).fetch()
-    val toyStory = movies.find(_.movie.title == "Toy Story 5").value
-    movies.size shouldBe 22                                   // 20 films a day, 22 across the two
-    toyStory.showtimes.size shouldBe 26                       // 13 per day, unioned
-    toyStory.showtimes.map(_.dateTime.toLocalDate).distinct shouldBe
-      Seq(LocalDate.of(2026, 7, 27), LocalDate.of(2026, 7, 28))
-    toyStory.showtimes.map(_.dateTime) shouldBe toyStory.showtimes.map(_.dateTime).sorted
-  }
-
-  "sourceUrl" should "link the venue's public page off the site code alone" in {
-    client().sourceUrl.value shouldBe "https://www.cineworld.co.uk/cinemas/031/031"
-  }
-
-  it should "declare the chain and the host it scrapes" in {
-    client().chain shouldBe true
-    client().scrapeHosts shouldBe Set("www.cineworld.co.uk")
-  }
-
-  // ── the deferred DetailEnricher: the film's own /films/<slug>/<id> page ──────
-  "fetchFilmDetail" should "parse synopsis, cast, director, runtime and cert off the film page" in {
-    // The `filmUrl` the listing scrape leaves on the movie IS the detail ref.
-    val ref    = day.find(_.movie.title == "Toy Story 5").value.filmUrl.value
-    val detail = client().fetchFilmDetail(ref).value
-    detail.synopsis.value should include("Toy Story 5")
-    detail.director should contain("Andrew Stanton")
-    detail.cast should contain allOf ("Tom Hanks", "Tim Allen")
-    detail.runtimeMinutes.value shouldBe 102
+  "fetchFilmDetail" should "read synopsis, cast, director, runtime and certificate off the movies endpoint" in {
+    val detail = client().fetchFilmDetail("https://www.cineworld.co.uk/films/313481-how-to-train-your-dragon").value
+    detail.cast shouldBe Seq(
+      "Mason Thames", "Gerard Butler", "Nico Parker", "Nick Frost", "Gabriel Howell",
+      "Julian Dennison", "Bronwyn James", "Harry Trevaldwyn", "Ruth Codd", "Peter Serafinowicz")
+    detail.director shouldBe Seq("Dean DeBlois")
+    detail.runtimeMinutes.value shouldBe 125   // 7500 seconds on the wire
     detail.ageRating.value shouldBe "PG"
+    detail.synopsis.value should include("rugged isle of Berk")
   }
 
-  it should "advertise the chain-wide detail group" in {
-    client().detailGroup shouldBe "cineworld"
+  it should "read a different film's certificate off the same endpoint shape" in {
+    client().fetchFilmDetail("https://www.cineworld.co.uk/films/34193-donnie-darko").value
+      .ageRating.value shouldBe "15"
   }
 
-  private def scripted(respond: String => String): tools.HttpFetch = new tools.GetOnlyHttpFetch {
-    def get(url: String): String = respond(url)
+  it should "leave ageRating/runtime unset for a film the platform hasn't rated or timed yet" in {
+    val detail = client()
+      .fetchFilmDetail("https://www.cineworld.co.uk/films/1000050581-dune-part-three-the-imax-experience").value
+    detail.ageRating shouldBe None
+    detail.runtimeMinutes shouldBe None
+  }
+
+  it should "return None for an id the platform doesn't recognise, rather than throw" in {
+    // The endpoint answers an unknown id with 200 + `[]`, not a 404 — a real
+    // recorded response, not a synthesised one (see class doc: there is no
+    // durable-vs-transient HTTP signal on this endpoint the way the old
+    // detail PAGE had, so this becomes a plain retry-later None/Failed, not Gone).
+    client().fetchFilmDetail("https://www.cineworld.co.uk/films/999999999-does-not-exist") shouldBe None
+  }
+
+  "movieIdOf" should "read the numeric id off a listing's filmUrl" in {
+    CineworldClient.movieIdOf("https://www.cineworld.co.uk/films/313481-how-to-train-your-dragon") shouldBe "313481"
+  }
+
+  it should "fall back to SOME id for a ref that doesn't match the expected shape, rather than short-circuit" in {
+    // See the doc on `movieIdOf`: a fetch is still attempted (and so a real
+    // HTTP failure still surfaces) rather than every unexpected ref silently
+    // becoming None before ever reaching the network.
+    CineworldClient.movieIdOf("https://example.test/film") shouldBe "film"
+  }
+
+  "movieDetailUrl" should "build the endpoint URL with a fixed casting limit" in {
+    CineworldClient.movieDetailUrl(CineworldClient.BaseUrl, "313481") shouldBe
+      "https://www.cineworld.co.uk/api/gatsby-source-boxofficeapi/movies?basic=false&castingLimit=10&ids=313481"
+  }
+
+  // ── the pure detail parser, against the same recorded shape ───────────────
+
+  "CineworldParser.parseMovieDetail" should "drop an unrecognised certificate rather than leak it onto a card" in {
+    CineworldParser.parseMovieDetail(
+      """[{"id":"1","title":"x","synopsis":null,"casting":[],"direction":[],"coDirection":[],
+        |"runtime":null,"certificate":"TBC"}]""".stripMargin
+    ).value.ageRating shouldBe None
+  }
+
+  it should "return None for an empty array" in {
+    CineworldParser.parseMovieDetail("[]") shouldBe None
+  }
+
+  it should "return None for an unparseable body rather than throw" in {
+    CineworldParser.parseMovieDetail("<!doctype html><html></html>") shouldBe None
   }
 }

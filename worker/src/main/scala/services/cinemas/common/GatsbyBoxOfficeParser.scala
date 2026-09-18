@@ -216,12 +216,13 @@ object GatsbyBoxOfficeParser {
  * the vendor's platform is deployed — the `data.ticketing[]` booking-link block
  * and the `Format.Projection.*` / `Auditorium.Experience.*` tag namespace.
  *
- * These are shared because the repo already reaches this vendor twice: the
- * Gatsby "box office" sites here (Showcase / Everyman, UK) and the classic
- * website-JSON sites behind [[services.cinemas.common.WebediaShowtimesClient]]
- * (Filmstarts, DE). Both serve the identical `ticketing[].urls[]` shape with
- * the identical `relay.mvtx.us` trailing-junk quirk, and both tag screenings
- * from the identical dotted vocabulary.
+ * These are shared because the repo already reaches this vendor three times: the
+ * Gatsby "box office" sites here (Showcase / Everyman / Cineworld, UK) and the
+ * classic website-JSON sites behind
+ * [[services.cinemas.common.WebediaShowtimesClient]] (Filmstarts, DE). All serve
+ * the identical `ticketing[].urls[]` shape with the identical `relay.mvtx.us`
+ * trailing-junk quirk, and all tag screenings from the identical dotted
+ * vocabulary.
  *
  * `WebediaShowtimesClient` still carries its own inline copies of both rules
  * and should be migrated onto this object (at which point this belongs in its
@@ -262,16 +263,27 @@ object WebediaBoxOffice {
    *  `Auditorium.Experience.DolbyAtmos` at Everyman; `Format.Projection.HFR` in
    *  both vocabularies). `Format.Projection.Imax` is in the vendor's shared
    *  797-entry taxonomy and is already mapped by the German sibling, so it is
-   *  carried here too even though neither UK brand runs an IMAX screen. */
+   *  carried here too even though neither UK brand runs an IMAX screen.
+   *
+   *  `4dx`/`screenx`/`infinityvision`/`4k` added 2026-09-18 off Cineworld's live
+   *  schedule (its relaunched site runs this same platform — see
+   *  [[services.cinemas.uk.CineworldClient]]): screens neither Showcase nor
+   *  Everyman has, so their fixtures never exercised these tokens, but they're
+   *  in the same shared `Auditorium.Experience.*`/`Format.Projection.*`
+   *  namespace and cost both siblings nothing to recognise too. */
   def premiumTokens(tags: Seq[String]): List[String] = {
     val lower = tags.map(_.toLowerCase)
     List(
-      "format.projection.imax"           -> "IMAX",
-      "format.projection.laser"          -> "LASER",
-      "format.projection.hfr"            -> "HFR",
-      "format.projection.35mm"           -> "35MM",
-      "auditorium.experience.plf"        -> "PLF",
-      "auditorium.experience.dolbyatmos" -> "ATMOS"
+      "format.projection.imax"               -> "IMAX",
+      "auditorium.experience.4dx"            -> "4DX",
+      "auditorium.experience.screenx"        -> "SCREENX",
+      "auditorium.experience.infinityvision" -> "INFINITY",
+      "format.projection.laser"              -> "LASER",
+      "format.projection.hfr"                -> "HFR",
+      "format.projection.4k"                 -> "4K",
+      "format.projection.35mm"               -> "35MM",
+      "auditorium.experience.plf"            -> "PLF",
+      "auditorium.experience.dolbyatmos"     -> "ATMOS"
     ).collect { case (needle, token) if lower.exists(_.contains(needle)) => token }
   }
 }
