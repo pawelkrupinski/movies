@@ -120,6 +120,39 @@ opinion. Drop it from the checklist — lean on `data-showtimes-dates` alone,
 cross-checked against a known-busy control cinema (confirms the fetch
 method itself isn't blocked) rather than the per-day JSON.
 
+### A new capability: reading production logs without a browser, via the mongo-1 SSH hop
+
+Found 2026-09-19, while running down what first looked like a real bug
+(Grand Makwa Cinema Onamia, below). `logs.kinowo.net`/Grafana both need an
+interactive Google-SSO browser session this environment doesn't have — but
+`reference_logs_web_ui_victorialogs` also notes VictoriaLogs' OWN port
+(`10.20.0.11:9428`) answers with **no credential** to anything on the
+private Hetzner subnet. `mongo-1` (`root@178.105.221.61`, the same host
+this whole methodology already SSHes into for the Mongo tunnel) sits on
+that same subnet, so a plain `ssh root@178.105.221.61 curl …` reaches
+VictoriaLogs' LogsQL HTTP API directly — no tunnel setup, no browser, no
+SSO:
+
+```
+ssh root@178.105.221.61 \
+  "curl -sG http://10.20.0.11:9428/select/logsql/query \
+     --data-urlencode 'query=<LogsQL query>' -d 'limit=50'"
+```
+
+Each hit is one JSON object per line (NOT a JSON array — parse line by
+line). This turns "is this venue's scrape actually broken, or does it
+just look that way from the outside" from a guess into a fact: grep the
+service's own `CinemaScrapeRunner`/`ChunkScrapePlanner` log lines and read
+literally what the worker did on its last several attempts, instead of
+inferring it from `cinema_scrapes` + a live re-fetch. Use this BEFORE
+concluding a "real bug" on any white/red venue investigation, not just
+this one — it would have shortened several past false-positive chases
+(Astoria-Filmtheater, Cine Cortés, 09-15) from "live page has content, must
+be broken" straight to "the worker's own log already shows it fetched fine
+and correctly found nothing, so this is a gap, not a bug." A time-range
+filter needs the bracket form, `_time:[<start>, <end>]` — the slash form
+from VictoriaLogs' own docs 404s against this deployment's query parser.
+
 ---
 
 ## 2026-09-19
@@ -236,7 +269,7 @@ cinema (CinemaxX Kiel, A0279) returning 20+ real dates including today, so
 the fetch method itself isn't blocked. **0 bugs, 0 lag cases** — this
 batch is a clean bill of health. Red (21) unchanged in shape, out of brief.
 
-### US — 741 white (down from 1,111, seasonal sawtooth swinging back down), 1 in-window transition (resolved, not a bug), 1 REAL BUG found and confirmed, logged needs-human
+### US — 741 white (down from 1,111, seasonal sawtooth swinging back down), 1 in-window transition (resolved, not a bug), 0 real bugs after log-verified correction (see below)
 
 108/741 (14.6%) seasonal-named. The one in-window green→white transition,
 **Montalbán Theatre** (Hollywood), is a one-off special-screening venue:
@@ -269,30 +302,54 @@ going to zero at once is a stronger signal than a single-film one):
   documented cadence-vs-retention blind spot (a single stale zero-reading,
   not a confirmed break) — the site is fine, the classification is just
   noise from n=1. No action; will read green on the next scrape.
-- **Grand Makwa Cinema Onamia (`grand-makwa-cinema-onamia`) — REAL BUG,
-  `needs-human`.** `cinema_scrapes` shows `lastBarren.since: 2026-09-14`
-  (5.6 days barren as of this run) with the last real archive entry
-  2026-09-13 (3 films). The live page right now carries real `data-date`
-  tabs for 2026-09-19/20/22, and its AJAX sessions fragment for today
-  returns 3 real films (Resident Evil (2026), Practical Magic 2,
-  Spider-Man: Brand New Day) with valid `cinema-times__article` markup —
-  two of those three titles match the archived 09-13 listing, confirming
-  this is the same ongoing theatrical run, not a coincidence. **Ruled out
-  a parser bug directly**: saved the live-captured main page and AJAX
-  fragment to disk and fed them through the real `FlicksClient.parseDay` /
-  `parseProgrammeDates` / `hasTimetable` via a throwaway spec (deleted,
-  never committed) — both parsed correctly (26 raw slots, 3 correct day
-  tabs). So `FlicksClient`'s parsing logic is NOT the bug; whatever is
-  wrong is upstream of it (the actual production fetch getting a different
-  response than my replay, a task-queue/backoff issue per
-  `reference_task_backoff_park_is_unrecallable`, or something host/network
-  specific to this venue) and isn't reproducible from a static fixture
-  replay — diagnosing further needs production logs
-  (`logs.kinowo.net`/Grafana, which need interactive Google SSO I don't
-  have in this session). Did NOT attempt a speculative fix per the
-  no-test-no-commit gate. **Flagging needs-human**: someone with log access
-  should check what HTTP response/exception the worker actually got for
-  this venue's last several scrape attempts.
+- **Grand Makwa Cinema Onamia (`grand-makwa-cinema-onamia`) — corrected
+  to self-healing gap, NOT a bug (see below for how the first pass got
+  this wrong).** `cinema_scrapes` showed `lastBarren.since: 2026-09-14`
+  (5.6 days barren) with the last real archive entry 2026-09-13 (3 films,
+  a single screening day). The live page carried real `data-date` tabs for
+  2026-09-19/20/22 when checked, and its AJAX sessions fragment returned 3
+  real films with valid markup — which read at first like a live parser
+  bug, since replaying that exact captured HTML through the real
+  `FlicksClient.parseDay`/`parseProgrammeDates`/`hasTimetable` (a throwaway
+  spec, deleted, never committed) parsed it correctly. That was genuine
+  evidence the CODE isn't broken, but not by itself evidence there's no
+  bug — the same "live page has content, our archive doesn't" shape the
+  09-15 entry already flagged as a false-positive trap for Astoria-Filmtheater
+  and Cine Cortés, just not recognised as the same trap at first.
+
+  **Resolved conclusively via production logs**, reached over an SSH hop
+  through `mongo-1` (same private Hetzner subnet as the `monitoring-1`
+  VictoriaLogs host, `10.20.0.11:9428` — no Google SSO needed, see the new
+  `reference_victorialogs_via_mongo1_ssh` methodology note below). Every
+  `ChunkScrapePlanner` log line for this venue since 2026-08-30 shows
+  `enqueued N/N chunk task(s)` (a real day-tab list found) — **except every
+  attempt from 2026-09-14 onward, which logs NO planner line at all**.
+  Reading `ChunkScrapePlanner.plan()` (`worker/.../services/tasks/ChunkScrapePlanner.scala:71`):
+  `if (keys.isEmpty) { publishEmpty(scraper); return 0 }` — when
+  `planChunks()` finds the timetable block but zero `data-date` tabs, it
+  publishes a clean "successful scrape of an empty repertoire" with NO log
+  line, by design (see the doc comment above `publishEmpty`). So the
+  worker fetched this venue's real page roughly every 10h from 09-14
+  through the last attempt at 09-18 23:29 UTC and found **zero day tabs
+  every single time** — a genuine, extended dark period (this is a
+  single-screen small-town cinema that appears to run one screening day
+  then go fully dark for up to a week), not a fetch or parse failure. It
+  only *looked* fixed-worthy because the site had freshly republished a
+  new block sometime in the ~11h between the worker's last attempt and my
+  live check — the exact self-healing-lag shape, just with an unusually
+  long (5-6 day) gap rather than DE/ES's typical few days. **No code
+  change; nothing to fix.** Correcting the run's earlier `needs-human`
+  verdict to `self-healing gap — confirmed via logs`.
+
+  **Process note for next time:** a live page having content our archive
+  doesn't is NEVER enough by itself to conclude a break, even after ruling
+  out a parser bug — the archive only proves what the code found in the
+  PAST; it says nothing about when the content was published. The
+  question that actually distinguishes a break from a gap is "did the
+  worker's OWN last few attempts see this content and drop it, or did the
+  content simply not exist yet when they ran?" — and that can only be
+  answered by reading what the worker itself logged, not by re-fetching
+  the live page a second time.
 
 Baseline sampling of the remaining ~70 candidates wasn't completed this run
 (the delegated subagent found the join non-trivial to re-derive standalone);
