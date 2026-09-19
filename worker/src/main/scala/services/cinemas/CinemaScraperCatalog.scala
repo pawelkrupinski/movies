@@ -434,7 +434,7 @@ class CinemaScraperCatalog(
   private val torunScrapers: Seq[CinemaScraper] = Seq(
     cinemaCity("1077", CinemaCityTorunCzerwonaDroga),
     cinemaCity("1093", CinemaCityTorunPlaza),
-    new KinoCentrumCswClient(http, KinoCentrumCsw, today),
+    new KinoCentrumCswClient(http, KinoCentrumCsw),
   )
 
   private val kielceScrapers: Seq[CinemaScraper] = Seq(

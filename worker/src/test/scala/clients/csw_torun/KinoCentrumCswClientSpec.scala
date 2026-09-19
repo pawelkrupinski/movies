@@ -7,21 +7,21 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.KinoCentrumCswClient
 
-import java.time.{LocalDate, LocalDateTime}
+import java.time.LocalDateTime
 
-/** Replays the recorded `/repertuar/` page (07-06-2026 capture) through the
- *  client. The dpProEventCalendar plugin renders all upcoming dates as static
- *  HTML `div.box` elements — no JS needed. `today` is pinned so the
- *  "7 czerwca" → year inference stays stable.
+/** Replays a 2026-09-19 capture of `csw/v1/cinema-repertoire` — the JSON
+ *  endpoint the site's Nuxt-rebuilt cinema page now fetches its schedule
+ *  from, after the old static `/repertuar/` HTML page (dpProEventCalendar
+ *  `div.box` markup) was replaced by a client-rendered widget.
  *
  *  Fixture recorder:
- *    new RecordingHttpFetch("csw-torun", real).get("https://csw.torun.pl/repertuar/")
+ *    new RecordingHttpFetch("csw-torun", real).get("https://api.csw.torun.pl/wp-json/csw/v1/cinema-repertoire")
  *  Fixture directory: test/resources/fixtures/csw-torun/
- *  Fetch URL:   https://csw.torun.pl/repertuar/ */
+ *  Fetch URL:   https://api.csw.torun.pl/wp-json/csw/v1/cinema-repertoire */
 class KinoCentrumCswClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http   = new FakeHttpFetch("csw-torun")
-  private val client = new KinoCentrumCswClient(http, KinoCentrumCsw, LocalDate.of(2026, 6, 7))
+  private val client = new KinoCentrumCswClient(http, KinoCentrumCsw)
 
   "KinoCentrumCswClient" should "return a non-empty film list" in {
     val movies = client.fetch()
@@ -38,10 +38,19 @@ class KinoCentrumCswClientSpec extends AnyFlatSpec with Matchers with OptionValu
     all(movies.map(_.showtimes)) should not be empty
   }
 
-  it should "pin a concrete screening: Drzewo magii on 2026-06-07 at 12:30" in {
+  it should "pin a concrete screening: Obcy on 2026-09-22 at 15:30" in {
     val movies = client.fetch()
-    val drzewo = movies.find(_.movie.title == "Drzewo magii").value
-    drzewo.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 6, 7, 12, 30))
-    drzewo.filmUrl.value should include("csw.torun.pl/pec-events/")
+    val obcy = movies.find(_.movie.title == "Obcy").value
+    obcy.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 22, 15, 30))
+    obcy.filmUrl.value shouldBe "https://csw.torun.pl/kino/obcy/"
+  }
+
+  it should "merge a film's screenings across different days into one entry" in {
+    val movies = client.fetch()
+    val obcy = movies.find(_.movie.title == "Obcy").value
+    obcy.showtimes.map(_.dateTime) should contain allOf (
+      LocalDateTime.of(2026, 9, 22, 15, 30),
+      LocalDateTime.of(2026, 9, 24, 20, 0)
+    )
   }
 }
