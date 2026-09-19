@@ -106,6 +106,219 @@ and 336 of the 1,143 white US services had exactly 1.** Two consequences:
   will be lag. Weight the "recently broke" list accordingly; treat it as a
   probe queue, not a bug list.
 
+### A fifth trap: the DE/ES per-day `.json` verification endpoint is dead
+
+Found 2026-09-19. Prior runs verified a lag-vs-bug call by hitting
+`https://www.filmstarts.de/kinoprogramm/kino/<id>/tag/<date>.json` (or the
+ES `sensacine.com` equivalent) and reading `{"error":true,"message":
+"next.showtime.on",…}`. That path now 404s unconditionally — including
+against a known-busy control cinema — so it's gone, not venue-specific.
+The real verification signal was always the venue page's own
+`data-showtimes-dates="[…]"` attribute (`[]` = genuinely empty right now,
+far-future-only dates = lag); the `.json` endpoint was only ever a second
+opinion. Drop it from the checklist — lean on `data-showtimes-dates` alone,
+cross-checked against a known-busy control cinema (confirms the fetch
+method itself isn't blocked) rather than the per-day JSON.
+
+---
+
+## 2026-09-19
+
+**Eighth all-five-country sweep.** Newest bucket ~2026-09-19 08:00 UTC. Same
+sweep script shape as prior runs. PL fully hand-probed; UK/DE/ES/US triaged
+with the archive-join + seasonal-name cut, spot-checks delegated to
+background subagents (per the standing delegate-probe-work convention) with
+every "real bug" claim personally re-verified live before trusting it.
+
+| DB | services | white | white % | red | green→white (in-window) |
+|---|---|---|---|---|---|
+| `kinowo` (PL) | 310 | **5** | 1.6% | 1 | 0 |
+| `kinowo_uk` | 853 | **49** | 5.7% | 0 | 0 |
+| `kinowo_de` | 1,538 | **389** | 25.3% | 21 | 0 |
+| `kinowo_us` | 5,041 | **741** | 14.7% | 3 | 1 |
+| `kinowo_es` | 600 | **202** | 33.7% | 2 | 0 |
+
+vs. 2026-09-15: PL 5/312 (1.6%, flat — but a different 5: see below), UK
+64/853→49/853 (7.5%→5.7%, down), DE 401/1538→389/1538 (26.1%→25.3%, flat),
+US 1111/5040→741/5041 (22.0%→14.7%, down — the seasonal sawtooth swinging
+back down again, consistent with the pattern documented since 09-04), ES
+218/601→202/600 (36.3%→33.7%, down). PL's red count also dropped sharply
+(3→1): Kino Roma and Kino MOK Nowa Ruda, both red on 09-15, are fully green
+again this run with fresh same-day archives — no action needed, self-healed.
+
+**Seasonal-name regex note:** re-derived the correct historical pattern
+(`terraza|verano|open.?air|autokino|freibad|sommer|drive.?in`, from the
+09-08 entry) after this run's first pass used an ad-hoc one that badly
+undercounted DE (60 vs. the corrected 164/389 = 42.2% of the white list).
+UK 0%, US 108/741 = 14.6%, ES 23/202 = 11.4% — all in line with prior runs'
+shape. Use the exact regex above going forward; don't reinvent it.
+
+### Poland — all 5 hand-probed live, 1 fixed, 1 recovered off the list, 3 confirmed still dormant
+
+**Kino Centrum CSW Toruń — fixed, @900ee3607 (+ snapshot regen @d7bca6c5f).**
+NEW to the white list this run (was RED on 09-15, not investigated then).
+`cinema_scrapes` showed a real scrape 2026-09-17 11:13 (3 films),
+`lastBarren.since` 2026-09-17 12:13 — a break roughly 2 days before this
+run's cutoff. Root cause: the venue's site (csw.torun.pl) was rebuilt on
+Nuxt sometime between the 09-15 and 09-17 scrapes. The old client's target,
+the static `/repertuar/` page (dpProEventCalendar `div.box` markup), now
+renders a client-side-loading Vue widget with none of that markup — the
+fetch still 200s, so the client kept "succeeding" at zero. The new page
+loads its schedule from a small WordPress REST route on the site's API
+subdomain (`https://api.csw.torun.pl/wp-json/csw/v1/cinema-repertoire`,
+found via the page's own asset requests) — a flat JSON array of
+`{id, filmId, title, date, time, ticketUrl, href, bilety24}`, much simpler
+than the old HTML. `KinoCentrumCswClient` now calls that endpoint directly
+(API-over-browser, per standing preference) instead of scraping HTML;
+`today`-based year inference is gone too since the API returns absolute
+dates, so the `today` constructor param was dropped end-to-end (client +
+catalog call site).
+
+**Test:** `KinoCentrumCswClientSpec` rewritten to replay a fresh 2026-09-19
+capture of the new endpoint (`test/resources/fixtures/csw-torun/api.csw.torun.pl/…`)
+— the pre-fix client doesn't even request that URL, so this is a clean
+fail-before/pass-after (`FileNotFoundException` under `FakeHttpFetch`
+pre-fix, 5/5 green post-fix). `sbt worker/Test/test` green (3,499 tests,
+after `./infra/bin/fetch-gitops` cleared the usual missing-local-checkout
+`deploy.*` failures — same one-time setup step every run since 2026-09-04
+has needed). `FilmScheduleEndToEndSpec` required a snapshot regen (the
+frozen 08-06-2026 corpus only has the OLD `/repertuar/` fixture, not the
+new API URL, so replaying the real client against it now correctly
+produces zero for this one venue) — diffed clean (only Kino Centrum CSW
+Toruń's contributions moved, no other film/cinema touched), reran to
+confirm stability, both green. `web/PageTest/testOnly views.PageSnapshotSpec`
+green with no HTML regen needed (Toruń isn't one of the three snapshotted
+cities). Pushed to `main` at the end of this run (see below).
+
+**Kino Lewart (Lubartów) — recovered, off the white list.** White on every
+run since at least 09-12; this run shows 8/8 green buckets with a real
+same-day scrape (6 films, 2026-09-19 07:46). No action — bilety24 must have
+simply resumed publishing.
+
+**The other 3 white PL venues — all re-probed live, all still confirmed
+dormant, no change:**
+
+| Venue | Source | What the source says |
+|---|---|---|
+| Kino Chatka Żaka (Lublin) | `umcs.pl` now 301-redirects to `www.umcs.pl/pl/kalendarz-wydarzen,9469,1.lhtm` | 0 `box-row`, page renders but empty |
+| Kino Wisła Brzeszcze | bilety24 `…/kino/organizator/osrodek-kultury-w-brzeszczach-1539` (NOTE: the bare `/osrodek-kultury-w-brzeszczach-1539` URL without the `/kino/organizator/` prefix now 404s — "Bilety24 - napotkaliśmy problem" — that's just the wrong URL, not a break; the actual configured URL still works) | "Brak wydarze" (no events) |
+| Kino na Szekspirowskim (Gdańsk) | biletyna.pl via Zyte (`httpResponseBody: true`, Cloudflare still blocks plain curl — see `reference_biletyna_cloudflare_blocks_all_ips`) | "Brak wydarz…" |
+
+**DKF Politechnika (Wrocław) — still white, 11th consecutive run, academic-break checkpoint not yet due.** `Dyskusyjny Klub Filmowy Politechnika` (its full service name — the log's shorthand "DKF Politechnika" is the same venue). Filmweb 1645 `/api/v1/cinema/1645/seances?date=…` returns `[]` for 09-19/20/21; `/api/v1/cinema/1645/info` still resolves fine. The 08-24 checkpoint ("escalate if still `[]` in October") has not yet triggered — today is 2026-09-19. Next run (~09-22) should watch for the October rollover.
+
+**Red (1, down from 3):** `Cineworld Enrichment` — an enrichment-pipeline service name that slipped past the `*|enrichment` filter (no pipe in the name) but isn't a cinema scrape; out of scope, not investigated. Kino Roma and Kino MOK Nowa Ruda (both red on 09-15) are fully green again — self-healed, no action.
+
+### UK — 49 white (down from 64), 0 in-window transitions, all 6 archive≤10d candidates hand-checked, 0 bugs
+
+43 of the 49 have no `cinema_scrapes` archive within 10 days (long-tail,
+not individually probed this run). The 6 with a recent archive — Castlemorton
+Cinema (Morton Majestic), Chiddingfold Village Hall Cinema, Heart Centre
+Headingley, Ilkley Cinema, Pavilion Cinema Whitby, Regent Blackpool — were
+all fetched live (`flicks.co.uk/cinema/<slug>/`): every one renders Flicks'
+own `no-streaming-sessions` block with **zero `data-date` tabs at all** (not
+even far-future ones) — genuinely empty right now, not a lag case, not a
+bug. Cross-checked two of them against the AJAX sessions endpoint directly
+(200, 0 bytes) to confirm it's Flicks itself with nothing listed, not a
+parse failure. No fixes, nothing new vs. 09-15's shape besides the drop in
+raw count (64→49).
+
+### DE — 389 white (down slightly from 401), 0 in-window transitions, all 14 archive≤10d candidates checked, 0 bugs
+
+164/389 (42.2%) seasonal-named (open-air/Freiluftkino/autokino — see the
+regex note above). Of the 14 non-seasonal-or-borderline candidates with a
+≤10-day archive (Central-Kino Borgentreich, 4× Freiluftkino-named venues
+that the imperfect first-pass regex missed, Hafenkino Wilhelmshaven,
+Hansafilmpalast, Kino Neu Anspach, Kino Wesenberg, Kino-Center Forchheim,
+2× Kommunales Kino venues, Magic Cinema im Europa Park, Neues Theater Sankt
+Wendel) — every one's `data-showtimes-dates` on filmstarts.de reads exactly
+`[]` (not even a far-future gap-list). Verified against a live control
+cinema (CinemaxX Kiel, A0279) returning 20+ real dates including today, so
+the fetch method itself isn't blocked. **0 bugs, 0 lag cases** — this
+batch is a clean bill of health. Red (21) unchanged in shape, out of brief.
+
+### US — 741 white (down from 1,111, seasonal sawtooth swinging back down), 1 in-window transition (resolved, not a bug), 1 REAL BUG found and confirmed, logged needs-human
+
+108/741 (14.6%) seasonal-named. The one in-window green→white transition,
+**Montalbán Theatre** (Hollywood), is a one-off special-screening venue:
+its last archive entry is a SINGLE showing of "Project Hail Mary" on
+2026-09-18 22:00 UTC with a `bookingUrl` pointing at the venue's own site
+(a special-event booking, not the venue's regular repertoire calendar). The
+live page now renders Flicks' `no-streaming-sessions` block with no day
+tabs — the one-off screening already happened and nothing is scheduled
+next. Not a bug.
+
+Sampled the higher-value candidates from the 88 non-seasonal, archive≤10d
+list (prioritizing multi-film venues, since a venue with several films
+going to zero at once is a stronger signal than a single-film one):
+
+- **Fox 5 Theatre Sterling, Three Star Cinema McMinnville, Palace Theatre
+  Lake Placid, Reel Time Cinema Brookfield, Welden Theatre St Albans, Capri
+  Theatre Shelbyville, Kentucky Science Center Louisville, McCurtain Cinema
+  Idabel, Moody Gardens Theater Galveston, Princess Theatre Rushville
+  Indiana, The Grand Theatre Oelwein, The Showhouse Othello** — all
+  genuinely empty right now (Flicks' `no-streaming-sessions` block, no near
+  or far day tabs). Not bugs.
+- **Canal Place Philadelphia 7** (archive: 7 films 1.7d ago) and **Marquee
+  Pullman Square 16** (archive: 16 films 1.7d ago) both looked alarming at
+  first — high film counts suddenly at zero — but each has only **ONE**
+  scrape bucket in the 24h window (US's 840-min cadence means most venues
+  get 1-2 buckets, not 3), and live-checking both found real, current
+  content: Canal Place's page shows "6 movies / 67 showtimes" this week and
+  its AJAX sessions endpoint (`/cinema/sessions/canal-place-philadelphia-7/2026-09-19/`)
+  returns 6 real `cinema-times__article` blocks right now. This is the
+  documented cadence-vs-retention blind spot (a single stale zero-reading,
+  not a confirmed break) — the site is fine, the classification is just
+  noise from n=1. No action; will read green on the next scrape.
+- **Grand Makwa Cinema Onamia (`grand-makwa-cinema-onamia`) — REAL BUG,
+  `needs-human`.** `cinema_scrapes` shows `lastBarren.since: 2026-09-14`
+  (5.6 days barren as of this run) with the last real archive entry
+  2026-09-13 (3 films). The live page right now carries real `data-date`
+  tabs for 2026-09-19/20/22, and its AJAX sessions fragment for today
+  returns 3 real films (Resident Evil (2026), Practical Magic 2,
+  Spider-Man: Brand New Day) with valid `cinema-times__article` markup —
+  two of those three titles match the archived 09-13 listing, confirming
+  this is the same ongoing theatrical run, not a coincidence. **Ruled out
+  a parser bug directly**: saved the live-captured main page and AJAX
+  fragment to disk and fed them through the real `FlicksClient.parseDay` /
+  `parseProgrammeDates` / `hasTimetable` via a throwaway spec (deleted,
+  never committed) — both parsed correctly (26 raw slots, 3 correct day
+  tabs). So `FlicksClient`'s parsing logic is NOT the bug; whatever is
+  wrong is upstream of it (the actual production fetch getting a different
+  response than my replay, a task-queue/backoff issue per
+  `reference_task_backoff_park_is_unrecallable`, or something host/network
+  specific to this venue) and isn't reproducible from a static fixture
+  replay — diagnosing further needs production logs
+  (`logs.kinowo.net`/Grafana, which need interactive Google SSO I don't
+  have in this session). Did NOT attempt a speculative fix per the
+  no-test-no-commit gate. **Flagging needs-human**: someone with log access
+  should check what HTTP response/exception the worker actually got for
+  this venue's last several scrape attempts.
+
+Baseline sampling of the remaining ~70 candidates wasn't completed this run
+(the delegated subagent found the join non-trivial to re-derive standalone);
+worth doing next run for a cleaner confirmation-rate ratio. Red (3)
+unchanged in shape, out of brief.
+
+### ES — 202 white (down from 218), 0 in-window transitions, 25 archive≤10d candidates checked (11 Ocine-chain + 14 others), 0 bugs
+
+23/202 (11.4%) seasonal-named. Noticed the "Ocine"-branded chain (19 venues
+total in the ES roster) had 11 of its 19 venues white this run — a 58%
+white share vs. the overall ES white rate of 33.7%, which looked like it
+could be a shared-client/chain-specific break. Spot-checked 4 live
+(3 white — Ocine Arenys E0651, Ocine Blanes E0462, Ocine Granollers E0507 —
+plus 1 non-white control, Ocine Girona E0362): all 3 white ones read
+`data-showtimes-dates="[]"` on sensacine.com right now, while the
+non-white control shows a full 15-date near-term list. **Not a shared
+client bug** — sensacine.com itself just currently has nothing listed for
+those specific venues; a coincidental chain-wide lull, not our parser.
+The other 14 non-Ocine archive≤10d candidates (including 3 higher-film-count
+ones given extra scrutiny: Cine Príncipe 11 films, Cines Antiguo Berri 6,
+Cines Avenida 3D 4) were all confirmed `data-showtimes-dates="[]"` too,
+cross-checked against two known-busy control theaters (Cinesa As Cancelas,
+Cinesa Marineda City) that correctly returned populated date arrays. **0
+bugs, 0 lag cases** across all 25 checked. Red (2) unchanged in shape, out
+of brief.
+
 ---
 
 ## 2026-09-15
