@@ -351,9 +351,20 @@ going to zero at once is a stronger signal than a single-film one):
   answered by reading what the worker itself logged, not by re-fetching
   the live page a second time.
 
-Baseline sampling of the remaining ~70 candidates wasn't completed this run
-(the delegated subagent found the join non-trivial to re-derive standalone);
-worth doing next run for a cleaner confirmation-rate ratio. Red (3)
+**Baseline sample, completed after the main run:** 12 of the remaining 72
+non-priority (1-film-archive) candidates, drawn at random — Neola Phoenix
+Theater, Egyptian Coos Bay, Redwood Theatre Brookings, Black Bear Cinemas,
+Capitol Cinema Aberdeen, Cinema Underground Williams Center, Pensacola
+Cinema Art, Boone Theater, H&S Theatre Chandler, Arlington Cinema &
+Drafthouse, Barron Theatre Pratt, Tahqua-Land Theatre – Land Newberry.
+**12/12 genuinely empty** (Flicks' own `no-streaming-sessions` block, zero
+`data-date` tabs) — same confirmation rate as the priority sample. Combined
+with the 16 priority candidates checked earlier (1 self-healing-gap
+[Grand Makwa, corrected above], 2 cadence-noise, 13 genuinely-empty), this
+run's overall US archive≤10d confirmation rate is 28/28 checked = 0 real
+bugs, giving a real ratio for comparison against future runs: at US cadence,
+an "archive≤10d" white candidate is overwhelmingly either genuinely dark or
+a stale single zero-reading, essentially never a live parser break. Red (3)
 unchanged in shape, out of brief.
 
 ### ES — 202 white (down from 218), 0 in-window transitions, 25 archive≤10d candidates checked (11 Ocine-chain + 14 others), 0 bugs
