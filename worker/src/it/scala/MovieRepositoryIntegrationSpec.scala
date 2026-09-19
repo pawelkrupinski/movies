@@ -393,55 +393,61 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import java.util.concurrent.{ConcurrentHashMap, CountDownLatch, TimeUnit}
     import scala.jdk.CollectionConverters._
 
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
-    def clearToken(): Unit = Await.ready(
-      db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "movies")).toFuture(), 10.seconds)
-    clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
-
-    val repo1   = new MongoMovieRepository(Some(db), persistResumeToken = true, normalizer = titleNormalizer)
-    val idA     = StoredMovieRecord.keyFor("__integration-test-resume-A__", Some(1909), titleNormalizer)
-    val gotA    = new CountDownLatch(1)
-    val handle1 = repo1.watchChanges(r => if (r.id.value == idA) gotA.countDown(), _ => ())
-    handle1 should not be empty
-    try {
-      // A write that beats the cursor open is simply gone, and the resume assertion
-      // below then fails for a reason that has nothing to do with resumption.
-      val warmTitle = "__integration-test-resume-warm__"
-      val warmId    = StoredMovieRecord.keyFor(warmTitle, Some(1909), titleNormalizer)
-      val gotWarm   = new CountDownLatch(1)
-      val warmHandle = repo1.watchChanges(
-        r => if (r.id.value == warmId) gotWarm.countDown(), _ => ())
-      try awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
-        repo1.upsert(warmTitle, Some(1909), MovieRecord(imdbId = Some(f"tt903$pass%05d")))
-      } finally { repo1.delete(warmTitle, Some(1909)); warmHandle.foreach(_.close()) }
-      repo1.upsert("__integration-test-resume-A__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
-      gotA.await(15, TimeUnit.SECONDS) shouldBe true
-      handle1.foreach(_.close()) // last listener gone → stopWatchingIfIdle force-saves the token (position: after A)
-
-      // "Down": B and C land while nothing is watching the stream.
-      repo1.upsert("__integration-test-resume-B__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
-      repo1.upsert("__integration-test-resume-C__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
-
-      // A fresh process (empty in-memory state) resumes from the persisted token.
-      val repo2   = new MongoMovieRepository(Some(db), persistResumeToken = true, normalizer = titleNormalizer)
-      val idB     = StoredMovieRecord.keyFor("__integration-test-resume-B__", Some(1909), titleNormalizer)
-      val idC     = StoredMovieRecord.keyFor("__integration-test-resume-C__", Some(1909), titleNormalizer)
-      val seen    = ConcurrentHashMap.newKeySet[String]()
-      val gotBC   = new CountDownLatch(2)
-      val handle2 = repo2.watchChanges(r => {
-        val id = r.id.value
-        if ((id == idB || id == idC) && seen.add(id)) gotBC.countDown()
-      }, _ => ())
+    // ITS OWN DATABASE. This is one of the few specs with `persistResumeToken = true`,
+    // which watches the WHOLE `movies` collection and persists to the SHARED
+    // `change_stream_tokens` collection — under `IntegrationTest / parallelExecution`
+    // (many spec CLASSES run concurrently), a sibling spec's write to the shared
+    // `movies` collection rings THIS cursor too (change streams have no server-side
+    // schema filter; every delivered document is decoded before this spec's own
+    // film-id filter ever runs), and a shape it doesn't expect fails the decode and
+    // tears the cursor down. The sibling "drop invalidates a persisted token" test
+    // below was isolated the same way for the same reason — this one and the
+    // `screenings` resume test just below it were not, and both flaked in CI
+    // (2026-09-16/18/19) with exactly that shape: a `SideCollectionWatch`/movies
+    // change-stream decode failure, then unrelated specs sharing the runner's mongod
+    // tripping on driver-session-pool errors in the same window. See
+    // IsolatedMongoDatabase's own doc comment.
+    tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "movies-resume-spec") { db =>
+      val repo1   = new MongoMovieRepository(Some(db), persistResumeToken = true, normalizer = titleNormalizer)
+      val idA     = StoredMovieRecord.keyFor("__integration-test-resume-A__", Some(1909), titleNormalizer)
+      val gotA    = new CountDownLatch(1)
+      val handle1 = repo1.watchChanges(r => if (r.id.value == idA) gotA.countDown(), _ => ())
+      handle1 should not be empty
       try {
-        // No fresh write: B and C are delivered purely by resuming past the token.
-        gotBC.await(15, TimeUnit.SECONDS) shouldBe true
-        seen.asScala should contain allOf (idB, idC)
-      } finally { handle2.foreach(_.close()); repo2.close() }
-    } finally {
-      Seq("A", "B", "C").foreach(s => repo1.delete(s"__integration-test-resume-${s}__", Some(1909)))
-      clearToken()
-      repo1.close(); client.close()
+        // A write that beats the cursor open is simply gone, and the resume assertion
+        // below then fails for a reason that has nothing to do with resumption.
+        val warmTitle = "__integration-test-resume-warm__"
+        val warmId    = StoredMovieRecord.keyFor(warmTitle, Some(1909), titleNormalizer)
+        val gotWarm   = new CountDownLatch(1)
+        val warmHandle = repo1.watchChanges(
+          r => if (r.id.value == warmId) gotWarm.countDown(), _ => ())
+        try awaitStreamLive("a warm-up upsert", gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+          repo1.upsert(warmTitle, Some(1909), MovieRecord(imdbId = Some(f"tt903$pass%05d")))
+        } finally { repo1.delete(warmTitle, Some(1909)); warmHandle.foreach(_.close()) }
+        repo1.upsert("__integration-test-resume-A__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
+        gotA.await(15, TimeUnit.SECONDS) shouldBe true
+        handle1.foreach(_.close()) // last listener gone → stopWatchingIfIdle force-saves the token (position: after A)
+
+        // "Down": B and C land while nothing is watching the stream.
+        repo1.upsert("__integration-test-resume-B__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
+        repo1.upsert("__integration-test-resume-C__", Some(1909), MovieRecord(imdbId = Some("tt0000013")))
+
+        // A fresh process (empty in-memory state) resumes from the persisted token.
+        val repo2   = new MongoMovieRepository(Some(db), persistResumeToken = true, normalizer = titleNormalizer)
+        val idB     = StoredMovieRecord.keyFor("__integration-test-resume-B__", Some(1909), titleNormalizer)
+        val idC     = StoredMovieRecord.keyFor("__integration-test-resume-C__", Some(1909), titleNormalizer)
+        val seen    = ConcurrentHashMap.newKeySet[String]()
+        val gotBC   = new CountDownLatch(2)
+        val handle2 = repo2.watchChanges(r => {
+          val id = r.id.value
+          if ((id == idB || id == idC) && seen.add(id)) gotBC.countDown()
+        }, _ => ())
+        try {
+          // No fresh write: B and C are delivered purely by resuming past the token.
+          gotBC.await(15, TimeUnit.SECONDS) shouldBe true
+          seen.asScala should contain allOf (idB, idC)
+        } finally { handle2.foreach(_.close()); repo2.close() }
+      } finally repo1.close()
     }
   }
 
@@ -546,76 +552,75 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
     import services.movies.MongoScreeningsRepository
     import scala.jdk.CollectionConverters._
 
-    val client = MongoClient(Env.get("MONGODB_URI").get)
-    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
-    def clearToken(): Unit = Await.ready(
-      db.getCollection("change_stream_tokens").deleteOne(Filters.eq("_id", "screenings")).toFuture(), 10.seconds)
-    def at(h: Int): Seq[Showtime] = Seq(Showtime(LocalDateTime.of(2099, 1, 1, h, 0), bookingUrl = Some("https://book")))
-    clearToken() // start clean → repo1 opens at "now", not a stale prior-run token
+    // ITS OWN DATABASE — see the "movies" resume test above for why: this is the
+    // other spec with `persistResumeToken = true`, watching the WHOLE `screenings`
+    // collection, which a sibling spec's write under `IntegrationTest /
+    // parallelExecution` can ring (and, if its shape doesn't decode, break). This
+    // exact test flaked in CI (2026-09-19) with a `SideCollectionWatch` decode
+    // failure ("Missing field: filmId") on this collection.
+    tools.IsolatedMongoDatabase.withDatabase(Env.get("MONGODB_URI").get, "screenings-resume-spec") { db =>
+      def at(h: Int): Seq[Showtime] = Seq(Showtime(LocalDateTime.of(2099, 1, 1, h, 0), bookingUrl = Some("https://book")))
 
-    val filmA = "__it-screenings-resume-A__"
-    val filmB = "__it-screenings-resume-B__"
-    val filmC = "__it-screenings-resume-C__"
-    val filmWarm = "__it-screenings-resume-warmup__"
-    val repo1 = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
-    // SWEEP A PRIOR RUN'S ROWS BEFORE WRITING ANY, not only in the `finally`. The
-    // slots below are written at FIXED hours, and since `5fb4f607e` the screenings
-    // cursor does not ring for a row that did not move — so if a previous run died
-    // between its writes and its cleanup (a cancelled CI run, which this repository
-    // produces constantly), the identical re-write here is a no-op, no event is
-    // owed, and `gotA` times out. That reads as a BROKEN RESUME, which is the one
-    // bug this spec exists to catch.
-    //
-    // `beforeAll`'s `purgeSentinels` does not reach these: it deletes from `movies`
-    // by `_id ^integrationtest`, and these live in `screenings` under
-    // `itscreeningsresume…`. Same reasoning as the warm-up loop's fresh hour just
-    // below — a write this spec depends on has to be a real change every time.
-    Seq(filmA, filmB, filmC, filmWarm).foreach(repo1.deleteFilm)
-    val gotA  = new CountDownLatch(1)
-    val gotWarm = new CountDownLatch(1)
-    val handle1 = repo1.watch { fid =>
-      if (fid == filmWarm) gotWarm.countDown()
-      if (fid == filmA) gotA.countDown()
-    }
-    handle1 should not be empty
-    try {
-      // THE STREAM IS ESTABLISHED WHEN IT DELIVERS, NOT AFTER A FIXED NAP. This was
-      // `Thread.sleep(1500)`, which is a guess about how long `watch` takes to open --
-      // and a write that lands before the watcher is listening produces exactly the
-      // failure a BROKEN RESUME produces (a latch that times out), so the one bug this
-      // spec exists to catch is indistinguishable from a slow runner. Writing a warm-up
-      // slot until one comes back proves the stream is live, and costs nothing once it is.
-      // A FRESH HOUR EVERY PASS. The warm-up used to re-write the same showtime, which was
-      // a change only the first time round — harmless while Mongo rang for byte-identical
-      // rewrites too, and an infinite loop the moment it stopped. Each pass is now a real
-      // change, so each has an event owed and the loop can actually converge.
-      awaitStreamLive("a warm-up event, so nothing below is testing resumption",
-                      gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
-        repo1.upsertSlot(filmWarm, "Multikino␟W", at(pass % 23 + 1))
-      }
-
-      repo1.upsertSlot(filmA, "Multikino␟A", at(10))
-      gotA.await(15, TimeUnit.SECONDS) shouldBe true
-      handle1.foreach(_.close()) // watcher gone → force-saves the token (position: after A)
-
-      // "Down": B and C land while nothing is watching the screenings stream.
-      repo1.upsertSlot(filmB, "Multikino␟B", at(11))
-      repo1.upsertSlot(filmC, "Multikino␟C", at(12))
-
-      // A fresh process (empty in-memory state) resumes from the persisted token.
-      val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
-      val seen    = ConcurrentHashMap.newKeySet[String]()
-      val gotBC   = new CountDownLatch(2)
-      val handle2 = repo2.watch(fid => if ((fid == filmB || fid == filmC) && seen.add(fid)) gotBC.countDown())
-      try {
-        // No fresh write: B and C are delivered purely by resuming past the token.
-        gotBC.await(15, TimeUnit.SECONDS) shouldBe true
-        seen.asScala should contain allOf (filmB, filmC)
-      } finally { handle2.foreach(_.close()); repo2.close() }
-    } finally {
+      val filmA = "__it-screenings-resume-A__"
+      val filmB = "__it-screenings-resume-B__"
+      val filmC = "__it-screenings-resume-C__"
+      val filmWarm = "__it-screenings-resume-warmup__"
+      val repo1 = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
+      // SWEEP A PRIOR RUN'S ROWS BEFORE WRITING ANY, not only in the `finally`. The
+      // slots below are written at FIXED hours, and since `5fb4f607e` the screenings
+      // cursor does not ring for a row that did not move — so if a previous run died
+      // between its writes and its cleanup (a cancelled CI run, which this repository
+      // produces constantly), the identical re-write here is a no-op, no event is
+      // owed, and `gotA` times out. That reads as a BROKEN RESUME, which is the one
+      // bug this spec exists to catch.
+      //
+      // `beforeAll`'s `purgeSentinels` does not reach these: it deletes from `movies`
+      // by `_id ^integrationtest`, and these live in `screenings` under
+      // `itscreeningsresume…`. Same reasoning as the warm-up loop's fresh hour just
+      // below — a write this spec depends on has to be a real change every time.
       Seq(filmA, filmB, filmC, filmWarm).foreach(repo1.deleteFilm)
-      clearToken()
-      repo1.close(); client.close()
+      val gotA  = new CountDownLatch(1)
+      val gotWarm = new CountDownLatch(1)
+      val handle1 = repo1.watch { fid =>
+        if (fid == filmWarm) gotWarm.countDown()
+        if (fid == filmA) gotA.countDown()
+      }
+      handle1 should not be empty
+      try {
+        // THE STREAM IS ESTABLISHED WHEN IT DELIVERS, NOT AFTER A FIXED NAP. This was
+        // `Thread.sleep(1500)`, which is a guess about how long `watch` takes to open --
+        // and a write that lands before the watcher is listening produces exactly the
+        // failure a BROKEN RESUME produces (a latch that times out), so the one bug this
+        // spec exists to catch is indistinguishable from a slow runner. Writing a warm-up
+        // slot until one comes back proves the stream is live, and costs nothing once it is.
+        // A FRESH HOUR EVERY PASS. The warm-up used to re-write the same showtime, which was
+        // a change only the first time round — harmless while Mongo rang for byte-identical
+        // rewrites too, and an infinite loop the moment it stopped. Each pass is now a real
+        // change, so each has an event owed and the loop can actually converge.
+        awaitStreamLive("a warm-up event, so nothing below is testing resumption",
+                        gotWarm.await(1, TimeUnit.SECONDS)) { pass =>
+          repo1.upsertSlot(filmWarm, "Multikino␟W", at(pass % 23 + 1))
+        }
+
+        repo1.upsertSlot(filmA, "Multikino␟A", at(10))
+        gotA.await(15, TimeUnit.SECONDS) shouldBe true
+        handle1.foreach(_.close()) // watcher gone → force-saves the token (position: after A)
+
+        // "Down": B and C land while nothing is watching the screenings stream.
+        repo1.upsertSlot(filmB, "Multikino␟B", at(11))
+        repo1.upsertSlot(filmC, "Multikino␟C", at(12))
+
+        // A fresh process (empty in-memory state) resumes from the persisted token.
+        val repo2   = new MongoScreeningsRepository(Some(db), persistResumeToken = true)
+        val seen    = ConcurrentHashMap.newKeySet[String]()
+        val gotBC   = new CountDownLatch(2)
+        val handle2 = repo2.watch(fid => if ((fid == filmB || fid == filmC) && seen.add(fid)) gotBC.countDown())
+        try {
+          // No fresh write: B and C are delivered purely by resuming past the token.
+          gotBC.await(15, TimeUnit.SECONDS) shouldBe true
+          seen.asScala should contain allOf (filmB, filmC)
+        } finally { handle2.foreach(_.close()); repo2.close() }
+      } finally repo1.close()
     }
   }
 
@@ -915,26 +920,27 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // genuinely separate blocking stitch-reads, serialized through the one shared apply
       // thread, is the expected shape here, not a bug.
       //
-      // Flaked at 60s TWICE with the identical message (Main CI 2026-09-16 and 2026-09-18:
-      // "only 1 of 11 event(s) were accounted for"), reproduced 0 times locally at any budget
-      // both times, and a THIRD time at 150s (2026-09-19) — that run failed a DIFFERENT spec
-      // instead ("should resume the screenings change stream from the persisted token"), and
-      // its log shows `services.movies.SideCollectionWatch - screenings change stream ended
-      // (state should be: open)` — the screenings cursor's own subscription hit a genuine
-      // MongoDB-driver session-pool-closed error and had to reopen — alongside the SAME run's
-      // `RatingCadenceStore`/`UptimeSync` hitting `IllegalStateException: state should be: open`
-      // and `MongoStagingFolder` retrying `WriteConflict`s, none of which share a line of code
-      // with this test. Root-caused (2026-09-19): `IntegrationTest / parallelExecution := true`
-      // (build.sbt) runs `web`'s and `worker`'s ~42 `it` specs across TWO concurrent sbt JVMs,
-      // each internally parallel up to `availableProcessors`, all against ONE unresourced local
-      // `mongod:7 --replSet rs0` container (`.github/workflows/ci.yml`'s `integration-test` job)
-      // on a runner with a handful of vCPUs — real oversubscription, not a demand-window leak
-      // (a genuine leak would stall every subsequent run, not different tests on different runs
-      // — see [[ChangeStreamDemand]] and `ChangeStreamDemandSpec`/`MovieChangeStreamSpec`, which
-      // pin both ways of getting the release wrong and stay green under that same load pattern).
-      // Fixing the oversubscription (capping `it` concurrency, or giving CI's mongod real
-      // resource headroom) is the actual fix and is out of THIS test's scope — raising the
-      // ceiling a third time would just be re-deriving the same conclusion again.
+      // Flaked at 60s TWICE (Main CI 2026-09-16 and 2026-09-18: "only 1 of 11 event(s) were
+      // accounted for"), reproduced 0 times locally at any budget both times, and a THIRD time
+      // at 150s (2026-09-19) — that run's log named the actual cause:
+      // `services.movies.SideCollectionWatch - screenings change stream ended (Failed to
+      // decode 'ChangeStreamDocument'. Decoding 'fullDocument' errored with: Missing field:
+      // filmId)`. This test's OWN cursor never produced a malformed document — the two SIBLING
+      // tests just above ("resume the change stream"/"resume the screenings change stream")
+      // used to run their `persistResumeToken = true` cursors against the SAME SHARED `kinowo`
+      // database this test also uses, watching the WHOLE `movies`/`screenings` collections with
+      // no server-side schema filter. Under `IntegrationTest / parallelExecution := true` (many
+      // spec CLASSES run concurrently), ANY sibling spec's write to those shared collections
+      // rang those two cursors too, and a shape they didn't expect broke their decode — which
+      // then degraded the shared local `mongod` (repeated reopen/backoff cycles) enough to
+      // produce the `RatingCadenceStore`/`UptimeSync` `IllegalStateException: state should be:
+      // open` and `MongoStagingFolder` `WriteConflict`s seen in the SAME run, none of which
+      // share a line of code with any of these three tests. FIXED (2026-09-19): the two sibling
+      // resume tests now run against their own `IsolatedMongoDatabase` (matching the "drop
+      // invalidates a persisted token" test below, which was isolated the same way earlier for
+      // the same reason) — see the [[ChangeStreamDemand]] doc and
+      // `ChangeStreamDemandSpec`/`MovieChangeStreamSpec` for confirmation the demand-window
+      // release bookkeeping itself was never the bug.
       val TotalEvents = 1 + Dropped
       settleUntil(TotalEvents, budgetMs = 150000)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
       val accounted = dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount

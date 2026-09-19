@@ -419,40 +419,6 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # TEMPORARY (remove after the itAll flake investigation lands a decision —
-            # see project_ci_flake_rootcause_2026_09_19 memory / the comment in
-            # MovieRepositoryIntegrationSpec.scala): measuring whether the runner is
-            # actually CPU/connection-oversubscribed during `sbt itAll`, rather than
-            # inferring it from co-occurring Mongo driver errors. Static facts once,
-            # then a background sampler for the whole `sbt itAll` step.
-            - name: Report runner resources
-              run: |
-                  echo "nproc: $(nproc)"
-                  free -h
-                  docker info --format '{{.NCPU}} CPUs, {{.MemTotal}} bytes (docker daemon view)'
-
-            - name: Start resource sampler
-              run: |
-                  (while true; do
-                      echo "=== $(date -u +%T) ==="
-                      echo "loadavg: $(cat /proc/loadavg)"
-                      echo "java processes: $(pgrep -c java || echo 0)"
-                      docker stats --no-stream --format '  mongo: cpu={{.CPUPerc}} mem={{.MemUsage}}' mongo 2>/dev/null || true
-                      # Direct evidence for/against the session-pool-exhaustion theory:
-                      # current vs available connections, and current active client
-                      # sessions, straight from the server this instant.
-                      docker exec mongo mongosh --quiet --eval '
-                          const s = db.serverStatus();
-                          print("  mongo connections: current=" + s.connections.current +
-                                " available=" + s.connections.available +
-                                " active=" + s.connections.active);
-                          print("  mongo sessions: " + (s.logicalSessionRecordCache
-                              ? s.logicalSessionRecordCache.activeSessionsCount : "n/a"));
-                      ' 2>/dev/null || echo "  mongo: eval failed (busy or down)"
-                      sleep 3
-                  done) > /tmp/resource-sampler.log &
-                  echo $! > /tmp/sampler.pid
-
             # Both apps' integration suites in one run (web + worker each have an
             # `it` config); `all` keeps going across them. Still one GH job. The
             # `e2e` module runs in its own parallel job (below) — combining it here
@@ -464,20 +430,6 @@ jobs:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB:      kinowo
-
-            - name: Stop resource sampler
-              if: always()
-              run: |
-                  kill "$(cat /tmp/sampler.pid)" 2>/dev/null || true
-                  wc -l /tmp/resource-sampler.log
-                  cat /tmp/resource-sampler.log
-
-            - name: Upload resource sampler log
-              if: always()
-              uses: actions/upload-artifact@v6
-              with:
-                  name: resource-sampler-log
-                  path: /tmp/resource-sampler.log
 
             - name: Publish test report
               if: always()
