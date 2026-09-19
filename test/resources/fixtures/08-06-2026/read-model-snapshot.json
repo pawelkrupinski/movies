@@ -1117,22 +1117,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "f10769a8e045b81b",
-    "title" : "Kino dla Seniora: Najbogatsza kobieta świata",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Kino+dla+Seniora%3A+Najbogatsza+kobieta+%C5%9Bwiata/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Kino+dla+Seniora%3A+Najbogatsza+kobieta+%C5%9Bwiata",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Kino+dla+Seniora%3A+Najbogatsza+kobieta+%C5%9Bwiata"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "f10a4e8e8563af87",
     "title" : "Ojczyzna + spotkanie z Ewą Puszczyńską",
     "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/03jkkkkkkkkkk.png",
@@ -2241,22 +2225,6 @@
     "weightedRating" : 6.4,
     "synopsisByCity" : { },
     "ageRating" : "12"
-  }, {
-    "_id" : "f214f3b2717ce314",
-    "title" : "Nowa Fala (org. Nouvelle Vague) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Nowa+Fala+%28org.+Nouvelle+Vague%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Nowa+Fala+%28org.+Nouvelle+Vague%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Nowa+Fala+%28org.+Nouvelle+Vague%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
   }, {
     "_id" : "f21a091d3619480b",
     "title" : "Człowiek z marmuru",
@@ -4333,22 +4301,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "f363eb6ed34c2906",
-    "title" : "Guru (org. Gourou) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Guru+%28org.+Gourou%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Guru+%28org.+Gourou%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Guru+%28org.+Gourou%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "f36664de9dde9a87",
     "title" : "Requiem dla snu",
     "originalTitle" : "Requiem for a Dream",
@@ -5146,22 +5098,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Dyrygent-2025-10085635"
     },
     "weightedRating" : 6.65,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "f458b4947559b8bc",
-    "title" : "Mi Amor (org. Mi amor) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Mi+Amor+%28org.+Mi+amor%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Mi+Amor+%28org.+Mi+amor%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Mi+Amor+%28org.+Mi+amor%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego"
-    },
-    "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
     "_id" : "f45b543b920cac6d",
@@ -8593,22 +8529,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "f6f0767998a42dbb",
-    "title" : "Obcy (org. L’Étranger) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Obcy+%28org.+L%E2%80%99%C3%89tranger%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Obcy+%28org.+L%E2%80%99%C3%89tranger%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Obcy+%28org.+L%E2%80%99%C3%89tranger%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "f6f8b1ace492e055",
     "title" : "Klasyki SFR vol.8",
     "fallbackPosterUrls" : [ ],
@@ -10643,22 +10563,6 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
-    "_id" : "f8363d481ebefd2d",
-    "title" : "Poczta głosowa (org. Le Répondeur) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "fallbackPosterUrls" : [ ],
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Poczta+g%C5%82osowa+%28org.+Le+R%C3%A9pondeur%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Poczta+g%C5%82osowa+%28org.+Le+R%C3%A9pondeur%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Poczta+g%C5%82osowa+%28org.+Le+R%C3%A9pondeur%29+17.+edycja+Przegl%C4%85du+Nowego+Kina+Francuskiego"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "f83ea95f16652746",
     "title" : "Uczta Babette",
     "originalTitle" : "Babettes gæstebud",
@@ -11250,32 +11154,6 @@
       "warszawa" : "Legendarne dzieło niepokornego twórcy znad Sekwany to stylowy kryminał noir, w którym melancholijna atmosfera paryskich ulic być może jest nawet ważniejsza od fabularnej intrygi. W centrum historii jest zbrodnia popełniona przez Juliana Taverniera na mężu swojej kochanki. Może to morderstwo byłoby doskonałe, gdyby nie „drobny” szczegół, który powoduje, że Julian musi wrócić na miejsce zbrodni.",
       "szczecin" : "Debiut fabularny Louisa Malle’a i kamień milowy, który przetarł szlaki dla francuskiej Nowej Fali. Legendarne dzieło niepokornego twórcy znad Sekwany to stylowy kryminał noir, w którym melancholijna atmosfera paryskich ulic być może jest nawet ważniejsza od fabularnej intrygi. W centrum historii jest zbrodnia popełniona przez Juliana Taverniera na mężu swojej kochanki. Może to morderstwo byłoby doskonałe, gdyby nie „drobny” szczegół, który powoduje, że Julian musi wrócić na miejsce zbrodni. Un homme assassine son patron avec l’aide de sa femme dont il est l’amant. Voulant supprimer un indice compromettant, il se retrouve bloqué dans l’ascenseur qui l’emporte sur les lieux du crime."
     }
-  }, {
-    "_id" : "f8da6e2194573e8f~windanaszafotorgascenseurpourlechafaud17edycjaprzegladunowegokinafrancuskiego",
-    "title" : "Windą na szafot (org. Ascenseur pour l'échafaud) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "originalTitle" : "Ascenseur pour l'échafaud",
-    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/81-MSws-MmL._AC_UF8941000_QL80_-595x800.jpg",
-    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/ascenseur-pour-l-echafaud1.jpg?itok=CigxBxLE", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/6/image-thumb__4960__zak_event_tile_thumbnail/Wind%C4%85%20na%20szafot%202.webp", "https://image.tmdb.org/t/p/w500/pJGmNWkDviSrcMc8iOkGs0WstS3.jpg", "https://m.media-amazon.com/images/M/MV5BODk4MTkxMDE1Ml5BMl5BanBnXkFtZTgwNjE0NjEzOTE@._V1_.jpg" ],
-    "runtimeMinutes" : 90,
-    "releaseYear" : 1958,
-    "genres" : [ "Kryminał", "Dramat", "Thriller" ],
-    "countries" : [ "Francja" ],
-    "directors" : [ "Louis Malle" ],
-    "cast" : [ "Jeanne Moreau", "Maurice Ronet", "Georges Poujouly", "Yori Bertin", "Jean Wall" ],
-    "synopsis" : "Julien realizuje skrzętnie dopracowany plan pozbycia się swojego szefa, a zarazem męża kochanki Florence, poprzez upozorowanie samobójstwa. Niestety po opuszczeniu budynku orientuje się, iż pozostawił po sobie ślad. Próbuje wrócić na miejsce zbrodni, jednak wskutek wyłączenia prądu zostaje uwięziony w windzie.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 7.9,
-      "imdbUrl" : "https://www.imdb.com/title/tt0051378/",
-      "metascore" : 94,
-      "metacriticUrl" : "https://www.metacritic.com/movie/elevator-to-the-gallows",
-      "rottenTomatoes" : 93,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/elevator_to_the_gallows",
-      "filmweb" : 7.6,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Wind%C4%85+na+szafot-1958-34624"
-    },
-    "weightedRating" : 8.55,
-    "synopsisByCity" : { }
   }, {
     "_id" : "f8da6e2194573e8f~windanaszafotprzegladnowegokinafrancuskiego",
     "title" : "Windą na szafot | Przegląd Nowego Kina Francuskiego",
@@ -17420,31 +17298,6 @@
       "wroclaw" : "W 1982 roku Francois Mitterrand zaszokował świat ogłaszając wyniki największego konkursu architektonicznego ostatnich dekad – na projekt „nowego Łuku Triumfalnego”, symbolu postępu, braterstwa i rodzącej się ery pokoju. Wybrał projekt anonimowego Duńczyka w średnim wieku – Johanna Otto von Spreckelsena, który od zgiełku wielkiego miasta zawsze wolał w spokoju łowić ryby. Teraz skromny wykładowca na oczach całego świata będzie wykuwał swoje magnum opus. Na jego drodze staną jednak nie tylko własna bezkompromisowość i perfekcjonizm, ale także polityczne naciski i biurokratyczna machina."
     }
   }, {
-    "_id" : "fc94be8b758a5721~wielkilukorglinconnudelagrandearche17edycjaprzegladunowegokinafrancuskiego",
-    "title" : "Wielki Łuk (org. L'Inconnu de la Grande Arche) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "originalTitle" : "L'Inconnu de la Grande Arche",
-    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/8242181.10.jpg",
-    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/l-inconnu-de-la-grande-arche1.jpg?itok=ut-imgaQ", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/6/image-thumb__4951__zak_event_tile_thumbnail/Wielki%20%C5%82uk.webp", "https://image.tmdb.org/t/p/w500/rSexk0xfreOKkcv46IsJfVcDG71.jpg", "https://m.media-amazon.com/images/M/MV5BZmUyYzRkY2YtN2Q3NS00ZmE5LWIyMzQtZTA5NTMwMzQxMTdiXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 106,
-    "releaseYear" : 2025,
-    "genres" : [ "Dramat", "Historyczny" ],
-    "countries" : [ "Francja", "Dania" ],
-    "directors" : [ "Stéphane Demoustier" ],
-    "cast" : [ "Claes Bang", "Xavier Dolan", "Swann Arlaud", "Sidse Babett Knudsen", "Michel Fau" ],
-    "synopsis" : "W 1983 roku François Mitterrand postanowił ogłosić międzynarodowy konkurs architektoniczny na sztandarowy projekt swojej prezydentury: Grande Arche de la Défense, na osi Luwru i Łuku Triumfalnego! Ku zaskoczeniu wszystkich, konkurs wygrał duński architekt Otto von Spreckelsen. Tej samej nocy ten 53-letni mężczyzna, nieznany we Francji, przybył do Paryża, gdzie objął stanowisko szefa tego faraońskiego projektu. Jeśli architekt zamierza wybudować Wielki Łuk zgodnie ze swoją wizją, jego pomysły bardzo szybko zderzą się ze złożonością rzeczywistości i kaprysami polityki.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 6.9,
-      "imdbUrl" : "https://www.imdb.com/title/tt32398150/",
-      "metacriticUrl" : "https://www.metacritic.com/search/L%27Inconnu+de+la+Grande+Arche/?category=2",
-      "rottenTomatoes" : 86,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/linconnu_de_la_grande_arche",
-      "filmweb" : 6.5,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Wielki+%C5%81uk-2025-10078595"
-    },
-    "weightedRating" : 7.333333333333333,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "fc94be8b758a5721~wielkilukprzegladnowegokinafrancuskiego",
     "title" : "Wielki łuk | Przegląd Nowego Kina Francuskiego",
     "originalTitle" : "L'Inconnu de la Grande Arche",
@@ -19202,30 +19055,6 @@
       "szczecin" : "Magalie, zwana także Magaloche to neurotyczna influencerka, gwiazda internetu, budująca karierę dzięki publikacji kontrowersyjnych treści. Po „nieszczęśliwym wypadku” z fortepianem na planie kolejnego nagrania usuwa się w cień i izoluje w alpejskiej willi. Towarzyszy jej Patrick Balandras, osobisty asystent. Choć jego relacje z chlebodawczynią lepiej opisywałoby słowo „służący do wszystkiego”. Jednak Magalie nie zazna ciszy i spokoju – stanie się ofiarą dziennikarskiego szantażu. Mistrz francuskiej komedii w szczytowej formie ! Magalie est une star du web hors sol et sans morale qui gagne des fortunes en postant des contenus choc sur les réseaux. Après un accident grave survenu sur le tournage d'une de ses vidéos, Magalie s'isole à la montagne avec Patrick, son assistant personnel, pour faire un break. Une journaliste détenant une information sensible commence à lui faire du chantage… La vie de Magalie bascule."
     }
   }, {
-    "_id" : "fdd533067e6bda32~wypadekfortepianowyorglaccidentdepiano17edycjaprzegladunowegokinafrancuskiego",
-    "title" : "Wypadek fortepianowy (org. L'Accident de piano) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "originalTitle" : "L'Accident de Piano",
-    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/MV5BODBjNmM1OTMtNWIwZC00ZjJjLTkxOTUtNzE3YjViMzNkMzQyXkEyXkFqcGc@._V1_QL75_UY281_CR90190281_.jpg",
-    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/l-accident-de-piano1.jpg?itok=CrZu2bBf", "https://api-sf.artmuseum.pl/uploads/thumbs/6a1ed2069f278137866170.jpg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/6/image-thumb__4962__zak_event_tile_thumbnail/Wypadek%20fortepianowy%202.webp", "https://image.tmdb.org/t/p/w500/ylz4hGqzPFqAbfmtvdQWvh65rxR.jpg", "https://m.media-amazon.com/images/M/MV5BODBjNmM1OTMtNWIwZC00ZjJjLTkxOTUtNzE3YjViMzNkMzQyXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 88,
-    "releaseYear" : 2025,
-    "genres" : [ "Komedia" ],
-    "countries" : [ "Francja" ],
-    "directors" : [ "Quentin Dupieux" ],
-    "cast" : [ "Adèle Exarchopoulos", "Jérôme Commandeur", "Sandrine Kiberlain", "Karim Leklou", "Gabin Visona" ],
-    "synopsis" : "Gwiazda Internetu, która zyskała sławę dzięki publikowaniu szokujących treści w mediach społecznościowych, po poważnym wypadku, jakiego doznała podczas kręcenia jednego z filmów, postanowiła odizolować się w górskim schronisku ze swoim osobistym asystentem, aby odpocząć.",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 6.4,
-      "imdbUrl" : "https://www.imdb.com/title/tt35431236/",
-      "metacriticUrl" : "https://www.metacritic.com/search/L%27Accident+de+Piano/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/the_piano_accident",
-      "filmweb" : 6.3,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Wypadek+fortepianowy-2025-10069939"
-    },
-    "weightedRating" : 6.35,
-    "synopsisByCity" : { }
-  }, {
     "_id" : "fdd533067e6bda32~wypadekfortepianowyprzegladnowegokinafrancuskiego",
     "title" : "Wypadek fortepianowy | Przegląd Nowego Kina Francuskiego",
     "originalTitle" : "L'Accident de Piano",
@@ -20637,6 +20466,62 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
+    "_id" : "feccffce2d4cb9c8",
+    "title" : "Młodsza siostra",
+    "originalTitle" : "La Petite Dernière",
+    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/MV5BYTIzMjY3NzItNjNhOS00YjNmLTk4M2EtNGVlY2E1YmUxZTQ4XkEyXkFqcGc@._V1_-533x800.jpg",
+    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/la-petite-derniere.jpg?itok=41yLbxKx", "https://stacjafalenica.pl/wp-content/uploads/2026/08/La-petite-derniere-1-c-2025-June-films-Katuh-studio-Arte-France-mk2films-scaled.jpeg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/6/image-thumb__4957__zak_event_tile_thumbnail/M%C5%82odsza%20siostra%202.webp", "https://image.tmdb.org/t/p/w500/cDguwXsbvt90JAIvsSD1sPPLHFT.jpg", "https://m.media-amazon.com/images/M/MV5BNmM4OWZkZjItNmJiZC00YTcwLWJmNzgtOWYyYmQwM2FkM2M1XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 106,
+    "releaseYear" : 2025,
+    "genres" : [ "Dramat", "Romans" ],
+    "countries" : [ "Francja", "Niemcy" ],
+    "directors" : [ "Hafsia Herzi" ],
+    "cast" : [ "Nadia Melliti", "Park Ji-Min", "Amina Ben Mohamed", "Rita Benmannana", "Melissa Guers" ],
+    "synopsis" : "Fatima jest najmłodsza w rodzinie algierskich imigrantów. Po ukończeniu podmiejskiego liceum zapisała się do eleganckiej klasy przygotowawczej. Fatima będzie musiała zmierzyć się ze swoimi rozmaitymi tożsamościami, przekraczając granice społeczne, pragnąc kobiet, których nie potrafi zaakceptować, i wyznając wiarę muzułmańską, która temu przeczy. Kiedy odchodzi od rodzinnej tradycji i rozpoczyna nowe życie jako młoda kobieta, odkrywa nowe zasady.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/Uz6tx-ko5RM" ],
+    "ratings" : {
+      "imdb" : 6.8,
+      "imdbUrl" : "https://www.imdb.com/title/tt28326501/",
+      "metascore" : 71,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-little-sister",
+      "rottenTomatoes" : 89,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/la_petite_derniere",
+      "filmweb" : 6.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/M%C5%82odsza+siostra-2025-10070385"
+    },
+    "weightedRating" : 7.25,
+    "synopsisByCity" : {
+      "poznan" : "Siedemnastoletnia Fatima jest najmłodszą z trzech córek francusko-algierskiej rodziny. Dziewczyna jest dobrą uczennicą, z zaangażowaniem uprawia sport, ma kochających rodziców. Na pozór więc jej życie to sielanka. Jej rzeczywistość to jednak ciągłe balansowanie między lojalnością wobec kochającej, ale konserwatywnej rodziny, wiarą muzułmańską a rodzącym się w niej pociągiem do kobiet. Fatima obawia się, że to ostatnie dla jej bliskich byłoby nie do zaakceptowania.",
+      "warszawa" : "**Subtelny portret młodej dziewczyny, która wchodzi w dorosłe życie i kształtuje swoją tożsamość.** **Za tę znakomitą rolę, debiutantka Nadia Melliti otrzymała nagrodę dla najlepszej żeńskiej roli na festiwalu w Cannes oraz Cezara i Nagrodę Lumière dla najbardziej obiecującej aktorki.**\n\nSiedemnastoletnia Fatima (nagrodzana za tę rolę Nadia Melliti) jest najmłodszą z trzech córek francusko-algierskiej rodziny mieszkającej na paryskich przedmieściach. Dziewczyna jest dobrą uczennicą, z zaangażowaniem uprawia sport, ma kochających rodziców. Na pozór więc jej życie to sielanka.\n\nJej rzeczywistość to jednak ciągłe balansowanie między lojalnością wobec kochającej, ale dość konserwatywnej rodziny, wiarą muzułmańską a rodzącym się w niej pociągiem do kobiet. Fatima obawia się, że to ostatnie dla jej bliskich byłoby to nie do zaakceptowania.\n\nRejestrując się na portalu randkowym, bohaterka zaczyna eksplorować swoją seksualność, poznawać własne potrzeby, zastanawiać się nad swoją tożsamością, zwłaszcza gdy wchodzi w relację z pielęgniarką Ji-Na (Ji-min Park). Związek przynosi Fatimie zarówno radość, jak i ból, pozwalając jej lepiej zrozumieć siebie.\n\n**Nagrody i festiwale:**\n\n2026 – CEZARY – nagroda dla najbardziej obiecującej aktorki (Nadia Melliti), nominacje: najlepszy film, najlepsza reżyseria, najlepszy scenariusz adaptowany, najlepszy montaż, najlepsza kobieca rola drugoplanowa, najlepsza Muzyka\n\n2026 – Nagrody LUMIERE – nagroda dla najbardziej obiecującej aktorki (Nadia Melliti),\n\n2025 – Międzynarodowy Festiwal Filmowy w Cannes – nagroda dla najlepszej aktorki (NadiaMelliti), Palma Queer\n\n2026 – Międzynarodowy Festiwal Filmowy w Tromsø – nagroda specjalna dla reżyserki Hafsii Herzi\n\n2025 QueerCineMad, Madrit International LGBTIAQ+ Film Festival – nagroda dla najlepszego reżysera\n\n2025 – Międzynarodowy Festiwal Filmowy w Locarno\n\n2025 – Międzynarodowy Festiwal Filmowy w Sztokholmie\n\n2025 – Międzynarodowy Festiwal Filmowy w Sevilli",
+      "szczecin" : "15+ Siedemnastoletnia Fatima jest najmłodszą z trzech córek francusko-algierskiej rodziny. Dziewczyna jest dobrą uczennicą, z zaangażowaniem uprawia sport, ma kochających rodziców. Na pozór więc jej życie to sielanka. Jej rzeczywistość to jednak ciągłe balansowanie między lojalnością wobec kochającej, ale konserwatywnej rodziny, wiarą muzułmańską a rodzącym się w niej pociągiem do kobiet. Fatima obawia się, że to ostatnie dla jej bliskich byłoby nie do zaakceptowania. Fatima, 17 ans, est la petite dernière. Elle vit en banlieue avec ses sœurs, dans une famille joyeuse et aimante. Bonne élève, elle intègre une fac de philosophie à Paris et découvre un tout nouveau monde. Alors que débute sa vie de jeune femme, elle s’émancipe de sa famille et ses traditions. Fatima se met alors à questionner son identité. Comment concilier sa foi avec ses désirs naissants ?"
+    }
+  }, {
+    "_id" : "feccffce2d4cb9c8~mlodszasiostraprzegladnowegokinafrancuskiego",
+    "title" : "Młodsza siostra | Przegląd Nowego Kina Francuskiego",
+    "originalTitle" : "La Petite Dernière",
+    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/MV5BYTIzMjY3NzItNjNhOS00YjNmLTk4M2EtNGVlY2E1YmUxZTQ4XkEyXkFqcGc@._V1_-533x800.jpg",
+    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/la-petite-derniere.jpg?itok=41yLbxKx", "https://stacjafalenica.pl/wp-content/uploads/2026/08/La-petite-derniere-1-c-2025-June-films-Katuh-studio-Arte-France-mk2films-scaled.jpeg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/6/image-thumb__4957__zak_event_tile_thumbnail/M%C5%82odsza%20siostra%202.webp", "https://image.tmdb.org/t/p/w500/cDguwXsbvt90JAIvsSD1sPPLHFT.jpg", "https://m.media-amazon.com/images/M/MV5BNmM4OWZkZjItNmJiZC00YTcwLWJmNzgtOWYyYmQwM2FkM2M1XkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 106,
+    "releaseYear" : 2025,
+    "genres" : [ "Dramat", "Romans" ],
+    "countries" : [ "Francja", "Niemcy" ],
+    "directors" : [ "Hafsia Herzi" ],
+    "cast" : [ "Nadia Melliti", "Park Ji-Min", "Amina Ben Mohamed", "Rita Benmannana", "Melissa Guers" ],
+    "synopsis" : "Fatima jest najmłodsza w rodzinie algierskich imigrantów. Po ukończeniu podmiejskiego liceum zapisała się do eleganckiej klasy przygotowawczej. Fatima będzie musiała zmierzyć się ze swoimi rozmaitymi tożsamościami, przekraczając granice społeczne, pragnąc kobiet, których nie potrafi zaakceptować, i wyznając wiarę muzułmańską, która temu przeczy. Kiedy odchodzi od rodzinnej tradycji i rozpoczyna nowe życie jako młoda kobieta, odkrywa nowe zasady.",
+    "trailerUrls" : [ "https://www.youtube.com/embed/Uz6tx-ko5RM" ],
+    "ratings" : {
+      "imdb" : 6.8,
+      "imdbUrl" : "https://www.imdb.com/title/tt28326501/",
+      "metascore" : 71,
+      "metacriticUrl" : "https://www.metacritic.com/movie/the-little-sister",
+      "rottenTomatoes" : 89,
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/la_petite_derniere",
+      "filmweb" : 6.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/M%C5%82odsza+siostra-2025-10070385"
+    },
+    "weightedRating" : 7.25,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "feddace83f3620b9",
     "title" : "Letnie bajki SFR",
     "fallbackPosterUrls" : [ ],
@@ -21367,88 +21252,6 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/De+capul+nostru-2026-10113353"
     },
     "weightedRating" : 6.8999999999999995,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "ffa093115f17251b",
-    "title" : "Młodsza siostra",
-    "originalTitle" : "La Petite Dernière",
-    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/MV5BYTIzMjY3NzItNjNhOS00YjNmLTk4M2EtNGVlY2E1YmUxZTQ4XkEyXkFqcGc@._V1_-533x800.jpg",
-    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/la-petite-derniere.jpg?itok=41yLbxKx", "https://stacjafalenica.pl/wp-content/uploads/2026/08/La-petite-derniere-1-c-2025-June-films-Katuh-studio-Arte-France-mk2films-scaled.jpeg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/6/image-thumb__4957__zak_event_tile_thumbnail/M%C5%82odsza%20siostra%202.webp", "https://image.tmdb.org/t/p/w500/cDguwXsbvt90JAIvsSD1sPPLHFT.jpg", "https://m.media-amazon.com/images/M/MV5BNmM4OWZkZjItNmJiZC00YTcwLWJmNzgtOWYyYmQwM2FkM2M1XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 106,
-    "releaseYear" : 2025,
-    "genres" : [ "Dramat", "Romans" ],
-    "countries" : [ "Francja", "Niemcy" ],
-    "directors" : [ "Hafsia Herzi" ],
-    "cast" : [ "Nadia Melliti", "Park Ji-Min", "Amina Ben Mohamed", "Rita Benmannana", "Melissa Guers" ],
-    "synopsis" : "Fatima jest najmłodsza w rodzinie algierskich imigrantów. Po ukończeniu podmiejskiego liceum zapisała się do eleganckiej klasy przygotowawczej. Fatima będzie musiała zmierzyć się ze swoimi rozmaitymi tożsamościami, przekraczając granice społeczne, pragnąc kobiet, których nie potrafi zaakceptować, i wyznając wiarę muzułmańską, która temu przeczy. Kiedy odchodzi od rodzinnej tradycji i rozpoczyna nowe życie jako młoda kobieta, odkrywa nowe zasady.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/Uz6tx-ko5RM" ],
-    "ratings" : {
-      "imdb" : 6.8,
-      "imdbUrl" : "https://www.imdb.com/title/tt28326501/",
-      "metascore" : 71,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-little-sister",
-      "rottenTomatoes" : 89,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/la_petite_derniere",
-      "filmweb" : 6.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/M%C5%82odsza+siostra-2025-10070385"
-    },
-    "weightedRating" : 7.25,
-    "synopsisByCity" : {
-      "poznan" : "Siedemnastoletnia Fatima jest najmłodszą z trzech córek francusko-algierskiej rodziny. Dziewczyna jest dobrą uczennicą, z zaangażowaniem uprawia sport, ma kochających rodziców. Na pozór więc jej życie to sielanka. Jej rzeczywistość to jednak ciągłe balansowanie między lojalnością wobec kochającej, ale konserwatywnej rodziny, wiarą muzułmańską a rodzącym się w niej pociągiem do kobiet. Fatima obawia się, że to ostatnie dla jej bliskich byłoby nie do zaakceptowania.",
-      "warszawa" : "**Subtelny portret młodej dziewczyny, która wchodzi w dorosłe życie i kształtuje swoją tożsamość.** **Za tę znakomitą rolę, debiutantka Nadia Melliti otrzymała nagrodę dla najlepszej żeńskiej roli na festiwalu w Cannes oraz Cezara i Nagrodę Lumière dla najbardziej obiecującej aktorki.**\n\nSiedemnastoletnia Fatima (nagrodzana za tę rolę Nadia Melliti) jest najmłodszą z trzech córek francusko-algierskiej rodziny mieszkającej na paryskich przedmieściach. Dziewczyna jest dobrą uczennicą, z zaangażowaniem uprawia sport, ma kochających rodziców. Na pozór więc jej życie to sielanka.\n\nJej rzeczywistość to jednak ciągłe balansowanie między lojalnością wobec kochającej, ale dość konserwatywnej rodziny, wiarą muzułmańską a rodzącym się w niej pociągiem do kobiet. Fatima obawia się, że to ostatnie dla jej bliskich byłoby to nie do zaakceptowania.\n\nRejestrując się na portalu randkowym, bohaterka zaczyna eksplorować swoją seksualność, poznawać własne potrzeby, zastanawiać się nad swoją tożsamością, zwłaszcza gdy wchodzi w relację z pielęgniarką Ji-Na (Ji-min Park). Związek przynosi Fatimie zarówno radość, jak i ból, pozwalając jej lepiej zrozumieć siebie.\n\n**Nagrody i festiwale:**\n\n2026 – CEZARY – nagroda dla najbardziej obiecującej aktorki (Nadia Melliti), nominacje: najlepszy film, najlepsza reżyseria, najlepszy scenariusz adaptowany, najlepszy montaż, najlepsza kobieca rola drugoplanowa, najlepsza Muzyka\n\n2026 – Nagrody LUMIERE – nagroda dla najbardziej obiecującej aktorki (Nadia Melliti),\n\n2025 – Międzynarodowy Festiwal Filmowy w Cannes – nagroda dla najlepszej aktorki (NadiaMelliti), Palma Queer\n\n2026 – Międzynarodowy Festiwal Filmowy w Tromsø – nagroda specjalna dla reżyserki Hafsii Herzi\n\n2025 QueerCineMad, Madrit International LGBTIAQ+ Film Festival – nagroda dla najlepszego reżysera\n\n2025 – Międzynarodowy Festiwal Filmowy w Locarno\n\n2025 – Międzynarodowy Festiwal Filmowy w Sztokholmie\n\n2025 – Międzynarodowy Festiwal Filmowy w Sevilli",
-      "szczecin" : "15+ Siedemnastoletnia Fatima jest najmłodszą z trzech córek francusko-algierskiej rodziny. Dziewczyna jest dobrą uczennicą, z zaangażowaniem uprawia sport, ma kochających rodziców. Na pozór więc jej życie to sielanka. Jej rzeczywistość to jednak ciągłe balansowanie między lojalnością wobec kochającej, ale konserwatywnej rodziny, wiarą muzułmańską a rodzącym się w niej pociągiem do kobiet. Fatima obawia się, że to ostatnie dla jej bliskich byłoby nie do zaakceptowania. Fatima, 17 ans, est la petite dernière. Elle vit en banlieue avec ses sœurs, dans une famille joyeuse et aimante. Bonne élève, elle intègre une fac de philosophie à Paris et découvre un tout nouveau monde. Alors que débute sa vie de jeune femme, elle s’émancipe de sa famille et ses traditions. Fatima se met alors à questionner son identité. Comment concilier sa foi avec ses désirs naissants ?"
-    }
-  }, {
-    "_id" : "ffa093115f17251b~mlodszasiostraorglapetitederniere17edycjaprzegladunowegokinafrancuskiego",
-    "title" : "Młodsza siostra (org. La Petite Dernière) 17. edycja Przeglądu Nowego Kina Francuskiego",
-    "originalTitle" : "La Petite Dernière",
-    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/MV5BYTIzMjY3NzItNjNhOS00YjNmLTk4M2EtNGVlY2E1YmUxZTQ4XkEyXkFqcGc@._V1_-533x800.jpg",
-    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/la-petite-derniere.jpg?itok=41yLbxKx", "https://stacjafalenica.pl/wp-content/uploads/2026/08/La-petite-derniere-1-c-2025-June-films-Katuh-studio-Arte-France-mk2films-scaled.jpeg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/6/image-thumb__4957__zak_event_tile_thumbnail/M%C5%82odsza%20siostra%202.webp", "https://image.tmdb.org/t/p/w500/cDguwXsbvt90JAIvsSD1sPPLHFT.jpg", "https://m.media-amazon.com/images/M/MV5BNmM4OWZkZjItNmJiZC00YTcwLWJmNzgtOWYyYmQwM2FkM2M1XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 106,
-    "releaseYear" : 2025,
-    "genres" : [ "Dramat", "Romans" ],
-    "countries" : [ "Francja", "Niemcy" ],
-    "directors" : [ "Hafsia Herzi" ],
-    "cast" : [ "Nadia Melliti", "Park Ji-Min", "Amina Ben Mohamed", "Rita Benmannana", "Melissa Guers" ],
-    "synopsis" : "Fatima jest najmłodsza w rodzinie algierskich imigrantów. Po ukończeniu podmiejskiego liceum zapisała się do eleganckiej klasy przygotowawczej. Fatima będzie musiała zmierzyć się ze swoimi rozmaitymi tożsamościami, przekraczając granice społeczne, pragnąc kobiet, których nie potrafi zaakceptować, i wyznając wiarę muzułmańską, która temu przeczy. Kiedy odchodzi od rodzinnej tradycji i rozpoczyna nowe życie jako młoda kobieta, odkrywa nowe zasady.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/Uz6tx-ko5RM" ],
-    "ratings" : {
-      "imdb" : 6.8,
-      "imdbUrl" : "https://www.imdb.com/title/tt28326501/",
-      "metascore" : 71,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-little-sister",
-      "rottenTomatoes" : 89,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/la_petite_derniere",
-      "filmweb" : 6.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/M%C5%82odsza+siostra-2025-10070385"
-    },
-    "weightedRating" : 7.25,
-    "synopsisByCity" : { }
-  }, {
-    "_id" : "ffa093115f17251b~mlodszasiostraprzegladnowegokinafrancuskiego",
-    "title" : "Młodsza siostra | Przegląd Nowego Kina Francuskiego",
-    "originalTitle" : "La Petite Dernière",
-    "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/MV5BYTIzMjY3NzItNjNhOS00YjNmLTk4M2EtNGVlY2E1YmUxZTQ4XkEyXkFqcGc@._V1_-533x800.jpg",
-    "fallbackPosterUrls" : [ "https://kinomuranow.pl/sites/default/files/styles/grid_thumb_wide_semi/public/media/images/movies/la-petite-derniere.jpg?itok=41yLbxKx", "https://stacjafalenica.pl/wp-content/uploads/2026/08/La-petite-derniere-1-c-2025-June-films-Katuh-studio-Arte-France-mk2films-scaled.jpeg", "https://klubzak.com.pl/Klub%20%C5%BBak/wydarzenia/kino/2026/6/image-thumb__4957__zak_event_tile_thumbnail/M%C5%82odsza%20siostra%202.webp", "https://image.tmdb.org/t/p/w500/cDguwXsbvt90JAIvsSD1sPPLHFT.jpg", "https://m.media-amazon.com/images/M/MV5BNmM4OWZkZjItNmJiZC00YTcwLWJmNzgtOWYyYmQwM2FkM2M1XkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 106,
-    "releaseYear" : 2025,
-    "genres" : [ "Dramat", "Romans" ],
-    "countries" : [ "Francja", "Niemcy" ],
-    "directors" : [ "Hafsia Herzi" ],
-    "cast" : [ "Nadia Melliti", "Park Ji-Min", "Amina Ben Mohamed", "Rita Benmannana", "Melissa Guers" ],
-    "synopsis" : "Fatima jest najmłodsza w rodzinie algierskich imigrantów. Po ukończeniu podmiejskiego liceum zapisała się do eleganckiej klasy przygotowawczej. Fatima będzie musiała zmierzyć się ze swoimi rozmaitymi tożsamościami, przekraczając granice społeczne, pragnąc kobiet, których nie potrafi zaakceptować, i wyznając wiarę muzułmańską, która temu przeczy. Kiedy odchodzi od rodzinnej tradycji i rozpoczyna nowe życie jako młoda kobieta, odkrywa nowe zasady.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/Uz6tx-ko5RM" ],
-    "ratings" : {
-      "imdb" : 6.8,
-      "imdbUrl" : "https://www.imdb.com/title/tt28326501/",
-      "metascore" : 71,
-      "metacriticUrl" : "https://www.metacritic.com/movie/the-little-sister",
-      "rottenTomatoes" : 89,
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/m/la_petite_derniere",
-      "filmweb" : 6.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/M%C5%82odsza+siostra-2025-10070385"
-    },
-    "weightedRating" : 7.25,
     "synopsisByCity" : { }
   }, {
     "_id" : "ffa73013f889da24",
@@ -33176,16 +32979,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f10769a8e045b81b|torun|Kino Centrum CSW Toruń",
-    "filmId" : "f10769a8e045b81b",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/kino-dla-seniora-najbogatsza-kobieta-swiata/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-17T12:00:00",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "f10a4e8e8563af87|lodz|Kino NCKF EC1",
     "filmId" : "f10a4e8e8563af87",
     "city" : "lodz",
@@ -40385,16 +40178,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f214f3b2717ce314|torun|Kino Centrum CSW Toruń",
-    "filmId" : "f214f3b2717ce314",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/nowa-fala-org-nouvelle-vague-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T18:00:00",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "f21a091d3619480b|czestochowa|Kino MOK Centrum",
     "filmId" : "f21a091d3619480b",
     "city" : "czestochowa",
@@ -46493,16 +46276,6 @@
     }, {
       "dateTime" : "2026-08-30T15:30:00",
       "bookingUrl" : "https://bajka-lublin.biletpro24.pl/BiletPro24/reservation/screenings",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "f363eb6ed34c2906|torun|Kino Centrum CSW Toruń",
-    "filmId" : "f363eb6ed34c2906",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/guru-org-gourou-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-11T18:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -65892,16 +65665,6 @@
     }, {
       "dateTime" : "2026-06-11T20:00:00",
       "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1303-dyrygent-157128?id=934724",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "f458b4947559b8bc|torun|Kino Centrum CSW Toruń",
-    "filmId" : "f458b4947559b8bc",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/mi-amor-org-mi-amor-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-17T20:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -107461,16 +107224,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "f6f0767998a42dbb|torun|Kino Centrum CSW Toruń",
-    "filmId" : "f6f0767998a42dbb",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/obcy-org-letranger-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T18:00:00",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "f6f8b1ace492e055|bielsko-biala|Kino Kreska",
     "filmId" : "f6f8b1ace492e055",
     "city" : "bielsko-biala",
@@ -107747,16 +107500,6 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-09T18:00:00",
       "bookingUrl" : "https://www.kinorialto.poznan.pl/b24-do-miejsc-numerowanych-i-nienumerowanych/?id=936844",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "f721439287cbd10f|torun|Kino Centrum CSW Toruń",
-    "filmId" : "f721439287cbd10f",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/zawiescie-czerwone-latarnie-3/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-09T18:30:00",
       "format" : [ ]
     } ]
   }, {
@@ -112381,16 +112124,6 @@
     "filmUrl" : "https://okf.czest.pl/film/krzysiek-keep-going/",
     "showtimes" : [ {
       "dateTime" : "2026-06-07T12:00:00",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "f8363d481ebefd2d|torun|Kino Centrum CSW Toruń",
-    "filmId" : "f8363d481ebefd2d",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/poczta-glosowa-org-le-repondeur-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-12T20:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -117850,16 +117583,6 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-17T18:00:00",
       "bookingUrl" : "https://kinomuranow.pl/tickets/26532/buy",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "f8da6e2194573e8f~windanaszafotorgascenseurpourlechafaud17edycjaprzegladunowegokinafrancuskiego|torun|Kino Centrum CSW Toruń",
-    "filmId" : "f8da6e2194573e8f~windanaszafotorgascenseurpourlechafaud17edycjaprzegladunowegokinafrancuskiego",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/winda-na-szafot-org-ascenseur-pour-lechafaud-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T20:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -174698,22 +174421,6 @@
       "format" : [ "2D", "DUB" ]
     } ]
   }, {
-    "_id" : "fba5ca9e1f6601c6|torun|Kino Centrum CSW Toruń",
-    "filmId" : "fba5ca9e1f6601c6",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/drzewo-magii-16/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-09T16:00:00",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-10T15:45:00",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-11T15:45:00",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "fba5ca9e1f6601c6|trojmiasto|Gdyńskie Centrum Filmowe",
     "filmId" : "fba5ca9e1f6601c6",
     "city" : "trojmiasto",
@@ -177079,16 +176786,6 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-13T18:00:00",
       "bookingUrl" : "https://www.kinonh.pl/bilet.s?eventId=193250&forwardback=https://www.kinonh.pl/program.s",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "fc94be8b758a5721~wielkilukorglinconnudelagrandearche17edycjaprzegladunowegokinafrancuskiego|torun|Kino Centrum CSW Toruń",
-    "filmId" : "fc94be8b758a5721~wielkilukorglinconnudelagrandearche17edycjaprzegladunowegokinafrancuskiego",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/wielki-luk-org-linconnu-de-la-grande-arche-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T20:00:00",
       "format" : [ ]
     } ]
   }, {
@@ -189298,19 +188995,6 @@
       "format" : [ "2D", "DUB" ]
     } ]
   }, {
-    "_id" : "fd2031976d5ecb62|torun|Kino Centrum CSW Toruń",
-    "filmId" : "fd2031976d5ecb62",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/niesamowite-przygody-skarpetek-3-ale-kosmos-10/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-09T14:30:00",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-11T14:30:00",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "fd2031976d5ecb62|trojmiasto|Gdyńskie Centrum Filmowe",
     "filmId" : "fd2031976d5ecb62",
     "city" : "trojmiasto",
@@ -195791,16 +195475,6 @@
       "format" : [ ]
     } ]
   }, {
-    "_id" : "fdd533067e6bda32~wypadekfortepianowyorglaccidentdepiano17edycjaprzegladunowegokinafrancuskiego|torun|Kino Centrum CSW Toruń",
-    "filmId" : "fdd533067e6bda32~wypadekfortepianowyorglaccidentdepiano17edycjaprzegladunowegokinafrancuskiego",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/wypadek-fortepianowy-org-laccident-de-piano-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T18:00:00",
-      "format" : [ ]
-    } ]
-  }, {
     "_id" : "fdd533067e6bda32~wypadekfortepianowyprzegladnowegokinafrancuskiego|trojmiasto|Kino Żak",
     "filmId" : "fdd533067e6bda32~wypadekfortepianowyprzegladnowegokinafrancuskiego",
     "city" : "trojmiasto",
@@ -198570,6 +198244,86 @@
       "format" : [ ]
     } ]
   }, {
+    "_id" : "feccffce2d4cb9c8|krakow|Kino Pod Baranami",
+    "filmId" : "feccffce2d4cb9c8",
+    "city" : "krakow",
+    "cinema" : "Kino Pod Baranami",
+    "filmUrl" : "https://kinopodbaranami.pl/film.php?film_id=12897",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T18:00:00",
+      "bookingUrl" : "https://kinopodbaranami.pl/rezerwacja_start.php?event_id=124214",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "feccffce2d4cb9c8|poznan|Kino Muza",
+    "filmId" : "feccffce2d4cb9c8",
+    "city" : "poznan",
+    "cinema" : "Kino Muza",
+    "filmUrl" : "https://www.kinomuza.pl/movie/mlodsza-siostra/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-13T19:00:00",
+      "bookingUrl" : "https://estradapoznan.bilety24.pl/kup-bilety/?id=926906#total",
+      "room" : "Sala 1",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "feccffce2d4cb9c8|szczecin|Kino Pionier 1907",
+    "filmId" : "feccffce2d4cb9c8",
+    "city" : "szczecin",
+    "cinema" : "Kino Pionier 1907",
+    "filmUrl" : "https://pionier1907.pl/event/mlodsza-siostra",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-10T19:00:00",
+      "bookingUrl" : "https://biletomat.pl/embedded/rezerwacja/346192?salesChannelId=01922a05-bf2b-7e41-a9da-e66b06ba318e",
+      "room" : "Sala Czerwona",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "feccffce2d4cb9c8|warszawa|KINOkawiarnia Stacja Falenica",
+    "filmId" : "feccffce2d4cb9c8",
+    "city" : "warszawa",
+    "cinema" : "KINOkawiarnia Stacja Falenica",
+    "filmUrl" : "https://stacjafalenica.pl/filmy/mlodsza-siostra/",
+    "showtimes" : [ {
+      "dateTime" : "2026-09-13T15:00:00",
+      "bookingUrl" : "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=34563",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-14T16:00:00",
+      "bookingUrl" : "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=34564",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-16T16:00:00",
+      "bookingUrl" : "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=34565",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-09-17T16:00:00",
+      "bookingUrl" : "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=34566",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "feccffce2d4cb9c8|warszawa|Kino Muranów",
+    "filmId" : "feccffce2d4cb9c8",
+    "city" : "warszawa",
+    "cinema" : "Kino Muranów",
+    "filmUrl" : "https://kinomuranow.pl/film/mlodsza-siostra",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-15T20:00:00",
+      "bookingUrl" : "https://kinomuranow.pl/tickets/26529/buy",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "feccffce2d4cb9c8~mlodszasiostraprzegladnowegokinafrancuskiego|trojmiasto|Kino Żak",
+    "filmId" : "feccffce2d4cb9c8~mlodszasiostraprzegladnowegokinafrancuskiego",
+    "city" : "trojmiasto",
+    "cinema" : "Kino Żak",
+    "filmUrl" : "https://klubzak.com.pl/pl/kalendarz/Modsza-siostra-Przegld-Nowego-Kina-Francuskiego~z3697",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-16T18:00:00",
+      "bookingUrl" : "https://klubzak.com.pl/pl/kalendarz/Modsza-siostra-Przegld-Nowego-Kina-Francuskiego~z3697",
+      "format" : [ ]
+    } ]
+  }, {
     "_id" : "feddace83f3620b9|bielsko-biala|Kino Kreska",
     "filmId" : "feddace83f3620b9",
     "city" : "bielsko-biala",
@@ -200264,96 +200018,6 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-19T20:00:00",
       "bookingUrl" : "https://kinomuranow.pl/tickets/26688/buy",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "ffa093115f17251b|krakow|Kino Pod Baranami",
-    "filmId" : "ffa093115f17251b",
-    "city" : "krakow",
-    "cinema" : "Kino Pod Baranami",
-    "filmUrl" : "https://kinopodbaranami.pl/film.php?film_id=12897",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T18:00:00",
-      "bookingUrl" : "https://kinopodbaranami.pl/rezerwacja_start.php?event_id=124214",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "ffa093115f17251b|poznan|Kino Muza",
-    "filmId" : "ffa093115f17251b",
-    "city" : "poznan",
-    "cinema" : "Kino Muza",
-    "filmUrl" : "https://www.kinomuza.pl/movie/mlodsza-siostra/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-13T19:00:00",
-      "bookingUrl" : "https://estradapoznan.bilety24.pl/kup-bilety/?id=926906#total",
-      "room" : "Sala 1",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "ffa093115f17251b|szczecin|Kino Pionier 1907",
-    "filmId" : "ffa093115f17251b",
-    "city" : "szczecin",
-    "cinema" : "Kino Pionier 1907",
-    "filmUrl" : "https://pionier1907.pl/event/mlodsza-siostra",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-10T19:00:00",
-      "bookingUrl" : "https://biletomat.pl/embedded/rezerwacja/346192?salesChannelId=01922a05-bf2b-7e41-a9da-e66b06ba318e",
-      "room" : "Sala Czerwona",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "ffa093115f17251b|warszawa|KINOkawiarnia Stacja Falenica",
-    "filmId" : "ffa093115f17251b",
-    "city" : "warszawa",
-    "cinema" : "KINOkawiarnia Stacja Falenica",
-    "filmUrl" : "https://stacjafalenica.pl/filmy/mlodsza-siostra/",
-    "showtimes" : [ {
-      "dateTime" : "2026-09-13T15:00:00",
-      "bookingUrl" : "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=34563",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-09-14T16:00:00",
-      "bookingUrl" : "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=34564",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-09-16T16:00:00",
-      "bookingUrl" : "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=34565",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-09-17T16:00:00",
-      "bookingUrl" : "https://ksf.systembiletowy.pl/index.php/repertoire.html?id=34566",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "ffa093115f17251b|warszawa|Kino Muranów",
-    "filmId" : "ffa093115f17251b",
-    "city" : "warszawa",
-    "cinema" : "Kino Muranów",
-    "filmUrl" : "https://kinomuranow.pl/film/mlodsza-siostra",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-15T20:00:00",
-      "bookingUrl" : "https://kinomuranow.pl/tickets/26529/buy",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "ffa093115f17251b~mlodszasiostraorglapetitederniere17edycjaprzegladunowegokinafrancuskiego|torun|Kino Centrum CSW Toruń",
-    "filmId" : "ffa093115f17251b~mlodszasiostraorglapetitederniere17edycjaprzegladunowegokinafrancuskiego",
-    "city" : "torun",
-    "cinema" : "Kino Centrum CSW Toruń",
-    "filmUrl" : "https://csw.torun.pl/pec-events/mlodsza-siostra-org-la-petite-derniere-17-edycja-przegladu-nowego-kina-francuskiego/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-16T18:00:00",
-      "format" : [ ]
-    } ]
-  }, {
-    "_id" : "ffa093115f17251b~mlodszasiostraprzegladnowegokinafrancuskiego|trojmiasto|Kino Żak",
-    "filmId" : "ffa093115f17251b~mlodszasiostraprzegladnowegokinafrancuskiego",
-    "city" : "trojmiasto",
-    "cinema" : "Kino Żak",
-    "filmUrl" : "https://klubzak.com.pl/pl/kalendarz/Modsza-siostra-Przegld-Nowego-Kina-Francuskiego~z3697",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-16T18:00:00",
-      "bookingUrl" : "https://klubzak.com.pl/pl/kalendarz/Modsza-siostra-Przegld-Nowego-Kina-Francuskiego~z3697",
       "format" : [ ]
     } ]
   }, {

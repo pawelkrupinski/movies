@@ -1246,7 +1246,6 @@ cinemaScrapes:
   Kino Atlantic / Klasyka w kinie Atlantic: Zawieście czerwone latarnie / 1991
   Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
-  Kino Centrum CSW Toruń / Zawieście czerwone latarnie / —
   Kino Charlie / Zawieście czerwone latarnie / —
   Kino Iluzjon / Zawieście czerwone latarnie / 1991
   Kino Kinematograf / Zawieście czerwone latarnie / 1991
@@ -2110,7 +2109,6 @@ cinemaScrapes:
   Jutrzenka / Drzewo magii / —
   Kino Atlantic / Drzewo magii / 2026
   Kino Bułgarska 19 / DRZEWO MAGII / 2026
-  Kino Centrum CSW Toruń / Drzewo magii / —
   Kino Charlie / Drzewo Magii / —
   Kino DK / Drzewo magii / —
   Kino Diana / Drzewo magii / —
@@ -5525,7 +5523,7 @@ showings:
 
 === Młodsza siostra ===
 displayTitle:      Młodsza siostra
-cinemaTitles:      Młodsza siostra | Młodsza siostra (org. La Petite Dernière) 17. edycja Przeglądu Nowego Kina Francuskiego | Młodsza siostra | Przegląd Nowego Kina Francuskiego
+cinemaTitles:      Młodsza siostra | Młodsza siostra | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja, Niemcy
@@ -5547,7 +5545,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/mlodsza-siostra/
 cinemaScrapes:
   KINOkawiarnia Stacja Falenica / Młodsza siostra / —
-  Kino Centrum CSW Toruń / Młodsza siostra (org. La Petite Dernière) 17. edycja Przeglądu Nowego Kina Francuskiego / —
   Kino Muranów / Młodsza siostra / 2025
   Kino Muza / Młodsza siostra / 2025
   Kino Pionier 1907 / Młodsza siostra / 2025
@@ -5767,7 +5764,6 @@ cinemaScrapes:
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Bułgarska 19 / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino CK Lublin / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Centrum CSW Toruń / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Charlie / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Cytadela / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino IKM / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -7822,7 +7818,6 @@ cinemaScrapes:
   Kino Bajka / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Bułgarska 19 / NIESAMOWITE PRZYGODY SKARPETEK 3. ALE KOSMOS! / 2026
   Kino CK Lublin / Niesamowite przygody skarpetek 3. Ale kosmos! / —
-  Kino Centrum CSW Toruń / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Charlie / Niesamowite przygody skarpetek 3. Ale kosmos! / —
   Kino Cytadela / Niesamowite przygody skarpetek 3. Ale kosmos! / 2026
   Kino IKM / Niesamowite przygody skarpetek 3. Ale kosmos! / —
@@ -10289,7 +10284,7 @@ showings:
 
 === Wielki Łuk ===
 displayTitle:      Wielki Łuk
-cinemaTitles:      Wielki Łuk | Wielki Łuk (org. L'Inconnu de la Grande Arche) 17. edycja Przeglądu Nowego Kina Francuskiego | Wielki łuk | Wielki łuk | Przegląd Nowego Kina Francuskiego
+cinemaTitles:      Wielki Łuk | Wielki łuk | Wielki łuk | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    106
 releaseYear:       2025
 countries:         Francja, Dania
@@ -10311,7 +10306,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/wielki-luk/
 cinemaScrapes:
   Centrum 3D / Wielki łuk / —
-  Kino Centrum CSW Toruń / Wielki Łuk (org. L'Inconnu de la Grande Arche) 17. edycja Przeglądu Nowego Kina Francuskiego / —
   Kino Muranów / Wielki Łuk / 2025
   Kino Muza / Wielki Łuk / 2025
   Kino Nowe Horyzonty / Wielki Łuk / 2025
@@ -10323,7 +10317,7 @@ showings:
 
 === Windą na szafot ===
 displayTitle:      Windą na szafot
-cinemaTitles:      Windą na szafot | Windą na szafot (org. Ascenseur pour l'échafaud) 17. edycja Przeglądu Nowego Kina Francuskiego | Windą na szafot | Przegląd Nowego Kina Francuskiego
+cinemaTitles:      Windą na szafot | Windą na szafot | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    90
 releaseYear:       1958
 countries:         Francja
@@ -10344,7 +10338,6 @@ filmwebUrl:        https://www.filmweb.pl/film/Wind%C4%85+na+szafot-1958-34624
 cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/winda-na-szafot/
 cinemaScrapes:
-  Kino Centrum CSW Toruń / Windą na szafot (org. Ascenseur pour l'échafaud) 17. edycja Przeglądu Nowego Kina Francuskiego / —
   Kino Muranów / Windą na szafot / 1958
   Kino Muza / Windą na szafot / 1958
   Kino Pionier 1907 / Windą na szafot / 1958
@@ -10448,7 +10441,7 @@ showings:
 
 === Wypadek fortepianowy ===
 displayTitle:      Wypadek fortepianowy
-cinemaTitles:      Wypadek fortepianowy | Wypadek fortepianowy (org. L'Accident de piano) 17. edycja Przeglądu Nowego Kina Francuskiego | Wypadek fortepianowy | Przegląd Nowego Kina Francuskiego
+cinemaTitles:      Wypadek fortepianowy | Wypadek fortepianowy | Przegląd Nowego Kina Francuskiego
 runtimeMinutes:    88
 releaseYear:       2025
 countries:         Francja
@@ -10470,7 +10463,6 @@ cinemaFilmUrls:
   Kino Muza = https://www.kinomuza.pl/movie/wypadek-fortepianowy/
 cinemaScrapes:
   KINOMUZEUM / Wypadek fortepianowy / 2025
-  Kino Centrum CSW Toruń / Wypadek fortepianowy (org. L'Accident de piano) 17. edycja Przeglądu Nowego Kina Francuskiego / —
   Kino Muranów / Wypadek fortepianowy / 2025
   Kino Muza / Wypadek fortepianowy / 2025
   Kino Nowe Horyzonty / Wypadek fortepianowy / 2025
@@ -10704,7 +10696,6 @@ cinemaScrapes:
   Kino Atlantic / Klasyka w kinie Atlantic: Zawieście czerwone latarnie / 1991
   Kino Bułgarska 19 / ZAWIEŚCIE CZERWONE LATARNIE / 1991
   Kino CK Lublin / Zawieście czerwone latarnie / —
-  Kino Centrum CSW Toruń / Zawieście czerwone latarnie / —
   Kino Charlie / Zawieście czerwone latarnie / —
   Kino Iluzjon / Zawieście czerwone latarnie / 1991
   Kino Kinematograf / Zawieście czerwone latarnie / 1991
