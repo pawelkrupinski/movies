@@ -2,6 +2,7 @@ package controllers
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.Json
 import testsupport.TestMessages
 
 import java.time.LocalDate
@@ -74,13 +75,43 @@ class WebI18nSpec extends AnyFlatSpec with Matchers {
   }
 
   // German and Spanish share the English one/other RULE but not its words — a
-  // German card counting "3 showings" was the English fallback showing through.
+  // German card counting "3 showings" was the English fallback showing
+  // through. Checked on the parsed TOP-LEVEL (deployment-default) fields —
+  // the payload now also embeds English's own real "showings" wording under
+  // `locales.en` for the client-side language switch, so a raw substring
+  // search would trip on that legitimate entry rather than a regression.
   it should "carry the German word forms on the two-form rule" in {
-    val json = JsLocale.json(TestMessages.forLang("de"))
+    val json  = JsLocale.json(TestMessages.forLang("de"))
+    val forms = Json.parse(json) \ "showtime"
     json should include("\"plural\":\"en\"")
-    json should include("\"one\":\"Vorstellung\"")
-    json should include("\"other\":\"Vorstellungen\"")
-    json should not include "showings"
+    (forms \ "one").as[String]   shouldBe "Vorstellung"
+    (forms \ "other").as[String] shouldBe "Vorstellungen"
+    (forms \ "other").as[String] should not be "showings"
+  }
+
+  // The client-side language switch (`i18n.js`'s `applyLanguage`) needs every
+  // deployed language's day/month arrays available up front, not just the
+  // deployment default's — regression for the date headers staying in the
+  // deployment's language after a visitor picks a different one.
+  "JsLocale's locales map" should "carry every deployed language's own weekday/month arrays" in {
+    val json = JsLocale.json(pl) // the deployment's own language shouldn't matter
+    for (lang <- Seq("pl", "en", "de", "es")) withClue(s"$lang: ")(json should include(s""""$lang":{"""))
+    json should include("\"daysFull\":[\"Poniedziałek\"")
+    json should include("\"daysFull\":[\"Monday\"")
+    json should include("\"daysFull\":[\"Montag\"")
+  }
+
+  it should "carry Spanish's own capitalized full weekday + month names" in {
+    val json = JsLocale.json(pl)
+    json should include("\"daysFull\":[\"Lunes\"")
+    json should include("\"months\":[\"enero\"")
+  }
+
+  it should "keep the deployment-default top-level fields matching that deployment's own locales entry" in {
+    val json = JsLocale.json(en)
+    json should include("\"lang\":\"en\"")
+    json should include("\"day2\":[\"Sun\"")
+    json should include("\"daysFull\":[\"Monday\"")
   }
 
   // The Polish plural rule shared.js implements, mirrored here so the category

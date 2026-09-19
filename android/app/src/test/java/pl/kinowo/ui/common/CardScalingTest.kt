@@ -28,6 +28,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pl.kinowo.model.CinemaShowings
+import pl.kinowo.model.DateLabel
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import pl.kinowo.model.Showtime
@@ -77,14 +78,19 @@ class CardScalingTest {
         CompositionLocalProvider(LocalConfiguration provides config, content = content)
     }
 
-    private fun labelFilm(day: String, cinema: String) = Film(
+    /** `Showings` renders the day header from [DayShowings.date] via
+     *  `DateLabel.format`, not [DayShowings.label] — that field is decoded
+     *  for wire compatibility only. `date` here is fixed so the rendered
+     *  text is deterministic; `label` is set to something else entirely, to
+     *  prove nothing reads it. */
+    private fun labelFilm(cinema: String) = Film(
         title = "T",
         releaseYear = 2020,
         runtimeMinutes = 130,
         showings = listOf(
             DayShowings(
                 date = "2026-06-08",
-                label = day,
+                label = "unused",
                 cinemas = listOf(
                     CinemaShowings(cinema = cinema, showtimes = listOf(Showtime(time = "12:55", format = "2D"))),
                 ),
@@ -129,17 +135,22 @@ class CardScalingTest {
      *  references. */
     @Test
     fun labelsAndMetaScaleWithScreenWidth() {
+        // What `Showings` actually renders for `labelFilm`'s fixed date — the
+        // reference `Text` below must match it verbatim for `assertScaledWider`
+        // to find both nodes by text.
+        val dayLabelText = DateLabel.format("2026-06-08").uppercase()
+
         compose.setContent {
             KinowoTheme {
                 AtWidth(wideWidth) {
                     Column {
                         // Fixed-size references (NOT scaled), same strings as below.
-                        Text("WIDEDAY", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Text(dayLabelText, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                         Text("WIDECINEMA", fontSize = 12.sp, fontWeight = FontWeight.Medium)
                         Text("2020", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         Text("2h 10min", fontSize = 11.sp, fontWeight = FontWeight.Medium)
                         Box(Modifier.width(220.dp)) {
-                            Showings(film = labelFilm("WIDEDAY", "WIDECINEMA"), showCinemaHeaders = true)
+                            Showings(film = labelFilm("WIDECINEMA"), showCinemaHeaders = true)
                         }
                         MetaPills(runtimeMinutes = 130, releaseYear = 2020, scale = wideScale)
                     }
@@ -147,7 +158,7 @@ class CardScalingTest {
             }
         }
 
-        assertScaledWider("day label", "WIDEDAY")
+        assertScaledWider("day label", dayLabelText)
         assertScaledWider("cinema label", "WIDECINEMA")
         assertScaledWider("meta year", "2020")
         assertScaledWider("meta runtime pill", "2h 10min")

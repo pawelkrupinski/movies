@@ -77,9 +77,30 @@ function applyLanguage(code) {
       if (sep >= 0) attrEl.setAttribute(pair.slice(0, sep), t(pair.slice(sep + 1), attrArgs));
     });
   }
+  // Date headers (`.date-label`) and the plural showtime noun are derived
+  // from KINOWO_LOCALE, not `[data-i18n]` text — they're computed from the
+  // raw date/count, not a translated string. Splice the picked language's
+  // arrays IN PLACE (never reassign `KINOWO_LOCALE.day2 = …`) so `shared.js`'s
+  // `DAY2`/`MONTHS` — captured once as references to these same arrays —
+  // pick the change up without shared.js needing its own applyLanguage hook.
+  var pageLocale = typeof KINOWO_LOCALE !== 'undefined' && KINOWO_LOCALE.locales && KINOWO_LOCALE.locales[code];
+  if (pageLocale) {
+    [['day2', pageLocale.day2], ['daysFull', pageLocale.daysFull], ['months', pageLocale.months]]
+      .forEach(function(pair) {
+        var arr = KINOWO_LOCALE[pair[0]];
+        arr.length = 0;
+        Array.prototype.push.apply(arr, pair[1]);
+      });
+    KINOWO_LOCALE.plural   = pageLocale.plural;
+    KINOWO_LOCALE.showtime = pageLocale.showtime;
+  }
   document.documentElement.lang = code;
   var select = document.getElementById('language-select');
   if (select) select.value = code;
+  // Re-render whatever's already on screen using the arrays just updated
+  // above — `shared.js` (repertoire/film pages) defines this; `landing.scala.html`
+  // shows no dates, so it never defines it and this is a no-op there.
+  if (typeof window.refreshDateLabels === 'function') window.refreshDateLabels();
 }
 window.applyLanguage = applyLanguage;
 

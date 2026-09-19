@@ -109,7 +109,13 @@ data class Ratings(
 data class DayShowings(
     /** `YYYY-MM-DD`, comparable as a string thanks to ISO layout. */
     val date: String,
-    /** Polish day-and-date label verbatim from the server (e.g. "Czwartek 21 maja"). */
+    /** Day-and-date label exactly as the web app renders it in the
+     *  DEPLOYMENT's own default language (e.g. "Czwartek 21 maja" on the
+     *  Polish deployment) — decoded for wire compatibility, but NOT shown:
+     *  it stays wrong once the visitor picks an in-app language other than
+     *  the deployment default (`UserPreferences.selectedLanguageTag`).
+     *  `Showings.kt` derives the displayed label from [date] instead, via
+     *  [DateLabel.format], which follows the current locale. */
     val label: String,
     val cinemas: List<CinemaShowings>,
 )

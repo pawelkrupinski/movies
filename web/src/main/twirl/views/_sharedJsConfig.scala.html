@@ -47,9 +47,12 @@
      straight off the rendered page rather than re-deriving it. *@
   const KINOWO_CATALOG      = @Html(models.Catalog.json);
   @* Per-deployment locale for shared.js: weekday/month arrays and the
-     showtime plural rule + forms. Replaces the Polish literals shared.js used
-     to hardcode (DAY2/MONTHS/_showtimeNoun). Translated UI strings live in
-     the pack below instead — see `JsLocale`'s own doc. *@
+     showtime plural rule + forms — for EVERY deployed language (`locales`),
+     not just this deployment's default, so `i18n.js`'s `applyLanguage` can
+     re-derive the date headers in whichever language the visitor picks.
+     Replaces the Polish literals shared.js used to hardcode
+     (DAY2/MONTHS/_showtimeNoun). Translated UI strings live in the pack
+     below instead — see `JsLocale`'s own doc. *@
   const KINOWO_LOCALE       = @Html(controllers.JsLocale.json(messages));
   @* Page-test ONLY (never emitted in prod): FixtureTestWiring sets this system
      property to the fixture's capture date, pinning shared.js "today" so the

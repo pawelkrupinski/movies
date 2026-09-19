@@ -1660,8 +1660,51 @@
 
   // Weekday (Sun-first, matching Date.getDay()) + month labels, injected per
   // deployment via KINOWO_LOCALE (Polish keeps the genitive month forms).
+  // References to KINOWO_LOCALE's OWN arrays — `applyLanguage` (i18n.js)
+  // splices a picked language's words into these same arrays in place
+  // (never reassigns `KINOWO_LOCALE.day2`), so DAY2/MONTHS stay live through
+  // a language switch without this file needing its own applyLanguage hook.
   const DAY2   = KINOWO_LOCALE.day2;
   const MONTHS = KINOWO_LOCALE.months;
+
+  // The long date-header label ("Thursday 4 June", "Czwartek 4 czerwca") —
+  // mirrors `DateFormatter.format` (Scala) so the client-side re-render on a
+  // language switch matches what the server would have rendered in that
+  // language. `KINOWO_LOCALE.daysFull` is Monday-first, matching
+  // `LocalDate.getDayOfWeek.getValue - 1`; `getDay()` below is Sunday-first,
+  // hence the `+6 % 7` rebase.
+  function formatDateLabel(isoDate) {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    const dayOfWeek       = new Date(year, month - 1, day).getDay();
+    const mondayFirstIdx  = (dayOfWeek + 6) % 7;
+    const currentYear     = new Date().getFullYear();
+    const yearSuffix      = year === currentYear ? '' : ' ' + year;
+    return KINOWO_LOCALE.daysFull[mondayFirstIdx] + ' ' + day + ' ' + MONTHS[month - 1] + yearSuffix;
+  }
+
+  // The short form the custom-date `#date-filter` option uses ("Czw 21 maja") —
+  // mirrors the construction below that used to be inlined at its one call site.
+  function formatDateLabelShort(isoDate) {
+    const [year, month, day] = isoDate.split('-').map(Number);
+    const dayOfWeek = new Date(year, month - 1, day).getDay();
+    return DAY2[dayOfWeek] + ' ' + day + ' ' + MONTHS[month - 1];
+  }
+
+  // Re-renders every already-drawn date label from its `data-date` ISO
+  // source rather than trusting whatever text is currently on screen —
+  // called after `applyLanguage` (i18n.js) splices in a new language's
+  // day/month arrays above, so the listing's date headers (baked in the
+  // deployment's default language at server-render time) actually follow the
+  // visitor's picked language instead of staying stuck in the old one.
+  function refreshDateLabels() {
+    document.querySelectorAll('.date-group[data-date]').forEach(group => {
+      const label = group.querySelector('.date-label');
+      if (label) label.textContent = formatDateLabel(group.dataset.date);
+    });
+    const customOption = document.querySelector('#date-filter option[data-date]');
+    if (customOption) customOption.textContent = formatDateLabelShort(customOption.dataset.date);
+  }
+  window.refreshDateLabels = refreshDateLabels;
 
   let _cachedDay = null, _cachedToday, _cachedTomorrow, _cachedIn7Days;
 
@@ -2042,9 +2085,8 @@
           // on the fly so the select reflects it rather than snapping to 'today'.
           const option = document.createElement('option');
           option.value = val;
-          const [year, month, day] = val.split('-').map(Number);
-          const dayOfWeek = new Date(year, month - 1, day).getDay();
-          option.textContent = DAY2[dayOfWeek] + ' ' + day + ' ' + MONTHS[month - 1];
+          option.dataset.date = val;
+          option.textContent = formatDateLabelShort(val);
           const weekOpt = dateSel.querySelector('option[value="week"]');
           if (weekOpt) dateSel.insertBefore(option, weekOpt); else dateSel.appendChild(option);
         }

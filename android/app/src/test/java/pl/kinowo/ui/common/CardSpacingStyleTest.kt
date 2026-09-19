@@ -17,6 +17,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pl.kinowo.model.CinemaShowings
+import pl.kinowo.model.DateLabel
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
 import pl.kinowo.model.Showtime
@@ -42,21 +43,23 @@ class CardSpacingStyleTest {
     @get:Rule
     val compose = createComposeRule()
 
-    // Two films with distinct day labels so the two stacked cards' labels can be
-    // told apart in one composition.
-    private fun twoDayFilm(title: String, dayA: String, dayB: String) = Film(
+    // Two films with distinct DATES so the two stacked cards' day labels — which
+    // `Showings` renders from `date` via `DateLabel.format`, not `label` — can be
+    // told apart in one composition. `label` is set to something else entirely,
+    // to prove nothing reads it.
+    private fun twoDayFilm(title: String, dateA: String, dateB: String) = Film(
         title = title,
         showings = listOf(
             DayShowings(
-                date = "2026-06-08",
-                label = dayA,
+                date = dateA,
+                label = "unused",
                 cinemas = listOf(
                     CinemaShowings(cinema = "Kino", showtimes = listOf(Showtime(time = "12:55", format = "2D"))),
                 ),
             ),
             DayShowings(
-                date = "2026-06-09",
-                label = dayB,
+                date = dateB,
+                label = "unused",
                 cinemas = listOf(
                     CinemaShowings(cinema = "Kino", showtimes = listOf(Showtime(time = "16:00", format = "2D"))),
                 ),
@@ -65,12 +68,12 @@ class CardSpacingStyleTest {
     )
 
     // One day, one named cinema, so the day-label → cinema-name gap is measurable.
-    private fun oneCinemaFilm(title: String, day: String, cinema: String) = Film(
+    private fun oneCinemaFilm(title: String, date: String, cinema: String) = Film(
         title = title,
         showings = listOf(
             DayShowings(
-                date = "2026-06-08",
-                label = day,
+                date = date,
+                label = "unused",
                 cinemas = listOf(
                     CinemaShowings(cinema = cinema, showtimes = listOf(Showtime(time = "12:55", format = "2D"))),
                 ),
@@ -87,13 +90,13 @@ class CardSpacingStyleTest {
         }
     }
 
-    /** Vertical span from the top of [dayA]'s label to the top of [dayB]'s — the
-     *  `showingsBlock` gap is part of this distance. */
-    private fun daySpan(dayA: String, dayB: String): Float {
+    /** Vertical span from the top of [dateA]'s rendered label to the top of
+     *  [dateB]'s — the `showingsBlock` gap is part of this distance. */
+    private fun daySpan(dateA: String, dateB: String): Float {
         // The card's combinedClickable merges its descendants, so the day labels
         // are only addressable in the unmerged tree.
-        val first = compose.onNodeWithText(dayA.uppercase(), useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val second = compose.onNodeWithText(dayB.uppercase(), useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val first = compose.onNodeWithText(DateLabel.format(dateA).uppercase(), useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val second = compose.onNodeWithText(DateLabel.format(dateB).uppercase(), useUnmergedTree = true).getUnclippedBoundsInRoot()
         return (second.top - first.top).value
     }
 
@@ -105,17 +108,21 @@ class CardSpacingStyleTest {
      */
     @Test
     fun showingsBlockGapWidensTheDaySpacing() {
+        // Short weekday + short month (well under the card's wrap width at
+        // 180dp — "WEDNESDAY 10 JUNE" wraps to a second line there, which
+        // would inflate that card's OWN span and corrupt the isolation this
+        // test relies on).
         compose.setContent {
             KinowoTheme {
                 Row {
-                    card(twoDayFilm("WIDE", "WIDEPON", "WIDEWTO"), CardSpacingStyle(showingsBlock = 40.dp))
-                    card(twoDayFilm("DEF", "DEFPON", "DEFWTO"), CardSpacingStyle())
+                    card(twoDayFilm("WIDE", "2026-06-01", "2026-06-05"), CardSpacingStyle(showingsBlock = 40.dp))
+                    card(twoDayFilm("DEF", "2026-06-07", "2026-06-02"), CardSpacingStyle())
                 }
             }
         }
 
-        val wide = daySpan("WIDEPON", "WIDEWTO")
-        val default = daySpan("DEFPON", "DEFWTO")
+        val wide = daySpan("2026-06-01", "2026-06-05")
+        val default = daySpan("2026-06-07", "2026-06-02")
 
         assertTrue("day-label span measured no height — metrics are stubbed", default > 0f)
         assertTrue(
@@ -127,8 +134,8 @@ class CardSpacingStyleTest {
 
     /** Gap from the bottom of the day label to the top of the cinema name — the
      *  `dayToCinema` lever is exactly this distance. */
-    private fun dayToCinemaGap(day: String, cinema: String): Float {
-        val dayNode = compose.onNodeWithText(day.uppercase(), useUnmergedTree = true).getUnclippedBoundsInRoot()
+    private fun dayToCinemaGap(date: String, cinema: String): Float {
+        val dayNode = compose.onNodeWithText(DateLabel.format(date).uppercase(), useUnmergedTree = true).getUnclippedBoundsInRoot()
         val cinemaNode = compose.onNodeWithText(cinema, useUnmergedTree = true).getUnclippedBoundsInRoot()
         return (cinemaNode.top - dayNode.bottom).value
     }
@@ -147,14 +154,14 @@ class CardSpacingStyleTest {
         compose.setContent {
             KinowoTheme {
                 Row {
-                    card(oneCinemaFilm("WIDE", "WIDEPON", "WideKino"), CardSpacingStyle(dayToCinema = 40.dp), showCinemaHeaders = true)
-                    card(oneCinemaFilm("DEF", "DEFPON", "DefKino"), CardSpacingStyle(dayToCinema = 8.dp), showCinemaHeaders = true)
+                    card(oneCinemaFilm("WIDE", "2026-06-08", "WideKino"), CardSpacingStyle(dayToCinema = 40.dp), showCinemaHeaders = true)
+                    card(oneCinemaFilm("DEF", "2026-06-09", "DefKino"), CardSpacingStyle(dayToCinema = 8.dp), showCinemaHeaders = true)
                 }
             }
         }
 
-        val wide = dayToCinemaGap("WIDEPON", "WideKino")
-        val narrow = dayToCinemaGap("DEFPON", "DefKino")
+        val wide = dayToCinemaGap("2026-06-08", "WideKino")
+        val narrow = dayToCinemaGap("2026-06-09", "DefKino")
 
         assertTrue("day→cinema gap measured no height — metrics are stubbed", narrow > 0f)
         assertTrue(

@@ -14,7 +14,8 @@ import services.staging.StagingRecord
 import tools.{CdpPage, Chrome, FixtureTestWiring, TestHttpServer}
 
 import java.net.URLDecoder
-import java.time.LocalDateTime
+import java.time.{LocalDate, LocalDateTime}
+import java.util.Locale
 
 /**
  * JavaScript-behaviour regression for the rendered pages. Spins up a
@@ -2708,6 +2709,49 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
             ".every(g => g.dataset.date === '2026-06-08')"
         ) shouldBe true
       }
+    }
+  }
+
+  // ── Client-side language switch re-derives the date headers ─────────────────
+  //
+  // Regression for the date-group headers (`.date-label`, `CardFormat.date`)
+  // staying in the deployment's default language (Polish, on this fixture)
+  // after a visitor picks a different one client-side — they used to be baked
+  // once at server-render time and never touched by `applyLanguage` (i18n.js),
+  // unlike every other translated string on the page.
+
+  "applyLanguage" should "re-render the date-group headers' weekday/month names in the picked language" in {
+    onPath("/") { page =>
+      val isoDate = page.evalString("document.querySelector('.date-group[data-date]').dataset.date")
+      val before  = page.evalString("document.querySelector('.date-group[data-date] .date-label').textContent")
+      before shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), Locale.forLanguageTag("pl"))
+
+      page.eval("applyLanguage('en')")
+
+      val after = page.evalString("document.querySelector('.date-group[data-date] .date-label').textContent")
+      after shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), Locale.ENGLISH)
+      after should not be before
+    }
+  }
+
+  it should "re-derive the custom-date `#date-filter` option's short label too" in {
+    // A bookmarked/shared `?date=` link naming a day not among the four
+    // presets adds a one-off option on the fly (`applyFiltersFromURL`, run at
+    // boot) — it must follow a later language switch exactly like the main
+    // headers. `2026-06-10` is a known corpus date (see "order the visible
+    // cards by their earliest showtime" above), inside the `now = 2026-06-08`
+    // fixture's "week" window but not one of the four fixed preset values.
+    val isoDate = "2026-06-10"
+    onPath(s"/?date=$isoDate") { page =>
+      page.waitFor("document.querySelector('#date-filter option[data-date]') !== null")
+
+      page.eval("applyLanguage('en')")
+
+      val d            = LocalDate.parse(isoDate)
+      val shortDayName = d.getDayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.ENGLISH)
+      val monthName    = d.getMonth.getDisplayName(java.time.format.TextStyle.FULL, Locale.ENGLISH)
+      val expected     = s"$shortDayName ${d.getDayOfMonth} $monthName"
+      page.evalString("document.querySelector('#date-filter option[data-date]').textContent") shouldBe expected
     }
   }
 

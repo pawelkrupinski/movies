@@ -21,6 +21,12 @@ struct ShowingsView: View {
     /// Vertical gaps between days / cinemas / pill rows. Defaults to the
     /// shipping layout; overridden by `ShowtimeTuningScreen`.
     @Environment(\.cardSpacingStyle) private var spacing
+    /// Kept in step with the visitor's OWN language pick (`LanguageSelection`,
+    /// set by `KinowoApp`'s root `.environment(\.locale)`), independent of the
+    /// deployment/country — `DateLabel.format` uses it to derive the day
+    /// header text instead of trusting `day.label`, which is baked once by
+    /// the server in the deployment's fixed default language.
+    @Environment(\.locale) private var locale
 
     var body: some View {
         let allDays = film.showings
@@ -38,7 +44,7 @@ struct ShowingsView: View {
                 // the cinema rows within a day and the day blocks from one
                 // another. Mirrors Android's `Showings` layout.
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(day.label.uppercased())
+                    Text(DateLabel.format(isoDate: day.date, locale: locale).uppercased())
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(Color.white.opacity(0.85))
                         .tracking(0.5)

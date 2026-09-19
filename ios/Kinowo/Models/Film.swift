@@ -150,9 +150,13 @@ struct Film: Identifiable, Hashable, Codable {
 struct DayShowings: Hashable, Codable {
     /// `YYYY-MM-DD` — comparable as a string thanks to ISO layout.
     let date: String
-    /// Polish day-and-date label exactly as the web app renders it
-    /// (e.g. "Czwartek 21 maja"). Kept verbatim so the iOS app doesn't
-    /// have to re-format locale-aware Polish dates.
+    /// Day-and-date label exactly as the web app renders it in the
+    /// DEPLOYMENT's own default language (e.g. "Czwartek 21 maja" on the
+    /// Polish deployment) — decoded for wire compatibility, but NOT shown:
+    /// it stays wrong once the visitor picks an in-app language other than
+    /// the deployment default (`LanguageSelection`). `ShowingsView` derives
+    /// the displayed label from `date` instead, via `DateLabel.format`,
+    /// which follows the visitor's own picked locale.
     let label: String
     let cinemas: [CinemaShowings]
 }

@@ -42,6 +42,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import pl.kinowo.R
 import pl.kinowo.filter.FormatTokenFilter
+import pl.kinowo.model.DateLabel
 import pl.kinowo.model.Film
 import pl.kinowo.ui.theme.CinemaBlue
 import pl.kinowo.ui.theme.RoomTooltipBackground
@@ -148,7 +149,7 @@ fun Showings(
             // cinema/pills rows and the day blocks from one another.
             Column {
                 Text(
-                    text = day.label.uppercase(),
+                    text = DateLabel.format(day.date).uppercase(),
                     color = TextSecondary,
                     fontSize = (11 * scale).sp,
                     fontWeight = FontWeight.SemiBold,
