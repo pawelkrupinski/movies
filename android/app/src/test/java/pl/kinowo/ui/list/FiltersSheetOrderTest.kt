@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.Assert.assertTrue
@@ -63,6 +64,25 @@ class FiltersSheetOrderTest {
         }
         val prefs = UserPreferences(context)
         if (hidden.isNotEmpty()) runBlocking { hidden.forEach { prefs.hide(it) } }
+        // `CitySection` freezes `selectedCity`/`selectedCountryCode` into a
+        // `remember {}` snapshot at FIRST composition (deliberately — see its own
+        // doc comment) rather than `collectAsState()`, so there is no later
+        // recomposition to correct a snapshot taken before these DataStore-backed
+        // StateFlows (`KinowoViewModel`'s `.stateIn(Eagerly, null)`) have loaded
+        // their real value. DataStore's own `.data` Flow reads the file on
+        // `Dispatchers.IO` — off Robolectric's main Looper, so `ComposeTestRule`'s
+        // `waitForIdle()` (which only drains the main Looper) can't be relied on
+        // to wait for it under a loaded CI runner. Reading both flows here first
+        // forces that disk read to finish on THIS (blocking) call, so DataStore's
+        // in-memory cache is already warm by the time `KinowoViewModel` starts
+        // collecting them — closing the race rather than papering over it with a
+        // longer timeout. Regression: `FiltersSheetOrderTest.
+        // cityPickerIsAPickAnotherCityButtonNamingTheCityAndCountry` flaked twice
+        // in CI (2026-09-14, 2026-09-19) on exactly this snapshot.
+        runBlocking {
+            prefs.selectedCity.first()
+            prefs.selectedCountryCode.first()
+        }
         return KinowoViewModel(repository, detailsRepository, prefs, authRepository, noopStateClient)
     }
 
