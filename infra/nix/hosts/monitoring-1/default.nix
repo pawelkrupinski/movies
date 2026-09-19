@@ -76,6 +76,12 @@ in
       { address = "10.20.0.11"; host = "monitoring-1"; role = "monitoring"; }
       { address = "10.20.0.12"; host = "k3s-worker-1"; role = "k3s-worker"; }
     ];
+    # MUST MATCH THE PUBLIC NAME, for the same reason `rootUrl` above does: this is what Alertmanager
+    # writes into the "Silence or inspect" line of every alert email and the buttons of a Telegram
+    # message. `alertmanager.kinowo.net` below is that name -- Google-gated rather than left on the
+    # module's ssh-tunnel default, so the link opens straight from a phone or any other device
+    # without a laptop holding a tunnel open for it to work.
+    externalUrl = "https://alertmanager.kinowo.net";
   };
 
   # GRAFANA AND PROMETHEUS MAY BE BOUNCED BY AN UNATTENDED SWITCH ON THIS HOST, AND NOTHING ELSE MAY.
@@ -262,6 +268,24 @@ in
       # movies-gitops/headlamp/deployment.yaml precisely so this line can name it.
       "headlamp.kinowo.net" = {
         upstream = "10.43.165.84:80";
+        requireGoogleLogin = true;
+      };
+
+      # THE FOURTH ADMIN SURFACE BEHIND THE DOOR, added 2026-09-19. Alertmanager used to be grouped
+      # with Prometheus and the k3s apiserver as one of the things this fleet keeps off the public
+      # proxy entirely (see roles/public-proxy.nix's header) -- reached only by
+      # `ssh -N -L 9093:10.20.0.11:9093`. That kept it private but broke the one thing an alert
+      # NOTIFICATION needs: a link a person can click from wherever they read the email, which is
+      # rarely a laptop with that tunnel open. Grafana settled this same question the other way
+      # already -- it is a comparable admin surface (dashboards, alert rules, its own silence-
+      # adjacent actions) and has sat behind this exact door since 2026-09-07 with no incident -- so
+      # Alertmanager gets the same answer rather than a bespoke one.
+      #
+      # FULL ACCESS, NOT A READ-ONLY PATH LIST. Unlike `logs.kinowo.net`, the reason to click this
+      # link IS to silence or inspect an alert -- an admin action, not a read -- so there is no
+      # `pathUpstreams` restriction here, the same as `grafana.kinowo.net` above.
+      "alertmanager.kinowo.net" = {
+        upstream = "10.20.0.11:9093";
         requireGoogleLogin = true;
       };
 

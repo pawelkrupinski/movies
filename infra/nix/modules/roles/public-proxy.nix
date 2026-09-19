@@ -5,16 +5,25 @@
 # WHAT IT PUBLISHES. Two different things on two different hosts, and the distinction is worth
 # keeping straight:
 #
-#   monitoring-1   Grafana, Headlamp and VictoriaLogs. Of the three things a reverse proxy can do
-#                  -- terminate TLS, route, and authenticate -- the first two are all a service
-#                  with its own login needs, which is the bar Grafana and Headlamp clear.
-#                  VictoriaLogs authenticates nobody, so the proxy does the third for it: Google,
-#                  via `requireGoogleLogin` and roles/google-sso.nix. It is still restricted to its
-#                  READ paths (`pathUpstreams` with no `upstream`, so everything outside `/select`
-#                  is a 404), because a door is not a reason to publish an API that can ingest and
-#                  delete. Prometheus, Alertmanager, the k3s apiserver, node_exporter and mongod
-#                  stay private -- each of those IS an admin API, and for them the answer remains
-#                  `ssh -N -L <port>:10.20.0.11:<port> root@<host>`, which needs no open port.
+#   monitoring-1   Grafana, Headlamp, VictoriaLogs and Alertmanager -- everything on this host a
+#                  PERSON operates through a browser session, as opposed to a wire-protocol
+#                  endpoint an ssh tunnel and curl already serve fine (see the next paragraph). Of
+#                  the three things a reverse proxy can do -- terminate TLS, route, and
+#                  authenticate -- the first two are all a service with its own login needs, which
+#                  is the bar Grafana and Headlamp clear. VictoriaLogs authenticates nobody, so the
+#                  proxy does the third for it: Google, via `requireGoogleLogin` and
+#                  roles/google-sso.nix. It is still restricted to its READ paths (`pathUpstreams`
+#                  with no `upstream`, so everything outside `/select` is a 404), because a door is
+#                  not a reason to publish an API that can ingest and delete. Alertmanager gets the
+#                  same door WITHOUT that restriction (added 2026-09-19, so the "Silence or inspect"
+#                  link in an alert email works from wherever the email is read): the reason to open
+#                  it IS to silence or inspect an alert, an admin action same as the ones Grafana's
+#                  own login already grants, so it clears the same bar rather than a lesser one.
+#
+#                  Prometheus, the k3s apiserver, node_exporter and mongod stay private -- nobody
+#                  browses these day to day, each is reached the same way regardless of who is
+#                  asking, and `ssh -N -L <port>:10.20.0.11:<port> root@<host>` already answers that
+#                  with no open port at all.
 #
 #   k3s-worker-1   the PRODUCT: kinowo.net, the showtimes.cc apex, and the per-country path
 #                  prefixes beneath it. These are meant to be public, they authenticate their own

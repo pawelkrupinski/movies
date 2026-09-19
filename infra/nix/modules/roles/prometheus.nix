@@ -394,11 +394,16 @@ in
         app-internal DNS, torn down 2026-08-29 -- not this one). The link was dead from the day it
         was written, and stayed dead long enough to reach a real inbox before anyone clicked it.
 
-        Alertmanager (like Prometheus and the k3s apiserver) is deliberately kept off the public
-        proxy -- see the header of roles/public-proxy.nix -- and reached instead with
-        `ssh -N -L 9093:10.20.0.11:9093 root@<monitoring-1's public address>`, then a browser at
-        `http://localhost:9093`. That tunnel is what this default names, so the link a person
-        actually receives matches the command they actually run.
+        THE DEFAULT ABOVE ASSUMES NO PUBLIC PROXY IN FRONT OF ALERTMANAGER: reached with
+        `ssh -N -L 9093:10.20.0.11:9093 root@<host>`, then a browser at `http://localhost:9093` --
+        that tunnel is what `http://localhost:9093` names, so a link built from it matches the
+        command a person would actually have to run. A HOST THAT PUBLISHES ALERTMANAGER BEHIND
+        `fleet.publicProxy` (Google-gated, the way `hosts/monitoring-1` does since 2026-09-19 --
+        see the header of roles/public-proxy.nix) MUST OVERRIDE THIS to that public name instead,
+        the same way roles/grafana.nix's `rootUrl` default is a placeholder every host overrides to
+        its real one. Leaving the tunnel default in place under a public vhost reproduces the exact
+        bug this option's history warns about: a link that looks configured and resolves nowhere
+        the recipient can reach.
       '';
     };
 
