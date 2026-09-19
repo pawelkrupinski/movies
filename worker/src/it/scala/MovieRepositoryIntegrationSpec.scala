@@ -917,14 +917,24 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       //
       // Flaked at 60s TWICE with the identical message (Main CI 2026-09-16 and 2026-09-18:
       // "only 1 of 11 event(s) were accounted for"), reproduced 0 times locally at any budget
-      // both times. The 2026-09-18 run's full log shows the same job's OTHER specs hitting
-      // `IllegalStateException: state should be: server session pool is open` and retried
-      // `WriteConflict`s during the same window — independent evidence the runner's Mongo was
-      // under real resource contention that run, not evidence of a demand-window leak specific
-      // to this test (a genuine leak would stall every subsequent run, not just two out of many
+      // both times, and a THIRD time at 150s (2026-09-19) — that run failed a DIFFERENT spec
+      // instead ("should resume the screenings change stream from the persisted token"), and
+      // its log shows `services.movies.SideCollectionWatch - screenings change stream ended
+      // (state should be: open)` — the screenings cursor's own subscription hit a genuine
+      // MongoDB-driver session-pool-closed error and had to reopen — alongside the SAME run's
+      // `RatingCadenceStore`/`UptimeSync` hitting `IllegalStateException: state should be: open`
+      // and `MongoStagingFolder` retrying `WriteConflict`s, none of which share a line of code
+      // with this test. Root-caused (2026-09-19): `IntegrationTest / parallelExecution := true`
+      // (build.sbt) runs `web`'s and `worker`'s ~42 `it` specs across TWO concurrent sbt JVMs,
+      // each internally parallel up to `availableProcessors`, all against ONE unresourced local
+      // `mongod:7 --replSet rs0` container (`.github/workflows/ci.yml`'s `integration-test` job)
+      // on a runner with a handful of vCPUs — real oversubscription, not a demand-window leak
+      // (a genuine leak would stall every subsequent run, not different tests on different runs
       // — see [[ChangeStreamDemand]] and `ChangeStreamDemandSpec`/`MovieChangeStreamSpec`, which
-      // pin both ways of getting the release wrong and stay green). Raising the ceiling again
-      // rather than re-deriving the same conclusion a third time.
+      // pin both ways of getting the release wrong and stay green under that same load pattern).
+      // Fixing the oversubscription (capping `it` concurrency, or giving CI's mongod real
+      // resource headroom) is the actual fix and is out of THIS test's scope — raising the
+      // ceiling a third time would just be re-deriving the same conclusion again.
       val TotalEvents = 1 + Dropped
       settleUntil(TotalEvents, budgetMs = 150000)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
       val accounted = dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount
