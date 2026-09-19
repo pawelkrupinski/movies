@@ -438,7 +438,18 @@ jobs:
                       echo "loadavg: $(cat /proc/loadavg)"
                       echo "java processes: $(pgrep -c java || echo 0)"
                       docker stats --no-stream --format '  mongo: cpu={{.CPUPerc}} mem={{.MemUsage}}' mongo 2>/dev/null || true
-                      sleep 5
+                      # Direct evidence for/against the session-pool-exhaustion theory:
+                      # current vs available connections, and current active client
+                      # sessions, straight from the server this instant.
+                      docker exec mongo mongosh --quiet --eval '
+                          const s = db.serverStatus();
+                          print("  mongo connections: current=" + s.connections.current +
+                                " available=" + s.connections.available +
+                                " active=" + s.connections.active);
+                          print("  mongo sessions: " + (s.logicalSessionRecordCache
+                              ? s.logicalSessionRecordCache.activeSessionsCount : "n/a"));
+                      ' 2>/dev/null || echo "  mongo: eval failed (busy or down)"
+                      sleep 3
                   done) > /tmp/resource-sampler.log &
                   echo $! > /tmp/sampler.pid
 
