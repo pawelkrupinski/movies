@@ -43,7 +43,15 @@ enum DateLabel {
         let currentYear = isoCalendar.component(.year, from: Date())
         let yearSuffix  = year == currentYear ? "" : " \(year)"
 
-        let languageCode = locale.language.languageCode?.identifier ?? "en"
+        // `locale.language.languageCode` isn't available on Linux's
+        // swift-corelibs-foundation — KinowoCore's `swift test` runs there in
+        // CI's mobile-local-server job (Apple-only Foundation APIs compile
+        // fine on local macOS `swift test`/`xcodebuild` but fail there; see
+        // the Linux-Foundation-gap memory). Every `Locale` this app ever
+        // builds is a bare 2-letter code (`LanguageSelection.supported`:
+        // "pl"/"en"/"de"/"es"), so a plain prefix is both portable and
+        // sufficient — no platform-specific API needed at all.
+        let languageCode = locale.identifier.prefix(2).lowercased()
         let dayName: String
         let monthName: String
         if languageCode == "pl" {
