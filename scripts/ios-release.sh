@@ -126,6 +126,18 @@ say "upload"
   > "$BUILD_DIR/upload.log" 2>&1 || die "upload failed — see $BUILD_DIR/upload.log"
 ok "uploaded"
 
+# Marks the commit this specific upload was actually built from, for the mobile-releases
+# dashboard (infra/version-dashboard/app.py:release_commit_for). NOT the "Release mobile"
+# bump commit: a fix often lands on top of it before a working upload happens (2.0.8's real
+# archive was one commit past the bump, after a compile bug broke the first attempt), so the
+# dashboard would otherwise call that fix commit "not yet released" forever. Force-move the tag
+# rather than refusing a re-tag — a later successful upload of the same version supersedes
+# whichever commit the tag last pointed to.
+tag="mobile-ios-$version"
+git -C "$REPO_ROOT" tag -f "$tag" HEAD >/dev/null
+git -C "$REPO_ROOT" push -f origin "$tag" >/dev/null 2>&1 \
+  || warn "could not push tag $tag — push it manually: git push origin $tag"
+
 # Build processing has taken anywhere from ~1 to ~10 minutes; the build is not
 # in /v1/builds at all until it finishes, so an absent build is not a failure.
 printf '\nBuild %s is processing. It appears in App Store Connect within ~1-10 min;\n' \

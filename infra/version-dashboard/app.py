@@ -2093,14 +2093,31 @@ def android_release_state():
     }
 
 
-def release_commit_for(version):
-    """The commit that cut a given store version, found by the 'Release mobile X.Y.Z' commit
+def release_commit_for(version, subdir=None):
+    """The commit that actually produced a given store version's artifact.
+
+    First choice: the per-platform `mobile-<subdir>-<version>` tag that `ios-release.sh`
+    (on upload) and the Android CI workflow (on publish to Play) push at the exact commit they
+    just built -- this is right even when that build ran from a commit AFTER the "Release mobile"
+    bump, which is the normal case whenever a fix lands between cutting the version and getting a
+    working upload (see project_mobile_2_0_8_release: iOS's real archive was b0d1c29cb, one commit
+    past the bump, after a compile bug in cc6846633 broke the first attempt -- the bump commit
+    alone was never releasable).
+
+    Fallback, for versions released before this tagging existed: the 'Release mobile X.Y.Z' commit
     message `scripts/mobile-release.sh` leaves every time -- NOT inferred from mobile-version.txt,
     which only ever holds the latest version either store has ever been asked to build, and NOT
     `--all`, which would also match a stray worktree branch never merged to what this dashboard
-    actually runs from."""
+    actually runs from. This fallback can overstate "not yet released" when the real build ran
+    past the bump commit, which is exactly the gap the tag exists to close."""
     if not version:
         return None
+    if subdir:
+        ok, out, _ = run(["git", "rev-parse", "-q", "--verify", f"mobile-{subdir}-{version}^{{commit}}"],
+                          cwd=ROOT_DIR, timeout=MOBILE_GIT_TIMEOUT)
+        sha = out.strip()
+        if ok and sha:
+            return sha
     pattern = "^Release mobile " + re.escape(version) + "$"
     ok, out, _ = run(["git", "log", "-1", "--format=%H", f"--grep={pattern}"],
                       cwd=ROOT_DIR, timeout=MOBILE_GIT_TIMEOUT)
@@ -2140,7 +2157,7 @@ def build_mobile():
             platforms.append({"name": name, "fetch_failed": True, "error": state["error"]})
             continue
         version = state["live_version"]
-        baseline = release_commit_for(version)
+        baseline = release_commit_for(version, subdir)
         commits = unreleased_commits(baseline, subdir) if baseline else None
         if version is None:
             error = "never released to this store yet"

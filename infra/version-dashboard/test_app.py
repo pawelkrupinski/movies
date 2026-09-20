@@ -522,6 +522,9 @@ class _TempRepo:
     def cleanup(self):
         self.dir.cleanup()
 
+    def tag(self, name, sha):
+        subprocess.run(["git", "tag", "-f", name, sha], cwd=self.root, check=True)
+
 
 class MobileReleaseBaseline(unittest.TestCase):
     """release_commit_for / unreleased_commits -- the git half of the mobile-releases page. What's
@@ -552,6 +555,34 @@ class MobileReleaseBaseline(unittest.TestCase):
 
     def test_a_missing_version_looks_up_nothing(self):
         self.assertIsNone(app.release_commit_for(None))
+
+    def test_a_mobile_platform_tag_wins_over_the_bump_commit(self):
+        # Mirrors 2.0.8: the bump commit alone never produced a working upload -- a compile-bug
+        # fix landed one commit later, and THAT is what actually got archived and uploaded. The
+        # tag `ios-release.sh` pushes at upload time must be what the dashboard trusts, not the
+        # "Release mobile" commit message, or the fix commit shows up as "not yet released"
+        # forever even though it has been live since the day it was made.
+        self.repo.commit("README.md", "init")
+        self.repo.commit("ios/a.swift", "Release mobile 2.0.8")
+        real_build = self.repo.commit("ios/b.swift", "Fix ambiguous LocalizedStringKey.init")
+        self.repo.tag("mobile-ios-2.0.8", real_build)
+        self.assertEqual(app.release_commit_for("2.0.8", "ios"), real_build)
+
+    def test_no_tag_falls_back_to_the_bump_commit(self):
+        # Versions released before this tagging scheme existed have no tag at all -- the page
+        # must not go blank for every historical release, so it falls back to the old anchor.
+        self.repo.commit("README.md", "init")
+        target = self.repo.commit("ios/a.swift", "Release mobile 2.0.7")
+        self.assertEqual(app.release_commit_for("2.0.7", "ios"), target)
+
+    def test_a_tag_for_the_other_platform_is_not_matched(self):
+        # `mobile-ios-2.0.8` must not satisfy an Android lookup for the same version -- the two
+        # platforms ship from different commits whenever they don't release in lockstep.
+        self.repo.commit("README.md", "init")
+        bump = self.repo.commit("ios/a.swift", "Release mobile 2.0.8")
+        ios_build = self.repo.commit("ios/b.swift", "ios-only fix")
+        self.repo.tag("mobile-ios-2.0.8", ios_build)
+        self.assertEqual(app.release_commit_for("2.0.8", "android"), bump)
 
     def test_unreleased_commits_scoped_to_the_platform_directory(self):
         base = self.repo.commit("README.md", "Release mobile 1.0.0")

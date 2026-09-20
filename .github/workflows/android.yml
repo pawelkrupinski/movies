@@ -224,6 +224,21 @@ jobs:
               if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON == '' }}
               run: echo "::notice::Play upload skipped — add the PLAY_SERVICE_ACCOUNT_JSON secret (service-account key with Play release permission) to enable it."
 
+            # Marks the commit this internal-track build was actually cut from, for the
+            # mobile-releases dashboard (infra/version-dashboard/app.py:release_commit_for). A
+            # later production promotion (`:app:promoteReleaseArtifact`) ships this SAME artifact
+            # unchanged, so the tag stays correct through that step without needing its own update.
+            # Runs only if the publish step above ran and succeeded (same `if:` condition; a
+            # failed publish stops the job before reaching here).
+            - name: Tag the commit this internal build was cut from
+              if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON != '' }}
+              working-directory: ${{ github.workspace }}
+              run: |
+                  version="$(tr -d '\n' < mobile-version.txt)"
+                  tag="mobile-android-$version"
+                  git tag -f "$tag" "$GITHUB_SHA"
+                  git push -f origin "$tag"
+
             - name: Upload tune APK
               uses: actions/upload-artifact@v6
               if: success()
