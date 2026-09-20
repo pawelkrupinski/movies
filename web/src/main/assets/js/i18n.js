@@ -101,6 +101,16 @@ function applyLanguage(code) {
   // above — `shared.js` (repertoire/film pages) defines this; `landing.scala.html`
   // shows no dates, so it never defines it and this is a no-op there.
   if (typeof window.refreshDateLabels === 'function') window.refreshDateLabels();
+  // Same shape, for the "… +N seansów"/"… +N showings" truncation link:
+  // `_showtimeNoun` (shared.js) already reads `KINOWO_LOCALE.showtime` fresh
+  // on every call, so it would render correctly on the NEXT filter pass
+  // regardless — but nothing re-triggers a pass on a language switch by
+  // itself, so an already-rendered link kept its old-language noun until an
+  // unrelated filter change came along. `applyFilters` (repertoire's own
+  // inline script) is the existing full recompute, safe to call repeatedly.
+  // Only the repertoire listing defines it; `/movie` shows every showing
+  // untruncated and has no such link.
+  if (typeof window.applyFilters === 'function') window.applyFilters();
 }
 window.applyLanguage = applyLanguage;
 
@@ -122,12 +132,32 @@ window.onLanguageChange = onLanguageChange;
 // inference — a visitor with no stored pick sees the deployment's own
 // default (pl on kinowo.net, en on showtimes.cc/us, /uk, …), same as the
 // server-rendered HTML they already got, regardless of their own browser's
-// language settings. This is a top-level statement, so it runs as soon as
-// this `defer`red script executes — on repertoire.scala.html that's before
-// `bootView` removes its `grid-cloak`, so a returning visitor's picked
-// language is already applied before the grid becomes visible; other pages
-// get it applied before the deferred script yields, i.e. before the
-// browser's next paint.
+// language settings.
+//
+// Applies it through `applyLanguage` TWICE — the exact same call an
+// interactive picker change makes, not a parallel "boot" code path:
+//
+//  1. Immediately, as a top-level statement. This file loads early on every
+//     page — deferred on repertoire.scala.html, but plain and early in
+//     `<body>` (film.scala.html/browse.scala.html) or `<head>`
+//     (landing.scala.html) elsewhere, so `t()`/`currentLang` are already
+//     correct for an inline script further down the SAME page that calls
+//     `t()` synchronously (e.g. film.scala.html's back-link rewrite — see
+//     its own comment). On repertoire.scala.html this also lands before
+//     `bootView` removes its `grid-cloak`, i.e. before the browser's next
+//     paint. But the DOM may still be far from fully parsed at this point,
+//     so `applyLanguage`'s `[data-i18n]` sweep can miss markup that hasn't
+//     loaded yet — on film/browse/landing this used to mean a returning
+//     visitor's stored pick never reached most of the page's translated
+//     strings (or the date headers specifically — `refreshDateLabels`,
+//     defined in `shared.js`, isn't even a function yet at this point).
+//  2. Again on `DOMContentLoaded`, once the whole document — and
+//     `shared.js`, wherever a page loads it — is guaranteed to have run.
+//     This is what actually reaches the markup call 1 missed. It is not
+//     conditional on `currentLang` having changed (call 1 already set that),
+//     so on a page where call 1 already saw the full DOM
+//     (repertoire.scala.html, both scripts deferred) this just repeats
+//     identical, harmless work.
 //
 // `window.KINOWO_NO_AUTO_LANG` (set only by `landing.scala.html`'s apex
 // branch) skips this entirely: the apex is brand chrome that speaks for the
@@ -136,7 +166,11 @@ window.onLanguageChange = onLanguageChange;
 // auto-invoked.
 (function bootLanguage() {
   if (window.KINOWO_NO_AUTO_LANG) return;
-  var stored = null;
-  try { stored = localStorage.getItem('kinowo_lang'); } catch (e) {}
-  if (stored && I18N_PACKS[stored] && stored !== currentLang) applyLanguage(stored);
+  function applyStoredPick() {
+    var stored = null;
+    try { stored = localStorage.getItem('kinowo_lang'); } catch (e) {}
+    if (stored && I18N_PACKS[stored]) applyLanguage(stored);
+  }
+  applyStoredPick();
+  document.addEventListener('DOMContentLoaded', applyStoredPick);
 })();
