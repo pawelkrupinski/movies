@@ -7,12 +7,17 @@ import java.time.Instant
 // so they never collide across cities — a future "Helios Wrocław" is a distinct
 // Cinema with a distinct displayName. Cross-city keys are inert: a page only
 // surfaces cinemas in its own city, so out-of-city entries are simply ignored.
-// Hence user state needs no city dimension.
+// Hence user state needs no city dimension. `hiddenFilms` is the opposite case:
+// unlike a cinema name, a film TITLE is not globally unique across countries —
+// two unrelated films in two countries can share a title — so the legacy,
+// single global `hiddenFilms` set is being retired in favour of
+// `hiddenFilmsByCountry`, keyed by `Country.code` ("pl", "us", …).
 case class UserState(
-  userId:          String,
-  hiddenFilms:     Set[String],
-  disabledCinemas: Set[String],
-  updatedAt:       Instant
+  userId:               String,
+  hiddenFilms:          Set[String],             // legacy — see `UserStateController.get()`/`put()`
+  disabledCinemas:      Set[String],              // legacy — cinema-hiding is device-local now
+  updatedAt:            Instant,
+  hiddenFilmsByCountry: Map[String, Set[String]] = Map.empty
 )
 //
 // `selectedMovies` and `favouriteRooms` lived here until the plan page was removed. Documents

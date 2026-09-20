@@ -3,7 +3,7 @@ package controllers
 import models.UserState
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
-import services.users.{AccountDeletion, UserStateRepository}
+import services.users.{AccountDeletion, UserChangeTimeCache, UserStateRepository}
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -26,9 +26,10 @@ import java.time.format.DateTimeFormatter
  *     "disabledCinemas": [cinema display names…] }
  */
 class UserStateController(
-  cc:              ControllerComponents,
+  cc:                   ControllerComponents,
   userStateRepository:   UserStateRepository,
-  accountDeletion: AccountDeletion
+  accountDeletion:      AccountDeletion,
+  userChangeTimeCache:  UserChangeTimeCache
 ) extends AbstractController(cc) {
   import UserStateController._
 
@@ -45,7 +46,13 @@ class UserStateController(
     })
   }
 
-  /** `GET /api/me/hidden-films` — the hiddenFilms-only successor to `get()`.
+  /** `GET /api/me/hidden-films?country=pl` — the hiddenFilms-only successor to
+   *  `get()`, scoped to ONE country: unlike a cinema display name, a film
+   *  title is not globally unique across countries, so the legacy single
+   *  global `hiddenFilms` set (still served by `get()`/`put()`) can't be the
+   *  per-country model's foundation — this reads `hiddenFilmsByCountry`
+   *  instead. `country` is required; missing or unrecognised → 400.
+   *
    *  Conditional: a request already holding the current content (`If-None-Match`)
    *  or a still-current freshness bound (`If-Modified-Since`) gets a bodiless
    *  `304`, following the precedence HTTP requires — `If-None-Match`, when
@@ -59,30 +66,53 @@ class UserStateController(
    *  validators — it stopped being a server-synced field (kept device-local
    *  from here on); `get()`/`put()` still carry it for whatever legacy clients
    *  still send it.
+   *
+   *  `If-Modified-Since`-only requests get a further fast path: `userChangeTimeCache`
+   *  may already prove nothing changed, answering the 304 with no read from
+   *  storage at all. `If-None-Match` never takes this path — an opaque ETag
+   *  string can't be verified against a bare timestamp, so it always reads
+   *  through to `userStateRepository`.
    */
   def hiddenFilms(): Action[AnyContent] = Action { request =>
-    PerUserResponse(request.session.get("userId") match {
-      case None         => Unauthorized(Json.obj("error" -> "not logged in"))
-      case Some(userId) =>
-        val state      = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
-        val body       = hiddenFilmsJson(state.hiddenFilms)
-        val etag       = hiddenFilmsETag(body)
-        val lastModified = httpDate(state.updatedAt)
-        val validators = Seq("ETag" -> etag, "Last-Modified" -> lastModified)
+    PerUserResponse((request.session.get("userId"), request.getQueryString("country").flatMap(models.Country.byCode)) match {
+      case (None, _)             => Unauthorized(Json.obj("error" -> "not logged in"))
+      case (Some(_), None)       => BadRequest(Json.obj("error" -> "country query parameter required, e.g. ?country=pl"))
+      case (Some(userId), Some(country)) =>
+        val ifNoneMatch     = request.headers.get("If-None-Match")
+        val ifModifiedSince = request.headers.get("If-Modified-Since").flatMap(parseHttpDate)
 
-        val notModified = request.headers.get("If-None-Match") match {
-          case Some(ifNoneMatch) => ifNoneMatch.contains(etag)
+        // Fast path: `If-None-Match` always needs real content to compare —
+        // it's an opaque string, not derivable from a timestamp — so it's
+        // excluded here. `If-Modified-Since` alone is exactly what
+        // `userChangeTimeCache` answers: a 304 with ZERO reads from storage
+        // when it can already prove nothing changed since then. The cache is
+        // keyed by userId alone, not (userId, country) — it tracks the WHOLE
+        // document's `updatedAt`, so a change to a DIFFERENT country's list
+        // also (over-cautiously) invalidates this one's fast path. That's a
+        // missed optimization, never a wrong answer: the cache only ever
+        // proves "nothing at all changed", which safely implies "this
+        // country's subset didn't either".
+        val cacheProvenUnchanged =
+          if (ifNoneMatch.isEmpty) ifModifiedSince.flatMap(ims => userChangeTimeCache.lastChangeAt(userId).filter(!_.isAfter(ims)))
+          else None
+
+        cacheProvenUnchanged match {
+          case Some(lastChange) => NotModified.withHeaders("Last-Modified" -> httpDate(lastChange))
           case None              =>
-            request.headers.get("If-Modified-Since").exists { ims =>
-              scala.util.Try(DateTimeFormatter.RFC_1123_DATE_TIME.parse(ims))
-                .map(Instant.from)
-                .toOption
-                .exists(!state.updatedAt.isAfter(_))
-            }
-        }
+            val state      = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
+            val hidden     = state.hiddenFilmsByCountry.getOrElse(country.code, Set.empty)
+            val body       = hiddenFilmsJson(hidden)
+            val etag       = hiddenFilmsETag(body)
+            val validators = Seq("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
 
-        if (notModified) NotModified.withHeaders(validators*)
-        else Ok(body).withHeaders(validators*)
+            val notModified = ifNoneMatch match {
+              case Some(inm) => inm.contains(etag)
+              case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
+            }
+
+            if (notModified) NotModified.withHeaders(validators*)
+            else Ok(body).withHeaders(validators*)
+        }
     })
   }
 
@@ -155,6 +185,11 @@ object UserStateController {
   def httpDate(instant: Instant): String =
     DateTimeFormatter.RFC_1123_DATE_TIME.format(instant.atOffset(java.time.ZoneOffset.UTC))
 
+  /** The inverse of [[httpDate]], for `If-Modified-Since`. `None` on anything
+   *  malformed — an unparseable validator is simply not "still current". */
+  def parseHttpDate(value: String): Option[Instant] =
+    scala.util.Try(DateTimeFormatter.RFC_1123_DATE_TIME.parse(value)).map(Instant.from).toOption
+
   /** Parse a wire JSON into `UserState` as a PARTIAL update over `base`: a
    *  field present in the body overwrites that set, a field the body omits
    *  keeps `base`'s value (and a present-but-empty array clears it). This
@@ -177,6 +212,10 @@ object UserStateController {
     for {
       hf <- stringSet("hiddenFilms",     base.hiddenFilms)
       dc <- stringSet("disabledCinemas", base.disabledCinemas)
-    } yield UserState(base.userId, hf, dc, Instant.now())
+      // Neither field this legacy body can carry — `hiddenFilmsByCountry` is
+      // untouched by `fromJson`, so it MUST be threaded through explicitly, or
+      // every legacy PUT would silently wipe it back to the constructor's
+      // default empty map.
+    } yield UserState(base.userId, hf, dc, Instant.now(), base.hiddenFilmsByCountry)
   }
 }

@@ -79,4 +79,26 @@ class UserStateLegacyFieldsSpec extends AnyFlatSpec with Matchers {
     doc.keySet.contains("selectedMovies") shouldBe false
     doc.keySet.contains("favouriteRooms") shouldBe false
   }
+
+  // THE MIRROR-IMAGE CASE THIS SPEC'S OWN DOC COMMENT WARNS ABOUT: `hiddenFilmsByCountry` is a
+  // field the case class NOW has that essentially every document already in production does not
+  // (it predates the per-country hidden-films work). This asserts the macro codec fills the
+  // default (`Map.empty`) for a document missing it rather than throwing — the exact failure
+  // shape that has hit this repo twice before, just travelling the opposite direction through
+  // the same codec.
+  it should "decode a pre-per-country document (no hiddenFilmsByCountry at all) with an empty map, not throw" in {
+    val decoded = codec.decode(new BsonDocumentReader(legacyDocument), DecoderContext.builder().build())
+    decoded.hiddenFilmsByCountry shouldBe Map.empty
+  }
+
+  it should "round-trip hiddenFilmsByCountry through encode/decode" in {
+    val state = UserState("u-country", Set.empty, Set.empty, Instant.parse("2026-09-01T00:00:00Z"),
+      Map("pl" -> Set("Diabeł ubiera się u Prady 2"), "us" -> Set("Sing")))
+    val doc    = new BsonDocument()
+    val writer = new BsonDocumentWriter(doc)
+    codec.encode(writer, state, EncoderContext.builder().build())
+
+    val decoded = codec.decode(new BsonDocumentReader(doc), DecoderContext.builder().build())
+    decoded.hiddenFilmsByCountry shouldBe state.hiddenFilmsByCountry
+  }
 }

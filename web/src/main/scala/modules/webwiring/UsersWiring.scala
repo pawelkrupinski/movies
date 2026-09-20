@@ -3,7 +3,7 @@ package modules.webwiring
 import controllers.{AuthController, FacebookDataDeletionController, UserStateController}
 import modules.Wiring
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
-import services.users.{AccountDeletion, CachingUserRepository, CachingUserStateRepository, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
+import services.users.{AccountDeletion, CachingUserRepository, CachingUserStateRepository, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
 import tools.{Env, HttpFetch, MonitoringHttpFetch, RealHttpFetch}
 
 /** ── Accounts ──────────────────────────────────────────────────────────────
@@ -20,6 +20,17 @@ trait UsersWiring { self: Wiring =>
   // Caching decorators trim the Atlas RTT off the logged-in critical path.
   lazy val userRepository:      UserRepository      = new CachingUserRepository(new MongoUserRepository(usersConnection.database, fallbackToOwnInit = false))
   lazy val userStateRepository: UserStateRepository = new CachingUserStateRepository(new MongoUserStateRepository(usersConnection.database, fallbackToOwnInit = false))
+
+  // The last-1000-active-users change-time cache behind `hiddenFilms()`'s
+  // fast path — see `CaffeineUserChangeTimeCache`'s doc comment for why it
+  // invalidates wholesale on a stream failure rather than tolerating
+  // staleness like `MovieCache`. Watches `userStateRepository` itself (the
+  // caching decorator), which forwards `watchChanges` straight to the inner
+  // Mongo repository — see that decorator's pass-through methods.
+  // Typed concrete, not `UserChangeTimeCache` — `Wiring.start()`/`stop()` need
+  // its lifecycle methods, which the lookup-only trait deliberately omits
+  // (same split as `MovieCache`'s trait vs. its `Stoppable` real impl).
+  lazy val userChangeTimeCache: CaffeineUserChangeTimeCache = new CaffeineUserChangeTimeCache(userStateRepository)
 
   // ── OAuth providers ──────────────────────────────────────────────────────
   // Each provider is wired only when its env vars are present. Missing keys →
@@ -63,7 +74,7 @@ trait UsersWiring { self: Wiring =>
 
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, models.Country.fromEnv, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
-  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion)
+  lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache)
   lazy val facebookDataDeletionController =
     new FacebookDataDeletionController(controllerComponents, Env.get("FACEBOOK_APP_SECRET"), userRepository, accountDeletion)
 }

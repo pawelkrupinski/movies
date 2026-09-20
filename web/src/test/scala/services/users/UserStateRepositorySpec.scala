@@ -59,10 +59,64 @@ class UserStateRepositorySpec extends AnyFlatSpec with Matchers {
 
   "UserState.empty" should "produce a state with everything blank" in {
     val s = UserState.empty("u1", Now)
-    s.userId          shouldBe "u1"
-    s.hiddenFilms     shouldBe empty
-    s.disabledCinemas shouldBe empty
-    s.updatedAt       shouldBe Now
+    s.userId              shouldBe "u1"
+    s.hiddenFilms         shouldBe empty
+    s.disabledCinemas     shouldBe empty
+    s.hiddenFilmsByCountry shouldBe empty
+    s.updatedAt           shouldBe Now
+  }
+
+  // ── watchChanges (the seam UserChangeTimeCache consumes) ─────────────────
+
+  "InMemoryUserStateRepository.watchChanges" should "dispatch every upsert to the registered listener" in {
+    val repository = new InMemoryUserStateRepository
+    val seen = scala.collection.mutable.Buffer.empty[UserState]
+    repository.watchChanges(onUpsert = seen += _, onDelete = _ => (), onDisconnect = () => ())
+
+    val s = UserState("u1", Set("A"), Set.empty, Now)
+    repository.upsert(s)
+    seen shouldBe Seq(s)
+  }
+
+  it should "dispatch every delete, by userId, to the registered listener" in {
+    val repository = new InMemoryUserStateRepository
+    val deleted = scala.collection.mutable.Buffer.empty[String]
+    repository.upsert(UserState("u1", Set("A"), Set.empty, Now))
+    repository.watchChanges(onUpsert = _ => (), onDelete = deleted += _, onDisconnect = () => ())
+
+    repository.delete("u1")
+    deleted shouldBe Seq("u1")
+  }
+
+  it should "replace the previous registration rather than add a second listener" in {
+    val repository = new InMemoryUserStateRepository
+    val first  = scala.collection.mutable.Buffer.empty[UserState]
+    val second = scala.collection.mutable.Buffer.empty[UserState]
+    repository.watchChanges(onUpsert = first += _,  onDelete = _ => (), onDisconnect = () => ())
+    repository.watchChanges(onUpsert = second += _, onDelete = _ => (), onDisconnect = () => ())
+
+    repository.upsert(UserState("u1", Set("A"), Set.empty, Now))
+    first  shouldBe empty     // detached by the second registration
+    second should not be empty
+  }
+
+  it should "detach on the returned handle's close — no further dispatch" in {
+    val repository = new InMemoryUserStateRepository
+    val seen = scala.collection.mutable.Buffer.empty[UserState]
+    val handle = repository.watchChanges(onUpsert = seen += _, onDelete = _ => (), onDisconnect = () => ())
+    handle.value.close()
+
+    repository.upsert(UserState("u1", Set("A"), Set.empty, Now))
+    seen shouldBe empty
+  }
+
+  it should "fire onDisconnect on simulateDisconnect — the fake's stand-in for a dead cursor" in {
+    val repository = new InMemoryUserStateRepository
+    var disconnected = false
+    repository.watchChanges(onUpsert = _ => (), onDelete = _ => (), onDisconnect = () => { disconnected = true })
+
+    repository.simulateDisconnect()
+    disconnected shouldBe true
   }
 
 }

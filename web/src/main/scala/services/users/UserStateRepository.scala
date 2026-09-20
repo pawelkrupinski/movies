@@ -1,10 +1,12 @@
 package services.users
 
 import com.mongodb.client.model.ReplaceOptions
+import com.mongodb.client.model.changestream.{ChangeStreamDocument, FullDocument}
 import models.UserState
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, SingleObservableFuture}
+import org.mongodb.scala.{MongoClient, MongoCollection, MongoDatabase, Observer, SingleObservableFuture, Subscription}
 import play.api.Logging
+import services.movies.{ChangeStreamLiveness, ChangeStreamReopen}
 import tools.Env
 
 import scala.concurrent.Await
@@ -34,7 +36,38 @@ trait UserStateRepository {
    *  endpoint alongside `UserRepository.delete`. */
   def delete(userId: String): Unit
 
+  /** Stream out-of-band writes/deletes to `userStates` as they happen — see
+   *  `MovieRepository.watchChanges`, which this mirrors, with one addition:
+   *  `onDisconnect` fires once if the underlying cursor dies before a new
+   *  registration replaces it. `MovieCache`'s consumers don't need that
+   *  signal — they tolerate staleness via a periodic rehydrate backstop.
+   *  `UserChangeTimeCache` (the one caller today) gates an HTTP freshness
+   *  *decision*, so it must know the moment its view stops being current
+   *  rather than keep answering from what it had.
+   *
+   *  Unlike `MovieRepository`, there's no fan-out to multiple listeners —
+   *  only one consumer watches `userStates`, so that machinery isn't earned
+   *  yet (add it if a second one shows up). A second `watchChanges` call
+   *  replaces the first registration rather than adding to it.
+   *
+   *  Default: not supported (returns `None`), same as `MovieRepository`. */
+  def watchChanges(
+    onUpsert:     UserState => Unit,
+    onDelete:     String => Unit,
+    onDisconnect: () => Unit
+  ): Option[AutoCloseable] = None
+
+  /** When the `userStates` cursor last delivered an event — see
+   *  `ChangeStreamLiveness`. Default: a repository with no stream, whose
+   *  cursor ages from creation and is never stamped. */
+  def changeStreamLiveness: ChangeStreamLiveness = UserStateRepository.unwatchedLiveness
+
   def close(): Unit
+}
+
+object UserStateRepository {
+  val Collection = "userStates"
+  private[users] lazy val unwatchedLiveness: ChangeStreamLiveness = ChangeStreamLiveness.unwatched()
 }
 
 class MongoUserStateRepository(
@@ -92,7 +125,69 @@ class MongoUserStateRepository(
     }
   }
 
-  def close(): Unit = clientOpt.foreach(_.close())
+  private val liveness = new ChangeStreamLiveness()
+  private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
+  private var subscription: Option[Subscription] = None
+  private lazy val reopen: ChangeStreamReopen =
+    ChangeStreamReopen.onDaemonScheduler("userStates", () => subscribe())
+
+  override def changeStreamLiveness: ChangeStreamLiveness = liveness
+
+  /** Replaces any existing registration (see the trait doc — one consumer at a
+   *  time). Opens at "now": unlike `MovieChangeStream` this cache has nothing
+   *  durable to resume — a missed event just means that one user's cache entry
+   *  stays a miss until their next write, which is harmless (the caller reads
+   *  storage directly on a miss). */
+  override def watchChanges(
+    onUpsert:     UserState => Unit,
+    onDelete:     String => Unit,
+    onDisconnect: () => Unit
+  ): Option[AutoCloseable] = coll.map { _ =>
+    listener = Some((onUpsert, onDelete, onDisconnect))
+    subscribe()
+    new AutoCloseable {
+      override def close(): Unit = {
+        reopen.close()
+        subscription.foreach(_.unsubscribe())
+        subscription = None
+        listener = None
+      }
+    }
+  }
+
+  private def subscribe(): Unit = coll.foreach { c =>
+    c.watch().fullDocument(FullDocument.UPDATE_LOOKUP).subscribe(new Observer[ChangeStreamDocument[UserState]] {
+      override def onSubscribe(s: Subscription): Unit = {
+        subscription = Some(s)
+        s.request(Long.MaxValue)
+        liveness.watching(UserStateRepository.Collection)
+      }
+      override def onNext(change: ChangeStreamDocument[UserState]): Unit = {
+        reopen.opened()
+        liveness.delivered(UserStateRepository.Collection)
+        (Option(change.getFullDocument), listener) match {
+          case (Some(state), Some((onUpsert, _, _))) => onUpsert(state)
+          case (None, Some((_, onDelete, _)))        =>
+            Option(change.getDocumentKey).flatMap(k => Option(k.get("userId")))
+              .foreach(v => onDelete(if (v.isString) v.asString.getValue else v.toString))
+          case _ => ()
+        }
+      }
+      override def onError(e: Throwable): Unit = {
+        logger.warn(s"UserStateRepository change stream ended (${e.getMessage}) — invalidating the cache; a reopen resumes it.")
+        subscription = None
+        listener.foreach { case (_, _, onDisconnect) => onDisconnect() }
+        reopen.failed()
+      }
+      override def onComplete(): Unit = {
+        subscription = None
+        listener.foreach { case (_, _, onDisconnect) => onDisconnect() }
+        reopen.failed()
+      }
+    })
+  }
+
+  def close(): Unit = { reopen.close(); clientOpt.foreach(_.close()) }
 
   private def init(): (Option[MongoClient], Option[MongoCollection[UserState]]) =
     Env.get("MONGODB_URI") match {
@@ -122,14 +217,40 @@ class MongoUserStateRepository(
 
 class InMemoryUserStateRepository extends UserStateRepository {
   private val store = scala.collection.mutable.Map.empty[String, UserState]
+  private val liveness = new ChangeStreamLiveness()
+  private var listener: Option[(UserState => Unit, String => Unit, () => Unit)] = None
 
   def enabled: Boolean = true
 
   def find(userId: String): Option[UserState] = store.get(userId)
 
-  def upsert(state: UserState): Unit = { store(state.userId) = state }
+  def upsert(state: UserState): Unit = {
+    store(state.userId) = state
+    liveness.delivered(UserStateRepository.Collection)
+    listener.foreach { case (onUpsert, _, _) => onUpsert(state) }
+  }
 
-  def delete(userId: String): Unit = { store.remove(userId); () }
+  def delete(userId: String): Unit = {
+    store.remove(userId)
+    liveness.delivered(UserStateRepository.Collection)
+    listener.foreach { case (_, onDelete, _) => onDelete(userId) }
+  }
 
   def close(): Unit = ()
+
+  override def watchChanges(
+    onUpsert:     UserState => Unit,
+    onDelete:     String => Unit,
+    onDisconnect: () => Unit
+  ): Option[AutoCloseable] = {
+    listener = Some((onUpsert, onDelete, onDisconnect))
+    liveness.watching(UserStateRepository.Collection)
+    Some(new AutoCloseable { override def close(): Unit = { listener = None } })
+  }
+
+  override def changeStreamLiveness: ChangeStreamLiveness = liveness
+
+  /** Test-only: simulate the underlying cursor dying, without a real Mongo to
+   *  kill — the fake's stand-in for a driver `onError`/`onComplete`. */
+  def simulateDisconnect(): Unit = listener.foreach { case (_, _, onDisconnect) => onDisconnect() }
 }

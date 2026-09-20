@@ -2,6 +2,7 @@ package services.users
 
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import models.UserState
+import services.movies.ChangeStreamLiveness
 
 import java.util.concurrent.TimeUnit
 
@@ -53,4 +54,18 @@ class CachingUserStateRepository(inner: UserStateRepository) extends UserStateRe
   }
 
   def close(): Unit = inner.close()
+
+  // Pass-through, not cached here: this decorator caches READ RESULTS, but a
+  // change-stream subscription isn't a result to cache — it's a capability
+  // `inner` either has or doesn't. `UserChangeTimeCache` wraps whichever
+  // repository it's handed, so these MUST reach the real Mongo-backed
+  // watch underneath, or the cache would be permanently empty in production
+  // (this decorator sits between them in `UsersWiring`).
+  override def watchChanges(
+    onUpsert:     UserState => Unit,
+    onDelete:     String => Unit,
+    onDisconnect: () => Unit
+  ): Option[AutoCloseable] = inner.watchChanges(onUpsert, onDelete, onDisconnect)
+
+  override def changeStreamLiveness: ChangeStreamLiveness = inner.changeStreamLiveness
 }
