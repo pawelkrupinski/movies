@@ -3,7 +3,7 @@ package services.enrichment
 import org.jsoup.Jsoup
 import services.enrichment.scraping.{JsonLdAggregateRating, RottenTomatoesScorecard}
 import services.resolution.TitleMatch
-import tools.{ConcurrentCandidateProbe, EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
+import tools.{ConcurrentCandidateProbe, EnrichmentRead, HttpFetch, MemoizedHttpFetch}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -295,9 +295,5 @@ object RottenTomatoesClient {
    * RT-style slug: lowercase, accents stripped, apostrophes dropped, all
    * other non-alphanumerics collapsed to a single underscore.
    */
-  def slugify(title: String): String =
-    TextNormalization.deburr(title).toLowerCase
-      .replaceAll("[''']", "")
-      .replaceAll("[^a-z0-9]+", "_")
-      .replaceAll("^_+|_+$", "")
+  def slugify(title: String): String = RatingSiteSlug(title, separator = '_')
 }

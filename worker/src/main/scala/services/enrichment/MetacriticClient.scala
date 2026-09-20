@@ -4,7 +4,7 @@ import org.jsoup.Jsoup
 import services.enrichment.scraping.JsonLdAggregateRating
 import services.movies.SamePerson
 import services.resolution.{TitleMatch, YearWindow}
-import tools.{ConcurrentCandidateProbe, EnrichmentRead, HttpFetch, MemoizedHttpFetch, TextNormalization}
+import tools.{ConcurrentCandidateProbe, EnrichmentRead, HttpFetch, MemoizedHttpFetch}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -316,11 +316,7 @@ object MetacriticClient {
    * it in slugs ("airplane!", "moulin-rouge!", "yu-gi-oh!-the-dark-side-of-
    * dimensions"). All other non-alphanumerics collapse to a single hyphen.
    */
-  def slugify(title: String): String =
-    TextNormalization.deburr(title).toLowerCase
-      .replaceAll("[''']", "")        // drop apostrophes (straight + curly)
-      .replaceAll("[^a-z0-9!]+", "-") // preserve !, everything else → hyphen
-      .replaceAll("^-+|-+$", "")
+  def slugify(title: String): String = RatingSiteSlug(title, separator = '-', preserve = "!")
 
   /** Extract the Metascore (critic aggregate, 0–100) from a Metacritic movie
    *  page's HTML. Reads the `<script type="application/ld+json">` block,
