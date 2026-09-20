@@ -33,7 +33,8 @@ struct KinowoApp: App {
         _sync = StateObject(wrappedValue: StateSyncService(
             prefs: preferences,
             userPublisher: authService.$user.eraseToAnyPublisher(),
-            client: HttpHiddenFilmsClient()
+            client: HttpHiddenFilmsClient(),
+            languageClient: HttpLanguageClient()
         ))
         #if DEBUG
         Self.seedUITestPoster()

@@ -4,6 +4,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -15,6 +16,7 @@ import org.junit.Test
 import pl.kinowo.auth.HiddenFilmsClient
 import pl.kinowo.auth.HiddenFilmsFetchResult
 import pl.kinowo.auth.HiddenFilmsState
+import pl.kinowo.auth.LanguageClient
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
 import pl.kinowo.data.SyncPrefs
@@ -31,17 +33,19 @@ class StateSyncServiceTest {
 
     private lateinit var prefs: FakeSyncPrefs
     private lateinit var client: FakeHiddenFilmsClient
+    private lateinit var languageClient: FakeLanguageClient
     private lateinit var userFlow: MutableStateFlow<UserProfile?>
 
     @Before
     fun setUp() {
         prefs = FakeSyncPrefs()
         client = FakeHiddenFilmsClient()
+        languageClient = FakeLanguageClient()
         userFlow = MutableStateFlow(null)
     }
 
     private fun TestScope.startService(): StateSyncService =
-        StateSyncService(prefs, userFlow, client, backgroundScope).also { it.start() }
+        StateSyncService(prefs, userFlow, client, languageClient, backgroundScope).also { it.start() }
 
     private fun login() {
         userFlow.value = UserProfile(displayName = "Test", email = "test@test.com", provider = "google")
@@ -139,7 +143,7 @@ class StateSyncServiceTest {
         client.remote["pl"] = emptySet()
 
         val userFlow2 = MutableStateFlow<UserProfile?>(null)
-        StateSyncService(prefs, userFlow2, client, backgroundScope).also { it.start() }
+        StateSyncService(prefs, userFlow2, client, languageClient, backgroundScope).also { it.start() }
         userFlow2.value = UserProfile(displayName = "Test", email = "test@test.com", provider = "google")
         advanceUntilIdle()
 
@@ -238,12 +242,74 @@ class StateSyncServiceTest {
 
         assertEquals(setOf("Film A", "Film B"), prefs.hiddenState.value)
     }
+
+    // ── Language sync — a scalar, so no migration-flag dance, and its own
+    // fetch/push via LanguageClient (HiddenFilmsClient's response never
+    // carries it) ────────────────────────────────────────────────────────
+
+    /** The account's pick is restored regardless of the per-country migration
+     *  flags — this is the very first merge (flags unset), which the sets'
+     *  union path shares, but language must not wait for a second login. */
+    @Test
+    fun loginRestoresAccountLanguage() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = "de"
+        startService()
+        login()
+        advanceUntilIdle()
+
+        assertEquals("de", prefs.languageState.value)
+    }
+
+    /** The account has no pick yet, but this device does (set before login,
+     *  e.g. while anonymous) — it gets adopted as the account's, same
+     *  "migrate this device's local state up" spirit as the sets. */
+    @Test
+    fun loginPushesLocalExplicitLanguageWhenAccountHasNone() = runTest(UnconfinedTestDispatcher()) {
+        prefs.languageState.value = "es"
+        languageClient.remote = null
+        startService()
+        login()
+        advanceUntilIdle()
+
+        assertEquals("es", languageClient.lastPushed)
+    }
+
+    /** Neither side has an explicit pick — nothing to restore or stamp onto
+     *  the account, and no push at all: unlike the sets, language reconcile
+     *  makes no fixed first write. */
+    @Test
+    fun loginLeavesNoLanguageAloneWhenNeitherSideHasAPick() = runTest(UnconfinedTestDispatcher()) {
+        languageClient.remote = null
+        startService()
+        login()
+        advanceUntilIdle()
+
+        assertNull(prefs.languageState.value)
+        assertNull(languageClient.lastPushed)
+    }
+
+    /** A pick made AFTER login (not just the merge-on-login case above)
+     *  reaches the server too, through language's own debounced push. */
+    @Test
+    fun languagePickAfterLoginIsPushed() = runTest(UnconfinedTestDispatcher()) {
+        startService()
+        login()
+        advanceUntilIdle() // merge completes; the post-merge baseline is dropped
+        languageClient.lastPushed = null // ignore any merge-time push
+
+        prefs.setLanguageTag("de")
+        advanceTimeBy(500) // past the 400 ms debounce window
+        runCurrent()
+
+        assertEquals("de", languageClient.lastPushed)
+    }
 }
 
 private class FakeSyncPrefs : SyncPrefs {
     val hiddenState = MutableStateFlow<Set<String>>(emptySet())
     val disabledState = MutableStateFlow<Set<String>>(emptySet())
     val countryState = MutableStateFlow<String?>(null)
+    val languageState = MutableStateFlow<String?>(null)
     private val migrated = mutableSetOf<String>()
     private val etags = mutableMapOf<String, String?>()
     private val lastModifieds = mutableMapOf<String, String?>()
@@ -272,6 +338,9 @@ private class FakeSyncPrefs : SyncPrefs {
         etags.clear()
         lastModifieds.clear()
     }
+
+    override val selectedLanguageTag = languageState
+    override suspend fun setLanguageTag(tag: String) { languageState.value = tag }
 }
 
 private class FakeHiddenFilmsClient : HiddenFilmsClient {
@@ -305,4 +374,12 @@ private class FakeHiddenFilmsClient : HiddenFilmsClient {
         remote[country] = emptySet()
         return HiddenFilmsState(emptySet(), "\"etag-$country\"", "lm-$country")
     }
+}
+
+private class FakeLanguageClient : LanguageClient {
+    var remote: String? = null
+    var lastPushed: String? = null
+
+    override suspend fun fetch(): String? = remote
+    override suspend fun push(language: String) { lastPushed = language }
 }

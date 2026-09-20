@@ -2213,6 +2213,21 @@
   // Every per-country flag is cleared whenever a page renders anonymous
   // (logout / expired session), so the next login migrates this device's
   // current picks afresh, exactly as the old single flag did.
+  //
+  // `language` (the picked UI language, `kinowo_lang` — see `i18n.js`) rides
+  // the LEGACY `/api/me/state` document instead — there's no granular
+  // endpoint for a single scalar pick, only for the two sets it used to
+  // share that document with. It skips the per-country union/authoritative
+  // dance above entirely (see `reconcileLanguage`, near `bootMergeFromServer`,
+  // for why) but keeps the debounced-push machinery below, narrowed to a
+  // `language`-only body now that hiddenFilms/disabledCinemas both left it.
+  let _serverSyncTimer = 0;
+  function scheduleServerSync() {
+    if (!isLoggedIn()) return;
+    clearTimeout(_serverSyncTimer);
+    // 400ms — long enough that a rapid run of picker clicks folds into one PUT.
+    _serverSyncTimer = setTimeout(pushStateToServer, 400);
+  }
 
   function currentCountryCode() {
     const city = (typeof KINOWO_CATALOG !== 'undefined' ? KINOWO_CATALOG.cities : [])
@@ -2248,6 +2263,10 @@
       .then(resp => { if (resp.ok) _storeHiddenFilmsValidators(country, resp); })
       .catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
+  // `i18n.js` (a separate script, loaded on every page this one is) calls
+  // this from `onLanguageChange` so an explicit language pick reaches the
+  // server too — same cross-file hook shape as `window.refreshDateLabels`.
+  window.scheduleServerSync = scheduleServerSync;
 
   function unhideFilmOnServer(title, country) {
     if (!isLoggedIn()) return;
@@ -2256,6 +2275,42 @@
       .then(resp => { if (resp.ok) _storeHiddenFilmsValidators(country, resp); })
       .catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
+
+  // The ONLY remaining caller is `onLanguageChange`, via `scheduleServerSync`
+  // above (i18n.js) — hiddenFilms/disabledCinemas both left this mechanism,
+  // so the body carries `language` alone now. `language` rides along only
+  // when THIS device has an explicit pick — never the resolved default a
+  // visitor never chose, which would otherwise stamp e.g. "pl" onto the
+  // account the first time a logged-in Polish visitor merely loads a page,
+  // and then force Polish on them on an English deployment they sign into
+  // next.
+  function pushStateToServer(opts) {
+    _serverSyncTimer = 0;
+    const lang = (() => { try { return localStorage.getItem('kinowo_lang'); } catch { return null; } })();
+    if (!lang) return; // nothing left to push
+    fetch(mountPrefix() + '/api/me/state', {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      // `keepalive` lets the request outlive an unloading document so the
+      // pagehide flush below isn't dropped mid-navigation.
+      keepalive: !!(opts && opts.keepalive),
+      body:    JSON.stringify({ language: lang })
+    }).catch(() => { /* offline / 401 — localStorage still has the write */ });
+  }
+
+  // Flush a still-pending debounced language push synchronously as the page
+  // goes away — a pick made <400ms before a navigation must still reach the
+  // server. Runs on pagehide and on tab-hide (the reliable signals;
+  // beforeunload is unreliable on mobile).
+  function flushServerSync() {
+    if (!isLoggedIn() || !_serverSyncTimer) return;
+    clearTimeout(_serverSyncTimer);
+    pushStateToServer({ keepalive: true });
+  }
+  window.addEventListener('pagehide', flushServerSync);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushServerSync();
+  });
 
   function clearHiddenFilmsOnServer(country) {
     if (!isLoggedIn()) return;
@@ -2300,7 +2355,37 @@
         const fromServer = srv => (srv || []).slice().sort();
         _lsSet('hiddenFilms', fromServer(remote.hiddenFilms));
       }
+
       applyFilters();
+    } catch (e) { /* network blew up — localStorage is still usable */ }
+  }
+
+  // `language` reconciles independently of `bootMergeFromServer` above —
+  // deliberately a SEPARATE fetch, not a field read off that call's response:
+  // the granular hidden-films endpoint's body is `{"hiddenFilms": […]}` only,
+  // it never carries `language`, so reading it off `remote` there would
+  // silently never fire. Also a single pick, not a set, so it skips the
+  // union / migration-flag dance `bootMergeFromServer` needs entirely —
+  // there is no "removed on another device" case a blind overwrite could
+  // wrongly resurrect, so every reconcile (first or not) uses the same
+  // rule: the ACCOUNT's explicit pick wins whenever it has one (restored on
+  // login, per spec); otherwise this device's own explicit pick, if any,
+  // becomes the account's. Tested separately from the two hiddenFilms
+  // reconcile tests so a change to one never masks a regression in the
+  // other.
+  async function reconcileLanguage() {
+    if (!isLoggedIn()) return;
+    try {
+      const resp = await fetch(mountPrefix() + '/api/me/state', { headers: { 'Accept': 'application/json' } });
+      if (!resp.ok) return;
+      const remote = await resp.json();
+      const localLang = localStorage.getItem('kinowo_lang');
+      if (remote.language && remote.language !== localLang) {
+        localStorage.setItem('kinowo_lang', remote.language);
+        if (typeof window.applyLanguage === 'function') window.applyLanguage(remote.language);
+      } else if (!remote.language && localLang) {
+        pushStateToServer();
+      }
     } catch (e) { /* network blew up — localStorage is still usable */ }
   }
 
@@ -3050,6 +3135,7 @@
     hydrateAuth().then(() => {
       settleSignOut();      // re-fetch if the page came back signed in
       bootMergeFromServer();
+      reconcileLanguage();
     });
   });
 

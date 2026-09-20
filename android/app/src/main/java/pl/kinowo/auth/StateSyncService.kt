@@ -3,13 +3,15 @@ package pl.kinowo.auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import pl.kinowo.data.SyncPrefs
 
 /**
- * Keeps per-device [SyncPrefs] hiddenFilms in step with the server, per
- * COUNTRY, while signed in — the Android counterpart of iOS
+ * Keeps per-device [SyncPrefs] hiddenFilms — and the account's language pick —
+ * in step with the server while signed in — the Android counterpart of iOS
  * `StateSyncService`. disabledCinemas is device-local (see [SyncPrefs]'s doc
  * comment) and never touched here.
  *
@@ -41,11 +43,20 @@ import pl.kinowo.data.SyncPrefs
  * offline behaviour iOS has. A failed push is silently swallowed the same
  * way; a later reconcile (login, resume) self-heals a write that never
  * landed, since local state already reflects it either way.
+ *
+ * The language pick rides the LEGACY `/api/me/state` document instead (via
+ * [LanguageClient] — there's no granular endpoint for a single scalar), and
+ * is NOT gated by the hiddenFilms per-country migration flags — see
+ * [reconcileLanguage] for why a scalar pick doesn't need the two-phase dance
+ * the sets do. It reconciles at the SAME triggers as hiddenFilms (login,
+ * resume, country switch) but as its own independent step, and pushes a
+ * local change on its own debounce — see [observeLanguage].
  */
 class StateSyncService(
     private val prefs: SyncPrefs,
     private val user: StateFlow<UserProfile?>,
     private val client: HiddenFilmsClient,
+    private val languageClient: LanguageClient,
     private val scope: CoroutineScope,
 ) {
     @Volatile private var loggedIn = false
@@ -76,14 +87,21 @@ class StateSyncService(
 
     private fun onLogin() {
         syncJob?.cancel()
-        syncJob = scope.launch { reconcileCurrentCountry() }
+        syncJob = scope.launch {
+            reconcileCurrentCountry() // also reconciles language — see its doc
+            observeLanguage()
+        }
     }
 
-    /** Reconcile whichever country is currently selected. Called on login and
-     *  on app foreground-resume; a no-op if no country has been chosen yet
-     *  (nothing to reconcile against). Public so [pl.kinowo.ui.KinowoViewModel]
-     *  can call it from its `onResume()`. */
+    /** Reconcile whichever country is currently selected, PLUS language
+     *  (which needs no country at all — see [reconcileLanguage]). Called on
+     *  login and on app foreground-resume; the hiddenFilms half is a no-op
+     *  if no country has been chosen yet (nothing to reconcile against), but
+     *  language still runs regardless — that's why it's reconciled BEFORE
+     *  the country early-return, not after. Public so
+     *  [pl.kinowo.ui.KinowoViewModel] can call it from its `onResume()`. */
     suspend fun reconcileCurrentCountry() {
+        reconcileLanguage()
         val country = prefs.selectedCountryCode.first() ?: return
         reconcile(country)
     }
@@ -115,6 +133,44 @@ class StateSyncService(
         }
     }
 
+    /** Language is a scalar, not a set, so it skips the per-country
+     *  migration-flag dance [reconcile] needs entirely — there's no "removed
+     *  on another device" case a blind overwrite could wrongly resurrect, so
+     *  every reconcile (first or not) uses the same rule: the ACCOUNT's
+     *  explicit pick wins whenever it has one (restored on login, per spec);
+     *  otherwise this device's own explicit pick, if any, becomes the
+     *  account's. A separate fetch from [reconcile]'s — [HiddenFilmsClient]'s
+     *  response never carries `language` at all, only [LanguageClient]'s does. */
+    private suspend fun reconcileLanguage() {
+        if (!loggedIn) return
+        try {
+            val remoteLang = languageClient.fetch()
+            val localLang = prefs.selectedLanguageTag.first()
+            if (remoteLang != null && remoteLang != localLang) {
+                prefs.setLanguageTag(remoteLang)
+            } else if (remoteLang == null && localLang != null) {
+                runCatching { languageClient.push(localLang) }
+            }
+        } catch (_: Exception) {
+            // Network error — local state is authoritative; leave prefs alone.
+        }
+    }
+
+    /** Push a local language change as soon as it happens — same immediate,
+     *  no-debounce-batching reasoning [hide]/[unhide]/[clear] already have,
+     *  though a picker choice is rare enough that batching was never really
+     *  the point; matches the shape all the same. `drop(1)` skips the
+     *  current (post-reconcile) value so this only reacts to a REAL local
+     *  change, not the one [reconcileLanguage] itself might have just made. */
+    private suspend fun observeLanguage() {
+        prefs.selectedLanguageTag
+            .drop(1)
+            .debounce(LANGUAGE_DEBOUNCE_MS)
+            .collect { tag ->
+                if (loggedIn && tag != null) runCatching { languageClient.push(tag) }
+            }
+    }
+
     /** Hide one film in THIS country: update local prefs immediately (the
      *  caller's responsibility — see [pl.kinowo.ui.KinowoViewModel.hide]) then
      *  push the write in the background, fire-and-forget. */
@@ -131,5 +187,9 @@ class StateSyncService(
             runCatching { write(country) }
                 .onSuccess { prefs.setHiddenFilmsValidators(country, it.etag, it.lastModified) }
         }
+    }
+
+    private companion object {
+        const val LANGUAGE_DEBOUNCE_MS = 400L
     }
 }

@@ -31,6 +31,7 @@ let authTargets: [Target] = [
         sources: [
             "Auth/UserProfile.swift",
             "Auth/HiddenFilmsClient.swift",
+            "Auth/LanguageClient.swift",
             "Auth/StateSyncService.swift",
             "Storage/UserPreferences.swift",
             // The country registry + persisted selection: `kinowoBaseURL`

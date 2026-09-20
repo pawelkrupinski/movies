@@ -262,6 +262,15 @@ final class UserPreferences: ObservableObject {
         LanguageSelection.select(code, in: store)
     }
 
+    /// The persisted EXPLICIT language pick, or nil if the user has never
+    /// made one. Unlike `selectedLanguage` — always resolved to a real value
+    /// via the device/storefront fallback, never nil — this distinguishes
+    /// "chose one" from "still on the resolved default", which
+    /// `StateSyncService` needs: pushing a resolved default up would stamp
+    /// it on the account the first time a signed-in visitor merely opens the
+    /// app, before they have ever touched the language picker.
+    var explicitLanguage: String? { LanguageSelection.explicit(store) }
+
     /// Ask the city gate for an explicit pick rather than a located offer.
     func awaitExplicitCityPick() {
         guard !awaitingExplicitCityPick else { return }

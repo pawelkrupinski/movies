@@ -1,7 +1,7 @@
 package controllers
 
 import models.UserState
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc._
 import services.metrics.LegacyUserStateMetrics
 import services.users.{AccountDeletion, UserChangeTimeCache, UserStateRepository}
@@ -13,20 +13,28 @@ import java.time.format.DateTimeFormatter
 
 /**
  * REST endpoint for the authenticated user's personalization state —
- * hidden films and (for legacy clients only — see `hiddenFilms()`)
- * disabled cinemas.
+ * hidden films, (for legacy clients only — see `hiddenFilms()`) disabled
+ * cinemas, and language.
  *
  * `get()`/`put()` are the original pair: full-state, no conditional-GET
  * support, kept running unchanged for clients that still call them —
  * `put()` also feeds `LegacyUserStateMetrics` on every call, the signal
  * that decides when it's safe to delete them. `hiddenFilms()` /
  * `hideFilm()` / `unhideFilm()` / `clearHiddenFilms()` are the granular,
- * per-country replacement: `ETag`/`Last-Modified` + 304 support on the
- * read side, idempotent per-title writes on the other.
+ * per-country replacement for hiddenFilms specifically: `ETag`/
+ * `Last-Modified` + 304 support on the read side, idempotent per-title
+ * writes on the other. `language` has no granular successor — it's a
+ * single explicit pick, not a set, so it stays on `get()`/`put()`.
  *
  * Shape (both directions, legacy):
  *   { "hiddenFilms":     [titles…],
- *     "disabledCinemas": [cinema display names…] }
+ *     "disabledCinemas": [cinema display names…],
+ *     "language":        "pl" | "en" | "de" | "es" | null }
+ *
+ * `language`, unlike the two sets, carries no union semantics: a client
+ * either overwrites it with a pick of its own, or leaves it out of the
+ * body to keep whatever is stored (same partial-update rule as the sets —
+ * see `fromJson`).
  */
 class UserStateController(
   cc:                   ControllerComponents,
@@ -241,7 +249,8 @@ object UserStateController {
    */
   def toJson(state: UserState): JsValue = Json.obj(
     "hiddenFilms"     -> state.hiddenFilms.toSeq.sorted,
-    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted
+    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted,
+    "language"        -> state.language
   )
 
   /** Render just the hiddenFilms set — the `hiddenFilms()` action's body. */
@@ -289,13 +298,28 @@ object UserStateController {
             case None      => Left(s"$field must be an array of strings")
           }
       }
+    // Present and a known code → overwrite; present and `null` → clear
+    // (a client that wants to give up its pick sends this, though none do
+    // today); absent → keep `base`'s value, same rule as the sets above.
+    def language(fallback: Option[String]): Either[String, Option[String]] =
+      (body \ "language").toOption match {
+        case None            => Right(fallback)
+        case Some(JsNull)    => Right(None)
+        case Some(jsValue) =>
+          jsValue.asOpt[String] match {
+            case Some(code) if LanguageNames.Codes.contains(code) => Right(Some(code))
+            case Some(code) => Left(s"language must be one of ${LanguageNames.Codes.mkString(", ")}, got $code")
+            case None       => Left("language must be a string")
+          }
+      }
     for {
-      hf <- stringSet("hiddenFilms",     base.hiddenFilms)
-      dc <- stringSet("disabledCinemas", base.disabledCinemas)
-      // Neither field this legacy body can carry — `hiddenFilmsByCountry` is
-      // untouched by `fromJson`, so it MUST be threaded through explicitly, or
-      // every legacy PUT would silently wipe it back to the constructor's
-      // default empty map.
-    } yield UserState(base.userId, hf, dc, Instant.now(), base.hiddenFilmsByCountry)
+      hf   <- stringSet("hiddenFilms",     base.hiddenFilms)
+      dc   <- stringSet("disabledCinemas", base.disabledCinemas)
+      lang <- language(base.language)
+      // `hiddenFilmsByCountry` is a field NEITHER this body's keys nor
+      // `language`'s parsing can touch — it MUST be threaded through
+      // explicitly, or every legacy PUT would silently wipe it back to the
+      // constructor's default empty map.
+    } yield UserState(base.userId, hf, dc, Instant.now(), base.hiddenFilmsByCountry, lang)
   }
 }

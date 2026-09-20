@@ -64,6 +64,22 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // Every film the city will ever show, counted off the fixture corpus the index
   // is rendered from — the number of cards the served document must already hold.
   private var corpusFilmCount: Int = 0
+  // `/api/me/state`'s served body — an `AtomicReference`, not a plain var: the
+  // language reconcile tests below mutate it from the test thread while
+  // `TestHttpServer`'s own handler thread reads it for the reload that test
+  // triggers, and a plain var gives no visibility guarantee across that gap
+  // (see this file's other notes on this exact class of cross-thread /
+  // cross-origin flake). Declared here rather than inline in `beforeAll` so
+  // the test methods below can reach it. `disabledCinemas` is a SENTINEL —
+  // it stopped being a server-synced field, so a non-empty, distinctive
+  // value makes any accidental client-side pull-in visible rather than
+  // coincidentally matching an empty local default; nothing in shared.js
+  // reads it from here any more (hiddenFilms moved to the granular API,
+  // disabledCinemas never round-trips at all), so this route is kept only
+  // for the disabledCinemas tests' own "no PUT fires here" negative check
+  // and for `language`'s reconcile, which still shares this document.
+  private val userStateJson = new java.util.concurrent.atomic.AtomicReference(
+    """{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"],"language":null}""")
 
   override def beforeAll(): Unit = {
     // This whole spec exercises the Polish (default) deployment. `i18n.js`'s
@@ -179,17 +195,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       ).body
       val meJson =
         """{"displayName":"Tester","email":"tester@example.com","avatarUrl":null,"provider":"google"}"""
-      // Static server-side state: one hidden film. response.json() parses the body
-      // regardless of content-type, so serving it via the HTML route map is fine.
-      // `disabledCinemas` here is a SENTINEL the client must never adopt — it
-      // stopped being a server-synced field, so a non-empty, distinctive value
-      // makes any accidental pull-in visible rather than coincidentally
-      // matching an empty local default. Nothing in shared.js reads
-      // `/api/me/state` any more (hiddenFilms moved to the granular API below;
-      // disabledCinemas never round-trips at all), so this route is kept only
-      // for the disabledCinemas tests' own "no PUT fires here" negative check.
-      val userStateJson =
-        """{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"]}"""
+      // Server-side state for `/api/me/state`: see the `userStateJson` field
+      // declared above the class's other reconcile fixture state — a class
+      // field, not a local, so the language reconcile tests further down can
+      // mutate it for just their own test. response.json() parses the body
+      // regardless of content-type, so serving it via the HTML route map is
+      // fine.
 
       // `GET/PUT/DELETE /api/me/pl/hidden-films(/:title)` — the granular,
       // per-country API `bootMergeFromServer`/`hideFilmOnServer`/
@@ -298,7 +309,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           case p if sub(p).startsWith("/filmy") => browseHtml
           case p if sub(p) == "/li"           => loggedInHtml
           case p if p == "/api/me"            => meJson
-          case p if p == "/api/me/state"      => userStateJson
+          case p if p == "/api/me/state"      => userStateJson.get()
           // The dev-only visual-tuning page — rendered with real fixture films
           // so its slider panel (and the ± step buttons) can be driven over CDP.
           case p if sub(p) == "/debug/tune" => views.html.tune(schedules.take(3)).body
@@ -616,6 +627,58 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val disabled = page.evalString("JSON.stringify(getDisabledCinemas())")
       disabled should include ("Device Pick")
       disabled should not include "Server-Only Cinema"
+    }
+  }
+
+  // Language sync is deliberately NOT gated by the per-country hiddenFilms
+  // migration flags the tests above exercise — see `shared.js`'s
+  // `reconcileLanguage` comment for why a scalar pick skips that two-phase
+  // dance (and runs as its own fetch, independent of the hiddenFilms
+  // reconcile). Tested separately here so a change to one never masks a
+  // regression in the other.
+
+  it should "restore the account's explicit language pick on login" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)  // this device has no explicit pick yet (fixture's language: null)
+      userStateJson.set("""{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"],"language":"de"}""")
+      try {
+        page.reload()
+        page.waitFor(
+          "document.documentElement.lang === 'de' && localStorage.getItem('kinowo_lang') === 'de'",
+          timeoutMs = 5000)
+      } finally {
+        // Both halves: the fixture (read by whatever boots next) AND the pick
+        // this test itself landed in `kinowo_lang` — `localStorage` is per
+        // ORIGIN, not per test, so leaving 'de' there would silently switch
+        // every later test on this origin (landing page pickers, etc.) into
+        // German. See this file's other notes on that exact class of leak.
+        userStateJson.set("""{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"],"language":null}""")
+        page.eval("localStorage.removeItem('kinowo_lang')")
+      }
+    }
+  }
+
+  it should "push an explicit language pick to the server for a logged-in user" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      try {
+        // The reconcile above already made its own PUT (migrating the union
+        // up), so proving THIS pick's push needs a rising count, not just
+        // presence — a `.some(…)` check would pass on that earlier PUT alone.
+        def putCount(): Int = page.evalInt(
+          "performance.getEntriesByType('resource')" +
+            ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length")
+        val before = putCount()
+        page.eval("onLanguageChange('es')")
+        page.waitFor(
+          "performance.getEntriesByType('resource')" +
+            ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length > " + before,
+          timeoutMs = 5000)
+        page.evalString("document.documentElement.lang") shouldBe "es"
+      } finally {
+        // Same origin-wide leak concern as the test above.
+        page.eval("localStorage.removeItem('kinowo_lang')")
+      }
     }
   }
 

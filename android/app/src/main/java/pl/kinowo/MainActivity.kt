@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.onEach
 import okhttp3.OkHttpClient
 import pl.kinowo.auth.AuthRepository
 import pl.kinowo.auth.HttpHiddenFilmsClient
+import pl.kinowo.auth.HttpLanguageClient
 import pl.kinowo.data.CatalogCache
 import pl.kinowo.data.CatalogRepository
 import pl.kinowo.data.DetailsRepository
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
         val prefs = UserPreferences(applicationContext)
         val authRepository = AuthRepository(httpClient, cookieJar)
         val hiddenFilmsClient = HttpHiddenFilmsClient(client = httpClient)
+        val languageClient = HttpLanguageClient(client = httpClient)
         // The country/city catalog: seeded from the bundled assets snapshot (so a
         // fresh install renders offline and the first fetch already carries the
         // build's ETag), refreshed via `api` (KinowoApi implements CatalogApi),
@@ -83,7 +85,7 @@ class MainActivity : ComponentActivity() {
         // filesDir (durable), not cacheDir — the OS may evict cacheDir under
         // storage pressure, and the catalog should survive that.
         val catalogRepository = CatalogRepository(api, CatalogCache(filesDir), catalogSeed)
-        KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, hiddenFilmsClient, api, catalogRepository)
+        KinowoViewModel.Factory(repository, detailsRepository, prefs, authRepository, hiddenFilmsClient, languageClient, api, catalogRepository)
     }
 
     // Force the user's selected UI language regardless of the device locale and

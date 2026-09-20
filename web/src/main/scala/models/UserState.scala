@@ -12,12 +12,19 @@ import java.time.Instant
 // two unrelated films in two countries can share a title — so the legacy,
 // single global `hiddenFilms` set is being retired in favour of
 // `hiddenFilmsByCountry`, keyed by `Country.code` ("pl", "us", …).
+// `language`, unlike the sets above, is a single explicit pick or nothing —
+// `None` until the user has chosen one server-side, whether by picking on a
+// page while logged in or by the one-time login migration adopting this
+// device's own explicit local pick (see `UserStateController`'s wire-format
+// note). Both new fields are defaulted so every existing 4-arg call site
+// (tests, mostly) keeps compiling.
 case class UserState(
   userId:               String,
   hiddenFilms:          Set[String],             // legacy — see `UserStateController.get()`/`put()`
   disabledCinemas:      Set[String],              // legacy — cinema-hiding is device-local now
   updatedAt:            Instant,
-  hiddenFilmsByCountry: Map[String, Set[String]] = Map.empty
+  hiddenFilmsByCountry: Map[String, Set[String]] = Map.empty,
+  language:             Option[String] = None
 )
 //
 // `selectedMovies` and `favouriteRooms` lived here until the plan page was removed. Documents

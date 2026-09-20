@@ -8,6 +8,7 @@ final class StateSyncServiceTests: XCTestCase {
     private var defaults: UserDefaults!
     private var prefs: UserPreferences!
     private var client: FakeHiddenFilmsClient!
+    private var languageClient: FakeLanguageClient!
     private var userSubject: CurrentValueSubject<UserProfile?, Never>!
 
     override func setUp() {
@@ -16,6 +17,7 @@ final class StateSyncServiceTests: XCTestCase {
         defaults.removePersistentDomain(forName: "StateSyncServiceTests")
         prefs = UserPreferences(store: defaults)
         client = FakeHiddenFilmsClient()
+        languageClient = FakeLanguageClient()
         userSubject = CurrentValueSubject(nil)
     }
 
@@ -28,7 +30,8 @@ final class StateSyncServiceTests: XCTestCase {
         StateSyncService(
             prefs: prefs,
             userPublisher: userSubject.eraseToAnyPublisher(),
-            client: client
+            client: client,
+            languageClient: languageClient
         )
     }
 
@@ -98,6 +101,75 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    // MARK: - Language sync — a scalar, so no migration-flag dance, and its
+    // own fetch/push via LanguageClient (HiddenFilmsClient's response never
+    // carries it)
+
+    /// The account's pick is restored regardless of the per-country
+    /// migration flags — this is the very first merge (flags unset), which
+    /// the sets' union path shares, but language must not wait for a second
+    /// login.
+    func testLoginRestoresAccountLanguage() async throws {
+        languageClient.remote = "de"
+        let sync = makeSyncService()
+        login()
+
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        _ = sync
+    }
+
+    /// The account has no pick yet, but this device does (set before login,
+    /// e.g. while anonymous) — it gets adopted as the account's, same
+    /// "migrate this device's local state up" spirit as the sets.
+    func testLoginPushesLocalExplicitLanguageWhenAccountHasNone() async throws {
+        prefs.setLanguage("es")
+        languageClient.remote = nil
+        let pushed = expectation(description: "language pushed to server")
+        languageClient.onPush = { language in if language == "es" { pushed.fulfill() } }
+        let sync = makeSyncService()
+
+        login()
+        await fulfillment(of: [pushed], timeout: 1)
+        _ = sync
+    }
+
+    /// Neither side has an explicit pick — nothing to restore or stamp onto
+    /// the account, and no push at all: unlike the sets, language reconcile
+    /// makes no fixed first write. `selectedLanguage` stays on whatever
+    /// `resolve()` fell back to at init (device/storefront/English).
+    func testLoginLeavesResolvedDefaultAloneWhenNeitherSideHasAPick() async throws {
+        let resolvedAtInit = prefs.selectedLanguage
+        languageClient.remote = nil
+        let sync = makeSyncService()
+
+        login()
+        try await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(prefs.selectedLanguage, resolvedAtInit)
+        XCTAssertNil(languageClient.lastPushed)
+        _ = sync
+    }
+
+    /// A pick made AFTER login (not just the merge-on-login case above)
+    /// reaches the server too, through language's own debounced push.
+    func testLanguagePickAfterLoginIsPushed() async throws {
+        languageClient.remote = nil
+        let sync = makeSyncService()
+        login()
+        // Neither side has a pick, so this merge pushes nothing — no
+        // expectation to await. `observeLocalChanges()` runs right after the
+        // merge settles, so a short sleep (same idiom the "nothing happens"
+        // tests elsewhere in this file use) is enough to let it land before
+        // the pick below, which the observer must be live for.
+        try await Task.sleep(for: .milliseconds(200))
+
+        let pushed = expectation(description: "explicit pick pushed")
+        languageClient.onPush = { language in if language == "de" { pushed.fulfill() } }
+        prefs.setLanguage("de")
+        await fulfillment(of: [pushed], timeout: 1)
+        _ = sync
+    }
+
     // MARK: - Server authoritative after first sync
 
     func testServerAuthoritativeAfterFirstSyncDropsStaleLocal() async throws {
@@ -114,7 +186,7 @@ final class StateSyncServiceTests: XCTestCase {
         // NOT clear the flag on the initial nil, and must MIRROR the now-empty
         // server rather than re-union the stale local copy back in.
         let userSubject2 = CurrentValueSubject<UserProfile?, Never>(nil)
-        let sync2 = StateSyncService(prefs: prefs, userPublisher: userSubject2.eraseToAnyPublisher(), client: client)
+        let sync2 = StateSyncService(prefs: prefs, userPublisher: userSubject2.eraseToAnyPublisher(), client: client, languageClient: languageClient)
         userSubject2.send(UserProfile(displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google"))
 
         try await waitUntil { self.prefs.hiddenFilms.isEmpty }
@@ -299,5 +371,19 @@ final class FakeHiddenFilmsClient: HiddenFilmsClient {
         clearCalls.append(country)
         defer { onClear?() }
         return writeResult
+    }
+}
+
+@MainActor
+final class FakeLanguageClient: LanguageClient {
+    var remote: String?
+    private(set) var lastPushed: String?
+    var onPush: ((String) -> Void)?
+
+    func fetch() async throws -> String? { remote }
+
+    func push(_ language: String) async throws {
+        lastPushed = language
+        onPush?(language)
     }
 }

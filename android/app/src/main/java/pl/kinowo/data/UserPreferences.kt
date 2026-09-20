@@ -17,10 +17,11 @@ private val Context.dataStore by preferencesDataStore(name = "kinowo_prefs")
  * The slice of preferences [pl.kinowo.auth.StateSyncService] touches, PLUS
  * disabledCinemas — which it stopped touching (device-local now), but stays
  * on this interface since it's still the shared seam other local-only
- * consumers (the cinema filter UI) read/write through. Only hiddenFilms
- * round-trips to `/api/me/state`. Narrowing the sync service to this
- * interface keeps it unit-testable against an in-memory fake instead of a
- * real DataStore.
+ * consumers (the cinema filter UI) read/write through. hiddenFilms
+ * round-trips to `/api/me/{country}/hidden-films`; the language pick still
+ * rides the legacy `/api/me/state` (there's no granular endpoint for a
+ * single scalar). Narrowing the sync service to this interface keeps it
+ * unit-testable against an in-memory fake instead of a real DataStore.
  */
 interface SyncPrefs {
     val hiddenFilms: Flow<Set<String>>
@@ -51,6 +52,14 @@ interface SyncPrefs {
      *  logout, so the next sign-in re-runs the union-then-push migration for
      *  whichever country is current then, fresh. */
     suspend fun clearHiddenFilmsSyncState()
+
+    /** The explicit language pick, or null until one is made — unlike the two
+     *  sets above this is already "explicit or nothing" with no separate
+     *  resolved-default reading to distinguish it from (see
+     *  [pl.kinowo.model.LanguageDefault] for where the resolved default,
+     *  which this never carries, comes from instead). */
+    val selectedLanguageTag: Flow<String?>
+    suspend fun setLanguageTag(tag: String)
 }
 
 /**
@@ -148,11 +157,11 @@ class UserPreferences(private val context: Context) : SyncPrefs {
      *  resolves the default. Deliberately independent of [selectedCountryCode]:
      *  switching country must never move this (and vice versa), since a country
      *  switch only re-points the API base URL now — see [pl.kinowo.model.Country]. */
-    val selectedLanguageTag: Flow<String?> =
+    override val selectedLanguageTag: Flow<String?> =
         context.dataStore.data.map { it[KEY_LANGUAGE] }
 
-    suspend fun setLanguageTag(tag: String) = context.dataStore.edit { prefs ->
-        prefs[KEY_LANGUAGE] = tag
+    override suspend fun setLanguageTag(tag: String) {
+        context.dataStore.edit { prefs -> prefs[KEY_LANGUAGE] = tag }
     }
 
     /** The persisted language tag read synchronously, or null if none. Used at

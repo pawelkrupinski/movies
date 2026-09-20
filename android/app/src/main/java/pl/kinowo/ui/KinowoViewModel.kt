@@ -32,6 +32,7 @@ import pl.kinowo.data.PosterCachePurge
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
 import pl.kinowo.auth.HiddenFilmsClient
+import pl.kinowo.auth.LanguageClient
 import pl.kinowo.data.CatalogRepository
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
@@ -78,6 +79,13 @@ class KinowoViewModel(
     private val prefs: UserPreferences,
     private val authRepository: AuthRepository,
     hiddenFilmsClient: HiddenFilmsClient,
+    // Defaulted to a no-op so the many existing test constructors — none of
+    // which exercise language sync — don't all need a stub threaded through,
+    // same reasoning as catalogApi/catalogRepository below.
+    languageClient: LanguageClient = object : LanguageClient {
+        override suspend fun fetch(): String? = null
+        override suspend fun push(language: String) {}
+    },
     // Last, with a flat-catalog default, so the existing test constructors (which
     // don't exercise split cities) keep compiling without threading a stub.
     private val catalogApi: CinemaCatalogApi = CinemaCatalogApi { CinemaCatalog.EMPTY },
@@ -106,7 +114,7 @@ class KinowoViewModel(
 
     // Mirror prefs to the server while signed in. Constructed here so it shares
     // the ViewModel's scope; `start()` makes it observe the auth state.
-    private val sync = StateSyncService(prefs, authRepository.user, hiddenFilmsClient, viewModelScope)
+    private val sync = StateSyncService(prefs, authRepository.user, hiddenFilmsClient, languageClient, viewModelScope)
 
     // Skips the one nearer-city check that the post-OAuth resume would otherwise
     // fire — armed when a web sign-in starts (see [signInWithGoogle]) or a city
@@ -677,11 +685,12 @@ class KinowoViewModel(
         private val prefs: UserPreferences,
         private val authRepository: AuthRepository,
         private val hiddenFilmsClient: HiddenFilmsClient,
+        private val languageClient: LanguageClient,
         private val catalogApi: CinemaCatalogApi,
         private val catalogRepository: CatalogRepository,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            KinowoViewModel(repository, detailsRepository, prefs, authRepository, hiddenFilmsClient, catalogApi, catalogRepository) as T
+            KinowoViewModel(repository, detailsRepository, prefs, authRepository, hiddenFilmsClient, languageClient, catalogApi, catalogRepository) as T
     }
 }

@@ -34,6 +34,7 @@
 		DD00000000000000000032 /* StateSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000032 /* StateSyncService.swift */; };
 		DD00000000000000000033 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000033 /* UserProfile.swift */; };
 		DD00000000000000000034 /* HiddenFilmsClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000034 /* HiddenFilmsClient.swift */; };
+		DD00000000000000000037 /* LanguageClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000037 /* LanguageClient.swift */; };
 		DD00000000000000000035 /* TrailerEmbedHTML.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC00000000000000000035 /* TrailerEmbedHTML.swift */; };
 		DD0000000000000000000A /* UserPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000A /* UserPreferences.swift */; };
 		DD0000000000000000000B /* FilmGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC0000000000000000000B /* FilmGridView.swift */; };
@@ -142,6 +143,7 @@
 		CC00000000000000000032 /* StateSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StateSyncService.swift; sourceTree = "<group>"; };
 		CC00000000000000000033 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		CC00000000000000000034 /* HiddenFilmsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenFilmsClient.swift; sourceTree = "<group>"; };
+		CC00000000000000000037 /* LanguageClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageClient.swift; sourceTree = "<group>"; };
 		CC00000000000000000035 /* TrailerEmbedHTML.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrailerEmbedHTML.swift; sourceTree = "<group>"; };
 		CC0000000000000000000A /* UserPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserPreferences.swift; sourceTree = "<group>"; };
 		CC0000000000000000000B /* FilmGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilmGridView.swift; sourceTree = "<group>"; };
@@ -277,6 +279,7 @@
 				CC00000000000000000032 /* StateSyncService.swift */,
 				CC00000000000000000033 /* UserProfile.swift */,
 				CC00000000000000000034 /* HiddenFilmsClient.swift */,
+				CC00000000000000000037 /* LanguageClient.swift */,
 			);
 			path = Auth;
 			sourceTree = "<group>";
@@ -517,6 +520,7 @@
 				DD00000000000000000032 /* StateSyncService.swift in Sources */,
 				DD00000000000000000033 /* UserProfile.swift in Sources */,
 				DD00000000000000000034 /* HiddenFilmsClient.swift in Sources */,
+				DD00000000000000000037 /* LanguageClient.swift in Sources */,
 				DD00000000000000000035 /* TrailerEmbedHTML.swift in Sources */,
 				DD0000000000000000000A /* UserPreferences.swift in Sources */,
 				DD0000000000000000000B /* FilmGridView.swift in Sources */,

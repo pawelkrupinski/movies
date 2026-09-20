@@ -106,11 +106,15 @@ window.applyLanguage = applyLanguage;
 
 // Language picker — an in-place swap, no navigation, no `/lang/:code` round
 // trip. Persists the pick so it survives future page loads, on every page,
-// not just the one it was made on (applied by the boot block below).
+// not just the one it was made on (applied by the boot block below). For a
+// logged-in user it also reaches the account (`shared.js`'s server sync,
+// `/api/me/state`'s `language` field), so it's restored on any device they
+// next sign into — anonymous visitors keep this as a device-local pick only.
 function onLanguageChange(code) {
   if (!code) return;
   applyLanguage(code);
   try { localStorage.setItem('kinowo_lang', code); } catch (e) {}
+  if (typeof window.scheduleServerSync === 'function') window.scheduleServerSync();
 }
 window.onLanguageChange = onLanguageChange;
 
