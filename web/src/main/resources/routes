@@ -131,6 +131,8 @@ POST    /auth/logout                controllers.AuthController.logout()
 
 GET     /api/me                     controllers.AuthController.me()
 + nocsrf
+POST    /auth/sessions/revoke       controllers.AuthController.revokeSessions()
++ nocsrf
 POST    /auth/token                 controllers.AuthController.token()
 + nocsrf
 POST    /auth/exchange              controllers.AuthController.exchange()
