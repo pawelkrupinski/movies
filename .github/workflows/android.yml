@@ -227,13 +227,14 @@ jobs:
             # Marks the commit this internal-track build was actually cut from — see
             # tag-mobile-release.sh. A later production promotion
             # (`:app:promoteReleaseArtifact`) ships this SAME artifact unchanged, so the tag
-            # stays correct through that step without needing its own update. Runs only if the
-            # publish step above ran and succeeded (same `if:` condition; a failed publish stops
-            # the job before reaching here). Non-fatal on push failure — see the script — so a
-            # best-effort dashboard tag can never turn an already-shipped release into red CI
-            # and skip the artifact-upload steps below.
+            # stays correct through that step without needing its own update. `success()` is
+            # required in the `if:` (not implied by the custom condition alone — a step's own
+            # `if:` REPLACES the default success()-only check, it doesn't AND with it), or a
+            # failed Play publish still gets tagged as shipped. Non-fatal on push failure — see
+            # the script — so a best-effort dashboard tag can never turn an already-shipped
+            # release into red CI and skip the artifact-upload steps below.
             - name: Tag the commit this internal build was cut from
-              if: ${{ github.event_name == 'workflow_dispatch' && env.PLAY_JSON != '' }}
+              if: ${{ success() && github.event_name == 'workflow_dispatch' && env.PLAY_JSON != '' }}
               working-directory: ${{ github.workspace }}
               run: |
                   version="$(tr -d '\n' < mobile-version.txt)"

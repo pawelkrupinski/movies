@@ -2100,6 +2100,18 @@ def reachable_from_head(sha):
     return ok
 
 
+def mobile_tag_sha(platform, version):
+    """The commit a mobile-<platform>-<version> tag points at, or None if no such tag exists --
+    the lookup release_commit_for() and the "why didn't this resolve" error message both need,
+    factored out so neither re-describes the tag-naming convention on its own."""
+    if not (platform and version):
+        return None
+    ok, out, _ = run(["git", "rev-parse", "-q", "--verify", f"mobile-{platform}-{version}^{{commit}}"],
+                      cwd=ROOT_DIR, timeout=MOBILE_GIT_TIMEOUT)
+    sha = out.strip()
+    return sha if ok and sha else None
+
+
 def release_commit_for(version, subdir=None):
     """The commit that actually produced a given store version's artifact.
 
@@ -2121,14 +2133,12 @@ def release_commit_for(version, subdir=None):
     if not version:
         return None
     if subdir:
-        ok, out, _ = run(["git", "rev-parse", "-q", "--verify", f"mobile-{subdir}-{version}^{{commit}}"],
-                          cwd=ROOT_DIR, timeout=MOBILE_GIT_TIMEOUT)
-        sha = out.strip()
+        sha = mobile_tag_sha(subdir, version)
         # The tag must be an ancestor of HEAD, the same ref unreleased_commits() diffs against --
         # a release cut from a worktree branch that was never (yet, or ever) merged into what this
         # checkout runs from would otherwise hand `{sha}..HEAD` a baseline outside that history,
         # which git log answers with a misleading commit list instead of an error.
-        if ok and sha and reachable_from_head(sha):
+        if sha and reachable_from_head(sha):
             return sha
     pattern = "^Release mobile " + re.escape(version) + "$"
     ok, out, _ = run(["git", "log", "-1", "--format=%H", f"--grep={pattern}"],
@@ -2174,7 +2184,11 @@ def build_mobile():
         if version is None:
             error = "never released to this store yet"
         elif not baseline:
-            error = f"no commit found matching 'Release mobile {version}'"
+            tag_sha = mobile_tag_sha(subdir, version)
+            error = (f"mobile-{subdir}-{version} tags {tag_sha[:10]}, which isn't reachable from "
+                      "HEAD — probably built from a branch never merged back"
+                      if tag_sha else
+                      f"no commit found matching 'Release mobile {version}'")
         else:
             error = None
         platforms.append({

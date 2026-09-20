@@ -503,38 +503,38 @@ class _TempRepo:
     def __init__(self):
         self.dir = tempfile.TemporaryDirectory()
         self.root = self.dir.name
-        subprocess.run(["git", "init", "-q"], cwd=self.root, check=True)
-        subprocess.run(["git", "config", "user.email", "t@t"], cwd=self.root, check=True)
-        subprocess.run(["git", "config", "user.name", "t"], cwd=self.root, check=True)
+        self._git("init", "-q")
+        self._git("config", "user.email", "t@t")
+        self._git("config", "user.name", "t")
+
+    def _git(self, *args, capture=False):
+        result = subprocess.run(["git", *args], cwd=self.root, check=True,
+                                 capture_output=capture, text=capture)
+        return result.stdout.strip() if capture else None
 
     def commit(self, path, message):
         full = os.path.join(self.root, path)
         os.makedirs(os.path.dirname(full), exist_ok=True)
         with open(full, "a") as fh:
             fh.write("x")
-        subprocess.run(["git", "add", path], cwd=self.root, check=True)
-        subprocess.run(["git", "-c", "commit.gpgsign=false", "commit", "-q", "-m", message],
-                        cwd=self.root, check=True)
-        out = subprocess.run(["git", "rev-parse", "HEAD"], cwd=self.root,
-                              capture_output=True, text=True, check=True)
-        return out.stdout.strip()
+        self._git("add", path)
+        self._git("-c", "commit.gpgsign=false", "commit", "-q", "-m", message)
+        return self._git("rev-parse", "HEAD", capture=True)
 
     def cleanup(self):
         self.dir.cleanup()
 
     def tag(self, name, sha):
-        subprocess.run(["git", "tag", "-f", name, sha], cwd=self.root, check=True)
+        self._git("tag", "-f", name, sha)
 
     def current_branch(self):
-        out = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=self.root,
-                              capture_output=True, text=True, check=True)
-        return out.stdout.strip()
+        return self._git("rev-parse", "--abbrev-ref", "HEAD", capture=True)
 
     def checkout_new_branch(self, name):
-        subprocess.run(["git", "checkout", "-q", "-b", name], cwd=self.root, check=True)
+        self._git("checkout", "-q", "-b", name)
 
     def checkout(self, ref):
-        subprocess.run(["git", "checkout", "-q", ref], cwd=self.root, check=True)
+        self._git("checkout", "-q", ref)
 
 
 class MobileReleaseBaseline(unittest.TestCase):
@@ -687,6 +687,27 @@ class MobileBuildAssembly(unittest.TestCase):
                                               "live_extra": None, "pending": None}
         by_name = self._by_name(app.build_mobile())
         self.assertIn("9.9.9", by_name["iOS"]["error"])
+        self.assertIsNone(by_name["iOS"]["commits"])
+
+    def test_an_unreachable_tag_names_itself_in_the_error_not_a_generic_message(self):
+        # Same shape as MobileReleaseBaseline's own unreachable-tag test, but checking what the
+        # PAGE says about it -- an operator staring at "no commit found matching 'Release mobile
+        # X'" would reasonably conclude nothing was ever tagged, when actually a tag exists and
+        # was correctly rejected. The error should say which of those happened.
+        self.repo.commit("README.md", "init")
+        main_branch = self.repo.current_branch()
+        self.repo.checkout_new_branch("never-merged")
+        orphan_build = self.repo.commit("ios/a.swift", "built and tagged, never merged back")
+        self.repo.checkout(main_branch)
+        self.repo.tag("mobile-ios-9.9.9", orphan_build)
+
+        app.ios_release_state = lambda: {"error": None, "live_version": "9.9.9",
+                                          "live_extra": "READY_FOR_SALE", "pending": None}
+        app.android_release_state = lambda: {"error": None, "live_version": None,
+                                              "live_extra": None, "pending": None}
+        by_name = self._by_name(app.build_mobile())
+        self.assertIn(orphan_build[:10], by_name["iOS"]["error"])
+        self.assertIn("reachable", by_name["iOS"]["error"])
         self.assertIsNone(by_name["iOS"]["commits"])
 
 
