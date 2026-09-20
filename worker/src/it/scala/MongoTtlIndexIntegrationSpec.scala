@@ -1,7 +1,8 @@
 package integration
 
 import com.mongodb.event.{CommandListener, CommandStartedEvent}
-import com.mongodb.{ConnectionString, MongoClientSettings}
+import com.mongodb.connection.{ClusterId, ConnectionDescription, ServerId}
+import com.mongodb.{ConnectionString, MongoClientSettings, ServerAddress}
 import java.util.concurrent.ConcurrentHashMap
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.Indexes
@@ -38,12 +39,25 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
   assume(Env.get("MONGODB_URI").isDefined, "MONGODB_URI not set")
   tools.IntegrationMongo.requireThrowaway()
 
-  /** Commands the driver actually put on the wire, by name. */
-  private val commands = new ConcurrentHashMap[String, java.util.concurrent.atomic.AtomicInteger]()
+  /** Distinct logical operations the driver issued, by command name — keyed by
+   *  `operationId`, NOT counted per wire message. `createIndexes`/`dropIndexes`
+   *  have been retryable writes since MongoDB 4.4, and `itAll` runs every `it`
+   *  suite against ONE shared mongod in parallel: a `createIndex` here can hit a
+   *  `WriteConflict` from some unrelated suite's concurrent DDL against the same
+   *  storage-engine catalog, and the driver retries it once, unprompted. That
+   *  retry reuses the same `operationId` and gets a fresh `requestId` — it is
+   *  the same driver behaviour `RetryWithBackoff`'s own retries produce at the
+   *  application level, just one layer down. A counter keyed by `requestId` (or
+   *  unkeyed, as this used to be) mistakes that retry for `MongoTtlIndex` having
+   *  sent a second command, which is exactly the false positive that failed this
+   *  spec's "ignore a compound index" case under CI's contention and nowhere
+   *  else. */
+  private val commands = new ConcurrentHashMap[String, java.util.concurrent.ConcurrentHashMap.KeySetView[java.lang.Long, java.lang.Boolean]]()
 
   private val listener = new CommandListener {
     override def commandStarted(event: CommandStartedEvent): Unit = {
-      commands.computeIfAbsent(event.getCommandName, _ => new java.util.concurrent.atomic.AtomicInteger()).incrementAndGet()
+      commands.computeIfAbsent(event.getCommandName, _ => java.util.concurrent.ConcurrentHashMap.newKeySet[java.lang.Long]())
+        .add(event.getOperationId)
       ()
     }
   }
@@ -62,7 +76,7 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
 
   private val database: MongoDatabase = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo"))
 
-  private def sent(command: String): Int = Option(commands.get(command)).map(_.get()).getOrElse(0)
+  private def sent(command: String): Int = Option(commands.get(command)).map(_.size()).getOrElse(0)
   private def forget(): Unit            = commands.clear()
 
   /** A fresh sentinel collection per case, so one case's index can never decide
@@ -253,5 +267,28 @@ class MongoTtlIndexIntegrationSpec extends AnyFlatSpec with Matchers with Before
     val ttlIndexes = Await.result(collection.listIndexes().toFuture(), 10.seconds)
       .filter(_.get("expireAfterSeconds").isDefined)
     ttlIndexes.flatMap(_.get("key")).map(_.asDocument().keySet().asScala.toSet) shouldBe Seq(Set("at"))
+  }
+
+  /** THE COUNTER ITSELF, not `MongoTtlIndex`. `createIndexes`/`dropIndexes` have been
+   *  retryable writes since MongoDB 4.4, and `itAll` runs every `it` suite against ONE
+   *  shared mongod in parallel — a `WriteConflict` from some unrelated suite's concurrent
+   *  DDL against the same storage-engine catalog can hit this spec's own `createIndex`
+   *  call, and the driver retries it once, unprompted. That retry is a second wire
+   *  message with the SAME `operationId` and a fresh `requestId` — reproduced directly here
+   *  because provoking a real one needs contention this spec cannot reliably manufacture.
+   *  A counter keyed by wire message (this spec's old behaviour) reads that as
+   *  `MongoTtlIndex` sending two commands; keyed by `operationId`, it reads as one — which
+   *  is what failed "ignore a compound index" under CI's contention and nowhere else. */
+  it should "count a write the driver retried once as one command, not two" in {
+    forget()
+    val connectionDescription = new ConnectionDescription(new ServerId(new ClusterId(), new ServerAddress()))
+    def attempt(requestId: Int) = new CommandStartedEvent(
+      null, 42L, requestId, connectionDescription, database.name, "createIndexes", new org.bson.BsonDocument()
+    )
+
+    listener.commandStarted(attempt(requestId = 1))
+    listener.commandStarted(attempt(requestId = 2))
+
+    sent("createIndexes") shouldBe 1
   }
 }
