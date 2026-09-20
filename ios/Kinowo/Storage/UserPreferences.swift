@@ -1,6 +1,16 @@
 import Foundation
 import Combine
 
+/// One local hiddenFilms edit, as `UserPreferences.hiddenFilmsChanges`
+/// reports it — specific enough that `StateSyncService` can call the
+/// matching `HiddenFilmsClient` method directly instead of diffing a
+/// before/after `Set`.
+enum HiddenFilmsChange: Equatable {
+    case hidden(String)
+    case unhidden(String)
+    case clearedAll
+}
+
 /// UserDefaults-backed per-device preferences: hidden films and the
 /// cross-platform `disabledCinemas` exclusion set.
 /// Mirrors what the web app stores in `localStorage` for anonymous users.
@@ -26,11 +36,14 @@ final class UserPreferences: ObservableObject {
     /// shown for, or `nil` if never. Only the single latest pair is kept, so
     /// returning to a previously-declined city re-arms the prompt.
     @Published private(set) var citySwitchPromptKey: String?
-    /// True once `StateSyncService` has done its one-time migration of this
-    /// device's local picks up to the account. After that the server is the
-    /// source of truth on every launch (so removals stick); cleared on logout
-    /// so the next sign-in migrates afresh.
-    @Published private(set) var serverStateSynced: Bool = false
+    /// Countries `StateSyncService` has done the one-time local→server
+    /// hiddenFilms migration for (see `HiddenFilmsClient`). Per-country, not
+    /// one global flag — hiddenFilms is per-country now, and a device might
+    /// migrate PL today and not touch the US bucket for months. After a
+    /// country is in this set the server is authoritative for it on every
+    /// reconcile (so a removal sticks); cleared on logout so the next
+    /// sign-in migrates every country afresh.
+    private var hiddenFilmsMigratedCountries: Set<String> = []
     /// Slugs of split cities whose first-visit area picker the user has already
     /// completed, so it shows once per city (never on a flat city). Device-local.
     @Published private(set) var areaPickerSeenCities: Set<String> = []
@@ -59,7 +72,9 @@ final class UserPreferences: ObservableObject {
     private let kHintDate      = "swipeHintShownDate"
     private let kCity          = "selectedCity"
     private let kSwitchPrompt  = "citySwitchPromptKey"
-    private let kServerSynced  = "serverStateSynced"
+    private let kHiddenFilmsMigrated = "hiddenFilmsMigratedCountries"
+    private let kHiddenFilmsETags        = "hiddenFilmsETags"
+    private let kHiddenFilmsLastModified = "hiddenFilmsLastModified"
     private let kAreaSeen       = "areaPickerSeenCities"
     private let kExplicitPick   = "awaitingExplicitCityPick"
 
@@ -71,7 +86,7 @@ final class UserPreferences: ObservableObject {
         swipeHintShownDate  = store.string(forKey: kHintDate)              ?? ""
         selectedCity        = store.string(forKey: kCity)
         citySwitchPromptKey = store.string(forKey: kSwitchPrompt)
-        serverStateSynced   = store.bool(forKey: kServerSynced)
+        hiddenFilmsMigratedCountries = Set(store.stringArray(forKey: kHiddenFilmsMigrated) ?? [])
         awaitingExplicitCityPick = store.bool(forKey: kExplicitPick)
         areaPickerSeenCities = Set(store.stringArray(forKey: kAreaSeen) ?? [])
         selectedCountry     = CountrySelection.current(store)
@@ -86,19 +101,31 @@ final class UserPreferences: ObservableObject {
         #endif
     }
 
+    /// Fires once per hide/unhide/clear-all — the SPECIFIC operation, not
+    /// just "the set changed" — so `StateSyncService` can call the matching
+    /// granular endpoint (`hide`/`unhide`/`clear`) instead of having to
+    /// infer one from a before/after diff. A `PassthroughSubject`, not
+    /// `$hiddenFilms`: it never replays a stored value at subscribe time, so
+    /// unlike the old `$hiddenFilms.dropFirst()` sync observation, there's
+    /// no startup value to skip.
+    let hiddenFilmsChanges = PassthroughSubject<HiddenFilmsChange, Never>()
+
     func hide(_ title: String) {
         hiddenFilms.insert(title)
         store.set(Array(hiddenFilms), forKey: kHidden)
+        hiddenFilmsChanges.send(.hidden(title))
     }
 
     func unhide(_ title: String) {
         hiddenFilms.remove(title)
         store.set(Array(hiddenFilms), forKey: kHidden)
+        hiddenFilmsChanges.send(.unhidden(title))
     }
 
     func unhideAll() {
         hiddenFilms.removeAll()
         store.set(Array(hiddenFilms), forKey: kHidden)
+        hiddenFilmsChanges.send(.clearedAll)
     }
 
     /// Replace the whole excluded-cinemas set — the single writer. The Filtry
@@ -125,11 +152,50 @@ final class UserPreferences: ObservableObject {
         store.set(Array(hiddenFilms), forKey: kHidden)
     }
 
-    /// Mark the one-time local→server migration done / undone. Set after the
-    /// first successful sync, cleared on logout so the next sign-in migrates.
-    func setServerStateSynced(_ v: Bool) {
-        serverStateSynced = v
-        store.set(v, forKey: kServerSynced)
+    /// Whether `country` has completed its one-time local→server hiddenFilms
+    /// migration (see `hiddenFilmsMigratedCountries`'s doc comment).
+    func isHiddenFilmsMigrated(country: String) -> Bool {
+        hiddenFilmsMigratedCountries.contains(country)
+    }
+
+    /// Mark `country`'s migration done. Never unmarks a single country —
+    /// logout clears ALL of them at once, see `clearHiddenFilmsMigration()`.
+    func setHiddenFilmsMigrated(country: String) {
+        guard !hiddenFilmsMigratedCountries.contains(country) else { return }
+        hiddenFilmsMigratedCountries.insert(country)
+        store.set(Array(hiddenFilmsMigratedCountries), forKey: kHiddenFilmsMigrated)
+    }
+
+    /// Undo every country's migration flag AND forget every stored
+    /// validator — a genuine logout, so the next sign-in (possibly a
+    /// different account) migrates every country afresh rather than reusing
+    /// this device's previous account's ETags. See `StateSyncService`.
+    func clearHiddenFilmsMigration() {
+        hiddenFilmsMigratedCountries.removeAll()
+        store.removeObject(forKey: kHiddenFilmsMigrated)
+        store.removeObject(forKey: kHiddenFilmsETags)
+        store.removeObject(forKey: kHiddenFilmsLastModified)
+    }
+
+    /// The stored `(ETag, Last-Modified)` pair for `country`'s last known
+    /// hiddenFilms fetch/write, or `(nil, nil)` if this device has never
+    /// synced that country. Fed back as `If-None-Match`/`If-Modified-Since`
+    /// on the next conditional fetch.
+    func hiddenFilmsValidators(country: String) -> (etag: String?, lastModified: String?) {
+        let etags         = store.dictionary(forKey: kHiddenFilmsETags)        as? [String: String] ?? [:]
+        let lastModifieds = store.dictionary(forKey: kHiddenFilmsLastModified) as? [String: String] ?? [:]
+        return (etags[country], lastModifieds[country])
+    }
+
+    /// Store the validators a fetch or write just returned for `country`, so
+    /// the NEXT fetch can take the conditional-GET fast path.
+    func setHiddenFilmsValidators(country: String, etag: String, lastModified: String) {
+        var etags = store.dictionary(forKey: kHiddenFilmsETags) as? [String: String] ?? [:]
+        etags[country] = etag
+        store.set(etags, forKey: kHiddenFilmsETags)
+        var lastModifieds = store.dictionary(forKey: kHiddenFilmsLastModified) as? [String: String] ?? [:]
+        lastModifieds[country] = lastModified
+        store.set(lastModifieds, forKey: kHiddenFilmsLastModified)
     }
 
     func markSwiped() {

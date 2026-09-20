@@ -7,7 +7,7 @@ final class StateSyncServiceTests: XCTestCase {
 
     private var defaults: UserDefaults!
     private var prefs: UserPreferences!
-    private var client: FakeUserStateClient!
+    private var client: FakeHiddenFilmsClient!
     private var userSubject: CurrentValueSubject<UserProfile?, Never>!
 
     override func setUp() {
@@ -15,7 +15,7 @@ final class StateSyncServiceTests: XCTestCase {
         defaults = UserDefaults(suiteName: "StateSyncServiceTests")!
         defaults.removePersistentDomain(forName: "StateSyncServiceTests")
         prefs = UserPreferences(store: defaults)
-        client = FakeUserStateClient()
+        client = FakeHiddenFilmsClient()
         userSubject = CurrentValueSubject(nil)
     }
 
@@ -32,8 +32,6 @@ final class StateSyncServiceTests: XCTestCase {
         )
     }
 
-    /// Poll until `cond` holds — for the server-authoritative path, which
-    /// mirrors state without a push, so there's no `onPut` to await.
     private func waitUntil(_ cond: @escaping () -> Bool, timeout: TimeInterval = 1) async throws {
         let start = Date()
         while !cond() {
@@ -46,59 +44,55 @@ final class StateSyncServiceTests: XCTestCase {
 
     private func login() {
         userSubject.send(UserProfile(
-            displayName: "Test",
-            email: "test@test.com",
-            avatarUrl: nil,
-            provider: "google"
-        ))
+            displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google"))
     }
 
-    // MARK: - Merge on login
+    private let pl = "pl"
+    private let unitedKingdom = Country.all.first { $0.code == "uk" }!
+
+    // MARK: - First sync (per-country migration)
 
     func testLoginSyncsRemoteHiddenIntoEmptyLocal() async throws {
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A", "Film B"])
-        let pushed = expectation(description: "state pushed to server")
-        client.onPut = { _ in pushed.fulfill() }
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Film A", "Film B"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         let sync = makeSyncService()
 
         login()
-        await fulfillment(of: [pushed], timeout: 1)
+        try await waitUntil { self.prefs.hiddenFilms == ["Film A", "Film B"] }
 
-        XCTAssertEqual(prefs.hiddenFilms, ["Film A", "Film B"])
+        XCTAssertTrue(prefs.isHiddenFilmsMigrated(country: pl))
+        XCTAssertEqual(prefs.hiddenFilmsValidators(country: pl).etag, "\"e1\"")
+        XCTAssertTrue(client.hideCalls.isEmpty) // nothing local-only to push
         _ = sync
     }
 
-    func testLoginMergesLocalAndRemoteHidden() async throws {
+    func testLoginMergesLocalAndRemoteHiddenPushingOnlyTheLocalOnlyDiff() async throws {
         prefs.hide("Local Only")
-        client.remoteState = UserSyncState(hiddenFilms: ["Remote Only"])
-        let pushed = expectation(description: "state pushed to server")
-        client.onPut = { _ in pushed.fulfill() }
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Remote Only"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let pushed = expectation(description: "local-only title pushed")
+        client.onHide = { pushed.fulfill() }
         let sync = makeSyncService()
 
         login()
         await fulfillment(of: [pushed], timeout: 1)
+        try await waitUntil { self.prefs.hiddenFilms == ["Local Only", "Remote Only"] }
 
-        XCTAssertEqual(prefs.hiddenFilms, ["Local Only", "Remote Only"])
-        XCTAssertEqual(client.lastPushed?.hiddenFilms, ["Local Only", "Remote Only"])
+        XCTAssertEqual(client.hideCalls.count, 1)
+        XCTAssertEqual(client.hideCalls.first?.country, pl)
+        XCTAssertEqual(client.hideCalls.first?.title, "Local Only")
+        XCTAssertTrue(prefs.isHiddenFilmsMigrated(country: pl))
         _ = sync
     }
 
-    // Regression for the cinema-sync retirement: disabledCinemas used to
-    // round-trip through this exact merge, in both directions (see git
-    // history for the old testLoginSyncsDisabledCinemas). `UserSyncState` no
-    // longer HAS the field, so a server response carrying it (older API
-    // shape) can't be applied even by accident — this proves the local value
-    // survives a login/merge untouched, regardless of what the "server"
-    // fake would have sent under the old shape.
+    // Regression for the cinema-sync retirement: proves a cinema toggle
+    // never reaches the network via ANY of the three write methods, and the
+    // local value survives a login/merge untouched.
     func testMergeNeverTouchesDisabledCinemas() async throws {
         prefs.setDisabledCinemas(["Local Only Cinema"])
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A"])
-        let pushed = expectation(description: "state pushed to server")
-        client.onPut = { _ in pushed.fulfill() }
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Film A"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         let sync = makeSyncService()
 
         login()
-        await fulfillment(of: [pushed], timeout: 1)
+        try await waitUntil { self.prefs.hiddenFilms == ["Film A"] }
 
         XCTAssertEqual(prefs.disabledCinemas, ["Local Only Cinema"])
         _ = sync
@@ -106,68 +100,81 @@ final class StateSyncServiceTests: XCTestCase {
 
     // MARK: - Server authoritative after first sync
 
-    /// Regression: once the one-time migration has run, a later launch must
-    /// MIRROR the server, not blindly union. A film removed on another device
-    /// (server now empty) must not be resurrected from this device's stale
-    /// local copy. The previous union-on-every-login made removals impossible.
     func testServerAuthoritativeAfterFirstSyncDropsStaleLocal() async throws {
-        // Launch 1: migrate from server = ["Film A"], flag flips on.
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A"])
-        let pushed = expectation(description: "first push")
-        client.onPut = { _ in pushed.fulfill() }
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Film A"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         let sync1 = makeSyncService()
         login()
-        await fulfillment(of: [pushed], timeout: 1)
-        XCTAssertEqual(prefs.hiddenFilms, ["Film A"])
-        XCTAssertTrue(prefs.serverStateSynced)
+        try await waitUntil { self.prefs.hiddenFilms == ["Film A"] }
+        XCTAssertTrue(prefs.isHiddenFilmsMigrated(country: pl))
 
-        // Another device removes "Film A" from the account.
-        client.remoteState = UserSyncState(hiddenFilms: [])
-        client.onPut = nil
+        // Another device removed "Film A" from the account.
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"e2\"", lastModified: "Tue, 19 May 2026 13:00:00 GMT"))
 
-        // Launch 2: same persisted prefs (flag still set), a fresh session
-        // restore (publisher starts nil, then the user) — must NOT clear the
-        // flag on the initial nil, and must mirror the now-empty server.
+        // Fresh session restore (publisher starts nil, then the user) — must
+        // NOT clear the flag on the initial nil, and must MIRROR the now-empty
+        // server rather than re-union the stale local copy back in.
         let userSubject2 = CurrentValueSubject<UserProfile?, Never>(nil)
-        let sync2 = StateSyncService(
-            prefs: prefs, userPublisher: userSubject2.eraseToAnyPublisher(), client: client)
-        userSubject2.send(UserProfile(
-            displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google"))
+        let sync2 = StateSyncService(prefs: prefs, userPublisher: userSubject2.eraseToAnyPublisher(), client: client)
+        userSubject2.send(UserProfile(displayName: "Test", email: "test@test.com", avatarUrl: nil, provider: "google"))
 
         try await waitUntil { self.prefs.hiddenFilms.isEmpty }
-        XCTAssertEqual(prefs.hiddenFilms, [])
+        XCTAssertEqual(prefs.hiddenFilmsValidators(country: pl).etag, "\"e2\"")
         _ = (sync1, sync2)
     }
 
-    /// A genuine logout re-arms migration so the next sign-in carries this
-    /// device's current local picks up again.
-    func testLogoutReArmsMigration() async throws {
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A"])
-        let pushed = expectation(description: "first push")
-        client.onPut = { _ in pushed.fulfill() }
+    func testNotModifiedLeavesLocalStateUntouched() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Film A"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         let sync = makeSyncService()
         login()
-        await fulfillment(of: [pushed], timeout: 1)
-        XCTAssertTrue(prefs.serverStateSynced)
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
-        userSubject.send(nil)  // logout
-        try await waitUntil { self.prefs.serverStateSynced == false }
-        XCTAssertFalse(prefs.serverStateSynced)
+        client.fetchResults[pl] = .notModified
+        await sync.reconcileCurrentCountry()
+
+        XCTAssertEqual(prefs.hiddenFilms, ["Film A"])
+        XCTAssertEqual(prefs.hiddenFilmsValidators(country: pl).etag, "\"e1\"") // unchanged — 304 carried no fresh validators to store
+    }
+
+    /// The reconcile a FOREGROUND RESUME triggers is the exact same public
+    /// entry point `ContentView`'s `scenePhase` handler calls — this proves
+    /// the entry point itself does a real reconcile, independent of login.
+    func testReconcileCurrentCountryPicksUpARemoteChangeWithoutARelaunch() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Hidden Elsewhere"], etag: "\"e2\"", lastModified: "Tue, 19 May 2026 13:00:00 GMT"))
+        await sync.reconcileCurrentCountry()
+
+        XCTAssertEqual(prefs.hiddenFilms, ["Hidden Elsewhere"])
+    }
+
+    func testLogoutReArmsMigrationForEveryCountry() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Film A"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+
+        userSubject.send(nil) // logout
+        try await waitUntil { !self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+
+        XCTAssertNil(prefs.hiddenFilmsValidators(country: pl).etag) // validators forgotten too
         _ = sync
     }
 
     func testNoSyncWhenNotLoggedIn() async throws {
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A"])
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Film A"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         let sync = makeSyncService()
 
         try await Task.sleep(for: .milliseconds(200))
 
         XCTAssertTrue(prefs.hiddenFilms.isEmpty)
-        XCTAssertNil(client.lastPushed)
+        XCTAssertTrue(client.fetchedCountries.isEmpty)
         _ = sync
     }
 
-    func testFetchFailurePreservesLocalState() async throws {
+    func testFetchFailurePreservesLocalStateAndLeavesMigrationUnset() async throws {
         prefs.hide("My Film")
         client.shouldFailFetch = true
         let sync = makeSyncService()
@@ -176,29 +183,76 @@ final class StateSyncServiceTests: XCTestCase {
         try await Task.sleep(for: .milliseconds(200))
 
         XCTAssertEqual(prefs.hiddenFilms, ["My Film"])
-        XCTAssertNil(client.lastPushed)
+        XCTAssertFalse(prefs.isHiddenFilmsMigrated(country: pl))
         _ = sync
     }
 
-    // MARK: - disabledCinemas never triggers a push
+    // MARK: - Immediate (non-debounced) writes
 
-    /// The observer StateSyncService starts after login only watches
-    /// `prefs.$hiddenFilms` now — a cinema toggle must never itself produce a
-    /// `putState` call.
-    func testDisablingACinemaNeverSchedulesAPush() async throws {
-        client.remoteState = UserSyncState(hiddenFilms: [])
-        let firstPush = expectation(description: "first-sync push")
-        client.onPut = { _ in firstPush.fulfill() }
+    func testHideFiresImmediatelyNoDebounce() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
         let sync = makeSyncService()
         login()
-        await fulfillment(of: [firstPush], timeout: 1)
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
 
-        client.lastPushed = nil
-        client.onPut = { _ in XCTFail("disabledCinemas must never trigger a server push") }
-        prefs.setDisabledCinemas(["Some Cinema"])
-        try await Task.sleep(for: .milliseconds(600)) // past the 400ms push debounce
+        let pushed = expectation(description: "hide pushed")
+        client.writeResult = HiddenFilmsResult(hiddenFilms: ["New Hide"], etag: "\"e2\"", lastModified: "Tue, 19 May 2026 13:00:00 GMT")
+        client.onHide = { pushed.fulfill() }
+        prefs.hide("New Hide")
 
-        XCTAssertNil(client.lastPushed)
+        // The OLD debounce was 400ms — a push landing well before that proves
+        // there's no debounce left for hiddenFilms.
+        await fulfillment(of: [pushed], timeout: 0.2)
+        XCTAssertEqual(client.hideCalls.last?.title, "New Hide")
+        XCTAssertEqual(prefs.hiddenFilmsValidators(country: pl).etag, "\"e2\"")
+        _ = sync
+    }
+
+    func testUnhideFiresImmediately() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["Was Hidden"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.hiddenFilms == ["Was Hidden"] }
+
+        let pushed = expectation(description: "unhide pushed")
+        client.onUnhide = { pushed.fulfill() }
+        prefs.unhide("Was Hidden")
+
+        await fulfillment(of: [pushed], timeout: 0.2)
+        XCTAssertEqual(client.unhideCalls.last?.title, "Was Hidden")
+        _ = sync
+    }
+
+    func testUnhideAllCallsClearNotIndividualUnhides() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: ["A", "B"], etag: "\"e1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.hiddenFilms == ["A", "B"] }
+
+        let pushed = expectation(description: "clear pushed")
+        client.onClear = { pushed.fulfill() }
+        prefs.unhideAll()
+
+        await fulfillment(of: [pushed], timeout: 0.2)
+        XCTAssertEqual(client.clearCalls, [pl])
+        XCTAssertTrue(client.unhideCalls.isEmpty)
+        _ = sync
+    }
+
+    // MARK: - Country switch
+
+    func testCountrySwitchReconcilesTheNewlySelectedCountry() async throws {
+        client.fetchResults[pl] = .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"pl1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        let sync = makeSyncService()
+        login()
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.pl) }
+        XCTAssertFalse(client.fetchedCountries.contains(unitedKingdom.code))
+
+        client.fetchResults[unitedKingdom.code] = .current(HiddenFilmsResult(hiddenFilms: ["UK Film"], etag: "\"uk1\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
+        prefs.setCountry(unitedKingdom)
+
+        try await waitUntil { self.prefs.isHiddenFilmsMigrated(country: self.unitedKingdom.code) }
+        XCTAssertEqual(prefs.hiddenFilms, ["UK Film"])
         _ = sync
     }
 }
@@ -206,19 +260,44 @@ final class StateSyncServiceTests: XCTestCase {
 // MARK: - Fake
 
 @MainActor
-final class FakeUserStateClient: UserStateClient {
-    var remoteState = UserSyncState(hiddenFilms: [])
-    var lastPushed: UserSyncState?
-    var onPut: ((UserSyncState) -> Void)?
+final class FakeHiddenFilmsClient: HiddenFilmsClient {
+    /// What `fetch` returns, keyed by country — set directly by each test.
+    /// Absent for a country means "empty, fresh" (a fresh 200 with nothing
+    /// hidden), matching a brand-new account.
+    var fetchResults: [String: HiddenFilmsFetchResult] = [:]
     var shouldFailFetch = false
+    var writeResult = HiddenFilmsResult(hiddenFilms: [], etag: "\"w\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT")
 
-    func fetchState() async throws -> UserSyncState {
+    private(set) var fetchedCountries: [String] = []
+    private(set) var hideCalls: [(country: String, title: String)] = []
+    private(set) var unhideCalls: [(country: String, title: String)] = []
+    private(set) var clearCalls: [String] = []
+
+    var onHide: (() -> Void)?
+    var onUnhide: (() -> Void)?
+    var onClear: (() -> Void)?
+
+    func fetch(country: String, etag: String?, lastModified: String?) async throws -> HiddenFilmsFetchResult {
         if shouldFailFetch { throw URLError(.notConnectedToInternet) }
-        return remoteState
+        fetchedCountries.append(country)
+        return fetchResults[country] ?? .current(HiddenFilmsResult(hiddenFilms: [], etag: "\"empty\"", lastModified: "Tue, 19 May 2026 12:00:00 GMT"))
     }
 
-    func putState(_ state: UserSyncState) async throws {
-        lastPushed = state
-        onPut?(state)
+    func hide(country: String, title: String) async throws -> HiddenFilmsResult {
+        hideCalls.append((country, title))
+        defer { onHide?() }
+        return writeResult
+    }
+
+    func unhide(country: String, title: String) async throws -> HiddenFilmsResult {
+        unhideCalls.append((country, title))
+        defer { onUnhide?() }
+        return writeResult
+    }
+
+    func clear(country: String) async throws -> HiddenFilmsResult {
+        clearCalls.append(country)
+        defer { onClear?() }
+        return writeResult
     }
 }

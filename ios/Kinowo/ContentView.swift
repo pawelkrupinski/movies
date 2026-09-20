@@ -7,6 +7,7 @@ struct ContentView: View {
     @EnvironmentObject var catalog: CatalogStore
     @EnvironmentObject var authService: AuthService
     @EnvironmentObject var deepLink: DeepLinkCoordinator
+    @EnvironmentObject var sync: StateSyncService
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.locale) private var locale
     /// iPhone portrait is `.regular` height, landscape `.compact` — so this
@@ -299,6 +300,13 @@ struct ContentView: View {
                 // Re-check on every foreground so travelling between cities
                 // mid-session offers the switch as soon as the app returns.
                 Task { await maybeSuggestCitySwitch() }
+                // hiddenFilms sync has no debounce to flush on backgrounding any
+                // more (every hide/unhide already pushed immediately), but a
+                // REMOTE change — another device, or the web — only reaches this
+                // one on the next reconcile, and login is the only other trigger
+                // for that. Without this, a hide made elsewhere while this app
+                // sat backgrounded would stay invisible until the next cold start.
+                Task { await sync.reconcileCurrentCountry() }
             }
         }
     }
