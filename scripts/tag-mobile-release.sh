@@ -11,10 +11,10 @@
 # successful altool upload) and android.yml (CI, after a successful Play
 # publish) so the two callers can't drift on error handling the way they
 # already had once -- one warned on a failed push, the other let it fail the
-# whole job. A push failure here WARNS rather than exits non-zero: the store
-# upload this tag is only bookkeeping for has already succeeded by the time
-# this runs, and failing the caller's job over a best-effort dashboard tag
-# would report a shipped release as broken.
+# whole job. Neither a failed local tag creation nor a failed push is fatal
+# here: the store upload this tag is only bookkeeping for has already
+# succeeded by the time this runs, and failing the caller's job over a
+# best-effort dashboard tag would report a shipped release as broken.
 set -euo pipefail
 
 platform="${1:?usage: tag-mobile-release.sh <ios|android> <version> [sha]}"
@@ -25,6 +25,9 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$repo_root/scripts/log.sh"
 
 tag="mobile-$platform-$version"
-git -C "$repo_root" tag -f "$tag" "$sha" >/dev/null
+if ! git -C "$repo_root" tag -f "$tag" "$sha" >/dev/null 2>&1; then
+  warn "could not create tag $tag locally — not pushing"
+  exit 0
+fi
 git -C "$repo_root" push -f origin "$tag" >/dev/null 2>&1 \
   || warn "could not push tag $tag — push it manually: git push origin $tag"
