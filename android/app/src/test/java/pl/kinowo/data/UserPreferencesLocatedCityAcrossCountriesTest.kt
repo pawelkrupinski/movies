@@ -2,7 +2,6 @@ package pl.kinowo.data
 
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -49,9 +48,14 @@ class UserPreferencesLocatedCityAcrossCountriesTest {
         prefs.setCity("london")
 
         val states = mutableListOf<Pair<String?, String?>>()
+        // `countryAndCity`, not `combine(selectedCountryCode, selectedCity)`:
+        // the latter re-emits per-upstream (two independent collections of the
+        // same DataStore), which can interleave a torn pairing into `states`
+        // regardless of whether the underlying write was atomic — exactly the
+        // false positive that made this test flaky in CI. See
+        // UserPreferences.countryAndCity's doc comment.
         val collector = launch {
-            combine(prefs.selectedCountryCode, prefs.selectedCity) { country, city -> country to city }
-                .toList(states)
+            prefs.countryAndCity.toList(states)
         }
         // Let the initial (uk, london) snapshot land before writing.
         while (states.isEmpty()) yield()

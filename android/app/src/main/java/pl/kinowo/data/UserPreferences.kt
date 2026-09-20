@@ -146,6 +146,17 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         prefs.remove(KEY_EXPLICIT_PICK)
     }
 
+    /** [selectedCountryCode] and [selectedCity] paired from the SAME
+     *  snapshot. Unlike `combine(selectedCountryCode, selectedCity)`, which
+     *  re-emits whenever EITHER upstream flow delivers — and each is its
+     *  own independent collection of [Context.dataStore], even though both
+     *  derive from it — this can never expose the torn intermediate pairing
+     *  [setCityInCountry] exists to prevent: `combine`'s per-upstream
+     *  re-emission is its own source of tearing, separate from whether the
+     *  underlying `edit {}` write was atomic (it is). */
+    val countryAndCity: Flow<Pair<String?, String?>> =
+        context.dataStore.data.map { it[KEY_COUNTRY] to it[KEY_CITY] }
+
     /** The persisted country code read synchronously, or null if none. Used at
      *  activity attach/wiring time, before any coroutine scope exists, to pick
      *  the API base URL and forced locale. Everywhere else observe the
