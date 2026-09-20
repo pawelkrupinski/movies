@@ -26,6 +26,16 @@ class TestHttpServer(
   // Android `KinowoApi` / iOS `RepertoireStore` exercise the real wire
   // contract — not text/html like the page routes. Defaults to empty.
   jsonRoutes: PartialFunction[String, String] = PartialFunction.empty,
+  // Escape hatch for a route `routes`/`jsonRoutes` can't express: both are
+  // path-to-body maps with no method or header awareness, which is fine for
+  // GET-only fixture pages but not for a REST API that answers differently by
+  // verb (`PUT`/`DELETE /api/me/:country/hidden-films/:title`) or by request
+  // header (a conditional `GET` needing a real 304). Tried BEFORE `routes`/
+  // `jsonRoutes`; returns whether it wrote a response (and so short-circuits
+  // them) — false falls through unchanged. Defaults to never matching, so
+  // every existing caller (a `routes`/`jsonRoutes`-only construction) is
+  // completely unaffected.
+  dynamicRoute: HttpExchange => Boolean = _ => false,
 ) extends AutoCloseable {
   // Stable HTTP-date stamped on every JSON response so clients can capture a
   // `Last-Modified` (and a future conditional-GET test has a value to echo
@@ -81,7 +91,10 @@ class TestHttpServer(
         // CDP-driven spec assert on what header a real browser navigation
         // actually sent, e.g. that `Chrome.tryStart`'s `spoofHeadlessUserAgent`
         // strips "Headless" on the wire (see `CdpUserAgentSpec`).
-        if (path == "/__echo-user-agent") {
+        if (dynamicRoute(exception)) {
+          // handled — dynamicRoute already wrote the response and closed nothing;
+          // `finally exception.close()` below still runs.
+        } else if (path == "/__echo-user-agent") {
           val header = Option(exception.getRequestHeaders.getFirst("User-Agent")).getOrElse("")
           val bytes  = header.getBytes(StandardCharsets.UTF_8)
           exception.getResponseHeaders.add("Content-Type", "text/plain; charset=UTF-8")

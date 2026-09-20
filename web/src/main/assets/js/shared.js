@@ -1,9 +1,9 @@
   // Page-level flags surfaced by the server-rendered template so the JS
   // can decide where to read/write personalization state. When LOGGED_IN
-  // is true the boot path merges localStorage with the server's state and
-  // every subsequent write debounces a PUT to /api/me/state; otherwise
-  // localStorage is canonical and (Phase D) a once-per-day toast nags
-  // anonymous users.
+  // is true the boot path merges localStorage with the server's per-country
+  // hiddenFilms and every subsequent hide/unhide fires its own immediate
+  // per-title request; otherwise localStorage is canonical and (Phase D) a
+  // once-per-day toast nags anonymous users.
 
   // ── Format-filter dropdown ────────────────────────────────────────────────
 
@@ -650,10 +650,15 @@
   _migrate('disabledCinemas');
 
   function getHidden()           { return _lsGet('hiddenFilms')    || []; }
-  function setHidden(titles)     { _lsSet('hiddenFilms',    titles); scheduleServerSync(); }
-  // disabledCinemas is device-local ONLY — no server round-trip at all (see
-  // the "Server sync" section below). `setDisabledCinemas` deliberately does
-  // NOT call `scheduleServerSync()`.
+  // Pure localStorage write. The server round-trip is the CALLER's job now —
+  // each caller already knows exactly which title it hid/unhid (or that it
+  // cleared everything), which is what the granular per-title API needs; see
+  // hideFilmOnServer/unhideFilmOnServer/clearHiddenFilmsOnServer below and
+  // their call sites (hideFilm/restoreFilm/showAllFilms).
+  function setHidden(titles)     { _lsSet('hiddenFilms',    titles); }
+  // disabledCinemas is device-local ONLY — no server round-trip at all, ever
+  // (see the "Server sync" section below, which no longer models this field
+  // in either direction).
   function getDisabledCinemas()  { return _lsGet('disabledCinemas') || []; }
   function setDisabledCinemas(l) { _lsSet('disabledCinemas', l); }
   // `disabledCinemas` is ONE global list (cinema display-names) shared across
@@ -1174,6 +1179,7 @@
     if (!hidden.includes(title)) {
       hidden.push(title);
       setHidden(hidden);
+      hideFilmOnServer(title);
       maybeShowAnonymousNag();  // hide is the other "this will only stick on this device" action
     }
     // Fast path: drop just this card. The full applyFilters() re-walks every
@@ -1188,6 +1194,7 @@
   function restoreFilm(title) {
     preserveScroll(() => {
       setHidden(getHidden().filter(t => t !== title));
+      unhideFilmOnServer(title);
       applyFilters();
       updateNavbar();
     });
@@ -1196,6 +1203,7 @@
   function showAllFilms() {
     preserveScroll(() => {
       setHidden([]);
+      clearHiddenFilmsOnServer();
       applyFilters();
       updateNavbar();
     });
@@ -2169,96 +2177,126 @@
   // ── Server sync for logged-in users ──────────────────────────────────────
   //
   // HIDDEN FILMS ONLY — disabledCinemas stopped being a server-synced field
-  // (it's device-local now, see `setDisabledCinemas`); this whole section no
-  // longer reads or writes it, in either direction. `PUT`/`GET /api/me/state`
-  // themselves still accept/return disabledCinemas (unchanged, for whatever
-  // older app version still sends it), this client just stops using that
-  // half of the payload.
+  // (it's device-local now, see `setDisabledCinemas`) and this section never
+  // touches the legacy `/api/me/state` endpoints at all any more (neither
+  // read nor write) — those stay running, unchanged, purely for whatever
+  // older app build still calls them.
   //
-  // When the user is logged in, localStorage is still the in-page truth
-  // (every read goes there for zero-latency) but every hiddenFilms write also
-  // debounces a PUT to /api/me/state so the server stays in sync.
+  // The granular per-country API (`GET`/`PUT`/`DELETE
+  // /api/me/:country/hidden-films(/:title)`) replaces the old single bulk
+  // PUT. Each hide/unhide is its own idempotent per-title request, fired
+  // IMMEDIATELY from the call site that already knows which title changed
+  // (hideFilm/restoreFilm/showAllFilms) — there is no debounce, because
+  // there is nothing left to batch: the old 400ms window existed only to
+  // fold a burst of toggles into one shared PUT body, and a per-title
+  // request has no body to share.
   //
-  // The boot reconcile is two-phase, gated by the `serverStateSynced` flag:
+  // The boot/country-switch reconcile is two-phase PER COUNTRY, gated by a
+  // per-country "migrated" flag:
   //
-  //   • FIRST reconcile after a login (flag unset): union local + server and
-  //     push the union, so anything the user set while anonymous is migrated
-  //     up to the account ("migrate on page entry"). Then set the flag.
-  //   • EVERY reconcile after that (flag set): the SERVER is the source of
-  //     truth — replace localStorage with the server's set. This is what
-  //     makes a removal (un-hide a film) STICK: a blind union on every page
-  //     load could only ever add, so it resurrected anything you'd just
-  //     removed on the next navigation.
+  //   • FIRST reconcile for a country (flag unset): union local + server,
+  //     then PUT every LOCAL-ONLY title individually (there is no bulk
+  //     write any more) so anything set while anonymous, or on another
+  //     country's session, migrates up. Flag set.
+  //   • EVERY reconcile after that (flag set): the SERVER is authoritative
+  //     for that country — a 200 replaces localStorage with its set (what
+  //     makes a removal STICK: a blind union could only ever add, so it
+  //     resurrected anything just removed on the next navigation); a 304
+  //     means nothing changed, so localStorage — already current — is left
+  //     alone.
   //
-  // The flag is cleared whenever a page renders anonymous (logout / expired
-  // session), so the next login migrates this device's current picks afresh.
-  const SERVER_SYNCED_KEY = 'serverStateSynced';
+  // A per-country ETag/Last-Modified is cached so the 304 path actually
+  // fires (both here and on a country switch), and a successful WRITE also
+  // refreshes them from its own response headers — no need to wait for the
+  // next fetch to warm the cache.
+  //
+  // Every per-country flag is cleared whenever a page renders anonymous
+  // (logout / expired session), so the next login migrates this device's
+  // current picks afresh, exactly as the old single flag did.
 
-  let _serverSyncTimer = 0;
-  function scheduleServerSync() {
+  function currentCountryCode() {
+    const city = (typeof KINOWO_CATALOG !== 'undefined' ? KINOWO_CATALOG.cities : [])
+      .find(c => c.slug === CURRENT_CITY);
+    return city ? city.country : 'pl';
+  }
+
+  function _hiddenFilmsSyncedKey(country)     { return 'hiddenFilmsSynced:' + country; }
+  function _hiddenFilmsEtagKey(country)       { return 'hiddenFilmsEtag:' + country; }
+  function _hiddenFilmsLastModifiedKey(country) { return 'hiddenFilmsLastModified:' + country; }
+
+  function _hiddenFilmsUrl(country, title) {
+    const base = mountPrefix() + '/api/me/' + country + '/hidden-films';
+    return title === undefined ? base : base + '/' + encodeURIComponent(title);
+  }
+
+  // A successful write's response is the SAME shape a fetch's 200 is (see
+  // UserStateController.respondWithHiddenFilms server-side) — cache its
+  // validators so the next fetch/country-switch can 304 off it.
+  function _storeHiddenFilmsValidators(country, resp) {
+    try {
+      const etag = resp.headers.get('ETag');
+      const lastModified = resp.headers.get('Last-Modified');
+      if (etag) localStorage.setItem(_hiddenFilmsEtagKey(country), etag);
+      if (lastModified) localStorage.setItem(_hiddenFilmsLastModifiedKey(country), lastModified);
+    } catch {}
+  }
+
+  function hideFilmOnServer(title, country) {
     if (!isLoggedIn()) return;
-    clearTimeout(_serverSyncTimer);
-    // 400ms — long enough to batch a burst of toggles (clicking through
-    // 5 stars rapidly produces one PUT), short enough that closing the
-    // tab right after a single click still gets the write through.
-    _serverSyncTimer = setTimeout(pushStateToServer, 400);
+    country = country || currentCountryCode();
+    fetch(_hiddenFilmsUrl(country, title), { method: 'PUT' })
+      .then(resp => { if (resp.ok) _storeHiddenFilmsValidators(country, resp); })
+      .catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
 
-  function pushStateToServer(opts) {
-    _serverSyncTimer = 0;
-    fetch(mountPrefix() + '/api/me/state', {
-      method:  'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      // `keepalive` lets the request outlive an unloading document so the
-      // pagehide flush below isn't dropped mid-navigation.
-      keepalive: !!(opts && opts.keepalive),
-      // disabledCinemas deliberately omitted — device-local only, see above.
-      // The legacy PUT is a per-field partial update server-side, so leaving
-      // the key out entirely (not sending an empty array) keeps whatever the
-      // server already has for it, rather than clearing it.
-      body:    JSON.stringify({
-        hiddenFilms: getHidden()
-      })
-    }).catch(() => { /* offline / 401 — localStorage still has the write */ });
+  function unhideFilmOnServer(title, country) {
+    if (!isLoggedIn()) return;
+    country = country || currentCountryCode();
+    fetch(_hiddenFilmsUrl(country, title), { method: 'DELETE' })
+      .then(resp => { if (resp.ok) _storeHiddenFilmsValidators(country, resp); })
+      .catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
 
-  // Flush a still-pending debounced sync synchronously as the page goes
-  // away. Without this, a toggle made <400ms before a navigation (clicking a
-  // film card right after hiding one) would never reach the server, and the
-  // next page — now server-authoritative — would overwrite it with the stale
-  // remote state. Runs on pagehide and on tab-hide (the reliable signals;
-  // beforeunload is unreliable on mobile).
-  function flushServerSync() {
-    if (!isLoggedIn() || !_serverSyncTimer) return;
-    clearTimeout(_serverSyncTimer);
-    pushStateToServer({ keepalive: true });
+  function clearHiddenFilmsOnServer(country) {
+    if (!isLoggedIn()) return;
+    country = country || currentCountryCode();
+    fetch(_hiddenFilmsUrl(country), { method: 'DELETE' })
+      .then(resp => { if (resp.ok) _storeHiddenFilmsValidators(country, resp); })
+      .catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
-  window.addEventListener('pagehide', flushServerSync);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flushServerSync();
-  });
 
   async function bootMergeFromServer() {
+    const country = currentCountryCode();
     if (!isLoggedIn()) {
       // Anonymous (incl. just-logged-out): re-arm migration so the next
       // login carries this device's current local picks up exactly once.
-      try { localStorage.removeItem(SERVER_SYNCED_KEY); } catch {}
+      try { localStorage.removeItem(_hiddenFilmsSyncedKey(country)); } catch {}
       return;
     }
     try {
-      const resp = await fetch(mountPrefix() + '/api/me/state', { headers: { 'Accept': 'application/json' } });
+      const headers = { 'Accept': 'application/json' };
+      const etag = localStorage.getItem(_hiddenFilmsEtagKey(country));
+      const lastModified = localStorage.getItem(_hiddenFilmsLastModifiedKey(country));
+      if (etag) headers['If-None-Match'] = etag;
+      else if (lastModified) headers['If-Modified-Since'] = lastModified;
+
+      const resp = await fetch(_hiddenFilmsUrl(country), { headers });
+      if (resp.status === 304) return; // proven unchanged — localStorage is already current
       if (!resp.ok) return;
-      const remote     = await resp.json();
-      const firstSync  = localStorage.getItem(SERVER_SYNCED_KEY) !== '1';
+
+      _storeHiddenFilmsValidators(country, resp);
+      const remote    = await resp.json();
+      const firstSync = localStorage.getItem(_hiddenFilmsSyncedKey(country)) !== '1';
 
       if (firstSync) {
+        const localOnly = getHidden().filter(t => !(remote.hiddenFilms || []).includes(t));
         const union = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
         _lsSet('hiddenFilms', union(getHidden(), remote.hiddenFilms));
-        try { localStorage.setItem(SERVER_SYNCED_KEY, '1'); } catch {}
-        pushStateToServer();   // persist the migrated union
+        try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
+        localOnly.forEach(title => hideFilmOnServer(title, country)); // migrate up — no bulk write exists any more
       } else {
         // Server authoritative — mirror it locally so removals propagate.
-        // `_lsSet` (not setHidden/…) avoids re-triggering a redundant push.
+        // `_lsSet` (not setHidden) avoids re-triggering a write back out.
         const fromServer = srv => (srv || []).slice().sort();
         _lsSet('hiddenFilms', fromServer(remote.hiddenFilms));
       }

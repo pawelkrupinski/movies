@@ -4,6 +4,7 @@ import services.movies.SingleCountryNormalizer.{titleNormalizer, given}
 
 import testsupport.TestMessages.given
 
+import com.sun.net.httpserver.HttpExchange
 import models.{CinemaCityWroclavia, CinemaShowing, Helios, MovieRecord, Poznan, Showtime, SourceData}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
@@ -183,9 +184,45 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // `disabledCinemas` here is a SENTINEL the client must never adopt — it
       // stopped being a server-synced field, so a non-empty, distinctive value
       // makes any accidental pull-in visible rather than coincidentally
-      // matching an empty local default.
+      // matching an empty local default. Nothing in shared.js reads
+      // `/api/me/state` any more (hiddenFilms moved to the granular API below;
+      // disabledCinemas never round-trips at all), so this route is kept only
+      // for the disabledCinemas tests' own "no PUT fires here" negative check.
       val userStateJson =
         """{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"]}"""
+
+      // `GET/PUT/DELETE /api/me/pl/hidden-films(/:title)` — the granular,
+      // per-country API `bootMergeFromServer`/`hideFilmOnServer`/
+      // `unhideFilmOnServer`/`clearHiddenFilmsOnServer` call. `routes`/
+      // `jsonRoutes` are pure path→body maps with no method awareness, so
+      // this needs `TestHttpServer`'s `dynamicRoute` escape hatch instead.
+      // Deliberately STATIC, like `userStateJson` above: always answers
+      // `["Film A"]` regardless of what a PUT/DELETE claims, the same
+      // "fixture doesn't track real mutations" shape the old `/api/me/state`
+      // fixture already used — the tests below assert on LOCAL state plus
+      // which URL/method a request hit, never on the fake server's own
+      // constancy.
+      def hiddenFilmsDynamicRoute(exchange: HttpExchange): Boolean = {
+        val path   = exchange.getRequestURI.getPath
+        val method = exchange.getRequestMethod
+        val Bucket = "/api/me/pl/hidden-films"
+        def writeJson(status: Int, body: String): Unit = {
+          val bytes = body.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+          exchange.getResponseHeaders.add("Content-Type", "application/json; charset=UTF-8")
+          exchange.getResponseHeaders.add("ETag", "\"fixture-etag\"")
+          exchange.getResponseHeaders.add("Last-Modified", "Tue, 19 May 2026 12:00:00 GMT")
+          exchange.sendResponseHeaders(status, bytes.length.toLong)
+          val os = exchange.getResponseBody
+          try os.write(bytes) finally os.close()
+        }
+        (method, path) match {
+          case ("GET", Bucket)                                  => writeJson(200, """{"hiddenFilms":["Film A"]}"""); true
+          case ("PUT", p) if p.startsWith(Bucket + "/")          => writeJson(200, """{"hiddenFilms":["Film A"]}"""); true
+          case ("DELETE", p) if p.startsWith(Bucket + "/")       => writeJson(200, """{"hiddenFilms":[]}"""); true
+          case ("DELETE", Bucket)                                => writeJson(200, """{"hiddenFilms":[]}"""); true
+          case _                                                 => false
+        }
+      }
 
       // The global-corpus /debug page (not city-scoped) — a few corpus rows to
       // populate the main #t table behind the staging table under test.
@@ -295,7 +332,8 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
               .getOrElse("")
         },
         // /debug/queue is JSON the page fetches and parses; served as such.
-        jsonRoutes = { case "/debug/queue" => debugQueueJson }
+        jsonRoutes = { case "/debug/queue" => debugQueueJson },
+        dynamicRoute = hiddenFilmsDynamicRoute
       )
     }
   }
@@ -421,18 +459,22 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *
    *  5s for the same reason the other waits here carry one: it spans a fresh
    *  document plus the chained fetches its boot makes. */
+  // hiddenFilms moved off `/api/me/state` onto the granular, per-country
+  // `/api/me/pl/hidden-films` — this fixture's city (Poznań) resolves to
+  // country "pl" via `KINOWO_CATALOG`. The synced flag is per-country too
+  // (`hiddenFilmsSynced:pl`), replacing the old single `serverStateSynced`.
   private def awaitOwnReconcile(page: CdpPage): Unit = {
     clearLocalStorage(page)
     page.reload()
     // THIS document's own fetch, not merely a value some document wrote.
     // `performance` entries are per-document and start empty after a navigation,
-    // so a `/api/me/state` resource entry here is proof that the boot now
-    // running went and asked — which localStorage, shared across every tab on
-    // this origin, can never be. The two state reads then confirm the answer
+    // so a `/api/me/pl/hidden-films` resource entry here is proof that the boot
+    // now running went and asked — which localStorage, shared across every tab
+    // on this origin, can never be. The two state reads then confirm the answer
     // landed.
     page.waitFor("performance.getEntriesByType('resource')" +
-                 ".some(function (r) { return r.name.indexOf('/api/me/state') !== -1; }) && " +
-                 "localStorage.getItem('serverStateSynced') === '1' && " +
+                 ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films') !== -1; }) && " +
+                 "localStorage.getItem('hiddenFilmsSynced:pl') === '1' && " +
                  "getHidden().indexOf('Film A') !== -1",
                  timeoutMs = 5000)
   }
@@ -460,7 +502,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
       // Re-arm migration as a fresh login would, plus an anonymous local pick.
-      page.eval("localStorage.removeItem('serverStateSynced')")
+      page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
       page.eval("_lsSet('hiddenFilms', ['Local Z'])")
       page.reload()
       // WAIT FOR BOTH HALVES OF THE UNION, not just the local one. The old
@@ -477,12 +519,51 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // the condition was already right, the budget was not. Matches the 5s the
       // sibling waits in this file already use for post-login server state.
       page.waitFor(
-        "localStorage.getItem('serverStateSynced') === '1' && " +
+        "localStorage.getItem('hiddenFilmsSynced:pl') === '1' && " +
           "getHidden().indexOf('Local Z') !== -1 && getHidden().indexOf('Film A') !== -1",
         timeoutMs = 5000)
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")  // pulled from the server
       hidden should include ("Local Z") // migrated up from this device
+    }
+  }
+
+  // ── hiddenFilms writes are immediate, per-title, no debounce ─────────────
+  //
+  // Regression for the granular-API migration: the old bulk PUT batched a
+  // burst of toggles into one 400ms-debounced request. The new per-title
+  // endpoint has nothing to batch — hideFilmOnServer/unhideFilmOnServer/
+  // clearHiddenFilmsOnServer fire as soon as they're called.
+
+  it should "PUT to the per-title endpoint immediately on hide — well under the old 400ms debounce" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      page.eval("hideFilmOnServer('New Hide')")
+      // 150ms: comfortably under the retired 400ms debounce window, so this
+      // only passes if the request fires immediately rather than waiting.
+      Thread.sleep(150)
+      val hit = page.evalString(
+        "performance.getEntriesByType('resource')" +
+          ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/New%20Hide') !== -1; }).toString()")
+      hit shouldBe "true"
+    }
+  }
+
+  it should "hit the bare bucket URL (no trailing /title) on clear-all" in {
+    onLoggedInIndex { page =>
+      // awaitOwnReconcile's own boot GET already hits this exact bucket URL, so
+      // isolating clearHiddenFilmsOnServer's OWN request needs a before/after
+      // count, not mere presence — same shape as the disabledCinemas "never
+      // PUT" test above.
+      awaitOwnReconcile(page)
+      def bucketHits(): String = page.evalString(
+        "performance.getEntriesByType('resource')" +
+          ".filter(function (r) { return r.name.slice(-'/api/me/pl/hidden-films'.length) === '/api/me/pl/hidden-films'; })" +
+          ".length.toString()")
+      val before = bucketHits()
+      page.eval("clearHiddenFilmsOnServer()")
+      Thread.sleep(150)
+      bucketHits().toInt shouldBe (before.toInt + 1)
     }
   }
 
@@ -503,7 +584,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // land on the "already synced" branch, which pushes nothing on its own,
       // so the baseline below is never chasing that unrelated PUT.
       page.reload()
-      page.waitFor("localStorage.getItem('serverStateSynced') === '1' && getHidden().indexOf('Film A') !== -1",
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
                    timeoutMs = 5000)
       val before = page.evalString(
         "performance.getEntriesByType('resource')" +
@@ -530,7 +611,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Second reconcile is the AUTHORITATIVE-REPLACE phase for hiddenFilms —
       // confirm disabledCinemas still isn't touched even there.
       page.reload()
-      page.waitFor("localStorage.getItem('serverStateSynced') === '1' && getHidden().indexOf('Film A') !== -1",
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
                    timeoutMs = 5000)
       val disabled = page.evalString("JSON.stringify(getDisabledCinemas())")
       disabled should include ("Device Pick")
