@@ -15,6 +15,16 @@ import java.time.Instant
 
 class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
+  // Every action now routes through `SignedInUser` (see `signedInUserId`),
+  // not just a bare session `userId` claim — so a test session names a real
+  // row here, or the request 401s regardless of what the session carries.
+  // Fields beyond `id` are arbitrary; nothing here asserts on them.
+  private def testUser(id: String): models.User = models.User(
+    id = id, provider = "google", providerSub = s"G-$id",
+    email = Some(s"$id@example.com"), displayName = Some(id), avatarUrl = None,
+    createdAt = Instant.now(), lastSeenAt = Instant.now()
+  )
+
   private def fixture(
     prefilled:       Option[UserState] = None,
     changeTimeCache: UserChangeTimeCache = NoUserChangeTimeCache,
@@ -22,9 +32,10 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     legacyMetrics:   LegacyUserStateMetrics = new LegacyUserStateMetrics(new PrometheusRegistry(), "pl")
   ): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
     val userRepository  = new InMemoryUserRepository
+    userRepository.upsert(testUser("u1")) // the suite's default signed-in identity
     prefilled.foreach(stateRepository.upsert)
     val accountDeletion = new AccountDeletion(userRepository, stateRepository)
-    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache, legacyMetrics), stateRepository, userRepository)
+    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache, legacyMetrics, userRepository), stateRepository, userRepository)
   }
 
   /** Counts `find` calls so a fast-path test can prove storage was never
@@ -51,13 +62,34 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe UNAUTHORIZED
   }
 
+  // Regression: before 2026-09-20 this controller trusted the session
+  // cookie's bare `userId` claim directly, so a session `/api/me` had
+  // already rejected — user row deleted, or session revoked — could still
+  // read and write this endpoint's state indefinitely. Routing through
+  // `SignedInUser` (`signedInUserId`) closes that gap; these two prove it.
+  it should "401 a session whose user row no longer exists" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.get()(FakeRequest("GET", "/api/me/state").withSession("userId" -> "ghost"))
+    status(result) shouldBe UNAUTHORIZED
+  }
+
+  it should "401 a session revoked since it was issued (sessionVersion mismatch)" in {
+    val (ctl, _, userRepository) = fixture()
+    userRepository.upsert(userRepository.findById("u1").value.copy(sessionVersion = 1))
+    // The session itself still names sessionVersion 0 — as if issued before
+    // the revoking "sign out everywhere" call bumped the row to 1.
+    val request = FakeRequest("GET", "/api/me/state").withSession("userId" -> "u1", "sessionVersion" -> "0")
+    status(ctl.get()(request)) shouldBe UNAUTHORIZED
+  }
+
   // This endpoint holds one person's hidden films and disabled cinemas, and it
   // used to carry no `Cache-Control` at all — a response with none is
   // HEURISTICALLY cacheable, so nothing but luck kept a copy out of a browser or
   // a proxy. It matters more now than it did: the HTML pages stopped rendering
   // anybody, which makes these endpoints the entire per-user surface.
   it should "forbid anything keeping a copy of one person's state" in {
-    val (ctl, _, _) = fixture()
+    val (ctl, _, userRepository) = fixture()
+    userRepository.upsert(testUser("alice"))
     val result = ctl.get()(FakeRequest("GET", "/api/me/state").withSession("userId" -> "alice"))
 
     status(result) shouldBe OK
@@ -65,7 +97,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "return an empty state for a user with no stored row" in {
-    val (ctl, _, _) = fixture()
+    val (ctl, _, userRepository) = fixture()
+    userRepository.upsert(testUser("newbie"))
     val request  = FakeRequest("GET", "/api/me/state").withSession("userId" -> "newbie")
     val result   = ctl.get()(request)
     status(result)              shouldBe OK
@@ -135,7 +168,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "forbid anything keeping a copy of one person's state" in {
-    val (ctl, _, _) = fixture()
+    val (ctl, _, userRepository) = fixture()
+    userRepository.upsert(testUser("alice"))
     val result = callHiddenFilms(ctl, userId = "alice")
     header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
   }
@@ -502,12 +536,9 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "remove the user + state rows AND clear the session" in {
     val initialState = UserState("u1", Set("Conclave"), Set.empty, Instant.now())
+    // `fixture` already seeds "u1" (needed for the request itself to pass
+    // `SignedInUser`) — this just confirms deletion actually removes it.
     val (ctl, stateRepository, userRepository) = fixture(Some(initialState))
-    userRepository.upsert(models.User(
-      id = "u1", provider = "google", providerSub = "G-1",
-      email = Some("a@x"), displayName = Some("Alice"), avatarUrl = None,
-      createdAt = Instant.now(), lastSeenAt = Instant.now()
-    ))
 
     val request = FakeRequest("DELETE", "/api/me").withSession("userId" -> "u1", "extra" -> "leftover")
     val result  = ctl.deleteAccount()(request)

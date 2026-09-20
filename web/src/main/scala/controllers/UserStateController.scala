@@ -4,7 +4,7 @@ import models.UserState
 import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc._
 import services.metrics.LegacyUserStateMetrics
-import services.users.{AccountDeletion, UserChangeTimeCache, UserStateRepository}
+import services.users.{AccountDeletion, UserChangeTimeCache, UserRepository, UserStateRepository}
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -41,16 +41,28 @@ class UserStateController(
   userStateRepository:   UserStateRepository,
   accountDeletion:      AccountDeletion,
   userChangeTimeCache:  UserChangeTimeCache,
-  legacyUserStateMetrics: LegacyUserStateMetrics
+  legacyUserStateMetrics: LegacyUserStateMetrics,
+  userRepository:       UserRepository
 ) extends AbstractController(cc) {
   import UserStateController._
+
+  // The signed-in visitor's id, or `None` for anonymous AND for a session
+  // revoked since it was issued — routes every action here through the SAME
+  // check `/api/me` uses (`SignedInUser`), rather than trusting the session
+  // cookie's bare `userId` claim on its own. Trusting the claim alone (as
+  // this controller did before 2026-09-20) meant a session `/api/me` had
+  // already rejected — revoked, or its user row deleted — could still read
+  // and write this endpoint's state indefinitely; `SignedInUser` is the one
+  // place that knows how to tell a still-valid cookie from a stale one.
+  private def signedInUserId(request: RequestHeader): Option[String] =
+    SignedInUser(request, userRepository).map(_.id)
 
   // Every action here answers about ONE person, so every answer says so — see
   // `PerUserResponse`. Since the HTML pages stopped carrying a signed-in visitor
   // at all, these endpoints and `/api/me` are the ENTIRE per-user surface, and a
   // cached copy of one is the whole privacy failure the split was meant to end.
   def get(): Action[AnyContent] = Action { request =>
-    PerUserResponse(request.session.get("userId") match {
+    PerUserResponse(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         val state = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
@@ -87,7 +99,7 @@ class UserStateController(
    *  through to `userStateRepository`.
    */
   def hiddenFilms(country: String): Action[AnyContent] = Action { request =>
-    PerUserResponse((request.session.get("userId"), models.Country.byCode(country)) match {
+    PerUserResponse((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)             => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None)       => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(country)) =>
@@ -141,7 +153,7 @@ class UserStateController(
    *  `Last-Modified` — so a client that just wrote doesn't need a follow-up
    *  GET to learn its new validators. */
   def hideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
-    PerUserResponse((request.session.get("userId"), models.Country.byCode(country)) match {
+    PerUserResponse((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
@@ -154,7 +166,7 @@ class UserStateController(
    *  Idempotent: unhiding a title that was never hidden (or already unhidden)
    *  is a no-op success. See `hideFilm` for the encoding note and response shape. */
   def unhideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
-    PerUserResponse((request.session.get("userId"), models.Country.byCode(country)) match {
+    PerUserResponse((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
@@ -168,7 +180,7 @@ class UserStateController(
    *  narrower than "clear everything", matching how `hiddenFilms()` reads
    *  only one country at a time. */
   def clearHiddenFilms(country: String): Action[AnyContent] = Action { request =>
-    PerUserResponse((request.session.get("userId"), models.Country.byCode(country)) match {
+    PerUserResponse((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
@@ -205,7 +217,7 @@ class UserStateController(
     // evidence SOMETHING out there still hits this URL, which is exactly what
     // decides whether it's safe to delete. See LegacyUserStateMetrics.
     legacyUserStateMetrics.recordPutCall()
-    PerUserResponse(request.session.get("userId") match {
+    PerUserResponse(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         // PUT is a partial update over the stored row (see fromJson): fields
@@ -232,7 +244,7 @@ class UserStateController(
    *  with the session cleared. The response carries no body so a fetch
    *  call doesn't need a parser. */
   def deleteAccount(): Action[AnyContent] = Action { request =>
-    PerUserResponse(request.session.get("userId") match {
+    PerUserResponse(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
         accountDeletion.delete(userId)

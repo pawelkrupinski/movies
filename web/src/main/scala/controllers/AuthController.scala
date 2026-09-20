@@ -339,6 +339,26 @@ class AuthController(
     })
   }
 
+  /** Sign out every OTHER session for this account — every cookie issued
+   *  before this call, on every device and every deployment, since
+   *  `sessionVersion` lives on the one shared `users` row every deployment's
+   *  `SignedInUser` check reads (see its doc comment). THIS request's own
+   *  session is re-established against the bumped row in the same response,
+   *  so the caller stays signed in here — only the other copies stop
+   *  resolving. Unlike [[logout]], this needs no sibling-domain hop: the
+   *  version lives on the row, not the cookie, so bumping it once is already
+   *  visible to every deployment's next check. */
+  def revokeSessions(): Action[AnyContent] = Action { request =>
+    PerUserResponse(SignedInUser(request, userRepository) match {
+      case None => Unauthorized(Json.obj("error" -> "not logged in"))
+      case Some(user) =>
+        val revoked = user.copy(sessionVersion = user.sessionVersion + 1)
+        userRepository.upsert(revoked)
+        Ok(Json.obj("sessionVersion" -> revoked.sessionVersion))
+          .withSession(SignedInUser.establish(request.session, revoked))
+    })
+  }
+
   /** Sign out — HERE, and on the other domain too.
    *
    *  The pairing at sign-in establishes a session on both domains, so clearing

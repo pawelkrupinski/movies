@@ -669,4 +669,41 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
   }
 
+  // ── POST /auth/sessions/revoke ("sign out everywhere") ──────────────────
+
+  "POST /auth/sessions/revoke" should "401 anonymous requests" in {
+    val (ctl, _, _) = fixture()
+    status(ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke"))) shouldBe UNAUTHORIZED
+  }
+
+  it should "bump the account's sessionVersion" in {
+    val (ctl, repository, _) = fixture()
+    val email = signedIn(repository, "alice@example.com")
+    ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke").withSession("userId" -> email))
+    repository.findById(email).value.sessionVersion shouldBe 1
+  }
+
+  // The whole point: an OLDER cookie (still naming sessionVersion 0, as if
+  // issued before this call) must stop resolving once the row's version has
+  // moved on — otherwise "sign out everywhere" only ever signs out the one
+  // request that asked for it.
+  it should "make every OTHER session naming the pre-bump version fail SignedInUser afterwards" in {
+    val (ctl, repository, _) = fixture()
+    val email = signedIn(repository, "alice@example.com")
+    ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke").withSession("userId" -> email))
+
+    val staleSession = play.api.mvc.Session(Map("userId" -> email, "sessionVersion" -> "0"))
+    SignedInUser(FakeRequest().withSession(staleSession.data.toSeq*), repository) shouldBe empty
+  }
+
+  it should "re-establish THIS request's own session against the bumped version, so the caller stays signed in" in {
+    val (ctl, repository, _) = fixture()
+    val email = signedIn(repository, "alice@example.com")
+    val result = ctl.revokeSessions()(FakeRequest("POST", "/auth/sessions/revoke").withSession("userId" -> email))
+
+    status(result) shouldBe OK
+    val freshSession = session(result)
+    SignedInUser(FakeRequest().withSession(freshSession.data.toSeq*), repository).value.id shouldBe email
+  }
+
 }
