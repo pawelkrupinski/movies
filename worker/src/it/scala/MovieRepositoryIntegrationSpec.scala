@@ -909,40 +909,36 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
       // event plus one screenings delete per dropped venue is `1 + Dropped` raw events, each
       // either bought its own apply or rode one.
       //
-      // WIDER budget than the single-cursor burst test above (150s, not 60s): this settle
-      // spans TWO cursors (movies + screenings) racing the same shared apply thread, and unlike
-      // the burst test's tight write loop (which overlaps enough writes to buy real coalescing —
-      // "18 re-projection(s), 62 event(s) coalesced" for 80 writes), `updateIfPresent`'s 10
-      // screenings deletes are issued ONE AT A TIME on the calling thread, each waiting on its
-      // own round trip before the next fires — so each one's change event typically arrives
-      // after the PRIOR one's apply already finished and removed the film from
-      // `sideApplyPending`, buying this test little to no cross-event coalescing. Up to 11
-      // genuinely separate blocking stitch-reads, serialized through the one shared apply
+      // `updateIfPresent`'s 10 screenings deletes are issued ONE AT A TIME on the calling
+      // thread, each waiting on its own round trip before the next fires — so each one's change
+      // event typically arrives after the PRIOR one's apply already finished and removed the
+      // film from `sideApplyPending`, buying this test little to no cross-event coalescing. Up
+      // to 11 genuinely separate blocking stitch-reads, serialized through the one shared apply
       // thread, is the expected shape here, not a bug.
       //
       // Flaked at 60s TWICE (Main CI 2026-09-16 and 2026-09-18: "only 1 of 11 event(s) were
-      // accounted for"), reproduced 0 times locally at any budget both times, and a THIRD time
-      // at 150s (2026-09-19) — that run's log named the actual cause:
-      // `services.movies.SideCollectionWatch - screenings change stream ended (Failed to
-      // decode 'ChangeStreamDocument'. Decoding 'fullDocument' errored with: Missing field:
-      // filmId)`. This test's OWN cursor never produced a malformed document — the two SIBLING
-      // tests just above ("resume the change stream"/"resume the screenings change stream")
-      // used to run their `persistResumeToken = true` cursors against the SAME SHARED `kinowo`
-      // database this test also uses, watching the WHOLE `movies`/`screenings` collections with
-      // no server-side schema filter. Under `IntegrationTest / parallelExecution := true` (many
-      // spec CLASSES run concurrently), ANY sibling spec's write to those shared collections
-      // rang those two cursors too, and a shape they didn't expect broke their decode — which
-      // then degraded the shared local `mongod` (repeated reopen/backoff cycles) enough to
-      // produce the `RatingCadenceStore`/`UptimeSync` `IllegalStateException: state should be:
-      // open` and `MongoStagingFolder` `WriteConflict`s seen in the SAME run, none of which
-      // share a line of code with any of these three tests. FIXED (2026-09-19): the two sibling
-      // resume tests now run against their own `IsolatedMongoDatabase` (matching the "drop
-      // invalidates a persisted token" test below, which was isolated the same way earlier for
-      // the same reason) — see the [[ChangeStreamDemand]] doc and
+      // accounted for"), reproduced 0 times locally at any budget both times, which looked like
+      // a demand-window bug and got the settle budget widened twice chasing it (20s -> 60s ->
+      // 150s). The real cause (630eba965, 2026-09-19): two SIBLING tests just above ("resume the
+      // change stream"/"resume the screenings change stream") ran their `persistResumeToken =
+      // true` cursors against the SAME SHARED `kinowo` database this test also uses, watching
+      // the WHOLE `movies`/`screenings` collections with no server-side schema filter. Under
+      // `IntegrationTest / parallelExecution := true` (many spec CLASSES run concurrently), ANY
+      // sibling spec's write to those shared collections rang those two cursors too, and a shape
+      // they didn't expect broke their decode — which then degraded the shared local `mongod`
+      // (repeated reopen/backoff cycles) enough to produce the `RatingCadenceStore`/`UptimeSync`
+      // `IllegalStateException: state should be: open` and `MongoStagingFolder` `WriteConflict`s
+      // seen in the SAME runs, none of which share a line of code with any of these three tests.
+      // FIXED: the two sibling resume tests now run against their own `IsolatedMongoDatabase`
+      // (matching the "drop invalidates a persisted token" test below, which was isolated the
+      // same way earlier for the same reason) — see the [[ChangeStreamDemand]] doc and
       // `ChangeStreamDemandSpec`/`MovieChangeStreamSpec` for confirmation the demand-window
-      // release bookkeeping itself was never the bug.
+      // release bookkeeping itself was never the bug. With the real cause fixed, this path
+      // settles in ~2s (630eba965's own verification run: "2 re-projection(s)... 11 of 11
+      // accounted for"), so the budget is back down to 20s — real headroom over that, not 150s
+      // of slack for a genuine regression to hide behind.
       val TotalEvents = 1 + Dropped
-      settleUntil(TotalEvents, budgetMs = 150000)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
+      settleUntil(TotalEvents, budgetMs = 20000)(dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount)
       val accounted = dispatched.get() + movieSink.coalescedCount + screeningsSink.coalescedCount
       info(s"1 movies write + $Dropped screenings deletes (one logical slot-drop pass): " +
            s"${dispatched.get()} re-projection(s), ${movieSink.coalescedCount} movies-cursor + " +
