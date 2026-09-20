@@ -99,6 +99,9 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_cache_entries",
     "kinowo_web_cache_hit_ratio",
     "kinowo_web_cache_evictions_total",
+    // Retirement-readiness signal for the legacy PUT /api/me/state — when it
+    // was last called, by country. See LegacyUserStateMetrics.
+    "kinowo_web_legacy_userstate_put_last_called_seconds",
     "kinowo_uptime_recent_successes",
     "kinowo_uptime_recent_failures",
     "kinowo_uptime_recent_zeroes"
