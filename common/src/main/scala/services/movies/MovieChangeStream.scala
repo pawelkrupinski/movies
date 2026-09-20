@@ -43,15 +43,16 @@ import scala.util.Try
  *
  * `source` is the seam: production opens the collection's cursor
  * ([[MovieChangeStream.Source.ofCollection]]); a spec pushes events by hand.
- * `decode` turns a delivered post-image into the row consumers get (the repository's
- * stitched decode — showtimes and slots live in their own collections), and `reread`
- * re-reads a film by id after one of ITS side-collection rows changed.
+ * `reread` re-reads a film by id, stitched (showtimes and slots live in their own
+ * collections) — after one of ITS side-collection rows changed, or after its own
+ * `movies`-doc apply is the one chosen to run, so a coalesced burst is always
+ * resolved by a read that is fresh at the moment it actually executes, never a
+ * captured document that a later write in the same burst could have made stale.
  */
 final class MovieChangeStream(
   source:              MovieChangeStream.Source,
   screenings:          Option[ScreeningsRepository],
   slots:               Option[SlotsRepository],
-  decode:              StoredMovieDto => Option[StoredMovieRecord],
   reread:              String => Option[StoredMovieRecord],
   resumeToken:         ChangeStreamResumeToken,
   changeStreamMetrics: ChangeStreamMetrics,
@@ -73,7 +74,7 @@ final class MovieChangeStream(
   private val changeSub    = new AtomicReference[Subscription]()
   private val changeLock   = new AnyRef
   // Applies change-stream events OFF the Mongo driver's Netty I/O event loops. The
-  // apply does a blocking stitch read (`decode` / `reread`) plus the synchronized
+  // apply does a blocking stitch read (`reread`) plus the synchronized
   // read-model projection; running that on the I/O loops made the two loops contend
   // the projection monitor and busy-spin their wakeup eventfds (~24cc, ~0 voluntary
   // ctx-switches — proven on-box), flooring the shared-CPU credit. A SINGLE thread
@@ -224,29 +225,32 @@ final class MovieChangeStream(
           // Apply OFF the Netty I/O loop: the stitch read + projection must not run
           // there (they made the loops contend + spin — see `changeApply`).
           fullDocument match {
-            // The movies doc has no showtimes — stitch them back from `screenings` (via
-            // `decode`) before fanning out, so consumers get a full row. A failed slot read
-            // yields None and we fan out NOTHING: an empty-cinema record here is what the
-            // projector turns into a screenings wipe.
+            // The movies doc has no showtimes — reread the film STITCHED (via `reread`, the
+            // same by-id read the side cursors use) before fanning out, so consumers get a
+            // full row. A failed slot read yields None and we fan out NOTHING: an empty-cinema
+            // record here is what the projector turns into a screenings wipe.
             //
             // COALESCE with a same-film apply already queued — by an earlier movies event,
             // or by the screenings/movie_slots cursors sharing this pending set. This is the
             // common case, not an edge case: `dropCinemaSlots` writes `retainedSynopses` to
             // `movies` in the SAME tick it deletes the dropped venue's screenings/movie_slots
             // rows, so a slot drop used to buy the film TWO re-projections (one bought here,
-            // one by the coalesced side burst) instead of one. `decode(dto)` re-stitches
-            // screenings/movie_slots FRESH at call time regardless of whose `dto` runs, so
-            // whichever apply actually fires sees every side-collection change of the burst.
-            // The one residual risk — two SEPARATE real `movies`-doc writes to the same film
-            // landing in the same tiny window, where the later one rides the earlier one's
-            // now-stale `dto` — is the same "at most one extra apply per burst" trade the side
-            // cursors already accept, self-healed by the rolling content-check sweep within a
-            // day if it ever bites.
+            // one by the coalesced side burst) instead of one. `reread(dto._id)` re-reads the
+            // WHOLE film — movies row included — FRESH at call time regardless of which event's
+            // apply actually runs, so whichever one fires sees every write of the burst,
+            // including a SECOND, independent `movies`-doc write racing the first one's still-
+            // queued apply. (An earlier version of this branch called `decode(dto)`, which
+            // re-stitched the side collections fresh but reused the TRIGGERING event's own
+            // captured document for the movies-level fields — so a second real movies-doc write
+            // landing before the first apply's `remove` ran could be coalesced away and its
+            // content silently lost, since nothing about that path re-read `movies` itself.
+            // `reread` closes that window the same way the side cursors' own re-read already
+            // does, at the cost of one extra point read per movies apply.)
             case Some(dto) =>
               if (sideApplyPending.add(dto._id))
                 applyOffLoop(moviesDemand) {
                   sideApplyPending.remove(dto._id)
-                  decode(dto).foreach(movieChanges.dispatchUpsert)
+                  reread(dto._id).foreach(movieChanges.dispatchUpsert)
                   resumeToken.save(force = false) // time-throttled, fire-and-forget
                 }
               else {

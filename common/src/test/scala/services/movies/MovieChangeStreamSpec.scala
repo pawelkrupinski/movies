@@ -55,15 +55,14 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       null, null, null, fullDocument, null, new BsonDocument("_id", new BsonString(id)),
       null, null, null, null, null, null, null)
 
-  private def decodeOf(dto: StoredMovieDto): Option[StoredMovieRecord] =
-    Some(StoredMovieRecord(dto._id, None, MovieRecord(imdbId = dto.imdbId), id = FilmId(dto._id)))
+  private def recordOf(id: String, imdbId: Option[String] = None): StoredMovieRecord =
+    StoredMovieRecord(id, None, MovieRecord(imdbId = imdbId), id = FilmId(id))
 
   private def stream(
     source:            HandFedSource,
     screenings:        Option[ScreeningsRepository]        = None,
     slots:             Option[SlotsRepository]             = None,
-    decode:            StoredMovieDto => Option[StoredMovieRecord] = decodeOf,
-    reread:            String => Option[StoredMovieRecord] = _ => None,
+    reread:            String => Option[StoredMovieRecord] = id => Some(recordOf(id)),
     screeningsMetrics:   SideCollectionChangeMetrics = ScreeningsMetrics.noop,
     slotsMetrics:        SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
     changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
@@ -72,7 +71,6 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     source              = source,
     screenings          = screenings,
     slots               = slots,
-    decode              = decode,
     reread              = reread,
     resumeToken         = new ChangeStreamResumeToken("movies", database = None, enabled = false),
     changeStreamMetrics = changeStreamMetrics,
@@ -81,9 +79,9 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     changeDemandWindow  = ChangeStreamDemand.DefaultWindow,
     clock               = clock)
 
-  "MovieChangeStream" should "open one cursor for two listeners and fan each decoded upsert out to both" in {
+  "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
-    val under  = stream(source)
+    val under  = stream(source, reread = id => Some(recordOf(id, imdbId = Some("tt0000001"))))
     val gotA, gotB = mutable.Buffer.empty[StoredMovieRecord]
     val delivered  = new CountDownLatch(2)
 
@@ -93,12 +91,12 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
       source.opens shouldBe Seq(None) // one shared cursor, opened at "now" with no persisted token
       under.isWatching shouldBe true
 
-      source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(imdbId = Some("tt0000001")), Instant.EPOCH)))
+      source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
 
       delivered.await(5, TimeUnit.SECONDS) shouldBe true
       gotA.map(_.id) shouldBe Seq(FilmId("film|2024"))
       gotB.map(_.id) shouldBe Seq(FilmId("film|2024"))
-      gotA.head.record.imdbId shouldBe Some("tt0000001") // decoded through the injected decode, once
+      gotA.head.record.imdbId shouldBe Some("tt0000001") // re-read through the injected reread, once
     } finally { handleA.close(); handleB.close(); under.close() }
 
     under.isWatching shouldBe false // last listener gone — cursor stopped
@@ -159,13 +157,16 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     val screenings = new InMemoryScreeningsRepository
     val slotsSeen, screeningsSeen = new RecordingSideMetrics
     val reread     = new AtomicInteger(0)
-    // Hold the apply thread on a `movies` event first, so the whole burst lands while its
-    // one apply is still QUEUED — the only state an event can coalesce into. Without the
-    // gate how many coalesce would depend on thread timing, not on the mechanism.
+    // Hold the apply thread on the `movies` event's own re-read first, so the whole burst
+    // lands while its one apply is still QUEUED — the only state an event can coalesce into.
+    // Without the gate how many coalesce would depend on thread timing, not on the mechanism.
     val gate       = new CountDownLatch(1)
     val under      = stream(source, screenings = Some(screenings), slots = Some(slots),
-      decode            = dto => { gate.await(5, TimeUnit.SECONDS); decodeOf(dto) },
-      reread            = id => { reread.incrementAndGet(); Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id))) },
+      reread            = id => {
+        gate.await(5, TimeUnit.SECONDS)
+        if (id == "film|2024") reread.incrementAndGet() // count only the side burst's own re-read
+        Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id)))
+      },
       screeningsMetrics = screeningsSeen,
       slotsMetrics      = slotsSeen)
     val dispatched = new AtomicInteger(0)
@@ -192,24 +193,29 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
   // one logical event, three collections, three cursors. Before this fix the movies cursor
   // bought its own apply regardless of what the side cursors were doing, so this one event
   // cost the film TWO re-projections (one from `movies`, one from the coalesced side burst)
-  // instead of one. All three cursors now share the same pending set.
+  // instead of one. All three cursors now share the same pending set, and the movies apply's
+  // own re-read (not a captured document — see the `reread(dto._id)` fix in MovieChangeStream)
+  // covers itself and everything the side burst did in one fresh read.
   it should "coalesce a same-film side-collection burst onto an already-queued movies apply" in {
     val source     = new HandFedSource
     val slots      = new InMemorySlotsRepository
     val screenings = new InMemoryScreeningsRepository
     val slotsSeen, screeningsSeen = new RecordingSideMetrics
     val reread     = new AtomicInteger(0)
-    // Hold the SHARED single-threaded apply executor on an UNRELATED film's decode first —
+    // Hold the SHARED single-threaded apply executor on an UNRELATED film's re-read first —
     // exactly the warm-up the screenings/slots-only burst test above uses. Without it, the
     // "film|2024" movies apply below would remove itself from the pending set (the very first
-    // line inside its `applyOffLoop` block, BEFORE `decode` even reaches the gate) the instant
-    // the single idle executor thread picks the task up — microseconds before this test's main
-    // thread gets to call `slots.upsertSlot`/`screenings.upsertSlot`, so the coalescing window
-    // would already be closed by the time there is anything to coalesce.
+    // line inside its `applyOffLoop` block, BEFORE its own `reread` even reaches the gate) the
+    // instant the single idle executor thread picks the task up — microseconds before this
+    // test's main thread gets to call `slots.upsertSlot`/`screenings.upsertSlot`, so the
+    // coalescing window would already be closed by the time there is anything to coalesce.
     val gate       = new CountDownLatch(1)
     val under      = stream(source, screenings = Some(screenings), slots = Some(slots),
-      decode            = dto => { gate.await(5, TimeUnit.SECONDS); decodeOf(dto) },
-      reread            = id => { reread.incrementAndGet(); Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id))) },
+      reread            = id => {
+        gate.await(5, TimeUnit.SECONDS)
+        if (id == "film|2024") reread.incrementAndGet() // count only film|2024's own re-read
+        Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id)))
+      },
       screeningsMetrics = screeningsSeen,
       slotsMetrics      = slotsSeen)
     val dispatched = new AtomicInteger(0)
@@ -231,9 +237,46 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
 
       drained.await(5, TimeUnit.SECONDS) shouldBe true
       dispatched.get()              shouldBe 2 // the warm-up's own dispatch + film|2024's ONE dispatch
-      reread.get()                  shouldBe 0 // neither side event bought its own re-read
+      reread.get()                  shouldBe 1 // film|2024's own movies apply re-read covers the whole burst
       slotsSeen.coalesced.get()     shouldBe 1 // the movie_slots write rode the queued movies apply
       screeningsSeen.coalesced.get() shouldBe 1 // …and so did the screenings write
+    } finally { handle.close(); under.close() }
+  }
+
+  // THE RESIDUAL RISK THE COALESCING COMMENT USED TO ACCEPT AS UNAVOIDABLE (2026-09-20): two
+  // SEPARATE real `movies`-doc writes to the same film landing in the same tiny window, where
+  // the first one's apply is still queued (added to the pending set, not yet removed) when the
+  // second one arrives. The second write must coalesce onto a FRESH read of the film's current
+  // state — not the first event's now-stale captured document — or its content silently
+  // vanishes until the next real event or the nightly content-check sweep.
+  it should "not lose a second movies-doc write that lands while the first one's apply is still queued" in {
+    val source        = new HandFedSource
+    val latestByFilm  = new java.util.concurrent.ConcurrentHashMap[String, String]()
+    val gate          = new CountDownLatch(1)
+    // Same warm-up as the tests above: hold the shared single-threaded apply executor on an
+    // unrelated film's re-read first, so "film|2024"'s own apply stays QUEUED — added to the
+    // pending set, not yet removed — for the second write below to find still pending.
+    val under = stream(source, reread = id => {
+      gate.await(5, TimeUnit.SECONDS)
+      Some(recordOf(id, imdbId = Option(latestByFilm.get(id))))
+    })
+    val got       = mutable.Buffer.empty[StoredMovieRecord]
+    val drained   = new CountDownLatch(2) // the warm-up's own dispatch, then film|2024's one dispatch
+
+    val handle = under.watch(r => { got += r; drained.countDown() }, _ => ())
+    try {
+      source.emit(event("insert", "other|2024", StoredMovieDto.fromDomain("other|2024", MovieRecord(), Instant.EPOCH)))
+
+      latestByFilm.put("film|2024", "tt0000001")
+      source.emit(event("update", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(imdbId = Some("tt0000001")), Instant.EPOCH)))
+      // A second, independent movies-doc write for the SAME film, landing while the first is
+      // still queued behind the warm-up.
+      latestByFilm.put("film|2024", "tt0000002")
+      source.emit(event("update", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(imdbId = Some("tt0000002")), Instant.EPOCH)))
+      gate.countDown()
+
+      drained.await(5, TimeUnit.SECONDS) shouldBe true
+      got.filter(_.id == FilmId("film|2024")).map(_.record.imdbId) shouldBe Seq(Some("tt0000002")) // not lost, and not the stale first write
     } finally { handle.close(); under.close() }
   }
 

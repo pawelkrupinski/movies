@@ -1156,14 +1156,13 @@ class MongoMovieRepository(
 
   // The `movies` change-stream subscription — shared cursor, fan-out, backpressure,
   // resume token, reopen — lives in [[MovieChangeStream]]; this class only lends it the
-  // stitched decode and the by-id re-read. None on a disabled store, so `watchChanges`
-  // returns None and the caller relies on its periodic backstop.
+  // by-id re-read. None on a disabled store, so `watchChanges` returns None and the
+  // caller relies on its periodic backstop.
   private val changeStream: Option[MovieChangeStream] = coll.map { c =>
     new MovieChangeStream(
       source              = MovieChangeStream.Source.ofCollection(c),
       screenings          = screenings,
       slots               = slots,
-      decode              = decodeStitched,
       reread              = id => findById(FilmId(id)),
       // The shared cursor reopens (after a terminal error, and — the big win — after a WORKER
       // RESTART) from the last-seen token instead of "now", REPLAYING writes that landed while
