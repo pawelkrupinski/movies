@@ -144,6 +144,12 @@ GET     /api/me/state               controllers.UserStateController.get()
 PUT     /api/me/state               controllers.UserStateController.put()
 GET     /api/me/:country/hidden-films controllers.UserStateController.hiddenFilms(country: String)
 + nocsrf
+PUT     /api/me/:country/hidden-films/:title controllers.UserStateController.hideFilm(country: String, title: String)
++ nocsrf
+DELETE  /api/me/:country/hidden-films/:title controllers.UserStateController.unhideFilm(country: String, title: String)
++ nocsrf
+DELETE  /api/me/:country/hidden-films controllers.UserStateController.clearHiddenFilms(country: String)
++ nocsrf
 DELETE  /api/me                     controllers.UserStateController.deleteAccount()
 
 # ── Health / Uptime ───────────────────────────────────────────────────────────

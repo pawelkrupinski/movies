@@ -242,6 +242,107 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     countingRepo.findCalls shouldBe 1 // ETag comparison needs real content — the cache can't answer it
   }
 
+  // ── PUT/DELETE /api/me/:country/hidden-films(/:title) ────────────────────
+
+  "PUT /api/me/:country/hidden-films/:title" should "401 anonymous requests" in {
+    val (ctl, _, _) = fixture()
+    status(ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing"))) shouldBe UNAUTHORIZED
+  }
+
+  it should "400 an unrecognised country code" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.hideFilm("xx", "Sing")(FakeRequest("PUT", "/api/me/xx/hidden-films/Sing").withSession("userId" -> "u1"))
+    status(result) shouldBe BAD_REQUEST
+  }
+
+  it should "add the title to that country's bucket, leaving other countries untouched" in {
+    val stored = UserState("u1", Set.empty, Set.empty, Instant.now(), Map("us" -> Set("Sing")))
+    val (ctl, repository, _) = fixture(Some(stored))
+    val result = ctl.hideFilm("pl", "Madagaskar")(FakeRequest("PUT", "/api/me/pl/hidden-films/Madagaskar").withSession("userId" -> "u1"))
+
+    status(result) shouldBe OK
+    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Madagaskar")
+    val stateAfter = repository.find("u1").value
+    stateAfter.hiddenFilmsByCountry("pl") shouldBe Set("Madagaskar")
+    stateAfter.hiddenFilmsByCountry("us") shouldBe Set("Sing") // untouched
+  }
+
+  it should "be idempotent — hiding an already-hidden title changes nothing" in {
+    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")))
+    val result = ctl.hideFilm("pl", "Madagaskar")(FakeRequest("PUT", "/api/me/pl/hidden-films/Madagaskar").withSession("userId" -> "u1"))
+
+    status(result) shouldBe OK
+    repository.find("u1").value.hiddenFilmsByCountry("pl") shouldBe Set("Madagaskar")
+  }
+
+  it should "carry fresh ETag/Last-Modified so the client needn't re-GET" in {
+    val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")))
+    val result = ctl.hideFilm("pl", "Sing")(FakeRequest("PUT", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))
+    header("ETag", result)          shouldBe defined
+    header("Last-Modified", result) shouldBe defined
+  }
+
+  "DELETE /api/me/:country/hidden-films/:title" should "401 anonymous requests" in {
+    val (ctl, _, _) = fixture()
+    status(ctl.unhideFilm("pl", "Sing")(FakeRequest("DELETE", "/api/me/pl/hidden-films/Sing"))) shouldBe UNAUTHORIZED
+  }
+
+  it should "400 an unrecognised country code" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.unhideFilm("xx", "Sing")(FakeRequest("DELETE", "/api/me/xx/hidden-films/Sing").withSession("userId" -> "u1"))
+    status(result) shouldBe BAD_REQUEST
+  }
+
+  it should "remove the title from that country's bucket, leaving other countries untouched" in {
+    val stored = UserState("u1", Set.empty, Set.empty, Instant.now(), Map("pl" -> Set("Madagaskar", "Sing"), "us" -> Set("Sing")))
+    val (ctl, repository, _) = fixture(Some(stored))
+    val result = ctl.unhideFilm("pl", "Sing")(FakeRequest("DELETE", "/api/me/pl/hidden-films/Sing").withSession("userId" -> "u1"))
+
+    status(result) shouldBe OK
+    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Madagaskar")
+    val stateAfter = repository.find("u1").value
+    stateAfter.hiddenFilmsByCountry("pl") shouldBe Set("Madagaskar")
+    stateAfter.hiddenFilmsByCountry("us") shouldBe Set("Sing") // untouched
+  }
+
+  it should "be idempotent — unhiding a title that isn't hidden changes nothing" in {
+    val (ctl, repository, _) = fixture(Some(storedFor("pl", "Madagaskar")))
+    val result = ctl.unhideFilm("pl", "Never Hidden")(FakeRequest("DELETE", "/api/me/pl/hidden-films/Never%20Hidden").withSession("userId" -> "u1"))
+
+    status(result) shouldBe OK
+    repository.find("u1").value.hiddenFilmsByCountry("pl") shouldBe Set("Madagaskar")
+  }
+
+  "DELETE /api/me/:country/hidden-films" should "401 anonymous requests" in {
+    val (ctl, _, _) = fixture()
+    status(ctl.clearHiddenFilms("pl")(FakeRequest("DELETE", "/api/me/pl/hidden-films"))) shouldBe UNAUTHORIZED
+  }
+
+  it should "400 an unrecognised country code" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.clearHiddenFilms("xx")(FakeRequest("DELETE", "/api/me/xx/hidden-films").withSession("userId" -> "u1"))
+    status(result) shouldBe BAD_REQUEST
+  }
+
+  it should "empty only THAT country's bucket, leaving other countries untouched" in {
+    val stored = UserState("u1", Set.empty, Set.empty, Instant.now(), Map("pl" -> Set("Madagaskar", "Sing"), "us" -> Set("Sing")))
+    val (ctl, repository, _) = fixture(Some(stored))
+    val result = ctl.clearHiddenFilms("pl")(FakeRequest("DELETE", "/api/me/pl/hidden-films").withSession("userId" -> "u1"))
+
+    status(result) shouldBe OK
+    (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe empty
+    val stateAfter = repository.find("u1").value
+    stateAfter.hiddenFilmsByCountry("pl") shouldBe empty
+    stateAfter.hiddenFilmsByCountry("us") shouldBe Set("Sing") // untouched
+  }
+
+  it should "be harmless for a user with no row at all yet" in {
+    val (ctl, repository, _) = fixture()
+    val result = ctl.clearHiddenFilms("pl")(FakeRequest("DELETE", "/api/me/pl/hidden-films").withSession("userId" -> "u1"))
+    status(result) shouldBe OK
+    repository.find("u1").value.hiddenFilmsByCountry.getOrElse("pl", Set.empty) shouldBe empty
+  }
+
   // ── PUT /api/me/state ─────────────────────────────────────────────────────
 
   "PUT /api/me/state" should "401 anonymous requests without writing anything" in {

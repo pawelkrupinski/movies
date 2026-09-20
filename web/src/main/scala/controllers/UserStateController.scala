@@ -100,21 +100,92 @@ class UserStateController(
         cacheProvenUnchanged match {
           case Some(lastChange) => NotModified.withHeaders("Last-Modified" -> httpDate(lastChange))
           case None              =>
-            val state      = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
-            val hidden     = state.hiddenFilmsByCountry.getOrElse(country.code, Set.empty)
-            val body       = hiddenFilmsJson(hidden)
-            val etag       = hiddenFilmsETag(body)
-            val validators = Seq("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
+            val state  = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
+            val hidden = state.hiddenFilmsByCountry.getOrElse(country.code, Set.empty)
+            val body   = hiddenFilmsJson(hidden)
+            val etag   = hiddenFilmsETag(body)
 
             val notModified = ifNoneMatch match {
               case Some(inm) => inm.contains(etag)
               case None      => ifModifiedSince.exists(!state.updatedAt.isAfter(_))
             }
 
-            if (notModified) NotModified.withHeaders(validators*)
-            else Ok(body).withHeaders(validators*)
+            if (notModified) NotModified.withHeaders("ETag" -> etag, "Last-Modified" -> httpDate(state.updatedAt))
+            else respondWithHiddenFilms(hidden, state.updatedAt)
         }
     })
+  }
+
+  /** `PUT /api/me/:country/hidden-films/:title` — hide one film. Idempotent:
+   *  hiding an already-hidden title is a no-op success, same 200 shape as
+   *  every other outcome. `title` travels URL-encoded in the path (Play
+   *  decodes it before this method ever sees it) — a client MUST
+   *  percent-encode it the same way a query value would be (`encodeURIComponent`
+   *  / `addingPercentEncoding` / `Uri.encode` — see each platform's existing
+   *  share-link encoding for the precedent), since titles routinely carry
+   *  spaces, non-ASCII text, and punctuation, occasionally even `/`.
+   *
+   *  Responds with the SAME shape as `hiddenFilms()`'s 200 — body, `ETag`,
+   *  `Last-Modified` — so a client that just wrote doesn't need a follow-up
+   *  GET to learn its new validators. */
+  def hideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
+    PerUserResponse((request.session.get("userId"), models.Country.byCode(country)) match {
+      case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
+      case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
+      case (Some(userId), Some(c)) =>
+        val (hidden, updatedAt) = updateHiddenFilms(userId, c.code)(_ + title)
+        respondWithHiddenFilms(hidden, updatedAt)
+    })
+  }
+
+  /** `DELETE /api/me/:country/hidden-films/:title` — unhide one film.
+   *  Idempotent: unhiding a title that was never hidden (or already unhidden)
+   *  is a no-op success. See `hideFilm` for the encoding note and response shape. */
+  def unhideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
+    PerUserResponse((request.session.get("userId"), models.Country.byCode(country)) match {
+      case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
+      case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
+      case (Some(userId), Some(c)) =>
+        val (hidden, updatedAt) = updateHiddenFilms(userId, c.code)(_ - title)
+        respondWithHiddenFilms(hidden, updatedAt)
+    })
+  }
+
+  /** `DELETE /api/me/:country/hidden-films` — unhide everything in ONE
+   *  country. Other countries' buckets are untouched — this is deliberately
+   *  narrower than "clear everything", matching how `hiddenFilms()` reads
+   *  only one country at a time. */
+  def clearHiddenFilms(country: String): Action[AnyContent] = Action { request =>
+    PerUserResponse((request.session.get("userId"), models.Country.byCode(country)) match {
+      case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
+      case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
+      case (Some(userId), Some(c)) =>
+        val (hidden, updatedAt) = updateHiddenFilms(userId, c.code)(_ => Set.empty)
+        respondWithHiddenFilms(hidden, updatedAt)
+    })
+  }
+
+  /** Shared by `hideFilm`/`unhideFilm`/`clearHiddenFilms`: read the stored
+   *  state, apply `f` to THIS country's bucket only, upsert, and hand back
+   *  the resulting bucket + the fresh `updatedAt` written. Always writes
+   *  (even when `f` is a no-op) — same "every write bumps `updatedAt`"
+   *  behaviour `fromJson` already has for the legacy PUT. */
+  private def updateHiddenFilms(userId: String, country: String)(f: Set[String] => Set[String]): (Set[String], Instant) = {
+    val base         = userStateRepository.find(userId).getOrElse(UserState.empty(userId))
+    val updatedHidden = f(base.hiddenFilmsByCountry.getOrElse(country, Set.empty))
+    val updatedAt     = Instant.now()
+    userStateRepository.upsert(base.copy(
+      hiddenFilmsByCountry = base.hiddenFilmsByCountry.updated(country, updatedHidden),
+      updatedAt             = updatedAt
+    ))
+    (updatedHidden, updatedAt)
+  }
+
+  /** The 200 shape `hiddenFilms()`'s non-304 branch and every write action
+   *  share: the hiddenFilms-only body plus fresh `ETag`/`Last-Modified`. */
+  private def respondWithHiddenFilms(hidden: Set[String], updatedAt: Instant): Result = {
+    val body = hiddenFilmsJson(hidden)
+    Ok(body).withHeaders("ETag" -> hiddenFilmsETag(body), "Last-Modified" -> httpDate(updatedAt))
   }
 
   def put(): Action[JsValue] = Action(parse.json) { request =>
