@@ -3,6 +3,7 @@ package controllers
 import models.UserState
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
+import services.metrics.LegacyUserStateMetrics
 import services.users.{AccountDeletion, UserChangeTimeCache, UserStateRepository}
 
 import java.nio.charset.StandardCharsets
@@ -16,10 +17,12 @@ import java.time.format.DateTimeFormatter
  * disabled cinemas.
  *
  * `get()`/`put()` are the original pair: full-state, no conditional-GET
- * support, kept running unchanged for clients that still call them.
- * `hiddenFilms()` is the hiddenFilms-only successor, with `ETag`/
- * `Last-Modified` + 304 support — the read half of a granular replacement;
- * per-title hide/unhide/clear-all write endpoints land alongside it next.
+ * support, kept running unchanged for clients that still call them —
+ * `put()` also feeds `LegacyUserStateMetrics` on every call, the signal
+ * that decides when it's safe to delete them. `hiddenFilms()` /
+ * `hideFilm()` / `unhideFilm()` / `clearHiddenFilms()` are the granular,
+ * per-country replacement: `ETag`/`Last-Modified` + 304 support on the
+ * read side, idempotent per-title writes on the other.
  *
  * Shape (both directions, legacy):
  *   { "hiddenFilms":     [titles…],
@@ -29,7 +32,8 @@ class UserStateController(
   cc:                   ControllerComponents,
   userStateRepository:   UserStateRepository,
   accountDeletion:      AccountDeletion,
-  userChangeTimeCache:  UserChangeTimeCache
+  userChangeTimeCache:  UserChangeTimeCache,
+  legacyUserStateMetrics: LegacyUserStateMetrics
 ) extends AbstractController(cc) {
   import UserStateController._
 
@@ -189,6 +193,10 @@ class UserStateController(
   }
 
   def put(): Action[JsValue] = Action(parse.json) { request =>
+    // Every call, regardless of outcome — even a 401 or a malformed body is
+    // evidence SOMETHING out there still hits this URL, which is exactly what
+    // decides whether it's safe to delete. See LegacyUserStateMetrics.
+    legacyUserStateMetrics.recordPutCall()
     PerUserResponse(request.session.get("userId") match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>

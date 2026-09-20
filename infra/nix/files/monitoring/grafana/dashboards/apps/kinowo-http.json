@@ -868,6 +868,74 @@
           }
         }
       ]
+    },
+    {
+      "type": "stat",
+      "title": "Legacy PUT /api/me/state \u2014 time since last call",
+      "description": "How long ago the pre-per-country, full-state-replace endpoint was last called, by country. Paired with the request-rate-by-route panel above (filter route=\"/api/me/state\", method=\"PUT\") for call volume; this is the recency half of the retirement decision \u2014 see LegacyUserStateMetrics.",
+      "id": 16,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 59,
+        "w": 12,
+        "h": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dtdurations",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 604800
+              },
+              {
+                "color": "red",
+                "value": 2592000
+              }
+            ]
+          },
+          "noValue": "no calls since boot"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "horizontal",
+        "textMode": "value_and_name",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - kinowo_web_legacy_userstate_put_last_called_seconds",
+          "legendFormat": "{{country}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ]
 }

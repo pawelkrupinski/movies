@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.{MetricsController, WebMovieMetrics}
 import modules.Wiring
-import services.metrics.{WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
+import services.metrics.{LegacyUserStateMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics}
 
 /** ── /metrics ──────────────────────────────────────────────────────────────
  *  Everything the web tier exposes to Prometheus, on ONE registry: the served
@@ -46,4 +46,9 @@ trait MetricsWiring { self: Wiring =>
     "og_card_film" -> (() => ogCardService.cacheOccupancy),
     "og_card_city" -> (() => cityOgCardService.cacheOccupancy)))
   lazy val metricsController = new MetricsController(controllerComponents, uptimeMonitor, filmwebFallbackStore, webMovieMetrics, webJvmMetrics, metricsCountry.code)
+  // Retirement signal for the legacy PUT /api/me/state — see the class doc.
+  // Safe as `lazy`, unlike webHostMetrics/webCacheMetrics above: userStateController
+  // (below, in UsersWiring) holds a reference and is itself forced at boot by
+  // the router, so this gets forced too — nothing here needs an eager `val`.
+  lazy val legacyUserStateMetrics = new LegacyUserStateMetrics(webJvmMetrics.registry, metricsCountry.code)
 }

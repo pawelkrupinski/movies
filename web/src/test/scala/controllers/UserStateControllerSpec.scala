@@ -1,5 +1,6 @@
 package controllers
 
+import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.UserState
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
@@ -7,6 +8,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
+import services.metrics.LegacyUserStateMetrics
 import services.users.{AccountDeletion, InMemoryUserRepository, InMemoryUserStateRepository, NoUserChangeTimeCache, UserChangeTimeCache}
 
 import java.time.Instant
@@ -16,12 +18,13 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   private def fixture(
     prefilled:       Option[UserState] = None,
     changeTimeCache: UserChangeTimeCache = NoUserChangeTimeCache,
-    stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository
+    stateRepository: InMemoryUserStateRepository = new InMemoryUserStateRepository,
+    legacyMetrics:   LegacyUserStateMetrics = new LegacyUserStateMetrics(new PrometheusRegistry(), "pl")
   ): (UserStateController, InMemoryUserStateRepository, InMemoryUserRepository) = {
     val userRepository  = new InMemoryUserRepository
     prefilled.foreach(stateRepository.upsert)
     val accountDeletion = new AccountDeletion(userRepository, stateRepository)
-    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache), stateRepository, userRepository)
+    (new UserStateController(Helpers.stubControllerComponents(), stateRepository, accountDeletion, changeTimeCache, legacyMetrics), stateRepository, userRepository)
   }
 
   /** Counts `find` calls so a fast-path test can prove storage was never
@@ -353,6 +356,18 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val result = ctl.put()(request)
     status(result)              shouldBe UNAUTHORIZED
     repository.find("anyone")         shouldBe empty
+  }
+
+  // The usage-metric records EVERY call, even a 401 — see LegacyUserStateMetrics:
+  // "something still calls this URL at all" is the retirement question, and an
+  // anonymous/malformed call is still evidence of that.
+  it should "record the call on the legacy-usage gauge even when anonymous" in {
+    val registry = new PrometheusRegistry()
+    val metrics  = new LegacyUserStateMetrics(registry, "pl")
+    val (ctl, _, _) = fixture(legacyMetrics = metrics)
+    ctl.put()(FakeRequest("PUT", "/api/me/state").withBody(Json.obj("hiddenFilms" -> Json.arr("X"))))
+
+    services.metrics.PrometheusExposition.render(registry) should include ("kinowo_web_legacy_userstate_put_last_called_seconds")
   }
 
   it should "replace the user's state with the request body" in {
