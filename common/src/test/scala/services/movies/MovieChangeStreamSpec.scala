@@ -58,6 +58,16 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
   private def recordOf(id: String, imdbId: Option[String] = None): StoredMovieRecord =
     StoredMovieRecord(id, None, MovieRecord(imdbId = imdbId), id = FilmId(id))
 
+  /** A `reread` that blocks on `gate` before answering — the warm-up/coalescing-window gate
+   *  the burst tests below share — and counts calls for `forId` only, so a warm-up call on
+   *  an unrelated film doesn't pollute the burst's own count. */
+  private def gatedReread(gate: CountDownLatch, count: AtomicInteger, forId: String): String => Option[StoredMovieRecord] =
+    id => {
+      gate.await(5, TimeUnit.SECONDS)
+      if (id == forId) count.incrementAndGet()
+      Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id)))
+    }
+
   private def stream(
     source:            HandFedSource,
     screenings:        Option[ScreeningsRepository]        = None,
@@ -162,11 +172,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     // Without the gate how many coalesce would depend on thread timing, not on the mechanism.
     val gate       = new CountDownLatch(1)
     val under      = stream(source, screenings = Some(screenings), slots = Some(slots),
-      reread            = id => {
-        gate.await(5, TimeUnit.SECONDS)
-        if (id == "film|2024") reread.incrementAndGet() // count only the side burst's own re-read
-        Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id)))
-      },
+      reread            = gatedReread(gate, reread, "film|2024"), // counts only the side burst's own re-read
       screeningsMetrics = screeningsSeen,
       slotsMetrics      = slotsSeen)
     val dispatched = new AtomicInteger(0)
@@ -211,11 +217,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     // coalescing window would already be closed by the time there is anything to coalesce.
     val gate       = new CountDownLatch(1)
     val under      = stream(source, screenings = Some(screenings), slots = Some(slots),
-      reread            = id => {
-        gate.await(5, TimeUnit.SECONDS)
-        if (id == "film|2024") reread.incrementAndGet() // count only film|2024's own re-read
-        Some(StoredMovieRecord(id, None, MovieRecord(), id = FilmId(id)))
-      },
+      reread            = gatedReread(gate, reread, "film|2024"), // counts only film|2024's own re-read
       screeningsMetrics = screeningsSeen,
       slotsMetrics      = slotsSeen)
     val dispatched = new AtomicInteger(0)
