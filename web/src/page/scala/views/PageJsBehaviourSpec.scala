@@ -2929,12 +2929,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // Regression: a visitor with an EXISTING stored pick reloading the page
   // (not switching language interactively) must see the date headers in
   // their picked language on the FRESH boot pass, not just after a manual
-  // `applyLanguage` call. `i18n.js`'s boot-time `applyLanguage` runs before
-  // `shared.js` has defined `window.refreshDateLabels` (both load in that
-  // order, deferred or not — see `i18n.js`'s `bootLanguage` comment), so its
-  // date-label refresh used to be a silent no-op on every load, leaving the
-  // server-baked Polish weekday/month names on screen even though every
-  // other `[data-i18n]` string correctly switched.
+  // `applyLanguage` call. `i18n.js`'s boot-time `applyLanguage` call runs
+  // BEFORE `shared.js` has defined `window.refreshDateLabels` (this file
+  // loads first, on every page — see `i18n.js`'s `bootLanguage` comment), so
+  // its date-label refresh used to be a silent no-op on every load. Fixed by
+  // having `bootLanguage` call `applyLanguage` a SECOND time, on
+  // `DOMContentLoaded` — by then `shared.js` is guaranteed to have run.
   it should "apply a stored language pick to the date headers on a fresh page load, not just an interactive switch" in {
     onPath("/") { page =>
       page.eval("localStorage.setItem('kinowo_lang', 'en')")
@@ -2948,6 +2948,58 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       } finally {
         page.eval("localStorage.removeItem('kinowo_lang')")
       }
+    }
+  }
+
+  // Regression, same root cause as the date-header one above but broader:
+  // `film.scala.html`/`browse.scala.html` load `i18n.js` un-deferred, early
+  // in `<body>` (so an inline script further down can call `t()`
+  // synchronously — see `film.scala.html`'s back-link rewrite), and
+  // `landing.scala.html` loads it from `<head>`, before any `<body>` markup
+  // exists at all. `bootLanguage`'s first `applyLanguage` call therefore ran
+  // its whole `[data-i18n]` sweep against a near-EMPTY DOM on those pages —
+  // not just the date headers, EVERY static translated string below the
+  // script tag (nav, film metadata labels, …) stayed in the deployment
+  // default for a visitor with a stored pick, on every load. `.meta-label`
+  // (`detail.synopsis`) lives well below the film page's script tags, in
+  // `_filmDetailContent.scala.html`.
+  it should "apply a stored language pick to data-i18n markup that only exists AFTER the boot-time script tag runs too" in {
+    onPath(filmTarget) { page =>
+      val before = page.evalString("document.querySelector('.meta-label[data-i18n=\"detail.synopsis\"]').textContent")
+
+      page.eval("localStorage.setItem('kinowo_lang', 'en')")
+      page.reload()
+      page.waitFor("document.documentElement.lang === 'en'", timeoutMs = 5000)
+
+      val after = page.evalString("document.querySelector('.meta-label[data-i18n=\"detail.synopsis\"]').textContent")
+      try {
+        after should not be before
+        after shouldBe page.evalString("t('detail.synopsis')")
+      } finally {
+        page.eval("localStorage.removeItem('kinowo_lang')")
+      }
+    }
+  }
+
+  // Regression: the "… +N seansów"/"… +N showings" truncation link
+  // (`_showtimeNoun`, shared.js) reads `KINOWO_LOCALE.showtime` fresh on
+  // every call, so it always renders correctly on the NEXT filter pass — but
+  // nothing re-triggered a pass on a language switch by itself, so an
+  // ALREADY-rendered link kept its old-language noun until an unrelated
+  // filter change came along.
+  it should "re-render an already-visible truncated-showings link's plural noun on a language switch" in {
+    onPath("/") { page =>
+      pinDateFilterAnytime(page)
+      page.waitFor("document.querySelector('.showings-more') !== null && " +
+        "document.querySelector('.showings-more').textContent.trim().length > 0")
+      val before = page.evalString("document.querySelector('.showings-more').textContent")
+      before should include("seans")
+
+      page.eval("applyLanguage('en')")
+
+      val after = page.evalString("document.querySelector('.showings-more').textContent")
+      after should not be before
+      after should include regex "showing"
     }
   }
 
