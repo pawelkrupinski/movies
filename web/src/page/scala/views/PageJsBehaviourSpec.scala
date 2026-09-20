@@ -588,14 +588,25 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   it should "never PUT to the server when only disabledCinemas changes" in {
     onLoggedInIndex { page =>
       awaitOwnReconcile(page)
-      // `awaitOwnReconcile` lands on the FIRST (union) reconcile, which fires
-      // its own `pushStateToServer()` to persist the migrated union — a real
-      // request, just not the one this test is about, and one whose resource
-      // entry can land racily close to the boot GET's. Reload once more to
-      // land on the "already synced" branch, which pushes nothing on its own,
-      // so the baseline below is never chasing that unrelated PUT.
+      // `awaitOwnReconcile` lands on the FIRST (union) reconcile. Reload once
+      // more to land on the "already synced" branch, which pushes nothing of
+      // its own for hiddenFilms.
       page.reload()
       page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
+                   timeoutMs = 5000)
+      // `reconcileLanguage()` (shared.js) fires its OWN GET to `/api/me/state`
+      // on every logged-in boot — unconditionally, and unawaited alongside
+      // `bootMergeFromServer()` in the same `hydrateAuth().then(...)` block —
+      // so it is NOT guaranteed to have landed by the time the hiddenFilms
+      // wait above resolves; the two reconciles race each other's own
+      // fetches independently. Without waiting for it here too, that GET
+      // (same URL, not a PUT, but indistinguishable from one by name alone
+      // in `performance`'s resource entries) could land AFTER `before` is
+      // captured below, flipping `after` — the intermittent CI failure this
+      // test actually hit ("[1]" was not equal to "[0]"), not a real extra
+      // PUT. Waiting for it explicitly turns that race into a fixed point.
+      page.waitFor("performance.getEntriesByType('resource')" +
+                   ".some(function (r) { return r.name.indexOf('/api/me/state') !== -1; })",
                    timeoutMs = 5000)
       val before = page.evalString(
         "performance.getEntriesByType('resource')" +
