@@ -51,11 +51,11 @@ runs:
             # nothing. See the 2026-08-29 kinowo/Grafana-host incident this guarded
             # against, and the 2026-09-15 discovery that it was masking the SSO
             # redirect too.
-            code="$(curl -sS -v --max-time 20 -o /tmp/grafana-annotation-response.json -w '%{http_code}' \
+            code="$(curl -sS --max-time 20 -o /tmp/grafana-annotation-response.json -w '%{http_code}' \
                 -X POST "${GRAFANA_URL%/}/api/annotations" \
                 -H "Authorization: Bearer ${GRAFANA_ANNOTATION_TOKEN}" \
                 -H "Content-Type: application/json" \
-                -d "$body" 2>/tmp/grafana-annotation-verbose.log || echo "000")"
+                -d "$body" || echo "000")"
             if [ "$code" = "200" ]; then
                 echo "Posted deploy marker for ${TIER} ${short}."
             else
