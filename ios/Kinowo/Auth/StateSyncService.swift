@@ -74,6 +74,19 @@ final class StateSyncService: ObservableObject {
                 try await client.putState(UserSyncState(hiddenFilms: mergedHidden, disabledCinemas: mergedDisabled))
                 prefs.setServerStateSynced(true)
             }
+
+            // Language is a scalar, not a set, so it skips the migration-flag
+            // dance above entirely — there's no "removed on another device"
+            // case a blind union could wrongly resurrect. Same rule on every
+            // merge, first or not: the account's pick wins whenever it has
+            // one (restored on login, per spec); otherwise this device's own
+            // explicit pick, if any, becomes the account's.
+            if let remoteLanguage = remote.language {
+                if remoteLanguage != prefs.selectedLanguage { prefs.setLanguage(remoteLanguage) }
+            } else if let explicit = prefs.explicitLanguage {
+                try? await client.putState(UserSyncState(
+                    hiddenFilms: prefs.hiddenFilms, disabledCinemas: prefs.disabledCinemas, language: explicit))
+            }
         } catch {
             // Network error — local state is authoritative; leave prefs + flag alone.
         }
@@ -91,6 +104,16 @@ final class StateSyncService: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.schedulePush() }
             .store(in: &prefsCancellables)
+
+        // `.dropFirst()` skips the INIT value `UserPreferences` resolves at
+        // launch (device/storefront fallback, not a pick) — every mutation
+        // after that goes through `setLanguage`, which only ever runs for an
+        // explicit pick, so every event this sink sees IS one.
+        prefs.$selectedLanguage
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in self?.schedulePush() }
+            .store(in: &prefsCancellables)
     }
 
     private func schedulePush() {
@@ -101,7 +124,8 @@ final class StateSyncService: ObservableObject {
                 guard let self, self.isLoggedIn else { return }
                 try? await self.client.putState(UserSyncState(
                     hiddenFilms: self.prefs.hiddenFilms,
-                    disabledCinemas: self.prefs.disabledCinemas
+                    disabledCinemas: self.prefs.disabledCinemas,
+                    language: self.prefs.explicitLanguage
                 ))
             }
         }

@@ -112,6 +112,75 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
+    // MARK: - Language sync — a scalar, so no migration-flag dance
+
+    /// The account's pick is restored regardless of the `serverStateSynced`
+    /// flag — this is the very first merge (flag unset), which the sets'
+    /// union path shares, but language must not wait for a second login.
+    func testLoginRestoresAccountLanguage() async throws {
+        client.remoteState = UserSyncState(hiddenFilms: [], disabledCinemas: [], language: "de")
+        let sync = makeSyncService()
+        login()
+
+        try await waitUntil { self.prefs.selectedLanguage == "de" }
+        _ = sync
+    }
+
+    /// The account has no pick yet, but this device does (set before login,
+    /// e.g. while anonymous) — it gets adopted as the account's, same
+    /// "migrate this device's local state up" spirit as the sets.
+    func testLoginPushesLocalExplicitLanguageWhenAccountHasNone() async throws {
+        prefs.setLanguage("es")
+        client.remoteState = UserSyncState(hiddenFilms: [], disabledCinemas: [], language: nil)
+        let pushed = expectation(description: "language pushed to server")
+        client.onPut = { state in if state.language == "es" { pushed.fulfill() } }
+        let sync = makeSyncService()
+
+        login()
+        await fulfillment(of: [pushed], timeout: 1)
+        _ = sync
+    }
+
+    /// Neither side has an explicit pick — nothing to restore or stamp onto
+    /// the account. `selectedLanguage` stays on whatever `resolve()` fell
+    /// back to at init (device/storefront/English), untouched by the merge —
+    /// the FIRST login's own hiddenFilms/disabledCinemas migration still
+    /// pushes once regardless (pre-existing, unrelated to language), so this
+    /// only checks that push's `language` came along empty, not that no push
+    /// happened at all.
+    func testLoginLeavesResolvedDefaultAloneWhenNeitherSideHasAPick() async throws {
+        let resolvedAtInit = prefs.selectedLanguage
+        client.remoteState = UserSyncState(hiddenFilms: [], disabledCinemas: [], language: nil)
+        let sync = makeSyncService()
+
+        login()
+        try await Task.sleep(for: .milliseconds(200))
+
+        XCTAssertEqual(prefs.selectedLanguage, resolvedAtInit)
+        XCTAssertNil(client.lastPushed?.language)
+        _ = sync
+    }
+
+    /// A pick made AFTER login (not just the merge-on-login case above)
+    /// reaches the server too, through the same debounced push the sets use.
+    func testLanguagePickAfterLoginIsPushed() async throws {
+        client.remoteState = UserSyncState(hiddenFilms: [], disabledCinemas: [], language: nil)
+        let sync = makeSyncService()
+        login()
+        // Neither side has a pick, so this merge pushes nothing — no
+        // expectation to await. `startObservingPrefs()` runs right after the
+        // merge settles, so a short sleep (same idiom the "nothing happens"
+        // tests elsewhere in this file use) is enough to let it land before
+        // the pick below, which the observer must be live for.
+        try await Task.sleep(for: .milliseconds(200))
+
+        let pushed = expectation(description: "explicit pick pushed")
+        client.onPut = { state in if state.language == "de" { pushed.fulfill() } }
+        prefs.setLanguage("de")
+        await fulfillment(of: [pushed], timeout: 1)
+        _ = sync
+    }
+
     // MARK: - Server authoritative after first sync
 
     /// Regression: once the one-time migration has run, a later launch must
