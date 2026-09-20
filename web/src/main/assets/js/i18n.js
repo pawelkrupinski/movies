@@ -114,32 +114,25 @@ function onLanguageChange(code) {
 }
 window.onLanguageChange = onLanguageChange;
 
-// Boot: apply a stored explicit pick, else sniff the browser's own language
-// list against what this deployment ships packs for. This is a top-level
-// statement, so it runs as soon as this `defer`red script executes — on
-// repertoire.scala.html that's before `bootView` removes its `grid-cloak`,
-// so a returning visitor's picked language is already applied before the
-// grid becomes visible; other pages get it applied before the deferred
-// script yields, i.e. before the browser's next paint.
+// Boot: apply a stored explicit pick, if there is one. No browser-language
+// inference — a visitor with no stored pick sees the deployment's own
+// default (pl on kinowo.net, en on showtimes.cc/us, /uk, …), same as the
+// server-rendered HTML they already got, regardless of their own browser's
+// language settings. This is a top-level statement, so it runs as soon as
+// this `defer`red script executes — on repertoire.scala.html that's before
+// `bootView` removes its `grid-cloak`, so a returning visitor's picked
+// language is already applied before the grid becomes visible; other pages
+// get it applied before the deferred script yields, i.e. before the
+// browser's next paint.
 //
 // `window.KINOWO_NO_AUTO_LANG` (set only by `landing.scala.html`'s apex
 // branch) skips this entirely: the apex is brand chrome that speaks for the
 // whole brand rather than for a visitor, so it never re-renders in a stored
-// pick — `t()`/`applyLanguage` stay fully usable, just never auto-invoked.
+// pick either — `t()`/`applyLanguage` stay fully usable, just never
+// auto-invoked.
 (function bootLanguage() {
   if (window.KINOWO_NO_AUTO_LANG) return;
   var stored = null;
   try { stored = localStorage.getItem('kinowo_lang'); } catch (e) {}
-  if (stored) {
-    if (I18N_PACKS[stored] && stored !== currentLang) applyLanguage(stored);
-    return;
-  }
-  var languages = navigator.languages || [navigator.language || ''];
-  for (var i = 0; i < languages.length; i++) {
-    var code = String(languages[i]).slice(0, 2).toLowerCase();
-    if (I18N_PACKS[code]) {
-      if (code !== currentLang) applyLanguage(code);
-      return;
-    }
-  }
+  if (stored && I18N_PACKS[stored] && stored !== currentLang) applyLanguage(stored);
 })();

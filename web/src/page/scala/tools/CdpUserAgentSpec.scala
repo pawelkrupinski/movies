@@ -14,11 +14,9 @@ import org.scalatest.matchers.should.Matchers
  *
  * `Chrome.tryStart`'s `spoofHeadlessUserAgent` flag fixes this by overriding
  * the `User-Agent` (via `Emulation.setUserAgentOverride`, never the `Network`
- * domain — see that method's doc comment on why) to Chrome's own real UA
- * with "Headless" stripped out. This spec proves the header that actually
- * reaches the server on the wire no longer contains "Headless", the same
- * way `CdpAcceptLanguageSpec` proves the `Accept-Language` override reaches
- * the wire.
+ * domain) to Chrome's own real UA with "Headless" stripped out. This spec
+ * proves the header that actually reaches the server on the wire no longer
+ * contains "Headless".
  */
 class CdpUserAgentSpec extends AnyFlatSpec with Matchers {
 

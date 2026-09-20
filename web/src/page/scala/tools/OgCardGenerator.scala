@@ -119,8 +119,8 @@ object OgCardGenerator {
       pass = sys.env("KINOWO_PROXY_PASS")
     ))
 
-  private def startChromeOrExit(country: Country, proxy: Option[Chrome.ProxyConfig]): Chrome =
-    Chrome.tryStart(lang = Some(country.language.getLanguage), proxy = proxy, spoofHeadlessUserAgent = true).getOrElse {
+  private def startChromeOrExit(proxy: Option[Chrome.ProxyConfig]): Chrome =
+    Chrome.tryStart(proxy = proxy, spoofHeadlessUserAgent = true).getOrElse {
       System.err.println("No Chrome/Chromium found (set CDP_BROWSER_BIN). Aborting.")
       sys.exit(1)
     }
@@ -142,7 +142,7 @@ object OgCardGenerator {
     var ok = 0
 
     if (homeMode) {
-      val chrome = startChromeOrExit(country, proxyConfigFor(ports.head))
+      val chrome = startChromeOrExit(proxyConfigFor(ports.head))
       try {
         val city = sys.env.get("KINOWO_OG_HOME_CITY").flatMap(s => country.bySlug.get(s))
           .orElse(country.cities.headOption)
@@ -151,7 +151,7 @@ object OgCardGenerator {
       } finally chrome.close()
     } else {
       cities.grouped(CitiesPerProxyBatch).zipWithIndex.foreach { case (batch, batchIndex) =>
-        val chrome = startChromeOrExit(country, proxyConfigFor(ports(batchIndex % ports.size)))
+        val chrome = startChromeOrExit(proxyConfigFor(ports(batchIndex % ports.size)))
         try batch.foreach { city =>
           if (writeCard(chrome, country, s"$baseUrl/${city.slug}/", cityTagline(city), outDir.resolve(city.shareImage), city.slug)) ok += 1
         } finally chrome.close()
@@ -259,18 +259,11 @@ object OgCardGenerator {
   /** Screenshot the live city page at desktop 2×, with every date shown so the
    *  grid is populated regardless of the hour. Returns Base64 PNG bytes.
    *
-   *  The server always renders the deployment's own default language now (no
-   *  more Accept-Language/cookie resolution — see `shared.js`'s client-side
-   *  language switch), so THAT part can't drift with the machine driving this
-   *  generator. But `shared.js` boots by sniffing `navigator.languages` as a
-   *  fallback when no explicit pick is stored, and a headless Chrome's own
-   *  locale defaults to English on most CI/dev boxes — so Chrome is still
-   *  launched with `--accept-lang` set to the deployment's own language (see
-   *  `Chrome.tryStart`), matching the sniff to what the server already
-   *  rendered instead of letting the client overwrite it back to English.
-   *  Without that, a German or Spanish deployment's card screenshot showed
-   *  English nav/day-tab/search text under a correctly German/Spanish overlay
-   *  tagline.
+   *  The server always renders the deployment's own default language (no
+   *  Accept-Language/cookie resolution, and `i18n.js`'s boot no longer sniffs
+   *  `navigator.languages` either), so the screenshot always matches the
+   *  deployment's language regardless of the machine/Chrome-locale driving
+   *  this generator.
    *
    *  Throws when the page didn't actually load (Chrome's offline error page, a
    *  5xx, prod rate-limiting): such a navigation still reaches readyState

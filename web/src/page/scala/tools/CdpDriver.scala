@@ -73,25 +73,6 @@ object Chrome {
   /** Launch a headless Chrome on a free port. Returns `None` when no
    *  Chrome binary is reachable on this machine.
    *
-   *  `lang`, when given, sets `--accept-lang` — the switch Chrome derives the
-   *  `Accept-Language` header from on every request (`--lang`, Chrome's
-   *  UI-locale switch, does NOT affect it, confirmed empirically:
-   *  `CdpAcceptLanguageSpec` against a header-echoing test server). Used by
-   *  [[OgCardGenerator]] so a non-English deployment's background screenshot
-   *  renders in ITS language rather than whatever locale the machine driving
-   *  this generator defaults to (English on most CI/dev boxes).
-   *
-   *  Earlier this was a per-navigation `Network.enable` +
-   *  `Network.setExtraHTTPHeaders` CDP call pair instead (see git history):
-   *  it worked from a developer machine but made EVERY screenshot fail
-   *  outright in CI (`repertoire page did not load`, 0/52 Spain, 0/79 UK,
-   *  0/41 Poland, 2026-09-15) against the exact same live prod pages — the
-   *  local/CI split points at something CDP + `Network` domain specific
-   *  (a newer Chrome build, a race, a Linux-vs-macOS difference — not
-   *  pinned down). The `--accept-lang` launch switch reaches the same
-   *  outcome without ever touching the `Network` domain, which sidesteps
-   *  the problem rather than explaining it.
-   *
    *  `proxy`, when given, adds `--proxy-server` so every request routes
    *  through it (auth handled per-page in `openPage`; see [[ProxyConfig]]).
    *  Used by [[OgCardGenerator]] to route through a residential IP —
@@ -118,7 +99,7 @@ object Chrome {
    *  TLS/JA3 fingerprinting or ML bot score behind this rule, so a plain
    *  string substitution is enough — no launch-flag/stealth arms race
    *  needed. */
-  def tryStart(lang: Option[String] = None, proxy: Option[ProxyConfig] = None, spoofHeadlessUserAgent: Boolean = false): Option[Chrome] = findExecutable().flatMap { exe =>
+  def tryStart(proxy: Option[ProxyConfig] = None, spoofHeadlessUserAgent: Boolean = false): Option[Chrome] = findExecutable().flatMap { exe =>
     val port    = findFreePort()
     val userDirectory = Files.createTempDirectory("chrome-cdp-test-")
     val pb = new ProcessBuilder(
@@ -139,8 +120,7 @@ object Chrome {
         "--remote-allow-origins=*",
         s"--remote-debugging-port=$port",
         s"--user-data-dir=${userDirectory.toString}"
-      ) ++ lang.map(code => s"--accept-lang=$code")
-        ++ proxy.map(p => s"--proxy-server=http://${p.host}:${p.port}")
+      ) ++ proxy.map(p => s"--proxy-server=http://${p.host}:${p.port}")
         ++ Seq("about:blank"))*
     ).redirectErrorStream(true)
     val process = pb.start()
@@ -250,9 +230,9 @@ class Chrome private[tools] (
       page.send("Runtime.enable")
       // `Emulation.setUserAgentOverride` is stateless (no `Emulation.enable`
       // needed, same as `setDeviceMetricsOverride` below) and never touches
-      // the `Network` domain — which is otherwise avoided in this driver,
-      // see `tryStart`'s doc comment on why `--accept-lang` replaced a
-      // `Network.setExtraHTTPHeaders` call that broke CI outright.
+      // the `Network` domain — a domain this driver avoids entirely (a
+      // `Network.setExtraHTTPHeaders` call once broke CI outright while
+      // working fine locally; see git history around 2026-09-15).
       userAgentOverride.foreach { ua =>
         page.send("Emulation.setUserAgentOverride", Json.obj("userAgent" -> ua))
       }

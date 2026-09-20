@@ -77,23 +77,11 @@ class TestHttpServer(
         // `ReferenceError: <fn> is not defined`. HTML routes still come from
         // `routes`; assets always fall through to disk.
         // Fixed diagnostic endpoint, independent of `routes`: echoes back the
-        // request's own `Accept-Language` header as the plain-text body. Lets a
-        // CDP-driven spec assert on what header a real browser navigation
-        // actually sent — e.g. that `Chrome.openPage`'s `acceptLanguage`
-        // override reached the server, not just that the JS side believes it
-        // was set (see `CdpAcceptLanguageSpec`).
-        if (path == "/__echo-accept-language") {
-          val header = Option(exception.getRequestHeaders.getFirst("Accept-Language")).getOrElse("")
-          val bytes  = header.getBytes(StandardCharsets.UTF_8)
-          exception.getResponseHeaders.add("Content-Type", "text/plain; charset=UTF-8")
-          exception.sendResponseHeaders(200, bytes.length.toLong)
-          val os = exception.getResponseBody
-          try os.write(bytes) finally os.close()
-        // Same shape as `/__echo-accept-language`, for `User-Agent` — lets a
+        // request's own `User-Agent` header as the plain-text body. Lets a
         // CDP-driven spec assert on what header a real browser navigation
         // actually sent, e.g. that `Chrome.tryStart`'s `spoofHeadlessUserAgent`
         // strips "Headless" on the wire (see `CdpUserAgentSpec`).
-        } else if (path == "/__echo-user-agent") {
+        if (path == "/__echo-user-agent") {
           val header = Option(exception.getRequestHeaders.getFirst("User-Agent")).getOrElse("")
           val bytes  = header.getBytes(StandardCharsets.UTF_8)
           exception.getResponseHeaders.add("Content-Type", "text/plain; charset=UTF-8")
