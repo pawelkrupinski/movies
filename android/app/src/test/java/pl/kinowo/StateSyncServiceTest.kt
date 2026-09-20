@@ -48,7 +48,7 @@ class StateSyncServiceTest {
 
     @Test
     fun loginSyncsRemoteHiddenIntoEmptyLocal() = runTest(UnconfinedTestDispatcher()) {
-        client.remoteState = UserSyncState(setOf("Film A", "Film B"), emptySet())
+        client.remoteState = UserSyncState(setOf("Film A", "Film B"))
         startService()
         login()
         advanceUntilIdle()
@@ -60,7 +60,7 @@ class StateSyncServiceTest {
     @Test
     fun loginMergesLocalAndRemoteHidden() = runTest(UnconfinedTestDispatcher()) {
         prefs.hiddenState.value = setOf("Local Only")
-        client.remoteState = UserSyncState(setOf("Remote Only"), emptySet())
+        client.remoteState = UserSyncState(setOf("Remote Only"))
         startService()
         login()
         advanceUntilIdle()
@@ -69,32 +69,36 @@ class StateSyncServiceTest {
         assertEquals(setOf("Local Only", "Remote Only"), client.lastPushed?.hiddenFilms)
     }
 
+    // Regression for the cinema-sync retirement: disabledCinemas used to
+    // round-trip through this exact merge (see git history for the old
+    // loginSyncsDisabledCinemas / the disabledCinemas assertion this test
+    // used to carry). `UserSyncState` no longer HAS the field, so this
+    // proves the local value survives a login/merge untouched.
     @Test
-    fun loginSyncsDisabledCinemas() = runTest(UnconfinedTestDispatcher()) {
-        client.remoteState = UserSyncState(emptySet(), setOf("Cinema X"))
+    fun mergeNeverTouchesDisabledCinemas() = runTest(UnconfinedTestDispatcher()) {
+        prefs.disabledState.value = setOf("Local Only Cinema")
+        client.remoteState = UserSyncState(setOf("Film A"))
         startService()
         login()
         advanceUntilIdle()
 
-        assertEquals(setOf("Cinema X"), prefs.disabledState.value)
+        assertEquals(setOf("Local Only Cinema"), prefs.disabledState.value)
     }
 
     @Test
     fun loginPushesMergedStateToServer() = runTest(UnconfinedTestDispatcher()) {
         prefs.hiddenState.value = setOf("Already Hidden")
-        prefs.disabledState.value = setOf("Local Cinema")
-        client.remoteState = UserSyncState(setOf("From Server"), setOf("Remote Cinema"))
+        client.remoteState = UserSyncState(setOf("From Server"))
         startService()
         login()
         advanceUntilIdle()
 
         assertEquals(setOf("Already Hidden", "From Server"), client.lastPushed?.hiddenFilms)
-        assertEquals(setOf("Local Cinema", "Remote Cinema"), client.lastPushed?.disabledCinemas)
     }
 
     @Test
     fun noSyncWhenNotLoggedIn() = runTest(UnconfinedTestDispatcher()) {
-        client.remoteState = UserSyncState(setOf("Film A"), emptySet())
+        client.remoteState = UserSyncState(setOf("Film A"))
         startService()
         advanceUntilIdle()
 
@@ -121,7 +125,7 @@ class StateSyncServiceTest {
     @Test
     fun serverAuthoritativeAfterFirstSyncDropsStaleLocal() = runTest(UnconfinedTestDispatcher()) {
         // Launch 1: migrate from server = {Film A}, flag flips on.
-        client.remoteState = UserSyncState(setOf("Film A"), emptySet())
+        client.remoteState = UserSyncState(setOf("Film A"))
         startService()
         login()
         advanceUntilIdle()
@@ -129,7 +133,7 @@ class StateSyncServiceTest {
         assertTrue(prefs.isServerStateSynced())
 
         // Another device removes Film A from the account.
-        client.remoteState = UserSyncState(emptySet(), emptySet())
+        client.remoteState = UserSyncState(emptySet())
 
         // Launch 2: same persisted prefs (flag still set), fresh session restore
         // (flow starts null, then the user) — the initial null must NOT clear
@@ -146,7 +150,7 @@ class StateSyncServiceTest {
      *  device's current local picks up again. */
     @Test
     fun logoutReArmsMigration() = runTest(UnconfinedTestDispatcher()) {
-        client.remoteState = UserSyncState(setOf("Film A"), emptySet())
+        client.remoteState = UserSyncState(setOf("Film A"))
         startService()
         login()
         advanceUntilIdle()
@@ -158,17 +162,34 @@ class StateSyncServiceTest {
     }
 
     @Test
-    fun localChangeAfterLoginIsPushed() = runTest(UnconfinedTestDispatcher()) {
+    fun localHiddenFilmsChangeAfterLoginIsPushed() = runTest(UnconfinedTestDispatcher()) {
         startService()
         login()
         advanceUntilIdle() // merge completes; the post-merge baseline is dropped
         client.lastPushed = null // ignore the merge-time push
 
-        prefs.setDisabledCinemas(setOf("Helios"))
+        prefs.setHiddenFilms(setOf("New Hide"))
         advanceTimeBy(500) // past the 400 ms debounce window
         runCurrent()
 
-        assertEquals(setOf("Helios"), client.lastPushed?.disabledCinemas)
+        assertEquals(setOf("New Hide"), client.lastPushed?.hiddenFilms)
+    }
+
+    /** The observer `StateSyncService` starts after login only watches
+     *  `prefs.hiddenFilms` now — a cinema toggle must never itself produce a
+     *  `putState` call. */
+    @Test
+    fun localDisabledCinemasChangeNeverSchedulesAPush() = runTest(UnconfinedTestDispatcher()) {
+        startService()
+        login()
+        advanceUntilIdle() // merge completes
+        client.lastPushed = null // ignore the merge-time push
+
+        prefs.setDisabledCinemas(setOf("Helios"))
+        advanceTimeBy(500) // past the 400 ms debounce window a hiddenFilms write would use
+        runCurrent()
+
+        assertNull(client.lastPushed)
     }
 }
 
@@ -185,7 +206,7 @@ private class FakeSyncPrefs : SyncPrefs {
 }
 
 private class FakeUserStateClient : UserStateClient {
-    var remoteState = UserSyncState(emptySet(), emptySet())
+    var remoteState = UserSyncState(emptySet())
     var lastPushed: UserSyncState? = null
     var shouldFailFetch = false
 

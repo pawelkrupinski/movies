@@ -6,9 +6,10 @@ import Combine
 /// Mirrors what the web app stores in `localStorage` for anonymous users.
 final class UserPreferences: ObservableObject {
     @Published private(set) var hiddenFilms: Set<String> = []
-    /// The excluded-cinemas set, shared with the web's `disabledCinemas`
-    /// localStorage (round-trips via `StateSyncService` + the `?cinema=` deep
-    /// link). It is THE cinema filter: the Filtry sheet's "Kina" section
+    /// The excluded-cinemas set, shared in NAME only with the web's
+    /// `disabledCinemas` localStorage key — both are device-local, neither
+    /// round-trips through `StateSyncService` any more (only hiddenFilms
+    /// does). It is THE cinema filter: the Filtry sheet's "Kina" section
     /// adds/removes names here — one checkbox per cinema on a flat city, area
     /// groups on a split one — and `filteredFor` drops them. Global across
     /// cities like the web, so a stale name from another city never matches

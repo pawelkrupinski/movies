@@ -11,10 +11,16 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
-/** The personalization state that round-trips to `/api/me/state`. */
+/**
+ * The personalization state that round-trips to `/api/me/state`. hiddenFilms
+ * ONLY — disabledCinemas stopped being a server-synced field (it's
+ * device-local now, see [pl.kinowo.data.UserPreferences]). `/api/me/state`
+ * still accepts/returns disabledCinemas server-side, for whatever older app
+ * build still sends it; this client just no longer models that half of the
+ * payload.
+ */
 data class UserSyncState(
     val hiddenFilms: Set<String>,
-    val disabledCinemas: Set<String>,
 )
 
 /**
@@ -44,12 +50,12 @@ class HttpUserStateClient(
             if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
             val body = response.body?.string() ?: throw IOException("empty body")
             val wire = json.decodeFromString<WireState>(body)
-            UserSyncState(wire.hiddenFilms, wire.disabledCinemas)
+            UserSyncState(wire.hiddenFilms)
         }
     }
 
     override suspend fun putState(state: UserSyncState) = withContext(Dispatchers.IO) {
-        val payload = json.encodeToString(WireState(state.hiddenFilms, state.disabledCinemas))
+        val payload = json.encodeToString(WireState(state.hiddenFilms))
         val request = Request.Builder()
             .url("$baseUrl/api/me/state")
             .header("User-Agent", UA)
@@ -60,15 +66,16 @@ class HttpUserStateClient(
         }
     }
 
-    // We send/read only the sets the mobile UI models, and PUT /api/me/state is a
-    // partial update — omitted fields keep their stored value — so a field this
-    // client does not model is preserved rather than wiped. That mattered when the
-    // web carried two the apps did not (retired with the plan page) and still does
-    // for the next one. Mirrors iOS's client.
+    // PUT /api/me/state is a partial update server-side — a field this class
+    // doesn't model (disabledCinemas, now — selectedMovies/favouriteRooms
+    // before it) is simply never sent, so its stored value is preserved
+    // rather than wiped by this client's writes. `ignoreUnknownKeys` above
+    // handles the read side symmetrically: a response still carrying
+    // disabledCinemas (for older clients) decodes fine and is dropped.
+    // Mirrors iOS's client.
     @Serializable
     private data class WireState(
         val hiddenFilms: Set<String> = emptySet(),
-        val disabledCinemas: Set<String> = emptySet(),
     )
 
     private companion object {

@@ -47,7 +47,7 @@ class CitySwitchSuppressionWiringTest {
         val detailsRepository = DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer()))
         val authRepository = AuthRepository(http, PersistentCookieJar(context))
         val noopStateClient = object : UserStateClient {
-            override suspend fun fetchState() = UserSyncState(emptySet(), emptySet())
+            override suspend fun fetchState() = UserSyncState(emptySet())
             override suspend fun putState(state: UserSyncState) {}
         }
         val prefs = UserPreferences(context)

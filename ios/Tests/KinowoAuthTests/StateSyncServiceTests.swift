@@ -56,7 +56,7 @@ final class StateSyncServiceTests: XCTestCase {
     // MARK: - Merge on login
 
     func testLoginSyncsRemoteHiddenIntoEmptyLocal() async throws {
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A", "Film B"], disabledCinemas: [])
+        client.remoteState = UserSyncState(hiddenFilms: ["Film A", "Film B"])
         let pushed = expectation(description: "state pushed to server")
         client.onPut = { _ in pushed.fulfill() }
         let sync = makeSyncService()
@@ -70,7 +70,7 @@ final class StateSyncServiceTests: XCTestCase {
 
     func testLoginMergesLocalAndRemoteHidden() async throws {
         prefs.hide("Local Only")
-        client.remoteState = UserSyncState(hiddenFilms: ["Remote Only"], disabledCinemas: [])
+        client.remoteState = UserSyncState(hiddenFilms: ["Remote Only"])
         let pushed = expectation(description: "state pushed to server")
         client.onPut = { _ in pushed.fulfill() }
         let sync = makeSyncService()
@@ -83,8 +83,16 @@ final class StateSyncServiceTests: XCTestCase {
         _ = sync
     }
 
-    func testLoginSyncsDisabledCinemas() async throws {
-        client.remoteState = UserSyncState(hiddenFilms: [], disabledCinemas: ["Cinema X"])
+    // Regression for the cinema-sync retirement: disabledCinemas used to
+    // round-trip through this exact merge, in both directions (see git
+    // history for the old testLoginSyncsDisabledCinemas). `UserSyncState` no
+    // longer HAS the field, so a server response carrying it (older API
+    // shape) can't be applied even by accident — this proves the local value
+    // survives a login/merge untouched, regardless of what the "server"
+    // fake would have sent under the old shape.
+    func testMergeNeverTouchesDisabledCinemas() async throws {
+        prefs.setDisabledCinemas(["Local Only Cinema"])
+        client.remoteState = UserSyncState(hiddenFilms: ["Film A"])
         let pushed = expectation(description: "state pushed to server")
         client.onPut = { _ in pushed.fulfill() }
         let sync = makeSyncService()
@@ -92,23 +100,7 @@ final class StateSyncServiceTests: XCTestCase {
         login()
         await fulfillment(of: [pushed], timeout: 1)
 
-        XCTAssertEqual(prefs.disabledCinemas, ["Cinema X"])
-        _ = sync
-    }
-
-    func testLoginPushesMergedStateToServer() async throws {
-        prefs.hide("Already Hidden")
-        prefs.setDisabledCinemas(["Local Cinema"])
-        client.remoteState = UserSyncState(hiddenFilms: ["From Server"], disabledCinemas: ["Remote Cinema"])
-        let pushed = expectation(description: "state pushed to server")
-        client.onPut = { _ in pushed.fulfill() }
-        let sync = makeSyncService()
-
-        login()
-        await fulfillment(of: [pushed], timeout: 1)
-
-        XCTAssertEqual(client.lastPushed?.hiddenFilms, ["Already Hidden", "From Server"])
-        XCTAssertEqual(client.lastPushed?.disabledCinemas, ["Local Cinema", "Remote Cinema"])
+        XCTAssertEqual(prefs.disabledCinemas, ["Local Only Cinema"])
         _ = sync
     }
 
@@ -120,7 +112,7 @@ final class StateSyncServiceTests: XCTestCase {
     /// local copy. The previous union-on-every-login made removals impossible.
     func testServerAuthoritativeAfterFirstSyncDropsStaleLocal() async throws {
         // Launch 1: migrate from server = ["Film A"], flag flips on.
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A"], disabledCinemas: [])
+        client.remoteState = UserSyncState(hiddenFilms: ["Film A"])
         let pushed = expectation(description: "first push")
         client.onPut = { _ in pushed.fulfill() }
         let sync1 = makeSyncService()
@@ -130,7 +122,7 @@ final class StateSyncServiceTests: XCTestCase {
         XCTAssertTrue(prefs.serverStateSynced)
 
         // Another device removes "Film A" from the account.
-        client.remoteState = UserSyncState(hiddenFilms: [], disabledCinemas: [])
+        client.remoteState = UserSyncState(hiddenFilms: [])
         client.onPut = nil
 
         // Launch 2: same persisted prefs (flag still set), a fresh session
@@ -150,7 +142,7 @@ final class StateSyncServiceTests: XCTestCase {
     /// A genuine logout re-arms migration so the next sign-in carries this
     /// device's current local picks up again.
     func testLogoutReArmsMigration() async throws {
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A"], disabledCinemas: [])
+        client.remoteState = UserSyncState(hiddenFilms: ["Film A"])
         let pushed = expectation(description: "first push")
         client.onPut = { _ in pushed.fulfill() }
         let sync = makeSyncService()
@@ -165,7 +157,7 @@ final class StateSyncServiceTests: XCTestCase {
     }
 
     func testNoSyncWhenNotLoggedIn() async throws {
-        client.remoteState = UserSyncState(hiddenFilms: ["Film A"], disabledCinemas: [])
+        client.remoteState = UserSyncState(hiddenFilms: ["Film A"])
         let sync = makeSyncService()
 
         try await Task.sleep(for: .milliseconds(200))
@@ -187,13 +179,35 @@ final class StateSyncServiceTests: XCTestCase {
         XCTAssertNil(client.lastPushed)
         _ = sync
     }
+
+    // MARK: - disabledCinemas never triggers a push
+
+    /// The observer StateSyncService starts after login only watches
+    /// `prefs.$hiddenFilms` now — a cinema toggle must never itself produce a
+    /// `putState` call.
+    func testDisablingACinemaNeverSchedulesAPush() async throws {
+        client.remoteState = UserSyncState(hiddenFilms: [])
+        let firstPush = expectation(description: "first-sync push")
+        client.onPut = { _ in firstPush.fulfill() }
+        let sync = makeSyncService()
+        login()
+        await fulfillment(of: [firstPush], timeout: 1)
+
+        client.lastPushed = nil
+        client.onPut = { _ in XCTFail("disabledCinemas must never trigger a server push") }
+        prefs.setDisabledCinemas(["Some Cinema"])
+        try await Task.sleep(for: .milliseconds(600)) // past the 400ms push debounce
+
+        XCTAssertNil(client.lastPushed)
+        _ = sync
+    }
 }
 
 // MARK: - Fake
 
 @MainActor
 final class FakeUserStateClient: UserStateClient {
-    var remoteState = UserSyncState(hiddenFilms: [], disabledCinemas: [])
+    var remoteState = UserSyncState(hiddenFilms: [])
     var lastPushed: UserSyncState?
     var onPut: ((UserSyncState) -> Void)?
     var shouldFailFetch = false

@@ -51,27 +51,25 @@ final class StateSyncService: ObservableObject {
         prefsCancellables.removeAll()
     }
 
+    /// hiddenFilms only — disabledCinemas is device-local now (see
+    /// `UserSyncState`'s doc comment), so this never reads or writes
+    /// `prefs.disabledCinemas` in either direction.
     func mergeWithServer() async {
         do {
             let remote = try await client.fetchState()
             if prefs.serverStateSynced {
                 // Already migrated — the server is the source of truth. Mirror it
-                // so a hide/cinema removed on another device (or this one, last
-                // session) stays removed instead of being resurrected by a union.
+                // so a hide removed on another device (or this one, last session)
+                // stays removed instead of being resurrected by a union.
                 if prefs.hiddenFilms != remote.hiddenFilms {
                     prefs.setHiddenFilms(remote.hiddenFilms)
-                }
-                if prefs.disabledCinemas != remote.disabledCinemas {
-                    prefs.setDisabledCinemas(remote.disabledCinemas)
                 }
             } else {
                 // First sync after login — union this device's local picks up so
                 // nothing set while signed-out is lost, push it, then flip the flag.
                 let mergedHidden = prefs.hiddenFilms.union(remote.hiddenFilms)
-                let mergedDisabled = prefs.disabledCinemas.union(remote.disabledCinemas)
                 if mergedHidden != prefs.hiddenFilms { prefs.setHiddenFilms(mergedHidden) }
-                if mergedDisabled != prefs.disabledCinemas { prefs.setDisabledCinemas(mergedDisabled) }
-                try await client.putState(UserSyncState(hiddenFilms: mergedHidden, disabledCinemas: mergedDisabled))
+                try await client.putState(UserSyncState(hiddenFilms: mergedHidden))
                 prefs.setServerStateSynced(true)
             }
         } catch {
@@ -85,12 +83,6 @@ final class StateSyncService: ObservableObject {
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _ in self?.schedulePush() }
             .store(in: &prefsCancellables)
-
-        prefs.$disabledCinemas
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.schedulePush() }
-            .store(in: &prefsCancellables)
     }
 
     private func schedulePush() {
@@ -99,10 +91,7 @@ final class StateSyncService: ObservableObject {
         let item = DispatchWorkItem { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self, self.isLoggedIn else { return }
-                try? await self.client.putState(UserSyncState(
-                    hiddenFilms: self.prefs.hiddenFilms,
-                    disabledCinemas: self.prefs.disabledCinemas
-                ))
+                try? await self.client.putState(UserSyncState(hiddenFilms: self.prefs.hiddenFilms))
             }
         }
         debounceWorkItem = item

@@ -84,7 +84,7 @@ class DayScrollOnSwipeTest {
         val detailsRepository = DetailsRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "det_probe", FilmDetails.serializer()))
         val authRepository = AuthRepository(http, PersistentCookieJar(context))
         val noop = object : UserStateClient {
-            override suspend fun fetchState() = UserSyncState(emptySet(), emptySet())
+            override suspend fun fetchState() = UserSyncState(emptySet())
             override suspend fun putState(state: UserSyncState) {}
         }
         return KinowoViewModel(repository, detailsRepository, UserPreferences(context), authRepository, noop)

@@ -14,10 +14,13 @@ import kotlinx.coroutines.runBlocking
 private val Context.dataStore by preferencesDataStore(name = "kinowo_prefs")
 
 /**
- * The slice of preferences that [pl.kinowo.auth.StateSyncService] reads and
- * writes when reconciling with the server — the two sets that round-trip to
- * `/api/me/state`. Narrowing the sync service to this interface keeps it
- * unit-testable against an in-memory fake instead of a real DataStore.
+ * The slice of preferences [pl.kinowo.auth.StateSyncService] touches, PLUS
+ * disabledCinemas — which it stopped touching (device-local now), but stays
+ * on this interface since it's still the shared seam other local-only
+ * consumers (the cinema filter UI) read/write through. Only hiddenFilms
+ * round-trips to `/api/me/state`. Narrowing the sync service to this
+ * interface keeps it unit-testable against an in-memory fake instead of a
+ * real DataStore.
  */
 interface SyncPrefs {
     val hiddenFilms: Flow<Set<String>>
@@ -36,7 +39,8 @@ interface SyncPrefs {
  * Per-device hidden-films + disabled-cinemas state, persisted with
  * Preferences DataStore. Mirrors what the iOS app keeps in UserDefaults and
  * the web keeps in `localStorage` for anonymous users. When the user signs
- * in, [pl.kinowo.auth.StateSyncService] mirrors these sets to the server.
+ * in, [pl.kinowo.auth.StateSyncService] mirrors hiddenFilms to the server —
+ * disabledCinemas is device-local only, in every direction.
  */
 class UserPreferences(private val context: Context) : SyncPrefs {
 

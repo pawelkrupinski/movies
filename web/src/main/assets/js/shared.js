@@ -651,8 +651,11 @@
 
   function getHidden()           { return _lsGet('hiddenFilms')    || []; }
   function setHidden(titles)     { _lsSet('hiddenFilms',    titles); scheduleServerSync(); }
+  // disabledCinemas is device-local ONLY — no server round-trip at all (see
+  // the "Server sync" section below). `setDisabledCinemas` deliberately does
+  // NOT call `scheduleServerSync()`.
   function getDisabledCinemas()  { return _lsGet('disabledCinemas') || []; }
-  function setDisabledCinemas(l) { _lsSet('disabledCinemas', l);    scheduleServerSync(); }
+  function setDisabledCinemas(l) { _lsSet('disabledCinemas', l); }
   // `disabledCinemas` is ONE global list (cinema display-names) shared across
   // every city — switching city is a full navigation that doesn't touch it, so
   // a cinema you deselected in another city stays in the list. That's
@@ -2165,8 +2168,15 @@
 
   // ── Server sync for logged-in users ──────────────────────────────────────
   //
+  // HIDDEN FILMS ONLY — disabledCinemas stopped being a server-synced field
+  // (it's device-local now, see `setDisabledCinemas`); this whole section no
+  // longer reads or writes it, in either direction. `PUT`/`GET /api/me/state`
+  // themselves still accept/return disabledCinemas (unchanged, for whatever
+  // older app version still sends it), this client just stops using that
+  // half of the payload.
+  //
   // When the user is logged in, localStorage is still the in-page truth
-  // (every read goes there for zero-latency) but every write also
+  // (every read goes there for zero-latency) but every hiddenFilms write also
   // debounces a PUT to /api/me/state so the server stays in sync.
   //
   // The boot reconcile is two-phase, gated by the `serverStateSynced` flag:
@@ -2175,10 +2185,10 @@
   //     push the union, so anything the user set while anonymous is migrated
   //     up to the account ("migrate on page entry"). Then set the flag.
   //   • EVERY reconcile after that (flag set): the SERVER is the source of
-  //     truth — replace localStorage with the server's sets. This is what
-  //     makes a removal (un-hide a film / re-enable a cinema) STICK: a blind
-  //     union on every page load could only ever add, so it resurrected
-  //     anything you'd just removed on the next navigation.
+  //     truth — replace localStorage with the server's set. This is what
+  //     makes a removal (un-hide a film) STICK: a blind union on every page
+  //     load could only ever add, so it resurrected anything you'd just
+  //     removed on the next navigation.
   //
   // The flag is cleared whenever a page renders anonymous (logout / expired
   // session), so the next login migrates this device's current picks afresh.
@@ -2202,9 +2212,12 @@
       // `keepalive` lets the request outlive an unloading document so the
       // pagehide flush below isn't dropped mid-navigation.
       keepalive: !!(opts && opts.keepalive),
+      // disabledCinemas deliberately omitted — device-local only, see above.
+      // The legacy PUT is a per-field partial update server-side, so leaving
+      // the key out entirely (not sending an empty array) keeps whatever the
+      // server already has for it, rather than clearing it.
       body:    JSON.stringify({
-        hiddenFilms:     getHidden(),
-        disabledCinemas: getDisabledCinemas()
+        hiddenFilms: getHidden()
       })
     }).catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
@@ -2240,16 +2253,14 @@
 
       if (firstSync) {
         const union = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
-        _lsSet('hiddenFilms',     union(getHidden(),          remote.hiddenFilms));
-        _lsSet('disabledCinemas', union(getDisabledCinemas(), remote.disabledCinemas));
+        _lsSet('hiddenFilms', union(getHidden(), remote.hiddenFilms));
         try { localStorage.setItem(SERVER_SYNCED_KEY, '1'); } catch {}
         pushStateToServer();   // persist the migrated union
       } else {
         // Server authoritative — mirror it locally so removals propagate.
         // `_lsSet` (not setHidden/…) avoids re-triggering a redundant push.
         const fromServer = srv => (srv || []).slice().sort();
-        _lsSet('hiddenFilms',     fromServer(remote.hiddenFilms));
-        _lsSet('disabledCinemas', fromServer(remote.disabledCinemas));
+        _lsSet('hiddenFilms', fromServer(remote.hiddenFilms));
       }
       applyFilters();
     } catch (e) { /* network blew up — localStorage is still usable */ }

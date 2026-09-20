@@ -180,8 +180,12 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """{"displayName":"Tester","email":"tester@example.com","avatarUrl":null,"provider":"google"}"""
       // Static server-side state: one hidden film. response.json() parses the body
       // regardless of content-type, so serving it via the HTML route map is fine.
+      // `disabledCinemas` here is a SENTINEL the client must never adopt — it
+      // stopped being a server-synced field, so a non-empty, distinctive value
+      // makes any accidental pull-in visible rather than coincidentally
+      // matching an empty local default.
       val userStateJson =
-        """{"hiddenFilms":["Film A"],"disabledCinemas":[]}"""
+        """{"hiddenFilms":["Film A"],"disabledCinemas":["Server-Only Cinema"]}"""
 
       // The global-corpus /debug page (not city-scoped) — a few corpus rows to
       // populate the main #t table behind the staging table under test.
@@ -479,6 +483,58 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")  // pulled from the server
       hidden should include ("Local Z") // migrated up from this device
+    }
+  }
+
+  // ── disabledCinemas is device-local — the server never sees it ──────────
+  //
+  // Regression for the cinema-sync retirement: disabledCinemas used to travel
+  // both directions alongside hiddenFilms in exactly the code above (the same
+  // PUT body, the same boot reconcile). It's now local-only, in every
+  // direction — these two tests are the negative-space of the pair above.
+
+  it should "never PUT to the server when only disabledCinemas changes" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      // `awaitOwnReconcile` lands on the FIRST (union) reconcile, which fires
+      // its own `pushStateToServer()` to persist the migrated union — a real
+      // request, just not the one this test is about, and one whose resource
+      // entry can land racily close to the boot GET's. Reload once more to
+      // land on the "already synced" branch, which pushes nothing on its own,
+      // so the baseline below is never chasing that unrelated PUT.
+      page.reload()
+      page.waitFor("localStorage.getItem('serverStateSynced') === '1' && getHidden().indexOf('Film A') !== -1",
+                   timeoutMs = 5000)
+      val before = page.evalString(
+        "performance.getEntriesByType('resource')" +
+          ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length.toString()")
+      page.eval("setDisabledCinemas(['Local Only Cinema'])")
+      // Past the 400ms debounce a hiddenFilms write would have used — long
+      // enough that a PUT, if one fired, would already be a resource entry.
+      Thread.sleep(700)
+      val after = page.evalString(
+        "performance.getEntriesByType('resource')" +
+          ".filter(function (r) { return r.name.indexOf('/api/me/state') !== -1; }).length.toString()")
+      after shouldBe before
+    }
+  }
+
+  it should "never adopt the server's disabledCinemas — on the union reconcile or the authoritative one" in {
+    onLoggedInIndex { page =>
+      // First reconcile is the UNION phase — still must not touch disabledCinemas.
+      awaitOwnReconcile(page)
+      page.eval("setDisabledCinemas(['Device Pick'])")
+      page.evalString("JSON.stringify(getDisabledCinemas())") should include ("Device Pick")
+      page.evalString("JSON.stringify(getDisabledCinemas())") should not include "Server-Only Cinema"
+
+      // Second reconcile is the AUTHORITATIVE-REPLACE phase for hiddenFilms —
+      // confirm disabledCinemas still isn't touched even there.
+      page.reload()
+      page.waitFor("localStorage.getItem('serverStateSynced') === '1' && getHidden().indexOf('Film A') !== -1",
+                   timeoutMs = 5000)
+      val disabled = page.evalString("JSON.stringify(getDisabledCinemas())")
+      disabled should include ("Device Pick")
+      disabled should not include "Server-Only Cinema"
     }
   }
 
