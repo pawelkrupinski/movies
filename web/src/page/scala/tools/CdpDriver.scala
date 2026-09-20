@@ -300,16 +300,18 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
   // below for why that's required) WITHOUT spawning a fresh OS thread per
   // event. A proxied page's `Fetch.enable({patterns: [...]})` (see
   // Chrome.openPage) pauses EVERY subresource request — posters, CSS, JS, the
-  // lot — so a real repertoire page fires dozens of these per load. Spawning
-  // a new Thread per one was cheap enough locally to hide the cost, but on
-  // GH Actions' 2-core runners it measurably slowed resource loads: the
-  // OG-card generator's poster-decode wait (capped, so a slow poster is
-  // skipped rather than hanging the run) started timing out at a real rate
-  // once the generator started proxying (2026-09-15, sampled ~1/3 of the
-  // regen PR's cards). Reproducible-page-through-the-real-proxy testing from
-  // a dev machine never hit it — the difference is CPU headroom to service
-  // the flood of spawned threads, not the network. A small fixed pool avoids
-  // repeated thread-creation overhead entirely.
+  // lot — so a real repertoire page fires dozens of these per load. The
+  // blank-poster bug this pool was first credited with fixing (2026-09-15,
+  // ~1/3 of a regen PR's cards shipping blank) was NOT thread-creation
+  // overhead or GH Actions' 2-core runners having less headroom to service
+  // the spawned threads — swapping per-event `new Thread(...)` for this pool
+  // shipped and, per fdb7299de's commit message, made no measurable
+  // difference to the failure rate. The real cause was `send`'s WebSocket
+  // race (see sendLock below): whichever thread ran a Fetch.requestPaused
+  // handler — spawned or pooled — called `send` back in concurrently with
+  // whatever thread was mid-navigation, and the two raced on the one socket.
+  // This pool is still a real, if minor, efficiency win over spawning a
+  // Thread per event; it just isn't what fixed the blank posters.
   private val eventPool = Executors.newFixedThreadPool(4)
 
   /** Register `handler` to run whenever Chrome sends the CDP event `method`

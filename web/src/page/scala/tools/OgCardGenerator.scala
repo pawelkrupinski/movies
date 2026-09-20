@@ -295,14 +295,18 @@ object OgCardGenerator {
       // whatever decoded once the cap elapses. 8000ms was enough before the
       // generator routed through a proxy; once it did (2026-09-15, Decodo
       // residential — see Chrome.tryStart's ProxyConfig), ~1/3 of a regen PR's
-      // cards started shipping with a blank poster. Not reproducible from a
-      // dev machine hitting the exact same proxied URLs (a handful of retries
-      // all loaded well under a second) — the difference is GH Actions' 2-core
-      // runners having less headroom to service the request volume a proxied
-      // page now generates (every resource pauses at Fetch.requestPaused for
-      // the proxy auth wiring; see CdpPage's eventPool). Widened rather than
-      // root-caused further: the poll returns as soon as posters ARE ready, so
-      // this only costs time on the slow tail, not the common case.
+      // cards started shipping with a blank poster. That was NOT a GH Actions
+      // CPU/headroom problem — it was CdpPage's WebSocket send race (see
+      // sendLock): concurrent Fetch.requestPaused handlers raced calling
+      // `send` back in, and a lost Fetch.continueRequest left the paused
+      // resource, and the whole page, never finishing loading. Fixed by
+      // sendLock in fdb7299de. The 20000ms cap here is now defense-in-depth
+      // for genuinely slow decodes on the slow tail, not the fix for the
+      // blank-poster bug — widening it in 96b000063 shipped alongside the
+      // eventPool change and, per fdb7299de's commit message, made no
+      // measurable difference to the failure rate. The poll returns as soon
+      // as posters ARE ready, so this only costs time on the slow tail, not
+      // the common case.
       try page.waitFor(PostersReadyJs, timeoutMs = 20000, pollMs = 150)
       catch { case _: Throwable => () }
       Thread.sleep(400) // final layout + paint settle
