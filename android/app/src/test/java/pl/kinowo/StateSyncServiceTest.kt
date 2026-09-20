@@ -170,11 +170,73 @@ class StateSyncServiceTest {
 
         assertEquals(setOf("Helios"), client.lastPushed?.disabledCinemas)
     }
+
+    // ── Language sync — a scalar, so no migration-flag dance ────────────────
+
+    /** The account's pick is restored regardless of [SyncPrefs.isServerStateSynced]
+     *  — this is the very first merge (flag unset), which the sets' union path
+     *  shares, but language must not wait for a second login. */
+    @Test
+    fun loginRestoresAccountLanguage() = runTest(UnconfinedTestDispatcher()) {
+        client.remoteState = UserSyncState(emptySet(), emptySet(), language = "de")
+        startService()
+        login()
+        advanceUntilIdle()
+
+        assertEquals("de", prefs.languageState.value)
+    }
+
+    /** The account has no pick yet, but this device does (set before login,
+     *  e.g. while anonymous) — it gets adopted as the account's, same
+     *  "migrate this device's local state up" spirit as the sets. */
+    @Test
+    fun loginPushesLocalExplicitLanguageWhenAccountHasNone() = runTest(UnconfinedTestDispatcher()) {
+        prefs.languageState.value = "es"
+        client.remoteState = UserSyncState(emptySet(), emptySet(), language = null)
+        startService()
+        login()
+        advanceUntilIdle()
+
+        assertEquals("es", client.lastPushed?.language)
+    }
+
+    /** Neither side has an explicit pick — nothing to restore or stamp onto
+     *  the account. The FIRST login's own hiddenFilms/disabledCinemas
+     *  migration still pushes once regardless (pre-existing, unrelated to
+     *  language), so this only checks that push's `language` came along
+     *  empty, not that no push happened at all. */
+    @Test
+    fun loginLeavesNoLanguageAloneWhenNeitherSideHasAPick() = runTest(UnconfinedTestDispatcher()) {
+        client.remoteState = UserSyncState(emptySet(), emptySet(), language = null)
+        startService()
+        login()
+        advanceUntilIdle()
+
+        assertNull(prefs.languageState.value)
+        assertNull(client.lastPushed?.language)
+    }
+
+    /** A pick made AFTER login (not just the merge-on-login case above)
+     *  reaches the server too, through the same debounced push the sets use. */
+    @Test
+    fun languagePickAfterLoginIsPushed() = runTest(UnconfinedTestDispatcher()) {
+        startService()
+        login()
+        advanceUntilIdle() // merge completes; the post-merge baseline is dropped
+        client.lastPushed = null // ignore the merge-time push
+
+        prefs.setLanguageTag("de")
+        advanceTimeBy(500) // past the 400 ms debounce window
+        runCurrent()
+
+        assertEquals("de", client.lastPushed?.language)
+    }
 }
 
 private class FakeSyncPrefs : SyncPrefs {
     val hiddenState = MutableStateFlow<Set<String>>(emptySet())
     val disabledState = MutableStateFlow<Set<String>>(emptySet())
+    val languageState = MutableStateFlow<String?>(null)
     private var synced = false
     override val hiddenFilms = hiddenState
     override val disabledCinemas = disabledState
@@ -182,6 +244,8 @@ private class FakeSyncPrefs : SyncPrefs {
     override suspend fun setDisabledCinemas(cinemas: Set<String>) { disabledState.value = cinemas }
     override suspend fun isServerStateSynced(): Boolean = synced
     override suspend fun setServerStateSynced(synced: Boolean) { this.synced = synced }
+    override val selectedLanguageTag = languageState
+    override suspend fun setLanguageTag(tag: String) { languageState.value = tag }
 }
 
 private class FakeUserStateClient : UserStateClient {

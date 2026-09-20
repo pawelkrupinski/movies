@@ -26,6 +26,10 @@ import pl.kinowo.data.SyncPrefs
  *
  * A failed pull leaves local prefs authoritative (no overwrite, no push) —
  * exactly the offline behaviour iOS has.
+ *
+ * The language pick rides the same [UserSyncState] but is NOT gated by
+ * [SyncPrefs.isServerStateSynced] — see [mergeWithServer]'s language block
+ * for why a scalar pick doesn't need the two-phase dance the sets do.
  */
 class StateSyncService(
     private val prefs: SyncPrefs,
@@ -87,6 +91,21 @@ class StateSyncService(
                 client.putState(UserSyncState(mergedHidden, mergedDisabled))
                 prefs.setServerStateSynced(true)
             }
+
+            // Language is a scalar, not a set, so it skips the migration-flag
+            // dance above entirely — there's no "removed on another device"
+            // case a blind union could wrongly resurrect. Same rule on every
+            // merge, first or not: the account's pick wins whenever it has
+            // one (restored on login, per spec); otherwise this device's own
+            // explicit pick, if any, becomes the account's.
+            val localLang = prefs.selectedLanguageTag.first()
+            if (remote.language != null && remote.language != localLang) {
+                prefs.setLanguageTag(remote.language)
+            } else if (remote.language == null && localLang != null) {
+                val currentHidden = prefs.hiddenFilms.first()
+                val currentDisabled = prefs.disabledCinemas.first()
+                runCatching { client.putState(UserSyncState(currentHidden, currentDisabled, localLang)) }
+            }
         } catch (_: Exception) {
             // Network error — local state is authoritative; leave prefs + flag alone.
         }
@@ -96,8 +115,8 @@ class StateSyncService(
      *  value so we only react to real changes; the collect runs until the
      *  job is cancelled on logout. */
     private suspend fun observePrefs() {
-        combine(prefs.hiddenFilms, prefs.disabledCinemas) { hidden, disabled ->
-            UserSyncState(hidden, disabled)
+        combine(prefs.hiddenFilms, prefs.disabledCinemas, prefs.selectedLanguageTag) { hidden, disabled, lang ->
+            UserSyncState(hidden, disabled, lang)
         }
             .drop(1)
             .debounce(DEBOUNCE_MS)
