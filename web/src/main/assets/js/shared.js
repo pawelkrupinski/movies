@@ -3123,6 +3123,21 @@
     // bypasses it (see `rememberCity`). Landing directly on a city page from
     // search is the common case, so it cannot wait for a city switch.
     rememberCity(CURRENT_CITY);
+    // Catch up on whatever `i18n.js`'s boot-time `applyLanguage` already did.
+    // `i18n.js` loads and runs BEFORE this file on every page (deferred or
+    // not, script order is preserved), so its own `refreshDateLabels()` call
+    // inside `bootLanguage` always fires while `window.refreshDateLabels` is
+    // still undefined — a guaranteed no-op, not a fallback. Waiting for
+    // `DOMContentLoaded` here (rather than calling this right after the
+    // function is defined, above) matters on `film.scala.html`/
+    // `browse.scala.html`, which load this script un-deferred from early in
+    // `<body>`, before the `.date-group` markup further down has even been
+    // parsed yet. By the time this listener fires, `KINOWO_LOCALE.day2`/
+    // `.months` have already been spliced to the stored pick (or left at the
+    // deployment default, in which case this is a harmless re-render of
+    // identical text), so one unconditional call is enough to make the
+    // server-baked date headers match `currentLang`.
+    refreshDateLabels();
     syncDayPills();
     updateNavbar();
     bootView();

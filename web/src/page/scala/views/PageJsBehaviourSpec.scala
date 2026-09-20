@@ -2926,6 +2926,31 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Regression: a visitor with an EXISTING stored pick reloading the page
+  // (not switching language interactively) must see the date headers in
+  // their picked language on the FRESH boot pass, not just after a manual
+  // `applyLanguage` call. `i18n.js`'s boot-time `applyLanguage` runs before
+  // `shared.js` has defined `window.refreshDateLabels` (both load in that
+  // order, deferred or not — see `i18n.js`'s `bootLanguage` comment), so its
+  // date-label refresh used to be a silent no-op on every load, leaving the
+  // server-baked Polish weekday/month names on screen even though every
+  // other `[data-i18n]` string correctly switched.
+  it should "apply a stored language pick to the date headers on a fresh page load, not just an interactive switch" in {
+    onPath("/") { page =>
+      page.eval("localStorage.setItem('kinowo_lang', 'en')")
+      page.reload()
+      page.waitFor("document.documentElement.lang === 'en'", timeoutMs = 5000)
+
+      val isoDate = page.evalString("document.querySelector('.date-group[data-date]').dataset.date")
+      val label   = page.evalString("document.querySelector('.date-group[data-date] .date-label').textContent")
+      try {
+        label shouldBe controllers.DateFormatter.format(LocalDate.parse(isoDate), Locale.ENGLISH)
+      } finally {
+        page.eval("localStorage.removeItem('kinowo_lang')")
+      }
+    }
+  }
+
   it should "re-derive the custom-date `#date-filter` option's short label too" in {
     // A bookmarked/shared `?date=` link naming a day not among the four
     // presets adds a one-off option on the fly (`applyFiltersFromURL`, run at
