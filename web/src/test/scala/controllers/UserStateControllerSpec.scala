@@ -69,6 +69,103 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     (js \ "hiddenFilms").as[Seq[String]]     shouldBe Seq("ABC", "Madagaskar")
   }
 
+  // ── GET /api/me/hidden-films ──────────────────────────────────────────────
+
+  "GET /api/me/hidden-films" should "401 anonymous requests" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films"))
+    status(result) shouldBe UNAUTHORIZED
+  }
+
+  it should "forbid anything keeping a copy of one person's state" in {
+    val (ctl, _, _) = fixture()
+    val result = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films").withSession("userId" -> "alice"))
+    header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
+  }
+
+  it should "return only hiddenFilms — no disabledCinemas key at all" in {
+    val stored = UserState("u1", Set("Madagaskar"), Set("Kino Apollo"), Instant.parse("2026-05-19T12:00:00Z"))
+    val (ctl, _, _) = fixture(Some(stored))
+    val result = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films").withSession("userId" -> "u1"))
+
+    status(result) shouldBe OK
+    val js = contentAsJson(result)
+    (js \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Madagaskar")
+    (js \ "disabledCinemas").toOption    shouldBe empty
+  }
+
+  it should "carry an ETag and a Last-Modified header on a 200" in {
+    val stored = UserState("u1", Set("Madagaskar"), Set.empty, Instant.parse("2026-05-19T12:00:00Z"))
+    val (ctl, _, _) = fixture(Some(stored))
+    val result = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films").withSession("userId" -> "u1"))
+
+    status(result) shouldBe OK
+    header("ETag", result)         shouldBe defined
+    header("Last-Modified", result) shouldBe Some("Tue, 19 May 2026 12:00:00 GMT")
+  }
+
+  it should "304 when If-None-Match already holds the current ETag" in {
+    val stored = UserState("u1", Set("Madagaskar"), Set.empty, Instant.parse("2026-05-19T12:00:00Z"))
+    val (ctl, _, _) = fixture(Some(stored))
+    val first = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films").withSession("userId" -> "u1"))
+    val etag  = header("ETag", first).value
+
+    val second = ctl.hiddenFilms()(
+      FakeRequest("GET", "/api/me/hidden-films")
+        .withSession("userId" -> "u1")
+        .withHeaders("If-None-Match" -> etag)
+    )
+    status(second) shouldBe NOT_MODIFIED
+    // A 304 still carries the validators — a client refreshing its cached
+    // copy's freshness needs the (unchanged) Last-Modified back too.
+    header("ETag", second).value shouldBe etag
+  }
+
+  it should "200 with a fresh body when hiddenFilms changed since the client's ETag" in {
+    val stored = UserState("u1", Set("Madagaskar"), Set.empty, Instant.parse("2026-05-19T12:00:00Z"))
+    val (ctl, repository, _) = fixture(Some(stored))
+    val first = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films").withSession("userId" -> "u1"))
+    val staleEtag = header("ETag", first).value
+
+    repository.upsert(stored.copy(hiddenFilms = Set("Madagaskar", "Sing"), updatedAt = Instant.parse("2026-05-20T09:00:00Z")))
+    val second = ctl.hiddenFilms()(
+      FakeRequest("GET", "/api/me/hidden-films")
+        .withSession("userId" -> "u1")
+        .withHeaders("If-None-Match" -> staleEtag)
+    )
+    status(second) shouldBe OK
+    (contentAsJson(second) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Madagaskar", "Sing")
+  }
+
+  it should "304 on a still-current If-Modified-Since when the client sent no If-None-Match" in {
+    val stored = UserState("u1", Set("Madagaskar"), Set.empty, Instant.parse("2026-05-19T12:00:00Z"))
+    val (ctl, _, _) = fixture(Some(stored))
+    val result = ctl.hiddenFilms()(
+      FakeRequest("GET", "/api/me/hidden-films")
+        .withSession("userId" -> "u1")
+        .withHeaders("If-Modified-Since" -> "Tue, 19 May 2026 12:00:00 GMT")
+    )
+    status(result) shouldBe NOT_MODIFIED
+  }
+
+  // If-None-Match takes precedence over If-Modified-Since per RFC 7232 §3.3 —
+  // load-bearing here because `updatedAt` is the whole ROW's timestamp (still
+  // shared with the legacy disabledCinemas field), so a stale If-Modified-Since
+  // alone is not proof hiddenFilms itself is unchanged.
+  it should "ignore a stale If-Modified-Since when If-None-Match already proves the content is current" in {
+    val stored = UserState("u1", Set("Madagaskar"), Set.empty, Instant.parse("2026-05-19T12:00:00Z"))
+    val (ctl, _, _) = fixture(Some(stored))
+    val first = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films").withSession("userId" -> "u1"))
+    val etag  = header("ETag", first).value
+
+    val result = ctl.hiddenFilms()(
+      FakeRequest("GET", "/api/me/hidden-films")
+        .withSession("userId" -> "u1")
+        .withHeaders("If-None-Match" -> etag, "If-Modified-Since" -> "Mon, 01 Jan 2001 00:00:00 GMT")
+    )
+    status(result) shouldBe NOT_MODIFIED
+  }
+
   // ── PUT /api/me/state ─────────────────────────────────────────────────────
 
   "PUT /api/me/state" should "401 anonymous requests without writing anything" in {
