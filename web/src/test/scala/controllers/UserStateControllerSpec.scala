@@ -88,7 +88,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     (js \ "hiddenFilms").as[Seq[String]]     shouldBe Seq("ABC", "Madagaskar")
   }
 
-  // ── GET /api/me/hidden-films ──────────────────────────────────────────────
+  // ── GET /api/me/:country/hidden-films ─────────────────────────────────────
   // Per-country: `hiddenFilmsByCountry`, NOT the legacy global `hiddenFilms`
   // field `get()`/`put()` still serve — a title is not globally unique across
   // countries the way a cinema display name is.
@@ -96,30 +96,33 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   private def storedFor(country: String, films: String*): UserState =
     UserState("u1", Set.empty, Set.empty, Instant.parse("2026-05-19T12:00:00Z"), Map(country -> films.toSet))
 
-  private def hiddenFilmsRequest(userId: String = "u1", country: String = "pl"): FakeRequest[play.api.mvc.AnyContentAsEmpty.type] =
-    FakeRequest("GET", s"/api/me/hidden-films?country=$country").withSession("userId" -> userId)
+  /** Calls `hiddenFilms(country)` against a request built for that same
+   *  country's path, so a test only ever names the country once. */
+  private def callHiddenFilms(
+    ctl:     UserStateController,
+    userId:  String = "u1",
+    country: String = "pl",
+    headers: (String, String)*
+  ) =
+    ctl.hiddenFilms(country)(
+      FakeRequest("GET", s"/api/me/$country/hidden-films").withSession("userId" -> userId).withHeaders(headers*)
+    )
 
-  "GET /api/me/hidden-films" should "401 anonymous requests" in {
+  "GET /api/me/:country/hidden-films" should "401 anonymous requests" in {
     val (ctl, _, _) = fixture()
-    val result = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films?country=pl"))
+    val result = ctl.hiddenFilms("pl")(FakeRequest("GET", "/api/me/pl/hidden-films"))
     status(result) shouldBe UNAUTHORIZED
-  }
-
-  it should "400 when country is missing" in {
-    val (ctl, _, _) = fixture()
-    val result = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films").withSession("userId" -> "u1"))
-    status(result) shouldBe BAD_REQUEST
   }
 
   it should "400 an unrecognised country code" in {
     val (ctl, _, _) = fixture()
-    val result = ctl.hiddenFilms()(FakeRequest("GET", "/api/me/hidden-films?country=xx").withSession("userId" -> "u1"))
+    val result = callHiddenFilms(ctl, country = "xx")
     status(result) shouldBe BAD_REQUEST
   }
 
   it should "forbid anything keeping a copy of one person's state" in {
     val (ctl, _, _) = fixture()
-    val result = ctl.hiddenFilms()(hiddenFilmsRequest(userId = "alice"))
+    val result = callHiddenFilms(ctl, userId = "alice")
     header("Cache-Control", result).value shouldBe PerUserResponse.CacheControl
   }
 
@@ -127,7 +130,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val stored = UserState("u1", Set.empty, Set("Kino Apollo"), Instant.parse("2026-05-19T12:00:00Z"),
       Map("pl" -> Set("Madagaskar"), "us" -> Set("Sing")))
     val (ctl, _, _) = fixture(Some(stored))
-    val result = ctl.hiddenFilms()(hiddenFilmsRequest(country = "pl"))
+    val result = callHiddenFilms(ctl, country = "pl")
 
     status(result) shouldBe OK
     val js = contentAsJson(result)
@@ -137,14 +140,14 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "return an empty list for a country the user has no bucket for yet" in {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")))
-    val result = ctl.hiddenFilms()(hiddenFilmsRequest(country = "us"))
+    val result = callHiddenFilms(ctl, country = "us")
     status(result) shouldBe OK
     (contentAsJson(result) \ "hiddenFilms").as[Seq[String]] shouldBe empty
   }
 
   it should "carry an ETag and a Last-Modified header on a 200" in {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")))
-    val result = ctl.hiddenFilms()(hiddenFilmsRequest())
+    val result = callHiddenFilms(ctl)
 
     status(result) shouldBe OK
     header("ETag", result)         shouldBe defined
@@ -153,10 +156,10 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
 
   it should "304 when If-None-Match already holds the current ETag" in {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")))
-    val first = ctl.hiddenFilms()(hiddenFilmsRequest())
+    val first = callHiddenFilms(ctl)
     val etag  = header("ETag", first).value
 
-    val second = ctl.hiddenFilms()(hiddenFilmsRequest().withHeaders("If-None-Match" -> etag))
+    val second = callHiddenFilms(ctl, headers = Seq("If-None-Match" -> etag)*)
     status(second) shouldBe NOT_MODIFIED
     // A 304 still carries the validators — a client refreshing its cached
     // copy's freshness needs the (unchanged) Last-Modified back too.
@@ -166,20 +169,20 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   it should "200 with a fresh body when THIS country's hiddenFilms changed since the client's ETag" in {
     val stored = storedFor("pl", "Madagaskar")
     val (ctl, repository, _) = fixture(Some(stored))
-    val first = ctl.hiddenFilms()(hiddenFilmsRequest())
+    val first = callHiddenFilms(ctl)
     val staleEtag = header("ETag", first).value
 
     repository.upsert(stored.copy(
       hiddenFilmsByCountry = Map("pl" -> Set("Madagaskar", "Sing")),
       updatedAt             = Instant.parse("2026-05-20T09:00:00Z")))
-    val second = ctl.hiddenFilms()(hiddenFilmsRequest().withHeaders("If-None-Match" -> staleEtag))
+    val second = callHiddenFilms(ctl, headers = Seq("If-None-Match" -> staleEtag)*)
     status(second) shouldBe OK
     (contentAsJson(second) \ "hiddenFilms").as[Seq[String]] shouldBe Seq("Madagaskar", "Sing")
   }
 
   it should "304 on a still-current If-Modified-Since when the client sent no If-None-Match" in {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")))
-    val result = ctl.hiddenFilms()(hiddenFilmsRequest().withHeaders("If-Modified-Since" -> "Tue, 19 May 2026 12:00:00 GMT"))
+    val result = callHiddenFilms(ctl, headers = Seq("If-Modified-Since" -> "Tue, 19 May 2026 12:00:00 GMT")*)
     status(result) shouldBe NOT_MODIFIED
   }
 
@@ -190,16 +193,17 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
   // unchanged.
   it should "ignore a stale If-Modified-Since when If-None-Match already proves the content is current" in {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")))
-    val first = ctl.hiddenFilms()(hiddenFilmsRequest())
+    val first = callHiddenFilms(ctl)
     val etag  = header("ETag", first).value
 
-    val result = ctl.hiddenFilms()(
-      hiddenFilmsRequest().withHeaders("If-None-Match" -> etag, "If-Modified-Since" -> "Mon, 01 Jan 2001 00:00:00 GMT")
-    )
+    val result = callHiddenFilms(ctl, headers = Seq(
+      "If-None-Match"     -> etag,
+      "If-Modified-Since" -> "Mon, 01 Jan 2001 00:00:00 GMT"
+    )*)
     status(result) shouldBe NOT_MODIFIED
   }
 
-  // ── GET /api/me/hidden-films — userChangeTimeCache fast path ─────────────
+  // ── GET /api/me/:country/hidden-films — userChangeTimeCache fast path ────
 
   it should "304 straight from the change-time cache, without reading storage, on a proven-unchanged If-Modified-Since" in {
     val countingRepo = new CountingUserStateRepository
@@ -207,7 +211,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), changeTimeCache = cache, stateRepository = countingRepo)
     countingRepo.findCalls = 0 // the prefill's own upsert doesn't call find; reset defensively anyway
 
-    val result = ctl.hiddenFilms()(hiddenFilmsRequest().withHeaders("If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT"))
+    val result = callHiddenFilms(ctl, headers = Seq("If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT")*)
 
     status(result)             shouldBe NOT_MODIFIED
     countingRepo.findCalls     shouldBe 0
@@ -218,7 +222,7 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), changeTimeCache = NoUserChangeTimeCache, stateRepository = countingRepo)
     countingRepo.findCalls = 0
 
-    val result = ctl.hiddenFilms()(hiddenFilmsRequest().withHeaders("If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT"))
+    val result = callHiddenFilms(ctl, headers = Seq("If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT")*)
 
     status(result)         shouldBe NOT_MODIFIED // still correct — just computed from storage, not the cache
     countingRepo.findCalls shouldBe 1
@@ -230,12 +234,10 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     val (ctl, _, _) = fixture(Some(storedFor("pl", "Madagaskar")), changeTimeCache = cache, stateRepository = countingRepo)
     countingRepo.findCalls = 0
 
-    val result = ctl.hiddenFilms()(
-      hiddenFilmsRequest().withHeaders(
-        "If-None-Match"     -> "\"whatever\"",
-        "If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT"
-      )
-    )
+    val result = callHiddenFilms(ctl, headers = Seq(
+      "If-None-Match"     -> "\"whatever\"",
+      "If-Modified-Since" -> "Wed, 20 May 2026 00:00:00 GMT"
+    )*)
 
     countingRepo.findCalls shouldBe 1 // ETag comparison needs real content — the cache can't answer it
   }

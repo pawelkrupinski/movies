@@ -142,7 +142,7 @@ POST    /auth/exchange              controllers.AuthController.exchange()
 GET     /api/me/state               controllers.UserStateController.get()
 + nocsrf
 PUT     /api/me/state               controllers.UserStateController.put()
-GET     /api/me/hidden-films        controllers.UserStateController.hiddenFilms()
+GET     /api/me/:country/hidden-films controllers.UserStateController.hiddenFilms(country: String)
 + nocsrf
 DELETE  /api/me                     controllers.UserStateController.deleteAccount()
 

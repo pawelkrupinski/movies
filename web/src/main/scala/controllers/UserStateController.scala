@@ -46,12 +46,13 @@ class UserStateController(
     })
   }
 
-  /** `GET /api/me/hidden-films?country=pl` — the hiddenFilms-only successor to
+  /** `GET /api/me/:country/hidden-films` — the hiddenFilms-only successor to
    *  `get()`, scoped to ONE country: unlike a cinema display name, a film
    *  title is not globally unique across countries, so the legacy single
    *  global `hiddenFilms` set (still served by `get()`/`put()`) can't be the
    *  per-country model's foundation — this reads `hiddenFilmsByCountry`
-   *  instead. `country` is required; missing or unrecognised → 400.
+   *  instead. `country` is part of the path (not a query param) and must be
+   *  a recognised code, or 400.
    *
    *  Conditional: a request already holding the current content (`If-None-Match`)
    *  or a still-current freshness bound (`If-Modified-Since`) gets a bodiless
@@ -73,10 +74,10 @@ class UserStateController(
    *  string can't be verified against a bare timestamp, so it always reads
    *  through to `userStateRepository`.
    */
-  def hiddenFilms(): Action[AnyContent] = Action { request =>
-    PerUserResponse((request.session.get("userId"), request.getQueryString("country").flatMap(models.Country.byCode)) match {
+  def hiddenFilms(country: String): Action[AnyContent] = Action { request =>
+    PerUserResponse((request.session.get("userId"), models.Country.byCode(country)) match {
       case (None, _)             => Unauthorized(Json.obj("error" -> "not logged in"))
-      case (Some(_), None)       => BadRequest(Json.obj("error" -> "country query parameter required, e.g. ?country=pl"))
+      case (Some(_), None)       => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(country)) =>
         val ifNoneMatch     = request.headers.get("If-None-Match")
         val ifModifiedSince = request.headers.get("If-Modified-Since").flatMap(parseHttpDate)
