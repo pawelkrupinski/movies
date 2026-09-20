@@ -737,6 +737,30 @@ class MobileBuildAssembly(unittest.TestCase):
         # message), runs its subprocess only once.
         self.assertEqual(calls.count(("ios", "9.9.9")), 1)
 
+    def test_the_no_tag_at_all_lookup_also_only_shells_out_once(self):
+        # The sibling of the test above, for the OTHER path through the same error branch:
+        # no tag exists at all, so mobile_tag_sha's own result is None -- and build_mobile
+        # passes that None through to release_commit_for as tag_sha=None explicitly. A
+        # plain `tag_sha=None` default on release_commit_for (rather than the _UNSET
+        # sentinel it actually uses) could not tell "caller passed None on purpose" apart
+        # from "caller didn't pass anything", so it would re-derive the lookup right here --
+        # this is the case that would have silently regressed without the sentinel.
+        self.repo.commit("README.md", "Release mobile 1.0.0")  # deliberately NOT "9.9.9"
+
+        app.ios_release_state = lambda: {"error": None, "live_version": "9.9.9",
+                                          "live_extra": "READY_FOR_SALE", "pending": None}
+        app.android_release_state = lambda: {"error": None, "live_version": None,
+                                              "live_extra": None, "pending": None}
+        calls = []
+        real_mobile_tag_sha = app.mobile_tag_sha
+        app.mobile_tag_sha = lambda *args: (calls.append(args), real_mobile_tag_sha(*args))[1]
+        try:
+            by_name = self._by_name(app.build_mobile())
+        finally:
+            app.mobile_tag_sha = real_mobile_tag_sha
+        self.assertEqual(calls.count(("ios", "9.9.9")), 1)
+        self.assertEqual(by_name["iOS"]["error"], "no commit found matching 'Release mobile 9.9.9'")
+
 
 class RenderMobile(unittest.TestCase):
     """render_mobile is a pure function of the dict build_mobile returns, same discipline as

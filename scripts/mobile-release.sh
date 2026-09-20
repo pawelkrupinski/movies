@@ -102,8 +102,7 @@ CURRENT="$(current_version)"
 BRANCH="release/mobile-$VERSION"
 git -C "$REPO_ROOT" rev-parse --verify --quiet "$BRANCH" >/dev/null &&
   die "$BRANCH already exists — delete it or pick another version"
-[ -z "$(git -C "$REPO_ROOT" status --porcelain)" ] ||
-  die "working tree is dirty; commit or stash before cutting a release"
+require_clean_tree "$REPO_ROOT" "working tree is dirty; commit or stash before cutting a release"
 
 say "$CURRENT → $VERSION"
 git -C "$REPO_ROOT" checkout -q -b "$BRANCH"

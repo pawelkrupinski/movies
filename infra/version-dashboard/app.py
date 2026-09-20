@@ -2190,11 +2190,11 @@ def build_mobile():
         commits = unreleased_commits(baseline, subdir) if baseline else None
         if version is None:
             error = "never released to this store yet"
-        elif not baseline:
+        elif not baseline and tag_sha:
             error = (f"mobile-{subdir}-{version} tags {tag_sha[:10]}, which isn't reachable from "
-                      "HEAD — probably built from a branch never merged back"
-                      if tag_sha else
-                      f"no commit found matching 'Release mobile {version}'")
+                      "HEAD — probably built from a branch never merged back")
+        elif not baseline:
+            error = f"no commit found matching 'Release mobile {version}'"
         else:
             error = None
         platforms.append({
