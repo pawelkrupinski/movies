@@ -525,6 +525,17 @@ class _TempRepo:
     def tag(self, name, sha):
         subprocess.run(["git", "tag", "-f", name, sha], cwd=self.root, check=True)
 
+    def current_branch(self):
+        out = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=self.root,
+                              capture_output=True, text=True, check=True)
+        return out.stdout.strip()
+
+    def checkout_new_branch(self, name):
+        subprocess.run(["git", "checkout", "-q", "-b", name], cwd=self.root, check=True)
+
+    def checkout(self, ref):
+        subprocess.run(["git", "checkout", "-q", ref], cwd=self.root, check=True)
+
 
 class MobileReleaseBaseline(unittest.TestCase):
     """release_commit_for / unreleased_commits -- the git half of the mobile-releases page. What's
@@ -574,6 +585,20 @@ class MobileReleaseBaseline(unittest.TestCase):
         self.repo.commit("README.md", "init")
         target = self.repo.commit("ios/a.swift", "Release mobile 2.0.7")
         self.assertEqual(app.release_commit_for("2.0.7", "ios"), target)
+
+    def test_a_tag_off_head_falls_back_to_the_bump_commit(self):
+        # A release built from a worktree branch that never got merged back to what this
+        # checkout runs from -- tag-mobile-release.sh pushes the tag regardless, so trusting it
+        # here would hand unreleased_commits()'s `{sha}..HEAD` a baseline outside HEAD's own
+        # history, which git log answers with a misleading commit list instead of an error.
+        self.repo.commit("README.md", "init")
+        bump = self.repo.commit("ios/a.swift", "Release mobile 2.0.9")
+        main_branch = self.repo.current_branch()
+        self.repo.checkout_new_branch("never-merged")
+        orphan_build = self.repo.commit("ios/b.swift", "built and tagged, never merged back")
+        self.repo.checkout(main_branch)
+        self.repo.tag("mobile-ios-2.0.9", orphan_build)
+        self.assertEqual(app.release_commit_for("2.0.9", "ios"), bump)
 
     def test_a_tag_for_the_other_platform_is_not_matched(self):
         # `mobile-ios-2.0.8` must not satisfy an Android lookup for the same version -- the two

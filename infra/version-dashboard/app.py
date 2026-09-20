@@ -2093,6 +2093,13 @@ def android_release_state():
     }
 
 
+def reachable_from_head(sha):
+    """Whether `sha` is an ancestor of (or equal to) HEAD in this checkout -- the precondition
+    `unreleased_commits`'s `{sha}..HEAD` range diff silently assumes rather than checks."""
+    ok, _, _ = run(["git", "merge-base", "--is-ancestor", sha, "HEAD"], cwd=ROOT_DIR, timeout=MOBILE_GIT_TIMEOUT)
+    return ok
+
+
 def release_commit_for(version, subdir=None):
     """The commit that actually produced a given store version's artifact.
 
@@ -2104,19 +2111,24 @@ def release_commit_for(version, subdir=None):
     past the bump, after a compile bug in cc6846633 broke the first attempt -- the bump commit
     alone was never releasable).
 
-    Fallback, for versions released before this tagging existed: the 'Release mobile X.Y.Z' commit
-    message `scripts/mobile-release.sh` leaves every time -- NOT inferred from mobile-version.txt,
-    which only ever holds the latest version either store has ever been asked to build, and NOT
-    `--all`, which would also match a stray worktree branch never merged to what this dashboard
-    actually runs from. This fallback can overstate "not yet released" when the real build ran
-    past the bump commit, which is exactly the gap the tag exists to close."""
+    Fallback, for versions released before this tagging existed, or if the tag points somewhere
+    `unreleased_commits`'s `{baseline}..HEAD` range diff can't make sense of: the 'Release mobile
+    X.Y.Z' commit message `scripts/mobile-release.sh` leaves every time -- NOT inferred from
+    mobile-version.txt, which only ever holds the latest version either store has ever been asked
+    to build, and NOT `--all`, which would also match a stray worktree branch never merged to what
+    this dashboard actually runs from. This fallback can overstate "not yet released" when the
+    real build ran past the bump commit, which is exactly the gap the tag exists to close."""
     if not version:
         return None
     if subdir:
         ok, out, _ = run(["git", "rev-parse", "-q", "--verify", f"mobile-{subdir}-{version}^{{commit}}"],
                           cwd=ROOT_DIR, timeout=MOBILE_GIT_TIMEOUT)
         sha = out.strip()
-        if ok and sha:
+        # The tag must be an ancestor of HEAD, the same ref unreleased_commits() diffs against --
+        # a release cut from a worktree branch that was never (yet, or ever) merged into what this
+        # checkout runs from would otherwise hand `{sha}..HEAD` a baseline outside that history,
+        # which git log answers with a misleading commit list instead of an error.
+        if ok and sha and reachable_from_head(sha):
             return sha
     pattern = "^Release mobile " + re.escape(version) + "$"
     ok, out, _ = run(["git", "log", "-1", "--format=%H", f"--grep={pattern}"],
