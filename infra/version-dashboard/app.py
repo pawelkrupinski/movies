@@ -2100,6 +2100,11 @@ def reachable_from_head(sha):
     return ok
 
 
+# Distinct from None, which release_commit_for's own tag_sha parameter must also accept as a
+# real value (a caller that already looked the tag up and found none, not "didn't look").
+_UNSET = object()
+
+
 def mobile_tag_sha(platform, version):
     """The commit a mobile-<platform>-<version> tag points at, or None if no such tag exists --
     the lookup release_commit_for() and the "why didn't this resolve" error message both need,
@@ -2112,7 +2117,7 @@ def mobile_tag_sha(platform, version):
     return sha if ok and sha else None
 
 
-def release_commit_for(version, subdir=None):
+def release_commit_for(version, subdir=None, tag_sha=_UNSET):
     """The commit that actually produced a given store version's artifact.
 
     First choice: the per-platform `mobile-<subdir>-<version>` tag that `ios-release.sh`
@@ -2121,7 +2126,8 @@ def release_commit_for(version, subdir=None):
     bump, which is the normal case whenever a fix lands between cutting the version and getting a
     working upload (see project_mobile_2_0_8_release: iOS's real archive was b0d1c29cb, one commit
     past the bump, after a compile bug in cc6846633 broke the first attempt -- the bump commit
-    alone was never releasable).
+    alone was never releasable). `tag_sha` lets a caller that already looked this up (build_mobile,
+    to phrase its error message) pass the result in instead of paying for a second `git rev-parse`.
 
     Fallback, for versions released before this tagging existed, or if the tag points somewhere
     `unreleased_commits`'s `{baseline}..HEAD` range diff can't make sense of: the 'Release mobile
@@ -2133,7 +2139,7 @@ def release_commit_for(version, subdir=None):
     if not version:
         return None
     if subdir:
-        sha = mobile_tag_sha(subdir, version)
+        sha = mobile_tag_sha(subdir, version) if tag_sha is _UNSET else tag_sha
         # The tag must be an ancestor of HEAD, the same ref unreleased_commits() diffs against --
         # a release cut from a worktree branch that was never (yet, or ever) merged into what this
         # checkout runs from would otherwise hand `{sha}..HEAD` a baseline outside that history,
@@ -2179,12 +2185,12 @@ def build_mobile():
             platforms.append({"name": name, "fetch_failed": True, "error": state["error"]})
             continue
         version = state["live_version"]
-        baseline = release_commit_for(version, subdir)
+        tag_sha = mobile_tag_sha(subdir, version)
+        baseline = release_commit_for(version, subdir, tag_sha=tag_sha)
         commits = unreleased_commits(baseline, subdir) if baseline else None
         if version is None:
             error = "never released to this store yet"
         elif not baseline:
-            tag_sha = mobile_tag_sha(subdir, version)
             error = (f"mobile-{subdir}-{version} tags {tag_sha[:10]}, which isn't reachable from "
                       "HEAD — probably built from a branch never merged back"
                       if tag_sha else

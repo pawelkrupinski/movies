@@ -710,6 +710,33 @@ class MobileBuildAssembly(unittest.TestCase):
         self.assertIn("reachable", by_name["iOS"]["error"])
         self.assertIsNone(by_name["iOS"]["commits"])
 
+    def test_the_unreachable_tag_lookup_only_shells_out_once(self):
+        # build_mobile() needs the tag sha both to try it as a baseline and, on the error path,
+        # to name it in the message -- release_commit_for's tag_sha parameter exists so the
+        # second use doesn't re-run the same `git rev-parse` subprocess.
+        self.repo.commit("README.md", "init")
+        main_branch = self.repo.current_branch()
+        self.repo.checkout_new_branch("never-merged")
+        orphan_build = self.repo.commit("ios/a.swift", "built and tagged, never merged back")
+        self.repo.checkout(main_branch)
+        self.repo.tag("mobile-ios-9.9.9", orphan_build)
+
+        app.ios_release_state = lambda: {"error": None, "live_version": "9.9.9",
+                                          "live_extra": "READY_FOR_SALE", "pending": None}
+        app.android_release_state = lambda: {"error": None, "live_version": None,
+                                              "live_extra": None, "pending": None}
+        calls = []
+        real_mobile_tag_sha = app.mobile_tag_sha
+        app.mobile_tag_sha = lambda *args: (calls.append(args), real_mobile_tag_sha(*args))[1]
+        try:
+            app.build_mobile()
+        finally:
+            app.mobile_tag_sha = real_mobile_tag_sha
+        # Android's own (unrelated) lookup with a None version is fine and expected -- what
+        # this pins is that the iOS lookup, used twice (as a baseline, then in the error
+        # message), runs its subprocess only once.
+        self.assertEqual(calls.count(("ios", "9.9.9")), 1)
+
 
 class RenderMobile(unittest.TestCase):
     """render_mobile is a pure function of the dict build_mobile returns, same discipline as

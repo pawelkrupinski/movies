@@ -64,9 +64,11 @@ say "iOS release $version"
 
 # The tag this script pushes after upload (see tag-mobile-release.sh) names HEAD as the
 # commit that produced the build. A dirty tree makes that a lie: xcodebuild compiles
-# whatever's on disk, tracked changes included, so an uncommitted edit would ship while
-# the tag points at a commit that doesn't contain it.
-git -C "$REPO_ROOT" diff --quiet && git -C "$REPO_ROOT" diff --cached --quiet \
+# whatever's on disk, tracked OR NOT (a new file an Xcode synchronized group picks up
+# needs no pbxproj entry to build), so an uncommitted change would ship while the tag
+# points at a commit that doesn't contain it. `--porcelain` catches both.
+dirty=$(git -C "$REPO_ROOT" status --porcelain)
+[ -z "$dirty" ] \
   || die "working tree has uncommitted changes — commit or stash them first, or the pushed mobile-ios-$version tag won't match what this build actually contains"
 
 # Every log lands under BUILD_DIR, so make it before the first one is written.
