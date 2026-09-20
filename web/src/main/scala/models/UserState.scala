@@ -8,11 +8,18 @@ import java.time.Instant
 // Cinema with a distinct displayName. Cross-city keys are inert: a page only
 // surfaces cinemas in its own city, so out-of-city entries are simply ignored.
 // Hence user state needs no city dimension.
+// `language`, unlike the two sets above, is a single explicit pick or
+// nothing — `None` until the user has chosen one server-side, whether by
+// picking on a page while logged in or by the one-time login migration
+// adopting this device's own explicit local pick (see `UserStateController`'s
+// wire-format note). Defaulted so every existing 4-arg call site (tests,
+// mostly) keeps compiling.
 case class UserState(
   userId:          String,
   hiddenFilms:     Set[String],
   disabledCinemas: Set[String],
-  updatedAt:       Instant
+  updatedAt:       Instant,
+  language:        Option[String] = None
 )
 //
 // `selectedMovies` and `favouriteRooms` lived here until the plan page was removed. Documents

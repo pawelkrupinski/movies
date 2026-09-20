@@ -1,7 +1,7 @@
 package controllers
 
 import models.UserState
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsNull, JsValue, Json}
 import play.api.mvc._
 import services.users.{AccountDeletion, UserStateRepository}
 
@@ -9,12 +9,19 @@ import java.time.Instant
 
 /**
  * REST endpoint for the authenticated user's personalization state —
- * hidden films and disabled cinemas. The browser-side JS uses this to sync
- * localStorage with the server on login.
+ * hidden films, disabled cinemas, and language. The browser-side JS uses
+ * this to sync localStorage with the server on login; the iOS/Android apps
+ * sync their own local store the same way.
  *
  * Shape (both directions):
  *   { "hiddenFilms":     [titles…],
- *     "disabledCinemas": [cinema display names…] }
+ *     "disabledCinemas": [cinema display names…],
+ *     "language":        "pl" | "en" | "de" | "es" | null }
+ *
+ * `language` is a single explicit pick, not a set like the other two
+ * fields, so it carries no union semantics: a client either overwrites it
+ * with a pick of its own, or leaves it out of the body to keep whatever is
+ * stored (same partial-update rule as the sets — see `fromJson`).
  */
 class UserStateController(
   cc:              ControllerComponents,
@@ -81,7 +88,8 @@ object UserStateController {
    */
   def toJson(state: UserState): JsValue = Json.obj(
     "hiddenFilms"     -> state.hiddenFilms.toSeq.sorted,
-    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted
+    "disabledCinemas" -> state.disabledCinemas.toSeq.sorted,
+    "language"        -> state.language
   )
 
   /** Parse a wire JSON into `UserState` as a PARTIAL update over `base`: a
@@ -103,9 +111,24 @@ object UserStateController {
             case None      => Left(s"$field must be an array of strings")
           }
       }
+    // Present and a known code → overwrite; present and `null` → clear
+    // (a client that wants to give up its pick sends this, though none do
+    // today); absent → keep `base`'s value, same rule as the sets above.
+    def language(fallback: Option[String]): Either[String, Option[String]] =
+      (body \ "language").toOption match {
+        case None            => Right(fallback)
+        case Some(JsNull)    => Right(None)
+        case Some(jsValue) =>
+          jsValue.asOpt[String] match {
+            case Some(code) if LanguageNames.Codes.contains(code) => Right(Some(code))
+            case Some(code) => Left(s"language must be one of ${LanguageNames.Codes.mkString(", ")}, got $code")
+            case None       => Left("language must be a string")
+          }
+      }
     for {
-      hf <- stringSet("hiddenFilms",     base.hiddenFilms)
-      dc <- stringSet("disabledCinemas", base.disabledCinemas)
-    } yield UserState(base.userId, hf, dc, Instant.now())
+      hf   <- stringSet("hiddenFilms",     base.hiddenFilms)
+      dc   <- stringSet("disabledCinemas", base.disabledCinemas)
+      lang <- language(base.language)
+    } yield UserState(base.userId, hf, dc, Instant.now(), lang)
   }
 }

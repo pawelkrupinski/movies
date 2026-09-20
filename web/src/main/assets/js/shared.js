@@ -2182,6 +2182,11 @@
   //
   // The flag is cleared whenever a page renders anonymous (logout / expired
   // session), so the next login migrates this device's current picks afresh.
+  //
+  // `language` (the picked UI language, `kinowo_lang` — see `i18n.js`) rides
+  // the same `/api/me/state` document but is NOT gated by this flag: see the
+  // reconcile block below for why a scalar pick doesn't need the two-phase
+  // dance the sets do.
   const SERVER_SYNCED_KEY = 'serverStateSynced';
 
   let _serverSyncTimer = 0;
@@ -2193,19 +2198,29 @@
     // tab right after a single click still gets the write through.
     _serverSyncTimer = setTimeout(pushStateToServer, 400);
   }
+  // `i18n.js` (a separate script, loaded on every page this one is) calls
+  // this from `onLanguageChange` so an explicit language pick reaches the
+  // server too — same cross-file hook shape as `window.refreshDateLabels`.
+  window.scheduleServerSync = scheduleServerSync;
 
   function pushStateToServer(opts) {
     _serverSyncTimer = 0;
+    // `language` rides along only when THIS device has an explicit pick —
+    // never the resolved default a visitor never chose, which would
+    // otherwise stamp e.g. "pl" onto the account the first time a
+    // logged-in Polish visitor merely loads a page, and then force Polish
+    // on them on an English deployment they sign into next.
+    const lang = (() => { try { return localStorage.getItem('kinowo_lang'); } catch { return null; } })();
     fetch(mountPrefix() + '/api/me/state', {
       method:  'PUT',
       headers: { 'Content-Type': 'application/json' },
       // `keepalive` lets the request outlive an unloading document so the
       // pagehide flush below isn't dropped mid-navigation.
       keepalive: !!(opts && opts.keepalive),
-      body:    JSON.stringify({
+      body:    JSON.stringify(Object.assign({
         hiddenFilms:     getHidden(),
         disabledCinemas: getDisabledCinemas()
-      })
+      }, lang ? { language: lang } : {}))
     }).catch(() => { /* offline / 401 — localStorage still has the write */ });
   }
 
@@ -2251,6 +2266,24 @@
         _lsSet('hiddenFilms',     fromServer(remote.hiddenFilms));
         _lsSet('disabledCinemas', fromServer(remote.disabledCinemas));
       }
+
+      // Language is a single pick, not a set, so it skips the union /
+      // migration-flag dance above entirely — there is no "removed on
+      // another device" case a blind union could wrongly resurrect, so
+      // every reconcile (first or not) uses the same rule: the ACCOUNT's
+      // explicit pick wins whenever it has one (restored on login, per
+      // spec); otherwise this device's own explicit pick, if any, becomes
+      // the account's.
+      try {
+        const localLang = localStorage.getItem('kinowo_lang');
+        if (remote.language && remote.language !== localLang) {
+          localStorage.setItem('kinowo_lang', remote.language);
+          if (typeof window.applyLanguage === 'function') window.applyLanguage(remote.language);
+        } else if (!remote.language && localLang) {
+          pushStateToServer();
+        }
+      } catch {}
+
       applyFilters();
     } catch (e) { /* network blew up — localStorage is still usable */ }
   }

@@ -4,7 +4,7 @@ import models.UserState
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.libs.json.Json
+import play.api.libs.json.{JsNull, Json}
 import play.api.test.Helpers._
 import play.api.test.{FakeRequest, Helpers}
 import services.users.{AccountDeletion, InMemoryUserRepository, InMemoryUserStateRepository}
@@ -49,7 +49,8 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(result)              shouldBe OK
     contentAsJson(result)       shouldBe Json.obj(
       "hiddenFilms"         -> Json.arr(),
-      "disabledCinemas"     -> Json.arr()
+      "disabledCinemas"     -> Json.arr(),
+      "language"            -> JsNull
     )
   }
 
@@ -67,6 +68,16 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe OK
     val js = contentAsJson(result)
     (js \ "hiddenFilms").as[Seq[String]]     shouldBe Seq("ABC", "Madagaskar")
+  }
+
+  it should "return a stored language pick" in {
+    val stored = UserState("u1", Set.empty, Set.empty, Instant.now(), language = Some("de"))
+    val (ctl, _, _) = fixture(Some(stored))
+    val request  = FakeRequest("GET", "/api/me/state").withSession("userId" -> "u1")
+    val result   = ctl.get()(request)
+
+    status(result) shouldBe OK
+    (contentAsJson(result) \ "language").as[String] shouldBe "de"
   }
 
   // ── PUT /api/me/state ─────────────────────────────────────────────────────
@@ -130,6 +141,46 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     status(ctl.put()(request)) shouldBe OK
     repository.find("u1").value.disabledCinemas shouldBe empty    // present-but-empty → cleared
     repository.find("u1").value.hiddenFilms     shouldBe Set("H") // absent → preserved
+  }
+
+  it should "set a language pick" in {
+    val (ctl, repository, _) = fixture()
+    val request = FakeRequest("PUT", "/api/me/state")
+      .withSession("userId" -> "u1")
+      .withBody(Json.obj("language" -> "es"))
+    status(ctl.put()(request)) shouldBe OK
+    repository.find("u1").value.language shouldBe Some("es")
+  }
+
+  it should "preserve a stored language the body omits, same as the sets" in {
+    val initial = UserState("u1", Set.empty, Set.empty, Instant.now(), language = Some("de"))
+    val (ctl, repository, _) = fixture(Some(initial))
+    val request = FakeRequest("PUT", "/api/me/state")
+      .withSession("userId" -> "u1")
+      .withBody(Json.obj("hiddenFilms" -> Json.arr("X")))
+    status(ctl.put()(request)) shouldBe OK
+    repository.find("u1").value.language shouldBe Some("de")
+  }
+
+  it should "clear a stored language when the body sends it as explicit null" in {
+    val initial = UserState("u1", Set.empty, Set.empty, Instant.now(), language = Some("de"))
+    val (ctl, repository, _) = fixture(Some(initial))
+    val request = FakeRequest("PUT", "/api/me/state")
+      .withSession("userId" -> "u1")
+      .withBody(Json.obj("language" -> JsNull))
+    status(ctl.put()(request)) shouldBe OK
+    repository.find("u1").value.language shouldBe None
+  }
+
+  it should "400 an unsupported language code and not touch storage" in {
+    val (ctl, repository, _) = fixture()
+    val request = FakeRequest("PUT", "/api/me/state")
+      .withSession("userId" -> "u1")
+      .withBody(Json.obj("language" -> "fr"))
+    val result = ctl.put()(request)
+    status(result)                                     shouldBe BAD_REQUEST
+    (contentAsJson(result) \ "error").as[String] should include ("language")
+    repository.find("u1")                              shouldBe empty
   }
 
   it should "echo the saved state in the response so the client confirms what landed" in {
