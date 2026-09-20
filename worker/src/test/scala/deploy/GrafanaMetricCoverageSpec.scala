@@ -101,7 +101,15 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "kinowo_web_cache_evictions_total",
     "kinowo_uptime_recent_successes",
     "kinowo_uptime_recent_failures",
-    "kinowo_uptime_recent_zeroes"
+    "kinowo_uptime_recent_zeroes",
+    // The legacy `PUT /api/me/state` retirement signal — see
+    // `services.metrics.LegacyUserStateMetrics`'s class doc. Charted on
+    // kinowo-http.json as `time() - kinowo_web_legacy_userstate_put_last_called_seconds`;
+    // `GrafanaWebMetricCoverageSpec` (web module) confirms it's genuinely on
+    // the web registry. Missing from this hand-maintained list read as
+    // "exported by nothing" here even though it's real — the same failure
+    // mode this list's own comment warns about.
+    "kinowo_web_legacy_userstate_put_last_called_seconds"
   )
 
   /** `kinowo_*` families exported by the FLEET rather than by either application —
