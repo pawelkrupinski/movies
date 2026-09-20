@@ -85,11 +85,33 @@ class MongoUserStateRepository(
     sharedDb match {
       case Some(db) =>
         val coll = db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates")
-        scala.util.Try(scala.concurrent.Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("userId")).toFuture(), 10.seconds))
+        scala.util.Try(ensureUniqueUserIdIndex(coll))
         (None, Some(coll))
       case None if fallbackToOwnInit => init()
       case None                      => (None, None)
     }
+
+  // `unique` — without it `upsert`'s `replaceOne(Filters.eq("userId", …), …)`
+  // can't tell "this user's one row" from "the first of several": a plain
+  // (non-unique) index let 4 duplicate rows for one userId accumulate from a
+  // historic write race (found + cleaned up 2026-09-20), after which `find`
+  // and `upsert` could silently disagree on WHICH duplicate is "the" row.
+  //
+  // A deployment that already has the OLD plain index can't just add
+  // `unique` to it in place — Mongo rejects a `createIndex` whose auto-generated
+  // name ("userId_1") already exists with different options
+  // (`IndexKeySpecsConflict`). Drop the old one by name first, tolerating
+  // "already gone" (a fresh collection, or a deploy that already migrated)
+  // so this stays idempotent on every boot.
+  private def ensureUniqueUserIdIndex(coll: MongoCollection[UserState]): Unit = {
+    scala.util.Try(scala.concurrent.Await.result(coll.dropIndex("userId_1").toFuture(), 10.seconds))
+    scala.concurrent.Await.result(
+      coll.createIndex(
+        org.mongodb.scala.model.Indexes.ascending("userId"),
+        new org.mongodb.scala.model.IndexOptions().unique(true)
+      ).toFuture(), 10.seconds)
+    ()
+  }
   private def clientOpt: Option[MongoClient]                = initResult._1
   private def coll:      Option[MongoCollection[UserState]] = initResult._2
 
@@ -201,7 +223,7 @@ class MongoUserStateRepository(
           val db     = client.getDatabase(dbName).withCodecRegistry(UserCodecs.registry)
           val coll   = db.getCollection[UserState]("userStates")
           Await.result(coll.countDocuments().toFuture(), 10.seconds)
-          Await.result(coll.createIndex(org.mongodb.scala.model.Indexes.ascending("userId")).toFuture(), 10.seconds)
+          ensureUniqueUserIdIndex(coll)
           logger.info(s"MongoUserStateRepository connected to $dbName.userStates")
           (client, coll)
         }.recover {
