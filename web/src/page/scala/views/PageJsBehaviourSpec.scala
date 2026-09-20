@@ -5479,6 +5479,45 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  // Regression coverage for `filterRows`/the row-click expand handler ahead of
+  // extracting their shared shape (with debugReadModel.scala.html's own
+  // filter+expand) into one helper both pages call — pins today's behavior so
+  // the extraction can't silently change it.
+  "the /debug corpus table" should "hide rows the search box doesn't match, and collapse a hidden row that was expanded" in {
+    onDebug { page =>
+      page.waitFor("""document.querySelectorAll('#t tbody tr.data').length === 3""")
+      // Expand "Pending Film" before filtering it away.
+      page.eval(
+        """[...document.querySelectorAll('#t tbody tr.data')]""" +
+          """.find(tr => tr.dataset.haystack.includes('pending')).click()""")
+      page.evalString(attachedDetailsCount) shouldBe "1"
+
+      page.eval(
+        "(function(){var i=document.getElementById('q');" +
+          "i.value='done';i.dispatchEvent(new Event('input'));})()")
+
+      page.evalString(
+        """[...document.querySelectorAll('#t tbody tr.data')]""" +
+          """.filter(tr => !tr.classList.contains('hidden')).map(tr => tr.dataset.haystack.trim()).join('|')""") should
+        include("done film")
+      page.evalInt(
+        """[...document.querySelectorAll('#t tbody tr.data')].filter(tr => !tr.classList.contains('hidden')).length""") shouldBe 1
+      // The filtered-out "Pending Film" row was expanded — collapsing it detaches
+      // its details rather than leaving them orphaned behind a hidden row.
+      page.evalBool(
+        """[...document.querySelectorAll('#t tbody tr.data')]""" +
+          """.find(tr => tr.dataset.haystack.includes('pending')).classList.contains('expanded')""") shouldBe false
+      page.evalString(attachedDetailsCount) shouldBe "0"
+
+      // Clearing the box restores every row, still collapsed.
+      page.eval(
+        "(function(){var i=document.getElementById('q');" +
+          "i.value='';i.dispatchEvent(new Event('input'));})()")
+      page.evalInt(
+        """[...document.querySelectorAll('#t tbody tr.data')].filter(tr => !tr.classList.contains('hidden')).length""") shouldBe 3
+    }
+  }
+
   // A change-stream frame fires on ANY write to a film's document, and the common
   // one re-asserts an unchanged scrape slot: it bumps `updatedAt` and nothing the
   // row renders. Applying such a frame re-parks an EMPTY details shell, so an

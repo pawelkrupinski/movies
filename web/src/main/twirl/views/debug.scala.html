@@ -172,6 +172,8 @@
 
 <input type="search" id="q" placeholder="Filter by title, original, IMDb id…" oninput="filterRows(this.value)">
 
+<script src="@routes.Assets.versioned("js/debugTable.js")"></script>
+
 <table id="t">
   <thead>
     <tr>
@@ -194,35 +196,10 @@
 </table>
 
 <script>
-  function filterRows(q) {
-    const lq = q.trim().toLowerCase();
-    document.querySelectorAll('#t tbody tr.data').forEach(tr => {
-      const hit = lq.length === 0 || tr.dataset.haystack.includes(lq);
-      tr.classList.toggle('hidden', !hit);
-      // A filtered-out row collapses so the layout stays tight (and its parked
-      // details never re-enters the DOM). Rows that stay visible keep whatever
-      // expanded state they had.
-      if (!hit && tr.classList.contains('expanded')) {
-        tr.classList.remove('expanded');
-        hideDetails(tr);
-      }
-    });
-  }
-
-  // Wire one data row's interactions. Factored out (not an inline forEach) so a
-  // row inserted live by the change stream gets the same handlers as a
-  // server-rendered one.
-  function wireRow(tr) {
-    // Toggle details on data-row click. We bail when the click landed inside an
-    // `<a>` so the rating / id / URL links don't pull the row open on their way
-    // to their own action.
-    tr.addEventListener('click', (e) => {
-      if (e.target.closest('a') || e.target.closest('button')) return;
-      const expanded = tr.classList.toggle('expanded');
-      if (expanded) showDetails(tr); else hideDetails(tr);
-    });
-    // Re-enrich button: POST the row's ResolveTmdb enqueue. stopPropagation so
-    // the click doesn't toggle the details row underneath it.
+  // Re-enrich button: POST the row's ResolveTmdb enqueue. stopPropagation so
+  // the click doesn't toggle the details row underneath it (belt-and-braces —
+  // `wireExpandableTable`'s row click already bails on a `<button>` target).
+  function wireReenrich(tr) {
     const btn = tr.querySelector('.reenrich');
     if (btn) btn.addEventListener('click', (ev) => {
       ev.stopPropagation();
@@ -235,7 +212,17 @@
     });
   }
 
-  document.querySelectorAll('#t tbody tr.data').forEach(wireRow);
+  // `showDetails`/`hideDetails` (below) are what "expanding a row" means on
+  // THIS page — an off-DOM Map + lazy fetch (see their own comments).
+  // `debugTable.js`'s `wireExpandableTable` owns the shared click/expanded/
+  // filter state machine both /debug tables share. `wireRow` re-wires a
+  // single row a change-stream frame just replaced (see `applyUpsert` below)
+  // — factored out there rather than inlined so that row gets the same
+  // handlers a server-rendered one gets.
+  const { wireRow, filterRows } = wireExpandableTable('#t', showDetails, hideDetails);
+  window.filterRows = filterRows; // referenced by the #q box's oninput=
+
+  document.querySelectorAll('#t tbody tr.data').forEach(wireReenrich);
 
   const table = document.getElementById('t');
   const sortBody = table.tBodies[0];
@@ -548,6 +535,7 @@
     }
     parkDetails(fresh[1]);   // register + detach the fresh details, like a server-rendered row
     wireRow(fresh[0]);
+    wireReenrich(fresh[0]);
     if (wasExpanded) { fresh[0].classList.add('expanded'); showDetails(fresh[0]); } // re-splice if it was open
   }
 
