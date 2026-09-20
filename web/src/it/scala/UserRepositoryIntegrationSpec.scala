@@ -7,7 +7,7 @@ import org.mongodb.scala.model.Filters
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.users.{MongoUserRepository, MongoUserStateRepository}
+import services.users.{MongoUserRepository, MongoUserStateRepository, UserCodecs}
 import tools.Env
 
 import java.time.Instant
@@ -138,6 +138,31 @@ class UserRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befor
     states.find(s.userId) should be (defined)
     states.delete(s.userId)
     states.find(s.userId) shouldBe empty
+  }
+
+  // Regression: a non-unique index on `userId` let concurrent first-time
+  // upserts for the same brand-new user race — each of several parallel
+  // `replaceOne(Filters.eq("userId", …), upsert=true)` calls can see no
+  // existing row and insert its OWN, leaving multiple documents for one
+  // userId (found in prod 2026-09-20: 4 duplicates from exactly this race,
+  // `find`/`upsert` thereafter silently disagreeing on which one was "the"
+  // row). Reproducing the original race via concurrent app-level calls is
+  // inherently timing-dependent — asserting on the INDEX's own effect
+  // directly (two raw inserts of the same userId) is what actually changed
+  // here and is deterministic: the second insert is rejected outright,
+  // rather than merely "unlikely to lose the race" as an upsert-based test
+  // would only prove probabilistically.
+  it should "reject a second row for a userId that already has one" in {
+    val client = MongoClient(Env.get("MONGODB_URI").get)
+    val db     = client.getDatabase(Env.get("MONGODB_DB").getOrElse("kinowo")).withCodecRegistry(UserCodecs.registry)
+    val coll   = db.getCollection[UserState]("userStates")
+    val userId = "__integration-test-state-unique"
+    try {
+      Await.result(coll.insertOne(UserState(userId, Set("A"), Set.empty, Now)).toFuture(), 10.seconds)
+      a[com.mongodb.MongoWriteException] should be thrownBy
+        Await.result(coll.insertOne(UserState(userId, Set("B"), Set.empty, Now.plusSeconds(1))).toFuture(), 10.seconds)
+      Await.result(db.getCollection("userStates").countDocuments(Filters.eq("userId", userId)).toFuture(), 10.seconds) shouldBe 1
+    } finally client.close()
   }
 
 }
