@@ -73,8 +73,8 @@ class MainActivity : ComponentActivity() {
         val detailsRepository = DetailsRepository(api, JsonListCache(cacheDir, "details", FilmDetails.serializer()))
         val prefs = UserPreferences(applicationContext)
         val authRepository = AuthRepository(httpClient, cookieJar)
-        val hiddenFilmsClient = HttpHiddenFilmsClient(client = httpClient)
-        val languageClient = HttpLanguageClient(client = httpClient)
+        val hiddenFilmsClient = HttpHiddenFilmsClient(baseUrl = country.baseUrl, client = httpClient)
+        val languageClient = HttpLanguageClient(baseUrl = country.baseUrl, client = httpClient)
         // The country/city catalog: seeded from the bundled assets snapshot (so a
         // fresh install renders offline and the first fetch already carries the
         // build's ETag), refreshed via `api` (KinowoApi implements CatalogApi),

@@ -677,6 +677,11 @@ class KinowoViewModel(
         authRepository.deleteAccount()
         prefs.unhideAll()
         prefs.setDisabledCinemas(emptySet())
+        // Otherwise a stale per-country migration flag survives into the next
+        // login: reconcile would see "already migrated" for a country whose
+        // server-side row no longer exists, skip the union, and read back an
+        // empty hiddenFilms set as if it were authoritative.
+        prefs.clearHiddenFilmsSyncState()
     }
 
     class Factory(
