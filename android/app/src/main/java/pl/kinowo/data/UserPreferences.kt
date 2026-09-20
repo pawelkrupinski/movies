@@ -25,14 +25,32 @@ private val Context.dataStore by preferencesDataStore(name = "kinowo_prefs")
 interface SyncPrefs {
     val hiddenFilms: Flow<Set<String>>
     val disabledCinemas: Flow<Set<String>>
+    val selectedCountryCode: Flow<String?>
     suspend fun setHiddenFilms(films: Set<String>)
     suspend fun setDisabledCinemas(cinemas: Set<String>)
 
     /** True once [pl.kinowo.auth.StateSyncService] has done its one-time
-     *  local→server migration. After that the server is authoritative on every
-     *  launch (so removals stick); cleared on logout to re-arm migration. */
-    suspend fun isServerStateSynced(): Boolean
-    suspend fun setServerStateSynced(synced: Boolean)
+     *  local→server migration FOR THIS COUNTRY. After that the server is
+     *  authoritative for that country on every reconcile (so removals stick);
+     *  cleared (for every country) on logout to re-arm migration. Per-country
+     *  because hiddenFilms itself now is — see [models.UserState.hiddenFilmsByCountry]
+     *  server-side: a title isn't globally unique across countries the way a
+     *  cinema display name is. */
+    suspend fun isHiddenFilmsMigrated(country: String): Boolean
+    suspend fun setHiddenFilmsMigrated(country: String, migrated: Boolean)
+
+    /** The `ETag`/`Last-Modified` the last successful fetch or write for THIS
+     *  country returned — sent back as `If-None-Match`/`If-Modified-Since` on
+     *  the next conditional fetch. Null until something has synced for that
+     *  country. */
+    suspend fun hiddenFilmsEtag(country: String): String?
+    suspend fun hiddenFilmsLastModified(country: String): String?
+    suspend fun setHiddenFilmsValidators(country: String, etag: String?, lastModified: String?)
+
+    /** Forget every country's migration flag and validators — a genuine
+     *  logout, so the next sign-in re-runs the union-then-push migration for
+     *  whichever country is current then, fresh. */
+    suspend fun clearHiddenFilmsSyncState()
 }
 
 /**
@@ -97,7 +115,7 @@ class UserPreferences(private val context: Context) : SyncPrefs {
      *  until they choose one — then [pl.kinowo.model.Country.byCode] resolves the
      *  default (Poland). Drives the API base URL. The forced UI language is a
      *  SEPARATE, independent pick — see [selectedLanguageTag]. */
-    val selectedCountryCode: Flow<String?> =
+    override val selectedCountryCode: Flow<String?> =
         context.dataStore.data.map { it[KEY_COUNTRY] }
 
     suspend fun setCountryCode(code: String) = context.dataStore.edit { prefs ->
@@ -190,12 +208,41 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         context.dataStore.edit { prefs -> prefs[KEY_DISABLED] = cinemas }
     }
 
-    override suspend fun isServerStateSynced(): Boolean =
-        context.dataStore.data.map { it[KEY_SERVER_SYNCED] ?: false }.first()
+    override suspend fun isHiddenFilmsMigrated(country: String): Boolean =
+        context.dataStore.data.map { it[migratedKey(country)] ?: false }.first()
 
-    override suspend fun setServerStateSynced(synced: Boolean) {
-        context.dataStore.edit { prefs -> prefs[KEY_SERVER_SYNCED] = synced }
+    override suspend fun setHiddenFilmsMigrated(country: String, migrated: Boolean) {
+        context.dataStore.edit { prefs -> prefs[migratedKey(country)] = migrated }
     }
+
+    override suspend fun hiddenFilmsEtag(country: String): String? =
+        context.dataStore.data.map { it[etagKey(country)] }.first()
+
+    override suspend fun hiddenFilmsLastModified(country: String): String? =
+        context.dataStore.data.map { it[lastModifiedKey(country)] }.first()
+
+    override suspend fun setHiddenFilmsValidators(country: String, etag: String?, lastModified: String?) {
+        context.dataStore.edit { prefs ->
+            if (etag == null) prefs.remove(etagKey(country)) else prefs[etagKey(country)] = etag
+            if (lastModified == null) prefs.remove(lastModifiedKey(country)) else prefs[lastModifiedKey(country)] = lastModified
+        }
+    }
+
+    override suspend fun clearHiddenFilmsSyncState() {
+        context.dataStore.edit { prefs ->
+            val toRemove = prefs.asMap().keys.filter {
+                it.name.startsWith(MIGRATED_PREFIX) || it.name.startsWith(ETAG_PREFIX) || it.name.startsWith(LAST_MODIFIED_PREFIX)
+            }
+            toRemove.forEach { prefs.remove(it) }
+        }
+    }
+
+    // Dynamic, per-country keys — DataStore Preferences keys need not be static
+    // vals, so "one key per country" is just a computed name rather than a
+    // schema migration every time a country is added.
+    private fun migratedKey(country: String) = booleanPreferencesKey("$MIGRATED_PREFIX$country")
+    private fun etagKey(country: String) = stringPreferencesKey("$ETAG_PREFIX$country")
+    private fun lastModifiedKey(country: String) = stringPreferencesKey("$LAST_MODIFIED_PREFIX$country")
 
     suspend fun markSwiped() = context.dataStore.edit { prefs ->
         prefs[KEY_SWIPED] = true
@@ -222,7 +269,9 @@ class UserPreferences(private val context: Context) : SyncPrefs {
         val KEY_CITY_SWITCH_PROMPT = stringPreferencesKey("citySwitchPromptKey")
         val KEY_SWIPED = booleanPreferencesKey("swipedScreens")
         val KEY_HINT_DATE = stringPreferencesKey("swipeHintShownDate")
-        val KEY_SERVER_SYNCED = booleanPreferencesKey("serverStateSynced")
+        const val MIGRATED_PREFIX = "hiddenFilmsMigrated_"
+        const val ETAG_PREFIX = "hiddenFilmsEtag_"
+        const val LAST_MODIFIED_PREFIX = "hiddenFilmsLastModified_"
         val KEY_POSTER_URLS = stringSetPreferencesKey("seenPosterUrls")
         val KEY_POSTER_PURGE_DATE = stringPreferencesKey("posterPurgeDate")
         val KEY_AREA_SEEN = stringSetPreferencesKey("areaPickerSeenCities")

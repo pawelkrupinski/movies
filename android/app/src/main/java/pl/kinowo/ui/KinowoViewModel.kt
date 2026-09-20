@@ -31,7 +31,7 @@ import pl.kinowo.auth.AuthRepository
 import pl.kinowo.data.PosterCachePurge
 import pl.kinowo.auth.StateSyncService
 import pl.kinowo.auth.UserProfile
-import pl.kinowo.auth.UserStateClient
+import pl.kinowo.auth.HiddenFilmsClient
 import pl.kinowo.data.CatalogRepository
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.RepertoireRepository
@@ -77,7 +77,7 @@ class KinowoViewModel(
     private val detailsRepository: DetailsRepository,
     private val prefs: UserPreferences,
     private val authRepository: AuthRepository,
-    userStateClient: UserStateClient,
+    hiddenFilmsClient: HiddenFilmsClient,
     // Last, with a flat-catalog default, so the existing test constructors (which
     // don't exercise split cities) keep compiling without threading a stub.
     private val catalogApi: CinemaCatalogApi = CinemaCatalogApi { CinemaCatalog.EMPTY },
@@ -106,7 +106,7 @@ class KinowoViewModel(
 
     // Mirror prefs to the server while signed in. Constructed here so it shares
     // the ViewModel's scope; `start()` makes it observe the auth state.
-    private val sync = StateSyncService(prefs, authRepository.user, userStateClient, viewModelScope)
+    private val sync = StateSyncService(prefs, authRepository.user, hiddenFilmsClient, viewModelScope)
 
     // Skips the one nearer-city check that the post-OAuth resume would otherwise
     // fire — armed when a web sign-in starts (see [signInWithGoogle]) or a city
@@ -393,6 +393,11 @@ class KinowoViewModel(
         // Revalidate the catalog on each foreground (city-independent, so before
         // the early return below when no city is chosen yet).
         viewModelScope.launch { catalogRepository.reload() }
+        // Foreground-resume reconcile: closes the gap `mergeWithServer` never had
+        // a trigger for besides login — a hide made on another device/platform
+        // while this app sat backgrounded is picked up the moment it's foregrounded
+        // again, not just on the next cold start.
+        viewModelScope.launch { sync.reconcileCurrentCountry() }
         val slug = selectedCity.value ?: return
         viewModelScope.launch {
             coroutineScope {
@@ -617,9 +622,9 @@ class KinowoViewModel(
      *  already persisted in [checkCitySwitch], so we won't re-ask for it. */
     fun dismissCitySwitch() { citySwitchSuggestion = null }
 
-    fun hide(title: String) = viewModelScope.launch { prefs.hide(title) }
-    fun unhide(title: String) = viewModelScope.launch { prefs.unhide(title) }
-    fun unhideAll() = viewModelScope.launch { prefs.unhideAll() }
+    fun hide(title: String) = viewModelScope.launch { prefs.hide(title); sync.hide(title) }
+    fun unhide(title: String) = viewModelScope.launch { prefs.unhide(title); sync.unhide(title) }
+    fun unhideAll() = viewModelScope.launch { prefs.unhideAll(); sync.clear() }
     /** Replace the excluded-cinemas set. The Filtry sheet's "Kina" section works
      *  out the new set via [pl.kinowo.filter.CinemaFilterSection] and hands it
      *  here; deep links and the server sync write through the same path. */
@@ -671,12 +676,12 @@ class KinowoViewModel(
         private val detailsRepository: DetailsRepository,
         private val prefs: UserPreferences,
         private val authRepository: AuthRepository,
-        private val userStateClient: UserStateClient,
+        private val hiddenFilmsClient: HiddenFilmsClient,
         private val catalogApi: CinemaCatalogApi,
         private val catalogRepository: CatalogRepository,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T =
-            KinowoViewModel(repository, detailsRepository, prefs, authRepository, userStateClient, catalogApi, catalogRepository) as T
+            KinowoViewModel(repository, detailsRepository, prefs, authRepository, hiddenFilmsClient, catalogApi, catalogRepository) as T
     }
 }

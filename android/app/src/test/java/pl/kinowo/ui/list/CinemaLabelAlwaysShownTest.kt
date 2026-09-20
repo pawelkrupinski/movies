@@ -14,8 +14,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.UserStateClient
-import pl.kinowo.auth.UserSyncState
+import pl.kinowo.auth.HiddenFilmsClient
+import pl.kinowo.auth.HiddenFilmsFetchResult
+import pl.kinowo.auth.HiddenFilmsState
 import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
@@ -82,9 +83,12 @@ class CinemaLabelAlwaysShownTest {
         val http = OkHttpClient()
         val detailsRepository = DetailsRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "det_label", FilmDetails.serializer()))
         val authRepository = AuthRepository(http, PersistentCookieJar(context))
-        val noop = object : UserStateClient {
-            override suspend fun fetchState() = UserSyncState(emptySet())
-            override suspend fun putState(state: UserSyncState) {}
+        val noop = object : HiddenFilmsClient {
+            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
+                HiddenFilmsFetchResult.NotModified
+            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
+            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
+            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
         }
         return KinowoViewModel(repository, detailsRepository, prefs, authRepository, noop)
     }
