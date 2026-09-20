@@ -2,13 +2,12 @@ package clients.flicks
 
 import models.{BarnCinemaDartingtonArtCentre, OdeonNorwich}
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.common.{FlicksClient, FlicksMarket}
 
 import java.time.{LocalDate, LocalDateTime}
-import scala.io.Source
 
 /** Replays a recorded Flicks sessions fragment (Odeon Cinema Norwich, date
  *  2026-07-11) through the pure `parseDay`. Pins that the AJAX
@@ -23,11 +22,9 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val Uk   = FlicksMarket.UnitedKingdom
   private val date = LocalDate.of(2026, 7, 11)
 
-  private def fixture: String = {
-    val src = Source.fromFile(
+  private def fixture: String =
+    FixtureFile.read(
       "test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/odeon-cinema-norwich/2026-07-11.html")
-    try src.mkString finally src.close()
-  }
 
   private val slots = FlicksClient.parseDay(fixture, date, Uk)
 
@@ -90,10 +87,8 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
    *  2026-12-13 (~5 months). Read directly (NOT via FakeHttpFetch's URL mapping)
    *  and fed to the discovery tests below. Source:
    *  https://www.flicks.co.uk/cinema/odeon-cinema-norwich/ */
-  private def programmePage: String = {
-    val src = Source.fromFile("test/resources/fixtures/flicks/odeon-cinema-norwich-programme.html")
-    try src.mkString finally src.close()
-  }
+  private def programmePage: String =
+    FixtureFile.read("test/resources/fixtures/flicks/odeon-cinema-norwich-programme.html")
 
   "parseProgrammeDates" should "read every day tab, sparse and months out, deduped + sorted" in {
     val dates = FlicksClient.parseProgrammeDates(programmePage)
@@ -166,10 +161,8 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
    *  `timetable timetable--cinema` container like any other venue page, but zero
    *  `timetable__day` tabs inside it. Source:
    *  https://www.flicks.co.uk/cinema/woolton-picture-house/ */
-  private def emptyProgrammePage: String = {
-    val src = Source.fromFile("test/resources/fixtures/flicks/woolton-picture-house-programme-empty.html")
-    try src.mkString finally src.close()
-  }
+  private def emptyProgrammePage: String =
+    FixtureFile.read("test/resources/fixtures/flicks/woolton-picture-house-programme-empty.html")
 
   // A venue that simply has no screenings on is EXPECTED DATA, not an outage: the
   // page renders fine, the timetable block is there, it just holds no days. Five
@@ -228,11 +221,9 @@ class FlicksClientSpec extends AnyFlatSpec with Matchers with OptionValues {
    *  films, six `<span class="times-calendar-times__button">` buttons and zero
    *  `<a>` ones. Source:
    *  https://www.flicks.co.uk/cinema/sessions/dartington-art-centre-totnes/2026-07-28/ */
-  private def unbookableFixture: String = {
-    val src = Source.fromFile(
+  private def unbookableFixture: String =
+    FixtureFile.read(
       "test/resources/fixtures/flicks/www.flicks.co.uk/cinema/sessions/dartington-art-centre-totnes/2026-07-28.html")
-    try src.mkString finally src.close()
-  }
 
   private val dartingtonDate  = LocalDate.of(2026, 7, 28)
   private lazy val unbookable = FlicksClient.parseDay(unbookableFixture, dartingtonDate, Uk)

@@ -1,6 +1,6 @@
 package clients.vue
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import models.VueCinemasIslington
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,7 +9,6 @@ import services.cinemas.common.{VueCinemasPlatformClient, VueCinemasPlatformPars
 import tools.HttpFetch
 
 import java.time.LocalDateTime
-import scala.io.Source
 
 /**
  * Replays the real Vue Cinemas platform films payload recorded live on
@@ -24,11 +23,8 @@ class VueCinemasPlatformClientSpec extends AnyFlatSpec with Matchers with Option
   private val IslingtonCinemaId = "10032"
   private val MyVue             = VueCinemasPlatformClient.MyVueBaseUrl
 
-  private def fixture: String = {
-    val src = Source.fromFile(
-      "test/resources/fixtures/vue/www.myvue.com/api/microservice/showings/cinemas/10032/films.json")
-    try src.mkString finally src.close()
-  }
+  private def fixture: String =
+    FixtureFile.read("test/resources/fixtures/vue/www.myvue.com/api/microservice/showings/cinemas/10032/films.json")
 
   private val films = VueCinemasPlatformParser.parse(fixture, VueCinemasIslington, MyVue)
 

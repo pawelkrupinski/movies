@@ -1,11 +1,10 @@
 package clients.helios
 
+import clients.tools.FixtureFile
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.HeliosNuxt
 
-import java.io.File
-import scala.io.{Codec, Source}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 /** The Helios NUXT repertoire blob carries `titleOriginal` next to each film's
@@ -14,11 +13,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  not here). Fixture recorded from helios.pl/poznan/kino-helios/repertuar. */
 class HeliosNuxtOriginalTitleSpec extends AnyFlatSpec with Matchers {
 
-  private val html: String = {
-    val source = Source.fromFile(
-      new File("test/resources/fixtures/08-06-2026/helios.pl/poznan/kino-helios/repertuar"))(using Codec.UTF8)
-    try source.mkString finally source.close()
-  }
+  private val html: String =
+    FixtureFile.read("test/resources/fixtures/08-06-2026/helios.pl/poznan/kino-helios/repertuar")
 
   private val byTitle =
     HeliosNuxt.buildMovies(html, HeliosNuxt.Poznan, titleNormalizer).map(cm => cm.movie.title -> cm).toMap

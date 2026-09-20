@@ -1,6 +1,6 @@
 package clients.webedia
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import models.SpanishCinema
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +8,6 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{WebediaMarket, WebediaShowtimesClient}
 
 import java.time.{LocalDate, LocalDateTime}
-import scala.io.Source
 
 /**
  * Replays a recorded SensaCine capture (Spain, theater E0291 — Yelmo Cines
@@ -28,19 +27,14 @@ import scala.io.Source
  */
 class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def fixture: String = read(
+  private def fixture: String = FixtureFile.read(
     "test/resources/fixtures/webedia-es/www.sensacine.com/_/showtimes/theater-E0291/d-2026-09-02/p-1.json")
 
   /** A real SensaCine venue page (theater E0291, captured 2026-09-01). Read
    *  directly rather than through `FakeHttpFetch`'s URL mapping, exactly as the
    *  German spec does, so the failure tests below still find no venue page under
    *  `webedia-es`. Source URL: https://www.sensacine.com/cines/cine/E0291/ */
-  private def venuePage: String = read("test/resources/fixtures/webedia-es/theater-E0291-venue-page.html")
-
-  private def read(path: String): String = {
-    val src = Source.fromFile(path)
-    try src.mkString finally src.close()
-  }
+  private def venuePage: String = FixtureFile.read("test/resources/fixtures/webedia-es/theater-E0291-venue-page.html")
 
   private val venue = new SpanishCinema("Yelmo Cines Premium Parque Corredor", "Yelmo Parque Corredor")
   private val page  = WebediaShowtimesClient.parsePage(fixture, WebediaMarket.Spain)
@@ -250,7 +244,7 @@ class WebediaSpainShowtimesClientSpec extends AnyFlatSpec with Matchers with Opt
   // screen, so every branch below is read off a real payload rather than a tag
   // list this spec typed out.
   // Source URL: https://www.sensacine.com/_/showtimes/theater-E0382/d-2026-09-05/p-1/
-  private lazy val mixedVersionPage = WebediaShowtimesClient.parsePage(read(
+  private lazy val mixedVersionPage = WebediaShowtimesClient.parsePage(FixtureFile.read(
     "test/resources/fixtures/webedia-es/www.sensacine.com/_/showtimes/theater-E0382/d-2026-09-05/p-1.json"),
     WebediaMarket.Spain)
 

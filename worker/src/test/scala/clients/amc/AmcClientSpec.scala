@@ -1,6 +1,6 @@
 package clients.amc
 
-import clients.tools.{FailingHttpFetch, UrlFragmentHttpFetch}
+import clients.tools.{FailingHttpFetch, FixtureFile, UrlFragmentHttpFetch}
 import models.{Cinema, UsRoster}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,7 +9,6 @@ import services.cinemas.us.{AmcClient, AmcParser}
 import tools.HttpStatusException
 
 import java.time.{LocalDate, LocalDateTime}
-import scala.io.Source
 
 /**
  * Replays REAL recorded AMC responses (AMC Town Center 20, Kansas City, captured
@@ -29,10 +28,8 @@ class AmcClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     UsRoster.byDisplayName.get("AMC Town Center 20")
       .getOrElse(fail("AMC Town Center 20 is missing from the US roster"))
 
-  private def fixture(path: String): String = {
-    val src = Source.fromFile(s"test/resources/fixtures/amc/$path")
-    try src.mkString finally src.close()
-  }
+  private def fixture(path: String): String =
+    FixtureFile.read(s"test/resources/fixtures/amc/$path")
 
   private val venuePage =
     fixture("www.amctheatres.com/movie-theatres/kansas-city/amc-town-center-20/showtimes.html")

@@ -2,13 +2,12 @@ package clients.webedia
 
 import models.GermanCinema
 import org.scalatest.OptionValues
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.common.{WebediaMarket, WebediaShowtimesClient}
 
 import java.time.{LocalDate, LocalDateTime}
-import scala.io.Source
 
 /** Replays a recorded Webedia website-JSON capture (Germany, Filmstarts theater
  *  A0263, date 2026-07-11) through the pure `parsePage`. Pins that the surviving
@@ -21,11 +20,9 @@ import scala.io.Source
  *  booking links. */
 class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def fixture: String = {
-    val src = Source.fromFile(
+  private def fixture: String =
+    FixtureFile.read(
       "test/resources/fixtures/webedia-de/www.filmstarts.de/_/showtimes/theater-A0263/d-2026-07-11/p-1.json")
-    try src.mkString finally src.close()
-  }
 
   /** A real Filmstarts venue page (theater A0263, captured 2026-07-19). Carries
    *  `data-showtimes-dates` = the 24 days with showtimes across Filmstarts' fixed
@@ -33,10 +30,8 @@ class WebediaShowtimesClientSpec extends AnyFlatSpec with Matchers with OptionVa
    *  via FakeHttpFetch's URL mapping) so the grid-fallback tests below still find
    *  no venue page under `webedia-de`. Source URL:
    *  https://www.filmstarts.de/kinoprogramm/kino/A0263/ */
-  private def venuePage: String = {
-    val src = Source.fromFile("test/resources/fixtures/webedia-de/theater-A0263-venue-page.html")
-    try src.mkString finally src.close()
-  }
+  private def venuePage: String =
+    FixtureFile.read("test/resources/fixtures/webedia-de/theater-A0263-venue-page.html")
 
   private val page = WebediaShowtimesClient.parsePage(fixture, WebediaMarket.Germany)
 

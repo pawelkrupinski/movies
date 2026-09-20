@@ -1,6 +1,6 @@
 package clients.regal
 
-import clients.tools.{FailingHttpFetch, UrlFragmentHttpFetch}
+import clients.tools.{FailingHttpFetch, FixtureFile, UrlFragmentHttpFetch}
 import models.{Cinema, UsRoster}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -8,7 +8,6 @@ import org.scalatest.matchers.should.Matchers
 import services.cinemas.us.{RegalClient, RegalParser, RegalVenues}
 
 import java.time.{LocalDate, LocalDateTime}
-import scala.io.Source
 
 /**
  * Replays REAL recorded Regal `getShowtimes` / `Movies` responses (captured
@@ -26,10 +25,8 @@ import scala.io.Source
  */
 class RegalClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def fixture(name: String): String = {
-    val src = Source.fromFile(s"test/resources/fixtures/regal/www.regmovies.com/api/$name")
-    try src.mkString finally src.close()
-  }
+  private def fixture(name: String): String =
+    FixtureFile.read(s"test/resources/fixtures/regal/www.regmovies.com/api/$name")
 
   private val batchBody = fixture("getShowtimes-batch-2026-09-12.json")
   private val indexBody = fixture("getShowtimes-index.json")

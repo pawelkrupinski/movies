@@ -1,6 +1,7 @@
 package clients.enrichment
 
 import clients.TmdbClient
+import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import tools.{GetOnlyHttpFetch, RealHttpFetch}
@@ -484,8 +485,8 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // from a real captured `/movie/365398/credits`, not hand-written JSON, so a change
   // in TMDB's shape is what breaks it.
   "crewIds" should "read every crew member's person id from a real credits payload" in {
-    val body  = scala.io.Source.fromFile(
-      "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0").mkString
+    val body  = FixtureFile.read(
+      "test/resources/fixtures/08-06-2026/api.themoviedb.org/3/movie/365398/credits.0")
     val fetch = new StubFetch(body)
     val ids   = new TmdbClient(fetch, apiKey = Some("stub")).crewIds(365398)
 

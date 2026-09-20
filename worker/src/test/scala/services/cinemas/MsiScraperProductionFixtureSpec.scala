@@ -1,11 +1,10 @@
 package services.cinemas
 
+import clients.tools.FixtureFile
 import org.scalatest.OptionValues
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.MsiScraper
-
-import scala.io.{Codec, Source}
 
 /** Fixture-replay coverage proving the release year + original title mined from
  *  the `RepertoireEvents` Description survive end-to-end through
@@ -25,10 +24,7 @@ class MsiScraperProductionFixtureSpec extends AnyFlatSpec with Matchers with Opt
   private val fixture =
     "test/resources/fixtures/msi-production/bilety.zamek.szczecin.pl/MSI/mvc/pl.8781cb26"
 
-  private val html = {
-    val src = Source.fromFile(fixture)(using Codec.UTF8)
-    try src.mkString finally src.close()
-  }
+  private val html = FixtureFile.read(fixture)
 
   // For this assertion we keep the raw title verbatim and emit no format tokens,
   // so the rendered block's `title` attr matches the `RepertoireEvents` Name and

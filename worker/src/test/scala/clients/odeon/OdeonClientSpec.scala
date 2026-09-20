@@ -1,6 +1,6 @@
 package clients.odeon
 
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import models.OdeonBirminghamNewStreet
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
@@ -9,7 +9,6 @@ import services.cinemas.uk.{OdeonClient, OdeonParser}
 
 import java.time.LocalDate
 import java.time.LocalDateTime
-import scala.io.Source
 
 /**
  * Replays REAL captured Odeon `WSVistaWebClient/ocapi/v1` payloads (site 017,
@@ -24,25 +23,20 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   private val siteId = "017"
   private val date   = LocalDate.of(2026, 7, 27)
 
-  private def read(path: String): String = {
-    val src = Source.fromFile(path)
-    try src.mkString finally src.close()
-  }
-
   private val fixtureBase =
     "test/resources/fixtures/odeon/vwc.odeon.co.uk/WSVistaWebClient/ocapi/v1"
 
   // ── pure parsers over the recorded payloads ───────────────────────────────
 
   "parseSites" should "read the full venue roster with ids and names" in {
-    val sites = OdeonParser.parseSites(read(s"$fixtureBase/sites.json"))
+    val sites = OdeonParser.parseSites(FixtureFile.read(s"$fixtureBase/sites.json"))
     sites.size shouldBe 113
     sites.map(_.id) should contain("017")
     sites.find(_.id == "017").value.name shouldBe "Birmingham New Street"
   }
 
   "parseScreeningDates" should "read the venue's business dates, deduped + sorted" in {
-    val dates = OdeonParser.parseScreeningDates(read(s"$fixtureBase/film-screening-dates.json"))
+    val dates = OdeonParser.parseScreeningDates(FixtureFile.read(s"$fixtureBase/film-screening-dates.json"))
     dates.size shouldBe 29
     dates.head shouldBe LocalDate.of(2026, 7, 27)
     dates.last shouldBe LocalDate.of(2026, 12, 13)   // ~4.5 months out — event/advance dates
@@ -50,7 +44,7 @@ class OdeonClientSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   private val movies =
-    OdeonParser.parseShowtimes(read(s"$fixtureBase/showtimes/by-business-date/2026-07-27.json"), cinema)
+    OdeonParser.parseShowtimes(FixtureFile.read(s"$fixtureBase/showtimes/by-business-date/2026-07-27.json"), cinema)
 
   "parseShowtimes" should "produce one row per film on the day" in {
     movies.map(_.movie.title).distinct.size shouldBe 7

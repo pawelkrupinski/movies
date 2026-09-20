@@ -1,21 +1,16 @@
 package services.cinemas
 
 import org.scalatest.matchers.should.Matchers
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.CharlieMonroeClient
-
-import scala.io.Source
 
 /** Exercises CharlieMonroeClient's detail-page parsing against the recorded
   * kinomalta.pl WPMovieLibrary fixture (movies/prosta-historia). */
 class CharlieMonroeClientSpec extends AnyFlatSpec with Matchers {
 
-  private def fixture(name: String): String = {
-    val src = Source.fromFile(s"test/resources/fixtures/08-06-2026/kinomalta.pl/$name")
-    try src.mkString
-    finally src.close()
-  }
+  private def fixture(name: String): String =
+    FixtureFile.read(s"test/resources/fixtures/08-06-2026/kinomalta.pl/$name")
 
   // The fetch is unused here — parseDirector/parseCountries are pure
   // String => Seq[String] functions fed the fixture HTML directly.

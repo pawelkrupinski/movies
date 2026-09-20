@@ -2,7 +2,7 @@ package clients.kino_muza
 
 import models.{KinoMuza, Showtime}
 import org.jsoup.Jsoup
-import clients.tools.FakeHttpFetch
+import clients.tools.{FakeHttpFetch, FixtureFile}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.KinoMuzaClient
@@ -672,7 +672,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "expose parseSynopsis for fetchFilmDetail to call against a recorded detail page" in {
-    val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(using scala.io.Codec.UTF8).mkString
+    val html = FixtureFile.read("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")
     val s    = client.parseSynopsis(Jsoup.parse(html))
     s                            should not be empty
     s.get                        should startWith ("James Cox Chambers Jr.")
@@ -683,7 +683,7 @@ class KinoMuzaClientSpec extends AnyFlatSpec with Matchers {
   // listing-page thumbnail. `parsePoster` pulls it out so `fetchFilmDetail`
   // can upgrade the row's posterUrl when its EnrichDetails task runs.
   it should "extract the portrait poster URL from a detail page" in {
-    val html = scala.io.Source.fromFile("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")(using scala.io.Codec.UTF8).mkString
+    val html = FixtureFile.read("test/resources/fixtures/kino-muza/www.kinomuza.pl/movie/pieniadze-to-wszystko")
     client.parsePoster(Jsoup.parse(html)) shouldBe Some("https://www.kinomuza.pl/content/uploads/2026/03/Pieniądze-to-wszystko-556x800.png")
   }
 
