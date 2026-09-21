@@ -98,13 +98,16 @@ class CineworldClient(
 
   /** Fetch + parse one film's detail by the `filmUrl` the listing scrape left
    *  on the movie (`.../films/<id>-<slug>`) — `movieIdOf` reads the id off it.
-   *  None on fetch failure or an id the platform doesn't recognise (the
-   *  endpoint answers an unknown id with 200 and an empty array, not a 404 —
-   *  there is no durable-vs-transient HTTP signal here the way the old
-   *  detail-page fetch had, so an unrecognised id is `None`/retried on the
-   *  normal cadence rather than stamped `Gone`). A genuine durable HTTP status
-   *  (404/410 on the endpoint itself, not an empty body) still escapes via
-   *  `transientToNone` exactly as every other deferred-detail client does. */
+   *  `None` only on fetch failure or an unparseable body. An id the platform
+   *  doesn't recognise answers 200 with an empty array — a LOADED, well-formed
+   *  response — so `CineworldParser.parseMovieDetail` returns `Some(FilmDetail())`
+   *  for it: the film is stamped `Fetched` (an empty `FilmDetail` merges as a
+   *  no-op) instead of retried every tick forever. There is no durable-vs-
+   *  transient HTTP signal on this endpoint the way the old detail-page fetch
+   *  had, so a durable HTTP status (404/410 on the endpoint itself, not an
+   *  empty body) still escapes via `transientToNone` exactly as every other
+   *  deferred-detail client does — that is the one case this client still
+   *  reports `Failed`/retries. */
   override def fetchFilmDetail(ref: String): Option[FilmDetail] =
     DetailFetchOutcome.transientToNone(http.get(movieDetailUrl(BaseUrl, movieIdOf(ref))))
       .flatMap(CineworldParser.parseMovieDetail)

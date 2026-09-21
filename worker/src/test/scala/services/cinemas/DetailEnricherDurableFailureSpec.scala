@@ -42,6 +42,16 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
     override def post(url: String, body: String, contentType: String): String = get(url)
   }
 
+  /** Serves a well-formed, empty JSON array — Cineworld's `movies?ids=`
+   *  endpoint's own shape of "loaded but carries no fields": a 200 the
+   *  platform sends for an id it doesn't recognise (see
+   *  `CineworldParser.parseMovieDetail`). The JSON-API equivalent of
+   *  `AlwaysEmptyPage` for Cineworld, which speaks JSON rather than HTML. */
+  private class AlwaysEmptyJsonArray extends HttpFetch {
+    override def get(url: String): String = "[]"
+    override def post(url: String, body: String, contentType: String): String = "[]"
+  }
+
   /** Every deferred-detail cinema, built against a fetch that always fails. The
    *  constructor args beyond `http` don't matter here — nothing is parsed. */
   private def enrichers(http: HttpFetch): Seq[(String, DetailEnricher)] = Seq(
@@ -116,17 +126,16 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
    *  and stamps the film back onto the normal refresh window. Reserve `Failed`
    *  for the fetch actually failing — a throw, a status, an unreadable body. */
   it should "report a page that loaded but carries no fields as Fetched, not Failed" in {
-    // Cineworld is EXEMPT from this one: `AlwaysEmptyPage` serves an HTML string
-    // ("<!doctype html>…"), which is what "loaded but carries no fields" means for
-    // every other client here — all scraped-HTML detail pages that jsoup parses
-    // without ever throwing. Cineworld's detail fetch is a JSON API
+    // Cineworld is EXEMPT from THIS PROBE ONLY: `AlwaysEmptyPage` serves an HTML
+    // string ("<!doctype html>…"), which is what "loaded but carries no fields"
+    // means for every other client here — all scraped-HTML detail pages that
+    // jsoup parses without ever throwing. Cineworld's detail fetch is a JSON API
     // (`/api/gatsby-source-boxofficeapi/movies?ids=`), so that same HTML string is
     // genuinely unparseable to it — "an unreadable body" is the one case this
     // family's own philosophy (see the class doc above) says SHOULD be `Failed`,
-    // not silently swallowed. A real empty answer from Cineworld's endpoint (an id
-    // it doesn't recognise) is a well-formed `[]`, which `CineworldParser.parseMovieDetail`
-    // already turns into `None`/`Failed` correctly — this exemption is about the
-    // shape of the probe, not a gap in the client.
+    // not silently swallowed. Cineworld's OWN shape of "loaded but empty" is a
+    // well-formed `[]`, asserted separately below with `AlwaysEmptyJsonArray` —
+    // this exemption is about the shape of THIS probe, not a pass for the client.
     val livelocking = enrichers(new AlwaysEmptyPage).collect {
       case (name, e) if name != "Cineworld" && e.fetchDetail("https://example.test/film") == DetailFetchOutcome.Failed => name
     }
@@ -135,6 +144,17 @@ class DetailEnricherDurableFailureSpec extends AnyFlatSpec with Matchers {
         s"DetailReaper re-enqueues the film every tick forever: ${livelocking.mkString(", ")} — ") {
       livelocking shouldBe empty
     }
+  }
+
+  it should "report Cineworld's own well-formed empty array as Fetched, not Failed" in {
+    // Cineworld's answer for an id it doesn't recognise: 200 + `[]`, a LOADED,
+    // well-formed "no match" — the JSON-API sibling of the HTML case above. Before
+    // this, `CineworldParser.parseMovieDetail("[]")` returned `None`, which is
+    // never stamped, so `DetailReaper` re-enqueued the same unrecognised id every
+    // tick forever — this is precisely the livelock the rest of this spec guards
+    // every other client against, just missed for Cineworld when it was added.
+    val cineworld = enrichers(new AlwaysEmptyJsonArray).collectFirst { case ("Cineworld", e) => e }.get
+    cineworld.fetchDetail("https://example.test/film") should not be DetailFetchOutcome.Failed
   }
 
   it should "cover every DetailEnricher the catalogue can build" in {

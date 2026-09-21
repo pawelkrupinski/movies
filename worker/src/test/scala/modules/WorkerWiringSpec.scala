@@ -162,6 +162,33 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
     w1.dbNameForTest              shouldBe Country.dbNameFor(Country.Poland)
   }
 
+  // A wiring that only forces the pure, no-I/O catalog derivations (`detailEnrichers`)
+  // for a chosen country — mirrors `Probe` above, minus the members `Probe` doesn't
+  // need either.
+  class DetailProbe(c: Country) extends WorkerWiring(c) {
+    override lazy val mongoConnection: MongoConnection =
+      new MongoConnection(uri = None, dbName = "unused", required = false)
+    def detailEnricherClassNames: Set[String] = detailEnrichers.map(_.getClass.getSimpleName).toSet
+  }
+
+  // Cineworld is a UK-only chain (see CineworldClient), so its chain-wide
+  // DetailEnricher must be wired for the UK's own worker only. Before this,
+  // `detailEnrichers` was built off `cinemaScraperCatalog.all` — the catalog
+  // spanning EVERY country — so Poland's (and every other country's) worker
+  // ALSO wired a `CineworldClient` DetailEnricher, enqueuer and reaper entry,
+  // and independently recorded chain-wide detail-fetch outcomes under the
+  // shared "Cineworld Enrichment" service name: confirmed live via
+  // kinowo.net's own /metrics reporting real successes/failures for that
+  // service tagged `country="pl"`, and the /uptime page showing it failing on
+  // Poland's own page even though no Polish cinema is a Cineworld venue.
+  "detailEnrichers" should "exclude another country's chain-wide enricher" in {
+    new DetailProbe(Country.Poland).detailEnricherClassNames should not contain "CineworldClient"
+  }
+
+  it should "include it for the country that actually has that chain" in {
+    new DetailProbe(Country.UnitedKingdom).detailEnricherClassNames should contain ("CineworldClient")
+  }
+
   // The phase split: cinema-site HTTP (`httoFetch`) and third-party metadata/rating
   // HTTP (`enrichmentFetch`) are separate chains sharing one wire leaf, differing
   // ONLY at the innermost counter's `phase` label. This is what lets a Grafana

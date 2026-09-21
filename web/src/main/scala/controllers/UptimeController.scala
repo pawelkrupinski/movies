@@ -37,13 +37,17 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   private val cinemaNames = byCity.flatMap(_._2).map(_.displayName)
 
   // External enrichment sources plus network-level (chain-wide) detail health.
-  // Cinema City fetches each film's detail once per network and records it here
-  // as one "Cinema City Enrichment" entry instead of one "<venue>|enrichment"
-  // sub-row per venue (see EnrichDetailsHandler /
-  // CinemaCityScraper.enrichmentServiceOverride). Order here is the render order
-  // of the Global section, so the chain-wide row leads the external sources.
+  // Cinema City and Cineworld each fetch a film's detail once per network and
+  // record it here as one "<Chain> Enrichment" entry instead of one
+  // "<venue>|enrichment" sub-row per venue (see EnrichDetailsHandler /
+  // DetailEnricher.enrichmentServiceOverride). A name missing from this list
+  // isn't dropped — `otherVerdicts` still picks it up — but it falls into
+  // "Other" instead of classifying/rendering alongside the rest of the Global
+  // section, which is how Cineworld Enrichment ended up filed under "Other" on
+  // the UK page instead of here. Order here is the render order of the Global
+  // section, so the chain-wide rows lead the external sources.
   private val enrichmentNames = Seq(
-    "Cinema City Enrichment", "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes"
+    "Cinema City Enrichment", "Cineworld Enrichment", "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes"
   )
 
   // SSE batching: a poll cycle can flip one bucket per active service at once.

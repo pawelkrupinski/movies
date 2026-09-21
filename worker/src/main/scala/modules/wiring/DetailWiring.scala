@@ -16,8 +16,22 @@ trait DetailWiring { self: WorkerWiring =>
   // BARE; their detail is filled via EnrichDetails queue tasks. Indexed by
   // detailGroup for the handler (task → fetch); the per-cinema enqueuers and
   // reaper iterate the list directly.
+  //
+  // Scoped to `country.cities`, exactly like `ScrapeWiring.cinemaScrapers` —
+  // `cinemaScraperCatalog.all` is the GLOBAL catalog across every country, and
+  // this list is actively WALKED (the reaper enqueues off it, the enqueuers
+  // subscribe off it), not just looked up by a key this country's own rows
+  // happen to carry. Left unscoped, every country's worker built its own
+  // `CineworldClient` DetailEnricher/enqueuer/reaper entry and independently
+  // recorded chain-wide detail-fetch outcomes under the shared "Cineworld
+  // Enrichment" service name — Poland's own /uptime showed it failing
+  // (confirmed live via /metrics: `country="pl"` recording real successes/
+  // failures for a UK-only chain) even though no Polish cinema is a Cineworld
+  // venue.
   lazy val detailEnrichers: Seq[DetailEnricher] =
-    cinemaScraperCatalog.all.collect { case de: DetailEnricher => de }
+    country.cities
+      .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
+      .collect { case de: DetailEnricher => de }
 
   /** Cinemas that defer per-film detail AND whose detail supplies TMDB hints —
    *  a film one of these scrapes (with a detail filmUrl) waits for its

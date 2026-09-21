@@ -119,12 +119,14 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues wi
     detail.runtimeMinutes shouldBe None
   }
 
-  it should "return None for an id the platform doesn't recognise, rather than throw" in {
+  it should "return an empty FilmDetail (not None) for an id the platform doesn't recognise" in {
     // The endpoint answers an unknown id with 200 + `[]`, not a 404 — a real
-    // recorded response, not a synthesised one (see class doc: there is no
-    // durable-vs-transient HTTP signal on this endpoint the way the old
-    // detail PAGE had, so this becomes a plain retry-later None/Failed, not Gone).
-    client().fetchFilmDetail("https://www.cineworld.co.uk/films/999999999-does-not-exist") shouldBe None
+    // recorded response, not a synthesised one. A LOADED, well-formed "no
+    // match" answer is `Fetched`, not `Failed`: `None` here would never be
+    // stamped, so `DetailReaper` would re-enqueue this same id every tick
+    // forever (see class doc / DetailEnricherDurableFailureSpec).
+    client().fetchFilmDetail("https://www.cineworld.co.uk/films/999999999-does-not-exist") shouldBe
+      Some(services.cinemas.common.FilmDetail())
   }
 
   "movieIdOf" should "read the numeric id off a listing's filmUrl" in {
@@ -152,8 +154,8 @@ class CineworldClientSpec extends AnyFlatSpec with Matchers with OptionValues wi
     ).value.ageRating shouldBe None
   }
 
-  it should "return None for an empty array" in {
-    CineworldParser.parseMovieDetail("[]") shouldBe None
+  it should "return an empty FilmDetail, not None, for an empty array (a loaded, well-formed 'no match')" in {
+    CineworldParser.parseMovieDetail("[]") shouldBe Some(services.cinemas.common.FilmDetail())
   }
 
   it should "return None for an unparseable body rather than throw" in {

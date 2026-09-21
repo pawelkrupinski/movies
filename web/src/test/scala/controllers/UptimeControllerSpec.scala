@@ -137,6 +137,19 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     services.map(_.name).head shouldBe "Cinema City Enrichment"
   }
 
+  // Cineworld's chain-wide detail health is the same shape as Cinema City's —
+  // one standalone "Cineworld Enrichment" row, not adrift in "Other". Before
+  // `enrichmentNames` listed it, it fell through to `otherVerdicts` and
+  // rendered under "Other" instead of alongside the rest of the enrichment
+  // services (seen live on the UK page).
+  it should "list the network-level Cineworld Enrichment as a standalone enrichment service" in {
+    val sections = controller.groupRows(Set("Cineworld Enrichment", "Some Other Service"), noStatuses, noErrors, fakeRow)
+    val services = sections.services
+    val other = sections.other
+    services.map(_.name) should contain("Cineworld Enrichment")
+    other.map(_.name)    should not contain "Cineworld Enrichment"
+  }
+
   // ── Triage: failing / no-screenings lead, pulled out of the city group ───────
   private val city = Cinema.byCity.head._1
 
