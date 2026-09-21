@@ -243,6 +243,19 @@ groups:
             a hypothetical: monitoring-1 is tainted NoSchedule as the control plane, so there is one
             schedulable node, and a pod holding a local-path PVC cannot move off it.
 
+      # ROLLOUT CONVERGENCE, KEPT VISIBLE RATHER THAN ALERTED ON A SECOND TIME. Same comparison as
+      # `K3sDeploymentReplicasMissing` above, `bool`-cast into a value recorded on every scrape
+      # instead of only a filtered vector while it is true -- so a rollout's actual start and stop
+      # can be read back from Prometheus's own history afterwards. Filtered to `namespace="kinowo"`
+      # deliberately, unlike the sibling alert: the alert legitimately wants every namespace, this
+      # exists for one question -- "how long did the app deploy take" -- that kube-system's coredns
+      # or flux-system's controllers cannot answer. Written after a 2026-09-21 investigation had to
+      # reconstruct rollout duration by hand from `kubectl` conditions and gitops commit timestamps,
+      # ending with two samples and no confidence in the average.
+      - record: k3s:deployment_not_settled
+        expr: >-
+          (kube_deployment_spec_replicas{namespace="kinowo"} - kube_deployment_status_replicas_ready{namespace="kinowo"} > bool 0)
+
       - alert: K3sPodCrashLooping
         expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1
         # TEN MINUTES. The kubelet's backoff reaches its five-minute cap after about six restarts,

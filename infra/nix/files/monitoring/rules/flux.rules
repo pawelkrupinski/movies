@@ -123,3 +123,18 @@ groups:
             `fleet.prometheus.fluxTargets`; nothing checks that, and a disagreement looks exactly
             like this. Check `kubectl -n flux-system get pods` first -- if they are Running, it is
             the port.
+
+      # RECONCILE DURATION, KEPT VISIBLE RATHER THAN ALERTED ON. This is a recording rule, not an
+      # alert, because there is no threshold here backed by a measured baseline -- adding one would
+      # be exactly the "coverage that isn't" this file warns against elsewhere. It exists because a
+      # 2026-09-21 investigation into deploy timing had to reconstruct rollout duration by hand from
+      # `kubectl` conditions and gitops commit timestamps (two samples, low confidence) when Flux's
+      # own health-check wait (`wait: true` on every Kustomization) already times this on every
+      # reconcile. Query `flux:kustomization_reconcile_duration_seconds:p95` by `name` instead of
+      # redoing that archaeology. The same investigation found kustomize-controller retrying the web
+      # Kustomizations against a 3-minute health-check timeout five times in 48h, self-healing each
+      # time -- this is also how to tell whether that keeps happening before reaching for a real
+      # alert threshold on it.
+      - record: flux:kustomization_reconcile_duration_seconds:p95
+        expr: >-
+          histogram_quantile(0.95, sum(rate(gotk_reconcile_duration_seconds_bucket{kind="Kustomization"}[30m])) by (name, le))
