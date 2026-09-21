@@ -50,8 +50,9 @@ class RetiredSiteController(cc: ControllerComponents, country: Country)(implicit
   private val liveOrigin: String = country.webOrigin.getOrElse(throw new IllegalStateException(
     s"KINOWO_RETIRED is set but ${country.code} has no webOrigin — there is no live site to send visitors to"))
 
-  def landing: Action[AnyContent] = Action {
+  def landing: Action[AnyContent] = Action { request =>
     notice(
+      request,
       pageTitle       = messages("landing.title", country.brandName),
       pageDescription = messages("landing.ogDescription"),
       pageUrl         = country.ogOrigin + "/",
@@ -63,6 +64,7 @@ class RetiredSiteController(cc: ControllerComponents, country: Country)(implicit
   def city(slug: String): Action[AnyContent] = Action { request =>
     country.bySlug.get(slug) match {
       case Some(city) => notice(
+        request,
         pageTitle       = FilterDescription.defaultTitle(city),
         pageDescription = FilterDescription.defaultDescription(city),
         pageUrl         = liveOrigin + CityPath(city) + "/",
@@ -74,7 +76,7 @@ class RetiredSiteController(cc: ControllerComponents, country: Country)(implicit
   /** The catch-all — see the class doc for the four-way split this makes. */
   def elsewhere: Action[AnyContent] = Action { request =>
     if (RetiredSite.isApiPath(request.path))
-      apiUpgradeRequired
+      apiUpgradeRequired(request)
     else if ((request.method == "GET" || request.method == "HEAD") && !RetiredSite.isMachineFile(request.path))
       genericNotice(request)
     else
@@ -91,13 +93,16 @@ class RetiredSiteController(cc: ControllerComponents, country: Country)(implicit
   /** `pageUrl` is both the canonical/`og:url` of the page this one replaces AND
    *  where the visitor is sent — they are the same address by construction, so
    *  the notice cannot advertise one destination and link to another. */
-  private def notice(pageTitle: String, pageDescription: String, pageUrl: String, imageUrl: String): Result =
+  private def notice(request: RequestHeader, pageTitle: String, pageDescription: String, pageUrl: String,
+                      imageUrl: String): Result = {
+    RetiredAccessLog.hit("notice", request)
     Ok(views.html.moved(
       pageTitle        = pageTitle,
       pageDescription  = pageDescription,
       pageUrl          = pageUrl,
       imageUrl         = imageUrl,
       destinationLabel = Country.withoutScheme(pageUrl).stripSuffix("/")))
+  }
 
   /** Any other page a person might land on — a film, `/plan`, a legal page. No
    *  per-page title/image exists to give it (see the class doc), so it carries
@@ -105,6 +110,7 @@ class RetiredSiteController(cc: ControllerComponents, country: Country)(implicit
    *  the page that was actually asked for. */
   private def genericNotice(request: RequestHeader): Result =
     notice(
+      request,
       pageTitle       = messages("landing.title", country.brandName),
       pageDescription = messages("landing.ogDescription"),
       pageUrl         = RetiredSite.destination(liveOrigin, request.path, request.rawQueryString),
@@ -117,14 +123,18 @@ class RetiredSiteController(cc: ControllerComponents, country: Country)(implicit
    *  is a status it can act on, where a 200 with an unfamiliar body looks like
    *  success. Neither app reads either signal today; this is here for the day
    *  one does. */
-  private def apiUpgradeRequired: Result =
+  private def apiUpgradeRequired(request: RequestHeader): Result = {
+    RetiredAccessLog.hit("upgrade", request)
     Status(play.api.http.Status.UPGRADE_REQUIRED)(ClientSupport.json)
       .as("application/json")
       .withHeaders("ETag" -> ClientSupport.etag, "Cache-Control" -> "no-cache")
+  }
 
-  private def toLiveSite(request: RequestHeader): Result =
+  private def toLiveSite(request: RequestHeader): Result = {
+    RetiredAccessLog.hit("redirect", request)
     Redirect(
       RetiredSite.destination(liveOrigin, request.path, request.rawQueryString),
       Map.empty[String, Seq[String]],
       RetiredSite.redirectStatus(request.method))
+  }
 }

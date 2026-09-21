@@ -21,6 +21,16 @@
        appender. Mirrored in the worker's logback-base.xml. -->
   <logger name="kinowo.removal-audit" level="INFO"/>
 
+  <!-- RetiredAccessLog's dedicated stream — the only per-request record a
+       RETIRED deployment (kinowo.fly.dev) keeps, so `fly logs` shows something
+       useful for deciding when that host's traffic has died down enough to
+       shut it off. Fixed name for the same reason `kinowo.removal-audit` is
+       above: `controllers` isn't in this file, so a class logger would
+       silently inherit the root's WARN. Keep the name in step with
+       `RetiredAccessLog.LoggerName`; LogbackConfigSpec asserts a real call
+       reaches an appender. -->
+  <logger name="kinowo.retired-access" level="INFO"/>
+
   <!-- MongoDB driver 5.x's TLS selector-monitor loop races against
        connection-pool churn: a SocketChannel queued for selector
        registration can be closed by another thread (idle-pool shrinkage,

@@ -1,6 +1,7 @@
 package modules
 
 import ch.qos.logback.classic.{Level, Logger}
+import controllers.RetiredAccessLog
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.slf4j.LoggerFactory
@@ -51,5 +52,23 @@ class LogbackConfigSpec extends AnyFlatSpec with Matchers {
       .filter(_.getLoggerName == RemovalAudit.LoggerName)
       .map(_.getFormattedMessage) should contain(
         "[movies.delete] film removed: id=a-film-2026 reason=orphan-id-reap")
+  }
+
+  // `RetiredAccessLog` writes to the fixed name `kinowo.retired-access`, NOT a
+  // class logger, so it doesn't inherit any `services`/`clients` level either —
+  // left to the root's WARN it would silently swallow every hit the retired
+  // kinowo.fly.dev host records, the one signal that says when it's safe to
+  // shut that host down for good.
+  it should s"let ${RetiredAccessLog.LoggerName} reach the root appenders at INFO" in {
+    root.getLoggerContext.getLogger(RetiredAccessLog.LoggerName)
+      .getEffectiveLevel.toInt should be <= Level.INFO.toInt
+
+    val captured = LogCapture.capture(org.slf4j.Logger.ROOT_LOGGER_NAME) {
+      RetiredAccessLog.hit("notice", play.api.test.FakeRequest("GET", "/poznan/"))
+    }
+
+    captured
+      .filter(_.getLoggerName == RetiredAccessLog.LoggerName)
+      .map(_.getFormattedMessage) should contain("notice GET /poznan/ ua=-")
   }
 }
