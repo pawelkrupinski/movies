@@ -69,6 +69,6 @@ class LogbackConfigSpec extends AnyFlatSpec with Matchers {
 
     captured
       .filter(_.getLoggerName == RetiredAccessLog.LoggerName)
-      .map(_.getFormattedMessage) should contain("notice GET /poznan/ ua=-")
+      .map(_.getFormattedMessage) should contain("notice GET /poznan/ ip=- ua=- referer=- lang=-")
   }
 }
