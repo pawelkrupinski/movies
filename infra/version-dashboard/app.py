@@ -59,10 +59,12 @@ import json
 import os
 import re
 import shlex
+import socket
 import subprocess
 import sys
 import threading
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -1952,8 +1954,93 @@ PLAY_BASE = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applic
 MOBILE_CACHE_TTL = 600.0
 MOBILE_GIT_TIMEOUT = 30
 
+# How soon a build that failed for a NETWORK reason (DNS, connection refused/reset, timeout) on
+# every platform is retried, instead of sitting on the full 600s like a genuine "nothing changed"
+# result would. A DNS blip that clears in under a minute should not need someone to notice a red
+# box and hit `?refresh=1` -- see MOBILE_SELF_RESTART_AFTER below for the failure mode this alone
+# does not clear.
+MOBILE_RETRY_FLOOR = 60.0
+
+# Consecutive builds in a row that failed for a network reason on EVERY platform, after which the
+# process exits so launchd's KeepAlive relaunches it (see the plist's own "holds no state, costs
+# exactly one cache rebuild" comment). This is the backstop for 2026-09-22's incident: both ASC and
+# Play calls failed with the identical generic `URLError: nodename nor servname provided` for the
+# whole time anyone was looking, and only `launchctl kickstart -k` cleared it -- a stuck
+# OS/interpreter DNS resolver that in-process retries do not fix, since every retry re-hits the
+# same stale state. An HTTP-level failure (bad creds, a real Apple/Google outage) never increments
+# this counter, so it cannot restart-loop over something a fresh process wouldn't fix either.
+MOBILE_SELF_RESTART_AFTER = 5
+
+# Attempts (including the first) for a single ASC/Play round-trip, and the delay before each retry
+# after the first -- long enough to ride out a one-off blip, short enough that a page load never
+# blocks for more than a few seconds waiting on a retry that was always going to fail anyway.
+MOBILE_NETWORK_RETRY_ATTEMPTS = 3
+MOBILE_NETWORK_RETRY_DELAYS = (1.0, 3.0)
+
 _mobile_cache_lock = threading.Lock()
-_mobile_cache = {"built_at": 0.0, "data": None, "building": False}
+_mobile_cache = {"built_at": 0.0, "data": None, "building": False, "consecutive_network_failures": 0}
+
+
+def _is_transient_network_error(exc):
+    """Whether `exc` is the OS/network refusing the round-trip outright -- DNS failing to resolve,
+    a connection refused/reset, a timeout -- as opposed to the remote server answering with an
+    error (401, 429, a real 5xx outage). The distinction matters because retrying the first kind a
+    few seconds later routinely succeeds, while retrying the second kind immediately just repeats
+    the same answer and burns a JWT signature for nothing.
+
+    `HTTPError` is checked first because it is itself a `URLError` subclass -- the server DID
+    answer, just not with 2xx, so it must not be classified as a network failure by the broader
+    `URLError` check below."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return False
+    if isinstance(exc, (socket.gaierror, socket.timeout, TimeoutError, ConnectionError)):
+        return True
+    if isinstance(exc, urllib.error.URLError):
+        return isinstance(exc.reason, (OSError, TimeoutError))
+    return False
+
+
+def _with_network_retries(fn):
+    """Runs `fn()` up to MOBILE_NETWORK_RETRY_ATTEMPTS times, retrying only on a transient
+    network-level failure -- the class of error a fresh attempt a few seconds later can plausibly
+    clear on its own. Any other exception (an HTTP error status, a bad-JSON response, a missing
+    credential) propagates on the first attempt untouched, since another attempt right away would
+    not change it."""
+    last_exc = None
+    for delay in (0.0,) + MOBILE_NETWORK_RETRY_DELAYS[:MOBILE_NETWORK_RETRY_ATTEMPTS - 1]:
+        if delay:
+            time.sleep(delay)
+        try:
+            return fn()
+        except Exception as exc:  # noqa: BLE001 -- reclassified below, not swallowed
+            if not _is_transient_network_error(exc):
+                raise
+            last_exc = exc
+    raise last_exc
+
+
+def _all_platforms_network_failed(data):
+    """Whether every platform in a built /mobile result failed for a network reason -- the signal
+    MOBILE_RETRY_FLOOR and MOBILE_SELF_RESTART_AFTER key off of. A single platform failing (say,
+    Play's API is fine but ASC 401s) is not this: it says nothing about the local machine's own
+    network state, so racing the retry floor for it would just hammer a credential that is not
+    coming back."""
+    platforms = data.get("platforms") or []
+    return bool(platforms) and all(p.get("fetch_failed") and p.get("network_error") for p in platforms)
+
+
+def _maybe_self_restart():
+    """Exits the process once MOBILE_SELF_RESTART_AFTER consecutive builds have failed for a
+    network reason on every platform -- see that constant for why this is the right backstop and
+    why it cannot loop-restart over a non-network failure. launchd's KeepAlive relaunches
+    unconditionally on any exit, and the process holds no state, so this costs exactly one cache
+    rebuild if the restart turns out not to have been needed."""
+    with _mobile_cache_lock:
+        count = _mobile_cache["consecutive_network_failures"]
+    if count >= MOBILE_SELF_RESTART_AFTER:
+        print(f"mobile dashboard: {count} consecutive network-level failures on every platform, "
+              "restarting for launchd to relaunch", file=sys.stderr, flush=True)
+        os._exit(1)
 
 
 def _env_local(key):
@@ -2015,9 +2102,11 @@ def ios_release_state():
     endpoint (PARAMETER_ERROR.ILLEGAL, same restriction the builds endpoint has per
     reference_app_store_connect_api) so the ordering is done locally, not trusted from Apple."""
     try:
-        data = _asc_get(f"/v1/apps/{IOS_APP_ID}/appStoreVersions?limit=10")
+        data = _with_network_retries(
+            lambda: _asc_get(f"/v1/apps/{IOS_APP_ID}/appStoreVersions?limit=10"))
     except Exception as exc:  # noqa: BLE001 -- a network/auth failure is a reportable page state
-        return {"error": f"{type(exc).__name__}: {exc}"}
+        return {"error": f"{type(exc).__name__}: {exc}",
+                "network_error": _is_transient_network_error(exc)}
     versions = sorted((v["attributes"] for v in data.get("data", [])),
                        key=lambda a: a.get("createdDate") or "", reverse=True)
     live = next((v for v in versions if v.get("appStoreState") == "READY_FOR_SALE"), None)
@@ -2073,12 +2162,16 @@ def android_release_state():
     The edit is never committed -- it is left to expire on Google's side, same as every other
     read-only edit this repo's release tooling opens, so this function can never change what is
     actually live no matter how it fails."""
-    try:
+    def _fetch():
         token = _play_access_token()
         edit_id = _play_post("/edits", token)["id"]
-        track = _play_get(f"/edits/{edit_id}/tracks/production", token)
+        return _play_get(f"/edits/{edit_id}/tracks/production", token)
+
+    try:
+        track = _with_network_retries(_fetch)
     except Exception as exc:  # noqa: BLE001
-        return {"error": f"{type(exc).__name__}: {exc}"}
+        return {"error": f"{type(exc).__name__}: {exc}",
+                "network_error": _is_transient_network_error(exc)}
     releases = track.get("releases") or []
     completed = next((r for r in releases if r.get("status") == "completed"), None)
     newest = releases[0] if releases else None
@@ -2182,7 +2275,8 @@ def build_mobile():
         # different, unremarkable state ("nothing released yet") from a JWT/network fault, which
         # is the one thing on this page actually worth an alarm-coloured box.
         if state.get("error"):
-            platforms.append({"name": name, "fetch_failed": True, "error": state["error"]})
+            platforms.append({"name": name, "fetch_failed": True, "error": state["error"],
+                               "network_error": state.get("network_error", False)})
             continue
         version = state["live_version"]
         tag_sha = mobile_tag_sha(subdir, version)
@@ -2214,11 +2308,16 @@ def build_mobile():
 def cached_mobile(force=False):
     now = time.time()
     with _mobile_cache_lock:
-        fresh = _mobile_cache["data"] is not None and (now - _mobile_cache["built_at"]) < MOBILE_CACHE_TTL
+        stale_data = _mobile_cache["data"]
+        # A build that failed for a network reason on every platform gets MOBILE_RETRY_FLOOR
+        # instead of the full MOBILE_CACHE_TTL -- see that constant for why a stuck DNS resolver
+        # should not get to sit there looking "fresh" for ten minutes.
+        ttl = MOBILE_RETRY_FLOOR if stale_data and _all_platforms_network_failed(stale_data) else MOBILE_CACHE_TTL
+        fresh = stale_data is not None and (now - _mobile_cache["built_at"]) < ttl
         if fresh and not force:
-            return _mobile_cache["data"]
+            return stale_data
         building = _mobile_cache["building"]
-        have_stale = _mobile_cache["data"] is not None
+        have_stale = stale_data is not None
         if not building:
             _mobile_cache["building"] = True
 
@@ -2230,6 +2329,11 @@ def cached_mobile(force=False):
         with _mobile_cache_lock:
             _mobile_cache["data"] = data
             _mobile_cache["built_at"] = time.time()
+            if _all_platforms_network_failed(data):
+                _mobile_cache["consecutive_network_failures"] += 1
+            else:
+                _mobile_cache["consecutive_network_failures"] = 0
+        _maybe_self_restart()
         return data
     finally:
         with _mobile_cache_lock:
@@ -2391,13 +2495,27 @@ def refresh_forever():
             pass
 
 
+def _mobile_refresh_delay(data):
+    """How long refresh_mobile_forever should wait before its next attempt, given the build it just
+    produced (or None if the attempt raised outright). MOBILE_RETRY_FLOOR after a network-wide
+    failure or a raised exception, so a DNS blip gets re-tried in about a minute instead of sitting
+    on the long TTL until someone notices the red box and hits `?refresh=1`; MOBILE_CACHE_TTL
+    otherwise, since a clean build (or a real, non-network error on just one platform) is not the
+    situation MOBILE_RETRY_FLOOR exists for."""
+    if data is None or _all_platforms_network_failed(data):
+        return MOBILE_RETRY_FLOOR
+    return MOBILE_CACHE_TTL
+
+
 def refresh_mobile_forever():
+    sleep_for = MOBILE_CACHE_TTL
     while True:
-        time.sleep(MOBILE_CACHE_TTL)
+        time.sleep(sleep_for)
         try:
-            cached_mobile(force=True)
+            data = cached_mobile(force=True)
         except Exception:  # noqa: BLE001 -- a refresh failure must not kill the loop
-            pass
+            data = None
+        sleep_for = _mobile_refresh_delay(data)
 
 
 def main():

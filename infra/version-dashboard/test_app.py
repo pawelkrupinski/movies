@@ -12,12 +12,14 @@ import importlib.util
 import os
 import pathlib
 import re
+import socket
 import subprocess
 import sys
 import tempfile
 import threading
 import time
 import unittest
+import urllib.error
 
 APP = pathlib.Path(__file__).with_name("app.py")
 _spec = importlib.util.spec_from_file_location("nixos_dashboard_app", APP)
@@ -666,7 +668,8 @@ class MobileBuildAssembly(unittest.TestCase):
                                               "live_extra": None, "pending": None}
         by_name = self._by_name(app.build_mobile())
         self.assertEqual(by_name["iOS"], {"name": "iOS", "fetch_failed": True,
-                                          "error": "HTTPError 401: unauthorized"})
+                                          "error": "HTTPError 401: unauthorized",
+                                          "network_error": False})
 
     def test_a_version_never_released_is_not_a_fetch_error(self):
         # Distinct states that the earlier shape of this code conflated: both left `error` set and
@@ -760,6 +763,281 @@ class MobileBuildAssembly(unittest.TestCase):
             app.mobile_tag_sha = real_mobile_tag_sha
         self.assertEqual(calls.count(("ios", "9.9.9")), 1)
         self.assertEqual(by_name["iOS"]["error"], "no commit found matching 'Release mobile 9.9.9'")
+
+
+class TransientNetworkErrorClassification(unittest.TestCase):
+    """_is_transient_network_error draws the line _with_network_retries, MOBILE_RETRY_FLOOR and
+    MOBILE_SELF_RESTART_AFTER all key off of: DNS/connection/timeout failures the OS raised before
+    any server answered, versus the server answering with a status the same request will just get
+    again immediately (401, 429, a real outage)."""
+
+    def test_dns_failure_is_transient(self):
+        exc = urllib.error.URLError(socket.gaierror(8, "nodename nor servname provided, or not known"))
+        self.assertTrue(app._is_transient_network_error(exc))
+
+    def test_bare_gaierror_is_transient(self):
+        self.assertTrue(app._is_transient_network_error(socket.gaierror(8, "nodename nor servname")))
+
+    def test_connection_and_timeout_errors_are_transient(self):
+        self.assertTrue(app._is_transient_network_error(ConnectionRefusedError()))
+        self.assertTrue(app._is_transient_network_error(socket.timeout()))
+        self.assertTrue(app._is_transient_network_error(TimeoutError()))
+
+    def test_an_http_error_is_not_transient_even_though_it_subclasses_urlerror(self):
+        exc = urllib.error.HTTPError("https://api.appstoreconnect.apple.com/x", 401,
+                                      "Unauthorized", {}, None)
+        self.assertFalse(app._is_transient_network_error(exc))
+
+    def test_an_unrelated_exception_is_not_transient(self):
+        self.assertFalse(app._is_transient_network_error(KeyError("access_token")))
+        self.assertFalse(app._is_transient_network_error(ValueError("bad json")))
+
+
+class NetworkRetries(unittest.TestCase):
+    """_with_network_retries is what turns a DNS blip that would otherwise sit as a red box for a
+    whole MOBILE_CACHE_TTL into something that clears inside one page build."""
+
+    def setUp(self):
+        self._orig_sleep = app.time.sleep
+        self.slept = []
+        app.time.sleep = lambda s: self.slept.append(s)
+
+    def tearDown(self):
+        app.time.sleep = self._orig_sleep
+
+    def test_succeeds_without_retrying_when_the_first_attempt_works(self):
+        calls = []
+
+        def fn():
+            calls.append(1)
+            return "ok"
+
+        self.assertEqual(app._with_network_retries(fn), "ok")
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(self.slept, [])
+
+    def test_retries_a_transient_failure_and_returns_the_eventual_success(self):
+        attempts = []
+
+        def fn():
+            attempts.append(1)
+            if len(attempts) < 3:
+                raise socket.gaierror(8, "nodename nor servname provided, or not known")
+            return "ok"
+
+        self.assertEqual(app._with_network_retries(fn), "ok")
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual(self.slept, list(app.MOBILE_NETWORK_RETRY_DELAYS))
+
+    def test_gives_up_after_exhausting_every_attempt(self):
+        def fn():
+            raise socket.gaierror(8, "nodename nor servname provided, or not known")
+
+        with self.assertRaises(socket.gaierror):
+            app._with_network_retries(fn)
+        self.assertEqual(len(self.slept), app.MOBILE_NETWORK_RETRY_ATTEMPTS - 1)
+
+    def test_an_http_error_propagates_on_the_first_attempt_without_retrying(self):
+        calls = []
+
+        def fn():
+            calls.append(1)
+            raise urllib.error.HTTPError("https://x", 401, "Unauthorized", {}, None)
+
+        with self.assertRaises(urllib.error.HTTPError):
+            app._with_network_retries(fn)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(self.slept, [])
+
+
+class MobileNetworkFailureWiring(unittest.TestCase):
+    """ios_release_state/android_release_state must both retry a transient failure through
+    _with_network_retries and tag the resulting error as network_error, since that flag is what
+    _all_platforms_network_failed (and through it, MOBILE_RETRY_FLOOR / MOBILE_SELF_RESTART_AFTER)
+    reads to tell a DNS blip apart from a real 401."""
+
+    def setUp(self):
+        self._orig_sleep = app.time.sleep
+        app.time.sleep = lambda s: None
+        self._orig_asc_get = app._asc_get
+        self._orig_play_access_token = app._play_access_token
+        self._orig_play_post = app._play_post
+        self._orig_play_get = app._play_get
+
+    def tearDown(self):
+        app.time.sleep = self._orig_sleep
+        app._asc_get = self._orig_asc_get
+        app._play_access_token = self._orig_play_access_token
+        app._play_post = self._orig_play_post
+        app._play_get = self._orig_play_get
+
+    def test_ios_retries_a_dns_failure_and_recovers(self):
+        calls = []
+
+        def fake_asc_get(path):
+            calls.append(path)
+            if len(calls) < 2:
+                raise socket.gaierror(8, "nodename nor servname provided, or not known")
+            return {"data": [{"attributes": {"versionString": "2.0.7",
+                                              "appStoreState": "READY_FOR_SALE",
+                                              "createdDate": "2026-09-01"}}]}
+
+        app._asc_get = fake_asc_get
+        state = app.ios_release_state()
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(state["live_version"], "2.0.7")
+
+    def test_ios_a_persistent_dns_failure_is_reported_as_network_error(self):
+        app._asc_get = lambda path: (_ for _ in ()).throw(
+            socket.gaierror(8, "nodename nor servname provided, or not known"))
+        state = app.ios_release_state()
+        self.assertTrue(state["network_error"])
+        self.assertIn("gaierror", state["error"])
+
+    def test_ios_an_auth_failure_is_not_a_network_error_and_is_not_retried(self):
+        calls = []
+
+        def fake_asc_get(path):
+            calls.append(path)
+            raise urllib.error.HTTPError("https://x", 401, "Unauthorized", {}, None)
+
+        app._asc_get = fake_asc_get
+        state = app.ios_release_state()
+        self.assertEqual(len(calls), 1)
+        self.assertFalse(state["network_error"])
+
+    def test_android_retries_across_the_whole_token_edit_track_sequence(self):
+        calls = []
+
+        def fake_token():
+            calls.append("token")
+            if len(calls) < 2:
+                raise socket.gaierror(8, "nodename nor servname provided, or not known")
+            return "tok"
+
+        app._play_access_token = fake_token
+        app._play_post = lambda path, token: {"id": "edit-1"}
+        app._play_get = lambda path, token: {"releases": [
+            {"status": "completed", "name": "2.0.6", "versionCodes": ["309"]}]}
+        state = app.android_release_state()
+        self.assertEqual(calls, ["token", "token"])
+        self.assertEqual(state["live_version"], "2.0.6")
+
+    def test_android_a_persistent_dns_failure_is_reported_as_network_error(self):
+        app._play_access_token = lambda: (_ for _ in ()).throw(
+            socket.gaierror(8, "nodename nor servname provided, or not known"))
+        state = app.android_release_state()
+        self.assertTrue(state["network_error"])
+
+
+class MobileRetryFloorAndSelfHeal(unittest.TestCase):
+    """The two backstops _all_platforms_network_failed feeds: cached_mobile treats an all-network
+    failure as stale after MOBILE_RETRY_FLOOR rather than the full MOBILE_CACHE_TTL, and the
+    process restarts itself once that failure has repeated MOBILE_SELF_RESTART_AFTER times in a
+    row -- see 2026-09-22's incident note on those constants."""
+
+    def setUp(self):
+        self._orig_cache = dict(app._mobile_cache)
+        self._orig_build_mobile = app.build_mobile
+        self._orig_exit = app.os._exit
+
+    def tearDown(self):
+        app._mobile_cache.clear()
+        app._mobile_cache.update(self._orig_cache)
+        app.build_mobile = self._orig_build_mobile
+        app.os._exit = self._orig_exit
+
+    @staticmethod
+    def _all_failed(error="URLError: <urlopen error ...>"):
+        return {"built_at": time.time(), "took": 0.1, "platforms": [
+            {"name": "iOS", "fetch_failed": True, "error": error, "network_error": True},
+            {"name": "Android", "fetch_failed": True, "error": error, "network_error": True},
+        ]}
+
+    @staticmethod
+    def _one_ok():
+        return {"built_at": time.time(), "took": 0.1, "platforms": [
+            {"name": "iOS", "fetch_failed": False, "live_version": "2.0.7", "live_extra": None,
+             "pending": None, "baseline": "abc", "commits": [], "error": None},
+            {"name": "Android", "fetch_failed": True,
+             "error": "HTTPError 401: unauthorized", "network_error": False},
+        ]}
+
+    def test_all_platforms_network_failed_requires_every_platform_to_be_a_network_error(self):
+        self.assertTrue(app._all_platforms_network_failed(self._all_failed()))
+        self.assertFalse(app._all_platforms_network_failed(self._one_ok()))
+        self.assertFalse(app._all_platforms_network_failed({"platforms": []}))
+
+    def test_an_all_network_failure_is_stale_again_after_the_retry_floor_not_the_full_ttl(self):
+        app._mobile_cache["data"] = self._all_failed()
+        # Well past MOBILE_RETRY_FLOOR but nowhere near MOBILE_CACHE_TTL -- the case that used to
+        # keep serving the stale error box for the rest of the full ten minutes.
+        app._mobile_cache["built_at"] = time.time() - app.MOBILE_RETRY_FLOOR - 1
+        calls = []
+        fresh = self._one_ok()
+        app.build_mobile = lambda: calls.append(1) or fresh
+        data = app.cached_mobile()
+        self.assertEqual(calls, [1])
+        self.assertIs(data, fresh)
+
+    def test_a_healthy_cache_is_not_rebuilt_before_the_full_ttl(self):
+        app._mobile_cache["data"] = self._one_ok()
+        app._mobile_cache["built_at"] = time.time() - app.MOBILE_RETRY_FLOOR - 1
+        calls = []
+        app.build_mobile = lambda: calls.append(1) or self._one_ok()
+        app.cached_mobile()
+        self.assertEqual(calls, [])  # still within MOBILE_CACHE_TTL, so no rebuild
+
+    def test_consecutive_network_failures_reset_on_a_success(self):
+        app._mobile_cache["consecutive_network_failures"] = app.MOBILE_SELF_RESTART_AFTER - 1
+        app._mobile_cache["built_at"] = 0.0
+        app.build_mobile = lambda: self._one_ok()
+        app.cached_mobile()
+        self.assertEqual(app._mobile_cache["consecutive_network_failures"], 0)
+
+    def test_self_restarts_once_the_threshold_is_reached(self):
+        exits = []
+        app.os._exit = lambda code: exits.append(code)
+        app._mobile_cache["consecutive_network_failures"] = app.MOBILE_SELF_RESTART_AFTER - 1
+        app._mobile_cache["built_at"] = 0.0
+        app.build_mobile = lambda: self._all_failed()
+        app.cached_mobile()
+        self.assertEqual(exits, [1])
+
+    def test_does_not_self_restart_before_the_threshold(self):
+        exits = []
+        app.os._exit = lambda code: exits.append(code)
+        app._mobile_cache["consecutive_network_failures"] = 0
+        app._mobile_cache["built_at"] = 0.0
+        app.build_mobile = lambda: self._all_failed()
+        app.cached_mobile()
+        self.assertEqual(exits, [])
+
+    def test_a_non_network_failure_never_advances_the_self_restart_counter(self):
+        exits = []
+        app.os._exit = lambda code: exits.append(code)
+        app._mobile_cache["consecutive_network_failures"] = app.MOBILE_SELF_RESTART_AFTER - 1
+        app._mobile_cache["built_at"] = 0.0
+        app.build_mobile = lambda: self._one_ok()  # Android 401s -- not a network error
+        app.cached_mobile()
+        self.assertEqual(app._mobile_cache["consecutive_network_failures"], 0)
+        self.assertEqual(exits, [])
+
+
+class MobileRefreshPacing(unittest.TestCase):
+    """_mobile_refresh_delay is what lets refresh_mobile_forever notice a cleared DNS blip within
+    about a minute instead of the full 10-minute cadence."""
+
+    def test_a_raised_exception_uses_the_retry_floor(self):
+        self.assertEqual(app._mobile_refresh_delay(None), app.MOBILE_RETRY_FLOOR)
+
+    def test_an_all_network_failure_uses_the_retry_floor(self):
+        data = {"platforms": [{"fetch_failed": True, "network_error": True}]}
+        self.assertEqual(app._mobile_refresh_delay(data), app.MOBILE_RETRY_FLOOR)
+
+    def test_a_clean_build_uses_the_full_ttl(self):
+        data = {"platforms": [{"fetch_failed": False}]}
+        self.assertEqual(app._mobile_refresh_delay(data), app.MOBILE_CACHE_TTL)
 
 
 class RenderMobile(unittest.TestCase):
