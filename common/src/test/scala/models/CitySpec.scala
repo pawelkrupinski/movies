@@ -112,9 +112,9 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // The page is `/trojmiasto/`, and "Sopot" and "Gdynia" occur in no slug, no
     // label and no cinema display name — so without this the towns are on the
     // page nowhere at all, and a search for either can match nothing.
-    val nearby = Seq("Chmielno", "Jastarnia", "Kartuzy", "Pruszcz Gdański", "Rumia", "Wejherowo")
-    Trojmiasto.coveredPlaces      shouldBe Seq("Trójmiasto", "Gdańsk", "Gdynia", "Sopot") ++ nearby
-    Trojmiasto.otherCoveredPlaces shouldBe Seq("Gdańsk", "Gdynia", "Sopot") ++ nearby
+    val towns = Seq("Gdańsk", "Gdynia", "Sopot", "Rumia", "Wejherowo", "Pruszcz Gdański", "Chmielno", "Jastarnia", "Kartuzy")
+    Trojmiasto.coveredPlaces      shouldBe "Trójmiasto" +: towns
+    Trojmiasto.otherCoveredPlaces shouldBe towns
   }
 
   it should "read a split city's districts, which are towns in their own right" in {

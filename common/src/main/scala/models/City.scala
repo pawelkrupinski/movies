@@ -237,14 +237,16 @@ case object Trojmiasto extends City(
   zoneId = ZoneId.of("Europe/Warsaw"),
 ) {
   val cinemas: Seq[Cinema] = Cinema.trojmiasto
-  /** The towns the conurbation is — the three of the Tri-City proper, biggest
-   *  first — then the nearby towns whose venues this page also lists (Rumia,
-   *  Wejherowo, Kartuzy…), read off the venue table like every other city's.
-   *  The three are hand-written because the Tri-City's own venues carry no town
-   *  annotation, and needed because "Trójmiasto" is a name nobody searches a
-   *  cinema by: only "Gdańsk" appeared on the page at all, inside
+  /** The towns the conurbation is, biggest first — the three of the Tri-City
+   *  proper, then the larger satellite towns whose venues this page also lists —
+   *  followed by the rest of the venue table's towns (Kartuzy, Jastarnia…).
+   *  Hand-ordered because the heading and description name only the first few,
+   *  and the table ranks equal venue counts alphabetically, which would name
+   *  Chmielno before Rumia. Needed at all because "Trójmiasto" is a name nobody
+   *  searches a cinema by: only "Gdańsk" appeared on the page, inside
    *  `Multikino Gdańsk`. */
-  override protected val extraPlaces: Seq[String] = Seq("Gdańsk", "Gdynia", "Sopot") ++ VenueTowns.of(cinemas)
+  override protected val extraPlaces: Seq[String] =
+    (Seq("Gdańsk", "Gdynia", "Sopot", "Rumia", "Wejherowo", "Pruszcz Gdański") ++ VenueTowns.of(cinemas)).distinct
 }
 
 case object Bydgoszcz extends City(

@@ -44,13 +44,30 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     missing(Country.all.map(_.homeOgImage)) shouldBe empty
   }
 
+  /** Cities whose card cannot exist yet: their page is not live until the
+   *  commit creating them has deployed, and the deploy is gated on this suite.
+   *  Asserted to be EXACTLY the set still missing, so a generated card fails
+   *  here until its entry is deleted — the list cannot become the place missing
+   *  cards quietly go.
+   *
+   *  2026-09-22 — the 22 Polish regional hubs (Siedlce, Piła, Łomża…). */
+  private val awaitingFirstDeploy: Set[String] = Seq(
+    "piotrkow-trybunalski", "siedlce", "pila", "ostrowiec-swietokrzyski", "gniezno", "suwalki",
+    "stalowa-wola", "zamosc", "leszno", "lomza", "pulawy", "skierniewice", "starogard-gdanski",
+    "ciechanow", "wielun", "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow",
+    "zlocieniec",
+  ).map(slug => s"og-$slug.jpg").toSet
+
   "every city, in every country" should "have the card its index page names" in {
     val absent = missing(Country.all.flatMap(_.cities).map(_.shareImage))
     // Only the first few names, or a country that was never swept prints its
     // whole roster — 546 filenames on one assertion line, in the run that
     // introduced this spec.
     withClue(s"${absent.size} cities have no committed share card; first: ") {
-      absent.take(8) shouldBe empty
+      absent.filterNot(awaitingFirstDeploy).take(8) shouldBe empty
+    }
+    withClue("cards listed as awaiting their first deploy that now exist — delete them from the list: ") {
+      awaitingFirstDeploy.diff(absent.toSet) shouldBe empty
     }
   }
 

@@ -129,12 +129,12 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "describe the city as a Place carrying its coordinates" in {
-    val arr   = parseArray(StructuredData.cityPage("https://kinowo.net/poznan/", Poznan, Seq(film("Diuna", Seq((Multikino, LocalDateTime.of(2026, 5, 17, 18, 0), None))))))
+    val arr   = parseArray(StructuredData.cityPage("https://kinowo.net/sosnowiec/", Sosnowiec, Seq(film("Diuna", Seq((HeliosSosnowiec, LocalDateTime.of(2026, 5, 17, 18, 0), None))))))
     val place = byType(arr, "City").head
-    (place \ "name").as[String]              shouldBe "Poznań"
-    (place \ "url").as[String]               shouldBe "https://kinowo.net/poznan/"
-    (place \ "geo" \ "latitude").as[Double]  shouldBe 52.4064
-    (place \ "geo" \ "longitude").as[Double] shouldBe 16.9252
+    (place \ "name").as[String]              shouldBe "Sosnowiec"
+    (place \ "url").as[String]               shouldBe "https://kinowo.net/sosnowiec/"
+    (place \ "geo" \ "latitude").as[Double]  shouldBe 50.2863
+    (place \ "geo" \ "longitude").as[Double] shouldBe 19.1041
     // One town: there is nothing for it to contain, and an empty list would
     // claim a subdivision the city does not have.
     (place \ "containsPlace").asOpt[JsArray] shouldBe None
@@ -148,7 +148,7 @@ class StructuredDataSpec extends AnyFlatSpec with Matchers {
     val place = byType(arr, "City").head
     (place \ "name").as[String] shouldBe "Trójmiasto"
     (place \ "containsPlace").as[JsArray].value.map(p => (p \ "name").as[String]).toSeq shouldBe
-      Seq("Gdańsk", "Gdynia", "Sopot", "Rumia")
+      Seq("Gdańsk", "Gdynia", "Sopot", "Rumia", "Wejherowo", "Pruszcz Gdański", "Chmielno", "Jastarnia", "Kartuzy")
     (place \ "containsPlace").as[JsArray].value.map(p => (p \ "@type").as[String]).toSet shouldBe Set("City")
   }
 

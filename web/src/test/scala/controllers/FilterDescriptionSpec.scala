@@ -52,14 +52,14 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   // ── Multi-town cities ───────────────────────────────────────────────────────
 
   "a one-town city's default description" should "be unchanged, byte for byte" in {
-    FilterDescription.defaultDescription(Poznan) shouldBe
-      "Repertuar wszystkich poznańskich kin – godziny seansów na dziś, " +
-      "oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes. Sprawdź, co dziś grają w kinie w Poznaniu."
+    FilterDescription.defaultDescription(Sosnowiec) shouldBe
+      "Repertuar wszystkich sosnowieckich kin – godziny seansów na dziś, " +
+      "oceny IMDb, Filmweb, Metacritic i Rotten Tomatoes. Sprawdź, co dziś grają w kinie w Sosnowcu."
   }
 
   "a multi-town city's description" should "name its towns instead of the closing sentence" in {
     val d = FilterDescription.defaultDescription(Trojmiasto)
-    d           should include("Repertuar wszystkich trójmiejskich kin (Gdańsk, Gdynia, Sopot, Rumia)")
+    d           should include("Repertuar wszystkich trójmiejskich kin (Gdańsk, Gdynia, Sopot, Rumia")
     // The two together run past MaxDescription, and `truncate` would then cut
     // the list off mid-town — so the towns win and the sentence goes.
     d           should not include "Sprawdź"
@@ -87,8 +87,9 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   }
 
   "pageHeading" should "carry the covered towns, and the bare heading when there are none" in {
-    FilterDescription.pageHeading(Poznan)     shouldBe "Repertuar kin w Poznaniu"
-    FilterDescription.pageHeading(Trojmiasto) shouldBe "Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot, Rumia"
+    FilterDescription.pageHeading(Sosnowiec)  shouldBe "Repertuar kin w Sosnowcu"
+    FilterDescription.pageHeading(Trojmiasto) shouldBe
+      "Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot, Rumia, Wejherowo, Pruszcz Gdański"
   }
 
   "FilterDescription.forIndex with an empty query" should "produce the keyword-rich default city title" in {

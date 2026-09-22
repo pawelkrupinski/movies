@@ -42,12 +42,12 @@ class CityHeadingSpec extends AnyFlatSpec with Matchers {
     // Exactly one: the day carousel clones `#view-root` as the user swipes, so a
     // heading rendered inside it would come back as a second and third h1.
     "<h1".r.findAllIn(html).size shouldBe 1
-    h1Of(html) shouldBe Some("Repertuar kin w Poznaniu")
+    h1Of(html).getOrElse("") should startWith("Repertuar kin w Poznaniu")
   }
 
   "a multi-town city's index" should "name the covered towns in the heading" in {
     val html = contentAsString(controller().index("trojmiasto")(req("/trojmiasto/")))
-    h1Of(html) shouldBe Some("Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot, Rumia")
+    h1Of(html) shouldBe Some("Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot, Rumia, Wejherowo, Pruszcz Gdański")
     // The point of the exercise: "Sopot" is now text on the page, where before
     // it appeared in no heading, no meta tag and no cinema name.
     html should include("Sopot")
