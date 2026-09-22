@@ -22,11 +22,13 @@ import java.io.File
  *
  * A city added by a commit cannot have its card in that same commit: the
  * generator SCREENSHOTS the live page, and the new city's page does not exist
- * upstream until the commit creating it has deployed. So a roster change that
- * adds cities lands red here, and the card sweep follows it — dispatch
- * `regenerate-og-cards.yml` once the deploy is out, or generate the few by hand
- * with `KINOWO_COUNTRY=<code> sbt "web/PageTest/runMain tools.OgCardGenerator
- * <slug>…"`, which takes about five seconds a card against prod.
+ * upstream until the commit creating it has deployed — and the deploy is gated
+ * on this suite, so a red run here would block the very page the card needs.
+ * A roster change that adds cities therefore lists their cards in a temporary,
+ * exact `awaitingFirstDeploy` set (see 6c45248c0 for the shape); once deployed,
+ * generate them with `KINOWO_COUNTRY=<code> sbt "web/PageTest/runMain
+ * tools.OgCardGenerator <slug>…"` (about five seconds a card against prod) and
+ * delete the set in the same commit as the cards.
  *
  * Runs off the filenames rather than the rendered HTML on purpose: the page
  * specs (`RepertoirePreviewMetaSpec`, `LandingPreviewMetaSpec`) already pin the
@@ -44,30 +46,13 @@ class OgCardAssetsSpec extends AnyFlatSpec with Matchers {
     missing(Country.all.map(_.homeOgImage)) shouldBe empty
   }
 
-  /** Cities whose card cannot exist yet: their page is not live until the
-   *  commit creating them has deployed, and the deploy is gated on this suite.
-   *  Asserted to be EXACTLY the set still missing, so a generated card fails
-   *  here until its entry is deleted — the list cannot become the place missing
-   *  cards quietly go.
-   *
-   *  2026-09-22 — the 22 Polish regional hubs (Siedlce, Piła, Łomża…). */
-  private val awaitingFirstDeploy: Set[String] = Seq(
-    "piotrkow-trybunalski", "siedlce", "pila", "ostrowiec-swietokrzyski", "gniezno", "suwalki",
-    "stalowa-wola", "zamosc", "leszno", "lomza", "pulawy", "skierniewice", "starogard-gdanski",
-    "ciechanow", "wielun", "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow",
-    "zlocieniec",
-  ).map(slug => s"og-$slug.jpg").toSet
-
   "every city, in every country" should "have the card its index page names" in {
     val absent = missing(Country.all.flatMap(_.cities).map(_.shareImage))
     // Only the first few names, or a country that was never swept prints its
     // whole roster — 546 filenames on one assertion line, in the run that
     // introduced this spec.
     withClue(s"${absent.size} cities have no committed share card; first: ") {
-      absent.filterNot(awaitingFirstDeploy).take(8) shouldBe empty
-    }
-    withClue("cards listed as awaiting their first deploy that now exist — delete them from the list: ") {
-      awaitingFirstDeploy.diff(absent.toSet) shouldBe empty
+      absent.take(8) shouldBe empty
     }
   }
 
