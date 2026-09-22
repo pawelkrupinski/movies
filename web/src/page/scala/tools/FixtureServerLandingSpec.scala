@@ -34,7 +34,7 @@ class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
   }
 
   "the fixture server's `/`" should "offer the default country's own list, exactly as a deployment does" in {
-    // Poland's 41, and NOT the union across countries. `city-select.spec.ts`
+    // Poland's 63, and NOT the union across countries. `city-select.spec.ts`
     // counts them, and the geolocation redirect it also drives is a claim about
     // where the visitor IS — offered every country's places, a Poznań fix would
     // answer with whichever of five happened to be nearest.

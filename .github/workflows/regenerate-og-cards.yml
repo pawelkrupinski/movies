@@ -8,7 +8,7 @@ name: Regenerate OG share cards
 # w {locative}" for Poland — see `web/src/page/scala/tools/OgCardGenerator.scala`.
 #
 # Runs once PER deployed country — all five of them. Every country gets its `/`
-# landing card (`og-home{-code}.jpg`) and then its cities: 41 Polish, 79 UK, 158
+# landing card (`og-home{-code}.jpg`) and then its cities: 63 Polish, 79 UK, 158
 # German, 468 US, 52 Spanish. The sweep is a card per city, so the countries are
 # a MATRIX rather than sequential steps in one job: five legs in parallel, the
 # US's ~40 minutes among them, instead of one job that would run past any sane

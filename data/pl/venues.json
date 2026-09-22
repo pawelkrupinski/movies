@@ -70,6 +70,55 @@
   "annotation": ""
  },
  {
+  "citySlug": "poznan",
+  "cinemaObject": "KinoBasztaSroda",
+  "displayName": "Kino Baszta Środa",
+  "town": "Środa Wielkopolska",
+  "annotation": "Środa Wielkopolska — bilety24"
+ },
+ {
+  "citySlug": "poznan",
+  "cinemaObject": "KinoHalszka",
+  "displayName": "Kino Halszka",
+  "town": "Szamotuły",
+  "annotation": "Szamotuły — bilety24"
+ },
+ {
+  "citySlug": "poznan",
+  "cinemaObject": "KinoteatrSlonko",
+  "displayName": "Kinoteatr Słonko",
+  "town": "Śrem",
+  "annotation": "Śrem — bilety24"
+ },
+ {
+  "citySlug": "poznan",
+  "cinemaObject": "KinoWielkopolanin",
+  "displayName": "Kino Wielkopolanin",
+  "town": "Buk",
+  "annotation": "Buk — bilety24"
+ },
+ {
+  "citySlug": "poznan",
+  "cinemaObject": "KinoTrojka",
+  "displayName": "Kino Trójka",
+  "town": "Września",
+  "annotation": "Września — bilety24"
+ },
+ {
+  "citySlug": "poznan",
+  "cinemaObject": "KinoOpalenica",
+  "displayName": "Kino Opalenica",
+  "town": "Opalenica",
+  "annotation": "Opalenica — bilety24"
+ },
+ {
+  "citySlug": "poznan",
+  "cinemaObject": "KinoteatrGwiazda",
+  "displayName": "Kinoteatr Gwiazda",
+  "town": "Wronki",
+  "annotation": "Wronki — bilety24"
+ },
+ {
   "citySlug": "wroclaw",
   "cinemaObject": "CinemaCityWroclavia",
   "displayName": "Cinema City Wroclavia",
@@ -131,6 +180,48 @@
   "displayName": "Dyskusyjny Klub Filmowy Politechnika",
   "town": "Wrocław",
   "annotation": "Wrocław — filmweb 1645"
+ },
+ {
+  "citySlug": "wroclaw",
+  "cinemaObject": "KinoOdraBrzegDolny",
+  "displayName": "Kino Odra Brzeg Dolny",
+  "town": "Brzeg Dolny",
+  "annotation": "Brzeg Dolny — bilety24"
+ },
+ {
+  "citySlug": "wroclaw",
+  "cinemaObject": "KinoOdraOlawa",
+  "displayName": "Kino Odra Oława",
+  "town": "Oława",
+  "annotation": "Oława — bilety24"
+ },
+ {
+  "citySlug": "wroclaw",
+  "cinemaObject": "GoKinoOlawa",
+  "displayName": "GO KINO Oława",
+  "town": "Oława",
+  "annotation": "Oława — filmweb 2161"
+ },
+ {
+  "citySlug": "wroclaw",
+  "cinemaObject": "KinoGrazyna",
+  "displayName": "Kino Grażyna",
+  "town": "Strzelin",
+  "annotation": "Strzelin — filmweb 1950"
+ },
+ {
+  "citySlug": "wroclaw",
+  "cinemaObject": "KinoPoloniaTrzebnica",
+  "displayName": "Kino Polonia Trzebnica",
+  "town": "Trzebnica",
+  "annotation": "Trzebnica — bilety24"
+ },
+ {
+  "citySlug": "wroclaw",
+  "cinemaObject": "KinoMOKiSOlesnica",
+  "displayName": "Kino MOKiS Oleśnica",
+  "town": "Oleśnica",
+  "annotation": "Oleśnica — bilety24"
  },
  {
   "citySlug": "warszawa",
@@ -378,6 +469,83 @@
   "annotation": "Ursynowskie Centrum Kultury — own site"
  },
  {
+  "citySlug": "warszawa",
+  "cinemaObject": "KinoGrodziskieCentrumKultury",
+  "displayName": "Kino Grodziskiego Centrum Kultury",
+  "town": "Grodzisk Mazowiecki",
+  "annotation": "Grodzisk Mazowiecki — bilety24"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "KinoCentrumKulturyBlonie",
+  "displayName": "Kino Centrum Kultury Błonie",
+  "town": "Błonie",
+  "annotation": "Błonie — filmweb 1514"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "KinoGrojeckiOsrodekKultury",
+  "displayName": "Grójecki Ośrodek Kultury",
+  "town": "Grójec",
+  "annotation": "Grójec — filmweb 1683"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "KinoUciecha",
+  "displayName": "Kino Uciecha",
+  "town": "Góra Kalwaria",
+  "annotation": "Góra Kalwaria — filmweb 1860"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "HeliosWolomin",
+  "displayName": "Helios Wołomin",
+  "town": "Wołomin",
+  "annotation": "Wołomin — Helios REST"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "KinoKulturaWolomin",
+  "displayName": "Kino Kultura Wołomin",
+  "town": "Wołomin",
+  "annotation": "Wołomin — filmweb 2420"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "KinoTeatrKurtyna",
+  "displayName": "Kino-Teatr Kurtyna",
+  "town": "Sulejówek",
+  "annotation": "Sulejówek — filmweb 2079"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "MultikinoPruszkow",
+  "displayName": "Multikino Pruszków",
+  "town": "Pruszków",
+  "annotation": "Pruszków — Multikino API"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "KinoCKiSPruszkow",
+  "displayName": "Kino CKiS Pruszków",
+  "town": "Pruszków",
+  "annotation": "Pruszków — filmweb 3137"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "HeliosLegionowo",
+  "displayName": "Helios Legionowo",
+  "town": "Legionowo",
+  "annotation": "Legionowo — Helios REST"
+ },
+ {
+  "citySlug": "warszawa",
+  "cinemaObject": "KinoOaza",
+  "displayName": "Kino Oaza",
+  "town": "Otwock",
+  "annotation": "Otwock — filmweb 2340"
+ },
+ {
   "citySlug": "krakow",
   "cinemaObject": "CinemaCityBonarka",
   "displayName": "Cinema City Bonarka",
@@ -462,6 +630,48 @@
   "annotation": ""
  },
  {
+  "citySlug": "krakow",
+  "cinemaObject": "KinoMuzaMyslenice",
+  "displayName": "Kino Muza Myślenice",
+  "town": "Myślenice",
+  "annotation": "Myślenice — filmweb 1491"
+ },
+ {
+  "citySlug": "krakow",
+  "cinemaObject": "KinoRadosc",
+  "displayName": "Kino Radość",
+  "town": "Wolbrom",
+  "annotation": "Wolbrom — filmweb 1704"
+ },
+ {
+  "citySlug": "krakow",
+  "cinemaObject": "KinoGryf",
+  "displayName": "Kino Gryf",
+  "town": "Miechów",
+  "annotation": "Miechów — filmweb 1906"
+ },
+ {
+  "citySlug": "krakow",
+  "cinemaObject": "KinoWazka",
+  "displayName": "Kino Ważka",
+  "town": "Niepołomice",
+  "annotation": "Niepołomice — bilety24"
+ },
+ {
+  "citySlug": "krakow",
+  "cinemaObject": "KinoWielickaMediateka",
+  "displayName": "Kino Wielicka Mediateka",
+  "town": "Wieliczka",
+  "annotation": "Wieliczka — filmweb 2434"
+ },
+ {
+  "citySlug": "krakow",
+  "cinemaObject": "KinoLubon",
+  "displayName": "Kino Luboń 2.0",
+  "town": "Mszana Dolna",
+  "annotation": "Mszana Dolna — bilety24"
+ },
+ {
   "citySlug": "lodz",
   "cinemaObject": "CinemaCityManufaktura",
   "displayName": "Cinema City Manufaktura",
@@ -523,6 +733,27 @@
   "displayName": "Kino Stary Młyn",
   "town": "Zgierz",
   "annotation": "Zgierz — filmweb 2443"
+ },
+ {
+  "citySlug": "lodz",
+  "cinemaObject": "KinoTomi",
+  "displayName": "Kino Tomi",
+  "town": "Pabianice",
+  "annotation": "Pabianice — filmweb 1404"
+ },
+ {
+  "citySlug": "lodz",
+  "cinemaObject": "HeliosPabianice",
+  "displayName": "Helios Pabianice",
+  "town": "Pabianice",
+  "annotation": "Pabianice — Helios REST"
+ },
+ {
+  "citySlug": "lodz",
+  "cinemaObject": "KinoGornikLeczyca",
+  "displayName": "Kino Górnik Łęczyca",
+  "town": "Łęczyca",
+  "annotation": "Łęczyca — filmweb 2065"
  },
  {
   "citySlug": "katowice",
@@ -642,6 +873,20 @@
   "displayName": "Kino SCK",
   "town": "Stargard",
   "annotation": "Stargard — filmweb 1941"
+ },
+ {
+  "citySlug": "szczecin",
+  "cinemaObject": "KinoMOKPolice",
+  "displayName": "Kino MOK Police",
+  "town": "Police",
+  "annotation": "Police — filmweb 307"
+ },
+ {
+  "citySlug": "szczecin",
+  "cinemaObject": "KinoEva",
+  "displayName": "Kino Eva",
+  "town": "Międzyzdroje",
+  "annotation": "Międzyzdroje — filmweb 1662"
  },
  {
   "citySlug": "bialystok",
@@ -777,6 +1022,41 @@
   "annotation": "Rumia — filmweb 1464"
  },
  {
+  "citySlug": "trojmiasto",
+  "cinemaObject": "KinoWCK",
+  "displayName": "Wejherowskie Centrum Kultury",
+  "town": "Wejherowo",
+  "annotation": "Wejherowo — filmweb 1835"
+ },
+ {
+  "citySlug": "trojmiasto",
+  "cinemaObject": "KinoZaRogiemChmielno",
+  "displayName": "Kino za Rogiem Chmielno",
+  "town": "Chmielno",
+  "annotation": "Chmielno — filmweb 3122"
+ },
+ {
+  "citySlug": "trojmiasto",
+  "cinemaObject": "KinoZeglarz",
+  "displayName": "Kino Żeglarz",
+  "town": "Jastarnia",
+  "annotation": "Jastarnia — bilety24"
+ },
+ {
+  "citySlug": "trojmiasto",
+  "cinemaObject": "KinoKCK",
+  "displayName": "Kino Kartuskie Centrum Kultury",
+  "town": "Kartuzy",
+  "annotation": "Kartuzy — bilety24"
+ },
+ {
+  "citySlug": "trojmiasto",
+  "cinemaObject": "KinoCKiSPruszczGdanski",
+  "displayName": "Kino CKiS Pruszcz Gdański",
+  "town": "Pruszcz Gdański",
+  "annotation": "Pruszcz Gdański — bilety24"
+ },
+ {
   "citySlug": "bydgoszcz",
   "cinemaObject": "CinemaCityBydgoszcz",
   "displayName": "Cinema City Bydgoszcz",
@@ -817,6 +1097,13 @@
   "displayName": "Kinoteatr Rondo",
   "town": "Chełmno",
   "annotation": "Chełmno — filmweb 3121"
+ },
+ {
+  "citySlug": "bydgoszcz",
+  "cinemaObject": "KinoRelaks",
+  "displayName": "Kino Relaks",
+  "town": "Nakło nad Notecią",
+  "annotation": "Nakło nad Notecią — filmweb 2329"
  },
  {
   "citySlug": "lublin",
@@ -873,6 +1160,13 @@
   "displayName": "Metalowiec",
   "town": "Kraśnik",
   "annotation": "Kraśnik — filmweb 285"
+ },
+ {
+  "citySlug": "lublin",
+  "cinemaObject": "KinoCzyn",
+  "displayName": "Kino-Teatr Czyn",
+  "town": "Poniatowa",
+  "annotation": "Poniatowa — bilety24"
  },
  {
   "citySlug": "czestochowa",
@@ -1043,6 +1337,13 @@
   "annotation": "Ciechocinek — filmweb 1771"
  },
  {
+  "citySlug": "torun",
+  "cinemaObject": "HeliosGrudziadz",
+  "displayName": "Helios Grudziądz",
+  "town": "Grudziądz",
+  "annotation": "Grudziądz — Helios REST"
+ },
+ {
   "citySlug": "kielce",
   "cinemaObject": "HeliosKielce",
   "displayName": "Helios Kielce",
@@ -1083,6 +1384,20 @@
   "displayName": "Koneckie Centrum Kultury",
   "town": "Końskie",
   "annotation": "Końskie — filmweb 3128"
+ },
+ {
+  "citySlug": "kielce",
+  "cinemaObject": "KinoZdrojBusko",
+  "displayName": "Kino Zdrój Busko",
+  "town": "Busko-Zdrój",
+  "annotation": "Busko-Zdrój — filmweb 1720"
+ },
+ {
+  "citySlug": "kielce",
+  "cinemaObject": "KinoMuzaWloszczowa",
+  "displayName": "Kino Muza Włoszczowa",
+  "town": "Włoszczowa",
+  "annotation": "Włoszczowa — filmweb 1482"
  },
  {
   "citySlug": "rzeszow",
@@ -1302,6 +1617,27 @@
   "annotation": "Czechowice-Dziedzice — filmweb 1776"
  },
  {
+  "citySlug": "bielsko-biala",
+  "cinemaObject": "KinoCentrumWadowice",
+  "displayName": "Kino Centrum Wadowice",
+  "town": "Wadowice",
+  "annotation": "Wadowice — filmweb 486"
+ },
+ {
+  "citySlug": "bielsko-biala",
+  "cinemaObject": "CinemaCityCieszyn",
+  "displayName": "Cinema City Cieszyn",
+  "town": "Cieszyn",
+  "annotation": "Cieszyn — Cinema City API"
+ },
+ {
+  "citySlug": "bielsko-biala",
+  "cinemaObject": "KinoCKiF",
+  "displayName": "Kino CKiF",
+  "town": "Sucha Beskidzka",
+  "annotation": "Sucha Beskidzka — filmweb 2412"
+ },
+ {
   "citySlug": "opole",
   "cinemaObject": "HeliosOpoleKarolinka",
   "displayName": "Helios Karolinka",
@@ -1370,6 +1706,20 @@
   "displayName": "Kino Twierdza",
   "town": "Kędzierzyn-Koźle",
   "annotation": "Kędzierzyn-Koźle — filmweb 1672"
+ },
+ {
+  "citySlug": "opole",
+  "cinemaObject": "KinoCentrumBrzeg",
+  "displayName": "Kino Centrum Brzeg",
+  "town": "Brzeg",
+  "annotation": "Brzeg — bilety24"
+ },
+ {
+  "citySlug": "opole",
+  "cinemaObject": "KinoCinemaN",
+  "displayName": "Cinema N 3D",
+  "town": "Nysa",
+  "annotation": "Nysa — filmweb 1657"
  },
  {
   "citySlug": "rybnik",
@@ -1447,6 +1797,13 @@
   "displayName": "Kino 60 Krzeseł",
   "town": "Gorzów Wielkopolski",
   "annotation": "Gorzów Wielkopolski — filmweb"
+ },
+ {
+  "citySlug": "gorzow-wielkopolski",
+  "cinemaObject": "KinoPanorama",
+  "displayName": "Kino Panorama",
+  "town": "Barlinek",
+  "annotation": "Barlinek — bilety24"
  },
  {
   "citySlug": "elblag",
@@ -1778,6 +2135,34 @@
   "annotation": "Dąbrowa Tarnowska — filmweb 1488"
  },
  {
+  "citySlug": "tarnow",
+  "cinemaObject": "KinoMCKRadlow",
+  "displayName": "Kino MCK Radłów",
+  "town": "Radłów",
+  "annotation": "Radłów — filmweb 2408"
+ },
+ {
+  "citySlug": "tarnow",
+  "cinemaObject": "KinoCentrumLisiaGora",
+  "displayName": "Kino Centrum Lisia Góra",
+  "town": "Lisia Góra",
+  "annotation": "Lisia Góra — bilety24"
+ },
+ {
+  "citySlug": "tarnow",
+  "cinemaObject": "KinoJDK",
+  "displayName": "Kino JDK",
+  "town": "Jasło",
+  "annotation": "Jasło — filmweb 2314"
+ },
+ {
+  "citySlug": "tarnow",
+  "cinemaObject": "MultikinoMielec",
+  "displayName": "Multikino Mielec",
+  "town": "Mielec",
+  "annotation": "Mielec — Multikino API"
+ },
+ {
   "citySlug": "wloclawek",
   "cinemaObject": "MultikinoWloclawek",
   "displayName": "Multikino Włocławek",
@@ -1811,6 +2196,13 @@
   "displayName": "Kino za Rogiem",
   "town": "Płock",
   "annotation": "Płock — filmweb 1949"
+ },
+ {
+  "citySlug": "wloclawek",
+  "cinemaObject": "KinoBaltykRypin",
+  "displayName": "Kino Bałtyk Rypin",
+  "town": "Rypin",
+  "annotation": "Rypin — bilety24"
  },
  {
   "citySlug": "legnica",
@@ -1869,6 +2261,13 @@
   "annotation": "Polkowice — filmweb 1139"
  },
  {
+  "citySlug": "legnica",
+  "cinemaObject": "MultikinoGlogow",
+  "displayName": "Multikino Głogów",
+  "town": "Głogów",
+  "annotation": "Głogów — Multikino API"
+ },
+ {
   "citySlug": "plock",
   "cinemaObject": "HeliosPlock",
   "displayName": "Helios Płock",
@@ -1925,6 +2324,20 @@
   "annotation": "Dąbrowa Górnicza — filmweb"
  },
  {
+  "citySlug": "dabrowa-gornicza",
+  "cinemaObject": "KinoZbyszekOlkusz",
+  "displayName": "Kino Zbyszek Olkusz",
+  "town": "Olkusz",
+  "annotation": "Olkusz — filmweb 1487"
+ },
+ {
+  "citySlug": "dabrowa-gornicza",
+  "cinemaObject": "MultikinoJaworzno",
+  "displayName": "Multikino Jaworzno",
+  "town": "Jaworzno",
+  "annotation": "Jaworzno — Multikino API"
+ },
+ {
   "citySlug": "nowy-sacz",
   "cinemaObject": "HeliosNowySacz",
   "displayName": "Helios Nowy Sącz",
@@ -1953,6 +2366,13 @@
   "annotation": "Limanowa — filmweb 1137"
  },
  {
+  "citySlug": "nowy-sacz",
+  "cinemaObject": "KinoMCKGrybow",
+  "displayName": "Kino MCKCziE Grybów",
+  "town": "Grybów",
+  "annotation": "Grybów — bilety24"
+ },
+ {
   "citySlug": "slupsk",
   "cinemaObject": "MultikinoSlupsk",
   "displayName": "Multikino Słupsk",
@@ -1972,6 +2392,13 @@
   "displayName": "Fregata",
   "town": "Lębork",
   "annotation": "Lębork — filmweb 2123"
+ },
+ {
+  "citySlug": "slupsk",
+  "cinemaObject": "KinoLeba",
+  "displayName": "Kino MBP Łeba",
+  "town": "Łeba",
+  "annotation": "Łeba — bilety24"
  },
  {
   "citySlug": "jelenia-gora",
@@ -2084,5 +2511,642 @@
   "displayName": "Kino MOK",
   "town": "Zagórów",
   "annotation": "Zagórów — filmweb"
+ },
+ {
+  "citySlug": "piotrkow-trybunalski",
+  "cinemaObject": "HeliosPiotrkow",
+  "displayName": "Helios Piotrków Trybunalski",
+  "town": "Piotrków Trybunalski",
+  "annotation": "Piotrków Trybunalski — Helios REST"
+ },
+ {
+  "citySlug": "piotrkow-trybunalski",
+  "cinemaObject": "HeliosBelchatow",
+  "displayName": "Helios Bełchatów",
+  "town": "Bełchatów",
+  "annotation": "Bełchatów — Helios REST"
+ },
+ {
+  "citySlug": "piotrkow-trybunalski",
+  "cinemaObject": "KinoKulturaBelchatow",
+  "displayName": "Kino Kultura Bełchatów",
+  "town": "Bełchatów",
+  "annotation": "Bełchatów — filmweb 1330"
+ },
+ {
+  "citySlug": "piotrkow-trybunalski",
+  "cinemaObject": "HeliosTomaszow",
+  "displayName": "Helios Tomaszów Mazowiecki",
+  "town": "Tomaszów Mazowiecki",
+  "annotation": "Tomaszów Mazowiecki — Helios REST"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "HeliosSiedlce",
+  "displayName": "Helios Siedlce",
+  "town": "Siedlce",
+  "annotation": "Siedlce — Helios REST"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "NoveKinoSiedlce",
+  "displayName": "Nove Kino Siedlce",
+  "town": "Siedlce",
+  "annotation": "Siedlce — filmweb 1400"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "KinoSokolSokolowPodlaski",
+  "displayName": "Kino Sokół Sokołów Podlaski",
+  "town": "Sokołów Podlaski",
+  "annotation": "Sokołów Podlaski — filmweb 2073"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "KinoSlawa",
+  "displayName": "Kino Sława",
+  "town": "Międzyrzec Podlaski",
+  "annotation": "Międzyrzec Podlaski — filmweb 1658"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "KinoZaRogiemMiedzyrzec",
+  "displayName": "Kino za Rogiem Międzyrzec",
+  "town": "Międzyrzec Podlaski",
+  "annotation": "Międzyrzec Podlaski — filmweb 1850"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "KinoKongres",
+  "displayName": "Kino Kongres",
+  "town": "Węgrów",
+  "annotation": "Węgrów — filmweb 1742"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "KinoLukow",
+  "displayName": "Kino Łuków",
+  "town": "Łuków",
+  "annotation": "Łuków — filmweb 1808"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "CinemaCityBialaPodlaska",
+  "displayName": "Cinema City Biała Podlaska",
+  "town": "Biała Podlaska",
+  "annotation": "Biała Podlaska — Cinema City API"
+ },
+ {
+  "citySlug": "siedlce",
+  "cinemaObject": "KinoWilga",
+  "displayName": "Kino Wilga",
+  "town": "Garwolin",
+  "annotation": "Garwolin — filmweb 1677"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "HeliosPila",
+  "displayName": "Helios Piła",
+  "town": "Piła",
+  "annotation": "Piła — Helios REST"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "KinoWCKWalcz",
+  "displayName": "Kino Wałeckie Centrum Kultury",
+  "town": "Wałcz",
+  "annotation": "Wałcz — bilety24"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "KinoOsiedlowe",
+  "displayName": "Kino Osiedlowe",
+  "town": "Trzcianka",
+  "annotation": "Trzcianka — bilety24"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "KinoRodlo",
+  "displayName": "Kino Rodło",
+  "town": "Złotów",
+  "annotation": "Złotów — filmweb 2415"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "KinoMewaBudzyn",
+  "displayName": "Kino Mewa Budzyń",
+  "town": "Budzyń",
+  "annotation": "Budzyń — bilety24"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "KinoNotec",
+  "displayName": "Kino Noteć",
+  "town": "Chodzież",
+  "annotation": "Chodzież — bilety24"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "KinoZaRogiemWielen",
+  "displayName": "Kino za Rogiem Wieleń",
+  "town": "Wieleń",
+  "annotation": "Wieleń — bilety24"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "KinoMDKWagrowiec",
+  "displayName": "Kino MDK Wągrowiec",
+  "town": "Wągrowiec",
+  "annotation": "Wągrowiec — bilety24"
+ },
+ {
+  "citySlug": "pila",
+  "cinemaObject": "KinoSwiatowidCzarnkow",
+  "displayName": "Kino Światowid Czarnków",
+  "town": "Czarnków",
+  "annotation": "Czarnków — bilety24"
+ },
+ {
+  "citySlug": "ostrowiec-swietokrzyski",
+  "cinemaObject": "KinoEtiuda",
+  "displayName": "Kino Etiuda",
+  "town": "Ostrowiec Świętokrzyski",
+  "annotation": "Ostrowiec Świętokrzyski — bilety24"
+ },
+ {
+  "citySlug": "ostrowiec-swietokrzyski",
+  "cinemaObject": "KinoEtiudaOBK",
+  "displayName": "Kino Etiuda OBK",
+  "town": "Ostrowiec Świętokrzyski",
+  "annotation": "Ostrowiec Świętokrzyski — filmweb 3024"
+ },
+ {
+  "citySlug": "ostrowiec-swietokrzyski",
+  "cinemaObject": "KinoOOK",
+  "displayName": "Opatowski Ośrodek Kultury",
+  "town": "Opatów",
+  "annotation": "Opatów — filmweb 3133"
+ },
+ {
+  "citySlug": "ostrowiec-swietokrzyski",
+  "cinemaObject": "KinoStarowka",
+  "displayName": "Kino Starówka",
+  "town": "Sandomierz",
+  "annotation": "Sandomierz — filmweb 1601"
+ },
+ {
+  "citySlug": "gniezno",
+  "cinemaObject": "HeliosGniezno",
+  "displayName": "Helios Gniezno",
+  "town": "Gniezno",
+  "annotation": "Gniezno — Helios REST"
+ },
+ {
+  "citySlug": "gniezno",
+  "cinemaObject": "KinoWawrzyn",
+  "displayName": "Kino Wawrzyn",
+  "town": "Mogilno",
+  "annotation": "Mogilno — bilety24"
+ },
+ {
+  "citySlug": "gniezno",
+  "cinemaObject": "KinoMiescisko",
+  "displayName": "Kino Mieścisko",
+  "town": "Mieścisko",
+  "annotation": "Mieścisko — bilety24"
+ },
+ {
+  "citySlug": "suwalki",
+  "cinemaObject": "KinoCinemaLumiereSuwalki",
+  "displayName": "Cinema Lumiere Suwałki",
+  "town": "Suwałki",
+  "annotation": "Suwałki — filmweb 1441"
+ },
+ {
+  "citySlug": "suwalki",
+  "cinemaObject": "KinoIskra",
+  "displayName": "Kino Iskra",
+  "town": "Augustów",
+  "annotation": "Augustów — filmweb 457"
+ },
+ {
+  "citySlug": "suwalki",
+  "cinemaObject": "KinoKulturaGoldap",
+  "displayName": "Kino Kultura Gołdap",
+  "town": "Gołdap",
+  "annotation": "Gołdap — bilety24"
+ },
+ {
+  "citySlug": "suwalki",
+  "cinemaObject": "KinoMazur",
+  "displayName": "Kino Mazur",
+  "town": "Olecko",
+  "annotation": "Olecko — filmweb 1533"
+ },
+ {
+  "citySlug": "suwalki",
+  "cinemaObject": "KinoECK",
+  "displayName": "Kino ECK",
+  "town": "Ełk",
+  "annotation": "Ełk — filmweb 1650"
+ },
+ {
+  "citySlug": "suwalki",
+  "cinemaObject": "KinoPlanetCinemaElk",
+  "displayName": "Planet Cinema Ełk",
+  "town": "Ełk",
+  "annotation": "Ełk — filmweb 1839"
+ },
+ {
+  "citySlug": "stalowa-wola",
+  "cinemaObject": "HeliosStalowaWola",
+  "displayName": "Helios Stalowa Wola",
+  "town": "Stalowa Wola",
+  "annotation": "Stalowa Wola — Helios REST"
+ },
+ {
+  "citySlug": "stalowa-wola",
+  "cinemaObject": "KinoWrzos",
+  "displayName": "Kino Wrzos",
+  "town": "Stalowa Wola",
+  "annotation": "Stalowa Wola — bilety24"
+ },
+ {
+  "citySlug": "stalowa-wola",
+  "cinemaObject": "KinoSokolNisko",
+  "displayName": "Kino Sokół Nisko",
+  "town": "Nisko",
+  "annotation": "Nisko — filmweb 2407"
+ },
+ {
+  "citySlug": "stalowa-wola",
+  "cinemaObject": "KinoMetalowiecNowaDeba",
+  "displayName": "Kino Metalowiec Nowa Dęba",
+  "town": "Nowa Dęba",
+  "annotation": "Nowa Dęba — filmweb 1903"
+ },
+ {
+  "citySlug": "stalowa-wola",
+  "cinemaObject": "KinoBCK",
+  "displayName": "Kino BCK",
+  "town": "Biłgoraj",
+  "annotation": "Biłgoraj — filmweb 1489"
+ },
+ {
+  "citySlug": "zamosc",
+  "cinemaObject": "KinoStylowy",
+  "displayName": "CKF Stylowy",
+  "town": "Zamość",
+  "annotation": "Zamość — filmweb 1670"
+ },
+ {
+  "citySlug": "zamosc",
+  "cinemaObject": "KinoZorzaChelm",
+  "displayName": "Kino Zorza Chełm",
+  "town": "Chełm",
+  "annotation": "Chełm — bilety24"
+ },
+ {
+  "citySlug": "zamosc",
+  "cinemaObject": "KinoMorskieOko",
+  "displayName": "Kino Morskie Oko",
+  "town": "Krasnystaw",
+  "annotation": "Krasnystaw — filmweb 284"
+ },
+ {
+  "citySlug": "zamosc",
+  "cinemaObject": "KinoPlon",
+  "displayName": "Kino Plon",
+  "town": "Hrubieszów",
+  "annotation": "Hrubieszów — filmweb 2330"
+ },
+ {
+  "citySlug": "leszno",
+  "cinemaObject": "MultikinoLeszno",
+  "displayName": "Multikino Leszno",
+  "town": "Leszno",
+  "annotation": "Leszno — Multikino API"
+ },
+ {
+  "citySlug": "leszno",
+  "cinemaObject": "KinoTeatrMiejskiLeszno",
+  "displayName": "Kino Teatru Miejskiego w Lesznie",
+  "town": "Leszno",
+  "annotation": "Leszno — bilety24"
+ },
+ {
+  "citySlug": "leszno",
+  "cinemaObject": "KinoPromienRawicz",
+  "displayName": "Kino Promień Rawicz",
+  "town": "Rawicz",
+  "annotation": "Rawicz — filmweb 1656"
+ },
+ {
+  "citySlug": "leszno",
+  "cinemaObject": "KinoPodKopula",
+  "displayName": "Kino Pod Kopułą",
+  "town": "Gostyń",
+  "annotation": "Gostyń — bilety24"
+ },
+ {
+  "citySlug": "leszno",
+  "cinemaObject": "KinoKrobia",
+  "displayName": "Kino Krobia",
+  "town": "Krobia",
+  "annotation": "Krobia — bilety24"
+ },
+ {
+  "citySlug": "lomza",
+  "cinemaObject": "HeliosLomza",
+  "displayName": "Helios Łomża",
+  "town": "Łomża",
+  "annotation": "Łomża — Helios REST"
+ },
+ {
+  "citySlug": "lomza",
+  "cinemaObject": "KinoJantar",
+  "displayName": "Kino Jantar",
+  "town": "Ostrołęka",
+  "annotation": "Ostrołęka — bilety24"
+ },
+ {
+  "citySlug": "lomza",
+  "cinemaObject": "KinoCKZambrow",
+  "displayName": "Kino Centrum Kultury Zambrów",
+  "town": "Zambrów",
+  "annotation": "Zambrów — filmweb 1644"
+ },
+ {
+  "citySlug": "lomza",
+  "cinemaObject": "KinoOstrovia",
+  "displayName": "Kino Ostrovia",
+  "town": "Ostrów Mazowiecka",
+  "annotation": "Ostrów Mazowiecka — filmweb 1743"
+ },
+ {
+  "citySlug": "lomza",
+  "cinemaObject": "KinoWars",
+  "displayName": "Kino Wars",
+  "town": "Wysokie Mazowieckie",
+  "annotation": "Wysokie Mazowieckie — filmweb 2348"
+ },
+ {
+  "citySlug": "lomza",
+  "cinemaObject": "KinoDomKulturyGrajewo",
+  "displayName": "Kino Dom Kultury Grajewo",
+  "town": "Grajewo",
+  "annotation": "Grajewo — filmweb 1532"
+ },
+ {
+  "citySlug": "pulawy",
+  "cinemaObject": "KinoSybilla",
+  "displayName": "Kino Sybilla",
+  "town": "Puławy",
+  "annotation": "Puławy — filmweb 311"
+ },
+ {
+  "citySlug": "pulawy",
+  "cinemaObject": "KinoRenesans",
+  "displayName": "Kino Renesans",
+  "town": "Ryki",
+  "annotation": "Ryki — filmweb 2089"
+ },
+ {
+  "citySlug": "skierniewice",
+  "cinemaObject": "KinoPolonez",
+  "displayName": "Kino Polonez",
+  "town": "Skierniewice",
+  "annotation": "Skierniewice — filmweb 320"
+ },
+ {
+  "citySlug": "skierniewice",
+  "cinemaObject": "KinoCKiSSkierniewice",
+  "displayName": "Kino CKiS Skierniewice",
+  "town": "Skierniewice",
+  "annotation": "Skierniewice — filmweb 3149"
+ },
+ {
+  "citySlug": "skierniewice",
+  "cinemaObject": "KinoLen",
+  "displayName": "Kino Len",
+  "town": "Żyrardów",
+  "annotation": "Żyrardów — filmweb 1812"
+ },
+ {
+  "citySlug": "skierniewice",
+  "cinemaObject": "KinoRomaRawa",
+  "displayName": "Kino Roma Rawa Mazowiecka",
+  "town": "Rawa Mazowiecka",
+  "annotation": "Rawa Mazowiecka — filmweb 2332"
+ },
+ {
+  "citySlug": "skierniewice",
+  "cinemaObject": "KinoFenix",
+  "displayName": "Kino Fenix",
+  "town": "Łowicz",
+  "annotation": "Łowicz — filmweb 1519"
+ },
+ {
+  "citySlug": "starogard-gdanski",
+  "cinemaObject": "CinemaCityStarogard",
+  "displayName": "Cinema City Starogard Gdański",
+  "town": "Starogard Gdański",
+  "annotation": "Starogard Gdański — Cinema City API"
+ },
+ {
+  "citySlug": "starogard-gdanski",
+  "cinemaObject": "KinoRemus",
+  "displayName": "Kino Remus",
+  "town": "Kościerzyna",
+  "annotation": "Kościerzyna — filmweb 2317"
+ },
+ {
+  "citySlug": "ciechanow",
+  "cinemaObject": "KinoLydynia",
+  "displayName": "Kino Łydynia",
+  "town": "Ciechanów",
+  "annotation": "Ciechanów — bilety24"
+ },
+ {
+  "citySlug": "ciechanow",
+  "cinemaObject": "KinoKosmosMlawa",
+  "displayName": "Kino Kosmos Mława",
+  "town": "Mława",
+  "annotation": "Mława — filmweb 1921"
+ },
+ {
+  "citySlug": "ciechanow",
+  "cinemaObject": "KinoSwiatowidPrzasnysz",
+  "displayName": "Kino Światowid Przasnysz",
+  "town": "Przasnysz",
+  "annotation": "Przasnysz — bilety24"
+ },
+ {
+  "citySlug": "ciechanow",
+  "cinemaObject": "KinoMDKMakow",
+  "displayName": "Kino MDK Maków Mazowiecki",
+  "town": "Maków Mazowiecki",
+  "annotation": "Maków Mazowiecki — bilety24"
+ },
+ {
+  "citySlug": "ciechanow",
+  "cinemaObject": "KinoApolloDzialdowo",
+  "displayName": "Kino Apollo Działdowo",
+  "town": "Działdowo",
+  "annotation": "Działdowo — filmweb 2353"
+ },
+ {
+  "citySlug": "wielun",
+  "cinemaObject": "KinoSyrena",
+  "displayName": "Kino-Teatr Syrena",
+  "town": "Wieluń",
+  "annotation": "Wieluń — filmweb 2034"
+ },
+ {
+  "citySlug": "wielun",
+  "cinemaObject": "KinoTeatrSieradz",
+  "displayName": "Kino Teatr Sieradz",
+  "town": "Sieradz",
+  "annotation": "Sieradz — filmweb 2333"
+ },
+ {
+  "citySlug": "wielun",
+  "cinemaObject": "KinoSlonce",
+  "displayName": "Kino Słońce",
+  "town": "Wieruszów",
+  "annotation": "Wieruszów — filmweb 2334"
+ },
+ {
+  "citySlug": "wielun",
+  "cinemaObject": "KinoSokolniaKepno",
+  "displayName": "Kino Sokolnia Kępno",
+  "town": "Kępno",
+  "annotation": "Kępno — filmweb 2358"
+ },
+ {
+  "citySlug": "chojnice",
+  "cinemaObject": "KinoChDK",
+  "displayName": "Kino ChDK",
+  "town": "Chojnice",
+  "annotation": "Chojnice — filmweb 2307"
+ },
+ {
+  "citySlug": "chojnice",
+  "cinemaObject": "KinoUciechaCzluchow",
+  "displayName": "Kino Uciecha Człuchów",
+  "town": "Człuchów",
+  "annotation": "Człuchów — filmweb 2349"
+ },
+ {
+  "citySlug": "chojnice",
+  "cinemaObject": "KinoZaRogiemBrusy",
+  "displayName": "Kino za Rogiem Brusy",
+  "town": "Brusy",
+  "annotation": "Brusy — bilety24"
+ },
+ {
+  "citySlug": "zgorzelec",
+  "cinemaObject": "MultikinoZgorzelec",
+  "displayName": "Multikino Zgorzelec",
+  "town": "Zgorzelec",
+  "annotation": "Zgorzelec — Multikino API"
+ },
+ {
+  "citySlug": "zgorzelec",
+  "cinemaObject": "KinoKadrBogatynia",
+  "displayName": "Kino Kadr Bogatynia",
+  "town": "Bogatynia",
+  "annotation": "Bogatynia — bilety24"
+ },
+ {
+  "citySlug": "ilawa",
+  "cinemaObject": "KinoteatrPasja",
+  "displayName": "Kinoteatr Pasja",
+  "town": "Iława",
+  "annotation": "Iława — filmweb 1857"
+ },
+ {
+  "citySlug": "ilawa",
+  "cinemaObject": "KinoPokoj",
+  "displayName": "Kino Pokój",
+  "town": "Lubawa",
+  "annotation": "Lubawa — filmweb 1805"
+ },
+ {
+  "citySlug": "ilawa",
+  "cinemaObject": "KinoteatrHarmonia",
+  "displayName": "Kinoteatr Harmonia",
+  "town": "Nowe Miasto Lubawskie",
+  "annotation": "Nowe Miasto Lubawskie — bilety24"
+ },
+ {
+  "citySlug": "ketrzyn",
+  "cinemaObject": "KinoGwiazdaKetrzyn",
+  "displayName": "Kino Gwiazda Kętrzyn",
+  "town": "Kętrzyn",
+  "annotation": "Kętrzyn — filmweb 1686"
+ },
+ {
+  "citySlug": "ketrzyn",
+  "cinemaObject": "KinoZodiak",
+  "displayName": "Kino Zodiak",
+  "town": "Mrągowo",
+  "annotation": "Mrągowo — filmweb 1701"
+ },
+ {
+  "citySlug": "zakopane",
+  "cinemaObject": "KinoSokolZakopane",
+  "displayName": "Kino Sokół Zakopane",
+  "town": "Zakopane",
+  "annotation": "Zakopane — filmweb 1273"
+ },
+ {
+  "citySlug": "zakopane",
+  "cinemaObject": "KinoGiewont",
+  "displayName": "Kino Giewont",
+  "town": "Zakopane",
+  "annotation": "Zakopane — filmweb 1280"
+ },
+ {
+  "citySlug": "zakopane",
+  "cinemaObject": "KinoMiejsce",
+  "displayName": "Kino Miejsce",
+  "town": "Zakopane",
+  "annotation": "Zakopane — filmweb 2336"
+ },
+ {
+  "citySlug": "zakopane",
+  "cinemaObject": "KinoSniezkaRabka",
+  "displayName": "Kino Śnieżka Rabka",
+  "town": "Rabka-Zdrój",
+  "annotation": "Rabka-Zdrój — bilety24"
+ },
+ {
+  "citySlug": "wyszkow",
+  "cinemaObject": "KinoDobrychFilmow",
+  "displayName": "Kino Dobrych Filmów",
+  "town": "Wyszków",
+  "annotation": "Wyszków — filmweb 2304"
+ },
+ {
+  "citySlug": "wyszkow",
+  "cinemaObject": "KinoMiGOK",
+  "displayName": "Kino MiGOK",
+  "town": "Łochów",
+  "annotation": "Łochów — filmweb 2337"
+ },
+ {
+  "citySlug": "zlocieniec",
+  "cinemaObject": "KinoMewaZlocieniec",
+  "displayName": "Kino Mewa Złocieniec",
+  "town": "Złocieniec",
+  "annotation": "Złocieniec — bilety24"
+ },
+ {
+  "citySlug": "zlocieniec",
+  "cinemaObject": "KinoOKDrawsko",
+  "displayName": "Kino OK Drawsko Pomorskie",
+  "town": "Drawsko Pomorskie",
+  "annotation": "Drawsko Pomorskie — bilety24"
  }
 ]

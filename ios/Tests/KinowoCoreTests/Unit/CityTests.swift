@@ -98,8 +98,8 @@ final class CityTests: XCTestCase {
     // ── catalogue (global union, per-country order) ───────────────
 
     func testAllIsTheGlobalUnionOfPolishAndUkCities() {
-        XCTAssertEqual(City.all.count, 120)                 // 41 PL + 79 UK
-        XCTAssertEqual(City.all.inCountry("pl").count, 41)
+        XCTAssertEqual(City.all.count, 142)                 // 63 PL + 79 UK
+        XCTAssertEqual(City.all.inCountry("pl").count, 63)
         XCTAssertEqual(City.all.inCountry("uk").count, 79)
     }
 
@@ -136,33 +136,40 @@ final class CityTests: XCTestCase {
     func testPolishCitiesArePresentInOrder() {
         XCTAssertEqual(City.all.inCountry("pl").map(\.slug), [
             "poznan", "wroclaw", "warszawa", "krakow", "lodz", "katowice", "szczecin",
-            "bialystok", "trojmiasto", "bydgoszcz", "lublin", "czestochowa", "radom",
-            "sosnowiec", "torun", "kielce", "rzeszow", "gliwice", "zabrze",
-            "olsztyn", "bielsko-biala", "opole", "rybnik", "gorzow-wielkopolski", "elblag",
-            "koszalin", "kalisz", "zielona-gora", "tychy", "walbrzych", "tarnow", "wloclawek",
-            "legnica", "plock", "bytom", "dabrowa-gornicza", "nowy-sacz", "slupsk",
-            "jelenia-gora", "przemysl", "konin",
+            "bialystok", "trojmiasto", "bydgoszcz", "lublin", "czestochowa", "radom", "sosnowiec",
+            "torun", "kielce", "rzeszow", "gliwice", "zabrze", "olsztyn", "bielsko-biala",
+            "opole", "rybnik", "gorzow-wielkopolski", "elblag", "koszalin", "kalisz", "zielona-gora",
+            "tychy", "walbrzych", "tarnow", "wloclawek", "legnica", "plock", "bytom",
+            "dabrowa-gornicza", "nowy-sacz", "slupsk", "jelenia-gora", "przemysl", "konin", "piotrkow-trybunalski",
+            "siedlce", "pila", "ostrowiec-swietokrzyski", "gniezno", "suwalki", "stalowa-wola", "zamosc",
+            "leszno", "lomza", "pulawy", "skierniewice", "starogard-gdanski", "ciechanow", "wielun",
+            "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow", "zlocieniec",
         ])
     }
 
     func testPolishSortedIsAlphabeticalUnderPolishCollation() {
         XCTAssertEqual(Set(City.all.sortedForPicker(inCountry: "pl").map(\.slug)), Set(City.all.inCountry("pl").map(\.slug)))
         XCTAssertEqual(City.all.sortedForPicker(inCountry: "pl").map(\.slug), [
-            "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "czestochowa",
-            "dabrowa-gornicza", "elblag", "gliwice", "gorzow-wielkopolski", "jelenia-gora",
-            "kalisz", "katowice", "kielce", "konin", "koszalin", "krakow",
-            "legnica", "lublin", "lodz", "nowy-sacz", "olsztyn", "opole",
-            "plock", "poznan", "przemysl", "radom", "rybnik", "rzeszow",
-            "slupsk", "sosnowiec", "szczecin", "tarnow", "torun", "trojmiasto",
-            "tychy", "walbrzych", "warszawa", "wloclawek", "wroclaw", "zabrze",
-            "zielona-gora",
+            "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "chojnice", "ciechanow",
+            "czestochowa", "dabrowa-gornicza", "elblag", "gliwice", "gniezno", "gorzow-wielkopolski",
+            "ilawa", "jelenia-gora", "kalisz", "katowice", "ketrzyn", "kielce",
+            "konin", "koszalin", "krakow", "legnica", "leszno", "lublin",
+            "lomza", "lodz", "nowy-sacz", "olsztyn", "opole", "ostrowiec-swietokrzyski",
+            "pila", "piotrkow-trybunalski", "plock", "poznan", "przemysl", "pulawy",
+            "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slupsk",
+            "sosnowiec", "stalowa-wola", "starogard-gdanski", "suwalki", "szczecin", "tarnow",
+            "torun", "trojmiasto", "tychy", "walbrzych", "warszawa", "wielun",
+            "wloclawek", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
+            "zgorzelec", "zielona-gora", "zlocieniec",
         ])
     }
 
     func testPolishSortedCollatesLAfterLNotAtTheEnd() {
-        // "Łódź" (Ł = U+0141) sorts right after "Lublin", not at the very end.
+        // The Ł-cities ("Łomża", then "Łódź"; Ł = U+0141) sort right after
+        // "Lublin", not at the very end.
         let slugs = City.all.sortedForPicker(inCountry: "pl").map(\.slug)
-        XCTAssertEqual(slugs.firstIndex(of: "lodz"), slugs.firstIndex(of: "lublin").map { $0 + 1 })
+        XCTAssertEqual(slugs.firstIndex(of: "lomza"), slugs.firstIndex(of: "lublin").map { $0 + 1 })
+        XCTAssertEqual(slugs.firstIndex(of: "lodz"), slugs.firstIndex(of: "lomza").map { $0 + 1 })
         XCTAssertLessThan(slugs.firstIndex(of: "lodz")!, slugs.firstIndex(of: "zabrze")!)
     }
 
@@ -279,7 +286,7 @@ final class CityTests: XCTestCase {
     func testMatchIsDiacriticInsensitiveTypedWithoutPolishLetters() {
         XCTAssertEqual(City.all.matching("lodz", inCountry: "pl").map(\.slug), ["lodz"])
         XCTAssertEqual(City.all.matching("krakow", inCountry: "pl").map(\.slug), ["krakow"])
-        XCTAssertEqual(City.all.matching("gdansk", inCountry: "pl").map(\.slug), [])   // Trójmiasto, no "Gdańsk" name
+        XCTAssertEqual(City.all.matching("gdansk", inCountry: "pl").map(\.slug), ["starogard-gdanski"])   // Trójmiasto has no "Gdańsk" name; Starogard Gdański does
         XCTAssertTrue(City.all.matching("zielona gora", inCountry: "pl").map(\.slug).contains("zielona-gora"))
     }
 

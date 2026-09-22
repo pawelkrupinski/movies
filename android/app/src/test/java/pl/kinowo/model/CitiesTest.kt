@@ -95,8 +95,8 @@ class CitiesTest {
 
     @Test
     fun allIsTheGlobalUnionOfPolishAndUkCities() {
-        assertEquals(120, Cities.all.size)               // 41 PL + 79 GB
-        assertEquals(41, Cities.citiesIn("pl").size)
+        assertEquals(142, Cities.all.size)               // 63 PL + 79 GB
+        assertEquals(63, Cities.citiesIn("pl").size)
         assertEquals(79, Cities.citiesIn("uk").size)
     }
 
@@ -159,16 +159,18 @@ class CitiesTest {
     }
 
     @Test
-    fun listsAllFortyOnePolishCitiesInOrder() {
+    fun listsAllSixtyThreePolishCitiesInOrder() {
         assertEquals(
             listOf(
                 "poznan", "wroclaw", "warszawa", "krakow", "lodz", "katowice", "szczecin",
-                "bialystok", "trojmiasto", "bydgoszcz", "lublin", "czestochowa", "radom",
-                "sosnowiec", "torun", "kielce", "rzeszow", "gliwice", "zabrze",
-                "olsztyn", "bielsko-biala", "opole", "rybnik", "gorzow-wielkopolski", "elblag",
-                "koszalin", "kalisz", "zielona-gora", "tychy", "walbrzych", "tarnow", "wloclawek",
-                "legnica", "plock", "bytom", "dabrowa-gornicza", "nowy-sacz", "slupsk",
-                "jelenia-gora", "przemysl", "konin",
+                "bialystok", "trojmiasto", "bydgoszcz", "lublin", "czestochowa", "radom", "sosnowiec",
+                "torun", "kielce", "rzeszow", "gliwice", "zabrze", "olsztyn", "bielsko-biala",
+                "opole", "rybnik", "gorzow-wielkopolski", "elblag", "koszalin", "kalisz", "zielona-gora",
+                "tychy", "walbrzych", "tarnow", "wloclawek", "legnica", "plock", "bytom",
+                "dabrowa-gornicza", "nowy-sacz", "slupsk", "jelenia-gora", "przemysl", "konin", "piotrkow-trybunalski",
+                "siedlce", "pila", "ostrowiec-swietokrzyski", "gniezno", "suwalki", "stalowa-wola", "zamosc",
+                "leszno", "lomza", "pulawy", "skierniewice", "starogard-gdanski", "ciechanow", "wielun",
+                "chojnice", "zgorzelec", "ilawa", "ketrzyn", "zakopane", "wyszkow", "zlocieniec",
             ),
             Cities.citiesIn("pl").map { it.slug },
         )
@@ -180,14 +182,17 @@ class CitiesTest {
         assertEquals(Cities.citiesIn("pl").map { it.slug }.toSet(), Cities.sortedIn("pl").map { it.slug }.toSet())
         assertEquals(
             listOf(
-                "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "czestochowa",
-                "dabrowa-gornicza", "elblag", "gliwice", "gorzow-wielkopolski", "jelenia-gora",
-                "kalisz", "katowice", "kielce", "konin", "koszalin", "krakow",
-                "legnica", "lublin", "lodz", "nowy-sacz", "olsztyn", "opole",
-                "plock", "poznan", "przemysl", "radom", "rybnik", "rzeszow",
-                "slupsk", "sosnowiec", "szczecin", "tarnow", "torun", "trojmiasto",
-                "tychy", "walbrzych", "warszawa", "wloclawek", "wroclaw", "zabrze",
-                "zielona-gora",
+                "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "chojnice", "ciechanow",
+                "czestochowa", "dabrowa-gornicza", "elblag", "gliwice", "gniezno", "gorzow-wielkopolski",
+                "ilawa", "jelenia-gora", "kalisz", "katowice", "ketrzyn", "kielce",
+                "konin", "koszalin", "krakow", "legnica", "leszno", "lublin",
+                "lomza", "lodz", "nowy-sacz", "olsztyn", "opole", "ostrowiec-swietokrzyski",
+                "pila", "piotrkow-trybunalski", "plock", "poznan", "przemysl", "pulawy",
+                "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slupsk",
+                "sosnowiec", "stalowa-wola", "starogard-gdanski", "suwalki", "szczecin", "tarnow",
+                "torun", "trojmiasto", "tychy", "walbrzych", "warszawa", "wielun",
+                "wloclawek", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
+                "zgorzelec", "zielona-gora", "zlocieniec",
             ),
             Cities.sortedIn("pl").map { it.slug },
         )
@@ -195,10 +200,11 @@ class CitiesTest {
 
     @Test
     fun polishSortedCollatesLAfterLNotAtTheEnd() {
-        // Polish-collation discriminator: a naive code-point sort puts "Łódź"
-        // (Ł = U+0141) after every ASCII-initial name, i.e. near the very end.
+        // Polish-collation discriminator: a naive code-point sort puts "Łomża"
+        // and "Łódź" (Ł = U+0141) after every ASCII-initial name, i.e. near the very end.
         val slugs = Cities.sortedIn("pl").map { it.slug }
-        assertEquals(slugs.indexOf("lublin") + 1, slugs.indexOf("lodz"))
+        assertEquals(slugs.indexOf("lublin") + 1, slugs.indexOf("lomza"))
+        assertEquals(slugs.indexOf("lomza") + 1, slugs.indexOf("lodz"))
         assertTrue(slugs.indexOf("lodz") < slugs.indexOf("zabrze"))
     }
 
@@ -295,8 +301,9 @@ class CitiesTest {
         // The whole point: a plain ASCII keyboard finds the diacritic'd city.
         assertEquals(listOf("lodz"), Cities.matching("lodz", "pl").map { it.slug })
         assertEquals(listOf("krakow"), Cities.matching("krakow", "pl").map { it.slug })
-        // "Gdańsk" isn't a city name (the Tri-City scope is "Trójmiasto") → no match.
-        assertEquals(emptyList<String>(), Cities.matching("gdansk", "pl").map { it.slug })
+        // "Gdańsk" isn't a city name (the Tri-City scope is "Trójmiasto"), so the
+        // only match is the one city that carries it: Starogard Gdański.
+        assertEquals(listOf("starogard-gdanski"), Cities.matching("gdansk", "pl").map { it.slug })
         assertTrue(Cities.matching("zielona gora", "pl").map { it.slug }.contains("zielona-gora"))
     }
 

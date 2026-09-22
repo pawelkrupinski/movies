@@ -1,6 +1,6 @@
 package services.cinemas.pl
 
-import models.{Cinema, CinemaMovie, Helios, HeliosStarachowice, HeliosKrosno, HeliosTczew, HeliosZory, HeliosLubin, HeliosOstrowWlkp, HeliosKedzierzynKozle, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBielskoBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosDabrowaGornicza, HeliosForum, HeliosGorzow, HeliosJeleniaGora, HeliosJurowiecka, HeliosKalisz, HeliosKatowice, HeliosKielce, HeliosKonin, HeliosKoszalin, HeliosLegnica, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosNowySacz, HeliosOlsztyn, HeliosOpoleKarolinka, HeliosOpoleSolaris, HeliosOutletPark, HeliosPlock, HeliosPrzemysl, HeliosRadom, HeliosRiviera, HeliosRzeszow, HeliosSosnowiec, HeliosSzczecin, Movie, Showtime}
+import models.{Cinema, CinemaMovie, Helios, HeliosStarachowice, HeliosKrosno, HeliosTczew, HeliosZory, HeliosLubin, HeliosOstrowWlkp, HeliosKedzierzynKozle, HeliosWolomin, HeliosLegionowo, HeliosPabianice, HeliosGrudziadz, HeliosPiotrkow, HeliosBelchatow, HeliosTomaszow, HeliosSiedlce, HeliosPila, HeliosGniezno, HeliosStalowaWola, HeliosLomza, HeliosAlejaBielany, HeliosAlfa, HeliosBiala, HeliosBielskoBiala, HeliosBlueCity, HeliosBydgoszcz, HeliosDabrowaGornicza, HeliosForum, HeliosGorzow, HeliosJeleniaGora, HeliosJurowiecka, HeliosKalisz, HeliosKatowice, HeliosKielce, HeliosKonin, HeliosKoszalin, HeliosLegnica, HeliosLodz, HeliosMagnolia, HeliosMetropolia, HeliosNowySacz, HeliosOlsztyn, HeliosOpoleKarolinka, HeliosOpoleSolaris, HeliosOutletPark, HeliosPlock, HeliosPrzemysl, HeliosRadom, HeliosRiviera, HeliosRzeszow, HeliosSosnowiec, HeliosSzczecin, Movie, Showtime}
 import play.api.libs.json._
 
 import java.time.LocalDateTime
@@ -80,6 +80,20 @@ object HeliosNuxt {
   val Lubin           = HeliosCinema(HeliosLubin,           "lubin",              "kino-helios", "71192dbe-94ef-43c0-9079-ae7c9747a2f4")
   val OstrowWielkopolski = HeliosCinema(HeliosOstrowWlkp,   "ostrow-wielkopolski", "kino-helios", "1a433348-f89c-4b18-bfa4-4332e3bbf0c8")
   val KedzierzynKozle = HeliosCinema(HeliosKedzierzynKozle, "kedzierzyn-kozle",   "kino-helios", "cf760fa9-32ba-4541-ae07-ef14532a911d")
+  // Nearby-town and regional-hub venues (2026-09 sweep); sourceId verified against
+  // restapi.helios.pl/api/cinema, page slug verified to render a NUXT repertoire.
+  val Wolomin             = HeliosCinema(HeliosWolomin,             "wolomin",               "kino-helios", "4ff96e13-2d06-484d-be4c-870603e3c6a8")
+  val Legionowo           = HeliosCinema(HeliosLegionowo,           "legionowo",             "kino-helios", "326a5265-593c-4457-a85e-c79e8574a5b6")
+  val Pabianice           = HeliosCinema(HeliosPabianice,           "pabianice",             "kino-helios", "540264b4-46d6-47a2-9c1b-519c0056bf47")
+  val Grudziadz           = HeliosCinema(HeliosGrudziadz,           "grudziadz",             "kino-helios", "7f651f6f-9068-410f-96a0-e5b6f1545aed")
+  val PiotrkowTrybunalski = HeliosCinema(HeliosPiotrkow,            "piotrkow-trybunalski",  "kino-helios", "8f7c0839-2917-4cb9-bc3b-399d704c1323")
+  val Belchatow           = HeliosCinema(HeliosBelchatow,           "belchatow",             "kino-helios", "2c4b802a-5e94-4a96-a899-6fe92fb4bf13")
+  val TomaszowMazowiecki  = HeliosCinema(HeliosTomaszow,            "tomaszow-mazowiecki",   "kino-helios", "22c9c999-41fc-4637-834d-a34f9286e296")
+  val Siedlce             = HeliosCinema(HeliosSiedlce,             "siedlce",               "kino-helios", "1da497b7-59af-476d-ac2b-246493650f7e")
+  val Pila                = HeliosCinema(HeliosPila,                "pila",                  "kino-helios", "ee94a20b-e818-43f3-bb84-ec970b336a22")
+  val Gniezno             = HeliosCinema(HeliosGniezno,             "gniezno",               "kino-helios", "2129a02f-c5cc-4da2-9293-daacd11c07ca")
+  val StalowaWola         = HeliosCinema(HeliosStalowaWola,         "stalowa-wola",          "kino-helios", "01375340-d1ba-41d0-a00f-37c8acff6e7a")
+  val Lomza               = HeliosCinema(HeliosLomza,               "lomza",                 "kino-helios", "46b9b050-9ba9-4817-9bd8-96ccfc68f1b8")
 
   // Strip event/promo suffixes so that "Diabeł ubiera się u Prady 2 - KNT"
   // collapses to the canonical "Diabeł ubiera się u Prady 2".

@@ -38,7 +38,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
   }
 
   /** `/{slug}/` is ONE global namespace — `City.bySlug` searches every country's
-   *  list — and the US now puts 468 places into it beside 41 Polish, 79 UK and
+   *  list — and the US now puts 468 places into it beside 63 Polish, 79 UK and
    *  158 German ones. Two cities sharing a slug means one of them is
    *  unreachable, silently, at whichever position `find` reaches second. */
   "Every city slug" should "be unique across every country, and URL-shaped" in {
@@ -73,14 +73,17 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // The Polish cities keep their exact Polish-collation order regardless of the
     // foreign (UK/DE) cities now interleaved among them by their own names.
     City.allSorted.filter(City.polishCities.contains).map(_.slug) shouldBe Seq(
-      "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "czestochowa",
-      "dabrowa-gornicza", "elblag", "gliwice", "gorzow-wielkopolski", "jelenia-gora",
-      "kalisz", "katowice", "kielce", "konin", "koszalin", "krakow",
-      "legnica", "lublin", "lodz", "nowy-sacz", "olsztyn", "opole",
-      "plock", "poznan", "przemysl", "radom", "rybnik", "rzeszow",
-      "slupsk", "sosnowiec", "szczecin", "tarnow", "torun", "trojmiasto",
-      "tychy", "walbrzych", "warszawa", "wloclawek", "wroclaw", "zabrze",
-      "zielona-gora",
+      "bialystok", "bielsko-biala", "bydgoszcz", "bytom", "chojnice", "ciechanow",
+      "czestochowa", "dabrowa-gornicza", "elblag", "gliwice", "gniezno", "gorzow-wielkopolski",
+      "ilawa", "jelenia-gora", "kalisz", "katowice", "ketrzyn", "kielce",
+      "konin", "koszalin", "krakow", "legnica", "leszno", "lublin",
+      "lomza", "lodz", "nowy-sacz", "olsztyn", "opole", "ostrowiec-swietokrzyski",
+      "pila", "piotrkow-trybunalski", "plock", "poznan", "przemysl", "pulawy",
+      "radom", "rybnik", "rzeszow", "siedlce", "skierniewice", "slupsk",
+      "sosnowiec", "stalowa-wola", "starogard-gdanski", "suwalki", "szczecin", "tarnow",
+      "torun", "trojmiasto", "tychy", "walbrzych", "warszawa", "wielun",
+      "wloclawek", "wroclaw", "wyszkow", "zabrze", "zakopane", "zamosc",
+      "zgorzelec", "zielona-gora", "zlocieniec",
     )
 
     // The foreign cities are present in the global sort too.
@@ -101,16 +104,17 @@ class CitySpec extends AnyFlatSpec with Matchers {
   // ── coveredPlaces ───────────────────────────────────────────────────────────
 
   "coveredPlaces" should "be the city itself, and nothing else, for a one-town city" in {
-    Poznan.coveredPlaces      shouldBe Seq("Poznań")
-    Poznan.otherCoveredPlaces shouldBe empty
+    Sosnowiec.coveredPlaces      shouldBe Seq("Sosnowiec")
+    Sosnowiec.otherCoveredPlaces shouldBe empty
   }
 
   it should "name every town a conurbation's own name hides" in {
     // The page is `/trojmiasto/`, and "Sopot" and "Gdynia" occur in no slug, no
     // label and no cinema display name — so without this the towns are on the
     // page nowhere at all, and a search for either can match nothing.
-    Trojmiasto.coveredPlaces      shouldBe Seq("Trójmiasto", "Gdańsk", "Gdynia", "Sopot", "Rumia")
-    Trojmiasto.otherCoveredPlaces shouldBe Seq("Gdańsk", "Gdynia", "Sopot", "Rumia")
+    val nearby = Seq("Chmielno", "Jastarnia", "Kartuzy", "Pruszcz Gdański", "Rumia", "Wejherowo")
+    Trojmiasto.coveredPlaces      shouldBe Seq("Trójmiasto", "Gdańsk", "Gdynia", "Sopot") ++ nearby
+    Trojmiasto.otherCoveredPlaces shouldBe Seq("Gdańsk", "Gdynia", "Sopot") ++ nearby
   }
 
   it should "read a split city's districts, which are towns in their own right" in {
@@ -153,7 +157,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep a Polish city that really is one town naming only itself" in {
-    Poznan.otherCoveredPlaces shouldBe empty
+    Sosnowiec.otherCoveredPlaces shouldBe empty
   }
 
   it should "read a Spanish province's towns, which the province's own name hides" in {
