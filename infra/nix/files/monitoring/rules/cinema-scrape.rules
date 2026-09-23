@@ -168,25 +168,32 @@ groups:
       # "Kino Etiuda OBK" left the PL roster its 3 films and 8 future showtimes sat there for days,
       # counted as live by every census that reads the side collections raw.
       #
-      # TWENTY-FOUR HOURS: a venue removed in a deploy is legitimately above zero until the next
-      # cleanup pass runs, and cleanups here are daily. A day past that is a cleanup that did not
-      # happen. It is the watchdog for that cleanup, not a replacement for it.
+      # FIFTY HOURS, NOT A DAY, because of how the cleanup is built. `RetiredVenueRows.sweep` runs
+      # on the daily stranded-row tick and leaves any row written in the last 24h alone (a rolling
+      # deploy's OLD pod must not delete rows the NEW pod's roster has just added). So a venue
+      # removed in a deploy is legitimately above zero for up to 24h of grace plus up to 24h until
+      # the next tick. Fifty hours is that plus two of slack; past it the cleanup did not happen --
+      # it refused (an empty roster, or more than 20% of stored venues retired at once), its read
+      # failed, or it is not running. It is the watchdog for that cleanup, not a replacement.
       #
-      # IT WOULD FIRE TODAY, and should. Measured against prod on 2026-09-23 with the roster at
-      # origin/main: PL holds rows under Kino Etiuda OBK plus movie_slots rows for DE and UK venues
-      # (a foreign venue's row in a country's own database is as unservable as a retired one), UK
-      # under Odeon Cinema Basingstoke, DE under "Studio"; ES and US none.
+      # IT WOULD FIRE TODAY if the rows stayed. Measured against prod on 2026-09-23 with the roster
+      # at origin/main: PL holds 6 rows under Kino Etiuda OBK (7 future showtimes) and movie_slots
+      # rows for 28 DE/UK venues (a foreign venue's row in a country's own database is as
+      # unservable as a retired one), UK 20 under Odeon Cinema Basingstoke, DE 1 under "Studio";
+      # ES and US none. The cleanup landed today, so these should step down within two days.
       - alert: RetiredVenueRowsLingering
         expr: max by (country) (kinowo_worker_retired_venue_side_rows) > 0
-        for: 24h
+        for: 50h
         labels:
           severity: warning
         annotations:
           summary: "{{ $labels.country }} still holds {{ $value }} side row(s) under a venue its roster no longer lists"
           description: >-
             `screenings` or `movie_slots` rows in "{{ $labels.country }}" have been filed under a venue
-            name missing from that country's roster for a full day. Nothing serves them, the read
-            path ignores them, and nothing deletes them unless the retired-venue cleanup runs; every
+            name missing from that country's roster for over two days -- longer than the daily
+            retired-venue cleanup and its 24h grace allow. Nothing serves them, and that cleanup
+            evidently has not removed them (look for its RemovalAudit line or its refusal WARN,
+            "Retired-venue rows: ..." in the worker log); every
             census that reads the side collections raw counts their future showtimes
             (`kinowo_worker_retired_venue_future_showtimes`) as live. Name the venues with
             `db.screenings.aggregate([{$group: {_id: {$arrayElemAt: [{$split: ["$slotKey", "␟"]}, 0]}, n: {$sum: 1}}}])`

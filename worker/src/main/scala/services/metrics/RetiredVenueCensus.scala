@@ -13,17 +13,17 @@ import scala.concurrent.duration._
  * country's roster no longer lists, and the FUTURE showtimes among them.
  *
  * Dropping a cinema from the roster stops its scrape, and the read path ignores its rows, but
- * nothing removes them: the stranded-row sweep convicts a row by its FILM (and the film is
- * alive), `UnscreenedCleanup` by whole films. After "Kino Etiuda OBK" left the PL roster, 3 films
- * and 8 future showtimes stayed under it for days, counted by every census that reads the side
- * collections raw, and nothing said so. This is the watchdog for the sweep that removes them:
- * above zero for a day means the rows outlived a removal.
+ * until [[RetiredVenueRows]] (2026-09-23) nothing removed them: after "Kino Etiuda OBK" left the
+ * PL roster, 3 films and 8 future showtimes stayed under it for days, counted by every census
+ * that reads the side collections raw, and nothing said so. This is the watchdog for that sweep:
+ * it runs daily and spares rows written in the last 24h, so a count above zero for over two days
+ * means it refused, failed or stopped.
  *
  * Reads only row ids (never documents) from both collections, then the showtimes of the few
  * films with retired rows. A read that fails publishes nothing for that store — "could not
  * read" is not "none" — and an EMPTY roster publishes nothing at all: that is a roster that
  * failed to load, and every row would read as retired. Venue and roster come from
- * [[VenueRoster]], the one definition a cleanup must share.
+ * [[VenueRoster.venuesOf]] and [[RetiredVenueRows.venueOf]], the definitions its cleanup sweep uses.
  */
 class RetiredVenueCensus(
   screenings:      ScreeningsRepository,
@@ -93,7 +93,7 @@ object RetiredVenueCensus {
   def gauges(registry: PrometheusRegistry): (Gauge, Gauge) = {
     val rows = Gauge.builder()
       .name(RowsName)
-      .help("Side-collection rows (collection=screenings|movie_slots) filed under a venue this country's roster no longer lists, by country. Nothing serves them and, until a cleanup removes them, nothing deletes them: after Kino Etiuda OBK left the PL roster its rows stayed for days, invisible. Zero is healthy; above zero for a day means a removed venue's rows outlived the cleanup. Hourly, id-only reads; a failed read keeps the last value. Alerted by RetiredVenueRowsLingering.")
+      .help("Side-collection rows (collection=screenings|movie_slots) filed under a venue this country's roster no longer lists, by country. Nothing serves them, and only the daily retired-venue sweep (RetiredVenueRows) deletes them: before it, Kino Etiuda OBK's rows stayed for days after it left the PL roster, invisible. Zero is healthy; above zero for over two days (the cleanup's 24h grace plus its daily tick) means a removed venue's rows outlived it. Hourly, id-only reads; a failed read keeps the last value. Alerted by RetiredVenueRowsLingering.")
       .labelNames("country", "collection")
       .register(registry)
     val future = Gauge.builder()

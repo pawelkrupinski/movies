@@ -216,23 +216,24 @@ tests:
                 without this gauge in it. AN ABSENT CENSUS IS NOT A FRESH ROSTER.
 
   # ────────────────────────────────────────────────────────────────────────────────────────────
-  # RETIRED-VENUE ROWS: A DAY OVER ZERO FIRES, A CLEANUP INSIDE THE DAY DOES NOT. PL carries 6
-  # rows for 25 hours; UK carries 20 for 20 hours and then its cleanup runs. The `max by
-  # (country)` takes the larger collection, so the summary names the rows still left.
+  # RETIRED-VENUE ROWS: FIFTY HOURS OVER ZERO FIRES, A CLEANUP INSIDE THE GRACE DOES NOT. PL
+  # carries 6 rows for 51 hours; UK carries 20 for 47 hours -- the 24h grace plus a daily tick
+  # that came late -- and then its cleanup runs. The `max by (country)` takes the larger
+  # collection, so the summary names the rows still left.
   # ────────────────────────────────────────────────────────────────────────────────────────────
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_retired_venue_side_rows{country="pl",collection="screenings",job="kinowo-worker"}'
-        values: '3x1560'
+        values: '3x3120'
       - series: 'kinowo_worker_retired_venue_side_rows{country="pl",collection="movie_slots",job="kinowo-worker"}'
-        values: '6x1560'
+        values: '6x3120'
       - series: 'kinowo_worker_retired_venue_side_rows{country="uk",collection="screenings",job="kinowo-worker"}'
-        values: '20x1200 0x360'
+        values: '20x2820 0x300'
     alert_rule_test:
-      - eval_time: 23h
+      - eval_time: 49h
         alertname: RetiredVenueRowsLingering
         exp_alerts: []
-      - eval_time: 25h
+      - eval_time: 51h
         alertname: RetiredVenueRowsLingering
         exp_alerts:
           - exp_labels:
@@ -242,8 +243,10 @@ tests:
               summary: "pl still holds 6 side row(s) under a venue its roster no longer lists"
               description: >-
                 `screenings` or `movie_slots` rows in "pl" have been filed under a venue
-                name missing from that country's roster for a full day. Nothing serves them, the read
-                path ignores them, and nothing deletes them unless the retired-venue cleanup runs; every
+                name missing from that country's roster for over two days -- longer than the daily
+                retired-venue cleanup and its 24h grace allow. Nothing serves them, and that cleanup
+                evidently has not removed them (look for its RemovalAudit line or its refusal WARN,
+                "Retired-venue rows: ..." in the worker log); every
                 census that reads the side collections raw counts their future showtimes
                 (`kinowo_worker_retired_venue_future_showtimes`) as live. Name the venues with
                 `db.screenings.aggregate([{$group: {_id: {$arrayElemAt: [{$split: ["$slotKey", "␟"]}, 0]}, n: {$sum: 1}}}])`
