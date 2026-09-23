@@ -25,7 +25,8 @@ import scala.util.{Failure, Success}
  *   sbt "worker/runMain tools.RosterAudit [summary.md]"
  * Appends a Markdown report to the given file (the job summary in CI) and exits
  * 1 when anything needs fixing. A page that could not be fetched this time is
- * listed, not failed on.
+ * listed, not failed on — except a chain venue list still unread through the
+ * residential proxy (see [[ChainListEgress]]).
  *
  * `def main`, not `extends App` — see `FilmwebDiff`.
  */
@@ -50,8 +51,9 @@ object RosterAudit {
     val chainVenues = RosterSourceReader.chainVenuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
     println(s"RosterAudit: ${chainVenues.size} Polish chain venues to look up in ${ChainDirectory.all.size} chain venue lists")
     val today = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+    val chainEgress = ChainListEgress.fromEnv(http)
     val chainResults = chainVenues.groupMap(_._1)(v => v._2 -> v._3).toSeq.map { case (directory, venues) =>
-      RosterSourceReader.readDirectory(http.getPage, today)(directory, venues)
+      RosterSourceReader.readDirectory(chainEgress.fetchFor(directory), today)(directory, venues).left.map(chainEgress.judged)
     }
     val readings = pageReadings ++ chainResults.flatMap(_.toSeq.flatten)
     val findings = RosterLocationAudit.findings(readings) ++ chainResults.flatMap(_.left.toSeq)

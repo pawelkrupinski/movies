@@ -25,7 +25,7 @@ trait EgressWiring { self: WorkerWiring =>
   // each IP warms its Multikino session at most once and reuses it across the
   // venues routed there.
   private lazy val proxyShards: Option[IndexedSeq[RealHttpFetch]] =
-    ResidentialProxy.fromEnv().map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg))).toIndexedSeq)
+    EgressWiring.residentialShards(ResidentialProxy.fromEnv())
 
   // Proxy primary → existing chain (Zyte then direct) as fallback, so a proxy IP
   // that's ever unreachable/burned silently rolls over and scraping never breaks.
@@ -68,12 +68,7 @@ trait EgressWiring { self: WorkerWiring =>
   // behind a doomed proxy attempt on every single call.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None,
                            keyOf: String => String = StickyShardHttpFetch.hostAndPath): HttpFetch =
-    proxyShards.fold(fallback) { shards =>
-      val legs: IndexedSeq[HttpFetch] =
-        warmUrl.fold[IndexedSeq[HttpFetch]](shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
-      val proxyLeg = EgressWiring.meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), decodoMeter)
-      new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = recordProxyOutcome)
-    }
+    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, warmUrl, keyOf, decodoMeter, recordProxyOutcome))
 
   // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
   // means the proxy served, a red one means it failed and we fell back to Zyte
@@ -154,6 +149,23 @@ trait EgressWiring { self: WorkerWiring =>
 object EgressWiring {
   /** The /uptime row the residential-proxy leg is metered under. */
   private val ResidentialProxyService = "Residential proxy"
+
+  /** One [[RealHttpFetch]] per Decodo pool IP, each pinned with its own cookie
+   *  jar — or None when the proxy isn't configured. */
+  def residentialShards(config: Option[RealHttpFetch.ProxyConfig]): Option[IndexedSeq[RealHttpFetch]] =
+    config.map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg))).toIndexedSeq)
+
+  /** The residential proxy (sticky across `shards`, each warmed on `warmUrl`
+   *  when given, metered and circuit-broken) with `fallback` behind it — the
+   *  chain the trait's `proxyPrimary` explains, shared with `tools.RosterAudit`. */
+  def proxyPrimary(shards: IndexedSeq[HttpFetch], fallback: HttpFetch, warmUrl: Option[String] = None,
+                   keyOf: String => String = StickyShardHttpFetch.hostAndPath,
+                   meter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop,
+                   onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome): HttpFetch = {
+    val legs = warmUrl.fold(shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
+    val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter)
+    new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = onOutcome)
+  }
 
   /** Wrap the sticky-shard proxy leg in a per-host circuit breaker, so a host
    *  whose Decodo tunnel starts failing (a pool-wide 503 spell, an account-level

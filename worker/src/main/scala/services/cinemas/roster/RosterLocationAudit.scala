@@ -76,11 +76,12 @@ object RosterFinding {
     val failing = false
     def describe: String = s"${venue.label}: not checked ($detail) — ${venue.sourceUrl}"
   }
-  /** A chain's venue list that could not be read this time — one note for all
-   *  its venues. Not failing: Multikino's list sits behind Cloudflare, which
-   *  refuses datacenter addresses outright, CI's among them. */
-  final case class DirectoryNotRead(directory: String, venues: Int, detail: String) extends RosterFinding {
-    val failing = false
+  /** A chain's venue list that could not be read this time — one finding for
+   *  all its venues. Not failing when read from a datacenter address alone:
+   *  Multikino's list sits behind Cloudflare, which refuses those outright, CI's
+   *  among them. `tools.ChainListEgress` fails it once the residential proxy was
+   *  tried too. */
+  final case class DirectoryNotRead(directory: String, venues: Int, detail: String, failing: Boolean = false) extends RosterFinding {
     def describe: String = s"$directory's venue list: not read ($detail) — its $venues venues not checked"
   }
 }

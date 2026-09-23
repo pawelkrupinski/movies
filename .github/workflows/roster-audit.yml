@@ -13,8 +13,12 @@ name: Cinema roster audit
 # Kino nad Wartą on Konin's culture centre, Kino Etiuda wired twice.
 #
 # NOT on push: it hits live sites (~175 requests, 5 at a time, backing off on
-# 429/503). Multikino's list sits behind Cloudflare, which may refuse CI's
-# address; that is noted in the summary, not failed on. The findings land in the run's job summary.
+# 429/503). Multikino's list sits behind Cloudflare, which refuses GitHub's
+# runner addresses (403, 2026-09-23), so the chain lists go through the Decodo
+# residential proxy (same secrets as the OG-card and security-headers
+# workflows), and a list still unread through it fails the run. Without the
+# secrets the lists are fetched directly and an unread one is only noted. The
+# findings land in the run's job summary.
 on:
     # Monday 05:00 UTC — before discover-cinemas' 06:00 slot.
     schedule:
@@ -44,4 +48,7 @@ jobs:
             # Exits 1 on any mismatch; the report is appended to the job summary
             # either way.
             - name: Run RosterAudit
+              env:
+                  KINOWO_PROXY_USER: ${{ secrets.KINOWO_PROXY_USER }}
+                  KINOWO_PROXY_PASS: ${{ secrets.KINOWO_PROXY_PASS }}
               run: sbt "worker/runMain tools.RosterAudit $GITHUB_STEP_SUMMARY"

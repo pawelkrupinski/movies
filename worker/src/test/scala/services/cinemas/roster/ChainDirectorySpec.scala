@@ -59,7 +59,7 @@ class ChainDirectorySpec extends AnyFlatSpec with Matchers {
     val blocked: String => FetchedPage = url => throw new HttpStatusException(403, "GET", url, None)
     val venues = Seq("0044", "0031").map(id => id -> AuditedVenue("leszno", s"M$id", "https://www.multikino.pl", Seq("Leszno")))
     RosterSourceReader.readDirectory(blocked, Today)(Multikino, venues) should matchPattern {
-      case Left(DirectoryNotRead("Multikino", 2, _)) =>
+      case Left(DirectoryNotRead("Multikino", 2, _, false)) =>
     }
     DirectoryNotRead("Multikino", 2, "HTTP 403").failing shouldBe false
   }
