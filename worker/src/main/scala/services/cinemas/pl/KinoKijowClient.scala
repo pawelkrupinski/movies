@@ -5,7 +5,7 @@ import tools.HttpFetch
 import services.movies.TitleNormalizer
 import models._
 import org.jsoup.Jsoup
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon, SlotsToMovies}
 
 import java.time.{LocalDate, LocalDateTime, YearMonth, ZoneId}
 import java.time.format.DateTimeFormatter
@@ -52,13 +52,14 @@ class KinoKijowClient(
   protected def fetchUnfiltered(): Seq[CinemaMovie] = {
     // Each month is read once: the walk parses a month to learn whether the
     // programme goes on, so its slots are kept rather than fetched again.
-    val byMonth = scala.collection.mutable.LinkedHashMap.empty[YearMonth, Seq[RawSlot]]
+    val byMonth = scala.collection.mutable.LinkedHashMap.empty[YearMonth, Try[Seq[RawSlot]]]
     ScrapeHorizon.liveMonths(YearMonth.from(today)) { month =>
       byMonth.getOrElseUpdate(month,
-        Try(http.get(monthUrl(month))).toOption.toSeq
-          .flatMap(html => parseDocument(html, month, titles))).nonEmpty
+        Try(http.get(monthUrl(month))).map(html => parseDocument(html, month, titles)))
+        .toOption.exists(_.nonEmpty)
     }
-    val slots = byMonth.values.toSeq.flatten
+    ListingPages.requireAnyReached(byMonth.values)
+    val slots = byMonth.values.toSeq.flatMap(_.toOption).flatten
 
     SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, Some(s.bookingUrl), format = s.format)) { (title, _, showtimes) =>
       CinemaMovie(

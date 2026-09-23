@@ -2,7 +2,7 @@ package services.cinemas.pl
 
 import tools.HttpFetch
 import models._
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
 import services.movies.TitleNormalizer
 
 import java.time.{LocalDate, ZoneId}
@@ -50,16 +50,17 @@ class Bilety24SubdomainClient(
     // yields no films rather than killing the walk. Each day is fetched once —
     // the walk parses a day to learn whether the programme goes on, so the
     // results are kept rather than asked for twice.
-    val byDate = scala.collection.mutable.LinkedHashMap.empty[LocalDate, Seq[CinemaMovie]]
+    val byDate = scala.collection.mutable.LinkedHashMap.empty[LocalDate, Try[Seq[CinemaMovie]]]
     ScrapeHorizon.liveDays(today) { d =>
       byDate.getOrElseUpdate(d,
-        Try(http.get(s"$repertuarUrl${sep}b24_day=$d")).toOption.toSeq
-          .flatMap(html => Bilety24OrganizerClient.parse(html, cinema, titles))).nonEmpty
+        Try(http.get(s"$repertuarUrl${sep}b24_day=$d")).map(html => Bilety24OrganizerClient.parse(html, cinema, titles)))
+        .toOption.exists(_.nonEmpty)
     }
+    ListingPages.requireAnyReached(byDate.values)
 
     // Merge across days: the same film recurs on several dates, so union each
     // title's showtimes (deduped, sorted) into a single row.
-    byDate.values.toSeq.flatten
+    byDate.values.toSeq.flatMap(_.toOption).flatten
       .groupBy(_.movie.title).toSeq
       .flatMap { case (_, group) =>
         val showtimes = group.flatMap(_.showtimes)

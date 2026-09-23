@@ -3,7 +3,7 @@ package services.cinemas.pl
 import models._
 import tools.{DaemonExecutors, HttpFetch, ParallelDetailFetch}
 import play.api.libs.json._
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ListingPages}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -85,13 +85,15 @@ class FilmwebShowtimesClient(
     val dates = (0 to daysAhead).map(today.plusDays(_))
 
     // One seances page per date, fetched in parallel and tolerantly: a failed
-    // or unparseable day yields no seances rather than killing the batch.
+    // or unparseable day yields no seances rather than killing the batch — but
+    // EVERY day failing means Filmweb is down, which fails the scrape.
     val seancesByDate = ParallelDetailFetch.keyed(
       "filmweb-seances", dates, 1.minute, maxConcurrent = 1
     )(d => seancesUrl(cinemaId, d)) { url =>
-      Try(http.get(url)).toOption.toSeq.flatMap(body => parseSeancesForUrl(body, url))
+      Try(http.get(url)).map(body => parseSeancesForUrl(body, url))
     }
-    val seances: Seq[RawSeance] = dates.flatMap(d => seancesByDate.getOrElse(d, Seq.empty))
+    ListingPages.requireAnyReached(dates.flatMap(seancesByDate.get))
+    val seances: Seq[RawSeance] = dates.flatMap(d => seancesByDate.get(d).flatMap(_.toOption).getOrElse(Seq.empty))
 
     if (seances.isEmpty) return Seq.empty
 

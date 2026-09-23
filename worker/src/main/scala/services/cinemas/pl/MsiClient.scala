@@ -3,7 +3,7 @@ package services.cinemas.pl
 import services.cinemas.common.ScraperParse
 import models._
 import tools.HttpFetch
-import services.cinemas.common.{CinemaScraper, ScrapeHorizon}
+import services.cinemas.common.{CinemaScraper, ListingPages, ScrapeHorizon}
 
 import java.time.{LocalDate, YearMonth, ZoneId}
 import scala.util.Try
@@ -114,8 +114,7 @@ class MsiClient(
     // /uptime) instead of being swallowed into an empty list (white,
     // indistinguishable from a genuinely film-dormant venue). Same guard as
     // KinoAwangarda2Client / KinoPatriaClient.
-    val tried = attempts.result()
-    if (tried.forall(_.isFailure)) throw tried.head.failed.get
+    ListingPages.requireAnyReached(attempts.result())
 
     MsiScraper.toMovies(slots.result(), cinema)
   }

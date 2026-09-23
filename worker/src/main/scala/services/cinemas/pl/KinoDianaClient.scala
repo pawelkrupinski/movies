@@ -35,9 +35,10 @@ class KinoDianaClient(http: HttpFetch, override val cinema: Cinema = KinoDiana)
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
   override def sourceUrl: Option[String] = Some(BaseUrl)
 
+  // The feed IS the listing: a failed fetch fails the scrape (red), not an empty one.
   def fetch(): Seq[CinemaMovie] =
     SlotsToMovies.fold(
-      parseFeed(Try(http.get(FeedUrl)).getOrElse("")),
+      parseFeed(http.get(FeedUrl)),
       titleOf    = _._1,
       showtimeOf = { case (_, dt, booking) => Showtime(dt, booking) }
     ) { (title, _, showtimes) =>

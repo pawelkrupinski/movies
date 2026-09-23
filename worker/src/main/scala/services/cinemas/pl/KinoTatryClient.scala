@@ -52,7 +52,8 @@ class KinoTatryClient(
   override def sourceUrl: Option[String] = Some(HomepageUrl)
 
   def fetch(): Seq[CinemaMovie] = {
-    val cards = parseHomepage(Try(http.get(HomepageUrl)).getOrElse(""), today, cinema)
+    // The homepage IS the listing: a failed fetch fails the scrape (red), not an empty one.
+    val cards = parseHomepage(http.get(HomepageUrl), today, cinema)
     if (cards.isEmpty) return Seq.empty
 
     val detailUrls = cards.flatMap(_.filmUrl).distinct

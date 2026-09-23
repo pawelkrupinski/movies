@@ -6,7 +6,7 @@ import tools.HttpFetch
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, ListingPages}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneId}
 import scala.jdk.CollectionConverters._
@@ -100,8 +100,7 @@ class KinoZamekClient(
     // a silent "0 showtimes" success that scrape-prune would read as the films
     // having stopped. (Same total-outage guard as `MsiClient`'s month walk.)
     val fetched = urls.map(url => url -> Try(http.get(url)))
-    if (fetched.nonEmpty && fetched.forall(_._2.isFailure))
-      fetched.head._2.failed.foreach(throw _)
+    ListingPages.requireAnyReached(fetched.map(_._2))
 
     val films = fetched.collect { case (url, Success(html)) => parseEvent(html, url, today, cinema) }.flatten
 
