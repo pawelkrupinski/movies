@@ -29,7 +29,7 @@ final class DetailsStore: ObservableObject {
     /// Same city-qualification contract as `RepertoireStore`.
     init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
         endpoint = ConditionalListEndpoint(
-            base: base, citySlug: citySlug, endpoint: "details", cache: DetailsCache.store, session: session)
+            base: base, citySlug: citySlug, endpoint: "details", cache: .details, session: session)
     }
 
     /// Re-point at a different country's deployment and reload (see

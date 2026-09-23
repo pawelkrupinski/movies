@@ -52,7 +52,7 @@ final class RepertoireStore: ObservableObject {
     /// `use(citySlug:)` once the first-launch gate lands.
     init(base: URL = kinowoBaseURL, citySlug: String = City.default.slug, session: URLSession = .shared) {
         endpoint = ConditionalListEndpoint(
-            base: base, citySlug: citySlug, endpoint: "repertoire", cache: RepertoireCache.store, session: session)
+            base: base, citySlug: citySlug, endpoint: "repertoire", cache: .repertoire, session: session)
         self.session = session
     }
 

@@ -71,7 +71,7 @@ let authTargets: [Target] = []
 //   stubbed `URLSession` in, real reload/cache/prune logic exercised)
 //   instead of only through the decoder-only line `LocalServerRepertoireTests`
 //   exercises. `RepertoireClient.swift` has no `import` statements for
-//   `Film`/`City`/`RepertoireCache`/etc — the Xcode app compiles it into one
+//   `Film`/`City`/`ConditionalPayloadCache`/etc — the Xcode app compiles it into one
 //   flat module alongside those types, with no module boundary at all. This
 //   target instead depends on `KinowoCore`/`KinowoAuth` properly and the file
 //   itself guards a `@testable import` of each behind `#if canImport(...)`,

@@ -34,7 +34,7 @@ final class LocalServerRepertoireTests: LocalServerTestCase {
         XCTAssertGreaterThanOrEqual(films.count, 20,
                                     "expected a healthy slate of films; got \(films.count)")
         XCTAssertNotNil(fetched.lastModified,
-                        "the JSON API should stamp Last-Modified — RepertoireCache keys its conditional request on it")
+                        "the JSON API should stamp Last-Modified — the repertoire cache keys its conditional request on it")
     }
 
     func testEveryFilmCarriesWhatTheCardRenders() throws {

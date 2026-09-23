@@ -13,8 +13,8 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
     private let otherCity = "otherdetailscity"
 
     override func tearDown() {
-        DetailsCache.save([], deployment: deployment, city: city, lastModified: nil)
-        DetailsCache.save([], deployment: deployment, city: otherCity, lastModified: nil)
+        ConditionalPayloadCache.details.save([], deployment: deployment, city: city, lastModified: nil)
+        ConditionalPayloadCache.details.save([], deployment: deployment, city: otherCity, lastModified: nil)
         URLProtocolStub.handler = nil
         super.tearDown()
     }
@@ -40,7 +40,7 @@ final class DetailsStoreCitySwitchTests: XCTestCase {
 
         XCTAssertNil(store.details(for: "Old City Film"))
         XCTAssertNotNil(store.details(for: "New City Film"))
-        XCTAssertEqual(DetailsCache.load(deployment: deployment, city: otherCity)?.map(\.title), ["New City Film"])
+        XCTAssertEqual(ConditionalPayloadCache.details.load(deployment: deployment, city: otherCity)?.map(\.title), ["New City Film"])
     }
 
     /// A city switch drops the OUTGOING city's details at once, as

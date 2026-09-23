@@ -98,3 +98,17 @@ struct ConditionalPayloadCache<Payload: Codable> {
         return text.components(separatedBy: "\n")
     }
 }
+
+// The two endpoints' caches. Separate files per endpoint so their
+// conditional-GET state never collides. Computed rather than stored: a
+// generic type can't hold a static stored property, and the value is just
+// two file names.
+extension ConditionalPayloadCache where Payload == Film {
+    /// `/{city}/api/repertoire`.
+    static var repertoire: Self { .init(bodyFile: "repertoire.json", metaFile: "repertoire-meta.txt") }
+}
+
+extension ConditionalPayloadCache where Payload == FilmDetails {
+    /// `/{city}/api/details`.
+    static var details: Self { .init(bodyFile: "details.json", metaFile: "details-meta.txt") }
+}
