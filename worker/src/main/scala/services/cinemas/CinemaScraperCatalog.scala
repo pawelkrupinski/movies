@@ -185,6 +185,7 @@ class CinemaScraperCatalog(
     KinoPlanetCinemaZabrze       -> MsiVenue("https://zabrze.planetcinema.pl"),
     KinoPlanetCinemaZawiercie    -> MsiVenue("https://zawiercie.planetcinema.pl"),
     KinoMOKNowaRuda              -> MsiVenue("https://bilety.nowaruda.pl"),
+    KinoStopiak                  -> MsiVenue("https://bilety.stopiakcinema.pl"),
     KinoPlaneta                  -> MsiVenue("https://rezerwacja.planetabrzesko.pl", mvcPath = "/Rezerwacja/mvc/pl"),
     KinoJutrzenka                -> MsiVenue("https://kino.sierpc.pl"),
     KinoNoweKinoWarszawa         -> MsiVenue("http://bilety.mck-gostynin.pl"),
@@ -192,6 +193,13 @@ class CinemaScraperCatalog(
     KinoODEON                    -> MsiVenue("https://kinoodeon.eurobilet.pl"),
     KinoIkar                     -> MsiVenue("https://kinoikar.mok-jar.pl"),
     KinoNaBiegunach              -> MsiVenue("https://jaroslaw.kinonabiegunach.pl"),
+    KinoMOKMiedzyrzecz           -> MsiVenue("https://bilety.mokmiedzyrzecz.pl"),
+    // Kino Manhattan's TLS leaf cert doesn't validate from here (times out
+    // over https, plain http serves the identical page) — same shape as the
+    // three expired-cert venues MsiClient's baseUrl doc names.
+    KinoManhattanJanikowo       -> MsiVenue("http://bilety.mgok.janikowo.com.pl"),
+    KinoAleKinoLibiaz           -> MsiVenue("https://biletylck.libiaz.pl"),
+    KinoWolnoscSzczecinek       -> MsiVenue("https://bilety.sapik.pl"),
   )
   private def msi(cinema: Cinema): MsiClient = {
     val venue = msiVenues(cinema)
@@ -251,6 +259,8 @@ class CinemaScraperCatalog(
     KinoNawojka                 -> "https://biletyna.pl/Lipno/Kino-Nawojka",
     KinoSCKStrzegom             -> "https://biletyna.pl/Strzegom/Kino-SCK",
     KinoSztuka                  -> "https://biletyna.pl/Chrzanow/Miejski-Osrodek-Kultury-Sportu-i-Rekreacji",
+    KinoGryfinskiDomKultury      -> "https://biletyna.pl/Gryfino/Sala-widowiskowa-Gryfinskiego-Domu-Kultury",
+    KinoTucholskiOsrodekKultury  -> "https://biletyna.pl/Tuchola/Tucholski-Osrodek-Kultury",
   )
   private def biletyna(cinema: Cinema): BiletynaClient =
     new BiletynaClient(bnFetch, biletynaPages(cinema), cinema)
@@ -278,6 +288,9 @@ class CinemaScraperCatalog(
     KinoRegis       -> "https://bilety.kino.bochnia.pl",
     KinoKalejdoskop -> "https://ckp.systembiletowy.pl",
     KinoKadrStaszow -> "https://sta.systembiletowy.pl",
+    KinoBieszczadzkiDK -> "https://bdk.systembiletowy.pl",
+    Kino1410        -> "https://kht.systembiletowy.pl",
+    KinoCKiBNowaSarzyna -> "https://oks.systembiletowy.pl",
   )
   private def systemBiletowy(cinema: Cinema): SystemBiletowyClient =
     new SystemBiletowyClient(http, systemBiletowyPortals(cinema), cinema, titles = titles)
@@ -485,6 +498,13 @@ class CinemaScraperCatalog(
     cinemaCity("1077", CinemaCityTorunCzerwonaDroga),
     cinemaCity("1093", CinemaCityTorunPlaza),
     new KinoCentrumCswClient(http, KinoCentrumCsw),
+    // Kino 1410's own site (kino1410.pl) links kht.systembiletowy.pl for booking —
+    // an existing platform, so it reuses SystemBiletowyClient rather than a new
+    // client. Mostly "event cinema" broadcasts (André Rieu, Met Opera) alongside
+    // the odd real film/classic-restoration screening; OnlyMovieEventsFilter
+    // keeps the broadcasts (see NonMovieEventClassifier's broadcast veto) and
+    // drops anything else event-shaped.
+    systemBiletowy(Kino1410),
   )
 
   private val kielceScrapers: Seq[CinemaScraper] = Seq(
@@ -695,6 +715,7 @@ class CinemaScraperCatalog(
     filmweb(1280, KinoGiewont),   // Zakopane
     filmweb(2336, KinoMiejsce),   // Zakopane
     bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-sportu-i-promocji-w-rabce-zdroju-625", KinoSniezkaRabka),   // Rabka-Zdrój
+    msi(KinoStopiak),   // Nowy Targ — own site links bilety.stopiakcinema.pl, a standard MSI portal
   )
   private val wyszkowScrapers = Seq(
     filmweb(2304, KinoDobrychFilmow),   // Wyszków
@@ -2052,6 +2073,7 @@ class CinemaScraperCatalog(
     "szczecin" -> Seq(
       filmweb(307, KinoMOKPolice),   // Police
       filmweb(1662, KinoEva),   // Międzyzdroje
+      biletyna(KinoGryfinskiDomKultury),   // Gryfino
     ),
     "bielsko-biala" -> Seq(
       biletyna(KinoPromyk),   // Bystra
@@ -2138,6 +2160,7 @@ class CinemaScraperCatalog(
     "bydgoszcz" -> Seq(
       biletyna(KinoCKSwiecie),   // Świecie
       filmweb(2329, KinoRelaks),   // Nakło nad Notecią
+      msi(KinoManhattanJanikowo),   // Janikowo
     ),
     "tarnow" -> Seq(
       filmweb(2408, KinoMCKRadlow),   // Radłów
@@ -2148,12 +2171,22 @@ class CinemaScraperCatalog(
     "gorzow-wielkopolski" -> Seq(
       biletyna(KinoMewaMiedzychod),   // Międzychód
       bilety24("https://www.bilety24.pl/kino/organizator/barlinecki-osrodek-kultury-1052", KinoPanorama),   // Barlinek
+      msi(KinoMOKMiedzyrzecz),   // Międzyrzecz
+    ),
+    "zielona-gora" -> Seq(
+      new KinoZaRogiemSiedlecClient(http, KinoZaRogiemSiedlec, today),   // Siedlec
     ),
     "nowy-sacz" -> Seq(
       bilety24("https://www.bilety24.pl/kino/organizator/mckcie-w-grybowie-kino-biala-1321", KinoMCKGrybow),   // Grybów
     ),
     "lublin" -> Seq(
       bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-promocji-i-turystyki-w-poniatowej-1220", KinoCzyn),   // Poniatowa
+      ekobilet("kino-milenium", KinoMilenium),   // Milejów
+      // MOK Świdnik's own page embeds a biletyna.pl "widget" iframe (ifid=22) —
+      // an UNRELATED biletyna integration from Kino Lot Jelenia Góra, which is a
+      // bilety24.pl subdomain instead. Distinct client because it's biletyna's
+      // HTML widget template, not the JSON-LD place page BiletynaClient parses.
+      new KinoLotSwidnikClient(http, KinoLotSwidnik),   // Świdnik
     ),
     "torun" -> Seq(
       helios(HeliosNuxt.Grudziadz),   // Grudziądz
@@ -2168,6 +2201,7 @@ class CinemaScraperCatalog(
       biletyna(KinoMOKGlogow),   // Głogów
       biletyna(TeatrGryphius),   // Głogów
       multikino("0048", MultikinoGlogow),   // Głogów
+      new KinoKulturaChojnowClient(http, KinoKulturaChojnow),   // Chojnów
     ),
     "piotrkow-trybunalski" -> Seq(
       biletyna(KinoMCKTkacz),   // Tomaszów Mazowiecki
@@ -2177,20 +2211,28 @@ class CinemaScraperCatalog(
       biletyna(KinoPromienWiecbork),   // Więcbork
       biletyna(KinoCKiSSepolno),   // Sępólno Krajeńskie
       biletyna(KinoGOKLipka),   // Lipka
+      biletyna(KinoTucholskiOsrodekKultury),   // Tuchola
+    ),
+    "tychy" -> Seq(
+      msi(KinoAleKinoLibiaz),   // Libiąż
     ),
     "ciechanow" -> Seq(
       biletyna(KinoNOKNasielsk),   // Nasielsk
+      ekobilet("kinoton", KinoTon),   // Żuromin
     ),
     "rybnik" -> Seq(
       biletyna(KinoFeniks),   // Rydułtowy
     ),
     "radom" -> Seq(
+      ekobilet("centrum-kultury-i-turystyki-w-ilzy-8211", KinoCKiTIlza),   // Iłża
       biletyna(KinoKsiazka),   // Stara Błotnica
+      new KinoRCKDrzewicaClient(http, KinoRCKDrzewica),   // Drzewica
     ),
     "zlocieniec" -> Seq(
       biletyna(KinoChDKChoszczno),   // Choszczno
       biletyna(KinoDOKDrawno),   // Drawno
       biletyna(KinoMGOKRecz),   // Recz
+      msi(KinoWolnoscSzczecinek),   // Szczecinek
     ),
     "pila" -> Seq(
       biletyna(KinoOKJastrowie),   // Jastrowie
@@ -2200,15 +2242,22 @@ class CinemaScraperCatalog(
     ),
     "czestochowa" -> Seq(
       msi(KinoPlanetCinemaZawiercie),   // Zawiercie
+      new KinoMDKMyszkowClient(http, KinoMDKMyszkow),   // Myszków
     ),
     "ketrzyn" -> Seq(
       new KinoNowaFalaClient(http, KinoNowaFalaGizycko),   // Giżycko
     ),
     "przemysl" -> Seq(
       new SystemBiletowyClient(http, "https://udk.systembiletowy.pl", KinoOrzelUstrzyki, titles = titles),   // Ustrzyki Dolne
+      systemBiletowy(KinoBieszczadzkiDK),   // Lesko
     ),
     "katowice" -> Seq(
       new KinoGrajfkaClient(http, KinoGrajfka),   // Chorzów
+      // Kino Frajda (Starochorzowski Dom Kultury) shares its bilety.chck.pl
+      // systembiletowy portal with Chorzowskie Centrum Kultury's own events —
+      // filmGroups keeps only the "Imprezy SDK" rows, same pattern as
+      // KinoBCKBytom below but with this venue's own data-group value.
+      new SystemBiletowyClient(http, "https://bilety.chck.pl", KinoFrajda, titles = titles, filmGroups = Set("Imprezy SDK")),   // Chorzów
     ),
     "ostrowiec-swietokrzyski" -> Seq(
       systemBiletowy(KinoKadrStaszow),   // Staszów
@@ -2228,6 +2277,23 @@ class CinemaScraperCatalog(
     ),
     "wlodawa" -> Seq(
       new KinoParczewClient(http, KinoParczew),   // Parczew
+    ),
+    "leszno" -> Seq(
+      ekobilet("dom-kultury-w-gorze-7114", KinoDKGora),   // Góra
+      ekobilet("zpkwasosz", KinoZaciszeWasosz),   // Wąsosz
+    ),
+    "pulawy" -> Seq(
+      ekobilet("ock-opolelubelskie", KinoOpolanka),   // Opole Lubelskie
+    ),
+    "zamosc" -> Seq(
+      new KinoKadrTomaszowLubelskiClient(http, KinoKadrTomaszowLubelski, today),   // Tomaszów Lubelski
+    ),
+    "stalowa-wola" -> Seq(
+      new KinoJOKClient(http, KinoJOK, today),   // Janów Lubelski
+      systemBiletowy(KinoCKiBNowaSarzyna),   // Nowa Sarzyna
+    ),
+    "rzeszow" -> Seq(
+      new KinoSokolStrzyzowClient(http, KinoSokolStrzyzow, today),   // Strzyżów
     ),
   )
 

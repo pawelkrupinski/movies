@@ -1,0 +1,731 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="version" content="1.7.6.5.4 | 17.08.2026 20:53:20">
+
+    <link href="/MSI/Themes/Default/Vendors/bundle/style?v=" rel="stylesheet"/>
+
+
+             <link rel="stylesheet" href="/MSI/Themes/msidemo2/Vendors/Styles/normalize-3.0.2.css?v=112417122334"/>
+         <link rel="stylesheet" href="/MSI/Themes/msidemo2/Vendors/Styles/bootstrap-3.3.1.min.css?v=112417122334"/>
+         <link rel="stylesheet" href="/MSI/Themes/msidemo2/Vendors/Styles/jquery.fancybox.css?v=112417122334"/>
+         <link rel="stylesheet" href="/MSI/Themes/msidemo2/Vendors/Styles/font-awesome-ie7.min.css?v=112417122334"/>
+         <link rel="stylesheet" href="/MSI/Themes/msidemo2/Vendors/Styles/font-awesome.min.css?v=112417122334"/>
+
+             <link rel="stylesheet" href="/MSI/Themes/msidemo2/Styles/global.css?v=020520011133"/>
+
+    <link href='http://fonts.googleapis.com/css?family=Merriweather+Sans&subset=latin,latin-ext' rel='stylesheet' type='text/css'>
+             <script type="text/javascript" src="/MSI/Themes/msidemo2/Vendors/Scripts/jquery-1.11.2.min.js?v=112417122335"></script>
+         <script type="text/javascript" src="/MSI/Themes/msidemo2/Vendors/Scripts/handlebars-v2.0.0.js?v=112417122335"></script>
+         <script type="text/javascript" src="/MSI/Themes/msidemo2/Vendors/Scripts/modernizr.js?v=112417122335"></script>
+
+
+    <title>Samorządowa Agencja Promocji i Kultury</title>
+
+    <!-- Facebook Pixel Code -->
+    <script>
+        !function (f, b, e, v, n, t, s) {
+            if (f.fbq) return; n = f.fbq = function () {
+                n.callMethod ?
+                n.callMethod.apply(n, arguments) : n.queue.push(arguments)
+            }; if (!f._fbq) f._fbq = n;
+            n.push = n; n.loaded = !0; n.version = '2.0'; n.queue = []; t = b.createElement(e); t.async = !0;
+            t.src = v; s = b.getElementsByTagName(e)[0]; s.parentNode.insertBefore(t, s)
+        }(window,
+        document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '551622211703662');
+        fbq('track', 'PageView');
+    </script>
+    <noscript><img height="1" width="1" style="display:none"
+    src="https://www.facebook.com/tr?id=551622211703662&ev=PageView&noscript=1"
+    /></noscript>
+    <!-- DO NOT MODIFY -->
+        <!-- End Facebook Pixel Code -->
+
+</head>
+<body>
+    <div id="preloader"></div>
+
+
+
+        <nav class="navbar navbar-fixed-top navbar-top-color">
+        <div class="container">
+        </div>
+    </nav>
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-fixed-top navbar-top-color">
+        <div class="container">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand pull-left" href="/MSI/">
+                    <img src="/MSI/Themes/msidemo2/images/logo.png" alt="Samorządowa Agencja Promocji i Kultury" title="Samorządowa Agencja Promocji i Kultury" class="brand" height="40">
+                </a>
+            </div>
+            <div id="navbar" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/MSI/ShoppingCart.aspx" data-toggle="tooltip" data-original-title="koszyk: pusty">
+                                <i class="fa fa-shopping-cart fa-1"></i>
+                            </a>
+                        </li>
+
+                    <li><div class="cart-timer1-tick">
+    <input id="serverShoppingCartEndDateTime" type="hidden" value="" />
+    <input id="serverShoppingCartLifeTimeInMinutes" type="hidden" value="10" />
+    <div class="shopping-cart-expired-modal recomendedeventmodal-modal modal recomendedeventmodal-fade fade" id="shoppingCartExpiredModal" tabindex="-1" role="dialog">
+        <div class="modal-backdrop fade in" style="bottom: 0"></div>
+        <div class="recomendedeventmodal-modal-dialog" style="max-width: 560px; word-wrap: break-word;">
+            <div class="recomendedeventmodal-modal-content">
+
+                <div class="recomendedeventmodal-modal-header text-center">
+                    <span class="fa fa-warning"></span>Zakończył się czas koszyka!.
+                    <button class="close" onclick=" closeShoppingCart() " type="button"><span aria-hidden="true">×</span></button>
+                </div>
+                <div class="recomendedeventmodal-modal-body modal-body text-center">
+                    Czas na zrealizowanie zam&#243;wienia niestety dobiegł końca. Prosimy o ponowne wybranie bilet&#243;w i dodanie ich do koszyka.
+                    <p>
+                        <button onclick=" closeShoppingCart() " class="btn btn-warning" type="button"><span aria-hidden="true">Zamknij</span></button>
+                    </p>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="timer-alert" class="timer-alert" role="alert" style="display: none;">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick="window.location.reload();">
+            <span aria-hidden="true">&times;</span>
+            Zakończył się czas koszyka!
+        </button>
+    </div>
+
+    <div id="timer-window" class="timer-window" style="display: none;">
+        Koszyk wygaśnie za: <strong id="timer"></strong>
+    </div>
+</div>
+<script type="text/javascript">
+    function closeShoppingCart() {
+        $(function () {
+            $.ajax({
+                type: "POST",
+                url: "../Ajax.aspx/CloseShoppingCart",
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    var names = response.d;
+                    console.log(names);
+                    window.location.reload();
+                },
+                error: function (response) {
+                    console.log(response);
+                    window.location.reload();
+                }
+            });
+        });
+    }
+</script>
+</li>
+
+
+                </ul>
+            </div>
+            <!--/.nav-collapse -->
+        </div>
+    </nav>    
+
+
+
+
+
+    <div id="body" class="container container-site">
+
+        <input type="hidden" id="randomWindowName" value="eade892426784a8a9dca7c9c94892d86"/>
+        <input type="hidden" id="isNewSessionWindowName" value="True"/>
+        <input type="hidden" id="sessionWindowName" value="eade892426784a8a9dca7c9c94892d86"/>
+        <input type="hidden" id="absoluteHomeUrl" value="/MSI/"/>
+
+        <div class="row">
+
+
+            
+
+            
+
+
+<div class="row">
+    <div class="col-sm-12">
+        
+
+      <div class="col-xs-12">
+          <div class="dates-box">
+              Wybierz dzień:
+          </div>
+      </div>
+          <div class="col-sm-12">
+              <div class="no-gutter">
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-25&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">piątek</span>
+                              <span class="daynumber ">25</span>
+                              <sup class="sup ">wrz</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-26&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">sobota</span>
+                              <span class="daynumber ">26</span>
+                              <sup class="sup ">wrz</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-27&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">niedziela</span>
+                              <span class="daynumber ">27</span>
+                              <sup class="sup ">wrz</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-28&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">poniedziałek</span>
+                              <span class="daynumber ">28</span>
+                              <sup class="sup ">wrz</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-29&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">wtorek</span>
+                              <span class="daynumber ">29</span>
+                              <sup class="sup ">wrz</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-09-30&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">środa</span>
+                              <span class="daynumber ">30</span>
+                              <sup class="sup ">wrz</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-01&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">czwartek</span>
+                              <span class="daynumber ">01</span>
+                              <sup class="sup ">paź</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-02&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">piątek</span>
+                              <span class="daynumber ">02</span>
+                              <sup class="sup ">paź</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-03&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">sobota</span>
+                              <span class="daynumber ">03</span>
+                              <sup class="sup ">paź</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-04&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">niedziela</span>
+                              <span class="daynumber ">04</span>
+                              <sup class="sup ">paź</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                      <a href="/MSI/mvc/pl?sort=Name&amp;date=2026-10-07&amp;datestart=0" class="eventcard col-6 col-sm-1 col-lg-1 ">
+                              <span class="hidden-md hidden-sm hidden-xs daynumbertop ">środa</span>
+                              <span class="daynumber ">07</span>
+                              <sup class="sup ">paź</sup>
+
+                          <span class="hidden-md hidden-sm hidden-xs yearnumber ">2026</span>
+                      </a>
+                  <div class=""> 
+
+<a class="dropdown-toggle eventcard calendarcard col-sm-1 col-lg-1 pull-right" data-toggle="dropdown" href="#">
+    <i class="fa fa-calendar fa-2x icon daynumber"></i>
+    <span class="name hidden-md hidden-sm hidden-xs">KALENDARZ</span>
+</a>
+
+
+
+<ul class="open dropdown-menu pull-right">
+    <li class="noborder calendar-test" data-date="01/09/2026"></li>
+</ul>
+
+</div>
+              </div>
+              
+          </div>
+
+    </div>
+    <div class="col-sm-12">
+        
+      <div class="col-xs-12">
+          <!-- Static navbar -->
+          <nav class="navbar navbar-sorting">
+              <div class="navbar-left">
+                  <h3>wrzesień 2026</h3>
+              </div>
+              <div class="navbar-right sorting-buttons">
+                  <div class="btn-group" role="group" aria-label="">
+
+                          <a href="?sort=Date&amp;date=2026-09&amp;datestart=0" class="btn btn-wiecej bold text-uppercase " data-toggle="tooltip" data-original-title="Data/godzina">Data/godzina</a>
+                          <a href="?sort=Flow&amp;date=2026-09&amp;datestart=0" class="btn btn-wiecej bold text-uppercase " data-toggle="tooltip" data-original-title="Tytuł">Tytuł</a>
+                  </div>
+                  
+              </div>
+          </nav>
+      </div>
+
+    </div>
+</div>
+
+<div class="row">
+
+        <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12" style="margin-top:auto;">
+            <div class="panel panel-default eventlist">
+                <div class="media">
+                    <div class="media-left">
+                            <div class="text-uppercase event-new text-small-2x">Premiera!</div>
+
+                                <a rel="gallery1" href="/MSI/mvc/pl/details/3495?sort=Name&amp;date=2026-09&amp;dateStart=0" title="DKF - Homo sapiens 2D napisy">
+                                    <img class="img-responsive"
+                                         style="min-width: 170px"
+                                         src="/MSI/ImageData.ashx?id=1131&mode=cropresize&width=170&height=240"
+                                         alt="DKF - Homo sapiens 2D napisy" />
+                                </a>
+                    </div>
+                    <div class="media-body padding5" style="min-width: 170px">
+                        <div class="media-heading">
+                            <h4 class="text-uppercase word-wrap">DKF - Homo sapiens 2D napisy</h4>
+                        </div>
+                        <div class="media-bottom">
+                            <ul class="list-unstyled clearfix">
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23125&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23125" class="btn btn-badge btn-block btn-margin " data-event="23125" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;298&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 30 wrz 18:30</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 298/298</span>
+    </a>
+
+                                    </li>
+                            </ul>
+                            <ul class="list-unstyled clearfix" style="position: absolute; bottom:25px;right:20px">
+                                    <li>
+                                        <a href="/MSI/mvc/pl/details/3495?sort=Name&amp;date=2026-09&amp;dateStart=0" class="btn btn-wiecej text-uppercase">
+                                            <span class="fa fa-arrow-circle-right pull-right"></span>
+                                            Więcej
+                                        </a>
+                                    </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12" style="margin-top:auto;">
+            <div class="panel panel-default eventlist">
+                <div class="media">
+                    <div class="media-left">
+                            <div class="text-uppercase event-new text-small-2x">Premiera!</div>
+
+                                <a rel="gallery1" href="/MSI/mvc/pl/details/3468?sort=Name&amp;date=2026-09&amp;dateStart=0" title="Psi Patrol i dinozaury 2D dubbing">
+                                    <img class="img-responsive"
+                                         style="min-width: 170px"
+                                         src="/MSI/ImageData.ashx?id=1104&mode=cropresize&width=170&height=240"
+                                         alt="Psi Patrol i dinozaury 2D dubbing" />
+                                </a>
+                    </div>
+                    <div class="media-body padding5" style="min-width: 170px">
+                        <div class="media-heading">
+                            <h4 class="text-uppercase word-wrap">Psi Patrol i dinozaury 2D dubbing</h4>
+                        </div>
+                        <div class="media-bottom">
+                            <ul class="list-unstyled clearfix">
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23031&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23031" class="btn btn-badge btn-block btn-margin " data-event="23031" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;296&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 25 wrz 16:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 296/298</span>
+    </a>
+
+                                    </li>
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23034&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23034" class="btn btn-badge btn-block btn-margin " data-event="23034" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;294&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 26 wrz 15:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 294/298</span>
+    </a>
+
+                                    </li>
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23037&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23037" class="btn btn-badge btn-block btn-margin " data-event="23037" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;298&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 27 wrz 15:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 298/298</span>
+    </a>
+
+                                    </li>
+                            </ul>
+                            <ul class="list-unstyled clearfix" style="position: absolute; bottom:25px;right:20px">
+                                    <li>
+                                        <a href="/MSI/mvc/pl/details/3468?sort=Name&amp;date=2026-09&amp;dateStart=0" class="btn btn-wiecej text-uppercase">
+                                            <span class="fa fa-arrow-circle-right pull-right"></span>
+                                            Więcej
+                                        </a>
+                                    </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12" style="margin-top:auto;">
+            <div class="panel panel-default eventlist">
+                <div class="media">
+                    <div class="media-left">
+                            <div class="text-uppercase event-new text-small-2x">Premiera!</div>
+
+                                <a rel="gallery1" href="/MSI/mvc/pl/details/3469?sort=Name&amp;date=2026-09&amp;dateStart=0" title="Tony 2D napisy">
+                                    <img class="img-responsive"
+                                         style="min-width: 170px"
+                                         src="/MSI/ImageData.ashx?id=1105&mode=cropresize&width=170&height=240"
+                                         alt="Tony 2D napisy" />
+                                </a>
+                    </div>
+                    <div class="media-body padding5" style="min-width: 170px">
+                        <div class="media-heading">
+                            <h4 class="text-uppercase word-wrap">Tony 2D napisy</h4>
+                        </div>
+                        <div class="media-bottom">
+                            <ul class="list-unstyled clearfix">
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23032&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23032" class="btn btn-badge btn-block btn-margin " data-event="23032" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;298&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 25 wrz 18:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 298/298</span>
+    </a>
+
+                                    </li>
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23035&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23035" class="btn btn-badge btn-block btn-margin " data-event="23035" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;297&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 26 wrz 17:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 297/298</span>
+    </a>
+
+                                    </li>
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23038&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23038" class="btn btn-badge btn-block btn-margin " data-event="23038" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;298&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 27 wrz 17:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 298/298</span>
+    </a>
+
+                                    </li>
+                            </ul>
+                            <ul class="list-unstyled clearfix" style="position: absolute; bottom:25px;right:20px">
+                                    <li>
+                                        <a href="/MSI/mvc/pl/details/3469?sort=Name&amp;date=2026-09&amp;dateStart=0" class="btn btn-wiecej text-uppercase">
+                                            <span class="fa fa-arrow-circle-right pull-right"></span>
+                                            Więcej
+                                        </a>
+                                    </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4 col-md-6 col-sm-12 col-xs-12" style="margin-top:auto;">
+            <div class="panel panel-default eventlist">
+                <div class="media">
+                    <div class="media-left">
+                            <div class="text-uppercase event-new text-small-2x">Premiera!</div>
+
+                                <a rel="gallery1" href="/MSI/mvc/pl/details/3470?sort=Name&amp;date=2026-09&amp;dateStart=0" title="Totalna magia 2 2D napisy">
+                                    <img class="img-responsive"
+                                         style="min-width: 170px"
+                                         src="/MSI/ImageData.ashx?id=1106&mode=cropresize&width=170&height=240"
+                                         alt="Totalna magia 2 2D napisy" />
+                                </a>
+                    </div>
+                    <div class="media-body padding5" style="min-width: 170px">
+                        <div class="media-heading">
+                            <h4 class="text-uppercase word-wrap">Totalna magia 2 2D napisy</h4>
+                        </div>
+                        <div class="media-bottom">
+                            <ul class="list-unstyled clearfix">
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23033&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23033" class="btn btn-badge btn-block btn-margin " data-event="23033" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;298&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 25 wrz 20:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 298/298</span>
+    </a>
+
+                                    </li>
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23036&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23036" class="btn btn-badge btn-block btn-margin " data-event="23036" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;298&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 26 wrz 19:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 298/298</span>
+    </a>
+
+                                    </li>
+                                    <li>
+                                            <a href="/MSI/Default.aspx?event_id=23039&amp;typetran=0&amp;returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-09"  id = "EventLH 23039" class="btn btn-badge btn-block btn-margin " data-event="23039" data-toggle="tooltip" data-html="true" data-original-title="Sala: &lt;strong&gt;298&lt;/strong&gt; miejsc&lt;br&gt;Dostępnych: &lt;strong&gt;298&lt;/strong&gt;&lt;br&gt;Kliknij aby kupić bilet.">
+        <span class=""><span class="fa fa-clock-o"></span> 27 wrz 19:00</span>
+
+            <span>|</span> <span class="text-small-2x"><span class="glyphicon glyphicon-user"></span> 298/298</span>
+    </a>
+
+                                    </li>
+                            </ul>
+                            <ul class="list-unstyled clearfix" style="position: absolute; bottom:25px;right:20px">
+                                    <li>
+                                        <a href="/MSI/mvc/pl/details/3470?sort=Name&amp;date=2026-09&amp;dateStart=0" class="btn btn-wiecej text-uppercase">
+                                            <span class="fa fa-arrow-circle-right pull-right"></span>
+                                            Więcej
+                                        </a>
+                                    </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+</div>
+
+
+        </div>
+    </div>
+
+    
+    <footer class="footer">
+        <div class="container">
+            <div class="col-sm-3 hidden-sm hidden-xs">
+                    <div class="col-sm-12">
+                        <div class="footer-container footer-text text-muted text-center">
+
+                            <p class="footer-title">Autorem serwisu jest Vector Software sp. z o.o. Operatorem płatności jest Dotpay</p>
+                        </div>
+                    </div>
+                <div class="col-sm-12">
+                    <a class="" href="/MSI/" style="padding-top: 20px;)">
+                        <img src="/MSI/Themes/msidemo2/images/logo-vectorsoft.png" class="img-responsive center-block" alt="" title="" width="240">
+                    </a>
+                </div>
+            </div>
+            <div class="col-sm-5 hidden-sm hidden-xs">
+                <div class="footer-container footer-text text-muted text-left">
+                    <div class="col-sm-7">
+                        <p class="footer-title">Kontakt</p>
+                            <div>
+                                <span class="fa fa-phone text-color"></span>
+                                094 712 83 02
+                            </div>
+                                                                                                    <div>
+                                <span class="fa fa-envelope text-color"></span>
+                                <span class="word-wrap" style="word-wrap: break-word;"><a href="mailto:sapik@sapik.pl">sapik@sapik.pl</a></span>
+                            </div>
+                    </div>
+                    <div class="col-sm-5">
+
+                        <p class="footer-title">Social media</p>
+                                                                                                                                                                            <hr />
+                            <a class="text-uppercase" href="/MSI/getticket.aspx"><span class="fa fa-ticket"></span> Pobierz swoje bilety </a>
+
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-4">
+                <div class="footer-container footer-text text-muted text-left">
+                    <div class="col-sm-12">
+                        <p class="footer-title word-wrap">
+                            Samorządowa Agencja Promocji i Kultury
+                        </p>
+                        <p class="word-wrap">
+                            <span class="fa fa-map-marker text-color"></span>
+                            ul. Wyszyńskiego 65,
+                            78-400
+                            Szczecinek
+                        </p>
+                    </div>
+
+                        <div class="col-sm-12">
+                            <p class="text-left">
+                                <span class="fa fa-book text-color"></span>&nbsp;673-12-79-161
+                            </p>
+                        </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+
+
+    <script src="/MSI/bundle/default/scripts?v="></script>
+
+
+      <script id="repo-template" type="text/x-handlebars-template">
+        <div class="modal fade in dialog" id="RepoModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: block">
+            <div class="modal-backdrop fade in" style="bottom: 0"></div>
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title dialog-title">
+                            <span class="glyphicon glyphicon-tag"></span>
+                            {{Name}}
+                        </h4>
+                    </div>
+                    <div class="modal-body" style="max-width: 560px; word-wrap:break-word;">
+                        <div class="media">
+                            {{#ifCond PosterId '>' 0}}
+                            <div class="media-left hidden-xs">
+                                <a href="#">
+                                    <img src="/MSI/ImageData.ashx?id={{PosterId}}&amp;mode=thumb" alt="{{Name}}" class="" />
+                                </a>
+                            </div>
+                            {{/ifCond}}
+                            <div class="media-body" style="max-width: 560px; word-wrap:break-word;">
+                                Data: <strong class="dialog-strong">{{Date}}</strong>
+                                {{#if Hour}}
+                                <div>Godzina: <strong class="dialog-strong">{{Hour}}</strong></div>
+                                {{/if}}
+                                {{#if Description}}
+                                <br />
+                                <div class="hidden-xs">{{{Description}}}</div>
+                                {{/if}}
+                            </div>
+                            <div class="modal-footer">
+                                <div class="row">
+                                    <div class="col-sm-3">
+                                        <button type="button" class="btn btn-anuluj btn-block" data-dismiss="modal" aria-label="Close">
+                                            <span class="glyphicon glyphicon-remove"></span>ANULUJ
+                                        </button>
+                                    </div>
+                                    {{#if ShowBuyButton}}
+                                    <div class="col-sm-4">
+                                        <a href="{{ UrlBuy }}" class="btn btn-kup btn-block">
+                                            <span class="glyphicon glyphicon-credit-card"></span>KUP BILET
+                                        </a>
+                                    </div>
+                                    {{/if}}
+                                    {{#if ShowReservationButton}}
+                                    <div class="col-sm-5">
+                                        <a href="{{ UrlRez }}" class="btn btn-rezerwuj btn-block">
+                                            <span class="glyphicon glyphicon-star"></span>REZERWUJ MIEJSCE
+                                        </a>
+                                    </div>
+                                    {{/if}}
+                                </div>
+                                <div class="row">
+                                    <div class="col-xs-12" style="margin-top: 15px; text-align: justify">
+                                        <div class="alert alert-warning" style="margin-bottom: 0">Uwaga! W następnym kroku nie ma już możliwości wyboru pomiędzy Kupnem bilet&#243;w a Rezerwacją miejsc.</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </script>
+    <script type="text/javascript">
+    var RepertoireEvents = [{ 'Id': 23125, 'Name': 'DKF - Homo sapiens 2D napisy', 'Date': '30.09.2026', 'Hour': '18:30', 'PosterId': '1131', 'Description': 'Reporter na mundialu, ksiądz z dzielnicy slumsów, milioner, reżyser filmowy, neurotyczny intelektualista, prezydent elekt. Wszystkie te postaci, i kilka innych, łączy wcielający się w nie wybitny argentyński aktor Guillermo Francella w nowej produkcji popularnego duetu Gastón Duprat i Mariano Cohn. Ich film podzielony jest...', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23031, 'Name': 'Psi Patrol i dinozaury 2D dubbing', 'Date': '25.09.2026', 'Hour': '16:00', 'PosterId': '1104', 'Description': 'Podczas burzy statek Psiego Patrolu rozbija się na wyspie pełnej dinozaurów. Tam spotykają Reksa, szczeniaka-eksperta od dinozaurów. Gdy Humdinger lekkomyślnie eksploatuje wyspę, budzi wulkan. Pieski muszą go powstrzymać i uratować wyspę.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23034, 'Name': 'Psi Patrol i dinozaury 2D dubbing', 'Date': '26.09.2026', 'Hour': '15:00', 'PosterId': '1104', 'Description': 'Podczas burzy statek Psiego Patrolu rozbija się na wyspie pełnej dinozaurów. Tam spotykają Reksa, szczeniaka-eksperta od dinozaurów. Gdy Humdinger lekkomyślnie eksploatuje wyspę, budzi wulkan. Pieski muszą go powstrzymać i uratować wyspę.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23037, 'Name': 'Psi Patrol i dinozaury 2D dubbing', 'Date': '27.09.2026', 'Hour': '15:00', 'PosterId': '1104', 'Description': 'Podczas burzy statek Psiego Patrolu rozbija się na wyspie pełnej dinozaurów. Tam spotykają Reksa, szczeniaka-eksperta od dinozaurów. Gdy Humdinger lekkomyślnie eksploatuje wyspę, budzi wulkan. Pieski muszą go powstrzymać i uratować wyspę.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23040, 'Name': 'Psi Patrol i dinozaury 2D dubbing', 'Date': '28.09.2026', 'Hour': '16:00', 'PosterId': '1104', 'Description': 'Podczas burzy statek Psiego Patrolu rozbija się na wyspie pełnej dinozaurów. Tam spotykają Reksa, szczeniaka-eksperta od dinozaurów. Gdy Humdinger lekkomyślnie eksploatuje wyspę, budzi wulkan. Pieski muszą go powstrzymać i uratować wyspę.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23043, 'Name': 'Psi Patrol i dinozaury 2D dubbing', 'Date': '29.09.2026', 'Hour': '16:00', 'PosterId': '1104', 'Description': 'Podczas burzy statek Psiego Patrolu rozbija się na wyspie pełnej dinozaurów. Tam spotykają Reksa, szczeniaka-eksperta od dinozaurów. Gdy Humdinger lekkomyślnie eksploatuje wyspę, budzi wulkan. Pieski muszą go powstrzymać i uratować wyspę.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23046, 'Name': 'Psi Patrol i dinozaury 2D dubbing', 'Date': '30.09.2026', 'Hour': '16:00', 'PosterId': '1104', 'Description': 'Podczas burzy statek Psiego Patrolu rozbija się na wyspie pełnej dinozaurów. Tam spotykają Reksa, szczeniaka-eksperta od dinozaurów. Gdy Humdinger lekkomyślnie eksploatuje wyspę, budzi wulkan. Pieski muszą go powstrzymać i uratować wyspę.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23032, 'Name': 'Tony 2D napisy', 'Date': '25.09.2026', 'Hour': '18:00', 'PosterId': '1105', 'Description': 'Upalne lato 1976 roku, Provincetown – miasto pulsujące wolnością, seksem i energią. Młody, marzący o karierze pisarza, Tony, by podreperować budżet, trafia na zmywak do restauracji serwującej owoce morza, prowadzonej przez tajemniczego szefa kuchni. W intensywnej, chaotycznej, a jednocześnie niezwykle kreatywnej atmosferze...', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23035, 'Name': 'Tony 2D napisy', 'Date': '26.09.2026', 'Hour': '17:00', 'PosterId': '1105', 'Description': 'Upalne lato 1976 roku, Provincetown – miasto pulsujące wolnością, seksem i energią. Młody, marzący o karierze pisarza, Tony, by podreperować budżet, trafia na zmywak do restauracji serwującej owoce morza, prowadzonej przez tajemniczego szefa kuchni. W intensywnej, chaotycznej, a jednocześnie niezwykle kreatywnej atmosferze...', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23038, 'Name': 'Tony 2D napisy', 'Date': '27.09.2026', 'Hour': '17:00', 'PosterId': '1105', 'Description': 'Upalne lato 1976 roku, Provincetown – miasto pulsujące wolnością, seksem i energią. Młody, marzący o karierze pisarza, Tony, by podreperować budżet, trafia na zmywak do restauracji serwującej owoce morza, prowadzonej przez tajemniczego szefa kuchni. W intensywnej, chaotycznej, a jednocześnie niezwykle kreatywnej atmosferze...', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23041, 'Name': 'Tony 2D napisy', 'Date': '28.09.2026', 'Hour': '18:00', 'PosterId': '1105', 'Description': 'Upalne lato 1976 roku, Provincetown – miasto pulsujące wolnością, seksem i energią. Młody, marzący o karierze pisarza, Tony, by podreperować budżet, trafia na zmywak do restauracji serwującej owoce morza, prowadzonej przez tajemniczego szefa kuchni. W intensywnej, chaotycznej, a jednocześnie niezwykle kreatywnej atmosferze...', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23044, 'Name': 'Tony 2D napisy', 'Date': '29.09.2026', 'Hour': '18:00', 'PosterId': '1105', 'Description': 'Upalne lato 1976 roku, Provincetown – miasto pulsujące wolnością, seksem i energią. Młody, marzący o karierze pisarza, Tony, by podreperować budżet, trafia na zmywak do restauracji serwującej owoce morza, prowadzonej przez tajemniczego szefa kuchni. W intensywnej, chaotycznej, a jednocześnie niezwykle kreatywnej atmosferze...', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23047, 'Name': 'Tony 2D napisy', 'Date': '30.09.2026', 'Hour': '14:00', 'PosterId': '1105', 'Description': 'Upalne lato 1976 roku, Provincetown – miasto pulsujące wolnością, seksem i energią. Młody, marzący o karierze pisarza, Tony, by podreperować budżet, trafia na zmywak do restauracji serwującej owoce morza, prowadzonej przez tajemniczego szefa kuchni. W intensywnej, chaotycznej, a jednocześnie niezwykle kreatywnej atmosferze...', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23033, 'Name': 'Totalna magia 2 2D napisy', 'Date': '25.09.2026', 'Hour': '20:00', 'PosterId': '1106', 'Description': 'Wielopokoleniowa rodzina czarownic, skazana na wieki na brak miłości, próbuje złamać klątwę, stawiając czoła mrocznym sekretom i poświęcając się dla siebie nawzajem.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23036, 'Name': 'Totalna magia 2 2D napisy', 'Date': '26.09.2026', 'Hour': '19:00', 'PosterId': '1106', 'Description': 'Wielopokoleniowa rodzina czarownic, skazana na wieki na brak miłości, próbuje złamać klątwę, stawiając czoła mrocznym sekretom i poświęcając się dla siebie nawzajem.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23039, 'Name': 'Totalna magia 2 2D napisy', 'Date': '27.09.2026', 'Hour': '19:00', 'PosterId': '1106', 'Description': 'Wielopokoleniowa rodzina czarownic, skazana na wieki na brak miłości, próbuje złamać klątwę, stawiając czoła mrocznym sekretom i poświęcając się dla siebie nawzajem.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23042, 'Name': 'Totalna magia 2 2D napisy', 'Date': '28.09.2026', 'Hour': '20:00', 'PosterId': '1106', 'Description': 'Wielopokoleniowa rodzina czarownic, skazana na wieki na brak miłości, próbuje złamać klątwę, stawiając czoła mrocznym sekretom i poświęcając się dla siebie nawzajem.', 'ShowBuyButton': true, 'ShowReservationButton': true},{ 'Id': 23045, 'Name': 'Totalna magia 2 2D napisy', 'Date': '29.09.2026', 'Hour': '20:00', 'PosterId': '1106', 'Description': 'Wielopokoleniowa rodzina czarownic, skazana na wieki na brak miłości, próbuje złamać klątwę, stawiając czoła mrocznym sekretom i poświęcając się dla siebie nawzajem.', 'ShowBuyButton': true, 'ShowReservationButton': true}];
+    </script>
+
+
+            <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/jquery.countdown.js?v=112417122339"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/jquery.fancybox.js?v=112417122339"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/bootstrap.min.js?v=112417122339"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/cookies.js?v=112417122339"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/calendar.js?v=112417122339"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/repertoire.js?v=112417122339"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/main.js?v=090219095655"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/tips.js?v=112417122339"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/timeline.js?v=112417122339"></script>
+        <script type="text/javascript" src="/MSI/Themes/msidemo2/Scripts/jquery.tinycarousel.js?v=112417122339"></script>
+
+
+
+    <script type="text/javascript">
+        jQuery(document).ready(function ($) {
+
+            // site preloader -- also uncomment the div in the header and the css style for #preloader
+            $(window).load(function () {
+                $('#preloader').fadeOut('slow', function () { $(this).remove(); });
+                console.log("preloader");
+            });
+
+        });
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            var lng = "pl";
+            var theMonths;
+            var theDays;
+
+            //console.log(lng);
+/*
+            if (lng === "pl") {
+                theMonths = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+                theDays = ["P", "W", "Ś", "C", "P", "S", "N"];
+
+            }
+            if (lng === "en") {
+                theMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+                theDays = ["M", "T", "W", "T", "F", "S", "S"];
+            }
+*/
+            theMonths = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
+
+            theDays = ["P", "W", "Ś", "C", "P", "S", "N"];
+
+            var alldatesurl = window.location.protocol + "//" + window.location.host + "/MSI/mvc/pl/AllDates";
+            console.log(window.location.host);
+
+            $('.calendar-test').calendar({
+                months: theMonths,
+                days: theDays,
+                req_ajax: {
+                    type: 'get',
+                    url: alldatesurl
+                }
+            });
+        })(jQuery);
+    </script>
+
+    <script type="text/javascript">
+        (function ($) {
+            $(".fancybox").fancybox({
+                openEffect: 'none',
+                closeEffect: 'none',
+                type: "image"
+            });
+        })(jQuery);
+
+        //paste this code under head tag or in a seperate js file.
+        // Wait for window load
+        $(window).load(function () {
+            // Animate loader off screen
+            $(".se-pre-con").fadeOut("slow");;
+        });
+
+    </script>
+
+</body>
+
+</html>

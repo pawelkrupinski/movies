@@ -903,6 +903,13 @@
   "annotation": "Chorzów — own site"
  },
  {
+  "citySlug": "katowice",
+  "cinemaObject": "KinoFrajda",
+  "displayName": "Kino Frajda",
+  "town": "Chorzów",
+  "annotation": "Chorzów — systembiletowy"
+ },
+ {
   "citySlug": "szczecin",
   "cinemaObject": "HeliosSzczecin",
   "displayName": "Helios Kupiec",
@@ -971,6 +978,13 @@
   "displayName": "Kino Eva",
   "town": "Międzyzdroje",
   "annotation": "Międzyzdroje — filmweb 1662"
+ },
+ {
+  "citySlug": "szczecin",
+  "cinemaObject": "KinoGryfinskiDomKultury",
+  "displayName": "Gryfiński Dom Kultury",
+  "town": "Gryfino",
+  "annotation": "Gryfino — biletyna"
  },
  {
   "citySlug": "bialystok",
@@ -1232,6 +1246,13 @@
   "annotation": "Świecie — biletyna"
  },
  {
+  "citySlug": "bydgoszcz",
+  "cinemaObject": "KinoManhattanJanikowo",
+  "displayName": "Kino Manhattan",
+  "town": "Janikowo",
+  "annotation": "Janikowo — MSI"
+ },
+ {
   "citySlug": "lublin",
   "cinemaObject": "CinemaCityLublinFelicity",
   "displayName": "Cinema City Felicity",
@@ -1295,6 +1316,20 @@
   "annotation": "Poniatowa — bilety24"
  },
  {
+  "citySlug": "lublin",
+  "cinemaObject": "KinoMilenium",
+  "displayName": "Kino Milenium",
+  "town": "Milejów",
+  "annotation": "Milejów — ekobilet"
+ },
+ {
+  "citySlug": "lublin",
+  "cinemaObject": "KinoLotSwidnik",
+  "displayName": "Kino Lot Świdnik",
+  "town": "Świdnik",
+  "annotation": "Świdnik — biletyna"
+ },
+ {
   "citySlug": "czestochowa",
   "cinemaObject": "CinemaCityCzestochowaJurajska",
   "displayName": "Cinema City Jurajska",
@@ -1356,6 +1391,13 @@
   "displayName": "Planet Cinema Zawiercie",
   "town": "Zawiercie",
   "annotation": "Zawiercie — MSI"
+ },
+ {
+  "citySlug": "czestochowa",
+  "cinemaObject": "KinoMDKMyszkow",
+  "displayName": "Kino MDK Myszków",
+  "town": "Myszków",
+  "annotation": "Myszków — own site"
  },
  {
   "citySlug": "radom",
@@ -1428,6 +1470,20 @@
   "annotation": "Stara Błotnica — biletyna"
  },
  {
+  "citySlug": "radom",
+  "cinemaObject": "KinoCKiTIlza",
+  "displayName": "Kino CKiT Iłża",
+  "town": "Iłża",
+  "annotation": "Iłża — ekobilet"
+ },
+ {
+  "citySlug": "radom",
+  "cinemaObject": "KinoRCKDrzewica",
+  "displayName": "Kino RCK Drzewica",
+  "town": "Drzewica",
+  "annotation": "Drzewica — own site"
+ },
+ {
   "citySlug": "sosnowiec",
   "cinemaObject": "HeliosSosnowiec",
   "displayName": "Helios Sosnowiec",
@@ -1482,6 +1538,13 @@
   "displayName": "Helios Grudziądz",
   "town": "Grudziądz",
   "annotation": "Grudziądz — Helios REST"
+ },
+ {
+  "citySlug": "torun",
+  "cinemaObject": "Kino1410",
+  "displayName": "Kino 1410",
+  "town": "Toruń",
+  "annotation": "Toruń — systembiletowy"
  },
  {
   "citySlug": "kielce",
@@ -1615,6 +1678,13 @@
   "displayName": "Kino Warszawa",
   "town": "Przeworsk",
   "annotation": "Przeworsk — filmweb 2346"
+ },
+ {
+  "citySlug": "rzeszow",
+  "cinemaObject": "KinoSokolStrzyzow",
+  "displayName": "Kino Sokół Strzyżów",
+  "town": "Strzyżów",
+  "annotation": "Strzyżów — own site"
  },
  {
   "citySlug": "gliwice",
@@ -1981,6 +2051,13 @@
   "annotation": "Międzychód — biletyna"
  },
  {
+  "citySlug": "gorzow-wielkopolski",
+  "cinemaObject": "KinoMOKMiedzyrzecz",
+  "displayName": "Kino MOK Międzyrzecz",
+  "town": "Międzyrzecz",
+  "annotation": "Międzyrzecz — MSI"
+ },
+ {
   "citySlug": "elblag",
   "cinemaObject": "MultikinoElblag",
   "displayName": "Multikino Elbląg",
@@ -2177,6 +2254,13 @@
   "annotation": "Świebodzin — filmweb 2331"
  },
  {
+  "citySlug": "zielona-gora",
+  "cinemaObject": "KinoZaRogiemSiedlec",
+  "displayName": "Kino za Rogiem w Siedlcu",
+  "town": "Siedlec",
+  "annotation": "Siedlec — own site"
+ },
+ {
   "citySlug": "tychy",
   "cinemaObject": "MultikinoTychy",
   "displayName": "Multikino Tychy",
@@ -2196,6 +2280,13 @@
   "displayName": "Planet Cinema",
   "town": "Oświęcim",
   "annotation": "Oświęcim — MSI"
+ },
+ {
+  "citySlug": "tychy",
+  "cinemaObject": "KinoAleKinoLibiaz",
+  "displayName": "Ale! Kino",
+  "town": "Libiąż",
+  "annotation": "Libiąż — MSI"
  },
  {
   "citySlug": "walbrzych",
@@ -2471,6 +2562,13 @@
   "annotation": "Głogów — biletyna"
  },
  {
+  "citySlug": "legnica",
+  "cinemaObject": "KinoKulturaChojnow",
+  "displayName": "Kino Kultura Chojnów",
+  "town": "Chojnów",
+  "annotation": "Chojnów — own site"
+ },
+ {
   "citySlug": "plock",
   "cinemaObject": "HeliosPlock",
   "displayName": "Helios Płock",
@@ -2686,6 +2784,13 @@
   "displayName": "Kino Orzeł Ustrzyki Dolne",
   "town": "Ustrzyki Dolne",
   "annotation": "Ustrzyki Dolne — systembiletowy"
+ },
+ {
+  "citySlug": "przemysl",
+  "cinemaObject": "KinoBieszczadzkiDK",
+  "displayName": "Bieszczadzki Dom Kultury",
+  "town": "Lesko",
+  "annotation": "Lesko — systembiletowy"
  },
  {
   "citySlug": "konin",
@@ -3052,6 +3157,20 @@
   "annotation": "Biłgoraj — filmweb 1489"
  },
  {
+  "citySlug": "stalowa-wola",
+  "cinemaObject": "KinoJOK",
+  "displayName": "Kino JOK (Janowski Ośrodek Kultury)",
+  "town": "Janów Lubelski",
+  "annotation": "Janów Lubelski — own site"
+ },
+ {
+  "citySlug": "stalowa-wola",
+  "cinemaObject": "KinoCKiBNowaSarzyna",
+  "displayName": "Kino CKiB Nowa Sarzyna",
+  "town": "Nowa Sarzyna",
+  "annotation": "Nowa Sarzyna — systembiletowy"
+ },
+ {
   "citySlug": "zamosc",
   "cinemaObject": "KinoStylowy",
   "displayName": "CKF Stylowy",
@@ -3078,6 +3197,13 @@
   "displayName": "Kino Plon",
   "town": "Hrubieszów",
   "annotation": "Hrubieszów — filmweb 2330"
+ },
+ {
+  "citySlug": "zamosc",
+  "cinemaObject": "KinoKadrTomaszowLubelski",
+  "displayName": "Kino Kadr (Tomaszowski Dom Kultury)",
+  "town": "Tomaszów Lubelski",
+  "annotation": "Tomaszów Lubelski — own site"
  },
  {
   "citySlug": "leszno",
@@ -3113,6 +3239,20 @@
   "displayName": "Kino Krobia",
   "town": "Krobia",
   "annotation": "Krobia — bilety24"
+ },
+ {
+  "citySlug": "leszno",
+  "cinemaObject": "KinoDKGora",
+  "displayName": "Dom Kultury w Górze",
+  "town": "Góra",
+  "annotation": "Góra — ekobilet"
+ },
+ {
+  "citySlug": "leszno",
+  "cinemaObject": "KinoZaciszeWasosz",
+  "displayName": "Kino Zacisze (Wąsosz)",
+  "town": "Wąsosz",
+  "annotation": "Wąsosz — ekobilet"
  },
  {
   "citySlug": "lomza",
@@ -3169,6 +3309,13 @@
   "displayName": "Kino Renesans",
   "town": "Ryki",
   "annotation": "Ryki — filmweb 2089"
+ },
+ {
+  "citySlug": "pulawy",
+  "cinemaObject": "KinoOpolanka",
+  "displayName": "Kino Opolanka",
+  "town": "Opole Lubelskie",
+  "annotation": "Opole Lubelskie — ekobilet"
  },
  {
   "citySlug": "skierniewice",
@@ -3262,6 +3409,13 @@
   "annotation": "Nasielsk — biletyna"
  },
  {
+  "citySlug": "ciechanow",
+  "cinemaObject": "KinoTon",
+  "displayName": "Kino Ton",
+  "town": "Żuromin",
+  "annotation": "Żuromin — ekobilet"
+ },
+ {
   "citySlug": "wielun",
   "cinemaObject": "KinoSyrena",
   "displayName": "Kino-Teatr Syrena",
@@ -3337,6 +3491,13 @@
   "displayName": "GOK Lipka",
   "town": "Lipka",
   "annotation": "Lipka — biletyna"
+ },
+ {
+  "citySlug": "chojnice",
+  "cinemaObject": "KinoTucholskiOsrodekKultury",
+  "displayName": "Tucholski Ośrodek Kultury",
+  "town": "Tuchola",
+  "annotation": "Tuchola — biletyna"
  },
  {
   "citySlug": "zgorzelec",
@@ -3423,6 +3584,13 @@
   "annotation": "Rabka-Zdrój — bilety24"
  },
  {
+  "citySlug": "zakopane",
+  "cinemaObject": "KinoStopiak",
+  "displayName": "Stopiak Cinema",
+  "town": "Nowy Targ",
+  "annotation": "Nowy Targ — MSI"
+ },
+ {
   "citySlug": "wyszkow",
   "cinemaObject": "KinoDobrychFilmow",
   "displayName": "Kino Dobrych Filmów",
@@ -3477,6 +3645,13 @@
   "displayName": "MGOK Recz",
   "town": "Recz",
   "annotation": "Recz — biletyna"
+ },
+ {
+  "citySlug": "zlocieniec",
+  "cinemaObject": "KinoWolnoscSzczecinek",
+  "displayName": "Kino Wolność",
+  "town": "Szczecinek",
+  "annotation": "Szczecinek — MSI"
  },
  {
   "citySlug": "slubice",

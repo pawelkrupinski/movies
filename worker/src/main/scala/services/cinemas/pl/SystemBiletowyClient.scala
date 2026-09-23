@@ -36,15 +36,17 @@ import scala.util.Try
  *      " title prefix the venue's own listing glues on ("BCKino – Kandydaci
  *      śmierci") is stripped. Left empty (the default) for every other venue,
  *      which changes nothing.
- *   4. The "repertoire-once" skin (Kino Orzeł, Ustrzyki Dolne) —
+ *   4. The "repertoire-once" skin (Kino Orzeł, Ustrzyki Dolne — and Kino CKiB
+ *      Nowa Sarzyna, whose booking link reads `kup-bilet/…` instead of
+ *      `repertoire.html?id=N`, otherwise the identical markup) —
  *      `div.repertoire-once.row.<yyyy-mm-dd>` per screening (a same-classed
  *      `div.repertoire-once.date-separator` header groups them visually but
  *      carries no data of its own), `div.title a` / `div.link a` around the
- *      `repertoire.html?id=N` link, and the day-of-week-prefixed date +
- *      "godz. HH:MM" time mashed into one `div.date`. Titles here carry a
- *      "-Film"/"- Film" boilerplate word ahead of the format tag ("…-Film
- *      2D", "… - Film 2D dubbing") that isn't a real format/version word, so
- *      it's peeled before the shared format-tag stripping runs.
+ *      booking link, and the day-of-week-prefixed date + "godz. HH:MM" time
+ *      mashed into one `div.date`. Titles here carry a "-Film"/"- Film"
+ *      boilerplate word ahead of the format tag ("…-Film 2D", "… - Film 2D
+ *      dubbing") that isn't a real format/version word, so it's peeled
+ *      before the shared format-tag stripping runs.
  *
  * One instance per venue, captured by its `baseUrl` + `cinema` (+ `filmGroups`
  * for a venue on skin 3 that mixes categories), so adding a VisualSoft-hosted
@@ -148,11 +150,14 @@ object SystemBiletowyClient {
         )
       }
 
-    // "repertoire-once" skin (Ustrzyki Dolne): one div.repertoire-once.row per
-    // screening — guarded by `:has(a[href*=repertoire.html])` so the same-classed
+    // "repertoire-once" skin (Ustrzyki Dolne; Nowa Sarzyna on the `kup-bilet`
+    // link variant): one div.repertoire-once.row per screening — guarded by
+    // `:has(a[href*=repertoire.html], a[href*=kup-bilet])` so the same-classed
     // `div.repertoire-once.row.no-repertoire` "Brak wydarzeń…" placeholder (which
     // carries no such link) is never mistaken for a real screening.
-    val repertoireOnceSlots = document.select("div.repertoire-once.row:has(a[href*=repertoire.html])").asScala.toSeq
+    val repertoireOnceSlots = document.select(
+      "div.repertoire-once.row:has(a[href*=repertoire.html], a[href*=kup-bilet])"
+    ).asScala.toSeq
       .flatMap { item =>
         for {
           titleElement <- Option(item.selectFirst("div.title a"))
@@ -163,7 +168,7 @@ object SystemBiletowyClient {
         } yield RawSlot(
           title    = titled._1,
           dateTime = date.atTime(time),
-          booking  = Option(item.selectFirst("div.link a[href*=repertoire.html]")).map(_.attr("abs:href"))
+          booking  = Option(item.selectFirst("div.link a[href*=repertoire.html], div.link a[href*=kup-bilet]")).map(_.attr("abs:href"))
                        .filter(_.nonEmpty).orElse(Option(titleElement.attr("abs:href")).filter(_.nonEmpty)),
           format   = titled._2
         )

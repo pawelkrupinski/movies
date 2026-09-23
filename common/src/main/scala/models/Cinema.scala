@@ -815,6 +815,54 @@ case object KinoNarew extends Cinema("Kino Narew", "Narew")   // Pułtusk — ow
 case object KinoGrunwald extends Cinema("Kino Grunwald", "Grunwald")   // Olsztynek — own site
 case object KinoParczew extends Cinema("Kino Parczew", "Parczew")   // Parczew — own site
 
+// 2026-09-23 nearby-towns sweep, batch 2.
+case object KinoMOKMiedzyrzecz extends Cinema("Kino MOK Międzyrzecz", "MOK Międzyrzecz")   // Międzyrzecz — MSI
+case object KinoZaRogiemSiedlec extends Cinema("Kino za Rogiem w Siedlcu", "Siedlec")   // Siedlec — own site
+// Verified screening from a 2026-09-23 nearby-towns sweep (ekobilet/systembiletowy
+// venues). Iłża (CKiT, ekobilet slug centrum-kultury-i-turystyki-w-ilzy-8211) was
+// checked in the same sweep and rejected: its earliest real screening is
+// 2026-10-08, one day past the ~2-week verification window, so it is deliberately
+// NOT modelled here.
+case object KinoDKGora extends Cinema("Dom Kultury w Górze", "DK Góra")   // Góra — ekobilet
+case object KinoZaciszeWasosz extends Cinema("Kino Zacisze (Wąsosz)", "Zacisze Wąsosz")   // Wąsosz — ekobilet
+case object KinoMilenium extends Cinema("Kino Milenium", "Milenium")   // Milejów — ekobilet
+case object KinoOpolanka extends Cinema("Kino Opolanka", "Opolanka")   // Opole Lubelskie — ekobilet
+case object KinoTon extends Cinema("Kino Ton", "Ton")   // Żuromin — ekobilet
+case object KinoCKiTIlza extends Cinema("Kino CKiT Iłża", "CKiT")   // Iłża — ekobilet
+case object KinoBieszczadzkiDK extends Cinema("Bieszczadzki Dom Kultury", "BDK")   // Lesko — systembiletowy
+// Venues verified from a 2026-09-23 lead sweep of 8 named towns. Tarnowo
+// Podgórne's lead (GOK Sezam) turned out to be the same physical venue as
+// KinoCKPrzezmierowo, already modelled above (Przeźmierowo is the village
+// within Tarnowo Podgórne gmina where its hall sits) — not re-added. Kęty's
+// biletyna place page carries only theatre/cabaret events, no films; Piaseczno's
+// carries exactly one isolated film screening ever, not a recurring programme —
+// neither is modelled.
+case object KinoGryfinskiDomKultury extends Cinema("Gryfiński Dom Kultury", "Gryfiński DK")   // Gryfino — biletyna
+case object KinoTucholskiOsrodekKultury extends Cinema("Tucholski Ośrodek Kultury", "TOK Tuchola")   // Tuchola — biletyna
+case object KinoManhattanJanikowo extends Cinema("Kino Manhattan", "Manhattan")   // Janikowo — MSI
+case object KinoAleKinoLibiaz extends Cinema("Ale! Kino", "Ale! Kino")   // Libiąż — MSI
+case object KinoWolnoscSzczecinek extends Cinema("Kino Wolność", "Wolność")   // Szczecinek — MSI
+// 2026-09-23 nearby-towns sweep, second pass. Each own site's booking link led
+// to a ticketing platform we already have a client for, so all four reuse an
+// existing client rather than a new one; only Kino Kultura Chojnów (own ASP.NET
+// booking subsite, no browsable listing) needed a bespoke parser. Kino Café
+// (Konin, kinooskard.pl/kino-cafe) was checked and deliberately NOT modelled —
+// its "Kup bilet" links resolve to event ids already present in the existing
+// Kino Oskard bilety24 feed, just suffixed "/Kino Cafe"; adding it would double
+// the room's screenings.
+case object Kino1410 extends Cinema("Kino 1410", "1410")   // Toruń — systembiletowy
+case object KinoFrajda extends Cinema("Kino Frajda", "Frajda")   // Chorzów — systembiletowy
+case object KinoStopiak extends Cinema("Stopiak Cinema", "Stopiak")   // Nowy Targ — MSI
+case object KinoKulturaChojnow extends Cinema("Kino Kultura Chojnów", "Kultura Chojnów")   // Chojnów — own site
+case object KinoLotSwidnik extends Cinema("Kino Lot Świdnik", "Lot Świdnik")   // Świdnik — biletyna
+// second 2026-09-23 nearby-towns sweep: verified screening now.
+case object KinoKadrTomaszowLubelski extends Cinema("Kino Kadr (Tomaszowski Dom Kultury)", "Kadr TL")   // Tomaszów Lubelski — own site
+case object KinoJOK extends Cinema("Kino JOK (Janowski Ośrodek Kultury)", "JOK")   // Janów Lubelski — own site
+case object KinoCKiBNowaSarzyna extends Cinema("Kino CKiB Nowa Sarzyna", "CKiB")   // Nowa Sarzyna — systembiletowy
+case object KinoSokolStrzyzow extends Cinema("Kino Sokół Strzyżów", "Sokół")   // Strzyżów — own site
+case object KinoRCKDrzewica extends Cinema("Kino RCK Drzewica", "RCK Drzewica")   // Drzewica — own site
+case object KinoMDKMyszkow extends Cinema("Kino MDK Myszków", "MDK Myszków")   // Myszków — own site
+
 // ── Network-level detail sources ──────────────────────────────────────────────
 // Not a physical venue: a synthetic source that holds the per-film detail
 // (synopsis/cast/director/genres/countries/trailer) a chain fetches ONCE per
@@ -2198,13 +2246,13 @@ object Cinema {
   /** Katowice venues. Cinema City has two locations (Punkt 44 and Silesia),
    *  Multikino one, Helios one. The three art-house venues run by Silesia Film —
    *  Kosmos, Światowid, and Kinoteatr Rialto — are all Bilety24-hosted. */
-  val katowice: Seq[Cinema] = Seq(CinemaCityPunkt44, CinemaCitySilesia, MultikinoKatowice, HeliosKatowice, KinoKosmos, KinoSwiatowid, KinoteatrRialto, CinemaCity, KinoPatria, KinoGrajfka)
+  val katowice: Seq[Cinema] = Seq(CinemaCityPunkt44, CinemaCitySilesia, MultikinoKatowice, HeliosKatowice, KinoKosmos, KinoSwiatowid, KinoteatrRialto, CinemaCity, KinoPatria, KinoGrajfka, KinoFrajda)
 
   /** Szczecin venues. No Cinema City here; the two multiplexes are Helios (in
    *  CH Kupiec) and Multikino. The lone independent is Kino Pionier 1907 — the
    *  oldest continuously-operating cinema in the world — wired as a bespoke
    *  scraper. */
-  val szczecin: Seq[Cinema] = Seq(HeliosSzczecin, MultikinoSzczecin, KinoPionier, HeliosOutletPark, KinoZamekSzczecin, KinoKawiarnia, KinoPDK, KinoSCK, KinoMOKPolice, KinoEva)
+  val szczecin: Seq[Cinema] = Seq(HeliosSzczecin, MultikinoSzczecin, KinoPionier, HeliosOutletPark, KinoZamekSzczecin, KinoKawiarnia, KinoPDK, KinoSCK, KinoMOKPolice, KinoEva, KinoGryfinskiDomKultury)
 
   /** Białystok venues. No Cinema City or Multikino in the city; Helios (HQ'd in
    *  Łódź, strong in eastern Poland) runs three multiplexes — Alfa, Biała and
@@ -2223,25 +2271,25 @@ object Cinema {
    *  (Cinema City in Focus Mall, Multikino on Focha, Helios on Fordońska);
    *  the city's one art-house screen is MCK's Kino Orzeł, ticketed through the
    *  national Bilety24 marketplace. */
-  val bydgoszcz: Seq[Cinema] = Seq(CinemaCityBydgoszcz, MultikinoBydgoszcz, HeliosBydgoszcz, KinoOrzel, KinoKinomax, KinoRondo, KinoRelaks, KinoCKSwiecie)
+  val bydgoszcz: Seq[Cinema] = Seq(CinemaCityBydgoszcz, MultikinoBydgoszcz, HeliosBydgoszcz, KinoOrzel, KinoKinomax, KinoRondo, KinoRelaks, KinoCKSwiecie, KinoManhattanJanikowo)
 
   /** Lublin venues. Two Cinema City multiplexes (Felicity, Lublin Plaza) and
    *  Multikino in Galeria Olimp; no Helios in Lublin. Kino Bajka — the Centrum
    *  Kultury art-house on Radziszewskiego — is the local studyjne screen, wired
    *  separately as a bespoke scraper. */
-  val lublin: Seq[Cinema] = Seq(CinemaCityLublinFelicity, CinemaCityLublinPlaza, MultikinoLublin, KinoBajka, KinoCkLublin, KinoChatkaZaka, KinoLewart, KinoMetalowiec, KinoCzyn)
+  val lublin: Seq[Cinema] = Seq(CinemaCityLublinFelicity, CinemaCityLublinPlaza, MultikinoLublin, KinoBajka, KinoCkLublin, KinoChatkaZaka, KinoLewart, KinoMetalowiec, KinoCzyn, KinoMilenium, KinoLotSwidnik)
 
-  val czestochowa: Seq[Cinema] = Seq(CinemaCityCzestochowaJurajska, CinemaCityCzestochowaWolnosc, OkfIluzja, KinoDKFRumcajs, KinoKarolinka, KinoMDK, KinoMOKCentrum, KinoZacisze, KinoPlanetCinemaZawiercie)
+  val czestochowa: Seq[Cinema] = Seq(CinemaCityCzestochowaJurajska, CinemaCityCzestochowaWolnosc, OkfIluzja, KinoDKFRumcajs, KinoKarolinka, KinoMDK, KinoMOKCentrum, KinoZacisze, KinoPlanetCinemaZawiercie, KinoMDKMyszkow)
 
-  val radom: Seq[Cinema] = Seq(HeliosRadom, MultikinoRadom, McswElektrowniaCinema, HeliosStarachowice, KinoCentrumSkarzyskoKamienna, KinoGornik, KinoKozienickiDomKultury, KinoKuznica, KinoSwitZwolen, KinoKsiazka)
+  val radom: Seq[Cinema] = Seq(HeliosRadom, MultikinoRadom, McswElektrowniaCinema, HeliosStarachowice, KinoCentrumSkarzyskoKamienna, KinoGornik, KinoKozienickiDomKultury, KinoKuznica, KinoSwitZwolen, KinoKsiazka, KinoCKiTIlza, KinoRCKDrzewica)
 
   val sosnowiec: Seq[Cinema] = Seq(HeliosSosnowiec, CinemaCitySosnowiec)
 
-  val torun: Seq[Cinema] = Seq(CinemaCityTorunCzerwonaDroga, CinemaCityTorunPlaza, KinoCentrumCsw, KinoMiejskieCentrumKultury, KinoZdroj, HeliosGrudziadz)
+  val torun: Seq[Cinema] = Seq(CinemaCityTorunCzerwonaDroga, CinemaCityTorunPlaza, KinoCentrumCsw, KinoMiejskieCentrumKultury, KinoZdroj, HeliosGrudziadz, Kino1410)
 
   val kielce: Seq[Cinema] = Seq(HeliosKielce, MultikinoKielce, KinoFenomen, KinoMoskwa, KinoCK, KinoKoneckieCentrumKultury, KinoZdrojBusko, KinoMuzaWloszczowa)
 
-  val rzeszow: Seq[Cinema] = Seq(HeliosRzeszow, MultikinoRzeszow, KinoZorza, KinoZaRogiemCafe, HeliosKrosno, KinoArtKino, KinoJednosc, KinoMCK, KinoSniezka, KinoSokolBrzozow, KinoWarszawa)
+  val rzeszow: Seq[Cinema] = Seq(HeliosRzeszow, MultikinoRzeszow, KinoZorza, KinoZaRogiemCafe, HeliosKrosno, KinoArtKino, KinoJednosc, KinoMCK, KinoSniezka, KinoSokolBrzozow, KinoWarszawa, KinoSokolStrzyzow)
 
   val gliwice: Seq[Cinema] = Seq(CinemaCityGliwice, KinoAmok, KinoScenaKultura)
 
@@ -2253,23 +2301,23 @@ object Cinema {
   val bielskoBiala: Seq[Cinema] = Seq(HeliosBielskoBiala, CinemaCityBielskoBiala, KinoKreska, KinoJanosik, KinoPckulKino, KinoSwitCzechowiceDziedzice, KinoTeatrElektryczny, KinoWislaBrzeszcze, MultikinoCzechowiceDziedzice, KinoCentrumWadowice, CinemaCityCieszyn, KinoCKiF, KinoPromyk)
   val opole: Seq[Cinema]        = Seq(HeliosOpoleKarolinka, HeliosOpoleSolaris, KinoMeduza, HeliosKedzierzynKozle, KinoBajkaKluczbork, KinoChemik, KinoDiana, KinoKrapkowice, KinoStudio, KinoTwierdza, KinoCentrumBrzeg, KinoCinemaN)
   val rybnik: Seq[Cinema]       = Seq(MultikinoRybnik, CinemaCityRybnik, HeliosZory, KinoBaltyk, KinoCentrum, KinoNaStarowce, KinoPegaz, KinoTeatrZiemiRybnickiej, KinoFeniks)
-  val gorzow: Seq[Cinema]       = Seq(HeliosGorzow, MultikinoGorzow, Kino60Krzesel, KinoPanorama, KinoMewaMiedzychod)
+  val gorzow: Seq[Cinema]       = Seq(HeliosGorzow, MultikinoGorzow, Kino60Krzesel, KinoPanorama, KinoMewaMiedzychod, KinoMOKMiedzyrzecz)
   val elblag: Seq[Cinema]       = Seq(MultikinoElblag, CinemaCityElblag, HeliosTczew, KinoBaszta, KinoPowisle, KinoZulawskiOsrodekKultury, KinoSwiatowidElblag)
   val koszalin: Seq[Cinema]     = Seq(HeliosKoszalin, MultikinoKoszalin, KinoKryterium, KinoBajkaDarlowo, KinoCentrumBialogard, KinoDK, KinoGOK, KinoGoplana, KinoWybrzeze)
   val kalisz: Seq[Cinema]       = Seq(HeliosKalisz, MultikinoKalisz, HeliosOstrowWlkp, KinoCentrum3D, KinoEcho, KinoPiastOstrzeszow, KinoPrzedwiosnieKrotoszyn)
-  val zielonaGora: Seq[Cinema]  = Seq(CinemaCityZielonaGora, KinoEuropa, KinoMaxKino, KinoPionierZary, KinoSDKSwiebodzin)
-  val tychy: Seq[Cinema]        = Seq(MultikinoTychy, KinoNaszeKino, KinoPlanetCinema)
+  val zielonaGora: Seq[Cinema]  = Seq(CinemaCityZielonaGora, KinoEuropa, KinoMaxKino, KinoPionierZary, KinoSDKSwiebodzin, KinoZaRogiemSiedlec)
+  val tychy: Seq[Cinema]        = Seq(MultikinoTychy, KinoNaszeKino, KinoPlanetCinema, KinoAleKinoLibiaz)
   val walbrzych: Seq[Cinema]    = Seq(CinemaCityWalbrzych, KinoApolloWalbrzych, KinoMOKNowaRuda, KinoMOKiS, KinoSleza, KinoZbyszek, MultikinoKlodzko, MultikinoSwidnica, KinoSCKStrzegom)
   val tarnow: Seq[Cinema]       = Seq(MultikinoTarnow, KinoMillenium, KinoFarys, KinoGCK, KinoKolory, KinoPlaneta, KinoPromien, KinoRegis, KinoSokolDabrowaTarnowska, KinoMCKRadlow, KinoCentrumLisiaGora, KinoJDK, MultikinoMielec, KinoMarzenie)
   val wloclawek: Seq[Cinema]    = Seq(MultikinoWloclawek, KinoJutrzenka, KinoNawojka, KinoNoweKinoWarszawa, KinoBaltykRypin)
-  val legnica: Seq[Cinema]      = Seq(HeliosLegnica, KinoPiast, HeliosLubin, KinoAurum, KinoCyfroweKino, KinoForumBoleslawiec, KinoMuzaLubin, KinoPCA, MultikinoGlogow, KinoMOKGlogow, TeatrGryphius)
+  val legnica: Seq[Cinema]      = Seq(HeliosLegnica, KinoPiast, HeliosLubin, KinoAurum, KinoCyfroweKino, KinoForumBoleslawiec, KinoMuzaLubin, KinoPCA, MultikinoGlogow, KinoMOKGlogow, TeatrGryphius, KinoKulturaChojnow)
   val plock: Seq[Cinema]        = Seq(HeliosPlock, KinoPrzedwiosnie, KinoZaRogiem, KinoKDK, KinoKalejdoskop, KinoODEON)
   val bytom: Seq[Cinema]        = Seq(CinemaCityBytom, KinoBCKBytom)
   val dabrowaGornicza: Seq[Cinema] = Seq(HeliosDabrowaGornicza, KinoKadr, KinoZbyszekOlkusz, MultikinoJaworzno, KinoSztuka)
   val nowySacz: Seq[Cinema]     = Seq(HeliosNowySacz, KinoSokol, KinoJaworzyna, KinoKlaps, KinoMCKGrybow)
   val slupsk: Seq[Cinema]       = Seq(MultikinoSlupsk, KinoRejs, KinoFregata, KinoLeba)
   val jeleniaGora: Seq[Cinema]  = Seq(HeliosJeleniaGora, KinoLot, KinoWawel)
-  val przemysl: Seq[Cinema]     = Seq(HeliosPrzemysl, KinoCentrum3DPrzemysl, KinoIkar, KinoNaBiegunach, KinoSDK, KinoOrzelUstrzyki)
+  val przemysl: Seq[Cinema]     = Seq(HeliosPrzemysl, KinoCentrum3DPrzemysl, KinoIkar, KinoNaBiegunach, KinoSDK, KinoOrzelUstrzyki, KinoBieszczadzkiDK)
   val konin: Seq[Cinema]        = Seq(HeliosKonin, KinoOskard, KinoStudyjneCentrum, KinoZacheta, KinoNadWarta, KinoHel, KinoSokolnia, KinoTur, KinoMok)
   val piotrkowTrybunalski: Seq[Cinema] = Seq(HeliosPiotrkow, HeliosBelchatow, KinoKulturaBelchatow, HeliosTomaszow, KinoMCKTkacz, KinoMDKOpoczno)
   val siedlce: Seq[Cinema] = Seq(HeliosSiedlce, NoveKinoSiedlce, KinoSokolSokolowPodlaski, KinoSlawa, KinoZaRogiemMiedzyrzec, KinoKongres, KinoLukow, CinemaCityBialaPodlaska, KinoWilga)
@@ -2277,22 +2325,22 @@ object Cinema {
   val ostrowiecSwietokrzyski: Seq[Cinema] = Seq(KinoEtiuda, KinoOOK, KinoStarowka, KinoKadrStaszow)
   val gniezno: Seq[Cinema] = Seq(HeliosGniezno, KinoWawrzyn, KinoMiescisko)
   val suwalki: Seq[Cinema] = Seq(KinoCinemaLumiereSuwalki, KinoIskra, KinoKulturaGoldap, KinoMazur, KinoECK, KinoPlanetCinemaElk)
-  val stalowaWola: Seq[Cinema] = Seq(HeliosStalowaWola, KinoWrzos, KinoSokolNisko, KinoMetalowiecNowaDeba, KinoBCK)
-  val zamosc: Seq[Cinema] = Seq(KinoStylowy, KinoZorzaChelm, KinoMorskieOko, KinoPlon)
-  val leszno: Seq[Cinema] = Seq(MultikinoLeszno, KinoTeatrMiejskiLeszno, KinoPromienRawicz, KinoPodKopula, KinoKrobia)
+  val stalowaWola: Seq[Cinema] = Seq(HeliosStalowaWola, KinoWrzos, KinoSokolNisko, KinoMetalowiecNowaDeba, KinoBCK, KinoJOK, KinoCKiBNowaSarzyna)
+  val zamosc: Seq[Cinema] = Seq(KinoStylowy, KinoZorzaChelm, KinoMorskieOko, KinoPlon, KinoKadrTomaszowLubelski)
+  val leszno: Seq[Cinema] = Seq(MultikinoLeszno, KinoTeatrMiejskiLeszno, KinoPromienRawicz, KinoPodKopula, KinoKrobia, KinoDKGora, KinoZaciszeWasosz)
   val lomza: Seq[Cinema] = Seq(HeliosLomza, KinoJantar, KinoCKZambrow, KinoOstrovia, KinoWars, KinoDomKulturyGrajewo)
-  val pulawy: Seq[Cinema] = Seq(KinoSybilla, KinoRenesans)
+  val pulawy: Seq[Cinema] = Seq(KinoSybilla, KinoRenesans, KinoOpolanka)
   val skierniewice: Seq[Cinema] = Seq(KinoPolonez, KinoCKiSSkierniewice, KinoLen, KinoRomaRawa, KinoFenix)
   val starogardGdanski: Seq[Cinema] = Seq(CinemaCityStarogard, KinoRemus)
-  val ciechanow: Seq[Cinema] = Seq(KinoLydynia, KinoKosmosMlawa, KinoSwiatowidPrzasnysz, KinoMDKMakow, KinoApolloDzialdowo, KinoNOKNasielsk)
+  val ciechanow: Seq[Cinema] = Seq(KinoLydynia, KinoKosmosMlawa, KinoSwiatowidPrzasnysz, KinoMDKMakow, KinoApolloDzialdowo, KinoNOKNasielsk, KinoTon)
   val wielun: Seq[Cinema] = Seq(KinoSyrena, KinoTeatrSieradz, KinoSlonce, KinoSokolniaKepno, KinoWRatuszu)
-  val chojnice: Seq[Cinema] = Seq(KinoChDK, KinoUciechaCzluchow, KinoZaRogiemBrusy, KinoPromienWiecbork, KinoCKiSSepolno, KinoGOKLipka)
+  val chojnice: Seq[Cinema] = Seq(KinoChDK, KinoUciechaCzluchow, KinoZaRogiemBrusy, KinoPromienWiecbork, KinoCKiSSepolno, KinoGOKLipka, KinoTucholskiOsrodekKultury)
   val zgorzelec: Seq[Cinema] = Seq(MultikinoZgorzelec, KinoKadrBogatynia)
   val ilawa: Seq[Cinema] = Seq(KinoteatrPasja, KinoPokoj, KinoteatrHarmonia)
   val ketrzyn: Seq[Cinema] = Seq(KinoGwiazdaKetrzyn, KinoZodiak, KinoNowaFalaGizycko)
-  val zakopane: Seq[Cinema] = Seq(KinoSokolZakopane, KinoGiewont, KinoMiejsce, KinoSniezkaRabka)
+  val zakopane: Seq[Cinema] = Seq(KinoSokolZakopane, KinoGiewont, KinoMiejsce, KinoSniezkaRabka, KinoStopiak)
   val wyszkow: Seq[Cinema] = Seq(KinoDobrychFilmow, KinoMiGOK, KinoNarew)
-  val zlocieniec: Seq[Cinema] = Seq(KinoMewaZlocieniec, KinoOKDrawsko, KinoChDKChoszczno, KinoDOKDrawno, KinoMGOKRecz)
+  val zlocieniec: Seq[Cinema] = Seq(KinoMewaZlocieniec, KinoOKDrawsko, KinoChDKChoszczno, KinoDOKDrawno, KinoMGOKRecz, KinoWolnoscSzczecinek)
   val slubice: Seq[Cinema] = Seq(KinoSmok)
   val wlodawa: Seq[Cinema] = Seq(KinoWDK, KinoParczew)
 

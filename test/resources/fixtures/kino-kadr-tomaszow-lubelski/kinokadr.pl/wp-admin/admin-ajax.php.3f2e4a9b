@@ -1,0 +1,6 @@
+        <div class="krp-no-films">
+            <i class="fas fa-film"></i>
+            <h3>Brak seansów w tym dniu</h3>
+            <p>Wybierz inną datę z kalendarza powyżej.</p>
+        </div>
+        

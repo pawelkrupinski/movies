@@ -43,6 +43,17 @@ import scala.util.Try
  * selectors differ. `parseMonthWithYear` tries the standard skin first and
  * falls back to this one when it yields nothing.
  *
+ * A THIRD skin (e.g. Kino Wolność Szczecinek at bilety.sapik.pl) uses a plain
+ * Bootstrap-3 "media object" layout instead: each film is a
+ * `div.media` inside `div.panel-default.eventlist`, the title is the
+ * `div.media-heading h4` text (the poster anchor's `title` attr carries the
+ * identical text but the block has no `list-group-item`/`movies-movie__single`
+ * marker class to key off), and showtimes are `a.btn-badge[href]` anchors
+ * whose text interleaves a clock icon and a seat-count badge around the same
+ * `DD mmm HH:MM` — `EventTimePat` finds it as a substring regardless. Tried
+ * last since its block selector (`div.media`) is the least specific of the
+ * three.
+ *
  * Showtimes for the same cleaned title across all fetched months are merged
  * before returning.
  */
@@ -237,8 +248,7 @@ private[cinemas] object MsiScraper {
       m => Option(m.selectFirst(".movies-movie__single__title")).map(_.attr("title").trim).filter(_.nonEmpty).getOrElse(""),
       "div.movies-movie__single__options.d-none ul.movies-movie__single__options__hours a[href]"
     )
-    if (standard.nonEmpty) standard
-    else
+    lazy val listGroup =
       // Alternate "list-group" skin (e.g. Max Kino Świebodzin at
       // repertuar.maxkino.eu): each film is a `div.list-group-item.event-background`,
       // rendered twice — `visible-md visible-lg` (desktop) + `visible-xs visible-sm`
@@ -250,6 +260,18 @@ private[cinemas] object MsiScraper {
         "div.list-group-item.event-background.visible-md",
         m => Option(m.selectFirst("a[title]")).map(_.attr("title").trim).filter(_.nonEmpty).getOrElse(""),
         "ul.repo-event-dates a.badge-purple[href]"
+      )
+    if (standard.nonEmpty) standard
+    else if (listGroup.nonEmpty) listGroup
+    else
+      // Third "media object" skin (Kino Wolność Szczecinek, bilety.sapik.pl):
+      // each film is a `div.media` inside `div.panel-default.eventlist`; the
+      // title is the `div.media-heading h4` text; showtimes are `a.btn-badge`
+      // anchors under `ul.list-unstyled`.
+      parseBlocks(
+        "div.panel-default.eventlist div.media",
+        m => Option(m.selectFirst(".media-heading h4")).map(_.text.trim).filter(_.nonEmpty).getOrElse(""),
+        "ul.list-unstyled a.btn-badge[href]"
       )
   }
 

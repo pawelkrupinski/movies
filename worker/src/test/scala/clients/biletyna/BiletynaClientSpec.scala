@@ -56,7 +56,17 @@ class BiletynaClientSpec
     ("Kino Sztuka Chrzanów", "kino-sztuka-chrzanow",
       "https://biletyna.pl/Chrzanow/Miejski-Osrodek-Kultury-Sportu-i-Rekreacji",
       KinoSztuka, "100 dni: Misja Zeus", LocalDateTime.of(2026, 9, 23, 16, 0),
-      "https://biletyna.pl/film/100-dni-Misja-Zeus?eid=693269#opis")
+      "https://biletyna.pl/film/100-dni-Misja-Zeus?eid=693269#opis"),
+    // Gryfiński Dom Kultury (Kino Gryf) — 2026-09-23 nearby-towns sweep.
+    ("Gryfiński Dom Kultury", "kino-gryfinski-dom-kultury",
+      "https://biletyna.pl/Gryfino/Sala-widowiskowa-Gryfinskiego-Domu-Kultury",
+      KinoGryfinskiDomKultury, "OBCY", LocalDateTime.of(2026, 9, 26, 18, 30),
+      "https://biletyna.pl/film/OBCY?eid=706192#opis"),
+    // Tucholski Ośrodek Kultury (Kino Sokół) — same sweep.
+    ("Tucholski Ośrodek Kultury", "kino-tucholski-osrodek-kultury",
+      "https://biletyna.pl/Tuchola/Tucholski-Osrodek-Kultury",
+      KinoTucholskiOsrodekKultury, "100 dni: Misja Zeus", LocalDateTime.of(2026, 9, 25, 18, 15),
+      "https://biletyna.pl/film/100-dni-Misja-Zeus?eid=696509#opis")
   )
 
   forAll(venues) { (label, directory, pageUrl, cinema, title, when, booking) =>
@@ -179,5 +189,19 @@ class BiletynaClientSpec
     titles should not contain "Gdy kino zaczyna śpiewać - koncert polskiej muzyki filmowej"
     titles should not contain "O mało co... - Anna Mucha i Michał Sitarski w kultowej komedii"
     titles should not contain "Klimakterium 2 czyli Menopauzy Szał"
+  }
+
+  // Tucholski Ośrodek Kultury's real captured page mixes its film programme with
+  // a MusicEvent concert on the same feed — the live regression for the @type
+  // filter, off a real recorded page rather than the synthetic Kino PDK fixture.
+  it should "drop the real concert off Tucholski Ośrodek Kultury's programme, keeping every film" in {
+    val movies = new BiletynaClient(
+      new FakeHttpFetch("kino-tucholski-osrodek-kultury"),
+      "https://biletyna.pl/Tuchola/Tucholski-Osrodek-Kultury",
+      KinoTucholskiOsrodekKultury
+    ).fetch()
+    val titles = movies.map(_.movie.title).toSet
+    titles should contain("Marsupilami")
+    titles should not contain "Cztery Pory Miłowania"
   }
 }

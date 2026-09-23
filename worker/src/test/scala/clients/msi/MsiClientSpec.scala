@@ -69,7 +69,30 @@ class MsiClientSpec
       KinoPlanetCinemaZawiercie, LocalDate.of(2026, 9, 23), "lalka", LocalDateTime.of(2026, 9, 30, 17, 0)),
     // Ełk moved off Filmweb onto its own branch portal, like its siblings.
     ("Planet Cinema Ełk", "planet-cinema-elk", "https://elk.planetcinema.pl",
-      KinoPlanetCinemaElk, LocalDate.of(2026, 9, 23), "lalka", LocalDateTime.of(2026, 9, 30, 13, 50))
+      KinoPlanetCinemaElk, LocalDate.of(2026, 9, 23), "lalka", LocalDateTime.of(2026, 9, 30, 13, 50)),
+    // Kino MOK Międzyrzecz (2026-09-23 nearby-towns sweep, Gorzów Wielkopolski
+    // catchment) — the venue's own WordPress "The Events Calendar" listing is
+    // decorative; the real programme AND ticketing both live on this MSI portal.
+    ("Kino MOK Międzyrzecz", "kino-mok-miedzyrzecz", "https://bilety.mokmiedzyrzecz.pl",
+      KinoMOKMiedzyrzecz, LocalDate.of(2026, 9, 23), "marsupilami", LocalDateTime.of(2026, 9, 25, 14, 0)),
+    // Kino Manhattan (MGOK Janikowo) — 2026-09-23 lead sweep. today is pinned
+    // into October since September carries no films (the client still walks
+    // it first and finds nothing, per the fixture directory below).
+    ("Kino Manhattan (Janikowo)", "kino-manhattan-janikowo", "http://bilety.mgok.janikowo.com.pl",
+      KinoManhattanJanikowo, LocalDate.of(2026, 10, 1), "100 dni: misja zeus", LocalDateTime.of(2026, 10, 2, 16, 15)),
+    // Ale! Kino (Libiąskie Centrum Kultury) — same sweep.
+    ("Ale! Kino (Libiąż)", "ale-kino-libiaz", "https://biletylck.libiaz.pl",
+      KinoAleKinoLibiaz, LocalDate.of(2026, 9, 23), "100 dni: misja zeus", LocalDateTime.of(2026, 9, 25, 17, 0)),
+    // Kino Wolność (SAPiK Szczecinek) — same sweep; runs the third "media
+    // object" MSI skin (see MsiScraper), the whole reason it's pinned here.
+    ("Kino Wolność (Szczecinek)", "kino-wolnosc-szczecinek", "https://bilety.sapik.pl",
+      KinoWolnoscSzczecinek, LocalDate.of(2026, 9, 23), "psi patrol i dinozaury", LocalDateTime.of(2026, 9, 25, 16, 0)),
+    // Stopiak Cinema (Nowy Targ) — its own site links bilety.stopiakcinema.pl for
+    // booking, a standard MSI portal at the default /MSI/mvc/pl path, so it reuses
+    // this client rather than a bespoke own-site parser (2026-09-23 nearby-towns
+    // sweep, assigned to Zakopane's catchment).
+    ("Stopiak Cinema", "kino-stopiak", "https://bilety.stopiakcinema.pl",
+      KinoStopiak, LocalDate.of(2026, 9, 23), "100 dni", LocalDateTime.of(2026, 9, 23, 18, 15))
   )
 
   forAll(venues) { (label, directory, baseUrl, cinema, today, titleSub, when) =>

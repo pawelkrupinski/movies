@@ -2,7 +2,7 @@ package clients.ekobilet
 
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{KinoJaworzyna, KinoMeduza}
+import models.{KinoCKiTIlza, KinoDKGora, KinoJaworzyna, KinoMeduza, KinoMilenium, KinoOpolanka, KinoTon, KinoZaciszeWasosz}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.flatspec.AnyFlatSpec
 import services.cinemas.pl.EkobiletClient
@@ -94,5 +94,89 @@ class EkobiletClientSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   it should "return None when the detail-page fetch fails (no fixture)" in {
     jaworzynaClient.fetchFilmDetail("https://ekobilet.pl/kino-jaworzyna/nie-ma-takiego-filmu-99999") shouldBe None
+  }
+
+  // ── 2026-09-23 nearby-towns sweep ──────────────────────────────────────────
+  // Five venues found in that sweep, all still on ekobilet.pl, on two skins:
+  //   - the card-grid skin (Góra, Żuromin) the client already handled above.
+  //   - the "chrono-row" skin (Wąsosz, Milejów, Opole Lubelskie) — a flat
+  //     per-SHOWTIME landing list carrying its own title inline and no separate
+  //     film detail page — which `EkobiletClient.parseChronoRows` was added to
+  //     serve. `filmUrl` staying `None` on these three is itself the proof the
+  //     chrono-row branch ran, not the card-grid one.
+  private val gora =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-gora"), "dom-kultury-w-gorze-7114", KinoDKGora,
+      today = LocalDate.of(2026, 9, 23)).fetch()
+
+  "EkobiletClient (nearby-towns sweep)" should "parse Dom Kultury w Górze off the card-grid skin" in {
+    gora should not be empty
+    gora.map(_.cinema).toSet shouldBe Set(KinoDKGora)
+    val film = gora.find(_.movie.title.toLowerCase.contains("folwark zwierzęcy")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 25, 17, 0))
+    film.filmUrl.value should startWith("https://ekobilet.pl/dom-kultury-w-gorze-7114/")
+  }
+
+  private val zuromin =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-zuromin"), "kinoton", KinoTon,
+      today = LocalDate.of(2026, 9, 23)).fetch()
+
+  it should "parse Kino Ton (Żuromin) off the card-grid skin" in {
+    zuromin should not be empty
+    zuromin.map(_.cinema).toSet shouldBe Set(KinoTon)
+    val film = zuromin.find(_.movie.title.toLowerCase.contains("psi patrol")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 10, 2, 17, 0))
+    film.filmUrl.value should startWith("https://ekobilet.pl/kinoton/")
+  }
+
+  // Iłża's first screening sits two weeks out (2026-10-08), so the scrape must
+  // reach past the default near-term days to find anything at all.
+  private lazy val ilza =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-ilza"), "centrum-kultury-i-turystyki-w-ilzy-8211", KinoCKiTIlza,
+      today = LocalDate.of(2026, 9, 23)).fetch()
+
+  it should "parse Kino CKiT (Iłża), whose programme starts two weeks out" in {
+    ilza.map(_.movie.title) should contain allOf ("Lalka", "Mistyczka", "Toy Story 5")
+    ilza.map(_.cinema).toSet shouldBe Set(KinoCKiTIlza)
+    all(ilza.flatMap(_.showtimes).map(_.dateTime.toLocalDate)) should be >= LocalDate.of(2026, 10, 8)
+    ilza.find(_.movie.title == "Lalka").value.showtimes should have size 4
+  }
+
+  private val wasosz =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-wasosz"), "zpkwasosz", KinoZaciszeWasosz,
+      today = LocalDate.of(2026, 9, 23)).fetch()
+
+  it should "parse Kino Zacisze (Wąsosz) off the chrono-row landing skin — no card grid, no detail page" in {
+    wasosz should not be empty
+    wasosz.map(_.cinema).toSet shouldBe Set(KinoZaciszeWasosz)
+    val film = wasosz.find(_.movie.title == "Tedi i magiczna lampa").value
+    film.showtimes.map(_.dateTime) should contain allOf(
+      LocalDateTime.of(2026, 9, 25, 13, 0), LocalDateTime.of(2026, 9, 25, 15, 0))
+    film.showtimes.flatMap(_.bookingUrl).head should include("bilety-na-film")
+    film.filmUrl shouldBe None
+  }
+
+  private val milejow =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-milejow"), "kino-milenium", KinoMilenium,
+      today = LocalDate.of(2026, 9, 23)).fetch()
+
+  it should "parse Kino Milenium (Milejów) off the chrono-row skin" in {
+    milejow should not be empty
+    milejow.map(_.cinema).toSet shouldBe Set(KinoMilenium)
+    val film = milejow.find(_.movie.title.toLowerCase.contains("pucio kocha zwierzaki")).value
+    film.showtimes.map(_.dateTime) should contain(LocalDateTime.of(2026, 9, 26, 12, 0))
+    film.filmUrl shouldBe None
+  }
+
+  private val opoleLubelskie =
+    new EkobiletClient(new FakeHttpFetch("ekobilet-opole-lubelskie"), "ock-opolelubelskie", KinoOpolanka,
+      today = LocalDate.of(2026, 9, 23)).fetch()
+
+  it should "parse Kino Opolanka (Opole Lubelskie) off the chrono-row skin" in {
+    opoleLubelskie should not be empty
+    opoleLubelskie.map(_.cinema).toSet shouldBe Set(KinoOpolanka)
+    val film = opoleLubelskie.find(_.movie.title.toLowerCase.contains("niebo nad normandią")).value
+    film.showtimes.map(_.dateTime) should contain allOf(
+      LocalDateTime.of(2026, 9, 25, 20, 0), LocalDateTime.of(2026, 9, 26, 20, 0), LocalDateTime.of(2026, 9, 27, 20, 0))
+    film.filmUrl shouldBe None
   }
 }

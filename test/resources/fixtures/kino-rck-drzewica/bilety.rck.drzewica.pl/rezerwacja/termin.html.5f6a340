@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pl"
+      class="">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible"
+          content="IE=edge">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+    <title>Wybór terminu - RCK Drzewica</title>
+    <meta name="keywords"
+          content=""/>
+    <meta name="description"
+          content=""/>
+    <meta name="author"
+          content="SoftCOM - https://www.softcom.wroc.pl"/>
+    <meta name="robots"
+          content="all"/>
+    <link rel="stylesheet"
+          type="text/css"
+          href="/css/normalize.css"/>
+    <link href="/css/bootstrap.min.css"
+          rel="stylesheet">
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+    <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+    <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <link rel="stylesheet"
+          type="text/css"
+          href="/css/styles.css?v=22"/>
+    <link rel="stylesheet"
+          type="text/css"
+          href="/css/base/ui.all.css"/>
+            <script src="/js-common/jquery.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/bootstrap-5.1.3.min.js"></script>
+    <script src="/js/jquery.countdown.js"></script>
+    <script src="/js/jquery.countdown-pl.js"></script>
+    <script src="/js/core.js?v=22"></script>
+    <script src="/js/main.js?v=22"></script>
+    <script src="/js-common/jquery.validate.min.js"></script>
+<script src="/js-common/jquery-ui.min.js"></script>
+<script src="/js-common/jquery.form.js"></script>
+<script src="/js-common/jquery.maskedinput.js"></script>
+<script src="/js-common/jquery-ui.datepicker-pl.min.js"></script>
+    <script>//<![CDATA[
+$(document).ready(function(){ detectCookies(); });
+//]]></script>
+</head>
+<body>
+
+<!---->
+<a class="skip-to-content-link"
+   href="#content">Przejdź do treści</a>
+
+<div id="message-error" style="display:none;"></div><div id="message-warning" style="display:none;"></div><div id="message-info" style="display:none;"></div><div class="container"><header id="top" class="row">
+<nav class="navbar">
+    <!-- Logo -->
+    <div id="logo"
+         class="navbar-logo"><a href="//rck.drzewica.pl/"><img src="/images/layout/logo.png"
+                                                               alt="RCK Drzewica"></a></div>
+    <ul class="navbar-nav">
+                        <li class="nav-item">
+                    <a class="nav-link"
+                       href="https://bilety.rck.drzewica.pl/index/deklaracja-dostepnosci-wybor-dostepnosci-rck-drzewica.html">Deklaracja dostępności</a>
+                </li>
+                                <li class="nav-item">
+                    <a class="nav-link"
+                       href="https://bilety.rck.drzewica.pl/index/regulamin-platnosci-online.html">Regulamin płatności online</a>
+                </li>
+                                <li class="nav-item">
+                    <a class="nav-link"
+                       href="https://bilety.rck.drzewica.pl/index/regulamin.html">Regulamin</a>
+                </li>
+                            <li class="nav-item">
+                <a class="nav-link"
+                   href="https://bilety.rck.drzewica.pl/uzytkownik/rejestracja.html">Rejestracja</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link"
+                   href="https://bilety.rck.drzewica.pl/uzytkownik/login.html">Zaloguj</a>
+            </li>
+            </ul>
+    
+    <!--WCAG contrast-->
+    
+    <div id="wcag-contrast"
+         class="wcag-contrast"
+         data-js="wcag-contrast">
+        <a href="#"
+           class="wcag-contrast__item active"
+           data-contrast="default"
+           title="Wybierz kontrast: domyślny">A
+        </a>
+        <a href="#"
+           class="wcag-contrast__item"
+           data-contrast="blackwhite"
+           title="Wybierz kontrast: biało-czarny">A
+        </a>
+        <a href="#"
+           class="wcag-contrast__item"
+           data-contrast="blackyellow"
+           title="Wybierz kontrast: żółto-czarny">A
+        </a>
+    </div>
+
+    </nav>
+
+</header><!-- /#top -->
+<div id="content"><h1 class="">Wybór terminu</h1><div class="mceContentBody terminy"><p><span style="font-size: 18pt; font-family: 'comic sans ms', sans-serif;"><em><strong>Rezerwacje dostępne &nbsp;tydzień przed wyświetleniem danego filmu.</strong></em></span></p>
+<p><span style="font-size: 18pt; font-family: 'comic sans ms', sans-serif;"><em><strong>Kasa kina otwarta godzinę przed pierwszym seansem w danym dniu.</strong></em></span></p>
+<p><span style="font-size: 18pt; font-family: 'comic sans ms', sans-serif;"><em><strong>Rezerwacje anulowane są 30 minut przed danym filmem</strong></em></span></p>
+<p>&nbsp;</p></div><br>
+    <ul class="program">
+                    <li class="program__item">
+                <h2 class="program__item-header">26.09.2026 / sobota</h2>
+                <ul class="program__show">
+                                                <li class="program__show-item">
+                                <div class="program__show-date">15:00</div>
+                                <h3 class="program__show-header">
+                                                                            <a href="https://www.filmweb.pl/film/Psi+Patrol+i+dinozaury-2026-10074508"
+                                           target="_blank">Psi Patrol i Dinozaury</a>
+                                    <span class="program__show-header-label" style="background-color:#9900CC">DUBBING</span><span class="program__show-header-label">OGRANICZENIE WIEKOWE 6+</span><span class="program__show-header-label">ANIMOWANY</span><span class="program__show-header-label">PRZYGODOWY</span>                                </h3>
+                                <div class="program__show-description">
+                                    Kanada, USA 89min                                 </div>
+                                <div class="program__show-buttons">
+                                    <a href="https://bilety.rck.drzewica.pl/rezerwacja/numerowane.html?id=1916&amp;idt=47d97bda93aa52d4f8e7e07275962304&amp;idg=1" title="Wybierz Psi Patrol i Dinozaury" class="button button-next" >WYBIERZ</a>                                </div>
+                            </li>
+                                                                        <li class="program__show-item">
+                                <div class="program__show-date">17:00</div>
+                                <h3 class="program__show-header">
+                                                                            <a href="https://www.filmweb.pl/film/Niebo+nad+Normandi%C4%85-2026-10057415"
+                                           target="_blank">Niebo nad Normandią</a>
+                                    <span class="program__show-header-label" style="background-color:#9900CC">NAPISY</span><span class="program__show-header-label">OGRANICZENIE WIEKOWE 15+</span><span class="program__show-header-label">DRAMAT</span><span class="program__show-header-label">WOJENNY</span>                                </h3>
+                                <div class="program__show-description">
+                                    Francja, USA, Wielka Brytania 100min                                 </div>
+                                <div class="program__show-buttons">
+                                    <a href="https://bilety.rck.drzewica.pl/rezerwacja/numerowane.html?id=1918&amp;idt=dabf052cf9f098008e46eafdf0767283&amp;idg=1" title="Wybierz Niebo nad Normandią" class="button button-next" >WYBIERZ</a>                                </div>
+                            </li>
+                                                                        <li class="program__show-item">
+                                <div class="program__show-date">19:15</div>
+                                <h3 class="program__show-header">
+                                                                            <a href="https://www.filmweb.pl/film/Niebo+nad+Normandi%C4%85-2026-10057415"
+                                           target="_blank">Niebo nad Normandią</a>
+                                    <span class="program__show-header-label" style="background-color:#9900CC">NAPISY</span><span class="program__show-header-label">OGRANICZENIE WIEKOWE 15+</span><span class="program__show-header-label">DRAMAT</span><span class="program__show-header-label">WOJENNY</span>                                </h3>
+                                <div class="program__show-description">
+                                    Francja, USA, Wielka Brytania 100min                                 </div>
+                                <div class="program__show-buttons">
+                                    <a href="https://bilety.rck.drzewica.pl/rezerwacja/numerowane.html?id=1919&amp;idt=8f6b8fd447d5f66ea9a5b067b1349883&amp;idg=1" title="Wybierz Niebo nad Normandią" class="button button-next" >WYBIERZ</a>                                </div>
+                            </li>
+                                                                                                                                                                </ul>
+            </li>
+                    <li class="program__item">
+                <h2 class="program__item-header">27.09.2026 / niedziela</h2>
+                <ul class="program__show">
+                                                                                                            <li class="program__show-item">
+                                <div class="program__show-date">15:00</div>
+                                <h3 class="program__show-header">
+                                                                            <a href="https://www.filmweb.pl/film/Psi+Patrol+i+dinozaury-2026-10074508"
+                                           target="_blank">Psi Patrol i Dinozaury</a>
+                                    <span class="program__show-header-label" style="background-color:#9900CC">DUBBING</span><span class="program__show-header-label">OGRANICZENIE WIEKOWE 6+</span><span class="program__show-header-label">ANIMOWANY</span><span class="program__show-header-label">PRZYGODOWY</span>                                </h3>
+                                <div class="program__show-description">
+                                    Kanada, USA 89min                                 </div>
+                                <div class="program__show-buttons">
+                                    <a href="https://bilety.rck.drzewica.pl/rezerwacja/numerowane.html?id=1917&amp;idt=a3b9035287be26c2f4f7cae569c76046&amp;idg=1" title="Wybierz Psi Patrol i Dinozaury" class="button button-next" >WYBIERZ</a>                                </div>
+                            </li>
+                                                                        <li class="program__show-item">
+                                <div class="program__show-date">17:00</div>
+                                <h3 class="program__show-header">
+                                                                            <a href="https://www.filmweb.pl/film/Niebo+nad+Normandi%C4%85-2026-10057415"
+                                           target="_blank">Niebo nad Normandią</a>
+                                    <span class="program__show-header-label" style="background-color:#9900CC">NAPISY</span><span class="program__show-header-label">OGRANICZENIE WIEKOWE 15+</span><span class="program__show-header-label">DRAMAT</span><span class="program__show-header-label">WOJENNY</span>                                </h3>
+                                <div class="program__show-description">
+                                    Francja, USA, Wielka Brytania 100min                                 </div>
+                                <div class="program__show-buttons">
+                                    <a href="https://bilety.rck.drzewica.pl/rezerwacja/numerowane.html?id=1920&amp;idt=29be94f66f5c601d9a32eb1789d02691&amp;idg=1" title="Wybierz Niebo nad Normandią" class="button button-next" >WYBIERZ</a>                                </div>
+                            </li>
+                                                                        <li class="program__show-item">
+                                <div class="program__show-date">19:15</div>
+                                <h3 class="program__show-header">
+                                                                            <a href="https://www.filmweb.pl/film/Niebo+nad+Normandi%C4%85-2026-10057415"
+                                           target="_blank">Niebo nad Normandią</a>
+                                    <span class="program__show-header-label" style="background-color:#9900CC">NAPISY</span><span class="program__show-header-label">OGRANICZENIE WIEKOWE 15+</span><span class="program__show-header-label">DRAMAT</span><span class="program__show-header-label">WOJENNY</span>                                </h3>
+                                <div class="program__show-description">
+                                    Francja, USA, Wielka Brytania 100min                                 </div>
+                                <div class="program__show-buttons">
+                                    <a href="https://bilety.rck.drzewica.pl/rezerwacja/numerowane.html?id=1921&amp;idt=1550bcbd62283c9fef4dbc204d342246&amp;idg=1" title="Wybierz Niebo nad Normandią" class="button button-next" >WYBIERZ</a>                                </div>
+                            </li>
+                                                                                                    </ul>
+            </li>
+                    <li class="program__item">
+                <h2 class="program__item-header">29.09.2026 / wtorek</h2>
+                <ul class="program__show">
+                                                                                                                                                                        <li class="program__show-item">
+                                <div class="program__show-date">18:00</div>
+                                <h3 class="program__show-header">
+                                                                            <a href="https://www.filmweb.pl/film/Mistyczka-2026-10125135"
+                                           target="_blank">Mistyczka</a>
+                                    <span class="program__show-header-label">POLSKI</span><span class="program__show-header-label">OGRANICZENIE WIEKOWE 13+</span><span class="program__show-header-label">DRAMAT</span><span class="program__show-header-label">BIOGRAFICZNY</span>                                </h3>
+                                <div class="program__show-description">
+                                    Polska 90min                                 </div>
+                                <div class="program__show-buttons">
+                                    <a href="https://bilety.rck.drzewica.pl/rezerwacja/numerowane.html?id=1925&amp;idt=9b42443f73cf240b5192d5ff02861362&amp;idg=1" title="Wybierz Mistyczka" class="button button-next" >WYBIERZ</a>                                </div>
+                            </li>
+                                                                                </ul>
+            </li>
+                    <li class="program__item">
+                <h2 class="program__item-header">30.09.2026 / środa</h2>
+                <ul class="program__show">
+                                                                                                                                                                                            <li class="program__show-item">
+                                <div class="program__show-date">09:00</div>
+                                <h3 class="program__show-header">
+                                                                            <a href="https://www.filmweb.pl/film/Vaiana-2026-10033767"
+                                           target="_blank">VAIANA</a>
+                                    <span class="program__show-header-label" style="background-color:#9900CC">DUBBING</span><span class="program__show-header-label">OGRANICZENIE WIEKOWE 7+</span><span class="program__show-header-label">KOMEDIA</span><span class="program__show-header-label">PRZYGODOWY</span>                                </h3>
+                                <div class="program__show-description">
+                                    USA 116min                                 </div>
+                                <div class="program__show-buttons">
+                                    <a href="https://bilety.rck.drzewica.pl/rezerwacja/numerowane.html?id=1924&amp;idt=9b3ad4a52b017c3ad8c0181855a22497&amp;idg=1" title="Wybierz VAIANA" class="button button-next" >WYBIERZ</a>                                </div>
+                            </li>
+                                                            </ul>
+            </li>
+            </ul>
+    <div class="divButtons">
+<a class="button button-next"
+   href="https://bilety.rck.drzewica.pl/rezerwacja/grupa-wydarzen.html?d=3"
+   title="Powrót do strony wyboru grupy wydarzeń">Wstecz</a>
+
+</div></div><div id="footer">Copyright &copy; 2014 RCK Drzewica. Wszystkie prawa zastrzeżone.<br /><a href="http://www.iksoris.pl">System rezerwacji i sprzedaży biletów iKsoris - SoftCOM Wrocław</a></div></div></body>
+</html>
