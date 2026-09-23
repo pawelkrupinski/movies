@@ -151,13 +151,25 @@ class UserStateController(
    *
    *  Responds with the SAME shape as `hiddenFilms()`'s 200 — body, `ETag`,
    *  `Last-Modified` — so a client that just wrote doesn't need a follow-up
-   *  GET to learn its new validators. */
+   *  GET to learn its new validators.
+   *
+   *  Bounded: a title over [[UserStateController.MaxTitleLength]] is a 400, and
+   *  a NEW title into a bucket already holding
+   *  [[UserStateController.MaxHiddenPerCountry]] is a 413 — nothing written
+   *  either way. */
   def hideFilm(country: String, title: String): Action[AnyContent] = Action { request =>
     PerUserResponse((signedInUserId(request), models.Country.byCode(country)) match {
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
+      case (Some(_), Some(_)) if title.length > MaxTitleLength =>
+        BadRequest(Json.obj("error" -> s"title longer than $MaxTitleLength characters"))
       case (Some(userId), Some(c)) =>
-        updateHiddenFilms(userId, c.code)(_ + title)
+        updateHiddenFilms(userId, c.code) { hidden =>
+          // Checked against the bucket as read inside the write, so a retry
+          // after a lost race re-checks against the fresh one.
+          if (hidden.contains(title) || hidden.size < MaxHiddenPerCountry) Right(hidden + title)
+          else Left(EntityTooLarge(Json.obj("error" -> s"at most $MaxHiddenPerCountry hidden films per country")))
+        }
     })
   }
 
@@ -169,7 +181,7 @@ class UserStateController(
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
-        updateHiddenFilms(userId, c.code)(_ - title)
+        updateHiddenFilms(userId, c.code)(hidden => Right(hidden - title))
     })
   }
 
@@ -182,18 +194,19 @@ class UserStateController(
       case (None, _)       => Unauthorized(Json.obj("error" -> "not logged in"))
       case (Some(_), None) => BadRequest(Json.obj("error" -> s"unrecognised country '$country'"))
       case (Some(userId), Some(c)) =>
-        updateHiddenFilms(userId, c.code)(_ => Set.empty)
+        updateHiddenFilms(userId, c.code)(_ => Right(Set.empty))
     })
   }
 
   /** Shared by `hideFilm`/`unhideFilm`/`clearHiddenFilms`: apply `f` to THIS
-   *  country's bucket only and answer with the bucket as stored. Always writes
+   *  country's bucket only and answer with the bucket as stored — or with
+   *  `f`'s own refusal (`Left`), writing nothing. Otherwise always writes
    *  (even when `f` is a no-op) — same "every write bumps `updatedAt`"
    *  behaviour the legacy PUT has. */
-  private def updateHiddenFilms(userId: String, country: String)(f: Set[String] => Set[String]): Result =
+  private def updateHiddenFilms(userId: String, country: String)(f: Set[String] => Either[Result, Set[String]]): Result =
     updateState(userId) { base =>
-      Right(base.copy(hiddenFilmsByCountry =
-        base.hiddenFilmsByCountry.updated(country, f(base.hiddenFilmsByCountry.getOrElse(country, Set.empty)))))
+      f(base.hiddenFilmsByCountry.getOrElse(country, Set.empty))
+        .map(hidden => base.copy(hiddenFilmsByCountry = base.hiddenFilmsByCountry.updated(country, hidden)))
     }.fold(identity, state => respondWithHiddenFilms(state.hiddenFilmsByCountry.getOrElse(country, Set.empty), state.updatedAt))
 
   /** Every write's read-modify-write over the user's row: read it, apply
@@ -265,6 +278,17 @@ class UserStateController(
 }
 
 object UserStateController {
+
+  /** Longest title a per-country hide accepts — far past any real one (the
+   *  longest in the corpus is under 200 characters), short of anything that is
+   *  just padding. Longer → 400. */
+  val MaxTitleLength = 500
+
+  /** Most titles one country's hidden-films bucket may hold. Hiding a NEW title
+   *  past it → 413; re-hiding one already there and unhiding always succeed.
+   *  A country shows a few hundred films a month, so a human never gets here;
+   *  what it bounds is a script growing one row toward Mongo's 16 MB limit. */
+  val MaxHiddenPerCountry = 5000
 
   /** How many lost races [[UserStateController.updateState]] retries before
    *  giving up with a 503. A race needs another write to the SAME user's row
