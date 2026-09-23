@@ -273,7 +273,7 @@ private[movies] final class ScrapeLanding(
     val breadthVerdict =
       if (rewired) ScrapeHealth.Breadth.Healthy
       else ScrapeHealth.breadth(knownCinemaSlots, deduped.size, listingIsComplete,
-        guardState.breadthRejections, maxConsecutiveGuardRejections)
+        guardState.breadthRejections, maxConsecutiveGuardRejections, depthVerdict)
     val breadthRejections = breadthVerdict match {
       case ScrapeHealth.Breadth.Reject(consecutive) =>
         metrics.recordGuardVerdict(ScrapeLandingMetrics.Guard.Breadth, ScrapeLandingMetrics.Verdict.Reject)

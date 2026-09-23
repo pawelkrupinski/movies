@@ -86,6 +86,28 @@ class RewiredVenueGuardSpec extends AnyFlatSpec with Matchers {
     ledger.get(Multikino).sourceKey shouldBe NewSource
   }
 
+  "a source change neither guard can recognise" should "clear both guards on the SAME tick once depth gives up" in {
+    // No keys at all, so nothing marks it as a rewire: the depth guard's grace is the
+    // only way out. When it finally accepts, the breadth guard must not then open a
+    // grace of its own — that ran the two in series (Baszta: 4 + 4 hourly ticks in PL,
+    // 2 + 2 slow-cadence ticks elsewhere), keeping the old source's films on the site
+    // for twice the hold either guard is sized for.
+    val repository = splitRepository()
+    val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer,
+      maxConsecutiveGuardRejections = ScrapeHealth.MaxConsecutiveDepthRejections)
+
+    cache.recordCinemaScrape(Multikino, scrape(films = 10, showtimesEach = 8))
+    (1 to ScrapeHealth.MaxConsecutiveDepthRejections).foreach { _ =>
+      cache.recordCinemaScrape(Multikino, scrape(films = 1, showtimesEach = 3, firstFilm = 20))
+      storedShowtimes(repository, "Film 20") shouldBe 0
+    }
+
+    cache.recordCinemaScrape(Multikino, scrape(films = 1, showtimesEach = 3, firstFilm = 20))
+    storedShowtimes(repository, "Film 20") shouldBe 3
+    storedShowtimes(repository, "Film 1")  shouldBe 0
+    storedShowtimes(repository, "Film 10") shouldBe 0
+  }
+
   "the guards' rejection count" should "survive a worker restart" in {
     val repository = splitRepository()
     val ledger     = new InMemoryScrapeGuardLedger // stands in for the durable store

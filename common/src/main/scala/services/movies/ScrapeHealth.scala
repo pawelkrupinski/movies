@@ -177,13 +177,25 @@ object ScrapeHealth {
    *  `consecutiveRejections` / `maxConsecutiveRejections` mean what they mean for
    *  [[depth]]; a caller who knows this venue's own cadence should pass
    *  [[maxRejectionsFor]], not the bare constant, for the same reason that method
-   *  documents. */
+   *  documents.
+   *
+   *  `depth` is this same tick's depth verdict. When that guard has just given up
+   *  (`AcceptDegraded`), the thin listing has already been held for a full grace and
+   *  is landing, and a breadth shortfall on the same tick is the same change seen on
+   *  the other axis — so it is accepted too. Otherwise the depth guard, which discards
+   *  its rejected ticks before breadth is ever asked, only lets breadth START counting
+   *  once it gives up, and the two graces run in SERIES: Braniewo's Baszta, 2026-09-23,
+   *  held another town's films for 4 + 4 hourly ticks instead of 4. A short listing
+   *  the caller KNOWS is short is still never accepted. */
   def breadth(knownSlots: Int, batchSlots: Int, listingIsComplete: Boolean, consecutiveRejections: Int,
-              maxConsecutiveRejections: Int = MaxConsecutiveDepthRejections): Breadth =
+              maxConsecutiveRejections: Int = MaxConsecutiveDepthRejections,
+              depth: Depth = Depth.Healthy): Breadth =
     if (!listingIsComplete) Breadth.Reject(consecutiveRejections + 1)
     else if (!looksPartial(knownSlots, batchSlots, listingIsComplete = true)) Breadth.Healthy
     else {
       val consecutive = consecutiveRejections + 1
-      if (consecutive <= maxConsecutiveRejections) Breadth.Reject(consecutive) else Breadth.AcceptDegraded(consecutive)
+      val depthGaveUp = depth.isInstanceOf[Depth.AcceptDegraded]
+      if (consecutive <= maxConsecutiveRejections && !depthGaveUp) Breadth.Reject(consecutive)
+      else Breadth.AcceptDegraded(consecutive)
     }
 }

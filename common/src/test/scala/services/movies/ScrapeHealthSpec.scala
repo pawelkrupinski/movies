@@ -98,6 +98,16 @@ class ScrapeHealthSpec extends AnyFlatSpec with Matchers {
       Breadth.Reject(ScrapeHealth.MaxConsecutiveDepthRejections * 5 + 1)
   }
 
+  it should "accept on the tick the depth guard gives up, rather than start a grace of its own" in {
+    ScrapeHealth.breadth(20, 9, listingIsComplete = true, consecutiveRejections = 0,
+      depth = Depth.AcceptDegraded(4)) shouldBe Breadth.AcceptDegraded(1)
+    ScrapeHealth.breadth(20, 9, listingIsComplete = true, consecutiveRejections = 0,
+      depth = Depth.Healthy) shouldBe Breadth.Reject(1)
+    // A listing known to be short stays refused whatever the depth guard concluded.
+    ScrapeHealth.breadth(20, 9, listingIsComplete = false, consecutiveRejections = 0,
+      depth = Depth.AcceptDegraded(4)) shouldBe Breadth.Reject(1)
+  }
+
   it should "call a healthy tick healthy" in {
     ScrapeHealth.breadth(20, 10, listingIsComplete = true, consecutiveRejections = 0) shouldBe Breadth.Healthy
   }
