@@ -969,8 +969,11 @@ class MobileRetryFloorAndSelfHeal(unittest.TestCase):
         self._orig_cache = dict(app._mobile_cache)
         self._orig_build_mobile = app.build_mobile
         self._orig_exit = app.os._exit
+        self._orig_grace = app.MOBILE_SELF_RESTART_GRACE
+        app.MOBILE_SELF_RESTART_GRACE = 0.2
 
     def tearDown(self):
+        app.MOBILE_SELF_RESTART_GRACE = self._orig_grace
         app._mobile_cache.clear()
         app._mobile_cache.update(self._orig_cache)
         app.build_mobile = self._orig_build_mobile
@@ -1029,9 +1032,31 @@ class MobileRetryFloorAndSelfHeal(unittest.TestCase):
         app.os._exit = lambda code: exits.append(code)
         app._mobile_cache["consecutive_network_failures"] = app.MOBILE_SELF_RESTART_AFTER - 1
         app._mobile_cache["built_at"] = 0.0
+        failed = self._all_failed()
+        app.build_mobile = lambda: failed
+        self.assertIs(app.cached_mobile(), failed)
+        self._wait_for(lambda: exits)
+        self.assertEqual(exits, [1])
+
+    def test_the_self_restart_waits_for_the_triggering_response_to_be_sent(self):
+        # The build that trips the threshold usually runs INSIDE a GET /mobile; exiting on the
+        # spot dropped that visitor's connection. The exit is deferred by the grace instead, so
+        # cached_mobile returns (and the handler writes its response) before the process goes.
+        exits = []
+        app.os._exit = lambda code: exits.append(code)
+        app._mobile_cache["consecutive_network_failures"] = app.MOBILE_SELF_RESTART_AFTER - 1
+        app._mobile_cache["built_at"] = 0.0
         app.build_mobile = lambda: self._all_failed()
         app.cached_mobile()
+        self.assertEqual(exits, [], "exited before the caller got its data back")
+        self._wait_for(lambda: exits)
         self.assertEqual(exits, [1])
+
+    @staticmethod
+    def _wait_for(condition, timeout=5.0):
+        deadline = time.time() + timeout
+        while not condition() and time.time() < deadline:
+            time.sleep(0.01)
 
     def test_does_not_self_restart_before_the_threshold(self):
         exits = []

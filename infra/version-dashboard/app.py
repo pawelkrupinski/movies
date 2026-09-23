@@ -1972,6 +1972,11 @@ MOBILE_RETRY_FLOOR = 60.0
 # this counter, so it cannot restart-loop over something a fresh process wouldn't fix either.
 MOBILE_SELF_RESTART_AFTER = 5
 
+# Seconds between deciding to self-restart and actually exiting. The build that trips
+# MOBILE_SELF_RESTART_AFTER usually runs inside a GET /mobile, and exiting on the spot dropped that
+# visitor's connection; this is long enough for the handler to write its response.
+MOBILE_SELF_RESTART_GRACE = 2.0
+
 # Attempts (including the first) for a single ASC/Play round-trip, and the delay before each retry
 # after the first -- long enough to ride out a one-off blip, short enough that a page load never
 # blocks for more than a few seconds waiting on a retry that was always going to fail anyway.
@@ -2045,13 +2050,19 @@ def _maybe_self_restart():
     network reason on every platform -- see that constant for why this is the right backstop and
     why it cannot loop-restart over a non-network failure. launchd's KeepAlive relaunches
     unconditionally on any exit, and the process holds no state, so this costs exactly one cache
-    rebuild if the restart turns out not to have been needed."""
+    rebuild if the restart turns out not to have been needed.
+
+    The exit runs on a daemon timer MOBILE_SELF_RESTART_GRACE later rather than here, so the
+    request whose build tripped the threshold still gets its response written first."""
     with _mobile_cache_lock:
         count = _mobile_cache["consecutive_network_failures"]
     if count >= MOBILE_SELF_RESTART_AFTER:
         print(f"mobile dashboard: {count} consecutive network-level failures on every platform, "
-              "restarting for launchd to relaunch", file=sys.stderr, flush=True)
-        os._exit(1)
+              f"restarting in {MOBILE_SELF_RESTART_GRACE:g}s for launchd to relaunch",
+              file=sys.stderr, flush=True)
+        timer = threading.Timer(MOBILE_SELF_RESTART_GRACE, lambda: os._exit(1))
+        timer.daemon = True
+        timer.start()
 
 
 def _env_local(key):
