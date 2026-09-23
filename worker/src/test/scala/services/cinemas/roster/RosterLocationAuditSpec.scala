@@ -105,6 +105,16 @@ class RosterLocationAuditSpec extends AnyFlatSpec with Matchers {
     RosterLocationAudit.findings(readings).collect { case c: LowCoverage => c.unchecked } shouldBe Seq(5)
   }
 
+  it should "catch a venue whose source places it in another region, however its town is spelled" in {
+    val url = "https://www.filmweb.pl/cinema/-1526"
+    val koloWebs = web(filmwebInfo(1526) -> (filmwebInfo(1526), Kolo1526))
+    // Koło as a /krakow/ venue — the town agrees with the annotation, the map does not.
+    audit(koloWebs, AuditedVenue("krakow", "Kino nad Wartą", url, Seq("Koło")))
+      .collect { case FarFromHub(v, _, km) => (v.cinema, km.round) } shouldBe Seq("Kino nad Wartą" -> 254L)
+    // …and as the /konin/ venue it is, 27 km out.
+    audit(koloWebs, AuditedVenue("konin", "Kino nad Wartą", url, Seq("Koło"))) shouldBe empty
+  }
+
   "streetKey" should "read bilety24's and Filmweb's spellings of one street alike" in {
     RosterLocationAudit.streetKey("ul. Siennieńska 54") shouldBe RosterLocationAudit.streetKey("Siennieńska 54")
   }

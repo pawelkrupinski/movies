@@ -1,12 +1,14 @@
 package services.cinemas.roster
 
+import models.GeoPoint
 import org.jsoup.Jsoup
 import services.cinemas.pl.{Bilety24OrganizerClient, FilmwebShowtimesClient}
 import tools.FetchedPage
 
 /** Where a venue's source says the venue is. `street` is the street address
- *  without postcode or town, when the page gives one. */
-final case class PublishedVenue(town: String, street: Option[String])
+ *  without postcode or town, and `location` its coordinates, when the source
+ *  gives them. */
+final case class PublishedVenue(town: String, street: Option[String], location: Option[GeoPoint] = None)
 
 /**
  * A multi-venue source whose venue page names the venue's town — read by the
@@ -69,6 +71,6 @@ object VenueSourcePage {
     def dropped(page: FetchedPage): Boolean = page.body.trim.isEmpty
 
     def read(body: String): Option[PublishedVenue] =
-      FilmwebShowtimesClient.parseCinemaInfo(body).map(info => PublishedVenue(info.city, info.street))
+      FilmwebShowtimesClient.parseCinemaInfo(body).map(info => PublishedVenue(info.city, info.street, info.location))
   }
 }

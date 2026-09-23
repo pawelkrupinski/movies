@@ -3,15 +3,18 @@ name: Cinema roster audit
 # Weekly ONLINE half of the cinema-roster audit (the offline half,
 # CinemaRosterAuditSpec, runs with the unit tests on every push). It reads
 # every Polish venue's source page that names a town — bilety24 organiser
-# pages and Filmweb's cinema-info API — and fails when a source disagrees with
-# the roster: a town other than the one we file the venue under, one street
+# pages and Filmweb's cinema-info API, plus Helios's, Cinema City's and
+# Multikino's own venue lists — and fails when a source disagrees with the
+# roster: a town other than the one we file the venue under, coordinates more
+# than 75 km from the venue's city page, one street
 # address published for two of our venues, an address the source only
 # redirects now, or a venue the source dropped. The three mistakes it exists
 # for (2026-09-23): Braniewo's Baszta on Środa Wielkopolska's organiser, Koło's
 # Kino nad Wartą on Konin's culture centre, Kino Etiuda wired twice.
 #
-# NOT on push: it hits live sites (~170 requests, 5 at a time, backing off on
-# 429/503). The findings land in the run's job summary.
+# NOT on push: it hits live sites (~175 requests, 5 at a time, backing off on
+# 429/503). Multikino's list sits behind Cloudflare, which may refuse CI's
+# address; that is noted in the summary, not failed on. The findings land in the run's job summary.
 on:
     # Monday 05:00 UTC — before discover-cinemas' 06:00 slot.
     schedule:

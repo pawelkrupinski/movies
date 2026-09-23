@@ -1,11 +1,16 @@
 package services.cinemas.roster
 
+import models.{City, GeoPoint}
 import tools.Slugify
+
+import java.time.LocalDate
 
 /** One venue the online audit checks: where we file it, and the source page
  *  that should agree. `expectedTowns` is [[models.City.townsOf]]. */
 final case class AuditedVenue(citySlug: String, cinema: String, sourceUrl: String, expectedTowns: Seq[String]) {
   def label: String = s"$cinema (/$citySlug/)"
+  /** The centre of the city page the venue is listed on. */
+  def hub: Option[GeoPoint] = City.bySlug(citySlug).map(_.centre)
 }
 
 /** What fetching a venue's source page came to. */
@@ -40,6 +45,14 @@ object RosterFinding {
     def describe: String = s"$street, $town is published for ${venues.size} venues: " +
       venues.map(v => s"${v.label} ${v.sourceUrl}").mkString("; ")
   }
+  /** Coordinates the source publishes that put the venue further from the city
+   *  page it is listed on than any venue we file on purpose — a venue wired
+   *  under the wrong hub, or a source id that is another town's venue. */
+  final case class FarFromHub(venue: AuditedVenue, published: PublishedVenue, km: Double) extends RosterFinding {
+    val failing = true
+    def describe: String =
+      f"${venue.label}: source places it in **${published.town}**, $km%.0f km from /${venue.citySlug}/ — ${venue.sourceUrl}"
+  }
   final case class StaleUrl(venue: AuditedVenue, finalUrl: String) extends RosterFinding {
     val failing = true
     def describe: String = s"${venue.label}: ${venue.sourceUrl} redirects to $finalUrl — wire the address the source publishes"
@@ -63,6 +76,13 @@ object RosterFinding {
     val failing = false
     def describe: String = s"${venue.label}: not checked ($detail) — ${venue.sourceUrl}"
   }
+  /** A chain's venue list that could not be read this time — one note for all
+   *  its venues. Not failing: Multikino's list sits behind Cloudflare, which
+   *  refuses datacenter addresses outright, CI's among them. */
+  final case class DirectoryNotRead(directory: String, venues: Int, detail: String) extends RosterFinding {
+    val failing = false
+    def describe: String = s"$directory's venue list: not read ($detail) — its $venues venues not checked"
+  }
 }
 
 /**
@@ -85,6 +105,17 @@ object RosterLocationAudit {
     Set("Kino Sława", "Kino za Rogiem Międzyrzec"),
   )
 
+  /** How far from its city page's centre a venue may sit. Picked from the PL
+   *  roster's real spread, measured 2026-09-23 over the 174 venues whose source
+   *  publishes coordinates (Filmweb, Helios, Cinema City): median 9.5 km, and the
+   *  furthest venue filed on purpose is Cinema City Biała Podlaska on /siedlce/
+   *  at 59 km, then Grajewo on /lomza/ (58), Międzyzdroje on /szczecin/ (56).
+   *  75 km clears that tail with room for a hub's next nearby town. It does not
+   *  separate neighbouring hubs (median 53 km apart) — the town check does that;
+   *  this catches a source id that is a venue in another region altogether,
+   *  which a town spelled like ours (two Środas, two Ostrówów) would slip past. */
+  val MaxKmFromHub = 75.0
+
   /** Pages allowed to read no town before the run blames itself. */
   private def coverageTolerance(pages: Int): Int = math.max(2, pages / 10)
 
@@ -93,6 +124,9 @@ object RosterLocationAudit {
 
     val towns = located.collect {
       case (v, Located(p, _)) if !v.expectedTowns.exists(TownName.same(_, p.town)) => TownMismatch(v, p)
+    }
+    val far = located.flatMap { case (v, Located(p, _)) =>
+      for { hub <- v.hub; at <- p.location; km = hub.kmTo(at) if km > MaxKmFromHub } yield FarFromHub(v, p, km)
     }
     val stale = located.collect {
       case (v, Located(_, finalUrl)) if VenueSourcePage.forUrl(v.sourceUrl).exists(p =>
@@ -110,7 +144,7 @@ object RosterLocationAudit {
     val uncovered  = unlocated.size + unchecked.size
     val coverage   = Option.when(uncovered > coverageTolerance(readings.size))(LowCoverage(uncovered, located.size))
 
-    towns ++ shared ++ stale ++ gone ++ coverage ++ unlocated ++ unchecked
+    towns ++ far ++ shared ++ stale ++ gone ++ coverage ++ unlocated ++ unchecked
   }
 
   /** A street as a comparable key: folded, the `ul.`/`al.`/`pl.` prefix
@@ -138,6 +172,7 @@ object RosterLocationAudit {
 
 /** Reads one venue's source page into a [[SourceReading]]. */
 object RosterSourceReader {
+  import RosterFinding.DirectoryNotRead
   import SourceReading._
 
   /** Statuses that mean "ask again more slowly" — rethrown so the caller's pool
@@ -154,6 +189,31 @@ object RosterSourceReader {
       scraper <- scrapersOf(city.slug)
       url     <- scraper.sourceUrl.toSeq if VenueSourcePage.forUrl(url).isDefined
     } yield AuditedVenue(city.slug, scraper.cinema.displayName, url, city.townsOf(scraper.cinema))
+
+  /** Every venue of these cities a [[ChainDirectory]] lists, with its id there. */
+  def chainVenuesOf(cities: Seq[models.City], scrapersOf: String => Seq[services.cinemas.common.CinemaScraper]): Seq[(ChainDirectory, String, AuditedVenue)] =
+    for {
+      city          <- cities
+      scraper       <- scrapersOf(city.slug)
+      (directory, id) <- ChainDirectory.of(scraper).toSeq
+    } yield (directory, id, AuditedVenue(city.slug, scraper.cinema.displayName,
+                                         scraper.sourceUrl.getOrElse(directory.listUrl(LocalDate.now())), city.townsOf(scraper.cinema)))
+
+  /** Read a chain's venue list once and look each of its venues up in it — or,
+   *  when the list cannot be read, why not. */
+  def readDirectory(fetch: String => tools.FetchedPage, today: LocalDate)(directory: ChainDirectory, venues: Seq[(String, AuditedVenue)])
+      : Either[DirectoryNotRead, Seq[(AuditedVenue, SourceReading)]] =
+    try {
+      directory.warmUpUrl.foreach(u => scala.util.Try(fetch(u)))
+      val url    = directory.listUrl(today)
+      val listed = directory.parse(fetch(url).body)
+      if (listed.isEmpty) Left(DirectoryNotRead(directory.name, venues.size, "no venues in the answer"))
+      else Right(venues.map { case (id, venue) =>
+        venue -> listed.get(id).fold[SourceReading](Gone(s"id $id not in ${directory.name}'s venue list"))(Located(_, url))
+      })
+    } catch {
+      case scala.util.control.NonFatal(e) => Left(DirectoryNotRead(directory.name, venues.size, s"${e.getClass.getSimpleName}: ${e.getMessage}"))
+    }
 
   def read(fetch: String => tools.FetchedPage)(venue: AuditedVenue): SourceReading =
     VenueSourcePage.forUrl(venue.sourceUrl) match {

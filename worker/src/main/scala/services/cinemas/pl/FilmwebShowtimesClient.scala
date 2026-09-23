@@ -177,13 +177,15 @@ object FilmwebShowtimesClient extends play.api.Logging {
   def cinemaInfoUrl(cinemaId: Int): String = s"$ApiBase/cinema/$cinemaId/info"
 
   /** What `/cinema/<id>/info` says of a venue: `{"name":"Kino nad Wartą",
-   *  "city":"Koło","street":"Słowackiego 5",…}`. An id Filmweb does not know
-   *  answers 204 with no body — `None`, as is a body without a name or city. */
-  final case class CinemaInfo(name: String, city: String, street: Option[String])
+   *  "city":"Koło","street":"Słowackiego 5",…,"lat":52.19659,"lon":18.64015}`.
+   *  An id Filmweb does not know answers 204 with no body — `None`, as is a
+   *  body without a name or city. */
+  final case class CinemaInfo(name: String, city: String, street: Option[String], location: Option[GeoPoint])
   def parseCinemaInfo(body: String): Option[CinemaInfo] =
     Try(Json.parse(body)).toOption.flatMap { js =>
       def field(key: String) = (js \ key).asOpt[String].map(_.trim).filter(_.nonEmpty)
-      for { name <- field("name"); city <- field("city") } yield CinemaInfo(name, city, field("street"))
+      val location = for { lat <- (js \ "lat").asOpt[Double]; lon <- (js \ "lon").asOpt[Double] } yield GeoPoint(lat, lon)
+      for { name <- field("name"); city <- field("city") } yield CinemaInfo(name, city, field("street"), location)
     }
 
   /** Filmweb's canonical public showtimes URL for a venue. The id is the stable

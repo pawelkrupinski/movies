@@ -1,5 +1,6 @@
 package services.cinemas.roster
 
+import models.GeoPoint
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.roster.RosterAuditFixtures._
@@ -33,10 +34,10 @@ class VenueSourcePageSpec extends AnyFlatSpec with Matchers {
     Filmweb.pageUrl("https://www.filmweb.pl/cinema/-1526") shouldBe filmwebInfo(1526)
   }
 
-  it should "publish the cinema's town and street" in {
-    Filmweb.read(page(Kolo1526)) shouldBe Some(PublishedVenue("Koło", Some("Słowackiego 5")))
-    Filmweb.read(page(EtiudaObk3024)) shouldBe Some(PublishedVenue("Ostrowiec Świętokrzyski", Some("Siennieńska 54")))
-    Filmweb.read(page(Braniewo2352)) shouldBe Some(PublishedVenue("Braniewo", Some("Katedralna 9")))
+  it should "publish the cinema's town, street and coordinates" in {
+    Filmweb.read(page(Kolo1526)) shouldBe Some(PublishedVenue("Koło", Some("Słowackiego 5"), Some(GeoPoint(52.19659, 18.64015))))
+    Filmweb.read(page(EtiudaObk3024)).map(_.copy(location = None)) shouldBe Some(PublishedVenue("Ostrowiec Świętokrzyski", Some("Siennieńska 54")))
+    Filmweb.read(page(Braniewo2352)).map(_.copy(location = None)) shouldBe Some(PublishedVenue("Braniewo", Some("Katedralna 9")))
   }
 
   it should "count the empty 204 Filmweb answers an unknown id with as dropped" in {

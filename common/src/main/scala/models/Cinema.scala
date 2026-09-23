@@ -1945,19 +1945,6 @@ object UsRoster {
    *  reader would draw: Vermont end to end is a long drive, Hawaii is a flight. */
   private val MaxSpanToStayWholeKm = 300.0
 
-  /** Great-circle km between two (lat, lon) points — the metro-centroid spread
-   *  [[MaxSpanToStayWholeKm]] is measured with. */
-  private def haversineKm(a: (Double, Double), b: (Double, Double)): Double = {
-    val (lat1, lon1) = a
-    val (lat2, lon2) = b
-    val (p1, p2)     = (math.toRadians(lat1), math.toRadians(lat2))
-    val dPhi         = math.toRadians(lat2 - lat1)
-    val dLambda      = math.toRadians(lon2 - lon1)
-    val h = math.pow(math.sin(dPhi / 2), 2) +
-            math.cos(p1) * math.cos(p2) * math.pow(math.sin(dLambda / 2), 2)
-    2 * 6371.0 * math.asin(math.sqrt(h))
-  }
-
   /** One venue of the generated roster, with everything the places and the
    *  scrape catalog read off it. */
   private final case class Venue(cinema: UsCinema, flicksSlug: String, metro: String, district: String,
@@ -2035,8 +2022,8 @@ object UsRoster {
    *  the widest gap between two of their centres, against
    *  [[MaxSpanToStayWholeKm]]. */
   private def sprawls(state: State): Boolean = {
-    val centres = state.metroCentres.values.map(c => (c.lat, c.lon)).toSeq
-    centres.combinations(2).exists(pair => haversineKm(pair(0), pair(1)) > MaxSpanToStayWholeKm)
+    val centres = state.metroCentres.values.map(c => GeoPoint(c.lat, c.lon)).toSeq
+    centres.combinations(2).exists(pair => pair(0).kmTo(pair(1)) > MaxSpanToStayWholeKm)
   }
 
   /** The clock a whole-state place keeps: its BIGGEST metro's, ties by label.

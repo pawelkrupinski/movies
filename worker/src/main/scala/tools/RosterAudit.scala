@@ -2,18 +2,22 @@ package tools
 
 import models.Country
 import services.cinemas.CinemaScraperCatalog
-import services.cinemas.roster.{RosterLocationAudit, RosterSourceReader, SourceReading}
+import services.cinemas.roster.{ChainDirectory, RosterLocationAudit, RosterSourceReader, SourceReading}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths, StandardOpenOption}
+import java.time.{LocalDate, ZoneId}
 import scala.util.{Failure, Success}
 
 /**
  * The ONLINE half of the cinema-roster audit (the offline half is
  * `CinemaRosterAuditSpec`): fetch every Polish venue's source page that names a
- * town — bilety24 organiser pages and Filmweb cinema pages — and report where
+ * town — bilety24 organiser pages and Filmweb cinema pages — plus the Helios,
+ * Cinema City and Multikino venue lists (one request per chain), and report where
  * the source disagrees with the roster: a town other than the one we file the
- * venue under (Koło's Kino nad Wartą read from Konin's culture centre), one
+ * venue under (Koło's Kino nad Wartą read from Konin's culture centre), a venue
+ * whose published coordinates are further from its city page than any venue
+ * we file on purpose, one
  * street address published for two of our venues (Kino Etiuda wired twice), an
  * address the source now only redirects, or a venue the source dropped.
  *
@@ -38,11 +42,19 @@ object RosterAudit {
 
     val (results, stats) = AdaptiveParallel.map(venues, Workers)(RosterSourceReader.isThrottle)(
       RosterSourceReader.read(http.getPage))
-    val readings = results.map {
+    val pageReadings = results.map {
       case (venue, Success(reading)) => venue -> reading
       case (venue, Failure(e))       => venue -> SourceReading.Unreachable(s"gave up: ${e.getMessage}")
     }
-    val findings = RosterLocationAudit.findings(readings)
+
+    val chainVenues = RosterSourceReader.chainVenuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil))
+    println(s"RosterAudit: ${chainVenues.size} Polish chain venues to look up in ${ChainDirectory.all.size} chain venue lists")
+    val today = LocalDate.now(ZoneId.of("Europe/Warsaw"))
+    val chainResults = chainVenues.groupMap(_._1)(v => v._2 -> v._3).toSeq.map { case (directory, venues) =>
+      RosterSourceReader.readDirectory(http.getPage, today)(directory, venues)
+    }
+    val readings = pageReadings ++ chainResults.flatMap(_.toSeq.flatten)
+    val findings = RosterLocationAudit.findings(readings) ++ chainResults.flatMap(_.left.toSeq)
     val report   = RosterLocationAudit.markdown(readings, findings, s"Done: ${stats.summary}.")
 
     println(report)

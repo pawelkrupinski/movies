@@ -29,7 +29,7 @@ import services.movies.TitleNormalizer
  */
 class MultikinoClient(
   http:              HttpFetch,
-  cinemaId:          String = MultikinoClient.PoznanStaryBrowarId,
+  val cinemaId:      String = MultikinoClient.PoznanStaryBrowarId,
   override val cinema: Cinema = Multikino,
   // The country's title rules. An ordinary dependency, not a context param:
   // every scraper is built by `CinemaScraperCatalog`, which has exactly one.

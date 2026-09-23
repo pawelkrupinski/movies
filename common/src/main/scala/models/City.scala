@@ -75,6 +75,8 @@ sealed abstract class City(
   val zoneId: ZoneId,
 ) {
   def cinemas: Seq[Cinema]
+  /** The city's geographic centre, as a point. */
+  final def centre: GeoPoint = GeoPoint(lat, lon)
   /** This city's cinema sub-regions, or empty when the city is **flat** (the
    *  default — most cities). When non-empty the areas PARTITION `cinemas`: their
    *  union is exactly `cinemas`, with no overlap and nothing left out (enforced

@@ -18,7 +18,7 @@ import services.movies.TitleNormalizer
 // wirings pass the fixture's capture date so the recorded URLs still match.
 class HeliosClient(
   http:  HttpFetch    = HeliosFetch,
-  config:   HeliosCinema = HeliosNuxt.Poznan,
+  val config: HeliosCinema = HeliosNuxt.Poznan,
   today: LocalDate    = LocalDate.now(ZoneId.of("Europe/Warsaw")),
   // Per-film detail (`/api/movie/{id}`) + screen-name fetch path. Defaults to
   // `http`; the composition root injects ONE CachingDetailFetch shared across

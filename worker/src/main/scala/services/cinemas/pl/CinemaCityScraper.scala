@@ -22,7 +22,7 @@ import java.time.LocalDate
  */
 class CinemaCityScraper(
   client:   CinemaCityClient,
-  cinemaId: String,
+  val cinemaId: String,
   val cinema: Cinema
 ) extends ChunkedCinemaScraper with DetailEnricher {
   // Chunked per-WEEK. The quickbook API has no range/multi-cinema endpoint (only

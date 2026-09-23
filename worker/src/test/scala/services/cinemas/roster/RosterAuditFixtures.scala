@@ -8,6 +8,10 @@ import java.nio.file.{Files, Paths}
  *    bilety24-organiser-<id>-*.html   https://www.bilety24.pl/kino/organizator/<slug>-<id>
  *                                     (scripts, styles and SVG sprites stripped)
  *    filmweb-cinema-info-<id>-*.json  https://www.filmweb.pl/api/v1/cinema/<id>/info
+ *    helios-cinemas.json              https://restapi.helios.pl/api/cinema
+ *    cinema-city-cinemas.json         https://www.cinema-city.pl/pl/data-api-service/v1/quickbook/10103/cinemas/with-event/until/2027-09-23
+ *    multikino-cinemas.json           https://www.multikino.pl/api/microservice/showings/cinemas
+ *                                     (after a home-page visit for the session cookies)
  */
 object RosterAuditFixtures {
   def page(name: String): String =
@@ -22,6 +26,10 @@ object RosterAuditFixtures {
   val Wars2348      = "filmweb-cinema-info-2348-wysokie-mazowieckie.json"
   val Slawa1658     = "filmweb-cinema-info-1658-slawa-miedzyrzec.json"
   val ZaRogiem1850  = "filmweb-cinema-info-1850-za-rogiem-miedzyrzec.json"
+
+  val HeliosCinemas     = "helios-cinemas.json"
+  val CinemaCityCinemas = "cinema-city-cinemas.json"
+  val MultikinoCinemas  = "multikino-cinemas.json"
 
   def filmwebInfo(id: Int): String = s"https://www.filmweb.pl/api/v1/cinema/$id/info"
 }
