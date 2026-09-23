@@ -1,5 +1,5 @@
 // GENERATED from data/us/venues.json by data/us/scripts/generate_roster.py
-// — do NOT edit by hand. Full US cinema roster: 55 states/territories / 5,031 cinemas (Flicks, www.flicks.us).
+// — do NOT edit by hand. Full US cinema roster: 55 states/territories / 5,030 cinemas (Flicks, www.flicks.us).
 // Regenerate after re-harvesting; see data/us/README.md.
 package models
 
@@ -1667,7 +1667,7 @@ private[models] object UsRosterData {
     ("St Louis", 38.67845, -89.93479, "America/Chicago"),
   ))
 
-  private def r_indiana: R = ("indiana", "Indiana", 39.96479, -86.23467, Seq(
+  private def r_indiana: R = ("indiana", "Indiana", 39.95362, -86.23834, Seq(
     ("13-24 Drive In Wabash", "13-24 Drive In Wabash", "13-24-drive-in-wabash", "Kokomo", "", "Wabash"),
     ("49er Drive In Valparaiso", "49er Drive In Valparaiso", "49er-drive-in-valparaiso", "South Bend Elkhart", "", "Valparaiso"),
     ("ABCinema", "ABCinema", "abcinema", "Fort Wayne", "", "Decatur"),
@@ -1761,7 +1761,6 @@ private[models] object UsRosterData {
     ("Park Theatre Civic Centre North Vernon", "Park Theatre Civic Centre North Vernon", "park-theatre-civic-centre-north-vernon", "Louisville", "", "North Vernon"),
     ("Peacock Theatre Monticello", "Peacock Theatre Monticello", "peacock-theatre-monticello", "Lafayette West Lafayette", "", "Monticello"),
     ("Phoenix Theatres New Albany 16", "Phoenix Theatres New Albany 16", "phoenix-theatres-new-albany-16", "Louisville", "", "New Albany"),
-    ("Pickwick Theatre Syracuse", "Pickwick Theatre Syracuse", "pickwick-theatre-syracuse", "South Bend Elkhart", "", "Syracuse"),
     ("Princess Theatre Rushville Indiana", "Princess Theatre Rushville Indiana", "princess-theatre-rushville-indiana", "Indianapolis", "", "Rushville"),
     ("Regal Coldwater Crossing Fort Wayne", "Regal Coldwater Crossing Fort Wayne", "regal-coldwater-crossing-fort-wayne", "Kokomo", "", "Fort Wayne"),
     ("Regal Galaxy Indianapolis", "Regal Galaxy Indianapolis", "regal-galaxy-indianapolis", "Indianapolis", "", "Indianapolis"),
@@ -1809,7 +1808,7 @@ private[models] object UsRosterData {
     ("Lafayette West Lafayette", 40.98657, -87.15886, "America/Chicago"),
     ("Louisville", 38.8519, -85.51492, "America/Indiana/Indianapolis"),
     ("Richmond", 40.01225, -85.04959, "America/Indiana/Indianapolis"),
-    ("South Bend Elkhart", 41.45952, -86.33657, "America/Indiana/Indianapolis"),
+    ("South Bend Elkhart", 41.46178, -86.37823, "America/Indiana/Indianapolis"),
     ("Terre Haute", 39.57636, -87.20345, "America/Indiana/Indianapolis"),
   ))
 

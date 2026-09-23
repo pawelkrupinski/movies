@@ -32,8 +32,17 @@ class UsRosterSpec extends AnyFlatSpec with Matchers {
 
   it should "hold every venue exactly once — a re-key, not a re-harvest" in {
     val venues = City.usCities.flatMap(_.cinemas)
-    venues should have size 5031
-    venues.distinct should have size 5031
+    venues should have size 5030
+    venues.distinct should have size 5030
+  }
+
+  // Flicks' only feed for the Pickwick in Syracuse IN is Park Ridge IL's Veezi site (216/216
+  // showtimes identical), and we have no other source for it — so it would show Chicago's
+  // Pickwick programme in South Bend. Park Ridge itself stays.
+  it should "leave out a venue whose only feed is another venue's programme" in {
+    val names = City.usCities.flatMap(_.cinemaDisplayNames).toSet
+    names should not contain "Pickwick Theatre Syracuse"
+    names should contain ("Pickwick Theatre Park Ridge")
   }
 
   "A metro" should "be the city, named and placed as itself" in {
