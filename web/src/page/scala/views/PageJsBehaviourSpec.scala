@@ -227,7 +227,18 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
           try os.write(bytes) finally os.close()
         }
         (method, path) match {
+          // Honours `If-None-Match` like the real controller does: a client
+          // replaying the validator it was last handed gets a bodiless 304 —
+          // which is what proves a reconcile that MUST see the body (the first
+          // one after a login, or one whose local list mirrors another
+          // country) doesn't send it.
+          case ("GET", Bucket) if Option(exchange.getRequestHeaders.getFirst("If-None-Match")).contains("\"fixture-etag\"") =>
+            exchange.getResponseHeaders.add("ETag", "\"fixture-etag\"")
+            exchange.sendResponseHeaders(304, -1)
+            exchange.close()
+            true
           case ("GET", Bucket)                                  => writeJson(200, """{"hiddenFilms":["Film A"]}"""); true
+          case ("PUT", p) if p == Bucket + "/Rejected"            => writeJson(500, """{"error":"boom"}"""); true
           case ("PUT", p) if p.startsWith(Bucket + "/")          => writeJson(200, """{"hiddenFilms":["Film A"]}"""); true
           case ("DELETE", p) if p.startsWith(Bucket + "/")       => writeJson(200, """{"hiddenFilms":[]}"""); true
           case ("DELETE", Bucket)                                => writeJson(200, """{"hiddenFilms":[]}"""); true
@@ -498,7 +509,10 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // Mimic a device still carrying a stale local-only entry the server never
       // had, with the sync flag already set. A blind union would keep "Film B"
       // forever; an authoritative reconcile must drop it on the next load.
-      page.eval("_lsSet('hiddenFilms', ['Film A','Film B'])")
+      // Such drift comes from a write that never reached the server, and a
+      // failed write forgets this country's validators (so the reconcile is
+      // not answered with a 304 that would keep the drift) — mimic that too.
+      page.eval("_lsSet('hiddenFilms', ['Film A','Film B']); localStorage.removeItem('hiddenFilmsEtag:pl')")
       page.reload()
       // `Film A` comes from the server, so this is the same round-trip again.
       page.waitFor("getHidden().indexOf('Film B') === -1 && getHidden().indexOf('Film A') !== -1",
@@ -536,6 +550,68 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       val hidden = page.evalString("JSON.stringify(getHidden())")
       hidden should include ("Film A")  // pulled from the server
       hidden should include ("Local Z") // migrated up from this device
+    }
+  }
+
+  // Re-login regression: the synced flag was cleared on the anonymous page,
+  // but the validators from the PREVIOUS login were still cached, so the next
+  // login's reconcile sent them, got a 304, and returned before the union —
+  // the anonymous picks never reached the account. The union test above now
+  // covers exactly that (the fixture 304s a replayed validator); this one
+  // pins the other half: a reconcile after an anonymous page carries no
+  // validator at all.
+  it should "not replay a cached validator on the first reconcile after a login" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      page.evalString("String(localStorage.getItem('hiddenFilmsEtag:pl'))") shouldBe "\"fixture-etag\""
+      page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
+      page.eval("_lsSet('hiddenFilms', ['Local Z'])")
+      page.reload()
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
+                   timeoutMs = 5000)
+      page.evalString("JSON.stringify(getHidden())") should include ("Local Z")
+    }
+  }
+
+  it should "forget this country's validators when a write fails to reach the server" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      page.evalString("String(localStorage.getItem('hiddenFilmsEtag:pl'))") shouldBe "\"fixture-etag\""
+      page.eval("hideFilmOnServer('Rejected')")
+      page.waitFor("localStorage.getItem('hiddenFilmsEtag:pl') === null", timeoutMs = 5000)
+    }
+  }
+
+  // Cross-country regression. `hiddenFilms` in localStorage is ONE list per
+  // origin, and showtimes.cc serves /uk, /de, /us and /es from one origin —
+  // but the server keeps one list PER COUNTRY. Coming back to a country whose
+  // validators were cached, the reconcile 304'd and kept the list the OTHER
+  // country had just written locally; arriving at a country for the first
+  // time, it unioned the other country's list and PUT every title of it into
+  // this one's. Simulated here by marking the local list as /uk's.
+  it should "replace, not trust or union, a local list that mirrors another country" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)  // pl synced, pl validators cached
+      page.eval("_lsSet('hiddenFilms', ['UK Film']); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.reload()
+      page.waitFor("getHidden().indexOf('Film A') !== -1", timeoutMs = 5000)
+      page.evalString("JSON.stringify(getHidden())") should not include "UK Film"
+    }
+  }
+
+  it should "not push another country's hidden films into this country on its first reconcile" in {
+    onLoggedInIndex { page =>
+      awaitOwnReconcile(page)
+      page.eval("localStorage.removeItem('hiddenFilmsSynced:pl')")
+      page.eval("_lsSet('hiddenFilms', ['UK Film']); localStorage.setItem('hiddenFilmsCountry', 'uk')")
+      page.reload()
+      page.waitFor("localStorage.getItem('hiddenFilmsSynced:pl') === '1' && getHidden().indexOf('Film A') !== -1",
+                   timeoutMs = 5000)
+      Thread.sleep(150)
+      page.evalString(
+        "performance.getEntriesByType('resource')" +
+          ".some(function (r) { return r.name.indexOf('/api/me/pl/hidden-films/UK%20Film') !== -1; }).toString()") shouldBe "false"
+      page.evalString("JSON.stringify(getHidden())") should not include "UK Film"
     }
   }
 

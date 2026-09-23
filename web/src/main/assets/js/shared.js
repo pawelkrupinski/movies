@@ -2206,13 +2206,24 @@
   //     alone.
   //
   // A per-country ETag/Last-Modified is cached so the 304 path actually
-  // fires (both here and on a country switch), and a successful WRITE also
-  // refreshes them from its own response headers — no need to wait for the
-  // next fetch to warm the cache.
+  // fires, and a successful WRITE also refreshes them from its own response
+  // headers — no need to wait for the next fetch to warm the cache. A 304 can
+  // only vouch for the local list if that list IS this country's server list,
+  // so validators are sent only when all three hold:
+  //   • the country is already synced (a first reconcile must see the body to
+  //     union it — replaying a validator from a PREVIOUS login used to 304
+  //     straight past the migration);
+  //   • `hiddenFilmsCountry` names THIS country. localStorage keeps one
+  //     `hiddenFilms` list per ORIGIN, and showtimes.cc serves /uk, /de, /us
+  //     and /es from one — after /de wrote its list locally, a 304 on /uk kept
+  //     /de's list on screen. A list mirroring another country is replaced
+  //     from the server, never unioned (that pushed /de's titles into /uk);
+  //   • no write since the last exchange failed — a failed write forgets the
+  //     validators, so the next reconcile takes the server's answer.
   //
-  // Every per-country flag is cleared whenever a page renders anonymous
-  // (logout / expired session), so the next login migrates this device's
-  // current picks afresh, exactly as the old single flag did.
+  // Every per-country flag, and the marker, is cleared whenever a page
+  // renders anonymous (logout / expired session), so the next login migrates
+  // this device's current picks afresh, exactly as the old single flag did.
   //
   // `language` (the picked UI language, `kinowo_lang` — see `i18n.js`) rides
   // the LEGACY `/api/me/state` document instead — there's no granular
@@ -2238,6 +2249,9 @@
   function _hiddenFilmsSyncedKey(country)     { return 'hiddenFilmsSynced:' + country; }
   function _hiddenFilmsEtagKey(country)       { return 'hiddenFilmsEtag:' + country; }
   function _hiddenFilmsLastModifiedKey(country) { return 'hiddenFilmsLastModified:' + country; }
+  // Which country's server list the (per-origin) local `hiddenFilms` list
+  // currently mirrors — see the section comment above.
+  const HIDDEN_FILMS_COUNTRY_KEY = 'hiddenFilmsCountry';
 
   function _hiddenFilmsUrl(country, title) {
     const base = mountPrefix() + '/api/me/' + country + '/hidden-films';
@@ -2256,25 +2270,35 @@
     } catch {}
   }
 
-  function hideFilmOnServer(title, country) {
+  function _forgetHiddenFilmsValidators(country) {
+    try {
+      localStorage.removeItem(_hiddenFilmsEtagKey(country));
+      localStorage.removeItem(_hiddenFilmsLastModifiedKey(country));
+    } catch {}
+  }
+
+  // The one request shape every hiddenFilms write shares. A write that never
+  // landed (offline, 401, 5xx) leaves localStorage ahead of the server, so the
+  // cached validators stop describing it — forget them, and the next
+  // reconcile takes the server's answer instead of 304-ing onto the drift.
+  function _writeHiddenFilms(method, country, title) {
     if (!isLoggedIn()) return;
     country = country || currentCountryCode();
-    fetch(_hiddenFilmsUrl(country, title), { method: 'PUT' })
-      .then(resp => { if (resp.ok) _storeHiddenFilmsValidators(country, resp); })
-      .catch(() => { /* offline / 401 — localStorage still has the write */ });
+    fetch(_hiddenFilmsUrl(country, title), { method: method })
+      .then(resp => {
+        if (resp.ok) _storeHiddenFilmsValidators(country, resp);
+        else _forgetHiddenFilmsValidators(country);
+      })
+      .catch(() => _forgetHiddenFilmsValidators(country));
   }
+
+  function hideFilmOnServer(title, country)   { _writeHiddenFilms('PUT', country, title); }
+  function unhideFilmOnServer(title, country) { _writeHiddenFilms('DELETE', country, title); }
+  function clearHiddenFilmsOnServer(country)  { _writeHiddenFilms('DELETE', country); }
   // `i18n.js` (a separate script, loaded on every page this one is) calls
   // this from `onLanguageChange` so an explicit language pick reaches the
   // server too — same cross-file hook shape as `window.refreshDateLabels`.
   window.scheduleServerSync = scheduleServerSync;
-
-  function unhideFilmOnServer(title, country) {
-    if (!isLoggedIn()) return;
-    country = country || currentCountryCode();
-    fetch(_hiddenFilmsUrl(country, title), { method: 'DELETE' })
-      .then(resp => { if (resp.ok) _storeHiddenFilmsValidators(country, resp); })
-      .catch(() => { /* offline / 401 — localStorage still has the write */ });
-  }
 
   // The ONLY remaining caller is `onLanguageChange`, via `scheduleServerSync`
   // above (i18n.js) — hiddenFilms/disabledCinemas both left this mechanism,
@@ -2312,42 +2336,45 @@
     if (document.visibilityState === 'hidden') flushServerSync();
   });
 
-  function clearHiddenFilmsOnServer(country) {
-    if (!isLoggedIn()) return;
-    country = country || currentCountryCode();
-    fetch(_hiddenFilmsUrl(country), { method: 'DELETE' })
-      .then(resp => { if (resp.ok) _storeHiddenFilmsValidators(country, resp); })
-      .catch(() => { /* offline / 401 — localStorage still has the write */ });
-  }
-
   async function bootMergeFromServer() {
     const country = currentCountryCode();
     if (!isLoggedIn()) {
-      // Anonymous (incl. just-logged-out): re-arm migration so the next
-      // login carries this device's current local picks up exactly once.
-      try { localStorage.removeItem(_hiddenFilmsSyncedKey(country)); } catch {}
+      // Anonymous (incl. just-logged-out): re-arm migration for EVERY country
+      // so the next login carries this device's current local picks up
+      // exactly once, and stop claiming the local list mirrors any account.
+      try {
+        Object.keys(localStorage)
+          .filter(k => k.indexOf(_hiddenFilmsSyncedKey('')) === 0)
+          .forEach(k => localStorage.removeItem(k));
+        localStorage.removeItem(HIDDEN_FILMS_COUNTRY_KEY);
+      } catch {}
       return;
     }
     try {
+      const firstSync = localStorage.getItem(_hiddenFilmsSyncedKey(country)) !== '1';
+      const mirrored  = localStorage.getItem(HIDDEN_FILMS_COUNTRY_KEY);
       const headers = { 'Accept': 'application/json' };
-      const etag = localStorage.getItem(_hiddenFilmsEtagKey(country));
-      const lastModified = localStorage.getItem(_hiddenFilmsLastModifiedKey(country));
-      if (etag) headers['If-None-Match'] = etag;
-      else if (lastModified) headers['If-Modified-Since'] = lastModified;
+      if (!firstSync && mirrored === country) {
+        const etag = localStorage.getItem(_hiddenFilmsEtagKey(country));
+        const lastModified = localStorage.getItem(_hiddenFilmsLastModifiedKey(country));
+        if (etag) headers['If-None-Match'] = etag;
+        else if (lastModified) headers['If-Modified-Since'] = lastModified;
+      }
 
       const resp = await fetch(_hiddenFilmsUrl(country), { headers });
       if (resp.status === 304) return; // proven unchanged — localStorage is already current
       if (!resp.ok) return;
 
       _storeHiddenFilmsValidators(country, resp);
-      const remote    = await resp.json();
-      const firstSync = localStorage.getItem(_hiddenFilmsSyncedKey(country)) !== '1';
+      const remote = await resp.json();
+      try { localStorage.setItem(HIDDEN_FILMS_COUNTRY_KEY, country); } catch {}
 
-      if (firstSync) {
+      // Union only a list that is this device's own picks (anonymous, or
+      // already this country's) — never one mirroring another country.
+      if (firstSync && (mirrored === null || mirrored === country)) {
         const localOnly = getHidden().filter(t => !(remote.hiddenFilms || []).includes(t));
         const union = (local, srv) => [...new Set([...(local || []), ...(srv || [])])].sort();
         _lsSet('hiddenFilms', union(getHidden(), remote.hiddenFilms));
-        try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
         localOnly.forEach(title => hideFilmOnServer(title, country)); // migrate up — no bulk write exists any more
       } else {
         // Server authoritative — mirror it locally so removals propagate.
@@ -2355,6 +2382,7 @@
         const fromServer = srv => (srv || []).slice().sort();
         _lsSet('hiddenFilms', fromServer(remote.hiddenFilms));
       }
+      try { localStorage.setItem(_hiddenFilmsSyncedKey(country), '1'); } catch {}
 
       applyFilters();
     } catch (e) { /* network blew up — localStorage is still usable */ }
