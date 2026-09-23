@@ -678,7 +678,7 @@ class CinemaScraperCatalog(
   )
   // Two towns with one cinema each and nothing else within an hour's drive —
   // pages of their own rather than a stretch onto the nearest region.
-  private val slubiceScrapers = Seq(bilety24("https://www.bilety24.pl/kino/organizator/kino-smok-w-slubicach-1336", KinoSmok))
+  private val slubiceScrapers = Seq(bilety24("https://www.bilety24.pl/kino/organizator/slubicki-miejski-osrodek-kultury-1336", KinoSmok))
   private val wlodawaScrapers = Seq(filmweb(2312, KinoWDK))
   private val zlocieniecScrapers = Seq(
     bilety24("https://www.bilety24.pl/kino/organizator/zlocieniecki-osrodek-kultury-1710", KinoMewaZlocieniec),   // Złocieniec

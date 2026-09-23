@@ -232,5 +232,8 @@ object CinemaRosterAuditSpec {
   /** Pairs the name check flags that are genuinely two venues. */
   private val DistinctNamesakes: Set[Set[String]] = Set(
     Set("KinoMikro", "MikroBronowice"),   // Kino Mikro (Juliusza Lea) and its second screen in Bronowice
+    // Końskie's culture centre: its cinema hall and its stage hall, each its own
+    // biletyna page with its own events (47 vs 39 ids, none shared, 2026-09-23).
+    Set("KinoKoneckieCentrumKultury", "KinoKCKSalaWidowiskowa"),
   )
 }
