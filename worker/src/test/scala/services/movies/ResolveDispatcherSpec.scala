@@ -2,7 +2,7 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.tasks.{EnrichTaskKeys, InMemoryTaskQueue, TaskType}
+import services.tasks.{EnrichTaskKeys, InMemoryTaskQueue, ResolveMode, TaskType}
 import tools.DaemonExecutors
 
 import java.time.Instant
@@ -33,7 +33,7 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     EnrichTaskKeys.yearOf(task.payload)      shouldBe Some(2014)
     EnrichTaskKeys.directorOf(task.payload)  shouldBe Some("Christopher Nolan")
     EnrichTaskKeys.originalTitleOf(task.payload) shouldBe Some("Interstellar")
-    EnrichTaskKeys.forceOf(task.payload)     shouldBe false
+    EnrichTaskKeys.modeOf(task.payload)      shouldBe ResolveMode.Normal
   }
 
   it should "carry `force` into the payload, so an already-resolved row re-resolves" in {
@@ -41,10 +41,10 @@ class ResolveDispatcherSpec extends AnyFlatSpec with Matchers {
     // `force` on the payload the handler treats them as done and the wrong-language
     // Tmdb slot stays frozen.
     val queue = new InMemoryTaskQueue()
-    new QueueResolveDispatcher(queue).dispatch("Die Odyssee", Some(2026), None, None, force = true)
+    new QueueResolveDispatcher(queue).dispatch("Die Odyssee", Some(2026), None, None, ResolveMode.Force)
 
     val task = queue.claim("w", 1.minute, Instant.now()).getOrElse(fail("no ResolveTmdb task enqueued"))
-    EnrichTaskKeys.forceOf(task.payload) shouldBe true
+    EnrichTaskKeys.modeOf(task.payload) shouldBe ResolveMode.Force
   }
 
   private val keyOf: (String, Option[Int]) => CacheKey =

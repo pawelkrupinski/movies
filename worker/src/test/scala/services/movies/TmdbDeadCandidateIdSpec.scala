@@ -68,7 +68,7 @@ class TmdbDeadCandidateIdSpec extends AnyFlatSpec with Matchers {
     val ids        = new RecordingResolutionCache
 
     val resolved = serviceOver(cache, new StubTmdb(404), ids)
-      .resolveTmdbOnce(Title, Year, None, None, force = false)
+      .resolveTmdbOnce(Title, Year, None, None, services.tasks.ResolveMode.Normal)
 
     withClue("the stage must CONCLUDE so the task stops rescheduling: ")(resolved shouldBe true)
     val stored = repository.findAll().find(_.title == Title).map(_.record)
@@ -87,7 +87,7 @@ class TmdbDeadCandidateIdSpec extends AnyFlatSpec with Matchers {
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
     val resolved = serviceOver(cache, new StubTmdb(503), new RecordingResolutionCache)
-      .resolveTmdbOnce(Title, Year, None, None, force = false)
+      .resolveTmdbOnce(Title, Year, None, None, services.tasks.ResolveMode.Normal)
 
     withClue("a 5xx is a real outage — the task must retry, not poison the row: ")(resolved shouldBe false)
     val stored = repository.findAll().find(_.title == Title).map(_.record)

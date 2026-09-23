@@ -6,8 +6,9 @@ import play.api.Logging
  * Handles a per-movie `ResolveTmdb` task by resolving that one film's TMDB id
  * via `resolve` (wired to `MovieService.resolveTmdbOnce`). Both the normal
  * enrichment flow (each scraped film whose `tmdbId` is still empty) and the
- * operator `/debug` "re-enrich" button enqueue this task — the latter sets the
- * `force` flag so it re-resolves even an already-resolved row.
+ * operator `/debug` "re-enrich" button enqueue this task — the latter sets
+ * [[ResolveMode.Force]] so it re-resolves even an already-resolved row, and the
+ * unresolved re-try sets [[ResolveMode.RetryMiss]] to search past a remembered miss.
  *
  * `resolve` writes the resolved row (and publishes `ImdbIdMissing` on a hit with
  * no IMDb cross-reference, for id recovery); the `EnrichmentReaper` then enqueues
@@ -23,7 +24,7 @@ import play.api.Logging
  * Runs synchronously (one TMDB lookup, well within the worker's lease).
  */
 class ResolveTmdbHandler(
-  resolve: (String, Option[Int], Option[String], Option[String], Boolean) => Boolean
+  resolve: (String, Option[Int], Option[String], Option[String], ResolveMode) => Boolean
 ) extends TaskHandler with Logging {
   import HandlerOutcome._
 
@@ -39,7 +40,7 @@ class ResolveTmdbHandler(
                  title, year,
                  EnrichTaskKeys.originalTitleOf(task.payload),
                  EnrichTaskKeys.directorOf(task.payload),
-                 EnrichTaskKeys.forceOf(task.payload))) {
+                 EnrichTaskKeys.modeOf(task.payload))) {
       Done
     } else {
       Reschedule(Some(s"TMDB resolve for '$title' (${year.getOrElse("?")}) failed transiently; retrying"))

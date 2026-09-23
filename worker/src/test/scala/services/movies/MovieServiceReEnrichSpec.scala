@@ -138,20 +138,20 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     result.flatMap(_.imdbId) shouldBe Some("tt0088763")
   }
 
-  // ── resolveTmdbOnce(force = true) — the per-movie `/debug` button path ────────
+  // ── resolveTmdbOnce(Force) — the per-movie `/debug` button path ─────────────────────
   // Unlike `reEnrichSync` (silent — returns the record only), this forces a
   // re-resolve even of an already-resolved row and writes the TMDB-side fields
   // (tmdbId, imdbId) back through the cache — from where the EnrichmentReaper
   // re-runs the row's ratings. It's the work the worker's `ResolveTmdbHandler`
   // runs for an operator re-enrich task.
 
-  "resolveTmdbOnce(force = true)" should "write the resolved imdbId through the cache and return true (concluded)" in {
+  "resolveTmdbOnce(Force)" should "write the resolved imdbId through the cache and return true (concluded)" in {
     val tmdbHttp = tmdbWithYearFallback()
     val tmdb     = new TmdbClient(http = tmdbHttp, apiKey = Some("stub"))
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(), normalizer = titleNormalizer)
     val service  = new MovieService(cache, new InProcessEventBus(), tmdb)
 
-    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
+    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, services.tasks.ResolveMode.Force) shouldBe true
 
     cache.get(cache.keyOf("Powrót do przyszłości", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt0088763")
   }
@@ -166,7 +166,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val service = new MovieService(cache, new InProcessEventBus(), tmdb,
       forceRatingRefresh = (k, r) => { kicked += ((k, r)); () })
 
-    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
+    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, services.tasks.ResolveMode.Force) shouldBe true
 
     kicked should have size 1
     val (_, record) = kicked.head
@@ -186,7 +186,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val service   = new MovieService(cache, new InProcessEventBus(), tmdb,
       forgetResolutions = title => { forgotten += title; () })
 
-    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = true) shouldBe true
+    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, services.tasks.ResolveMode.Force) shouldBe true
 
     forgotten shouldBe Seq("Powrót do przyszłości")
   }
@@ -198,7 +198,7 @@ class MovieServiceReEnrichSpec extends AnyFlatSpec with Matchers {
     val service   = new MovieService(cache, new InProcessEventBus(), tmdb,
       forgetResolutions = title => { forgotten += title; () })
 
-    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, force = false) shouldBe true
+    service.resolveTmdbOnce("Powrót do przyszłości", Some(2026), None, None, services.tasks.ResolveMode.Normal) shouldBe true
 
     forgotten shouldBe empty
   }

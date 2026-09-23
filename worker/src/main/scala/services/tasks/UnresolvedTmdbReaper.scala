@@ -45,8 +45,8 @@ import scala.util.Try
  * cadence was already once-per-24h); it trades EnrichmentReaper's
  * stamp-backed robustness for needing no new freshness write.
  *
- * The per-row re-try itself (clear that row's negative marker, then dispatch a
- * `ResolveTmdb`) lives behind the `retry` seam — `MovieService.retryResolve` —
+ * The per-row re-try itself (dispatch a `ResolveTmdb` that searches past the row's
+ * remembered miss, which stays stored so the row stays served meanwhile) lives behind the `retry` seam — `MovieService.retryResolve` —
  * so the corpus/negative/hint business logic stays in `MovieService` and this
  * class owns only the schedule, the eligibility scan, the phase gate, the
  * per-tick cap, and the cluster occurrence claim. On a multi-machine worker each
@@ -71,7 +71,7 @@ import scala.util.Try
  */
 class UnresolvedTmdbReaper(
   cache:     MovieCacheReader,
-  // Re-try one still-unresolved row (clear its negative + dispatch ResolveTmdb).
+  // Re-try one still-unresolved row (dispatch ResolveTmdb past its remembered miss).
   // Wired to `MovieService.retryResolve`; a recording fn in tests.
   retry:     CacheKey => Unit,
   // Force a re-resolve of an ALREADY-resolved row, so its `Tmdb` slot is re-fetched.

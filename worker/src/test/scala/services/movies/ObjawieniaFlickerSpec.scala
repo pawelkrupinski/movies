@@ -260,7 +260,7 @@ class ObjawieniaFlickerSpec extends AnyFlatSpec with Matchers {
 
     // The miss conclusion (tmdbNoMatch) lives in `resolveTmdbOnce`, the
     // production ResolveTmdb handler path — `reEnrichSync` only handles hits.
-    movieService.resolveTmdbOnce(Title, Some(2026), None, None, force = true)
+    movieService.resolveTmdbOnce(Title, Some(2026), None, None, services.tasks.ResolveMode.Force)
 
     val rows = cache.snapshot()
     withClue(s"expected ONE row after a concluded miss, got ${rows.map(r => (r.title, r.year))}\n") {

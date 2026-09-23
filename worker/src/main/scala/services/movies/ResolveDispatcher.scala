@@ -1,6 +1,6 @@
 package services.movies
 
-import services.tasks.{EnrichTaskKeys, TaskQueue, TaskType}
+import services.tasks.{EnrichTaskKeys, ResolveMode, TaskQueue, TaskType}
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.ExecutionContextExecutorService
@@ -10,14 +10,15 @@ import scala.concurrent.ExecutionContextExecutorService
  *  production hands off to the durable task queue, the default runs it inline on a
  *  pool. */
 trait ResolveDispatcher {
-  /** `force` re-resolves a row that already has a `tmdbId` — the only way to refresh
+  /** `mode` Force re-resolves a row that already has a `tmdbId` — the only way to refresh
    *  a `Tmdb` slot, whose `fullDetails` are otherwise fetched once at first resolve
-   *  and then frozen (see `UnresolvedTmdbReaper`'s stale-language sweep). */
+   *  and then frozen (see `UnresolvedTmdbReaper`'s stale-language sweep); RetryMiss
+   *  searches past the row's remembered miss (the unresolved re-try). */
   def dispatch(title:         String,
                year:          Option[Int],
                originalTitle: Option[String],
                director:      Option[String],
-               force:         Boolean = false): Unit
+               mode:          ResolveMode = ResolveMode.Normal): Unit
 
   /** Wait for in-flight inline resolutions, leaving the dispatcher usable. The queue
    *  dispatcher owns no pool (the TaskWorker lifecycle drains its work), so it no-ops. */
@@ -34,11 +35,11 @@ class QueueResolveDispatcher(queue: TaskQueue) extends ResolveDispatcher {
                year:          Option[Int],
                originalTitle: Option[String],
                director:      Option[String],
-               force:         Boolean): Unit = {
+               mode:          ResolveMode): Unit = {
     queue.enqueue(
       TaskType.ResolveTmdb,
       EnrichTaskKeys.resolveTmdbDedup(title, year),
-      EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle, force))
+      EnrichTaskKeys.resolveTmdbPayload(title, year, director, originalTitle, mode))
     ()
   }
 }
@@ -49,7 +50,7 @@ class QueueResolveDispatcher(queue: TaskQueue) extends ResolveDispatcher {
 class InlineResolveDispatcher(
   ec:       ExecutionContextExecutorService,
   dedupKey: (String, Option[Int]) => CacheKey,
-  resolve:  (String, Option[Int], Option[String], Option[String], Boolean) => Unit
+  resolve:  (String, Option[Int], Option[String], Option[String], ResolveMode) => Unit
 ) extends ResolveDispatcher {
   private val pending = ConcurrentHashMap.newKeySet[CacheKey]()
   private val pool    = new tools.DrainablePool(ec)
@@ -58,10 +59,10 @@ class InlineResolveDispatcher(
                year:          Option[Int],
                originalTitle: Option[String],
                director:      Option[String],
-               force:         Boolean): Unit = {
+               mode:          ResolveMode): Unit = {
     val key = dedupKey(title, year)
     if (pending.add(key))
-      pool.submit(try resolve(title, year, originalTitle, director, force) finally { pending.remove(key); () })
+      pool.submit(try resolve(title, year, originalTitle, director, mode) finally { pending.remove(key); () })
   }
 
   override def drain(): Unit = pool.drain()

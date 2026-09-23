@@ -13,7 +13,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * a pre-fix resolve — e.g. the Polish synopsis + country names left on the UK/DE
  * deployments before the per-country enrichment-language fix.
  *
- * Enqueues one `force = true` ResolveTmdb task per row through the SAME
+ * Enqueues one `ResolveMode.Force` ResolveTmdb task per row through the SAME
  * `MongoTaskQueue` the worker drains; the unique dedup key makes it idempotent /
  * safely re-runnable. NOTE (per the resolve path): a forced re-resolve strips the
  * row to its scraped data and re-runs the full title search, so for a handful of

@@ -111,8 +111,8 @@ trait ResolutionWiring { self: WorkerWiring =>
   // the queue-era replacement for MovieService's old daily, all-at-once
   // `retryUnresolvedTmdb` scheduler (it re-dispatched the whole unresolved
   // backlog 10s after boot, the boot ResolveTmdb burst that pinned the
-  // shared-CPU credit). `retryResolve` clears each due row's negative + dispatches
-  // its ResolveTmdb. Cap bounds a clock-jump/cold burst the same way the rating
+  // shared-CPU credit). `retryResolve` dispatches each due row's ResolveTmdb past
+  // its remembered miss, which stays stored so the row keeps its card meanwhile. Cap bounds a clock-jump/cold burst the same way the rating
   // reaper does — the leftover stays due and re-tries next period.
   def maxTmdbRetryEnqueuePerTick: Int = Env.positiveLong("KINOWO_TMDB_RETRY_MAX_ENQUEUE_PER_TICK", 100L).toInt
   lazy val unresolvedTmdbReaper = new UnresolvedTmdbReaper(movieCache, movieService.retryResolve,

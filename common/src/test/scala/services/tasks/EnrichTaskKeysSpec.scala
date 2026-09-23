@@ -27,17 +27,24 @@ class EnrichTaskKeysSpec extends AnyFlatSpec with Matchers {
     EnrichTaskKeys.yearOf(noYear)  shouldBe None
   }
 
-  it should "carry the director + originalTitle hints and the force flag when present, and omit them when absent" in {
+  it should "carry the director + originalTitle hints and the resolve mode when present, and omit them when absent" in {
     val full = EnrichTaskKeys.resolveTmdbPayload("Dune", Some(2024),
-      director = Some("Denis Villeneuve"), originalTitle = Some("Dune: Part Two"), force = true)
+      director = Some("Denis Villeneuve"), originalTitle = Some("Dune: Part Two"), mode = ResolveMode.Force)
     EnrichTaskKeys.directorOf(full)      shouldBe Some("Denis Villeneuve")
     EnrichTaskKeys.originalTitleOf(full) shouldBe Some("Dune: Part Two")
-    EnrichTaskKeys.forceOf(full)         shouldBe true
+    EnrichTaskKeys.modeOf(full)          shouldBe ResolveMode.Force
 
     val bare = EnrichTaskKeys.resolveTmdbPayload("Dune", Some(2024))
     EnrichTaskKeys.directorOf(bare)      shouldBe None
     EnrichTaskKeys.originalTitleOf(bare) shouldBe None
-    EnrichTaskKeys.forceOf(bare)         shouldBe false
+    EnrichTaskKeys.modeOf(bare)          shouldBe ResolveMode.Normal
+    bare.keySet shouldBe Set(EnrichTaskKeys.TitleKey, EnrichTaskKeys.YearKey)
+  }
+
+  it should "round-trip every resolve mode, and read a pre-mode `force` task as Force" in {
+    ResolveMode.values.foreach(mode =>
+      EnrichTaskKeys.modeOf(EnrichTaskKeys.resolveTmdbPayload("Dune", Some(2024), mode = mode)) shouldBe mode)
+    EnrichTaskKeys.modeOf(Map(EnrichTaskKeys.TitleKey -> "Dune", EnrichTaskKeys.ForceKey -> "true")) shouldBe ResolveMode.Force
   }
 
   "the queue" should "collapse a second bulk trigger while the first is active (constant dedup key)" in {

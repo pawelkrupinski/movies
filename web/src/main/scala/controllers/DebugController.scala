@@ -219,7 +219,7 @@ class DebugController(cc: ControllerComponents,
           services.tasks.EnrichTaskKeys.resolveTmdbDedup(title, year),
           // `force` so the operator's explicit re-enrich re-resolves even an
           // already-resolved row (the normal flow's guard would otherwise skip it).
-          services.tasks.EnrichTaskKeys.resolveTmdbPayload(title, year, force = true)
+          services.tasks.EnrichTaskKeys.resolveTmdbPayload(title, year, mode = services.tasks.ResolveMode.Force)
         )
         Ok(play.api.libs.json.Json.obj(
           "title"     -> title,

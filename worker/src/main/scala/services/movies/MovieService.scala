@@ -8,7 +8,7 @@ import services.enrichment.{LetterboxdIdResolver, WikidataClient}
 import services.events.{DomainEvent, EventBus, ImdbIdMissing, MovieDetailsComplete}
 import services.freshness.{FreshnessKind, FreshnessStore, InMemoryFreshnessStore}
 import services.resolution.{Candidate, Contradiction, FilmEvidence, ResolutionCache, TmdbAttempt, TmdbBasis, Verdict}
-import services.tasks.RatingTasks
+import services.tasks.{RatingTasks, ResolveMode}
 import tools.{DaemonExecutors, HttpStatusException}
 
 import models.{MovieRecord, Source, SourceData, Tmdb}
@@ -128,7 +128,7 @@ class MovieService(
   private val resolveDispatcher: ResolveDispatcher =
     dispatcher.getOrElse(new InlineResolveDispatcher(
       executionContext, cache.keyOf,
-      (t, y, ot, d, force) => { resolveTmdbOnce(t, y, ot, d, force); () }))
+      (t, y, ot, d, mode) => { resolveTmdbOnce(t, y, ot, d, mode); () }))
 
   // EC notes: each lookup is mostly network wait; virtual threads make per-task
   // concurrency free, and TMDB's published rate limit (~50 req/s) is enforced
@@ -262,7 +262,8 @@ class MovieService(
   private def needsTmdbResolution(
     key:           CacheKey,
     originalTitle: Option[String],
-    director:      Option[String]
+    director:      Option[String],
+    pastMiss:      Boolean = false
   ): Boolean = {
     val existing = cache.get(key)
     existing.flatMap(_.tmdbId) match {
@@ -300,8 +301,9 @@ class MovieService(
         // fingerprint and re-opens the row at once instead of waiting out a TTL (the
         // Kurozając class of regression: a row whose first-scraping cinema reports
         // no director stayed trapped for the full 24h). The same inputs within
-        // `TmdbAttempt.RetryAfter` are not searched again.
-        if (existing.flatMap(_.tmdbAttempt).exists(_.covers(attemptFingerprint(existing, originalTitle, director), clock.instant()))) false
+        // `TmdbAttempt.RetryAfter` are not searched again — unless this IS the re-try
+        // (`pastMiss`), which searches anyway while the stored miss keeps the row served.
+        if (!pastMiss && existing.flatMap(_.tmdbAttempt).exists(_.covers(attemptFingerprint(existing, originalTitle, director), clock.instant()))) false
         // A sibling row already knows this raw cinema title (via cinemaTitles)
         // AND has a tmdbId. `recordCinemaScrape`'s redirect has already
         // attached this cinema's slot to that sibling, so running TMDB again
@@ -376,16 +378,20 @@ class MovieService(
    *      returns `Reschedule`; the inline default drops it and the next
    *      scrape / daily sweep re-dispatches.
    *
-   *  `force` skips the `needsTmdbResolution` guard — the operator `/debug`
-   *  re-enrich button forces a re-resolve even of an already-resolved row
-   *  (forcing is the whole point); the normal flow never forces. */
+   *  `mode` [[ResolveMode.Force]] skips the `needsTmdbResolution` guard — the operator
+   *  `/debug` re-enrich button forces a re-resolve even of an already-resolved row
+   *  (forcing is the whole point); the normal flow never forces.
+   *  [[ResolveMode.RetryMiss]] only looks past the row's remembered miss: the miss stays
+   *  stored until this search's answer replaces it, so the row never stops being
+   *  `readyToProject` — and its card never leaves the site — while TMDB is asked again. */
   def resolveTmdbOnce(
     title:         String,
     year:          Option[Int],
     originalTitle: Option[String],
     director:      Option[String],
-    force:         Boolean
+    mode:          ResolveMode
   ): Boolean = {
+    val force = mode == ResolveMode.Force
     // The operator's forced re-enrich (the /debug button — the only caller that sets
     // `force`) re-resolves off SCRAPED data, not the previously-resolved data: reset the
     // row to its cinema slots and re-key onto the scraped year, so the lookup below scopes
@@ -411,7 +417,7 @@ class MovieService(
     val (cachedOrig, cachedDirectory) = cache.get(key).map(tmdbHints).getOrElse((None, None))
     val origHint = originalTitle.orElse(cachedOrig)
     val directoryHint  = director.orElse(cachedDirectory)
-    if (!force && !needsTmdbResolution(key, origHint, directoryHint)) true
+    if (!force && !needsTmdbResolution(key, origHint, directoryHint, pastMiss = mode == ResolveMode.RetryMiss)) true
     else {
       logger.info(s"TMDB: resolving '${key.cleanTitle}' (${key.year.getOrElse("?")})" +
         directoryHint.fold("")(d => s" [director hint: $d]"))
@@ -812,9 +818,10 @@ class MovieService(
    *  the respective `*Ratings.refreshAll` walks — operator-triggered from the
    *  /tasks buttons, NOT scheduled — which do their own
    *  URL discovery; missing IMDb ids are recovered by the `ImdbIdMissing`
-   *  event fired from the TMDB stage at first resolution. Drops each row's
-   *  remembered miss so previously-failed `(title, year)` lookups get one fresh
-   *  shot. This bulk form backs the operator `RefreshAllTmdb` button; the scheduled,
+   *  event fired from the TMDB stage at first resolution. Searches past each row's
+   *  remembered miss ([[ResolveMode.RetryMiss]]) so previously-failed `(title, year)`
+   *  lookups get one fresh shot, while the miss itself stays stored — and the row
+   *  served — until the new answer replaces it. This bulk form backs the operator `RefreshAllTmdb` button; the scheduled,
    *  phase-spread re-try is owned by [[services.tasks.UnresolvedTmdbReaper]]
    *  (via [[retryResolve]]) so the backlog drains as a trickle, not a burst. */
   def retryUnresolvedTmdb(): Unit = {
@@ -829,15 +836,12 @@ class MovieService(
     // (→ TMDB) once their detail lands, and `DetailReaper` keeps that detail
     // enqueued — so this sweep only re-tries genuinely-stalled, detail-complete rows.
     val targets = cache.entries.collect { case (k, e) if e.tmdbId.isEmpty && !e.detailPending => (k, e) }
-    logger.info(s"TMDB retry: re-dispatching ${targets.size} row(s) with missing tmdbId, their remembered misses dropped.")
-    targets.foreach { case (k, e) =>
-      cache.putIfPresent(k, _.copy(tmdbAttempt = None))
-      dispatchWithHints(k, e)
-    }
+    logger.info(s"TMDB retry: re-dispatching ${targets.size} row(s) with missing tmdbId, past their remembered misses.")
+    targets.foreach { case (k, e) => dispatchWithHints(k, e, ResolveMode.RetryMiss) }
   }
 
-  /** Re-attempt ONE still-unresolved row's TMDB resolution, dropping just that
-   *  row's remembered miss first (the scoped form of [[retryUnresolvedTmdb]]). Driven by
+  /** Re-attempt ONE still-unresolved row's TMDB resolution, past just that row's
+   *  remembered miss (the scoped form of [[retryUnresolvedTmdb]]). Driven by
    *  [[services.tasks.UnresolvedTmdbReaper]]'s phase-spread tick so the
    *  unresolved backlog re-tries as a flat trickle instead of a boot/period
    *  burst. No-op once the row has resolved or is awaiting detail (its detail
@@ -845,12 +849,8 @@ class MovieService(
   /** [[retryResolve]] addressed by `(title, year)`, for a caller outside `services`
    *  — `CacheKey` is `private[services]`, so the fixture harness cannot name a row
    *  any other way. Without it the only reachable re-resolve was the operator-scale
-   *  [[retryUnresolvedTmdb]], whose corpus-wide miss-dropping un-concludes every
-   *  unresolved row at once: in the e2e corpus that dropped ten decorated
-   *  banner films ("Cinema Italia Oggi: Kochanie", "Kino bez barier: Pieśni lasu")
-   *  out of the read model, because `readyToProject` needs `tmdbConcluded` and the
-   *  re-dispatch does not restore it. A per-row retry touches only the row that
-   *  earned one. */
+   *  [[retryUnresolvedTmdb]], which re-asks TMDB for every unresolved row at once;
+   *  a per-row retry touches only the row that earned one. */
   def retryResolve(title: String, year: Option[Int]): Unit = retryResolve(cache.keyOf(title, year))
 
   /** Offer one row's ratings to the enqueuer, addressed by `(title, year)`.
@@ -867,10 +867,7 @@ class MovieService(
       enqueueNewcomerRatings(cache.keyOf(title, year), record))
 
   def retryResolve(key: CacheKey): Unit =
-    cache.get(key).filter(e => e.tmdbId.isEmpty && !e.detailPending).foreach { e =>
-      cache.putIfPresent(key, _.copy(tmdbAttempt = None))
-      dispatchWithHints(key, e)
-    }
+    cache.get(key).filter(e => e.tmdbId.isEmpty && !e.detailPending).foreach(dispatchWithHints(key, _, ResolveMode.RetryMiss))
 
   /** Re-resolve a row that ALREADY has a `tmdbId`, so its `Tmdb` slot is re-fetched
    *  rather than left frozen at whatever the first resolve stored. The stale-language
@@ -878,7 +875,7 @@ class MovieService(
    *  fetched only at resolve time, so a row enriched before its deployment learned
    *  its own language keeps Polish text until something forces the re-fetch. */
   def forceResolve(key: CacheKey): Unit =
-    cache.get(key).foreach(e => dispatchWithHints(key, e, force = true))
+    cache.get(key).foreach(dispatchWithHints(key, _, ResolveMode.Force))
 
   /** Give a RESOLVED row back the `Tmdb` slot it has lost, by id — no search.
    *
@@ -909,9 +906,9 @@ class MovieService(
    *  TMDB doesn't index under their Polish title). Shared by the bulk
    *  [[retryUnresolvedTmdb]] sweep, the per-row [[retryResolve]], and
    *  [[forceResolve]]. */
-  private def dispatchWithHints(key: CacheKey, e: MovieRecord, force: Boolean = false): Unit = {
+  private def dispatchWithHints(key: CacheKey, e: MovieRecord, mode: ResolveMode): Unit = {
     val (origHint, directoryHint) = tmdbHints(e)
-    resolveDispatcher.dispatch(key.cleanTitle, key.year, origHint, directoryHint, force)
+    resolveDispatcher.dispatch(key.cleanTitle, key.year, origHint, directoryHint, mode)
   }
 
   /** The originalTitle + director hints the TMDB resolution needs, derived from

@@ -22,15 +22,16 @@ object EnrichTaskKeys {
   // different films resolve concurrently, but a repeat trigger for the same row
   // while one is queued collapses to one task. Enqueued both by the normal
   // enrichment flow (each scraped film whose tmdbId is still empty) and by the
-  // operator `/debug` "re-enrich" button — the `force` flag separates them: the
-  // button forces a re-resolve even of an already-resolved row, the normal flow
-  // does not (re-resolving a resolved row can flip it to a more-popular
-  // same-title hit).
+  // operator `/debug` "re-enrich" button — the payload's [[ResolveMode]] separates
+  // them: the button forces a re-resolve even of an already-resolved row, the normal
+  // flow does not (re-resolving a resolved row can flip it to a more-popular
+  // same-title hit), and a re-try searches past the row's remembered miss.
   val TitleKey         = "title"
   val YearKey          = "year"
   val DirectorKey      = "director"
   val OriginalTitleKey = "originalTitle"
   val ForceKey         = "force"
+  val RetryMissKey     = "retryMiss"
 
   def resolveTmdbDedup(title: String, year: Option[Int]): String =
     s"resolve-tmdb|$title|${year.map(_.toString).getOrElse("")}"
@@ -44,12 +45,16 @@ object EnrichTaskKeys {
     year:          Option[Int],
     director:      Option[String] = None,
     originalTitle: Option[String] = None,
-    force:         Boolean        = false
+    mode:          ResolveMode    = ResolveMode.Normal
   ): Map[String, String] =
     Map(TitleKey -> title, YearKey -> year.map(_.toString).getOrElse("")) ++
       director.filter(_.nonEmpty).map(DirectorKey -> _) ++
       originalTitle.filter(_.nonEmpty).map(OriginalTitleKey -> _) ++
-      (if (force) Some(ForceKey -> "true") else None)
+      (mode match {
+        case ResolveMode.Normal    => None
+        case ResolveMode.RetryMiss => Some(RetryMissKey -> "true")
+        case ResolveMode.Force     => Some(ForceKey -> "true")
+      })
 
   def titleOf(payload: Map[String, String]): String = payload.getOrElse(TitleKey, "")
   def yearOf(payload: Map[String, String]): Option[Int] =
@@ -58,8 +63,12 @@ object EnrichTaskKeys {
     payload.get(DirectorKey).filter(_.nonEmpty)
   def originalTitleOf(payload: Map[String, String]): Option[String] =
     payload.get(OriginalTitleKey).filter(_.nonEmpty)
-  def forceOf(payload: Map[String, String]): Boolean =
-    payload.get(ForceKey).contains("true")
+  /** One flag per non-normal mode — `force` kept as the key it always was, so a task
+   *  queued by the previous build still decodes. */
+  def modeOf(payload: Map[String, String]): ResolveMode =
+    if (payload.get(ForceKey).contains("true")) ResolveMode.Force
+    else if (payload.get(RetryMissKey).contains("true")) ResolveMode.RetryMiss
+    else ResolveMode.Normal
 
   // Per-movie IMDb-id resolution (movies path). Distinct dedup key per (title,
   // year) so different films resolve concurrently while a repeat for the same row

@@ -73,7 +73,7 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
     "reset the row to scraped data and re-resolve to the cinema-shown film, off the stale year" in {
     val (cache, service) = wire()
 
-    service.resolveTmdbOnce(Title, Some(1982), originalTitle = None, director = None, force = true)
+    service.resolveTmdbOnce(Title, Some(1982), originalTitle = None, director = None, mode = services.tasks.ResolveMode.Force)
 
     // Re-resolved to the 2019 film, re-keyed off the stale 1982 year.
     cache.get(cache.keyOf(Title, Some(2019))).flatMap(_.tmdbId) shouldBe Some(Correct)
@@ -86,7 +86,7 @@ class TmdbReenrichResetSpec extends AnyFlatSpec with Matchers {
     val (cache, service) = wire()
 
     // Without force, the row keeps its |1982 key and re-confirms the wrong 1982 film.
-    service.resolveTmdbOnce(Title, Some(1982), originalTitle = None, director = None, force = false)
+    service.resolveTmdbOnce(Title, Some(1982), originalTitle = None, director = None, mode = services.tasks.ResolveMode.Normal)
 
     cache.get(cache.keyOf(Title, Some(1982))).flatMap(_.tmdbId) shouldBe Some(Wrong)
     cache.get(cache.keyOf(Title, Some(2019))) shouldBe None

@@ -62,7 +62,7 @@ class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
         (None, false)
     }
 
-    val resolved = serviceOver(cache).resolveTmdbOnce(Title, Year, None, None, force = false)
+    val resolved = serviceOver(cache).resolveTmdbOnce(Title, Year, None, None, services.tasks.ResolveMode.Normal)
 
     withClue("the stage must report not-resolved so the task retries: ")(resolved shouldBe false)
     // The stored row is untouched — still its cinema, still its rating.
@@ -78,7 +78,7 @@ class TmdbCarryForwardReadFailureSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(Seq((Title, Year, seed)))
     val cache      = new CaffeineMovieCache(repository, normalizer = titleNormalizer)
 
-    serviceOver(cache).resolveTmdbOnce(Title, Year, None, None, force = false) shouldBe true
+    serviceOver(cache).resolveTmdbOnce(Title, Year, None, None, services.tasks.ResolveMode.Normal) shouldBe true
 
     val stored = repository.findAll().find(_.title == Title).map(_.record)
     withClue(s"stored row after a healthy resolve: $stored: ") {

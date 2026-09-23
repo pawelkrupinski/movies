@@ -99,7 +99,7 @@ class WrongLanguageSlotReresolveSpec extends AnyFlatSpec with Matchers {
     "drop the Polish title, synopsis, genres and poster rather than carrying them over" in {
     val (cache, service) = wire()
 
-    service.resolveTmdbOnce(Title, Some(2026), originalTitle = None, director = None, force = true)
+    service.resolveTmdbOnce(Title, Some(2026), originalTitle = None, director = None, mode = services.tasks.ResolveMode.Force)
 
     val slot = resolvedTmdbSlot(cache)
     slot.title     should not be Some("Gwiezdne wojny: Mandalorian i Grogu")
@@ -111,7 +111,7 @@ class WrongLanguageSlotReresolveSpec extends AnyFlatSpec with Matchers {
   it should "keep the language-neutral fields the details call did return" in {
     val (cache, service) = wire()
 
-    service.resolveTmdbOnce(Title, Some(2026), originalTitle = None, director = None, force = true)
+    service.resolveTmdbOnce(Title, Some(2026), originalTitle = None, director = None, mode = services.tasks.ResolveMode.Force)
 
     val slot = resolvedTmdbSlot(cache)
     slot.originalTitle  shouldBe Some("The Mandalorian and Grogu")
@@ -122,7 +122,7 @@ class WrongLanguageSlotReresolveSpec extends AnyFlatSpec with Matchers {
   it should "stamp the slot with the deployment language so the reaper stops re-sweeping it" in {
     val (cache, service) = wire()
 
-    service.resolveTmdbOnce(Title, Some(2026), originalTitle = None, director = None, force = true)
+    service.resolveTmdbOnce(Title, Some(2026), originalTitle = None, director = None, mode = services.tasks.ResolveMode.Force)
 
     resolvedTmdbSlot(cache).fetchedLanguageTag shouldBe Country.Germany.language.toLanguageTag
   }
