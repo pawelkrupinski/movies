@@ -260,7 +260,16 @@ final class MovieChangeStream(
             // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't back-fill). Surface
             // its _id so consumers can drop the row. Never coalesced: once a row is gone
             // there is nothing to re-read, and every delete must still reach the fan-out.
+            //
+            // And a delete is a coalescing BARRIER: it clears the id from the pending set, so a
+            // later event for the same id queues its own apply AFTER the delete instead of riding
+            // one queued before it. Ids are derived from the creation key (`FilmId.fresh`), so a
+            // film deleted and re-created under the same key comes back with the same id — riding
+            // the earlier apply would dispatch the re-created film first and the delete last,
+            // leaving every listener on "deleted" for a film that exists. (The earlier apply's own
+            // `remove` may then clear the later one's marker; that only costs an extra apply.)
             case None =>
+              deletedId.foreach(sideApplyPending.remove)
               applyOffLoop(moviesDemand) {
                 deletedId.foreach(movieChanges.dispatchDelete)
                 resumeToken.save(force = false) // time-throttled, fire-and-forget

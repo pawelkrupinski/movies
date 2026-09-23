@@ -282,6 +282,35 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers {
     } finally { handle.close(); under.close() }
   }
 
+  // A DELETE IS A COALESCING BARRIER. Ids are derived from the key a film is created under
+  // (`FilmId.fresh`), so a film deleted (merged away, pruned) and then re-created under the same
+  // key comes back with the SAME id. If the re-insert coalesced onto an apply queued BEFORE the
+  // delete, that apply's fresh read would dispatch the re-created film first and the delete
+  // after it — every listener ends on "deleted" for a film that exists (the projector wipes its
+  // read-model rows) until an unrelated write or the backstop happens by.
+  it should "not let a re-insert coalesce across a delete of the same film" in {
+    val source = new HandFedSource
+    val gate   = new CountDownLatch(1)
+    val under  = stream(source, reread = id => { gate.await(5, TimeUnit.SECONDS); Some(recordOf(id)) })
+    val ops     = new java.util.concurrent.ConcurrentLinkedQueue[String]()
+    val drained = new CountDownLatch(1) // the sentinel: the apply thread is FIFO, so everything before it ran
+
+    val handle = under.watch(r => { ops.add(s"upsert ${r.id}"); if (r.id == FilmId("sentinel|2024")) drained.countDown() },
+                             id => ops.add(s"delete $id"))
+    try {
+      source.emit(event("insert", "other|2024", StoredMovieDto.fromDomain("other|2024", MovieRecord(), Instant.EPOCH)))
+      source.emit(event("update", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+      source.emit(event("delete", "film|2024", fullDocument = null))
+      source.emit(event("insert", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
+      source.emit(event("insert", "sentinel|2024", StoredMovieDto.fromDomain("sentinel|2024", MovieRecord(), Instant.EPOCH)))
+      gate.countDown()
+
+      drained.await(5, TimeUnit.SECONDS) shouldBe true
+      import scala.jdk.CollectionConverters._
+      ops.asScala.filter(_.endsWith("film|2024")).last shouldBe "upsert film|2024" // the film exists — the last word must say so
+    } finally { handle.close(); under.close() }
+  }
+
   // THE SILENT CURSOR. A terminal error is reopened on a backoff; a cursor that is OPEN and
   // delivering nothing — a server-side stall, a stale resume position — was detected by nothing:
   // the event counters simply stop moving, which is also what a quiet night looks like. The age
