@@ -1,7 +1,7 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{AdaKinoStudyjne, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -332,14 +332,23 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // slug is exactly how the Helios rename turned into 0 films, and depending on
   // someone else's redirect is a dependency we don't need. Address them by the
   // slug they publish today.
+  //
+  // A 2026-09-23 sweep found 47 more organisers wired by a slug bilety24 only
+  // 301s: 14 older venues that had renamed since, and 33 of the ~50 the
+  // regional-hubs commit added, whose slugs were composed from the venue name
+  // rather than copied off bilety24. One of each is pinned here.
   it should "address the renamed bilety24 organisers by their canonical slug, not the redirecting one" in {
-    val scrapers = catalog(biletyna = "kino-kameralne").all
+    val scrapers = catalog(biletyna = "kino-kameralne").byCity.values.flatten.toSeq
     def sourceUrlOf(cinema: Cinema): String = scrapers.find(_.cinema == cinema).value.sourceUrl.value
 
     sourceUrlOf(KinoPiastOstrzeszow) shouldBe
       "https://www.bilety24.pl/kino/organizator/ostrzeszowskie-centrum-kultury-601"
     sourceUrlOf(KinoWislaBrzeszcze) shouldBe
       "https://www.bilety24.pl/kino/organizator/osrodek-kultury-w-brzeszczach-1539"
+    sourceUrlOf(KinoEcho) shouldBe
+      "https://www.bilety24.pl/kino/organizator/kino-echo-1159"
+    sourceUrlOf(KinoMewaBudzyn) shouldBe
+      "https://www.bilety24.pl/kino/organizator/gminny-osrodek-kultury-685"
   }
 
   // A `Cinema` that's modelled (so it shows on the web/in a city) but has no

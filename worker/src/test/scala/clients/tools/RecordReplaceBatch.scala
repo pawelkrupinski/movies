@@ -49,7 +49,7 @@ object RecordReplaceBatch {
     // ── Existing-client one-offs ──
     rep("Kinoteatr Rondo")(new BiletynaClient(corpus, "https://biletyna.pl/Chelmno/Kinoteatr-Rondo", KinoRondo).fetch().size)
     rep("Forum (Bolesławiec)")(new Bilety24OrganizerClient(corpus,
-      "https://www.bilety24.pl/kino/organizator/boleslawiecki-osrodek-kultury-miedzynarodowe-centrum-ceramiki-kino-forum-1586",
+      "https://www.bilety24.pl/kino/organizator/boleslawiecki-osrodek-kultury-miedzynarodowe-centrum-ceramiki-w-boleslawcu-1586",
       KinoForumBoleslawiec, titles = titleNormalizer).fetch().size)
 
     // ── Per-client fixtures for the new specs ──
