@@ -28,7 +28,7 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
   private val later = T0.plusSeconds(RetiredVenueRows.Grace.toSeconds + 3600)
   private def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String]) =
     RetiredVenueRows.sweep(screenings, slots, roster, now = later)
-  private val roster   = RetiredVenueRows.rosterOf(Country.Poland)
+  private val roster   = VenueRoster.venuesOf(Country.Poland)
 
   /** The retired venue's name. A PREFIX-sharing sibling ("Kino Etiuda") is still on the
    *  roster, so a rule matching on `startsWith` — or reading the whole slot key as the
@@ -127,17 +127,17 @@ class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "rosterOf" should "be the country's own venues plus the sources that are not venues" in {
+  "VenueRoster.venuesOf" should "be the country's own venues plus the sources that are not venues" in {
     roster should contain allOf (KinoEtiuda.displayName, CinemaCityChain.displayName, Tmdb.displayName)
     roster should not contain Retired
     // Per-country: a UK venue is not on Poland's roster, nor a Polish one on the UK's.
     val ukVenue = Country.UnitedKingdom.cities.flatMap(_.cinemas).head
     roster should not contain ukVenue.displayName
-    RetiredVenueRows.rosterOf(Country.UnitedKingdom) should not contain KinoEtiuda.displayName
+    VenueRoster.venuesOf(Country.UnitedKingdom) should not contain KinoEtiuda.displayName
   }
 
   it should "cover every known venue under SOME country, so no live venue is ever retired" in {
-    val covered = Country.all.flatMap(RetiredVenueRows.rosterOf).toSet
+    val covered = Country.all.flatMap(VenueRoster.venuesOf).toSet
     Cinema.all.map(_.displayName).filterNot(covered) shouldBe empty
   }
 }

@@ -119,7 +119,8 @@ trait ScreeningsRepository extends SlotKeyedRows {
  * grouping, and a change ring that fires only on a real change — all of it
  * [[InMemorySlotRows]], the store its `movie_slots` twin is built on too.
  */
-class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.time.Instant.now()) extends ScreeningsRepository {
+class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.time.Instant.now(),
+                                   roster: VenueRoster = VenueRoster.Unrestricted) extends ScreeningsRepository {
 
   private val rows = new InMemorySlotRows[Seq[Showtime]](clock)
 
@@ -130,9 +131,11 @@ class InMemoryScreeningsRepository(clock: () => java.time.Instant = () => java.t
   // `stored` is ignored: this store's rows are already in memory, so re-reading them is free
   // and the parameter exists only to honour the trait.
   def replaceFilm(filmId: String, slots: Map[String, Seq[Showtime]],
-                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit = rows.replaceFilm(filmId, slots)
+                  stored: Option[Map[String, Seq[Showtime]]] = None): Unit =
+    rows.replaceFilm(filmId, roster.writable(ScreeningsRepository.Collection, filmId, rows.forFilm(filmId), slots))
 
-  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit = rows.upsert(filmId, slotKey, showtimes)
+  def upsertSlot(filmId: String, slotKey: String, showtimes: Seq[Showtime]): Unit =
+    if (roster.admitsWrite(ScreeningsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, showtimes)
 
   def deleteSlot(filmId: String, slotKey: String): Unit = rows.delete(filmId, slotKey)
 
@@ -218,7 +221,10 @@ class MongoScreeningsRepository(
   // What this store streams. The worker passes the Prometheus sink; everything else keeps
   // the no-op. This cursor is the read-model projection's larger trigger and had no metric
   // at all, which is what made a 40x projection climb unattributable — see [[ScreeningsMetrics]].
-  metrics:              ScreeningsMetrics = ScreeningsMetrics.noop
+  metrics:              ScreeningsMetrics = ScreeningsMetrics.noop,
+  // The venues this database may hold rows under — the worker passes its country's, so a
+  // process on the wrong database cannot land a foreign venue. See [[VenueRoster]].
+  roster:               VenueRoster       = VenueRoster.Unrestricted
 ) extends ScreeningsRepository with Logging {
   import ScreeningsRepository.IdSep
 
@@ -325,7 +331,8 @@ class MongoScreeningsRepository(
       // should end up with), never from the subset being written, so a row that is correct and
       // therefore skipped is still a row this call keeps.
       val (current, readComplete) = stored.map(_ -> true).getOrElse(findForFilmChecked(filmId))
-      val changed = ScreeningsSplit.changedSlots(current, readComplete, slots)
+      val changed = ScreeningsSplit.changedSlots(current, readComplete,
+        roster.writable(ScreeningsRepository.Collection, filmId, current, slots))
       // The SKIP is counted here and the WRITE is counted after the bulkWrite returns, which is
       // not fussiness: this whole `Try` swallows its failure into a `logger.warn`, so counting
       // `written` up front meant a 30-second bulkWrite timeout or a stepdown incremented it for
@@ -351,7 +358,7 @@ class MongoScreeningsRepository(
     // because the write is what rings the change stream — the trait's contract has always said
     // so and `InMemoryScreeningsRepository` has always honoured it; only this side did not.
     // A read that fails, and a row that is absent, both read as "differs" and write.
-    Try {
+    if (roster.admitsWrite(ScreeningsRepository.Collection, filmId, slotKey)) Try {
       if (storedShowtimes(c, filmId, slotKey).contains(showtimes))
         metrics.recordWrite(ScreeningsMetrics.Outcome.Unchanged, 1)
       else {

@@ -1,6 +1,5 @@
 package services.movies
 
-import models.{Cinema, CinemaShowing, Country, Source}
 import play.api.Logger
 
 import java.time.Instant
@@ -30,7 +29,7 @@ final case class RetiredVenueRows(screenings: Long, slots: Long, venues: Map[Str
  *
  * The rule, and what each step refuses:
  *
- *  1. The roster is the database's OWN country's venues ([[rosterOf]]) — each country
+ *  1. The roster is the database's OWN country's venues ([[VenueRoster.venuesOf]]) — each country
  *     has its own database, claimed at boot by `DatabaseOwner`, so a foreign venue's row
  *     in it is as unservable as a retired one. Plus every `Source` that is not a physical
  *     venue (the chain-detail slots, TMDB/IMDb/Filmweb), which sit in no city at all.
@@ -67,22 +66,9 @@ object RetiredVenueRows {
 
   private val logger = Logger(getClass)
 
-  /** The venue names a country's database may hold rows under — its own cities' venues,
-   *  plus every `Source` that is not a physical venue (see step 1). */
-  def rosterOf(country: Country): Set[String] =
-    country.cities.iterator.flatMap(_.cinemas).map(_.displayName).toSet ++ nonVenueSources
-
-  private lazy val nonVenueSources: Set[String] = {
-    val venues = Cinema.all.toSet
-    Source.all.filterNot {
-      case cinema: Cinema => venues.contains(cinema)
-      case _              => false
-    }.map(_.displayName).toSet
-  }
-
   /** The venue a side-collection row is filed under, from its composite `_id`. */
   def venueOf(rowId: String): String =
-    rowId.drop(SlotKeyed.filmIdOf(rowId).length + 1).takeWhile(_ != CinemaShowing.Separator)
+    VenueRoster.venueOf(rowId.drop(SlotKeyed.filmIdOf(rowId).length + 1))
 
   def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String],
             now: Instant = Instant.now(), grace: FiniteDuration = Grace): RetiredVenueRows = {

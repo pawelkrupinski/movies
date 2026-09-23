@@ -52,7 +52,7 @@ class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers {
         val (slotIdsBefore, _)      = slots.rowIdsChecked()
         screeningIdsBefore should have size 9
 
-        RetiredVenueRows.sweep(Some(screenings), Some(slots), RetiredVenueRows.rosterOf(Country.Poland)) shouldBe
+        RetiredVenueRows.sweep(Some(screenings), Some(slots), VenueRoster.venuesOf(Country.Poland)) shouldBe
           RetiredVenueRows(screenings = 2, slots = 2, venues = Map(Retired -> 4L))
 
         screenings.rowIdsChecked() shouldBe ((screeningIdsBefore.filterNot(RetiredVenueRows.venueOf(_) == Retired) ++ freshIds, true))
@@ -60,7 +60,7 @@ class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers {
         screenings.findForFilmChecked("other|2025") shouldBe
           ((Map(CinemaShowing(KinoEtiuda, "other").displayName -> tomorrow), true))
 
-        RetiredVenueRows.sweep(Some(screenings), Some(slots), RetiredVenueRows.rosterOf(Country.Poland)) shouldBe
+        RetiredVenueRows.sweep(Some(screenings), Some(slots), VenueRoster.venuesOf(Country.Poland)) shouldBe
           RetiredVenueRows.none
       } finally { screenings.close(); slots.close() }
     }

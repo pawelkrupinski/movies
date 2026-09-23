@@ -149,7 +149,8 @@ trait SlotsRepository extends SlotKeyedRows {
  * the store its `screenings` twin is built on too. Neither store holds business logic —
  * both just store — so neither can drift from the other's understanding of the rules.
  */
-class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.Instant.now()) extends SlotsRepository {
+class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.Instant.now(),
+                              roster: VenueRoster = VenueRoster.Unrestricted) extends SlotsRepository {
 
   private val rows = new InMemorySlotRows[SourceData](clock)
 
@@ -162,11 +163,12 @@ class InMemorySlotsRepository(clock: () => java.time.Instant = () => java.time.I
   // free and the parameter exists only to honour the trait (see the screenings twin).
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
                   stored: Option[Map[String, SourceData]] = None): Boolean = {
-    rows.replaceFilm(filmId, slots)
+    rows.replaceFilm(filmId, roster.writable(SlotsRepository.Collection, filmId, rows.forFilm(filmId), slots))
     true   // an in-memory store cannot fail to write
   }
 
-  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit = rows.upsert(filmId, slotKey, slot)
+  def upsertSlot(filmId: String, slotKey: String, slot: SourceData): Unit =
+    if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey)) rows.upsert(filmId, slotKey, slot)
 
   def deleteSlot(filmId: String, slotKey: String): Unit = rows.delete(filmId, slotKey)
 
@@ -300,7 +302,10 @@ class MongoSlotsRepository(
   persistResumeToken:   Boolean        = false,
   // What this store's cursor delivers, and what the apply coalesced away. The worker passes
   // the Prometheus sink; everything else keeps the no-op. See [[SideCollectionChangeMetrics]].
-  metrics:              SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop
+  metrics:              SideCollectionChangeMetrics = SideCollectionChangeMetrics.noop,
+  // The venues this database may hold rows under — the worker passes its country's, so a
+  // process on the wrong database cannot land a foreign venue. See [[VenueRoster]].
+  roster:               VenueRoster    = VenueRoster.Unrestricted
 ) extends SlotsRepository with Logging {
   import SlotKeyed.idOf
 
@@ -390,7 +395,8 @@ class MongoSlotsRepository(
       // decide whether to write at all, so making this read them again was a duplicated
       // full-film read on the hottest write path in the system.
       val (current, readComplete) = stored.map(_ -> true).getOrElse(findForFilmChecked(filmId))
-      val upserts = SlotKeyed.changedRows(current, readComplete, slots).toSeq.map { case (k, sd) =>
+      val writable = roster.writable(SlotsRepository.Collection, filmId, current, slots)
+      val upserts = SlotKeyed.changedRows(current, readComplete, writable).toSeq.map { case (k, sd) =>
         val dto = StoredSlotDto(idOf(filmId, k), filmId, k, sd, now)
         ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
       }
@@ -411,7 +417,7 @@ class MongoSlotsRepository(
     // composite `_id`. A row that already holds exactly what we would write must not be written.
     // A read that fails, and a row that is absent, both read as "differs" and write.
     Try {
-      if (!storedSlot(c, filmId, slotKey).contains(slot)) {
+      if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) && !storedSlot(c, filmId, slotKey).contains(slot)) {
         val dto = StoredSlotDto(idOf(filmId, slotKey), filmId, slotKey, slot, Instant.now())
         Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds); ()
       }
