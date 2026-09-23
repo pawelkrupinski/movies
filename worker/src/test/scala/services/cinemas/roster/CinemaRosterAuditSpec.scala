@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{Json, Reads}
 import services.cinemas.CinemaScraperCatalog
-import services.cinemas.common.CinemaScraper
+import services.cinemas.common.{CinemaScraper, MultiListingScraper}
 import services.cinemas.pl.{Bilety24OrganizerClient, FilmwebShowtimesClient}
 import tools.Slugify
 
@@ -37,10 +37,16 @@ class CinemaRosterAuditSpec extends AnyFlatSpec with Matchers {
 
   private val catalog = new CinemaScraperCatalog(new FakeHttpFetch("does-not-exist"), LocalDate.of(2026, 6, 6))
 
-  /** Every scraper with the city it is wired under — every modelled city,
-   *  including ones currently disabled. */
+  /** Every upstream listing with the city it is wired under — every modelled
+   *  city, including ones currently disabled. A venue read off several listings
+   *  counts each, so each is held to the checks on its own. */
   private val placed: Seq[(String, CinemaScraper)] =
-    catalog.byCity.toSeq.flatMap { case (slug, scrapers) => scrapers.map(slug -> _) }
+    catalog.byCity.toSeq.flatMap { case (slug, scrapers) =>
+      scrapers.flatMap {
+        case venue: MultiListingScraper => venue.listings
+        case single                     => Seq(single)
+      }.map(slug -> _)
+    }
 
   private val polishCities: Map[String, City] = Country.Poland.cities.map(c => c.slug -> c).toMap
   private val polish: Seq[(City, CinemaScraper)] =
@@ -232,8 +238,5 @@ object CinemaRosterAuditSpec {
   /** Pairs the name check flags that are genuinely two venues. */
   private val DistinctNamesakes: Set[Set[String]] = Set(
     Set("KinoMikro", "MikroBronowice"),   // Kino Mikro (Juliusza Lea) and its second screen in Bronowice
-    // Końskie's culture centre: its cinema hall and its stage hall, each its own
-    // biletyna page with its own events (47 vs 39 ids, none shared, 2026-09-23).
-    Set("KinoKoneckieCentrumKultury", "KinoKCKSalaWidowiskowa"),
   )
 }

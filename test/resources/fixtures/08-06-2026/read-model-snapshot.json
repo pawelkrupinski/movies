@@ -6659,6 +6659,23 @@
     "weightedRating" : 7.7,
     "synopsisByCity" : { }
   }, {
+    "_id" : "f59252e6ff68caf5",
+    "title" : "Iluzjonista Adrian Mitoraj",
+    "posterUrl" : "https://biletyna.pl/file/get/id/107891",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Iluzjonista+Adrian+Mitoraj/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Iluzjonista+Adrian+Mitoraj",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Iluzjonista+Adrian+Mitoraj"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "f5985733cd1d1c45",
     "title" : "Wszystkie Głosy Marca Silka",
     "posterUrl" : "https://www.kinomuza.pl/content/uploads/2026/05/CJ4GEMADOgUxLjEuOQ.png",
@@ -21357,6 +21374,23 @@
     "weightedRating" : 0,
     "synopsisByCity" : { }
   }, {
+    "_id" : "ffa91f554655f7ef",
+    "title" : "\"Popiełuszko - wolność jest w nas\" - Projekcja filmu",
+    "posterUrl" : "https://biletyna.pl/file/get/id/405877",
+    "fallbackPosterUrls" : [ ],
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/%22Popie%C5%82uszko+-+wolno%C5%9B%C4%87+jest+w+nas%22+-+Projekcja+filmu/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=%22Popie%C5%82uszko+-+wolno%C5%9B%C4%87+jest+w+nas%22+-+Projekcja+filmu",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=%22Popie%C5%82uszko+-+wolno%C5%9B%C4%87+jest+w+nas%22+-+Projekcja+filmu"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { }
+  }, {
     "_id" : "ffaacb80592135af",
     "title" : "Lotto i Berenson – splecione losy. Śladami renesansowego mistrza",
     "originalTitle" : "Lotto and Berenson: Crossed Destinies",
@@ -26176,18 +26210,22 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-26T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Supergirl?eid=671363#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-27T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Supergirl?eid=671364#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-28T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Supergirl?eid=671365#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-30T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Supergirl?eid=671366#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     } ]
   }, {
@@ -52928,74 +52966,92 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-19T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671336#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-19T17:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671337#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-20T13:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671338#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-20T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671339#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-20T17:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671340#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-21T13:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671341#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-21T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671342#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-21T17:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671343#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-23T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671344#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-23T17:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671345#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-26T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671355#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-26T17:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671356#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-27T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671357#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-27T17:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671358#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-28T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671359#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-28T17:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671360#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-30T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671361#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-30T17:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Toy-Story-5?eid=671362#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     } ]
   }, {
@@ -70088,6 +70144,18 @@
       "dateTime" : "2026-06-18T20:30:00",
       "bookingUrl" : "https://rezerwacja.kinokultura.pl/MSI/mvc/pl?sort=Flow&date=2026-06-18&datestart=0",
       "room" : "Rejs",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "f59252e6ff68caf5|kielce|Koneckie Centrum Kultury",
+    "filmId" : "f59252e6ff68caf5",
+    "city" : "kielce",
+    "cinema" : "Koneckie Centrum Kultury",
+    "filmUrl" : "https://biletyna.pl/spektakl/iluzjonista-Adrian-Mitoraj-Pokaz-iluzji-dla-calej-rodziny?eid=645949#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-11-14T16:00:00",
+      "bookingUrl" : "https://biletyna.pl/spektakl/iluzjonista-Adrian-Mitoraj-Pokaz-iluzji-dla-calej-rodziny?eid=645949#opis",
+      "room" : "sala widowiskowa",
       "format" : [ ]
     } ]
   }, {
@@ -93622,34 +93690,42 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-12T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/The-Mandalorian-and-Grogu?eid=671297#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-12T17:30:00",
       "bookingUrl" : "https://biletyna.pl/film/The-Mandalorian-and-Grogu?eid=671298#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-13T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/The-Mandalorian-and-Grogu?eid=671299#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-13T17:30:00",
       "bookingUrl" : "https://biletyna.pl/film/The-Mandalorian-and-Grogu?eid=671300#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-14T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/The-Mandalorian-and-Grogu?eid=671301#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-14T17:30:00",
       "bookingUrl" : "https://biletyna.pl/film/The-Mandalorian-and-Grogu?eid=671302#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-16T15:00:00",
       "bookingUrl" : "https://biletyna.pl/film/The-Mandalorian-and-Grogu?eid=671303#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-16T17:30:00",
       "bookingUrl" : "https://biletyna.pl/film/The-Mandalorian-and-Grogu?eid=671304#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     } ]
   }, {
@@ -108254,10 +108330,12 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-13T13:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Kosmiczny-mecz-30-rocznica?eid=671309#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-14T13:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Kosmiczny-mecz-30-rocznica?eid=671310#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     } ]
   }, {
@@ -119450,18 +119528,22 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-19T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Backrooms-Bez-wyjscia?eid=671346#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-20T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Backrooms-Bez-wyjscia?eid=671347#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-21T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Backrooms-Bez-wyjscia?eid=671348#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-23T19:00:00",
       "bookingUrl" : "https://biletyna.pl/film/Backrooms-Bez-wyjscia?eid=671349#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     } ]
   }, {
@@ -143783,18 +143865,22 @@
     "showtimes" : [ {
       "dateTime" : "2026-06-12T19:45:00",
       "bookingUrl" : "https://biletyna.pl/film/Straszny-film?eid=671311#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-13T19:45:00",
       "bookingUrl" : "https://biletyna.pl/film/Straszny-film?eid=671306#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-14T19:45:00",
       "bookingUrl" : "https://biletyna.pl/film/Straszny-film?eid=671307#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     }, {
       "dateTime" : "2026-06-16T19:45:00",
       "bookingUrl" : "https://biletyna.pl/film/Straszny-film?eid=671308#opis",
+      "room" : "sala kinowa",
       "format" : [ ]
     } ]
   }, {
@@ -200026,6 +200112,18 @@
     }, {
       "dateTime" : "2026-06-11T17:30:00",
       "bookingUrl" : "https://www.bilety24.pl/kup-bilet-na-1499-klub-konesera-lobuz-156023?id=928459",
+      "format" : [ ]
+    } ]
+  }, {
+    "_id" : "ffa91f554655f7ef|kielce|Koneckie Centrum Kultury",
+    "filmId" : "ffa91f554655f7ef",
+    "city" : "kielce",
+    "cinema" : "Koneckie Centrum Kultury",
+    "filmUrl" : "https://biletyna.pl/film/Popieluszko-wolnosc-jest-w-nas-projekcja-filmu?eid=700647#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-10-20T17:00:00",
+      "bookingUrl" : "https://biletyna.pl/film/Popieluszko-wolnosc-jest-w-nas-projekcja-filmu?eid=700647#opis",
+      "room" : "sala widowiskowa",
       "format" : [ ]
     } ]
   }, {

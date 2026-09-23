@@ -2,7 +2,7 @@ package services.cinemas
 
 import models._
 import tools.{CachingDetailFetch, HttpFetch}
-import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient, ZyteFallback}
+import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListingScraper, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient, ZyteFallback}
 import services.cinemas.pl._
 import services.cinemas.common.{FlicksClient, FlicksMarket}
 import services.cinemas.uk.{CineworldClient, OdeonClient, TheOldCourtClient}
@@ -196,7 +196,7 @@ class CinemaScraperCatalog(
       mvcPath = venue.mvcPath, titlePrefix = venue.titlePrefix, titleSuffix = venue.titleSuffix)
   }
 
-  // biletyna.pl venue pages (17). biletyna.pl 403s our datacenter IP (Cloudflare
+  // biletyna.pl venue pages (44, plus Końskie's two below). biletyna.pl 403s our datacenter IP (Cloudflare
   // waiting-room), so every one routes through `bnFetch` — Zyte's residential
   // egress in prod, the fixture fake in tests.
   private val biletynaPages: Map[Cinema, String] = Map(
@@ -214,7 +214,6 @@ class CinemaScraperCatalog(
     KinoCKGniewino -> "https://biletyna.pl/Gniewino/Centrum-Kultury-Sportu-Turystyki-i-Biblioteka-w-Gniewinie",
     KinoMOKGlogow -> "https://biletyna.pl/Glogow/Miejski-Osrodek-Kultury",
     TeatrGryphius -> "https://biletyna.pl/Glogow/Teatr-im-Andreasa-Gryphiusa",
-    KinoKCKSalaWidowiskowa -> "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-widowiskowa",
     KinoCKSwiecie -> "https://biletyna.pl/Swiecie/Sala-Widowiskowa-Osrodek-Kultury-Sportu-i-Rekreacji",
     KinoMOKGlowno -> "https://biletyna.pl/Glowno/Miejski-Osrodek-Kultury",
     KinoPromienWiecbork -> "https://biletyna.pl/Wiecbork/Kino-Promien",
@@ -240,7 +239,6 @@ class CinemaScraperCatalog(
     KinoRondo                   -> "https://biletyna.pl/Chelmno/Kinoteatr-Rondo",
     KinoMiejskieCentrumKultury  -> "https://biletyna.pl/Aleksandrow-Kujawski/Miejskie-Centrum-Kultury",
     KinoZdroj                   -> "https://biletyna.pl/Ciechocinek/Kino-Zdroj",
-    KinoKoneckieCentrumKultury  -> "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa",
     KinoSwitCzechowiceDziedzice -> "https://biletyna.pl/Czechowice-Dziedzice/Kino-Swit",
     KinoTeatrElektryczny        -> "https://biletyna.pl/Skoczow/Teatr-Elektryczny",
     KinoPegaz                   -> "https://biletyna.pl/Wodzislaw-Slaski/Wodzislawskie-Centrum-Kultury",
@@ -251,6 +249,17 @@ class CinemaScraperCatalog(
   )
   private def biletyna(cinema: Cinema): BiletynaClient =
     new BiletynaClient(bnFetch, biletynaPages(cinema), cinema)
+
+  // Końskie's culture centre lists each hall on a biletyna page of its own. The
+  // stage hall is mostly cabaret and concerts but does screen the odd film
+  // ("Popiełuszko - wolność jest w nas", 2026-10-20), so both halls are ONE
+  // cinema, each showtime tagged with its hall.
+  private val koneckieCentrumKultury: CinemaScraper = new MultiListingScraper(KinoKoneckieCentrumKultury, Seq(
+    new BiletynaClient(bnFetch, "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa",
+      KinoKoneckieCentrumKultury, room = Some("sala kinowa")),
+    new BiletynaClient(bnFetch, "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-widowiskowa",
+      KinoKoneckieCentrumKultury, room = Some("sala widowiskowa")),
+  ))
 
   // systembiletowy.pl installs (9), by portal base URL.
   private val systemBiletowyPortals: Map[Cinema, String] = Map(
@@ -705,7 +714,7 @@ class CinemaScraperCatalog(
     "czestochowa" -> Seq(new KinoDKFRumcajsClient(http, KinoDKFRumcajs, today = today), new KinoKarolinkaClient(http, KinoKarolinka), bilety24("https://www.bilety24.pl/kino/organizator/miejski-dom-kultury-w-radomsku-1546", KinoMDK), bilety24("https://www.bilety24.pl/kino/organizator/miejski-osrodek-kultury-centrum-im-adama-mickiewicza-w-zawierciu-1305", KinoMOKCentrum), new KinoZaciszeClient(http, KinoZacisze)),
     "radom" -> Seq(helios(HeliosNuxt.Starachowice), msi(KinoCentrumSkarzyskoKamienna), bilety24("https://www.bilety24.pl/kino/organizator/szydlowieckie-centrum-kultury-zamek-1320", KinoGornik), msi(KinoKozienickiDomKultury), systemBiletowy(KinoKuznica), msi(KinoSwitZwolen)),
     "torun" -> Seq(biletyna(KinoMiejskieCentrumKultury), biletyna(KinoZdroj)),
-    "kielce" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-w-jedrzejowie-1458", KinoCK), biletyna(KinoKoneckieCentrumKultury)),
+    "kielce" -> Seq(bilety24("https://www.bilety24.pl/kino/organizator/centrum-kultury-w-jedrzejowie-1458", KinoCK), koneckieCentrumKultury),
     "rzeszow" -> Seq(helios(HeliosNuxt.Krosno), new ArtKinoKrosnoClient(http, KinoArtKino, today), new KinoJednoscClient(http, KinoJednosc), msi(KinoMCK), msi(KinoSniezka), new KinoSokolBrzozowClient(http, KinoSokolBrzozow), msi(KinoWarszawa)),
     "gliwice" -> Seq(new KinoScenaKulturaClient(http, KinoScenaKultura)),
     "olsztyn" -> Seq(msi(KinoCinemaLumiere), msi(KinoIgnacy), bilety24("https://www.bilety24.pl/kino/organizator/moraski-dom-kultury-1682", KinoNarie)),
@@ -2097,7 +2106,6 @@ class CinemaScraperCatalog(
       bilety24("https://www.bilety24.pl/kino/organizator/miejski-osrodek-kultury-i-sztuki-w-olesnicy-1193", KinoMOKiSOlesnica),   // Oleśnica
     ),
     "kielce" -> Seq(
-      biletyna(KinoKCKSalaWidowiskowa),   // Końskie
       filmweb(1720, KinoZdrojBusko),   // Busko-Zdrój
       filmweb(1482, KinoMuzaWloszczowa),   // Włoszczowa
     ),

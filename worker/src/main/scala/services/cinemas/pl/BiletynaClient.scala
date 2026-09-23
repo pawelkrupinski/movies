@@ -40,13 +40,17 @@ import scala.util.Try
  *                `https://biletyna.pl/Gdansk/Kino-Kameralne-Cafe`.
  * @parameter cinema  The [[Cinema]] source tag attached to every [[CinemaMovie]].
  */
-class BiletynaClient(http: HttpFetch, pageUrl: String, override val cinema: Cinema)
+class BiletynaClient(http: HttpFetch, pageUrl: String, override val cinema: Cinema,
+                     // The hall this page lists, where a venue has a page per hall
+                     // (see `MultiListingScraper`); stamped on every showtime.
+                     room: Option[String] = None)
     extends CinemaScraper with OnlyMovieEventsFilter {
 
   def scrapeHosts: Set[String] = CinemaScraper.hostsOf(pageUrl)
   override def sourceUrl: Option[String] = Some(pageUrl)
 
-  protected def fetchUnfiltered(): Seq[CinemaMovie] = BiletynaClient.parse(http.get(pageUrl), cinema)
+  protected def fetchUnfiltered(): Seq[CinemaMovie] =
+    BiletynaClient.parse(http.get(pageUrl), cinema).map(m => m.copy(showtimes = m.showtimes.map(_.copy(room = room))))
 }
 
 object BiletynaClient {

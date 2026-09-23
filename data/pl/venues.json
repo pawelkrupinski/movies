@@ -1512,13 +1512,6 @@
   "annotation": "Włoszczowa — filmweb 1482"
  },
  {
-  "citySlug": "kielce",
-  "cinemaObject": "KinoKCKSalaWidowiskowa",
-  "displayName": "Koneckie Centrum Kultury – sala widowiskowa",
-  "town": "Końskie",
-  "annotation": "Końskie — biletyna"
- },
- {
   "citySlug": "rzeszow",
   "cinemaObject": "HeliosRzeszow",
   "displayName": "Helios Rzeszów",

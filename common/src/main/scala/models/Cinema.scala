@@ -767,7 +767,6 @@ case object TeatrAtelier extends Cinema("Teatr Atelier", "Atelier")   // Sopot �
 case object KinoCKGniewino extends Cinema("Centrum Kultury Gniewino", "Gniewino")   // Gniewino — biletyna
 case object KinoMOKGlogow extends Cinema("MOK Głogów", "MOK Głogów")   // Głogów — biletyna
 case object TeatrGryphius extends Cinema("Teatr im. Andreasa Gryphiusa", "Gryphius")   // Głogów — biletyna
-case object KinoKCKSalaWidowiskowa extends Cinema("Koneckie Centrum Kultury – sala widowiskowa", "KCK sala widowiskowa")   // Końskie — biletyna
 case object KinoCKSwiecie extends Cinema("Centrum Kultury w Świeciu", "Świecie")   // Świecie — biletyna
 case object KinoMOKGlowno extends Cinema("MOK Głowno", "Głowno")   // Głowno — biletyna
 case object KinoPromienWiecbork extends Cinema("Kino Promień Więcbork", "Promień")   // Więcbork — biletyna
@@ -2223,7 +2222,7 @@ object Cinema {
 
   val torun: Seq[Cinema] = Seq(CinemaCityTorunCzerwonaDroga, CinemaCityTorunPlaza, KinoCentrumCsw, KinoMiejskieCentrumKultury, KinoZdroj, HeliosGrudziadz)
 
-  val kielce: Seq[Cinema] = Seq(HeliosKielce, MultikinoKielce, KinoFenomen, KinoMoskwa, KinoCK, KinoKoneckieCentrumKultury, KinoZdrojBusko, KinoMuzaWloszczowa, KinoKCKSalaWidowiskowa)
+  val kielce: Seq[Cinema] = Seq(HeliosKielce, MultikinoKielce, KinoFenomen, KinoMoskwa, KinoCK, KinoKoneckieCentrumKultury, KinoZdrojBusko, KinoMuzaWloszczowa)
 
   val rzeszow: Seq[Cinema] = Seq(HeliosRzeszow, MultikinoRzeszow, KinoZorza, KinoZaRogiemCafe, HeliosKrosno, KinoArtKino, KinoJednosc, KinoMCK, KinoSniezka, KinoSokolBrzozow, KinoWarszawa)
 

@@ -1,13 +1,13 @@
 package clients
 
 import clients.tools.FakeHttpFetch
-import models.{AdaKinoStudyjne, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
+import models.{AdaKinoStudyjne, KinoKoneckieCentrumKultury, KinoBaszta, KinoNadWarta, KinoEcho, KinoMewaBudzyn, UsRoster, CinemaCityBialaPodlaska, HeliosSiedlce, KinoGiewont, KinoMuranow, KinoOdraOlawa, KinoWCKWalcz, MultikinoLeszno, MultikinoPruszkow, ArcCinemaGreatYarmouth, Cinema, CineworldSheffield, KinoFenomen, KinoKameralne, KinoKryterium, KinoPiastOstrzeszow, KinoPort, KinoWislaBrzeszcze, OdeonCinemaActon, VueCinemasSheffield}
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
 import services.movies.SingleCountryNormalizer.titleNormalizer
-import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient}
+import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl.{Bilety24OrganizerClient, CinemaCityScraper, FilmwebShowtimesClient, HeliosClient, MultikinoClient}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.cinemas.uk.CineworldClient
@@ -379,6 +379,21 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       .filter(_.cinema.displayName.contains("Etiuda"))
     etiudas.map(_.cinema.displayName) shouldBe Seq("Kino Etiuda")
     etiudas.head shouldBe a [Bilety24OrganizerClient]
+  }
+
+  // Końskie's culture centre lists its cinema hall and its stage hall on two
+  // biletyna pages. The stage hall screens the odd film, so it was wired as a
+  // second cinema — one venue shown twice under two names. It is ONE cinema read
+  // off both pages, each showtime tagged with its hall.
+  it should "scrape Końskie's culture centre as one cinema off both its halls' pages" in {
+    val konskie = catalog(biletyna = "08-06-2026").byCity("kielce").filter(_.cinema.displayName.startsWith("Koneckie"))
+    konskie.map(_.cinema) shouldBe Seq(KinoKoneckieCentrumKultury)
+    val venue = konskie.head.asInstanceOf[MultiListingScraper]
+    venue.listings.flatMap(_.sourceUrl) shouldBe Seq(
+      "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-kinowa",
+      "https://biletyna.pl/Konskie/Koneckie-Centrum-Kultury-sala-widowiskowa")
+    Cinema.all.map(_.displayName).filter(_.startsWith("Koneckie")) shouldBe Seq("Koneckie Centrum Kultury")
+    venue.fetch().flatMap(_.showtimes).flatMap(_.room).toSet shouldBe Set("sala kinowa", "sala widowiskowa")
   }
 
   // A `Cinema` that's modelled (so it shows on the web/in a city) but has no
