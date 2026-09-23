@@ -23,8 +23,10 @@ import java.util.concurrent.atomic.AtomicReference
  * (disabledCinemas already left the sync path entirely — see
  * `StateSyncService`, mobile, and `shared.js`, web). Once every shipped
  * client is on the new endpoints this gauge should read "no calls in N days"
- * — that reading is what says the legacy endpoint can actually be deleted,
- * not just "it still compiles".
+ * — that reading is what says the legacy SET fields can actually be deleted,
+ * not just "it still compiles". A `language`-only PUT is not counted: that is
+ * the web client's own, intended use (`language` has no granular successor),
+ * so the endpoint itself stays — see `UserStateController.put`.
  */
 class LegacyUserStateMetrics(registry: PrometheusRegistry, country: String) {
   private val lastPutCall = new AtomicReference[Instant](null)
@@ -41,6 +43,6 @@ class LegacyUserStateMetrics(registry: PrometheusRegistry, country: String) {
     }
     .register(registry)
 
-  /** Called once per `PUT /api/me/state`, from `UserStateController.put()`. */
+  /** Called once per non-language-only `PUT /api/me/state`, from `UserStateController.put()`. */
   def recordPutCall(now: Instant = Instant.now()): Unit = lastPutCall.set(now)
 }

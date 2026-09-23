@@ -489,6 +489,21 @@ class UserStateControllerSpec extends AnyFlatSpec with Matchers {
     services.metrics.PrometheusExposition.render(registry) should include ("kinowo_web_legacy_userstate_put_last_called_seconds")
   }
 
+  // `language` has no granular successor and the web client itself PUTs it
+  // here on every explicit pick (shared.js's `pushStateToServer`) — that is
+  // the endpoint's intended, ongoing use, not a legacy client. Counting it
+  // would pin the retirement gauge at "called just now" forever and hide
+  // whether any client still sends the sets the granular API replaced.
+  it should "leave the legacy-usage gauge alone for a language-only body" in {
+    val registry = new PrometheusRegistry()
+    val metrics  = new LegacyUserStateMetrics(registry, "pl")
+    val (ctl, _, _) = fixture(legacyMetrics = metrics)
+    status(ctl.put()(FakeRequest("PUT", "/api/me/state").withSession("userId" -> "u1")
+      .withBody(Json.obj("language" -> "en")))) shouldBe OK
+
+    services.metrics.PrometheusExposition.render(registry) should not include ("kinowo_web_legacy_userstate_put_last_called_seconds{")
+  }
+
   it should "replace the user's state with the request body" in {
     val initial = UserState("u1", Set("OLD"), Set.empty, Instant.now())
     val (ctl, repository, _) = fixture(Some(initial))

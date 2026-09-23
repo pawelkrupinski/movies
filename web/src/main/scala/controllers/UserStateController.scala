@@ -225,10 +225,14 @@ class UserStateController(
   }
 
   def put(): Action[JsValue] = Action(parse.json) { request =>
-    // Every call, regardless of outcome — even a 401 or a malformed body is
-    // evidence SOMETHING out there still hits this URL, which is exactly what
-    // decides whether it's safe to delete. See LegacyUserStateMetrics.
-    legacyUserStateMetrics.recordPutCall()
+    // Every call that isn't the web's own language push, regardless of outcome
+    // — even a 401 or a malformed body is evidence SOMETHING out there still
+    // sends what the granular API replaced, which is exactly what decides
+    // whether that half can go. A `{"language": …}`-only body is this
+    // endpoint's intended, ongoing use (`language` has no granular successor;
+    // shared.js PUTs it on every pick) and would pin the gauge at "just now"
+    // forever. See LegacyUserStateMetrics.
+    if (!isLanguageOnly(request.body)) legacyUserStateMetrics.recordPutCall()
     PerUserResponse(signedInUserId(request) match {
       case None         => Unauthorized(Json.obj("error" -> "not logged in"))
       case Some(userId) =>
@@ -277,6 +281,11 @@ object UserStateController {
     stored.map(_.updatedAt.truncatedTo(java.time.temporal.ChronoUnit.MILLIS).plusMillis(1))
       .filter(_.isAfter(tick)).getOrElse(tick)
   }
+
+  /** A body carrying `language` and nothing else — the one PUT that isn't a
+   *  legacy set sync. */
+  def isLanguageOnly(body: JsValue): Boolean =
+    body.asOpt[play.api.libs.json.JsObject].exists(_.keys == Set("language"))
 
   /** Render a `UserState` to its wire JSON. Sorted lists at the wire
    *  edge so the response is deterministic (helps caching and makes
