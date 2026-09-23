@@ -174,8 +174,7 @@ class CinemaRosterAuditSpec extends AnyFlatSpec with Matchers {
         (a, i) <- named.zipWithIndex
         b      <- named.drop(i + 1)
         if a._2.nonEmpty && b._2.nonEmpty && (a._2.subsetOf(b._2) || b._2.subsetOf(a._2))
-        pair = Set(a._1.toString, b._1.toString)
-        if !CinemaRosterAuditSpec.DistinctNamesakes(pair)
+        if !DistinctVenuePairs.contains(a._1, b._1)
       } yield s"$town: '${a._1.displayName}' and '${b._1.displayName}'"
     }
     withClue(twins.mkString("\n")) { twins shouldBe empty }
@@ -234,9 +233,4 @@ object CinemaRosterAuditSpec {
 
   private def distinctiveTokens(displayName: String, townSlug: String): Set[String] =
     Slugify.stable(displayName).split('-').toSet -- GenericWords -- townSlug.split('-') - ""
-
-  /** Pairs the name check flags that are genuinely two venues. */
-  private val DistinctNamesakes: Set[Set[String]] = Set(
-    Set("KinoMikro", "MikroBronowice"),   // Kino Mikro (Juliusza Lea) and its second screen in Bronowice
-  )
 }

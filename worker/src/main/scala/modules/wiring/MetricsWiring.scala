@@ -1,7 +1,7 @@
 package modules.wiring
 
 import modules.WorkerWiring
-import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, RatingRunCensus, RetiredVenueCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
+import services.metrics.{CinemaContentCensus, CinemaScrapeCensus, CorpusScanMetrics, DuplicateVenueCensus, RatingRunCensus, RetiredVenueCensus, WorkerCorpusMetrics, WorkerCorpusScan, WorkerShowtimesMetrics, WorkerSlotFanoutMetrics, WorkerSourceFilmsMetrics, WorkerTaskMetrics}
 
 /** This country's slice of the process-wide `/metrics` registry: the
  *  per-country task-pipeline facade, the cache-occupancy gauges, and the
@@ -48,12 +48,16 @@ trait MetricsWiring { self: WorkerWiring =>
   // WorkerSlotFanoutMetrics). Rides the same corpus pass as the three censuses above.
   lazy val slotFanoutMetrics: WorkerSlotFanoutMetrics =
     new WorkerSlotFanoutMetrics(workerMetrics.widestSlotsGauge, country.code)
+  // Same-city venue pairs whose upcoming programmes are (nearly) identical — one screen listed
+  // twice under two names, which the name-based roster audit cannot see. Rides the same pass.
+  lazy val duplicateVenueCensus: DuplicateVenueCensus =
+    new DuplicateVenueCensus(workerMetrics.duplicateVenuePairsGauge, country)
   // ONE 5-minute corpus scan feeding all three censuses above. They each used to run
   // their own timer AND their own full scan of the same rows — 14,704 documents per
   // country per 5 min for Poland alone (measured 2026-07-18) — see WorkerCorpusScan.
   lazy val corpusScan: WorkerCorpusScan =
     new WorkerCorpusScan(movieRepository,
-      Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics),
+      Seq(corpusMetrics, sourceFilmsMetrics, showtimesMetrics, slotFanoutMetrics, duplicateVenueCensus),
       metrics = CorpusScanMetrics.prometheus(workerMetrics.corpusScanIncomplete, country.code))
   // Per-site backlog of resolved films whose rating has NEVER run — the never-run
   // latency the first-attempt histogram can't show (see RatingRunCensus).

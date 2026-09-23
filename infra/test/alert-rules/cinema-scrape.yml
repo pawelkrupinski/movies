@@ -252,3 +252,35 @@ tests:
                 `db.screenings.aggregate([{$group: {_id: {$arrayElemAt: [{$split: ["$slotKey", "␟"]}, 0]}, n: {$sum: 1}}}])`
                 against the country's database and compare with its roster. A foreign country's venue
                 in the list means rows were written into the wrong database.
+
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  # DUPLICATE VENUES: A DAY OF OVERLAP FIRES, AN EVENING OF IT DOES NOT. PL holds one pair for
+  # 25 hours; UK holds two for 6 hours and then its programmes diverge.
+  # ────────────────────────────────────────────────────────────────────────────────────────────
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_duplicate_venue_pairs{country="pl",job="kinowo-worker"}'
+        values: '1x1560'
+      - series: 'kinowo_worker_duplicate_venue_pairs{country="uk",job="kinowo-worker"}'
+        values: '2x360 0x1200'
+    alert_rule_test:
+      - eval_time: 23h
+        alertname: DuplicateVenueListing
+        exp_alerts: []
+      - eval_time: 25h
+        alertname: DuplicateVenueListing
+        exp_alerts:
+          - exp_labels:
+              country: pl
+              severity: warning
+            exp_annotations:
+              summary: "1 venue pair(s) in pl have shared 90%+ of their programme for a day"
+              description: >-
+                Two roster venues in one "pl" city have listed (nearly) the same upcoming
+                films at the same start times for 24 hours -- one screen listed twice under two names,
+                or two venues wired to one upstream listing. The worker's WARN line "duplicate-venue
+                census (pl)" names the pairs. Compare each pair's sources in
+                CinemaScraperCatalog: the same upstream programme behind two names is a wiring bug to
+                fix; a chain genuinely running one programme in two towns of one region goes on
+                `services.cinemas.roster.DistinctVenuePairs` with its reason, which clears it here and
+                in the offline roster audit alike.

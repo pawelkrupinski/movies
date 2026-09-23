@@ -197,6 +197,7 @@ route_is telegram alertname=ReadModelFilmsInvisibleWithScreenings severity=warni
 route_is telegram alertname=ReadModelHealsRecurring severity=warning country=us
 route_is telegram alertname=ChangeStreamApplyLagging severity=warning country=pl
 route_is telegram alertname=RetiredVenueRowsLingering severity=warning country=pl
+route_is telegram alertname=DuplicateVenueListing severity=warning country=uk
 
 # AND NOTHING ELSE CHANGED. The email receiver is for the disk alerts alone; every other alert must
 # still land on plain Telegram, or "add email for the disks" has quietly become "add email".
