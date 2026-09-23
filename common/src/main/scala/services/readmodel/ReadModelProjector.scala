@@ -16,14 +16,14 @@ import scala.util.Try
  * Two live mechanisms keep it current, mirroring `MovieCache`'s sync design:
  *
  *  1. INCREMENTAL — subscribes to the `movies` change stream
- *     (`MovieRepository.watchUpserts`); each changed row is re-projected and the
+ *     (`MovieRepository.watchChanges`); each changed row is re-projected and the
  *     resulting documents are diffed against the last projection so only the documents
  *     that actually changed are written. With the persisted resume token this also
  *     replays every upsert missed while the worker was down.
  *  2. ORPHAN PRUNE (backstop) — a cheap, frequent id-only sweep (`pruneOrphans`)
  *     that removes derived documents whose source film has vanished or was re-keyed
- *     (the change stream delivers no deletes; a fold-victim / `UnscreenedCleanup`
- *     removal is reconciled here). It re-projects nothing, so it can't spike CPU.
+ *     and whose delete event this process never applied (it was down past the resume
+ *     window, or the card was written by an earlier process — see `onMovieDelete`). It re-projects nothing, so it can't spike CPU.
  *
  * The full re-projection (`reconcile`) is NOT scheduled — it was the periodic
  * ~1-core whole-corpus burst that drained the worker's CPU-credit balance, and the
@@ -302,10 +302,9 @@ class ReadModelProjector(
    *
    *  `reproject = false` — the CHEAP sweep (`pruneOrphans`): build the live-id set from
    *  `ReadModelProjection.filmIds` (no projection) and prune only. This is the frequent
-   *  backstop for DELETES / re-keys, which the change stream drops (`watchUpserts` nulls
-   *  onDelete) — the film-id is `sanitize(title)|resolvedYear`, many source rows to one
-   *  card, so a single source delete can't be mapped to a card without a reverse index;
-   *  the set-difference prune is the correct, cheap way to reconcile them.
+   *  backstop for DELETES / re-keys the change stream's `onMovieDelete` did not retire
+   *  (missed while down, or cards a previous process wrote that `lastCardsByRow` never
+   *  saw); the set-difference prune is the correct, cheap way to reconcile them.
    *
    *  Self-healing: the prune diffs the ACTUAL read-model ids
    *  (`reader.findAllMovieIds`/`findAllScreeningRefs`) against the live source, NOT this
