@@ -353,7 +353,15 @@ class KinowoViewModel(
     }
 
     // ── lifecycle / data ──────────────────────────────────────────────────
+    private var started = false
+
+    /** Once per ViewModel. [KinowoApp] calls this from a `LaunchedEffect`,
+     *  which re-runs whenever the activity is recreated around this RETAINED
+     *  instance (rotation, a language switch) — a second `selectedCity`
+     *  collector would fetch every city change twice. */
     fun start() {
+        if (started) return
+        started = true
         repository.loadCachedData()
         detailsRepository.loadCachedData()
         repository.pruneStaleShowings(zone = currentZone())

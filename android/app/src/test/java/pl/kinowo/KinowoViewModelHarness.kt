@@ -113,7 +113,13 @@ class KinowoViewModelHarness : ExternalResource() {
         clients.clear()
     }
 
-    private fun pumpUntil(what: String, condition: () -> Boolean) {
+    /** Keep pumping for [millis] — for asserting something did NOT happen. */
+    fun pumpFor(millis: Long) {
+        val end = System.currentTimeMillis() + millis
+        pumpUntil("$millis ms to pass") { System.currentTimeMillis() >= end }
+    }
+
+    fun pumpUntil(what: String, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + TIMEOUT_MS
         while (!condition()) {
             check(System.currentTimeMillis() < deadline) { "Timed out after ${TIMEOUT_MS}ms waiting for $what" }
