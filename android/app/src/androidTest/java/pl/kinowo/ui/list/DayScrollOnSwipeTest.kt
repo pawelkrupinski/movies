@@ -11,34 +11,26 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
-import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
 import pl.kinowo.model.Showtime
 import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.net.RepertoireApi
+import pl.kinowo.testKinowoViewModel
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.theme.KinowoTheme
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * On-device test against the REAL [ListScreen] + a seeded view-model: a day-swipe
@@ -81,17 +73,7 @@ class DayScrollOnSwipeTest {
         }
         val repository = RepertoireRepository(fakeApi, JsonListCache(context.cacheDir, "rep_probe", Film.serializer()))
         runBlocking { repository.reload("warszawa") }
-        val http = OkHttpClient()
-        val detailsRepository = DetailsRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "det_probe", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context), baseUrl = "http://127.0.0.1:1")
-        val noop = object : HiddenFilmsClient {
-            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-                HiddenFilmsFetchResult.NotModified
-            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-        }
-        return KinowoViewModel(repository, detailsRepository, UserPreferences(context), authRepository, noop)
+        return testKinowoViewModel(context, repository)
     }
 
     private fun screenW() = compose.activity.resources.displayMetrics.widthPixels.toFloat()

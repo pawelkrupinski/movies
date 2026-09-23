@@ -161,6 +161,9 @@ android {
     // is shared by every build that enables tuning — `debug` and `tuneRelease` —
     // from one `src/tuning` source set, so there's a single copy.
     sourceSets {
+        // Test fixtures both the JVM and the on-device suites build ViewModels from.
+        getByName("test") { kotlin.directories.add("src/sharedTest/java") }
+        getByName("androidTest") { kotlin.directories.add("src/sharedTest/java") }
         getByName("debug") {
             java.srcDir("src/tuning/java")
             manifest.srcFile("src/tuning/AndroidManifest.xml")

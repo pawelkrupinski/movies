@@ -80,23 +80,9 @@ class KinowoViewModel(
     private val prefs: UserPreferences,
     private val authRepository: AuthRepository,
     hiddenFilmsClient: HiddenFilmsClient,
-    // Defaulted to a no-op so the many existing test constructors — none of
-    // which exercise language sync — don't all need a stub threaded through,
-    // same reasoning as catalogApi/catalogRepository below.
-    languageClient: LanguageClient = object : LanguageClient {
-        override suspend fun fetch(): String? = null
-        override suspend fun push(language: String) {}
-    },
-    // Last, with a flat-catalog default, so the existing test constructors (which
-    // don't exercise split cities) keep compiling without threading a stub.
-    private val catalogApi: CinemaCatalogApi = CinemaCatalogApi { CinemaCatalog.EMPTY },
-    // The live country/city catalog. Defaulted to a fallback-only repository (no
-    // network, no seed) so existing test constructors keep compiling.
-    private val catalogRepository: CatalogRepository = CatalogRepository(
-        api = pl.kinowo.net.CatalogApi { pl.kinowo.net.KinowoApi.FetchedCatalog(null, null, notModified = true) },
-        cache = pl.kinowo.data.CatalogCache(java.io.File(System.getProperty("java.io.tmpdir"), "kinowo-catalog-default")),
-        seedJson = null,
-    ),
+    languageClient: LanguageClient,
+    private val catalogApi: CinemaCatalogApi,
+    private val catalogRepository: CatalogRepository,
 ) : ViewModel() {
 
     /** The live country + city catalog (fetched on open, seeded from the distro).

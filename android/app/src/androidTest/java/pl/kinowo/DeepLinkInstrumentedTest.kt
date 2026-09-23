@@ -9,25 +9,17 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.runBlocking
-import okhttp3.OkHttpClient
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import pl.kinowo.auth.AuthRepository
-import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
 import pl.kinowo.model.CinemaShowings
 import pl.kinowo.model.DayShowings
 import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
 import pl.kinowo.model.Showtime
 import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.net.RepertoireApi
 import pl.kinowo.ui.KinowoViewModel
 import pl.kinowo.ui.Repertoire
@@ -77,18 +69,8 @@ class DeepLinkInstrumentedTest {
             override suspend fun fetchRepertoire(citySlug: String, ifModifiedSince: String?) =
                 KinowoApi.Fetched(byCity[citySlug] ?: emptyList(), null, false)
         }
-        val http = OkHttpClient()
         val repository = RepertoireRepository(fakeApi, JsonListCache(context.cacheDir, "rep_dl_probe", Film.serializer()))
-        val detailsRepository = DetailsRepository(KinowoApi(client = http), JsonListCache(context.cacheDir, "det_dl_probe", FilmDetails.serializer()))
-        val authRepository = AuthRepository(http, PersistentCookieJar(context), baseUrl = "http://127.0.0.1:1")
-        val noop = object : HiddenFilmsClient {
-            override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-                HiddenFilmsFetchResult.NotModified
-            override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-            override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-        }
-        return KinowoViewModel(repository, detailsRepository, UserPreferences(context), authRepository, noop)
+        return testKinowoViewModel(context, repository)
     }
 
     @Test

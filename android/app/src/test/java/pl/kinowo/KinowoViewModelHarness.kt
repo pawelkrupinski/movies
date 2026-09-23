@@ -12,30 +12,12 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import org.junit.rules.ExternalResource
 import org.robolectric.Shadows.shadowOf
-import pl.kinowo.auth.AuthRepository
 import pl.kinowo.auth.HiddenFilmsClient
-import pl.kinowo.auth.HiddenFilmsFetchResult
-import pl.kinowo.auth.HiddenFilmsState
-import pl.kinowo.data.DetailsRepository
 import pl.kinowo.data.FreshUserPreferences
-import pl.kinowo.data.JsonListCache
 import pl.kinowo.data.RepertoireRepository
 import pl.kinowo.data.UserPreferences
-import pl.kinowo.model.Film
-import pl.kinowo.model.FilmDetails
-import pl.kinowo.net.KinowoApi
-import pl.kinowo.net.PersistentCookieJar
 import pl.kinowo.ui.KinowoViewModel
 import java.util.concurrent.atomic.AtomicBoolean
-
-/** A [HiddenFilmsClient] that never touches the network and never changes anything. */
-internal object NoopHiddenFilmsClient : HiddenFilmsClient {
-    override suspend fun fetch(country: String, etag: String?, lastModified: String?) =
-        HiddenFilmsFetchResult.NotModified
-    override suspend fun hide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-    override suspend fun unhide(country: String, title: String) = HiddenFilmsState(emptySet(), null, null)
-    override suspend fun clear(country: String) = HiddenFilmsState(emptySet(), null, null)
-}
 
 /**
  * Builds real [KinowoViewModel]s for Robolectric tests AND tears them down —
@@ -58,8 +40,7 @@ internal object NoopHiddenFilmsClient : HiddenFilmsClient {
  * write-launching calls you make with [settle], and let [after] prove the
  * DataStore lock is free before the next test starts.
  *
- * Every endpoint points at an unroutable local port, so nothing a ViewModel
- * does on its own (`init`'s session check, `start()`'s fetches) reaches prod.
+ * The ViewModel itself is [testKinowoViewModel]'s: offline, never reaching prod.
  */
 class KinowoViewModelHarness : ExternalResource() {
 
@@ -74,16 +55,10 @@ class KinowoViewModelHarness : ExternalResource() {
         hiddenFilmsClient: HiddenFilmsClient = NoopHiddenFilmsClient,
     ): KinowoViewModel {
         val http = OkHttpClient().also { clients += it }
-        val api = KinowoApi(baseUrl = UNREACHABLE, client = http)
         val factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T = KinowoViewModel(
-                repository ?: RepertoireRepository(api, JsonListCache(context.cacheDir, "repertoire", Film.serializer())),
-                DetailsRepository(api, JsonListCache(context.cacheDir, "details", FilmDetails.serializer())),
-                prefs,
-                AuthRepository(http, PersistentCookieJar(context), baseUrl = UNREACHABLE),
-                hiddenFilmsClient,
-            ) as T
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                testKinowoViewModel(context, repository, prefs, hiddenFilmsClient, http) as T
         }
         val store = ViewModelStore().also { stores += it }
         return ViewModelProvider(store, factory)[KinowoViewModel::class.java]
@@ -136,7 +111,6 @@ class KinowoViewModelHarness : ExternalResource() {
     }
 
     private companion object {
-        const val UNREACHABLE = "http://127.0.0.1:1"
         const val TIMEOUT_MS = 5_000L
     }
 }
